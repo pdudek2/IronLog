@@ -19,10 +19,14 @@ export function logoutUser() {
   return signOut(auth)
 }
 
+let unsubscribe: (() => void) | null = null
+
 export function initAuthListener() {
+  if (unsubscribe) unsubscribe()
   const { setUser, setLoading } = useAuthStore.getState()
-  return onAuthStateChanged(auth, (user) => {
+  unsubscribe = onAuthStateChanged(auth, (user) => {
     setUser(user)
     setLoading(false)
   })
+  return unsubscribe
 }

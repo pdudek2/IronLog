@@ -1,12 +1,9 @@
 import { logoutUser } from '../lib/auth'
-import { useNavigate } from 'react-router-dom'
 
 export default function DashboardPage() {
-  const navigate = useNavigate()
-
   async function handleLogout() {
     await logoutUser()
-    navigate('/login')
+    // onAuthStateChanged zaktualizuje store → PrivateRoute przekieruje
   }
 
   return (

@@ -1,11 +1,4 @@
-function App() {
-  return (
-    <div className="min-h-screen flex items-center justify-center">
-      <h1 className="text-4xl font-bold" style={{ color: 'var(--accent)' }}>
-        IronLog
-      </h1>
-    </div>
-  )
+// Router handles everything — this file is unused
+export default function App() {
+  return null
 }
-
-export default App

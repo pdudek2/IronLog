@@ -1,6 +1,6 @@
 import {
   collection, addDoc, query, where, orderBy, limit,
-  getDocs, getDoc, doc, deleteDoc,
+  getDocs, getDoc, doc, deleteDoc, updateDoc,
 } from 'firebase/firestore'
 import { db } from './firebase'
 import type { ActiveWorkout } from '../store/workoutStore'
@@ -10,6 +10,7 @@ export async function saveWorkout(uid: string, workout: ActiveWorkout): Promise<
     userId: uid,
     startedAt: workout.startedAt,
     finishedAt: Date.now(),
+    label: workout.label ?? null,
     exercises: workout.exercises.map((ex) => ({
       exerciseId: ex.exerciseId,
       name: ex.name,
@@ -29,6 +30,7 @@ export interface WorkoutSummary {
   id: string
   startedAt: number
   finishedAt: number
+  label?: string | null
   exercises: { exerciseId?: string; name: string; sets: { weight: number; reps: number }[] }[]
 }
 
@@ -46,6 +48,31 @@ export async function getRecentWorkouts(uid: string, count = 20): Promise<Workou
 export async function getWorkout(id: string): Promise<WorkoutSummary | null> {
   const snap = await getDoc(doc(db, 'workouts', id))
   return snap.exists() ? { id: snap.id, ...(snap.data() as Omit<WorkoutSummary, 'id'>) } : null
+}
+
+function sanitizeWorkoutExercises(exercises: WorkoutSummary['exercises']): WorkoutSummary['exercises'] {
+  return exercises.map((exercise) => ({
+    ...(exercise.exerciseId !== undefined && { exerciseId: exercise.exerciseId }),
+    name: exercise.name,
+    sets: exercise.sets.map((set) => ({
+      weight: set.weight ?? 0,
+      reps: set.reps ?? 0,
+    })),
+  }))
+}
+
+export async function updateWorkout(
+  id: string,
+  data: Partial<Pick<WorkoutSummary, 'label' | 'exercises'>>
+): Promise<void> {
+  const payload: Partial<Pick<WorkoutSummary, 'label' | 'exercises'>> = {}
+
+  if (data.label !== undefined) payload.label = data.label ?? null
+  if (data.exercises !== undefined) payload.exercises = sanitizeWorkoutExercises(data.exercises)
+
+  if (Object.keys(payload).length === 0) return
+
+  await updateDoc(doc(db, 'workouts', id), payload)
 }
 
 export async function deleteWorkout(id: string): Promise<void> {

@@ -293,7 +293,7 @@ export default function DashboardPage() {
                     {/* Info */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-semibold text-white truncate">
-                        {workoutTitle(w)}
+                        {w.label ?? workoutTitle(w)}
                       </p>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs" style={{ color: 'var(--muted)' }}>

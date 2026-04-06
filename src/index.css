@@ -65,6 +65,10 @@ body::after {
   box-shadow: var(--card-glow);
 }
 
+/* Hide scrollbar for label pills row */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 /* Input number — hide arrows */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {

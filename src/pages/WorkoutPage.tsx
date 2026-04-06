@@ -7,6 +7,8 @@ import { useProfileStore } from '../store/profileStore'
 import { saveWorkout } from '../lib/workoutService'
 import ExercisePicker from '../components/ExercisePicker'
 
+const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
+
 function formatDuration(startedAt: number): string {
   const s = Math.floor((Date.now() - startedAt) / 1000)
   const m = Math.floor(s / 60)
@@ -18,7 +20,7 @@ function formatDuration(startedAt: number): string {
 export default function WorkoutPage() {
   const { user } = useAuthStore()
   const { profile } = useProfileStore()
-  const { active, startWorkout, addExercise, addSet, removeSet, updateSet, toggleSetDone, removeExercise, clearWorkout } = useWorkoutStore()
+  const { active, startWorkout, setLabel, addExercise, addSet, removeSet, updateSet, toggleSetDone, removeExercise, clearWorkout } = useWorkoutStore()
   const navigate = useNavigate()
 
   const [showPicker, setShowPicker] = useState(false)
@@ -99,6 +101,34 @@ export default function WorkoutPage() {
       {saveError && (
         <p className="text-xs text-center py-2" style={{ color: '#FF4B4B' }}>{saveError}</p>
       )}
+
+      {/* Workout label picker */}
+      <div className="px-4 pt-4">
+        <p className="text-[10px] uppercase tracking-widest mb-3" style={{ color: 'var(--muted)' }}>
+          RODZAJ TRENINGU
+        </p>
+        <div className="grid grid-cols-4 gap-2">
+          {WORKOUT_LABELS.map((label) => {
+            const isActive = active.label === label
+            return (
+              <motion.button
+                key={label}
+                onClick={() => setLabel(isActive ? '' : label)}
+                className="text-xs font-semibold rounded-lg py-2 w-full"
+                style={{
+                  backgroundColor: isActive ? 'var(--accent)' : 'var(--card)',
+                  color: isActive ? '#08061A' : 'var(--muted)',
+                  border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+                }}
+                whileTap={{ scale: 0.92 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+              >
+                {label}
+              </motion.button>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Exercise list */}
       <div className="px-4 py-4 flex flex-col gap-4">

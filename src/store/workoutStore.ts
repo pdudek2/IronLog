@@ -15,12 +15,14 @@ export interface WorkoutExercise {
 
 export interface ActiveWorkout {
   startedAt: number
+  label?: string
   exercises: WorkoutExercise[]
 }
 
 interface WorkoutState {
   active: ActiveWorkout | null
   startWorkout: () => void
+  setLabel: (label: string) => void
   addExercise: (exerciseId: string, name: string) => void
   addSet: (exerciseIndex: number) => void
   removeSet: (exerciseIndex: number, setIndex: number) => void
@@ -37,6 +39,9 @@ export const useWorkoutStore = create<WorkoutState>()(persist((set) => ({
 
   startWorkout: () =>
     set({ active: { startedAt: Date.now(), exercises: [] } }),
+
+  setLabel: (label) =>
+    set((s) => s.active ? { active: { ...s.active, label } } : s),
 
   addExercise: (exerciseId, name) =>
     set((s) => {

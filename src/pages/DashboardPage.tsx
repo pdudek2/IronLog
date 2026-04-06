@@ -177,6 +177,17 @@ export default function DashboardPage() {
             >
               {stat.value}
             </p>
+            {stat.accent && (
+              <div className="mb-2 h-1 rounded-full overflow-hidden" style={{ background: 'var(--input-bg)' }}>
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{ background: 'var(--accent)' }}
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPct}%` }}
+                  transition={{ delay: 0.4, duration: 0.9 }}
+                />
+              </div>
+            )}
             <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
               {stat.label}
             </p>
@@ -196,11 +207,11 @@ export default function DashboardPage() {
             const isPast = date <= today
             return (
               <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <p className="text-[9px] uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
+                <p className="text-[10px] uppercase tracking-wide" style={{ color: 'var(--muted)' }}>
                   {WEEK_LABELS[i]}
                 </p>
                 <motion.div
-                  className="w-full aspect-square rounded-lg flex items-center justify-center"
+                  className="w-full min-h-[2.5rem] aspect-square rounded-lg flex items-center justify-center"
                   style={{
                     background: hasWorkout ? 'var(--teal)' : isPast ? 'rgba(255,255,255,0.03)' : 'transparent',
                     border: isToday
@@ -217,32 +228,6 @@ export default function DashboardPage() {
               </div>
             )
           })}
-        </div>
-      </motion.div>
-
-      {/* ── Progress bar ── */}
-      <motion.div className="px-5 mb-5" {...fadeUp(0.16)}>
-        <div
-          className="rounded-2xl p-4"
-          style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-semibold tracking-wide uppercase" style={{ color: 'var(--muted)' }}>
-              Cel tygodniowy
-            </span>
-            <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
-              {weeklyDone}/{weeklyGoal}
-            </span>
-          </div>
-          <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--input-bg)' }}>
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: 'var(--accent)' }}
-              initial={{ width: 0 }}
-              animate={{ width: `${progressPct}%` }}
-              transition={{ delay: 0.4, duration: 0.9 }}
-            />
-          </div>
         </div>
       </motion.div>
 
@@ -284,7 +269,7 @@ export default function DashboardPage() {
               return (
                 <motion.div
                   key={w.id}
-                  className="mb-3 rounded-2xl overflow-hidden cursor-pointer relative group"
+                  className="mb-3 rounded-2xl overflow-hidden cursor-pointer relative"
                   style={{
                     background: 'var(--card)',
                     border: '1px solid var(--border)',
@@ -339,8 +324,9 @@ export default function DashboardPage() {
                     {/* Delete */}
                     <motion.button
                       onClick={(e) => handleDelete(w.id, e)}
-                      className="ml-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
-                      style={{ color: '#FF5757' }}
+                      className="ml-2 p-1.5 rounded-lg transition-opacity"
+                      style={{ color: '#FF5757', opacity: 0.3 }}
+                      whileHover={{ opacity: 1 }}
                       whileTap={{ scale: 0.85 }}
                       disabled={deletingId === w.id}
                     >

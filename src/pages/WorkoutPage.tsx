@@ -197,7 +197,10 @@ export default function WorkoutPage() {
       </div>
 
       {/* Add exercise FAB */}
-      <div className="fixed bottom-6 left-0 right-0 flex justify-center px-4">
+      <div
+        className="fixed bottom-0 left-0 right-0 flex justify-center px-4"
+        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <motion.button
           onClick={() => setShowPicker(true)}
           className="w-full max-w-sm py-3.5 rounded-2xl font-semibold text-sm tracking-wide"

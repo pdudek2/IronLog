@@ -56,8 +56,8 @@ export default function LoginPage() {
               className="px-4 py-3 rounded-lg text-sm text-white outline-none transition-all"
               style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
               onFocus={e => {
-                e.currentTarget.style.border = '1px solid rgba(77,47,255,0.5)'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(77,47,255,0.15)'
+                e.currentTarget.style.border = '1px solid rgba(232,255,87,0.35)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232,255,87,0.08)'
               }}
               onBlur={e => {
                 e.currentTarget.style.border = '1px solid var(--border)'
@@ -77,8 +77,8 @@ export default function LoginPage() {
               className="px-4 py-3 rounded-lg text-sm text-white outline-none transition-all"
               style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
               onFocus={e => {
-                e.currentTarget.style.border = '1px solid rgba(77,47,255,0.5)'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(77,47,255,0.15)'
+                e.currentTarget.style.border = '1px solid rgba(232,255,87,0.35)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232,255,87,0.08)'
               }}
               onBlur={e => {
                 e.currentTarget.style.border = '1px solid var(--border)'

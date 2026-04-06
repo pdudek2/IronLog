@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { loginUser } from '../lib/auth'
+import AuthShell from '../components/AuthShell'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -23,27 +24,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <motion.div
-        className="w-full max-w-sm"
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
-      >
-
-        <div className="mb-10">
-          <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--accent)' }}>
-            IronLog
-          </span>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Zaloguj się</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Nie masz konta?{' '}
-            <Link to="/register" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent)' }}>
-              Zarejestruj się
-            </Link>
-          </p>
-        </div>
-
+    <AuthShell
+      title="Zaloguj się"
+      subtitle={(
+        <>
+          Nie masz konta?{' '}
+          <Link to="/register" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent)' }}>
+            Zarejestruj się
+          </Link>
+        </>
+      )}
+    >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Email</label>
@@ -100,8 +91,6 @@ export default function LoginPage() {
             {loading ? 'Logowanie...' : 'Zaloguj się'}
           </motion.button>
         </form>
-
-      </motion.div>
-    </div>
+    </AuthShell>
   )
 }

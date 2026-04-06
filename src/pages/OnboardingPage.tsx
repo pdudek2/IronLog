@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { saveProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
+import AuthShell from '../components/AuthShell'
 
 const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
   { value: 'strength', label: 'Siła', desc: 'Maksymalne ciężary, niskie powtórzenia' },
@@ -45,19 +46,10 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-
-        <div className="mb-10">
-          <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--accent)' }}>
-            IronLog
-          </span>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Skonfiguruj profil</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Zajmie to tylko chwilę
-          </p>
-        </div>
-
+    <AuthShell
+      title="Skonfiguruj profil"
+      subtitle="Zajmie to tylko chwilę."
+    >
         <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
           {/* Display name */}
@@ -152,7 +144,6 @@ export default function OnboardingPage() {
           </button>
 
         </form>
-      </div>
-    </div>
+    </AuthShell>
   )
 }

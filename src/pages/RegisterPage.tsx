@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { registerUser } from '../lib/auth'
+import AuthShell from '../components/AuthShell'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -38,22 +39,17 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
-
-        <div className="mb-10">
-          <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--accent)' }}>
-            IronLog
-          </span>
-          <h1 className="mt-3 text-3xl font-semibold text-white">Utwórz konto</h1>
-          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Masz już konto?{' '}
-            <Link to="/login" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent)' }}>
-              Zaloguj się
-            </Link>
-          </p>
-        </div>
-
+    <AuthShell
+      title="Utwórz konto"
+      subtitle={(
+        <>
+          Masz już konto?{' '}
+          <Link to="/login" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent)' }}>
+            Zaloguj się
+          </Link>
+        </>
+      )}
+    >
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex flex-col gap-1">
             <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Email</label>
@@ -96,8 +92,6 @@ export default function RegisterPage() {
             {loading ? 'Tworzenie konta...' : 'Zarejestruj się'}
           </button>
         </form>
-
-      </div>
-    </div>
+    </AuthShell>
   )
 }

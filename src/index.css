@@ -16,6 +16,12 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -23,6 +29,8 @@ body {
   font-family: 'Urbanist', -apple-system, sans-serif;
   letter-spacing: 0.2px;
   -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 /* Background blobs */
@@ -55,6 +63,7 @@ body::after {
 #root {
   position: relative;
   z-index: 1;
+  min-height: 100dvh;
 }
 
 /* Glassmorphism utility */
@@ -76,4 +85,60 @@ input[type='number']::-webkit-outer-spin-button {
 }
 input[type='number'] {
   -moz-appearance: textfield;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgba(232, 255, 87, 0.2);
+}
+
+.page-shell {
+  min-height: 100dvh;
+  padding:
+    max(1rem, env(safe-area-inset-top, 0px))
+    clamp(1rem, 2vw, 2rem)
+    max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+.page-container {
+  width: min(100%, 92rem);
+  margin: 0 auto;
+}
+
+.surface-panel {
+  background:
+    linear-gradient(180deg, rgba(34, 31, 67, 0.92) 0%, rgba(18, 17, 37, 0.88) 100%);
+  border: 1px solid rgba(128, 140, 179, 0.16);
+  box-shadow:
+    0 24px 80px rgba(4, 6, 18, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.desktop-app-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+  .desktop-app-grid {
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .desktop-sticky {
+    position: sticky;
+    top: 1.5rem;
+  }
 }

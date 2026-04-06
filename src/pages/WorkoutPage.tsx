@@ -66,7 +66,7 @@ export default function WorkoutPage() {
   if (!active) return null
 
   return (
-    <div className="min-h-screen pb-32">
+    <div className="min-h-screen pb-32 max-w-lg mx-auto">
       {/* Header */}
       <div
         className="sticky top-0 z-10 flex items-center justify-between px-4 py-3"
@@ -132,7 +132,7 @@ export default function WorkoutPage() {
             </div>
 
             {/* Sets header */}
-            <div className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 mb-1">
+            <div className="grid grid-cols-[1.75rem_1fr_1fr_1.75rem] gap-1.5 mb-1">
               <span className="text-xs text-center" style={{ color: 'var(--muted)' }}>#</span>
               <span className="text-xs text-center" style={{ color: 'var(--muted)' }}>{units}</span>
               <span className="text-xs text-center" style={{ color: 'var(--muted)' }}>Powt.</span>
@@ -141,7 +141,7 @@ export default function WorkoutPage() {
 
             {/* Sets */}
             {ex.sets.map((st, si) => (
-              <div key={si} className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 mb-2 items-center">
+              <div key={si} className="grid grid-cols-[1.75rem_1fr_1fr_1.75rem] gap-1.5 mb-2 items-center">
                 <motion.button
                   onClick={() => toggleSetDone(ei, si)}
                   className="w-7 h-7 rounded-md text-xs font-bold"

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 
 export interface WorkoutSet {
   weight: string
@@ -31,7 +32,7 @@ interface WorkoutState {
 
 const emptySet = (): WorkoutSet => ({ weight: '', reps: '', done: false })
 
-export const useWorkoutStore = create<WorkoutState>((set) => ({
+export const useWorkoutStore = create<WorkoutState>()(persist((set) => ({
   active: null,
 
   startWorkout: () =>
@@ -112,4 +113,4 @@ export const useWorkoutStore = create<WorkoutState>((set) => ({
     }),
 
   clearWorkout: () => set({ active: null }),
-}))
+}), { name: 'ironlog-active-workout' }))

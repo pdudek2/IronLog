@@ -17,6 +17,15 @@ function workoutAccent(w: WorkoutSummary): string {
   return CATEGORY_COLORS[exerciseMap.get(ex.exerciseId)?.category ?? ''] ?? '#808CB3'
 }
 
+function workoutCategoryLabel(w: WorkoutSummary): string {
+  const cats = [...new Set(
+    w.exercises.map((e) => exerciseMap.get(e.exerciseId ?? '')?.category).filter(Boolean)
+  )]
+  if (cats.length === 0) return 'Trening'
+  if (cats.length === 1) return cats[0]!
+  return 'Trening'
+}
+
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('pl-PL', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -107,9 +116,7 @@ export default function WorkoutDetailPage() {
       >
         <div className="p-5">
           <p className="text-xs uppercase tracking-widest mb-1" style={{ color: accent }}>
-            {workout.exercises[0]
-              ? exerciseMap.get(workout.exercises[0].exerciseId ?? '')?.category ?? 'trening'
-              : 'trening'}
+            {workoutCategoryLabel(workout)}
           </p>
           <h2 className="text-xl font-bold text-white mb-3">
             {formatDate(workout.startedAt)}

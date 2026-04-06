@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
 import { loginUser } from '../lib/auth'
 
 export default function LoginPage() {
@@ -23,7 +24,12 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-sm">
+      <motion.div
+        className="w-full max-w-sm"
+        initial={{ opacity: 0, y: 24 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
 
         <div className="mb-10">
           <span className="text-2xl font-bold tracking-tight" style={{ color: 'var(--accent)' }}>
@@ -50,8 +56,8 @@ export default function LoginPage() {
               className="px-4 py-3 rounded-lg text-sm text-white outline-none transition-all"
               style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
               onFocus={e => {
-                e.currentTarget.style.border = '1px solid rgba(232,255,87,0.4)'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232,255,87,0.08)'
+                e.currentTarget.style.border = '1px solid rgba(77,47,255,0.5)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(77,47,255,0.15)'
               }}
               onBlur={e => {
                 e.currentTarget.style.border = '1px solid var(--border)'
@@ -71,8 +77,8 @@ export default function LoginPage() {
               className="px-4 py-3 rounded-lg text-sm text-white outline-none transition-all"
               style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
               onFocus={e => {
-                e.currentTarget.style.border = '1px solid rgba(232,255,87,0.4)'
-                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232,255,87,0.08)'
+                e.currentTarget.style.border = '1px solid rgba(77,47,255,0.5)'
+                e.currentTarget.style.boxShadow = '0 0 0 3px rgba(77,47,255,0.15)'
               }}
               onBlur={e => {
                 e.currentTarget.style.border = '1px solid var(--border)'
@@ -83,17 +89,19 @@ export default function LoginPage() {
 
           {error && <p className="text-sm" style={{ color: '#FF4B4B' }}>{error}</p>}
 
-          <button
+          <motion.button
             type="submit"
             disabled={loading}
-            className="mt-2 py-3 rounded-lg font-semibold text-sm tracking-wide transition-opacity disabled:opacity-50 hover:opacity-90"
+            className="mt-2 py-3 rounded-lg font-semibold text-sm tracking-wide disabled:opacity-50"
             style={{ background: 'var(--accent)', color: '#08061A' }}
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.97 }}
           >
             {loading ? 'Logowanie...' : 'Zaloguj się'}
-          </button>
+          </motion.button>
         </form>
 
-      </div>
+      </motion.div>
     </div>
   )
 }

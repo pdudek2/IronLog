@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useWorkoutStore } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
@@ -96,11 +97,16 @@ export default function WorkoutPage() {
           </p>
         )}
 
+        <AnimatePresence>
         {active.exercises.map((ex, ei) => (
-          <div
+          <motion.div
             key={ei}
             className="rounded-2xl p-4"
             style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
           >
             {/* Exercise header */}
             <div className="flex items-center justify-between mb-3">
@@ -125,17 +131,20 @@ export default function WorkoutPage() {
             {/* Sets */}
             {ex.sets.map((st, si) => (
               <div key={si} className="grid grid-cols-[2rem_1fr_1fr_2rem] gap-2 mb-2 items-center">
-                <button
+                <motion.button
                   onClick={() => toggleSetDone(ei, si)}
-                  className="w-7 h-7 rounded-md text-xs font-bold transition-all"
+                  className="w-7 h-7 rounded-md text-xs font-bold"
                   style={{
-                    background: st.done ? 'var(--accent)' : 'var(--input-bg)',
+                    background: st.done ? 'var(--teal)' : 'var(--input-bg)',
                     color: st.done ? '#08061A' : 'var(--muted)',
-                    border: `1px solid ${st.done ? 'var(--accent)' : 'var(--border)'}`,
+                    border: `1px solid ${st.done ? 'var(--teal)' : 'var(--border)'}`,
                   }}
+                  whileTap={{ scale: 0.85 }}
+                  animate={st.done ? { scale: [1, 1.18, 1] } : { scale: 1 }}
+                  transition={{ duration: 0.25 }}
                 >
                   {si + 1}
-                </button>
+                </motion.button>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -171,19 +180,22 @@ export default function WorkoutPage() {
             >
               + Dodaj serię
             </button>
-          </div>
+          </motion.div>
         ))}
+        </AnimatePresence>
       </div>
 
       {/* Add exercise FAB */}
       <div className="fixed bottom-6 left-0 right-0 flex justify-center px-4">
-        <button
+        <motion.button
           onClick={() => setShowPicker(true)}
-          className="w-full max-w-sm py-3.5 rounded-2xl font-semibold text-sm tracking-wide transition-opacity hover:opacity-90"
+          className="w-full max-w-sm py-3.5 rounded-2xl font-semibold text-sm tracking-wide"
           style={{ background: 'var(--accent)', color: '#08061A' }}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
         >
           + Dodaj ćwiczenie
-        </button>
+        </motion.button>
       </div>
 
       {showPicker && (

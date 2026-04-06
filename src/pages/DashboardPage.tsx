@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import { logoutUser } from '../lib/auth'
 import { getProfile } from '../lib/userProfile'
 import { getRecentWorkouts, countWeeklyWorkouts, type WorkoutSummary } from '../lib/workoutService'
@@ -23,6 +24,15 @@ function formatDuration(start: number, end: number): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`
 }
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.07, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] },
+  }),
+}
+
 export default function DashboardPage() {
   const { user } = useAuthStore()
   const { profile, loading, setProfile, setLoading } = useProfileStore()
@@ -30,6 +40,7 @@ export default function DashboardPage() {
 
   const [workouts, setWorkouts] = useState<WorkoutSummary[]>([])
   const [weeklyDone, setWeeklyDone] = useState(0)
+  const [dataReady, setDataReady] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -52,6 +63,7 @@ export default function DashboardPage() {
     const recent = await getRecentWorkouts(user.uid, 20)
     setWorkouts(recent.slice(0, 5))
     setWeeklyDone(countWeeklyWorkouts(recent))
+    setDataReady(true)
   }
 
   async function handleLogout() {
@@ -61,95 +73,129 @@ export default function DashboardPage() {
   if (loading) return null
 
   const weeklyGoal = profile?.weeklyGoal ?? 3
+  const progressPct = weeklyGoal > 0 ? Math.min((weeklyDone / weeklyGoal) * 100, 100) : 0
 
   return (
     <div className="min-h-screen px-4 py-8 max-w-lg mx-auto">
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <motion.div
+        className="flex items-center justify-between mb-8"
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: 'easeOut' }}
+      >
         <div>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>Cześć,</p>
           <h1 className="text-2xl font-bold text-white">{profile?.displayName ?? '—'}</h1>
         </div>
-        <button
+        <motion.button
           onClick={handleLogout}
-          className="px-4 py-2 rounded-lg text-sm transition-opacity hover:opacity-70"
+          className="px-4 py-2 rounded-lg text-sm"
           style={{ background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+          whileTap={{ scale: 0.95 }}
+          whileHover={{ opacity: 0.7 }}
         >
           Wyloguj
-        </button>
-      </div>
+        </motion.button>
+      </motion.div>
 
       {/* Weekly progress */}
-      <div
+      <motion.div
         className="rounded-2xl p-5 mb-4"
         style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+        custom={0}
+        variants={fadeUp}
+        initial="hidden"
+        animate="visible"
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-white">Cel tygodniowy</span>
-          <span className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+          <motion.span
+            className="text-sm font-bold"
+            style={{ color: 'var(--accent)' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
             {weeklyDone}/{weeklyGoal}
-          </span>
+          </motion.span>
         </div>
-        <div className="h-2 rounded-full" style={{ background: 'var(--input-bg)' }}>
-          <div
-            className="h-2 rounded-full transition-all"
-            style={{
-              background: 'var(--accent)',
-              width: `${weeklyGoal > 0 ? Math.min((weeklyDone / weeklyGoal) * 100, 100) : 0}%`,
-            }}
+        <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--input-bg)' }}>
+          <motion.div
+            className="h-2 rounded-full"
+            style={{ background: 'var(--accent)' }}
+            initial={{ width: 0 }}
+            animate={{ width: `${progressPct}%` }}
+            transition={{ delay: 0.3, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
           />
         </div>
         <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
           {profile ? GOAL_LABELS[profile.primaryGoal] : ''} · {profile?.units ?? 'kg'}
         </p>
-      </div>
+      </motion.div>
 
       {/* Start workout CTA */}
-      <button
-        className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide transition-opacity hover:opacity-90 mb-6"
+      <motion.button
+        className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide mb-6"
         style={{ background: 'var(--accent)', color: '#08061A' }}
         onClick={() => navigate('/workout/new')}
+        custom={1}
+        variants={fadeUp}
+        initial="hidden"
+        animate="visible"
+        whileHover={{ scale: 1.01, opacity: 0.95 }}
+        whileTap={{ scale: 0.98 }}
       >
         + Nowy trening
-      </button>
+      </motion.button>
 
       {/* Recent workouts */}
-      <div>
+      <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible">
         <h2 className="text-sm font-semibold text-white mb-3">Ostatnie treningi</h2>
-        {workouts.length === 0 ? (
-          <div
-            className="rounded-2xl p-6 text-center"
-            style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
-          >
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              Brak treningów. Czas na pierwszy!
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {workouts.map((w) => (
-              <div
-                key={w.id}
-                className="rounded-2xl p-4"
-                style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold text-white">
-                    {w.exercises.map((e) => e.name).join(', ') || 'Trening'}
-                  </span>
-                  <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                    {formatDuration(w.startedAt, w.finishedAt)}
-                  </span>
-                </div>
-                <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                  {formatDate(w.startedAt)} · {w.exercises.length} ćw.
-                </p>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
+        <AnimatePresence mode="wait">
+          {workouts.length === 0 ? (
+            <motion.div
+              key="empty"
+              className="rounded-2xl p-6 text-center"
+              style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                Brak treningów. Czas na pierwszy!
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div key="list" className="flex flex-col gap-3">
+              {workouts.map((w, i) => (
+                <motion.div
+                  key={w.id}
+                  className="rounded-2xl p-4"
+                  style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
+                  initial={{ opacity: 0, x: -16 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.1 + i * 0.06, duration: 0.35, ease: 'easeOut' }}
+                  whileHover={{ borderColor: 'rgba(232,255,87,0.25)', transition: { duration: 0.15 } }}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-semibold text-white">
+                      {w.exercises.map((e) => e.name).join(', ') || 'Trening'}
+                    </span>
+                    <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                      {formatDuration(w.startedAt, w.finishedAt)}
+                    </span>
+                  </div>
+                  <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                    {formatDate(w.startedAt)} · {w.exercises.length} ćw.
+                  </p>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
 
     </div>
   )

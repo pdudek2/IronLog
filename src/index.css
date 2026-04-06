@@ -2,12 +2,14 @@
 
 :root {
   --bg: #08061A;
-  --card: #1A1830;
+  --card: #1F1D3B;
   --accent: #e8ff57;
+  --teal: #12D18E;
   --text: #ffffff;
   --muted: #808CB3;
   --border: rgba(128, 140, 179, 0.15);
   --input-bg: rgba(255, 255, 255, 0.05);
+  --card-glow: 0 0 24px rgba(77, 47, 255, 0.07);
 }
 
 * {
@@ -29,7 +31,7 @@ body::after {
   content: '';
   position: fixed;
   border-radius: 50%;
-  filter: blur(120px);
+  filter: blur(140px);
   pointer-events: none;
   z-index: 0;
 }
@@ -38,14 +40,14 @@ body::before {
   width: 600px;
   height: 600px;
   background: radial-gradient(circle, rgba(232, 255, 87, 0.07) 0%, transparent 70%);
-  top: -100px;
-  right: -100px;
+  top: -120px;
+  right: -120px;
 }
 
 body::after {
   width: 500px;
   height: 500px;
-  background: radial-gradient(circle, rgba(77, 47, 255, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(18, 209, 142, 0.06) 0%, transparent 70%);
   bottom: -100px;
   left: -100px;
 }
@@ -53,4 +55,21 @@ body::after {
 #root {
   position: relative;
   z-index: 1;
+}
+
+/* Glassmorphism utility */
+.glass {
+  background: rgba(31, 29, 59, 0.7) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: var(--card-glow);
+}
+
+/* Input number — hide arrows */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
 }

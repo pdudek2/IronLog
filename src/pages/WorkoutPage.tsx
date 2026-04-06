@@ -23,7 +23,7 @@ export default function WorkoutPage() {
 
   const [showPicker, setShowPicker] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [tick, setTick] = useState(0)
+  const [, setTick] = useState(0)
 
   useEffect(() => {
     if (!active) startWorkout()
@@ -35,16 +35,24 @@ export default function WorkoutPage() {
     return () => clearInterval(id)
   }, [])
 
+  const [saveError, setSaveError] = useState('')
+
   async function handleFinish() {
-    if (!active || !user) return
+    if (!active || !user || saving) return
     const hasSets = active.exercises.some((ex) => ex.sets.some((s) => s.done))
     if (!hasSets) {
       if (!confirm('Nie zaznaczono żadnych serii. Zakończyć trening?')) return
     }
     setSaving(true)
-    await saveWorkout(user.uid, active)
-    clearWorkout()
-    navigate('/dashboard')
+    setSaveError('')
+    try {
+      await saveWorkout(user.uid, active)
+      clearWorkout()
+      navigate('/dashboard')
+    } catch {
+      setSaveError('Błąd zapisu. Spróbuj ponownie.')
+      setSaving(false)
+    }
   }
 
   function handleDiscard() {
@@ -88,6 +96,9 @@ export default function WorkoutPage() {
           </button>
         </div>
       </div>
+      {saveError && (
+        <p className="text-xs text-center py-2" style={{ color: '#FF4B4B' }}>{saveError}</p>
+      )}
 
       {/* Exercise list */}
       <div className="px-4 py-4 flex flex-col gap-4">

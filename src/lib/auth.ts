@@ -6,6 +6,7 @@ import {
 } from 'firebase/auth'
 import { auth } from './firebase'
 import { useAuthStore } from '../store/authStore'
+import { useProfileStore } from '../store/profileStore'
 
 export function registerUser(email: string, password: string) {
   return createUserWithEmailAndPassword(auth, email, password)
@@ -25,6 +26,11 @@ export function initAuthListener() {
   if (unsubscribe) unsubscribe()
   const { setUser, setLoading } = useAuthStore.getState()
   unsubscribe = onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      // czyścimy profile przy wylogowaniu / zmianie konta
+      useProfileStore.getState().setProfile(null)
+      useProfileStore.getState().setLoading(true)
+    }
     setUser(user)
     setLoading(false)
   })

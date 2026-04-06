@@ -24,13 +24,12 @@ function formatDuration(start: number, end: number): string {
   return `${Math.floor(m / 60)}h ${m % 60}m`
 }
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.07, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] },
-  }),
+function fadeUp(delay: number) {
+  return {
+    initial: { opacity: 0, y: 20 },
+    animate: { opacity: 1, y: 0 },
+    transition: { delay, duration: 0.4 },
+  }
 }
 
 export default function DashboardPage() {
@@ -40,7 +39,6 @@ export default function DashboardPage() {
 
   const [workouts, setWorkouts] = useState<WorkoutSummary[]>([])
   const [weeklyDone, setWeeklyDone] = useState(0)
-  const [dataReady, setDataReady] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -63,7 +61,6 @@ export default function DashboardPage() {
     const recent = await getRecentWorkouts(user.uid, 20)
     setWorkouts(recent.slice(0, 5))
     setWeeklyDone(countWeeklyWorkouts(recent))
-    setDataReady(true)
   }
 
   async function handleLogout() {
@@ -83,7 +80,7 @@ export default function DashboardPage() {
         className="flex items-center justify-between mb-8"
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: 'easeOut' }}
+        transition={{ duration: 0.4 }}
       >
         <div>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>Cześć,</p>
@@ -104,10 +101,7 @@ export default function DashboardPage() {
       <motion.div
         className="rounded-2xl p-5 mb-4"
         style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
-        custom={0}
-        variants={fadeUp}
-        initial="hidden"
-        animate="visible"
+        {...fadeUp(0.05)}
       >
         <div className="flex items-center justify-between mb-3">
           <span className="text-sm font-medium text-white">Cel tygodniowy</span>
@@ -127,7 +121,7 @@ export default function DashboardPage() {
             style={{ background: 'var(--accent)' }}
             initial={{ width: 0 }}
             animate={{ width: `${progressPct}%` }}
-            transition={{ delay: 0.3, duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+            transition={{ delay: 0.3, duration: 0.8 }}
           />
         </div>
         <p className="text-xs mt-2" style={{ color: 'var(--muted)' }}>
@@ -140,10 +134,7 @@ export default function DashboardPage() {
         className="w-full py-4 rounded-2xl font-semibold text-sm tracking-wide mb-6"
         style={{ background: 'var(--accent)', color: '#08061A' }}
         onClick={() => navigate('/workout/new')}
-        custom={1}
-        variants={fadeUp}
-        initial="hidden"
-        animate="visible"
+        {...fadeUp(0.12)}
         whileHover={{ scale: 1.01, opacity: 0.95 }}
         whileTap={{ scale: 0.98 }}
       >
@@ -151,7 +142,7 @@ export default function DashboardPage() {
       </motion.button>
 
       {/* Recent workouts */}
-      <motion.div custom={2} variants={fadeUp} initial="hidden" animate="visible">
+      <motion.div {...fadeUp(0.19)}>
         <h2 className="text-sm font-semibold text-white mb-3">Ostatnie treningi</h2>
         <AnimatePresence mode="wait">
           {workouts.length === 0 ? (
@@ -176,7 +167,7 @@ export default function DashboardPage() {
                   style={{ background: 'var(--card)', border: '1px solid var(--border)' }}
                   initial={{ opacity: 0, x: -16 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 + i * 0.06, duration: 0.35, ease: 'easeOut' }}
+                  transition={{ delay: 0.1 + i * 0.06, duration: 0.35 }}
                   whileHover={{ borderColor: 'rgba(232,255,87,0.25)', transition: { duration: 0.15 } }}
                 >
                   <div className="flex items-center justify-between mb-1">

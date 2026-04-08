@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useWorkoutStore } from '../store/workoutStore'
 import { saveActiveSession, deleteActiveSession, subscribeToActiveSession } from '../lib/activeSessionService'
+import {
+  clearActiveSessionBackup,
+  readActiveSessionBackup,
+  writeActiveSessionBackup,
+} from '../lib/activeSessionBackup'
 
 function serializeActiveWorkout(value: unknown): string {
   return JSON.stringify(value ?? null)
@@ -58,6 +63,7 @@ export function useActiveSession(uid: string | null) {
 
         if (session) {
           hadRemoteSessionRef.current = true
+          writeActiveSessionBackup(currentUid, session)
 
           if (currentSerialized !== nextSerialized) {
             applyingRemoteRef.current = true
@@ -66,6 +72,7 @@ export function useActiveSession(uid: string | null) {
           }
         } else if (hadRemoteSessionRef.current) {
           hadRemoteSessionRef.current = false
+          clearActiveSessionBackup(currentUid)
           if (current) {
             applyingRemoteRef.current = true
             activeRef.current = null
@@ -75,13 +82,22 @@ export function useActiveSession(uid: string | null) {
           if (current) setReady(true)
           return
         } else if (!current) {
-          startWorkout()
-          const createdSession = useWorkoutStore.getState().active
-          activeRef.current = createdSession
-          if (createdSession) {
-            void saveActiveSession(currentUid, createdSession).catch(console.error)
+          const backup = readActiveSessionBackup(currentUid)
+          if (backup) {
+            activeRef.current = backup
+            hydrateFromDoc(backup)
+            void saveActiveSession(currentUid, backup).catch(console.error)
+          } else {
+            startWorkout()
+            const createdSession = useWorkoutStore.getState().active
+            activeRef.current = createdSession
+            if (createdSession) {
+              writeActiveSessionBackup(currentUid, createdSession)
+              void saveActiveSession(currentUid, createdSession).catch(console.error)
+            }
           }
         } else {
+          writeActiveSessionBackup(currentUid, current)
           void saveActiveSession(currentUid, current).catch(console.error)
         }
 
@@ -107,7 +123,8 @@ export function useActiveSession(uid: string | null) {
       // If active is null (clearWorkout was called), do not reschedule
       if (!state.active) return
 
-        const snapshot = state.active
+      const snapshot = state.active
+      writeActiveSessionBackup(currentUid, snapshot)
       timerRef.current = setTimeout(() => {
         saveActiveSession(currentUid, snapshot).catch(console.error)
       }, 400)
@@ -120,6 +137,7 @@ export function useActiveSession(uid: string | null) {
       }
 
       if (!activeRef.current) return
+      writeActiveSessionBackup(currentUid, activeRef.current)
       void saveActiveSession(currentUid, activeRef.current)
     }
 
@@ -145,6 +163,7 @@ export function useActiveSession(uid: string | null) {
       timerRef.current = null
     }
     if (!uid) return Promise.resolve()
+    clearActiveSessionBackup(uid)
     return deleteActiveSession(uid)
   }
 

@@ -1,7 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trash2 } from 'lucide-react'
+import {
+  BarChart3,
+  CalendarDays,
+  Clock3,
+  Sparkles,
+  Target,
+  Trash2,
+  TrendingUp,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import AppShell from '../components/AppShell'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -28,6 +36,15 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const WEEK_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
+const CATEGORY_LABELS: Record<string, string> = {
+  chest: 'Klatka',
+  back: 'Plecy',
+  legs: 'Nogi',
+  arms: 'Ramiona',
+  shoulders: 'Barki',
+  core: 'Core',
+  cardio: 'Cardio',
+}
 
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
@@ -56,6 +73,25 @@ function formatDuration(start: number, end: number): string {
   if (minutes < 1) return '< 1 min'
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+}
+
+function formatCompactVolume(volume: number): string {
+  if (!volume) return '0 kg'
+  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k kg`
+  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k kg`
+  return `${Math.round(volume).toLocaleString('pl-PL')} kg`
+}
+
+function formatWeekRange(dates: Date[]): string {
+  if (!dates.length) return ''
+  const start = dates[0]
+  const end = dates[dates.length - 1]
+  const sameMonth = start.getMonth() === end.getMonth()
+  const startMonth = start.toLocaleDateString('pl-PL', { month: 'short' })
+  const endMonth = end.toLocaleDateString('pl-PL', { month: 'short' })
+  return sameMonth
+    ? `${start.getDate()}–${end.getDate()} ${endMonth}`
+    : `${start.getDate()} ${startMonth} – ${end.getDate()} ${endMonth}`
 }
 
 function getWeekDates(): Date[] {
@@ -110,7 +146,7 @@ export default function DashboardPage() {
   const fetchData = useCallback(async (uid: string) => {
     const all = await getRecentWorkouts(uid, 50)
     setSnapshot({
-      workouts: all.slice(0, 10),
+      workouts: all,
       weeklyDone: countWeeklyWorkouts(all),
       streak: calcStreak(all),
     })
@@ -167,17 +203,91 @@ export default function DashboardPage() {
   const progressPct = Math.min((weeklyDone / weeklyGoal) * 100, 100)
   const weekDates = getWeekDates()
   const today = new Date()
+  const recentWorkouts = workouts.slice(0, 6)
   const workoutDays = workouts.map((workout) => new Date(workout.startedAt))
   const weekStart = weekDates[0]?.getTime() ?? 0
   const weekEnd = (weekDates[6]?.getTime() ?? 0) + 86_400_000
+  const previousWeekStart = weekStart - 7 * 86_400_000
+  const previousWeekEnd = weekStart
+  const monthStartDate = new Date()
+  monthStartDate.setHours(0, 0, 0, 0)
+  monthStartDate.setDate(1)
+  const monthStart = monthStartDate.getTime()
   const weeklyWorkouts = workouts.filter((workout) => workout.startedAt >= weekStart && workout.startedAt < weekEnd)
+  const previousWeekWorkouts = workouts.filter((workout) => workout.startedAt >= previousWeekStart && workout.startedAt < previousWeekEnd)
+  const monthlyWorkouts = workouts.filter((workout) => workout.startedAt >= monthStart)
   const weeklyVolume = weeklyWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
+  const previousWeeklyVolume = previousWeekWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
   const weeklySetsTotal = weeklyWorkouts.reduce((sum, workout) => (
     sum + workout.exercises.reduce((innerSum, exercise) => innerSum + exercise.sets.length, 0)
   ), 0)
+  const previousWeeklyDone = previousWeekWorkouts.length
   const avgMinutes = weeklyWorkouts.length
     ? Math.round(weeklyWorkouts.reduce((sum, workout) => sum + (workout.finishedAt - workout.startedAt), 0) / weeklyWorkouts.length / 60_000)
     : 0
+  const avgVolumePerSession = weeklyWorkouts.length ? Math.round(weeklyVolume / weeklyWorkouts.length) : 0
+  const weeklySessionsDelta = weeklyDone - previousWeeklyDone
+  const weeklyVolumeDelta = previousWeeklyVolume > 0
+    ? Math.round(((weeklyVolume - previousWeeklyVolume) / previousWeeklyVolume) * 100)
+    : null
+  const weekDailyStats = weekDates.map((date, index) => {
+    const dayStart = date.getTime()
+    const dayEnd = dayStart + 86_400_000
+    const dayWorkouts = weeklyWorkouts.filter((workout) => workout.startedAt >= dayStart && workout.startedAt < dayEnd)
+    const volume = dayWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
+    const sets = dayWorkouts.reduce((sum, workout) => (
+      sum + workout.exercises.reduce((innerSum, exercise) => innerSum + exercise.sets.length, 0)
+    ), 0)
+    return {
+      label: WEEK_LABELS[index],
+      date,
+      volume,
+      sets,
+      workouts: dayWorkouts.length,
+      isToday: isSameDay(date, today),
+    }
+  })
+  const maxDayVolume = Math.max(...weekDailyStats.map((day) => day.volume), 1)
+  const activeDays = weekDailyStats.filter((day) => day.workouts > 0).length
+  const peakDay = [...weekDailyStats].sort((a, b) => b.volume - a.volume)[0]
+  const latestWorkout = recentWorkouts[0] ?? null
+  const focusEntries = Object.entries(weeklyWorkouts.reduce<Record<string, number>>((acc, workout) => {
+    workout.exercises.forEach((exercise) => {
+      const category = exercise.exerciseId ? exerciseMap.get(exercise.exerciseId)?.category : null
+      if (!category) return
+      acc[category] = (acc[category] ?? 0) + 1
+    })
+    return acc
+  }, {}))
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 4)
+  const totalFocusCount = focusEntries.reduce((sum, [, count]) => sum + count, 0)
+  const topFocus = focusEntries[0]
+  const upcomingMessage = weeklyDone >= weeklyGoal
+    ? 'Cel tygodnia dowieziony. Utrzymaj rytm i zostaw przestrzeń na recovery.'
+    : `Brakuje jeszcze ${weeklyGoal - weeklyDone} ${weeklyGoal - weeklyDone === 1 ? 'sesji' : 'sesji'} do założonego celu.`
+  const overviewCards = [
+    {
+      label: 'Rytm',
+      value: `${activeDays}/7 dni`,
+      copy: weeklySessionsDelta >= 0
+        ? `${weeklySessionsDelta === 0 ? 'Tak samo' : `+${weeklySessionsDelta}`} względem poprzedniego tygodnia`
+        : `${weeklySessionsDelta} względem poprzedniego tygodnia`,
+      icon: CalendarDays,
+    },
+    {
+      label: 'Mocny dzień',
+      value: peakDay?.volume ? `${peakDay.label}` : 'Brak',
+      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume)} • ${peakDay.sets} serii` : 'Pierwszy mocny dzień pojawi się po pierwszych sesjach',
+      icon: TrendingUp,
+    },
+    {
+      label: 'Średnia sesja',
+      value: avgMinutes ? `${avgMinutes} min` : '—',
+      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession)} na trening` : 'Zbieramy pierwsze dane do średniej',
+      icon: Clock3,
+    },
+  ]
   const dashboardHighlights = [
     { label: 'Treningi', value: String(weeklyDone), sublabel: 'w tym tygodniu' },
     { label: 'Serie', value: String(weeklySetsTotal), sublabel: 'zapisane łącznie' },
@@ -270,8 +380,8 @@ export default function DashboardPage() {
                   <p className="stat-meta">Seria dni</p>
                 </div>
                 <div className="rounded-[var(--radius-lg)] p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
-                  <p className="text-2xl font-bold leading-none mb-1 text-white tracking-[-0.04em] tabular-nums">{workouts.length > 9 ? '10+' : workouts.length}</p>
-                  <p className="stat-meta">Treningów</p>
+                  <p className="text-2xl font-bold leading-none mb-1 text-white tracking-[-0.04em] tabular-nums">{monthlyWorkouts.length}</p>
+                  <p className="stat-meta">W miesiącu</p>
                 </div>
               </div>
 
@@ -322,6 +432,15 @@ export default function DashboardPage() {
               <p className="mb-5 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                 Zacznij nowy trening bez wracania do listy i utrzymaj tempo wejścia do aplikacji.
               </p>
+              <div className="mb-5 space-y-2 rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="stat-meta">Następny ruch</span>
+                  <Target size={14} style={{ color: 'var(--accent)' }} />
+                </div>
+                <p className="text-sm font-semibold text-white leading-6">
+                  {upcomingMessage}
+                </p>
+              </div>
               <motion.button
                 className="w-full rounded-[var(--radius-lg)] py-4 text-sm font-semibold"
                 style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
@@ -334,134 +453,374 @@ export default function DashboardPage() {
             </motion.div>
           </aside>
 
-          <main className="min-w-0">
-            <div className="mb-4 flex items-end justify-between gap-4">
-              <div>
-                <p className="eyebrow">
-                  Historia
-                </p>
-                <h2 className="section-title mt-2">Ostatnie treningi</h2>
-              </div>
-              <p className="hidden text-sm lg:block" style={{ color: 'var(--muted)' }}>
-                Szybki wgląd w ostatnie sesje i drogę do kolejnych danych.
-              </p>
-            </div>
-
-            <AnimatePresence mode="popLayout">
-              {workouts.length === 0 ? (
-                <motion.div
-                  key="empty"
-                  className="surface-panel rounded-[var(--radius-xl)] p-10 text-center flex flex-col items-center gap-4"
-                  initial={false}
-                  animate={{ opacity: 1 }}
-                >
-                  <div
-                    className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center text-3xl"
-                    style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)' }}
-                  >
-                    ✦
-                  </div>
+          <main className="min-w-0 space-y-5">
+            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.92fr)]">
+              <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.09)}>
+                <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="font-semibold text-white mb-1">Brak treningów</p>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      Zacznij pierwszą sesję i śledź swój progres.
+                    <p className="eyebrow">Weekly overview</p>
+                    <h2 className="section-title mt-2">Jak wygląda ten tydzień</h2>
+                    <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                      Szybki obraz tempa, objętości i najmocniejszego dnia. Ten blok ma być Twoim pierwszym spojrzeniem po wejściu do aplikacji.
                     </p>
                   </div>
-                  <motion.button
-                    onClick={() => navigate('/workout/new')}
-                    className="mt-2 rounded-[var(--radius-md)] px-6 py-2.5 text-sm font-semibold"
-                    style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
-                    whileTap={{ scale: 0.96 }}
-                  >
-                    + Nowy trening
-                  </motion.button>
-                </motion.div>
-              ) : (
-                <div className="grid gap-3 xl:grid-cols-2">
-                  {workouts.map((workout) => {
-                    const accent = workoutAccent(workout)
-                    const volume = calcVolume(workout)
-                    const totalSets = workout.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
+                  <div className="rounded-[var(--radius-lg)] border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                    <p className="stat-meta">Zakres</p>
+                    <p className="mt-2 text-sm font-semibold text-white">{formatWeekRange(weekDates)}</p>
+                    <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+                      {weeklyVolumeDelta === null
+                        ? 'Budujemy pierwszy punkt odniesienia'
+                        : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs poprzedni tydzień`}
+                    </p>
+                  </div>
+                </div>
 
-                    return (
-                      <motion.div
-                        key={workout.id}
-                        className="cursor-pointer relative overflow-hidden rounded-[var(--radius-xl)] flex"
-                        style={{
-                          opacity: deletingId === workout.id ? 0.4 : 1,
-                          background: 'linear-gradient(180deg, rgba(24,32,48,0.92) 0%, rgba(16,22,34,0.94) 100%)',
-                          border: '1px solid var(--border)',
-                          boxShadow: '0 10px 36px rgba(2,8,20,0.38)',
-                        }}
-                        initial={false}
-                        animate={{ opacity: deletingId === workout.id ? 0.4 : 1, x: 0 }}
-                        exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
-                        transition={{ duration: 0.22 }}
-                        whileHover={{ y: -2, boxShadow: `0 18px 52px rgba(2,8,20,0.55), inset 0 0 0 1px ${accent}33` }}
-                        onClick={() => navigate(`/workout/${workout.id}`, {
-                          state: { workoutPreview: workout },
-                        })}
-                      >
-                        {/* Color strip */}
-                        <div
-                          className="w-1 flex-none rounded-l-[1.75rem]"
-                          style={{ background: `linear-gradient(180deg, ${accent} 0%, ${accent}55 100%)` }}
-                        />
+                <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(16rem,0.9fr)]">
+                  <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                    <div className="mb-4 flex items-end justify-between gap-4">
+                      <div>
+                        <p className="stat-meta">Wolumen tygodnia</p>
+                        <p className="mt-3 stat-value">{formatCompactVolume(weeklyVolume)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-semibold text-white">{activeDays}/7 aktywnych dni</p>
+                        <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+                          {weeklyDone >= weeklyGoal
+                            ? 'cel tygodnia zamknięty'
+                            : `${weeklyGoal - weeklyDone} sesje do celu`}
+                        </p>
+                      </div>
+                    </div>
 
-                        <div className="flex flex-1 items-center gap-3 px-4 py-4 min-w-0">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-base font-semibold text-white truncate">
-                              {workout.label ?? workoutTitle(workout)}
-                            </p>
-                            <div className="mt-1 flex items-center gap-2 flex-wrap">
-                              <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                                {formatDate(workout.startedAt)}
-                              </span>
-                              <span className="text-xs" style={{ color: 'var(--muted)' }}>·</span>
-                              <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                                {formatDuration(workout.startedAt, workout.finishedAt)}
-                              </span>
-                              {volume > 0 && (
-                                <>
-                                  <span className="text-xs" style={{ color: 'var(--muted)' }}>·</span>
-                                  <span className="text-xs font-medium" style={{ color: 'var(--success)' }}>
-                                    {volume.toLocaleString('pl-PL')} kg
-                                  </span>
-                                </>
-                              )}
+                    <div className="grid h-48 grid-cols-7 gap-2 items-end">
+                      {weekDailyStats.map((day, index) => {
+                        const heightPct = day.volume > 0 ? Math.max(18, Math.round((day.volume / maxDayVolume) * 100)) : 8
+                        return (
+                          <div key={day.label} className="flex min-w-0 flex-col justify-end gap-2">
+                            <div className="flex h-36 items-end">
+                              <motion.div
+                                className="w-full rounded-[var(--radius-md)] border"
+                                style={{
+                                  height: `${heightPct}%`,
+                                  background: day.volume > 0
+                                    ? day.isToday
+                                      ? 'linear-gradient(180deg, rgba(90,166,255,0.95) 0%, rgba(90,166,255,0.4) 100%)'
+                                      : 'linear-gradient(180deg, rgba(25,213,159,0.82) 0%, rgba(25,213,159,0.2) 100%)'
+                                    : 'rgba(255,255,255,0.035)',
+                                  borderColor: day.volume > 0
+                                    ? day.isToday ? 'rgba(90,166,255,0.55)' : 'rgba(25,213,159,0.3)'
+                                    : 'var(--border)',
+                                }}
+                                initial={{ opacity: 0, y: 12 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.05 * index, duration: 0.22 }}
+                              />
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: day.isToday ? 'var(--accent)' : 'var(--muted)' }}>
+                                {day.label}
+                              </p>
+                              <p className="mt-1 text-[11px] font-medium tabular-nums" style={{ color: day.volume > 0 ? 'var(--text-strong)' : 'var(--muted-soft)' }}>
+                                {day.volume > 0 ? formatCompactVolume(day.volume).replace(' kg', '') : '—'}
+                              </p>
                             </div>
                           </div>
+                        )
+                      })}
+                    </div>
+                  </div>
 
-                          <span
-                            className="flex-none text-[10px] font-bold px-2.5 py-1 rounded-full"
-                            style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}30` }}
-                          >
-                            {totalSets}×
-                          </span>
-
-                          <motion.button
-                            onClick={(e) => handleDelete(workout.id, e)}
-                            className="flex-none rounded-lg p-1.5"
-                            style={{
-                              color: '#FF5757',
-                              opacity: 0.72,
-                              background: 'rgba(255,87,87,0.08)',
-                              border: '1px solid rgba(255,87,87,0.12)',
-                            }}
-                            whileHover={{ opacity: 1 }}
-                            whileTap={{ scale: 0.85 }}
-                            disabled={deletingId === workout.id}
-                            aria-label="Usuń trening"
-                          >
-                            <Trash2 size={13} />
-                          </motion.button>
+                  <div className="grid gap-3">
+                    {overviewCards.map(({ label, value, copy, icon: Icon }, index) => (
+                      <motion.div
+                        key={label}
+                        className="rounded-[var(--radius-lg)] border p-4"
+                        style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
+                        initial={{ opacity: 0, x: 12 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.06 + index * 0.04, duration: 0.2 }}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="stat-meta">{label}</p>
+                          <Icon size={15} style={{ color: 'var(--accent)' }} />
                         </div>
+                        <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white tabular-nums">
+                          {value}
+                        </p>
+                        <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                          {copy}
+                        </p>
                       </motion.div>
-                    )
-                  })}
+                    ))}
+                  </div>
                 </div>
-              )}
-            </AnimatePresence>
+              </motion.div>
+
+              <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.12)}>
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="eyebrow">Insights</p>
+                    <h2 className="section-title mt-2">Co mówi aktualny log</h2>
+                  </div>
+                  <div
+                    className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)]"
+                    style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+                  >
+                    <Sparkles size={18} />
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="stat-meta">Trajektoria</p>
+                      <BarChart3 size={15} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
+                      {weeklyVolumeDelta === null
+                        ? 'Zbieramy pierwszy benchmark tygodnia'
+                        : weeklyVolumeDelta >= 0
+                          ? `Objętość rośnie o ${weeklyVolumeDelta}%`
+                          : `Objętość spadła o ${Math.abs(weeklyVolumeDelta)}%`}
+                    </p>
+                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                      {weeklySessionsDelta === 0
+                        ? 'Rytm sesji jest stabilny względem poprzedniego tygodnia.'
+                        : weeklySessionsDelta > 0
+                          ? `Masz o ${weeklySessionsDelta} ${weeklySessionsDelta === 1 ? 'sesję' : 'sesje'} więcej niż tydzień temu.`
+                          : `Masz o ${Math.abs(weeklySessionsDelta)} ${Math.abs(weeklySessionsDelta) === 1 ? 'sesję' : 'sesje'} mniej niż tydzień temu.`}
+                    </p>
+                  </div>
+
+                  <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="stat-meta">Dominujący fokus</p>
+                      <Target size={15} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
+                      {topFocus ? CATEGORY_LABELS[topFocus[0]] ?? topFocus[0] : 'Jeszcze bez dominującej partii'}
+                    </p>
+                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                      {topFocus
+                        ? `${topFocus[1]} logowanych bloków ćwiczeń w tym tygodniu.`
+                        : 'Dodaj kolejne sesje, a dashboard pokaże, gdzie idzie najwięcej pracy.'}
+                    </p>
+
+                    {focusEntries.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        {focusEntries.map(([category, count]) => {
+                          const width = totalFocusCount ? (count / totalFocusCount) * 100 : 0
+                          return (
+                            <div key={category}>
+                              <div className="mb-1 flex items-center justify-between gap-3">
+                                <span className="text-sm font-medium text-white">
+                                  {CATEGORY_LABELS[category] ?? category}
+                                </span>
+                                <span className="text-xs tabular-nums" style={{ color: 'var(--muted)' }}>
+                                  {count}
+                                </span>
+                              </div>
+                              <div className="h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                                <div
+                                  className="h-full rounded-full"
+                                  style={{
+                                    width: `${width}%`,
+                                    background: `linear-gradient(90deg, ${CATEGORY_COLORS[category] ?? '#5aa6ff'} 0%, ${CATEGORY_COLORS[category] ?? '#5aa6ff'}88 100%)`,
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="stat-meta">Ostatni sygnał</p>
+                      <Sparkles size={15} style={{ color: 'var(--accent)' }} />
+                    </div>
+                    <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
+                      {latestWorkout ? (latestWorkout.label ?? workoutTitle(latestWorkout)) : 'Czekamy na pierwszą sesję'}
+                    </p>
+                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                      {latestWorkout
+                        ? `${formatDate(latestWorkout.startedAt)} • ${formatDuration(latestWorkout.startedAt, latestWorkout.finishedAt)} • ${formatCompactVolume(calcVolume(latestWorkout))}`
+                        : 'Gdy pojawi się pierwszy zapisany trening, ten blok pokaże ostatni sygnał z logu.'}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            </section>
+
+            <section>
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <div>
+                  <p className="eyebrow">
+                    Historia
+                  </p>
+                  <h2 className="section-title mt-2">Ostatnie treningi</h2>
+                </div>
+                <p className="hidden text-sm lg:block" style={{ color: 'var(--muted)' }}>
+                  Ostatnie sesje w układzie, który daje szybki wgląd w tempo, objętość i strukturę pracy.
+                </p>
+              </div>
+
+              <AnimatePresence mode="popLayout">
+                {recentWorkouts.length === 0 ? (
+                  <motion.div
+                    key="empty"
+                    className="surface-panel rounded-[var(--radius-xl)] p-10 text-center flex flex-col items-center gap-4"
+                    initial={false}
+                    animate={{ opacity: 1 }}
+                  >
+                    <div
+                      className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center text-3xl"
+                      style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)' }}
+                    >
+                      ✦
+                    </div>
+                    <div>
+                      <p className="font-semibold text-white mb-1">Brak treningów</p>
+                      <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                        Zacznij pierwszą sesję i odblokuj overview tygodnia, insighty i historię pracy.
+                      </p>
+                    </div>
+                    <motion.button
+                      onClick={() => navigate('/workout/new')}
+                      className="mt-2 rounded-[var(--radius-md)] px-6 py-2.5 text-sm font-semibold"
+                      style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                      whileTap={{ scale: 0.96 }}
+                    >
+                      + Nowy trening
+                    </motion.button>
+                  </motion.div>
+                ) : (
+                  <div className="grid gap-4 xl:grid-cols-2">
+                    {recentWorkouts.map((workout) => {
+                      const accent = workoutAccent(workout)
+                      const volume = calcVolume(workout)
+                      const totalSets = workout.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
+                      const totalExercises = workout.exercises.length
+
+                      return (
+                        <motion.div
+                          key={workout.id}
+                          className="cursor-pointer relative overflow-hidden rounded-[var(--radius-xl)]"
+                          style={{
+                            opacity: deletingId === workout.id ? 0.4 : 1,
+                            background: 'linear-gradient(180deg, rgba(24,32,48,0.92) 0%, rgba(16,22,34,0.96) 100%)',
+                            border: '1px solid var(--border)',
+                            boxShadow: '0 10px 36px rgba(2,8,20,0.38)',
+                          }}
+                          initial={false}
+                          animate={{ opacity: deletingId === workout.id ? 0.4 : 1, x: 0 }}
+                          exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
+                          transition={{ duration: 0.22 }}
+                          whileHover={{ y: -2, boxShadow: `0 18px 52px rgba(2,8,20,0.55), inset 0 0 0 1px ${accent}33` }}
+                          onClick={() => navigate(`/workout/${workout.id}`, {
+                            state: { workoutPreview: workout },
+                          })}
+                        >
+                          <div
+                            className="absolute inset-x-0 top-0 h-px"
+                            style={{ background: `linear-gradient(90deg, ${accent}00 0%, ${accent} 50%, ${accent}00 100%)` }}
+                          />
+
+                          <div className="p-5">
+                            <div className="mb-4 flex items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span
+                                    className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                                    style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}30` }}
+                                  >
+                                    {totalSets}×
+                                  </span>
+                                  {!workout.materialized && (
+                                    <span
+                                      className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                                      style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+                                    >
+                                      sync
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white truncate">
+                                  {workout.label ?? workoutTitle(workout)}
+                                </p>
+                                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                  <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                                    {formatDate(workout.startedAt)}
+                                  </span>
+                                  <span className="text-xs" style={{ color: 'var(--muted)' }}>·</span>
+                                  <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                                    {formatDuration(workout.startedAt, workout.finishedAt)}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <motion.button
+                                onClick={(e) => handleDelete(workout.id, e)}
+                                className="flex-none rounded-lg p-1.5"
+                                style={{
+                                  color: '#FF5757',
+                                  opacity: 0.72,
+                                  background: 'rgba(255,87,87,0.08)',
+                                  border: '1px solid rgba(255,87,87,0.12)',
+                                }}
+                                whileHover={{ opacity: 1 }}
+                                whileTap={{ scale: 0.85 }}
+                                disabled={deletingId === workout.id}
+                                aria-label="Usuń trening"
+                              >
+                                <Trash2 size={13} />
+                              </motion.button>
+                            </div>
+
+                            <div className="mb-4 flex flex-wrap gap-2">
+                              {workout.exercises.slice(0, 3).map((exercise) => (
+                                <span
+                                  key={`${workout.id}-${exercise.exerciseId ?? exercise.name}`}
+                                  className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                                >
+                                  {exercise.name}
+                                </span>
+                              ))}
+                              {workout.exercises.length > 3 && (
+                                <span
+                                  className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                  style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+                                >
+                                  +{workout.exercises.length - 3}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                                <p className="stat-meta">Objętość</p>
+                                <p className="mt-2 text-lg font-semibold text-white tabular-nums">{formatCompactVolume(volume)}</p>
+                              </div>
+                              <div className="rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                                <p className="stat-meta">Ćwiczenia</p>
+                                <p className="mt-2 text-lg font-semibold text-white tabular-nums">{totalExercises}</p>
+                              </div>
+                              <div className="rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                                <p className="stat-meta">Czas</p>
+                                <p className="mt-2 text-lg font-semibold text-white tabular-nums">{formatDuration(workout.startedAt, workout.finishedAt)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                )}
+              </AnimatePresence>
+            </section>
           </main>
         </div>
 

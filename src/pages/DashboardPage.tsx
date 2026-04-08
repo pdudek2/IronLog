@@ -189,6 +189,14 @@ export default function DashboardPage() {
           </div>
           <div className="flex gap-2">
             <motion.button
+              onClick={() => navigate('/exercises')}
+              className="surface-panel rounded-xl px-4 py-2 text-xs font-semibold"
+              style={{ color: 'var(--muted)' }}
+              whileTap={{ scale: 0.93 }}
+            >
+              Ćwiczenia
+            </motion.button>
+            <motion.button
               onClick={() => navigate('/profile')}
               className="surface-panel rounded-xl px-4 py-2 text-xs font-semibold"
               style={{ color: 'var(--muted)' }}

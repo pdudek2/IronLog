@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { Dumbbell, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
 import {
@@ -397,6 +398,7 @@ function SectionHeader({
 
 export default function ExercisesPage() {
   const { user } = useAuthStore()
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
   const [equipment, setEquipment] = useState<Equipment | 'all'>('all')
@@ -500,6 +502,30 @@ export default function ExercisesPage() {
         {/* ── Desktop sidebar ──────────────────────── */}
         <aside className="hidden lg:block desktop-sticky">
           <div className="surface-panel rounded-[2rem] p-5 space-y-5">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => navigate(-1)}
+                className="rounded-xl px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+              >
+                ← Wstecz
+              </button>
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="rounded-xl px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-80"
+                style={{ background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+              >
+                Start
+              </button>
+              <button
+                disabled
+                className="rounded-xl px-3 py-2 text-xs font-semibold"
+                style={{ background: 'rgba(232,255,87,0.12)', color: 'var(--accent)', border: '1px solid rgba(232,255,87,0.2)' }}
+              >
+                Ćwiczenia
+              </button>
+            </div>
+
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4" style={{ color: 'var(--accent)' }}>
                 Baza ćwiczeń

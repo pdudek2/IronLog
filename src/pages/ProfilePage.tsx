@@ -44,13 +44,32 @@ export default function ProfilePage() {
     <div className="page-shell">
       <div className="page-container" style={{ maxWidth: '36rem' }}>
 
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="mb-6 flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
-          style={{ color: 'var(--muted)' }}
-        >
-          ← Powrót
-        </button>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
+            style={{ color: 'var(--muted)' }}
+          >
+            ← Powrót
+          </button>
+
+          <div className="hidden sm:flex gap-2">
+            <button
+              onClick={() => navigate('/exercises')}
+              className="surface-panel rounded-xl px-4 py-2 text-xs font-semibold"
+              style={{ color: 'var(--muted)' }}
+            >
+              Ćwiczenia
+            </button>
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="surface-panel rounded-xl px-4 py-2 text-xs font-semibold"
+              style={{ color: 'var(--muted)' }}
+            >
+              Start
+            </button>
+          </div>
+        </div>
 
         <Card>
           <div className="mb-6">

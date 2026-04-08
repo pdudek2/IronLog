@@ -70,7 +70,14 @@ service cloud.firestore {
     }
 
     match /activeSessions/{uid} {
-      allow read, write: if signedIn() && currentUid() == uid;
+      allow create: if signedIn()
+                    && currentUid() == uid
+                    && request.resource.data.userId == currentUid();
+      allow read: if signedIn() && currentUid() == uid;
+      allow update: if signedIn()
+                    && currentUid() == uid
+                    && request.resource.data.userId == resource.data.userId;
+      allow delete: if signedIn() && currentUid() == uid;
     }
 
     match /users/{id} {

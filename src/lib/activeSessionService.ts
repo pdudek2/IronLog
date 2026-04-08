@@ -1,4 +1,4 @@
-import { deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore'
+import { deleteDoc, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
 import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
 
@@ -6,10 +6,16 @@ export function activeSessionRef(uid: string) {
   return doc(db, 'activeSessions', uid)
 }
 
-export async function loadActiveSession(uid: string): Promise<ActiveWorkout | null> {
-  const snap = await getDoc(activeSessionRef(uid))
-  if (!snap.exists()) return null
-  return parseSessionDoc(snap.data())
+export function subscribeToActiveSession(
+  uid: string,
+  onChange: (session: ActiveWorkout | null) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  return onSnapshot(
+    activeSessionRef(uid),
+    (snap) => onChange(snap.exists() ? parseSessionDoc(snap.data()) : null),
+    (error) => onError?.(error),
+  )
 }
 
 export async function saveActiveSession(uid: string, workout: ActiveWorkout): Promise<void> {

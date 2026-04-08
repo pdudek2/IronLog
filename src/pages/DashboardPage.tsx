@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2 } from 'lucide-react'
@@ -14,6 +14,7 @@ import {
 } from '../lib/workoutService'
 import { exercises as exerciseDb } from '../data/exercises'
 import { useAuthStore } from '../store/authStore'
+import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -86,9 +87,9 @@ function getGreeting(): string {
 
 function fadeUp(delay: number) {
   return {
-    initial: { opacity: 0, y: 18 },
+    initial: false,
     animate: { opacity: 1, y: 0 },
-    transition: { delay, duration: 0.38 },
+    transition: { delay: delay > 0 ? 0.04 : 0, duration: 0.22 },
   }
 }
 
@@ -96,13 +97,27 @@ export default function DashboardPage() {
   const { user } = useAuthStore()
   const { profile, loading, setProfile, setLoading } = useProfileStore()
   const navigate = useNavigate()
-
-  const [workouts, setWorkouts] = useState<WorkoutSummary[]>([])
-  const [weeklyDone, setWeeklyDone] = useState(0)
-  const [streak, setStreak] = useState(0)
+  const {
+    workouts,
+    weeklyDone,
+    streak,
+    ready: dashboardReady,
+    setSnapshot,
+  } = useDashboardStore()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const workoutsRef = useRef<WorkoutSummary[]>([])
+
+  const fetchData = useCallback(async (uid: string) => {
+    const all = await getRecentWorkouts(uid, 50)
+    setSnapshot({
+      workouts: all.slice(0, 10),
+      weeklyDone: countWeeklyWorkouts(all),
+      streak: calcStreak(all),
+    })
+    workoutsRef.current = all
+    void retryPendingMaterializations(all)
+  }, [setSnapshot])
 
   useEffect(() => {
     if (!user) return
@@ -115,16 +130,7 @@ export default function DashboardPage() {
       if (!nextProfile) navigate('/onboarding', { replace: true })
       else setProfile(nextProfile)
     })
-  }, [user, profile, navigate, setLoading, setProfile])
-
-  async function fetchData(uid: string) {
-    const all = await getRecentWorkouts(uid, 50)
-    setWorkouts(all.slice(0, 10))
-    workoutsRef.current = all
-    setWeeklyDone(countWeeklyWorkouts(all))
-    setStreak(calcStreak(all))
-    void retryPendingMaterializations(all)
-  }
+  }, [user, profile, navigate, setLoading, setProfile, fetchData])
 
   useEffect(() => {
     function handleOnline() {
@@ -154,7 +160,9 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) return <LoadingState message="Ładowanie dashboardu..." />
+  if (loading || (!dashboardReady && !!user && !!profile)) {
+    return <LoadingState message="Ładowanie dashboardu..." />
+  }
 
   const weeklyGoal = profile?.weeklyGoal ?? 3
   const progressPct = Math.min((weeklyDone / weeklyGoal) * 100, 100)
@@ -167,9 +175,9 @@ export default function DashboardPage() {
       <div className="page-container">
         <motion.div
           className="mb-6 flex items-center justify-between gap-4"
-          initial={{ opacity: 0, y: -14 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35 }}
+          transition={{ duration: 0.2 }}
         >
           <div>
             <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: 'var(--accent)' }}>
@@ -321,7 +329,7 @@ export default function DashboardPage() {
                 <motion.div
                   key="empty"
                   className="surface-panel rounded-[2rem] p-10 text-center flex flex-col items-center gap-4"
-                  initial={{ opacity: 0 }}
+                  initial={false}
                   animate={{ opacity: 1 }}
                 >
                   <div
@@ -347,7 +355,7 @@ export default function DashboardPage() {
                 </motion.div>
               ) : (
                 <div className="grid gap-3 xl:grid-cols-2">
-                  {workouts.map((workout, index) => {
+                  {workouts.map((workout) => {
                     const accent = workoutAccent(workout)
                     const volume = calcVolume(workout)
                     const totalSets = workout.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
@@ -362,12 +370,14 @@ export default function DashboardPage() {
                           border: '1px solid rgba(128,140,179,0.14)',
                           boxShadow: '0 8px 32px rgba(4,6,18,0.35)',
                         }}
-                        initial={{ opacity: 0, x: -20 }}
+                        initial={false}
                         animate={{ opacity: deletingId === workout.id ? 0.4 : 1, x: 0 }}
                         exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
-                        transition={{ delay: index * 0.05, duration: 0.3 }}
+                        transition={{ duration: 0.22 }}
                         whileHover={{ y: -2, boxShadow: `0 16px 48px rgba(4,6,18,0.55), inset 0 0 0 1px ${accent}30` }}
-                        onClick={() => navigate(`/workout/${workout.id}`)}
+                        onClick={() => navigate(`/workout/${workout.id}`, {
+                          state: { workoutPreview: workout },
+                        })}
                       >
                         {/* Color strip */}
                         <div

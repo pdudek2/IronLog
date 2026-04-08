@@ -6,7 +6,6 @@ import { useWorkoutStore } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { saveWorkout } from '../lib/workoutService'
-import { loadActiveSession } from '../lib/activeSessionService'
 import { getUserExercises } from '../lib/userExercisesService'
 import { useActiveSession } from '../hooks/useActiveSession'
 import ExercisePicker from '../components/ExercisePicker'
@@ -65,7 +64,6 @@ export default function WorkoutPage() {
   const {
     active,
     startWorkout,
-    hydrateFromDoc,
     setLabel,
     addExercise,
     addSet,
@@ -77,14 +75,10 @@ export default function WorkoutPage() {
   } = useWorkoutStore()
   const navigate = useNavigate()
 
-  // Must be declared before init useEffect so the subscription is active
-  // before any store mutations happen during initialization.
-  const { clearSession } = useActiveSession(user?.uid ?? null)
-
-  // True when no in-memory session exists yet — avoids setState in effect body
-  const [initializing, setInitializing] = useState(() => useWorkoutStore.getState().active === null)
+  const { clearSession, ready } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [closingSession, setClosingSession] = useState(false)
   const [, setTick] = useState(0)
   const [saveError, setSaveError] = useState('')
   const [confirmDiscard, setConfirmDiscard] = useState(false)
@@ -97,45 +91,33 @@ export default function WorkoutPage() {
     getUserExercises(user.uid).then(setUserExercises).catch(() => {})
   }, [user])
 
-  // Init: recover from Firestore or start a new session
-  useEffect(() => {
-    if (!user) return
-
-    // Already have an in-memory session (navigated back without refreshing)
-    if (useWorkoutStore.getState().active) return
-
-    loadActiveSession(user.uid)
-      .then((session) => {
-        if (session) {
-          hydrateFromDoc(session)
-        } else {
-          startWorkout()
-        }
-      })
-      .catch(() => startWorkout())
-      .finally(() => setInitializing(false))
-  }, [user, hydrateFromDoc, startWorkout])
-
   useEffect(() => {
     const id = setInterval(() => setTick((tick) => tick + 1), 1_000)
     return () => clearInterval(id)
   }, [])
 
   async function doFinish() {
-    if (!active || !user || saving) return
+    if (!active || !user || saving || closingSession) return
     setSaving(true)
+    setClosingSession(true)
     setSaveError('')
     try {
       await saveWorkout(user.uid, active)
       // clearWorkout() must come before clearSession() so the debounce timer
       // is cancelled synchronously before we delete the Firestore document.
       clearWorkout()
-      await clearSession()
-      navigate('/dashboard')
+      try {
+        await clearSession()
+      } catch (error) {
+        console.error('[clearSession after finish error]', error)
+        toast.error('Trening zapisany, ale aktywna sesja nie została jeszcze usunięta z chmury.')
+      }
+      navigate('/dashboard', { replace: true })
       toast.success('Trening zapisany!')
     } catch {
       setSaveError('Błąd zapisu. Spróbuj ponownie.')
       toast.error('Błąd zapisu. Spróbuj ponownie.')
+      setClosingSession(false)
       setSaving(false)
     }
   }
@@ -152,12 +134,44 @@ export default function WorkoutPage() {
   }
 
   async function handleConfirmDiscard() {
+    if (closingSession) return
+    setClosingSession(true)
     clearWorkout()
-    await clearSession()
-    navigate('/dashboard')
+    try {
+      await clearSession()
+    } catch (error) {
+      console.error('[clearSession after discard error]', error)
+      toast.error('Nie udało się od razu usunąć sesji w chmurze, ale wróciłem do dashboardu.')
+    }
+    navigate('/dashboard', { replace: true })
   }
 
-  if (initializing || !active) return <LoadingState message="Przygotowuję trening..." />
+  if (!ready || closingSession) {
+    return <LoadingState message={closingSession ? 'Zamykam sesję...' : 'Przygotowuję trening...'} />
+  }
+
+  if (!active) {
+    return (
+      <div className="page-shell">
+        <div className="page-container" style={{ maxWidth: '32rem' }}>
+          <div className="surface-panel rounded-[2rem] px-6 py-10 text-center">
+            <p className="mb-2 text-sm font-semibold text-white">Nie ma aktywnej sesji</p>
+            <p className="mb-6 text-sm" style={{ color: 'var(--muted)' }}>
+              Poprzednia sesja mogła zostać zakończona albo usunięta na innym urządzeniu.
+            </p>
+            <motion.button
+              onClick={startWorkout}
+              className="rounded-2xl px-6 py-3 text-sm font-semibold"
+              style={{ background: 'var(--accent)', color: '#08061A' }}
+              whileTap={{ scale: 0.97 }}
+            >
+              Rozpocznij nową sesję
+            </motion.button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   const units = profile?.units ?? 'kg'
 

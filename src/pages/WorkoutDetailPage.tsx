@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft, Trash2 } from 'lucide-react'
 import {
@@ -73,13 +73,24 @@ function cloneExercises(exercises: WorkoutSummary['exercises']): WorkoutSummary[
   }))
 }
 
+function readWorkoutPreview(state: unknown, workoutId: string | undefined): WorkoutSummary | null {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return null
+
+  const preview = (state as { workoutPreview?: WorkoutSummary }).workoutPreview
+  if (!preview || preview.id !== workoutId) return null
+
+  return preview
+}
+
 export default function WorkoutDetailPage() {
   const { id } = useParams<{ id: string }>()
+  const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuthStore()
-  const [workout, setWorkout] = useState<WorkoutSummary | null>(null)
+  const previewWorkout = readWorkoutPreview(location.state, id)
+  const [workout, setWorkout] = useState<WorkoutSummary | null>(() => previewWorkout)
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => previewWorkout === null)
   const [deleting, setDeleting] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -90,11 +101,20 @@ export default function WorkoutDetailPage() {
 
   useEffect(() => {
     if (!id) return
+    let cancelled = false
+
+    if (!previewWorkout) setLoading(true)
+
     getWorkout(id).then((nextWorkout) => {
+      if (cancelled) return
       setWorkout(nextWorkout)
       setLoading(false)
     })
-  }, [id])
+
+    return () => {
+      cancelled = true
+    }
+  }, [id, previewWorkout])
 
   useEffect(() => {
     if (!user) return
@@ -223,6 +243,8 @@ export default function WorkoutDetailPage() {
   const accent = workoutAccent(displayedWorkout)
   const volume = calcVolume(displayedWorkout)
   const totalSets = displayedWorkout.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
+  const mobileReadGrid = 'grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[1.5rem_1fr_1fr_1fr]'
+  const mobileEditGrid = 'grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] lg:grid-cols-[1.5rem_1fr_1fr_1fr_1.25rem]'
 
   const actionButtons = isEditing ? (
     <div className="flex gap-3">
@@ -289,9 +311,9 @@ export default function WorkoutDetailPage() {
       <div className="page-container">
         <motion.div
           className="mb-6 flex items-center gap-3"
-          initial={{ opacity: 0, y: -10 }}
+          initial={false}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: 0.18 }}
         >
           <button
             onClick={() => navigate('/dashboard')}
@@ -313,9 +335,9 @@ export default function WorkoutDetailPage() {
             <motion.div
               className="surface-panel rounded-[2rem] overflow-hidden"
               style={{ borderLeft: `4px solid ${accent}` }}
-              initial={{ opacity: 0, y: 16 }}
+              initial={false}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, duration: 0.35 }}
+              transition={{ duration: 0.2 }}
             >
               <div className="p-5">
                 {isEditing ? (
@@ -373,15 +395,15 @@ export default function WorkoutDetailPage() {
 
             <motion.div
               className="surface-panel rounded-[2rem] p-5 hidden lg:block"
-              initial={{ opacity: 0 }}
+              initial={false}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
+              transition={{ duration: 0.18 }}
             >
               {actionButtons}
             </motion.div>
           </aside>
 
-          <main className="min-w-0 pb-44 lg:pb-0">
+          <main className="min-w-0 pb-56 lg:pb-0">
             <div className="mb-4">
               <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
                 Ćwiczenia z sesji
@@ -398,9 +420,9 @@ export default function WorkoutDetailPage() {
                   <motion.div
                     key={exerciseIndex}
                     className="surface-panel rounded-[1.75rem] overflow-hidden"
-                    initial={{ opacity: 0, y: 12 }}
+                    initial={false}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 + exerciseIndex * 0.06, duration: 0.3 }}
+                    transition={{ duration: 0.18 }}
                   >
                     <div className="px-4 pt-4 pb-2 flex items-center justify-between">
                       <p className="text-sm font-semibold text-white">{exercise.name}</p>
@@ -424,7 +446,7 @@ export default function WorkoutDetailPage() {
                     </div>
 
                     <div className="px-4 pb-4">
-                      <div className={`grid ${isEditing ? 'grid-cols-[1.5rem_1fr_1fr_1.25rem] lg:grid-cols-[1.5rem_1fr_1fr_1fr_1.25rem]' : 'grid-cols-[1.5rem_1fr_1fr] lg:grid-cols-[1.5rem_1fr_1fr_1fr]'} gap-2 mb-1`}>
+                      <div className={`grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 mb-1`}>
                         {[...['#', 'kg', 'Powt.', 'Vol.'], ...(isEditing ? [''] : [])].map((heading, index) => (
                           <span key={`${heading}-${index}`} className="text-[10px] uppercase tracking-wide text-center" style={{ color: 'var(--muted)' }}>
                             {heading === 'Vol.' ? <span className="hidden lg:inline">{heading}</span> : heading || <span aria-hidden="true">{index === 4 ? ' ' : heading}</span>}
@@ -435,10 +457,15 @@ export default function WorkoutDetailPage() {
                       {exercise.sets.map((set, setIndex) => (
                         <div
                           key={setIndex}
-                          className={`grid ${isEditing ? 'grid-cols-[1.5rem_1fr_1fr_1.25rem] lg:grid-cols-[1.5rem_1fr_1fr_1fr_1.25rem]' : 'grid-cols-[1.5rem_1fr_1fr] lg:grid-cols-[1.5rem_1fr_1fr_1fr]'} gap-2 py-1.5 text-center items-center`}
+                          className={`grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 py-1.5 text-center items-center`}
                           style={{ borderTop: '1px solid var(--border)' }}
                         >
-                          <span className="text-xs font-bold" style={{ color: 'var(--teal)' }}>{setIndex + 1}</span>
+                          <span
+                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-xs font-bold"
+                            style={{ color: 'var(--teal)' }}
+                          >
+                            {setIndex + 1}
+                          </span>
                           {isEditing ? (
                             <>
                               <input
@@ -448,7 +475,7 @@ export default function WorkoutDetailPage() {
                                 min="0"
                                 value={set.weight}
                                 onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'weight', e.target.value)}
-                                className="rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
+                                className="w-full min-w-0 rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
                                 style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                               />
                               <input
@@ -458,7 +485,7 @@ export default function WorkoutDetailPage() {
                                 min="0"
                                 value={set.reps}
                                 onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'reps', e.target.value)}
-                                className="rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
+                                className="w-full min-w-0 rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
                                 style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                               />
                             </>
@@ -475,7 +502,7 @@ export default function WorkoutDetailPage() {
                             exercise.sets.length > 1 ? (
                               <button
                                 onClick={() => handleRemoveSet(exerciseIndex, setIndex)}
-                                className="text-xs text-center transition-opacity hover:opacity-70"
+                                className="flex h-7 w-7 items-center justify-center rounded-md text-xs text-center transition-opacity hover:opacity-70"
                                 style={{ color: 'var(--muted)' }}
                               >
                                 ✕
@@ -541,14 +568,14 @@ export default function WorkoutDetailPage() {
 
       <div
         className="fixed left-0 right-0 z-40 px-4 lg:hidden"
-        style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
+        style={{ bottom: 'calc(7.25rem + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="mx-auto w-full max-w-sm">
           <motion.div
             className="surface-panel rounded-[1.75rem] p-3"
-            initial={{ opacity: 0, y: 16 }}
+            initial={false}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
+            transition={{ duration: 0.18 }}
           >
             {actionButtons}
           </motion.div>

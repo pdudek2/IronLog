@@ -64,6 +64,12 @@ interface ExerciseKey {
   exerciseSource: ExerciseSource
 }
 
+interface ExerciseMetadata {
+  category: string | null
+  equipment: string | null
+  muscleGroups: string[]
+}
+
 const exerciseMap = new Map(exerciseCatalog.map((exercise) => [exercise.id, exercise]))
 
 export async function materializeWorkoutForUser(userId: string, workoutId: string): Promise<void> {
@@ -77,7 +83,8 @@ export async function materializeWorkoutForUser(userId: string, workoutId: strin
   assertFinishedWorkout(workout)
 
   const existingSessions = await listExerciseSessionsForWorkout(workoutId)
-  const nextSessions = buildExerciseSessions(workoutId, workout)
+  const userExerciseMetadata = await loadUserExerciseMetadata(workout.userId, workout.exercises)
+  const nextSessions = buildExerciseSessions(workoutId, workout, userExerciseMetadata)
   const affectedExercises = collectExerciseKeys(existingSessions, nextSessions)
 
   await replaceExerciseSessions(existingSessions, nextSessions)
@@ -239,9 +246,62 @@ function toFiniteNumber(value: unknown): number {
   return Number.isFinite(numeric) ? numeric : 0
 }
 
-function buildExerciseSessions(workoutId: string, workout: StoredWorkout): ExerciseSessionDoc[] {
+async function loadUserExerciseMetadata(
+  userId: string,
+  exercises: WorkoutExercise[],
+): Promise<Map<string, ExerciseMetadata>> {
+  const ids = [...new Set(
+    exercises
+      .filter((exercise) => exercise.exerciseSource === 'user')
+      .map((exercise) => exercise.exerciseId),
+  )]
+
+  if (ids.length === 0) return new Map()
+
+  const refs = ids.map((id) => adminDb.collection('userExercises').doc(id))
+  const snapshots = await adminDb.getAll(...refs)
+  const metadataMap = new Map<string, ExerciseMetadata>()
+
+  for (const snapshot of snapshots) {
+    if (!snapshot.exists) continue
+
+    const record = snapshot.data() as Record<string, unknown>
+    if (record.userId !== userId) continue
+
+    metadataMap.set(snapshot.id, {
+      category: typeof record.category === 'string' ? record.category : null,
+      equipment: typeof record.equipment === 'string' ? record.equipment : null,
+      muscleGroups: Array.isArray(record.muscles)
+        ? record.muscles.filter((value): value is string => typeof value === 'string')
+        : [],
+    })
+  }
+
+  return metadataMap
+}
+
+function buildExerciseSessions(
+  workoutId: string,
+  workout: StoredWorkout,
+  userExerciseMetadata: Map<string, ExerciseMetadata>,
+): ExerciseSessionDoc[] {
   return workout.exercises.map((exercise, index) => {
-    const metadata = exerciseMap.get(exercise.exerciseId)
+    let category: string | null = null
+    let equipment: string | null = null
+    let muscleGroups: string[] = []
+
+    if (exercise.exerciseSource === 'global') {
+      const metadata = exerciseMap.get(exercise.exerciseId)
+      category = metadata?.category ?? null
+      equipment = metadata?.equipment ?? null
+      muscleGroups = metadata?.muscles ?? []
+    } else {
+      const metadata = userExerciseMetadata.get(exercise.exerciseId)
+      category = metadata?.category ?? null
+      equipment = metadata?.equipment ?? null
+      muscleGroups = metadata?.muscleGroups ?? []
+    }
+
     const totals = exercise.sets.reduce((acc, set) => ({
       totalReps: acc.totalReps + set.reps,
       totalVolume: acc.totalVolume + set.weight * set.reps,
@@ -268,9 +328,9 @@ function buildExerciseSessions(workoutId: string, workout: StoredWorkout): Exerc
       totalVolume: totals.totalVolume,
       bestSetWeight: totals.bestSet.weight,
       bestSetReps: totals.bestSet.reps,
-      category: exercise.exerciseSource === 'global' ? (metadata?.category ?? null) : null,
-      equipment: exercise.exerciseSource === 'global' ? (metadata?.equipment ?? null) : null,
-      muscleGroups: exercise.exerciseSource === 'global' ? (metadata?.muscles ?? []) : [],
+      category,
+      equipment,
+      muscleGroups,
       sets: exercise.sets,
     }
   })

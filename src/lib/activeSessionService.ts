@@ -2,18 +2,29 @@ import { deleteDoc, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/f
 import { db } from './firebase'
 import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
 
+interface ActiveSessionSnapshot {
+  session: ActiveWorkout | null
+  fromCache: boolean
+  hasPendingWrites: boolean
+}
+
 export function activeSessionRef(uid: string) {
   return doc(db, 'activeSessions', uid)
 }
 
 export function subscribeToActiveSession(
   uid: string,
-  onChange: (session: ActiveWorkout | null) => void,
+  onChange: (snapshot: ActiveSessionSnapshot) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
   return onSnapshot(
     activeSessionRef(uid),
-    (snap) => onChange(snap.exists() ? parseSessionDoc(snap.data()) : null),
+    { includeMetadataChanges: true },
+    (snap) => onChange({
+      session: snap.exists() ? parseSessionDoc(snap.data()) : null,
+      fromCache: snap.metadata.fromCache,
+      hasPendingWrites: snap.metadata.hasPendingWrites,
+    }),
     (error) => onError?.(error),
   )
 }

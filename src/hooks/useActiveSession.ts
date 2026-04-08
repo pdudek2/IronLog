@@ -43,10 +43,18 @@ export function useActiveSession(uid: string | null) {
 
     const unsubscribeRemote = subscribeToActiveSession(
       currentUid,
-      (session) => {
+      ({ session, fromCache, hasPendingWrites }) => {
         const current = useWorkoutStore.getState().active
         const currentSerialized = serializeActiveWorkout(current)
         const nextSerialized = serializeActiveWorkout(session)
+        const awaitingServerConfirmation = (
+          session === null
+          && !hadRemoteSessionRef.current
+          && fromCache
+          && !hasPendingWrites
+          && typeof navigator !== 'undefined'
+          && navigator.onLine
+        )
 
         if (session) {
           hadRemoteSessionRef.current = true
@@ -63,6 +71,9 @@ export function useActiveSession(uid: string | null) {
             activeRef.current = null
             clearWorkout()
           }
+        } else if (awaitingServerConfirmation) {
+          if (current) setReady(true)
+          return
         } else if (!current) {
           startWorkout()
           const createdSession = useWorkoutStore.getState().active

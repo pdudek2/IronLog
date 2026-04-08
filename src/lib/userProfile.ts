@@ -1,4 +1,4 @@
-import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
 import { db } from './firebase'
 
 export type PrimaryGoal = 'strength' | 'hypertrophy' | 'endurance' | 'weight_loss'
@@ -19,4 +19,11 @@ export async function getProfile(uid: string): Promise<UserProfile | null> {
 
 export async function saveProfile(uid: string, profile: UserProfile): Promise<void> {
   await setDoc(doc(db, 'users', uid), profile)
+}
+
+export async function updateProfile(
+  uid: string,
+  data: Partial<Omit<UserProfile, 'createdAt'>>
+): Promise<void> {
+  await updateDoc(doc(db, 'users', uid), data)
 }

@@ -10,7 +10,10 @@ import {
   type WorkoutSummary,
 } from '../lib/workoutService'
 import { exercises as exerciseDb } from '../data/exercises'
+import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
+import BottomNav from '../components/BottomNav'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 const CATEGORY_COLORS: Record<string, string> = {
   chest: '#4D8EFF',
@@ -70,6 +73,7 @@ export default function WorkoutDetailPage() {
   const [workout, setWorkout] = useState<WorkoutSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
@@ -166,22 +170,27 @@ export default function WorkoutDetailPage() {
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('[updateWorkout error]', err)
-      alert(`Błąd zapisu: ${msg}`)
+      toast.error(`Błąd zapisu: ${msg}`)
     } finally {
       setSaving(false)
     }
   }
 
-  async function handleDelete() {
-    if (!workout || !confirm('Usunąć ten trening? Tej operacji nie można cofnąć.')) return
+  async function doDelete() {
+    if (!workout) return
     setDeleting(true)
     try {
       await deleteWorkout(workout.id)
       navigate('/dashboard')
+      toast.success('Trening usunięty')
     } catch {
-      alert('Błąd usuwania. Spróbuj ponownie.')
+      toast.error('Błąd usuwania. Spróbuj ponownie.')
       setDeleting(false)
     }
+  }
+
+  function handleDelete() {
+    setConfirmDeleteOpen(true)
   }
 
   if (loading) return null
@@ -534,6 +543,17 @@ export default function WorkoutDetailPage() {
         <ExercisePicker
           onSelect={handleAddExercise}
           onClose={() => setShowPicker(false)}
+        />
+      )}
+      <BottomNav />
+
+      {confirmDeleteOpen && (
+        <ConfirmDialog
+          message="Usunąć ten trening? Tej operacji nie można cofnąć."
+          confirmLabel="Usuń"
+          danger
+          onConfirm={() => { setConfirmDeleteOpen(false); void doDelete() }}
+          onCancel={() => setConfirmDeleteOpen(false)}
         />
       )}
     </div>

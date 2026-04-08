@@ -8,6 +8,7 @@ const DashboardPage = lazy(() => import('../pages/DashboardPage'))
 const OnboardingPage = lazy(() => import('../pages/OnboardingPage'))
 const WorkoutPage = lazy(() => import('../pages/WorkoutPage'))
 const WorkoutDetailPage = lazy(() => import('../pages/WorkoutDetailPage'))
+const ProfilePage = lazy(() => import('../pages/ProfilePage'))
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore()
@@ -32,6 +33,7 @@ export default function AppRouter() {
           <Route path="/onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
           <Route path="/workout/new" element={<PrivateRoute><WorkoutPage /></PrivateRoute>} />
           <Route path="/workout/:id" element={<PrivateRoute><WorkoutDetailPage /></PrivateRoute>} />
+          <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </Suspense>

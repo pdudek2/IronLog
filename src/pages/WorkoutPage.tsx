@@ -1,20 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
+import { toast } from 'sonner'
 import { useWorkoutStore } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { saveWorkout } from '../lib/workoutService'
 import ExercisePicker from '../components/ExercisePicker'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
 
-function formatDuration(startedAt: number): string {
-  const seconds = Math.floor((Date.now() - startedAt) / 1000)
-  const minutes = Math.floor(seconds / 60)
-  const hours = Math.floor(minutes / 60)
-  if (hours > 0) return `${hours}h ${minutes % 60}m`
-  return `${minutes}m`
+function formatDuration(startedAt: number): { h: string; m: string; s: string } {
+  const total = Math.floor((Date.now() - startedAt) / 1000)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  return {
+    h: String(h).padStart(2, '0'),
+    m: String(m).padStart(2, '0'),
+    s: String(s).padStart(2, '0'),
+  }
 }
 
 export default function WorkoutPage() {
@@ -38,64 +44,135 @@ export default function WorkoutPage() {
   const [saving, setSaving] = useState(false)
   const [, setTick] = useState(0)
   const [saveError, setSaveError] = useState('')
+  const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
 
   useEffect(() => {
     if (!active) startWorkout()
   }, [active, startWorkout])
 
   useEffect(() => {
-    const id = setInterval(() => setTick((tick) => tick + 1), 30_000)
+    const id = setInterval(() => setTick((tick) => tick + 1), 1_000)
     return () => clearInterval(id)
   }, [])
 
-  async function handleFinish() {
+  async function doFinish() {
     if (!active || !user || saving) return
-    const hasSets = active.exercises.some((exercise) => exercise.sets.some((set) => set.done))
-    if (!hasSets && !confirm('Nie zaznaczono żadnych serii. Zakończyć trening?')) return
-
     setSaving(true)
     setSaveError('')
-
     try {
       await saveWorkout(user.uid, active)
       clearWorkout()
       navigate('/dashboard')
+      toast.success('Trening zapisany!')
     } catch {
       setSaveError('Błąd zapisu. Spróbuj ponownie.')
+      toast.error('Błąd zapisu. Spróbuj ponownie.')
       setSaving(false)
     }
   }
 
+  function handleFinish() {
+    if (!active || !user || saving) return
+    const hasSets = active.exercises.some((exercise) => exercise.sets.some((set) => set.done))
+    if (!hasSets) { setConfirmFinishEmpty(true); return }
+    void doFinish()
+  }
+
   function handleDiscard() {
-    if (!confirm('Anulować trening? Dane zostaną utracone.')) return
-    clearWorkout()
-    navigate('/dashboard')
+    setConfirmDiscard(true)
   }
 
   if (!active) return null
 
   const units = profile?.units ?? 'kg'
 
+  const timerStr = (() => {
+    const t = formatDuration(active.startedAt)
+    return t.h !== '00' ? `${t.h}:${t.m}:${t.s}` : `${t.m}:${t.s}`
+  })()
+
+  const LabelChips = ({ className = '' }: { className?: string }) => (
+    <div className={`flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
+      {WORKOUT_LABELS.map((label) => {
+        const isActive = active.label === label
+        return (
+          <motion.button
+            key={label}
+            onClick={() => setLabel(isActive ? '' : label)}
+            className="flex-none text-[11px] font-semibold rounded-full px-3 py-1.5 whitespace-nowrap"
+            style={{
+              backgroundColor: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+              color: isActive ? '#08061A' : 'var(--muted)',
+              border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+            }}
+            whileTap={{ scale: 0.92 }}
+          >
+            {label}
+          </motion.button>
+        )
+      })}
+    </div>
+  )
+
   return (
     <div className="page-shell">
-      <div className="page-container desktop-app-grid">
-        <aside className="desktop-sticky space-y-4">
-          <div className="surface-panel rounded-[2rem] p-5">
-            <div className="mb-4 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: 'var(--accent)' }}>
-                  Active Session
-                </p>
-                <p className="mt-2 text-2xl font-bold text-white">Aktywny trening</p>
-                <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                  {formatDuration(active.startedAt)}
-                </p>
-              </div>
 
-              <div className="hidden gap-2 lg:flex">
+      {/* ── Mobile sticky header ─────────────────── */}
+      <div
+        className="fixed top-0 left-0 right-0 z-40 lg:hidden flex items-center gap-2"
+        style={{
+          paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
+          paddingBottom: '0.75rem',
+          paddingLeft: 'max(1rem, env(safe-area-inset-left, 1rem))',
+          paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
+          background: 'rgba(8,6,26,0.9)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderBottom: '1px solid rgba(128,140,179,0.12)',
+        }}
+      >
+        <span className="text-xl font-bold tabular-nums text-white flex-none">{timerStr}</span>
+        {active.label && (
+          <span
+            className="text-[10px] font-semibold rounded-full px-2 py-0.5 flex-none truncate max-w-[90px]"
+            style={{ background: 'rgba(232,255,87,0.15)', color: 'var(--accent)', border: '1px solid rgba(232,255,87,0.25)' }}
+          >
+            {active.label}
+          </span>
+        )}
+        <div className="flex-1 min-w-0" />
+        <motion.button
+          onClick={handleFinish}
+          disabled={saving}
+          className="flex-none rounded-xl px-5 py-2 text-sm font-bold"
+          style={{ background: 'var(--accent)', color: '#08061A' }}
+          whileTap={{ scale: 0.93 }}
+        >
+          {saving ? '...' : 'Zakończ'}
+        </motion.button>
+      </div>
+
+      <div className="page-container desktop-app-grid pt-[4.5rem] lg:pt-0">
+
+        {/* ── Desktop sidebar only ─────────────────── */}
+        <aside className="hidden lg:block desktop-sticky space-y-4">
+          <div className="surface-panel rounded-[2rem] p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4" style={{ color: 'var(--accent)' }}>
+              Active Session
+            </p>
+
+            <div
+              className="rounded-2xl px-4 py-3 mb-5 flex items-center justify-between"
+              style={{ background: 'rgba(232,255,87,0.06)', border: '1px solid rgba(232,255,87,0.12)' }}
+            >
+              <span className="text-4xl font-bold tabular-nums tracking-tight text-white">
+                {timerStr}
+              </span>
+              <div className="flex gap-2">
                 <button
                   onClick={handleDiscard}
-                  className="rounded-xl px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-70"
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold transition-opacity hover:opacity-70"
                   style={{ background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}
                 >
                   Anuluj
@@ -103,46 +180,24 @@ export default function WorkoutPage() {
                 <button
                   onClick={handleFinish}
                   disabled={saving}
-                  className="rounded-xl px-3 py-2 text-xs font-semibold transition-opacity disabled:opacity-50 hover:opacity-90"
+                  className="rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50 hover:opacity-90"
                   style={{ background: 'var(--accent)', color: '#08061A' }}
                 >
-                  {saving ? 'Zapisywanie...' : 'Zakończ'}
+                  {saving ? '...' : 'Zakończ'}
                 </button>
               </div>
             </div>
 
-            {saveError && (
-              <p className="mb-4 text-xs" style={{ color: '#FF4B4B' }}>{saveError}</p>
-            )}
+            {saveError && <p className="mb-4 text-xs" style={{ color: '#FF4B4B' }}>{saveError}</p>}
 
             <div>
               <p className="mb-3 text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
                 Rodzaj treningu
               </p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
-                {WORKOUT_LABELS.map((label) => {
-                  const isActive = active.label === label
-                  return (
-                    <motion.button
-                      key={label}
-                      onClick={() => setLabel(isActive ? '' : label)}
-                      className="text-xs font-semibold rounded-xl py-2.5 w-full"
-                      style={{
-                        backgroundColor: isActive ? 'var(--accent)' : 'var(--card)',
-                        color: isActive ? '#08061A' : 'var(--muted)',
-                        border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
-                      }}
-                      whileTap={{ scale: 0.92 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                    >
-                      {label}
-                    </motion.button>
-                  )
-                })}
-              </div>
+              <LabelChips className="flex-wrap" />
             </div>
 
-            <div className="mt-5 hidden lg:block">
+            <div className="mt-5">
               <motion.button
                 onClick={() => setShowPicker(true)}
                 className="w-full rounded-[1.4rem] py-3.5 text-sm font-semibold tracking-wide"
@@ -154,29 +209,14 @@ export default function WorkoutPage() {
               </motion.button>
             </div>
           </div>
-
-          <div className="surface-panel rounded-[2rem] p-5 lg:hidden">
-            <div className="flex gap-2">
-              <button
-                onClick={handleDiscard}
-                className="flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-70"
-                style={{ background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-              >
-                Anuluj
-              </button>
-              <button
-                onClick={handleFinish}
-                disabled={saving}
-                className="flex-1 rounded-xl px-3 py-2 text-xs font-semibold transition-opacity disabled:opacity-50 hover:opacity-90"
-                style={{ background: 'var(--accent)', color: '#08061A' }}
-              >
-                {saving ? 'Zapisywanie...' : 'Zakończ'}
-              </button>
-            </div>
-          </div>
         </aside>
 
         <main className="min-w-0 pb-28 lg:pb-0">
+          {/* Mobile label chips */}
+          <div className="lg:hidden mb-4">
+            <LabelChips />
+          </div>
+
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
@@ -208,23 +248,18 @@ export default function WorkoutPage() {
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.3, ease: 'easeOut' }}
                 >
-                  <div className="mb-4 flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>{exercise.name}</p>
-                      <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                        Uzupełniaj ciężar i powtórzenia, potem oznacz set jako wykonany.
-                      </p>
-                    </div>
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold" style={{ color: 'var(--accent)' }}>{exercise.name}</p>
                     <button
                       onClick={() => removeExercise(exerciseIndex)}
-                      className="text-xs transition-opacity hover:opacity-70"
+                      className="flex-none text-xs transition-opacity hover:opacity-70"
                       style={{ color: 'var(--muted)' }}
                     >
                       Usuń
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-[1.75rem_1fr_1fr_1.75rem] gap-1.5 mb-1">
+                  <div className="grid grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] gap-1.5 mb-1">
                     <span className="text-xs text-center" style={{ color: 'var(--muted)' }}>#</span>
                     <span className="text-xs text-center" style={{ color: 'var(--muted)' }}>{units}</span>
                     <span className="text-xs text-center" style={{ color: 'var(--muted)' }}>Powt.</span>
@@ -232,7 +267,7 @@ export default function WorkoutPage() {
                   </div>
 
                   {exercise.sets.map((set, setIndex) => (
-                    <div key={setIndex} className="grid grid-cols-[1.75rem_1fr_1fr_1.75rem] gap-1.5 mb-2 items-center">
+                    <div key={setIndex} className="grid grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] gap-1.5 mb-2 items-center">
                       <motion.button
                         onClick={() => toggleSetDone(exerciseIndex, setIndex)}
                         className="w-7 h-7 rounded-md text-xs font-bold"
@@ -311,6 +346,25 @@ export default function WorkoutPage() {
             setShowPicker(false)
           }}
           onClose={() => setShowPicker(false)}
+        />
+      )}
+
+      {confirmDiscard && (
+        <ConfirmDialog
+          message="Anulować trening? Wszystkie dane sesji zostaną utracone."
+          confirmLabel="Anuluj trening"
+          danger
+          onConfirm={() => { clearWorkout(); navigate('/dashboard') }}
+          onCancel={() => setConfirmDiscard(false)}
+        />
+      )}
+
+      {confirmFinishEmpty && (
+        <ConfirmDialog
+          message="Nie zaznaczono żadnych serii jako wykonanych. Zakończyć i zapisać trening?"
+          confirmLabel="Zapisz"
+          onConfirm={() => { setConfirmFinishEmpty(false); void doFinish() }}
+          onCancel={() => setConfirmFinishEmpty(false)}
         />
       )}
     </div>

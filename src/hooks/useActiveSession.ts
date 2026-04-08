@@ -65,6 +65,11 @@ export function useActiveSession(uid: string | null) {
           }
         } else if (!current) {
           startWorkout()
+          const createdSession = useWorkoutStore.getState().active
+          activeRef.current = createdSession
+          if (createdSession) {
+            void saveActiveSession(currentUid, createdSession).catch(console.error)
+          }
         } else {
           void saveActiveSession(currentUid, current).catch(console.error)
         }

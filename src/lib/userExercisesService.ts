@@ -1,6 +1,13 @@
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import { addDoc, collection, getDocs, query, where } from 'firebase/firestore'
 import { db } from './firebase'
-import type { Exercise } from '../data/exercises'
+import type { Category, Equipment, Exercise, MuscleGroup } from '../data/exercises'
+
+export interface UserExerciseInput {
+  name: string
+  category: Category
+  equipment: Equipment
+  muscles: MuscleGroup[]
+}
 
 export async function getUserExercises(uid: string): Promise<Exercise[]> {
   const snap = await getDocs(
@@ -16,4 +23,15 @@ export async function getUserExercises(uid: string): Promise<Exercise[]> {
       muscles: Array.isArray(d.muscles) ? d.muscles : [],
     } as Exercise
   })
+}
+
+export async function createUserExercise(uid: string, input: UserExerciseInput): Promise<Exercise> {
+  const docRef = await addDoc(collection(db, 'userExercises'), {
+    userId: uid,
+    name: input.name,
+    category: input.category,
+    equipment: input.equipment,
+    muscles: input.muscles,
+  })
+  return { id: docRef.id, ...input }
 }

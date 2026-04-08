@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LayoutDashboard, Plus, User } from 'lucide-react'
+import { Dumbbell, LayoutDashboard, Plus, User } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 interface NavBtnProps {
@@ -59,9 +59,16 @@ export default function BottomNav() {
           onClick={() => navigate('/dashboard')}
         />
 
+        <NavBtn
+          icon={<Dumbbell size={20} />}
+          label="Ćwiczenia"
+          active={path.startsWith('/exercises')}
+          onClick={() => navigate('/exercises')}
+        />
+
         <motion.button
           onClick={() => navigate('/workout/new')}
-          className="mx-3 flex h-12 w-12 flex-none items-center justify-center rounded-2xl"
+          className="mx-2 flex h-12 w-12 flex-none items-center justify-center rounded-2xl"
           style={{ background: 'var(--accent)', color: '#08061A' }}
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}

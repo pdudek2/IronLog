@@ -105,6 +105,19 @@ export function useActiveSession(uid: string | null) {
       },
       (error) => {
         console.error('[activeSession subscribe error]', error)
+        const current = useWorkoutStore.getState().active
+        const backup = readActiveSessionBackup(currentUid)
+
+        if (!current && backup) {
+          activeRef.current = backup
+          hydrateFromDoc(backup)
+        } else if (!current && !backup) {
+          startWorkout()
+          const createdSession = useWorkoutStore.getState().active
+          activeRef.current = createdSession
+          if (createdSession) writeActiveSessionBackup(currentUid, createdSession)
+        }
+
         setReady(true)
       },
     )

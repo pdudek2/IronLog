@@ -6,9 +6,13 @@ import { useWorkoutStore } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { saveWorkout } from '../lib/workoutService'
+import { loadActiveSession } from '../lib/activeSessionService'
+import { getUserExercises } from '../lib/userExercisesService'
+import { useActiveSession } from '../hooks/useActiveSession'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
+import type { Exercise } from '../data/exercises'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
 
@@ -61,6 +65,7 @@ export default function WorkoutPage() {
   const {
     active,
     startWorkout,
+    hydrateFromDoc,
     setLabel,
     addExercise,
     addSet,
@@ -72,16 +77,44 @@ export default function WorkoutPage() {
   } = useWorkoutStore()
   const navigate = useNavigate()
 
+  // Must be declared before init useEffect so the subscription is active
+  // before any store mutations happen during initialization.
+  const { clearSession } = useActiveSession(user?.uid ?? null)
+
+  // True when no in-memory session exists yet — avoids setState in effect body
+  const [initializing, setInitializing] = useState(() => useWorkoutStore.getState().active === null)
   const [showPicker, setShowPicker] = useState(false)
   const [saving, setSaving] = useState(false)
   const [, setTick] = useState(0)
   const [saveError, setSaveError] = useState('')
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
+  const [userExercises, setUserExercises] = useState<Exercise[]>([])
 
+  // Load user's custom exercises for the picker
   useEffect(() => {
-    if (!active) startWorkout()
-  }, [active, startWorkout])
+    if (!user) return
+    getUserExercises(user.uid).then(setUserExercises).catch(() => {})
+  }, [user])
+
+  // Init: recover from Firestore or start a new session
+  useEffect(() => {
+    if (!user) return
+
+    // Already have an in-memory session (navigated back without refreshing)
+    if (useWorkoutStore.getState().active) return
+
+    loadActiveSession(user.uid)
+      .then((session) => {
+        if (session) {
+          hydrateFromDoc(session)
+        } else {
+          startWorkout()
+        }
+      })
+      .catch(() => startWorkout())
+      .finally(() => setInitializing(false))
+  }, [user, hydrateFromDoc, startWorkout])
 
   useEffect(() => {
     const id = setInterval(() => setTick((tick) => tick + 1), 1_000)
@@ -94,7 +127,10 @@ export default function WorkoutPage() {
     setSaveError('')
     try {
       await saveWorkout(user.uid, active)
+      // clearWorkout() must come before clearSession() so the debounce timer
+      // is cancelled synchronously before we delete the Firestore document.
       clearWorkout()
+      await clearSession()
       navigate('/dashboard')
       toast.success('Trening zapisany!')
     } catch {
@@ -115,7 +151,13 @@ export default function WorkoutPage() {
     setConfirmDiscard(true)
   }
 
-  if (!active) return <LoadingState message="Przygotowuję trening..." />
+  async function handleConfirmDiscard() {
+    clearWorkout()
+    await clearSession()
+    navigate('/dashboard')
+  }
+
+  if (initializing || !active) return <LoadingState message="Przygotowuję trening..." />
 
   const units = profile?.units ?? 'kg'
 
@@ -357,11 +399,12 @@ export default function WorkoutPage() {
 
       {showPicker && (
         <ExercisePicker
-          onSelect={(id, name) => {
-            addExercise(id, name)
+          onSelect={(id, name, source) => {
+            addExercise(id, name, source)
             setShowPicker(false)
           }}
           onClose={() => setShowPicker(false)}
+          userExercises={userExercises}
         />
       )}
 
@@ -370,7 +413,7 @@ export default function WorkoutPage() {
           message="Anulować trening? Wszystkie dane sesji zostaną utracone."
           confirmLabel="Anuluj trening"
           danger
-          onConfirm={() => { clearWorkout(); navigate('/dashboard') }}
+          onConfirm={() => { setConfirmDiscard(false); void handleConfirmDiscard() }}
           onCancel={() => setConfirmDiscard(false)}
         />
       )}

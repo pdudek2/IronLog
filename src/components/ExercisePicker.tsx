@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react'
-import { searchExercises, type Category } from '../data/exercises'
+import { searchExercises, type Category, type Exercise } from '../data/exercises'
+import type { ExerciseSource } from '../store/workoutStore'
 import { useDialogA11y } from '../hooks/useDialogA11y'
 
 const CATEGORIES: { value: Category | 'all'; label: string }[] = [
@@ -13,19 +14,34 @@ const CATEGORIES: { value: Category | 'all'; label: string }[] = [
   { value: 'cardio',    label: 'Cardio' },
 ]
 
+type SearchResult = Exercise & { source: ExerciseSource }
+
 interface Props {
-  onSelect: (exerciseId: string, name: string) => void
+  onSelect: (exerciseId: string, name: string, source: ExerciseSource) => void
   onClose: () => void
+  userExercises?: Exercise[]
 }
 
-export default function ExercisePicker({ onSelect, onClose }: Props) {
+export default function ExercisePicker({ onSelect, onClose, userExercises = [] }: Props) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
   const dialogRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
 
-  const results = searchExercises(query, category === 'all' ? undefined : category)
+  const globalResults: SearchResult[] = searchExercises(query, category === 'all' ? undefined : category)
+    .map((ex) => ({ ...ex, source: 'global' as const }))
+
+  const q = query.toLowerCase()
+  const userResults: SearchResult[] = userExercises
+    .filter((ex) => {
+      const matchesQuery = !q || ex.name.toLowerCase().includes(q)
+      const matchesCategory = category === 'all' || ex.category === category
+      return matchesQuery && matchesCategory
+    })
+    .map((ex) => ({ ...ex, source: 'user' as const }))
+
+  const results = [...userResults, ...globalResults]
 
   useDialogA11y({
     containerRef: dialogRef,
@@ -112,15 +128,25 @@ export default function ExercisePicker({ onSelect, onClose }: Props) {
             <div className="grid gap-2 sm:grid-cols-2">
               {results.map((ex) => (
                 <button
-                  key={ex.id}
-                  onClick={() => onSelect(ex.id, ex.name)}
+                  key={`${ex.source}-${ex.id}`}
+                  onClick={() => onSelect(ex.id, ex.name, ex.source)}
                   className="w-full rounded-[1.25rem] px-4 py-4 text-left transition-transform hover:-translate-y-0.5"
                   style={{
                     background: 'rgba(255, 255, 255, 0.03)',
-                    border: '1px solid var(--border)',
+                    border: `1px solid ${ex.source === 'user' ? 'rgba(232,255,87,0.25)' : 'var(--border)'}`,
                   }}
                 >
-                  <p className="text-sm font-medium text-white">{ex.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-white">{ex.name}</p>
+                    {ex.source === 'user' && (
+                      <span
+                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                        style={{ background: 'rgba(232,255,87,0.15)', color: 'var(--accent)' }}
+                      >
+                        moje
+                      </span>
+                    )}
+                  </div>
                   <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
                     {ex.equipment} · {ex.muscles.join(', ')}
                   </p>

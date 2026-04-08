@@ -1,7 +1,7 @@
 import { adminDb } from './firebaseAdmin.js'
 import { exercises as exerciseCatalog } from '../../src/data/exercises.js'
 
-type ExerciseSource = 'global'
+type ExerciseSource = 'global' | 'user'
 
 interface WorkoutSet {
   weight: number
@@ -10,6 +10,7 @@ interface WorkoutSet {
 
 interface WorkoutExercise {
   exerciseId: string
+  exerciseSource: ExerciseSource
   name: string
   sets: WorkoutSet[]
 }
@@ -180,10 +181,11 @@ function sanitizeExercises(raw: unknown): WorkoutExercise[] {
     const exerciseId = typeof record.exerciseId === 'string' ? record.exerciseId.trim() : ''
     const name = typeof record.name === 'string' ? record.name.trim() : ''
     const sets = sanitizeSets(record.sets)
+    const exerciseSource: ExerciseSource = record.exerciseSource === 'user' ? 'user' : 'global'
 
     if (!exerciseId || !name || sets.length === 0) return []
 
-    return [{ exerciseId, name, sets }]
+    return [{ exerciseId, exerciseSource, name, sets }]
   })
 }
 
@@ -251,14 +253,14 @@ function buildExerciseSessions(workoutId: string, workout: StoredWorkout): Exerc
     })
 
     return {
-      id: buildExerciseSessionId(workoutId, exercise.exerciseId, index),
+      id: buildExerciseSessionId(workoutId, exercise.exerciseSource, exercise.exerciseId, index),
       userId: workout.userId,
       workoutId,
       startedAt: workout.startedAt,
       finishedAt: workout.finishedAt,
       label: workout.label,
       exerciseId: exercise.exerciseId,
-      exerciseSource: 'global',
+      exerciseSource: exercise.exerciseSource,
       exerciseName: exercise.name,
       orderIndex: index,
       totalSets: exercise.sets.length,
@@ -266,16 +268,16 @@ function buildExerciseSessions(workoutId: string, workout: StoredWorkout): Exerc
       totalVolume: totals.totalVolume,
       bestSetWeight: totals.bestSet.weight,
       bestSetReps: totals.bestSet.reps,
-      category: metadata?.category ?? null,
-      equipment: metadata?.equipment ?? null,
-      muscleGroups: metadata?.muscles ?? [],
+      category: exercise.exerciseSource === 'global' ? (metadata?.category ?? null) : null,
+      equipment: exercise.exerciseSource === 'global' ? (metadata?.equipment ?? null) : null,
+      muscleGroups: exercise.exerciseSource === 'global' ? (metadata?.muscles ?? []) : [],
       sets: exercise.sets,
     }
   })
 }
 
-function buildExerciseSessionId(workoutId: string, exerciseId: string, orderIndex: number): string {
-  return `${workoutId}_global_${exerciseId}_${orderIndex}`
+function buildExerciseSessionId(workoutId: string, exerciseSource: ExerciseSource, exerciseId: string, orderIndex: number): string {
+  return `${workoutId}_${exerciseSource}_${exerciseId}_${orderIndex}`
 }
 
 async function listExerciseSessionsForWorkout(workoutId: string): Promise<ExerciseSessionDoc[]> {

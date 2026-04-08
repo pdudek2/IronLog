@@ -10,6 +10,10 @@ import {
   type WorkoutSummary,
 } from '../lib/workoutService'
 import { exercises as exerciseDb } from '../data/exercises'
+import { getUserExercises } from '../lib/userExercisesService'
+import { useAuthStore } from '../store/authStore'
+import type { Exercise } from '../data/exercises'
+import type { ExerciseSource } from '../store/workoutStore'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import BottomNav from '../components/BottomNav'
@@ -63,6 +67,7 @@ function formatDuration(start: number, end: number): string {
 function cloneExercises(exercises: WorkoutSummary['exercises']): WorkoutSummary['exercises'] {
   return exercises.map((exercise) => ({
     ...(exercise.exerciseId !== undefined && { exerciseId: exercise.exerciseId }),
+    exerciseSource: exercise.exerciseSource ?? 'global',
     name: exercise.name,
     sets: exercise.sets.map((set) => ({ weight: set.weight, reps: set.reps })),
   }))
@@ -71,7 +76,9 @@ function cloneExercises(exercises: WorkoutSummary['exercises']): WorkoutSummary[
 export default function WorkoutDetailPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user } = useAuthStore()
   const [workout, setWorkout] = useState<WorkoutSummary | null>(null)
+  const [userExercises, setUserExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState(false)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
@@ -89,6 +96,11 @@ export default function WorkoutDetailPage() {
     })
   }, [id])
 
+  useEffect(() => {
+    if (!user) return
+    getUserExercises(user.uid).then(setUserExercises).catch(() => {})
+  }, [user])
+
   function handleStartEditing() {
     if (!workout) return
     setEditedLabel(workout.label ?? '')
@@ -104,14 +116,10 @@ export default function WorkoutDetailPage() {
     setIsEditing(false)
   }
 
-  function handleAddExercise(exerciseId: string, name: string) {
+  function handleAddExercise(exerciseId: string, name: string, source: ExerciseSource) {
     setEditedExercises((prev) => [
       ...prev,
-      {
-        ...(exerciseId !== undefined && { exerciseId }),
-        name,
-        sets: [{ weight: 0, reps: 0 }],
-      },
+      { exerciseId, exerciseSource: source, name, sets: [{ weight: 0, reps: 0 }] },
     ])
     setShowPicker(false)
   }
@@ -551,6 +559,7 @@ export default function WorkoutDetailPage() {
         <ExercisePicker
           onSelect={handleAddExercise}
           onClose={() => setShowPicker(false)}
+          userExercises={userExercises}
         />
       )}
       <BottomNav />

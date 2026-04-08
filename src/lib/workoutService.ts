@@ -9,7 +9,7 @@ import {
   query,
   where,
 } from 'firebase/firestore'
-import type { ActiveWorkout } from '../store/workoutStore'
+import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
 import { auth, db } from './firebase'
 
 interface WorkoutSetSummary {
@@ -19,6 +19,7 @@ interface WorkoutSetSummary {
 
 interface WorkoutExerciseSummary {
   exerciseId?: string
+  exerciseSource?: ExerciseSource
   name: string
   sets: WorkoutSetSummary[]
 }
@@ -129,6 +130,7 @@ function buildWorkoutPayload(uid: string, workout: ActiveWorkout) {
     label: workout.label?.trim() ? workout.label : null,
     exercises: workout.exercises.map((exercise) => ({
       exerciseId: exercise.exerciseId,
+      exerciseSource: exercise.exerciseSource,
       name: exercise.name,
       sets: exercise.sets
         .filter((set) => set.done && set.reps !== '')
@@ -166,8 +168,11 @@ function sanitizeWorkoutExercises(raw: unknown): WorkoutExerciseSummary[] {
 
     if (!name || sets.length === 0) return []
 
+    const exerciseSource: ExerciseSource = record.exerciseSource === 'user' ? 'user' : 'global'
+
     return [{
       ...(exerciseId ? { exerciseId } : {}),
+      exerciseSource,
       name,
       sets,
     }]

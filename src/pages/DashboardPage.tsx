@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2 } from 'lucide-react'
@@ -102,6 +102,7 @@ export default function DashboardPage() {
   const [streak, setStreak] = useState(0)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const workoutsRef = useRef<WorkoutSummary[]>([])
 
   useEffect(() => {
     if (!user) return
@@ -119,10 +120,19 @@ export default function DashboardPage() {
   async function fetchData(uid: string) {
     const all = await getRecentWorkouts(uid, 50)
     setWorkouts(all.slice(0, 10))
+    workoutsRef.current = all
     setWeeklyDone(countWeeklyWorkouts(all))
     setStreak(calcStreak(all))
     void retryPendingMaterializations(all)
   }
+
+  useEffect(() => {
+    function handleOnline() {
+      void retryPendingMaterializations(workoutsRef.current)
+    }
+    window.addEventListener('online', handleOnline)
+    return () => window.removeEventListener('online', handleOnline)
+  }, [])
 
   function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation()

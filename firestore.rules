@@ -69,6 +69,10 @@ service cloud.firestore {
       allow read, update, delete: if ownsDoc() && keepsOwner();
     }
 
+    match /activeSessions/{uid} {
+      allow read, write: if signedIn() && currentUid() == uid;
+    }
+
     match /users/{id} {
       allow read, write: if signedIn() && currentUid() == id;
     }

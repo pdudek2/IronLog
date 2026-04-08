@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+
+export type ExerciseSource = 'global' | 'user'
 
 export interface WorkoutSet {
   weight: string
@@ -9,6 +10,7 @@ export interface WorkoutSet {
 
 export interface WorkoutExercise {
   exerciseId: string
+  exerciseSource: ExerciseSource
   name: string
   sets: WorkoutSet[]
 }
@@ -22,8 +24,9 @@ export interface ActiveWorkout {
 interface WorkoutState {
   active: ActiveWorkout | null
   startWorkout: () => void
+  hydrateFromDoc: (workout: ActiveWorkout) => void
   setLabel: (label: string) => void
-  addExercise: (exerciseId: string, name: string) => void
+  addExercise: (exerciseId: string, name: string, source: ExerciseSource) => void
   addSet: (exerciseIndex: number) => void
   removeSet: (exerciseIndex: number, setIndex: number) => void
   updateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void
@@ -34,22 +37,25 @@ interface WorkoutState {
 
 const emptySet = (): WorkoutSet => ({ weight: '', reps: '', done: false })
 
-export const useWorkoutStore = create<WorkoutState>()(persist((set) => ({
+export const useWorkoutStore = create<WorkoutState>()((set) => ({
   active: null,
 
   startWorkout: () =>
     set({ active: { startedAt: Date.now(), exercises: [] } }),
 
+  hydrateFromDoc: (workout) =>
+    set({ active: workout }),
+
   setLabel: (label) =>
     set((s) => s.active ? { active: { ...s.active, label } } : s),
 
-  addExercise: (exerciseId, name) =>
+  addExercise: (exerciseId, name, source) =>
     set((s) => {
       if (!s.active) return s
       return {
         active: {
           ...s.active,
-          exercises: [...s.active.exercises, { exerciseId, name, sets: [emptySet()] }],
+          exercises: [...s.active.exercises, { exerciseId, exerciseSource: source, name, sets: [emptySet()] }],
         },
       }
     }),
@@ -118,4 +124,4 @@ export const useWorkoutStore = create<WorkoutState>()(persist((set) => ({
     }),
 
   clearWorkout: () => set({ active: null }),
-}), { name: 'ironlog-active-workout' }))
+}))

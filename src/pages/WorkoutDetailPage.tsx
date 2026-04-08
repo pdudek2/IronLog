@@ -14,6 +14,7 @@ import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import BottomNav from '../components/BottomNav'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { LoadingState } from '../components/ui'
 
 const CATEGORY_COLORS: Record<string, string> = {
   chest: '#4D8EFF',
@@ -193,7 +194,7 @@ export default function WorkoutDetailPage() {
     setConfirmDeleteOpen(true)
   }
 
-  if (loading) return null
+  if (loading) return <LoadingState message="Ładowanie treningu..." />
 
   if (!workout) {
     return (
@@ -293,7 +294,7 @@ export default function WorkoutDetailPage() {
           </button>
           <div>
             <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-              Workout detail
+              Szczegóły treningu
             </p>
             <p className="mt-1 text-sm font-semibold text-white">Szczegóły treningu</p>
           </div>
@@ -372,10 +373,10 @@ export default function WorkoutDetailPage() {
             </motion.div>
           </aside>
 
-          <main className="min-w-0">
+          <main className="min-w-0 pb-44 lg:pb-0">
             <div className="mb-4">
               <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-                Logged exercises
+                Ćwiczenia z sesji
               </p>
               <h3 className="mt-2 text-2xl font-bold text-white">Rozpiska sesji</h3>
             </div>
@@ -526,16 +527,23 @@ export default function WorkoutDetailPage() {
               </div>
             )}
 
-            <div className="mt-8 lg:hidden">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.4 }}
-              >
-                {actionButtons}
-              </motion.div>
-            </div>
           </main>
+        </div>
+      </div>
+
+      <div
+        className="fixed left-0 right-0 z-40 px-4 lg:hidden"
+        style={{ bottom: 'calc(6.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
+        <div className="mx-auto w-full max-w-sm">
+          <motion.div
+            className="surface-panel rounded-[1.75rem] p-3"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+          >
+            {actionButtons}
+          </motion.div>
         </div>
       </div>
 

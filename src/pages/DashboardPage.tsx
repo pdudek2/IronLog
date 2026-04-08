@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { logoutUser } from '../lib/auth'
 import BottomNav from '../components/BottomNav'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { LoadingState } from '../components/ui'
 import { getProfile } from '../lib/userProfile'
 import {
   getRecentWorkouts, deleteWorkout, retryPendingMaterializations, countWeeklyWorkouts,
@@ -143,7 +144,7 @@ export default function DashboardPage() {
     }
   }
 
-  if (loading) return null
+  if (loading) return <LoadingState message="Ładowanie dashboardu..." />
 
   const weeklyGoal = profile?.weeklyGoal ?? 3
   const progressPct = Math.min((weeklyDone / weeklyGoal) * 100, 100)
@@ -275,7 +276,7 @@ export default function DashboardPage() {
 
             <motion.div className="surface-panel rounded-[2rem] p-5" {...fadeUp(0.12)}>
               <p className="mb-2 text-[10px] uppercase tracking-[0.28em]" style={{ color: 'var(--accent)' }}>
-                Quick Start
+                Szybki start
               </p>
               <p className="mb-5 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                 Zacznij nowy trening bez wracania do listy i utrzymaj tempo wejścia do aplikacji.
@@ -397,11 +398,17 @@ export default function DashboardPage() {
 
                           <motion.button
                             onClick={(e) => handleDelete(workout.id, e)}
-                            className="flex-none p-1.5 rounded-lg"
-                            style={{ color: '#FF5757', opacity: 0.25 }}
+                            className="flex-none rounded-lg p-1.5"
+                            style={{
+                              color: '#FF5757',
+                              opacity: 0.72,
+                              background: 'rgba(255,87,87,0.08)',
+                              border: '1px solid rgba(255,87,87,0.12)',
+                            }}
                             whileHover={{ opacity: 1 }}
                             whileTap={{ scale: 0.85 }}
                             disabled={deletingId === workout.id}
+                            aria-label="Usuń trening"
                           >
                             <Trash2 size={13} />
                           </motion.button>

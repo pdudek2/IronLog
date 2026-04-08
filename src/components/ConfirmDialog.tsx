@@ -1,4 +1,6 @@
+import { useId, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useDialogA11y } from '../hooks/useDialogA11y'
 
 interface ConfirmDialogProps {
   message: string
@@ -17,6 +19,16 @@ export default function ConfirmDialog({
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const cancelButtonRef = useRef<HTMLButtonElement>(null)
+  const titleId = useId()
+
+  useDialogA11y({
+    containerRef: dialogRef,
+    onClose: onCancel,
+    initialFocusRef: cancelButtonRef,
+  })
+
   return (
     <AnimatePresence>
       <motion.div
@@ -35,6 +47,7 @@ export default function ConfirmDialog({
 
         {/* Panel */}
         <motion.div
+          ref={dialogRef}
           className="relative z-10 w-full max-w-sm rounded-[2rem] p-6"
           style={{
             background: 'linear-gradient(180deg, rgba(34,31,67,0.98) 0%, rgba(18,17,37,0.99) 100%)',
@@ -46,11 +59,19 @@ export default function ConfirmDialog({
           exit={{ y: 20, opacity: 0, scale: 0.96 }}
           transition={{ type: 'spring', stiffness: 420, damping: 30 }}
           onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          tabIndex={-1}
         >
+          <p id={titleId} className="mb-2 text-base font-semibold text-white">
+            Potwierdź akcję
+          </p>
           <p className="mb-6 text-sm leading-relaxed text-white">{message}</p>
 
           <div className="flex gap-3">
             <button
+              ref={cancelButtonRef}
               onClick={onCancel}
               className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
               style={{

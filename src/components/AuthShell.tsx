@@ -21,7 +21,7 @@ const FEATURES = [
   },
   {
     icon: Sparkles,
-    title: 'Coach AI',
+    title: 'Trener AI',
     description: 'Architektura gotowa pod kontekst treningowy i rekomendacje.',
   },
 ] as const
@@ -46,14 +46,14 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
             <div>
               <p className="text-lg font-bold text-white">IronLog</p>
               <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                Strength tracking with AI coaching
+                Dziennik siłowy z inteligentnym coachingiem
               </p>
             </div>
           </div>
 
           <div className="mb-10 max-w-xl">
             <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ color: 'var(--accent)' }}>
-              Train With Intent
+              Trenuj świadomie
             </p>
             <h2 className="text-4xl font-bold leading-tight text-white xl:text-5xl">
               Rejestruj treningi szybko. Analizuj progres czytelnie.

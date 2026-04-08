@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { registerUser } from '../lib/auth'
 import AuthShell from '../components/AuthShell'
+import { Button, Input } from '../components/ui'
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('')
@@ -22,22 +23,6 @@ export default function RegisterPage() {
     }
   }
 
-  const inputStyle = {
-    background: 'var(--input-bg)',
-    border: '1px solid var(--border)',
-  }
-
-  const focusHandlers = {
-    onFocus: (e: React.FocusEvent<HTMLInputElement>) => {
-      e.currentTarget.style.border = '1px solid rgba(232,255,87,0.35)'
-      e.currentTarget.style.boxShadow = '0 0 0 3px rgba(232,255,87,0.08)'
-    },
-    onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
-      e.currentTarget.style.border = '1px solid var(--border)'
-      e.currentTarget.style.boxShadow = 'none'
-    },
-  }
-
   return (
     <AuthShell
       title="Utwórz konto"
@@ -50,48 +35,37 @@ export default function RegisterPage() {
         </>
       )}
     >
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Email</label>
-            <input
-              type="email"
-              placeholder="user@mail.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="px-4 py-3 rounded-lg text-sm text-white outline-none transition-all"
-              style={inputStyle}
-              {...focusHandlers}
-            />
-          </div>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Email</label>
+          <Input
+            type="email"
+            placeholder="user@mail.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
 
-          <div className="flex flex-col gap-1">
-            <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
-            <input
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="px-4 py-3 rounded-lg text-sm text-white outline-none transition-all"
-              style={inputStyle}
-              {...focusHandlers}
-            />
-            <span className="text-xs" style={{ color: 'var(--muted)' }}>Minimum 6 znaków</span>
-          </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
+          <Input
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            minLength={6}
+          />
+          <span className="text-xs" style={{ color: 'var(--muted)' }}>Minimum 6 znaków</span>
+        </div>
 
-          {error && <p className="text-sm" style={{ color: '#FF4B4B' }}>{error}</p>}
+        {error && <p className="text-sm" style={{ color: '#FF4B4B' }}>{error}</p>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="mt-2 py-3 rounded-lg font-semibold text-sm tracking-wide transition-opacity disabled:opacity-50 hover:opacity-90"
-            style={{ background: 'var(--accent)', color: '#08061A' }}
-          >
-            {loading ? 'Tworzenie konta...' : 'Zarejestruj się'}
-          </button>
-        </form>
+        <Button type="submit" loading={loading} className="mt-2 w-full">
+          Zarejestruj się
+        </Button>
+      </form>
     </AuthShell>
   )
 }

@@ -8,8 +8,40 @@ import { useProfileStore } from '../store/profileStore'
 import { saveWorkout } from '../lib/workoutService'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { LoadingState } from '../components/ui'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
+
+interface LabelChipsProps {
+  activeLabel: string
+  onToggle: (label: string) => void
+  className?: string
+}
+
+function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) {
+  return (
+    <div className={`flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
+      {WORKOUT_LABELS.map((label) => {
+        const isActive = activeLabel === label
+        return (
+          <motion.button
+            key={label}
+            onClick={() => onToggle(label)}
+            className="flex-none whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-semibold"
+            style={{
+              backgroundColor: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
+              color: isActive ? '#08061A' : 'var(--muted)',
+              border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+            }}
+            whileTap={{ scale: 0.92 }}
+          >
+            {label}
+          </motion.button>
+        )
+      })}
+    </div>
+  )
+}
 
 function formatDuration(startedAt: number): { h: string; m: string; s: string } {
   const total = Math.floor((Date.now() - startedAt) / 1000)
@@ -83,7 +115,7 @@ export default function WorkoutPage() {
     setConfirmDiscard(true)
   }
 
-  if (!active) return null
+  if (!active) return <LoadingState message="Przygotowuję trening..." />
 
   const units = profile?.units ?? 'kg'
 
@@ -91,29 +123,6 @@ export default function WorkoutPage() {
     const t = formatDuration(active.startedAt)
     return t.h !== '00' ? `${t.h}:${t.m}:${t.s}` : `${t.m}:${t.s}`
   })()
-
-  const LabelChips = ({ className = '' }: { className?: string }) => (
-    <div className={`flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
-      {WORKOUT_LABELS.map((label) => {
-        const isActive = active.label === label
-        return (
-          <motion.button
-            key={label}
-            onClick={() => setLabel(isActive ? '' : label)}
-            className="flex-none text-[11px] font-semibold rounded-full px-3 py-1.5 whitespace-nowrap"
-            style={{
-              backgroundColor: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
-              color: isActive ? '#08061A' : 'var(--muted)',
-              border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
-            }}
-            whileTap={{ scale: 0.92 }}
-          >
-            {label}
-          </motion.button>
-        )
-      })}
-    </div>
-  )
 
   return (
     <div className="page-shell">
@@ -158,9 +167,9 @@ export default function WorkoutPage() {
         {/* ── Desktop sidebar only ─────────────────── */}
         <aside className="hidden lg:block desktop-sticky space-y-4">
           <div className="surface-panel rounded-[2rem] p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4" style={{ color: 'var(--accent)' }}>
-              Active Session
-            </p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4" style={{ color: 'var(--accent)' }}>
+                  Aktywna sesja
+                </p>
 
             <div
               className="rounded-2xl px-4 py-3 mb-5 flex items-center justify-between"
@@ -194,7 +203,11 @@ export default function WorkoutPage() {
               <p className="mb-3 text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
                 Rodzaj treningu
               </p>
-              <LabelChips className="flex-wrap" />
+              <LabelChips
+                activeLabel={active.label ?? ''}
+                onToggle={(label) => setLabel(active.label === label ? '' : label)}
+                className="flex-wrap"
+              />
             </div>
 
             <div className="mt-5">
@@ -214,13 +227,16 @@ export default function WorkoutPage() {
         <main className="min-w-0 pb-28 lg:pb-0">
           {/* Mobile label chips */}
           <div className="lg:hidden mb-4">
-            <LabelChips />
+            <LabelChips
+              activeLabel={active.label ?? ''}
+              onToggle={(label) => setLabel(active.label === label ? '' : label)}
+            />
           </div>
 
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-                Exercises
+                Ćwiczenia
               </p>
               <h2 className="mt-2 text-2xl font-bold text-white">Bieżąca rozpiska</h2>
             </div>

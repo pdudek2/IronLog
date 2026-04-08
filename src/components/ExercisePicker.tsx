@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { searchExercises, type Category } from '../data/exercises'
+import { useDialogA11y } from '../hooks/useDialogA11y'
 
 const CATEGORIES: { value: Category | 'all'; label: string }[] = [
   { value: 'all',       label: 'Wszystkie' },
@@ -20,8 +21,17 @@ interface Props {
 export default function ExercisePicker({ onSelect, onClose }: Props) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const titleId = useId()
 
   const results = searchExercises(query, category === 'all' ? undefined : category)
+
+  useDialogA11y({
+    containerRef: dialogRef,
+    onClose,
+    initialFocusRef: searchInputRef,
+  })
 
   return (
     <div
@@ -30,8 +40,13 @@ export default function ExercisePicker({ onSelect, onClose }: Props) {
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         className="surface-panel flex h-[100dvh] w-full flex-col overflow-hidden rounded-t-[2rem] sm:mx-auto sm:h-[min(42rem,calc(100dvh-3rem))] sm:max-w-3xl sm:rounded-[2rem]"
         onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
       >
         {/* Header */}
         <div
@@ -42,10 +57,16 @@ export default function ExercisePicker({ onSelect, onClose }: Props) {
             onClick={onClose}
             className="text-sm transition-opacity hover:opacity-70"
             style={{ color: 'var(--muted)' }}
+            aria-label="Zamknij wybór ćwiczenia"
           >
             ✕
           </button>
+          <div className="min-w-0 flex-1">
+            <p id={titleId} className="mb-1 text-sm font-semibold text-white">
+              Wybierz ćwiczenie
+            </p>
           <input
+            ref={searchInputRef}
             autoFocus
             type="text"
             placeholder="Szukaj ćwiczenia..."
@@ -54,6 +75,7 @@ export default function ExercisePicker({ onSelect, onClose }: Props) {
             className="flex-1 bg-transparent text-sm text-white outline-none"
             style={{ color: 'var(--text)' }}
           />
+          </div>
         </div>
 
         {/* Category filter */}

@@ -1,36 +1,41 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { LayoutDashboard, Plus, User } from 'lucide-react'
+import type { ReactNode } from 'react'
+
+interface NavBtnProps {
+  icon: ReactNode
+  label: string
+  active: boolean
+  onClick: () => void
+}
+
+function NavBtn({ icon, label, active, onClick }: NavBtnProps) {
+  return (
+    <motion.button
+      onClick={onClick}
+      className="flex flex-1 flex-col items-center gap-1 py-1"
+      whileTap={{ scale: 0.88 }}
+      style={{ color: active ? 'var(--accent)' : 'var(--muted)' }}
+      aria-current={active ? 'page' : undefined}
+      aria-label={label}
+    >
+      {icon}
+      <span className="text-[10px] font-semibold tracking-wide">{label}</span>
+      <span
+        className="h-1 w-6 rounded-full transition-opacity"
+        style={{ background: 'var(--accent)', opacity: active ? 1 : 0 }}
+        aria-hidden="true"
+      />
+    </motion.button>
+  )
+}
 
 export default function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
 
   const path = location.pathname
-
-  function NavBtn({
-    icon,
-    label,
-    active,
-    onClick,
-  }: {
-    icon: React.ReactNode
-    label: string
-    active: boolean
-    onClick: () => void
-  }) {
-    return (
-      <motion.button
-        onClick={onClick}
-        className="flex flex-1 flex-col items-center gap-1 py-1"
-        whileTap={{ scale: 0.88 }}
-        style={{ color: active ? 'var(--accent)' : 'var(--muted)' }}
-      >
-        {icon}
-        <span className="text-[10px] font-semibold tracking-wide">{label}</span>
-      </motion.button>
-    )
-  }
 
   return (
     <nav
@@ -49,7 +54,7 @@ export default function BottomNav() {
       >
         <NavBtn
           icon={<LayoutDashboard size={20} />}
-          label="Home"
+          label="Start"
           active={path === '/dashboard'}
           onClick={() => navigate('/dashboard')}
         />

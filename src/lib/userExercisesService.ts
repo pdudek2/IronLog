@@ -1,4 +1,4 @@
-import { addDoc, collection, getDocs, query, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Category, Equipment, Exercise, MuscleGroup } from '../data/exercises'
 
@@ -34,4 +34,20 @@ export async function createUserExercise(uid: string, input: UserExerciseInput):
     muscles: input.muscles,
   })
   return { id: docRef.id, ...input }
+}
+
+export async function updateUserExercise(
+  id: string,
+  input: UserExerciseInput,
+): Promise<void> {
+  await updateDoc(doc(db, 'userExercises', id), {
+    name: input.name,
+    category: input.category,
+    equipment: input.equipment,
+    muscles: input.muscles,
+  })
+}
+
+export async function deleteUserExercise(id: string): Promise<void> {
+  await deleteDoc(doc(db, 'userExercises', id))
 }

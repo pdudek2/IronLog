@@ -1,11 +1,19 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { Dumbbell, Plus, Search } from 'lucide-react'
+import { Dumbbell, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
-import { createUserExercise, getUserExercises, type UserExerciseInput } from '../lib/userExercisesService'
+import {
+  createUserExercise,
+  deleteUserExercise,
+  getUserExercises,
+  updateUserExercise,
+  type UserExerciseInput,
+} from '../lib/userExercisesService'
 import { useDialogA11y } from '../hooks/useDialogA11y'
+import BottomNav from '../components/BottomNav'
+import ConfirmDialog from '../components/ConfirmDialog'
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
 
@@ -51,15 +59,17 @@ const MUSCLE_OPTIONS = (Object.keys(MUSCLE_LABELS) as MuscleGroup[])
 // ─── Create Form Modal ────────────────────────────────────────────────────────
 
 interface CreateFormProps {
+  mode: 'create' | 'edit'
+  initialValue?: UserExerciseInput
   onSubmit: (input: UserExerciseInput) => Promise<void>
   onClose: () => void
 }
 
-function CreateExerciseForm({ onSubmit, onClose }: CreateFormProps) {
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState<Category>('chest')
-  const [equipment, setEquipment] = useState<Equipment>('barbell')
-  const [muscles, setMuscles] = useState<MuscleGroup[]>([])
+function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFormProps) {
+  const [name, setName] = useState(initialValue?.name ?? '')
+  const [category, setCategory] = useState<Category>(initialValue?.category ?? 'chest')
+  const [equipment, setEquipment] = useState<Equipment>(initialValue?.equipment ?? 'barbell')
+  const [muscles, setMuscles] = useState<MuscleGroup[]>(initialValue?.muscles ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -131,7 +141,7 @@ function CreateExerciseForm({ onSubmit, onClose }: CreateFormProps) {
             ✕
           </button>
           <p id={titleId} className="text-sm font-semibold text-white">
-            Dodaj własne ćwiczenie
+            {mode === 'edit' ? 'Edytuj własne ćwiczenie' : 'Dodaj własne ćwiczenie'}
           </p>
         </div>
 
@@ -227,7 +237,7 @@ function CreateExerciseForm({ onSubmit, onClose }: CreateFormProps) {
             style={{ background: 'var(--accent)', color: '#08061A' }}
             whileTap={{ scale: 0.97 }}
           >
-            {saving ? 'Zapisuję...' : 'Dodaj ćwiczenie'}
+            {saving ? 'Zapisuję...' : mode === 'edit' ? 'Zapisz zmiany' : 'Dodaj ćwiczenie'}
           </motion.button>
         </form>
       </div>
@@ -240,9 +250,11 @@ function CreateExerciseForm({ onSubmit, onClose }: CreateFormProps) {
 interface CardProps {
   exercise: Exercise
   isUser: boolean
+  onEdit?: () => void
+  onDelete?: () => void
 }
 
-function ExerciseCard({ exercise, isUser }: CardProps) {
+function ExerciseCard({ exercise, isUser, onEdit, onDelete }: CardProps) {
   const muscleText = exercise.muscles.map((m) => MUSCLE_LABELS[m]).join(', ')
   return (
     <div
@@ -267,6 +279,26 @@ function ExerciseCard({ exercise, isUser }: CardProps) {
         {EQUIPMENT_LABELS[exercise.equipment]}
         {muscleText ? ` · ${muscleText}` : ''}
       </p>
+      {isUser && (
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            onClick={onEdit}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
+            style={{ background: 'var(--card)', color: 'white', border: '1px solid var(--border)' }}
+          >
+            <Pencil size={12} />
+            Edytuj
+          </button>
+          <button
+            onClick={onDelete}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(255,87,87,0.08)', color: '#FF5757', border: '1px solid rgba(255,87,87,0.18)' }}
+          >
+            <Trash2 size={12} />
+            Usuń
+          </button>
+        </div>
+      )}
     </div>
   )
 }
@@ -336,11 +368,27 @@ function SidebarFilter<T extends string>({ title, options, labels, active, onSel
 
 // ─── Section Header ───────────────────────────────────────────────────────────
 
-function SectionHeader({ title, count }: { title: string; count: number }) {
+function SectionHeader({
+  eyebrow,
+  title,
+  count,
+}: {
+  eyebrow: string
+  title: string
+  count: number
+}) {
   return (
-    <div className="flex items-baseline gap-2 mb-3">
-      <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--muted)' }}>{title}</p>
-      <span className="text-[10px]" style={{ color: 'var(--muted)' }}>({count})</span>
+    <div className="mb-3 lg:mb-4">
+      <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--muted)' }}>{eyebrow}</p>
+      <div className="mt-1 flex items-center gap-3">
+        <h2 className="text-xl font-semibold text-white">{title}</h2>
+        <span
+          className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+          style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+        >
+          {count}
+        </span>
+      </div>
     </div>
   )
 }
@@ -354,13 +402,15 @@ export default function ExercisesPage() {
   const [equipment, setEquipment] = useState<Equipment | 'all'>('all')
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
   const [loadingUser, setLoadingUser] = useState(true)
+  const [formExercise, setFormExercise] = useState<Exercise | null>(null)
   const [showForm, setShowForm] = useState(false)
+  const [confirmDeleteExercise, setConfirmDeleteExercise] = useState<Exercise | null>(null)
 
   useEffect(() => {
     if (!user) return
     getUserExercises(user.uid)
       .then(setUserExercises)
-      .catch(() => {})
+      .catch(() => { })
       .finally(() => setLoadingUser(false))
   }, [user])
 
@@ -382,7 +432,39 @@ export default function ExercisesPage() {
     const created = await createUserExercise(user.uid, input)
     setUserExercises((prev) => [created, ...prev])
     setShowForm(false)
+    setFormExercise(null)
     toast.success('Ćwiczenie dodane!')
+  }
+
+  async function handleUpdate(input: UserExerciseInput) {
+    if (!formExercise) return
+    await updateUserExercise(formExercise.id, input)
+    setUserExercises((prev) => prev.map((exercise) => (
+      exercise.id === formExercise.id ? { ...exercise, ...input } : exercise
+    )))
+    setShowForm(false)
+    setFormExercise(null)
+    toast.success('Ćwiczenie zaktualizowane!')
+  }
+
+  async function handleDeleteConfirmed() {
+    if (!confirmDeleteExercise) return
+
+    const deletingId = confirmDeleteExercise.id
+    setConfirmDeleteExercise(null)
+    await deleteUserExercise(deletingId)
+    setUserExercises((prev) => prev.filter((exercise) => exercise.id !== deletingId))
+    toast.success('Ćwiczenie usunięte!')
+  }
+
+  function openCreateForm() {
+    setFormExercise(null)
+    setShowForm(true)
+  }
+
+  function openEditForm(exercise: Exercise) {
+    setFormExercise(exercise)
+    setShowForm(true)
   }
 
   return (
@@ -403,7 +485,7 @@ export default function ExercisesPage() {
         <Dumbbell size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
         <span className="text-sm font-semibold text-white flex-1">Baza ćwiczeń</span>
         <motion.button
-          onClick={() => setShowForm(true)}
+          onClick={openCreateForm}
           className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold"
           style={{ background: 'var(--accent)', color: '#08061A' }}
           whileTap={{ scale: 0.93 }}
@@ -454,7 +536,7 @@ export default function ExercisesPage() {
             />
 
             <motion.button
-              onClick={() => setShowForm(true)}
+              onClick={openCreateForm}
               className="w-full rounded-[1.4rem] py-3 text-sm font-semibold tracking-wide flex items-center justify-center gap-2"
               style={{ background: 'var(--accent)', color: '#08061A' }}
               whileHover={{ scale: 1.02 }}
@@ -467,7 +549,7 @@ export default function ExercisesPage() {
         </aside>
 
         {/* ── Main content ─────────────────────────── */}
-        <main className="min-w-0 pb-28 lg:pb-0">
+        <main className="min-w-0 pb-36 lg:pb-0">
 
           {/* Mobile: search + filter chips */}
           <div className="lg:hidden space-y-3 mb-5">
@@ -495,7 +577,7 @@ export default function ExercisesPage() {
           {/* User exercises section */}
           <section className="mb-8">
             <div className="flex items-center justify-between mb-3">
-              <SectionHeader title="Moje ćwiczenia" count={filteredUser.length} />
+              <SectionHeader eyebrow="Własna biblioteka" title="Moje ćwiczenia" count={filteredUser.length} />
             </div>
 
             {loadingUser ? (
@@ -511,7 +593,7 @@ export default function ExercisesPage() {
                       Dodaj własne ćwiczenie, żeby pojawilo się tutaj i w pickerze treningu.
                     </p>
                     <motion.button
-                      onClick={() => setShowForm(true)}
+                      onClick={openCreateForm}
                       className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold"
                       style={{ background: 'var(--accent)', color: '#08061A' }}
                       whileTap={{ scale: 0.95 }}
@@ -536,7 +618,12 @@ export default function ExercisesPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <ExerciseCard exercise={ex} isUser />
+                      <ExerciseCard
+                        exercise={ex}
+                        isUser
+                        onEdit={() => openEditForm(ex)}
+                        onDelete={() => setConfirmDeleteExercise(ex)}
+                      />
                     </motion.div>
                   ))}
                 </div>
@@ -546,7 +633,7 @@ export default function ExercisesPage() {
 
           {/* Global exercises section */}
           <section>
-            <SectionHeader title="Katalog globalny" count={filteredGlobal.length} />
+            <SectionHeader eyebrow="Atlas startowy" title="Katalog globalny" count={filteredGlobal.length} />
 
             {filteredGlobal.length === 0 ? (
               <div className="surface-panel rounded-[1.5rem] px-5 py-8 text-center">
@@ -567,11 +654,33 @@ export default function ExercisesPage() {
       <AnimatePresence>
         {showForm && (
           <CreateExerciseForm
-            onSubmit={handleCreate}
-            onClose={() => setShowForm(false)}
+            mode={formExercise ? 'edit' : 'create'}
+            initialValue={formExercise ? {
+              name: formExercise.name,
+              category: formExercise.category,
+              equipment: formExercise.equipment,
+              muscles: formExercise.muscles,
+            } : undefined}
+            onSubmit={formExercise ? handleUpdate : handleCreate}
+            onClose={() => {
+              setShowForm(false)
+              setFormExercise(null)
+            }}
           />
         )}
       </AnimatePresence>
+
+      {confirmDeleteExercise && (
+        <ConfirmDialog
+          message={`Usunąć ćwiczenie "${confirmDeleteExercise.name}"? Nie będzie już dostępne w katalogu użytkownika.`}
+          confirmLabel="Usuń"
+          danger
+          onConfirm={() => { void handleDeleteConfirmed() }}
+          onCancel={() => setConfirmDeleteExercise(null)}
+        />
+      )}
+
+      <BottomNav />
     </div>
   )
 }

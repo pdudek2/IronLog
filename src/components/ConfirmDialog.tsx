@@ -42,17 +42,17 @@ export default function ConfirmDialog({
         {/* Backdrop */}
         <div
           className="absolute inset-0"
-          style={{ background: 'rgba(8,6,26,0.7)', backdropFilter: 'blur(6px)' }}
+          style={{ background: 'rgba(6, 10, 18, 0.74)', backdropFilter: 'blur(8px)' }}
         />
 
         {/* Panel */}
         <motion.div
           ref={dialogRef}
-          className="relative z-10 w-full max-w-sm rounded-[2rem] p-6"
+          className="relative z-10 w-full max-w-sm rounded-[var(--radius-xl)] p-6"
           style={{
-            background: 'linear-gradient(180deg, rgba(34,31,67,0.98) 0%, rgba(18,17,37,0.99) 100%)',
-            border: '1px solid rgba(128,140,179,0.18)',
-            boxShadow: '0 32px 80px rgba(4,6,18,0.6)',
+            background: 'linear-gradient(180deg, rgba(23,31,47,0.98) 0%, rgba(15,20,32,0.99) 100%)',
+            border: '1px solid var(--border-strong)',
+            boxShadow: '0 32px 80px rgba(2,8,20,0.62)',
           }}
           initial={{ y: 40, opacity: 0, scale: 0.96 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -73,7 +73,7 @@ export default function ConfirmDialog({
             <button
               ref={cancelButtonRef}
               onClick={onCancel}
-              className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-opacity hover:opacity-70"
+              className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid var(--border)',
@@ -84,10 +84,10 @@ export default function ConfirmDialog({
             </button>
             <motion.button
               onClick={onConfirm}
-              className="flex-1 rounded-xl py-2.5 text-sm font-semibold"
+              className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold"
               style={{
-                background: danger ? '#FF4B4B' : 'var(--accent)',
-                color: danger ? '#fff' : '#08061A',
+                background: danger ? '#FF4B4B' : 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+                color: danger ? '#fff' : 'var(--accent-foreground)',
               }}
               whileTap={{ scale: 0.95 }}
             >

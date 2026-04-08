@@ -52,12 +52,12 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
   return (
     <div
       className="fixed inset-0 z-50 px-0 py-0 sm:px-6 sm:py-6"
-      style={{ background: 'rgba(5, 6, 20, 0.74)', backdropFilter: 'blur(10px)' }}
+      style={{ background: 'rgba(6, 10, 18, 0.74)', backdropFilter: 'blur(10px)' }}
       onClick={onClose}
     >
       <div
         ref={dialogRef}
-        className="surface-panel flex h-[100dvh] w-full flex-col overflow-hidden rounded-t-[2rem] sm:mx-auto sm:h-[min(42rem,calc(100dvh-3rem))] sm:max-w-3xl sm:rounded-[2rem]"
+        className="surface-panel flex h-[100dvh] w-full flex-col overflow-hidden rounded-t-[var(--radius-xl)] sm:mx-auto sm:h-[min(42rem,calc(100dvh-3rem))] sm:max-w-3xl sm:rounded-[var(--radius-xl)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -103,11 +103,11 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
             <button
               key={c.value}
               onClick={() => setCategory(c.value)}
-              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
-              style={{
-                background: category === c.value ? 'var(--accent)' : 'var(--card)',
-                color: category === c.value ? '#08061A' : 'var(--muted)',
-                border: `1px solid ${category === c.value ? 'var(--accent)' : 'var(--border)'}`,
+            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
+            style={{
+                background: category === c.value ? 'var(--accent-soft)' : 'var(--card)',
+                color: category === c.value ? 'var(--text-strong)' : 'var(--muted)',
+                border: `1px solid ${category === c.value ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
               }}
             >
               {c.label}
@@ -133,7 +133,7 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
                   className="w-full rounded-[1.25rem] px-4 py-4 text-left transition-transform hover:-translate-y-0.5"
                   style={{
                     background: 'rgba(255, 255, 255, 0.03)',
-                    border: `1px solid ${ex.source === 'user' ? 'rgba(232,255,87,0.25)' : 'var(--border)'}`,
+                    border: `1px solid ${ex.source === 'user' ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
                   }}
                 >
                   <div className="flex items-center gap-2">
@@ -141,7 +141,7 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
                     {ex.source === 'user' && (
                       <span
                         className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                        style={{ background: 'rgba(232,255,87,0.15)', color: 'var(--accent)' }}
+                        style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
                       >
                         moje
                       </span>

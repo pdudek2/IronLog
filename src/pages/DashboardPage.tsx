@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { logoutUser } from '../lib/auth'
-import BottomNav from '../components/BottomNav'
+import AppShell from '../components/AppShell'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
 import { getProfile } from '../lib/userProfile'
@@ -169,55 +168,71 @@ export default function DashboardPage() {
   const weekDates = getWeekDates()
   const today = new Date()
   const workoutDays = workouts.map((workout) => new Date(workout.startedAt))
+  const weekStart = weekDates[0]?.getTime() ?? 0
+  const weekEnd = (weekDates[6]?.getTime() ?? 0) + 86_400_000
+  const weeklyWorkouts = workouts.filter((workout) => workout.startedAt >= weekStart && workout.startedAt < weekEnd)
+  const weeklyVolume = weeklyWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
+  const weeklySetsTotal = weeklyWorkouts.reduce((sum, workout) => (
+    sum + workout.exercises.reduce((innerSum, exercise) => innerSum + exercise.sets.length, 0)
+  ), 0)
+  const avgMinutes = weeklyWorkouts.length
+    ? Math.round(weeklyWorkouts.reduce((sum, workout) => sum + (workout.finishedAt - workout.startedAt), 0) / weeklyWorkouts.length / 60_000)
+    : 0
+  const dashboardHighlights = [
+    { label: 'Treningi', value: String(weeklyDone), sublabel: 'w tym tygodniu' },
+    { label: 'Serie', value: String(weeklySetsTotal), sublabel: 'zapisane łącznie' },
+    { label: 'Objętość', value: weeklyVolume ? `${weeklyVolume.toLocaleString('pl-PL')} kg` : '—', sublabel: 'tygodniowy wolumen' },
+    { label: 'Śr. czas', value: avgMinutes ? `${avgMinutes} min` : '—', sublabel: 'na sesję' },
+  ]
 
   return (
-    <div className="page-shell">
-      <div className="page-container">
+    <AppShell current="dashboard">
         <motion.div
-          className="mb-6 flex items-center justify-between gap-4"
+          className="mb-8 flex items-end justify-between gap-4"
           initial={false}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
         >
           <div>
-            <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.28em]" style={{ color: 'var(--accent)' }}>
+            <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
               {getGreeting()},
             </p>
-            <h1 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            <h1 className="page-title">
               {profile?.displayName ?? '—'}
             </h1>
           </div>
-          <div className="flex gap-2">
-            <motion.button
-              onClick={() => navigate('/exercises')}
-              className="surface-panel rounded-xl px-4 py-2 text-xs font-semibold"
-              style={{ color: 'var(--muted)' }}
-              whileTap={{ scale: 0.93 }}
-            >
-              Ćwiczenia
-            </motion.button>
-            <motion.button
-              onClick={() => navigate('/profile')}
-              className="surface-panel rounded-xl px-4 py-2 text-xs font-semibold"
-              style={{ color: 'var(--muted)' }}
-              whileTap={{ scale: 0.93 }}
-            >
-              Profil
-            </motion.button>
-            <motion.button
-              onClick={logoutUser}
-              className="surface-panel rounded-xl px-4 py-2 text-xs font-semibold"
-              style={{ color: 'var(--muted)' }}
-              whileTap={{ scale: 0.93 }}
-            >
-              Wyloguj
-            </motion.button>
+          <div
+            className="hidden rounded-[var(--radius-lg)] px-4 py-3 text-right lg:block"
+            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}
+          >
+            <p className="eyebrow">Performance snapshot</p>
+            <p className="mt-2 text-sm font-semibold text-white">
+              {weeklyDone}/{weeklyGoal} sesji • {streak} dni serii
+            </p>
           </div>
         </motion.div>
 
+        <section className="mb-6 grid gap-3 xl:grid-cols-4 sm:grid-cols-2">
+          {dashboardHighlights.map((item, index) => (
+            <motion.div
+              key={item.label}
+              className="metric-card p-4"
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.03, duration: 0.2 }}
+            >
+              <p className="stat-meta">{item.label}</p>
+              <p className="mt-3 text-[2rem] font-bold tracking-[-0.05em] text-white tabular-nums leading-none">
+                {item.value}
+              </p>
+              <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{item.sublabel}</p>
+            </motion.div>
+          ))}
+        </section>
+
         <div className="desktop-app-grid">
           <aside className="desktop-sticky space-y-4">
-            <motion.div className="surface-panel rounded-[2rem] p-5" {...fadeUp(0.06)}>
+            <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.06)}>
               {/* Progress ring hero */}
               <div className="flex items-center gap-4 mb-5">
                 <div className="relative flex-none">
@@ -225,7 +240,7 @@ export default function DashboardPage() {
                     <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="7" />
                     <motion.circle
                       cx="50" cy="50" r="40" fill="none"
-                      stroke={progressPct >= 100 ? 'var(--teal)' : 'var(--accent)'}
+                      stroke={progressPct >= 100 ? 'var(--success)' : 'var(--accent)'}
                       strokeWidth="7" strokeLinecap="round"
                       strokeDasharray={2 * Math.PI * 40}
                       transform="rotate(-90 50 50)"
@@ -234,12 +249,12 @@ export default function DashboardPage() {
                       transition={{ delay: 0.3, duration: 1.1, ease: 'easeOut' }}
                     />
                     <text x="50" y="46" textAnchor="middle" fill="white" fontSize="18" fontWeight="700" fontFamily="Urbanist">{weeklyDone}</text>
-                    <text x="50" y="61" textAnchor="middle" fill="rgba(128,140,179,0.8)" fontSize="10" fontFamily="Urbanist">z {weeklyGoal}</text>
+                    <text x="50" y="61" textAnchor="middle" fill="rgba(154,167,194,0.9)" fontSize="10" fontFamily="Urbanist">z {weeklyGoal}</text>
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>Ten tydzień</p>
-                  <p className="text-2xl font-bold text-white leading-none mb-1">
+                  <p className="stat-meta mb-2">Ten tydzień</p>
+                  <p className="text-3xl font-bold text-white leading-none mb-1 tracking-[-0.05em] tabular-nums">
                     {progressPct >= 100 ? 'Cel osiągnięty!' : `${Math.round(progressPct)}%`}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--muted)' }}>
@@ -250,13 +265,13 @@ export default function DashboardPage() {
 
               {/* Secondary stats */}
               <div className="grid grid-cols-2 gap-2 mb-5">
-                <div className="rounded-2xl p-3" style={{ background: 'rgba(18,209,142,0.07)', border: '1px solid rgba(18,209,142,0.15)' }}>
-                  <p className="text-xl font-bold leading-none mb-1" style={{ color: 'var(--teal)' }}>{streak}</p>
-                  <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Seria dni</p>
+                <div className="rounded-[var(--radius-lg)] p-3" style={{ background: 'var(--success-soft)', border: '1px solid rgba(25,213,159,0.18)' }}>
+                  <p className="text-2xl font-bold leading-none mb-1 tracking-[-0.04em] tabular-nums" style={{ color: 'var(--success)' }}>{streak}</p>
+                  <p className="stat-meta">Seria dni</p>
                 </div>
-                <div className="rounded-2xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
-                  <p className="text-xl font-bold leading-none mb-1 text-white">{workouts.length > 9 ? '10+' : workouts.length}</p>
-                  <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>Treningów</p>
+                <div className="rounded-[var(--radius-lg)] p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
+                  <p className="text-2xl font-bold leading-none mb-1 text-white tracking-[-0.04em] tabular-nums">{workouts.length > 9 ? '10+' : workouts.length}</p>
+                  <p className="stat-meta">Treningów</p>
                 </div>
               </div>
 
@@ -280,18 +295,18 @@ export default function DashboardPage() {
                           className="w-full aspect-square rounded-xl flex items-center justify-center"
                           style={{
                             background: hasWorkout
-                              ? 'var(--teal)'
+                              ? 'var(--success)'
                               : isToday
-                                ? 'rgba(232,255,87,0.08)'
+                                ? 'var(--accent-soft)'
                                 : isPast ? 'rgba(255,255,255,0.03)' : 'transparent',
                             border: isToday
                               ? '1.5px solid var(--accent)'
-                              : `1px solid ${hasWorkout ? 'var(--teal)' : 'var(--border)'}`,
+                              : `1px solid ${hasWorkout ? 'var(--success)' : 'var(--border)'}`,
                           }}
                           animate={hasWorkout ? { scale: [0.85, 1] } : {}}
                           transition={{ delay: index * 0.04, duration: 0.3 }}
                         >
-                          {hasWorkout && <div className="w-1.5 h-1.5 rounded-full bg-[#08061A]" />}
+                          {hasWorkout && <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(7,17,31,0.85)' }} />}
                         </motion.div>
                       </div>
                     )
@@ -300,21 +315,21 @@ export default function DashboardPage() {
               </div>
             </motion.div>
 
-            <motion.div className="surface-panel rounded-[2rem] p-5" {...fadeUp(0.12)}>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.28em]" style={{ color: 'var(--accent)' }}>
+            <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.12)}>
+              <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
                 Szybki start
               </p>
               <p className="mb-5 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                 Zacznij nowy trening bez wracania do listy i utrzymaj tempo wejścia do aplikacji.
               </p>
               <motion.button
-                className="w-full rounded-[1.4rem] py-4 text-sm font-bold uppercase tracking-[0.24em]"
-                style={{ background: 'var(--accent)', color: '#08061A' }}
+                className="w-full rounded-[var(--radius-lg)] py-4 text-sm font-semibold"
+                style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
                 onClick={() => navigate('/workout/new')}
                 whileHover={{ scale: 1.015 }}
                 whileTap={{ scale: 0.97 }}
               >
-                + Nowy trening
+                Rozpocznij trening
               </motion.button>
             </motion.div>
           </aside>
@@ -322,13 +337,13 @@ export default function DashboardPage() {
           <main className="min-w-0">
             <div className="mb-4 flex items-end justify-between gap-4">
               <div>
-                <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+                <p className="eyebrow">
                   Historia
                 </p>
-                <h2 className="mt-2 text-2xl font-bold text-white">Ostatnie treningi</h2>
+                <h2 className="section-title mt-2">Ostatnie treningi</h2>
               </div>
               <p className="hidden text-sm lg:block" style={{ color: 'var(--muted)' }}>
-                Kliknij kartę, aby wejść w szczegóły lub edycję.
+                Szybki wgląd w ostatnie sesje i drogę do kolejnych danych.
               </p>
             </div>
 
@@ -336,15 +351,15 @@ export default function DashboardPage() {
               {workouts.length === 0 ? (
                 <motion.div
                   key="empty"
-                  className="surface-panel rounded-[2rem] p-10 text-center flex flex-col items-center gap-4"
+                  className="surface-panel rounded-[var(--radius-xl)] p-10 text-center flex flex-col items-center gap-4"
                   initial={false}
                   animate={{ opacity: 1 }}
                 >
                   <div
-                    className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl"
-                    style={{ background: 'rgba(232,255,87,0.08)', border: '1px solid rgba(232,255,87,0.15)' }}
+                    className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center text-3xl"
+                    style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)' }}
                   >
-                    💪
+                    ✦
                   </div>
                   <div>
                     <p className="font-semibold text-white mb-1">Brak treningów</p>
@@ -354,8 +369,8 @@ export default function DashboardPage() {
                   </div>
                   <motion.button
                     onClick={() => navigate('/workout/new')}
-                    className="mt-2 px-6 py-2.5 rounded-xl text-sm font-semibold"
-                    style={{ background: 'var(--accent)', color: '#08061A' }}
+                    className="mt-2 rounded-[var(--radius-md)] px-6 py-2.5 text-sm font-semibold"
+                    style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
                     whileTap={{ scale: 0.96 }}
                   >
                     + Nowy trening
@@ -371,18 +386,18 @@ export default function DashboardPage() {
                     return (
                       <motion.div
                         key={workout.id}
-                        className="cursor-pointer relative overflow-hidden rounded-[1.75rem] flex"
+                        className="cursor-pointer relative overflow-hidden rounded-[var(--radius-xl)] flex"
                         style={{
                           opacity: deletingId === workout.id ? 0.4 : 1,
-                          background: 'linear-gradient(180deg, rgba(34,31,67,0.92) 0%, rgba(18,17,37,0.88) 100%)',
-                          border: '1px solid rgba(128,140,179,0.14)',
-                          boxShadow: '0 8px 32px rgba(4,6,18,0.35)',
+                          background: 'linear-gradient(180deg, rgba(24,32,48,0.92) 0%, rgba(16,22,34,0.94) 100%)',
+                          border: '1px solid var(--border)',
+                          boxShadow: '0 10px 36px rgba(2,8,20,0.38)',
                         }}
                         initial={false}
                         animate={{ opacity: deletingId === workout.id ? 0.4 : 1, x: 0 }}
                         exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
                         transition={{ duration: 0.22 }}
-                        whileHover={{ y: -2, boxShadow: `0 16px 48px rgba(4,6,18,0.55), inset 0 0 0 1px ${accent}30` }}
+                        whileHover={{ y: -2, boxShadow: `0 18px 52px rgba(2,8,20,0.55), inset 0 0 0 1px ${accent}33` }}
                         onClick={() => navigate(`/workout/${workout.id}`, {
                           state: { workoutPreview: workout },
                         })}
@@ -395,7 +410,7 @@ export default function DashboardPage() {
 
                         <div className="flex flex-1 items-center gap-3 px-4 py-4 min-w-0">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">
+                            <p className="text-base font-semibold text-white truncate">
                               {workout.label ?? workoutTitle(workout)}
                             </p>
                             <div className="mt-1 flex items-center gap-2 flex-wrap">
@@ -409,7 +424,7 @@ export default function DashboardPage() {
                               {volume > 0 && (
                                 <>
                                   <span className="text-xs" style={{ color: 'var(--muted)' }}>·</span>
-                                  <span className="text-xs font-medium" style={{ color: 'var(--teal)' }}>
+                                  <span className="text-xs font-medium" style={{ color: 'var(--success)' }}>
                                     {volume.toLocaleString('pl-PL')} kg
                                   </span>
                                 </>
@@ -449,8 +464,6 @@ export default function DashboardPage() {
             </AnimatePresence>
           </main>
         </div>
-      </div>
-      <BottomNav />
 
       {confirmDelete && (
         <ConfirmDialog
@@ -461,6 +474,6 @@ export default function DashboardPage() {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-    </div>
+    </AppShell>
   )
 }

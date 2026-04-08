@@ -43,11 +43,11 @@ export default function BottomNav() {
       style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom, 0px))' }}
     >
       <div
-        className="flex w-full max-w-sm items-center gap-1 rounded-[2rem] px-4 py-3"
+        className="flex w-full max-w-sm items-center gap-1 rounded-[var(--radius-xl)] px-4 py-3"
         style={{
-          background: 'linear-gradient(180deg, rgba(34,31,67,0.96) 0%, rgba(18,17,37,0.98) 100%)',
-          border: '1px solid rgba(128,140,179,0.18)',
-          boxShadow: '0 -8px 40px rgba(4,6,18,0.5), inset 0 1px 0 rgba(255,255,255,0.04)',
+          background: 'linear-gradient(180deg, rgba(21,28,43,0.96) 0%, rgba(15,20,32,0.98) 100%)',
+          border: '1px solid var(--border)',
+          boxShadow: '0 -8px 40px rgba(2,8,20,0.56), inset 0 1px 0 rgba(255,255,255,0.03)',
           backdropFilter: 'blur(24px)',
           WebkitBackdropFilter: 'blur(24px)',
         }}
@@ -68,8 +68,12 @@ export default function BottomNav() {
 
         <motion.button
           onClick={() => navigate('/workout/new')}
-          className="mx-2 flex h-12 w-12 flex-none items-center justify-center rounded-2xl"
-          style={{ background: 'var(--accent)', color: '#08061A' }}
+          className="mx-2 flex h-12 w-12 flex-none items-center justify-center rounded-[var(--radius-lg)]"
+          style={{
+            background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+            color: 'var(--accent-foreground)',
+            boxShadow: '0 12px 28px rgba(90,166,255,0.22)',
+          }}
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}
         >

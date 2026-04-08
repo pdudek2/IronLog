@@ -7,10 +7,10 @@ interface LoadingStateProps {
 
 function LoadingPanel({ message }: { message: string }) {
   return (
-    <div className="surface-panel w-full max-w-sm rounded-[2rem] px-6 py-8 text-center">
+    <div className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] px-6 py-8 text-center">
       <motion.div
-        className="mx-auto mb-4 h-11 w-11 rounded-2xl"
-        style={{ background: 'rgba(232,255,87,0.14)', border: '1px solid rgba(232,255,87,0.24)' }}
+        className="mx-auto mb-4 h-11 w-11 rounded-[var(--radius-md)]"
+        style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)' }}
         animate={{ rotate: 360 }}
         transition={{ repeat: Infinity, ease: 'linear', duration: 1.4 }}
       />

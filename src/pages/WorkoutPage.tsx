@@ -8,6 +8,7 @@ import { useProfileStore } from '../store/profileStore'
 import { saveWorkout } from '../lib/workoutService'
 import { getUserExercises } from '../lib/userExercisesService'
 import { useActiveSession } from '../hooks/useActiveSession'
+import AppShell from '../components/AppShell'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
@@ -32,9 +33,9 @@ function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) 
             onClick={() => onToggle(label)}
             className="flex-none whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-semibold"
             style={{
-              backgroundColor: isActive ? 'var(--accent)' : 'rgba(255,255,255,0.06)',
-              color: isActive ? '#08061A' : 'var(--muted)',
-              border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+              backgroundColor: isActive ? 'var(--accent-soft)' : 'rgba(255,255,255,0.06)',
+              color: isActive ? 'var(--text-strong)' : 'var(--muted)',
+              border: isActive ? '1px solid var(--accent-soft-strong)' : '1px solid var(--border)',
             }}
             whileTap={{ scale: 0.92 }}
           >
@@ -152,9 +153,9 @@ export default function WorkoutPage() {
 
   if (!active) {
     return (
-      <div className="page-shell">
-        <div className="page-container" style={{ maxWidth: '32rem' }}>
-          <div className="surface-panel rounded-[2rem] px-6 py-10 text-center">
+      <AppShell bottomNav={false}>
+        <div style={{ maxWidth: '32rem' }}>
+          <div className="surface-panel rounded-[var(--radius-xl)] px-6 py-10 text-center">
             <p className="mb-2 text-sm font-semibold text-white">Nie ma aktywnej sesji</p>
             <p className="mb-6 text-sm" style={{ color: 'var(--muted)' }}>
               Poprzednia sesja mogła zostać zakończona albo usunięta na innym urządzeniu.
@@ -162,14 +163,14 @@ export default function WorkoutPage() {
             <motion.button
               onClick={startWorkout}
               className="rounded-2xl px-6 py-3 text-sm font-semibold"
-              style={{ background: 'var(--accent)', color: '#08061A' }}
+              style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
               whileTap={{ scale: 0.97 }}
             >
               Rozpocznij nową sesję
             </motion.button>
           </div>
         </div>
-      </div>
+      </AppShell>
     )
   }
 
@@ -181,7 +182,7 @@ export default function WorkoutPage() {
   })()
 
   return (
-    <div className="page-shell">
+    <AppShell bottomNav={false}>
 
       {/* ── Mobile sticky header ─────────────────── */}
       <div
@@ -191,17 +192,17 @@ export default function WorkoutPage() {
           paddingBottom: '0.75rem',
           paddingLeft: 'max(1rem, env(safe-area-inset-left, 1rem))',
           paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
-          background: 'rgba(8,6,26,0.9)',
+          background: 'rgba(10, 14, 22, 0.9)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(128,140,179,0.12)',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         <span className="text-xl font-bold tabular-nums text-white flex-none">{timerStr}</span>
         {active.label && (
           <span
             className="text-[10px] font-semibold rounded-full px-2 py-0.5 flex-none truncate max-w-[90px]"
-            style={{ background: 'rgba(232,255,87,0.15)', color: 'var(--accent)', border: '1px solid rgba(232,255,87,0.25)' }}
+            style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-soft-strong)' }}
           >
             {active.label}
           </span>
@@ -211,25 +212,25 @@ export default function WorkoutPage() {
           onClick={handleFinish}
           disabled={saving}
           className="flex-none rounded-xl px-5 py-2 text-sm font-bold"
-          style={{ background: 'var(--accent)', color: '#08061A' }}
+          style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
           whileTap={{ scale: 0.93 }}
         >
           {saving ? '...' : 'Zakończ'}
         </motion.button>
       </div>
 
-      <div className="page-container desktop-app-grid pt-[4.5rem] lg:pt-0">
+      <div className="desktop-app-grid pt-[4.5rem] lg:pt-0">
 
         {/* ── Desktop sidebar only ─────────────────── */}
         <aside className="hidden lg:block desktop-sticky space-y-4">
-          <div className="surface-panel rounded-[2rem] p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4" style={{ color: 'var(--accent)' }}>
+          <div className="surface-panel rounded-[var(--radius-xl)] p-5">
+                <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
                   Aktywna sesja
                 </p>
 
             <div
               className="rounded-2xl px-4 py-3 mb-5 flex items-center justify-between"
-              style={{ background: 'rgba(232,255,87,0.06)', border: '1px solid rgba(232,255,87,0.12)' }}
+              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)' }}
             >
               <span className="text-4xl font-bold tabular-nums tracking-tight text-white">
                 {timerStr}
@@ -246,7 +247,7 @@ export default function WorkoutPage() {
                   onClick={handleFinish}
                   disabled={saving}
                   className="rounded-xl px-3 py-1.5 text-xs font-semibold disabled:opacity-50 hover:opacity-90"
-                  style={{ background: 'var(--accent)', color: '#08061A' }}
+                  style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
                 >
                   {saving ? '...' : 'Zakończ'}
                 </button>
@@ -269,8 +270,8 @@ export default function WorkoutPage() {
             <div className="mt-5">
               <motion.button
                 onClick={() => setShowPicker(true)}
-                className="w-full rounded-[1.4rem] py-3.5 text-sm font-semibold tracking-wide"
-                style={{ background: 'var(--accent)', color: '#08061A' }}
+                className="w-full rounded-[var(--radius-lg)] py-3.5 text-sm font-semibold tracking-wide"
+                style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
               >
@@ -303,7 +304,7 @@ export default function WorkoutPage() {
 
           <div className="flex flex-col gap-4">
             {active.exercises.length === 0 && (
-              <div className="surface-panel rounded-[2rem] px-6 py-10 text-center">
+              <div className="surface-panel rounded-[var(--radius-xl)] px-6 py-10 text-center">
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
                   Dodaj pierwsze ćwiczenie, żeby rozpocząć sesję.
                 </p>
@@ -314,7 +315,7 @@ export default function WorkoutPage() {
               {active.exercises.map((exercise, exerciseIndex) => (
                 <motion.div
                   key={exerciseIndex}
-                  className="surface-panel rounded-[2rem] p-4 sm:p-5"
+                  className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, x: -20 }}
@@ -344,9 +345,9 @@ export default function WorkoutPage() {
                         onClick={() => toggleSetDone(exerciseIndex, setIndex)}
                         className="w-7 h-7 rounded-md text-xs font-bold"
                         style={{
-                          background: set.done ? 'var(--teal)' : 'var(--input-bg)',
-                          color: set.done ? '#08061A' : 'var(--muted)',
-                          border: `1px solid ${set.done ? 'var(--teal)' : 'var(--border)'}`,
+                          background: set.done ? 'var(--success)' : 'var(--input-bg)',
+                          color: set.done ? '#081813' : 'var(--muted)',
+                          border: `1px solid ${set.done ? 'var(--success)' : 'var(--border)'}`,
                         }}
                         whileTap={{ scale: 0.85 }}
                         animate={set.done ? { scale: [1, 1.18, 1] } : { scale: 1 }}
@@ -360,7 +361,7 @@ export default function WorkoutPage() {
                         placeholder="0"
                         value={set.weight}
                         onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', e.target.value)}
-                        className="px-2 py-2 rounded-lg text-sm text-center text-white outline-none"
+                        className={`px-2 py-2 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'line-through opacity-55' : ''}`}
                         style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                       />
                       <input
@@ -369,7 +370,7 @@ export default function WorkoutPage() {
                         placeholder="0"
                         value={set.reps}
                         onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
-                        className="px-2 py-2 rounded-lg text-sm text-center text-white outline-none"
+                        className={`px-2 py-2 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'line-through opacity-55' : ''}`}
                         style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                       />
                       <button
@@ -403,7 +404,7 @@ export default function WorkoutPage() {
         <motion.button
           onClick={() => setShowPicker(true)}
           className="w-full max-w-sm py-3.5 rounded-2xl font-semibold text-sm tracking-wide"
-          style={{ background: 'var(--accent)', color: '#08061A' }}
+          style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.97 }}
         >
@@ -440,6 +441,6 @@ export default function WorkoutPage() {
           onCancel={() => setConfirmFinishEmpty(false)}
         />
       )}
-    </div>
+    </AppShell>
   )
 }

@@ -78,15 +78,15 @@ export default function OnboardingPage() {
                 key={g.value}
                 type="button"
                 onClick={() => setPrimaryGoal(g.value)}
-                className="p-3 rounded-lg text-left transition-all"
+                className="rounded-[var(--radius-md)] p-4 text-left transition-all"
                 style={{
-                  background: primaryGoal === g.value ? 'var(--accent)' : 'var(--card)',
-                  border: `1px solid ${primaryGoal === g.value ? 'var(--accent)' : 'var(--border)'}`,
-                  color: primaryGoal === g.value ? '#08061A' : 'var(--text)',
+                  background: primaryGoal === g.value ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${primaryGoal === g.value ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
+                  color: primaryGoal === g.value ? 'var(--text-strong)' : 'var(--text)',
                 }}
               >
-                <div className="text-xs font-semibold">{g.label}</div>
-                <div className="text-xs mt-0.5 opacity-70">{g.desc}</div>
+                <div className="text-sm font-semibold">{g.label}</div>
+                <div className="mt-1 text-xs leading-5" style={{ color: 'var(--muted)' }}>{g.desc}</div>
               </button>
             ))}
           </div>
@@ -120,11 +120,11 @@ export default function OnboardingPage() {
                 key={u}
                 type="button"
                 onClick={() => setUnits(u)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all"
+                className="flex-1 rounded-[var(--radius-md)] py-3 text-sm font-semibold transition-all"
                 style={{
-                  background: units === u ? 'var(--accent)' : 'var(--card)',
-                  border: `1px solid ${units === u ? 'var(--accent)' : 'var(--border)'}`,
-                  color: units === u ? '#08061A' : 'var(--text)',
+                  background: units === u ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${units === u ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
+                  color: units === u ? 'var(--text-strong)' : 'var(--text)',
                 }}
               >
                 {u}

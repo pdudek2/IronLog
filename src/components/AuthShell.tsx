@@ -31,15 +31,15 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
     <div className="page-shell flex items-center">
       <div className="page-container grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)] lg:items-center">
         <motion.section
-          className="surface-panel hidden overflow-hidden rounded-[2rem] p-8 lg:block xl:p-10"
+          className="surface-panel hidden overflow-hidden rounded-[var(--radius-xl)] p-8 lg:block xl:p-10"
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.45 }}
         >
           <div className="mb-10 flex items-center gap-3">
             <div
-              className="flex h-11 w-11 items-center justify-center rounded-2xl"
-              style={{ background: 'rgba(232, 255, 87, 0.12)', color: 'var(--accent)' }}
+              className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)]"
+              style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-soft-strong)' }}
             >
               <Dumbbell size={20} />
             </div>
@@ -52,30 +52,48 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
           </div>
 
           <div className="mb-10 max-w-xl">
-            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.32em]" style={{ color: 'var(--accent)' }}>
-              Trenuj świadomie
+            <p className="eyebrow mb-3" style={{ color: 'var(--accent)' }}>
+              Performance intelligence
             </p>
             <h2 className="text-4xl font-bold leading-tight text-white xl:text-5xl">
-              Rejestruj treningi szybko. Analizuj progres czytelnie.
+              Loguj treningi szybko. Oglądaj progres jak produkt premium.
             </h2>
             <p className="mt-4 max-w-lg text-base leading-7" style={{ color: 'var(--muted)' }}>
-              Interfejs budowany pod realne użycie w siłowni i dłuższą pracę przy planie treningowym.
+              Fundament pod historię, metryki, analitykę i inteligentne rekomendacje bez wrażenia surowego narzędzia.
             </p>
+          </div>
+
+          <div className="mb-6 grid gap-3 xl:grid-cols-3">
+            {[
+              { label: 'Objętość', value: '24 600 kg' },
+              { label: 'Sesje', value: '4 / tydz.' },
+              { label: 'Trend', value: '+12%' },
+            ].map((item) => (
+              <div
+                key={item.label}
+                className="metric-card p-4"
+              >
+                <p className="stat-meta">{item.label}</p>
+                <p className="mt-3 text-2xl font-bold tracking-[-0.05em] text-white tabular-nums">
+                  {item.value}
+                </p>
+              </div>
+            ))}
           </div>
 
           <div className="grid gap-4 xl:grid-cols-3">
             {FEATURES.map(({ icon: Icon, title: featureTitle, description }) => (
               <div
                 key={featureTitle}
-                className="rounded-[1.5rem] border p-4"
+                className="rounded-[var(--radius-lg)] border p-4"
                 style={{
                   background: 'rgba(255, 255, 255, 0.03)',
-                  borderColor: 'rgba(128, 140, 179, 0.14)',
+                  borderColor: 'var(--border)',
                 }}
               >
                 <div
-                  className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl"
-                  style={{ background: 'rgba(18, 209, 142, 0.09)', color: 'var(--teal)' }}
+                  className="mb-4 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)]"
+                  style={{ background: 'rgba(90, 166, 255, 0.12)', color: 'var(--accent)' }}
                 >
                   <Icon size={18} />
                 </div>
@@ -89,7 +107,7 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
         </motion.section>
 
         <motion.section
-          className="surface-panel mx-auto w-full max-w-md rounded-[2rem] p-6 sm:p-8"
+          className="surface-panel mx-auto w-full max-w-md rounded-[var(--radius-xl)] p-6 sm:p-8"
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45 }}

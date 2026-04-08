@@ -15,8 +15,8 @@ import { useAuthStore } from '../store/authStore'
 import type { Exercise } from '../data/exercises'
 import type { ExerciseSource } from '../store/workoutStore'
 import { toast } from 'sonner'
+import AppShell from '../components/AppShell'
 import ExercisePicker from '../components/ExercisePicker'
-import BottomNav from '../components/BottomNav'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
 
@@ -226,14 +226,16 @@ export default function WorkoutDetailPage() {
 
   if (!workout) {
     return (
-      <div className="page-shell flex items-center justify-center">
-        <div className="surface-panel rounded-[2rem] p-8 text-center">
-          <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Trening nie istnieje.</p>
-          <button onClick={() => navigate('/dashboard')} style={{ color: 'var(--accent)' }}>
-            Wróć
-          </button>
+      <AppShell>
+        <div className="flex items-center justify-center">
+          <div className="surface-panel rounded-[var(--radius-xl)] p-8 text-center">
+            <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Trening nie istnieje.</p>
+            <button onClick={() => navigate('/dashboard')} style={{ color: 'var(--accent)' }}>
+              Wróć
+            </button>
+          </div>
         </div>
-      </div>
+      </AppShell>
     )
   }
 
@@ -266,9 +268,9 @@ export default function WorkoutDetailPage() {
         disabled={saving}
         className="flex-1 py-3 rounded-2xl text-sm font-semibold disabled:opacity-40"
         style={{
-          background: 'var(--accent)',
+          background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
           border: '1px solid var(--accent)',
-          color: '#08061A',
+          color: 'var(--accent-foreground)',
         }}
         whileTap={{ scale: 0.97 }}
       >
@@ -307,8 +309,7 @@ export default function WorkoutDetailPage() {
   )
 
   return (
-    <div className="page-shell">
-      <div className="page-container">
+    <AppShell>
         <motion.div
           className="mb-6 flex items-center gap-3"
           initial={false}
@@ -323,8 +324,8 @@ export default function WorkoutDetailPage() {
             <ArrowLeft size={16} />
           </button>
           <div>
-            <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-              Szczegóły treningu
+            <p className="eyebrow">
+              Dashboard → Trening
             </p>
             <p className="mt-1 text-sm font-semibold text-white">Szczegóły treningu</p>
           </div>
@@ -333,7 +334,7 @@ export default function WorkoutDetailPage() {
         <div className="desktop-app-grid">
           <aside className="desktop-sticky space-y-4">
             <motion.div
-              className="surface-panel rounded-[2rem] overflow-hidden"
+              className="surface-panel rounded-[var(--radius-xl)] overflow-hidden"
               style={{ borderLeft: `4px solid ${accent}` }}
               initial={false}
               animate={{ opacity: 1, y: 0 }}
@@ -354,9 +355,9 @@ export default function WorkoutDetailPage() {
                             onClick={() => setEditedLabel(isActive ? '' : label)}
                             className="rounded-xl px-2 py-2 text-[11px] font-semibold leading-tight"
                             style={{
-                              background: isActive ? 'var(--accent)' : 'var(--input-bg)',
-                              color: isActive ? '#08061A' : 'white',
-                              border: isActive ? '1px solid var(--accent)' : '1px solid var(--border)',
+                              background: isActive ? 'var(--accent-soft)' : 'var(--input-bg)',
+                              color: isActive ? 'var(--text-strong)' : 'white',
+                              border: isActive ? '1px solid var(--accent-soft-strong)' : '1px solid var(--border)',
                             }}
                             whileTap={{ scale: 0.97 }}
                           >
@@ -394,7 +395,7 @@ export default function WorkoutDetailPage() {
             </motion.div>
 
             <motion.div
-              className="surface-panel rounded-[2rem] p-5 hidden lg:block"
+              className="surface-panel rounded-[var(--radius-xl)] p-5 hidden lg:block"
               initial={false}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.18 }}
@@ -462,7 +463,7 @@ export default function WorkoutDetailPage() {
                         >
                           <span
                             className="inline-flex h-7 w-7 items-center justify-center rounded-md text-xs font-bold"
-                            style={{ color: 'var(--teal)' }}
+                            style={{ color: 'var(--success)' }}
                           >
                             {setIndex + 1}
                           </span>
@@ -564,8 +565,6 @@ export default function WorkoutDetailPage() {
 
           </main>
         </div>
-      </div>
-
       <div
         className="fixed left-0 right-0 z-40 px-4 lg:hidden"
         style={{ bottom: 'calc(7.25rem + env(safe-area-inset-bottom, 0px))' }}
@@ -589,7 +588,6 @@ export default function WorkoutDetailPage() {
           userExercises={userExercises}
         />
       )}
-      <BottomNav />
 
       {confirmDeleteOpen && (
         <ConfirmDialog
@@ -600,6 +598,6 @@ export default function WorkoutDetailPage() {
           onCancel={() => setConfirmDeleteOpen(false)}
         />
       )}
-    </div>
+    </AppShell>
   )
 }

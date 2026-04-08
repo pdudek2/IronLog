@@ -9,12 +9,20 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const styles: Record<Variant, { className: string; style: React.CSSProperties }> = {
   primary: {
-    className: 'py-3 rounded-lg font-semibold text-sm tracking-wide transition-opacity disabled:opacity-50 hover:opacity-90',
-    style: { background: 'var(--accent)', color: '#08061A' },
+    className: 'rounded-[var(--radius-md)] px-4 py-3 text-sm font-semibold transition-all disabled:opacity-50 hover:opacity-90',
+    style: {
+      background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+      color: 'var(--accent-foreground)',
+      boxShadow: '0 14px 32px rgba(90,166,255,0.22)',
+    },
   },
   ghost: {
-    className: 'surface-panel rounded-xl px-4 py-2 text-xs font-semibold transition-opacity hover:opacity-70',
-    style: { color: 'var(--muted)' },
+    className: 'rounded-[var(--radius-md)] px-4 py-2.5 text-xs font-semibold transition-all hover:opacity-90',
+    style: {
+      color: 'var(--muted)',
+      background: 'rgba(255,255,255,0.04)',
+      border: '1px solid var(--border)',
+    },
   },
 }
 

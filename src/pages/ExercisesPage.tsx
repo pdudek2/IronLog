@@ -2,7 +2,6 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { Dumbbell, Pencil, Plus, Search, Trash2 } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
 import {
@@ -12,8 +11,8 @@ import {
   updateUserExercise,
   type UserExerciseInput,
 } from '../lib/userExercisesService'
+import AppShell from '../components/AppShell'
 import { useDialogA11y } from '../hooks/useDialogA11y'
-import BottomNav from '../components/BottomNav'
 import ConfirmDialog from '../components/ConfirmDialog'
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
@@ -124,7 +123,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="surface-panel flex flex-col overflow-hidden rounded-t-[2rem] sm:mx-auto sm:rounded-[2rem] sm:max-w-lg"
+        className="surface-panel flex flex-col overflow-hidden rounded-t-[var(--radius-xl)] sm:mx-auto sm:rounded-[var(--radius-xl)] sm:max-w-lg"
         style={{ maxHeight: '90dvh', marginTop: 'auto' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -215,9 +214,9 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
                     onClick={() => toggleMuscle(m)}
                     className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                     style={{
-                      background: active ? 'var(--accent)' : 'var(--card)',
-                      color: active ? '#08061A' : 'var(--muted)',
-                      border: `1px solid ${active ? 'var(--accent)' : 'var(--border)'}`,
+                      background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
+                      color: active ? 'var(--text-strong)' : 'var(--muted)',
+                      border: `1px solid ${active ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
                     }}
                   >
                     {MUSCLE_LABELS[m]}
@@ -234,8 +233,11 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
           <motion.button
             type="submit"
             disabled={saving}
-            className="w-full rounded-[1.4rem] py-3.5 text-sm font-semibold tracking-wide disabled:opacity-50"
-            style={{ background: 'var(--accent)', color: '#08061A' }}
+            className="w-full rounded-[var(--radius-lg)] py-3.5 text-sm font-semibold disabled:opacity-50"
+            style={{
+              background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+              color: 'var(--accent-foreground)',
+            }}
             whileTap={{ scale: 0.97 }}
           >
             {saving ? 'Zapisuję...' : mode === 'edit' ? 'Zapisz zmiany' : 'Dodaj ćwiczenie'}
@@ -262,7 +264,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete }: CardProps) {
       className="rounded-[1.25rem] px-4 py-4"
       style={{
         background: 'rgba(255,255,255,0.03)',
-        border: `1px solid ${isUser ? 'rgba(232,255,87,0.25)' : 'var(--border)'}`,
+        border: `1px solid ${isUser ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
       }}
     >
       <div className="flex items-start gap-2">
@@ -270,7 +272,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete }: CardProps) {
         {isUser && (
           <span
             className="flex-none text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-            style={{ background: 'rgba(232,255,87,0.15)', color: 'var(--accent)' }}
+            style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
           >
             moje
           </span>
@@ -322,9 +324,9 @@ function ChipRow<T extends string>({ options, labels, active, onSelect }: ChipRo
           onClick={() => onSelect(opt)}
           className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
           style={{
-            background: active === opt ? 'var(--accent)' : 'var(--card)',
-            color: active === opt ? '#08061A' : 'var(--muted)',
-            border: `1px solid ${active === opt ? 'var(--accent)' : 'var(--border)'}`,
+            background: active === opt ? 'var(--accent-soft)' : 'var(--card)',
+            color: active === opt ? 'var(--text-strong)' : 'var(--muted)',
+            border: `1px solid ${active === opt ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
           }}
         >
           {labels[opt]}
@@ -355,8 +357,9 @@ function SidebarFilter<T extends string>({ title, options, labels, active, onSel
             onClick={() => onSelect(opt)}
             className="text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
             style={{
-              background: active === opt ? 'rgba(232,255,87,0.12)' : 'transparent',
-              color: active === opt ? 'var(--accent)' : 'var(--muted)',
+              background: active === opt ? 'var(--accent-soft)' : 'transparent',
+              color: active === opt ? 'var(--text-strong)' : 'var(--muted)',
+              border: active === opt ? '1px solid var(--accent-soft-strong)' : '1px solid transparent',
             }}
           >
             {labels[opt]}
@@ -398,7 +401,6 @@ function SectionHeader({
 
 export default function ExercisesPage() {
   const { user } = useAuthStore()
-  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
   const [equipment, setEquipment] = useState<Equipment | 'all'>('all')
@@ -470,7 +472,7 @@ export default function ExercisesPage() {
   }
 
   return (
-    <div className="page-shell">
+    <AppShell current="exercises">
 
       {/* ── Mobile sticky header ─────────────────── */}
       <div
@@ -478,18 +480,18 @@ export default function ExercisesPage() {
         style={{
           paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
           paddingBottom: '0.75rem',
-          background: 'rgba(8,6,26,0.9)',
+          background: 'rgba(10, 14, 22, 0.9)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid rgba(128,140,179,0.12)',
+          borderBottom: '1px solid var(--border)',
         }}
       >
         <Dumbbell size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
         <span className="text-sm font-semibold text-white flex-1">Baza ćwiczeń</span>
         <motion.button
           onClick={openCreateForm}
-          className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold"
-          style={{ background: 'var(--accent)', color: '#08061A' }}
+          className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-1.5 text-xs font-semibold"
+          style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
           whileTap={{ scale: 0.93 }}
         >
           <Plus size={14} strokeWidth={2.5} />
@@ -497,37 +499,13 @@ export default function ExercisesPage() {
         </motion.button>
       </div>
 
-      <div className="page-container desktop-app-grid pt-[4.5rem] lg:pt-0">
+      <div className="desktop-app-grid pt-[4.5rem] lg:pt-0">
 
         {/* ── Desktop sidebar ──────────────────────── */}
         <aside className="hidden lg:block desktop-sticky">
-          <div className="surface-panel rounded-[2rem] p-5 space-y-5">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate(-1)}
-                className="rounded-xl px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{ background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-              >
-                ← Wstecz
-              </button>
-              <button
-                onClick={() => navigate('/dashboard')}
-                className="rounded-xl px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-80"
-                style={{ background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-              >
-                Start
-              </button>
-              <button
-                disabled
-                className="rounded-xl px-3 py-2 text-xs font-semibold"
-                style={{ background: 'rgba(232,255,87,0.12)', color: 'var(--accent)', border: '1px solid rgba(232,255,87,0.2)' }}
-              >
-                Ćwiczenia
-              </button>
-            </div>
-
+          <div className="surface-panel rounded-[var(--radius-xl)] p-5 space-y-5">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.28em] mb-4" style={{ color: 'var(--accent)' }}>
+              <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
                 Baza ćwiczeń
               </p>
 
@@ -563,8 +541,8 @@ export default function ExercisesPage() {
 
             <motion.button
               onClick={openCreateForm}
-              className="w-full rounded-[1.4rem] py-3 text-sm font-semibold tracking-wide flex items-center justify-center gap-2"
-              style={{ background: 'var(--accent)', color: '#08061A' }}
+              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] py-3 text-sm font-semibold"
+              style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
             >
@@ -596,8 +574,11 @@ export default function ExercisesPage() {
 
           {/* Desktop page title */}
           <div className="hidden lg:block mb-6">
-            <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>Katalog</p>
-            <h1 className="mt-1 text-2xl font-bold text-white">Baza ćwiczeń</h1>
+            <p className="eyebrow">Katalog</p>
+            <h1 className="mt-2 section-title">Baza ćwiczeń</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+              Globalny atlas i własna biblioteka użytkownika w jednym miejscu, gotowe pod wybór do sesji i dalszą analitykę.
+            </p>
           </div>
 
           {/* User exercises section */}
@@ -620,8 +601,8 @@ export default function ExercisesPage() {
                     </p>
                     <motion.button
                       onClick={openCreateForm}
-                      className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold"
-                      style={{ background: 'var(--accent)', color: '#08061A' }}
+                      className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-4 py-2 text-xs font-semibold"
+                      style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
                       whileTap={{ scale: 0.95 }}
                     >
                       <Plus size={13} strokeWidth={2.5} />
@@ -706,7 +687,6 @@ export default function ExercisesPage() {
         />
       )}
 
-      <BottomNav />
-    </div>
+    </AppShell>
   )
 }

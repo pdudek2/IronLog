@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { Dumbbell, Pencil, Plus, Search, Trash2 } from 'lucide-react'
@@ -255,13 +256,18 @@ interface CardProps {
   isUser: boolean
   onEdit?: () => void
   onDelete?: () => void
+  onNavigate: () => void
 }
 
-function ExerciseCard({ exercise, isUser, onEdit, onDelete }: CardProps) {
+function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardProps) {
   const muscleText = exercise.muscles.map((m) => MUSCLE_LABELS[m]).join(', ')
   return (
     <div
-      className="rounded-[1.25rem] px-4 py-4"
+      role="button"
+      tabIndex={0}
+      onClick={onNavigate}
+      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onNavigate()}
+      className="rounded-[1.25rem] px-4 py-4 cursor-pointer transition-colors hover:border-[rgba(154,167,194,0.28)]"
       style={{
         background: 'rgba(255,255,255,0.03)',
         border: `1px solid ${isUser ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
@@ -285,7 +291,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete }: CardProps) {
       {isUser && (
         <div className="mt-3 flex items-center gap-2">
           <button
-            onClick={onEdit}
+            onClick={(e) => { e.stopPropagation(); onEdit?.() }}
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
             style={{ background: 'var(--card)', color: 'white', border: '1px solid var(--border)' }}
           >
@@ -293,7 +299,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete }: CardProps) {
             Edytuj
           </button>
           <button
-            onClick={onDelete}
+            onClick={(e) => { e.stopPropagation(); onDelete?.() }}
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
             style={{ background: 'rgba(255,87,87,0.08)', color: '#FF5757', border: '1px solid rgba(255,87,87,0.18)' }}
           >
@@ -401,6 +407,7 @@ function SectionHeader({
 
 export default function ExercisesPage() {
   const { user } = useAuthStore()
+  const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
   const [equipment, setEquipment] = useState<Equipment | 'all'>('all')
@@ -630,6 +637,7 @@ export default function ExercisesPage() {
                         isUser
                         onEdit={() => openEditForm(ex)}
                         onDelete={() => setConfirmDeleteExercise(ex)}
+                        onNavigate={() => navigate(`/exercises/user/${ex.id}`)}
                       />
                     </motion.div>
                   ))}
@@ -649,7 +657,7 @@ export default function ExercisesPage() {
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {filteredGlobal.map((ex) => (
-                  <ExerciseCard key={ex.id} exercise={ex} isUser={false} />
+                  <ExerciseCard key={ex.id} exercise={ex} isUser={false} onNavigate={() => navigate(`/exercises/global/${ex.id}`)} />
                 ))}
               </div>
             )}

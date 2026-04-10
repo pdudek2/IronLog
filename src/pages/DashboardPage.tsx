@@ -315,7 +315,7 @@ export default function DashboardPage() {
             className="hidden rounded-[var(--radius-lg)] px-4 py-3 text-right lg:block"
             style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}
           >
-            <p className="eyebrow">Performance snapshot</p>
+            <p className="eyebrow">Podsumowanie tygodnia</p>
             <p className="mt-2 text-sm font-semibold text-white">
               {weeklyDone}/{weeklyGoal} sesji • {streak} dni serii
             </p>
@@ -341,7 +341,7 @@ export default function DashboardPage() {
         </section>
 
         <div className="desktop-app-grid">
-          <aside className="desktop-sticky space-y-4">
+          <aside className="desktop-sticky space-y-4 hidden lg:block">
             <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.06)}>
               {/* Progress ring hero */}
               <div className="flex items-center gap-4 mb-5">
@@ -368,7 +368,7 @@ export default function DashboardPage() {
                     {progressPct >= 100 ? 'Cel osiągnięty!' : `${Math.round(progressPct)}%`}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                    {progressPct >= 100 ? 'Świetna robota 💪' : `${weeklyGoal - weeklyDone} ${weeklyGoal - weeklyDone === 1 ? 'trening' : 'treningi'} do celu`}
+                    {progressPct >= 100 ? 'Świetna robota' : `${weeklyGoal - weeklyDone} ${weeklyGoal - weeklyDone === 1 ? 'trening' : 'treningi'} do celu`}
                   </p>
                 </div>
               </div>
@@ -458,7 +458,7 @@ export default function DashboardPage() {
               <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.09)}>
                 <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                   <div>
-                    <p className="eyebrow">Weekly overview</p>
+                    <p className="eyebrow">Przegląd tygodnia</p>
                     <h2 className="section-title mt-2">Jak wygląda ten tydzień</h2>
                     <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                       Szybki obraz tempa, objętości i najmocniejszego dnia. Ten blok ma być Twoim pierwszym spojrzeniem po wejściu do aplikacji.
@@ -559,7 +559,7 @@ export default function DashboardPage() {
               <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.12)}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="eyebrow">Insights</p>
+                    <p className="eyebrow">Fokus tygodnia</p>
                     <h2 className="section-title mt-2">Co mówi aktualny log</h2>
                   </div>
                   <div

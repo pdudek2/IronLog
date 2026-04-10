@@ -381,7 +381,7 @@ export default function WorkoutDetailPage() {
         </motion.div>
 
         <div className="desktop-app-grid">
-          <aside className="desktop-sticky space-y-4">
+          <aside className="desktop-sticky space-y-4 hidden lg:block">
             <motion.div
               className="surface-panel rounded-[var(--radius-xl)] overflow-hidden"
               style={{ borderLeft: `4px solid ${accent}` }}
@@ -498,7 +498,7 @@ export default function WorkoutDetailPage() {
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="eyebrow">Session overview</p>
+                  <p className="eyebrow">Podsumowanie sesji</p>
                   <h3 className="section-title mt-2">Rozpiska sesji</h3>
                   <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                     Breakdown ćwiczeń, wolumenu i top setów z całego treningu. To jest już ekran do czytania sesji jak danych, nie tylko lista serii.

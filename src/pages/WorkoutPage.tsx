@@ -304,7 +304,7 @@ export default function WorkoutPage() {
         <aside className="hidden lg:block desktop-sticky space-y-4">
           <div className="surface-panel rounded-[var(--radius-xl)] p-5">
             <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
-              Active workout
+              Aktywna sesja
             </p>
 
             <div
@@ -394,7 +394,7 @@ export default function WorkoutPage() {
           </div>
         </aside>
 
-        <main className="min-w-0 pb-28 lg:pb-0">
+        <main className="min-w-0 pb-48 lg:pb-0">
           <motion.section
             className="surface-panel mb-4 rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={false}

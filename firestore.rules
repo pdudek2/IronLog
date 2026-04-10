@@ -56,17 +56,20 @@ service cloud.firestore {
 
     match /userExercises/{id} {
       allow create: if ownsNewDoc();
-      allow read, update, delete: if ownsDoc() && keepsOwner();
+      allow read: if ownsDoc();
+      allow update, delete: if ownsDoc() && keepsOwner();
     }
 
     match /templates/{id} {
       allow create: if ownsNewDoc();
-      allow read, update, delete: if ownsDoc() && keepsOwner();
+      allow read: if ownsDoc();
+      allow update, delete: if ownsDoc() && keepsOwner();
     }
 
     match /readiness/{id} {
       allow create: if ownsNewDoc();
-      allow read, update, delete: if ownsDoc() && keepsOwner();
+      allow read: if ownsDoc();
+      allow update, delete: if ownsDoc() && keepsOwner();
     }
 
     match /activeSessions/{uid} {

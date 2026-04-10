@@ -17,6 +17,7 @@ export interface WorkoutExercise {
 
 export interface ActiveWorkout {
   startedAt: number
+  templateId?: string | null
   label?: string
   exercises: WorkoutExercise[]
 }
@@ -41,7 +42,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
   active: null,
 
   startWorkout: () =>
-    set({ active: { startedAt: Date.now(), exercises: [] } }),
+    set({ active: { startedAt: Date.now(), templateId: null, exercises: [] } }),
 
   hydrateFromDoc: (workout) =>
     set({ active: workout }),

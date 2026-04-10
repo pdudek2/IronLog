@@ -12,6 +12,8 @@ const WorkoutDetailPage = lazy(() => import('../pages/WorkoutDetailPage'))
 const ProfilePage = lazy(() => import('../pages/ProfilePage'))
 const ExercisesPage = lazy(() => import('../pages/ExercisesPage'))
 const ExerciseDetailPage = lazy(() => import('../pages/ExerciseDetailPage'))
+const TemplatesPage = lazy(() => import('../pages/TemplatesPage'))
+const TemplateEditorPage = lazy(() => import('../pages/TemplateEditorPage'))
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore()
@@ -36,6 +38,9 @@ export default function AppRouter() {
           <Route path="/onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
           <Route path="/workout/new" element={<PrivateRoute><WorkoutPage /></PrivateRoute>} />
           <Route path="/workout/:id" element={<PrivateRoute><WorkoutDetailPage /></PrivateRoute>} />
+          <Route path="/templates" element={<PrivateRoute><TemplatesPage /></PrivateRoute>} />
+          <Route path="/templates/new" element={<PrivateRoute><TemplateEditorPage /></PrivateRoute>} />
+          <Route path="/templates/:id/edit" element={<PrivateRoute><TemplateEditorPage /></PrivateRoute>} />
           <Route path="/exercises" element={<PrivateRoute><ExercisesPage /></PrivateRoute>} />
           <Route path="/exercises/:source/:id" element={<PrivateRoute><ExerciseDetailPage /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />

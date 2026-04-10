@@ -33,6 +33,7 @@ export async function saveActiveSession(uid: string, workout: ActiveWorkout): Pr
   await setDoc(activeSessionRef(uid), {
     userId: uid,
     startedAt: workout.startedAt,
+    templateId: typeof workout.templateId === 'string' ? workout.templateId : null,
     label: workout.label?.trim() || null,
     exercises: workout.exercises,
     updatedAt: Date.now(),
@@ -46,6 +47,7 @@ export async function deleteActiveSession(uid: string): Promise<void> {
 function parseSessionDoc(data: Record<string, unknown>): ActiveWorkout {
   return {
     startedAt: typeof data.startedAt === 'number' ? data.startedAt : Date.now(),
+    templateId: typeof data.templateId === 'string' && data.templateId ? data.templateId : null,
     label: typeof data.label === 'string' && data.label ? data.label : undefined,
     exercises: Array.isArray(data.exercises)
       ? data.exercises.map((ex) => {

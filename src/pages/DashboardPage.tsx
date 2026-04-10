@@ -5,6 +5,7 @@ import {
   BarChart3,
   CalendarDays,
   Clock3,
+  Layers3,
   Sparkles,
   Target,
   Trash2,
@@ -14,6 +15,7 @@ import { toast } from 'sonner'
 import AppShell from '../components/AppShell'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
+import { getTemplates, type WorkoutTemplate } from '../lib/templateService'
 import { getProfile } from '../lib/userProfile'
 import {
   getRecentWorkouts, deleteWorkout, retryPendingMaterializations, countWeeklyWorkouts,
@@ -141,6 +143,7 @@ export default function DashboardPage() {
   } = useDashboardStore()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const workoutsRef = useRef<WorkoutSummary[]>([])
 
   const fetchData = useCallback(async (uid: string) => {
@@ -175,6 +178,11 @@ export default function DashboardPage() {
     return () => window.removeEventListener('online', handleOnline)
   }, [])
 
+  useEffect(() => {
+    if (!user) return
+    getTemplates(user.uid).then(setTemplates).catch(() => {})
+  }, [user])
+
   function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation()
     setConfirmDelete(id)
@@ -204,6 +212,7 @@ export default function DashboardPage() {
   const weekDates = getWeekDates()
   const today = new Date()
   const recentWorkouts = workouts.slice(0, 6)
+  const recentTemplates = templates.slice(0, 3)
   const workoutDays = workouts.map((workout) => new Date(workout.startedAt))
   const weekStart = weekDates[0]?.getTime() ?? 0
   const weekEnd = (weekDates[6]?.getTime() ?? 0) + 86_400_000
@@ -652,6 +661,82 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </motion.div>
+            </section>
+
+            <section className="surface-panel rounded-[var(--radius-xl)] p-5">
+              <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="eyebrow">Moje plany</p>
+                  <h2 className="section-title mt-2">Szablony gotowe do odpalenia</h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                    Stałe rozpiski skracają wejście w sesję i porządkują tygodniowy rytm pracy.
+                  </p>
+                </div>
+                <motion.button
+                  onClick={() => navigate('/templates')}
+                  className="rounded-[var(--radius-md)] px-4 py-2.5 text-sm font-semibold"
+                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Otwórz plany
+                </motion.button>
+              </div>
+
+              {recentTemplates.length === 0 ? (
+                <div
+                  className="rounded-[var(--radius-lg)] border border-dashed px-5 py-8 text-center"
+                  style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}
+                >
+                  <p className="text-sm font-semibold text-white">Brak zapisanych szablonów</p>
+                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                    Zacznij od jednej rozpiski na stały dzień treningowy, a potem uruchamiaj ją bez ręcznego układania ćwiczeń.
+                  </p>
+                  <motion.button
+                    onClick={() => navigate('/templates/new')}
+                    className="mt-5 rounded-[var(--radius-md)] px-4 py-2.5 text-sm font-semibold"
+                    style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Utwórz pierwszy plan
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="grid gap-3 lg:grid-cols-3">
+                  {recentTemplates.map((template) => {
+                    const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
+                    return (
+                      <motion.button
+                        key={template.id}
+                        onClick={() => navigate('/templates')}
+                        className="rounded-[var(--radius-lg)] border p-4 text-left transition-transform hover:-translate-y-0.5"
+                        style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-white truncate">{template.name}</p>
+                            <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>
+                              {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} • {exerciseCount} {exerciseCount === 1 ? 'ćwiczenie' : 'ćwiczeń'}
+                            </p>
+                          </div>
+                          <Layers3 size={15} style={{ color: 'var(--accent)' }} />
+                        </div>
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {template.days.slice(0, 3).map((day, index) => (
+                            <span
+                              key={`${template.id}-${index}`}
+                              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+                            >
+                              {day.name}
+                            </span>
+                          ))}
+                        </div>
+                      </motion.button>
+                    )
+                  })}
+                </div>
+              )}
             </section>
 
             <section>

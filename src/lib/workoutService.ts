@@ -29,6 +29,7 @@ export interface WorkoutSummary {
   startedAt: number
   finishedAt: number
   materialized: boolean
+  templateId?: string | null
   label?: string | null
   exercises: WorkoutExerciseSummary[]
 }
@@ -124,6 +125,7 @@ export function calcVolume(workout: WorkoutSummary): number {
 function buildWorkoutPayload(uid: string, workout: ActiveWorkout) {
   return {
     userId: uid,
+    templateId: workout.templateId ?? null,
     startedAt: workout.startedAt,
     finishedAt: Date.now(),
     materialized: false,
@@ -150,6 +152,7 @@ function normalizeWorkoutSummary(id: string, raw: unknown): WorkoutSummary {
     startedAt: toFiniteNumber(record.startedAt),
     finishedAt: toFiniteNumber(record.finishedAt),
     materialized: record.materialized === true,
+    templateId: typeof record.templateId === 'string' && record.templateId ? record.templateId : null,
     label: typeof record.label === 'string' && record.label.trim() ? record.label : null,
     exercises: sanitizeWorkoutExercises(record.exercises),
   }

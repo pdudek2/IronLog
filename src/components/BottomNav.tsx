@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Dumbbell, LayoutDashboard, Plus, User } from 'lucide-react'
+import { Dumbbell, LayoutDashboard, Layers3, Plus, User } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 interface NavBtnProps {
@@ -57,6 +57,13 @@ export default function BottomNav() {
           label="Start"
           active={path === '/dashboard'}
           onClick={() => navigate('/dashboard')}
+        />
+
+        <NavBtn
+          icon={<Layers3 size={20} />}
+          label="Plany"
+          active={path.startsWith('/templates')}
+          onClick={() => navigate('/templates')}
         />
 
         <NavBtn

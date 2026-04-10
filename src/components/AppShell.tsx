@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { Dumbbell, LayoutDashboard, LogOut, Plus, User } from 'lucide-react'
+import { Dumbbell, LayoutDashboard, Layers3, LogOut, Plus, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { logoutUser } from '../lib/auth'
 import BottomNav from './BottomNav'
 
-type AppSection = 'dashboard' | 'exercises' | 'profile'
+type AppSection = 'dashboard' | 'templates' | 'exercises' | 'profile'
 
 interface AppShellProps {
   current?: AppSection
@@ -20,6 +20,7 @@ const NAV_ITEMS: Array<{
   to: string
 }> = [
   { key: 'dashboard', label: 'Start', icon: LayoutDashboard, to: '/dashboard' },
+  { key: 'templates', label: 'Plany', icon: Layers3, to: '/templates' },
   { key: 'exercises', label: 'Ćwiczenia', icon: Dumbbell, to: '/exercises' },
   { key: 'profile', label: 'Profil', icon: User, to: '/profile' },
 ]

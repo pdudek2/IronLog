@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Flame, Layers3, Target } from 'lucide-react'
 import { toast } from 'sonner'
-import { useWorkoutStore, type WorkoutSet } from '../store/workoutStore'
+import { useWorkoutStore, type ActiveWorkout, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { saveWorkout } from '../lib/workoutService'
@@ -113,6 +113,7 @@ export default function WorkoutPage() {
   const {
     active,
     startWorkout,
+    hydrateFromDoc,
     setLabel,
     addExercise,
     addSet,
@@ -123,6 +124,8 @@ export default function WorkoutPage() {
     clearWorkout,
   } = useWorkoutStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  const appliedTemplateRef = useRef<string | null>(null)
 
   const { clearSession, ready } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
@@ -144,6 +147,21 @@ export default function WorkoutPage() {
     const id = setInterval(() => setTick((tick) => tick + 1), 1_000)
     return () => clearInterval(id)
   }, [])
+
+  useEffect(() => {
+    const routeState = location.state as { templateWorkout?: ActiveWorkout; templateName?: string } | null
+    const templateWorkout = routeState?.templateWorkout
+
+    if (!ready || !templateWorkout) return
+
+    const signature = `${templateWorkout.templateId ?? 'adhoc'}:${templateWorkout.startedAt}`
+    if (appliedTemplateRef.current === signature) return
+
+    appliedTemplateRef.current = signature
+    hydrateFromDoc(templateWorkout)
+    navigate(location.pathname, { replace: true, state: null })
+    toast.success(routeState?.templateName ? `Szablon „${routeState.templateName}” gotowy do startu` : 'Szablon gotowy do startu')
+  }, [ready, location.state, location.pathname, hydrateFromDoc, navigate])
 
   async function doFinish() {
     if (!active || !user || saving || closingSession) return

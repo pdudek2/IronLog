@@ -19,10 +19,11 @@ import {
 } from '../lib/templateService'
 import type { Exercise } from '../data/exercises'
 
-type DraftDay = TemplateDay
+type DraftDay = TemplateDay & { _id: string }
 
 function emptyDay(index: number): DraftDay {
   return {
+    _id: crypto.randomUUID(),
     name: `Dzień ${index + 1}`,
     exercises: [],
   }
@@ -73,7 +74,7 @@ export default function TemplateEditorPage() {
 
         setTemplate(nextTemplate)
         setName(nextTemplate.name)
-        setDays(nextTemplate.days.length ? nextTemplate.days : [emptyDay(0)])
+        setDays(nextTemplate.days.length ? nextTemplate.days.map((day) => ({ ...day, _id: crypto.randomUUID() })) : [emptyDay(0)])
       })
       .catch(() => {
         if (!cancelled) {
@@ -245,7 +246,7 @@ export default function TemplateEditorPage() {
             </section>
 
             {days.map((day, dayIndex) => (
-              <section key={dayIndex} className="surface-panel rounded-[var(--radius-xl)] p-5">
+              <section key={day._id} className="surface-panel rounded-[var(--radius-xl)] p-5">
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="eyebrow">Dzień {dayIndex + 1}</p>

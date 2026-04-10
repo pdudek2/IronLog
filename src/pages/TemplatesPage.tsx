@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { getDoc } from 'firebase/firestore'
 import { CalendarDays, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import AppShell from '../components/AppShell'
@@ -9,7 +8,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import { useWorkoutStore } from '../store/workoutStore'
-import { activeSessionRef, saveActiveSession } from '../lib/activeSessionService'
+import { fetchRemoteSessionHasWork, saveActiveSession } from '../lib/activeSessionService'
 import {
   buildActiveWorkoutFromTemplate,
   deleteTemplate,
@@ -37,6 +36,8 @@ export default function TemplatesPage() {
 
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [launching, setLaunching] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<WorkoutTemplate | null>(null)
   const [launchTarget, setLaunchTarget] = useState<{ template: WorkoutTemplate; dayIndex: number } | null>(null)
 
@@ -44,7 +45,10 @@ export default function TemplatesPage() {
     if (!user) return
     getTemplates(user.uid)
       .then(setTemplates)
-      .catch(() => toast.error('Nie udało się pobrać szablonów.'))
+      .catch(() => {
+        toast.error('Nie udało się pobrać szablonów.')
+        setError(true)
+      })
       .finally(() => setLoading(false))
   }, [user])
 
@@ -80,19 +84,18 @@ export default function TemplatesPage() {
   }
 
   async function handleLaunch(template: WorkoutTemplate, dayIndex: number) {
-    if (!user) return
-
-    const remoteSession = await getDoc(activeSessionRef(user.uid)).catch(() => null)
-    const remoteData = remoteSession?.exists() ? remoteSession.data() : null
-    const remoteExercises = Array.isArray(remoteData?.exercises) ? remoteData.exercises : []
-    const remoteHasWork = remoteExercises.length > 0 || (typeof remoteData?.label === 'string' && remoteData.label.trim().length > 0)
-
-    if (hasActiveWork || remoteHasWork) {
-      setLaunchTarget({ template, dayIndex })
-      return
+    if (!user || launching) return
+    setLaunching(true)
+    try {
+      const remoteHasWork = await fetchRemoteSessionHasWork(user.uid)
+      if (hasActiveWork || remoteHasWork) {
+        setLaunchTarget({ template, dayIndex })
+        return
+      }
+      await launchTemplate(template, dayIndex)
+    } finally {
+      setLaunching(false)
     }
-
-    void launchTemplate(template, dayIndex)
   }
 
   if (loading) {
@@ -143,7 +146,23 @@ export default function TemplatesPage() {
       </div>
 
       <AnimatePresence mode="popLayout">
-        {templates.length === 0 ? (
+        {error ? (
+          <motion.div
+            className="surface-panel rounded-[var(--radius-xl)] p-10 text-center"
+            initial={false}
+            animate={{ opacity: 1 }}
+          >
+            <p className="text-lg font-semibold text-white">Nie udało się pobrać szablonów</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>Sprawdź połączenie i odśwież stronę.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-6 rounded-[var(--radius-lg)] px-5 py-3 text-sm font-semibold"
+              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'white' }}
+            >
+              Odśwież
+            </button>
+          </motion.div>
+        ) : templates.length === 0 ? (
           <motion.div
             className="surface-panel rounded-[var(--radius-xl)] p-10 text-center"
             initial={false}
@@ -196,6 +215,7 @@ export default function TemplatesPage() {
 
                     <div className="flex items-center gap-2">
                       <button
+                        aria-label={`Edytuj szablon ${template.name}`}
                         onClick={() => navigate(`/templates/${template.id}/edit`)}
                         className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
                         style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
@@ -204,6 +224,7 @@ export default function TemplatesPage() {
                         Edytuj
                       </button>
                       <button
+                        aria-label={`Usuń szablon ${template.name}`}
                         onClick={() => setDeleteTarget(template)}
                         className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
                         style={{ background: 'rgba(255,87,87,0.08)', border: '1px solid rgba(255,87,87,0.18)', color: '#FF5757' }}
@@ -231,7 +252,8 @@ export default function TemplatesPage() {
 
                           <motion.button
                             onClick={() => void handleLaunch(template, dayIndex)}
-                            className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
+                            disabled={launching}
+                            className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold disabled:opacity-50"
                             style={{
                               background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
                               color: 'var(--accent-foreground)',

@@ -1,4 +1,4 @@
-import { deleteDoc, doc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore'
+import { deleteDoc, doc, getDoc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
 import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
 
@@ -42,6 +42,14 @@ export async function saveActiveSession(uid: string, workout: ActiveWorkout): Pr
 
 export async function deleteActiveSession(uid: string): Promise<void> {
   await deleteDoc(activeSessionRef(uid))
+}
+
+export async function fetchRemoteSessionHasWork(uid: string): Promise<boolean> {
+  const snap = await getDoc(activeSessionRef(uid)).catch(() => null)
+  if (!snap?.exists()) return false
+  const data = snap.data()
+  const exercises = Array.isArray(data?.exercises) ? data.exercises : []
+  return exercises.length > 0 || (typeof data?.label === 'string' && data.label.trim().length > 0)
 }
 
 function parseSessionDoc(data: Record<string, unknown>): ActiveWorkout {

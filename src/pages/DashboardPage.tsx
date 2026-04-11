@@ -13,6 +13,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import AppShell from '../components/AppShell'
+import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
 import { getTemplates, type WorkoutTemplate } from '../lib/templateService'
@@ -348,6 +349,10 @@ export default function DashboardPage() {
             </motion.div>
           ))}
         </section>
+
+        <div className="mb-6">
+          <ReadinessWidget />
+        </div>
 
         <div className="desktop-app-grid">
           <aside className="desktop-sticky space-y-4 hidden lg:block">

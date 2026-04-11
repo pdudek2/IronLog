@@ -12,7 +12,9 @@ import { useActiveSession } from '../hooks/useActiveSession'
 import AppShell from '../components/AppShell'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
+import OverloadHint from '../components/OverloadHint'
 import { LoadingState } from '../components/ui'
+import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
@@ -136,12 +138,33 @@ export default function WorkoutPage() {
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
+  const [suggestions, setSuggestions] = useState<Record<string, OverloadSuggestion | null>>({})
+  const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
+  const fetchedKeys = useRef(new Set<string>())
 
   // Load user's custom exercises for the picker
   useEffect(() => {
     if (!user) return
     getUserExercises(user.uid).then(setUserExercises).catch(() => {})
   }, [user])
+
+  function fetchSuggestion(exerciseId: string, source: string, uid: string) {
+    const key = `${source}:${exerciseId}`
+    if (fetchedKeys.current.has(key)) return
+    fetchedKeys.current.add(key)
+    suggestNextSession(uid, exerciseId, source as 'global' | 'user')
+      .then((suggestion) => setSuggestions((prev) => ({ ...prev, [key]: suggestion })))
+      .catch(() => {})
+  }
+
+  // Fetch suggestions for exercises loaded from template on mount
+  useEffect(() => {
+    if (!user || !active) return
+    for (const ex of active.exercises) {
+      fetchSuggestion(ex.exerciseId, ex.exerciseSource, user.uid)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, active?.exercises.length])
 
   useEffect(() => {
     const id = setInterval(() => setTick((tick) => tick + 1), 1_000)
@@ -550,6 +573,22 @@ export default function WorkoutPage() {
                         </div>
                       </div>
 
+                      {(() => {
+                        const hintKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
+                        const suggestion = suggestions[hintKey]
+                        if (!suggestion || dismissedHints.has(hintKey)) return null
+                        return (
+                          <OverloadHint
+                            suggestion={suggestion}
+                            onApply={(weight) => {
+                              updateSet(exerciseIndex, 0, 'weight', String(weight))
+                              setDismissedHints((prev) => new Set(prev).add(hintKey))
+                            }}
+                            onDismiss={() => setDismissedHints((prev) => new Set(prev).add(hintKey))}
+                          />
+                        )
+                      })()}
+
                       <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] gap-2 mb-2">
                         <span className="text-[10px] uppercase tracking-[0.16em] text-center" style={{ color: 'var(--muted)' }}>#</span>
                         <span className="text-[10px] uppercase tracking-[0.16em] text-center" style={{ color: 'var(--muted)' }}>{units}</span>
@@ -676,6 +715,7 @@ export default function WorkoutPage() {
           onSelect={(id, name, source) => {
             addExercise(id, name, source)
             setShowPicker(false)
+            if (user) fetchSuggestion(id, source, user.uid)
           }}
           onClose={() => setShowPicker(false)}
           userExercises={userExercises}

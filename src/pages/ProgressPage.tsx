@@ -74,9 +74,17 @@ export default function ProgressPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
+  function handleRangeChange(days: number) {
+    if (days === rangeDays) return
+    setError(false)
+    setLoading(true)
+    setRangeDays(days)
+  }
+
   useEffect(() => {
     if (!user) return
 
+    let cancelled = false
     const fromMs = Date.now() - rangeDays * 86_400_000
 
     Promise.all([
@@ -84,11 +92,23 @@ export default function ProgressPage() {
       getRecords(user.uid),
     ])
       .then(([s, r]) => {
+        if (cancelled) return
         setSessions(s)
         setRecords(r)
+        setError(false)
       })
-      .catch((err) => { console.error(err); setError(true) })
-      .finally(() => setLoading(false))
+      .catch((err) => {
+        console.error('[progress load error]', err)
+        if (cancelled) return
+        setError(true)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [user, rangeDays])
 
   const weeklyData = useMemo(
@@ -163,7 +183,8 @@ export default function ProgressPage() {
               {RANGE_OPTIONS.map(({ label, days }) => (
                 <button
                   key={days}
-                  onClick={() => setRangeDays(days)}
+                  onClick={() => handleRangeChange(days)}
+                  disabled={rangeDays === days}
                   className="rounded-[var(--radius-md)] px-3 py-1.5 text-xs font-semibold transition-colors"
                   style={
                     rangeDays === days

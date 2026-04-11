@@ -1,4 +1,4 @@
-import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
+import { collection, getDocs, limit, query, where } from 'firebase/firestore'
 import { db } from './firebase'
 
 export interface ProgressSessionLite {
@@ -59,9 +59,6 @@ export async function getProgressSessions(
     query(
       collection(db, 'exerciseSessions'),
       where('userId', '==', uid),
-      where('finishedAt', '>=', fromMs),
-      orderBy('finishedAt', 'desc'),
-      limit(500),
     ),
   )
   return snap.docs.map((d) => {
@@ -78,6 +75,9 @@ export async function getProgressSessions(
         : [],
     }
   })
+    .filter((s) => s.finishedAt >= fromMs)
+    .sort((a, b) => b.finishedAt - a.finishedAt)
+    .slice(0, 500)
 }
 
 export async function getRecords(uid: string): Promise<RecordSummary[]> {

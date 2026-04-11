@@ -76,8 +76,6 @@ export default function ProgressPage() {
 
   useEffect(() => {
     if (!user) return
-    setLoading(true)
-    setError(false)
 
     const fromMs = Date.now() - rangeDays * 86_400_000
 
@@ -89,7 +87,7 @@ export default function ProgressPage() {
         setSessions(s)
         setRecords(r)
       })
-      .catch(() => setError(true))
+      .catch((err) => { console.error(err); setError(true) })
       .finally(() => setLoading(false))
   }, [user, rangeDays])
 

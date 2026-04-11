@@ -90,7 +90,7 @@ export async function getRecords(uid: string): Promise<RecordSummary[]> {
       return {
         id: d.id,
         exerciseId: typeof data.exerciseId === 'string' ? data.exerciseId : '',
-        exerciseSource: data.exerciseSource === 'user' ? 'user' : ('global' as const),
+        exerciseSource: (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global',
         exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : '',
         maxWeight: toNum(data.maxWeight),
         maxReps: toNum(data.maxReps),

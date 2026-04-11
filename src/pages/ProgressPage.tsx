@@ -6,7 +6,7 @@ import {
   Area, AreaChart, Bar, BarChart, CartesianGrid,
   Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
-import type { TooltipProps } from 'recharts'
+
 import AppShell from '../components/AppShell'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
@@ -34,7 +34,13 @@ function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
 }
 
-function DarkTooltip({ active, payload, label }: TooltipProps<number, string>) {
+interface DarkTooltipProps {
+  active?: boolean
+  payload?: Array<{ name?: string; value?: number | string }>
+  label?: string
+}
+
+function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
   if (!active || !payload?.length) return null
   return (
     <div

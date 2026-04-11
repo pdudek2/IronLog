@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { logoutUser } from '../lib/auth'
 import BottomNav from './BottomNav'
 
-type AppSection = 'dashboard' | 'templates' | 'exercises' | 'profile'
+type AppSection = 'dashboard' | 'templates' | 'exercises' | 'profile' | 'progress'
 
 interface AppShellProps {
   current?: AppSection

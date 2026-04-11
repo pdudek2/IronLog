@@ -474,18 +474,28 @@ export default function DashboardPage() {
                   <div>
                     <p className="eyebrow">Przegląd tygodnia</p>
                     <h2 className="section-title mt-2">Jak wygląda ten tydzień</h2>
+
                     <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                       Szybki obraz tempa, objętości i najmocniejszego dnia. Ten blok ma być Twoim pierwszym spojrzeniem po wejściu do aplikacji.
                     </p>
                   </div>
-                  <div className="rounded-[var(--radius-lg)] border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
-                    <p className="stat-meta">Zakres</p>
-                    <p className="mt-2 text-sm font-semibold text-white">{formatWeekRange(weekDates)}</p>
-                    <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                      {weeklyVolumeDelta === null
-                        ? 'Budujemy pierwszy punkt odniesienia'
-                        : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs poprzedni tydzień`}
-                    </p>
+                  <div className="flex flex-col gap-3">
+                    <div className="rounded-[var(--radius-lg)] border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                      <p className="stat-meta">Zakres</p>
+                      <p className="mt-2 text-sm font-semibold text-white">{formatWeekRange(weekDates)}</p>
+                      <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+                        {weeklyVolumeDelta === null
+                          ? 'Budujemy pierwszy punkt odniesienia'
+                          : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs poprzedni tydzień`}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => navigate('/progress')}
+                      className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold text-left transition-opacity hover:opacity-80"
+                      style={{ background: 'rgba(232,255,87,0.07)', border: '1px solid rgba(232,255,87,0.18)', color: 'var(--accent)' }}
+                    >
+                      Pełny progres →
+                    </button>
                   </div>
                 </div>
 

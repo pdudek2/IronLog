@@ -613,50 +613,49 @@ async function generatePlan(
   return normalizeGeneratedPlan(parsed, catalog, request.goal)
 }
 
-async function streamAnthropicToClient(response: Response, res: ApiResponse): Promise<void> {
-  const reader = response.body?.getReader()
-  if (!reader) throw new Error('Claude API nie zwróciło strumienia odpowiedzi.')
+async function generateChatReply(
+  apiKey: string,
+  model: string,
+  context: UserContext,
+  messages: NormalizedMessage[],
+): Promise<string> {
+  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 700,
+      stream: false,
+      system: buildSystemPrompt(context),
+      messages: messages.map((message) => ({
+        role: message.role,
+        content: message.content,
+      })),
+    }),
+  })
 
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  const flushLine = (line: string) => {
-    const trimmed = line.trim()
-    if (!trimmed.startsWith('data:')) return
-
-    const payload = trimmed.slice(5).trim()
-    if (!payload || payload === '[DONE]') return
-
-    try {
-      const parsed = JSON.parse(payload) as {
-        type?: string
-        delta?: { text?: string }
-      }
-
-      if (parsed.type === 'content_block_delta' && typeof parsed.delta?.text === 'string') {
-        res.write(parsed.delta.text)
-      }
-    } catch {
-      // Ignorujemy linie SSE, które nie są poprawnym JSON-em bloków tekstowych.
-    }
+  if (!upstream.ok) {
+    const error = await readAnthropicError(upstream)
+    console.error('[ai-chat upstream error]', {
+      status: error.status,
+      model,
+      message: error.message,
+    })
+    throw Object.assign(new Error(error.message), { status: error.status })
   }
 
-  while (true) {
-    const { value, done } = await reader.read()
-    buffer += decoder.decode(value, { stream: !done })
+  const payload = await upstream.json().catch(() => null)
+  const text = readAnthropicTextPayload(payload)
 
-    let separatorIndex = buffer.indexOf('\n')
-    while (separatorIndex >= 0) {
-      const line = buffer.slice(0, separatorIndex)
-      buffer = buffer.slice(separatorIndex + 1)
-      flushLine(line)
-      separatorIndex = buffer.indexOf('\n')
-    }
-
-    if (done) break
+  if (!text) {
+    throw new Error('Claude API nie zwróciło treści odpowiedzi.')
   }
 
-  if (buffer.trim()) flushLine(buffer)
+  return text
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -720,42 +719,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 700,
-        stream: true,
-        system: buildSystemPrompt(context),
-        messages: messages.map((message) => ({
-          role: message.role,
-          content: message.content,
-        })),
-      }),
-    })
-
-    if (!upstream.ok) {
-      const error = await readAnthropicError(upstream)
-      console.error('[ai-chat upstream error]', {
-        status: error.status,
-        model,
-        message: error.message,
-      })
-      sendJson(res, error.status, { error: error.message })
-      return
-    }
-
+    const reply = await generateChatReply(apiKey, model, context, messages)
     res.statusCode = 200
     res.setHeader('Content-Type', 'text/plain; charset=utf-8')
     res.setHeader('Cache-Control', 'no-store')
-
-    await streamAnthropicToClient(upstream, res)
-    res.end()
+    res.end(reply)
   } catch (error) {
     if (error instanceof RateLimitError) {
       res.setHeader('Retry-After', String(error.retryAfterSeconds))

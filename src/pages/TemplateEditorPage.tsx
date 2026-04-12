@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -9,6 +9,10 @@ import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import type { ExerciseSource } from '../store/workoutStore'
 import { getUserExercises } from '../lib/userExercisesService'
+import {
+  clearTemplateDraft,
+  readTemplateDraft,
+} from '../lib/templateDraftStorage'
 import {
   createTemplate,
   getTemplate,
@@ -43,13 +47,21 @@ export default function TemplateEditorPage() {
   const { user } = useAuthStore()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const [initialDraft] = useState(() => (
+    !id && searchParams.get('draft') === 'ai' ? readTemplateDraft() : null
+  ))
 
   const isEdit = Boolean(id)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
   const [template, setTemplate] = useState<WorkoutTemplate | null>(null)
-  const [name, setName] = useState('')
-  const [days, setDays] = useState<DraftDay[]>([emptyDay(0)])
+  const [name, setName] = useState(() => initialDraft?.name ?? '')
+  const [days, setDays] = useState<DraftDay[]>(() => (
+    initialDraft?.days.length
+      ? initialDraft.days.map((day) => ({ ...day, _id: crypto.randomUUID() }))
+      : [emptyDay(0)]
+  ))
   const [pickerDayIndex, setPickerDayIndex] = useState<number | null>(null)
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
 
@@ -90,6 +102,17 @@ export default function TemplateEditorPage() {
       cancelled = true
     }
   }, [id, isEdit, navigate])
+
+  useEffect(() => {
+    if (isEdit || searchParams.get('draft') !== 'ai') return
+
+    if (!initialDraft) {
+      toast.message('Nie znaleziono draftu AI. Możesz złożyć szablon ręcznie.')
+      return
+    }
+
+    toast.success('Załadowano draft wygenerowany przez AI.')
+  }, [initialDraft, isEdit, searchParams])
 
   const totalExercises = useMemo(
     () => days.reduce((sum, day) => sum + day.exercises.length, 0),
@@ -195,6 +218,7 @@ export default function TemplateEditorPage() {
         toast.success('Szablon zaktualizowany')
       } else {
         await createTemplate(user.uid, payload)
+        clearTemplateDraft()
         toast.success('Szablon zapisany')
       }
       navigate('/templates')

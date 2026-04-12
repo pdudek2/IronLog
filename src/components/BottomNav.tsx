@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Dumbbell, LayoutDashboard, Layers3, Plus, User } from 'lucide-react'
+import { Dumbbell, LayoutDashboard, Layers3, Plus, Sparkles, User } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 interface NavBtnProps {
@@ -86,6 +86,13 @@ export default function BottomNav() {
         >
           <Plus size={22} strokeWidth={2.5} />
         </motion.button>
+
+        <NavBtn
+          icon={<Sparkles size={20} />}
+          label="AI"
+          active={path.startsWith('/chat')}
+          onClick={() => navigate('/chat')}
+        />
 
         <NavBtn
           icon={<User size={20} />}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CalendarDays, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { CalendarDays, ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import AppShell from '../components/AppShell'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -40,6 +40,7 @@ export default function TemplatesPage() {
   const [launching, setLaunching] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<WorkoutTemplate | null>(null)
   const [launchTarget, setLaunchTarget] = useState<{ template: WorkoutTemplate; dayIndex: number } | null>(null)
+  const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user) return
@@ -194,6 +195,7 @@ export default function TemplatesPage() {
           <div className="grid gap-4 xl:grid-cols-2">
             {templates.map((template, index) => {
               const totalExercises = countTemplateExercises(template)
+              const expanded = expandedTemplateId === template.id
               return (
                 <motion.div
                   key={template.id}
@@ -211,6 +213,18 @@ export default function TemplatesPage() {
                       <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
                         {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} • {totalExercises} {totalExercises === 1 ? 'ćwiczenie' : 'ćwiczeń'} • aktualizacja {formatDate(template.updatedAt)}
                       </p>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {template.days.map((day, dayIndex) => (
+                          <span
+                            key={`${template.id}-summary-${dayIndex}`}
+                            className="rounded-[var(--radius-pill)] border px-3 py-1.5 text-xs font-medium"
+                            style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--border)', color: 'var(--muted)' }}
+                          >
+                            {day.name} • {day.exercises.length}
+                          </span>
+                        ))}
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">
@@ -235,58 +249,95 @@ export default function TemplatesPage() {
                     </div>
                   </div>
 
-                  <div className="mt-5 space-y-3">
-                    {template.days.map((day, dayIndex) => (
-                      <div
-                        key={`${template.id}-${dayIndex}`}
-                        className="rounded-[var(--radius-lg)] border p-4"
-                        style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
-                      >
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-white">{day.name}</p>
-                            <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                              {day.exercises.length} {day.exercises.length === 1 ? 'ćwiczenie' : 'ćwiczeń'}
-                            </p>
-                          </div>
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                    <button
+                      type="button"
+                      onClick={() => setExpandedTemplateId((current) => current === template.id ? null : template.id)}
+                      className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
+                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+                    >
+                      {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      {expanded ? 'Zwiń dni planu' : 'Pokaż dni planu'}
+                    </button>
 
-                          <motion.button
-                            onClick={() => void handleLaunch(template, dayIndex)}
-                            disabled={launching}
-                            className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold disabled:opacity-50"
-                            style={{
-                              background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
-                              color: 'var(--accent-foreground)',
-                            }}
-                            whileTap={{ scale: 0.96 }}
-                          >
-                            <Play size={13} />
-                            Rozpocznij
-                          </motion.button>
-                        </div>
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {day.exercises.slice(0, 5).map((exercise) => (
-                            <span
-                              key={`${day.name}-${exercise.exerciseSource}-${exercise.exerciseId}`}
-                              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }}
-                            >
-                              {exercise.name}
-                            </span>
-                          ))}
-                          {day.exercises.length > 5 && (
-                            <span
-                              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }}
-                            >
-                              +{day.exercises.length - 5}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+                    <motion.button
+                      onClick={() => void handleLaunch(template, 0)}
+                      disabled={launching}
+                      className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                      style={{
+                        background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+                        color: 'var(--accent-foreground)',
+                      }}
+                      whileTap={{ scale: 0.96 }}
+                    >
+                      <Play size={13} />
+                      Start od dnia 1
+                    </motion.button>
                   </div>
+
+                  <AnimatePresence initial={false}>
+                    {expanded && (
+                      <motion.div
+                        className="mt-4 space-y-3"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.18 }}
+                      >
+                        {template.days.map((day, dayIndex) => (
+                          <div
+                            key={`${template.id}-${dayIndex}`}
+                            className="rounded-[var(--radius-lg)] border p-4"
+                            style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
+                          >
+                            <div className="flex flex-wrap items-start justify-between gap-4">
+                              <div className="min-w-0">
+                                <p className="text-sm font-semibold text-white">{day.name}</p>
+                                <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+                                  {day.exercises.length} {day.exercises.length === 1 ? 'ćwiczenie' : 'ćwiczeń'}
+                                </p>
+                              </div>
+
+                              <motion.button
+                                onClick={() => void handleLaunch(template, dayIndex)}
+                                disabled={launching}
+                                className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold disabled:opacity-50"
+                                style={{
+                                  background: 'rgba(255,255,255,0.04)',
+                                  border: '1px solid var(--border)',
+                                  color: 'white',
+                                }}
+                                whileTap={{ scale: 0.96 }}
+                              >
+                                <Play size={13} />
+                                Rozpocznij ten dzień
+                              </motion.button>
+                            </div>
+
+                            <div className="mt-4 flex flex-wrap gap-2">
+                              {day.exercises.slice(0, 5).map((exercise) => (
+                                <span
+                                  key={`${day.name}-${exercise.exerciseSource}-${exercise.exerciseId}`}
+                                  className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+                                >
+                                  {exercise.name}
+                                </span>
+                              ))}
+                              {day.exercises.length > 5 && (
+                                <span
+                                  className="rounded-full px-2.5 py-1 text-[11px] font-medium"
+                                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+                                >
+                                  +{day.exercises.length - 5}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </motion.div>
               )
             })}

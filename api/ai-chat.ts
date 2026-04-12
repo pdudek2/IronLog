@@ -90,6 +90,18 @@ interface AvailableExercise {
   muscles: string[]
 }
 
+function createEmptyUserContext(): UserContext {
+  return {
+    displayName: null,
+    primaryGoal: null,
+    weeklyGoal: null,
+    units: null,
+    readiness: null,
+    recentWorkouts: [],
+    topRecords: [],
+  }
+}
+
 function getClientIp(req: ApiRequest): string {
   const forwarded = req.headers['x-forwarded-for']
   if (typeof forwarded === 'string' && forwarded.trim()) {
@@ -306,6 +318,31 @@ async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]
   })
 
   return [...fromGlobal, ...fromUser]
+}
+
+async function fetchUserContextSafe(uid: string): Promise<UserContext> {
+  try {
+    return await fetchUserContext(uid)
+  } catch (error) {
+    console.error('[ai-chat context error]', error)
+    return createEmptyUserContext()
+  }
+}
+
+async function fetchAvailableExercisesSafe(uid: string): Promise<AvailableExercise[]> {
+  try {
+    return await fetchAvailableExercises(uid)
+  } catch (error) {
+    console.error('[ai-chat exercise catalog error]', error)
+    return globalExercises.map((exercise) => ({
+      id: exercise.id,
+      name: exercise.name,
+      source: 'global' as const,
+      equipment: exercise.equipment,
+      category: exercise.category,
+      muscles: exercise.muscles,
+    }))
+  }
 }
 
 function buildSystemPrompt(context: UserContext): string {
@@ -707,13 +744,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    const context = await fetchUserContext(userId)
+    const context = await fetchUserContextSafe(userId)
     const requestedModel = typeof body.model === 'string' ? body.model.trim() : ''
     const model = requestedModel || process.env.CLAUDE_CHAT_MODEL || 'claude-sonnet-4-20250514'
 
     if (mode === 'plan') {
       const request = normalizePlanRequest(body.planRequest)
-      const catalog = await fetchAvailableExercises(userId)
+      const catalog = await fetchAvailableExercisesSafe(userId)
       const plan = await generatePlan(apiKey, model, context, request, catalog)
       sendJson(res, 200, { plan })
       return

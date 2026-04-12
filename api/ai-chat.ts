@@ -2,7 +2,6 @@ import { adminDb } from './lib/firebaseAdmin.js'
 import { requireUserId } from './lib/auth.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
-import { exercises as globalExercises } from '../src/data/exercises.ts'
 
 export const config = {
   maxDuration: 30,
@@ -100,6 +99,11 @@ function createEmptyUserContext(): UserContext {
     recentWorkouts: [],
     topRecords: [],
   }
+}
+
+async function loadGlobalExercises() {
+  const module = await import('../src/data/exercises.ts')
+  return module.exercises
 }
 
 function getClientIp(req: ApiRequest): string {
@@ -292,6 +296,7 @@ async function fetchUserContext(uid: string): Promise<UserContext> {
 
 async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]> {
   const userExercisesSnap = await adminDb.collection('userExercises').where('userId', '==', uid).get()
+  const globalExercises = await loadGlobalExercises()
 
   const fromGlobal = globalExercises.map((exercise) => ({
     id: exercise.id,
@@ -334,6 +339,7 @@ async function fetchAvailableExercisesSafe(uid: string): Promise<AvailableExerci
     return await fetchAvailableExercises(uid)
   } catch (error) {
     console.error('[ai-chat exercise catalog error]', error)
+    const globalExercises = await loadGlobalExercises().catch(() => [])
     return globalExercises.map((exercise) => ({
       id: exercise.id,
       name: exercise.name,

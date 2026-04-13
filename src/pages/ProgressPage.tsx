@@ -3,15 +3,20 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowLeft } from 'lucide-react'
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid,
-  Cell, ResponsiveContainer, Tooltip, XAxis, YAxis,
+  Area, AreaChart, CartesianGrid, Cell,
+  Line, LineChart,
+  Bar, BarChart,
+  ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 
 import AppShell from '../components/AppShell'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import {
+  aggregateActivityHeatmap,
   aggregateMuscleBalance,
+  aggregatePeriodComparison,
+  aggregateStrengthProgression,
   aggregateWeeklyVolume,
   getProgressSessions,
   getRecords,
@@ -24,10 +29,20 @@ const RANGE_OPTIONS = [
   { label: '90 dni', days: 90 },
 ]
 
+const HEATMAP_COLORS = [
+  'rgba(255,255,255,0.04)',
+  'rgba(90,166,255,0.15)',
+  'rgba(90,166,255,0.35)',
+  'rgba(90,166,255,0.6)',
+  'rgba(90,166,255,0.9)',
+]
+
+const DAY_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd']
+
 function formatVolume(kg: number): string {
   if (kg >= 1_000_000) return `${(kg / 1_000_000).toFixed(1)}M kg`
   if (kg >= 1000) return `${(kg / 1000).toFixed(1)}k kg`
-  return `${kg} kg`
+  return `${Math.round(kg)} kg`
 }
 
 function formatDate(ts: number): string {
@@ -36,7 +51,7 @@ function formatDate(ts: number): string {
 
 interface DarkTooltipProps {
   active?: boolean
-  payload?: Array<{ name?: string; value?: number | string }>
+  payload?: Array<{ name?: string; value?: number | string; color?: string }>
   label?: string
 }
 
@@ -54,9 +69,9 @@ function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
     >
       <p style={{ color: 'var(--muted)', marginBottom: 4 }}>{label}</p>
       {payload.map((p) => (
-        <p key={p.name} style={{ color: 'var(--accent)', fontWeight: 600 }}>
-          {typeof p.value === 'number' && p.name === 'volume'
-            ? formatVolume(p.value)
+        <p key={p.name} style={{ color: p.color ?? 'var(--accent)', fontWeight: 600 }}>
+          {typeof p.value === 'number' && p.name !== 'sessions'
+            ? `${p.value} kg`
             : p.value}{' '}
           {p.name === 'sessions' ? 'sesji' : ''}
         </p>
@@ -85,7 +100,7 @@ export default function ProgressPage() {
     if (!user) return
 
     let cancelled = false
-    const fromMs = Date.now() - rangeDays * 86_400_000
+    const fromMs = Date.now() - rangeDays * 2 * 86_400_000
 
     Promise.all([
       getProgressSessions(user.uid, fromMs),
@@ -111,20 +126,40 @@ export default function ProgressPage() {
     }
   }, [user, rangeDays])
 
+  const currentSessions = useMemo(() => {
+    const cutoff = Date.now() - rangeDays * 86_400_000
+    return sessions.filter((s) => s.finishedAt >= cutoff)
+  }, [sessions, rangeDays])
+
   const weeklyData = useMemo(
-    () => aggregateWeeklyVolume(sessions, rangeDays === 30 ? 5 : 13),
+    () => aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : 13),
+    [currentSessions, rangeDays],
+  )
+
+  const muscleData = useMemo(() => aggregateMuscleBalance(currentSessions), [currentSessions])
+
+  const periodComparison = useMemo(
+    () => aggregatePeriodComparison(sessions, rangeDays),
     [sessions, rangeDays],
   )
 
-  const muscleData = useMemo(() => aggregateMuscleBalance(sessions), [sessions])
+  const strengthData = useMemo(
+    () => aggregateStrengthProgression(currentSessions, 5),
+    [currentSessions],
+  )
+
+  const heatmapData = useMemo(
+    () => aggregateActivityHeatmap(currentSessions, 12),
+    [currentSessions],
+  )
 
   const totalVolume = useMemo(
-    () => sessions.reduce((sum, s) => sum + s.totalVolume, 0),
-    [sessions],
+    () => currentSessions.reduce((sum, s) => sum + s.totalVolume, 0),
+    [currentSessions],
   )
   const uniqueWorkouts = useMemo(
-    () => new Set(sessions.map((s) => s.workoutId)).size,
-    [sessions],
+    () => new Set(currentSessions.map((s) => s.workoutId)).size,
+    [currentSessions],
   )
 
   if (loading) return <LoadingState message="Ładowanie postępów..." />
@@ -202,7 +237,7 @@ export default function ProgressPage() {
             {[
               { label: 'Sesji', value: uniqueWorkouts },
               { label: 'Objętość', value: formatVolume(totalVolume) },
-              { label: 'Ćwiczeń', value: new Set(sessions.map((s) => s.exerciseName)).size },
+              { label: 'Ćwiczeń', value: new Set(currentSessions.map((s) => s.exerciseName)).size },
               { label: 'Rekordy', value: records.length },
             ].map(({ label, value }) => (
               <div
@@ -223,6 +258,37 @@ export default function ProgressPage() {
               Nie udało się pobrać danych. Sprawdź połączenie i odśwież stronę.
             </p>
           </div>
+        )}
+
+        {/* ── Period Comparison ───────────────────────── */}
+        {!error && periodComparison.previousSessions > 0 && (
+          <motion.div
+            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.03, duration: 0.2 }}
+          >
+            <p className="eyebrow mb-1">Porównanie</p>
+            <p className="section-title mb-5">vs poprzednie {rangeDays} dni</p>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {[
+                { label: 'Sesje', current: periodComparison.currentSessions, delta: periodComparison.sessionsDelta },
+                { label: 'Wolumen', current: formatVolume(periodComparison.currentVolume), delta: periodComparison.volumeDelta },
+                { label: 'Śr. wolumen/sesja', current: formatVolume(periodComparison.currentAvgVolume), delta: periodComparison.avgVolumeDelta },
+              ].map(({ label, current, delta }) => (
+                <div key={label} className="metric-card p-4 text-center">
+                  <p className="stat-meta">{label}</p>
+                  <p className="mt-2 text-2xl font-bold text-white tabular-nums tracking-[-0.04em]">{current}</p>
+                  <p
+                    className="mt-1 text-sm font-semibold"
+                    style={{ color: delta >= 0 ? 'var(--success)' : '#ef4444' }}
+                  >
+                    {delta >= 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(0)}%
+                  </p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         )}
 
         {/* ── Volume chart ────────────────────────────── */}
@@ -274,6 +340,62 @@ export default function ProgressPage() {
           </motion.div>
         )}
 
+        {/* ── Strength Progression ────────────────────── */}
+        {!error && strengthData.data.length > 0 && (
+          <motion.div
+            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.08, duration: 0.2 }}
+          >
+            <p className="eyebrow mb-1">Siła</p>
+            <p className="section-title mb-5">Progresja ciężaru</p>
+            <div style={{ height: 240 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={strengthData.data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <XAxis
+                    dataKey="date"
+                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                    axisLine={false}
+                    tickLine={false}
+                    unit=" kg"
+                    width={56}
+                  />
+                  <Tooltip content={<DarkTooltip />} />
+                  {strengthData.series.map((s) => (
+                    <Line
+                      key={s.exerciseName}
+                      type="monotone"
+                      dataKey={s.exerciseName}
+                      stroke={s.color}
+                      strokeWidth={2}
+                      dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              {strengthData.series.map((s) => (
+                <div key={s.exerciseName} className="flex items-center gap-2">
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ background: s.color }}
+                  />
+                  <span className="text-xs" style={{ color: 'var(--muted)' }}>{s.exerciseName}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
         {/* ── Muscle balance ───────────────────────────── */}
         {!error && muscleData.length > 0 && (
           <motion.div
@@ -321,6 +443,64 @@ export default function ProgressPage() {
           </motion.div>
         )}
 
+        {/* ── Activity Heatmap ─────────────────────────── */}
+        {!error && currentSessions.length > 0 && (
+          <motion.div
+            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.12, duration: 0.2 }}
+          >
+            <p className="eyebrow mb-1">Aktywność</p>
+            <p className="section-title mb-5">Kalendarz treningów</p>
+            <div className="overflow-x-auto">
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1.5rem repeat(12, 1fr)',
+                  gap: 3,
+                  minWidth: 320,
+                }}
+              >
+                {DAY_LABELS.map((day, dayIdx) => (
+                  <div key={day} style={{ display: 'contents' }}>
+                    <span
+                      className="flex items-center justify-end pr-1"
+                      style={{ color: 'var(--muted)', fontSize: 10 }}
+                    >
+                      {dayIdx % 2 === 0 ? day : ''}
+                    </span>
+                    {Array.from({ length: 12 }, (_, weekIdx) => {
+                      const cell = heatmapData.find((c) => c.dayOfWeek === dayIdx && c.weekIndex === weekIdx)
+                      return (
+                        <div
+                          key={weekIdx}
+                          title={cell?.date && cell.volume > 0 ? `${cell.date}: ${formatVolume(cell.volume)}` : cell?.date ?? ''}
+                          style={{
+                            aspectRatio: '1',
+                            borderRadius: 3,
+                            background: HEATMAP_COLORS[cell?.level ?? 0],
+                          }}
+                        />
+                      )
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-end gap-1.5">
+              <span className="text-[10px]" style={{ color: 'var(--muted)' }}>Mniej</span>
+              {HEATMAP_COLORS.map((color, i) => (
+                <div
+                  key={i}
+                  style={{ width: 12, height: 12, borderRadius: 2, background: color }}
+                />
+              ))}
+              <span className="text-[10px]" style={{ color: 'var(--muted)' }}>Więcej</span>
+            </div>
+          </motion.div>
+        )}
+
         {/* ── PR list ──────────────────────────────────── */}
         {!error && records.length > 0 && (
           <motion.div
@@ -333,10 +513,7 @@ export default function ProgressPage() {
             <p className="section-title mb-5">Personal records</p>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {records.map((rec) => (
-                <div
-                  key={rec.id}
-                  className="metric-card p-4"
-                >
+                <div key={rec.id} className="metric-card p-4">
                   <p className="text-sm font-semibold text-white truncate">{rec.exerciseName}</p>
                   <p className="mt-3 text-2xl font-bold text-white tabular-nums tracking-[-0.04em]">
                     {rec.maxWeight} <span className="text-base font-medium" style={{ color: 'var(--muted)' }}>kg</span>
@@ -355,7 +532,7 @@ export default function ProgressPage() {
           </motion.div>
         )}
 
-        {!error && records.length === 0 && sessions.length === 0 && (
+        {!error && records.length === 0 && currentSessions.length === 0 && (
           <div className="surface-panel rounded-[var(--radius-xl)] p-10 text-center">
             <p className="text-lg font-semibold text-white">Brak danych</p>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>

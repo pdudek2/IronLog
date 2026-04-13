@@ -339,12 +339,12 @@ export default function ChatPage() {
                   </div>
 
                   <div
-                    className="rounded-[var(--radius-lg)] border p-4"
+                    className="overflow-hidden rounded-[var(--radius-lg)] border p-4"
                     style={{
                       background: 'rgba(255,255,255,0.025)',
                       borderColor: 'var(--border)',
-                      height: 'min(36rem, calc(100dvh - 21rem))',
-                      minHeight: '24rem',
+                      height: 'min(36rem, calc(100dvh - 22rem))',
+                      minHeight: '20rem',
                     }}
                     aria-live="polite"
                   >

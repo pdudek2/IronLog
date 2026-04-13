@@ -272,6 +272,7 @@ a {
     linear-gradient(180deg, rgba(20, 26, 40, 0.97) 0%, rgba(15, 20, 32, 0.98) 100%);
   box-shadow: var(--card-glow);
   padding: 0.875rem 0.75rem;
+  overflow-y: auto;
 }
 
 .desktop-rail-button {

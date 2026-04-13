@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { LoadingState } from '../components/ui'
+import ShellSkeleton from '../components/ShellSkeleton'
 
 const LoginPage = lazy(() => import('../pages/LoginPage'))
 const RegisterPage = lazy(() => import('../pages/RegisterPage'))
@@ -32,7 +33,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<LoadingState message="Ładowanie widoku..." />}>
+      <Suspense fallback={<ShellSkeleton />}>
         <Routes>
           <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />

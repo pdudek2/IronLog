@@ -105,8 +105,12 @@ export function calcStreak(workouts: WorkoutSummary[]): number {
     return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
   }))
 
+  const today = new Date()
+  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`
+  const startOffset = days.has(todayKey) ? 0 : 1
+
   let streak = 0
-  for (let i = 0; i < 365; i++) {
+  for (let i = startOffset; i < 365; i++) {
     const date = new Date()
     date.setDate(date.getDate() - i)
     if (days.has(`${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`)) streak++

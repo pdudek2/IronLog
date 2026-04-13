@@ -25,4 +25,5 @@ dist-ssr
 .vercel
 session-*.md
 docs/superpowers
+docs/*.md
 CLAUDE.md

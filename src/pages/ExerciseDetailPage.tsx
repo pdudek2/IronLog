@@ -90,9 +90,10 @@ export default function ExerciseDetailPage() {
           }
         }
 
+        const exSource: 'global' | 'user' = source === 'user' ? 'user' : 'global'
         const [sess, rec] = await Promise.all([
-          getExerciseSessions(currentUser.uid, exerciseId),
-          getExerciseRecord(currentUser.uid, exerciseId),
+          getExerciseSessions(currentUser.uid, exerciseId, exSource),
+          getExerciseRecord(currentUser.uid, exerciseId, exSource),
         ])
 
         if (!cancelled) {

@@ -37,14 +37,16 @@ function asRecord(v: unknown): Record<string, unknown> {
 export async function getExerciseSessions(
   uid: string,
   exerciseId: string,
-  count = 10
+  source: 'global' | 'user',
+  count = 10,
 ): Promise<ExerciseSession[]> {
   const q = query(
     collection(db, 'exerciseSessions'),
     where('userId', '==', uid),
     where('exerciseId', '==', exerciseId),
+    where('exerciseSource', '==', source),
     orderBy('startedAt', 'desc'),
-    limit(count)
+    limit(count),
   )
   const snap = await getDocs(q)
   return snap.docs.map((docSnap) => {
@@ -71,13 +73,15 @@ export async function getExerciseSessions(
 
 export async function getExerciseRecord(
   uid: string,
-  exerciseId: string
+  exerciseId: string,
+  source: 'global' | 'user',
 ): Promise<ExerciseRecord | null> {
   const q = query(
     collection(db, 'records'),
     where('userId', '==', uid),
     where('exerciseId', '==', exerciseId),
-    limit(1)
+    where('exerciseSource', '==', source),
+    limit(1),
   )
   const snap = await getDocs(q)
   if (snap.empty) return null

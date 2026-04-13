@@ -760,9 +760,11 @@ export default function DashboardPage() {
                 </div>
               )}
             </section>
+          </main>
+        </div>
 
-            <section>
-              <div className="mb-4 flex items-end justify-between gap-4">
+        <section className="mt-5">
+          <div className="mb-4 flex items-end justify-between gap-4">
                 <div>
                   <p className="eyebrow">
                     Historia
@@ -927,9 +929,7 @@ export default function DashboardPage() {
                   </div>
                 )}
               </AnimatePresence>
-            </section>
-          </main>
-        </div>
+        </section>
 
       {confirmDelete && (
         <ConfirmDialog

@@ -101,6 +101,15 @@ export default function ReadinessWidget() {
               <div key={l}>
                 <p className="stat-meta">{l}</p>
                 <p className="mt-1 text-sm font-semibold text-white tabular-nums">{value}/5</p>
+                <div className="mt-1.5 h-1 overflow-hidden rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+                  <motion.div
+                    className="h-full rounded-full"
+                    style={{ background: color }}
+                    initial={{ width: 0 }}
+                    animate={{ width: `${(value / 5) * 100}%` }}
+                    transition={{ delay: 0.3, duration: 0.6, ease: 'easeOut' }}
+                  />
+                </div>
               </div>
             ))}
           </div>

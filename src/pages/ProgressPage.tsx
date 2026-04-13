@@ -29,6 +29,20 @@ const RANGE_OPTIONS = [
   { label: '90 dni', days: 90 },
 ]
 
+const MUSCLE_PL: Record<string, string> = {
+  chest: 'Klatka',
+  back: 'Plecy',
+  shoulders: 'Barki',
+  biceps: 'Biceps',
+  triceps: 'Triceps',
+  quads: 'Quady',
+  hamstrings: 'Dwugłowe',
+  glutes: 'Pośladki',
+  core: 'Core',
+  calves: 'Łydki',
+  forearms: 'Przedramiona',
+}
+
 const HEATMAP_COLORS = [
   'rgba(255,255,255,0.04)',
   'rgba(90,166,255,0.15)',
@@ -429,13 +443,14 @@ export default function ProgressPage() {
                     tick={{ fill: 'var(--muted)', fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
+                    tickFormatter={(v: string) => MUSCLE_PL[v] ?? v}
                   />
                   <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={20}>
                     {muscleData.map((_, index) => (
                       <Cell
                         key={index}
-                        fill={index === 0 ? 'var(--accent)' : `rgba(232,255,87,${0.55 - index * 0.05})`}
+                        fill={`rgba(90,166,255,${Math.max(0.25, 1 - index * 0.1)})`}
                       />
                     ))}
                   </Bar>
@@ -512,7 +527,7 @@ export default function ProgressPage() {
             transition={{ delay: 0.15, duration: 0.2 }}
           >
             <p className="eyebrow mb-1">Rekordy</p>
-            <p className="section-title mb-5">Personal records</p>
+            <p className="section-title mb-5">Rekordy osobiste</p>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {records.map((rec) => (
                 <div key={rec.id} className="metric-card p-4">

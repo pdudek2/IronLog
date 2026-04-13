@@ -267,7 +267,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
       tabIndex={0}
       onClick={onNavigate}
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onNavigate()}
-      className="rounded-[1.25rem] px-4 py-4 cursor-pointer transition-colors hover:border-[rgba(154,167,194,0.28)]"
+      className="rounded-[1.25rem] px-4 py-4 cursor-pointer transition-all hover:border-[rgba(90,166,255,0.3)] hover:-translate-y-px"
       style={{
         background: 'rgba(255,255,255,0.03)',
         border: `1px solid ${isUser ? 'var(--accent-soft-strong)' : 'var(--border)'}`,

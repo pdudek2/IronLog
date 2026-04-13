@@ -241,11 +241,10 @@ export default function TemplatesPage() {
                       <button
                         aria-label={`Usuń szablon ${template.name}`}
                         onClick={() => setDeleteTarget(template)}
-                        className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
-                        style={{ background: 'rgba(255,87,87,0.08)', border: '1px solid rgba(255,87,87,0.18)', color: '#FF5757' }}
+                        className="inline-flex items-center justify-center rounded-[var(--radius-md)] p-2 transition-colors hover:bg-[rgba(255,87,87,0.12)]"
+                        style={{ border: '1px solid rgba(255,87,87,0.18)', color: '#FF5757' }}
                       >
-                        <Trash2 size={13} />
-                        Usuń
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>

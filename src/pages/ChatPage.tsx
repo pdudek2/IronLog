@@ -349,31 +349,30 @@ export default function ChatPage() {
                     aria-live="polite"
                   >
                     {messages.length === 0 && !streamText ? (
-                      <div className="flex h-full min-h-[20rem] flex-col justify-between gap-6">
-                        <div>
+                      <div className="flex h-full min-h-[20rem] flex-col items-center justify-center gap-8 py-6">
+                        <div className="text-center">
                           <div
-                            className="mb-4 flex h-12 w-12 items-center justify-center rounded-[var(--radius-md)]"
+                            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-lg)]"
                             style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
                           >
-                            <Bot size={20} />
+                            <Bot size={24} />
                           </div>
                           <p className="text-lg font-semibold text-white">Gotowy na pierwszą rozmowę</p>
-                          <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                          <p className="mt-2 max-w-sm text-sm leading-6" style={{ color: 'var(--muted)' }}>
                             AI Coach bierze pod uwagę profil, readiness, ostatnie treningi i top rekordy.
-                            Wybierz jedną z gotowych podpowiedzi albo napisz własne pytanie.
                           </p>
                         </div>
 
-                        <div className="grid gap-3">
+                        <div className="grid w-full gap-2">
                           {STARTER_PROMPTS.map((prompt) => (
                             <button
                               key={prompt}
                               type="button"
                               onClick={() => void handleSend(prompt)}
                               disabled={!configured || sending}
-                              className="rounded-[var(--radius-lg)] border px-4 py-3 text-left text-sm transition hover:opacity-90 disabled:opacity-50"
+                              className="rounded-[var(--radius-lg)] border px-4 py-3 text-left text-sm transition hover:border-[rgba(90,166,255,0.3)] hover:bg-[rgba(90,166,255,0.05)] disabled:opacity-50"
                               style={{
-                                background: 'rgba(255,255,255,0.03)',
+                                background: 'rgba(255,255,255,0.025)',
                                 borderColor: 'var(--border)',
                                 color: 'white',
                               }}
@@ -396,7 +395,7 @@ export default function ChatPage() {
                                 borderColor: message.role === 'assistant' ? 'var(--border)' : 'var(--accent-soft-strong)',
                               }}
                             >
-                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: message.role === 'assistant' ? 'var(--muted)' : 'var(--accent)' }}>
+                              <p className="mb-1 text-[11px] font-semibold tracking-[0.04em]" style={{ color: message.role === 'assistant' ? 'var(--muted)' : 'var(--accent)' }}>
                                 {message.role === 'assistant' ? 'AI Coach' : 'Ty'}
                               </p>
                               <ChatMarkdown content={message.content} />
@@ -411,7 +410,7 @@ export default function ChatPage() {
                                 borderColor: 'var(--border)',
                               }}
                             >
-                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
+                              <p className="mb-1 text-[11px] font-semibold tracking-[0.04em]" style={{ color: 'var(--muted)' }}>
                                 AI Coach
                               </p>
                               <div className="flex items-center gap-3">
@@ -435,7 +434,7 @@ export default function ChatPage() {
                                 borderColor: 'var(--border)',
                               }}
                             >
-                              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>
+                              <p className="mb-1 text-[11px] font-semibold tracking-[0.04em]" style={{ color: 'var(--muted)' }}>
                                 AI Coach
                               </p>
                               <div className="flex items-end gap-1">
@@ -455,22 +454,25 @@ export default function ChatPage() {
                   {error && <SectionError message={error} />}
 
                   <form onSubmit={handleSubmit} className="mt-4 space-y-3">
-                    <label className="flex flex-col gap-2">
-                      <span className="stat-meta">Wiadomość</span>
-                      <textarea
-                        value={input}
-                        onChange={(event) => setInput(event.target.value)}
-                        placeholder={configured ? 'Np. Jak oceniasz mój ostatni tydzień i co poprawić?' : 'Dodaj najpierw Claude API key, aby odblokować czat'}
-                        disabled={!configured || sending}
-                        rows={4}
-                        className="w-full resize-none rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[color:var(--muted-soft)] disabled:opacity-60"
-                        style={{
-                          background: 'var(--input-bg)',
-                          border: '1px solid var(--border)',
-                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
-                        }}
-                      />
-                    </label>
+                    <textarea
+                      value={input}
+                      onChange={(event) => {
+                        setInput(event.target.value)
+                        const el = event.target
+                        el.style.height = 'auto'
+                        el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+                      }}
+                      placeholder={configured ? 'Napisz wiadomość...' : 'Dodaj najpierw Claude API key, aby odblokować czat'}
+                      disabled={!configured || sending}
+                      rows={2}
+                      className="w-full resize-none rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[color:var(--muted-soft)] disabled:opacity-60"
+                      style={{
+                        background: 'var(--input-bg)',
+                        border: '1px solid var(--border)',
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
+                        overflowY: 'auto',
+                      }}
+                    />
 
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>

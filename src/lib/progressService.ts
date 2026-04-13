@@ -243,7 +243,7 @@ export interface StrengthSeries {
   color: string
 }
 
-const SERIES_COLORS = ['#5aa6ff', '#19d59f', '#f59e0b', '#ef4444', '#a78bfa']
+const SERIES_COLORS = ['#5aa6ff', '#19d59f', '#a78bfa', '#38bdf8', '#fb923c']
 
 export function aggregateStrengthProgression(
   sessions: ProgressSessionLite[],

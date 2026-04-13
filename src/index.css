@@ -235,7 +235,7 @@ a {
 @media (min-width: 1024px) {
   .app-shell-grid {
     grid-template-columns: 5.5rem minmax(0, 1fr);
-    align-items: start;
+    align-items: stretch;
   }
 }
 

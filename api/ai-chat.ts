@@ -231,7 +231,7 @@ async function fetchUserContext(uid: string): Promise<UserContext> {
   const [profileSnap, readinessSnap, workoutsSnap, recordsSnap] = await Promise.all([
     adminDb.collection('users').doc(uid).get(),
     adminDb.collection('readiness').where('userId', '==', uid).get(),
-    adminDb.collection('workouts').where('userId', '==', uid).get(),
+    adminDb.collection('workouts').where('userId', '==', uid).orderBy('startedAt', 'desc').limit(3).get(),
     adminDb.collection('records').where('userId', '==', uid).get(),
   ])
 
@@ -267,8 +267,6 @@ async function fetchUserContext(uid: string): Promise<UserContext> {
         exercises: summarizeWorkoutExercises(exercises),
       }
     })
-    .sort((a, b) => b.startedAt - a.startedAt)
-    .slice(0, 3)
 
   const topRecords = recordsSnap.docs
     .map((docSnap) => {

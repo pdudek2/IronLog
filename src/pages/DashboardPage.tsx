@@ -165,10 +165,15 @@ export default function DashboardPage() {
       return
     }
     setLoading(true)
-    getProfile(user.uid).then((nextProfile) => {
-      if (!nextProfile) navigate('/onboarding', { replace: true })
-      else setProfile(nextProfile)
-    })
+    getProfile(user.uid)
+      .then((nextProfile) => {
+        if (!nextProfile) navigate('/onboarding', { replace: true })
+        else setProfile(nextProfile)
+      })
+      .catch(() => {
+        setLoading(false)
+        toast.error('Nie udało się wczytać profilu. Sprawdź połączenie.')
+      })
   }, [user, profile, navigate, setLoading, setProfile, fetchData])
 
   useEffect(() => {
@@ -181,7 +186,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    getTemplates(user.uid).then(setTemplates).catch(() => {})
+    getTemplates(user.uid)
+      .then(setTemplates)
+      .catch(() => toast.error('Nie udało się wczytać szablonów.'))
   }, [user])
 
   function handleDelete(id: string, e: React.MouseEvent) {

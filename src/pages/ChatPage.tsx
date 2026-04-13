@@ -78,13 +78,15 @@ export default function ChatPage() {
   const [generatingPlan, setGeneratingPlan] = useState(false)
   const [savingPlan, setSavingPlan] = useState(false)
   const [selectedPreviewDay, setSelectedPreviewDay] = useState(0)
-  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const chatContainerRef = useRef<HTMLDivElement | null>(null)
 
   const previewDay = planPreview?.days[selectedPreviewDay] ?? null
   const totalPlanExercises = planPreview?.days.reduce((sum, day) => sum + day.exercises.length, 0) ?? 0
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
+    }
   }, [messages, streamText])
 
   useEffect(() => {
@@ -382,7 +384,7 @@ export default function ChatPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="h-full overflow-y-auto pr-1 no-scrollbar">
+                      <div ref={chatContainerRef} className="h-full overflow-y-auto pr-1 no-scrollbar">
                         <div className="space-y-4">
                           {messages.map((message) => (
                             <div
@@ -444,7 +446,7 @@ export default function ChatPage() {
                               </div>
                             </div>
                           )}
-                          <div ref={messagesEndRef} />
+                          <div />
                         </div>
                       </div>
                     )}
@@ -479,6 +481,7 @@ export default function ChatPage() {
                         type="submit"
                         disabled={!configured || !input.trim() || sending}
                         className="inline-flex items-center gap-2"
+                        onPointerDown={(e) => { e.preventDefault(); void handleSend() }}
                       >
                         {sending ? <LoaderCircle size={15} className="animate-spin" /> : <Send size={15} />}
                         {sending ? 'Wysyłanie...' : 'Wyślij'}

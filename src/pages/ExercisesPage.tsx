@@ -95,8 +95,8 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
     setError('')
     try {
       await onSubmit({ name: trimmed, category, equipment, muscles })
-    } catch {
-      setError('Błąd zapisu. Spróbuj ponownie.')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Błąd zapisu. Spróbuj ponownie.')
       setSaving(false)
     }
   }
@@ -421,7 +421,10 @@ export default function ExercisesPage() {
     if (!user) return
     getUserExercises(user.uid)
       .then(setUserExercises)
-      .catch(() => { })
+      .catch((err) => {
+        console.error('[userExercises load error]', err)
+        toast.error('Nie udało się wczytać Twoich ćwiczeń.')
+      })
       .finally(() => setLoadingUser(false))
   }, [user])
 
@@ -463,9 +466,15 @@ export default function ExercisesPage() {
 
     const deletingId = confirmDeleteExercise.id
     setConfirmDeleteExercise(null)
-    await deleteUserExercise(deletingId)
-    setUserExercises((prev) => prev.filter((exercise) => exercise.id !== deletingId))
-    toast.success('Ćwiczenie usunięte!')
+
+    try {
+      await deleteUserExercise(deletingId)
+      setUserExercises((prev) => prev.filter((exercise) => exercise.id !== deletingId))
+      toast.success('Ćwiczenie usunięte!')
+    } catch (err) {
+      console.error('[userExercise delete error]', err)
+      toast.error('Nie udało się usunąć ćwiczenia.')
+    }
   }
 
   function openCreateForm() {

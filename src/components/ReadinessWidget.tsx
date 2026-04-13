@@ -22,7 +22,10 @@ export default function ReadinessWidget() {
       setLastCheckedDate(today)
       getTodayReadiness(user!.uid)
         .then(setEntry)
-        .catch(() => setEntry(null))
+        .catch((err) => {
+          console.error('[ReadinessWidget] load failed', err)
+          setEntry(null)
+        })
     }
 
     load()

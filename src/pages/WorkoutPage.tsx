@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useBlocker, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Flame, Layers3, Target } from 'lucide-react'
 import { toast } from 'sonner'
@@ -142,10 +142,21 @@ export default function WorkoutPage() {
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
   const fetchedKeys = useRef(new Set<string>())
 
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      !!active && !closingSession && currentLocation.pathname !== nextLocation.pathname,
+  )
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') setConfirmDiscard(true)
+  }, [blocker.state])
+
   // Load user's custom exercises for the picker
   useEffect(() => {
     if (!user) return
-    getUserExercises(user.uid).then(setUserExercises).catch(() => {})
+    getUserExercises(user.uid)
+      .then(setUserExercises)
+      .catch(() => toast.error('Nie udało się wczytać Twoich ćwiczeń.'))
   }, [user])
 
   function fetchSuggestion(exerciseId: string, source: string, uid: string) {
@@ -154,7 +165,7 @@ export default function WorkoutPage() {
     fetchedKeys.current.add(key)
     suggestNextSession(uid, exerciseId, source as 'global' | 'user')
       .then((suggestion) => setSuggestions((prev) => ({ ...prev, [key]: suggestion })))
-      .catch(() => {})
+      .catch(() => { fetchedKeys.current.delete(key) })
   }
 
   // Fetch suggestions for exercises loaded from template on mount
@@ -233,7 +244,11 @@ export default function WorkoutPage() {
       console.error('[clearSession after discard error]', error)
       toast.error('Nie udało się od razu usunąć sesji w chmurze, ale wróciłem do dashboardu.')
     }
-    navigate('/dashboard', { replace: true })
+    if (blocker.state === 'blocked') {
+      blocker.proceed()
+    } else {
+      navigate('/dashboard', { replace: true })
+    }
   }
 
   if (!ready || closingSession) {
@@ -424,13 +439,32 @@ export default function WorkoutPage() {
               </div>
               <motion.button
                 onClick={() => setShowPicker(true)}
-                className="w-full rounded-[var(--radius-lg)] py-3.5 text-sm font-semibold tracking-wide"
+                className="w-full rounded-[var(--radius-lg)] py-3.5 text-sm font-semibold tracking-wide mb-3"
                 style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
               >
                 + Dodaj ćwiczenie
               </motion.button>
+              <div className="grid grid-cols-2 gap-2">
+                <motion.button
+                  onClick={handleDiscard}
+                  className="rounded-[var(--radius-lg)] py-3 text-sm font-semibold"
+                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Anuluj
+                </motion.button>
+                <motion.button
+                  onClick={handleFinish}
+                  disabled={saving}
+                  className="rounded-[var(--radius-lg)] py-3 text-sm font-bold"
+                  style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)', opacity: saving ? 0.6 : 1 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {saving ? '...' : 'Zakończ'}
+                </motion.button>
+              </div>
             </div>
           </div>
         </aside>
@@ -728,7 +762,10 @@ export default function WorkoutPage() {
           confirmLabel="Anuluj trening"
           danger
           onConfirm={() => { setConfirmDiscard(false); void handleConfirmDiscard() }}
-          onCancel={() => setConfirmDiscard(false)}
+          onCancel={() => {
+            setConfirmDiscard(false)
+            if (blocker.state === 'blocked') blocker.reset()
+          }}
         />
       )}
 

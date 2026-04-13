@@ -86,6 +86,7 @@ export default function ProgressPage() {
   const [rangeDays, setRangeDays] = useState(90)
   const [sessions, setSessions] = useState<ProgressSessionLite[]>([])
   const [records, setRecords] = useState<RecordSummary[]>([])
+  const [fetchedAt, setFetchedAt] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
 
@@ -110,6 +111,7 @@ export default function ProgressPage() {
         if (cancelled) return
         setSessions(s)
         setRecords(r)
+        setFetchedAt(Date.now())
         setError(false)
       })
       .catch((err) => {
@@ -127,9 +129,9 @@ export default function ProgressPage() {
   }, [user, rangeDays])
 
   const currentSessions = useMemo(() => {
-    const cutoff = Date.now() - rangeDays * 86_400_000
+    const cutoff = fetchedAt - rangeDays * 86_400_000
     return sessions.filter((s) => s.finishedAt >= cutoff)
-  }, [sessions, rangeDays])
+  }, [sessions, rangeDays, fetchedAt])
 
   const weeklyData = useMemo(
     () => aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : 13),
@@ -302,7 +304,7 @@ export default function ProgressPage() {
             <p className="eyebrow mb-1">Objętość</p>
             <p className="section-title mb-5">Wolumen treningowy</p>
             <div style={{ height: 220 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
@@ -351,7 +353,7 @@ export default function ProgressPage() {
             <p className="eyebrow mb-1">Siła</p>
             <p className="section-title mb-5">Progresja ciężaru</p>
             <div style={{ height: 240 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart data={strengthData.data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis
@@ -407,7 +409,7 @@ export default function ProgressPage() {
             <p className="eyebrow mb-1">Balans</p>
             <p className="section-title mb-5">Partie mięśniowe</p>
             <div style={{ height: muscleData.length * 38 + 16 }}>
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart
                   data={muscleData}
                   layout="vertical"

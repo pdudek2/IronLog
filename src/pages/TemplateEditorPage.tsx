@@ -67,7 +67,9 @@ export default function TemplateEditorPage() {
 
   useEffect(() => {
     if (!user) return
-    getUserExercises(user.uid).then(setUserExercises).catch(() => {})
+    getUserExercises(user.uid)
+      .then(setUserExercises)
+      .catch(() => toast.error('Nie udało się wczytać Twoich ćwiczeń.'))
   }, [user])
 
   useEffect(() => {

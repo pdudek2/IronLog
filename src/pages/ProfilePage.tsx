@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
+import { toast } from 'sonner'
+import { getProfile, updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import AppShell from '../components/AppShell'
@@ -26,6 +27,21 @@ export default function ProfilePage() {
   const [nameError, setNameError] = useState('')
   const [saved, setSaved] = useState(false)
 
+  useEffect(() => {
+    if (!user || profile) return
+    getProfile(user.uid)
+      .then((p) => { if (p) setProfile(p) })
+      .catch((err) => console.error('[ProfilePage] getProfile failed', err))
+  }, [user, profile, setProfile])
+
+  useEffect(() => {
+    if (!profile) return
+    setDisplayName(profile.displayName ?? '')
+    setPrimaryGoal(profile.primaryGoal ?? 'hypertrophy')
+    setWeeklyGoal(profile.weeklyGoal ?? 3)
+    setUnits(profile.units ?? 'kg')
+  }, [profile])
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!user || !profile) return
@@ -33,11 +49,17 @@ export default function ProfilePage() {
     setNameError('')
     setSaving(true)
     const updated = { displayName: displayName.trim(), primaryGoal, weeklyGoal, units }
-    await updateProfile(user.uid, updated)
-    setProfile({ ...profile, ...updated })
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      await updateProfile(user.uid, updated)
+      setProfile({ ...profile, ...updated })
+      setSaved(true)
+      toast.success('Profil zapisany')
+      setTimeout(() => setSaved(false), 2000)
+    } catch {
+      toast.error('Nie udało się zapisać. Spróbuj ponownie.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (

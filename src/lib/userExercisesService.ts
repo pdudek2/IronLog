@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, query, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Category, Equipment, Exercise, MuscleGroup } from '../data/exercises'
 
@@ -26,14 +26,26 @@ export async function getUserExercises(uid: string): Promise<Exercise[]> {
 }
 
 export async function createUserExercise(uid: string, input: UserExerciseInput): Promise<Exercise> {
+  const duplicate = await getDocs(
+    query(
+      collection(db, 'userExercises'),
+      where('userId', '==', uid),
+      where('name', '==', input.name.trim()),
+      limit(1),
+    )
+  )
+  if (!duplicate.empty) {
+    throw new Error(`Ćwiczenie o nazwie "${input.name.trim()}" już istnieje.`)
+  }
+
   const docRef = await addDoc(collection(db, 'userExercises'), {
     userId: uid,
-    name: input.name,
+    name: input.name.trim(),
     category: input.category,
     equipment: input.equipment,
     muscles: input.muscles,
   })
-  return { id: docRef.id, ...input }
+  return { id: docRef.id, ...input, name: input.name.trim() }
 }
 
 export async function updateUserExercise(

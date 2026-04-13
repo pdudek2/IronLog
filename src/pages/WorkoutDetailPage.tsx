@@ -138,11 +138,17 @@ export default function WorkoutDetailPage() {
 
     if (!previewWorkout) setLoading(true)
 
-    getWorkout(id).then((nextWorkout) => {
-      if (cancelled) return
-      setWorkout(nextWorkout)
-      setLoading(false)
-    })
+    getWorkout(id)
+      .then((nextWorkout) => {
+        if (cancelled) return
+        setWorkout(nextWorkout)
+        setLoading(false)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setLoading(false)
+        toast.error('Nie udało się wczytać treningu.')
+      })
 
     return () => {
       cancelled = true
@@ -151,7 +157,9 @@ export default function WorkoutDetailPage() {
 
   useEffect(() => {
     if (!user) return
-    getUserExercises(user.uid).then(setUserExercises).catch(() => {})
+    getUserExercises(user.uid)
+      .then(setUserExercises)
+      .catch(() => console.error('[WorkoutDetail] getUserExercises failed'))
   }, [user])
 
   function handleStartEditing() {

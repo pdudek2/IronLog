@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "workouts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "startedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "exerciseSessions",
       "queryScope": "COLLECTION",
       "fields": [
@@ -16,6 +24,16 @@
         { "fieldPath": "exerciseId", "order": "ASCENDING" },
         { "fieldPath": "exerciseSource", "order": "ASCENDING" },
         { "fieldPath": "finishedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "exerciseSessions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "exerciseId", "order": "ASCENDING" },
+        { "fieldPath": "exerciseSource", "order": "ASCENDING" },
+        { "fieldPath": "startedAt", "order": "DESCENDING" }
       ]
     }
   ],

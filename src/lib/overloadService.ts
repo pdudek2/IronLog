@@ -32,7 +32,7 @@ export async function suggestNextSession(
       orderBy('finishedAt', 'desc'),
       limit(3),
     ),
-  ).catch(() => null)
+  ).catch((err) => { console.error('[overloadService] query failed', err); return null })
 
   if (!snap || snap.empty) return null
 

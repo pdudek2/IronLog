@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { motion } from 'framer-motion'
-import { Dumbbell, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, User } from 'lucide-react'
+import { Dumbbell, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { logoutUser } from '../lib/auth'
 import BottomNav from './BottomNav'
@@ -20,6 +20,7 @@ const NAV_ITEMS: Array<{
   to: string
 }> = [
   { key: 'dashboard', label: 'Start', icon: LayoutDashboard, to: '/dashboard' },
+  { key: 'progress', label: 'Postępy', icon: TrendingUp, to: '/progress' },
   { key: 'templates', label: 'Plany', icon: Layers3, to: '/templates' },
   { key: 'exercises', label: 'Ćwiczenia', icon: Dumbbell, to: '/exercises' },
   { key: 'chat', label: 'AI Coach', icon: Sparkles, to: '/chat' },

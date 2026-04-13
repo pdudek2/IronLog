@@ -1,5 +1,5 @@
 import { adminDb } from './firebaseAdmin.js'
-import { exercises as exerciseCatalog } from '../../src/data/exercises.js'
+import { exercises as exerciseCatalog } from '../../data/exercises.js'
 
 type ExerciseSource = 'global' | 'user'
 

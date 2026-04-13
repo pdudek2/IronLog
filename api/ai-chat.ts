@@ -102,7 +102,7 @@ function createEmptyUserContext(): UserContext {
 }
 
 async function loadGlobalExercises() {
-  const module = await import('../src/data/exercises.ts')
+  const module = await import('../data/exercises.ts')
   return module.exercises
 }
 

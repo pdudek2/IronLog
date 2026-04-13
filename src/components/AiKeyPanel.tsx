@@ -32,14 +32,15 @@ export default function AiKeyPanel({ onConfiguredChange }: AiKeyPanelProps) {
   const [loadingModels, setLoadingModels] = useState(false)
 
   const hasSavedKey = savedKey.length > 0
+  const keyVerified = hasSavedKey && models.length > 0 && !modelsError && !loadingModels
 
   const savedPreview = useMemo(() => (
     hasSavedKey ? maskKey(savedKey) : ''
   ), [hasSavedKey, savedKey])
 
   useEffect(() => {
-    onConfiguredChange?.(hasSavedKey)
-  }, [hasSavedKey, onConfiguredChange])
+    onConfiguredChange?.(keyVerified)
+  }, [keyVerified, onConfiguredChange])
 
   useEffect(() => {
     if (!savedKey) return
@@ -127,12 +128,32 @@ export default function AiKeyPanel({ onConfiguredChange }: AiKeyPanelProps) {
         <div
           className="hidden rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold sm:inline-flex"
           style={{
-            background: hasSavedKey ? 'var(--success-soft)' : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${hasSavedKey ? 'rgba(25,213,159,0.18)' : 'var(--border)'}`,
-            color: hasSavedKey ? 'var(--success)' : 'var(--muted)',
+            background: keyVerified
+              ? 'var(--success-soft)'
+              : modelsError && hasSavedKey
+                ? 'rgba(255,87,87,0.08)'
+                : 'rgba(255,255,255,0.04)',
+            border: `1px solid ${
+              keyVerified
+                ? 'rgba(25,213,159,0.18)'
+                : modelsError && hasSavedKey
+                  ? 'rgba(255,87,87,0.18)'
+                  : 'var(--border)'
+            }`,
+            color: keyVerified
+              ? 'var(--success)'
+              : modelsError && hasSavedKey
+                ? '#ff9c9c'
+                : 'var(--muted)',
           }}
         >
-          {hasSavedKey ? 'Klucz gotowy' : 'Brak klucza'}
+          {!hasSavedKey
+            ? 'Brak klucza'
+            : loadingModels
+              ? 'Weryfikacja...'
+              : modelsError
+                ? 'Nieprawidłowy klucz'
+                : 'Klucz gotowy'}
         </div>
       </div>
 

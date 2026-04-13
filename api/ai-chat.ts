@@ -656,12 +656,13 @@ async function generatePlan(
   return normalizeGeneratedPlan(parsed, catalog, request.goal)
 }
 
-async function generateChatReply(
+async function streamChatReply(
   apiKey: string,
   model: string,
   context: UserContext,
   messages: NormalizedMessage[],
-): Promise<string> {
+  res: ApiResponse,
+): Promise<void> {
   const upstream = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -672,7 +673,7 @@ async function generateChatReply(
     body: JSON.stringify({
       model,
       max_tokens: 700,
-      stream: false,
+      stream: true,
       system: buildSystemPrompt(context),
       messages: messages.map((message) => ({
         role: message.role,
@@ -691,14 +692,65 @@ async function generateChatReply(
     throw Object.assign(new Error(error.message), { status: error.status })
   }
 
-  const payload = await upstream.json().catch(() => null)
-  const text = readAnthropicTextPayload(payload)
-
-  if (!text) {
+  const body = upstream.body
+  if (!body) {
     throw new Error('Claude API nie zwróciło treści odpowiedzi.')
   }
 
-  return text
+  res.statusCode = 200
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8')
+  res.setHeader('Cache-Control', 'no-store')
+
+  const reader = (body as ReadableStream<Uint8Array>).getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let hasContent = false
+
+  try {
+    for (;;) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+
+      for (;;) {
+        const eventEnd = buffer.indexOf('\n\n')
+        if (eventEnd === -1) break
+
+        const eventBlock = buffer.slice(0, eventEnd)
+        buffer = buffer.slice(eventEnd + 2)
+
+        for (const line of eventBlock.split('\n')) {
+          if (!line.startsWith('data: ')) continue
+          const data = line.slice(6).trim()
+          if (!data || data === '[DONE]') continue
+
+          try {
+            const parsed = JSON.parse(data) as Record<string, unknown>
+            const delta = parsed.delta as Record<string, unknown> | undefined
+            if (
+              parsed.type === 'content_block_delta' &&
+              delta?.type === 'text_delta' &&
+              typeof delta.text === 'string'
+            ) {
+              res.write(delta.text)
+              hasContent = true
+            }
+          } catch {
+            // skip malformed SSE event
+          }
+        }
+      }
+    }
+  } catch (streamError) {
+    console.error('[ai-chat stream error]', streamError)
+  }
+
+  if (!hasContent) {
+    res.write('Claude API nie zwróciło treści odpowiedzi.')
+  }
+
+  res.end()
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -762,11 +814,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    const reply = await generateChatReply(apiKey, model, context, messages)
-    res.statusCode = 200
-    res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-    res.setHeader('Cache-Control', 'no-store')
-    res.end(reply)
+    await streamChatReply(apiKey, model, context, messages, res)
+    return
   } catch (error) {
     if (error instanceof RateLimitError) {
       res.setHeader('Retry-After', String(error.retryAfterSeconds))

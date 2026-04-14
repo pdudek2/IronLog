@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useBlocker, useLocation, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Flame, Layers3, Target } from 'lucide-react'
 import { toast } from 'sonner'
@@ -142,15 +142,6 @@ export default function WorkoutPage() {
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
   const fetchedKeys = useRef(new Set<string>())
 
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      !!active && !closingSession && currentLocation.pathname !== nextLocation.pathname,
-  )
-
-  useEffect(() => {
-    if (blocker.state === 'blocked') setConfirmDiscard(true)
-  }, [blocker.state])
-
   // Load user's custom exercises for the picker
   useEffect(() => {
     if (!user) return
@@ -244,11 +235,7 @@ export default function WorkoutPage() {
       console.error('[clearSession after discard error]', error)
       toast.error('Nie udało się od razu usunąć sesji w chmurze, ale wróciłem do dashboardu.')
     }
-    if (blocker.state === 'blocked') {
-      blocker.proceed()
-    } else {
-      navigate('/dashboard', { replace: true })
-    }
+    navigate('/dashboard', { replace: true })
   }
 
   if (!ready || closingSession) {
@@ -764,7 +751,6 @@ export default function WorkoutPage() {
           onConfirm={() => { setConfirmDiscard(false); void handleConfirmDiscard() }}
           onCancel={() => {
             setConfirmDiscard(false)
-            if (blocker.state === 'blocked') blocker.reset()
           }}
         />
       )}

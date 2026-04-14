@@ -311,7 +311,7 @@ export default function ChatPage() {
           </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(16rem,0.5fr)]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]">
           <div className="space-y-5">
             {activeTab === 'chat' ? (
               <>

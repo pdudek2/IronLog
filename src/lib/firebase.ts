@@ -1,5 +1,5 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import { getAuth, initializeAuth, browserLocalPersistence } from 'firebase/auth'
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 
 const firebaseConfig = {
@@ -13,7 +13,16 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
 
-export const auth = getAuth(app)
+// Use localStorage persistence so Playwright storageState captures auth tokens.
+// initializeAuth sets persistence BEFORE the first auth-state check (unlike setPersistence).
+// The try/catch handles HMR: auth is already initialized on hot-reload.
+export const auth = (() => {
+  try {
+    return initializeAuth(app, { persistence: [browserLocalPersistence] })
+  } catch {
+    return getAuth(app)
+  }
+})()
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 })

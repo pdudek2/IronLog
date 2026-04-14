@@ -1,0 +1,197 @@
+import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
+
+function captureErrors(page: Page): () => string[] {
+  const errors: string[] = []
+  page.on('console', (msg: ConsoleMessage) => {
+    if (msg.type() === 'error') {
+      const text = msg.text()
+      if (!text.includes('extension') && !text.includes('[vite]')) {
+        errors.push(text)
+      }
+    }
+  })
+  return () => errors
+}
+
+// Fixed name avoids timestamp instability across retries
+const TEST_EXERCISE_NAME = '_E2E Curl Test_'
+
+async function cleanupTestExercise(page: Page) {
+  await page.goto('/exercises')
+  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+
+  // Switch to user tab if it exists
+  const userTab = page.getByRole('button', { name: /Własne/i })
+  if (await userTab.isVisible({ timeout: 2_000 }).catch(() => false)) {
+    await userTab.click()
+  }
+
+  // Find and delete the test exercise if it exists
+  const exerciseCard = page.locator('[role="button"]').filter({ hasText: TEST_EXERCISE_NAME }).first()
+  if (await exerciseCard.isVisible({ timeout: 3_000 }).catch(() => false)) {
+    await exerciseCard.getByRole('button', { name: 'Usuń' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Usuń' }).click()
+    await expect(page.getByText(TEST_EXERCISE_NAME, { exact: false })).not.toBeVisible({ timeout: 8_000 })
+  }
+}
+
+test.describe('Exercises CRUD', () => {
+  test.beforeAll(async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: 'tests/e2e/.auth/user.json' })
+    const page = await ctx.newPage()
+    try {
+      await cleanupTestExercise(page)
+    } catch {
+      // Best-effort
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test.afterAll(async ({ browser }) => {
+    const ctx = await browser.newContext({ storageState: 'tests/e2e/.auth/user.json' })
+    const page = await ctx.newPage()
+    try {
+      await cleanupTestExercise(page)
+    } catch {
+      // Best-effort
+    } finally {
+      await ctx.close()
+    }
+  })
+
+  test('create user exercise with valid data', async ({ page }) => {
+    const getErrors = captureErrors(page)
+
+    await page.goto('/exercises')
+    await expect(page).toHaveURL('/exercises')
+    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+
+    await page.screenshot({ path: 'test-results/exercises-list.png' })
+
+    // Open create form
+    const addBtn = page.getByRole('button', { name: /Dodaj własne/i })
+      .or(page.getByRole('button', { name: /Nowe ćwiczenie/i }))
+      .first()
+    await expect(addBtn).toBeVisible({ timeout: 5_000 })
+    await addBtn.click()
+
+    // Form should appear — check the placeholder is visible (form is open)
+    await expect(page.getByPlaceholder('np. Banded Pull-apart')).toBeVisible({ timeout: 5_000 })
+
+    // Fill name
+    await page.getByPlaceholder('np. Banded Pull-apart').fill(TEST_EXERCISE_NAME)
+
+    // Submit
+    await page.getByRole('button', { name: 'Dodaj ćwiczenie' }).click()
+
+    // Form should close (placeholder gone)
+    await expect(page.getByPlaceholder('np. Banded Pull-apart')).not.toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText(TEST_EXERCISE_NAME, { exact: false })).toBeVisible({ timeout: 8_000 })
+
+    await page.screenshot({ path: 'test-results/exercises-created.png' })
+
+    expect(getErrors()).toHaveLength(0)
+  })
+
+  test('duplicate name is prevented (BUG-07 freeze)', async ({ page }) => {
+    await page.goto('/exercises')
+    await expect(page).toHaveURL('/exercises')
+    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+
+    // Open create form
+    const addBtn = page.getByRole('button', { name: /Dodaj własne/i })
+      .or(page.getByRole('button', { name: /Nowe ćwiczenie/i }))
+      .first()
+    await expect(addBtn).toBeVisible()
+    await addBtn.click()
+    // Form is open when placeholder is visible (getByText would match multiple elements)
+    await expect(page.getByPlaceholder('np. Banded Pull-apart')).toBeVisible({ timeout: 5_000 })
+
+    // Try to create exercise with the same name as the one created above
+    await page.getByPlaceholder('np. Banded Pull-apart').fill(TEST_EXERCISE_NAME)
+    await page.getByRole('button', { name: 'Dodaj ćwiczenie' }).click()
+
+    // Should show an error message (duplicate prevention)
+    await expect(page.getByText(/już istnieje|duplicate|ta nazwa|taka nazwa/i)).toBeVisible({ timeout: 8_000 })
+
+    // Form should remain open
+    // Form should remain open (placeholder still visible)
+    await expect(page.getByPlaceholder('np. Banded Pull-apart')).toBeVisible()
+
+    // Close form
+    await page.getByLabel('Zamknij formularz').click()
+  })
+
+  test('edit user exercise', async ({ page }) => {
+    await page.goto('/exercises')
+    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+
+    // Find test exercise card and click edit
+    const exerciseCard = page.locator('[role="button"]').filter({ hasText: TEST_EXERCISE_NAME }).first()
+    await expect(exerciseCard).toBeVisible({ timeout: 8_000 })
+
+    await exerciseCard.getByRole('button', { name: 'Edytuj' }).click()
+    // Form is open when placeholder is visible
+    const nameInput = page.getByPlaceholder('np. Banded Pull-apart')
+    await expect(nameInput).toBeVisible({ timeout: 5_000 })
+    await expect(nameInput).toHaveValue(TEST_EXERCISE_NAME)
+
+    // Change category (verifies form works)
+    await page.getByRole('combobox').first().selectOption('back')
+
+    // Save
+    await page.getByRole('button', { name: 'Zapisz zmiany' }).click()
+    await expect(nameInput).not.toBeVisible({ timeout: 8_000 })
+
+    // Exercise still visible in list
+    await expect(page.getByText(TEST_EXERCISE_NAME, { exact: false })).toBeVisible()
+
+    await page.screenshot({ path: 'test-results/exercises-edited.png' })
+  })
+
+  test('delete user exercise with confirmation', async ({ page }) => {
+    await page.goto('/exercises')
+    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+
+    // Find test exercise and delete
+    const exerciseCard = page.locator('[role="button"]').filter({ hasText: TEST_EXERCISE_NAME }).first()
+    await expect(exerciseCard).toBeVisible({ timeout: 8_000 })
+
+    await exerciseCard.getByRole('button', { name: 'Usuń' }).click()
+
+    // Confirm dialog
+    await expect(page.getByRole('dialog')).toBeVisible()
+    await expect(page.getByText('Potwierdź akcję')).toBeVisible()
+
+    await page.screenshot({ path: 'test-results/exercises-delete-confirm.png' })
+
+    await page.getByRole('dialog').getByRole('button', { name: 'Usuń' }).click()
+
+    // Exercise should be gone
+    await expect(page.getByText(TEST_EXERCISE_NAME, { exact: false })).not.toBeVisible({ timeout: 8_000 })
+
+    await page.screenshot({ path: 'test-results/exercises-deleted.png' })
+  })
+
+  test('global exercise detail page is reachable', async ({ page }) => {
+    const getErrors = captureErrors(page)
+
+    await page.goto('/exercises')
+    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+
+    // ExerciseCard uses role="button" with onClick navigation (not <a> tags).
+    // The global section is identified by "Katalog globalny" heading.
+    const globalSection = page.locator('section').filter({ hasText: 'Katalog globalny' })
+    const firstGlobalCard = globalSection.locator('[role="button"]').first()
+    await expect(firstGlobalCard).toBeVisible({ timeout: 8_000 })
+    await firstGlobalCard.click()
+
+    await expect(page).toHaveURL(/\/exercises\/global\//, { timeout: 5_000 })
+    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+
+    await page.screenshot({ path: 'test-results/exercises-detail.png' })
+
+    expect(getErrors()).toHaveLength(0)
+  })
+})

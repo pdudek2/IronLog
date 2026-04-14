@@ -199,7 +199,6 @@ a {
 }
 
 .section-title {
-  font-family: var(--font-display);
   color: var(--text-strong);
   font-size: clamp(1.35rem, 2vw, 1.7rem);
   font-weight: 700;

@@ -258,7 +258,7 @@ export default function ChatPage() {
             <div
               className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm font-semibold"
               style={{
-                background: configured ? 'var(--accent-soft)' : 'rgba(255,255,255,0.04)',
+                background: configured ? 'var(--accent-soft)' : 'transparent',
                 borderColor: configured ? 'var(--accent-soft-strong)' : 'var(--border)',
                 color: configured ? 'var(--accent)' : 'var(--muted)',
               }}
@@ -311,7 +311,7 @@ export default function ChatPage() {
           </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.5fr)_minmax(16rem,0.5fr)]">
           <div className="space-y-5">
             {activeTab === 'chat' ? (
               <>

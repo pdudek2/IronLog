@@ -327,6 +327,14 @@ export default function ExerciseDetailPage() {
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>
                   Ćwiczenie pojawi się tutaj po pierwszym użyciu w treningu.
                 </p>
+                <button
+                  type="button"
+                  className="mt-4 rounded-[var(--radius-lg)] px-4 py-2 text-sm font-semibold"
+                  style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                  onClick={() => navigate('/workout/new')}
+                >
+                  Rozpocznij trening
+                </button>
               </div>
             ) : (
               <div className="flex flex-col gap-3">

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Flame, Layers3, Target } from 'lucide-react'
+import { Check, Dumbbell, Flame, Layers3, Target } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type ActiveWorkout, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -458,7 +458,7 @@ export default function WorkoutPage() {
 
         <main className="min-w-0 pb-48 lg:pb-0">
           <motion.section
-            className="surface-panel mb-4 rounded-[var(--radius-xl)] p-4 sm:p-5"
+            className="surface-panel-hero mb-4 rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
@@ -518,7 +518,8 @@ export default function WorkoutPage() {
 
           <div className="flex flex-col gap-4">
             {active.exercises.length === 0 && (
-              <div className="surface-panel rounded-[var(--radius-xl)] px-6 py-10 text-center">
+              <div className="surface-panel rounded-[var(--radius-xl)] px-6 py-6 text-center">
+                <Dumbbell size={22} className="mx-auto mb-3" style={{ color: 'var(--muted)' }} />
                 <p className="mb-2 text-sm font-semibold text-white">Sesja gotowa do startu</p>
                 <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>
                   Dodaj pierwsze ćwiczenie i zacznij budować wolumen tej sesji. Pasek postępu i insighty będą rosnąć razem z kolejnymi seriami.

@@ -29,6 +29,20 @@ const RANGE_OPTIONS = [
   { label: '90 dni', days: 90 },
 ]
 
+const MUSCLE_COLORS: Record<string, string> = {
+  chest:      '#5aa6ff',
+  shoulders:  '#7b8fff',
+  triceps:    '#a78bfa',
+  back:       '#34d399',
+  biceps:     '#6ee7b7',
+  forearms:   '#a7f3d0',
+  quads:      '#f59e0b',
+  hamstrings: '#fbbf24',
+  glutes:     '#fcd34d',
+  calves:     '#fb923c',
+  core:       '#f87171',
+}
+
 const MUSCLE_PL: Record<string, string> = {
   chest: 'Klatka',
   back: 'Plecy',
@@ -74,7 +88,7 @@ function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
   return (
     <div
       style={{
-        background: 'rgba(8,6,26,0.97)',
+        background: 'var(--card)',
         border: '1px solid var(--border)',
         borderRadius: '10px',
         padding: '10px 14px',
@@ -222,7 +236,7 @@ export default function ProgressPage() {
 
         {/* ── Header ──────────────────────────────────── */}
         <motion.div
-          className="surface-panel rounded-[var(--radius-xl)] p-5"
+          className="surface-panel-hero rounded-[var(--radius-xl)] p-5"
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2 }}
@@ -329,13 +343,13 @@ export default function ProgressPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis
                     dataKey="weekLabel"
-                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
                     tickFormatter={(v) => formatVolume(Number(v))}
-                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     width={52}
@@ -358,6 +372,16 @@ export default function ProgressPage() {
 
         {/* ── Strength Progression ────────────────────── */}
         {!error && strengthData.data.length > 0 && (
+          strengthData.data.length < 3 ? (
+            <div className="surface-panel rounded-[var(--radius-xl)] p-5">
+              <p className="eyebrow mb-1">Siła</p>
+              <p className="section-title mb-3">Progresja ciężaru</p>
+              <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                Potrzebujesz jeszcze {3 - strengthData.data.length}{' '}
+                {3 - strengthData.data.length === 1 ? 'sesji' : 'sesji'} z tym ćwiczeniem, żeby zobaczyć wykres progresji.
+              </p>
+            </div>
+          ) : (
           <motion.div
             className="surface-panel rounded-[var(--radius-xl)] p-5"
             initial={{ opacity: 0, y: 8 }}
@@ -372,12 +396,12 @@ export default function ProgressPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis
                     dataKey="date"
-                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
-                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     unit=" kg"
@@ -410,6 +434,7 @@ export default function ProgressPage() {
               ))}
             </div>
           </motion.div>
+          )
         )}
 
         {/* ── Muscle balance ───────────────────────────── */}
@@ -432,7 +457,7 @@ export default function ProgressPage() {
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
                   <XAxis
                     type="number"
-                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -440,17 +465,17 @@ export default function ProgressPage() {
                     type="category"
                     dataKey="muscle"
                     width={96}
-                    tick={{ fill: 'var(--muted)', fontSize: 11 }}
+                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v: string) => MUSCLE_PL[v] ?? v}
                   />
                   <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                   <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                    {muscleData.map((_, index) => (
+                    {muscleData.map((entry, index) => (
                       <Cell
                         key={index}
-                        fill={`rgba(90,166,255,${Math.max(0.25, 1 - index * 0.1)})`}
+                        fill={MUSCLE_COLORS[entry.muscle] ?? `rgba(90,166,255,${Math.max(0.4, 1 - index * 0.1)})`}
                       />
                     ))}
                   </Bar>
@@ -476,7 +501,7 @@ export default function ProgressPage() {
                   display: 'grid',
                   gridTemplateColumns: '1.5rem repeat(12, 1fr)',
                   gap: 3,
-                  minWidth: 320,
+                  minWidth: 280,
                 }}
               >
                 {DAY_LABELS.map((day, dayIdx) => (

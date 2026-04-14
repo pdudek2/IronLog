@@ -171,6 +171,18 @@ a {
   -webkit-backdrop-filter: blur(18px);
 }
 
+.surface-panel-hero {
+  background:
+    linear-gradient(135deg, rgba(28, 36, 54, 0.98) 0%, rgba(22, 28, 43, 0.95) 100%);
+  border: 1px solid rgba(90, 166, 255, 0.08);
+  border-top: 2px solid rgba(90, 166, 255, 0.45);
+  box-shadow:
+    var(--card-glow),
+    inset 0 1px 0 rgba(90, 166, 255, 0.06);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
 .eyebrow {
   color: var(--muted);
   font-size: 0.6875rem;
@@ -179,6 +191,7 @@ a {
 }
 
 .page-title {
+  font-family: var(--font-display);
   color: var(--text-strong);
   font-size: clamp(2rem, 3vw, 3rem);
   font-weight: 700;
@@ -187,6 +200,7 @@ a {
 }
 
 .section-title {
+  font-family: var(--font-display);
   color: var(--text-strong);
   font-size: clamp(1.35rem, 2vw, 1.7rem);
   font-weight: 700;

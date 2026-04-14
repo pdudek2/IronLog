@@ -308,8 +308,8 @@ export default function DashboardPage() {
   const dashboardHighlights = [
     { label: 'Treningi', value: String(weeklyDone), sublabel: 'w tym tygodniu' },
     { label: 'Serie', value: String(weeklySetsTotal), sublabel: 'zapisane łącznie' },
-    { label: 'Objętość', value: weeklyVolume ? `${weeklyVolume.toLocaleString('pl-PL')} kg` : '—', sublabel: 'tygodniowy wolumen' },
-    { label: 'Śr. czas', value: avgMinutes ? `${avgMinutes} min` : '—', sublabel: 'na sesję' },
+    { label: 'Objętość', value: weeklyVolume ? `${weeklyVolume.toLocaleString('pl-PL')} kg` : '0 kg', sublabel: weeklyVolume ? 'tygodniowy wolumen' : 'tygodniowy wolumen · brak sesji' },
+    { label: 'Śr. czas', value: avgMinutes ? `${avgMinutes} min` : '0 min', sublabel: avgMinutes ? 'na sesję' : 'na sesję · brak danych' },
   ]
 
   return (
@@ -339,7 +339,8 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        <section className="mb-6 grid gap-3 xl:grid-cols-4 sm:grid-cols-2">
+        <div className="surface-panel-hero rounded-[var(--radius-xl)] p-4 mb-6">
+        <section className="grid gap-3 xl:grid-cols-4 sm:grid-cols-2">
           {dashboardHighlights.map((item, index) => (
             <motion.div
               key={item.label}
@@ -349,19 +350,34 @@ export default function DashboardPage() {
               transition={{ delay: index * 0.03, duration: 0.2 }}
             >
               <p className="stat-meta">{item.label}</p>
-              <p className="mt-3 text-[2rem] font-bold tracking-[-0.05em] text-white tabular-nums leading-none">
+              <p className="mt-3 stat-value">
                 {item.value}
               </p>
               <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{item.sublabel}</p>
             </motion.div>
           ))}
         </section>
-
-        <div className="mb-6">
-          <ReadinessWidget />
         </div>
 
-        <div className="desktop-app-grid">
+        <hr className="border-t my-4 lg:hidden" style={{ borderColor: 'var(--border)' }} />
+
+        <motion.div
+          className="mb-6"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08, duration: 0.25 }}
+        >
+          <ReadinessWidget />
+        </motion.div>
+
+        <hr className="border-t my-4 lg:hidden" style={{ borderColor: 'var(--border)' }} />
+
+        <motion.div
+          className="desktop-app-grid"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.14, duration: 0.25 }}
+        >
           <aside className="desktop-sticky space-y-4 hidden lg:block">
             <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.06)}>
               {/* Progress ring hero */}
@@ -729,7 +745,7 @@ export default function DashboardPage() {
                     return (
                       <motion.button
                         key={template.id}
-                        onClick={() => navigate('/templates')}
+                        onClick={() => navigate(`/templates/${template.id}/edit`)}
                         className="rounded-[var(--radius-lg)] border p-4 text-left transition-transform hover:-translate-y-0.5"
                         style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
                         whileTap={{ scale: 0.98 }}
@@ -761,7 +777,7 @@ export default function DashboardPage() {
               )}
             </section>
           </main>
-        </div>
+        </motion.div>
 
         <section className="mt-5">
           <div className="mb-4 flex items-end justify-between gap-4">

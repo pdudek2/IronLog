@@ -323,7 +323,7 @@ interface ChipRowProps<T extends string> {
 
 function ChipRow<T extends string>({ options, labels, active, onSelect }: ChipRowProps<T>) {
   return (
-    <div className="no-scrollbar flex gap-2 overflow-x-auto">
+    <div className="no-scrollbar flex gap-2 overflow-x-auto" style={{ maskImage: 'linear-gradient(to right, black 85%, transparent)' }}>
       {options.map((opt) => (
         <button
           key={opt}

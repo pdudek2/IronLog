@@ -191,7 +191,6 @@ a {
 }
 
 .page-title {
-  font-family: var(--font-display);
   color: var(--text-strong);
   font-size: clamp(2rem, 3vw, 3rem);
   font-weight: 700;

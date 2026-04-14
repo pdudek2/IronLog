@@ -339,8 +339,7 @@ export default function DashboardPage() {
           </div>
         </motion.div>
 
-        <div className="surface-panel-hero rounded-[var(--radius-xl)] p-4 mb-6">
-        <section className="grid gap-3 xl:grid-cols-4 sm:grid-cols-2">
+        <section className="surface-panel-hero rounded-[var(--radius-xl)] p-4 mb-6 grid gap-3 xl:grid-cols-4 sm:grid-cols-2">
           {dashboardHighlights.map((item, index) => (
             <motion.div
               key={item.label}
@@ -357,7 +356,6 @@ export default function DashboardPage() {
             </motion.div>
           ))}
         </section>
-        </div>
 
         <hr className="border-t my-4 lg:hidden" style={{ borderColor: 'var(--border)' }} />
 

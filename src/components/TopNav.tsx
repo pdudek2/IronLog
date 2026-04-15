@@ -1,7 +1,10 @@
+import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
 import { logoutUser } from '../lib/auth'
+import { navigateWithAppTransition } from '../lib/viewTransitions'
+import { preloadPrimaryRoutes, preloadRouteByPath } from '../router/pageLoaders'
 import { useDashboardStore } from '../store/dashboardStore'
 
 type AppSection = 'dashboard' | 'history' | 'templates' | 'exercises' | 'profile' | 'progress' | 'chat'
@@ -36,13 +39,23 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
   const isActive = (item: (typeof NAV_ITEMS)[number]) =>
     current ? current === item.key : item.match ? item.match(path) : path === item.to
 
+  useEffect(() => {
+    const preloadTimeoutId = window.setTimeout(() => {
+      void preloadPrimaryRoutes()
+    }, 120)
+
+    return () => window.clearTimeout(preloadTimeoutId)
+  }, [])
+
+  const go = (to: string) => navigateWithAppTransition(navigate, to)
+
   return (
     <header className="top-nav">
       <div className="top-nav-inner">
         <button
           type="button"
           className="top-nav-brand"
-          onClick={() => navigate('/dashboard')}
+          onClick={() => go('/dashboard')}
           aria-label="IronLog — strona główna"
         >
           <span className="top-nav-brand-mark">
@@ -61,7 +74,9 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
                 type="button"
                 className="top-nav-link"
                 data-active={active}
-                onClick={() => navigate(item.to)}
+                onClick={() => go(item.to)}
+                onPointerEnter={() => { void preloadRouteByPath(item.to) }}
+                onFocus={() => { void preloadRouteByPath(item.to) }}
                 aria-current={active ? 'page' : undefined}
               >
                 <Icon size={15} strokeWidth={2} />
@@ -76,7 +91,9 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             <motion.button
               type="button"
               className="streak-pill"
-              onClick={() => navigate('/progress')}
+              onClick={() => go('/progress')}
+              onPointerEnter={() => { void preloadRouteByPath('/progress') }}
+              onFocus={() => { void preloadRouteByPath('/progress') }}
               whileTap={{ scale: 0.96 }}
               title={`Seria ${streak} ${streak === 1 ? 'dzień' : 'dni'} — zobacz postępy`}
               aria-label={`Seria treningowa ${streak} dni`}
@@ -89,7 +106,9 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           <motion.button
             type="button"
             className="top-nav-cta"
-            onClick={() => navigate('/workout/new')}
+            onClick={() => go('/workout/new')}
+            onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
+            onFocus={() => { void preloadRouteByPath('/workout/new') }}
             whileTap={{ scale: 0.97 }}
             aria-label="Rozpocznij nowy trening"
           >
@@ -100,7 +119,9 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           <button
             type="button"
             className="top-nav-icon-btn"
-            onClick={() => navigate('/profile')}
+            onClick={() => go('/profile')}
+            onPointerEnter={() => { void preloadRouteByPath('/profile') }}
+            onFocus={() => { void preloadRouteByPath('/profile') }}
             data-active={current === 'profile'}
             aria-label="Profil"
             style={current === 'profile' ? { color: 'var(--accent)', background: 'var(--accent-soft)' } : undefined}

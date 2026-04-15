@@ -1,11 +1,12 @@
 import { useEffect, useState, type FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import { getProfile, updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import AppShell from '../components/AppShell'
-import { Button, Card, Input } from '../components/ui'
+import { Button, Card, Input, LoadingState } from '../components/ui'
 
 const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
   { value: 'strength',    label: 'Siła',           desc: 'Maksymalne ciężary, niskie powtórzenia' },
@@ -17,6 +18,7 @@ const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
 export default function ProfilePage() {
   const { user } = useAuthStore()
   const { profile, setProfile } = useProfileStore()
+  const navigate = useNavigate()
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '')
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal>(profile?.primaryGoal ?? 'hypertrophy')
@@ -25,13 +27,58 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [bootstrapping, setBootstrapping] = useState(() => Boolean(user && !profile))
+  const [profileLoadError, setProfileLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
-    if (!user || profile) return
-    getProfile(user.uid)
-      .then((p) => { if (p) setProfile(p) })
-      .catch((err) => console.error('[ProfilePage] getProfile failed', err))
-  }, [user, profile, setProfile])
+    let cancelled = false
+
+    if (!user) {
+      setBootstrapping(false)
+      setProfileLoadError(false)
+      return
+    }
+
+    if (profile) {
+      setBootstrapping(false)
+      setProfileLoadError(false)
+      return
+    }
+
+    const currentUser = user
+
+    async function loadProfile() {
+      setBootstrapping(true)
+      setProfileLoadError(false)
+
+      try {
+        const nextProfile = await getProfile(currentUser.uid)
+
+        if (cancelled) return
+
+        if (!nextProfile) {
+          navigate('/onboarding', { replace: true })
+          return
+        }
+
+        setProfile(nextProfile)
+      } catch (err) {
+        if (cancelled) return
+        console.error('[ProfilePage] getProfile failed', err)
+        setProfileLoadError(true)
+        toast.error('Nie udało się wczytać profilu. Spróbuj ponownie.')
+      } finally {
+        if (!cancelled) setBootstrapping(false)
+      }
+    }
+
+    void loadProfile()
+
+    return () => {
+      cancelled = true
+    }
+  }, [loadAttempt, navigate, profile, setProfile, user])
 
   useEffect(() => {
     if (!profile) return
@@ -61,11 +108,38 @@ export default function ProfilePage() {
     }
   }
 
+  if (bootstrapping && !profile) {
+    return <LoadingState message="Ładowanie profilu..." />
+  }
+
+  if (profileLoadError && !profile) {
+    return (
+      <AppShell current="profile">
+        <div className="mx-auto" style={{ maxWidth: '36rem' }}>
+          <Card>
+            <div className="flex flex-col gap-4 text-center">
+              <div>
+                <p className="text-lg font-semibold text-white">Nie udało się wczytać profilu</p>
+                <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                  Spróbuj ponownie za chwilę. Gdy połączenie wróci, formularz załaduje Twoje dane.
+                </p>
+              </div>
+
+              <Button type="button" onClick={() => setLoadAttempt((value) => value + 1)} className="mx-auto min-w-[12rem]">
+                Spróbuj ponownie
+              </Button>
+            </div>
+          </Card>
+        </div>
+      </AppShell>
+    )
+  }
+
   return (
     <AppShell current="profile">
       <section className="hero-editorial">
         <motion.div
-          className="flex flex-col gap-5"
+          className="flex flex-col gap-4 sm:gap-5"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
@@ -81,24 +155,24 @@ export default function ProfilePage() {
           </p>
 
           <div
-            className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
+            className="mt-3 grid grid-cols-3 gap-4 border-t pt-4 sm:mt-4 sm:flex sm:flex-wrap sm:gap-x-10 sm:gap-y-5 sm:pt-6"
             style={{ borderColor: 'var(--border)' }}
           >
-            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+            <div className="flex flex-col gap-1 min-w-0">
               <span className="stat-meta">Użytkownik</span>
-              <span className="text-2xl font-bold tracking-[-0.03em] text-white leading-none">
+              <span className="text-xl font-bold tracking-[-0.03em] text-white leading-none sm:text-2xl">
                 {profile?.displayName ?? '—'}
               </span>
             </div>
-            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+            <div className="flex flex-col gap-1 min-w-0">
               <span className="stat-meta">Cel tyg.</span>
-              <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+              <span className="text-xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none sm:text-2xl">
                 {weeklyGoal} <span className="text-base" style={{ color: 'var(--muted)' }}>sesje</span>
               </span>
             </div>
-            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+            <div className="flex flex-col gap-1 min-w-0">
               <span className="stat-meta">Jednostki</span>
-              <span className="text-2xl font-bold tracking-[-0.03em] text-white leading-none uppercase">
+              <span className="text-xl font-bold tracking-[-0.03em] text-white leading-none uppercase sm:text-2xl">
                 {units}
               </span>
             </div>
@@ -107,8 +181,8 @@ export default function ProfilePage() {
       </section>
 
       <div className="mx-auto" style={{ maxWidth: '42rem' }}>
-        <Card>
-          <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <Card padding="sm" className="sm:p-6">
+          <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
 
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Imię</label>
@@ -129,7 +203,7 @@ export default function ProfilePage() {
                     key={g.value}
                     type="button"
                     onClick={() => { setPrimaryGoal(g.value); setSaved(false) }}
-                    className="rounded-[var(--radius-md)] p-4 text-left transition-all"
+                    className="rounded-[var(--radius-md)] p-3 text-left transition-all sm:p-4"
                     style={{
                       background: primaryGoal === g.value ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                       border: `1px solid ${primaryGoal === g.value ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
@@ -170,7 +244,7 @@ export default function ProfilePage() {
                     key={u}
                     type="button"
                     onClick={() => { setUnits(u); setSaved(false) }}
-                    className="flex-1 rounded-[var(--radius-md)] py-3 text-sm font-semibold transition-all"
+                    className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold transition-all sm:py-3"
                     style={{
                       background: units === u ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                       border: `1px solid ${units === u ? 'var(--accent-soft-strong)' : 'var(--border)'}`,

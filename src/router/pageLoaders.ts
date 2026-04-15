@@ -1,0 +1,54 @@
+export const loadLoginPage = () => import('../pages/LoginPage')
+export const loadRegisterPage = () => import('../pages/RegisterPage')
+export const loadDashboardPage = () => import('../pages/DashboardPage')
+export const loadOnboardingPage = () => import('../pages/OnboardingPage')
+export const loadWorkoutPage = () => import('../pages/WorkoutPage')
+export const loadWorkoutDetailPage = () => import('../pages/WorkoutDetailPage')
+export const loadHistoryPage = () => import('../pages/HistoryPage')
+export const loadProfilePage = () => import('../pages/ProfilePage')
+export const loadExercisesPage = () => import('../pages/ExercisesPage')
+export const loadExerciseDetailPage = () => import('../pages/ExerciseDetailPage')
+export const loadTemplatesPage = () => import('../pages/TemplatesPage')
+export const loadTemplateEditorPage = () => import('../pages/TemplateEditorPage')
+export const loadProgressPage = () => import('../pages/ProgressPage')
+export const loadChatPage = () => import('../pages/ChatPage')
+
+let didPreloadPrimaryRoutes = false
+
+export function preloadRouteByPath(path: string) {
+  if (path.startsWith('/dashboard')) return loadDashboardPage().then(() => undefined)
+  if (path.startsWith('/history')) return loadHistoryPage().then(() => undefined)
+  if (path.startsWith('/progress')) return loadProgressPage().then(() => undefined)
+  if (path.startsWith('/templates/new')) return loadTemplateEditorPage().then(() => undefined)
+  if (path.startsWith('/templates')) return loadTemplatesPage().then(() => undefined)
+  if (path.startsWith('/exercises/')) return loadExerciseDetailPage().then(() => undefined)
+  if (path.startsWith('/exercises')) return loadExercisesPage().then(() => undefined)
+  if (path.startsWith('/chat')) return loadChatPage().then(() => undefined)
+  if (path.startsWith('/profile')) return loadProfilePage().then(() => undefined)
+  if (path.startsWith('/workout/new')) return loadWorkoutPage().then(() => undefined)
+  if (path.startsWith('/workout/')) return loadWorkoutDetailPage().then(() => undefined)
+  if (path.startsWith('/onboarding')) return loadOnboardingPage().then(() => undefined)
+  if (path.startsWith('/login')) return loadLoginPage().then(() => undefined)
+  if (path.startsWith('/register')) return loadRegisterPage().then(() => undefined)
+  return Promise.resolve()
+}
+
+export function preloadPrimaryRoutes() {
+  if (didPreloadPrimaryRoutes) {
+    return Promise.resolve()
+  }
+
+  didPreloadPrimaryRoutes = true
+
+  return Promise.allSettled([
+    loadDashboardPage(),
+    loadHistoryPage(),
+    loadProgressPage(),
+    loadTemplatesPage(),
+    loadExercisesPage(),
+    loadChatPage(),
+    loadProfilePage(),
+    loadWorkoutPage(),
+    loadTemplateEditorPage(),
+  ]).then(() => undefined)
+}

@@ -511,11 +511,11 @@ export default function DashboardPage() {
                 Szybki start
               </p>
               <p className="mb-5 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                Zacznij nowy trening bez wracania do listy i utrzymaj tempo wejścia do aplikacji.
+                Wejdź prosto w kolejną sesję bez szukania jej w historii.
               </p>
               <div className="mb-5 space-y-2 rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="stat-meta">Następny ruch</span>
+                  <span className="stat-meta">Na teraz</span>
                   <Target size={14} style={{ color: 'var(--accent)' }} />
                 </div>
                 <p className="text-sm font-semibold text-white leading-6">
@@ -540,10 +540,10 @@ export default function DashboardPage() {
                 <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <p className="eyebrow">Przegląd tygodnia</p>
-                    <h2 className="section-title mt-2">Jak wygląda ten tydzień</h2>
+                    <h2 className="section-title mt-2">Tydzień w skrócie</h2>
 
                     <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      Szybki obraz tempa, objętości i najmocniejszego dnia. Ten blok ma być Twoim pierwszym spojrzeniem po wejściu do aplikacji.
+                      Najważniejsze sygnały z ostatnich dni: tempo, objętość i najmocniejszy dzień.
                     </p>
                   </div>
                   <div className="flex flex-col gap-3">
@@ -552,7 +552,7 @@ export default function DashboardPage() {
                       <p className="mt-2 text-sm font-semibold text-white">{formatWeekRange(weekDates)}</p>
                       <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
                         {weeklyVolumeDelta === null
-                          ? 'Budujemy pierwszy punkt odniesienia'
+                          ? 'Pierwszy tydzień buduje punkt odniesienia'
                           : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs poprzedni tydzień`}
                       </p>
                     </div>
@@ -561,7 +561,7 @@ export default function DashboardPage() {
                       className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold text-left transition-opacity hover:opacity-80"
                       style={{ background: 'rgba(232,255,87,0.07)', border: '1px solid rgba(232,255,87,0.18)', color: 'var(--accent)' }}
                     >
-                      Pełny progres →
+                      Zobacz progres →
                     </button>
                   </div>
                 </div>
@@ -574,10 +574,10 @@ export default function DashboardPage() {
                         <p className="mt-3 stat-value">{formatCompactVolume(weeklyVolume)}</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-sm font-semibold text-white">{activeDays}/7 aktywnych dni</p>
+                        <p className="text-sm font-semibold text-white">{activeDays}/7 dni z treningiem</p>
                         <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
                           {weeklyDone >= weeklyGoal
-                            ? 'cel tygodnia zamknięty'
+                            ? 'cel tygodnia zrobiony'
                             : `${weeklyGoal - weeklyDone} sesje do celu`}
                         </p>
                       </div>
@@ -651,7 +651,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="eyebrow">Fokus tygodnia</p>
-                    <h2 className="section-title mt-2">Co mówi aktualny log</h2>
+                    <h2 className="section-title mt-2">Najważniejsze teraz</h2>
                   </div>
                   <div
                     className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)]"
@@ -669,14 +669,14 @@ export default function DashboardPage() {
                     </div>
                     <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
                       {weeklyVolumeDelta === null
-                        ? 'Zbieramy pierwszy benchmark tygodnia'
+                        ? 'Za mało danych na trend'
                         : weeklyVolumeDelta >= 0
-                          ? `Objętość rośnie o ${weeklyVolumeDelta}%`
-                          : `Objętość spadła o ${Math.abs(weeklyVolumeDelta)}%`}
+                          ? `Wolumen +${weeklyVolumeDelta}%`
+                          : `Wolumen -${Math.abs(weeklyVolumeDelta)}%`}
                     </p>
                     <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                       {weeklySessionsDelta === 0
-                        ? 'Rytm sesji jest stabilny względem poprzedniego tygodnia.'
+                        ? 'Liczba sesji jest taka sama jak tydzień temu.'
                         : weeklySessionsDelta > 0
                           ? `Masz o ${weeklySessionsDelta} ${weeklySessionsDelta === 1 ? 'sesję' : 'sesje'} więcej niż tydzień temu.`
                           : `Masz o ${Math.abs(weeklySessionsDelta)} ${Math.abs(weeklySessionsDelta) === 1 ? 'sesję' : 'sesje'} mniej niż tydzień temu.`}
@@ -685,16 +685,16 @@ export default function DashboardPage() {
 
                   <div className="sub-card-insight p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="stat-meta">Dominujący fokus</p>
+                      <p className="stat-meta">Główna partia</p>
                       <Target size={15} style={{ color: 'var(--accent)' }} />
                     </div>
                     <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
-                      {topFocus ? CATEGORY_LABELS[topFocus[0]] ?? topFocus[0] : 'Jeszcze bez dominującej partii'}
+                      {topFocus ? CATEGORY_LABELS[topFocus[0]] ?? topFocus[0] : 'Brak dominującej partii'}
                     </p>
                     <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                       {topFocus
                         ? `${topFocus[1]} logowanych bloków ćwiczeń w tym tygodniu.`
-                        : 'Dodaj kolejne sesje, a dashboard pokaże, gdzie idzie najwięcej pracy.'}
+                        : 'Dodaj kolejne sesje, a zobaczysz gdzie idzie najwięcej pracy.'}
                     </p>
 
                     {focusEntries.length > 0 && (
@@ -729,7 +729,7 @@ export default function DashboardPage() {
 
                   <div className="sub-card-insight p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="stat-meta">Ostatni sygnał</p>
+                      <p className="stat-meta">Ostatnia sesja</p>
                       <Sparkles size={15} style={{ color: 'var(--accent)' }} />
                     </div>
                     <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
@@ -738,7 +738,7 @@ export default function DashboardPage() {
                     <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                       {latestWorkout
                         ? `${formatDate(latestWorkout.startedAt)} • ${formatDuration(latestWorkout.startedAt, latestWorkout.finishedAt)} • ${formatCompactVolume(calcVolume(latestWorkout))}`
-                        : 'Gdy pojawi się pierwszy zapisany trening, ten blok pokaże ostatni sygnał z logu.'}
+                        : 'Po pierwszym treningu zobaczysz tu ostatnią zapisaną sesję.'}
                     </p>
                   </div>
                 </div>
@@ -749,9 +749,9 @@ export default function DashboardPage() {
               <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="eyebrow">Moje plany</p>
-                  <h2 className="section-title mt-2">Szablony gotowe do odpalenia</h2>
+                  <h2 className="section-title mt-2">Szablony gotowe do startu</h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Stałe rozpiski skracają wejście w sesję i porządkują tygodniowy rytm pracy.
+                    Stałe rozpiski skracają wejście w sesję i pilnują rytmu tygodnia.
                   </p>
                 </div>
                 <motion.button

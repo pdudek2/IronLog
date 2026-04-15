@@ -385,12 +385,12 @@ export default function WorkoutPage() {
   const completionPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0
   const activeLabel = active.label?.trim() || 'Sesja w toku'
   const sessionSignal = totalExercises === 0
-    ? 'Dodaj pierwsze ćwiczenie, żeby rozpocząć logowanie sesji.'
+    ? 'Dodaj pierwsze ćwiczenie, żeby zacząć sesję.'
     : completedSets === 0
-      ? 'Pierwsze serie jeszcze przed Tobą. Zacznij od najmocniejszego ruchu dnia.'
+      ? 'Pierwsze serie jeszcze przed Tobą. Zacznij od głównego ruchu dnia.'
       : completionPct >= 100
-        ? 'Cała rozpiska jest oznaczona jako wykonana. Możesz domknąć sesję lub dodać kolejne serie.'
-        : `Masz zamknięte ${completedSets} z ${totalSets} serii. Kolejne wejście utrzyma tempo sesji.`
+        ? 'Cała rozpiska jest oznaczona jako wykonana. Możesz domknąć sesję albo dorzucić kolejne serie.'
+        : `${completedSets} z ${totalSets} serii masz już zamknięte.`
 
   const timerStr = (() => {
     const t = formatDuration(active.startedAt)
@@ -499,7 +499,7 @@ export default function WorkoutPage() {
 
             <div>
               <p className="mb-3 text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-                Rodzaj treningu
+                Typ sesji
               </p>
               <LabelChips
                 activeLabel={active.label ?? ''}
@@ -511,7 +511,7 @@ export default function WorkoutPage() {
             <div className="mt-5">
               <div className="mb-3 rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
                 <div className="flex items-center justify-between gap-3">
-                  <span className="stat-meta">Puls sesji</span>
+                  <span className="stat-meta">Stan sesji</span>
                   <Target size={14} style={{ color: 'var(--accent)' }} />
                 </div>
                 <p className="mt-2 text-sm font-semibold text-white">
@@ -559,7 +559,7 @@ export default function WorkoutPage() {
           >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
-                <p className="eyebrow">Live session</p>
+                <p className="eyebrow">Aktywna sesja</p>
                 <h2 className="section-title mt-2">{activeLabel}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                   {sessionSignal}
@@ -605,16 +605,65 @@ export default function WorkoutPage() {
               <h2 className="mt-2 text-2xl font-bold text-white">Bieżąca rozpiska</h2>
             </div>
             <p className="hidden text-sm lg:block" style={{ color: 'var(--muted)' }}>
-              Wpisuj sety na bieżąco, a gotowe serie oznaczaj przyciskiem po lewej.
+              Wpisuj sety na bieżąco i oznaczaj gotowe serie przyciskiem po lewej.
             </p>
           </div>
 
           <div className="flex flex-col gap-4">
             {active.exercises.length === 0 && (
               <>
-                <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  Dodaj pierwsze ćwiczenie przyciskiem poniżej — serie i objętość pojawią się tutaj.
-                </p>
+                <div
+                  className="surface-panel rounded-[var(--radius-xl)] p-5 sm:p-6"
+                  style={{ borderColor: 'rgba(90,166,255,0.14)' }}
+                >
+                  <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(16rem,0.95fr)] lg:items-start">
+                    <div>
+                      <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>Start sesji</p>
+                      <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">Dodaj pierwszy ruch</h3>
+                      <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                        Dodaj ćwiczenie, a potem loguj serie na bieżąco. Obok od razu zobaczysz objętość, postęp i top set.
+                      </p>
+
+                      <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                        {[
+                          { label: '1', text: 'Wybierz ruch główny dnia' },
+                          { label: '2', text: 'Wpisz ciężar i powtórzenia' },
+                          { label: '3', text: 'Zamykaj serie po wykonaniu' },
+                        ].map((step) => (
+                          <div
+                            key={step.label}
+                            className="rounded-[var(--radius-lg)] border px-4 py-3"
+                            style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
+                          >
+                            <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Krok {step.label}</span>
+                            <p className="mt-2 text-sm leading-6 text-white">{step.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div
+                      className="rounded-[var(--radius-xl)] border p-4"
+                      style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border)' }}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <p className="eyebrow mb-2">Sygnał sesji</p>
+                          <p className="text-lg font-semibold tracking-[-0.03em] text-white">Jeszcze bez ćwiczeń</p>
+                        </div>
+                        <div
+                          className="rounded-[var(--radius-pill)] border px-3 py-1.5 text-xs font-semibold"
+                          style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--border)', color: 'var(--muted)' }}
+                        >
+                          0/{totalSets || 0} serii
+                        </div>
+                      </div>
+                      <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                        Jeśli chcesz wejść szybciej, skorzystaj z szybkiego startu poniżej albo dodaj ruch ręcznie.
+                      </p>
+                    </div>
+                  </div>
+                </div>
                 {quickPicks.length > 0 && (
                   <div>
                     <p className="eyebrow mb-3" style={{ color: 'var(--muted)' }}>Szybki start</p>

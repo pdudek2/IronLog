@@ -29,11 +29,6 @@ test.describe('Profile hydration and save', () => {
 
     await page.screenshot({ path: 'test-results/profile-loaded.png' })
 
-    // Profile name in the header should not be "—" (BUG-03 regression check)
-    const nameDisplay = page.locator('p.stat-meta').locator('..')
-      .filter({ hasText: /—/ }).first()
-    // If this is visible, profile failed to load → test fails via the assertion below
-    const headerName = page.locator('p.text-2xl, p.text-xl, h1, [class*="font-bold"]').filter({ hasText: /[A-Za-z0-9]/ }).first()
     // The form input should have a value (not empty) if profile loaded
     const nameInput = page.getByPlaceholder('np. Jan')
     await expect(nameInput).toBeVisible({ timeout: 5_000 })

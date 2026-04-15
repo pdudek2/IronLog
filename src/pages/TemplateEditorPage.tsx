@@ -236,25 +236,43 @@ export default function TemplateEditorPage() {
 
   return (
     <AppShell current="templates">
-      <div className="mb-8 flex items-start justify-between gap-4">
-        <div>
-          <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
-            Planowanie
-          </p>
-          <h1 className="page-title">{isEdit ? 'Edytuj szablon' : 'Nowy szablon'}</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Złóż dni treningowe z gotowych ćwiczeń, ustaw docelową liczbę serii i prefill pod start nowej sesji.
-          </p>
-        </div>
+      <section className="hero-editorial">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-5">
+            <p className="hero-editorial-date">Planowanie · edytor</p>
 
-        <button
-          onClick={() => navigate('/templates')}
-          className="rounded-[var(--radius-md)] px-4 py-2 text-sm font-semibold transition-opacity hover:opacity-80"
-          style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
-        >
-          Wróć
-        </button>
-      </div>
+            <div>
+              <h1 className="hero-editorial-name">
+                {isEdit ? (
+                  <>
+                    Edytuj
+                    <br />
+                    szablon.
+                  </>
+                ) : (
+                  <>
+                    Nowy
+                    <br />
+                    szablon.
+                  </>
+                )}
+              </h1>
+            </div>
+
+            <p className="hero-editorial-sub">
+              Złóż dni treningowe z gotowych ćwiczeń, ustaw serie i przygotuj szybszy start kolejnej sesji.
+            </p>
+          </div>
+
+          <button
+            onClick={() => navigate('/templates')}
+            className="rounded-[var(--radius-pill)] px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
+            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+          >
+            Wróć
+          </button>
+        </div>
+      </section>
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]">

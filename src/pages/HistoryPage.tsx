@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { ChevronRight, Search, X } from 'lucide-react'
+import { toast } from 'sonner'
 import AppShell from '../components/AppShell'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
-import { getRecentWorkouts, calcVolume, type WorkoutSummary } from '../lib/workoutService'
-import { exercises as exerciseDb } from '../data/exercises'
+import { getWorkoutHistory, calcVolume, type WorkoutSummary } from '../lib/workoutService'
+import { exercises as exerciseDb, type Exercise } from '../data/exercises'
+import { getUserExercises } from '../lib/userExercisesService'
 
 type RangePreset = '30' | '90' | '365' | 'all'
 
@@ -68,7 +70,7 @@ interface DerivedWorkout {
   exerciseNames: string[]
 }
 
-function deriveWorkout(workout: WorkoutSummary): DerivedWorkout {
+function deriveWorkout(workout: WorkoutSummary, exerciseMap: Map<string, Exercise>): DerivedWorkout {
   const categories = new Set<string>()
   const exerciseNames: string[] = []
   let totalSets = 0
@@ -76,8 +78,8 @@ function deriveWorkout(workout: WorkoutSummary): DerivedWorkout {
   for (const ex of workout.exercises) {
     exerciseNames.push(ex.name)
     totalSets += ex.sets.length
-    if (ex.exerciseId && ex.exerciseSource === 'global') {
-      const meta = exerciseDb.find((e) => e.id === ex.exerciseId)
+    if (ex.exerciseId) {
+      const meta = exerciseMap.get(`${ex.exerciseSource ?? 'global'}:${ex.exerciseId}`)
       if (meta?.category) categories.add(meta.category)
     }
   }
@@ -99,16 +101,56 @@ export default function HistoryPage() {
   const [rangePreset, setRangePreset] = useState<RangePreset>('90')
   const [searchText, setSearchText] = useState('')
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState(false)
+  const [rangeAnchorMs, setRangeAnchorMs] = useState(() => Date.now())
+  const [userExercises, setUserExercises] = useState<Exercise[]>([])
+  const [historyTruncated, setHistoryTruncated] = useState(false)
 
-  useEffect(() => {
+  const loadHistory = useCallback(async () => {
     if (!user) return
-    getRecentWorkouts(user.uid, 500)
-      .then(setWorkouts)
-      .catch(() => setWorkouts([]))
-      .finally(() => setLoading(false))
+
+    setLoading(true)
+    setLoadError(false)
+
+    try {
+      const [history, nextUserExercises] = await Promise.all([
+        getWorkoutHistory(user.uid),
+        getUserExercises(user.uid).catch(() => []),
+      ])
+
+      setWorkouts(history.workouts)
+      setHistoryTruncated(history.truncated)
+      setUserExercises(nextUserExercises)
+      setRangeAnchorMs(Date.now())
+    } catch (err) {
+      console.error('[HistoryPage] load failed', err)
+      setLoadError(true)
+      setHistoryTruncated(false)
+      toast.error('Nie udało się pobrać historii treningów.')
+    } finally {
+      setLoading(false)
+    }
   }, [user])
 
-  const derived = useMemo(() => workouts.map(deriveWorkout), [workouts])
+  useEffect(() => {
+    void loadHistory()
+  }, [loadHistory])
+
+  useEffect(() => {
+    setRangeAnchorMs(Date.now())
+  }, [rangePreset])
+
+  const historyExerciseMap = useMemo(() => {
+    const map = new Map<string, Exercise>()
+    exerciseDb.forEach((exercise) => map.set(`global:${exercise.id}`, exercise))
+    userExercises.forEach((exercise) => map.set(`user:${exercise.id}`, exercise))
+    return map
+  }, [userExercises])
+
+  const derived = useMemo(
+    () => workouts.map((workout) => deriveWorkout(workout, historyExerciseMap)),
+    [historyExerciseMap, workouts],
+  )
 
   const availableCategories = useMemo(() => {
     const counts = new Map<string, number>()
@@ -122,7 +164,7 @@ export default function HistoryPage() {
 
   const filtered = useMemo(() => {
     const rangeDef = RANGE_PRESETS.find((r) => r.key === rangePreset)
-    const cutoff = rangeDef?.days ? Date.now() - rangeDef.days * 86_400_000 : 0
+    const cutoff = rangeDef?.days ? rangeAnchorMs - rangeDef.days * 86_400_000 : 0
     const search = searchText.trim().toLowerCase()
 
     return derived.filter(({ workout, categories, exerciseNames }) => {
@@ -136,7 +178,7 @@ export default function HistoryPage() {
       }
       return true
     })
-  }, [derived, rangePreset, activeCategory, searchText])
+  }, [derived, rangePreset, activeCategory, searchText, rangeAnchorMs])
 
   const totalVolumeInRange = useMemo(
     () => filtered.reduce((sum, { totalVolume }) => sum + totalVolume, 0),
@@ -145,7 +187,7 @@ export default function HistoryPage() {
 
   const activeFiltersCount = (activeCategory ? 1 : 0) + (searchText.trim() ? 1 : 0) + (rangePreset !== '90' ? 1 : 0)
 
-  if (loading) return <LoadingState message="Ładowanie historii..." />
+  if (loading && workouts.length === 0) return <LoadingState message="Ładowanie historii..." />
 
   return (
     <AppShell current="history">
@@ -165,9 +207,11 @@ export default function HistoryPage() {
           </div>
 
           <p className="hero-editorial-sub">
-            {filtered.length === 0
+            {loadError && workouts.length === 0
+              ? 'Nie udało się pobrać historii treningów. Spróbuj ponownie za chwilę.'
+              : filtered.length === 0
               ? 'Brak treningów w wybranym zakresie — spróbuj szerszego filtru lub innego ćwiczenia.'
-              : `${filtered.length} ${filtered.length === 1 ? 'sesja' : 'sesji'} w wyborze · ${formatCompactVolume(totalVolumeInRange)} objętości${activeFiltersCount > 0 ? ` · ${activeFiltersCount} ${activeFiltersCount === 1 ? 'filtr aktywny' : 'filtrów aktywnych'}` : ''}`}
+              : `${filtered.length} ${filtered.length === 1 ? 'sesja' : 'sesji'} w wyborze · ${formatCompactVolume(totalVolumeInRange)} objętości${activeFiltersCount > 0 ? ` · ${activeFiltersCount} ${activeFiltersCount === 1 ? 'filtr aktywny' : 'filtrów aktywnych'}` : ''}${historyTruncated ? ' · widok oparty o ostatnie 2000 sesji' : ''}`}
           </p>
 
           <div
@@ -193,6 +237,15 @@ export default function HistoryPage() {
       <div className="space-y-5">
         {/* Filter bar */}
         <div className="space-y-3">
+          {historyTruncated && (
+            <div
+              className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
+              style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)', color: 'var(--muted)' }}
+            >
+              Historia została ograniczona do ostatnich 2000 treningów, żeby utrzymać płynność widoku.
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             {RANGE_PRESETS.map(({ key, label }) => (
               <button
@@ -262,7 +315,22 @@ export default function HistoryPage() {
         </div>
 
         {/* Workout list */}
-        {filtered.length === 0 ? (
+        {loadError && workouts.length === 0 ? (
+          <div className="surface-panel rounded-[var(--radius-xl)] p-10 text-center">
+            <p className="text-lg font-semibold text-white">Nie udało się pobrać historii</p>
+            <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+              To wygląda na chwilowy problem z połączeniem albo odpowiedzią Firestore.
+            </p>
+            <button
+              type="button"
+              onClick={() => void loadHistory()}
+              className="mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
+              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+            >
+              Spróbuj ponownie
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="surface-panel rounded-[var(--radius-xl)] p-10 text-center">
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
               Nic nie pasuje do obecnych filtrów. Spróbuj zwiększyć zakres lub wyczyścić filtry.

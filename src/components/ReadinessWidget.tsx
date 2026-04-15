@@ -90,7 +90,7 @@ export default function ReadinessWidget() {
 
         <div className="flex-1 min-w-0">
           <p className="text-lg font-bold text-white leading-tight">{label}</p>
-          <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>wynik gotowości na dziś</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>dzisiejszy wynik</p>
 
           <div className="mt-3 grid grid-cols-3 gap-2">
             {[

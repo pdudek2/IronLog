@@ -276,7 +276,7 @@ export default function ProgressPage() {
         {/* ── Period Comparison ───────────────────────── */}
         {!error && periodComparison.previousSessions > 0 && (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.03, duration: 0.2 }}
@@ -307,14 +307,14 @@ export default function ProgressPage() {
         {/* ── Volume chart ────────────────────────────── */}
         {!error && (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05, duration: 0.2 }}
           >
             <p className="eyebrow mb-1">Objętość</p>
             <p className="section-title mb-5">Wolumen treningowy</p>
-            <div style={{ height: 220 }}>
+            <div className="h-[180px] sm:h-[220px]">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <defs>
@@ -356,24 +356,45 @@ export default function ProgressPage() {
         {/* ── Strength Progression ────────────────────── */}
         {!error && strengthData.data.length > 0 && (
           strengthData.data.length < 3 ? (
-            <div className="surface-panel rounded-[var(--radius-xl)] p-5">
-              <p className="eyebrow mb-1">Siła</p>
-              <p className="section-title mb-3">Progresja ciężaru</p>
-              <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                Potrzebujesz jeszcze {3 - strengthData.data.length}{' '}
-                {3 - strengthData.data.length === 1 ? 'sesji' : 'sesji'} z tym ćwiczeniem, żeby zobaczyć wykres progresji.
-              </p>
+            <div className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5">
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+                <div>
+                  <p className="eyebrow mb-1">Siła</p>
+                  <p className="section-title mb-2">Progresja ciężaru</p>
+                  <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                    Potrzebujesz jeszcze {3 - strengthData.data.length}{' '}
+                    {3 - strengthData.data.length === 1 ? 'sesji' : 'sesji'} z tym ćwiczeniem, żeby zobaczyć wykres progresji.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  {Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="rounded-[var(--radius-lg)] border px-3 py-3 text-center"
+                      style={{
+                        minWidth: '4.5rem',
+                        background: 'rgba(255,255,255,0.025)',
+                        borderColor: index < strengthData.data.length ? 'var(--accent-soft-strong)' : 'var(--border)',
+                        color: index < strengthData.data.length ? 'var(--accent)' : 'var(--muted)',
+                      }}
+                    >
+                      <p className="stat-meta">Sesja</p>
+                      <p className="mt-2 text-lg font-semibold tabular-nums">{index + 1}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08, duration: 0.2 }}
           >
             <p className="eyebrow mb-1">Siła</p>
             <p className="section-title mb-5">Progresja ciężaru</p>
-            <div style={{ height: 240 }}>
+            <div className="h-[190px] sm:h-[240px]">
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart data={strengthData.data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -423,7 +444,7 @@ export default function ProgressPage() {
         {/* ── Muscle balance ───────────────────────────── */}
         {!error && muscleData.length > 0 && (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.2 }}
@@ -471,7 +492,7 @@ export default function ProgressPage() {
         {/* ── Activity Heatmap ─────────────────────────── */}
         {!error && currentSessions.length > 0 && (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.12, duration: 0.2 }}
@@ -529,7 +550,7 @@ export default function ProgressPage() {
         {/* ── PR list ──────────────────────────────────── */}
         {!error && records.length > 0 && (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-5"
+            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.2 }}

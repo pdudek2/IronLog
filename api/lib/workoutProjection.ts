@@ -399,7 +399,7 @@ async function recomputeRecordForExercise(userId: string, exercise: ExerciseKey)
   const recordRef = adminDb.collection('records').doc(buildRecordId(userId, exercise))
 
   if (sessionsSnap.empty) {
-    await recordRef.delete().catch(() => undefined)
+    await recordRef.delete()
     return
   }
 

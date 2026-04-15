@@ -105,46 +105,30 @@ export default function TemplatesPage() {
 
   return (
     <AppShell current="templates">
-      <div className="mb-8 flex items-end justify-between gap-4">
-        <div>
-          <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
-            Planowanie
-          </p>
-          <h1 className="page-title">Szablony treningów</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Zapisz rozpiski na dni tygodnia, uruchamiaj je jednym kliknięciem i utrzymuj powtarzalny rytm pracy.
-          </p>
+      <section className="hero-editorial">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-5">
+            <p className="hero-editorial-date">Planowanie · szablony</p>
+
+            <div>
+              <h1 className="hero-editorial-name">Szablony<br />treningowe.</h1>
+            </div>
+
+            <p className="hero-editorial-sub">
+              Zapisz rozpiski na dni tygodnia, uruchamiaj je jednym kliknięciem i trzymaj stały rytm pracy.
+            </p>
+          </div>
+
+          <motion.button
+            onClick={() => navigate('/templates/new')}
+            className="hero-editorial-cta"
+            whileTap={{ scale: 0.97 }}
+          >
+            <Plus size={16} />
+            Nowy szablon
+          </motion.button>
         </div>
-
-        <motion.button
-          onClick={() => navigate('/templates/new')}
-          className="hidden items-center gap-2 rounded-[var(--radius-lg)] px-4 py-3 text-sm font-semibold lg:inline-flex"
-          style={{
-            background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
-            color: 'var(--accent-foreground)',
-            boxShadow: '0 14px 32px rgba(90,166,255,0.22)',
-          }}
-          whileTap={{ scale: 0.97 }}
-        >
-          <Plus size={16} />
-          Nowy szablon
-        </motion.button>
-      </div>
-
-      <div className="mb-5 flex lg:hidden">
-        <motion.button
-          onClick={() => navigate('/templates/new')}
-          className="inline-flex items-center gap-2 rounded-[var(--radius-lg)] px-4 py-3 text-sm font-semibold"
-          style={{
-            background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
-            color: 'var(--accent-foreground)',
-          }}
-          whileTap={{ scale: 0.97 }}
-        >
-          <Plus size={16} />
-          Nowy szablon
-        </motion.button>
-      </div>
+      </section>
 
       <AnimatePresence mode="popLayout">
         {error ? (
@@ -165,31 +149,80 @@ export default function TemplatesPage() {
           </motion.div>
         ) : templates.length === 0 ? (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-10 text-center"
+            className="surface-panel rounded-[var(--radius-xl)] p-6 sm:p-8"
             initial={false}
             animate={{ opacity: 1 }}
           >
-            <div
-              className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[var(--radius-lg)]"
-              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
-            >
-              <CalendarDays size={24} />
+            <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-center">
+              <div className="text-center lg:text-left">
+                <div
+                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[var(--radius-lg)] lg:mx-0"
+                  style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+                >
+                  <CalendarDays size={24} />
+                </div>
+                <p className="text-2xl font-semibold tracking-[-0.04em] text-white">Nie masz jeszcze szablonów</p>
+                <p className="mt-3 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                  Pierwszy szablon skróci wejście w sesję i pozwoli startować z gotową rozpiską.
+                </p>
+
+                <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                  {[
+                    'Szybszy start dnia',
+                    'Stały układ serii',
+                    'Mniej klikania przed sesją',
+                  ].map((item) => (
+                    <div
+                      key={item}
+                      className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
+                      style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)', color: 'var(--muted)' }}
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+
+                <motion.button
+                  onClick={() => navigate('/templates/new')}
+                  className="mt-6 rounded-[var(--radius-lg)] px-5 py-3 text-sm font-semibold"
+                  style={{
+                    background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+                    color: 'var(--accent-foreground)',
+                  }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  Utwórz pierwszy szablon
+                </motion.button>
+              </div>
+
+              <div
+                className="rounded-[var(--radius-xl)] border p-4"
+                style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
+              >
+                <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
+                  Przykład
+                </p>
+                <p className="text-lg font-semibold tracking-[-0.03em] text-white">Upper / Lower · 4 dni</p>
+                <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                  Szablon trzyma rytm tygodnia i przypisuje każdemu dniowi gotowy zestaw ćwiczeń.
+                </p>
+                <div className="mt-4 space-y-2">
+                  {[
+                    'Upper A · Bench Press · Row · OHP',
+                    'Lower A · Squat · RDL · Leg Press',
+                    'Upper B · Incline · Pull-up · Lateral Raise',
+                  ].map((day) => (
+                    <div
+                      key={day}
+                      className="rounded-[var(--radius-lg)] border px-3 py-2.5 text-sm"
+                      style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border)', color: 'var(--text)' }}
+                    >
+                      {day}
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-            <p className="text-lg font-semibold text-white">Brak zapisanych planów</p>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              Pierwszy szablon skróci wejście w sesję i pozwoli odpalać gotową rozpiskę bez ręcznego dodawania każdego ćwiczenia.
-            </p>
-            <motion.button
-              onClick={() => navigate('/templates/new')}
-              className="mt-6 rounded-[var(--radius-lg)] px-5 py-3 text-sm font-semibold"
-              style={{
-                background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
-                color: 'var(--accent-foreground)',
-              }}
-              whileTap={{ scale: 0.97 }}
-            >
-              Utwórz pierwszy szablon
-            </motion.button>
           </motion.div>
         ) : (
           <div className="grid gap-4 xl:grid-cols-2">

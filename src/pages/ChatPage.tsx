@@ -61,6 +61,7 @@ export default function ChatPage() {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
   const [configured, setConfigured] = useState(() => hasClaudeApiKey())
+  const [showConfigPanel, setShowConfigPanel] = useState(() => !hasClaudeApiKey())
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [input, setInput] = useState('')
   const [streamText, setStreamText] = useState('')
@@ -92,6 +93,12 @@ export default function ChatPage() {
   useEffect(() => {
     setSelectedPreviewDay(0)
   }, [planPreview])
+
+  useEffect(() => {
+    if (!configured) {
+      setShowConfigPanel(true)
+    }
+  }, [configured])
 
   async function handleSend(rawPrompt?: string) {
     const prompt = (rawPrompt ?? input).trim()
@@ -263,8 +270,7 @@ export default function ChatPage() {
           </div>
 
           <p className="hero-editorial-sub">
-            Rozmawiaj o progresie albo wygeneruj gotowy szablon treningowy na bazie swojego celu,
-            sprzętu i historii pracy w IronLog.
+            Sprawdź progres, dopytaj o kolejny krok albo ułóż nowy szablon na bazie swojej historii.
           </p>
         </motion.div>
       </section>
@@ -278,13 +284,13 @@ export default function ChatPage() {
                 key: 'chat' as const,
                 eyebrow: 'Rozmowa',
                 title: 'Analiza i pytania',
-                desc: 'Rozmowa o progresie, ostatnich sesjach i decyzjach treningowych.',
+                desc: 'Pytania o progres, ostatnie sesje i kolejne decyzje treningowe.',
               },
               {
                 key: 'plan' as const,
                 eyebrow: 'Generator',
                 title: 'Nowy szablon z AI',
-                desc: 'Brief, podgląd planu i zapis gotowej rozpiski do szablonów.',
+                desc: 'Brief, podgląd i zapis gotowego szablonu.',
               },
             ].map((tab) => {
               const active = activeTab === tab.key
@@ -360,9 +366,9 @@ export default function ChatPage() {
                           >
                             <Bot size={24} />
                           </div>
-                          <p className="text-lg font-semibold text-white">Gotowy na pierwszą rozmowę</p>
+                          <p className="text-lg font-semibold text-white">Zacznij od konkretu</p>
                           <p className="mt-2 max-w-sm text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                            AI Coach bierze pod uwagę profil, readiness, ostatnie treningi i top rekordy.
+                            Asystent widzi Twój profil, gotowość, ostatnie sesje i rekordy.
                           </p>
                         </div>
 
@@ -423,7 +429,7 @@ export default function ChatPage() {
                                   <span className="chat-typing-dot" />
                                 </div>
                                 <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                                  Analizuję Twoje dane i układam odpowiedź...
+                                  Analizuję historię i składam odpowiedź...
                                 </p>
                               </div>
                             </div>
@@ -465,7 +471,7 @@ export default function ChatPage() {
                         el.style.height = 'auto'
                         el.style.height = `${Math.min(el.scrollHeight, 160)}px`
                       }}
-                      placeholder={configured ? 'Napisz wiadomość...' : 'Dodaj najpierw Claude API key, aby odblokować czat'}
+                      placeholder={configured ? 'Zapytaj o progres, plan albo ostatnią sesję' : 'Dodaj Claude API key, żeby odblokować czat'}
                       disabled={!configured || sending}
                       rows={2}
                       className="w-full resize-none rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[color:var(--muted-soft)] disabled:opacity-60"
@@ -479,7 +485,7 @@ export default function ChatPage() {
 
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>
-                        Koszt odpowiedzi rozlicza Twój własny klucz Claude.
+                        Koszt odpowiedzi rozlicza Twój klucz Claude.
                       </p>
 
                       <Button
@@ -498,24 +504,24 @@ export default function ChatPage() {
                 <section className="surface-panel rounded-[var(--radius-xl)] p-5">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} style={{ color: 'var(--success)' }} />
-                    <p className="text-sm font-semibold text-white">Najlepsze zastosowania</p>
+                    <p className="text-sm font-semibold text-white">Najczęstsze zastosowania</p>
                   </div>
                   <div className="mt-3 grid gap-3 md:grid-cols-3">
                     {[
                       {
                         icon: <MessagesSquare size={16} />,
                         title: 'Ocena sesji',
-                        desc: 'Analiza ostatniego treningu, wolumenu i jakości pracy.',
+                        desc: 'Ocena ostatniego treningu, wolumenu i jakości pracy.',
                       },
                       {
                         icon: <Sparkles size={16} />,
                         title: 'Decyzja na dziś',
-                        desc: 'Mocniejsza, lżejsza albo techniczna sesja na podstawie readiness.',
+                        desc: 'Dobór mocniejszej, lżejszej albo technicznej sesji na dziś.',
                       },
                       {
                         icon: <Bot size={16} />,
                         title: 'Kolejny krok',
-                        desc: 'Rozmowa o priorytecie następnego treningu i progresie.',
+                        desc: 'Ustalenie priorytetu na kolejny trening i progresji.',
                       },
                     ].map((item) => (
                       <div
@@ -543,7 +549,7 @@ export default function ChatPage() {
                       <p className="eyebrow mb-1">Generator planu</p>
                       <h2 className="section-title">Wygeneruj szablon z AI</h2>
                       <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                        Opisz cel i ograniczenia, a IronLog przygotuje gotowy plan do zapisania jako szablon.
+                        Podaj cel i ograniczenia, a IronLog przygotuje plan gotowy do zapisania.
                       </p>
                     </div>
 
@@ -555,7 +561,7 @@ export default function ChatPage() {
                         color: planPreview ? 'var(--accent)' : 'var(--muted)',
                       }}
                     >
-                      {planPreview ? 'Podgląd gotowy' : 'Brief planu'}
+                      {planPreview ? 'Podgląd gotowy' : 'Brief'}
                     </div>
                   </div>
 
@@ -566,7 +572,7 @@ export default function ChatPage() {
                         type="text"
                         value={planGoal}
                         onChange={(event) => setPlanGoal(event.target.value)}
-                        placeholder="Np. upper/lower pod budowę siły i prostą progresję"
+                        placeholder="Np. upper/lower pod siłę i prostą progresję"
                         className="mt-2 w-full rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none"
                         style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                       />
@@ -644,7 +650,7 @@ export default function ChatPage() {
                         type="text"
                         value={planFocus}
                         onChange={(event) => setPlanFocus(event.target.value)}
-                        placeholder="Np. mocny bench, poprawa pleców, prosty rytm treningowy"
+                        placeholder="Np. mocny bench, lepsze plecy, prosty rytm tygodnia"
                         className="mt-2 w-full rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none"
                         style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                       />
@@ -667,7 +673,7 @@ export default function ChatPage() {
 
                   <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
                     <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>
-                      Generator korzysta z Twojego profilu, historii i dostępnych ćwiczeń w katalogu IronLog.
+                      Generator bierze pod uwagę profil, historię i katalog ćwiczeń.
                     </p>
 
                     <Button
@@ -821,30 +827,58 @@ export default function ChatPage() {
           </div>
 
           <div className="space-y-5">
-            <AiKeyPanel onConfiguredChange={setConfigured} />
+            <AiKeyPanel
+              onConfiguredChange={setConfigured}
+              collapsed={configured && !showConfigPanel}
+              onExpand={() => setShowConfigPanel(true)}
+              onCollapse={() => setShowConfigPanel(false)}
+            />
 
             {activeTab === 'chat' ? (
-              <section className="surface-panel rounded-[var(--radius-xl)] p-5">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={16} style={{ color: 'var(--success)' }} />
-                  <p className="text-sm font-semibold text-white">Prywatność i dostęp</p>
-                </div>
-                <div className="mt-3 space-y-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  <p>Klucz Claude zostaje tylko na tym urządzeniu i nie zapisuje się przy koncie.</p>
-                  <p>Na innym urządzeniu albo po wyczyszczeniu danych trzeba dodać go ponownie.</p>
-                  <p>Asystent korzysta z Twojego profilu i historii treningowej, żeby odpowiadać trafniej.</p>
-                </div>
-              </section>
+              showConfigPanel || !configured ? (
+                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={16} style={{ color: 'var(--success)' }} />
+                    <p className="text-sm font-semibold text-white">Prywatność i dostęp</p>
+                  </div>
+                  <div className="mt-3 space-y-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                    <p>Klucz działa tylko na tym urządzeniu i nie jest przypisany do konta.</p>
+                    <p>Na innym urządzeniu dodasz go osobno.</p>
+                    <p>Asystent korzysta z Twojego profilu i historii treningowej, żeby odpowiadać trafniej.</p>
+                  </div>
+                </section>
+              ) : (
+                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
+                  <div className="flex items-start gap-3">
+                    <div
+                      className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)]"
+                      style={{
+                        background: 'rgba(25,213,159,0.08)',
+                        border: '1px solid rgba(25,213,159,0.16)',
+                        color: 'var(--success)',
+                      }}
+                    >
+                      <ShieldCheck size={16} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-white">Prywatność i dostęp</p>
+                      <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                        Klucz działa lokalnie, a odpowiedzi korzystają z kontekstu Twoich treningów.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              )
             ) : (
               <>
                 <section className="surface-panel rounded-[var(--radius-xl)] p-5">
                   <p className="eyebrow mb-1">Jak pisać brief</p>
-                  <h2 className="section-title mb-4">Co poprawia jakość planu</h2>
+                  <h2 className="section-title mb-4">Co pomaga generatorowi</h2>
                   <div className="space-y-3">
                     {[
-                      'Podaj realny cel: siła, masa, powrót po przerwie albo prosty rytm 3-4 dni.',
-                      'Dopisz ograniczenia: czas treningu, brak niektórych ćwiczeń, nacisk na technikę.',
-                      'Użyj fokusu, jeśli chcesz podbić konkretny obszar, np. bench albo plecy.',
+                      'Podaj konkretny cel: siła, masa, powrót po przerwie albo prosty rytm 3-4 dni.',
+                      'Dopisz ograniczenia: czas treningu, brak wybranych ćwiczeń, nacisk na technikę.',
+                      'Wskaż fokus, jeśli chcesz mocniej popchnąć bench, plecy albo nogi.',
                     ].map((tip) => (
                       <div
                         key={tip}
@@ -859,7 +893,7 @@ export default function ChatPage() {
 
                 <section className="surface-panel rounded-[var(--radius-xl)] p-5">
                   <p className="eyebrow mb-1">Status planu</p>
-                  <h2 className="section-title mb-4">Na czym stoimy</h2>
+                  <h2 className="section-title mb-4">Podsumowanie</h2>
                   <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
                     {[
                       {

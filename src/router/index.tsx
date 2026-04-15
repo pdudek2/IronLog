@@ -3,21 +3,37 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { LoadingState } from '../components/ui'
 import ShellSkeleton from '../components/ShellSkeleton'
+import {
+  loadChatPage,
+  loadDashboardPage,
+  loadExerciseDetailPage,
+  loadExercisesPage,
+  loadHistoryPage,
+  loadLoginPage,
+  loadOnboardingPage,
+  loadProfilePage,
+  loadProgressPage,
+  loadRegisterPage,
+  loadTemplateEditorPage,
+  loadTemplatesPage,
+  loadWorkoutDetailPage,
+  loadWorkoutPage,
+} from './pageLoaders'
 
-const LoginPage = lazy(() => import('../pages/LoginPage'))
-const RegisterPage = lazy(() => import('../pages/RegisterPage'))
-const DashboardPage = lazy(() => import('../pages/DashboardPage'))
-const OnboardingPage = lazy(() => import('../pages/OnboardingPage'))
-const WorkoutPage = lazy(() => import('../pages/WorkoutPage'))
-const WorkoutDetailPage = lazy(() => import('../pages/WorkoutDetailPage'))
-const HistoryPage = lazy(() => import('../pages/HistoryPage'))
-const ProfilePage = lazy(() => import('../pages/ProfilePage'))
-const ExercisesPage = lazy(() => import('../pages/ExercisesPage'))
-const ExerciseDetailPage = lazy(() => import('../pages/ExerciseDetailPage'))
-const TemplatesPage = lazy(() => import('../pages/TemplatesPage'))
-const TemplateEditorPage = lazy(() => import('../pages/TemplateEditorPage'))
-const ProgressPage = lazy(() => import('../pages/ProgressPage'))
-const ChatPage = lazy(() => import('../pages/ChatPage'))
+const LoginPage = lazy(loadLoginPage)
+const RegisterPage = lazy(loadRegisterPage)
+const DashboardPage = lazy(loadDashboardPage)
+const OnboardingPage = lazy(loadOnboardingPage)
+const WorkoutPage = lazy(loadWorkoutPage)
+const WorkoutDetailPage = lazy(loadWorkoutDetailPage)
+const HistoryPage = lazy(loadHistoryPage)
+const ProfilePage = lazy(loadProfilePage)
+const ExercisesPage = lazy(loadExercisesPage)
+const ExerciseDetailPage = lazy(loadExerciseDetailPage)
+const TemplatesPage = lazy(loadTemplatesPage)
+const TemplateEditorPage = lazy(loadTemplateEditorPage)
+const ProgressPage = lazy(loadProgressPage)
+const ChatPage = lazy(loadChatPage)
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuthStore()

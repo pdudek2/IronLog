@@ -1,4 +1,7 @@
 import {
+  type QueryDocumentSnapshot,
+  type DocumentData,
+  type QuerySnapshot,
   addDoc,
   collection,
   doc,
@@ -7,6 +10,7 @@ import {
   limit,
   orderBy,
   query,
+  startAfter,
   where,
 } from 'firebase/firestore'
 import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
@@ -39,6 +43,11 @@ interface SaveWorkoutResult {
   materialized: boolean
 }
 
+export interface WorkoutHistoryResult {
+  workouts: WorkoutSummary[]
+  truncated: boolean
+}
+
 export async function saveWorkout(uid: string, workout: ActiveWorkout): Promise<SaveWorkoutResult> {
   const payload = buildWorkoutPayload(uid, workout)
   const ref = await addDoc(collection(db, 'workouts'), payload)
@@ -61,6 +70,56 @@ export async function getRecentWorkouts(uid: string, count = 20): Promise<Workou
   )
   const snap = await getDocs(q)
   return snap.docs.map((docSnap) => normalizeWorkoutSummary(docSnap.id, docSnap.data()))
+}
+
+export async function getWorkoutHistory(
+  uid: string,
+  batchSize = 250,
+  maxDocs = 2_000,
+): Promise<WorkoutHistoryResult> {
+  const workouts: WorkoutSummary[] = []
+  let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null
+  let truncated = false
+
+  while (workouts.length < maxDocs) {
+    const remaining = maxDocs - workouts.length
+    const currentLimit = Math.min(batchSize, remaining)
+    let snap: QuerySnapshot<DocumentData>
+    if (lastDoc) {
+      snap = await getDocs(
+        query(
+          collection(db, 'workouts'),
+          where('userId', '==', uid),
+          orderBy('startedAt', 'desc'),
+          startAfter(lastDoc),
+          limit(currentLimit),
+        ),
+      )
+    } else {
+      snap = await getDocs(
+        query(
+          collection(db, 'workouts'),
+          where('userId', '==', uid),
+          orderBy('startedAt', 'desc'),
+          limit(currentLimit),
+        ),
+      )
+    }
+
+    workouts.push(...snap.docs.map((docSnap) => normalizeWorkoutSummary(docSnap.id, docSnap.data())))
+
+    if (snap.docs.length < currentLimit) {
+      return { workouts, truncated: false }
+    }
+
+    lastDoc = snap.docs[snap.docs.length - 1] ?? null
+    if (!lastDoc) {
+      return { workouts, truncated: false }
+    }
+  }
+
+  truncated = true
+  return { workouts, truncated }
 }
 
 export async function getWorkout(id: string): Promise<WorkoutSummary | null> {

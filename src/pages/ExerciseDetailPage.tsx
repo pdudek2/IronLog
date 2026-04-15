@@ -198,8 +198,21 @@ export default function ExerciseDetailPage() {
           <p className="hero-editorial-sub">
             {sessions.length > 0
               ? `${sessions.length} ${sessions.length === 1 ? 'sesja' : 'sesji'} w historii · ${formatVolume(totalVolumeAll)} łącznej objętości`
-              : 'Brak historii. Dodaj to ćwiczenie do sesji, żeby śledzić postępy i PR-y.'}
+              : 'Brak historii. Dodaj to ćwiczenie do sesji, żeby zacząć śledzić progres.'}
           </p>
+
+          {sessions.length === 0 && (
+            <div className="mt-2">
+              <button
+                type="button"
+                className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+                style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                onClick={() => navigate('/workout/new')}
+              >
+                Rozpocznij trening
+              </button>
+            </div>
+          )}
 
           {record && (
             <div
@@ -283,20 +296,29 @@ export default function ExerciseDetailPage() {
             </div>
 
             {sessions.length === 0 ? (
-              <div className="rounded-[var(--radius-lg)] border px-5 py-8 text-center" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}>
-                <Target size={22} className="mx-auto mb-3" style={{ color: 'var(--muted)' }} />
-                <p className="text-sm font-semibold text-white mb-1">Brak historii</p>
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                  Ćwiczenie pojawi się tutaj po pierwszym użyciu w treningu.
-                </p>
-                <button
-                  type="button"
-                  className="mt-4 rounded-[var(--radius-lg)] px-4 py-2 text-sm font-semibold"
-                  style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
-                  onClick={() => navigate('/workout/new')}
-                >
-                  Rozpocznij trening
-                </button>
+              <div className="rounded-[var(--radius-lg)] border px-5 py-5" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)]" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
+                      <Target size={18} />
+                    </div>
+                    <p className="text-sm font-semibold text-white">Brak historii</p>
+                    <p className="mt-2 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                      Po pierwszym użyciu zobaczysz tu ostatnie serie, wolumen i sygnały progresu dla tego ruchu.
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {['Sesje', 'Top set', 'Wolumen'].map((item) => (
+                      <span
+                        key={item}
+                        className="rounded-full px-3 py-1.5 text-[11px] font-medium"
+                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+                      >
+                        {item}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="flex flex-col gap-3">

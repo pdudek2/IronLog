@@ -47,15 +47,15 @@ for (const [name, route] of PAGES) {
 }
 
 // Bottom nav is lg:hidden — only visible on mobile viewports
-test('mobile nav shows all 7 items', async ({ page, isMobile }) => {
+test('mobile nav shows all primary items', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'BottomNav is lg:hidden — only visible on mobile viewports')
 
   await page.goto('/dashboard')
-  const nav = page.locator('nav').filter({ hasText: 'Start' })
+  const nav = page.getByLabel('Nawigacja dolna')
   await expect(nav).toBeVisible()
 
-  for (const label of ['Start', 'Postępy', 'Plany', 'Ćwiczenia', 'AI', 'Profil']) {
-    await expect(nav.getByText(label)).toBeVisible()
+  for (const label of ['Start', 'Postępy', 'Plany', 'Ćwiczenia', 'Historia', 'AI']) {
+    await expect(nav.getByRole('button', { name: label, exact: true })).toBeVisible()
   }
 })
 
@@ -63,18 +63,18 @@ test('bottom nav active state updates on navigation', async ({ page, isMobile })
   test.skip(!isMobile, 'BottomNav is lg:hidden — only visible on mobile viewports')
 
   await page.goto('/dashboard')
-  const nav = page.locator('nav').filter({ hasText: 'Start' })
+  const nav = page.getByLabel('Nawigacja dolna')
 
   // Navigate to Progress
-  await nav.getByText('Postępy').click()
+  await nav.getByRole('button', { name: 'Postępy', exact: true }).click()
   await page.waitForURL('/progress')
 
   // Navigate to Templates
-  await nav.getByText('Plany').click()
+  await nav.getByRole('button', { name: 'Plany', exact: true }).click()
   await page.waitForURL('/templates')
 
   // Navigate to Exercises
-  await nav.getByText('Ćwiczenia').click()
+  await nav.getByRole('button', { name: 'Ćwiczenia', exact: true }).click()
   await page.waitForURL('/exercises')
 })
 

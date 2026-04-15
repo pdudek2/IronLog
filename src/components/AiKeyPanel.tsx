@@ -13,6 +13,9 @@ import { fetchAvailableClaudeModels, type ClaudeModelOption } from '../lib/chatS
 
 interface AiKeyPanelProps {
   onConfiguredChange?: (configured: boolean) => void
+  collapsed?: boolean
+  onExpand?: () => void
+  onCollapse?: () => void
 }
 
 function maskKey(key: string): string {
@@ -20,7 +23,12 @@ function maskKey(key: string): string {
   return `${key.slice(0, 7)}...${key.slice(-4)}`
 }
 
-export default function AiKeyPanel({ onConfiguredChange }: AiKeyPanelProps) {
+export default function AiKeyPanel({
+  onConfiguredChange,
+  collapsed = false,
+  onExpand,
+  onCollapse,
+}: AiKeyPanelProps) {
   const [draft, setDraft] = useState(() => getClaudeApiKey())
   const [savedKey, setSavedKey] = useState(() => getClaudeApiKey())
   const [selectedModel, setSelectedModel] = useState(() => getClaudeModel())
@@ -110,6 +118,47 @@ export default function AiKeyPanel({ onConfiguredChange }: AiKeyPanelProps) {
     setError('')
   }
 
+  if (collapsed) {
+    return (
+      <Card padding="sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="eyebrow" style={{ color: 'var(--accent)' }}>
+                Konfiguracja
+              </p>
+              <span
+                className="rounded-[var(--radius-pill)] px-2.5 py-1 text-[11px] font-semibold"
+                style={{
+                  background: keyVerified ? 'var(--success-soft)' : 'rgba(255,255,255,0.04)',
+                  border: `1px solid ${keyVerified ? 'rgba(25,213,159,0.18)' : 'var(--border)'}`,
+                  color: keyVerified ? 'var(--success)' : 'var(--muted)',
+                }}
+              >
+                {keyVerified ? 'Klucz gotowy' : 'Wymaga uwagi'}
+              </span>
+            </div>
+
+            <h2 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-white">
+              Claude API key
+            </h2>
+            <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+              {hasSavedKey
+                ? `Aktywny klucz ${savedPreview}${selectedModel ? ` · ${selectedModel}` : ''}`
+                : 'Dodaj lokalny klucz, żeby odblokować czat i generator planu.'}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button type="button" variant="ghost" onClick={onExpand}>
+              Pokaż szczegóły
+            </Button>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <Card>
       <div className="mb-6 flex items-start justify-between gap-4">
@@ -156,6 +205,14 @@ export default function AiKeyPanel({ onConfiguredChange }: AiKeyPanelProps) {
                 : 'Klucz gotowy'}
         </div>
       </div>
+
+      {onCollapse && hasSavedKey && (
+        <div className="mb-5 flex justify-end">
+          <Button type="button" variant="ghost" onClick={onCollapse}>
+            Zwiń konfigurację
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-3">
         <label className="flex flex-col gap-2">
@@ -212,8 +269,8 @@ export default function AiKeyPanel({ onConfiguredChange }: AiKeyPanelProps) {
             </div>
             <div className="mt-3 space-y-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
               <p>Klucz zostaje tylko na tym urządzeniu.</p>
-              <p>Po odświeżeniu strony dalej będzie dostępny, ale na innym urządzeniu dodajesz go osobno.</p>
-              <p>IronLog używa go wyłącznie do odpowiedzi w tym czacie.</p>
+              <p>Na innym urządzeniu dodasz go osobno.</p>
+              <p>IronLog używa go tylko do odpowiedzi i generowania planu.</p>
             </div>
           </div>
 
@@ -231,7 +288,7 @@ export default function AiKeyPanel({ onConfiguredChange }: AiKeyPanelProps) {
             <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
               {hasSavedKey
                 ? `Zapisany klucz: ${savedPreview}`
-                : 'Jeszcze nie dodano żadnego klucza Claude API na tym urządzeniu.'}
+                : 'Na tym urządzeniu nie zapisano jeszcze klucza Claude API.'}
             </p>
             <Button
               type="button"
@@ -258,7 +315,7 @@ export default function AiKeyPanel({ onConfiguredChange }: AiKeyPanelProps) {
             <div>
               <p className="text-sm font-semibold text-white">Model Claude</p>
               <p className="mt-1 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                IronLog użyje wybranego modelu do czatu i generatora planu.
+                Wybrany model obsługuje czat i generator planu.
               </p>
             </div>
 

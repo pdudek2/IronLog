@@ -1,4 +1,4 @@
-import { addDoc, collection, deleteDoc, doc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, deleteDoc, doc, getDoc, getDocs, limit, query, updateDoc, where } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Category, Equipment, Exercise, MuscleGroup } from '../data/exercises'
 
@@ -52,8 +52,35 @@ export async function updateUserExercise(
   id: string,
   input: UserExerciseInput,
 ): Promise<void> {
-  await updateDoc(doc(db, 'userExercises', id), {
-    name: input.name,
+  const ref = doc(db, 'userExercises', id)
+  const current = await getDoc(ref)
+
+  if (!current.exists()) {
+    throw new Error('Nie znaleziono ćwiczenia do aktualizacji.')
+  }
+
+  const currentData = current.data()
+  const userId = typeof currentData.userId === 'string' ? currentData.userId : ''
+  const trimmedName = input.name.trim()
+
+  if (userId) {
+    const duplicate = await getDocs(
+      query(
+        collection(db, 'userExercises'),
+        where('userId', '==', userId),
+        where('name', '==', trimmedName),
+        limit(2),
+      ),
+    )
+
+    const hasOtherExerciseWithSameName = duplicate.docs.some((docSnap) => docSnap.id !== id)
+    if (hasOtherExerciseWithSameName) {
+      throw new Error(`Ćwiczenie o nazwie "${trimmedName}" już istnieje.`)
+    }
+  }
+
+  await updateDoc(ref, {
+    name: trimmedName,
     category: input.category,
     equipment: input.equipment,
     muscles: input.muscles,

@@ -1,4 +1,4 @@
-import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
+import { type DocumentData, type QueryDocumentSnapshot, type QuerySnapshot, collection, getDocs, limit, orderBy, query, startAfter, where } from 'firebase/firestore'
 import { db } from './firebase'
 
 export interface ProgressSessionLite {
@@ -58,32 +58,63 @@ export async function getProgressSessions(
   uid: string,
   fromMs: number,
 ): Promise<ProgressSessionLite[]> {
-  const snap = await getDocs(
-    query(
-      collection(db, 'exerciseSessions'),
-      where('userId', '==', uid),
-      where('finishedAt', '>=', fromMs),
-      orderBy('finishedAt', 'desc'),
-      limit(500),
-    ),
-  )
-  return snap.docs.map((d) => {
-    const data = d.data()
-    return {
-      id: d.id,
-      workoutId: typeof data.workoutId === 'string' ? data.workoutId : '',
-      exerciseId: typeof data.exerciseId === 'string' ? data.exerciseId : '',
-      exerciseSource: (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global',
-      finishedAt: toNum(data.finishedAt),
-      totalVolume: toNum(data.totalVolume),
-      totalSets: toNum(data.totalSets),
-      bestSetWeight: toNum(data.bestSetWeight),
-      exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : '',
-      muscleGroups: Array.isArray(data.muscleGroups)
-        ? data.muscleGroups.filter((g): g is string => typeof g === 'string')
-        : [],
+  const sessions: ProgressSessionLite[] = []
+  let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null
+  const batchSize = 500
+  const maxDocs = 5_000
+
+  while (sessions.length < maxDocs) {
+    const remaining = maxDocs - sessions.length
+    const currentLimit = Math.min(batchSize, remaining)
+    let snap: QuerySnapshot<DocumentData>
+    if (lastDoc) {
+      snap = await getDocs(
+        query(
+          collection(db, 'exerciseSessions'),
+          where('userId', '==', uid),
+          where('finishedAt', '>=', fromMs),
+          orderBy('finishedAt', 'desc'),
+          startAfter(lastDoc),
+          limit(currentLimit),
+        ),
+      )
+    } else {
+      snap = await getDocs(
+        query(
+          collection(db, 'exerciseSessions'),
+          where('userId', '==', uid),
+          where('finishedAt', '>=', fromMs),
+          orderBy('finishedAt', 'desc'),
+          limit(currentLimit),
+        ),
+      )
     }
-  })
+
+    sessions.push(...snap.docs.map((d) => {
+      const data = d.data()
+      return {
+        id: d.id,
+        workoutId: typeof data.workoutId === 'string' ? data.workoutId : '',
+        exerciseId: typeof data.exerciseId === 'string' ? data.exerciseId : '',
+        exerciseSource: (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global',
+        finishedAt: toNum(data.finishedAt),
+        totalVolume: toNum(data.totalVolume),
+        totalSets: toNum(data.totalSets),
+        bestSetWeight: toNum(data.bestSetWeight),
+        exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : '',
+        muscleGroups: Array.isArray(data.muscleGroups)
+          ? data.muscleGroups.filter((g): g is string => typeof g === 'string')
+          : [],
+      }
+    }))
+
+    if (snap.docs.length < currentLimit) break
+
+    lastDoc = snap.docs[snap.docs.length - 1] ?? null
+    if (!lastDoc) break
+  }
+
+  return sessions
 }
 
 export async function getRecords(uid: string): Promise<RecordSummary[]> {

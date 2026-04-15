@@ -47,7 +47,7 @@ export default function ReadinessPrompt({ onSaved }: Props) {
       transition={{ duration: 0.2 }}
     >
       <p className="eyebrow mb-1" style={{ color: 'var(--accent)' }}>Gotowość</p>
-      <p className="text-sm font-semibold text-white mb-4">Jak się czujesz przed treningiem?</p>
+      <p className="text-sm font-semibold text-white mb-4">Jak wygląda dziś forma?</p>
 
       <div className="space-y-5">
         {FIELDS.map(({ key, label, lowLabel, highLabel }) => (
@@ -89,7 +89,7 @@ export default function ReadinessPrompt({ onSaved }: Props) {
         }}
         whileTap={{ scale: 0.98 }}
       >
-        {saving ? 'Zapisuję...' : 'Zapisz gotowość'}
+        {saving ? 'Zapisuję...' : 'Zapisz wynik'}
       </motion.button>
     </motion.div>
   )

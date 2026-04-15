@@ -53,7 +53,11 @@ export default function BottomNav() {
   }, [hidden])
 
   useEffect(() => {
-    const onScroll = () => {
+    let rafId = 0
+    let pending = false
+
+    const evaluate = () => {
+      pending = false
       const currentY = window.scrollY
       const delta = currentY - lastScrollYRef.current
 
@@ -68,9 +72,18 @@ export default function BottomNav() {
       lastScrollYRef.current = currentY
     }
 
+    const onScroll = () => {
+      if (pending) return
+      pending = true
+      rafId = window.requestAnimationFrame(evaluate)
+    }
+
     lastScrollYRef.current = window.scrollY
     window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.cancelAnimationFrame(rafId)
+    }
   }, [])
 
   useEffect(() => {

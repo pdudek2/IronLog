@@ -1,6 +1,14 @@
 import type { NavigateFunction, NavigateOptions, To } from 'react-router-dom'
 import { preloadRouteByPath } from '../router/pageLoaders'
 
+/**
+ * Navigate after ensuring the target route's JS chunk is available.
+ *
+ * We deliberately don't use `document.startViewTransition` here — on mobile
+ * Chromium emulation it adds 150–300ms of snapshot/animate overhead for a
+ * visual effect the pages already provide via per-section Framer Motion
+ * animations. Skipping it makes tab switches feel instant.
+ */
 export function navigateWithAppTransition(
   navigate: NavigateFunction,
   to: To,
@@ -13,32 +21,12 @@ export function navigateWithAppTransition(
         ? to.pathname
         : null
 
-  if (typeof document === 'undefined') {
-    navigate(to, options)
-    return
-  }
-
-  const viewTransitionDocument = document as Document & {
-    startViewTransition?: (update: () => void | Promise<void>) => unknown
-  }
-
-  const performNavigation = () => {
-    if (typeof viewTransitionDocument.startViewTransition === 'function') {
-      viewTransitionDocument.startViewTransition(() => {
-        navigate(to, options)
-      })
-      return
-    }
-
-    navigate(to, options)
-  }
-
   if (!targetPath) {
-    performNavigation()
+    navigate(to, options)
     return
   }
 
   void preloadRouteByPath(targetPath).finally(() => {
-    performNavigation()
+    navigate(to, options)
   })
 }

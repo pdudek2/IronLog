@@ -8,7 +8,6 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 
-import AppShell from '../components/AppShell'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import {
@@ -195,15 +194,15 @@ export default function ProgressPage() {
   const uniqueExerciseCount = new Set(currentSessions.map((s) => s.exerciseName)).size
 
   return (
-    <AppShell current="progress">
+    <>
       <div className="space-y-6">
         {/* ── Editorial hero ──────────────────────────── */}
         <section className="hero-editorial">
           <motion.div
             className="flex flex-col gap-5"
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
           >
             <div className="flex flex-wrap items-start justify-between gap-4">
               <p className="hero-editorial-date">
@@ -587,6 +586,6 @@ export default function ProgressPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </>
   )
 }

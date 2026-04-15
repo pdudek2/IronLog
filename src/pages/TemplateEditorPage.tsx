@@ -3,7 +3,6 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import AppShell from '../components/AppShell'
 import ExercisePicker from '../components/ExercisePicker'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
@@ -235,7 +234,7 @@ export default function TemplateEditorPage() {
   }
 
   return (
-    <AppShell current="templates">
+    <>
       <section className="hero-editorial">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-5">
@@ -503,6 +502,6 @@ export default function TemplateEditorPage() {
           onSelect={(exerciseId, exerciseName, source) => addExerciseToDay(pickerDayIndex, exerciseId, exerciseName, source)}
         />
       )}
-    </AppShell>
+    </>
   )
 }

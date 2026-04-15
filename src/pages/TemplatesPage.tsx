@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CalendarDays, ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import AppShell from '../components/AppShell'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
@@ -104,7 +103,7 @@ export default function TemplatesPage() {
   }
 
   return (
-    <AppShell current="templates">
+    <>
       <section className="hero-editorial">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-5">
@@ -401,6 +400,6 @@ export default function TemplatesPage() {
           onCancel={() => setLaunchTarget(null)}
         />
       )}
-    </AppShell>
+    </>
   )
 }

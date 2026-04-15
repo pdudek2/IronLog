@@ -10,7 +10,6 @@ import { saveWorkout, getRecentWorkouts } from '../lib/workoutService'
 import { getUserExercises } from '../lib/userExercisesService'
 import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
-import AppShell from '../components/AppShell'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import OverloadHint from '../components/OverloadHint'
@@ -338,24 +337,22 @@ export default function WorkoutPage() {
 
   if (!active) {
     return (
-      <AppShell bottomNav={false}>
-        <div style={{ maxWidth: '32rem' }}>
-          <div className="surface-panel rounded-[var(--radius-xl)] px-6 py-10 text-center">
-            <p className="mb-2 text-sm font-semibold text-white">Nie ma aktywnej sesji</p>
-            <p className="mb-6 text-sm" style={{ color: 'var(--muted)' }}>
-              Poprzednia sesja mogła zostać zakończona albo usunięta na innym urządzeniu.
-            </p>
-            <motion.button
-              onClick={startWorkout}
-              className="rounded-2xl px-6 py-3 text-sm font-semibold"
-              style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
-              whileTap={{ scale: 0.97 }}
-            >
-              Rozpocznij nową sesję
-            </motion.button>
-          </div>
+      <div style={{ maxWidth: '32rem' }}>
+        <div className="surface-panel rounded-[var(--radius-xl)] px-6 py-10 text-center">
+          <p className="mb-2 text-sm font-semibold text-white">Nie ma aktywnej sesji</p>
+          <p className="mb-6 text-sm" style={{ color: 'var(--muted)' }}>
+            Poprzednia sesja mogła zostać zakończona albo usunięta na innym urządzeniu.
+          </p>
+          <motion.button
+            onClick={startWorkout}
+            className="rounded-2xl px-6 py-3 text-sm font-semibold"
+            style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+            whileTap={{ scale: 0.97 }}
+          >
+            Rozpocznij nową sesję
+          </motion.button>
         </div>
-      </AppShell>
+      </div>
     )
   }
 
@@ -398,7 +395,7 @@ export default function WorkoutPage() {
   })()
 
   return (
-    <AppShell bottomNav={false}>
+    <>
 
       {/* ── Mobile sticky header ─────────────────── */}
       <div
@@ -1041,6 +1038,6 @@ export default function WorkoutPage() {
           onCancel={() => setConfirmFinishEmpty(false)}
         />
       )}
-    </AppShell>
+    </>
   )
 }

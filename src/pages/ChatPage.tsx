@@ -3,7 +3,6 @@ import { Bot, LoaderCircle, MessagesSquare, RotateCcw, Send, ShieldCheck, Sparkl
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import AppShell from '../components/AppShell'
 import AiKeyPanel from '../components/AiKeyPanel'
 import ChatMarkdown from '../components/ChatMarkdown'
 import { Button } from '../components/ui'
@@ -242,13 +241,13 @@ export default function ChatPage() {
   }
 
   return (
-    <AppShell current="chat">
+    <>
       <section className="hero-editorial">
         <motion.div
           className="flex flex-col gap-5"
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
             <p className="hero-editorial-date">AI Coach · Claude 4</p>
@@ -925,6 +924,6 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </AppShell>
+    </>
   )
 }

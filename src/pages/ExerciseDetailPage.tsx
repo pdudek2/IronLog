@@ -11,7 +11,6 @@ import {
   type ExerciseRecord,
 } from '../lib/exerciseDetailService'
 import { useAuthStore } from '../store/authStore'
-import AppShell from '../components/AppShell'
 import { LoadingState } from '../components/ui'
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -142,13 +141,13 @@ export default function ExerciseDetailPage() {
   const totalVolumeAll = sessions.reduce((sum, s) => sum + s.totalVolume, 0)
 
   return (
-    <AppShell current="exercises">
+    <>
       <section className="hero-editorial">
         <motion.div
           className="flex flex-col gap-5"
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <div className="flex flex-wrap items-center gap-2">
             {exercise?.category && (
@@ -381,6 +380,6 @@ export default function ExerciseDetailPage() {
           </div>
 
       </div>
-    </AppShell>
+    </>
   )
 }

@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { ChevronRight, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
-import AppShell from '../components/AppShell'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import { getWorkoutHistory, calcVolume, type WorkoutSummary } from '../lib/workoutService'
@@ -190,13 +189,13 @@ export default function HistoryPage() {
   if (loading && workouts.length === 0) return <LoadingState message="Ładowanie historii..." />
 
   return (
-    <AppShell current="history">
+    <>
       <section className="hero-editorial">
         <motion.div
           className="flex flex-col gap-5"
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <p className="hero-editorial-date">
             Archiwum · {workouts.length} {workouts.length === 1 ? 'trening' : 'treningów'} łącznie
@@ -404,6 +403,6 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
-    </AppShell>
+    </>
   )
 }

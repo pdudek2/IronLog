@@ -1,8 +1,8 @@
-import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { LoadingState } from '../components/ui'
-import ShellSkeleton from '../components/ShellSkeleton'
+import AppLayout from '../components/AppLayout'
 import {
   loadChatPage,
   loadDashboardPage,
@@ -35,41 +35,55 @@ const TemplateEditorPage = lazy(loadTemplateEditorPage)
 const ProgressPage = lazy(loadProgressPage)
 const ChatPage = lazy(loadChatPage)
 
-function PrivateRoute({ children }: { children: React.ReactNode }) {
+function PrivateRouteOutlet() {
   const { user, loading } = useAuthStore()
   if (loading) return <LoadingState message="Sprawdzanie sesji..." />
-  return user ? <>{children}</> : <Navigate to="/login" replace />
+  if (!user) return <Navigate to="/login" replace />
+  return <Outlet />
 }
 
-function PublicRoute({ children }: { children: React.ReactNode }) {
+function PublicRouteOutlet() {
   const { user, loading } = useAuthStore()
   if (loading) return <LoadingState message="Sprawdzanie sesji..." />
-  return !user ? <>{children}</> : <Navigate to="/dashboard" replace />
+  if (user) return <Navigate to="/dashboard" replace />
+  return <Outlet />
 }
 
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<ShellSkeleton />}>
-        <Routes>
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-          <Route path="/dashboard" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-          <Route path="/onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
-          <Route path="/workout/new" element={<PrivateRoute><WorkoutPage /></PrivateRoute>} />
-          <Route path="/workout/:id" element={<PrivateRoute><WorkoutDetailPage /></PrivateRoute>} />
-          <Route path="/history" element={<PrivateRoute><HistoryPage /></PrivateRoute>} />
-          <Route path="/templates" element={<PrivateRoute><TemplatesPage /></PrivateRoute>} />
-          <Route path="/templates/new" element={<PrivateRoute><TemplateEditorPage /></PrivateRoute>} />
-          <Route path="/templates/:id/edit" element={<PrivateRoute><TemplateEditorPage /></PrivateRoute>} />
-          <Route path="/exercises" element={<PrivateRoute><ExercisesPage /></PrivateRoute>} />
-          <Route path="/exercises/:source/:id" element={<PrivateRoute><ExerciseDetailPage /></PrivateRoute>} />
-          <Route path="/progress" element={<PrivateRoute><ProgressPage /></PrivateRoute>} />
-          <Route path="/chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />
-          <Route path="/profile" element={<PrivateRoute><ProfilePage /></PrivateRoute>} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Suspense>
+      <Routes>
+        {/* Public (auth) routes — no AppShell */}
+        <Route element={<PublicRouteOutlet />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
+        </Route>
+
+        {/* Private routes */}
+        <Route element={<PrivateRouteOutlet />}>
+          {/* Onboarding does not live inside the shared AppLayout */}
+          <Route path="/onboarding" element={<OnboardingPage />} />
+
+          {/* Everything else shares a single AppLayout instance. TopNav and
+              BottomNav render once here and stay mounted across route changes. */}
+          <Route element={<AppLayout />}>
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/history" element={<HistoryPage />} />
+            <Route path="/progress" element={<ProgressPage />} />
+            <Route path="/templates" element={<TemplatesPage />} />
+            <Route path="/templates/new" element={<TemplateEditorPage />} />
+            <Route path="/templates/:id/edit" element={<TemplateEditorPage />} />
+            <Route path="/exercises" element={<ExercisesPage />} />
+            <Route path="/exercises/:source/:id" element={<ExerciseDetailPage />} />
+            <Route path="/chat" element={<ChatPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/workout/new" element={<WorkoutPage />} />
+            <Route path="/workout/:id" element={<WorkoutDetailPage />} />
+          </Route>
+        </Route>
+
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
     </BrowserRouter>
   )
 }

@@ -24,7 +24,6 @@ import { useAuthStore } from '../store/authStore'
 import type { Exercise } from '../data/exercises'
 import type { ExerciseSource } from '../store/workoutStore'
 import { toast } from 'sonner'
-import AppShell from '../components/AppShell'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
@@ -267,16 +266,14 @@ export default function WorkoutDetailPage() {
 
   if (!workout) {
     return (
-      <AppShell>
-        <div className="flex items-center justify-center">
-          <div className="surface-panel rounded-[var(--radius-xl)] p-8 text-center">
-            <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Trening nie istnieje.</p>
-            <button onClick={() => navigate('/dashboard')} style={{ color: 'var(--accent)' }}>
-              Wróć
-            </button>
-          </div>
+      <div className="flex items-center justify-center">
+        <div className="surface-panel rounded-[var(--radius-xl)] p-8 text-center">
+          <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Trening nie istnieje.</p>
+          <button onClick={() => navigate('/dashboard')} style={{ color: 'var(--accent)' }}>
+            Wróć
+          </button>
         </div>
-      </AppShell>
+      </div>
     )
   }
 
@@ -366,7 +363,7 @@ export default function WorkoutDetailPage() {
   )
 
   return (
-    <AppShell>
+    <>
         <motion.div
           className="mb-6 flex items-center gap-3"
           initial={false}
@@ -763,6 +760,6 @@ export default function WorkoutDetailPage() {
           onCancel={() => setConfirmDeleteOpen(false)}
         />
       )}
-    </AppShell>
+    </>
   )
 }

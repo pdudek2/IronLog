@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import NumberFlow from '@number-flow/react'
-import AppShell from '../components/AppShell'
 import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
@@ -316,14 +315,14 @@ export default function DashboardPage() {
   ]
 
   return (
-    <AppShell current="dashboard" streak={streak}>
+    <>
         <section className="hero-editorial">
           <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <motion.div
               className="flex flex-col gap-5 min-w-0"
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+              transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
             >
               <p className="hero-editorial-date">
                 {new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
@@ -1005,6 +1004,6 @@ export default function DashboardPage() {
           onCancel={() => setConfirmDelete(null)}
         />
       )}
-    </AppShell>
+    </>
   )
 }

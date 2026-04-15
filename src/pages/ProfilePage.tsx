@@ -5,7 +5,6 @@ import { motion } from 'framer-motion'
 import { getProfile, updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
-import AppShell from '../components/AppShell'
 import { Button, Card, Input, LoadingState } from '../components/ui'
 
 const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
@@ -114,35 +113,33 @@ export default function ProfilePage() {
 
   if (profileLoadError && !profile) {
     return (
-      <AppShell current="profile">
-        <div className="mx-auto" style={{ maxWidth: '36rem' }}>
-          <Card>
-            <div className="flex flex-col gap-4 text-center">
-              <div>
-                <p className="text-lg font-semibold text-white">Nie udało się wczytać profilu</p>
-                <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  Spróbuj ponownie za chwilę. Gdy połączenie wróci, formularz załaduje Twoje dane.
-                </p>
-              </div>
-
-              <Button type="button" onClick={() => setLoadAttempt((value) => value + 1)} className="mx-auto min-w-[12rem]">
-                Spróbuj ponownie
-              </Button>
+      <div className="mx-auto" style={{ maxWidth: '36rem' }}>
+        <Card>
+          <div className="flex flex-col gap-4 text-center">
+            <div>
+              <p className="text-lg font-semibold text-white">Nie udało się wczytać profilu</p>
+              <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                Spróbuj ponownie za chwilę. Gdy połączenie wróci, formularz załaduje Twoje dane.
+              </p>
             </div>
-          </Card>
-        </div>
-      </AppShell>
+
+            <Button type="button" onClick={() => setLoadAttempt((value) => value + 1)} className="mx-auto min-w-[12rem]">
+              Spróbuj ponownie
+            </Button>
+          </div>
+        </Card>
+      </div>
     )
   }
 
   return (
-    <AppShell current="profile">
+    <>
       <section className="hero-editorial">
         <motion.div
           className="flex flex-col gap-4 sm:gap-5"
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+          transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <p className="hero-editorial-date">Ustawienia · konto</p>
 
@@ -277,6 +274,6 @@ export default function ProfilePage() {
           </form>
         </Card>
       </div>
-    </AppShell>
+    </>
   )
 }

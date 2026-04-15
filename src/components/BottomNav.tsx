@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Dumbbell, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
+import { Dumbbell, History, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 interface NavBtnProps {
@@ -95,17 +95,17 @@ export default function BottomNav() {
         </motion.button>
 
         <NavBtn
+          icon={<History size={20} />}
+          label="Historia"
+          active={path.startsWith('/history')}
+          onClick={() => navigate('/history')}
+        />
+
+        <NavBtn
           icon={<Sparkles size={20} />}
           label="AI"
           active={path.startsWith('/chat')}
           onClick={() => navigate('/chat')}
-        />
-
-        <NavBtn
-          icon={<User size={20} />}
-          label="Profil"
-          active={path === '/profile'}
-          onClick={() => navigate('/profile')}
         />
       </div>
     </nav>

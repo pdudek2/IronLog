@@ -2,7 +2,8 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { Dumbbell, Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import NumberFlow from '@number-flow/react'
 import { useAuthStore } from '../store/authStore'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
 import {
@@ -489,33 +490,55 @@ export default function ExercisesPage() {
 
   return (
     <AppShell current="exercises">
-
-      {/* ── Mobile sticky header ─────────────────── */}
-      <div
-        className="fixed top-0 left-0 right-0 z-40 lg:hidden flex items-center gap-3 px-4"
-        style={{
-          paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-          paddingBottom: '0.75rem',
-          background: 'rgba(10, 14, 22, 0.9)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
-        <Dumbbell size={18} style={{ color: 'var(--accent)', flexShrink: 0 }} />
-        <span className="text-sm font-semibold text-white flex-1">Baza ćwiczeń</span>
-        <motion.button
-          onClick={openCreateForm}
-          className="flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-1.5 text-xs font-semibold"
-          style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
-          whileTap={{ scale: 0.93 }}
+      <section className="hero-editorial">
+        <motion.div
+          className="flex flex-col gap-5"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <Plus size={14} strokeWidth={2.5} />
-          Dodaj własne
-        </motion.button>
-      </div>
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <p className="hero-editorial-date">Katalog · baza ćwiczeń</p>
+            <button
+              type="button"
+              onClick={openCreateForm}
+              className="rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
+              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+            >
+              <Plus size={14} strokeWidth={2.5} />
+              Dodaj własne
+            </button>
+          </div>
 
-      <div className="desktop-app-grid pt-[4.5rem] lg:pt-0">
+          <div>
+            <h1 className="hero-editorial-name">Baza<br />ćwiczeń.</h1>
+          </div>
+
+          <p className="hero-editorial-sub">
+            Globalny atlas i własna biblioteka w jednym miejscu — gotowe pod wybór do sesji i dalszą analitykę.
+          </p>
+
+          <div
+            className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+              <span className="stat-meta">Katalog</span>
+              <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                <NumberFlow value={exercises.length} />
+              </span>
+            </div>
+            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+              <span className="stat-meta">Moje</span>
+              <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                <NumberFlow value={userExercises.length} />
+              </span>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      <div className="desktop-app-grid">
 
         {/* ── Desktop sidebar ──────────────────────── */}
         <aside className="hidden lg:block desktop-sticky">
@@ -586,15 +609,6 @@ export default function ExercisesPage() {
             </div>
             <ChipRow options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
             <ChipRow options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
-          </div>
-
-          {/* Desktop page title */}
-          <div className="hidden lg:block mb-6">
-            <p className="eyebrow">Katalog</p>
-            <h1 className="mt-2 section-title">Baza ćwiczeń</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              Globalny atlas i własna biblioteka użytkownika w jednym miejscu, gotowe pod wybór do sesji i dalszą analitykę.
-            </p>
           </div>
 
           {/* User exercises section */}

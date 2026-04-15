@@ -19,6 +19,7 @@
     "test:e2e:report": "playwright show-report"
   },
   "dependencies": {
+    "@number-flow/react": "^0.6.0",
     "@tailwindcss/vite": "^4.2.2",
     "firebase": "^12.12.0",
     "firebase-admin": "^13.7.0",

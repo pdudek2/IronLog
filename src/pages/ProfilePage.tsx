@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
 import { getProfile, updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
@@ -17,7 +17,6 @@ const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
 export default function ProfilePage() {
   const { user } = useAuthStore()
   const { profile, setProfile } = useProfileStore()
-  const navigate = useNavigate()
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '')
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal>(profile?.primaryGoal ?? 'hypertrophy')
@@ -64,50 +63,51 @@ export default function ProfilePage() {
 
   return (
     <AppShell current="profile">
-      <div style={{ maxWidth: '42rem' }}>
+      <section className="hero-editorial">
+        <motion.div
+          className="flex flex-col gap-5"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
+        >
+          <p className="hero-editorial-date">Ustawienia · konto</p>
 
-        <div className="mb-8 flex items-center justify-between gap-3">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
-            style={{ color: 'var(--muted)' }}
+          <div>
+            <h1 className="hero-editorial-name">Twój<br />profil.</h1>
+          </div>
+
+          <p className="hero-editorial-sub">
+            Ustaw bazę pracy: cel, tempo tygodnia i jednostki — to fundament, na którym opiera się cały produkt.
+          </p>
+
+          <div
+            className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
+            style={{ borderColor: 'var(--border)' }}
           >
-            ← Powrót
-          </button>
-        </div>
-
-        <Card>
-          <div className="mb-6">
-            <p className="eyebrow" style={{ color: 'var(--accent)' }}>
-              Ustawienia
-            </p>
-            <h1 className="mt-3 text-3xl font-bold tracking-[-0.04em] text-white">Twój profil</h1>
-            <p className="mt-3 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              Ustaw swoją bazę pracy: cel, tempo tygodnia i jednostki, na których opiera się cały produkt.
-            </p>
-          </div>
-
-          <div className="mb-6 grid gap-3 sm:grid-cols-3">
-            <div className="metric-card p-4">
-              <p className="stat-meta">Użytkownik</p>
-              <p className="mt-3 text-xl font-semibold tracking-[-0.03em] text-white">
+            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+              <span className="stat-meta">Użytkownik</span>
+              <span className="text-2xl font-bold tracking-[-0.03em] text-white leading-none">
                 {profile?.displayName ?? '—'}
-              </p>
+              </span>
             </div>
-            <div className="metric-card p-4">
-              <p className="stat-meta">Cel tygodniowy</p>
-              <p className="mt-3 text-xl font-semibold tracking-[-0.03em] text-white tabular-nums">
-                {weeklyGoal} sesje
-              </p>
+            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+              <span className="stat-meta">Cel tyg.</span>
+              <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                {weeklyGoal} <span className="text-base" style={{ color: 'var(--muted)' }}>sesje</span>
+              </span>
             </div>
-            <div className="metric-card p-4">
-              <p className="stat-meta">Jednostki</p>
-              <p className="mt-3 text-xl font-semibold tracking-[-0.03em] text-white uppercase">
+            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+              <span className="stat-meta">Jednostki</span>
+              <span className="text-2xl font-bold tracking-[-0.03em] text-white leading-none uppercase">
                 {units}
-              </p>
+              </span>
             </div>
           </div>
+        </motion.div>
+      </section>
 
+      <div className="mx-auto" style={{ maxWidth: '42rem' }}>
+        <Card>
           <form onSubmit={handleSubmit} className="flex flex-col gap-6">
 
             <div className="flex flex-col gap-1">

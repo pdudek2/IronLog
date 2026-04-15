@@ -236,37 +236,40 @@ export default function ChatPage() {
 
   return (
     <AppShell current="chat">
-      <div className="space-y-5">
-        <motion.section
-          className="surface-panel rounded-[var(--radius-xl)] p-5"
-          initial={{ opacity: 0, y: 8 }}
+      <section className="hero-editorial">
+        <motion.div
+          className="flex flex-col gap-5"
+          initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
-                AI Coach
-              </p>
-              <h1 className="page-title">Asystent treningowy</h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                Rozmawiaj o progresie albo wygeneruj gotowy szablon treningowy na bazie swojego celu,
-                sprzętu i historii pracy w IronLog.
-              </p>
-            </div>
-
+            <p className="hero-editorial-date">AI Coach · Claude 4</p>
             <div
-              className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm font-semibold"
+              className="rounded-[var(--radius-pill)] px-3 py-1.5 text-xs font-semibold"
               style={{
                 background: configured ? 'var(--accent-soft)' : 'transparent',
                 borderColor: configured ? 'var(--accent-soft-strong)' : 'var(--border)',
+                border: `1px solid ${configured ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
                 color: configured ? 'var(--accent)' : 'var(--muted)',
               }}
             >
-              {configured ? 'BYOK gotowy' : 'Skonfiguruj klucz'}
+              {configured ? '● Klucz gotowy' : 'Skonfiguruj klucz'}
             </div>
           </div>
-        </motion.section>
+
+          <div>
+            <h1 className="hero-editorial-name">Asystent<br />treningowy.</h1>
+          </div>
+
+          <p className="hero-editorial-sub">
+            Rozmawiaj o progresie albo wygeneruj gotowy szablon treningowy na bazie swojego celu,
+            sprzętu i historii pracy w IronLog.
+          </p>
+        </motion.div>
+      </section>
+
+      <div className="space-y-5">
 
         <section className="surface-panel rounded-[var(--radius-xl)] p-2">
           <div className="grid gap-2 sm:grid-cols-2">

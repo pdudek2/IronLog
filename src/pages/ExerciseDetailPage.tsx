@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft, BarChart3, Layers3, Target, TrendingUp } from 'lucide-react'
+import { BarChart3, Layers3, Target } from 'lucide-react'
 import { exercises as globalExercises, type Exercise } from '../data/exercises'
 import { getUserExercises } from '../lib/userExercisesService'
 import {
@@ -31,6 +31,24 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   machine: 'Maszyna',
   bodyweight: 'Własne ciało',
   kettlebell: 'Kettlebell',
+}
+
+const MUSCLE_LABELS: Record<string, string> = {
+  chest: 'Klatka',
+  back: 'Plecy',
+  shoulders: 'Barki',
+  biceps: 'Biceps',
+  triceps: 'Triceps',
+  forearms: 'Przedramiona',
+  quads: 'Quady',
+  hamstrings: 'Dwugłowe',
+  glutes: 'Pośladki',
+  calves: 'Łydki',
+  core: 'Core',
+  lats: 'Najszersze',
+  traps: 'Czworoboczne',
+  abs: 'Brzuch',
+  obliques: 'Skośne',
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -121,159 +139,103 @@ export default function ExerciseDetailPage() {
   const accent = CATEGORY_COLORS[exercise?.category ?? ''] ?? 'var(--accent)'
   const maxVolume = sessions.length ? Math.max(...sessions.map((s) => s.totalVolume), 1) : 1
 
+  const totalVolumeAll = sessions.reduce((sum, s) => sum + s.totalVolume, 0)
+
   return (
     <AppShell current="exercises">
-      <motion.div
-        className="mb-6 flex items-center gap-3"
-        initial={false}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.18 }}
-      >
-        <button
-          onClick={() => navigate(-1)}
-          className="surface-panel p-2 rounded-xl transition-opacity hover:opacity-70"
-          style={{ color: 'var(--text)' }}
-          aria-label="Wróć"
+      <section className="hero-editorial">
+        <motion.div
+          className="flex flex-col gap-5"
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <ArrowLeft size={16} />
-        </button>
-        <div>
-          <p className="eyebrow">Ćwiczenia → Szczegóły</p>
-          <p className="mt-1 text-sm font-semibold text-white">
-            {exercise?.name ?? id}
+          <div className="flex flex-wrap items-center gap-2">
+            {exercise?.category && (
+              <span
+                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                style={{ background: `${accent}1e`, color: accent, border: `1px solid ${accent}30` }}
+              >
+                {CATEGORY_LABELS[exercise.category] ?? exercise.category}
+              </span>
+            )}
+            {exercise?.equipment && (
+              <span
+                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+              >
+                {EQUIPMENT_LABELS[exercise.equipment] ?? exercise.equipment}
+              </span>
+            )}
+            {source === 'user' && (
+              <span
+                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-soft-strong)' }}
+              >
+                moje
+              </span>
+            )}
+          </div>
+
+          <div>
+            <h1 className="hero-editorial-name">{exercise?.name ?? id}.</h1>
+          </div>
+
+          {exercise?.muscles && exercise.muscles.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {exercise.muscles.map((m) => (
+                <span
+                  key={m}
+                  className="text-[11px] px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+                >
+                  {MUSCLE_LABELS[m] ?? m}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <p className="hero-editorial-sub">
+            {sessions.length > 0
+              ? `${sessions.length} ${sessions.length === 1 ? 'sesja' : 'sesji'} w historii · ${formatVolume(totalVolumeAll)} łącznej objętości`
+              : 'Brak historii. Dodaj to ćwiczenie do sesji, żeby śledzić postępy i PR-y.'}
           </p>
-        </div>
-      </motion.div>
-
-      <div className="desktop-app-grid">
-
-        {/* Sidebar */}
-        <aside className="desktop-sticky space-y-4 hidden lg:block">
-          <div className="surface-panel rounded-[var(--radius-xl)] overflow-hidden" style={{ borderLeft: `4px solid ${accent}` }}>
-            <div className="p-5">
-              {exercise ? (
-                <>
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {exercise.category && (
-                      <span
-                        className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                        style={{ background: `${accent}18`, color: accent }}
-                      >
-                        {CATEGORY_LABELS[exercise.category] ?? exercise.category}
-                      </span>
-                    )}
-                    {exercise.equipment && (
-                      <span
-                        className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                        style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                      >
-                        {EQUIPMENT_LABELS[exercise.equipment] ?? exercise.equipment}
-                      </span>
-                    )}
-                    {source === 'user' && (
-                      <span
-                        className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                        style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-soft-strong)' }}
-                      >
-                        moje
-                      </span>
-                    )}
-                  </div>
-                  <h2 className="text-2xl font-bold text-white mb-4">{exercise.name}</h2>
-                  {exercise.muscles.length > 0 && (
-                    <div>
-                      <p className="stat-meta mb-2">Partie mięśniowe</p>
-                      <div className="flex flex-wrap gap-1.5">
-                        {exercise.muscles.map((m) => (
-                          <span key={m} className="text-[11px] px-2 py-0.5 rounded-full"
-                            style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
-                            {m}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-white">{id}</p>
-              )}
-            </div>
-          </div>
 
           {record && (
-            <div className="surface-panel rounded-[var(--radius-xl)] p-5">
-              <p className="eyebrow mb-4" style={{ color: accent }}>Rekord osobisty</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="metric-card p-3">
-                  <p className="stat-meta mb-2">Ciężar</p>
-                  <p className="text-xl font-bold text-white tabular-nums">{record.maxWeight} kg</p>
-                </div>
-                <div className="metric-card p-3">
-                  <p className="stat-meta mb-2">Powt.</p>
-                  <p className="text-xl font-bold text-white tabular-nums">{record.maxReps}</p>
-                </div>
-                <div className="metric-card p-3">
-                  <p className="stat-meta mb-2">Sesje</p>
-                  <p className="text-xl font-bold text-white tabular-nums">{record.totalSessions}</p>
-                </div>
-                <div className="metric-card p-3">
-                  <p className="stat-meta mb-2">Wolumen</p>
-                  <p className="text-xl font-bold text-white tabular-nums">{formatVolume(record.bestVolume)}</p>
-                </div>
+            <div
+              className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <div className="flex flex-col gap-1 min-w-[6.5rem]">
+                <span className="stat-meta">Rekord</span>
+                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                  {record.maxWeight} <span className="text-base" style={{ color: 'var(--muted)' }}>kg</span>
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 min-w-[6.5rem]">
+                <span className="stat-meta">Powt. max</span>
+                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                  {record.maxReps}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 min-w-[6.5rem]">
+                <span className="stat-meta">Sesje</span>
+                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                  {record.totalSessions}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 min-w-[6.5rem]">
+                <span className="stat-meta">Top wolumen</span>
+                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                  {formatVolume(record.bestVolume)}
+                </span>
               </div>
             </div>
           )}
-        </aside>
+        </motion.div>
+      </section>
 
-        {/* Main content */}
-        <main className="min-w-0 space-y-5">
-
-          {/* Mobile: exercise info card */}
-          <div className="surface-panel rounded-[var(--radius-xl)] overflow-hidden lg:hidden" style={{ borderLeft: `4px solid ${accent}` }}>
-            <div className="p-4">
-              {exercise ? (
-                <>
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {exercise.category && (
-                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                        style={{ background: `${accent}18`, color: accent }}>
-                        {CATEGORY_LABELS[exercise.category] ?? exercise.category}
-                      </span>
-                    )}
-                    {exercise.equipment && (
-                      <span className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                        style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
-                        {EQUIPMENT_LABELS[exercise.equipment] ?? exercise.equipment}
-                      </span>
-                    )}
-                  </div>
-                  <h1 className="text-xl font-bold text-white">{exercise.name}</h1>
-                </>
-              ) : (
-                <h1 className="text-xl font-bold text-white">{id}</h1>
-              )}
-            </div>
-          </div>
-
-          {/* Mobile: record card */}
-          {record && (
-            <div className="surface-panel rounded-[var(--radius-xl)] p-4 lg:hidden">
-              <p className="eyebrow mb-3" style={{ color: accent }}>Rekord osobisty</p>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { label: 'Ciężar', value: `${record.maxWeight} kg` },
-                  { label: 'Powt.', value: String(record.maxReps) },
-                  { label: 'Sesje', value: String(record.totalSessions) },
-                  { label: 'Wolumen', value: formatVolume(record.bestVolume) },
-                ].map((item) => (
-                  <div key={item.label} className="metric-card p-2.5 text-center">
-                    <p className="text-sm font-bold text-white tabular-nums">{item.value}</p>
-                    <p className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: 'var(--muted)' }}>{item.label}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+      <div className="space-y-5">
 
           {/* Volume trend */}
           {sessions.length > 0 && (
@@ -396,29 +358,6 @@ export default function ExerciseDetailPage() {
             )}
           </div>
 
-          {/* Stats row */}
-          {sessions.length > 0 && (
-            <div className="surface-panel rounded-[var(--radius-xl)] p-5">
-              <p className="eyebrow mb-4">Statystyki ogólne</p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  { icon: Target, label: 'Sesje razem', value: String(record?.totalSessions ?? sessions.length) },
-                  { icon: TrendingUp, label: 'Rekord', value: record?.maxWeight ? `${record.maxWeight} kg` : '—' },
-                  { icon: Layers3, label: 'Łączne serie', value: String(sessions.reduce((sum, s) => sum + s.totalSets, 0)) },
-                  { icon: BarChart3, label: 'Łączny wolumen', value: formatVolume(sessions.reduce((sum, s) => sum + s.totalVolume, 0)) },
-                ].map(({ icon: Icon, label, value }) => (
-                  <div key={label} className="metric-card p-3">
-                    <div className="flex items-center justify-between gap-2 mb-2">
-                      <p className="stat-meta">{label}</p>
-                      <Icon size={13} style={{ color: accent }} />
-                    </div>
-                    <p className="text-xl font-bold text-white tabular-nums">{value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </main>
       </div>
     </AppShell>
   )

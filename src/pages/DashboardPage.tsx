@@ -5,13 +5,16 @@ import {
   BarChart3,
   CalendarDays,
   Clock3,
+  Flame,
   Layers3,
+  Plus,
   Sparkles,
   Target,
   Trash2,
   TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import NumberFlow from '@number-flow/react'
 import AppShell from '../components/AppShell'
 import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -219,7 +222,7 @@ export default function DashboardPage() {
   const progressPct = Math.min((weeklyDone / weeklyGoal) * 100, 100)
   const weekDates = getWeekDates()
   const today = new Date()
-  const recentWorkouts = workouts.slice(0, 6)
+  const recentWorkouts = workouts.slice(0, 4)
   const recentTemplates = templates.slice(0, 3)
   const workoutDays = workouts.map((workout) => new Date(workout.startedAt))
   const weekStart = weekDates[0]?.getTime() ?? 0
@@ -305,56 +308,99 @@ export default function DashboardPage() {
       icon: Clock3,
     },
   ]
-  const dashboardHighlights = [
-    { label: 'Treningi', value: String(weeklyDone), sublabel: 'w tym tygodniu' },
-    { label: 'Serie', value: String(weeklySetsTotal), sublabel: 'zapisane łącznie' },
-    { label: 'Objętość', value: weeklyVolume ? `${weeklyVolume.toLocaleString('pl-PL')} kg` : '0 kg', sublabel: weeklyVolume ? 'tygodniowy wolumen' : 'tygodniowy wolumen · brak sesji' },
-    { label: 'Śr. czas', value: avgMinutes ? `${avgMinutes} min` : '0 min', sublabel: avgMinutes ? 'na sesję' : 'na sesję · brak danych' },
+  const dashboardHighlights: Array<{ label: string; value: number; suffix: string; sublabel: string }> = [
+    { label: 'Treningi', value: weeklyDone, suffix: '', sublabel: 'w tym tygodniu' },
+    { label: 'Serie', value: weeklySetsTotal, suffix: '', sublabel: 'zapisane łącznie' },
+    { label: 'Objętość', value: weeklyVolume, suffix: ' kg', sublabel: weeklyVolume ? 'tygodniowy wolumen' : 'tygodniowy wolumen · brak sesji' },
+    { label: 'Śr. czas', value: avgMinutes, suffix: ' min', sublabel: avgMinutes ? 'na sesję' : 'na sesję · brak danych' },
   ]
 
   return (
-    <AppShell current="dashboard">
-        <motion.div
-          className="mb-8 flex items-end justify-between gap-4"
-          initial={false}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <div>
-            <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
-              {getGreeting()},
-            </p>
-            <h1 className="page-title">
-              {profile?.displayName ?? '—'}
-            </h1>
-          </div>
-          <div
-            className="hidden rounded-[var(--radius-lg)] px-4 py-3 text-right lg:block"
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}
-          >
-            <p className="eyebrow">Podsumowanie tygodnia</p>
-            <p className="mt-2 text-sm font-semibold text-white">
-              {weeklyDone}/{weeklyGoal} sesji • {streak} dni serii
-            </p>
-          </div>
-        </motion.div>
-
-        <section className="surface-panel-hero rounded-[var(--radius-xl)] p-4 mb-6 grid gap-3 xl:grid-cols-4 sm:grid-cols-2">
-          {dashboardHighlights.map((item, index) => (
+    <AppShell current="dashboard" streak={streak}>
+        <section className="hero-editorial">
+          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <motion.div
-              key={item.label}
-              className="metric-card p-4"
-              initial={false}
+              className="flex flex-col gap-5 min-w-0"
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03, duration: 0.2 }}
+              transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
             >
-              <p className="stat-meta">{item.label}</p>
-              <p className="mt-3 stat-value">
-                {item.value}
+              <p className="hero-editorial-date">
+                {new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
-              <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>{item.sublabel}</p>
+              <div>
+                <p className="hero-editorial-greeting">{getGreeting()},</p>
+                <h1 className="hero-editorial-name mt-1">
+                  {profile?.displayName ?? 'treningowcu'}
+                </h1>
+              </div>
+              <p className="hero-editorial-sub">{upcomingMessage}</p>
+              <div className="flex flex-wrap items-center gap-3 mt-1">
+                <motion.button
+                  type="button"
+                  onClick={() => navigate('/workout/new')}
+                  className="hero-editorial-cta"
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Plus size={18} strokeWidth={2.4} />
+                  Rozpocznij trening
+                </motion.button>
+                <button
+                  type="button"
+                  onClick={() => navigate('/progress')}
+                  className="px-3 py-2 text-sm font-medium rounded-full transition-colors hover:bg-white/5"
+                  style={{ color: 'var(--muted)' }}
+                >
+                  Zobacz pełne postępy →
+                </button>
+              </div>
             </motion.div>
-          ))}
+
+            <motion.aside
+              className={`hero-streak-card lg:w-[280px] ${streak === 0 ? 'hero-streak-card--empty' : ''}`}
+              initial={{ opacity: 0, scale: 0.94 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.15, duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
+            >
+              <p className="hero-streak-label">
+                <Flame size={12} strokeWidth={2.4} style={{ display: 'inline-block', marginRight: '0.3rem', verticalAlign: '-1px' }} />
+                Aktualna seria
+              </p>
+              <p className="hero-streak-value">
+                <NumberFlow value={streak} transformTiming={{ duration: 700, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }} />
+              </p>
+              <p className="hero-streak-meta">
+                {streak === 0
+                  ? 'Zacznij pierwszą sesję w tym tygodniu'
+                  : streak === 1
+                    ? 'dzień z treningiem — utrzymaj rytm'
+                    : `dni nieprzerwanej serii`}
+              </p>
+            </motion.aside>
+          </div>
+
+          <div
+            className="mt-10 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
+            style={{ borderColor: 'var(--border)' }}
+          >
+            {dashboardHighlights.map((item) => (
+              <div key={item.label} className="flex flex-col gap-1 min-w-[6.5rem]">
+                <span className="stat-meta">{item.label}</span>
+                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                  <NumberFlow
+                    value={item.value}
+                    transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
+                    format={{ useGrouping: true }}
+                    locales="pl-PL"
+                  />
+                  {item.suffix}
+                </span>
+                <span className="text-xs mt-0.5" style={{ color: 'var(--muted-soft)' }}>
+                  {item.sublabel}
+                </span>
+              </div>
+            ))}
+          </div>
         </section>
 
         <hr className="border-t my-4 lg:hidden" style={{ borderColor: 'var(--border)' }} />
@@ -521,7 +567,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(16rem,0.9fr)]">
-                  <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+                  <div className="sub-card-volume p-4">
                     <div className="mb-4 flex items-end justify-between gap-4">
                       <div>
                         <p className="stat-meta">Wolumen tygodnia</p>
@@ -616,7 +662,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="mt-5 space-y-3">
-                  <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                  <div className="sub-card-insight p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="stat-meta">Trajektoria</p>
                       <BarChart3 size={15} style={{ color: 'var(--accent)' }} />
@@ -637,7 +683,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
 
-                  <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                  <div className="sub-card-insight p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="stat-meta">Dominujący fokus</p>
                       <Target size={15} style={{ color: 'var(--accent)' }} />
@@ -681,7 +727,7 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                  <div className="sub-card-insight p-4">
                     <div className="flex items-center justify-between gap-3">
                       <p className="stat-meta">Ostatni sygnał</p>
                       <Sparkles size={15} style={{ color: 'var(--accent)' }} />
@@ -785,9 +831,14 @@ export default function DashboardPage() {
                   </p>
                   <h2 className="section-title mt-2">Ostatnie treningi</h2>
                 </div>
-                <p className="hidden text-sm lg:block" style={{ color: 'var(--muted)' }}>
-                  Ostatnie sesje w układzie, który daje szybki wgląd w tempo, objętość i strukturę pracy.
-                </p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/history')}
+                  className="text-sm font-medium px-3 py-2 rounded-full transition-colors hover:bg-white/5 whitespace-nowrap"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  Zobacz wszystkie →
+                </button>
               </div>
 
               <AnimatePresence mode="popLayout">

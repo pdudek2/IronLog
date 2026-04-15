@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowLeft } from 'lucide-react'
+import NumberFlow from '@number-flow/react'
 import {
   Area, AreaChart, CartesianGrid, Cell,
   Line, LineChart,
@@ -110,7 +109,6 @@ function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
 
 export default function ProgressPage() {
   const { user } = useAuthStore()
-  const navigate = useNavigate()
   const [rangeDays, setRangeDays] = useState(90)
   const [sessions, setSessions] = useState<ProgressSessionLite[]>([])
   const [records, setRecords] = useState<RecordSummary[]>([])
@@ -194,93 +192,78 @@ export default function ProgressPage() {
 
   if (loading) return <LoadingState message="Ładowanie postępów..." />
 
+  const uniqueExerciseCount = new Set(currentSessions.map((s) => s.exerciseName)).size
+
   return (
     <AppShell current="progress">
-      {/* ── Mobile sticky header ─────────────────────── */}
-      <div
-        className="fixed top-0 left-0 right-0 z-40 lg:hidden flex items-center gap-3 px-4"
-        style={{
-          paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-          paddingBottom: '0.75rem',
-          background: 'rgba(10,14,22,0.9)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
-        <button
-          onClick={() => navigate('/dashboard')}
-          aria-label="Wróć do dashboardu"
-          className="transition-opacity hover:opacity-70"
-          style={{ color: 'var(--muted)' }}
-        >
-          <ArrowLeft size={16} />
-        </button>
-        <span className="text-sm font-semibold text-white flex-1">Postępy</span>
-      </div>
-
-      <div className="pt-[4.5rem] lg:pt-0 space-y-5">
-        {/* ── Desktop back nav ────────────────────────── */}
-        <div className="hidden lg:flex items-center gap-3 mb-2">
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="flex items-center gap-2 text-sm transition-opacity hover:opacity-70"
-            style={{ color: 'var(--muted)' }}
+      <div className="space-y-6">
+        {/* ── Editorial hero ──────────────────────────── */}
+        <section className="hero-editorial">
+          <motion.div
+            className="flex flex-col gap-5"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <ArrowLeft size={14} />
-            Dashboard
-          </button>
-          <span style={{ color: 'var(--border)' }}>·</span>
-          <span className="text-sm font-semibold text-white">Postępy</span>
-        </div>
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <p className="hero-editorial-date">
+                Analityka · ostatnie {rangeDays} dni
+              </p>
+              <div className="flex gap-2">
+                {RANGE_OPTIONS.map(({ label, days }) => (
+                  <button
+                    key={days}
+                    onClick={() => handleRangeChange(days)}
+                    disabled={rangeDays === days}
+                    className="rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors"
+                    style={
+                      rangeDays === days
+                        ? { background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }
+                        : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
+                    }
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-        {/* ── Header ──────────────────────────────────── */}
-        <motion.div
-          className="surface-panel-hero rounded-[var(--radius-xl)] p-5"
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-        >
-          <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>Analityka</p>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <h1 className="section-title">Postępy</h1>
-            <div className="flex gap-2">
-              {RANGE_OPTIONS.map(({ label, days }) => (
-                <button
-                  key={days}
-                  onClick={() => handleRangeChange(days)}
-                  disabled={rangeDays === days}
-                  className="rounded-[var(--radius-md)] px-3 py-1.5 text-xs font-semibold transition-colors"
-                  style={
-                    rangeDays === days
-                      ? { background: 'var(--accent)', color: 'var(--accent-foreground)' }
-                      : { background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }
-                  }
-                >
-                  {label}
-                </button>
+            <div>
+              <h1 className="hero-editorial-name">Progres<br />treningowy.</h1>
+            </div>
+
+            <p className="hero-editorial-sub">
+              {uniqueWorkouts > 0
+                ? `${uniqueWorkouts} ${uniqueWorkouts === 1 ? 'sesja' : 'sesji'} w tym oknie · ${formatVolume(totalVolume)} łącznej objętości`
+                : 'Brak danych w wybranym zakresie. Zaloguj pierwszy trening aby zobaczyć trajektorię.'}
+            </p>
+
+            <div
+              className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              {[
+                { label: 'Sesji', value: uniqueWorkouts, suffix: '' },
+                { label: 'Objętość', value: Math.round(totalVolume), suffix: ' kg' },
+                { label: 'Ćwiczeń', value: uniqueExerciseCount, suffix: '' },
+                { label: 'Rekordy', value: records.length, suffix: '' },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col gap-1 min-w-[6.5rem]">
+                  <span className="stat-meta">{item.label}</span>
+                  <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                    <NumberFlow
+                      value={item.value}
+                      transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
+                      format={{ useGrouping: true }}
+                      locales="pl-PL"
+                    />
+                    {item.suffix}
+                  </span>
+                </div>
               ))}
             </div>
-          </div>
-
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              { label: 'Sesji', value: uniqueWorkouts },
-              { label: 'Objętość', value: formatVolume(totalVolume) },
-              { label: 'Ćwiczeń', value: new Set(currentSessions.map((s) => s.exerciseName)).size },
-              { label: 'Rekordy', value: records.length },
-            ].map(({ label, value }) => (
-              <div
-                key={label}
-                className="rounded-[var(--radius-lg)] border p-3"
-                style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
-              >
-                <p className="stat-meta">{label}</p>
-                <p className="mt-2 text-2xl font-bold text-white tabular-nums tracking-[-0.04em]">{value}</p>
-              </div>
-            ))}
-          </div>
-        </motion.div>
+          </motion.div>
+        </section>
 
         {error && (
           <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center">

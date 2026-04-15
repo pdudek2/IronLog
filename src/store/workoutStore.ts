@@ -64,9 +64,14 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
   addSet: (exerciseIndex) =>
     set((s) => {
       if (!s.active) return s
-      const exercises = s.active.exercises.map((ex, i) =>
-        i === exerciseIndex ? { ...ex, sets: [...ex.sets, emptySet()] } : ex
-      )
+      const exercises = s.active.exercises.map((ex, i) => {
+        if (i !== exerciseIndex) return ex
+        const lastSet = ex.sets.length > 0 ? ex.sets[ex.sets.length - 1] : null
+        const newSet: WorkoutSet = lastSet && (lastSet.weight || lastSet.reps)
+          ? { weight: lastSet.weight, reps: lastSet.reps, done: false }
+          : emptySet()
+        return { ...ex, sets: [...ex.sets, newSet] }
+      })
       return { active: { ...s.active, exercises } }
     }),
 

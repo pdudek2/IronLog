@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Dumbbell, Flame, Layers3, Target } from 'lucide-react'
+import { Check, Flame, Layers3, Target, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type ActiveWorkout, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
-import { saveWorkout } from '../lib/workoutService'
+import { saveWorkout, getRecentWorkouts } from '../lib/workoutService'
 import { getUserExercises } from '../lib/userExercisesService'
+import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
 import AppShell from '../components/AppShell'
 import ExercisePicker from '../components/ExercisePicker'
@@ -141,6 +142,99 @@ export default function WorkoutPage() {
   const [suggestions, setSuggestions] = useState<Record<string, OverloadSuggestion | null>>({})
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
   const fetchedKeys = useRef(new Set<string>())
+
+  // Rest timer state
+  const [rest, setRest] = useState<{ startedAt: number; totalSec: number } | null>(null)
+  const [restNow, setRestNow] = useState(() => Date.now())
+  const restFiredRef = useRef(false)
+
+  useEffect(() => {
+    if (rest === null) return
+    const interval = setInterval(() => setRestNow(Date.now()), 250)
+    return () => clearInterval(interval)
+  }, [rest])
+
+  const restEndsAt = rest ? rest.startedAt + rest.totalSec * 1000 : null
+  const restRemainingMs = restEndsAt !== null ? Math.max(0, restEndsAt - restNow) : 0
+  const restRemainingSec = Math.ceil(restRemainingMs / 1000)
+  const restProgress = rest ? restRemainingMs / (rest.totalSec * 1000) : 0
+
+  useEffect(() => {
+    if (rest === null) {
+      restFiredRef.current = false
+      return
+    }
+    if (restRemainingMs === 0 && !restFiredRef.current) {
+      restFiredRef.current = true
+      if ('vibrate' in navigator) navigator.vibrate([120, 60, 120])
+      const timeout = setTimeout(() => setRest(null), 3500)
+      return () => clearTimeout(timeout)
+    }
+  }, [rest, restRemainingMs])
+
+  const handleToggleSet = (exerciseIndex: number, setIndex: number) => {
+    const currentSet = active?.exercises[exerciseIndex]?.sets[setIndex]
+    const wasNotDone = currentSet && !currentSet.done
+    toggleSetDone(exerciseIndex, setIndex)
+    if (wasNotDone) {
+      restFiredRef.current = false
+      setRest({ startedAt: Date.now(), totalSec: 90 })
+      if ('vibrate' in navigator) navigator.vibrate(12)
+    } else {
+      setRest(null)
+    }
+  }
+
+  const handleAddRestTime = (deltaSec: number) => {
+    setRest((prev) => prev ? { ...prev, totalSec: prev.totalSec + deltaSec } : prev)
+  }
+
+  const handleSkipRest = () => setRest(null)
+
+  // Quick picks — top exercises from recent sessions, shown when live session is empty
+  const [quickPicks, setQuickPicks] = useState<Array<{ id: string; name: string; source: 'global' | 'user'; count: number }>>([])
+
+  useEffect(() => {
+    if (!user) return
+    getRecentWorkouts(user.uid, 10)
+      .then((wks) => {
+        const map = new Map<string, { id: string; name: string; source: 'global' | 'user'; count: number }>()
+        for (const w of wks) {
+          for (const ex of w.exercises) {
+            if (!ex.exerciseId) continue
+            const source: 'global' | 'user' = ex.exerciseSource === 'user' ? 'user' : 'global'
+            const key = `${source}:${ex.exerciseId}`
+            const existing = map.get(key)
+            if (existing) existing.count += 1
+            else map.set(key, { id: ex.exerciseId, name: ex.name, source, count: 1 })
+          }
+        }
+        const top = Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 6)
+        setQuickPicks(top)
+      })
+      .catch(() => {})
+  }, [user])
+
+  const handlePickExercise = async (id: string, name: string, source: 'global' | 'user') => {
+    addExercise(id, name, source)
+    if (!user) return
+    fetchSuggestion(id, source, user.uid)
+    try {
+      const sessions = await getExerciseSessions(user.uid, id, source, 1)
+      const last = sessions[0]
+      if (!last || last.bestSetWeight <= 0) return
+      const state = useWorkoutStore.getState()
+      if (!state.active) return
+      const idx = state.active.exercises.findIndex(
+        (ex) => ex.exerciseId === id && ex.exerciseSource === source,
+      )
+      if (idx === -1) return
+      const firstSet = state.active.exercises[idx].sets[0]
+      if (!firstSet || firstSet.weight || firstSet.reps) return
+      state.updateSet(idx, 0, 'weight', String(last.bestSetWeight))
+      if (last.bestSetReps > 0) state.updateSet(idx, 0, 'reps', String(last.bestSetReps))
+    } catch { /* silent */ }
+  }
 
   // Load user's custom exercises for the picker
   useEffect(() => {
@@ -464,14 +558,20 @@ export default function WorkoutPage() {
             transition={{ duration: 0.18 }}
           >
             <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="eyebrow">Live session</p>
                 <h2 className="section-title mt-2">{activeLabel}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                   {sessionSignal}
                 </p>
+                <div className="lg:hidden mt-4">
+                  <LabelChips
+                    activeLabel={active.label ?? ''}
+                    onToggle={(label) => setLabel(active.label === label ? '' : label)}
+                  />
+                </div>
               </div>
-              <div className="grid w-full gap-2 sm:grid-cols-3 xl:w-[32rem]">
+              <div className="hidden w-full gap-2 sm:grid sm:grid-cols-3 xl:w-[32rem]">
                 <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="stat-meta">Serie</span>
@@ -497,13 +597,6 @@ export default function WorkoutPage() {
             </div>
           </motion.section>
 
-          <div className="lg:hidden mb-4">
-            <LabelChips
-              activeLabel={active.label ?? ''}
-              onToggle={(label) => setLabel(active.label === label ? '' : label)}
-            />
-          </div>
-
           <div className="mb-4 flex items-end justify-between gap-4">
             <div>
               <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
@@ -518,13 +611,47 @@ export default function WorkoutPage() {
 
           <div className="flex flex-col gap-4">
             {active.exercises.length === 0 && (
-              <div className="surface-panel rounded-[var(--radius-xl)] px-6 py-6 text-center">
-                <Dumbbell size={22} className="mx-auto mb-3" style={{ color: 'var(--muted)' }} />
-                <p className="mb-2 text-sm font-semibold text-white">Sesja gotowa do startu</p>
+              <>
                 <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  Dodaj pierwsze ćwiczenie i zacznij budować wolumen tej sesji. Pasek postępu i insighty będą rosnąć razem z kolejnymi seriami.
+                  Dodaj pierwsze ćwiczenie przyciskiem poniżej — serie i objętość pojawią się tutaj.
                 </p>
-              </div>
+                {quickPicks.length > 0 && (
+                  <div>
+                    <p className="eyebrow mb-3" style={{ color: 'var(--muted)' }}>Szybki start</p>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {quickPicks.map(({ id, name, source, count }) => {
+                        const meta = exerciseCatalog.get(id)
+                        const exerciseAccent = CATEGORY_COLORS[meta?.category ?? ''] ?? 'var(--accent)'
+                        return (
+                          <motion.button
+                            key={`${source}:${id}`}
+                            type="button"
+                            onClick={() => handlePickExercise(id, name, source)}
+                            className="rounded-[var(--radius-lg)] border p-3.5 text-left transition-all hover:bg-white/5"
+                            style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <p className="text-sm font-semibold text-white truncate">{name}</p>
+                              {meta?.category && (
+                                <span
+                                  className="flex-none text-[9px] font-semibold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full"
+                                  style={{ background: `${exerciseAccent}18`, color: exerciseAccent }}
+                                >
+                                  {CATEGORY_LABELS[meta.category] ?? meta.category}
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                              Użyte {count}× w ostatnich sesjach
+                            </p>
+                          </motion.button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             <AnimatePresence>
@@ -580,7 +707,13 @@ export default function WorkoutPage() {
                         </button>
                       </div>
 
-                      <div className="mb-4 grid gap-2 sm:grid-cols-3">
+                      <div className="sm:hidden mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" style={{ color: 'var(--muted)' }}>
+                        <span>Postęp <b className="tabular-nums text-white">{exerciseCompleted}/{exercise.sets.length}</b></span>
+                        <span>Objętość <b className="tabular-nums text-white">{formatCompactVolume(exerciseVolume)}</b></span>
+                        <span>Top <b className="tabular-nums text-white">{bestSet ? `${bestSet} ${units}` : '—'}</b></span>
+                      </div>
+
+                      <div className="hidden sm:grid mb-4 gap-2 sm:grid-cols-3">
                         <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
                           <p className="stat-meta">Postęp</p>
                           <p className="mt-2 text-lg font-semibold text-white tabular-nums">{exerciseCompleted}/{exercise.sets.length}</p>
@@ -626,15 +759,15 @@ export default function WorkoutPage() {
                               key={setIndex}
                               className="rounded-[var(--radius-lg)] border p-2.5"
                               style={{
-                                background: set.done ? 'rgba(25,213,159,0.08)' : 'rgba(255,255,255,0.025)',
-                                borderColor: set.done ? 'rgba(25,213,159,0.18)' : 'var(--border)',
-                                opacity: set.done ? 0.88 : 1,
+                                background: set.done ? 'rgba(25,213,159,0.12)' : 'rgba(255,255,255,0.025)',
+                                borderColor: set.done ? 'rgba(25,213,159,0.42)' : 'var(--border)',
+                                boxShadow: set.done ? 'inset 0 1px 0 rgba(25,213,159,0.08)' : undefined,
                               }}
                             >
-                              <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] gap-2 items-center">
+                              <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_2.5rem] gap-2 items-center">
                                 <motion.button
-                                  onClick={() => toggleSetDone(exerciseIndex, setIndex)}
-                                  className="flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)] text-xs font-bold"
+                                  onClick={() => handleToggleSet(exerciseIndex, setIndex)}
+                                  className="flex h-10 w-9 items-center justify-center rounded-[var(--radius-md)] text-xs font-bold"
                                   style={{
                                     background: set.done ? 'var(--success)' : 'var(--input-bg)',
                                     color: set.done ? '#081813' : 'var(--muted)',
@@ -645,7 +778,7 @@ export default function WorkoutPage() {
                                   transition={{ duration: 0.25 }}
                                   aria-label={set.done ? `Odznacz serię ${setIndex + 1}` : `Oznacz serię ${setIndex + 1}`}
                                 >
-                                  {set.done ? <Check size={14} /> : setIndex + 1}
+                                  {set.done ? <Check size={16} /> : setIndex + 1}
                                 </motion.button>
                                 <input
                                   type="number"
@@ -653,7 +786,7 @@ export default function WorkoutPage() {
                                   placeholder="0"
                                   value={set.weight}
                                   onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', e.target.value)}
-                                  className={`px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'line-through opacity-60' : ''}`}
+                                  className={`px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'opacity-70' : ''}`}
                                   style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                                 />
                                 <input
@@ -662,13 +795,13 @@ export default function WorkoutPage() {
                                   placeholder="0"
                                   value={set.reps}
                                   onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
-                                  className={`px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'line-through opacity-60' : ''}`}
+                                  className={`px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'opacity-70' : ''}`}
                                   style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                                 />
                                 <button
                                   onClick={() => removeSet(exerciseIndex, setIndex)}
-                                  className="text-xs text-center transition-opacity hover:opacity-70"
-                                  style={{ color: 'var(--muted)' }}
+                                  className="flex h-10 w-full items-center justify-center rounded-[var(--radius-md)] text-base transition-colors hover:bg-white/5 active:bg-white/10"
+                                  style={{ color: 'var(--muted-soft)' }}
                                   aria-label={`Usuń serię ${setIndex + 1}`}
                                 >
                                   ✕
@@ -682,13 +815,46 @@ export default function WorkoutPage() {
                                   {set.done ? 'Zapisana' : 'Robocza seria'}
                                 </span>
                               </div>
+                              {!set.done && (
+                                <div className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5">
+                                  {[
+                                    { label: '−2.5 kg', delta: -2.5, field: 'weight' as const },
+                                    { label: '+2.5 kg', delta: +2.5, field: 'weight' as const },
+                                    { label: '−1 rep', delta: -1, field: 'reps' as const },
+                                    { label: '+1 rep', delta: +1, field: 'reps' as const },
+                                  ].map(({ label, delta, field }) => (
+                                    <button
+                                      key={label}
+                                      type="button"
+                                      onClick={() => {
+                                        const current = field === 'weight' ? parseWeight(set.weight) : parseReps(set.reps)
+                                        const next = Math.max(0, current + delta)
+                                        const formatted = field === 'weight'
+                                          ? (Number.isInteger(next) ? String(next) : next.toFixed(1))
+                                          : String(Math.round(next))
+                                        updateSet(exerciseIndex, setIndex, field, formatted)
+                                        if ('vibrate' in navigator) navigator.vibrate(6)
+                                      }}
+                                      className="set-stepper-btn"
+                                      aria-label={`Dostosuj ${field === 'weight' ? 'wagę' : 'powtórzenia'} o ${delta}`}
+                                    >
+                                      {label}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )
                         })}
                       </div>
 
                       <button
-                        onClick={() => addSet(exerciseIndex)}
+                        onClick={(e) => {
+                          addSet(exerciseIndex)
+                          if ('vibrate' in navigator) navigator.vibrate(8)
+                          const btn = e.currentTarget
+                          setTimeout(() => btn.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+                        }}
                         className="mt-3 w-full py-2.5 rounded-[var(--radius-lg)] text-sm font-semibold transition-opacity hover:opacity-80"
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
                       >
@@ -720,6 +886,69 @@ export default function WorkoutPage() {
               <p className="mt-1 text-sm font-semibold text-white tabular-nums">{timerStr}</p>
             </div>
           </div>
+
+          <AnimatePresence initial={false}>
+            {rest !== null && (
+              <motion.div
+                key="rest-timer-bar"
+                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+                animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
+                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+                transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+                className="rest-timer-bar"
+                data-finished={restRemainingMs === 0}
+              >
+                <div className="rest-timer-progress" aria-hidden="true">
+                  <div className="rest-timer-progress-fill" style={{ width: `${restProgress * 100}%` }} />
+                </div>
+                <div className="rest-timer-content">
+                  <Timer size={16} strokeWidth={2.2} className="flex-none" />
+                  <div className="rest-timer-label">
+                    {restRemainingMs === 0 ? (
+                      <span>Gotowe — czas na kolejną serię</span>
+                    ) : (
+                      <>
+                        <span style={{ color: 'var(--muted)' }}>Przerwa</span>
+                        <span className="tabular-nums font-bold ml-2">
+                          {Math.floor(restRemainingSec / 60)}:{String(restRemainingSec % 60).padStart(2, '0')}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                  {restRemainingMs > 0 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleAddRestTime(30)}
+                        className="rest-timer-action"
+                        aria-label="Dodaj 30 sekund"
+                      >
+                        +30s
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSkipRest}
+                        className="rest-timer-action rest-timer-action--icon"
+                        aria-label="Pomiń przerwę"
+                      >
+                        ✕
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleSkipRest}
+                      className="rest-timer-action"
+                      aria-label="Zamknij"
+                    >
+                      OK
+                    </button>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <motion.button
             onClick={() => setShowPicker(true)}
             className="w-full py-3.5 rounded-[var(--radius-lg)] font-semibold text-sm tracking-wide"
@@ -735,9 +964,8 @@ export default function WorkoutPage() {
       {showPicker && (
         <ExercisePicker
           onSelect={(id, name, source) => {
-            addExercise(id, name, source)
             setShowPicker(false)
-            if (user) fetchSuggestion(id, source, user.uid)
+            void handlePickExercise(id, name, source)
           }}
           onClose={() => setShowPicker(false)}
           userExercises={userExercises}

@@ -23,6 +23,56 @@ const STARTER_PROMPTS = [
   'Czy moje readiness sugeruje dziś mocniejszą czy lżejszą sesję?',
 ]
 
+const DEMO_EMAIL = 'demo@ironlog.app'
+
+const DEMO_CHAT_MESSAGES: ChatMessage[] = [
+  {
+    id: 'demo-msg-1',
+    role: 'user',
+    content: 'Przeanalizuj mój ostatni tydzień treningowy.',
+  },
+  {
+    id: 'demo-msg-2',
+    role: 'assistant',
+    content: `Zrobiłeś **3 pełne sesje** w tym tygodniu (Upper A, Lower A, Upper B) — solidny mikrocykl.
+
+**Kluczowe momenty:**
+- **Bench Press**: 72.5 kg × 8, 8, 7, 6 — nowy PR w serii roboczej
+- **Squat**: 100 kg × 6, 6, 5, 5 — pierwszy raz trzycyfrowy ciężar
+- **OHP**: 50 kg × 6, 5, 5 — trzymasz tempo
+
+**Readiness** z ostatnich 7 dni: średnio 4/5 snu, soreness 2/5. Masz zielone światło na progresję.
+
+**Na jutro (Lower B):**
+- Deadlift **122.5 kg** w top secie (ostrożnie, sprawdź technikę)
+- Bulgarian Split Squat bez zmian
+- Trzymaj wolumen na core — ostatnio spadł.`,
+  },
+  {
+    id: 'demo-msg-3',
+    role: 'user',
+    content: 'Co z plateau w OHP? Tkwię na 50 kg od dwóch tygodni.',
+  },
+  {
+    id: 'demo-msg-4',
+    role: 'assistant',
+    content: `Klasyczny stall przy OHP — typowe okno między 45-55 kg. Kilka powodów może za tym stać:
+
+1. **Za mała praca pomocnicza** tylnych aktonów barków i tricepsa
+2. **Słaby lockout** — potrzeba więcej objętości nad głową
+3. **Recovery** — OHP mocno reaguje na deficyt snu
+
+**Plan na 3 tygodnie:**
+- **Tydzień 1 (deload)**: OHP 42.5 kg 3×8, pełne kontrolowane powtórzenia
+- **Tydzień 2 (intensity)**: OHP 47.5 kg 5×3 + **Face Pull 4×15** po każdym Upper
+- **Tydzień 3 (PR attempt)**: 3 serie rozgrzewkowe → 52.5 kg × 3-5
+
+Dodatkowo: **Seated DB Press 3×10** zaraz po OHP. Uzupełni wolumen bez dodatkowego obciążenia stawów.
+
+Wróć po tygodniu z feedbackiem jak idzie.`,
+  },
+]
+
 const EXPERIENCE_OPTIONS = [
   { value: 'beginner', label: 'Początkujący' },
   { value: 'intermediate', label: 'Średniozaawansowany' },
@@ -58,10 +108,12 @@ function SectionError({ message }: { message: string }) {
 export default function ChatPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
+  const isDemoUser = user?.email === DEMO_EMAIL
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
-  const [configured, setConfigured] = useState(() => hasClaudeApiKey())
-  const [showConfigPanel, setShowConfigPanel] = useState(() => !hasClaudeApiKey())
-  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [configured, setConfigured] = useState(() => isDemoUser || hasClaudeApiKey())
+  const [showConfigPanel, setShowConfigPanel] = useState(() => !isDemoUser && !hasClaudeApiKey())
+  const [messages, setMessages] = useState<ChatMessage[]>(() => (isDemoUser ? DEMO_CHAT_MESSAGES : []))
+  const demoSeededRef = useRef(isDemoUser)
   const [input, setInput] = useState('')
   const [streamText, setStreamText] = useState('')
   const [sending, setSending] = useState(false)
@@ -82,6 +134,14 @@ export default function ChatPage() {
 
   const previewDay = planPreview?.days[selectedPreviewDay] ?? null
   const totalPlanExercises = planPreview?.days.reduce((sum, day) => sum + day.exercises.length, 0) ?? 0
+
+  useEffect(() => {
+    if (!isDemoUser || demoSeededRef.current) return
+    demoSeededRef.current = true
+    setMessages(DEMO_CHAT_MESSAGES)
+    setConfigured(true)
+    setShowConfigPanel(false)
+  }, [isDemoUser])
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -826,12 +886,14 @@ export default function ChatPage() {
           </div>
 
           <div className="space-y-5">
-            <AiKeyPanel
-              onConfiguredChange={setConfigured}
-              collapsed={configured && !showConfigPanel}
-              onExpand={() => setShowConfigPanel(true)}
-              onCollapse={() => setShowConfigPanel(false)}
-            />
+            {!isDemoUser && (
+              <AiKeyPanel
+                onConfiguredChange={setConfigured}
+                collapsed={configured && !showConfigPanel}
+                onExpand={() => setShowConfigPanel(true)}
+                onCollapse={() => setShowConfigPanel(false)}
+              />
+            )}
 
             {activeTab === 'chat' ? (
               showConfigPanel || !configured ? (

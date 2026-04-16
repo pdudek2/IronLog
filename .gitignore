@@ -31,6 +31,9 @@ playwright-report/
 .playwright/
 tests/e2e/.auth/
 .env.test
+
+# Mockup screenshots (regenerate with `npm run mockups`)
+mockups/
 docs/superpowers
 docs/*.md
 CLAUDE.md

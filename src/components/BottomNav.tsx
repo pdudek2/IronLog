@@ -122,7 +122,7 @@ export default function BottomNav() {
   return (
     <nav
       aria-label="Nawigacja dolna"
-      className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 lg:hidden"
+      className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 lg:hidden"
       style={{
         paddingBottom: 'max(0.85rem, env(safe-area-inset-bottom, 0px))',
         transform: navHidden ? 'translateY(calc(100% + env(safe-area-inset-bottom, 0px) + 1rem))' : 'translateY(0)',
@@ -131,16 +131,7 @@ export default function BottomNav() {
         transition: 'transform 220ms ease, opacity 180ms ease',
       }}
     >
-      <div
-        className="flex w-full max-w-sm items-center gap-1 rounded-[var(--radius-xl)] px-3 py-2.5"
-        style={{
-          background: 'linear-gradient(180deg, rgba(21,28,43,0.96) 0%, rgba(15,20,32,0.98) 100%)',
-          border: '1px solid var(--border)',
-          boxShadow: '0 -8px 40px rgba(2,8,20,0.56), inset 0 1px 0 rgba(255,255,255,0.03)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
-        }}
-      >
+      <div className="bottom-nav-panel flex w-full max-w-sm items-center gap-1 rounded-[var(--radius-xl)] px-3 py-2.5">
         <NavBtn
           icon={<LayoutDashboard size={20} />}
           label="Start"

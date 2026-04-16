@@ -913,3 +913,69 @@ a {
   cursor: pointer;
   border: 2px solid rgba(0, 0, 0, 0.3);
 }
+
+/* ──────────────────────────────────────────────────────────────────
+   Mobile GPU budget — below the desktop breakpoint, ditch the effects
+   that dominate the compositor: two 140px-radius body blobs and every
+   backdrop-filter blur. Saturated background + borders keep the look
+   readable without paying per-frame blur cost on every scroll.
+   ────────────────────────────────────────────────────────────────── */
+@media (max-width: 1023px) {
+  body::before,
+  body::after {
+    display: none;
+  }
+
+  .glass,
+  .surface-panel,
+  .surface-panel-hero,
+  .top-nav,
+  .hero-streak-card,
+  .rest-timer-pill,
+  .desktop-rail-panel {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  /* Solidify translucent backgrounds that previously relied on backdrop
+     blur for readability. */
+  .glass {
+    background: rgba(22, 28, 43, 0.92) !important;
+  }
+
+  .top-nav {
+    background: rgba(11, 15, 23, 0.95);
+  }
+}
+
+/* Paint containment — let the browser skip painting surface panels that
+   are fully offscreen. Safe because their layout doesn't affect siblings. */
+.surface-panel,
+.surface-panel-hero {
+  contain: paint;
+}
+
+/* Promote sticky/fixed navs to their own compositor layer once so scroll
+   doesn't keep re-rasterizing them. */
+.top-nav,
+.bottom-nav {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+.bottom-nav-panel {
+  background: linear-gradient(180deg, rgba(21, 28, 43, 0.96) 0%, rgba(15, 20, 32, 0.98) 100%);
+  border: 1px solid var(--border);
+  box-shadow: 0 -8px 40px rgba(2, 8, 20, 0.56), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+}
+
+@media (max-width: 1023px) {
+  .bottom-nav-panel {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    /* Slightly more opaque to compensate for no blur mixing content behind. */
+    background: linear-gradient(180deg, rgba(21, 28, 43, 0.985) 0%, rgba(15, 20, 32, 0.99) 100%);
+  }
+}

@@ -6,7 +6,6 @@ import {
   BarChart3,
   Clock3,
   Layers3,
-  Sparkles,
   Target,
   Trash2,
   TrendingUp,
@@ -62,15 +61,6 @@ function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
   if (!firstExercise?.exerciseId) return '#808CB3'
   return CATEGORY_COLORS[exerciseMap.get(firstExercise.exerciseId)?.category ?? ''] ?? '#808CB3'
-}
-
-function workoutCategoryLabel(workout: WorkoutSummary): string {
-  const categories = [...new Set(
-    workout.exercises.map((exercise) => exerciseMap.get(exercise.exerciseId ?? '')?.category).filter(Boolean)
-  )]
-  if (categories.length === 0) return 'Trening'
-  if (categories.length === 1) return categories[0]!
-  return 'Trening'
 }
 
 function formatDate(ts: number): string {
@@ -362,28 +352,40 @@ export default function WorkoutDetailPage() {
     </div>
   )
 
+  const heroLabel = displayedWorkout.label
+    ?? (topFocus ? (CATEGORY_LABELS[topFocus[0]] ?? 'Trening') : 'Trening')
+  const heroInsight = topFocus
+    ? `Najwięcej pracy poszło w ${(CATEGORY_LABELS[topFocus[0]] ?? topFocus[0]).toLowerCase()}.`
+    : 'Pierwsza pełna sesja pokaże dominujący fokus treningu.'
+
   return (
     <>
-        <motion.div
-          className="mb-6 flex items-center gap-3"
-          initial={false}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.18 }}
-        >
-          <button
-            onClick={() => navigate('/dashboard')}
-            className="surface-panel p-2 rounded-xl transition-opacity hover:opacity-70"
-            style={{ color: 'var(--text)' }}
-          >
-            <ArrowLeft size={16} />
-          </button>
+      <motion.button
+        onClick={() => navigate('/dashboard')}
+        className="surface-panel mb-4 inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-70"
+        style={{ color: 'var(--text)', border: '1px solid var(--border)' }}
+        initial={false}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.18 }}
+        whileTap={{ scale: 0.97 }}
+      >
+        <ArrowLeft size={14} />
+        Wróć
+      </motion.button>
+
+      <section className="hero-editorial">
+        <div className="flex flex-col gap-5">
+          <p className="hero-editorial-date">
+            Trening · {formatDate(displayedWorkout.startedAt)}
+          </p>
+
           <div>
-            <p className="eyebrow">
-              Dashboard → Trening
-            </p>
-            <p className="mt-1 text-sm font-semibold text-white">Szczegóły treningu</p>
+            <h1 className="hero-editorial-name">{heroLabel}.</h1>
           </div>
-        </motion.div>
+
+          <p className="hero-editorial-sub">{heroInsight}</p>
+        </div>
+      </section>
 
         <div className="desktop-app-grid">
           <aside className="desktop-sticky space-y-4 hidden lg:block">
@@ -395,7 +397,7 @@ export default function WorkoutDetailPage() {
               transition={{ duration: 0.2 }}
             >
               <div className="p-5">
-                {isEditing ? (
+                {isEditing && (
                   <div className="mb-4">
                     <p className="text-[10px] uppercase tracking-widest mb-3" style={{ color: accent }}>
                       Rodzaj treningu
@@ -421,15 +423,9 @@ export default function WorkoutDetailPage() {
                       })}
                     </div>
                   </div>
-                ) : (
-                  <p className="text-xs uppercase tracking-widest mb-1" style={{ color: accent }}>
-                    {displayedWorkout.label ?? workoutCategoryLabel(displayedWorkout)}
-                  </p>
                 )}
 
-                <h2 className="text-2xl font-bold text-white mb-4">
-                  {formatDate(displayedWorkout.startedAt)}
-                </h2>
+                <p className="eyebrow mb-3" style={{ color: accent }}>Statystyki sesji</p>
 
                 <div className="grid grid-cols-2 gap-3">
                   {[
@@ -445,18 +441,6 @@ export default function WorkoutDetailPage() {
                       </p>
                     </div>
                   ))}
-                </div>
-
-                <div className="mt-4 rounded-[var(--radius-lg)] border p-4" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="stat-meta">Sygnał sesji</p>
-                    <Sparkles size={14} style={{ color: accent }} />
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-white leading-6">
-                    {topFocus
-                      ? `Najwięcej pracy poszło w ${CATEGORY_LABELS[topFocus[0]] ?? topFocus[0].toLowerCase()}.`
-                      : 'Pierwsza pełna sesja pokaże dominujący fokus treningu.'}
-                  </p>
                 </div>
               </div>
             </motion.div>

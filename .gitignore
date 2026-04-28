@@ -37,3 +37,14 @@ mockups/
 docs/superpowers
 docs/*.md
 CLAUDE.md
+
+# Per-developer AI agent instructions
+AGENTS.md
+
+# TPF dokumentacja i tooling (poza repo)
+*.docx
+*.pdf
+terminology_domain.png
+wireframes.png
+scripts/generate_polished_*.py
+scripts/render_diagrams_png.mjs

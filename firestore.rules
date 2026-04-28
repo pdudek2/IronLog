@@ -70,7 +70,7 @@ service cloud.firestore {
 
     match /readiness/{id} {
       allow create: if ownsNewDoc();
-      allow read: if ownsDoc();
+      allow read: if signedIn() && id.matches('^' + currentUid() + '_.+$');
       allow update: if ownsDoc() && keepsOwner();
       allow delete: if ownsDoc();
     }

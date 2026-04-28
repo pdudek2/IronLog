@@ -40,6 +40,7 @@ CLAUDE.md
 
 # Per-developer AI agent instructions
 AGENTS.md
+.mcp.json
 
 # TPF dokumentacja i tooling (poza repo)
 *.docx

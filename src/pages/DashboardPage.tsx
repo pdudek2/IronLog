@@ -309,7 +309,7 @@ export default function DashboardPage() {
   ]
   const dashboardHighlights: Array<{ label: string; value: number; suffix: string; sublabel: string }> = [
     { label: 'Treningi', value: weeklyDone, suffix: '', sublabel: 'w tym tygodniu' },
-    { label: 'Serie', value: weeklySetsTotal, suffix: '', sublabel: 'zapisane łącznie' },
+    { label: 'Serie', value: weeklySetsTotal, suffix: '', sublabel: weeklySetsTotal ? 'w tym tygodniu' : 'w tym tygodniu · brak sesji' },
     { label: 'Objętość', value: weeklyVolume, suffix: ' kg', sublabel: weeklyVolume ? 'tygodniowy wolumen' : 'tygodniowy wolumen · brak sesji' },
     { label: 'Śr. czas', value: avgMinutes, suffix: ' min', sublabel: avgMinutes ? 'na sesję' : 'na sesję · brak danych' },
   ]

@@ -559,10 +559,7 @@ a {
   line-height: 0.9;
   font-variant-numeric: tabular-nums;
   position: relative;
-  background: linear-gradient(135deg, #ffffff 0%, var(--accent-warm) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  text-shadow: 0 0 32px rgba(255, 159, 90, 0.45);
 }
 
 .hero-streak-meta {
@@ -587,10 +584,7 @@ a {
 }
 
 .hero-streak-card--empty .hero-streak-value {
-  background: linear-gradient(135deg, #ffffff 0%, var(--muted) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  text-shadow: 0 0 24px rgba(154, 167, 194, 0.25);
 }
 
 .desktop-rail {

@@ -40,6 +40,17 @@ export interface TemplateInput {
   days: TemplateDay[]
 }
 
+export interface TemplateExerciseHistory {
+  bestSetWeight: number
+  bestSetReps: number
+}
+
+export type TemplateExerciseHistoryMap = Map<string, TemplateExerciseHistory>
+
+export function templateExerciseKey(exerciseId: string, source: ExerciseSource): string {
+  return `${source}:${exerciseId}`
+}
+
 export async function getTemplates(uid: string): Promise<WorkoutTemplate[]> {
   const snap = await getDocs(
     query(collection(db, 'templates'), where('userId', '==', uid)),
@@ -89,7 +100,11 @@ export async function deleteTemplate(id: string): Promise<void> {
   await deleteDoc(doc(db, 'templates', id))
 }
 
-export function buildActiveWorkoutFromTemplate(template: WorkoutTemplate, dayIndex = 0): ActiveWorkout {
+export function buildActiveWorkoutFromTemplate(
+  template: WorkoutTemplate,
+  dayIndex = 0,
+  historyByExercise: TemplateExerciseHistoryMap = new Map(),
+): ActiveWorkout {
   const day = template.days[dayIndex] ?? template.days[0]
   const label = day?.name?.trim()
     ? day.name.trim()
@@ -99,16 +114,26 @@ export function buildActiveWorkoutFromTemplate(template: WorkoutTemplate, dayInd
     startedAt: Date.now(),
     templateId: template.id,
     label,
-    exercises: (day?.exercises ?? []).map((exercise) => ({
-      exerciseId: exercise.exerciseId,
-      exerciseSource: exercise.exerciseSource,
-      name: exercise.name,
-      sets: Array.from({ length: Math.max(1, exercise.sets) }, () => ({
-        weight: exercise.targetWeight > 0 ? String(exercise.targetWeight) : '',
-        reps: exercise.targetReps > 0 ? String(exercise.targetReps) : '',
-        done: false,
-      })),
-    })),
+    exercises: (day?.exercises ?? []).map((exercise) => {
+      const history = historyByExercise.get(templateExerciseKey(exercise.exerciseId, exercise.exerciseSource))
+      const weight = history && history.bestSetWeight > 0
+        ? String(history.bestSetWeight)
+        : exercise.targetWeight > 0 ? String(exercise.targetWeight) : ''
+      const reps = history && history.bestSetReps > 0
+        ? String(history.bestSetReps)
+        : exercise.targetReps > 0 ? String(exercise.targetReps) : ''
+
+      return {
+        exerciseId: exercise.exerciseId,
+        exerciseSource: exercise.exerciseSource,
+        name: exercise.name,
+        sets: Array.from({ length: Math.max(1, exercise.sets) }, () => ({
+          weight,
+          reps,
+          done: false,
+        })),
+      }
+    }),
   }
 }
 

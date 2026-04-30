@@ -8,10 +8,13 @@ import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import { useWorkoutStore } from '../store/workoutStore'
 import { fetchRemoteSessionHasWork, saveActiveSession } from '../lib/activeSessionService'
+import { getExerciseSessions } from '../lib/exerciseDetailService'
 import {
   buildActiveWorkoutFromTemplate,
   deleteTemplate,
   getTemplates,
+  templateExerciseKey,
+  type TemplateExerciseHistoryMap,
   type WorkoutTemplate,
 } from '../lib/templateService'
 
@@ -76,7 +79,8 @@ export default function TemplatesPage() {
   async function launchTemplate(template: WorkoutTemplate, dayIndex: number) {
     if (!user) return
 
-    const nextWorkout = buildActiveWorkoutFromTemplate(template, dayIndex)
+    const historyByExercise = await loadTemplateExerciseHistory(user.uid, template, dayIndex)
+    const nextWorkout = buildActiveWorkoutFromTemplate(template, dayIndex, historyByExercise)
     hydrateFromDoc(nextWorkout)
     await saveActiveSession(user.uid, nextWorkout)
     toast.success(`Szablon „${template.name}” gotowy do startu`)
@@ -96,6 +100,36 @@ export default function TemplatesPage() {
     } finally {
       setLaunching(false)
     }
+  }
+
+  async function loadTemplateExerciseHistory(
+    uid: string,
+    template: WorkoutTemplate,
+    dayIndex: number,
+  ): Promise<TemplateExerciseHistoryMap> {
+    const day = template.days[dayIndex] ?? template.days[0]
+    const exercises = day?.exercises ?? []
+    const uniqueExercises = Array.from(
+      new Map(exercises.map((exercise) => [
+        templateExerciseKey(exercise.exerciseId, exercise.exerciseSource),
+        exercise,
+      ])).values(),
+    )
+
+    const entries = await Promise.all(uniqueExercises.map(async (exercise) => {
+      try {
+        const [last] = await getExerciseSessions(uid, exercise.exerciseId, exercise.exerciseSource, 1)
+        if (!last || last.bestSetWeight <= 0) return null
+        return [
+          templateExerciseKey(exercise.exerciseId, exercise.exerciseSource),
+          { bestSetWeight: last.bestSetWeight, bestSetReps: last.bestSetReps },
+        ] as const
+      } catch {
+        return null
+      }
+    }))
+
+    return new Map(entries.filter((entry): entry is NonNullable<typeof entry> => entry !== null))
   }
 
   if (loading) {

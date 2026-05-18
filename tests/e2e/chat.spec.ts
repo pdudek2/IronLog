@@ -49,12 +49,12 @@ test.describe('Chat UI', () => {
 
     // Key panel should show "Brak klucza" badge when no key is configured
     // (assuming test account has no saved key — localStorage is fresh per storageState)
-    const keyPanel = page.getByText('Twój klucz').locator('..')
-    await expect(keyPanel).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByPlaceholder('Wklej Claude API key')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Klucz zostaje tylko na tym urządzeniu.', { exact: true }))
+      .toBeVisible({ timeout: 5_000 })
 
-    // "Brak klucza" badge is hidden on mobile (class="hidden sm:inline-flex").
-    // Use the paragraph text which is always visible across all viewports.
-    await expect(page.getByText('Jeszcze nie dodano żadnego klucza', { exact: false })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('button', { name: 'Usuń lokalnie zapisany klucz' }))
+      .toBeDisabled()
 
     await page.screenshot({ path: 'test-results/chat-key-panel.png' })
   })
@@ -88,7 +88,7 @@ test.describe('Chat UI', () => {
     await generatorBtn.click()
 
     // Generator UI should appear
-    await expect(page.getByText('Generator planu')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Generator planu', { exact: true })).toBeVisible({ timeout: 5_000 })
 
     await page.screenshot({ path: 'test-results/chat-generator.png' })
 

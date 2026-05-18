@@ -23,9 +23,374 @@ service cloud.firestore {
       return request.resource.data.userId == resource.data.userId;
     }
 
+    function isMillis(value) {
+      return value is int
+             && value >= 0
+             && value <= 4102444800000;
+    }
+
+    function isNonEmptyString(value, maxLength) {
+      return value is string
+             && value.size() > 0
+             && value.size() <= maxLength;
+    }
+
+    function isNullableString(value, maxLength) {
+      return value == null
+             || (value is string && value.size() <= maxLength);
+    }
+
+    function isDocumentId(value) {
+      return value is string
+             && value.size() > 0
+             && value.size() <= 160
+             && value.matches('^[A-Za-z0-9][A-Za-z0-9._:-]*$');
+    }
+
+    function isExerciseSource(value) {
+      return value in ['global', 'user'];
+    }
+
+    function isCategory(value) {
+      return value in ['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'cardio'];
+    }
+
+    function isEquipment(value) {
+      return value in ['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'kettlebell'];
+    }
+
+    function isMuscleList(value) {
+      return value is list
+             && value.size() <= 12
+             && value.hasOnly([
+               'chest', 'back', 'quads', 'hamstrings', 'glutes',
+               'shoulders', 'triceps', 'biceps', 'forearms', 'core', 'calves',
+             ]);
+    }
+
+    function isFinishedSet(value) {
+      return value is map
+             && value.keys().hasOnly(['weight', 'reps'])
+             && value.keys().hasAll(['weight', 'reps'])
+             && value.weight is number
+             && value.weight >= 0
+             && value.weight <= 2000
+             && value.reps is int
+             && value.reps > 0
+             && value.reps <= 1000;
+    }
+
+    function isFinishedExercise(value) {
+      return value is map
+             && value.keys().hasOnly(['exerciseId', 'exerciseSource', 'name', 'sets'])
+             && value.keys().hasAll(['exerciseId', 'exerciseSource', 'name', 'sets'])
+             && isDocumentId(value.exerciseId)
+             && isExerciseSource(value.exerciseSource)
+             && isNonEmptyString(value.name, 120)
+             && isFinishedSets(value.sets);
+    }
+
+    function isFinishedSetAt(sets, index) {
+      return sets.size() <= index || isFinishedSet(sets[index]);
+    }
+
+    function isFinishedSets(value) {
+      return value is list
+             && value.size() > 0
+             && value.size() <= 20
+             && isFinishedSetAt(value, 0)
+             && isFinishedSetAt(value, 1)
+             && isFinishedSetAt(value, 2)
+             && isFinishedSetAt(value, 3)
+             && isFinishedSetAt(value, 4)
+             && isFinishedSetAt(value, 5)
+             && isFinishedSetAt(value, 6)
+             && isFinishedSetAt(value, 7)
+             && isFinishedSetAt(value, 8)
+             && isFinishedSetAt(value, 9)
+             && isFinishedSetAt(value, 10)
+             && isFinishedSetAt(value, 11)
+             && isFinishedSetAt(value, 12)
+             && isFinishedSetAt(value, 13)
+             && isFinishedSetAt(value, 14)
+             && isFinishedSetAt(value, 15)
+             && isFinishedSetAt(value, 16)
+             && isFinishedSetAt(value, 17)
+             && isFinishedSetAt(value, 18)
+             && isFinishedSetAt(value, 19);
+    }
+
+    function isFinishedExerciseAt(exercises, index) {
+      return exercises.size() <= index || isFinishedExercise(exercises[index]);
+    }
+
+    function isFinishedExercises(value) {
+      return value is list
+             && value.size() > 0
+             && value.size() <= 20
+             && isFinishedExerciseAt(value, 0)
+             && isFinishedExerciseAt(value, 1)
+             && isFinishedExerciseAt(value, 2)
+             && isFinishedExerciseAt(value, 3)
+             && isFinishedExerciseAt(value, 4)
+             && isFinishedExerciseAt(value, 5)
+             && isFinishedExerciseAt(value, 6)
+             && isFinishedExerciseAt(value, 7)
+             && isFinishedExerciseAt(value, 8)
+             && isFinishedExerciseAt(value, 9)
+             && isFinishedExerciseAt(value, 10)
+             && isFinishedExerciseAt(value, 11)
+             && isFinishedExerciseAt(value, 12)
+             && isFinishedExerciseAt(value, 13)
+             && isFinishedExerciseAt(value, 14)
+             && isFinishedExerciseAt(value, 15)
+             && isFinishedExerciseAt(value, 16)
+             && isFinishedExerciseAt(value, 17)
+             && isFinishedExerciseAt(value, 18)
+             && isFinishedExerciseAt(value, 19);
+    }
+
+    function isActiveSet(value) {
+      return value is map
+             && value.keys().hasOnly(['weight', 'reps', 'done'])
+             && value.keys().hasAll(['weight', 'reps', 'done'])
+             && value.weight is string
+             && value.weight.size() <= 16
+             && value.weight.matches('^[0-9.]*$')
+             && value.reps is string
+             && value.reps.size() <= 8
+             && value.reps.matches('^[0-9]*$')
+             && value.done is bool;
+    }
+
+    function isActiveExercise(value) {
+      return value is map
+             && value.keys().hasOnly(['exerciseId', 'exerciseSource', 'name', 'sets'])
+             && value.keys().hasAll(['exerciseId', 'exerciseSource', 'name', 'sets'])
+             && isDocumentId(value.exerciseId)
+             && isExerciseSource(value.exerciseSource)
+             && isNonEmptyString(value.name, 120)
+             && isActiveSets(value.sets);
+    }
+
+    function isActiveSetAt(sets, index) {
+      return sets.size() <= index || isActiveSet(sets[index]);
+    }
+
+    function isActiveSets(value) {
+      return value is list
+             && value.size() <= 20
+             && isActiveSetAt(value, 0)
+             && isActiveSetAt(value, 1)
+             && isActiveSetAt(value, 2)
+             && isActiveSetAt(value, 3)
+             && isActiveSetAt(value, 4)
+             && isActiveSetAt(value, 5)
+             && isActiveSetAt(value, 6)
+             && isActiveSetAt(value, 7)
+             && isActiveSetAt(value, 8)
+             && isActiveSetAt(value, 9)
+             && isActiveSetAt(value, 10)
+             && isActiveSetAt(value, 11)
+             && isActiveSetAt(value, 12)
+             && isActiveSetAt(value, 13)
+             && isActiveSetAt(value, 14)
+             && isActiveSetAt(value, 15)
+             && isActiveSetAt(value, 16)
+             && isActiveSetAt(value, 17)
+             && isActiveSetAt(value, 18)
+             && isActiveSetAt(value, 19);
+    }
+
+    function isActiveExerciseAt(exercises, index) {
+      return exercises.size() <= index || isActiveExercise(exercises[index]);
+    }
+
+    function isActiveExercises(value) {
+      return value is list
+             && value.size() <= 20
+             && isActiveExerciseAt(value, 0)
+             && isActiveExerciseAt(value, 1)
+             && isActiveExerciseAt(value, 2)
+             && isActiveExerciseAt(value, 3)
+             && isActiveExerciseAt(value, 4)
+             && isActiveExerciseAt(value, 5)
+             && isActiveExerciseAt(value, 6)
+             && isActiveExerciseAt(value, 7)
+             && isActiveExerciseAt(value, 8)
+             && isActiveExerciseAt(value, 9)
+             && isActiveExerciseAt(value, 10)
+             && isActiveExerciseAt(value, 11)
+             && isActiveExerciseAt(value, 12)
+             && isActiveExerciseAt(value, 13)
+             && isActiveExerciseAt(value, 14)
+             && isActiveExerciseAt(value, 15)
+             && isActiveExerciseAt(value, 16)
+             && isActiveExerciseAt(value, 17)
+             && isActiveExerciseAt(value, 18)
+             && isActiveExerciseAt(value, 19);
+    }
+
+    function isTemplateExercise(value) {
+      return value is map
+             && value.keys().hasOnly(['exerciseId', 'exerciseSource', 'name', 'sets', 'targetReps', 'targetWeight'])
+             && value.keys().hasAll(['exerciseId', 'exerciseSource', 'name', 'sets', 'targetReps', 'targetWeight'])
+             && isDocumentId(value.exerciseId)
+             && isExerciseSource(value.exerciseSource)
+             && isNonEmptyString(value.name, 120)
+             && value.sets is int
+             && value.sets >= 1
+             && value.sets <= 20
+             && value.targetReps is int
+             && value.targetReps >= 0
+             && value.targetReps <= 1000
+             && value.targetWeight is number
+             && value.targetWeight >= 0
+             && value.targetWeight <= 2000;
+    }
+
+    function isTemplateDay(value) {
+      return value is map
+             && value.keys().hasOnly(['name', 'exercises'])
+             && value.keys().hasAll(['name', 'exercises'])
+             && isNonEmptyString(value.name, 80)
+             && isTemplateExercises(value.exercises);
+    }
+
+    function isTemplateExerciseAt(exercises, index) {
+      return exercises.size() <= index || isTemplateExercise(exercises[index]);
+    }
+
+    function isTemplateExercises(value) {
+      return value is list
+             && value.size() <= 20
+             && isTemplateExerciseAt(value, 0)
+             && isTemplateExerciseAt(value, 1)
+             && isTemplateExerciseAt(value, 2)
+             && isTemplateExerciseAt(value, 3)
+             && isTemplateExerciseAt(value, 4)
+             && isTemplateExerciseAt(value, 5)
+             && isTemplateExerciseAt(value, 6)
+             && isTemplateExerciseAt(value, 7)
+             && isTemplateExerciseAt(value, 8)
+             && isTemplateExerciseAt(value, 9)
+             && isTemplateExerciseAt(value, 10)
+             && isTemplateExerciseAt(value, 11)
+             && isTemplateExerciseAt(value, 12)
+             && isTemplateExerciseAt(value, 13)
+             && isTemplateExerciseAt(value, 14)
+             && isTemplateExerciseAt(value, 15)
+             && isTemplateExerciseAt(value, 16)
+             && isTemplateExerciseAt(value, 17)
+             && isTemplateExerciseAt(value, 18)
+             && isTemplateExerciseAt(value, 19);
+    }
+
+    function isTemplateDayAt(days, index) {
+      return days.size() <= index || isTemplateDay(days[index]);
+    }
+
+    function isTemplateDays(value) {
+      return value is list
+             && value.size() > 0
+             && value.size() <= 14
+             && isTemplateDayAt(value, 0)
+             && isTemplateDayAt(value, 1)
+             && isTemplateDayAt(value, 2)
+             && isTemplateDayAt(value, 3)
+             && isTemplateDayAt(value, 4)
+             && isTemplateDayAt(value, 5)
+             && isTemplateDayAt(value, 6)
+             && isTemplateDayAt(value, 7)
+             && isTemplateDayAt(value, 8)
+             && isTemplateDayAt(value, 9)
+             && isTemplateDayAt(value, 10)
+             && isTemplateDayAt(value, 11)
+             && isTemplateDayAt(value, 12)
+             && isTemplateDayAt(value, 13);
+    }
+
+    function isWorkoutCreate(data) {
+      return data.keys().hasOnly(['userId', 'templateId', 'startedAt', 'finishedAt', 'materialized', 'label', 'exercises'])
+             && data.keys().hasAll(['userId', 'startedAt', 'finishedAt', 'materialized', 'label', 'exercises'])
+             && data.userId == currentUid()
+             && isNullableString(data.get('templateId', null), 160)
+             && isMillis(data.startedAt)
+             && isMillis(data.finishedAt)
+             && data.finishedAt >= data.startedAt
+             && data.materialized == false
+             && isNullableString(data.label, 120)
+             && isFinishedExercises(data.exercises);
+    }
+
+    function isUserExercise(data) {
+      return data.keys().hasOnly(['userId', 'name', 'category', 'equipment', 'muscles'])
+             && data.keys().hasAll(['userId', 'name', 'category', 'equipment', 'muscles'])
+             && data.userId == currentUid()
+             && isNonEmptyString(data.name, 120)
+             && isCategory(data.category)
+             && isEquipment(data.equipment)
+             && isMuscleList(data.muscles);
+    }
+
+    function isTemplate(data) {
+      return data.keys().hasOnly(['userId', 'name', 'createdAt', 'updatedAt', 'days'])
+             && data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt', 'days'])
+             && data.userId == currentUid()
+             && isNonEmptyString(data.name, 120)
+             && isMillis(data.createdAt)
+             && isMillis(data.updatedAt)
+             && data.updatedAt >= data.createdAt
+             && isTemplateDays(data.days);
+    }
+
+    function isReadiness(id, data) {
+      return data.keys().hasOnly(['userId', 'date', 'sleep', 'mood', 'soreness', 'createdAt'])
+             && data.keys().hasAll(['userId', 'date', 'sleep', 'mood', 'soreness', 'createdAt'])
+             && data.userId == currentUid()
+             && data.date is string
+             && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+             && id == currentUid() + '_' + data.date
+             && data.sleep is int
+             && data.sleep >= 1
+             && data.sleep <= 5
+             && data.mood is int
+             && data.mood >= 1
+             && data.mood <= 5
+             && data.soreness is int
+             && data.soreness >= 1
+             && data.soreness <= 5
+             && isMillis(data.createdAt);
+    }
+
+    function isActiveSession(uid, data) {
+      return data.keys().hasOnly(['userId', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
+             && data.keys().hasAll(['userId', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
+             && currentUid() == uid
+             && data.userId == currentUid()
+             && isMillis(data.startedAt)
+             && isMillis(data.updatedAt)
+             && data.updatedAt >= data.startedAt
+             && isNullableString(data.templateId, 160)
+             && isNullableString(data.label, 120)
+             && isActiveExercises(data.exercises);
+    }
+
+    function isUserProfile(data) {
+      return data.keys().hasOnly(['displayName', 'weeklyGoal', 'primaryGoal', 'units', 'createdAt'])
+             && data.keys().hasAll(['displayName', 'weeklyGoal', 'primaryGoal', 'units', 'createdAt'])
+             && isNonEmptyString(data.displayName, 80)
+             && data.weeklyGoal is int
+             && data.weeklyGoal >= 1
+             && data.weeklyGoal <= 14
+             && data.primaryGoal in ['strength', 'hypertrophy', 'endurance', 'weight_loss']
+             && data.units in ['kg', 'lbs']
+             && isMillis(data.createdAt);
+    }
+
     match /workouts/{id} {
       allow create: if ownsNewDoc()
-                    && request.resource.data.materialized == false;
+                    && isWorkoutCreate(request.resource.data);
       allow read: if ownsDoc();
       allow update, delete: if false;
     }
@@ -55,39 +420,54 @@ service cloud.firestore {
     }
 
     match /userExercises/{id} {
-      allow create: if ownsNewDoc();
+      allow create: if ownsNewDoc()
+                    && isUserExercise(request.resource.data);
       allow read: if ownsDoc();
-      allow update: if ownsDoc() && keepsOwner();
+      allow update: if ownsDoc()
+                    && keepsOwner()
+                    && isUserExercise(request.resource.data);
       allow delete: if ownsDoc();
     }
 
     match /templates/{id} {
-      allow create: if ownsNewDoc();
+      allow create: if ownsNewDoc()
+                    && isTemplate(request.resource.data);
       allow read: if ownsDoc();
-      allow update: if ownsDoc() && keepsOwner();
+      allow update: if ownsDoc()
+                    && keepsOwner()
+                    && isTemplate(request.resource.data);
       allow delete: if ownsDoc();
     }
 
     match /readiness/{id} {
-      allow create: if ownsNewDoc();
+      allow create: if ownsNewDoc()
+                    && isReadiness(id, request.resource.data);
       allow read: if signedIn() && id.matches('^' + currentUid() + '_.+$');
-      allow update: if ownsDoc() && keepsOwner();
+      allow update: if ownsDoc()
+                    && keepsOwner()
+                    && isReadiness(id, request.resource.data);
       allow delete: if ownsDoc();
     }
 
     match /activeSessions/{uid} {
       allow create: if signedIn()
                     && currentUid() == uid
-                    && request.resource.data.userId == currentUid();
+                    && request.resource.data.userId == currentUid()
+                    && isActiveSession(uid, request.resource.data);
       allow read: if signedIn() && currentUid() == uid;
       allow update: if signedIn()
                     && currentUid() == uid
-                    && request.resource.data.userId == resource.data.userId;
+                    && request.resource.data.userId == resource.data.userId
+                    && isActiveSession(uid, request.resource.data);
       allow delete: if signedIn() && currentUid() == uid;
     }
 
     match /users/{id} {
-      allow read, write: if signedIn() && currentUid() == id;
+      allow read: if signedIn() && currentUid() == id;
+      allow create, update: if signedIn()
+                            && currentUid() == id
+                            && isUserProfile(request.resource.data);
+      allow delete: if signedIn() && currentUid() == id;
     }
 
     match /{document=**} {

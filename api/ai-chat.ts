@@ -1,6 +1,6 @@
 import { adminDb } from './lib/firebaseAdmin.js'
 import { requireUserId } from './lib/auth.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendJson } from './lib/http.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
 
 export const config = {
@@ -785,7 +785,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const ip = getClientIp(req)
     assertRateLimit({ key: `${userId}:${ip}` })
 
-    const body = await readJsonBody<AiChatBody>(req)
+    const body = await readJsonBody<AiChatBody>(req, { maxBytes: 128 * 1024 })
     const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''
     const mode = body.mode === 'plan' ? 'plan' : 'chat'
     const messages = sanitizeMessages(body.messages)
@@ -821,12 +821,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    const message = error instanceof Error ? error.message : 'Nie udało się połączyć z AI Coachem.'
-    const status = typeof (error as { status?: unknown })?.status === 'number'
-      ? (error as { status: number }).status
-      : message === 'Brak tokenu autoryzacji.'
-        ? 401
-        : 400
-    sendJson(res, status, { error: message })
+    sendApiError(res, error, { fallbackMessage: 'Nie udało się połączyć z AI Coachem.' })
   }
 }

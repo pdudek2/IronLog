@@ -1,26 +1,27 @@
 import { adminDb } from './firebaseAdmin.js'
+import {
+  buildExerciseSessionDocumentId,
+  normalizeWorkoutExercises,
+  validateFirestoreDocumentId,
+  validateWorkoutLabel,
+  type ExerciseSource,
+  type ValidatedWorkoutExercise,
+  type ValidatedWorkoutSet,
+} from './workoutValidation.js'
 import { exercises as exerciseCatalog } from '../../data/exercises.js'
 
-type ExerciseSource = 'global' | 'user'
+type WorkoutSet = ValidatedWorkoutSet
+type WorkoutExercise = ValidatedWorkoutExercise
 
-interface WorkoutSet {
-  weight: number
-  reps: number
-}
-
-interface WorkoutExercise {
-  exerciseId: string
-  exerciseSource: ExerciseSource
-  name: string
-  sets: WorkoutSet[]
-}
-
-interface StoredWorkout {
+interface StoredWorkoutMetadata {
   userId: string
   startedAt: number
   finishedAt: number
   label: string | null
   materialized: boolean
+}
+
+interface StoredWorkout extends StoredWorkoutMetadata {
   exercises: WorkoutExercise[]
 }
 
@@ -71,9 +72,11 @@ interface ExerciseMetadata {
 }
 
 const exerciseMap = new Map(exerciseCatalog.map((exercise) => [exercise.id, exercise]))
+const MAX_BATCH_WRITES = 450
 
 export async function materializeWorkoutForUser(userId: string, workoutId: string): Promise<void> {
-  const workoutRef = adminDb.collection('workouts').doc(workoutId)
+  const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
+  const workoutRef = adminDb.collection('workouts').doc(workoutDocumentId)
   const workoutSnap = await workoutRef.get()
 
   if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
@@ -82,9 +85,9 @@ export async function materializeWorkoutForUser(userId: string, workoutId: strin
   assertOwnership(userId, workout.userId)
   assertFinishedWorkout(workout)
 
-  const existingSessions = await listExerciseSessionsForWorkout(workoutId)
+  const existingSessions = await listExerciseSessionsForWorkout(workoutDocumentId)
   const userExerciseMetadata = await loadUserExerciseMetadata(workout.userId, workout.exercises)
-  const nextSessions = buildExerciseSessions(workoutId, workout, userExerciseMetadata)
+  const nextSessions = buildExerciseSessions(workoutDocumentId, workout, userExerciseMetadata)
   const affectedExercises = collectExerciseKeys(existingSessions, nextSessions)
 
   await replaceExerciseSessions(existingSessions, nextSessions)
@@ -97,12 +100,13 @@ export async function updateFinishedWorkoutForUser(
   workoutId: string,
   input: unknown
 ): Promise<void> {
-  const workoutRef = adminDb.collection('workouts').doc(workoutId)
+  const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
+  const workoutRef = adminDb.collection('workouts').doc(workoutDocumentId)
   const workoutSnap = await workoutRef.get()
 
   if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
 
-  const existingWorkout = parseStoredWorkout(workoutSnap.data())
+  const existingWorkout = parseStoredWorkoutMetadata(workoutSnap.data())
   assertOwnership(userId, existingWorkout.userId)
   assertFinishedWorkout(existingWorkout)
 
@@ -114,28 +118,43 @@ export async function updateFinishedWorkoutForUser(
     materialized: false,
   })
 
-  await materializeWorkoutForUser(userId, workoutId)
+  await materializeWorkoutForUser(userId, workoutDocumentId)
 }
 
 export async function deleteFinishedWorkoutForUser(userId: string, workoutId: string): Promise<void> {
-  const workoutRef = adminDb.collection('workouts').doc(workoutId)
+  const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
+  const workoutRef = adminDb.collection('workouts').doc(workoutDocumentId)
   const workoutSnap = await workoutRef.get()
 
   if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
 
-  const workout = parseStoredWorkout(workoutSnap.data())
+  const workout = parseStoredWorkoutMetadata(workoutSnap.data())
   assertOwnership(userId, workout.userId)
   assertFinishedWorkout(workout)
 
-  const existingSessions = await listExerciseSessionsForWorkout(workoutId)
+  const existingSessions = await listExerciseSessionsForWorkout(workoutDocumentId)
   const affectedExercises = collectExerciseKeys(existingSessions)
 
-  const batch = adminDb.batch()
+  let batch = adminDb.batch()
+  let writeCount = 0
+
   batch.delete(workoutRef)
+  writeCount += 1
+
   for (const session of existingSessions) {
     batch.delete(adminDb.collection('exerciseSessions').doc(session.id))
+    writeCount += 1
+
+    if (writeCount >= MAX_BATCH_WRITES) {
+      await batch.commit()
+      batch = adminDb.batch()
+      writeCount = 0
+    }
   }
-  await batch.commit()
+
+  if (writeCount > 0) {
+    await batch.commit()
+  }
 
   await recomputeRecords(workout.userId, affectedExercises)
 }
@@ -146,7 +165,7 @@ function assertOwnership(currentUserId: string, resourceUserId: string): void {
   }
 }
 
-function assertFinishedWorkout(workout: StoredWorkout): void {
+function assertFinishedWorkout(workout: StoredWorkoutMetadata): void {
   if (workout.finishedAt <= 0) {
     throw new Error('Można synchronizować tylko zakończone treningi.')
   }
@@ -157,15 +176,27 @@ function parseStoredWorkout(raw: unknown): StoredWorkout {
   const userId = asNonEmptyString(record.userId, 'userId')
   const startedAt = asNumber(record.startedAt, 'startedAt')
   const finishedAt = asNumber(record.finishedAt, 'finishedAt')
-  const exercises = sanitizeExercises(record.exercises)
+  const exercises = normalizeWorkoutExercises(record.exercises)
 
   return {
     userId,
     startedAt,
     finishedAt,
-    label: sanitizeLabel(record.label),
+    label: validateWorkoutLabel(record.label),
     materialized: record.materialized === true,
     exercises,
+  }
+}
+
+function parseStoredWorkoutMetadata(raw: unknown): StoredWorkoutMetadata {
+  const record = asRecord(raw)
+
+  return {
+    userId: asNonEmptyString(record.userId, 'userId'),
+    startedAt: asNumber(record.startedAt, 'startedAt'),
+    finishedAt: asNumber(record.finishedAt, 'finishedAt'),
+    label: sanitizeStoredLabel(record.label),
+    materialized: record.materialized === true,
   }
 }
 
@@ -173,46 +204,12 @@ function parseWorkoutUpdate(raw: unknown): Pick<StoredWorkout, 'label' | 'exerci
   const record = asRecord(raw)
 
   return {
-    label: sanitizeLabel(record.label),
-    exercises: sanitizeExercises(record.exercises),
+    label: validateWorkoutLabel(record.label),
+    exercises: normalizeWorkoutExercises(record.exercises),
   }
 }
 
-function sanitizeExercises(raw: unknown): WorkoutExercise[] {
-  if (!Array.isArray(raw)) return []
-
-  return raw.flatMap((exercise) => {
-    const record = asNullableRecord(exercise)
-    if (!record) return []
-
-    const exerciseId = typeof record.exerciseId === 'string' ? record.exerciseId.trim() : ''
-    const name = typeof record.name === 'string' ? record.name.trim() : ''
-    const sets = sanitizeSets(record.sets)
-    const exerciseSource: ExerciseSource = record.exerciseSource === 'user' ? 'user' : 'global'
-
-    if (!exerciseId || !name || sets.length === 0) return []
-
-    return [{ exerciseId, exerciseSource, name, sets }]
-  })
-}
-
-function sanitizeSets(raw: unknown): WorkoutSet[] {
-  if (!Array.isArray(raw)) return []
-
-  return raw.flatMap((set) => {
-    const record = asNullableRecord(set)
-    if (!record) return []
-
-    const weight = toFiniteNumber(record.weight ?? record.weightKg)
-    const reps = toFiniteNumber(record.reps)
-
-    if (reps <= 0 || weight < 0) return []
-
-    return [{ weight, reps }]
-  })
-}
-
-function sanitizeLabel(value: unknown): string | null {
+function sanitizeStoredLabel(value: unknown): string | null {
   if (typeof value !== 'string') return null
   const trimmed = value.trim()
   return trimmed ? trimmed : null
@@ -222,11 +219,6 @@ function asRecord(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     throw new Error('Niepoprawny payload treningu.')
   }
-  return value as Record<string, unknown>
-}
-
-function asNullableRecord(value: unknown): Record<string, unknown> | null {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null
   return value as Record<string, unknown>
 }
 
@@ -313,7 +305,7 @@ function buildExerciseSessions(
     })
 
     return {
-      id: buildExerciseSessionId(workoutId, exercise.exerciseSource, exercise.exerciseId, index),
+      id: buildExerciseSessionDocumentId(workoutId, exercise.exerciseSource, exercise.exerciseId, index),
       userId: workout.userId,
       workoutId,
       startedAt: workout.startedAt,
@@ -336,10 +328,6 @@ function buildExerciseSessions(
   })
 }
 
-function buildExerciseSessionId(workoutId: string, exerciseSource: ExerciseSource, exerciseId: string, orderIndex: number): string {
-  return `${workoutId}_${exerciseSource}_${exerciseId}_${orderIndex}`
-}
-
 async function listExerciseSessionsForWorkout(workoutId: string): Promise<ExerciseSessionDoc[]> {
   const snap = await adminDb.collection('exerciseSessions').where('workoutId', '==', workoutId).get()
   return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<ExerciseSessionDoc, 'id'>) }))
@@ -349,22 +337,37 @@ async function replaceExerciseSessions(
   existingSessions: ExerciseSessionDoc[],
   nextSessions: ExerciseSessionDoc[]
 ): Promise<void> {
-  const batch = adminDb.batch()
+  let batch = adminDb.batch()
+  let writeCount = 0
   const nextIds = new Set(nextSessions.map((session) => session.id))
 
   for (const session of nextSessions) {
     batch.set(adminDb.collection('exerciseSessions').doc(session.id), session)
+    writeCount += 1
+
+    if (writeCount >= MAX_BATCH_WRITES) {
+      await batch.commit()
+      batch = adminDb.batch()
+      writeCount = 0
+    }
   }
 
   for (const session of existingSessions) {
     if (!nextIds.has(session.id)) {
       batch.delete(adminDb.collection('exerciseSessions').doc(session.id))
+      writeCount += 1
+
+      if (writeCount >= MAX_BATCH_WRITES) {
+        await batch.commit()
+        batch = adminDb.batch()
+        writeCount = 0
+      }
     }
   }
 
-  if (existingSessions.length === 0 && nextSessions.length === 0) return
-
-  await batch.commit()
+  if (writeCount > 0) {
+    await batch.commit()
+  }
 }
 
 function collectExerciseKeys(...groups: Array<Array<Pick<ExerciseSessionDoc, 'exerciseId' | 'exerciseSource'>>>): ExerciseKey[] {

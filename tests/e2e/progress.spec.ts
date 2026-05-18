@@ -87,8 +87,13 @@ test.describe('Progress analytics', () => {
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
     await page.waitForTimeout(2_000)
 
-    // Verify the first chart is visible in viewport (not hidden or clipped)
+    // Verify the first chart has a stable rendered size and can be brought fully into view.
     const firstChart = page.locator('svg.recharts-surface').first()
+    await firstChart.scrollIntoViewIfNeeded()
     await expect(firstChart).toBeInViewport({ ratio: 0.5 })
+
+    const box = await firstChart.boundingBox()
+    expect(box?.width).toBeGreaterThan(300)
+    expect(box?.height).toBeGreaterThan(150)
   })
 })

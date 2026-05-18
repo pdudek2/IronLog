@@ -1,5 +1,5 @@
 import { requireUserId } from './lib/auth.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendJson } from './lib/http.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { deleteFinishedWorkoutForUser } from './lib/workoutProjection.js'
 
 interface DeleteWorkoutBody {
@@ -14,7 +14,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
   try {
     const userId = await requireUserId(req)
-    const body = await readJsonBody<DeleteWorkoutBody>(req)
+    const body = await readJsonBody<DeleteWorkoutBody>(req, { maxBytes: 8 * 1024 })
 
     if (!body.workoutId) {
       sendJson(res, 400, { error: 'Brak workoutId.' })
@@ -24,8 +24,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     await deleteFinishedWorkoutForUser(userId, body.workoutId)
     sendJson(res, 200, { ok: true })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Nie udało się usunąć treningu.'
-    const status = message === 'Brak tokenu autoryzacji.' ? 401 : 400
-    sendJson(res, status, { error: message })
+    sendApiError(res, error, { fallbackMessage: 'Nie udało się usunąć treningu.' })
   }
 }

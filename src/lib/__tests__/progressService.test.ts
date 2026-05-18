@@ -151,8 +151,8 @@ describe('aggregateWeeklyVolume', () => {
   it('deduplicates sessions from the same workout', () => {
     // Two exercise sessions from same workout — should count as 1 session in chart
     const sessions = [
-      session({ daysAgo: 1, workoutId: 'same-workout', totalVolume: 400 }),
-      session({ daysAgo: 1, workoutId: 'same-workout', totalVolume: 600 }),
+      session({ daysAgo: 0, workoutId: 'same-workout', totalVolume: 400 }),
+      session({ daysAgo: 0, workoutId: 'same-workout', totalVolume: 600 }),
     ]
     const result = aggregateWeeklyVolume(sessions, 4)
     const thisWeek = result[result.length - 1]

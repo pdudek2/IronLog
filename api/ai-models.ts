@@ -1,5 +1,5 @@
 import { requireUserId } from './lib/auth.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendJson } from './lib/http.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
 
 export const config = {
@@ -52,7 +52,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const ip = getClientIp(req)
     assertRateLimit({ key: `models:${userId}:${ip}`, limit: 12, windowMs: 60_000 })
 
-    const body = await readJsonBody<AiModelsBody>(req)
+    const body = await readJsonBody<AiModelsBody>(req, { maxBytes: 16 * 1024 })
     const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''
 
     if (apiKey.length < 20) {
@@ -105,8 +105,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    const message = error instanceof Error ? error.message : 'Nie udało się pobrać modeli Claude.'
-    const status = message === 'Brak tokenu autoryzacji.' ? 401 : 400
-    sendJson(res, status, { error: message })
+    sendApiError(res, error, { fallbackMessage: 'Nie udało się pobrać modeli Claude.' })
   }
 }

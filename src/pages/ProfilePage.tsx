@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
+import type * as React from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
@@ -87,7 +88,7 @@ export default function ProfilePage() {
     setUnits(profile.units ?? 'kg')
   }, [profile])
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!user || !profile) return
     if (!displayName.trim()) { setNameError('Podaj imię'); return }
@@ -182,12 +183,15 @@ export default function ProfilePage() {
           <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
 
             <div className="flex flex-col gap-1">
-              <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Imię</label>
+              <label htmlFor="profile-display-name" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Imię</label>
               <Input
+                id="profile-display-name"
+                name="displayName"
                 type="text"
                 placeholder="np. Jan"
                 value={displayName}
                 onChange={(e) => { setDisplayName(e.target.value); setSaved(false) }}
+                autoComplete="name"
                 error={nameError}
               />
             </div>
@@ -200,6 +204,7 @@ export default function ProfilePage() {
                     key={g.value}
                     type="button"
                     onClick={() => { setPrimaryGoal(g.value); setSaved(false) }}
+                    aria-pressed={primaryGoal === g.value}
                     className="rounded-[var(--radius-md)] p-3 text-left transition-all sm:p-4"
                     style={{
                       background: primaryGoal === g.value ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
@@ -217,11 +222,13 @@ export default function ProfilePage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
+              <label htmlFor="profile-weekly-goal" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
                 Cel tygodniowy
                 <span className="ml-2 font-bold" style={{ color: 'var(--accent)' }}>{weeklyGoal}</span>
               </label>
               <input
+                id="profile-weekly-goal"
+                name="weeklyGoal"
                 type="range"
                 min={1} max={7}
                 value={weeklyGoal}
@@ -241,6 +248,7 @@ export default function ProfilePage() {
                     key={u}
                     type="button"
                     onClick={() => { setUnits(u); setSaved(false) }}
+                    aria-pressed={units === u}
                     className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold transition-all sm:py-3"
                     style={{
                       background: units === u ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',

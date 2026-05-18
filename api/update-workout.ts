@@ -1,5 +1,5 @@
 import { requireUserId } from './lib/auth.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendJson } from './lib/http.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { updateFinishedWorkoutForUser } from './lib/workoutProjection.js'
 
 interface UpdateWorkoutBody {
@@ -16,7 +16,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
   try {
     const userId = await requireUserId(req)
-    const body = await readJsonBody<UpdateWorkoutBody>(req)
+    const body = await readJsonBody<UpdateWorkoutBody>(req, { maxBytes: 128 * 1024 })
 
     if (!body.workoutId) {
       sendJson(res, 400, { error: 'Brak workoutId.' })
@@ -30,8 +30,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
     sendJson(res, 200, { ok: true })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Nie udało się zaktualizować treningu.'
-    const status = message === 'Brak tokenu autoryzacji.' ? 401 : 400
-    sendJson(res, status, { error: message })
+    sendApiError(res, error, { fallbackMessage: 'Nie udało się zaktualizować treningu.' })
   }
 }

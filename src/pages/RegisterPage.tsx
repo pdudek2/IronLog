@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useState } from 'react'
+import type * as React from 'react'
 import { Link } from 'react-router-dom'
 import { registerUser } from '../lib/auth'
 import AuthShell from '../components/AuthShell'
@@ -10,7 +11,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
-  async function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
     setLoading(true)
@@ -35,32 +36,39 @@ export default function RegisterPage() {
         </>
       )}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-describedby={error ? 'register-form-error' : undefined}>
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Email</label>
+          <label htmlFor="register-email" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Email</label>
           <Input
+            id="register-email"
+            name="email"
             type="email"
             placeholder="user@mail.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
             required
           />
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
+          <label htmlFor="register-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
           <Input
+            id="register-password"
+            name="password"
             type="password"
             placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="new-password"
+            aria-describedby="register-password-help"
             required
             minLength={6}
           />
-          <span className="text-xs" style={{ color: 'var(--muted)' }}>Minimum 6 znaków</span>
+          <span id="register-password-help" className="text-xs" style={{ color: 'var(--muted)' }}>Minimum 6 znaków</span>
         </div>
 
-        {error && <p className="text-sm" style={{ color: '#FF4B4B' }}>{error}</p>}
+        {error && <p id="register-form-error" role="alert" className="text-sm" style={{ color: '#FF4B4B' }}>{error}</p>}
 
         <Button type="submit" loading={loading} className="mt-2 w-full">
           Zarejestruj się

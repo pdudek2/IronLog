@@ -17,7 +17,7 @@ import { toast } from 'sonner'
 import NumberFlow from '@number-flow/react'
 import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { LoadingState } from '../components/ui'
+import { Button, LoadingState } from '../components/ui'
 import { getTemplates, type WorkoutTemplate } from '../lib/templateService'
 import { getProfile } from '../lib/userProfile'
 import {
@@ -147,9 +147,12 @@ export default function DashboardPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
+  const [dashboardError, setDashboardError] = useState(false)
+  const [dashboardLoadAttempt, setDashboardLoadAttempt] = useState(0)
   const workoutsRef = useRef<WorkoutSummary[]>([])
 
   const fetchData = useCallback(async (uid: string) => {
+    setDashboardError(false)
     const all = await getRecentWorkouts(uid, 50)
     setSnapshot({
       workouts: all,
@@ -160,10 +163,16 @@ export default function DashboardPage() {
     void retryPendingMaterializations(all)
   }, [setSnapshot])
 
+  const handleDashboardFetchError = useCallback((error: unknown) => {
+    console.error('[DashboardPage] getRecentWorkouts failed', error)
+    setDashboardError(true)
+    toast.error('Nie udało się wczytać treningów. Spróbuj ponownie.')
+  }, [])
+
   useEffect(() => {
     if (!user) return
     if (profile) {
-      void fetchData(user.uid)
+      void fetchData(user.uid).catch(handleDashboardFetchError)
       return
     }
     setLoading(true)
@@ -176,7 +185,7 @@ export default function DashboardPage() {
         setLoading(false)
         toast.error('Nie udało się wczytać profilu. Sprawdź połączenie.')
       })
-  }, [user, profile, navigate, setLoading, setProfile, fetchData])
+  }, [dashboardLoadAttempt, user, profile, navigate, setLoading, setProfile, fetchData, handleDashboardFetchError])
 
   useEffect(() => {
     function handleOnline() {
@@ -198,19 +207,51 @@ export default function DashboardPage() {
     setConfirmDelete(id)
   }
 
+  function openWorkout(workout: WorkoutSummary) {
+    navigate(`/workout/${workout.id}`, {
+      state: { workoutPreview: workout },
+    })
+  }
+
+  function handleWorkoutCardKeyDown(event: React.KeyboardEvent, workout: WorkoutSummary) {
+    if (event.key !== 'Enter' && event.key !== ' ') return
+    event.preventDefault()
+    openWorkout(workout)
+  }
+
   async function confirmDeleteWorkout() {
     if (!confirmDelete) return
     setDeletingId(confirmDelete)
     setConfirmDelete(null)
     try {
       await deleteWorkout(confirmDelete)
-      if (user) void fetchData(user.uid)
+      if (user) void fetchData(user.uid).catch(handleDashboardFetchError)
       toast.success('Trening usunięty')
     } catch {
       toast.error('Błąd usuwania. Spróbuj ponownie.')
     } finally {
       setDeletingId(null)
     }
+  }
+
+  if (dashboardError && !dashboardReady) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center">
+          <p className="text-lg font-semibold text-white">Nie udało się wczytać dashboardu</p>
+          <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+            Dane treningów nie dotarły. Sprawdź połączenie i spróbuj ponownie.
+          </p>
+          <Button
+            type="button"
+            className="mt-5 min-w-[12rem]"
+            onClick={() => setDashboardLoadAttempt((value) => value + 1)}
+          >
+            Spróbuj ponownie
+          </Button>
+        </div>
+      </div>
+    )
   }
 
   if (loading || (!dashboardReady && !!user && !!profile)) {
@@ -888,13 +929,15 @@ export default function DashboardPage() {
                             boxShadow: '0 10px 36px rgba(2,8,20,0.38)',
                           }}
                           initial={false}
+                          role="link"
+                          tabIndex={0}
+                          aria-label={`Otwórz trening ${workout.label ?? workoutTitle(workout)}`}
                           animate={{ opacity: deletingId === workout.id ? 0.4 : 1, x: 0 }}
                           exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
                           transition={{ duration: 0.22 }}
                           whileHover={{ y: -2, boxShadow: `0 18px 52px rgba(2,8,20,0.55), inset 0 0 0 1px ${accent}33` }}
-                          onClick={() => navigate(`/workout/${workout.id}`, {
-                            state: { workoutPreview: workout },
-                          })}
+                          onClick={() => openWorkout(workout)}
+                          onKeyDown={(event) => handleWorkoutCardKeyDown(event, workout)}
                         >
                           <div
                             className="absolute inset-x-0 top-0 h-px"

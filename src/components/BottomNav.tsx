@@ -176,6 +176,7 @@ export default function BottomNav() {
           }}
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}
+          aria-label="Rozpocznij nowy trening"
         >
           <Plus size={22} strokeWidth={2.5} />
         </motion.button>

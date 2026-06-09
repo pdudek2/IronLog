@@ -92,9 +92,9 @@ Identyfikator pomiaru jest podawany przez zmienną środowiskową `VITE_GA_MEASU
 ![Google Analytics — przegląd](docs/screenshots/analytics/ga-overview.png)
 ![Google Analytics — strony](docs/screenshots/analytics/ga-pages.png)
 
-## Hotjar
+## Hotjar (Contentsquare)
 
-Integracja przez `@hotjar/browser`, inicjalizacja w `src/lib/analytics.ts` przy starcie aplikacji. Site ID podawany przez zmienną `VITE_HOTJAR_SITE_ID`. Hotjar zbiera nagrania sesji i heatmapy kliknięć/scrolla.
+Hotjar działa obecnie na platformie Contentsquare — nowe konta zamiast numerycznego Site ID dostają tag identyfikowany hashem. Tag jest doładowywany w `src/lib/analytics.ts` przy starcie aplikacji, hash podaje zmienna `VITE_CSQ_TAG_ID`. Narzędzie zbiera nagrania sesji (Session Replay) i heatmapy kliknięć/scrolla.
 
 <!-- TODO: po zebraniu danych z produkcji podmienić na prawdziwe screeny -->
 ![Hotjar — heatmapa](docs/screenshots/analytics/hotjar-heatmap.png)

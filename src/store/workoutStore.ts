@@ -31,12 +31,27 @@ interface WorkoutState {
   addSet: (exerciseIndex: number) => void
   removeSet: (exerciseIndex: number, setIndex: number) => void
   updateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void
+  adjustSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', delta: number) => void
   toggleSetDone: (exerciseIndex: number, setIndex: number) => void
   removeExercise: (exerciseIndex: number) => void
   clearWorkout: () => void
 }
 
 const emptySet = (): WorkoutSet => ({ weight: '', reps: '', done: false })
+
+function parseSetNumber(value: string, field: 'weight' | 'reps'): number {
+  const parsed = field === 'weight'
+    ? Number.parseFloat(value)
+    : Number.parseInt(value, 10)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function formatAdjustedSetValue(value: number, field: 'weight' | 'reps'): string {
+  const rounded = field === 'weight'
+    ? Math.round(value * 10) / 10
+    : Math.round(value)
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+}
 
 export const useWorkoutStore = create<WorkoutState>()((set) => ({
   active: null,
@@ -96,6 +111,25 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
               sets: ex.sets.map((st, si) =>
                 si === setIndex ? { ...st, [field]: value } : st
               ),
+            }
+          : ex
+      )
+      return { active: { ...s.active, exercises } }
+    }),
+
+  adjustSet: (exerciseIndex, setIndex, field, delta) =>
+    set((s) => {
+      if (!s.active) return s
+      const exercises = s.active.exercises.map((ex, i) =>
+        i === exerciseIndex
+          ? {
+              ...ex,
+              sets: ex.sets.map((st, si) => {
+                if (si !== setIndex) return st
+                const current = parseSetNumber(st[field], field)
+                const next = Math.max(0, current + delta)
+                return { ...st, [field]: formatAdjustedSetValue(next, field) }
+              }),
             }
           : ex
       )

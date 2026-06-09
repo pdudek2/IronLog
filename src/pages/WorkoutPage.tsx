@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Flame, Layers3, Target, Timer } from 'lucide-react'
+import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Sparkles, Target, Timer, TrendingUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type ActiveWorkout, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -16,6 +16,8 @@ import OverloadHint from '../components/OverloadHint'
 import { LoadingState } from '../components/ui'
 import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
+import { navigateWithAppTransition } from '../lib/viewTransitions'
+import { preloadRouteByPath } from '../router/pageLoaders'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
 const CATEGORY_LABELS: Record<string, string> = {
@@ -45,6 +47,19 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   kettlebell: 'KB',
 }
 
+const SESSION_QUICK_LINKS: Array<{
+  label: string
+  to: string
+  icon: typeof LayoutDashboard
+}> = [
+  { label: 'Start', to: '/dashboard', icon: LayoutDashboard },
+  { label: 'Historia', to: '/history', icon: History },
+  { label: 'Postępy', to: '/progress', icon: TrendingUp },
+  { label: 'Plany', to: '/templates', icon: Layers3 },
+  { label: 'Ćwiczenia', to: '/exercises', icon: Dumbbell },
+  { label: 'AI', to: '/chat', icon: Sparkles },
+]
+
 interface LabelChipsProps {
   activeLabel: string
   onToggle: (label: string) => void
@@ -72,6 +87,52 @@ function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) 
           </motion.button>
         )
       })}
+    </div>
+  )
+}
+
+interface SessionQuickLinksProps {
+  onNavigate: (to: string) => void
+  variant?: 'mobile' | 'desktop'
+  className?: string
+}
+
+function SessionQuickLinks({ onNavigate, variant = 'mobile', className = '' }: SessionQuickLinksProps) {
+  const isDesktop = variant === 'desktop'
+
+  return (
+    <div className={className}>
+      {isDesktop && (
+        <p className="mb-3 text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+          Szybki podgląd
+        </p>
+      )}
+      <div className={isDesktop ? 'grid grid-cols-2 gap-2' : 'no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1'}>
+        {SESSION_QUICK_LINKS.map(({ label, to, icon: Icon }) => (
+          <motion.button
+            key={to}
+            type="button"
+            onClick={() => onNavigate(to)}
+            onPointerEnter={() => { void preloadRouteByPath(to) }}
+            onFocus={() => { void preloadRouteByPath(to) }}
+            className={
+              isDesktop
+                ? 'flex min-h-11 items-center gap-2 rounded-[var(--radius-lg)] border px-3 text-left text-xs font-semibold transition-colors hover:bg-white/5'
+                : 'flex h-11 flex-none items-center gap-2 rounded-[var(--radius-lg)] border px-3 text-xs font-semibold transition-colors hover:bg-white/5'
+            }
+            style={{
+              background: 'rgba(255,255,255,0.035)',
+              borderColor: 'var(--border)',
+              color: 'var(--text-strong)',
+            }}
+            whileTap={{ scale: 0.94 }}
+            aria-label={`Przejdź do: ${label}`}
+          >
+            <Icon size={15} strokeWidth={2.2} style={{ color: 'var(--accent)' }} />
+            <span className="whitespace-nowrap">{label}</span>
+          </motion.button>
+        ))}
+      </div>
     </div>
   )
 }
@@ -121,12 +182,14 @@ export default function WorkoutPage() {
     addSet,
     removeSet,
     updateSet,
+    adjustSet,
     toggleSetDone,
     removeExercise,
     clearWorkout,
   } = useWorkoutStore()
   const navigate = useNavigate()
   const location = useLocation()
+  const goQuick = (to: string) => navigateWithAppTransition(navigate, to)
   const appliedTemplateRef = useRef<string | null>(null)
 
   const { clearSession, ready } = useActiveSession(user?.uid ?? null)
@@ -475,6 +538,12 @@ export default function WorkoutPage() {
 
             {saveError && <p className="mb-4 text-xs" style={{ color: '#FF4B4B' }}>{saveError}</p>}
 
+            <SessionQuickLinks
+              variant="desktop"
+              className="mb-5"
+              onNavigate={goQuick}
+            />
+
             <div className="grid grid-cols-2 gap-2 mb-5">
               <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border)' }}>
                 <p className="stat-meta">Ćwiczenia</p>
@@ -548,6 +617,11 @@ export default function WorkoutPage() {
         </aside>
 
         <main className="min-w-0 pb-48 lg:pb-0">
+          <SessionQuickLinks
+            className="mb-4 lg:hidden"
+            onNavigate={goQuick}
+          />
+
           <motion.section
             className="surface-panel-hero mb-4 rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={false}
@@ -873,12 +947,7 @@ export default function WorkoutPage() {
                                       key={label}
                                       type="button"
                                       onClick={() => {
-                                        const current = field === 'weight' ? parseWeight(set.weight) : parseReps(set.reps)
-                                        const next = Math.max(0, current + delta)
-                                        const formatted = field === 'weight'
-                                          ? (Number.isInteger(next) ? String(next) : next.toFixed(1))
-                                          : String(Math.round(next))
-                                        updateSet(exerciseIndex, setIndex, field, formatted)
+                                        adjustSet(exerciseIndex, setIndex, field, delta)
                                         if ('vibrate' in navigator) navigator.vibrate(6)
                                       }}
                                       className="set-stepper-btn"

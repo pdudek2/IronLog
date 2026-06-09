@@ -24,6 +24,7 @@ export function useActiveSession(uid: string | null) {
   const activeRef = useRef(useWorkoutStore.getState().active)
   const applyingRemoteRef = useRef(false)
   const hadRemoteSessionRef = useRef(false)
+  const hasUnsyncedLocalChangesRef = useRef(false)
   const [ready, setReady] = useState(uid === null)
 
   useEffect(() => {
@@ -62,19 +63,33 @@ export function useActiveSession(uid: string | null) {
         )
 
         if (session) {
+          if (current && hasUnsyncedLocalChangesRef.current && currentSerialized !== nextSerialized) {
+            setReady(true)
+            return
+          }
+
           hadRemoteSessionRef.current = true
           writeActiveSessionBackup(currentUid, session)
 
           if (currentSerialized !== nextSerialized) {
             applyingRemoteRef.current = true
+            hasUnsyncedLocalChangesRef.current = false
             activeRef.current = session
             hydrateFromDoc(session)
+          } else {
+            hasUnsyncedLocalChangesRef.current = false
           }
         } else if (hadRemoteSessionRef.current) {
+          if (current && hasUnsyncedLocalChangesRef.current) {
+            setReady(true)
+            return
+          }
+
           hadRemoteSessionRef.current = false
           clearActiveSessionBackup(currentUid)
           if (current) {
             applyingRemoteRef.current = true
+            hasUnsyncedLocalChangesRef.current = false
             activeRef.current = null
             clearWorkout()
           }
@@ -134,9 +149,13 @@ export function useActiveSession(uid: string | null) {
       }
 
       // If active is null (clearWorkout was called), do not reschedule
-      if (!state.active) return
+      if (!state.active) {
+        hasUnsyncedLocalChangesRef.current = false
+        return
+      }
 
       const snapshot = state.active
+      hasUnsyncedLocalChangesRef.current = true
       writeActiveSessionBackup(currentUid, snapshot)
       timerRef.current = setTimeout(() => {
         saveActiveSession(currentUid, snapshot).catch(console.error)

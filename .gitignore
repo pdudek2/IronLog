@@ -34,6 +34,7 @@ tests/e2e/.auth/
 
 # Mockup screenshots (regenerate with `npm run mockups`)
 mockups/
+deliverables/
 docs/superpowers
 docs/*.md
 CLAUDE.md
@@ -41,6 +42,7 @@ CLAUDE.md
 # Per-developer AI agent instructions
 AGENTS.md
 .mcp.json
+.codex/
 .playwright-mcp/
 
 # TPF dokumentacja i tooling (poza repo)

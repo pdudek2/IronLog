@@ -1,73 +1,124 @@
-# React + TypeScript + Vite
+# IronLog
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Webowa aplikacja do prowadzenia dziennika treningowego, wzorowana na Hevy. Pozwala rejestrować treningi siłowe na żywo, śledzić progres i rekordy, budować własne szablony treningów i rozmawiać z trenerem AI.
 
-Currently, two official plugins are available:
+**Demo (produkcja):** https://ironlog-coach.vercel.app
+Konto testowe: `demo@ironlog.app` / `demo123`
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.
 
-## React Compiler
+## Screeny aplikacji
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+![Widok desktop](docs/screenshots/app/desktop-showcase.png)
 
-## Expanding the ESLint configuration
+![Widok mobilny](docs/screenshots/app/mobile-showcase.png)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Ekran | Screen |
+|---|---|
+| Logowanie | ![Logowanie](docs/screenshots/app/login.png) |
+| Dashboard | ![Dashboard](docs/screenshots/app/dashboard.png) |
+| Aktywny trening | ![Aktywny trening](docs/screenshots/app/workout-new.png) |
+| Historia | ![Historia](docs/screenshots/app/history.png) |
+| Progres | ![Progres](docs/screenshots/app/progress.png) |
+| Szablony | ![Szablony](docs/screenshots/app/templates.png) |
+| Baza ćwiczeń | ![Ćwiczenia](docs/screenshots/app/exercises.png) |
+| Czat AI | ![Czat AI](docs/screenshots/app/chat.png) |
+| Profil | ![Profil](docs/screenshots/app/profile.png) |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Funkcje
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- rejestracja i logowanie (Firebase Authentication, e-mail + hasło),
+- rejestrowanie treningu na żywo: serie, powtórzenia, ciężar, rest timer, prefill na podstawie historii,
+- historia treningów ze szczegółami każdej sesji,
+- wykresy progresu i automatyczne wykrywanie rekordów (PR),
+- szablony treningów + własne ćwiczenia użytkownika,
+- ankieta gotowości (readiness) przed treningiem,
+- czat z trenerem AI z limitem dziennego użycia,
+- responsywny interfejs mobile-first z osobną nawigacją na desktop.
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Stack
+
+- React 19 + TypeScript + Vite
+- React Router 7, Zustand, Framer Motion, Recharts, Tailwind CSS 4
+- Firebase Authentication + Firestore
+- Vercel Serverless Functions (Node.js, Firebase Admin SDK)
+- Hosting: Vercel, auto-deploy z GitHuba
+- Analityka: Google Analytics 4 (`react-ga4`) + Hotjar (`@hotjar/browser`)
+
+## Struktura projektu
+
+```
+src/
+  pages/        # widoki powiązane z trasami (DashboardPage, WorkoutPage, ...)
+  components/   # współdzielone komponenty (TopNav, BottomNav, ExercisePicker, ...)
+    ui/         # podstawowe komponenty reużywalne (Button, Card, Input, LoadingState)
+  router/       # konfiguracja React Router + lazy loading stron
+  store/        # stan globalny (Zustand)
+  lib/          # serwisy: Firebase, auth, analityka, logika Firestore
+  data/         # globalna baza ćwiczeń (seed)
+api/            # endpointy serverless (czat AI, finalizacja treningu)
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Routing
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+Wszystkie ekrany są dostępne przez React Router (nawigacja bez przeładowania strony). Trasy prywatne są chronione — bez zalogowania następuje przekierowanie na `/login`. Strony ładują się lazy (code-splitting per trasa), a widoki prywatne współdzielą jeden layout (`AppLayout`).
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Trasa | Ekran | Dostęp |
+|---|---|---|
+| `/login`, `/register` | logowanie / rejestracja | publiczny |
+| `/onboarding` | konfiguracja konta | prywatny |
+| `/dashboard` | dashboard | prywatny |
+| `/workout/new` | aktywny trening | prywatny |
+| `/workout/:id` | szczegóły treningu | prywatny |
+| `/history` | historia treningów | prywatny |
+| `/progress` | wykresy progresu | prywatny |
+| `/templates`, `/templates/new`, `/templates/:id/edit` | szablony | prywatny |
+| `/exercises`, `/exercises/:source/:id` | baza ćwiczeń | prywatny |
+| `/chat` | czat AI | prywatny |
+| `/profile` | profil | prywatny |
+| `*` | strona 404 | publiczny |
+
+## Logowanie
+
+Uwierzytelnianie przez Firebase Authentication (metoda Email/Password). Stan sesji trzymany jest w store Zustand i zasilany przez `onAuthStateChanged`, więc odświeżenie strony nie wylogowuje użytkownika. Komponenty `PrivateRouteOutlet` / `PublicRouteOutlet` w `src/router/index.tsx` pilnują dostępu do tras.
+
+## Google Analytics
+
+Integracja przez `react-ga4` (`src/lib/analytics.ts`). Ponieważ aplikacja jest SPA i nawigacja nie przeładowuje strony, komponent `AnalyticsListener` wysyła zdarzenie `pageview` przy każdej zmianie trasy (`useLocation`).
+
+Identyfikator pomiaru jest podawany przez zmienną środowiskową `VITE_GA_MEASUREMENT_ID` — bez niej moduł nie inicjalizuje się (dzięki temu środowisko lokalne nie zaśmieca statystyk produkcji).
+
+<!-- TODO: po zebraniu danych z produkcji podmienić na prawdziwe screeny -->
+![Google Analytics — przegląd](docs/screenshots/analytics/ga-overview.png)
+![Google Analytics — strony](docs/screenshots/analytics/ga-pages.png)
+
+## Hotjar
+
+Integracja przez `@hotjar/browser`, inicjalizacja w `src/lib/analytics.ts` przy starcie aplikacji. Site ID podawany przez zmienną `VITE_HOTJAR_SITE_ID`. Hotjar zbiera nagrania sesji i heatmapy kliknięć/scrolla.
+
+<!-- TODO: po zebraniu danych z produkcji podmienić na prawdziwe screeny -->
+![Hotjar — heatmapa](docs/screenshots/analytics/hotjar-heatmap.png)
+![Hotjar — nagrania sesji](docs/screenshots/analytics/hotjar-recordings.png)
+
+## Uruchomienie lokalne
+
+```bash
+npm install
+cp .env.example .env.local   # uzupełnij wartości
+npm run dev                  # frontend (Vite)
+npm run dev:all              # frontend + lokalne API
 ```
+
+Wymagane zmienne środowiskowe — patrz `.env.example`. Konfiguracja Firebase pochodzi z konsoli Firebase (Project settings → Web app). Zmienne analityki (`VITE_GA_MEASUREMENT_ID`, `VITE_HOTJAR_SITE_ID`) są opcjonalne — bez nich analityka jest po prostu wyłączona.
+
+## Testy
+
+```bash
+npm run test:unit    # testy jednostkowe (Vitest)
+npm run test:rules   # testy reguł Firestore (emulator)
+npm run test:e2e     # testy end-to-end (Playwright)
+```
+
+## Deploy
+
+Aplikacja jest wdrożona na Vercel (preset Vite + funkcje serverless w `api/`). Każdy push na `main` uruchamia automatyczny deploy. Zmienne środowiskowe są ustawione w panelu Vercela.

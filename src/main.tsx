@@ -4,8 +4,10 @@ import { Toaster } from 'sonner'
 import './index.css'
 import AppRouter from './router'
 import { initAuthListener } from './lib/auth'
+import { initAnalytics } from './lib/analytics'
 
 initAuthListener()
+initAnalytics()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

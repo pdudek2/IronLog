@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import { useAuthStore } from '../store/authStore'
 import { LoadingState } from '../components/ui'
 import AppLayout from '../components/AppLayout'
+import AnalyticsListener from '../components/AnalyticsListener'
 import {
   loadChatPage,
   loadDashboardPage,
@@ -10,6 +11,7 @@ import {
   loadExercisesPage,
   loadHistoryPage,
   loadLoginPage,
+  loadNotFoundPage,
   loadOnboardingPage,
   loadProfilePage,
   loadProgressPage,
@@ -34,6 +36,7 @@ const TemplatesPage = lazy(loadTemplatesPage)
 const TemplateEditorPage = lazy(loadTemplateEditorPage)
 const ProgressPage = lazy(loadProgressPage)
 const ChatPage = lazy(loadChatPage)
+const NotFoundPage = lazy(loadNotFoundPage)
 
 function PrivateRouteOutlet() {
   const { user, loading } = useAuthStore()
@@ -52,6 +55,7 @@ function PublicRouteOutlet() {
 export default function AppRouter() {
   return (
     <BrowserRouter>
+      <AnalyticsListener />
       <Routes>
         {/* Public (auth) routes — no AppShell */}
         <Route element={<PublicRouteOutlet />}>
@@ -82,7 +86,7 @@ export default function AppRouter() {
           </Route>
         </Route>
 
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </BrowserRouter>
   )

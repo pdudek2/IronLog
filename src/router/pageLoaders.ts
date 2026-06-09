@@ -12,6 +12,7 @@ export const loadTemplatesPage = () => import('../pages/TemplatesPage')
 export const loadTemplateEditorPage = () => import('../pages/TemplateEditorPage')
 export const loadProgressPage = () => import('../pages/ProgressPage')
 export const loadChatPage = () => import('../pages/ChatPage')
+export const loadNotFoundPage = () => import('../pages/NotFoundPage')
 
 let didPreloadPrimaryRoutes = false
 

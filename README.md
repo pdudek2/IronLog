@@ -3,6 +3,7 @@
 Webowa aplikacja do prowadzenia dziennika treningowego, wzorowana na Hevy. Pozwala rejestrować treningi siłowe na żywo, śledzić progres i rekordy, budować własne szablony treningów i rozmawiać z trenerem AI.
 
 **Demo (produkcja):** https://ironlog-coach.vercel.app
+**Repozytorium:** https://github.com/pdudek2/IronLog
 Konto testowe: `demo@ironlog.app` / `demo123`
 
 Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.

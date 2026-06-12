@@ -43,7 +43,7 @@ Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.
 - Firebase Authentication + Firestore
 - Vercel Serverless Functions (Node.js, Firebase Admin SDK)
 - Hosting: Vercel, auto-deploy z GitHuba
-- Analityka: Google Analytics 4 (`react-ga4`) + Hotjar (`@hotjar/browser`)
+- Analityka: Google Analytics 4 (`react-ga4`) + Hotjar (Contentsquare)
 
 ## Struktura projektu
 
@@ -88,7 +88,6 @@ Integracja przez `react-ga4` (`src/lib/analytics.ts`). Ponieważ aplikacja jest 
 
 Identyfikator pomiaru jest podawany przez zmienną środowiskową `VITE_GA_MEASUREMENT_ID` — bez niej moduł nie inicjalizuje się (dzięki temu środowisko lokalne nie zaśmieca statystyk produkcji).
 
-<!-- TODO: po zebraniu danych z produkcji podmienić na prawdziwe screeny -->
 ![Google Analytics — przegląd](docs/screenshots/analytics/ga-overview.png)
 ![Google Analytics — strony](docs/screenshots/analytics/ga-pages.png)
 
@@ -96,7 +95,6 @@ Identyfikator pomiaru jest podawany przez zmienną środowiskową `VITE_GA_MEASU
 
 Hotjar działa obecnie na platformie Contentsquare — nowe konta zamiast numerycznego Site ID dostają tag identyfikowany hashem. Tag jest doładowywany w `src/lib/analytics.ts` przy starcie aplikacji, hash podaje zmienna `VITE_CSQ_TAG_ID`. Narzędzie zbiera nagrania sesji (Session Replay) i heatmapy kliknięć/scrolla.
 
-<!-- TODO: po zebraniu danych z produkcji podmienić na prawdziwe screeny -->
 ![Hotjar — heatmapa](docs/screenshots/analytics/hotjar-heatmap.png)
 ![Hotjar — nagrania sesji](docs/screenshots/analytics/hotjar-recordings.png)
 
@@ -109,7 +107,7 @@ npm run dev                  # frontend (Vite)
 npm run dev:all              # frontend + lokalne API
 ```
 
-Wymagane zmienne środowiskowe — patrz `.env.example`. Konfiguracja Firebase pochodzi z konsoli Firebase (Project settings → Web app). Zmienne analityki (`VITE_GA_MEASUREMENT_ID`, `VITE_HOTJAR_SITE_ID`) są opcjonalne — bez nich analityka jest po prostu wyłączona.
+Wymagane zmienne środowiskowe — patrz `.env.example`. Konfiguracja Firebase pochodzi z konsoli Firebase (Project settings → Web app). Zmienne analityki (`VITE_GA_MEASUREMENT_ID`, `VITE_CSQ_TAG_ID`) są opcjonalne — bez nich analityka jest po prostu wyłączona.
 
 ## Testy
 

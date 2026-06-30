@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import { Toaster } from 'sonner'
 import './index.css'
 import AppRouter from './router'
+import AnalyticsConsentBanner from './components/AnalyticsConsentBanner'
 import { initAuthListener } from './lib/auth'
 import { initAnalytics } from './lib/analytics'
 
@@ -12,6 +13,7 @@ initAnalytics()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <AppRouter />
+    <AnalyticsConsentBanner />
     <Toaster
       theme="dark"
       position="top-center"

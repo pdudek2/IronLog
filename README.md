@@ -44,7 +44,7 @@ Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.
 - Firebase Authentication + Firestore
 - Vercel Serverless Functions (Node.js, Firebase Admin SDK)
 - Hosting: Vercel, auto-deploy z GitHuba
-- Analityka: Google Analytics 4 (`react-ga4`) + Hotjar (Contentsquare)
+- Analityka opcjonalna po zgodzie: Google Analytics 4 (`react-ga4`) + Hotjar/Contentsquare
 
 ## Struktura projektu
 
@@ -85,19 +85,25 @@ Uwierzytelnianie przez Firebase Authentication (metoda Email/Password). Stan ses
 
 ## Google Analytics
 
-Integracja przez `react-ga4` (`src/lib/analytics.ts`). Ponieważ aplikacja jest SPA i nawigacja nie przeładowuje strony, komponent `AnalyticsListener` wysyła zdarzenie `pageview` przy każdej zmianie trasy (`useLocation`).
+Integracja przez `react-ga4` (`src/lib/analytics.ts`). GA4 nie inicjalizuje się przed zgodą użytkownika. Po wybraniu „Akceptuję analitykę” aplikacja uruchamia GA4 i wysyła zdarzenie `pageview` przy zmianie trasy (`AnalyticsListener` + `useLocation`). Przy wyborze „Tylko niezbędne” pageview nie jest wysyłany.
 
-Identyfikator pomiaru jest podawany przez zmienną środowiskową `VITE_GA_MEASUREMENT_ID` — bez niej moduł nie inicjalizuje się (dzięki temu środowisko lokalne nie zaśmieca statystyk produkcji).
+Identyfikator pomiaru jest podawany przez zmienną środowiskową `VITE_GA_MEASUREMENT_ID` — bez niej moduł nie inicjalizuje się nawet po zgodzie.
 
 ![Google Analytics — przegląd](docs/screenshots/analytics/ga-overview.png)
 ![Google Analytics — strony](docs/screenshots/analytics/ga-pages.png)
 
 ## Hotjar (Contentsquare)
 
-Hotjar działa obecnie na platformie Contentsquare — nowe konta zamiast numerycznego Site ID dostają tag identyfikowany hashem. Tag jest doładowywany w `src/lib/analytics.ts` przy starcie aplikacji, hash podaje zmienna `VITE_CSQ_TAG_ID`. Narzędzie zbiera nagrania sesji (Session Replay) i heatmapy kliknięć/scrolla.
+Hotjar działa obecnie na platformie Contentsquare — nowe konta zamiast numerycznego Site ID dostają tag identyfikowany hashem. Skrypt Session Replay/heatmap jest doładowywany dopiero po zgodzie użytkownika, hash podaje zmienna `VITE_CSQ_TAG_ID`. Starszy numeryczny `VITE_HOTJAR_SITE_ID` zostaje jako fallback.
 
 ![Hotjar — heatmapa](docs/screenshots/analytics/hotjar-heatmap.png)
 ![Hotjar — nagrania sesji](docs/screenshots/analytics/hotjar-recordings.png)
+
+## Prywatność i zgoda
+
+Zgoda na analitykę jest zapisywana lokalnie w przeglądarce (`localStorage`) jako wybór `granted` albo `denied`. Brak wyboru oznacza brak inicjalizacji GA4 i Contentsquare/Hotjar. Użytkownik może zmienić zgodę w profilu.
+
+Klucz Claude w modelu BYOK również jest przechowywany lokalnie w przeglądarce. Nie zapisujemy go w Firestore; backend serverless używa go tylko do obsłużenia bieżącego zapytania do Anthropic.
 
 ## AI Coach
 

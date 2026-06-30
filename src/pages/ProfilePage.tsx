@@ -7,6 +7,8 @@ import { getProfile, updateProfile, type PrimaryGoal, type Units } from '../lib/
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { Button, Card, Input, LoadingState } from '../components/ui'
+import { setAnalyticsConsentPreference } from '../lib/analytics'
+import { getAnalyticsConsent, type AnalyticsConsent } from '../lib/analyticsConsent'
 
 const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
   { value: 'strength',    label: 'Siła',           desc: 'Maksymalne ciężary, niskie powtórzenia' },
@@ -30,6 +32,7 @@ export default function ProfilePage() {
   const [bootstrapping, setBootstrapping] = useState(() => Boolean(user && !profile))
   const [profileLoadError, setProfileLoadError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
+  const [analyticsConsent, setAnalyticsConsentState] = useState<AnalyticsConsent | null>(() => getAnalyticsConsent())
 
   useEffect(() => {
     let cancelled = false
@@ -87,6 +90,12 @@ export default function ProfilePage() {
     setWeeklyGoal(profile.weeklyGoal ?? 3)
     setUnits(profile.units ?? 'kg')
   }, [profile])
+
+  function handleAnalyticsConsentChange(consent: AnalyticsConsent) {
+    setAnalyticsConsentPreference(consent)
+    setAnalyticsConsentState(consent)
+    toast.success(consent === 'granted' ? 'Analityka włączona' : 'Analityka ograniczona do niezbędnej')
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -259,6 +268,45 @@ export default function ProfilePage() {
                     {u}
                   </button>
                 ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3 border-t pt-5" style={{ borderColor: 'var(--border)' }}>
+              <div>
+                <p className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Prywatność</p>
+                <p className="mt-1 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                  GA4 i Contentsquare uruchamiają się tylko po zgodzie. Możesz ją zmienić w dowolnym momencie.
+                </p>
+              </div>
+
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => handleAnalyticsConsentChange('granted')}
+                  aria-pressed={analyticsConsent === 'granted'}
+                  className="rounded-[var(--radius-md)] px-3 py-3 text-sm font-semibold transition-all"
+                  style={{
+                    background: analyticsConsent === 'granted' ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${analyticsConsent === 'granted' ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
+                    color: analyticsConsent === 'granted' ? 'var(--text-strong)' : 'var(--text)',
+                  }}
+                >
+                  Akceptuję analitykę
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleAnalyticsConsentChange('denied')}
+                  aria-pressed={analyticsConsent === 'denied'}
+                  className="rounded-[var(--radius-md)] px-3 py-3 text-sm font-semibold transition-all"
+                  style={{
+                    background: analyticsConsent === 'denied' || analyticsConsent === null ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${analyticsConsent === 'denied' || analyticsConsent === null ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
+                    color: analyticsConsent === 'denied' || analyticsConsent === null ? 'var(--text-strong)' : 'var(--text)',
+                  }}
+                >
+                  Tylko niezbędne
+                </button>
               </div>
             </div>
 

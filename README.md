@@ -34,7 +34,7 @@ Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.
 - wykresy progresu i automatyczne wykrywanie rekordów (PR),
 - szablony treningów + własne ćwiczenia użytkownika,
 - ankieta gotowości (readiness) przed treningiem,
-- czat z trenerem AI z limitem dziennego użycia,
+- czat z trenerem AI przez własny klucz Claude (BYOK) z lekkim limitem per instancja,
 - responsywny interfejs mobile-first z osobną nawigacją na desktop.
 
 ## Stack
@@ -98,6 +98,12 @@ Hotjar działa obecnie na platformie Contentsquare — nowe konta zamiast numery
 
 ![Hotjar — heatmapa](docs/screenshots/analytics/hotjar-heatmap.png)
 ![Hotjar — nagrania sesji](docs/screenshots/analytics/hotjar-recordings.png)
+
+## AI Coach
+
+Czat AI działa w modelu BYOK: użytkownik podaje własny klucz Claude, który jest przechowywany lokalnie w przeglądarce. Backend serverless pośredniczy w wywołaniach Anthropic i dodaje kontekst profilu, gotowości, ostatnich sesji oraz rekordów.
+
+Obecny limit jest lekki i procesowy (`8/min` na użytkownika + IP w pamięci instancji serverless). Nie jest to jeszcze trwały dzienny limit produktowy: kolekcja `dailyAiUsage` nie jest obecnie używana, a wiadomości czatu nie są persystowane w `chatMessages`.
 
 ## Uruchomienie lokalne
 

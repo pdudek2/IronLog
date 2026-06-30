@@ -615,6 +615,7 @@ export default function WorkoutDetailPage() {
                                 min="0"
                                 value={set.weight}
                                 onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'weight', e.target.value)}
+                                aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, kg`}
                                 className="w-full min-w-0 rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
                                 style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                               />
@@ -625,6 +626,7 @@ export default function WorkoutDetailPage() {
                                 min="0"
                                 value={set.reps}
                                 onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'reps', e.target.value)}
+                                aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
                                 className="w-full min-w-0 rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
                                 style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                               />

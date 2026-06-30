@@ -200,6 +200,7 @@ export default function WorkoutPage() {
   const [saveError, setSaveError] = useState('')
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
+  const [pendingExerciseRemovalIndex, setPendingExerciseRemovalIndex] = useState<number | null>(null)
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
   const [suggestions, setSuggestions] = useState<Record<string, OverloadSuggestion | null>>({})
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
@@ -379,6 +380,26 @@ export default function WorkoutPage() {
 
   function handleDiscard() {
     setConfirmDiscard(true)
+  }
+
+  function exerciseHasEnteredSets(exerciseIndex: number): boolean {
+    const exercise = active?.exercises[exerciseIndex]
+    if (!exercise) return false
+    return exercise.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
+  }
+
+  function handleRemoveExercise(exerciseIndex: number) {
+    if (exerciseHasEnteredSets(exerciseIndex)) {
+      setPendingExerciseRemovalIndex(exerciseIndex)
+      return
+    }
+    removeExercise(exerciseIndex)
+  }
+
+  function handleConfirmRemoveExercise() {
+    if (pendingExerciseRemovalIndex === null) return
+    removeExercise(pendingExerciseRemovalIndex)
+    setPendingExerciseRemovalIndex(null)
   }
 
   async function handleConfirmDiscard() {
@@ -819,7 +840,7 @@ export default function WorkoutPage() {
                           <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">{exercise.name}</p>
                         </div>
                         <button
-                          onClick={() => removeExercise(exerciseIndex)}
+                          onClick={() => handleRemoveExercise(exerciseIndex)}
                           className="flex-none text-xs transition-opacity hover:opacity-70"
                           style={{ color: 'var(--muted)' }}
                         >
@@ -906,6 +927,7 @@ export default function WorkoutPage() {
                                   placeholder="0"
                                   value={set.weight}
                                   onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', e.target.value)}
+                                  aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, ${units}`}
                                   className={`px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'opacity-70' : ''}`}
                                   style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                                 />
@@ -915,6 +937,7 @@ export default function WorkoutPage() {
                                   placeholder="0"
                                   value={set.reps}
                                   onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
+                                  aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
                                   className={`px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'opacity-70' : ''}`}
                                   style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                                 />
@@ -1105,6 +1128,18 @@ export default function WorkoutPage() {
           confirmLabel="Zapisz"
           onConfirm={() => { setConfirmFinishEmpty(false); void doFinish() }}
           onCancel={() => setConfirmFinishEmpty(false)}
+        />
+      )}
+
+      {pendingExerciseRemovalIndex !== null && (
+        <ConfirmDialog
+          title="Usunąć ćwiczenie?"
+          message="To usunie ćwiczenie wraz z wpisanymi seriami z aktywnej sesji."
+          confirmLabel="Usuń ćwiczenie"
+          cancelLabel="Zostaw"
+          danger
+          onConfirm={handleConfirmRemoveExercise}
+          onCancel={() => setPendingExerciseRemovalIndex(null)}
         />
       )}
     </>

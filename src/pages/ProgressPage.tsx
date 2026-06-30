@@ -18,8 +18,13 @@ import {
   aggregateWeeklyVolume,
   getProgressSessions,
   getRecords,
+  type HeatmapDay,
+  type MuscleBalancePoint,
   type ProgressSessionLite,
   type RecordSummary,
+  type StrengthPoint,
+  type StrengthSeries,
+  type WeeklyPoint,
 } from '../lib/progressService'
 
 const RANGE_OPTIONS = [
@@ -73,6 +78,60 @@ function formatVolume(kg: number): string {
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
+}
+
+function summarizeWeeklyVolume(data: WeeklyPoint[]): string {
+  if (data.length === 0) return 'Wolumen treningowy: brak danych w wybranym zakresie.'
+
+  const first = data[0]
+  if (!first) return 'Wolumen treningowy: brak danych w wybranym zakresie.'
+
+  const total = data.reduce((sum, point) => sum + point.volume, 0)
+  const peak = data.reduce((top, point) => point.volume > top.volume ? point : top, first)
+  const firstWeek = first.weekLabel
+  const lastWeek = data[data.length - 1]?.weekLabel ?? 'koniec zakresu'
+
+  return `Wolumen treningowy od ${firstWeek} do ${lastWeek}. Łącznie ${formatVolume(total)}. Najwyższy tydzień: ${peak.weekLabel}, ${formatVolume(peak.volume)}.`
+}
+
+function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSeries[]): string {
+  if (data.length === 0 || series.length === 0) return 'Progresja ciężaru: brak danych do wykresu.'
+
+  const summaries = series.slice(0, 5).map(({ exerciseName }) => {
+    const values = data
+      .map((point) => Number(point[exerciseName] ?? 0))
+      .filter((value) => value > 0)
+    const latest = [...data]
+      .reverse()
+      .map((point) => Number(point[exerciseName] ?? 0))
+      .find((value) => value > 0) ?? 0
+    const top = values.length ? Math.max(...values) : 0
+    return `${exerciseName}: ostatnio ${latest} kg, max ${top} kg`
+  })
+
+  return `Progresja ciężaru dla ${series.length} ćwiczeń. ${summaries.join('; ')}.`
+}
+
+function summarizeMuscleBalance(data: MuscleBalancePoint[]): string {
+  if (data.length === 0) return 'Balans partii mięśniowych: brak danych.'
+
+  const top = data[0]
+  if (!top) return 'Balans partii mięśniowych: brak danych.'
+  const total = data.reduce((sum, point) => sum + point.count, 0)
+  const muscleName = MUSCLE_PL[top.muscle] ?? top.muscle
+
+  return `Balans partii mięśniowych. Najczęściej trenowana partia: ${muscleName}, ${top.count} wpisów. Łącznie ${total} wpisów w zestawieniu.`
+}
+
+function summarizeActivityHeatmap(data: HeatmapDay[]): string {
+  const activeDays = data.filter((cell) => cell.volume > 0)
+  if (activeDays.length === 0) return 'Kalendarz treningów: brak aktywnych dni w wybranym zakresie.'
+
+  const first = activeDays[0]
+  if (!first) return 'Kalendarz treningów: brak aktywnych dni w wybranym zakresie.'
+  const peak = activeDays.reduce((top, cell) => cell.volume > top.volume ? cell : top, first)
+
+  return `Kalendarz treningów z ostatnich 12 tygodni. Aktywne dni: ${activeDays.length}. Największy dzień: ${peak.date}, ${formatVolume(peak.volume)}.`
 }
 
 interface DarkTooltipProps {
@@ -179,6 +238,13 @@ export default function ProgressPage() {
     () => aggregateActivityHeatmap(currentSessions, 12),
     [currentSessions],
   )
+  const weeklyVolumeLabel = useMemo(() => summarizeWeeklyVolume(weeklyData), [weeklyData])
+  const strengthProgressionLabel = useMemo(
+    () => summarizeStrengthProgression(strengthData.data, strengthData.series),
+    [strengthData.data, strengthData.series],
+  )
+  const muscleBalanceLabel = useMemo(() => summarizeMuscleBalance(muscleData), [muscleData])
+  const activityHeatmapLabel = useMemo(() => summarizeActivityHeatmap(heatmapData), [heatmapData])
 
   const totalVolume = useMemo(
     () => currentSessions.reduce((sum, s) => sum + s.totalVolume, 0),
@@ -313,7 +379,7 @@ export default function ProgressPage() {
           >
             <p className="eyebrow mb-1">Objętość</p>
             <p className="section-title mb-5">Wolumen treningowy</p>
-            <div className="h-[180px] sm:h-[220px]">
+            <div className="h-[180px] sm:h-[220px]" role="img" aria-label={weeklyVolumeLabel}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <defs>
@@ -393,7 +459,7 @@ export default function ProgressPage() {
           >
             <p className="eyebrow mb-1">Siła</p>
             <p className="section-title mb-5">Progresja ciężaru</p>
-            <div className="h-[190px] sm:h-[240px]">
+            <div className="h-[190px] sm:h-[240px]" role="img" aria-label={strengthProgressionLabel}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart data={strengthData.data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
@@ -450,7 +516,7 @@ export default function ProgressPage() {
           >
             <p className="eyebrow mb-1">Balans</p>
             <p className="section-title mb-5">Partie mięśniowe</p>
-            <div style={{ height: muscleData.length * 38 + 16 }}>
+            <div style={{ height: muscleData.length * 38 + 16 }} role="img" aria-label={muscleBalanceLabel}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <BarChart
                   data={muscleData}
@@ -498,7 +564,7 @@ export default function ProgressPage() {
           >
             <p className="eyebrow mb-1">Aktywność</p>
             <p className="section-title mb-5">Kalendarz treningów</p>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" role="img" aria-label={activityHeatmapLabel}>
               <div
                 style={{
                   display: 'grid',

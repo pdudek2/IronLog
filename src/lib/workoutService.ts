@@ -13,7 +13,7 @@ import {
   startAfter,
   where,
 } from 'firebase/firestore'
-import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
+import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
 import { auth, db } from './firebase'
 
 interface WorkoutSetSummary {
@@ -186,14 +186,15 @@ export function calcVolume(workout: WorkoutSummary): number {
 }
 
 function buildWorkoutPayload(uid: string, workout: ActiveWorkout) {
+  const persistableWorkout = stripWorkoutClientIds(workout)
   return {
     userId: uid,
-    templateId: workout.templateId ?? null,
-    startedAt: workout.startedAt,
+    templateId: persistableWorkout.templateId ?? null,
+    startedAt: persistableWorkout.startedAt,
     finishedAt: Date.now(),
     materialized: false,
-    label: workout.label?.trim() ? workout.label : null,
-    exercises: workout.exercises.map((exercise) => ({
+    label: persistableWorkout.label?.trim() ? persistableWorkout.label : null,
+    exercises: persistableWorkout.exercises.map((exercise) => ({
       exerciseId: exercise.exerciseId,
       exerciseSource: exercise.exerciseSource,
       name: exercise.name,

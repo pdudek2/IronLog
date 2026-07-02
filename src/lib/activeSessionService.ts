@@ -1,6 +1,6 @@
 import { deleteDoc, doc, getDoc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
-import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
+import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
 
 interface ActiveSessionSnapshot {
   session: ActiveWorkout | null
@@ -30,12 +30,13 @@ export function subscribeToActiveSession(
 }
 
 export async function saveActiveSession(uid: string, workout: ActiveWorkout): Promise<void> {
+  const persistableWorkout = stripWorkoutClientIds(workout)
   await setDoc(activeSessionRef(uid), {
     userId: uid,
-    startedAt: workout.startedAt,
-    templateId: typeof workout.templateId === 'string' ? workout.templateId : null,
-    label: workout.label?.trim() || null,
-    exercises: workout.exercises,
+    startedAt: persistableWorkout.startedAt,
+    templateId: typeof persistableWorkout.templateId === 'string' ? persistableWorkout.templateId : null,
+    label: persistableWorkout.label?.trim() || null,
+    exercises: persistableWorkout.exercises,
     updatedAt: Date.now(),
   })
 }

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useWorkoutStore } from './workoutStore'
+import { stripWorkoutClientIds, useWorkoutStore } from './workoutStore'
 
 describe('workoutStore set steppers', () => {
   beforeEach(() => {
@@ -48,5 +48,72 @@ describe('workoutStore set steppers', () => {
     adjustSet(0, 0, 'reps', -5)
 
     expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.reps).toBe('0')
+  })
+})
+
+describe('workoutStore client IDs', () => {
+  beforeEach(() => {
+    useWorkoutStore.setState({ active: null })
+  })
+
+  it('creates client IDs for new exercises and sets', () => {
+    const store = useWorkoutStore.getState()
+    store.startWorkout()
+    useWorkoutStore.getState().addExercise('bench-press', 'Bench Press', 'global')
+
+    const exercise = useWorkoutStore.getState().active?.exercises[0]
+
+    expect(exercise?.clientId).toMatch(/^exercise-/)
+    expect(exercise?.sets[0]?.clientId).toMatch(/^set-/)
+  })
+
+  it('adds missing client IDs when hydrating an active session', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      startedAt: 1,
+      exercises: [
+        {
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: [{ weight: '80', reps: '5', done: false }],
+        },
+      ],
+    })
+
+    const exercise = useWorkoutStore.getState().active?.exercises[0]
+
+    expect(exercise?.clientId).toMatch(/^exercise-/)
+    expect(exercise?.sets[0]?.clientId).toMatch(/^set-/)
+  })
+
+  it('keeps remaining set client IDs stable when removing a set', () => {
+    const store = useWorkoutStore.getState()
+    store.startWorkout()
+    useWorkoutStore.getState().addExercise('bench-press', 'Bench Press', 'global')
+    useWorkoutStore.getState().addSet(0)
+
+    const secondSetId = useWorkoutStore.getState().active?.exercises[0]?.sets[1]?.clientId
+
+    useWorkoutStore.getState().removeSet(0, 0)
+
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.clientId).toBe(secondSetId)
+  })
+
+  it('strips client IDs before persistence', () => {
+    const clean = stripWorkoutClientIds({
+      startedAt: 1,
+      exercises: [
+        {
+          clientId: 'exercise-local',
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: [{ clientId: 'set-local', weight: '80', reps: '5', done: true }],
+        },
+      ],
+    })
+
+    expect(clean.exercises[0]).not.toHaveProperty('clientId')
+    expect(clean.exercises[0]?.sets[0]).not.toHaveProperty('clientId')
   })
 })

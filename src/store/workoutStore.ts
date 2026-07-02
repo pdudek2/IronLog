@@ -3,12 +3,14 @@ import { create } from 'zustand'
 export type ExerciseSource = 'global' | 'user'
 
 export interface WorkoutSet {
+  clientId?: string
   weight: string
   reps: string
   done: boolean
 }
 
 export interface WorkoutExercise {
+  clientId?: string
   exerciseId: string
   exerciseSource: ExerciseSource
   name: string
@@ -37,7 +39,44 @@ interface WorkoutState {
   clearWorkout: () => void
 }
 
-const emptySet = (): WorkoutSet => ({ weight: '', reps: '', done: false })
+let clientIdCounter = 0
+
+function createClientId(prefix: 'exercise' | 'set'): string {
+  clientIdCounter += 1
+  return `${prefix}-${Date.now().toString(36)}-${clientIdCounter.toString(36)}`
+}
+
+const emptySet = (): WorkoutSet => ({ clientId: createClientId('set'), weight: '', reps: '', done: false })
+
+function withClientIds(workout: ActiveWorkout): ActiveWorkout {
+  return {
+    ...workout,
+    exercises: workout.exercises.map((exercise) => ({
+      ...exercise,
+      clientId: exercise.clientId ?? createClientId('exercise'),
+      sets: exercise.sets.map((set) => ({
+        ...set,
+        clientId: set.clientId ?? createClientId('set'),
+      })),
+    })),
+  }
+}
+
+export function stripWorkoutClientIds(workout: ActiveWorkout): ActiveWorkout {
+  return {
+    ...workout,
+    exercises: workout.exercises.map((exercise) => ({
+      exerciseId: exercise.exerciseId,
+      exerciseSource: exercise.exerciseSource,
+      name: exercise.name,
+      sets: exercise.sets.map((set) => ({
+        weight: set.weight,
+        reps: set.reps,
+        done: set.done,
+      })),
+    })),
+  }
+}
 
 function parseSetNumber(value: string, field: 'weight' | 'reps'): number {
   const parsed = field === 'weight'
@@ -60,7 +99,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
     set({ active: { startedAt: Date.now(), templateId: null, exercises: [] } }),
 
   hydrateFromDoc: (workout) =>
-    set({ active: workout }),
+    set({ active: withClientIds(workout) }),
 
   setLabel: (label) =>
     set((s) => s.active ? { active: { ...s.active, label } } : s),
@@ -71,7 +110,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
       return {
         active: {
           ...s.active,
-          exercises: [...s.active.exercises, { exerciseId, exerciseSource: source, name, sets: [emptySet()] }],
+          exercises: [...s.active.exercises, { clientId: createClientId('exercise'), exerciseId, exerciseSource: source, name, sets: [emptySet()] }],
         },
       }
     }),
@@ -83,7 +122,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
         if (i !== exerciseIndex) return ex
         const lastSet = ex.sets.length > 0 ? ex.sets[ex.sets.length - 1] : null
         const newSet: WorkoutSet = lastSet && (lastSet.weight || lastSet.reps)
-          ? { weight: lastSet.weight, reps: lastSet.reps, done: false }
+          ? { clientId: createClientId('set'), weight: lastSet.weight, reps: lastSet.reps, done: false }
           : emptySet()
         return { ...ex, sets: [...ex.sets, newSet] }
       })

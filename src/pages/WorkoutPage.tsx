@@ -810,7 +810,7 @@ export default function WorkoutPage() {
 
                   return (
                     <motion.div
-                      key={exerciseIndex}
+                      key={exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
                       className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -897,7 +897,7 @@ export default function WorkoutPage() {
                           const setVolume = calcSetVolume(set)
                           return (
                             <div
-                              key={setIndex}
+                              key={set.clientId ?? setIndex}
                               className="rounded-[var(--radius-lg)] border p-2.5"
                               style={{
                                 background: set.done ? 'rgba(25,213,159,0.12)' : 'rgba(255,255,255,0.025)',

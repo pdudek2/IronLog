@@ -50,7 +50,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   try {
     const userId = await requireUserId(req)
     const ip = getClientIp(req)
-    assertRateLimit({ key: `models:${userId}:${ip}`, limit: 12, windowMs: 60_000 })
+    await assertRateLimit({ key: `models:${userId}:${ip}`, limit: 12, windowMs: 60_000 })
 
     const body = await readJsonBody<AiModelsBody>(req, { maxBytes: 16 * 1024 })
     const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''

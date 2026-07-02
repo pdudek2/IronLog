@@ -2,6 +2,12 @@ import { adminDb } from './lib/firebaseAdmin.js'
 import { requireUserId } from './lib/auth.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
+import {
+  buildAiUserContext,
+  buildChatContextSections,
+  createEmptyAiUserContext,
+  type AiUserContext,
+} from './lib/aiContext.js'
 
 export const config = {
   maxDuration: 30,
@@ -32,36 +38,6 @@ interface NormalizedMessage {
   content: string
 }
 
-interface UserContext {
-  displayName: string | null
-  primaryGoal: string | null
-  weeklyGoal: number | null
-  units: string | null
-  readiness: {
-    score: number
-    label: string
-    date: string
-  } | null
-  recentWorkouts: Array<{
-    label: string
-    startedAt: number
-    exerciseCount: number
-    totalVolume: number
-    exercises: Array<{
-      name: string
-      setCount: number
-      totalVolume: number
-      setsSummary: string
-    }>
-  }>
-  topRecords: Array<{
-    exerciseName: string
-    maxWeight: number
-    maxReps: number
-    bestVolume: number
-  }>
-}
-
 interface PlanExercise {
   exerciseId: string
   exerciseSource: 'global' | 'user'
@@ -87,18 +63,6 @@ interface AvailableExercise {
   equipment: string
   category: string
   muscles: string[]
-}
-
-function createEmptyUserContext(): UserContext {
-  return {
-    displayName: null,
-    primaryGoal: null,
-    weeklyGoal: null,
-    units: null,
-    readiness: null,
-    recentWorkouts: [],
-    topRecords: [],
-  }
 }
 
 async function loadGlobalExercises() {
@@ -137,74 +101,6 @@ function sanitizeMessages(raw: IncomingChatMessage[] | undefined): NormalizedMes
     .slice(-12)
 }
 
-function computeReadinessScore(entry: { sleep: number; mood: number; soreness: number }) {
-  const raw = entry.sleep * 0.4 + entry.mood * 0.3 + (6 - entry.soreness) * 0.3
-  const score = Math.round(((raw - 1) / 4) * 100)
-
-  if (score >= 70) return { score, label: 'Gotowy' }
-  if (score >= 40) return { score, label: 'Umiarkowany' }
-  return { score, label: 'Odpoczynek' }
-}
-
-function calcWorkoutVolume(exercises: unknown): number {
-  if (!Array.isArray(exercises)) return 0
-
-  return exercises.reduce((total, exercise) => {
-    if (typeof exercise !== 'object' || exercise === null) return total
-
-    const record = exercise as Record<string, unknown>
-    const sets = Array.isArray(record.sets) ? record.sets : []
-
-    return total + sets.reduce((sum, set) => {
-      if (typeof set !== 'object' || set === null) return sum
-      const setRecord = set as Record<string, unknown>
-      const weight = typeof setRecord.weight === 'number' ? setRecord.weight : Number(setRecord.weight ?? 0)
-      const reps = typeof setRecord.reps === 'number' ? setRecord.reps : Number(setRecord.reps ?? 0)
-      return sum + (Number.isFinite(weight) ? weight : 0) * (Number.isFinite(reps) ? reps : 0)
-    }, 0)
-  }, 0)
-}
-
-function summarizeWorkoutExercises(exercises: unknown) {
-  if (!Array.isArray(exercises)) return []
-
-  return exercises.flatMap((exercise) => {
-    if (typeof exercise !== 'object' || exercise === null) return []
-
-    const record = exercise as Record<string, unknown>
-    const name = typeof record.name === 'string' && record.name.trim() ? record.name.trim() : ''
-    const sets = Array.isArray(record.sets) ? record.sets : []
-
-    if (!name || sets.length === 0) return []
-
-    const normalizedSets = sets.flatMap((set) => {
-      if (typeof set !== 'object' || set === null) return []
-      const setRecord = set as Record<string, unknown>
-      const weight = typeof setRecord.weight === 'number' ? setRecord.weight : Number(setRecord.weight ?? 0)
-      const reps = typeof setRecord.reps === 'number' ? setRecord.reps : Number(setRecord.reps ?? 0)
-      const safeWeight = Number.isFinite(weight) ? Math.max(0, weight) : 0
-      const safeReps = Number.isFinite(reps) ? Math.max(0, reps) : 0
-
-      if (safeReps <= 0) return []
-
-      return [{ weight: safeWeight, reps: safeReps }]
-    })
-
-    if (normalizedSets.length === 0) return []
-
-    const totalVolume = normalizedSets.reduce((sum, set) => sum + set.weight * set.reps, 0)
-
-    return [{
-      name,
-      setCount: normalizedSets.length,
-      totalVolume,
-      setsSummary: normalizedSets
-        .map((set) => `${set.weight} x ${set.reps}`)
-        .join(', '),
-    }]
-  })
-}
-
 function normalizePlanRequest(raw: AiChatBody['planRequest']) {
   const goal = typeof raw?.goal === 'string' ? raw.goal.trim() : ''
   const daysPerWeek = clampInteger(raw?.daysPerWeek, 3, 2, 6)
@@ -227,69 +123,65 @@ function normalizePlanRequest(raw: AiChatBody['planRequest']) {
   return { goal, daysPerWeek, experience, focus, notes, equipment }
 }
 
-async function fetchUserContext(uid: string): Promise<UserContext> {
+async function fetchUserContext(uid: string): Promise<AiUserContext> {
+  const readinessRefs = recentReadinessDateKeys(Date.now(), 32)
+    .map((dateKey) => adminDb.collection('readiness').doc(`${uid}_${dateKey}`))
   const [profileSnap, readinessSnap, workoutsSnap, recordsSnap] = await Promise.all([
     adminDb.collection('users').doc(uid).get(),
-    adminDb.collection('readiness').where('userId', '==', uid).get(),
-    adminDb.collection('workouts').where('userId', '==', uid).orderBy('startedAt', 'desc').limit(3).get(),
-    adminDb.collection('records').where('userId', '==', uid).get(),
+    Promise.all(readinessRefs.map((ref) => ref.get())),
+    adminDb.collection('workouts').where('userId', '==', uid).orderBy('startedAt', 'desc').limit(60).get(),
+    adminDb.collection('records').where('userId', '==', uid).limit(100).get(),
   ])
 
   const profile = profileSnap.exists ? profileSnap.data() : null
 
-  const latestReadiness = readinessSnap.docs
-    .map((docSnap) => docSnap.data())
-    .sort((a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0))[0]
-
-  const readiness = latestReadiness
-    ? {
-        ...computeReadinessScore({
-          sleep: Number(latestReadiness.sleep ?? 3),
-          mood: Number(latestReadiness.mood ?? 3),
-          soreness: Number(latestReadiness.soreness ?? 3),
-        }),
-        date: String(latestReadiness.date ?? ''),
-      }
-    : null
-
-  const recentWorkouts = workoutsSnap.docs
-    .map((docSnap) => {
+  return buildAiUserContext({
+    profile: {
+      displayName: typeof profile?.displayName === 'string' ? profile.displayName : null,
+      primaryGoal: typeof profile?.primaryGoal === 'string' ? profile.primaryGoal : null,
+      weeklyGoal: typeof profile?.weeklyGoal === 'number' ? profile.weeklyGoal : null,
+      units: typeof profile?.units === 'string' ? profile.units : null,
+    },
+    readinessEntries: readinessSnap.flatMap((docSnap) => {
+      if (!docSnap.exists) return []
+      const data = docSnap.data() ?? {}
+      return [{
+        date: typeof data.date === 'string' ? data.date : '',
+        createdAt: Number(data.createdAt ?? 0),
+        sleep: Number(data.sleep ?? 3),
+        mood: Number(data.mood ?? 3),
+        soreness: Number(data.soreness ?? 3),
+      }]
+    }),
+    workouts: workoutsSnap.docs.map((docSnap) => {
       const data = docSnap.data()
-      const label = typeof data.label === 'string' && data.label.trim() ? data.label.trim() : 'Sesja'
-      const startedAt = Number(data.startedAt ?? 0)
-      const exercises = Array.isArray(data.exercises) ? data.exercises : []
-
       return {
-        label,
-        startedAt,
-        exerciseCount: exercises.length,
-        totalVolume: calcWorkoutVolume(exercises),
-        exercises: summarizeWorkoutExercises(exercises),
+        label: typeof data.label === 'string' ? data.label : null,
+        startedAt: Number(data.startedAt ?? 0),
+        exercises: Array.isArray(data.exercises) ? data.exercises : [],
       }
-    })
-
-  const topRecords = recordsSnap.docs
-    .map((docSnap) => {
+    }),
+    records: recordsSnap.docs.map((docSnap) => {
       const data = docSnap.data()
       return {
         exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : 'Ćwiczenie',
         maxWeight: Number(data.maxWeight ?? 0),
         maxReps: Number(data.maxReps ?? 0),
         bestVolume: Number(data.bestVolume ?? 0),
+        lastPerformedAt: Number(data.lastPerformedAt ?? 0),
       }
-    })
-    .sort((a, b) => b.maxWeight - a.maxWeight)
-    .slice(0, 4)
+    }),
+  })
+}
 
-  return {
-    displayName: typeof profile?.displayName === 'string' ? profile.displayName : null,
-    primaryGoal: typeof profile?.primaryGoal === 'string' ? profile.primaryGoal : null,
-    weeklyGoal: typeof profile?.weeklyGoal === 'number' ? profile.weeklyGoal : null,
-    units: typeof profile?.units === 'string' ? profile.units : null,
-    readiness,
-    recentWorkouts,
-    topRecords,
-  }
+function recentReadinessDateKeys(now: number, days: number): string[] {
+  return Array.from({ length: days }, (_, index) => {
+    const date = new Date(now - index * 24 * 60 * 60 * 1000)
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  })
 }
 
 async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]> {
@@ -323,12 +215,12 @@ async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]
   return [...fromGlobal, ...fromUser]
 }
 
-async function fetchUserContextSafe(uid: string): Promise<UserContext> {
+async function fetchUserContextSafe(uid: string): Promise<AiUserContext> {
   try {
     return await fetchUserContext(uid)
   } catch (error) {
     console.error('[ai-chat context error]', error)
-    return createEmptyUserContext()
+    return createEmptyAiUserContext()
   }
 }
 
@@ -349,41 +241,8 @@ async function fetchAvailableExercisesSafe(uid: string): Promise<AvailableExerci
   }
 }
 
-function buildSystemPrompt(context: UserContext): string {
-  const profileLine = [
-    context.displayName ? `Użytkownik: ${context.displayName}` : null,
-    context.primaryGoal ? `Cel główny: ${context.primaryGoal}` : null,
-    context.weeklyGoal ? `Cel tygodniowy: ${context.weeklyGoal} sesje` : null,
-    context.units ? `Jednostki: ${context.units}` : null,
-  ].filter(Boolean).join(' | ')
-
-  const readinessLine = context.readiness
-    ? `Readiness: ${context.readiness.score}/100 (${context.readiness.label}), dzień ${context.readiness.date}`
-    : 'Readiness: brak dzisiejszego lub ostatniego wpisu.'
-
-  const workoutsLine = context.recentWorkouts.length > 0
-    ? context.recentWorkouts
-        .map((workout) => {
-          const date = new Date(workout.startedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
-          const exerciseLines = workout.exercises.length > 0
-            ? workout.exercises
-                .map((exercise) => `  - ${exercise.name}: ${exercise.setCount} serie, ${exercise.totalVolume} kg volume, sety [${exercise.setsSummary}]`)
-                .join('\n')
-            : '  - brak szczegółów ćwiczeń'
-
-          return [
-            `${date} — ${workout.label} — ${workout.exerciseCount} ćwiczeń — ${workout.totalVolume} kg`,
-            exerciseLines,
-          ].join('\n')
-        })
-        .join('\n')
-    : 'Brak ostatnich treningów.'
-
-  const recordsLine = context.topRecords.length > 0
-    ? context.topRecords
-        .map((record) => `${record.exerciseName}: max ${record.maxWeight} kg, reps ${record.maxReps}, volume ${record.bestVolume}`)
-        .join('\n')
-    : 'Brak rekordów.'
+function buildSystemPrompt(context: AiUserContext): string {
+  const sections = buildChatContextSections(context)
 
   return [
     'Jesteś AI Coachem aplikacji IronLog.',
@@ -391,7 +250,8 @@ function buildSystemPrompt(context: UserContext): string {
     'Bazuj wyłącznie na danych z kontekstu, a jeśli czegoś brakuje, powiedz to wprost.',
     'Nie diagnozuj medycznie i nie udawaj lekarza. Przy bólu, kontuzji lub niepokojących objawach kieruj do specjalisty.',
     'Jeśli użytkownik pyta o plan lub progres, odnoś się do jego celu, readiness i ostatnich sesji.',
-    'Jeśli w sekcji OSTATNIE TRENINGI widzisz ćwiczenia i sety, traktuj to jako dostęp do szczegółów sesji i nie proś ponownie o listę ćwiczeń.',
+    'Jeśli w sekcji OSTATNIE 4 TRENINGI widzisz ćwiczenia i sety, traktuj to jako dostęp do szczegółów sesji i nie proś ponownie o listę ćwiczeń.',
+    'Jeśli użytkownik pyta o miesiąc, spadki formy lub gorsze momenty, korzystaj z sekcji SYGNAŁY Z OSTATNICH 30 DNI.',
     'Nie streszczaj samych danych. Każda odpowiedź ma prowadzić do wniosku, decyzji albo poprawki na kolejny trening.',
     'Używaj krótkiego markdownu: krótkie nagłówki, zwięzłe bullet pointy, bez ściany tekstu.',
     'Gdy użytkownik pyta, czy ostatni trening był dobry, odpowiedz w strukturze:',
@@ -407,28 +267,26 @@ function buildSystemPrompt(context: UserContext): string {
     'Jeśli readiness jest umiarkowane lub niskie, oceń czy intensywność i objętość były adekwatne do tego stanu.',
     '',
     'KONTEKST UŻYTKOWNIKA',
-    profileLine || 'Profil: brak danych.',
-    readinessLine,
+    sections.profileLine,
+    sections.readinessLine,
     '',
-    'OSTATNIE TRENINGI',
-    workoutsLine,
+    sections.workoutsHeading,
+    sections.workoutsLine,
     '',
-    'TOP REKORDY',
-    recordsLine,
+    sections.monthlyHeading,
+    sections.monthlyLine,
+    '',
+    sections.recordsHeading,
+    sections.recordsLine,
   ].join('\n')
 }
 
 function buildPlanSystemPrompt(
-  context: UserContext,
+  context: AiUserContext,
   request: ReturnType<typeof normalizePlanRequest>,
   catalog: AvailableExercise[],
 ): string {
-  const profileLine = [
-    context.displayName ? `Użytkownik: ${context.displayName}` : null,
-    context.primaryGoal ? `Cel główny: ${context.primaryGoal}` : null,
-    context.weeklyGoal ? `Cel tygodniowy: ${context.weeklyGoal} sesje` : null,
-    context.units ? `Jednostki: ${context.units}` : null,
-  ].filter(Boolean).join(' | ')
+  const sections = buildChatContextSections(context)
 
   const recentContext = context.recentWorkouts.length > 0
     ? context.recentWorkouts
@@ -460,12 +318,14 @@ function buildPlanSystemPrompt(
     '{"name":"string","summary":"string","days":[{"name":"string","exercises":[{"exerciseId":"string","exerciseSource":"global|user","sets":4,"targetReps":8,"targetWeight":0}]}]}',
     '',
     'KONTEKST UŻYTKOWNIKA',
-    profileLine || 'Profil: brak danych.',
+    sections.profileLine,
     context.readiness
       ? `Readiness: ${context.readiness.score}/100 (${context.readiness.label})`
       : 'Readiness: brak danych.',
-    'OSTATNIE TRENINGI',
+    'OSTATNIE 4 TRENINGI',
     recentContext,
+    'SYGNAŁY Z OSTATNICH 30 DNI',
+    sections.monthlyLine,
     '',
     'DOSTĘPNE ĆWICZENIA',
     catalogLines,
@@ -474,7 +334,7 @@ function buildPlanSystemPrompt(
 
 function buildPlanUserPrompt(
   request: ReturnType<typeof normalizePlanRequest>,
-  context: UserContext,
+  context: AiUserContext,
 ): string {
   const equipmentLine = request.equipment.length > 0
     ? request.equipment.join(', ')
@@ -615,7 +475,7 @@ function normalizeGeneratedPlan(raw: unknown, catalog: AvailableExercise[], goal
 async function generatePlan(
   apiKey: string,
   model: string,
-  context: UserContext,
+  context: AiUserContext,
   request: ReturnType<typeof normalizePlanRequest>,
   catalog: AvailableExercise[],
 ): Promise<GeneratedPlan> {
@@ -657,7 +517,7 @@ async function generatePlan(
 async function streamChatReply(
   apiKey: string,
   model: string,
-  context: UserContext,
+  context: AiUserContext,
   messages: NormalizedMessage[],
   res: ApiResponse,
 ): Promise<void> {
@@ -783,7 +643,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   try {
     const userId = await requireUserId(req)
     const ip = getClientIp(req)
-    assertRateLimit({ key: `${userId}:${ip}` })
+    await assertRateLimit({ key: `${userId}:${ip}` })
 
     const body = await readJsonBody<AiChatBody>(req, { maxBytes: 128 * 1024 })
     const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''

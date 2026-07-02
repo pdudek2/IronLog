@@ -7,7 +7,7 @@ import {
   buildChatContextSections,
   createEmptyAiUserContext,
   type AiUserContext,
-} from './lib/aiContext.js'
+} from '../server/aiContext.js'
 
 export const config = {
   maxDuration: 30,

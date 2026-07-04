@@ -41,13 +41,13 @@ import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore } from '../store/workoutStore'
 
 const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#4D8EFF',
-  back: '#9B6DFF',
-  legs: '#FF5757',
-  arms: '#FF9F43',
-  shoulders: '#FF6B9D',
-  core: '#00D4AA',
-  cardio: '#FFD700',
+  chest: '#6BAEFF',
+  back: '#8FB3FF',
+  legs: '#F87171',
+  arms: '#F59E0B',
+  shoulders: '#F472B6',
+  core: '#34D399',
+  cardio: '#A3E635',
 }
 
 const WEEK_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
@@ -64,9 +64,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
-  if (!firstExercise?.exerciseId) return '#808CB3'
+  if (!firstExercise?.exerciseId) return '#8B98B5'
   const category = exerciseMap.get(firstExercise.exerciseId)?.category
-  return CATEGORY_COLORS[category ?? ''] ?? '#808CB3'
+  return CATEGORY_COLORS[category ?? ''] ?? '#8B98B5'
 }
 
 function workoutTitle(workout: WorkoutSummary): string {
@@ -665,7 +665,7 @@ export default function DashboardPage() {
               </div>
               <motion.button
                 className="w-full rounded-[var(--radius-lg)] py-4 text-sm font-semibold"
-                style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
                 onClick={() => navigate('/workout/new')}
                 whileHover={{ scale: 1.015 }}
                 whileTap={{ scale: 0.97 }}
@@ -688,7 +688,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="flex flex-col gap-3">
-                    <div className="rounded-[var(--radius-lg)] border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
+                    <div className="rounded-[var(--radius-lg)] border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}>
                       <p className="stat-meta">Zakres</p>
                       <p className="mt-2 text-sm font-semibold text-white">{formatWeekRange(weekDates)}</p>
                       <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
@@ -767,7 +767,7 @@ export default function DashboardPage() {
                       <motion.div
                         key={label}
                         className="rounded-[var(--radius-lg)] border p-4"
-                        style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
+                        style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}
                         initial={{ opacity: 0, x: 12 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: 0.06 + index * 0.04, duration: 0.2 }}
@@ -898,7 +898,7 @@ export default function DashboardPage() {
                 <motion.button
                   onClick={() => navigate('/templates')}
                   className="rounded-[var(--radius-md)] px-4 py-2.5 text-sm font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+                  style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', color: 'var(--text-strong)' }}
                   whileTap={{ scale: 0.97 }}
                 >
                   Otwórz plany
@@ -908,7 +908,7 @@ export default function DashboardPage() {
               {recentTemplates.length === 0 ? (
                 <div
                   className="rounded-[var(--radius-lg)] border border-dashed px-5 py-8 text-center"
-                  style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}
+                  style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}
                 >
                   <p className="text-sm font-semibold text-white">Brak zapisanych szablonów</p>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
@@ -917,7 +917,7 @@ export default function DashboardPage() {
                   <motion.button
                     onClick={() => navigate('/templates/new')}
                     className="mt-5 rounded-[var(--radius-md)] px-4 py-2.5 text-sm font-semibold"
-                    style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                    style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
                     whileTap={{ scale: 0.97 }}
                   >
                     Utwórz pierwszy plan
@@ -938,7 +938,7 @@ export default function DashboardPage() {
                         className="rounded-[var(--radius-lg)] border p-4 text-left transition-transform hover:-translate-y-0.5"
                         style={{
                           borderColor: isLaunching ? 'var(--accent-soft-strong)' : 'var(--border)',
-                          background: 'rgba(255,255,255,0.025)',
+                          background: 'var(--surface-muted)',
                           opacity: isLaunching ? 0.72 : 1,
                         }}
                         whileTap={{ scale: 0.98 }}
@@ -963,7 +963,7 @@ export default function DashboardPage() {
                             <span
                               key={`${template.id}-${index}`}
                               className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                              style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+                              style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', color: 'var(--muted)' }}
                             >
                               {day.name}
                             </span>
@@ -1019,7 +1019,7 @@ export default function DashboardPage() {
                     <motion.button
                       onClick={() => navigate('/workout/new')}
                       className="mt-2 rounded-[var(--radius-md)] px-6 py-2.5 text-sm font-semibold"
-                      style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                      style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
                       whileTap={{ scale: 0.96 }}
                     >
                       + Nowy trening

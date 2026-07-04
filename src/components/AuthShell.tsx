@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion'
 import type { ReactNode } from 'react'
-import { Dumbbell, Sparkles, TrendingUp } from 'lucide-react'
+import { Activity, NotebookPen, Sparkles, TrendingUp } from 'lucide-react'
 
 interface AuthShellProps {
   title: string
@@ -10,7 +10,7 @@ interface AuthShellProps {
 
 const FEATURES = [
   {
-    icon: Dumbbell,
+    icon: NotebookPen,
     title: 'Szybkie logowanie treningu',
     description: 'Dodawaj serie w kilka sekund i utrzymuj rytm sesji.',
   },
@@ -41,12 +41,12 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
               className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-md)]"
               style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-soft-strong)' }}
             >
-              <Dumbbell size={20} />
+              <Activity size={20} />
             </div>
             <div>
               <p className="text-lg font-bold text-white">IronLog</p>
               <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                Dziennik siłowy z inteligentnym coachingiem
+                Dziennik treningowy z inteligentnym coachingiem
               </p>
             </div>
           </div>

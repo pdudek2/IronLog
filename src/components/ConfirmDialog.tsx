@@ -44,7 +44,7 @@ export default function ConfirmDialog({
         {/* Backdrop */}
         <div
           className="absolute inset-0"
-          style={{ background: 'rgba(6, 10, 18, 0.74)', backdropFilter: 'blur(8px)' }}
+          style={{ background: 'rgba(6, 10, 18, 0.76)', backdropFilter: 'blur(8px)' }}
         />
 
         {/* Panel */}
@@ -52,9 +52,9 @@ export default function ConfirmDialog({
           ref={dialogRef}
           className="relative z-10 w-full max-w-sm rounded-[var(--radius-xl)] p-6"
           style={{
-            background: 'linear-gradient(180deg, rgba(23,31,47,0.98) 0%, rgba(15,20,32,0.99) 100%)',
+            background: 'linear-gradient(180deg, rgba(18,25,37,0.98) 0%, rgba(12,17,25,0.99) 100%)',
             border: '1px solid var(--border-strong)',
-            boxShadow: '0 32px 80px rgba(2,8,20,0.62)',
+            boxShadow: 'var(--shadow-panel)',
           }}
           initial={{ y: 40, opacity: 0, scale: 0.96 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
@@ -77,7 +77,7 @@ export default function ConfirmDialog({
               onClick={onCancel}
               className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{
-                background: 'rgba(255,255,255,0.06)',
+                background: 'var(--surface-muted)',
                 border: '1px solid var(--border)',
                 color: 'var(--muted)',
               }}
@@ -88,7 +88,7 @@ export default function ConfirmDialog({
               onClick={onConfirm}
               className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold"
               style={{
-                background: danger ? '#FF4B4B' : 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+                background: danger ? 'var(--danger)' : 'var(--primary-gradient)',
                 color: danger ? '#fff' : 'var(--accent-foreground)',
               }}
               whileTap={{ scale: 0.95 }}

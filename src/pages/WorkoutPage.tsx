@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Sparkles, Target, Timer, TrendingUp } from 'lucide-react'
+import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type ActiveWorkout, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -192,10 +192,17 @@ export default function WorkoutPage() {
   const goQuick = (to: string) => navigateWithAppTransition(navigate, to)
   const appliedTemplateRef = useRef<string | null>(null)
 
-  const { clearSession, ready } = useActiveSession(user?.uid ?? null)
+  const {
+    clearSession,
+    continueStaleSession,
+    discardStaleSession,
+    ready,
+    staleSession,
+  } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
   const [saving, setSaving] = useState(false)
   const [closingSession, setClosingSession] = useState(false)
+  const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [, setTick] = useState(0)
   const [saveError, setSaveError] = useState('')
   const [confirmDiscard, setConfirmDiscard] = useState(false)
@@ -415,8 +422,72 @@ export default function WorkoutPage() {
     navigate('/dashboard', { replace: true })
   }
 
+  async function handleContinueStaleSession() {
+    if (handlingStaleSession) return
+    setHandlingStaleSession(true)
+    try {
+      await continueStaleSession()
+      toast.success('Wróciłem do zapisanej sesji z odświeżonym timerem.')
+    } catch (error) {
+      console.error('[continue stale session error]', error)
+      toast.error('Nie udało się przywrócić sesji. Spróbuj ponownie.')
+    } finally {
+      setHandlingStaleSession(false)
+    }
+  }
+
+  async function handleDiscardStaleSession() {
+    if (handlingStaleSession) return
+    setHandlingStaleSession(true)
+    try {
+      await discardStaleSession()
+      toast.success('Stara sesja odrzucona. Zaczynamy od nowa.')
+    } catch (error) {
+      console.error('[discard stale session error]', error)
+      toast.error('Nie udało się odrzucić starej sesji. Spróbuj ponownie.')
+    } finally {
+      setHandlingStaleSession(false)
+    }
+  }
+
   if (!ready || closingSession) {
     return <LoadingState message={closingSession ? 'Zamykam sesję...' : 'Przygotowuję trening...'} />
+  }
+
+  if (staleSession) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <div className="surface-panel rounded-[var(--radius-xl)] p-6">
+          <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>Aktywna sesja</p>
+          <h1 className="section-title">Wrócić do starej sesji?</h1>
+          <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+            Masz aktywną sesję sprzed {staleSession.ageLabel}. Możesz wrócić do wpisanych ćwiczeń z odświeżonym timerem albo odrzucić ją i zacząć od nowa.
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            <motion.button
+              type="button"
+              onClick={() => { void handleContinueStaleSession() }}
+              disabled={handlingStaleSession}
+              className="rounded-[var(--radius-lg)] px-4 py-3 text-sm font-semibold disabled:opacity-50"
+              style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+              whileTap={{ scale: 0.97 }}
+            >
+              Kontynuuj
+            </motion.button>
+            <motion.button
+              type="button"
+              onClick={() => { void handleDiscardStaleSession() }}
+              disabled={handlingStaleSession}
+              className="rounded-[var(--radius-lg)] px-4 py-3 text-sm font-semibold disabled:opacity-50"
+              style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+              whileTap={{ scale: 0.97 }}
+            >
+              Odrzuć i zacznij od nowa
+            </motion.button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   if (!active) {
@@ -947,7 +1018,7 @@ export default function WorkoutPage() {
                                   style={{ color: 'var(--muted-soft)' }}
                                   aria-label={`Usuń serię ${setIndex + 1}`}
                                 >
-                                  ✕
+                                  <X size={15} />
                                 </button>
                               </div>
                               <div className="mt-2 flex items-center justify-between gap-3 text-[11px]">
@@ -1069,7 +1140,7 @@ export default function WorkoutPage() {
                         className="rest-timer-action rest-timer-action--icon"
                         aria-label="Pomiń przerwę"
                       >
-                        ✕
+                        <X size={14} />
                       </button>
                     </>
                   ) : (

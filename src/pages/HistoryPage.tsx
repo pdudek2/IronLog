@@ -9,6 +9,8 @@ import { useAuthStore } from '../store/authStore'
 import { getWorkoutHistory, calcVolume, type WorkoutSummary } from '../lib/workoutService'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { getUserExercises } from '../lib/userExercisesService'
+import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
+import { polishPlural } from '../lib/polishPlural'
 
 type RangePreset = '30' | '90' | '365' | 'all'
 
@@ -55,7 +57,8 @@ function formatDate(ts: number): string {
 }
 
 function formatDuration(start: number, end: number): string {
-  const minutes = Math.round((end - start) / 60_000)
+  const cappedEnd = getCappedWorkoutFinishedAt(start, end)
+  const minutes = Math.round((cappedEnd - start) / 60_000)
   if (minutes < 1) return '< 1 min'
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
@@ -198,7 +201,7 @@ export default function HistoryPage() {
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <p className="hero-editorial-date">
-            Archiwum · {workouts.length} {workouts.length === 1 ? 'trening' : 'treningów'} łącznie
+            Archiwum · {workouts.length} {polishPlural(workouts.length, 'trening', 'treningi', 'treningów')} łącznie
           </p>
 
           <div>
@@ -210,7 +213,7 @@ export default function HistoryPage() {
               ? 'Nie udało się pobrać historii treningów. Spróbuj ponownie za chwilę.'
               : filtered.length === 0
               ? 'Brak treningów w wybranym zakresie — spróbuj szerszego filtru lub innego ćwiczenia.'
-              : `${filtered.length} ${filtered.length === 1 ? 'sesja' : 'sesji'} w wyborze · ${formatCompactVolume(totalVolumeInRange)} objętości${activeFiltersCount > 0 ? ` · ${activeFiltersCount} ${activeFiltersCount === 1 ? 'filtr aktywny' : 'filtrów aktywnych'}` : ''}${historyTruncated ? ' · widok oparty o ostatnie 2000 sesji' : ''}`}
+              : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} w wyborze · ${formatCompactVolume(totalVolumeInRange)} objętości${activeFiltersCount > 0 ? ` · ${activeFiltersCount} ${polishPlural(activeFiltersCount, 'filtr aktywny', 'filtry aktywne', 'filtrów aktywnych')}` : ''}${historyTruncated ? ' · widok oparty o ostatnie 2000 sesji' : ''}`}
           </p>
 
           <div

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -6,7 +6,7 @@ import {
   CalendarDays,
   Clock3,
   Flame,
-  Layers3,
+  Play,
   Plus,
   Sparkles,
   Target,
@@ -18,16 +18,27 @@ import NumberFlow from '@number-flow/react'
 import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Button, LoadingState } from '../components/ui'
-import { getTemplates, type WorkoutTemplate } from '../lib/templateService'
+import {
+  buildActiveWorkoutFromTemplate,
+  getTemplates,
+  templateExerciseKey,
+  type TemplateExerciseHistoryMap,
+  type WorkoutTemplate,
+} from '../lib/templateService'
 import { getProfile } from '../lib/userProfile'
 import {
   getRecentWorkouts, deleteWorkout, retryPendingMaterializations, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
+import { fetchRemoteSessionHasWork, saveActiveSession } from '../lib/activeSessionService'
+import { getExerciseSessions } from '../lib/exerciseDetailService'
+import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
+import { polishPlural } from '../lib/polishPlural'
 import { exercises as exerciseDb } from '../data/exercises'
 import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
+import { useWorkoutStore } from '../store/workoutStore'
 
 const CATEGORY_COLORS: Record<string, string> = {
   chest: '#4D8EFF',
@@ -74,7 +85,8 @@ function formatDate(ts: number): string {
 }
 
 function formatDuration(start: number, end: number): string {
-  const minutes = Math.round((end - start) / 60_000)
+  const cappedEnd = getCappedWorkoutFinishedAt(start, end)
+  const minutes = Math.round((cappedEnd - start) / 60_000)
   if (minutes < 1) return '< 1 min'
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
@@ -136,6 +148,8 @@ function fadeUp(delay: number) {
 export default function DashboardPage() {
   const { user } = useAuthStore()
   const { profile, loading, setProfile, setLoading } = useProfileStore()
+  const active = useWorkoutStore((state) => state.active)
+  const hydrateFromDoc = useWorkoutStore((state) => state.hydrateFromDoc)
   const navigate = useNavigate()
   const {
     workouts,
@@ -147,6 +161,8 @@ export default function DashboardPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
+  const [launchingTemplateId, setLaunchingTemplateId] = useState<string | null>(null)
+  const [templateLaunchTarget, setTemplateLaunchTarget] = useState<{ template: WorkoutTemplate; dayIndex: number } | null>(null)
   const [dashboardError, setDashboardError] = useState(false)
   const [dashboardLoadAttempt, setDashboardLoadAttempt] = useState(0)
   const workoutsRef = useRef<WorkoutSummary[]>([])
@@ -202,6 +218,12 @@ export default function DashboardPage() {
       .catch(() => toast.error('Nie udało się wczytać szablonów.'))
   }, [user])
 
+  const hasActiveWork = useMemo(() => {
+    if (!active) return false
+    if (active.exercises.length > 0) return true
+    return Boolean(active.label?.trim())
+  }, [active])
+
   function handleDelete(id: string, e: React.MouseEvent) {
     e.stopPropagation()
     setConfirmDelete(id)
@@ -234,6 +256,82 @@ export default function DashboardPage() {
     }
   }
 
+  async function loadTemplateExerciseHistory(
+    uid: string,
+    template: WorkoutTemplate,
+    dayIndex: number,
+  ): Promise<TemplateExerciseHistoryMap> {
+    const day = template.days[dayIndex] ?? template.days[0]
+    const templateExercises = day?.exercises ?? []
+    const uniqueExercises = Array.from(
+      new Map(templateExercises.map((exercise) => [
+        templateExerciseKey(exercise.exerciseId, exercise.exerciseSource),
+        exercise,
+      ])).values(),
+    )
+
+    const entries = await Promise.all(uniqueExercises.map(async (exercise) => {
+      try {
+        const [last] = await getExerciseSessions(uid, exercise.exerciseId, exercise.exerciseSource, 1)
+        if (!last || last.bestSetWeight <= 0) return null
+        return [
+          templateExerciseKey(exercise.exerciseId, exercise.exerciseSource),
+          { bestSetWeight: last.bestSetWeight, bestSetReps: last.bestSetReps },
+        ] as const
+      } catch {
+        return null
+      }
+    }))
+
+    return new Map(entries.filter((entry): entry is NonNullable<typeof entry> => entry !== null))
+  }
+
+  async function launchTemplate(template: WorkoutTemplate, dayIndex: number) {
+    if (!user) return
+
+    const historyByExercise = await loadTemplateExerciseHistory(user.uid, template, dayIndex)
+    const nextWorkout = buildActiveWorkoutFromTemplate(template, dayIndex, historyByExercise)
+    hydrateFromDoc(nextWorkout)
+    await saveActiveSession(user.uid, nextWorkout)
+    toast.success(`Szablon „${template.name}” gotowy do startu`)
+    navigate('/workout/new')
+  }
+
+  async function handleLaunchTemplate(template: WorkoutTemplate, dayIndex = 0) {
+    if (!user || launchingTemplateId) return
+
+    setLaunchingTemplateId(template.id)
+    try {
+      const remoteHasWork = await fetchRemoteSessionHasWork(user.uid)
+      if (hasActiveWork || remoteHasWork) {
+        setTemplateLaunchTarget({ template, dayIndex })
+        return
+      }
+      await launchTemplate(template, dayIndex)
+    } catch (error) {
+      console.error('[DashboardPage] launch template failed', error)
+      toast.error('Nie udało się uruchomić szablonu.')
+    } finally {
+      setLaunchingTemplateId(null)
+    }
+  }
+
+  async function confirmTemplateLaunch() {
+    if (!templateLaunchTarget || launchingTemplateId) return
+
+    const target = templateLaunchTarget
+    setTemplateLaunchTarget(null)
+    setLaunchingTemplateId(target.template.id)
+    try {
+      await launchTemplate(target.template, target.dayIndex)
+    } catch (error) {
+      console.error('[DashboardPage] confirm launch template failed', error)
+      toast.error('Nie udało się uruchomić szablonu.')
+    } finally {
+      setLaunchingTemplateId(null)
+    }
+  }
+
   if (dashboardError && !dashboardReady) {
     return (
       <div className="mx-auto max-w-lg">
@@ -260,6 +358,7 @@ export default function DashboardPage() {
 
   const weeklyGoal = profile?.weeklyGoal ?? 3
   const progressPct = Math.min((weeklyDone / weeklyGoal) * 100, 100)
+  const remainingWeeklySessions = Math.max(weeklyGoal - weeklyDone, 0)
   const weekDates = getWeekDates()
   const today = new Date()
   const recentWorkouts = workouts.slice(0, 4)
@@ -283,7 +382,9 @@ export default function DashboardPage() {
   ), 0)
   const previousWeeklyDone = previousWeekWorkouts.length
   const avgMinutes = weeklyWorkouts.length
-    ? Math.round(weeklyWorkouts.reduce((sum, workout) => sum + (workout.finishedAt - workout.startedAt), 0) / weeklyWorkouts.length / 60_000)
+    ? Math.round(weeklyWorkouts.reduce((sum, workout) => (
+      sum + (getCappedWorkoutFinishedAt(workout.startedAt, workout.finishedAt) - workout.startedAt)
+    ), 0) / weeklyWorkouts.length / 60_000)
     : 0
   const avgVolumePerSession = weeklyWorkouts.length ? Math.round(weeklyVolume / weeklyWorkouts.length) : 0
   const weeklySessionsDelta = weeklyDone - previousWeeklyDone
@@ -325,7 +426,7 @@ export default function DashboardPage() {
   const topFocus = focusEntries[0]
   const upcomingMessage = weeklyDone >= weeklyGoal
     ? 'Cel tygodnia dowieziony. Utrzymaj rytm i zostaw przestrzeń na recovery.'
-    : `Brakuje jeszcze ${weeklyGoal - weeklyDone} ${weeklyGoal - weeklyDone === 1 ? 'sesji' : 'sesji'} do założonego celu.`
+    : `Brakuje jeszcze ${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesji', 'sesji', 'sesji')} do założonego celu.`
   const overviewCards = [
     {
       label: 'Rytm',
@@ -489,7 +590,7 @@ export default function DashboardPage() {
                     {progressPct >= 100 ? 'Cel osiągnięty!' : `${Math.round(progressPct)}%`}
                   </p>
                   <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                    {progressPct >= 100 ? 'Świetna robota' : `${weeklyGoal - weeklyDone} ${weeklyGoal - weeklyDone === 1 ? 'trening' : 'treningi'} do celu`}
+                    {progressPct >= 100 ? 'Świetna robota' : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'trening', 'treningi', 'treningów')} do celu`}
                   </p>
                 </div>
               </div>
@@ -599,7 +700,7 @@ export default function DashboardPage() {
                     <button
                       onClick={() => navigate('/progress')}
                       className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold text-left transition-opacity hover:opacity-80"
-                      style={{ background: 'rgba(232,255,87,0.07)', border: '1px solid rgba(232,255,87,0.18)', color: 'var(--accent)' }}
+                      style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
                     >
                       Zobacz progres →
                     </button>
@@ -618,7 +719,7 @@ export default function DashboardPage() {
                         <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
                           {weeklyDone >= weeklyGoal
                             ? 'cel tygodnia zrobiony'
-                            : `${weeklyGoal - weeklyDone} sesje do celu`}
+                            : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu`}
                         </p>
                       </div>
                     </div>
@@ -718,8 +819,8 @@ export default function DashboardPage() {
                       {weeklySessionsDelta === 0
                         ? 'Liczba sesji jest taka sama jak tydzień temu.'
                         : weeklySessionsDelta > 0
-                          ? `Masz o ${weeklySessionsDelta} ${weeklySessionsDelta === 1 ? 'sesję' : 'sesje'} więcej niż tydzień temu.`
-                          : `Masz o ${Math.abs(weeklySessionsDelta)} ${Math.abs(weeklySessionsDelta) === 1 ? 'sesję' : 'sesje'} mniej niż tydzień temu.`}
+                          ? `Masz o ${weeklySessionsDelta} ${polishPlural(weeklySessionsDelta, 'sesję', 'sesje', 'sesji')} więcej niż tydzień temu.`
+                          : `Masz o ${Math.abs(weeklySessionsDelta)} ${polishPlural(Math.abs(weeklySessionsDelta), 'sesję', 'sesje', 'sesji')} mniej niż tydzień temu.`}
                     </p>
                   </div>
 
@@ -826,12 +927,20 @@ export default function DashboardPage() {
                 <div className="grid gap-3 lg:grid-cols-3">
                   {recentTemplates.map((template) => {
                     const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
+                    const isLaunching = launchingTemplateId === template.id
                     return (
                       <motion.button
                         key={template.id}
-                        onClick={() => navigate(`/templates/${template.id}/edit`)}
+                        type="button"
+                        onClick={() => { void handleLaunchTemplate(template) }}
+                        disabled={isLaunching}
+                        aria-label={`Uruchom szablon ${template.name}`}
                         className="rounded-[var(--radius-lg)] border p-4 text-left transition-transform hover:-translate-y-0.5"
-                        style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
+                        style={{
+                          borderColor: isLaunching ? 'var(--accent-soft-strong)' : 'var(--border)',
+                          background: 'rgba(255,255,255,0.025)',
+                          opacity: isLaunching ? 0.72 : 1,
+                        }}
                         whileTap={{ scale: 0.98 }}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -841,7 +950,13 @@ export default function DashboardPage() {
                               {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} • {exerciseCount} {exerciseCount === 1 ? 'ćwiczenie' : 'ćwiczeń'}
                             </p>
                           </div>
-                          <Layers3 size={15} style={{ color: 'var(--accent)' }} />
+                          {isLaunching ? (
+                            <span className="text-[11px] font-semibold" style={{ color: 'var(--accent)' }}>
+                              Start...
+                            </span>
+                          ) : (
+                            <Play size={15} style={{ color: 'var(--accent)' }} />
+                          )}
                         </div>
                         <div className="mt-4 flex flex-wrap gap-2">
                           {template.days.slice(0, 3).map((day, index) => (
@@ -890,10 +1005,10 @@ export default function DashboardPage() {
                     animate={{ opacity: 1 }}
                   >
                     <div
-                      className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center text-3xl"
-                      style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)' }}
+                      className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center"
+                      style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
                     >
-                      ✦
+                      <Sparkles size={24} />
                     </div>
                     <div>
                       <p className="font-semibold text-white mb-1">Brak treningów</p>
@@ -1045,6 +1160,17 @@ export default function DashboardPage() {
           danger
           onConfirm={confirmDeleteWorkout}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {templateLaunchTarget && (
+        <ConfirmDialog
+          title="Zastąpić aktywną sesję?"
+          message="Masz już aktywną sesję. Uruchomienie szablonu zastąpi obecną rozpiskę."
+          confirmLabel="Uruchom szablon"
+          cancelLabel="Zostaw"
+          onConfirm={() => { void confirmTemplateLaunch() }}
+          onCancel={() => setTemplateLaunchTarget(null)}
         />
       )}
     </>

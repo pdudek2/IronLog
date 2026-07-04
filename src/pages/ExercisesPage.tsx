@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { Pencil, Plus, Search, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import NumberFlow from '@number-flow/react'
 import { useAuthStore } from '../store/authStore'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
@@ -135,11 +135,11 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
         >
           <button
             onClick={onClose}
-            className="text-sm transition-opacity hover:opacity-70"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
             style={{ color: 'var(--muted)' }}
             aria-label="Zamknij formularz"
           >
-            ✕
+            <X size={16} />
           </button>
           <p id={titleId} className="text-sm font-semibold text-white">
             {mode === 'edit' ? 'Edytuj własne ćwiczenie' : 'Dodaj własne ćwiczenie'}

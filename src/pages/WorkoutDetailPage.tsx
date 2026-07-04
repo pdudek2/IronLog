@@ -9,6 +9,7 @@ import {
   Target,
   Trash2,
   TrendingUp,
+  X,
 } from 'lucide-react'
 import {
   getWorkout,
@@ -26,6 +27,8 @@ import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
+import { getEquipmentLabel } from '../lib/exerciseLabels'
+import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 
 const CATEGORY_COLORS: Record<string, string> = {
   chest: '#4D8EFF',
@@ -48,15 +51,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   core: 'Core',
   cardio: 'Cardio',
 }
-const EQUIPMENT_LABELS: Record<string, string> = {
-  barbell: 'Sztanga',
-  dumbbell: 'Hantle',
-  cable: 'Wyciąg',
-  machine: 'Maszyna',
-  bodyweight: 'BW',
-  kettlebell: 'KB',
-}
-
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
   if (!firstExercise?.exerciseId) return '#808CB3'
@@ -73,7 +67,8 @@ function formatDate(ts: number): string {
 }
 
 function formatDuration(start: number, end: number): string {
-  const minutes = Math.round((end - start) / 60_000)
+  const cappedEnd = getCappedWorkoutFinishedAt(start, end)
+  const minutes = Math.round((cappedEnd - start) / 60_000)
   if (minutes < 1) return '< 1 min'
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
@@ -240,7 +235,7 @@ export default function WorkoutDetailPage() {
     setDeleting(true)
     try {
       await deleteWorkout(workout.id)
-      navigate('/dashboard')
+      navigate('/history', { replace: true })
       toast.success('Trening usunięty')
     } catch {
       toast.error('Błąd usuwania. Spróbuj ponownie.')
@@ -252,6 +247,14 @@ export default function WorkoutDetailPage() {
     setConfirmDeleteOpen(true)
   }
 
+  function handleBack() {
+    if (location.key !== 'default' && window.history.length > 1) {
+      navigate(-1)
+      return
+    }
+    navigate('/history')
+  }
+
   if (loading) return <LoadingState message="Ładowanie treningu..." />
 
   if (!workout) {
@@ -259,7 +262,7 @@ export default function WorkoutDetailPage() {
       <div className="flex items-center justify-center">
         <div className="surface-panel rounded-[var(--radius-xl)] p-8 text-center">
           <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Trening nie istnieje.</p>
-          <button onClick={() => navigate('/dashboard')} style={{ color: 'var(--accent)' }}>
+          <button onClick={handleBack} style={{ color: 'var(--accent)' }}>
             Wróć
           </button>
         </div>
@@ -361,7 +364,7 @@ export default function WorkoutDetailPage() {
   return (
     <>
       <motion.button
-        onClick={() => navigate('/dashboard')}
+        onClick={handleBack}
         className="surface-panel mb-4 inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-70"
         style={{ color: 'var(--text)', border: '1px solid var(--border)' }}
         initial={false}
@@ -543,7 +546,7 @@ export default function WorkoutDetailPage() {
                               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                               style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
                             >
-                              {EQUIPMENT_LABELS[exerciseData.equipment] ?? exerciseData.equipment}
+                              {getEquipmentLabel(exerciseData.equipment)}
                             </span>
                           )}
                           {exerciseData?.category && (
@@ -646,8 +649,9 @@ export default function WorkoutDetailPage() {
                                 onClick={() => handleRemoveSet(exerciseIndex, setIndex)}
                                 className="flex h-7 w-7 items-center justify-center rounded-md text-xs text-center transition-opacity hover:opacity-70"
                                 style={{ color: 'var(--muted)' }}
+                                aria-label={`Usuń serię ${setIndex + 1}`}
                               >
-                                ✕
+                                <X size={14} />
                               </button>
                             ) : (
                               <span aria-hidden="true" />

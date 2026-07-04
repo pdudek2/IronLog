@@ -36,8 +36,8 @@ export default function OverloadHint({ suggestion, onApply, onDismiss }: Props) 
     <motion.div
       className="mb-4 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] px-3.5 py-2.5"
       style={{
-        background: `${delta > 0 ? 'rgba(232,255,87,0.06)' : delta < 0 ? 'rgba(255,87,87,0.06)' : 'rgba(255,255,255,0.04)'}`,
-        border: `1px solid ${delta > 0 ? 'rgba(232,255,87,0.2)' : delta < 0 ? 'rgba(255,87,87,0.2)' : 'var(--border)'}`,
+        background: `${delta > 0 ? 'var(--accent-soft)' : delta < 0 ? 'rgba(255,87,87,0.06)' : 'rgba(255,255,255,0.04)'}`,
+        border: `1px solid ${delta > 0 ? 'var(--accent-soft-strong)' : delta < 0 ? 'rgba(255,87,87,0.2)' : 'var(--border)'}`,
       }}
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
@@ -60,7 +60,7 @@ export default function OverloadHint({ suggestion, onApply, onDismiss }: Props) 
         <button
           onClick={() => onApply(suggestedWeight)}
           className="rounded-[var(--radius-md)] px-2.5 py-1 text-[11px] font-semibold"
-          style={{ background: accent, color: delta !== 0 ? '#000' : 'var(--bg)' }}
+          style={{ background: accent, color: delta > 0 ? 'var(--accent-foreground)' : delta < 0 ? '#fff' : 'var(--bg)' }}
         >
           Zastosuj
         </button>

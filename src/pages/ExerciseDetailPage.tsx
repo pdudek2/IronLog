@@ -10,8 +10,10 @@ import {
   type ExerciseSession,
   type ExerciseRecord,
 } from '../lib/exerciseDetailService'
+import { getEquipmentLabel, getMuscleLabel } from '../lib/exerciseLabels'
+import { polishPlural } from '../lib/polishPlural'
 import { useAuthStore } from '../store/authStore'
-import { LoadingState } from '../components/ui'
+import { Button, LoadingState } from '../components/ui'
 
 const CATEGORY_LABELS: Record<string, string> = {
   chest: 'Klatka',
@@ -21,33 +23,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   arms: 'Ramiona',
   core: 'Core',
   cardio: 'Cardio',
-}
-
-const EQUIPMENT_LABELS: Record<string, string> = {
-  barbell: 'Sztanga',
-  dumbbell: 'Hantle',
-  cable: 'Wyciąg',
-  machine: 'Maszyna',
-  bodyweight: 'Własne ciało',
-  kettlebell: 'Kettlebell',
-}
-
-const MUSCLE_LABELS: Record<string, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  shoulders: 'Barki',
-  biceps: 'Biceps',
-  triceps: 'Triceps',
-  forearms: 'Przedramiona',
-  quads: 'Quady',
-  hamstrings: 'Dwugłowe',
-  glutes: 'Pośladki',
-  calves: 'Łydki',
-  core: 'Core',
-  lats: 'Najszersze',
-  traps: 'Czworoboczne',
-  abs: 'Brzuch',
-  obliques: 'Skośne',
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -89,6 +64,8 @@ export default function ExerciseDetailPage() {
   const [sessions, setSessions] = useState<ExerciseSession[]>([])
   const [record, setRecord] = useState<ExerciseRecord | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
     if (!user || !id) return
@@ -116,6 +93,14 @@ export default function ExerciseDetailPage() {
         if (!cancelled) {
           setSessions(sess)
           setRecord(rec)
+          setLoadError(false)
+        }
+      } catch (error) {
+        console.error('[ExerciseDetailPage] load failed', error)
+        if (!cancelled) {
+          setSessions([])
+          setRecord(null)
+          setLoadError(true)
         }
       } finally {
         if (!cancelled) {
@@ -129,11 +114,35 @@ export default function ExerciseDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [user, id, source])
+  }, [user, id, source, loadAttempt])
 
   const exercise = source === 'user' ? userExercise : globalExercise
 
   if (loading) return <LoadingState message="Ładowanie ćwiczenia..." />
+
+  if (loadError) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center">
+          <p className="text-lg font-semibold text-white">Nie udało się wczytać ćwiczenia</p>
+          <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+            Dane historii nie dotarły. Sprawdź połączenie i spróbuj ponownie.
+          </p>
+          <Button
+            type="button"
+            className="mt-5 min-w-[12rem]"
+            onClick={() => {
+              setLoading(true)
+              setLoadError(false)
+              setLoadAttempt((value) => value + 1)
+            }}
+          >
+            Spróbuj ponownie
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   const accent = CATEGORY_COLORS[exercise?.category ?? ''] ?? 'var(--accent)'
   const maxVolume = sessions.length ? Math.max(...sessions.map((s) => s.totalVolume), 1) : 1
@@ -163,7 +172,7 @@ export default function ExerciseDetailPage() {
                 className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
                 style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
               >
-                {EQUIPMENT_LABELS[exercise.equipment] ?? exercise.equipment}
+                {getEquipmentLabel(exercise.equipment)}
               </span>
             )}
             {source === 'user' && (
@@ -188,7 +197,7 @@ export default function ExerciseDetailPage() {
                   className="text-[11px] px-2 py-0.5 rounded-full"
                   style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
                 >
-                  {MUSCLE_LABELS[m] ?? m}
+                  {getMuscleLabel(m)}
                 </span>
               ))}
             </div>
@@ -196,7 +205,7 @@ export default function ExerciseDetailPage() {
 
           <p className="hero-editorial-sub">
             {sessions.length > 0
-              ? `${sessions.length} ${sessions.length === 1 ? 'sesja' : 'sesji'} w historii · ${formatVolume(totalVolumeAll)} łącznej objętości`
+              ? `${sessions.length} ${polishPlural(sessions.length, 'sesja', 'sesje', 'sesji')} w historii · ${formatVolume(totalVolumeAll)} łącznej objętości`
               : 'Brak historii. Dodaj to ćwiczenie do sesji, żeby zacząć śledzić progres.'}
           </p>
 

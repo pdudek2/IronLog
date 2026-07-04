@@ -1,5 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { MotionConfig } from 'framer-motion'
 import { Toaster } from 'sonner'
 import './index.css'
 import AppRouter from './router'
@@ -12,19 +13,21 @@ initAnalytics()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <AppRouter />
-    <AnalyticsConsentBanner />
-    <Toaster
-      theme="dark"
-      position="top-center"
-      toastOptions={{
-        style: {
-          background: 'var(--card)',
-          border: '1px solid var(--border)',
-          color: 'var(--text-strong)',
-          fontFamily: 'Urbanist, sans-serif',
-        },
-      }}
-    />
+    <MotionConfig reducedMotion="user">
+      <AppRouter />
+      <AnalyticsConsentBanner />
+      <Toaster
+        theme="dark"
+        position="top-center"
+        toastOptions={{
+          style: {
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            color: 'var(--text-strong)',
+            fontFamily: 'Urbanist, sans-serif',
+          },
+        }}
+      />
+    </MotionConfig>
   </StrictMode>,
 )

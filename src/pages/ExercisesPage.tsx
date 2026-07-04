@@ -77,6 +77,10 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
   const dialogRef = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
+  const nameInputId = useId()
+  const categoryInputId = useId()
+  const equipmentInputId = useId()
+  const musclesGroupId = useId()
 
   useDialogA11y({ containerRef: dialogRef, onClose, initialFocusRef: nameInputRef })
 
@@ -150,10 +154,11 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-5 sm:px-5 space-y-5">
           {/* Name */}
           <div>
-            <label className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            <label htmlFor={nameInputId} className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
               Nazwa *
             </label>
             <input
+              id={nameInputId}
               ref={nameInputRef}
               type="text"
               value={name}
@@ -174,10 +179,10 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
 
           {/* Category */}
           <div>
-            <label className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            <label htmlFor={categoryInputId} className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
               Kategoria
             </label>
-            <select value={category} onChange={(e) => setCategory(e.target.value as Category)} style={selectStyle}>
+            <select id={categoryInputId} value={category} onChange={(e) => setCategory(e.target.value as Category)} style={selectStyle}>
               {(Object.keys(CATEGORY_LABELS) as (Category | 'all')[])
                 .filter((c) => c !== 'all')
                 .map((c) => (
@@ -188,10 +193,10 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
 
           {/* Equipment */}
           <div>
-            <label className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            <label htmlFor={equipmentInputId} className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
               Sprzęt
             </label>
-            <select value={equipment} onChange={(e) => setEquipment(e.target.value as Equipment)} style={selectStyle}>
+            <select id={equipmentInputId} value={equipment} onChange={(e) => setEquipment(e.target.value as Equipment)} style={selectStyle}>
               {(Object.keys(EQUIPMENT_LABELS) as (Equipment | 'all')[])
                 .filter((eq) => eq !== 'all')
                 .map((eq) => (
@@ -202,10 +207,10 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
 
           {/* Muscles */}
           <div>
-            <label className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            <p id={musclesGroupId} className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
               Partie mięśniowe
-            </label>
-            <div className="flex flex-wrap gap-2">
+            </p>
+            <div className="flex flex-wrap gap-2" role="group" aria-labelledby={musclesGroupId}>
               {MUSCLE_OPTIONS.map((m) => {
                 const active = muscles.includes(m)
                 return (
@@ -262,35 +267,34 @@ interface CardProps {
 function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardProps) {
   const muscleText = exercise.muscles.map((m) => MUSCLE_LABELS[m]).join(', ')
   return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onNavigate}
-      onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onNavigate()}
-      className="rounded-[1.25rem] px-4 py-4 cursor-pointer transition-all hover:border-[rgba(90,166,255,0.3)] hover:-translate-y-px"
+    <article
+      className="rounded-[1.25rem] px-4 py-4 transition-all hover:border-[rgba(90,166,255,0.3)] hover:-translate-y-px"
       style={{
         background: 'rgba(255,255,255,0.03)',
         border: `1px solid ${isUser ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
       }}
     >
-      <div className="flex items-start gap-2">
-        <p className="flex-1 text-sm font-medium text-white leading-snug">{exercise.name}</p>
-        {isUser && (
-          <span
-            className="flex-none text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-            style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-          >
-            moje
-          </span>
-        )}
-      </div>
-      <p className="mt-1.5 text-xs" style={{ color: 'var(--muted)' }}>
-        {EQUIPMENT_LABELS[exercise.equipment]}
-        {muscleText ? ` · ${muscleText}` : ''}
-      </p>
+      <button type="button" onClick={onNavigate} className="block w-full cursor-pointer text-left">
+        <div className="flex items-start gap-2">
+          <span className="flex-1 text-sm font-medium text-white leading-snug">{exercise.name}</span>
+          {isUser && (
+            <span
+              className="flex-none text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+              style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+            >
+              moje
+            </span>
+          )}
+        </div>
+        <span className="mt-1.5 block text-xs" style={{ color: 'var(--muted)' }}>
+          {EQUIPMENT_LABELS[exercise.equipment]}
+          {muscleText ? ` · ${muscleText}` : ''}
+        </span>
+      </button>
       {isUser && (
         <div className="mt-3 flex items-center gap-2">
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onEdit?.() }}
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
             style={{ background: 'var(--card)', color: 'white', border: '1px solid var(--border)' }}
@@ -299,6 +303,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
             Edytuj
           </button>
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onDelete?.() }}
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
             style={{ background: 'rgba(255,87,87,0.08)', color: '#FF5757', border: '1px solid rgba(255,87,87,0.18)' }}
@@ -308,7 +313,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
           </button>
         </div>
       )}
-    </div>
+    </article>
   )
 }
 
@@ -552,6 +557,7 @@ export default function ExercisesPage() {
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted)' }} />
                 <input
                   type="text"
+                  aria-label="Szukaj ćwiczenia"
                   placeholder="Szukaj..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
@@ -599,6 +605,7 @@ export default function ExercisesPage() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted)' }} />
               <input
                 type="text"
+                aria-label="Szukaj ćwiczenia"
                 placeholder="Szukaj ćwiczenia..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
@@ -626,7 +633,7 @@ export default function ExercisesPage() {
                   <>
                     <p className="text-sm font-semibold text-white mb-1">Brak własnych ćwiczeń</p>
                     <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
-                      Dodaj własne ćwiczenie, żeby pojawilo się tutaj i w pickerze treningu.
+                      Dodaj własne ćwiczenie, żeby pojawiło się tutaj i w pickerze treningu.
                     </p>
                     <motion.button
                       onClick={openCreateForm}

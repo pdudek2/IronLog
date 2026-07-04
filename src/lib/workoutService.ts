@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore'
 import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
 import { auth, db } from './firebase'
+import { getCappedWorkoutFinishedAt } from './sessionDuration'
 
 interface WorkoutSetSummary {
   weight: number
@@ -191,7 +192,7 @@ function buildWorkoutPayload(uid: string, workout: ActiveWorkout) {
     userId: uid,
     templateId: persistableWorkout.templateId ?? null,
     startedAt: persistableWorkout.startedAt,
-    finishedAt: Date.now(),
+    finishedAt: getCappedWorkoutFinishedAt(persistableWorkout.startedAt),
     materialized: false,
     label: persistableWorkout.label?.trim() ? persistableWorkout.label : null,
     exercises: persistableWorkout.exercises.map((exercise) => ({

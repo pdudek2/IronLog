@@ -1,11 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { useWorkoutStore } from '../store/workoutStore'
+import { useWorkoutStore, type ActiveWorkout } from '../store/workoutStore'
 import { saveActiveSession, deleteActiveSession, subscribeToActiveSession } from '../lib/activeSessionService'
 import {
   clearActiveSessionBackup,
   readActiveSessionBackup,
   writeActiveSessionBackup,
 } from '../lib/activeSessionBackup'
+import {
+  getStaleSessionAgeLabel,
+  isActiveSessionStale,
+  refreshStaleActiveSession,
+} from '../lib/sessionDuration'
 
 function serializeActiveWorkout(value: unknown): string {
   return JSON.stringify(value ?? null)
@@ -22,10 +27,12 @@ function serializeActiveWorkout(value: unknown): string {
 export function useActiveSession(uid: string | null) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeRef = useRef(useWorkoutStore.getState().active)
+  const staleSessionRef = useRef<ActiveWorkout | null>(null)
   const applyingRemoteRef = useRef(false)
   const hadRemoteSessionRef = useRef(false)
   const hasUnsyncedLocalChangesRef = useRef(false)
   const [ready, setReady] = useState(uid === null)
+  const [staleSession, setStaleSession] = useState<{ ageLabel: string } | null>(null)
 
   useEffect(() => {
     activeRef.current = useWorkoutStore.getState().active
@@ -39,6 +46,8 @@ export function useActiveSession(uid: string | null) {
 
     const currentUid = uid
     setReady(false)
+    staleSessionRef.current = null
+    setStaleSession(null)
     hadRemoteSessionRef.current = false
 
     const {
@@ -63,6 +72,18 @@ export function useActiveSession(uid: string | null) {
         )
 
         if (session) {
+          if (isActiveSessionStale(session)) {
+            hadRemoteSessionRef.current = true
+            staleSessionRef.current = session
+            writeActiveSessionBackup(currentUid, session)
+            setStaleSession({ ageLabel: getStaleSessionAgeLabel(session.startedAt) })
+            setReady(true)
+            return
+          }
+
+          staleSessionRef.current = null
+          setStaleSession(null)
+
           if (current && hasUnsyncedLocalChangesRef.current && currentSerialized !== nextSerialized) {
             setReady(true)
             return
@@ -80,6 +101,9 @@ export function useActiveSession(uid: string | null) {
             hasUnsyncedLocalChangesRef.current = false
           }
         } else if (hadRemoteSessionRef.current) {
+          staleSessionRef.current = null
+          setStaleSession(null)
+
           if (current && hasUnsyncedLocalChangesRef.current) {
             setReady(true)
             return
@@ -99,6 +123,13 @@ export function useActiveSession(uid: string | null) {
         } else if (!current) {
           const backup = readActiveSessionBackup(currentUid)
           if (backup) {
+            if (isActiveSessionStale(backup)) {
+              staleSessionRef.current = backup
+              setStaleSession({ ageLabel: getStaleSessionAgeLabel(backup.startedAt) })
+              setReady(true)
+              return
+            }
+
             activeRef.current = backup
             hydrateFromDoc(backup)
             void saveActiveSession(currentUid, backup).catch(console.error)
@@ -199,5 +230,47 @@ export function useActiveSession(uid: string | null) {
     return deleteActiveSession(uid)
   }
 
-  return { clearSession, ready }
+  async function continueStaleSession(): Promise<void> {
+    if (!uid || !staleSessionRef.current) return
+
+    const refreshedSession = refreshStaleActiveSession(staleSessionRef.current)
+    staleSessionRef.current = null
+    setStaleSession(null)
+    applyingRemoteRef.current = true
+    hasUnsyncedLocalChangesRef.current = false
+    activeRef.current = refreshedSession
+    useWorkoutStore.getState().hydrateFromDoc(refreshedSession)
+    writeActiveSessionBackup(uid, refreshedSession)
+    await saveActiveSession(uid, refreshedSession)
+  }
+
+  async function discardStaleSession(): Promise<void> {
+    if (!uid) return
+
+    if (timerRef.current) {
+      clearTimeout(timerRef.current)
+      timerRef.current = null
+    }
+
+    staleSessionRef.current = null
+    setStaleSession(null)
+    clearActiveSessionBackup(uid)
+
+    const { clearWorkout, startWorkout } = useWorkoutStore.getState()
+    applyingRemoteRef.current = true
+    hasUnsyncedLocalChangesRef.current = false
+    activeRef.current = null
+    clearWorkout()
+    await deleteActiveSession(uid).catch(console.error)
+
+    startWorkout()
+    const createdSession = useWorkoutStore.getState().active
+    activeRef.current = createdSession
+    if (createdSession) {
+      writeActiveSessionBackup(uid, createdSession)
+      await saveActiveSession(uid, createdSession)
+    }
+  }
+
+  return { clearSession, continueStaleSession, discardStaleSession, ready, staleSession }
 }

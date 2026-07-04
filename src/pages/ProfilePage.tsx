@@ -9,6 +9,7 @@ import { useAuthStore } from '../store/authStore'
 import { Button, Card, Input, LoadingState } from '../components/ui'
 import { setAnalyticsConsentPreference } from '../lib/analytics'
 import { getAnalyticsConsent, type AnalyticsConsent } from '../lib/analyticsConsent'
+import { polishPlural } from '../lib/polishPlural'
 
 const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
   { value: 'strength',    label: 'Siła',           desc: 'Maksymalne ciężary, niskie powtórzenia' },
@@ -174,7 +175,7 @@ export default function ProfilePage() {
             <div className="flex flex-col gap-1 min-w-0">
               <span className="stat-meta">Cel tyg.</span>
               <span className="text-xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none sm:text-2xl">
-                {weeklyGoal} <span className="text-base" style={{ color: 'var(--muted)' }}>sesje</span>
+                {weeklyGoal} <span className="text-base" style={{ color: 'var(--muted)' }}>{polishPlural(weeklyGoal, 'sesja', 'sesje', 'sesji')}</span>
               </span>
             </div>
             <div className="flex flex-col gap-1 min-w-0">

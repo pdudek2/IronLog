@@ -1,7 +1,9 @@
 import { useId, useRef, useState } from 'react'
+import { X } from 'lucide-react'
 import { searchExercises, type Category, type Exercise } from '../data/exercises'
 import type { ExerciseSource } from '../store/workoutStore'
 import { useDialogA11y } from '../hooks/useDialogA11y'
+import { formatExerciseMeta } from '../lib/exerciseLabels'
 
 const CATEGORIES: { value: Category | 'all'; label: string }[] = [
   { value: 'all',       label: 'Wszystkie' },
@@ -71,11 +73,11 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
         >
           <button
             onClick={onClose}
-            className="text-sm transition-opacity hover:opacity-70"
+            className="flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
             style={{ color: 'var(--muted)' }}
             aria-label="Zamknij wybór ćwiczenia"
           >
-            ✕
+            <X size={16} />
           </button>
           <div className="min-w-0 flex-1">
             <p id={titleId} className="mb-1 text-sm font-semibold text-white">
@@ -88,6 +90,7 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
             placeholder="Szukaj ćwiczenia..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            aria-label="Szukaj ćwiczenia"
             className="flex-1 bg-transparent text-sm text-white outline-none"
             style={{ color: 'var(--text)' }}
           />
@@ -148,7 +151,7 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
                     )}
                   </div>
                   <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                    {ex.equipment} · {ex.muscles.join(', ')}
+                    {formatExerciseMeta(ex.equipment, ex.muscles)}
                   </p>
                 </button>
               ))}

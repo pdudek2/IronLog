@@ -19,9 +19,9 @@ createRoot(document.getElementById('root')!).render(
       position="top-center"
       toastOptions={{
         style: {
-          background: '#1F1D3B',
-          border: '1px solid rgba(128,140,179,0.18)',
-          color: '#ffffff',
+          background: 'var(--card)',
+          border: '1px solid var(--border)',
+          color: 'var(--text-strong)',
           fontFamily: 'Urbanist, sans-serif',
         },
       }}

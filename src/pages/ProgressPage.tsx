@@ -26,6 +26,7 @@ import {
   type StrengthSeries,
   type WeeklyPoint,
 } from '../lib/progressService'
+import { polishPlural } from '../lib/polishPlural'
 
 const RANGE_OPTIONS = [
   { label: '30 dni', days: 30 },
@@ -158,7 +159,9 @@ function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
           {typeof p.value === 'number' && p.name !== 'sessions'
             ? `${p.value} kg`
             : p.value}{' '}
-          {p.name === 'sessions' ? 'sesji' : ''}
+          {p.name === 'sessions'
+            ? polishPlural(Number(p.value), 'sesja', 'sesje', 'sesji')
+            : ''}
         </p>
       ))}
     </div>
@@ -258,6 +261,7 @@ export default function ProgressPage() {
   if (loading) return <LoadingState message="Ładowanie postępów..." />
 
   const uniqueExerciseCount = new Set(currentSessions.map((s) => s.exerciseName)).size
+  const missingStrengthSessions = Math.max(0, 3 - strengthData.data.length)
 
   return (
     <>
@@ -299,7 +303,7 @@ export default function ProgressPage() {
 
             <p className="hero-editorial-sub">
               {uniqueWorkouts > 0
-                ? `${uniqueWorkouts} ${uniqueWorkouts === 1 ? 'sesja' : 'sesji'} w tym oknie · ${formatVolume(totalVolume)} łącznej objętości`
+                ? `${uniqueWorkouts} ${polishPlural(uniqueWorkouts, 'sesja', 'sesje', 'sesji')} w tym oknie · ${formatVolume(totalVolume)} łącznej objętości`
                 : 'Brak danych w wybranym zakresie. Zaloguj pierwszy trening aby zobaczyć trajektorię.'}
             </p>
 
@@ -427,8 +431,8 @@ export default function ProgressPage() {
                   <p className="eyebrow mb-1">Siła</p>
                   <p className="section-title mb-2">Progresja ciężaru</p>
                   <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Potrzebujesz jeszcze {3 - strengthData.data.length}{' '}
-                    {3 - strengthData.data.length === 1 ? 'sesji' : 'sesji'} z tym ćwiczeniem, żeby zobaczyć wykres progresji.
+                    Potrzebujesz jeszcze {missingStrengthSessions}{' '}
+                    {polishPlural(missingStrengthSessions, 'sesji', 'sesji', 'sesji')} z tym ćwiczeniem, żeby zobaczyć wykres progresji.
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -631,7 +635,7 @@ export default function ProgressPage() {
                   </p>
                   <div className="mt-2 flex items-center justify-between">
                     <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                      × {rec.maxReps} powt. • {rec.totalSessions} sesji
+                      × {rec.maxReps} powt. • {rec.totalSessions} {polishPlural(rec.totalSessions, 'sesja', 'sesje', 'sesji')}
                     </p>
                     <p className="text-xs" style={{ color: 'var(--muted)' }}>
                       {formatDate(rec.lastPerformedAt)}

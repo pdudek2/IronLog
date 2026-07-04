@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
+import { Activity, Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
 import { logoutUser } from '../lib/auth'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadPrimaryRoutes, preloadRouteByPath } from '../router/pageLoaders'
@@ -59,7 +59,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           aria-label="IronLog — strona główna"
         >
           <span className="top-nav-brand-mark">
-            <Dumbbell size={16} />
+            <Activity size={16} />
           </span>
           <span className="hidden sm:inline">IronLog</span>
         </button>

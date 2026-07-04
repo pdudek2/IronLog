@@ -28,7 +28,7 @@ export default function AnalyticsConsentBanner() {
       <section
         role="region"
         aria-label="Zgoda na analitykę"
-        className="surface-panel mx-auto flex max-w-3xl flex-col gap-4 rounded-[var(--radius-xl)] p-4 shadow-2xl sm:flex-row sm:items-center sm:justify-between sm:p-5"
+        className="surface-panel mx-auto flex max-w-3xl flex-col gap-4 rounded-[var(--radius-xl)] p-4 shadow-2xl sm:ml-0 sm:mr-auto sm:max-w-xl sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="min-w-0">
           <p className="text-sm font-semibold text-white">Prywatność i analityka</p>

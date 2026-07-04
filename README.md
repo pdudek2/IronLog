@@ -43,7 +43,7 @@ Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.
 - React Router 7, Zustand, Framer Motion, Recharts, Tailwind CSS 4
 - Firebase Authentication + Firestore
 - Vercel Serverless Functions (Node.js, Firebase Admin SDK)
-- Hosting: Vercel, auto-deploy z GitHuba
+- Hosting: Vercel, produkcyjny deploy przez CLI (`vercel --prod`)
 - Analityka opcjonalna po zgodzie: Google Analytics 4 (`react-ga4`) + Hotjar/Contentsquare
 
 ## Struktura projektu
@@ -132,4 +132,10 @@ npm run test:e2e     # testy end-to-end (Playwright)
 
 ## Deploy
 
-Aplikacja jest wdrożona na Vercel (preset Vite + funkcje serverless w `api/`). Każdy push na `main` uruchamia automatyczny deploy. Zmienne środowiskowe są ustawione w panelu Vercela.
+Aplikacja jest wdrożona na Vercel (preset Vite + funkcje serverless w `api/`). Produkcyjny deploy jest obecnie wykonywany ręcznie z lokalnego checkoutu:
+
+```bash
+vercel --prod --yes
+```
+
+GitHub pozostaje repozytorium kodu, ale push na `main` nie jest traktowany jako kanoniczny mechanizm produkcyjnego deployu. Zmienne środowiskowe są ustawione w panelu Vercela.

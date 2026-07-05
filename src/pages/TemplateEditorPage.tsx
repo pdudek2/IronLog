@@ -4,6 +4,7 @@ import { motion } from 'framer-motion'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import type { ExerciseSource } from '../store/workoutStore'
@@ -33,13 +34,45 @@ function emptyDay(index: number): DraftDay {
 }
 
 function toPositiveInt(value: string, fallback: number) {
+  if (value.trim() === '') return 0
   const parsed = Number.parseInt(value, 10)
   return Number.isFinite(parsed) ? Math.max(fallback, parsed) : fallback
 }
 
 function toPositiveFloat(value: string, fallback: number) {
+  if (value.trim() === '') return 0
   const parsed = Number.parseFloat(value)
   return Number.isFinite(parsed) ? Math.max(fallback, parsed) : fallback
+}
+
+function serializeDraftState(name: string, days: Array<Pick<TemplateDay, 'name' | 'exercises'>>) {
+  return JSON.stringify({
+    name,
+    days: days.map((day) => ({
+      name: day.name,
+      exercises: day.exercises.map((exercise) => ({
+        exerciseId: exercise.exerciseId,
+        exerciseSource: exercise.exerciseSource,
+        name: exercise.name,
+        sets: exercise.sets,
+        targetReps: exercise.targetReps,
+        targetWeight: exercise.targetWeight,
+      })),
+    })),
+  })
+}
+
+function defaultSerializableDays(): TemplateDay[] {
+  return [{ name: 'Dzień 1', exercises: [] }]
+}
+
+function normalizeTemplateExercise(exercise: TemplateExercise): TemplateExercise {
+  return {
+    ...exercise,
+    sets: Math.max(1, Math.trunc(exercise.sets) || 1),
+    targetReps: Math.max(0, Math.trunc(exercise.targetReps) || 0),
+    targetWeight: Math.max(0, Number.isFinite(exercise.targetWeight) ? exercise.targetWeight : 0),
+  }
 }
 
 export default function TemplateEditorPage() {
@@ -63,6 +96,11 @@ export default function TemplateEditorPage() {
   ))
   const [pickerDayIndex, setPickerDayIndex] = useState<number | null>(null)
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
+  const [savedSnapshot, setSavedSnapshot] = useState(() => serializeDraftState(
+    initialDraft?.name ?? '',
+    initialDraft?.days.length ? initialDraft.days : defaultSerializableDays(),
+  ))
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -87,7 +125,12 @@ export default function TemplateEditorPage() {
 
         setTemplate(nextTemplate)
         setName(nextTemplate.name)
-        setDays(nextTemplate.days.length ? nextTemplate.days.map((day) => ({ ...day, _id: crypto.randomUUID() })) : [emptyDay(0)])
+        const loadedDays = nextTemplate.days.length
+          ? nextTemplate.days.map((day) => ({ ...day, _id: crypto.randomUUID() }))
+          : [emptyDay(0)]
+
+        setDays(loadedDays)
+        setSavedSnapshot(serializeDraftState(nextTemplate.name, loadedDays))
       })
       .catch(() => {
         if (!cancelled) {
@@ -119,6 +162,29 @@ export default function TemplateEditorPage() {
     () => days.reduce((sum, day) => sum + day.exercises.length, 0),
     [days],
   )
+  const currentSnapshot = useMemo(() => serializeDraftState(name, days), [name, days])
+  const hasUnsavedChanges = !loading && currentSnapshot !== savedSnapshot
+
+  useEffect(() => {
+    if (!hasUnsavedChanges || saving) return
+
+    function handleBeforeUnload(event: BeforeUnloadEvent) {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges, saving])
+
+  function handleBackToTemplates() {
+    if (hasUnsavedChanges && !saving) {
+      setConfirmLeaveOpen(true)
+      return
+    }
+
+    navigate('/templates')
+  }
 
   function updateDay(index: number, nextDay: DraftDay) {
     setDays((prev) => prev.map((day, dayIndex) => (dayIndex === index ? nextDay : day)))
@@ -209,7 +275,7 @@ export default function TemplateEditorPage() {
       name: trimmedName,
       days: days.map((day, index) => ({
         name: day.name.trim() || `Dzień ${index + 1}`,
-        exercises: day.exercises,
+        exercises: day.exercises.map(normalizeTemplateExercise),
       })),
     }
 
@@ -222,6 +288,7 @@ export default function TemplateEditorPage() {
         clearTemplateDraft()
         toast.success('Szablon zapisany')
       }
+      setSavedSnapshot(serializeDraftState(payload.name, payload.days))
       navigate('/templates')
     } catch {
       toast.error('Nie udało się zapisać szablonu.')
@@ -264,7 +331,8 @@ export default function TemplateEditorPage() {
           </div>
 
           <button
-            onClick={() => navigate('/templates')}
+            type="button"
+            onClick={handleBackToTemplates}
             className="rounded-[var(--radius-pill)] px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
             style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
           >
@@ -357,7 +425,7 @@ export default function TemplateEditorPage() {
                             type="number"
                             inputMode="numeric"
                             min={1}
-                            value={exercise.sets}
+                            value={exercise.sets === 0 ? '' : exercise.sets}
                             onChange={(event) => updateExercise(dayIndex, exerciseIndex, (current) => ({
                               ...current,
                               sets: toPositiveInt(event.target.value, 1),
@@ -373,7 +441,7 @@ export default function TemplateEditorPage() {
                             type="number"
                             inputMode="numeric"
                             min={0}
-                            value={exercise.targetReps}
+                            value={exercise.targetReps === 0 ? '' : exercise.targetReps}
                             onChange={(event) => updateExercise(dayIndex, exerciseIndex, (current) => ({
                               ...current,
                               targetReps: toPositiveInt(event.target.value, 0),
@@ -390,7 +458,7 @@ export default function TemplateEditorPage() {
                             inputMode="decimal"
                             min={0}
                             step="0.5"
-                            value={exercise.targetWeight}
+                            value={exercise.targetWeight === 0 ? '' : exercise.targetWeight}
                             onChange={(event) => updateExercise(dayIndex, exerciseIndex, (current) => ({
                               ...current,
                               targetWeight: toPositiveFloat(event.target.value, 0),
@@ -500,6 +568,21 @@ export default function TemplateEditorPage() {
           userExercises={userExercises}
           onClose={() => setPickerDayIndex(null)}
           onSelect={(exerciseId, exerciseName, source) => addExerciseToDay(pickerDayIndex, exerciseId, exerciseName, source)}
+        />
+      )}
+
+      {confirmLeaveOpen && (
+        <ConfirmDialog
+          title="Opuścić edytor?"
+          message="Masz niezapisane zmiany w szablonie. Jeśli wyjdziesz teraz, stracisz bieżące poprawki."
+          confirmLabel="Opuść bez zapisu"
+          cancelLabel="Zostań"
+          danger
+          onConfirm={() => {
+            setConfirmLeaveOpen(false)
+            navigate('/templates')
+          }}
+          onCancel={() => setConfirmLeaveOpen(false)}
         />
       )}
     </>

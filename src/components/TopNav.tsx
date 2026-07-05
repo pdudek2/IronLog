@@ -118,7 +118,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
 
           <button
             type="button"
-            className="top-nav-icon-btn"
+            className="top-nav-icon-btn inline-flex"
             onClick={() => go('/profile')}
             onPointerEnter={() => { void preloadRouteByPath('/profile') }}
             onFocus={() => { void preloadRouteByPath('/profile') }}
@@ -131,7 +131,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
 
           <button
             type="button"
-            className="top-nav-icon-btn hidden sm:inline-flex"
+            className="top-nav-icon-btn inline-flex"
             onClick={logoutUser}
             aria-label="Wyloguj"
             title="Wyloguj"

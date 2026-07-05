@@ -99,6 +99,15 @@ function readWorkoutPreview(state: unknown, workoutId: string | undefined): Work
   return preview
 }
 
+function parseSetDraftValue(field: 'weight' | 'reps', value: string): number {
+  if (value.trim() === '') return 0
+
+  const parsedValue = field === 'weight' ? Number.parseFloat(value) : Number.parseInt(value, 10)
+  if (!Number.isFinite(parsedValue)) return 0
+
+  return Math.max(0, parsedValue)
+}
+
 export default function WorkoutDetailPage() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
@@ -190,8 +199,7 @@ export default function WorkoutDetailPage() {
   }
 
   function handleSetChange(exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) {
-    const parsedValue = field === 'weight' ? parseFloat(value) : parseInt(value, 10)
-    const numericValue = Number.isNaN(parsedValue) ? 0 : parsedValue
+    const numericValue = parseSetDraftValue(field, value)
 
     setEditedExercises((current) => current.map((exercise, currentExerciseIndex) => {
       if (currentExerciseIndex !== exerciseIndex) return exercise
@@ -616,8 +624,9 @@ export default function WorkoutDetailPage() {
                                 inputMode="decimal"
                                 step="any"
                                 min="0"
-                                value={set.weight}
+                                value={set.weight === 0 ? '' : set.weight}
                                 onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'weight', e.target.value)}
+                                placeholder="0"
                                 aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, kg`}
                                 className="w-full min-w-0 rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
                                 style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
@@ -627,8 +636,9 @@ export default function WorkoutDetailPage() {
                                 inputMode="numeric"
                                 step="1"
                                 min="0"
-                                value={set.reps}
+                                value={set.reps === 0 ? '' : set.reps}
                                 onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'reps', e.target.value)}
+                                placeholder="0"
                                 aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
                                 className="w-full min-w-0 rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
                                 style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type * as React from 'react'
 import { Link } from 'react-router-dom'
-import { loginUser } from '../lib/auth'
+import { loginUser, resetPassword } from '../lib/auth'
 import AuthShell from '../components/AuthShell'
 import { Button, Input } from '../components/ui'
 
@@ -9,11 +9,14 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [resetNotice, setResetNotice] = useState('')
   const [loading, setLoading] = useState(false)
+  const [resetLoading, setResetLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError('')
+    setResetNotice('')
     setLoading(true)
     try {
       await loginUser(email, password)
@@ -23,6 +26,33 @@ export default function LoginPage() {
       setLoading(false)
     }
   }
+
+  async function handlePasswordReset() {
+    const normalizedEmail = email.trim()
+    setError('')
+    setResetNotice('')
+
+    if (!normalizedEmail) {
+      setError('Wpisz email, a wyślemy link do resetu hasła.')
+      return
+    }
+
+    setResetLoading(true)
+    try {
+      await resetPassword(normalizedEmail)
+      setResetNotice('Jeśli konto istnieje, wysłaliśmy link do resetu hasła.')
+    } catch (err) {
+      console.error('[password reset error]', err)
+      setError('Nie udało się wysłać linku. Sprawdź email i spróbuj ponownie.')
+    } finally {
+      setResetLoading(false)
+    }
+  }
+
+  const describedBy = [
+    error ? 'login-form-error' : '',
+    resetNotice ? 'login-reset-notice' : '',
+  ].filter(Boolean).join(' ') || undefined
 
   return (
     <AuthShell
@@ -36,7 +66,7 @@ export default function LoginPage() {
         </>
       )}
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-describedby={error ? 'login-form-error' : undefined}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-describedby={describedBy}>
         <div className="flex flex-col gap-1">
           <label htmlFor="login-email" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Email</label>
           <Input
@@ -52,7 +82,18 @@ export default function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="login-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="login-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
+            <button
+              type="button"
+              onClick={() => void handlePasswordReset()}
+              disabled={loading || resetLoading}
+              className="text-xs font-semibold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ color: 'var(--accent)' }}
+            >
+              {resetLoading ? 'Wysyłam...' : 'Nie pamiętasz hasła?'}
+            </button>
+          </div>
           <Input
             id="login-password"
             name="password"
@@ -66,8 +107,9 @@ export default function LoginPage() {
         </div>
 
         {error && <p id="login-form-error" role="alert" className="text-sm" style={{ color: '#FF4B4B' }}>{error}</p>}
+        {resetNotice && <p id="login-reset-notice" role="status" className="text-sm" style={{ color: 'var(--success)' }}>{resetNotice}</p>}
 
-        <Button type="submit" loading={loading} className="mt-2 w-full">
+        <Button type="submit" loading={loading} disabled={resetLoading} className="mt-2 w-full">
           Zaloguj się
         </Button>
       </form>

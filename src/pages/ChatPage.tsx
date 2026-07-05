@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type * as React from 'react'
 import { Bot, LoaderCircle, MessagesSquare, RotateCcw, Send, ShieldCheck, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
@@ -131,6 +132,7 @@ export default function ChatPage() {
   const [savingPlan, setSavingPlan] = useState(false)
   const [selectedPreviewDay, setSelectedPreviewDay] = useState(0)
   const chatContainerRef = useRef<HTMLDivElement | null>(null)
+  const shouldStickToBottomRef = useRef(true)
 
   const previewDay = planPreview?.days[selectedPreviewDay] ?? null
   const totalPlanExercises = planPreview?.days.reduce((sum, day) => sum + day.exercises.length, 0) ?? 0
@@ -144,9 +146,9 @@ export default function ChatPage() {
   }, [isDemoUser])
 
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-    }
+    const chatContainer = chatContainerRef.current
+    if (!chatContainer || !shouldStickToBottomRef.current) return
+    chatContainer.scrollTop = chatContainer.scrollHeight
   }, [messages, streamText])
 
   useEffect(() => {
@@ -170,6 +172,7 @@ export default function ChatPage() {
       return
     }
 
+    shouldStickToBottomRef.current = true
     const nextMessages: ChatMessage[] = [
       ...messages,
       {
@@ -212,7 +215,21 @@ export default function ChatPage() {
     }
   }
 
+  function handleChatScroll() {
+    const chatContainer = chatContainerRef.current
+    if (!chatContainer) return
+
+    const distanceFromBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight
+    shouldStickToBottomRef.current = distanceFromBottom < 96
+  }
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    void handleSend()
+  }
+
+  function handleComposerKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return
     event.preventDefault()
     void handleSend()
   }
@@ -414,7 +431,8 @@ export default function ChatPage() {
                       height: 'min(36rem, calc(100dvh - 22rem))',
                       minHeight: '20rem',
                     }}
-                    aria-live="polite"
+                    aria-label="Rozmowa z AI Coachem"
+                    aria-busy={sending}
                   >
                     {messages.length === 0 && !streamText ? (
                       <div className="flex h-full min-h-[20rem] flex-col items-center justify-center gap-8 py-6">
@@ -451,7 +469,14 @@ export default function ChatPage() {
                         </div>
                       </div>
                     ) : (
-                      <div ref={chatContainerRef} className="h-full overflow-y-auto pr-1 no-scrollbar">
+                      <div
+                        ref={chatContainerRef}
+                        onScroll={handleChatScroll}
+                        className="h-full overflow-y-auto pr-1 no-scrollbar"
+                        role="log"
+                        aria-live={sending ? 'off' : 'polite'}
+                        aria-relevant="additions"
+                      >
                         <div className="space-y-4">
                           {messages.map((message) => (
                             <div
@@ -530,6 +555,7 @@ export default function ChatPage() {
                         el.style.height = 'auto'
                         el.style.height = `${Math.min(el.scrollHeight, 160)}px`
                       }}
+                      onKeyDown={handleComposerKeyDown}
                       placeholder={configured ? 'Zapytaj o progres, plan albo ostatnią sesję' : 'Dodaj Claude API key, żeby odblokować czat'}
                       disabled={!configured || sending}
                       rows={2}
@@ -551,7 +577,6 @@ export default function ChatPage() {
                         type="submit"
                         disabled={!configured || !input.trim() || sending}
                         className="inline-flex items-center gap-2"
-                        onPointerDown={(e) => { e.preventDefault(); void handleSend() }}
                       >
                         {sending ? <LoaderCircle size={15} className="animate-spin" /> : <Send size={15} />}
                         {sending ? 'Wysyłanie...' : 'Wyślij'}

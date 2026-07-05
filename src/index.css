@@ -498,11 +498,10 @@ a {
 }
 
 .top-nav-icon-btn {
-  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.75rem;
+  height: 2.75rem;
   border-radius: var(--radius-pill);
   color: var(--muted);
   transition: color 180ms ease, background-color 180ms ease;

@@ -8,7 +8,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 
-import { LoadingState } from '../components/ui'
+import { Button, LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import {
   aggregateActivityHeatmap,
@@ -176,12 +176,19 @@ export default function ProgressPage() {
   const [fetchedAt, setFetchedAt] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
 
   function handleRangeChange(days: number) {
     if (days === rangeDays) return
     setError(false)
     setLoading(true)
     setRangeDays(days)
+  }
+
+  function handleRetry() {
+    setError(false)
+    setLoading(true)
+    setLoadAttempt((current) => current + 1)
   }
 
   useEffect(() => {
@@ -213,7 +220,7 @@ export default function ProgressPage() {
     return () => {
       cancelled = true
     }
-  }, [user, rangeDays])
+  }, [user, rangeDays, loadAttempt])
 
   const currentSessions = useMemo(() => {
     const cutoff = fetchedAt - rangeDays * 86_400_000
@@ -336,9 +343,13 @@ export default function ProgressPage() {
 
         {error && (
           <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center">
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              Nie udało się pobrać danych. Sprawdź połączenie i odśwież stronę.
+            <p className="text-base font-semibold text-white">Nie udało się pobrać danych</p>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--muted)' }}>
+              Sprawdź połączenie i spróbuj ponownie bez odświeżania strony.
             </p>
+            <Button type="button" className="mt-5 min-w-[12rem]" onClick={handleRetry}>
+              Spróbuj ponownie
+            </Button>
           </div>
         )}
 

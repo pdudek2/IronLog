@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { CalendarDays, ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { LoadingState } from '../components/ui'
+import { Button, LoadingState } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import { useWorkoutStore } from '../store/workoutStore'
 import { fetchRemoteSessionHasWork, saveActiveSession } from '../lib/activeSessionService'
@@ -39,6 +39,7 @@ export default function TemplatesPage() {
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [launching, setLaunching] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<WorkoutTemplate | null>(null)
   const [launchTarget, setLaunchTarget] = useState<{ template: WorkoutTemplate; dayIndex: number } | null>(null)
@@ -47,13 +48,22 @@ export default function TemplatesPage() {
   useEffect(() => {
     if (!user) return
     getTemplates(user.uid)
-      .then(setTemplates)
+      .then((nextTemplates) => {
+        setTemplates(nextTemplates)
+        setError(false)
+      })
       .catch(() => {
         toast.error('Nie udało się pobrać szablonów.')
         setError(true)
       })
       .finally(() => setLoading(false))
-  }, [user])
+  }, [loadAttempt, user])
+
+  function handleRetryLoad() {
+    setError(false)
+    setLoading(true)
+    setLoadAttempt((value) => value + 1)
+  }
 
   const hasActiveWork = useMemo(() => {
     if (!active) return false
@@ -171,14 +181,12 @@ export default function TemplatesPage() {
             animate={{ opacity: 1 }}
           >
             <p className="text-lg font-semibold text-white">Nie udało się pobrać szablonów</p>
-            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>Sprawdź połączenie i odśwież stronę.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-6 rounded-[var(--radius-lg)] px-5 py-3 text-sm font-semibold"
-              style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', color: 'white' }}
-            >
-              Odśwież
-            </button>
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--muted)' }}>
+              Sprawdź połączenie i spróbuj ponownie bez odświeżania strony.
+            </p>
+            <Button type="button" className="mt-6 min-w-[12rem]" onClick={handleRetryLoad}>
+              Spróbuj ponownie
+            </Button>
           </motion.div>
         ) : templates.length === 0 ? (
           <motion.div

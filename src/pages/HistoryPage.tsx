@@ -192,56 +192,45 @@ export default function HistoryPage() {
   if (loading && workouts.length === 0) return <LoadingState message="Ładowanie historii..." />
 
   return (
-    <>
-      <section className="history-page-hero hero-editorial">
-        <motion.div
-          className="flex flex-col gap-5"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-        >
-          <p className="hero-editorial-date">
-            Archiwum · {workouts.length} {polishPlural(workouts.length, 'trening', 'treningi', 'treningów')} łącznie
-          </p>
-
-          <div>
-            <h1 className="hero-editorial-name">Historia<br />treningów.</h1>
+    <div className="history-page">
+      <motion.section
+        className="history-board puls-panel"
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+      >
+        <div className="history-board-head">
+          <div className="min-w-0">
+            <p className="history-board-kicker">
+              Archiwum · {workouts.length} {polishPlural(workouts.length, 'trening', 'treningi', 'treningów')}
+            </p>
+            <h1>Historia</h1>
+            <p>
+              {loadError && workouts.length === 0
+                ? 'Nie udało się pobrać historii treningów.'
+                : filtered.length === 0
+                ? 'Brak treningów w wybranym zakresie.'
+                : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} · ${formatCompactVolume(totalVolumeInRange)}${historyTruncated ? ' · ostatnie 2000' : ''}`}
+            </p>
           </div>
 
-          <p className="hero-editorial-sub">
-            {loadError && workouts.length === 0
-              ? 'Nie udało się pobrać historii treningów. Spróbuj ponownie za chwilę.'
-              : filtered.length === 0
-              ? 'Brak treningów w wybranym zakresie — spróbuj szerszego filtru lub innego ćwiczenia.'
-              : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} w wyborze · ${formatCompactVolume(totalVolumeInRange)} objętości${activeFiltersCount > 0 ? ` · ${activeFiltersCount} ${polishPlural(activeFiltersCount, 'filtr aktywny', 'filtry aktywne', 'filtrów aktywnych')}` : ''}${historyTruncated ? ' · widok oparty o ostatnie 2000 sesji' : ''}`}
-          </p>
-
-          <div className="history-hero-ledger puls-ledger mt-5">
-            <div className="flex flex-col gap-1">
-              <span className="stat-meta">Wyniki</span>
-              <span className="text-2xl font-bold tabular-nums text-white leading-none">
-                <NumberFlow value={filtered.length} />
-              </span>
+          <div className="history-board-metrics puls-ledger" aria-label="Podsumowanie historii">
+            <div>
+              <span>Wyniki</span>
+              <strong><NumberFlow value={filtered.length} /></strong>
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="stat-meta">Objętość</span>
-              <span className="text-2xl font-bold tabular-nums text-white leading-none">
-                <NumberFlow value={Math.round(totalVolumeInRange)} locales="pl-PL" format={{ useGrouping: true }} /> kg
-              </span>
+            <div>
+              <span>Objętość</span>
+              <strong><NumberFlow value={Math.round(totalVolumeInRange)} locales="pl-PL" format={{ useGrouping: true }} /> kg</strong>
             </div>
-            <div className="flex flex-col gap-1">
-              <span className="stat-meta">Filtry</span>
-              <span className="text-2xl font-bold tabular-nums text-white leading-none">
-                <NumberFlow value={activeFiltersCount} />
-              </span>
+            <div>
+              <span>Filtry</span>
+              <strong><NumberFlow value={activeFiltersCount} /></strong>
             </div>
           </div>
-        </motion.div>
-      </section>
+        </div>
 
-      <div className="space-y-5">
-        {/* Filter bar */}
-        <div className="history-control-panel puls-panel space-y-3 p-3 sm:p-4">
+        <div className="history-control-panel">
           {historyTruncated && (
             <div
               className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
@@ -251,24 +240,26 @@ export default function HistoryPage() {
             </div>
           )}
 
-          <div className="flex flex-wrap items-center gap-2">
-            {RANGE_PRESETS.map(({ key, label }) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setRangePreset(key)}
-                className="rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors"
-                style={
-                  rangePreset === key
-                    ? { background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }
-                    : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
-                }
-              >
-                {label}
-              </button>
-            ))}
+          <div className="history-filter-row">
+            <div className="history-range-row">
+              {RANGE_PRESETS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setRangePreset(key)}
+                  className="rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors"
+                  style={
+                    rangePreset === key
+                      ? { background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }
+                      : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
 
-            <div className="relative flex-1 min-w-[14rem]">
+            <div className="history-search relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted-soft)' }} />
               <input
                 type="search"
@@ -293,7 +284,7 @@ export default function HistoryPage() {
           </div>
 
           {availableCategories.length > 0 && (
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="history-category-filter-row">
               <span className="text-[0.68rem] font-semibold uppercase mr-1" style={{ color: 'var(--muted-soft)' }}>
                 Partie
               </span>
@@ -319,7 +310,9 @@ export default function HistoryPage() {
             </div>
           )}
         </div>
+      </motion.section>
 
+      <div className="history-results">
         {/* Workout list */}
         {loadError && workouts.length === 0 ? (
           <div className="surface-panel rounded-[var(--radius-xl)] p-10 text-center">
@@ -375,6 +368,8 @@ export default function HistoryPage() {
                     <div className="history-workout-meta">
                       <span>{formatDate(workout.startedAt)}</span>
                       <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
+                      <span className="history-inline-stat">{formatCompactVolume(totalVolume)}</span>
+                      <span className="history-inline-stat">{totalSets} serii</span>
                     </div>
                     <h3>{workout.label?.trim() || 'Sesja treningowa'}</h3>
                     <p>{exerciseNames.length > 0 ? exerciseNames.join(' · ') : 'brak ćwiczeń'}</p>
@@ -416,6 +411,6 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
-    </>
+    </div>
   )
 }

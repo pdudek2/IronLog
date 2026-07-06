@@ -2553,38 +2553,130 @@ a {
 }
 
 /* ── History + workout detail: Puls records ───────────────────────── */
-.history-hero-ledger {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  width: min(100%, 36rem);
-  border-left: 0;
-  border-right: 0;
+.history-page {
+  display: grid;
+  gap: 0.9rem;
+  padding-top: 0.9rem;
+}
+
+.history-board {
+  --rail-accent: var(--accent);
+  display: grid;
+  gap: 0.95rem;
+  padding: clamp(0.95rem, 1.8vw, 1.25rem);
+  border-radius: var(--radius-sm);
   background:
-    linear-gradient(90deg, rgba(240, 67, 90, 0.095), transparent 88%),
-    rgba(255, 255, 255, 0.012);
+    linear-gradient(112deg, rgba(240, 67, 90, 0.09), transparent 34%),
+    linear-gradient(180deg, rgba(33, 31, 35, 0.82), rgba(15, 14, 16, 0.92));
 }
 
-.history-hero-ledger > div {
-  padding: 0.95rem 1rem 0.95rem 0;
+.history-board::before {
+  opacity: 0.38;
 }
 
-.history-page-hero .hero-editorial-name {
+.history-board-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(23rem, 0.58fr);
+  gap: 1.25rem;
+  align-items: end;
+  border-bottom: 1px solid rgba(244, 241, 242, 0.09);
+  padding-bottom: 0.95rem;
+}
+
+.history-board-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 780;
+  line-height: 1.35;
+  text-transform: uppercase;
+}
+
+.history-board-kicker::before {
+  content: "";
+  width: 1.55rem;
+  height: 1px;
+  background: var(--accent-text);
+}
+
+.history-board h1 {
+  margin: 0.35rem 0 0;
   color: var(--text-strong);
-  text-shadow: 0 0 40px rgba(255, 255, 255, 0.08);
+  font-family: var(--font-display);
+  font-size: clamp(2.35rem, 4.2vw, 3.65rem);
+  font-weight: 760;
+  letter-spacing: 0;
+  line-height: 0.98;
 }
 
-.history-page-hero .hero-editorial-sub {
-  color: rgba(244, 241, 242, 0.78);
+.history-board-head p:not(.history-board-kicker) {
+  max-width: 34rem;
+  margin: 0.55rem 0 0;
+  color: rgba(244, 241, 242, 0.74);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.history-board-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid rgba(244, 241, 242, 0.1);
+  border-radius: var(--radius-sm);
+  background: rgba(9, 8, 10, 0.22);
+}
+
+.history-board-metrics > div {
+  padding: 0.82rem 0.9rem;
+}
+
+.history-board-metrics span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 720;
+}
+
+.history-board-metrics strong {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--text-strong);
+  font-size: clamp(1rem, 1.8vw, 1.35rem);
+  font-weight: 780;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
 }
 
 .history-control-panel {
-  --rail-accent: var(--accent);
-  background:
-    linear-gradient(120deg, rgba(240, 67, 90, 0.075), transparent 34%),
-    linear-gradient(180deg, rgba(33, 31, 35, 0.82), rgba(18, 17, 20, 0.9));
+  display: grid;
+  gap: 0.72rem;
 }
 
-.history-control-panel::before {
-  opacity: 0.48;
+.history-filter-row,
+.history-category-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.history-range-row {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.history-search {
+  flex: 1 1 18rem;
+  min-width: 15rem;
+}
+
+.history-results {
+  display: grid;
+  gap: 0;
 }
 
 .history-workout-list {
@@ -2599,23 +2691,21 @@ a {
   --workout-accent: var(--accent);
   display: grid;
   width: 100%;
-  grid-template-columns: 0.24rem minmax(0, 1fr) minmax(14rem, 0.38fr);
+  grid-template-columns: 0.22rem minmax(0, 1fr) minmax(20rem, 0.32fr);
   align-items: stretch;
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid rgba(244, 241, 242, 0.1);
   background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--workout-accent) 22%, transparent), transparent 38%),
-    linear-gradient(90deg, color-mix(in srgb, var(--workout-accent) 10%, transparent), transparent 44%),
-    rgba(24, 22, 26, 0.86);
+    linear-gradient(90deg, color-mix(in srgb, var(--workout-accent) 12%, transparent), transparent 42%),
+    rgba(20, 18, 21, 0.82);
   color: var(--text);
   text-align: left;
   cursor: pointer;
   transition:
     background-color 160ms ease,
-    border-color 160ms ease,
-    transform 160ms ease;
+    border-color 160ms ease;
 }
 
 .history-workout-row:last-child {
@@ -2624,9 +2714,8 @@ a {
 
 .history-workout-row:hover {
   background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--workout-accent) 28%, transparent), transparent 42%),
-    linear-gradient(90deg, color-mix(in srgb, var(--workout-accent) 14%, transparent), transparent 46%),
-    rgba(36, 33, 38, 0.9);
+    linear-gradient(90deg, color-mix(in srgb, var(--workout-accent) 16%, transparent), transparent 46%),
+    rgba(30, 27, 31, 0.92);
 }
 
 .history-workout-row:focus-visible {
@@ -2644,34 +2733,38 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 1.05rem 1rem;
+  padding: 0.82rem 0.95rem;
 }
 
 .history-workout-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem 0.75rem;
+  gap: 0.25rem 0.7rem;
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 720;
+  font-size: 0.68rem;
+  font-weight: 730;
   line-height: 1.35;
 }
 
+.history-inline-stat {
+  display: none;
+}
+
 .history-workout-main h3 {
-  margin: 0.45rem 0 0;
+  margin: 0.32rem 0 0;
   color: var(--text-strong);
-  font-size: 1.1rem;
+  font-size: 1.02rem;
   font-weight: 770;
   line-height: 1.18;
 }
 
 .history-workout-main p {
-  margin: 0.5rem 0 0;
-  max-width: 44rem;
+  margin: 0.36rem 0 0;
+  max-width: 54rem;
   overflow: hidden;
   color: var(--muted);
-  font-size: 0.82rem;
-  line-height: 1.45;
+  font-size: 0.78rem;
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2679,8 +2772,8 @@ a {
 .history-category-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.75rem;
+  gap: 0.3rem;
+  margin-top: 0.58rem;
 }
 
 .history-category-pill {
@@ -2689,8 +2782,8 @@ a {
   border-radius: var(--radius-pill);
   background: color-mix(in srgb, var(--category-accent) 13%, transparent);
   color: var(--category-accent);
-  padding: 0.24rem 0.58rem;
-  font-size: 0.64rem;
+  padding: 0.2rem 0.54rem;
+  font-size: 0.62rem;
   font-weight: 760;
 }
 
@@ -2718,7 +2811,7 @@ a {
   display: grid;
   align-content: center;
   min-height: 100%;
-  padding: 1rem;
+  padding: 0.72rem 0.85rem;
 }
 
 .history-workout-metrics span,
@@ -2841,14 +2934,20 @@ a {
 }
 
 @media (max-width: 900px) {
+  .history-board-head {
+    grid-template-columns: 1fr;
+  }
+
   .history-workout-row {
     grid-template-columns: 0.24rem minmax(0, 1fr);
   }
 
   .history-workout-metrics {
-    grid-column: 2;
-    border-top: 1px solid var(--border);
-    border-left: 0;
+    display: none;
+  }
+
+  .history-inline-stat {
+    display: inline;
   }
 
   .workout-summary-ledger,
@@ -2858,11 +2957,81 @@ a {
 }
 
 @media (max-width: 520px) {
-  .history-hero-ledger {
-    grid-template-columns: 1fr;
+  .history-page {
+    padding-top: 3.25rem;
+    gap: 0.75rem;
   }
 
-  .history-hero-ledger > div,
+  .history-board {
+    gap: 0.75rem;
+    padding: 0.82rem;
+  }
+
+  .history-board h1 {
+    font-size: 2.08rem;
+  }
+
+  .history-board-head {
+    gap: 0.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .history-board-head p:not(.history-board-kicker) {
+    margin-top: 0.35rem;
+    font-size: 0.86rem;
+  }
+
+  .history-board-metrics {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    border-radius: var(--radius-sm);
+  }
+
+  .history-board-metrics > div {
+    min-width: 0;
+    padding: 0.58rem 0.62rem;
+  }
+
+  .history-board-metrics span {
+    font-size: 0.62rem;
+  }
+
+  .history-board-metrics strong {
+    font-size: 0.92rem;
+  }
+
+  .history-control-panel {
+    gap: 0.58rem;
+  }
+
+  .history-filter-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.55rem;
+  }
+
+  .history-range-row,
+  .history-category-filter-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.05rem;
+    scrollbar-width: none;
+  }
+
+  .history-range-row::-webkit-scrollbar,
+  .history-category-filter-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .history-range-row > *,
+  .history-category-filter-row > * {
+    flex: 0 0 auto;
+  }
+
+  .history-search {
+    flex-basis: 100%;
+    min-width: 0;
+  }
+
   .history-workout-metrics > div,
   .workout-detail-stat-ledger > div,
   .workout-detail-mini-ledger > div,
@@ -2873,15 +3042,15 @@ a {
 
   .history-workout-main {
     align-items: flex-start;
-    padding: 1rem 0.9rem;
+    padding: 0.92rem 0.9rem;
   }
 
   .history-workout-main p {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
     white-space: normal;
-  }
-
-  .history-workout-metrics {
-    grid-template-columns: 1fr;
   }
 
   .workout-detail-stat-ledger,

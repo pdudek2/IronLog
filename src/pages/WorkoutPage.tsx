@@ -60,6 +60,8 @@ const SESSION_QUICK_LINKS: Array<{
   { label: 'AI', to: '/chat', icon: Sparkles },
 ]
 
+type RestTimerState = { startedAt: number; totalSec: number }
+
 interface LabelChipsProps {
   activeLabel: string
   onToggle: (label: string) => void
@@ -132,8 +134,8 @@ function SessionQuickLinks({ onNavigate, variant = 'mobile', className = '' }: S
   )
 }
 
-function formatDuration(startedAt: number): { h: string; m: string; s: string } {
-  const total = Math.floor((Date.now() - startedAt) / 1000)
+function formatDuration(startedAt: number, now = Date.now()): { h: string; m: string; s: string } {
+  const total = Math.floor((now - startedAt) / 1000)
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
   const s = total % 60
@@ -142,6 +144,124 @@ function formatDuration(startedAt: number): { h: string; m: string; s: string } 
     m: String(m).padStart(2, '0'),
     s: String(s).padStart(2, '0'),
   }
+}
+
+function formatSessionTimer(startedAt: number, now = Date.now()): string {
+  const t = formatDuration(startedAt, now)
+  return t.h !== '00' ? `${t.h}:${t.m}:${t.s}` : `${t.m}:${t.s}`
+}
+
+interface ElapsedTimerProps {
+  startedAt: number
+  className?: string
+}
+
+function ElapsedTimer({ startedAt, className = '' }: ElapsedTimerProps) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1_000)
+    return () => window.clearInterval(interval)
+  }, [startedAt])
+
+  return <span className={className}>{formatSessionTimer(startedAt, now)}</span>
+}
+
+interface RestTimerBarProps {
+  rest: RestTimerState
+  onAddTime: (deltaSec: number) => void
+  onSkip: () => void
+}
+
+function RestTimerBar({ rest, onAddTime, onSkip }: RestTimerBarProps) {
+  const [now, setNow] = useState(() => Date.now())
+  const firedRef = useRef(false)
+  const onSkipRef = useRef(onSkip)
+
+  useEffect(() => {
+    onSkipRef.current = onSkip
+  }, [onSkip])
+
+  useEffect(() => {
+    firedRef.current = false
+    const interval = window.setInterval(() => setNow(Date.now()), 250)
+    return () => window.clearInterval(interval)
+  }, [rest.startedAt, rest.totalSec])
+
+  const restEndsAt = rest.startedAt + rest.totalSec * 1000
+  const restRemainingMs = Math.max(0, restEndsAt - now)
+  const restRemainingSec = Math.ceil(restRemainingMs / 1000)
+  const restProgress = restRemainingMs / (rest.totalSec * 1000)
+
+  useEffect(() => {
+    if (restRemainingMs > 0 || firedRef.current) return
+    firedRef.current = true
+    if ('vibrate' in navigator) navigator.vibrate([120, 60, 120])
+    const timeout = window.setTimeout(() => onSkipRef.current(), 3500)
+    return () => window.clearTimeout(timeout)
+  }, [restRemainingMs])
+
+  return (
+    <motion.div
+      key="rest-timer-bar"
+      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
+      animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
+      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+      transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+      className="rest-timer-bar"
+      data-finished={restRemainingMs === 0}
+      role="status"
+      aria-live={restRemainingMs === 0 ? 'polite' : 'off'}
+    >
+      <div className="rest-timer-progress" aria-hidden="true">
+        <div className="rest-timer-progress-fill" style={{ width: `${restProgress * 100}%` }} />
+      </div>
+      <div className="rest-timer-content">
+        <Timer size={16} strokeWidth={2.2} className="flex-none" />
+        <div className="rest-timer-label">
+          {restRemainingMs === 0 ? (
+            <span>Gotowe — czas na kolejną serię</span>
+          ) : (
+            <>
+              <span style={{ color: 'var(--muted)' }}>Przerwa</span>
+              <span className="tabular-nums font-bold ml-2">
+                {Math.floor(restRemainingSec / 60)}:{String(restRemainingSec % 60).padStart(2, '0')}
+              </span>
+            </>
+          )}
+        </div>
+        {restRemainingMs > 0 ? (
+          <>
+            <button
+              type="button"
+              onClick={() => onAddTime(30)}
+              className="rest-timer-action"
+              aria-label="Dodaj 30 sekund"
+            >
+              +30s
+            </button>
+            <button
+              type="button"
+              onClick={onSkip}
+              className="rest-timer-action rest-timer-action--icon"
+              aria-label="Pomiń przerwę"
+            >
+              <X size={14} />
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={onSkip}
+            className="rest-timer-action"
+            aria-label="Zamknij"
+          >
+            OK
+          </button>
+        )}
+      </div>
+    </motion.div>
+  )
 }
 
 function parseWeight(value: string): number {
@@ -198,7 +318,6 @@ export default function WorkoutPage() {
   const [saving, setSaving] = useState(false)
   const [closingSession, setClosingSession] = useState(false)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
-  const [, setTick] = useState(0)
   const [saveError, setSaveError] = useState('')
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
@@ -209,40 +328,13 @@ export default function WorkoutPage() {
   const fetchedKeys = useRef(new Set<string>())
 
   // Rest timer state
-  const [rest, setRest] = useState<{ startedAt: number; totalSec: number } | null>(null)
-  const [restNow, setRestNow] = useState(() => Date.now())
-  const restFiredRef = useRef(false)
-
-  useEffect(() => {
-    if (rest === null) return
-    const interval = setInterval(() => setRestNow(Date.now()), 250)
-    return () => clearInterval(interval)
-  }, [rest])
-
-  const restEndsAt = rest ? rest.startedAt + rest.totalSec * 1000 : null
-  const restRemainingMs = restEndsAt !== null ? Math.max(0, restEndsAt - restNow) : 0
-  const restRemainingSec = Math.ceil(restRemainingMs / 1000)
-  const restProgress = rest ? restRemainingMs / (rest.totalSec * 1000) : 0
-
-  useEffect(() => {
-    if (rest === null) {
-      restFiredRef.current = false
-      return
-    }
-    if (restRemainingMs === 0 && !restFiredRef.current) {
-      restFiredRef.current = true
-      if ('vibrate' in navigator) navigator.vibrate([120, 60, 120])
-      const timeout = setTimeout(() => setRest(null), 3500)
-      return () => clearTimeout(timeout)
-    }
-  }, [rest, restRemainingMs])
+  const [rest, setRest] = useState<RestTimerState | null>(null)
 
   const handleToggleSet = (exerciseIndex: number, setIndex: number) => {
     const currentSet = active?.exercises[exerciseIndex]?.sets[setIndex]
     const wasNotDone = currentSet && !currentSet.done
     toggleSetDone(exerciseIndex, setIndex)
     if (wasNotDone) {
-      restFiredRef.current = false
       setRest({ startedAt: Date.now(), totalSec: 90 })
       if ('vibrate' in navigator) navigator.vibrate(12)
     } else {
@@ -326,11 +418,6 @@ export default function WorkoutPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, active?.exercises.length])
-
-  useEffect(() => {
-    const id = setInterval(() => setTick((tick) => tick + 1), 1_000)
-    return () => clearInterval(id)
-  }, [])
 
   useEffect(() => {
     const routeState = location.state as { templateWorkout?: ActiveWorkout; templateName?: string } | null
@@ -539,10 +626,6 @@ export default function WorkoutPage() {
         ? 'Cała rozpiska jest oznaczona jako wykonana. Możesz domknąć sesję albo dorzucić kolejne serie.'
         : `${completedSets} z ${totalSets} serii masz już zamknięte.`
 
-  const timerStr = (() => {
-    const t = formatDuration(active.startedAt)
-    return t.h !== '00' ? `${t.h}:${t.m}:${t.s}` : `${t.m}:${t.s}`
-  })()
   const focusExerciseIndex = (() => {
     const nextIndex = active.exercises.findIndex((exercise) => exercise.sets.some((set) => !set.done))
     if (nextIndex >= 0) return nextIndex
@@ -585,7 +668,7 @@ export default function WorkoutPage() {
         >
           Anuluj
         </motion.button>
-        <span className="text-xl font-bold tabular-nums text-white flex-none">{timerStr}</span>
+        <ElapsedTimer startedAt={active.startedAt} className="text-xl font-bold tabular-nums text-white flex-none" />
         <div className="flex-1 min-w-0" />
         <motion.button
           onClick={handleFinish}
@@ -610,9 +693,7 @@ export default function WorkoutPage() {
             <div className="workout-time-card">
               <p className="stat-meta mb-2">Czas sesji</p>
               <div className="flex items-end justify-between gap-3">
-                <span className="workout-time-value">
-                  {timerStr}
-                </span>
+                <ElapsedTimer startedAt={active.startedAt} className="workout-time-value" />
                 <span
                   className="workout-live-pill"
                 >
@@ -1114,69 +1195,13 @@ export default function WorkoutPage() {
             </div>
             <div className="rounded-[var(--radius-lg)] border px-3 py-2 text-right" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.03)' }}>
               <p className="text-[10px] uppercase" style={{ color: 'var(--muted)' }}>Tempo</p>
-              <p className="mt-1 text-sm font-semibold text-white tabular-nums">{timerStr}</p>
+              <ElapsedTimer startedAt={active.startedAt} className="mt-1 text-sm font-semibold text-white tabular-nums" />
             </div>
           </div>
 
           <AnimatePresence initial={false}>
             {rest !== null && (
-              <motion.div
-                key="rest-timer-bar"
-                initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-                animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
-                exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-                transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-                className="rest-timer-bar"
-                data-finished={restRemainingMs === 0}
-              >
-                <div className="rest-timer-progress" aria-hidden="true">
-                  <div className="rest-timer-progress-fill" style={{ width: `${restProgress * 100}%` }} />
-                </div>
-                <div className="rest-timer-content">
-                  <Timer size={16} strokeWidth={2.2} className="flex-none" />
-                  <div className="rest-timer-label">
-                    {restRemainingMs === 0 ? (
-                      <span>Gotowe — czas na kolejną serię</span>
-                    ) : (
-                      <>
-                        <span style={{ color: 'var(--muted)' }}>Przerwa</span>
-                        <span className="tabular-nums font-bold ml-2">
-                          {Math.floor(restRemainingSec / 60)}:{String(restRemainingSec % 60).padStart(2, '0')}
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  {restRemainingMs > 0 ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleAddRestTime(30)}
-                        className="rest-timer-action"
-                        aria-label="Dodaj 30 sekund"
-                      >
-                        +30s
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSkipRest}
-                        className="rest-timer-action rest-timer-action--icon"
-                        aria-label="Pomiń przerwę"
-                      >
-                        <X size={14} />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={handleSkipRest}
-                      className="rest-timer-action"
-                      aria-label="Zamknij"
-                    >
-                      OK
-                    </button>
-                  )}
-                </div>
-              </motion.div>
+              <RestTimerBar rest={rest} onAddTime={handleAddRestTime} onSkip={handleSkipRest} />
             )}
           </AnimatePresence>
 

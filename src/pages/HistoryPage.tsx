@@ -269,6 +269,7 @@ export default function HistoryPage() {
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted-soft)' }} />
               <input
                 type="search"
+                aria-label="Szukaj w historii treningów"
                 placeholder="Szukaj ćwiczenia lub etykiety..."
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}

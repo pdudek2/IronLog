@@ -67,6 +67,8 @@ export default function ReadinessPrompt({ onSaved }: Props) {
             </div>
             <input
               type="range"
+              aria-label={`Gotowość: ${label}`}
+              aria-valuetext={`${values[key]} z 5`}
               min={1}
               max={5}
               step={1}

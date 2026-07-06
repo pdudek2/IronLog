@@ -137,12 +137,32 @@ function summarizeActivityHeatmap(data: HeatmapDay[]): string {
 
 interface DarkTooltipProps {
   active?: boolean
-  payload?: Array<{ name?: string; value?: number | string; color?: string }>
+  payload?: Array<{ name?: string; dataKey?: string | number; value?: number | string; color?: string }>
   label?: string
 }
 
 function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
   if (!active || !payload?.length) return null
+  const tooltipLabel = typeof label === 'string' ? (MUSCLE_PL[label] ?? label) : label
+
+  function formatTooltipValue(item: NonNullable<DarkTooltipProps['payload']>[number]) {
+    const key = String(item.dataKey ?? item.name ?? '')
+    const value = item.value
+    if (typeof value !== 'number') return value
+
+    if (key === 'sessions') {
+      return `${value} ${polishPlural(value, 'sesja', 'sesje', 'sesji')}`
+    }
+    if (key === 'count') {
+      return `${value} ${polishPlural(value, 'wpis', 'wpisy', 'wpisów')}`
+    }
+    if (key === 'volume') {
+      return formatVolume(value)
+    }
+
+    return `${value} kg`
+  }
+
   return (
     <div
       style={{
@@ -153,15 +173,10 @@ function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
         fontSize: '12px',
       }}
     >
-      <p style={{ color: 'var(--muted)', marginBottom: 4 }}>{label}</p>
+      <p style={{ color: 'var(--muted)', marginBottom: 4 }}>{tooltipLabel}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ color: p.color ?? 'var(--accent)', fontWeight: 600 }}>
-          {typeof p.value === 'number' && p.name !== 'sessions'
-            ? `${p.value} kg`
-            : p.value}{' '}
-          {p.name === 'sessions'
-            ? polishPlural(Number(p.value), 'sesja', 'sesje', 'sesji')
-            : ''}
+          {formatTooltipValue(p)}
         </p>
       ))}
     </div>

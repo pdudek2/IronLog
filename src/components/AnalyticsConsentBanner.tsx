@@ -24,11 +24,11 @@ export default function AnalyticsConsentBanner() {
   }
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 px-4 pb-4 sm:px-6 sm:pb-6">
+    <div className="analytics-consent-banner fixed inset-x-0 z-[60] px-4 sm:px-6">
       <section
         role="region"
         aria-label="Zgoda na analitykę"
-        className="surface-panel mx-auto flex max-w-3xl flex-col gap-3 rounded-[var(--radius-xl)] p-3 shadow-2xl sm:ml-0 sm:mr-auto sm:max-w-xl sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
+        className="surface-panel pointer-events-auto mx-auto flex max-w-3xl flex-col gap-3 rounded-[var(--radius-xl)] p-3 shadow-2xl sm:ml-0 sm:mr-auto sm:max-w-xl sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:p-4"
       >
         <div className="min-w-0">
           <p className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>Prywatność i analityka</p>

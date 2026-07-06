@@ -111,8 +111,8 @@ export default function ChatPage() {
   const navigate = useNavigate()
   const isDemoUser = user?.email === DEMO_EMAIL
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
-  const [configured, setConfigured] = useState(() => isDemoUser || hasClaudeApiKey())
-  const [showConfigPanel, setShowConfigPanel] = useState(() => !isDemoUser && !hasClaudeApiKey())
+  const [configured, setConfigured] = useState(() => hasClaudeApiKey())
+  const [showConfigPanel, setShowConfigPanel] = useState(() => !hasClaudeApiKey())
   const [messages, setMessages] = useState<ChatMessage[]>(() => (isDemoUser ? DEMO_CHAT_MESSAGES : []))
   const demoSeededRef = useRef(isDemoUser)
   const [input, setInput] = useState('')
@@ -141,8 +141,6 @@ export default function ChatPage() {
     if (!isDemoUser || demoSeededRef.current) return
     demoSeededRef.current = true
     setMessages(DEMO_CHAT_MESSAGES)
-    setConfigured(true)
-    setShowConfigPanel(false)
   }, [isDemoUser])
 
   useEffect(() => {
@@ -548,6 +546,7 @@ export default function ChatPage() {
 
                   <form onSubmit={handleSubmit} className="mt-4 space-y-3">
                     <textarea
+                      aria-label="Wiadomość do AI Coacha"
                       value={input}
                       onChange={(event) => {
                         setInput(event.target.value)
@@ -664,11 +663,12 @@ export default function ChatPage() {
 
                     <div>
                       <span className="stat-meta">Dni w tygodniu</span>
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Liczba dni treningowych w tygodniu">
                         {[2, 3, 4, 5, 6].map((days) => (
                           <button
                             key={days}
                             type="button"
+                            aria-pressed={planDays === days}
                             onClick={() => setPlanDays(days)}
                             className="rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
                             style={{
@@ -685,11 +685,12 @@ export default function ChatPage() {
 
                     <div>
                       <span className="stat-meta">Poziom</span>
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Poziom zaawansowania">
                         {EXPERIENCE_OPTIONS.map((option) => (
                           <button
                             key={option.value}
                             type="button"
+                            aria-pressed={planExperience === option.value}
                             onClick={() => setPlanExperience(option.value)}
                             className="rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
                             style={{
@@ -706,13 +707,14 @@ export default function ChatPage() {
 
                     <div className="md:col-span-2">
                       <span className="stat-meta">Dostępny sprzęt</span>
-                      <div className="mt-2 flex flex-wrap gap-2">
+                      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Dostępny sprzęt">
                         {EQUIPMENT_OPTIONS.map((option) => {
                           const active = planEquipment.includes(option.value)
                           return (
                             <button
                               key={option.value}
                               type="button"
+                              aria-pressed={active}
                               onClick={() => toggleEquipment(option.value)}
                               className="rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
                               style={{
@@ -911,14 +913,12 @@ export default function ChatPage() {
           </div>
 
           <div className="ai-side-rail space-y-5">
-            {!isDemoUser && (
-              <AiKeyPanel
-                onConfiguredChange={setConfigured}
-                collapsed={configured && !showConfigPanel}
-                onExpand={() => setShowConfigPanel(true)}
-                onCollapse={() => setShowConfigPanel(false)}
-              />
-            )}
+            <AiKeyPanel
+              onConfiguredChange={setConfigured}
+              collapsed={configured && !showConfigPanel}
+              onExpand={() => setShowConfigPanel(true)}
+              onCollapse={() => setShowConfigPanel(false)}
+            />
 
             {activeTab === 'chat' ? (
               showConfigPanel || !configured ? (

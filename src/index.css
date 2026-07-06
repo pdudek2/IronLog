@@ -170,6 +170,15 @@ a:focus-visible {
   outline-offset: 3px;
 }
 
+[role='button']:focus-visible,
+[role='tab']:focus-visible,
+[role='radio']:focus-visible,
+[role='switch']:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 3px;
+}
+
 button,
 input,
 select,
@@ -179,6 +188,17 @@ textarea {
 
 a {
   color: inherit;
+}
+
+.analytics-consent-banner {
+  bottom: calc(5.9rem + env(safe-area-inset-bottom, 0px));
+  pointer-events: none;
+}
+
+@media (min-width: 1024px) {
+  .analytics-consent-banner {
+    bottom: 1.5rem;
+  }
 }
 
 ::selection {

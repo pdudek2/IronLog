@@ -375,7 +375,7 @@ export default function TemplateEditorPage() {
                       type="button"
                       onClick={() => removeDay(dayIndex)}
                       className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
-                      style={{ background: 'rgba(255,87,87,0.08)', border: '1px solid rgba(255,87,87,0.18)', color: '#FF5757' }}
+                      style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger-soft-strong)', color: 'var(--danger)' }}
                     >
                       <Trash2 size={13} />
                       Usuń dzień
@@ -411,7 +411,7 @@ export default function TemplateEditorPage() {
                           type="button"
                           onClick={() => removeExercise(dayIndex, exerciseIndex)}
                           className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
-                          style={{ background: 'rgba(255,87,87,0.08)', border: '1px solid rgba(255,87,87,0.18)', color: '#FF5757' }}
+                          style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger-soft-strong)', color: 'var(--danger)' }}
                         >
                           <Trash2 size={13} />
                           Usuń
@@ -552,7 +552,7 @@ export default function TemplateEditorPage() {
             disabled={saving}
             className="inline-flex items-center gap-2 rounded-[var(--radius-lg)] px-5 py-3 text-sm font-semibold disabled:opacity-60"
             style={{
-              background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+              background: 'var(--primary-gradient)',
               color: 'var(--accent-foreground)',
             }}
             whileTap={{ scale: 0.97 }}

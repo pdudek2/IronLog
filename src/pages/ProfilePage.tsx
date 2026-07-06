@@ -159,7 +159,7 @@ export default function ProfilePage() {
           </div>
 
           <p className="hero-editorial-sub">
-            Ustaw bazę pracy: cel, tempo tygodnia i jednostki — to fundament, na którym opiera się cały produkt.
+            Cel tygodnia, jednostki i podstawowy kontekst treningu.
           </p>
 
           <div
@@ -168,19 +168,19 @@ export default function ProfilePage() {
           >
             <div className="flex flex-col gap-1 min-w-0">
               <span className="stat-meta">Użytkownik</span>
-              <span className="text-xl font-bold tracking-[-0.03em] text-white leading-none sm:text-2xl">
+              <span className="text-xl font-bold text-white leading-none sm:text-2xl">
                 {profile?.displayName ?? '—'}
               </span>
             </div>
             <div className="flex flex-col gap-1 min-w-0">
               <span className="stat-meta">Cel tyg.</span>
-              <span className="text-xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none sm:text-2xl">
+              <span className="text-xl font-bold tabular-nums text-white leading-none sm:text-2xl">
                 {weeklyGoal} <span className="text-base" style={{ color: 'var(--muted)' }}>{polishPlural(weeklyGoal, 'sesja', 'sesje', 'sesji')}</span>
               </span>
             </div>
             <div className="flex flex-col gap-1 min-w-0">
               <span className="stat-meta">Jednostki</span>
-              <span className="text-xl font-bold tracking-[-0.03em] text-white leading-none uppercase sm:text-2xl">
+              <span className="text-xl font-bold text-white leading-none uppercase sm:text-2xl">
                 {units}
               </span>
             </div>
@@ -188,8 +188,8 @@ export default function ProfilePage() {
         </motion.div>
       </section>
 
-      <div className="mx-auto" style={{ maxWidth: '42rem' }}>
-        <Card padding="sm" className="sm:p-6">
+      <div className="profile-settings-shell mx-auto" style={{ maxWidth: '42rem' }}>
+        <Card padding="sm" className="profile-form-panel sm:p-6">
           <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
 
             <div className="flex flex-col gap-1">
@@ -317,12 +317,12 @@ export default function ProfilePage() {
               className="mt-2 w-full"
               style={{
                 background: saved
-                  ? 'linear-gradient(180deg, var(--success) 0%, #11bc8b 100%)'
-                  : 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
-                color: saved ? '#081813' : 'var(--accent-foreground)',
+                  ? 'var(--success-gradient)'
+                  : 'var(--primary-gradient)',
+                color: saved ? 'var(--success-foreground)' : 'var(--accent-foreground)',
                 boxShadow: saved
-                  ? '0 14px 32px rgba(25,213,159,0.2)'
-                  : '0 14px 32px rgba(90,166,255,0.22)',
+                  ? '0 14px 32px rgba(143,184,160,0.2)'
+                  : '0 14px 32px rgba(240,67,90,0.22)',
               }}
             >
               {saved ? 'Zapisano ✓' : 'Zapisz zmiany'}

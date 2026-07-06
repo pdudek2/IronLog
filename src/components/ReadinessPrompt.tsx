@@ -41,15 +41,19 @@ export default function ReadinessPrompt({ onSaved }: Props) {
 
   return (
     <motion.div
-      className="surface-panel rounded-[var(--radius-xl)] p-5"
+      className="readiness-card readiness-card--prompt"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <p className="eyebrow mb-1" style={{ color: 'var(--accent)' }}>Gotowość</p>
-      <p className="text-sm font-semibold text-white mb-4">Jak wygląda dziś forma?</p>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <p className="eyebrow mb-1" style={{ color: 'var(--accent)' }}>Gotowość</p>
+          <p className="text-sm font-semibold text-white">Jak wygląda dziś forma?</p>
+        </div>
+      </div>
 
-      <div className="space-y-5">
+      <div className="space-y-3">
         {FIELDS.map(({ key, label, lowLabel, highLabel }) => (
           <div key={key}>
             <div className="flex items-center justify-between mb-2">
@@ -71,7 +75,7 @@ export default function ReadinessPrompt({ onSaved }: Props) {
               className="readiness-slider w-full"
               style={{ touchAction: 'manipulation' }}
             />
-            <div className="flex justify-between mt-1">
+            <div className="readiness-scale flex justify-between mt-1">
               <span className="text-[11px]" style={{ color: 'var(--muted)' }}>{lowLabel}</span>
               <span className="text-[11px]" style={{ color: 'var(--muted)' }}>{highLabel}</span>
             </div>
@@ -82,9 +86,9 @@ export default function ReadinessPrompt({ onSaved }: Props) {
       <motion.button
         onClick={handleSave}
         disabled={saving}
-        className="mt-5 w-full rounded-[var(--radius-lg)] py-3 text-sm font-semibold disabled:opacity-50"
+        className="mt-3 w-full rounded-[var(--radius-lg)] py-2.5 text-sm font-semibold disabled:opacity-50"
         style={{
-          background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+          background: 'var(--primary-gradient)',
           color: 'var(--accent-foreground)',
         }}
         whileTap={{ scale: 0.98 }}

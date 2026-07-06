@@ -151,7 +151,7 @@ export default function OnboardingPage() {
           </div>
         </div>
 
-        {submitError && <p id="onboarding-submit-error" role="alert" className="text-sm" style={{ color: '#FF4B4B' }}>{submitError}</p>}
+        {submitError && <p id="onboarding-submit-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{submitError}</p>}
 
         <Button type="submit" loading={loading} className="mt-2 w-full">
           Zaczynajmy

@@ -154,7 +154,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-5 sm:px-5 space-y-5">
           {/* Name */}
           <div>
-            <label htmlFor={nameInputId} className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            <label htmlFor={nameInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
               Nazwa *
             </label>
             <input
@@ -179,7 +179,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
 
           {/* Category */}
           <div>
-            <label htmlFor={categoryInputId} className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            <label htmlFor={categoryInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
               Kategoria
             </label>
             <select id={categoryInputId} value={category} onChange={(e) => setCategory(e.target.value as Category)} style={selectStyle}>
@@ -193,7 +193,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
 
           {/* Equipment */}
           <div>
-            <label htmlFor={equipmentInputId} className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            <label htmlFor={equipmentInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
               Sprzęt
             </label>
             <select id={equipmentInputId} value={equipment} onChange={(e) => setEquipment(e.target.value as Equipment)} style={selectStyle}>
@@ -207,7 +207,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
 
           {/* Muscles */}
           <div>
-            <p id={musclesGroupId} className="block text-xs font-semibold mb-2 uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+            <p id={musclesGroupId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
               Partie mięśniowe
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-labelledby={musclesGroupId}>
@@ -233,7 +233,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
           </div>
 
           {error && (
-            <p className="text-xs" style={{ color: '#FF4B4B' }}>{error}</p>
+            <p className="text-xs" style={{ color: 'var(--danger)' }}>{error}</p>
           )}
 
           <motion.button
@@ -241,7 +241,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
             disabled={saving}
             className="w-full rounded-[var(--radius-lg)] py-3.5 text-sm font-semibold disabled:opacity-50"
             style={{
-              background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+              background: 'var(--primary-gradient)',
               color: 'var(--accent-foreground)',
             }}
             whileTap={{ scale: 0.97 }}
@@ -268,7 +268,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
   const muscleText = exercise.muscles.map((m) => MUSCLE_LABELS[m]).join(', ')
   return (
     <article
-      className="rounded-[1.25rem] px-4 py-4 transition-all hover:border-[rgba(90,166,255,0.3)] hover:-translate-y-px"
+      className="rounded-[1.25rem] px-4 py-4 transition-all hover:border-[rgba(240,67,90,0.3)] hover:-translate-y-px"
       style={{
         background: 'rgba(255,255,255,0.03)',
         border: `1px solid ${isUser ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
@@ -306,7 +306,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
             type="button"
             onClick={(e) => { e.stopPropagation(); onDelete?.() }}
             className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
-            style={{ background: 'rgba(255,87,87,0.08)', color: '#FF5757', border: '1px solid rgba(255,87,87,0.18)' }}
+            style={{ background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger-soft-strong)' }}
           >
             <Trash2 size={12} />
             Usuń
@@ -360,7 +360,7 @@ interface SidebarFilterProps<T extends string> {
 function SidebarFilter<T extends string>({ title, options, labels, active, onSelect }: SidebarFilterProps<T>) {
   return (
     <div>
-      <p className="text-[10px] uppercase tracking-widest mb-2" style={{ color: 'var(--muted)' }}>{title}</p>
+      <p className="text-[10px] uppercase mb-2" style={{ color: 'var(--muted)' }}>{title}</p>
       <div className="flex flex-col gap-1">
         {options.map((opt) => (
           <button
@@ -394,7 +394,7 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-3 lg:mb-4">
-      <p className="text-[10px] uppercase tracking-widest font-semibold" style={{ color: 'var(--muted)' }}>{eyebrow}</p>
+      <p className="text-[10px] uppercase font-semibold" style={{ color: 'var(--muted)' }}>{eyebrow}</p>
       <div className="mt-1 flex items-center gap-3">
         <h2 className="text-xl font-semibold text-white">{title}</h2>
         <span
@@ -528,13 +528,13 @@ export default function ExercisesPage() {
           >
             <div className="flex flex-col gap-1 min-w-[6.5rem]">
               <span className="stat-meta">Katalog</span>
-              <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+              <span className="text-2xl font-bold tabular-nums text-white leading-none">
                 <NumberFlow value={exercises.length} />
               </span>
             </div>
             <div className="flex flex-col gap-1 min-w-[6.5rem]">
               <span className="stat-meta">Moje</span>
-              <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+              <span className="text-2xl font-bold tabular-nums text-white leading-none">
                 <NumberFlow value={userExercises.length} />
               </span>
             </div>
@@ -586,7 +586,7 @@ export default function ExercisesPage() {
             <motion.button
               onClick={openCreateForm}
               className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] py-3 text-sm font-semibold"
-              style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+              style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.97 }}
             >
@@ -633,12 +633,12 @@ export default function ExercisesPage() {
                   <>
                     <p className="text-sm font-semibold text-white mb-1">Brak własnych ćwiczeń</p>
                     <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
-                      Dodaj własne ćwiczenie, żeby pojawiło się tutaj i w pickerze treningu.
+                      Lista własnych ćwiczeń jest pusta.
                     </p>
                     <motion.button
                       onClick={openCreateForm}
                       className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-4 py-2 text-xs font-semibold"
-                      style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                      style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
                       whileTap={{ scale: 0.95 }}
                     >
                       <Plus size={13} strokeWidth={2.5} />

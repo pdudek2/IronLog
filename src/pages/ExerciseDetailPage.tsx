@@ -26,13 +26,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#4D8EFF',
-  back: '#9B6DFF',
-  legs: '#FF5757',
-  arms: '#FF9F43',
-  shoulders: '#FF6B9D',
-  core: '#00D4AA',
-  cardio: '#FFD700',
+  chest: '#F0435A',
+  back: '#8FB8A0',
+  legs: '#F0A75A',
+  arms: '#D9A06E',
+  shoulders: '#D97B91',
+  core: '#B8A8B2',
+  cardio: '#A7D8BB',
 }
 
 function formatDate(ts: number): string {
@@ -161,7 +161,7 @@ export default function ExerciseDetailPage() {
           <div className="flex flex-wrap items-center gap-2">
             {exercise?.category && (
               <span
-                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase"
                 style={{ background: `${accent}1e`, color: accent, border: `1px solid ${accent}30` }}
               >
                 {CATEGORY_LABELS[exercise.category] ?? exercise.category}
@@ -169,7 +169,7 @@ export default function ExerciseDetailPage() {
             )}
             {exercise?.equipment && (
               <span
-                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase"
                 style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
               >
                 {getEquipmentLabel(exercise.equipment)}
@@ -177,7 +177,7 @@ export default function ExerciseDetailPage() {
             )}
             {source === 'user' && (
               <span
-                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase"
                 style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-soft-strong)' }}
               >
                 moje
@@ -214,7 +214,7 @@ export default function ExerciseDetailPage() {
               <button
                 type="button"
                 className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
-                style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
                 onClick={() => navigate('/workout/new')}
               >
                 Rozpocznij trening
@@ -229,25 +229,25 @@ export default function ExerciseDetailPage() {
             >
               <div className="flex flex-col gap-1 min-w-[6.5rem]">
                 <span className="stat-meta">Rekord</span>
-                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                <span className="text-2xl font-bold tabular-nums text-white leading-none">
                   {record.maxWeight} <span className="text-base" style={{ color: 'var(--muted)' }}>kg</span>
                 </span>
               </div>
               <div className="flex flex-col gap-1 min-w-[6.5rem]">
                 <span className="stat-meta">Powt. max</span>
-                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                <span className="text-2xl font-bold tabular-nums text-white leading-none">
                   {record.maxReps}
                 </span>
               </div>
               <div className="flex flex-col gap-1 min-w-[6.5rem]">
                 <span className="stat-meta">Sesje</span>
-                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                <span className="text-2xl font-bold tabular-nums text-white leading-none">
                   {record.totalSessions}
                 </span>
               </div>
               <div className="flex flex-col gap-1 min-w-[6.5rem]">
                 <span className="stat-meta">Top wolumen</span>
-                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                <span className="text-2xl font-bold tabular-nums text-white leading-none">
                   {formatVolume(record.bestVolume)}
                 </span>
               </div>
@@ -283,7 +283,7 @@ export default function ExerciseDetailPage() {
                           title={`${formatDate(session.startedAt)}: ${formatVolume(session.totalVolume)}`}
                         />
                       </div>
-                      <p className="text-[9px] uppercase tracking-wide" style={{ color: 'var(--muted-soft)' }}>
+                      <p className="text-[9px] uppercase" style={{ color: 'var(--muted-soft)' }}>
                         {new Date(session.startedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'numeric' })}
                       </p>
                     </div>
@@ -312,7 +312,7 @@ export default function ExerciseDetailPage() {
                     </div>
                     <p className="text-sm font-semibold text-white">Brak historii</p>
                     <p className="mt-2 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      Po pierwszym użyciu zobaczysz tu ostatnie serie, wolumen i sygnały progresu dla tego ruchu.
+                      Brak zapisanych serii dla tego ćwiczenia.
                     </p>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -347,23 +347,23 @@ export default function ExerciseDetailPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-white tabular-nums">{formatVolume(session.totalVolume)}</p>
-                        <p className="mt-0.5 text-[10px] uppercase tracking-wide" style={{ color: 'var(--muted)' }}>wolumen</p>
+                        <p className="mt-0.5 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>wolumen</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
                         <p className="text-xs font-semibold text-white tabular-nums">{session.totalSets}</p>
-                        <p className="text-[10px] uppercase tracking-wide mt-0.5" style={{ color: 'var(--muted)' }}>serie</p>
+                        <p className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--muted)' }}>serie</p>
                       </div>
                       <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
                         <p className="text-xs font-semibold text-white tabular-nums">{session.totalReps}</p>
-                        <p className="text-[10px] uppercase tracking-wide mt-0.5" style={{ color: 'var(--muted)' }}>powt.</p>
+                        <p className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--muted)' }}>powt.</p>
                       </div>
                       <div className="rounded-lg p-2 text-center" style={{ background: `${accent}14` }}>
                         <p className="text-xs font-semibold tabular-nums" style={{ color: accent }}>
                           {session.bestSetWeight ? `${session.bestSetWeight} kg` : '—'}
                         </p>
-                        <p className="text-[10px] uppercase tracking-wide mt-0.5" style={{ color: 'var(--muted)' }}>top set</p>
+                        <p className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--muted)' }}>top set</p>
                       </div>
                     </div>
 

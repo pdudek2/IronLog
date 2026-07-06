@@ -131,7 +131,7 @@ export default function AiKeyPanel({
                 className="rounded-[var(--radius-pill)] px-2.5 py-1 text-[11px] font-semibold"
                 style={{
                   background: keyVerified ? 'var(--success-soft)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${keyVerified ? 'rgba(25,213,159,0.18)' : 'var(--border)'}`,
+                  border: `1px solid ${keyVerified ? 'rgba(143,184,160,0.18)' : 'var(--border)'}`,
                   color: keyVerified ? 'var(--success)' : 'var(--muted)',
                 }}
               >
@@ -139,7 +139,7 @@ export default function AiKeyPanel({
               </span>
             </div>
 
-            <h2 className="mt-2 text-lg font-semibold tracking-[-0.03em] text-white">
+            <h2 className="mt-2 text-lg font-semibold text-white">
               Claude API key
             </h2>
             <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
@@ -166,7 +166,7 @@ export default function AiKeyPanel({
           <p className="eyebrow" style={{ color: 'var(--accent)' }}>
             Konfiguracja
           </p>
-          <h2 className="mt-3 text-2xl font-bold tracking-[-0.04em] text-white">
+          <h2 className="mt-3 text-2xl font-bold text-white">
             Claude API key
           </h2>
           <p className="mt-3 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
@@ -180,19 +180,19 @@ export default function AiKeyPanel({
             background: keyVerified
               ? 'var(--success-soft)'
               : modelsError && hasSavedKey
-                ? 'rgba(255,87,87,0.08)'
+                ? 'var(--danger-soft)'
                 : 'rgba(255,255,255,0.04)',
             border: `1px solid ${
               keyVerified
-                ? 'rgba(25,213,159,0.18)'
+                ? 'rgba(143,184,160,0.18)'
                 : modelsError && hasSavedKey
-                  ? 'rgba(255,87,87,0.18)'
+                  ? 'var(--danger-soft-strong)'
                   : 'var(--border)'
             }`,
             color: keyVerified
               ? 'var(--success)'
               : modelsError && hasSavedKey
-                ? '#ff9c9c'
+                ? 'var(--danger)'
                 : 'var(--muted)',
           }}
         >
@@ -296,9 +296,9 @@ export default function AiKeyPanel({
               className="mt-4 w-full"
               style={saved
                 ? {
-                    background: 'linear-gradient(180deg, var(--success) 0%, #11bc8b 100%)',
-                    color: '#081813',
-                    boxShadow: '0 14px 32px rgba(25,213,159,0.2)',
+                    background: 'var(--success-gradient)',
+                    color: 'var(--success-foreground)',
+                    boxShadow: '0 14px 32px rgba(143,184,160,0.2)',
                   }
                 : undefined}
             >
@@ -362,7 +362,7 @@ export default function AiKeyPanel({
           )}
 
           {modelsError && (
-            <p className="mt-3 text-xs leading-5" style={{ color: '#ff9c9c' }}>
+            <p className="mt-3 text-xs leading-5" style={{ color: 'var(--danger)' }}>
               {modelsError}
             </p>
           )}

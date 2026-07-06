@@ -202,7 +202,7 @@ export default function TemplatesPage() {
                 >
                   <CalendarDays size={24} />
                 </div>
-                <p className="text-2xl font-semibold tracking-[-0.04em] text-white">Nie masz jeszcze szablonów</p>
+                <p className="text-2xl font-semibold text-white">Nie masz jeszcze szablonów</p>
                 <p className="mt-3 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                   Pierwszy szablon skróci wejście w sesję i pozwoli startować z gotową rozpiską.
                 </p>
@@ -227,7 +227,7 @@ export default function TemplatesPage() {
                   onClick={() => navigate('/templates/new')}
                   className="mt-6 rounded-[var(--radius-lg)] px-5 py-3 text-sm font-semibold"
                   style={{
-                    background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+                    background: 'var(--primary-gradient)',
                     color: 'var(--accent-foreground)',
                   }}
                   whileTap={{ scale: 0.97 }}
@@ -243,7 +243,7 @@ export default function TemplatesPage() {
                 <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
                   Przykład
                 </p>
-                <p className="text-lg font-semibold tracking-[-0.03em] text-white">Upper / Lower · 4 dni</p>
+                <p className="text-lg font-semibold text-white">Upper / Lower · 4 dni</p>
                 <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                   Szablon trzyma rytm tygodnia i przypisuje każdemu dniowi gotowy zestaw ćwiczeń.
                 </p>
@@ -266,23 +266,23 @@ export default function TemplatesPage() {
             </div>
           </motion.div>
         ) : (
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="template-board">
             {templates.map((template, index) => {
               const totalExercises = countTemplateExercises(template)
               const expanded = expandedTemplateId === template.id
               return (
                 <motion.div
                   key={template.id}
-                  className="surface-panel rounded-[var(--radius-xl)] p-5"
+                  className="template-card"
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04, duration: 0.2 }}
-                  whileHover={{ y: -2, boxShadow: '0 18px 52px rgba(2,8,20,0.55), inset 0 0 0 1px rgba(90,166,255,0.2)' }}
+                  whileHover={{ y: -2, boxShadow: '0 18px 52px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(240,67,90,0.2)' }}
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="template-card-main">
                     <div className="min-w-0">
                       <p className="eyebrow">Szablon</p>
-                      <h2 className="mt-2 text-xl font-semibold tracking-[-0.03em] text-white">
+                      <h2 className="mt-2 text-xl font-semibold text-white">
                         {template.name}
                       </h2>
                       <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
@@ -293,8 +293,7 @@ export default function TemplatesPage() {
                         {template.days.map((day, dayIndex) => (
                           <span
                             key={`${template.id}-summary-${dayIndex}`}
-                            className="rounded-[var(--radius-pill)] border px-3 py-1.5 text-xs font-medium"
-                            style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--border)', color: 'var(--muted)' }}
+                            className="template-day-chip"
                           >
                             {day.name} • {day.exercises.length}
                           </span>
@@ -302,7 +301,7 @@ export default function TemplatesPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="template-card-actions">
                       <button
                         aria-label={`Edytuj szablon ${template.name}`}
                         onClick={() => navigate(`/templates/${template.id}/edit`)}
@@ -315,15 +314,15 @@ export default function TemplatesPage() {
                       <button
                         aria-label={`Usuń szablon ${template.name}`}
                         onClick={() => setDeleteTarget(template)}
-                        className="inline-flex items-center justify-center rounded-[var(--radius-md)] p-2 transition-colors hover:bg-[rgba(255,87,87,0.12)]"
-                        style={{ border: '1px solid rgba(255,87,87,0.18)', color: '#FF5757' }}
+                        className="inline-flex items-center justify-center rounded-[var(--radius-md)] p-2 transition-colors hover:bg-[rgba(240,167,90,0.18)]"
+                        style={{ border: '1px solid var(--danger-soft-strong)', color: 'var(--danger)' }}
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-4" style={{ borderColor: 'var(--border)' }}>
+                  <div className="template-card-footer">
                     <button
                       type="button"
                       onClick={() => setExpandedTemplateId((current) => current === template.id ? null : template.id)}
@@ -339,7 +338,7 @@ export default function TemplatesPage() {
                       disabled={launching}
                       className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold disabled:opacity-50"
                       style={{
-                        background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+                        background: 'var(--primary-gradient)',
                         color: 'var(--accent-foreground)',
                       }}
                       whileTap={{ scale: 0.96 }}

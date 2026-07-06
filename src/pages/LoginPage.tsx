@@ -60,8 +60,8 @@ export default function LoginPage() {
       subtitle={(
         <>
           Nie masz konta?{' '}
-          <Link to="/register" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent)' }}>
-            Zarejestruj się
+          <Link to="/register" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent-text)' }}>
+            Utwórz konto
           </Link>
         </>
       )}
@@ -73,7 +73,7 @@ export default function LoginPage() {
             id="login-email"
             name="email"
             type="email"
-            placeholder="user@mail.pl"
+            placeholder="email@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
@@ -89,7 +89,7 @@ export default function LoginPage() {
               onClick={() => void handlePasswordReset()}
               disabled={loading || resetLoading}
               className="text-xs font-semibold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ color: 'var(--accent)' }}
+              style={{ color: 'var(--accent-text)' }}
             >
               {resetLoading ? 'Wysyłam...' : 'Nie pamiętasz hasła?'}
             </button>
@@ -106,10 +106,10 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && <p id="login-form-error" role="alert" className="text-sm" style={{ color: '#FF4B4B' }}>{error}</p>}
+        {error && <p id="login-form-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
         {resetNotice && <p id="login-reset-notice" role="status" className="text-sm" style={{ color: 'var(--success)' }}>{resetNotice}</p>}
 
-        <Button type="submit" loading={loading} disabled={resetLoading} className="mt-2 w-full">
+        <Button type="submit" loading={loading} disabled={resetLoading} className="auth-instrument-submit mt-2 w-full">
           Zaloguj się
         </Button>
       </form>

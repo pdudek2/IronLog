@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Activity, Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
+import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
 import { logoutUser } from '../lib/auth'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadPrimaryRoutes, preloadRouteByPath } from '../router/pageLoaders'
@@ -58,8 +58,8 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           onClick={() => go('/dashboard')}
           aria-label="IronLog — strona główna"
         >
-          <span className="top-nav-brand-mark">
-            <Activity size={16} />
+          <span className="top-nav-brand-mark" aria-hidden="true">
+            IL
           </span>
           <span className="hidden sm:inline">IronLog</span>
         </button>
@@ -124,7 +124,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             onFocus={() => { void preloadRouteByPath('/profile') }}
             data-active={current === 'profile'}
             aria-label="Profil"
-            style={current === 'profile' ? { color: 'var(--accent)', background: 'var(--accent-soft)' } : undefined}
+            style={current === 'profile' ? { color: 'var(--text-strong)', background: 'var(--selected-bg)' } : undefined}
           >
             <User size={16} />
           </button>

@@ -13,9 +13,9 @@ export default function NotFoundPage() {
           to="/dashboard"
           className="mt-6 inline-block rounded-[var(--radius-md)] px-4 py-3 text-sm font-semibold transition-all hover:opacity-90"
           style={{
-            background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+            background: 'var(--primary-gradient)',
             color: 'var(--accent-foreground)',
-            boxShadow: '0 14px 32px rgba(90,166,255,0.22)',
+            boxShadow: '0 14px 32px rgba(240,67,90,0.22)',
           }}
         >
           Wróć do panelu

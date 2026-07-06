@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   BarChart3,
   CalendarDays,
+  ChevronRight,
   Clock3,
   Flame,
   Play,
@@ -14,7 +15,6 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import NumberFlow from '@number-flow/react'
 import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Button, LoadingState } from '../components/ui'
@@ -41,13 +41,13 @@ import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore } from '../store/workoutStore'
 
 const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#6BAEFF',
-  back: '#8FB3FF',
-  legs: '#F87171',
-  arms: '#F59E0B',
-  shoulders: '#F472B6',
-  core: '#34D399',
-  cardio: '#A3E635',
+  chest: '#F0435A',
+  back: '#8FB8A0',
+  legs: '#F0A75A',
+  arms: '#D9A06E',
+  shoulders: '#D97B91',
+  core: '#B8A8B2',
+  cardio: '#A7D8BB',
 }
 
 const WEEK_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
@@ -64,9 +64,9 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
-  if (!firstExercise?.exerciseId) return '#8B98B5'
+  if (!firstExercise?.exerciseId) return '#A09AA0'
   const category = exerciseMap.get(firstExercise.exerciseId)?.category
-  return CATEGORY_COLORS[category ?? ''] ?? '#8B98B5'
+  return CATEGORY_COLORS[category ?? ''] ?? '#A09AA0'
 }
 
 function workoutTitle(workout: WorkoutSummary): string {
@@ -363,7 +363,6 @@ export default function DashboardPage() {
   const today = new Date()
   const recentWorkouts = workouts.slice(0, 4)
   const recentTemplates = templates.slice(0, 3)
-  const workoutDays = workouts.map((workout) => new Date(workout.startedAt))
   const weekStart = weekDates[0]?.getTime() ?? 0
   const weekEnd = (weekDates[6]?.getTime() ?? 0) + 86_400_000
   const previousWeekStart = weekStart - 7 * 86_400_000
@@ -371,10 +370,8 @@ export default function DashboardPage() {
   const monthStartDate = new Date()
   monthStartDate.setHours(0, 0, 0, 0)
   monthStartDate.setDate(1)
-  const monthStart = monthStartDate.getTime()
   const weeklyWorkouts = workouts.filter((workout) => workout.startedAt >= weekStart && workout.startedAt < weekEnd)
   const previousWeekWorkouts = workouts.filter((workout) => workout.startedAt >= previousWeekStart && workout.startedAt < previousWeekEnd)
-  const monthlyWorkouts = workouts.filter((workout) => workout.startedAt >= monthStart)
   const weeklyVolume = weeklyWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
   const previousWeeklyVolume = previousWeekWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
   const weeklySetsTotal = weeklyWorkouts.reduce((sum, workout) => (
@@ -425,8 +422,8 @@ export default function DashboardPage() {
   const totalFocusCount = focusEntries.reduce((sum, [, count]) => sum + count, 0)
   const topFocus = focusEntries[0]
   const upcomingMessage = weeklyDone >= weeklyGoal
-    ? 'Cel tygodnia dowieziony. Utrzymaj rytm i zostaw przestrzeń na recovery.'
-    : `Brakuje jeszcze ${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesji', 'sesji', 'sesji')} do założonego celu.`
+    ? 'Cel tygodnia zamknięty.'
+    : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu w tym tygodniu.`
   const overviewCards = [
     {
       label: 'Rytm',
@@ -439,360 +436,249 @@ export default function DashboardPage() {
     {
       label: 'Mocny dzień',
       value: peakDay?.volume ? `${peakDay.label}` : 'Brak',
-      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume)} • ${peakDay.sets} serii` : 'Pierwszy mocny dzień pojawi się po pierwszych sesjach',
+      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume)} • ${peakDay.sets} serii` : 'Brak treningów w tym tygodniu',
       icon: TrendingUp,
     },
     {
       label: 'Średnia sesja',
       value: avgMinutes ? `${avgMinutes} min` : '—',
-      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession)} na trening` : 'Zbieramy pierwsze dane do średniej',
+      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession)} na trening` : 'Brak średniej w tym tygodniu',
       icon: Clock3,
     },
   ]
-  const dashboardHighlights: Array<{ label: string; value: number; suffix: string; sublabel: string }> = [
-    { label: 'Treningi', value: weeklyDone, suffix: '', sublabel: 'w tym tygodniu' },
-    { label: 'Serie', value: weeklySetsTotal, suffix: '', sublabel: weeklySetsTotal ? 'w tym tygodniu' : 'w tym tygodniu · brak sesji' },
-    { label: 'Objętość', value: weeklyVolume, suffix: ' kg', sublabel: weeklyVolume ? 'tygodniowy wolumen' : 'tygodniowy wolumen · brak sesji' },
-    { label: 'Śr. czas', value: avgMinutes, suffix: ' min', sublabel: avgMinutes ? 'na sesję' : 'na sesję · brak danych' },
+  const dashboardHighlights: Array<{ label: string; value: string; sublabel: string }> = [
+    {
+      label: 'Tydzień',
+      value: `${weeklyDone}/${weeklyGoal}`,
+      sublabel: weeklyDone >= weeklyGoal ? 'cel zamknięty' : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu`,
+    },
+    {
+      label: 'Objętość',
+      value: formatCompactVolume(weeklyVolume),
+      sublabel: weeklyVolumeDelta === null ? 'brak porównania' : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs tydzień temu`,
+    },
+    {
+      label: 'Serie',
+      value: String(weeklySetsTotal),
+      sublabel: weeklySetsTotal ? 'zapisane w tym tygodniu' : 'brak serii w tym tygodniu',
+    },
+    {
+      label: 'Śr. czas',
+      value: avgMinutes ? `${avgMinutes} min` : '—',
+      sublabel: avgMinutes ? 'średnia sesja' : 'brak średniej',
+    },
   ]
 
   return (
     <>
-        <section className="hero-editorial">
-          <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <motion.div
-              className="flex flex-col gap-5 min-w-0"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-            >
-              <p className="hero-editorial-date">
-                {new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
-              </p>
-              <div>
-                <p className="hero-editorial-greeting">{getGreeting()},</p>
-                <h1 className="hero-editorial-name mt-1">
-                  {profile?.displayName ?? 'treningowcu'}
-                </h1>
-              </div>
-              <p className="hero-editorial-sub">{upcomingMessage}</p>
-              <div className="flex flex-wrap items-center gap-3 mt-1">
-                <motion.button
-                  type="button"
-                  onClick={() => navigate('/workout/new')}
-                  className="hero-editorial-cta"
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <Plus size={18} strokeWidth={2.4} />
-                  Rozpocznij trening
-                </motion.button>
-                <button
-                  type="button"
-                  onClick={() => navigate('/progress')}
-                  className="px-3 py-2 text-sm font-medium rounded-full transition-colors hover:bg-white/5"
-                  style={{ color: 'var(--muted)' }}
-                >
-                  Zobacz pełne postępy →
-                </button>
-              </div>
-            </motion.div>
-
-            <motion.aside
-              className={`hero-streak-card lg:w-[280px] ${streak === 0 ? 'hero-streak-card--empty' : ''}`}
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.15, duration: 0.5, ease: [0.2, 0.8, 0.2, 1] }}
-            >
-              <p className="hero-streak-label">
-                <Flame size={12} strokeWidth={2.4} style={{ display: 'inline-block', marginRight: '0.3rem', verticalAlign: '-1px' }} />
-                Aktualna seria
-              </p>
-              <p className="hero-streak-value">
-                <NumberFlow value={streak} transformTiming={{ duration: 700, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }} />
-              </p>
-              <p className="hero-streak-meta">
-                {streak === 0
-                  ? 'Zacznij pierwszą sesję w tym tygodniu'
-                  : streak === 1
-                    ? 'dzień z treningiem — utrzymaj rytm'
-                    : `dni nieprzerwanej serii`}
-              </p>
-            </motion.aside>
-          </div>
-
-          <div
-            className="mt-10 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
-            style={{ borderColor: 'var(--border)' }}
+        <section className="dashboard-home">
+          <motion.div
+            className="dashboard-home-copy"
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            {dashboardHighlights.map((item) => (
-              <div key={item.label} className="flex flex-col gap-1 min-w-[6.5rem]">
-                <span className="stat-meta">{item.label}</span>
-                <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
-                  <NumberFlow
-                    value={item.value}
-                    transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
-                    format={{ useGrouping: true }}
-                    locales="pl-PL"
-                  />
-                  {item.suffix}
-                </span>
-                <span className="text-xs mt-0.5" style={{ color: 'var(--muted-soft)' }}>
-                  {item.sublabel}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
+            <p className="dashboard-home-date">
+              {new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
+            </p>
+            <p className="dashboard-home-greeting">{getGreeting()},</p>
+            <h1 className="dashboard-home-title">
+              {profile?.displayName ?? 'treningowcu'}
+            </h1>
+            <p className="dashboard-home-copyline">{upcomingMessage}</p>
 
-        <hr className="border-t my-4 lg:hidden" style={{ borderColor: 'var(--border)' }} />
-
-        <motion.div
-          className="mb-6"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08, duration: 0.25 }}
-        >
-          <ReadinessWidget />
-        </motion.div>
-
-        <hr className="border-t my-4 lg:hidden" style={{ borderColor: 'var(--border)' }} />
-
-        <motion.div
-          className="desktop-app-grid"
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.14, duration: 0.25 }}
-        >
-          <aside className="desktop-sticky space-y-4 hidden lg:block">
-            <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.06)}>
-              {/* Progress ring hero */}
-              <div className="flex items-center gap-4 mb-5">
-                <div className="relative flex-none">
-                  <svg width="88" height="88" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="7" />
-                    <motion.circle
-                      cx="50" cy="50" r="40" fill="none"
-                      stroke={progressPct >= 100 ? 'var(--success)' : 'var(--accent)'}
-                      strokeWidth="7" strokeLinecap="round"
-                      strokeDasharray={2 * Math.PI * 40}
-                      transform="rotate(-90 50 50)"
-                      initial={{ strokeDashoffset: 2 * Math.PI * 40 }}
-                      animate={{ strokeDashoffset: 2 * Math.PI * 40 * (1 - Math.min(progressPct / 100, 1)) }}
-                      transition={{ delay: 0.3, duration: 1.1, ease: 'easeOut' }}
-                    />
-                    <text x="50" y="46" textAnchor="middle" fill="white" fontSize="18" fontWeight="700" fontFamily="Urbanist">{weeklyDone}</text>
-                    <text x="50" y="61" textAnchor="middle" fill="rgba(154,167,194,0.9)" fontSize="10" fontFamily="Urbanist">z {weeklyGoal}</text>
-                  </svg>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="stat-meta mb-2">Ten tydzień</p>
-                  <p className="text-3xl font-bold text-white leading-none mb-1 tracking-[-0.05em] tabular-nums">
-                    {progressPct >= 100 ? 'Cel osiągnięty!' : `${Math.round(progressPct)}%`}
-                  </p>
-                  <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                    {progressPct >= 100 ? 'Świetna robota' : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'trening', 'treningi', 'treningów')} do celu`}
-                  </p>
-                </div>
-              </div>
-
-              {/* Secondary stats */}
-              <div className="grid grid-cols-2 gap-2 mb-5">
-                <div className="rounded-[var(--radius-lg)] p-3" style={{ background: 'var(--success-soft)', border: '1px solid rgba(25,213,159,0.18)' }}>
-                  <p className="text-2xl font-bold leading-none mb-1 tracking-[-0.04em] tabular-nums" style={{ color: 'var(--success)' }}>{streak}</p>
-                  <p className="stat-meta">Seria dni</p>
-                </div>
-                <div className="rounded-[var(--radius-lg)] p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)' }}>
-                  <p className="text-2xl font-bold leading-none mb-1 text-white tracking-[-0.04em] tabular-nums">{monthlyWorkouts.length}</p>
-                  <p className="stat-meta">W miesiącu</p>
-                </div>
-              </div>
-
-              {/* Week tracker */}
-              <div>
-                <p className="mb-3 text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
-                  Ten tydzień
-                </p>
-                <div className="flex gap-1.5">
-                  {weekDates.map((date, index) => {
-                    const isToday = isSameDay(date, today)
-                    const hasWorkout = workoutDays.some((workoutDay) => isSameDay(workoutDay, date))
-                    const isPast = date <= today
-
-                    return (
-                      <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                        <p className="text-[10px] uppercase tracking-wide" style={{ color: isToday ? 'var(--accent)' : 'var(--muted)' }}>
-                          {WEEK_LABELS[index]}
-                        </p>
-                        <motion.div
-                          className="w-full aspect-square rounded-xl flex items-center justify-center"
-                          style={{
-                            background: hasWorkout
-                              ? 'var(--success)'
-                              : isToday
-                                ? 'var(--accent-soft)'
-                                : isPast ? 'rgba(255,255,255,0.03)' : 'transparent',
-                            border: isToday
-                              ? '1.5px solid var(--accent)'
-                              : `1px solid ${hasWorkout ? 'var(--success)' : 'var(--border)'}`,
-                          }}
-                          animate={hasWorkout ? { scale: [0.85, 1] } : {}}
-                          transition={{ delay: index * 0.04, duration: 0.3 }}
-                        >
-                          {hasWorkout && <div className="w-1.5 h-1.5 rounded-full" style={{ background: 'rgba(7,17,31,0.85)' }} />}
-                        </motion.div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.12)}>
-              <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
-                Szybki start
-              </p>
-              <p className="mb-5 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                Wejdź prosto w kolejną sesję bez szukania jej w historii.
-              </p>
-              <div className="mb-5 space-y-2 rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="stat-meta">Na teraz</span>
-                  <Target size={14} style={{ color: 'var(--accent)' }} />
-                </div>
-                <p className="text-sm font-semibold text-white leading-6">
-                  {upcomingMessage}
-                </p>
-              </div>
+            <div className="dashboard-home-actions">
               <motion.button
-                className="w-full rounded-[var(--radius-lg)] py-4 text-sm font-semibold"
-                style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+                type="button"
                 onClick={() => navigate('/workout/new')}
-                whileHover={{ scale: 1.015 }}
+                className="hero-editorial-cta"
                 whileTap={{ scale: 0.97 }}
               >
+                <Plus size={18} strokeWidth={2.4} />
                 Rozpocznij trening
               </motion.button>
-            </motion.div>
-          </aside>
+              <button
+                type="button"
+                onClick={() => navigate('/progress')}
+                className="puls-link-button px-3 py-2 text-sm font-medium"
+              >
+                Zobacz postępy
+                <ChevronRight size={15} strokeWidth={2.3} />
+              </button>
+            </div>
 
-          <main className="min-w-0 space-y-5">
-            <section className="grid gap-4 xl:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.92fr)]">
-              <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.09)}>
-                <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <p className="eyebrow">Przegląd tygodnia</p>
-                    <h2 className="section-title mt-2">Tydzień w skrócie</h2>
+            <div className="dashboard-home-rhythm" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </div>
 
-                    <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      Najważniejsze sygnały z ostatnich dni: tempo, objętość i najmocniejszy dzień.
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-3">
-                    <div className="rounded-[var(--radius-lg)] border px-4 py-3" style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}>
-                      <p className="stat-meta">Zakres</p>
-                      <p className="mt-2 text-sm font-semibold text-white">{formatWeekRange(weekDates)}</p>
-                      <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                        {weeklyVolumeDelta === null
-                          ? 'Pierwszy tydzień buduje punkt odniesienia'
-                          : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs poprzedni tydzień`}
-                      </p>
+            <div className="dashboard-metric-strip">
+              {dashboardHighlights.map((item) => (
+                <div key={item.label} className="dashboard-metric-item">
+                  <span className="stat-meta">{item.label}</span>
+                  <span className="dashboard-metric-value">{item.value}</span>
+                  <span className="dashboard-metric-note">{item.sublabel}</span>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          <motion.aside
+            className="dashboard-home-panel"
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.08, duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
+          >
+            <div className="dashboard-week-pulse">
+              <div className="dashboard-week-head">
+                <div>
+                  <p className="stat-meta">Ten tydzień</p>
+                  <p className="dashboard-week-value">
+                    <span>{weeklyDone}</span> z {weeklyGoal}
+                  </p>
+                </div>
+                <div className={`dashboard-streak-token ${streak === 0 ? '' : 'dashboard-streak-token--active'}`}>
+                  <Flame size={13} strokeWidth={2.4} />
+                  <span>{streak}</span>
+                </div>
+              </div>
+
+              <div className="dashboard-progress-track" aria-label={`Postęp tygodnia ${Math.round(progressPct)} procent`}>
+                <motion.div
+                  className="dashboard-progress-fill"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min(progressPct, 100)}%` }}
+                  transition={{ delay: 0.14, duration: 0.55, ease: 'easeOut' }}
+                />
+              </div>
+
+              <div className="dashboard-week-days">
+                {weekDailyStats.map((day, index) => {
+                  const hasWorkout = day.workouts > 0
+                  return (
+                    <div key={day.label} className="dashboard-week-day" data-today={day.isToday} data-active={hasWorkout}>
+                      <span>{day.label}</span>
+                      <motion.i
+                        style={{ height: `${day.volume > 0 ? Math.max(18, Math.round((day.volume / maxDayVolume) * 100)) : 10}%` }}
+                        initial={{ scaleY: 0.4, opacity: 0 }}
+                        animate={{ scaleY: 1, opacity: 1 }}
+                        transition={{ delay: 0.04 * index, duration: 0.22 }}
+                      />
                     </div>
-                    <button
-                      onClick={() => navigate('/progress')}
-                      className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold text-left transition-opacity hover:opacity-80"
-                      style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
-                    >
-                      Zobacz progres →
-                    </button>
+                  )
+                })}
+              </div>
+
+              <p className="dashboard-week-summary">
+                {weeklyDone >= weeklyGoal
+                  ? 'Cel tygodnia zamknięty.'
+                  : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu. Ostatni trening: ${latestWorkout ? formatDate(latestWorkout.startedAt) : 'brak'}.`}
+              </p>
+            </div>
+
+            <ReadinessWidget />
+          </motion.aside>
+        </section>
+
+        <motion.div
+          className="dashboard-main-flow"
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, duration: 0.25 }}
+        >
+            <section className="dashboard-overview-grid">
+              <motion.div className="dashboard-week-panel" {...fadeUp(0.09)}>
+                <div className="dashboard-panel-head">
+                  <div>
+                    <p className="eyebrow">Tydzień</p>
+                    <h2 className="section-title mt-2">Ten tydzień</h2>
+                  </div>
+                  <div className="dashboard-range-chip">
+                    <span>{formatWeekRange(weekDates)}</span>
+                    <small>
+                      {weeklyVolumeDelta === null
+                        ? 'brak porównania'
+                        : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs poprzedni tydzień`}
+                    </small>
                   </div>
                 </div>
 
-                <div className="grid gap-5 lg:grid-cols-[minmax(0,1.25fr)_minmax(16rem,0.9fr)]">
-                  <div className="sub-card-volume p-4">
-                    <div className="mb-4 flex items-end justify-between gap-4">
+                <div className="dashboard-week-board">
+                  <div className="dashboard-week-chart">
+                    <div className="dashboard-week-chart-head">
                       <div>
                         <p className="stat-meta">Wolumen tygodnia</p>
-                        <p className="mt-3 stat-value">{formatCompactVolume(weeklyVolume)}</p>
+                        <p className="dashboard-week-total">{formatCompactVolume(weeklyVolume)}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-semibold text-white">{activeDays}/7 dni z treningiem</p>
-                        <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                          {weeklyDone >= weeklyGoal
-                            ? 'cel tygodnia zrobiony'
-                            : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu`}
-                        </p>
+                      <div className="dashboard-week-count">
+                        <strong>{activeDays}/7</strong>
+                        <span>dni z treningiem</span>
                       </div>
                     </div>
 
-                    <div className="grid h-48 grid-cols-7 gap-2 items-end">
+                    <div className="dashboard-week-bars">
                       {weekDailyStats.map((day, index) => {
                         const heightPct = day.volume > 0 ? Math.max(18, Math.round((day.volume / maxDayVolume) * 100)) : 8
                         return (
-                          <div key={day.label} className="flex min-w-0 flex-col justify-end gap-2">
-                            <div className="flex h-36 items-end">
-                              <motion.div
-                                className="w-full rounded-[var(--radius-md)] border"
-                                style={{
-                                  height: `${heightPct}%`,
-                                  background: day.volume > 0
-                                    ? day.isToday
-                                      ? 'linear-gradient(180deg, rgba(90,166,255,0.95) 0%, rgba(90,166,255,0.4) 100%)'
-                                      : 'linear-gradient(180deg, rgba(25,213,159,0.82) 0%, rgba(25,213,159,0.2) 100%)'
-                                    : 'rgba(255,255,255,0.035)',
-                                  borderColor: day.volume > 0
-                                    ? day.isToday ? 'rgba(90,166,255,0.55)' : 'rgba(25,213,159,0.3)'
-                                    : 'var(--border)',
-                                }}
+                          <div key={day.label} className="dashboard-week-bar-cell" data-today={day.isToday} data-active={day.volume > 0}>
+                            <div className="dashboard-week-bar-track">
+                              <motion.i
+                                style={{ height: `${heightPct}%` }}
                                 initial={{ opacity: 0, y: 12 }}
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: 0.05 * index, duration: 0.22 }}
                               />
                             </div>
-                            <div className="text-center">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.18em]" style={{ color: day.isToday ? 'var(--accent)' : 'var(--muted)' }}>
-                                {day.label}
-                              </p>
-                              <p className="mt-1 text-[11px] font-medium tabular-nums" style={{ color: day.volume > 0 ? 'var(--text-strong)' : 'var(--muted-soft)' }}>
-                                {day.volume > 0 ? formatCompactVolume(day.volume).replace(' kg', '') : '—'}
-                              </p>
-                            </div>
+                            <span>{day.label}</span>
+                            <small>{day.volume > 0 ? formatCompactVolume(day.volume).replace(' kg', '') : '—'}</small>
                           </div>
                         )
                       })}
                     </div>
                   </div>
 
-                  <div className="grid gap-3">
-                    {overviewCards.map(({ label, value, copy, icon: Icon }, index) => (
-                      <motion.div
-                        key={label}
-                        className="rounded-[var(--radius-lg)] border p-4"
-                        style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}
-                        initial={{ opacity: 0, x: 12 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.06 + index * 0.04, duration: 0.2 }}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="stat-meta">{label}</p>
+                  <div className="dashboard-week-side">
+                    <div className="dashboard-week-cta">
+                      <p>{weeklyDone >= weeklyGoal
+                        ? 'Cel tygodnia zrobiony'
+                        : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu`}</p>
+                    <button
+                      onClick={() => navigate('/progress')}
+                      className="puls-link-button px-0 py-0 text-sm font-semibold"
+                    >
+                      Zobacz progres
+                      <ChevronRight size={15} strokeWidth={2.3} />
+                    </button>
+                    </div>
+
+                    <div className="dashboard-signal-list">
+                      {overviewCards.map(({ label, value, copy, icon: Icon }, index) => (
+                        <motion.div
+                          key={label}
+                          className="dashboard-signal-row"
+                          initial={{ opacity: 0, x: 12 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: 0.06 + index * 0.04, duration: 0.2 }}
+                        >
                           <Icon size={15} style={{ color: 'var(--accent)' }} />
-                        </div>
-                        <p className="mt-3 text-2xl font-semibold tracking-[-0.04em] text-white tabular-nums">
-                          {value}
-                        </p>
-                        <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                          {copy}
-                        </p>
-                      </motion.div>
-                    ))}
+                          <div>
+                            <span>{label}</span>
+                            <strong>{value}</strong>
+                            <small>{copy}</small>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </motion.div>
 
-              <motion.div className="surface-panel rounded-[var(--radius-xl)] p-5" {...fadeUp(0.12)}>
+              <motion.div className="dashboard-focus-panel" {...fadeUp(0.12)}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="eyebrow">Fokus tygodnia</p>
-                    <h2 className="section-title mt-2">Najważniejsze teraz</h2>
+                    <p className="eyebrow">Teraz</p>
+                    <h2 className="section-title mt-2">Status tygodnia</h2>
                   </div>
                   <div
                     className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)]"
@@ -802,44 +688,38 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="mt-5 space-y-3">
-                  <div className="sub-card-insight p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="stat-meta">Trajektoria</p>
-                      <BarChart3 size={15} style={{ color: 'var(--accent)' }} />
-                    </div>
-                    <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
-                      {weeklyVolumeDelta === null
-                        ? 'Za mało danych na trend'
-                        : weeklyVolumeDelta >= 0
-                          ? `Wolumen +${weeklyVolumeDelta}%`
-                          : `Wolumen -${Math.abs(weeklyVolumeDelta)}%`}
-                    </p>
-                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      {weeklySessionsDelta === 0
-                        ? 'Liczba sesji jest taka sama jak tydzień temu.'
-                        : weeklySessionsDelta > 0
-                          ? `Masz o ${weeklySessionsDelta} ${polishPlural(weeklySessionsDelta, 'sesję', 'sesje', 'sesji')} więcej niż tydzień temu.`
-                          : `Masz o ${Math.abs(weeklySessionsDelta)} ${polishPlural(Math.abs(weeklySessionsDelta), 'sesję', 'sesje', 'sesji')} mniej niż tydzień temu.`}
-                    </p>
+                <div className="dashboard-status-list">
+                  <div className="dashboard-status-row">
+                    <BarChart3 size={15} style={{ color: 'var(--accent)' }} />
+                    <span>Trajektoria</span>
+                    <strong>
+                    {weeklyVolumeDelta === null
+                      ? 'Za mało danych na trend'
+                      : weeklyVolumeDelta >= 0
+                        ? `Wolumen +${weeklyVolumeDelta}%`
+                        : `Wolumen -${Math.abs(weeklyVolumeDelta)}%`}
+                    </strong>
+                    <small>
+                    {weeklySessionsDelta === 0
+                      ? 'Sesje bez zmian względem poprzedniego tygodnia.'
+                      : weeklySessionsDelta > 0
+                        ? `${weeklySessionsDelta} ${polishPlural(weeklySessionsDelta, 'sesja', 'sesje', 'sesji')} więcej niż tydzień temu.`
+                        : `${Math.abs(weeklySessionsDelta)} ${polishPlural(Math.abs(weeklySessionsDelta), 'sesja', 'sesje', 'sesji')} mniej niż tydzień temu.`}
+                    </small>
                   </div>
 
-                  <div className="sub-card-insight p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="stat-meta">Główna partia</p>
-                      <Target size={15} style={{ color: 'var(--accent)' }} />
-                    </div>
-                    <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
-                      {topFocus ? CATEGORY_LABELS[topFocus[0]] ?? topFocus[0] : 'Brak dominującej partii'}
-                    </p>
-                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                  <div className="dashboard-status-row">
+                    <Target size={15} style={{ color: 'var(--accent)' }} />
+                    <span>Główna partia</span>
+                    <strong>{topFocus ? CATEGORY_LABELS[topFocus[0]] ?? topFocus[0] : 'Brak dominującej partii'}</strong>
+                    <small>
                       {topFocus
                         ? `${topFocus[1]} logowanych bloków ćwiczeń w tym tygodniu.`
-                        : 'Dodaj kolejne sesje, a zobaczysz gdzie idzie najwięcej pracy.'}
-                    </p>
+                        : 'Brak danych w tym tygodniu.'}
+                    </small>
 
                     {focusEntries.length > 0 && (
-                      <div className="mt-4 space-y-3">
+                      <div className="dashboard-focus-bars">
                         {focusEntries.map(([category, count]) => {
                           const width = totalFocusCount ? (count / totalFocusCount) * 100 : 0
                           return (
@@ -852,12 +732,12 @@ export default function DashboardPage() {
                                   {count}
                                 </span>
                               </div>
-                              <div className="h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
+                              <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
                                 <div
                                   className="h-full rounded-full"
                                   style={{
                                     width: `${width}%`,
-                                    background: `linear-gradient(90deg, ${CATEGORY_COLORS[category] ?? '#5aa6ff'} 0%, ${CATEGORY_COLORS[category] ?? '#5aa6ff'}88 100%)`,
+                                    background: `linear-gradient(90deg, ${CATEGORY_COLORS[category] ?? '#f0435a'} 0%, ${CATEGORY_COLORS[category] ?? '#f0435a'}88 100%)`,
                                   }}
                                 />
                               </div>
@@ -868,31 +748,27 @@ export default function DashboardPage() {
                     )}
                   </div>
 
-                  <div className="sub-card-insight p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="stat-meta">Ostatnia sesja</p>
-                      <Sparkles size={15} style={{ color: 'var(--accent)' }} />
-                    </div>
-                    <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">
-                      {latestWorkout ? (latestWorkout.label ?? workoutTitle(latestWorkout)) : 'Czekamy na pierwszą sesję'}
-                    </p>
-                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                  <div className="dashboard-status-row">
+                    <Sparkles size={15} style={{ color: 'var(--accent)' }} />
+                    <span>Ostatnia sesja</span>
+                    <strong>{latestWorkout ? (latestWorkout.label ?? workoutTitle(latestWorkout)) : 'Czekamy na pierwszą sesję'}</strong>
+                    <small>
                       {latestWorkout
                         ? `${formatDate(latestWorkout.startedAt)} • ${formatDuration(latestWorkout.startedAt, latestWorkout.finishedAt)} • ${formatCompactVolume(calcVolume(latestWorkout))}`
-                        : 'Po pierwszym treningu zobaczysz tu ostatnią zapisaną sesję.'}
-                    </p>
+                        : 'Brak zapisanych treningów.'}
+                    </small>
                   </div>
                 </div>
               </motion.div>
             </section>
 
-            <section className="surface-panel rounded-[var(--radius-xl)] p-5">
+            <section className="dashboard-plan-strip">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="eyebrow">Moje plany</p>
-                  <h2 className="section-title mt-2">Szablony gotowe do startu</h2>
+                    <h2 className="section-title mt-2">Plany</h2>
                   <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Stałe rozpiski skracają wejście w sesję i pilnują rytmu tygodnia.
+                    Ostatnio używane.
                   </p>
                 </div>
                 <motion.button
@@ -912,7 +788,7 @@ export default function DashboardPage() {
                 >
                   <p className="text-sm font-semibold text-white">Brak zapisanych szablonów</p>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Zacznij od jednej rozpiski na stały dzień treningowy, a potem uruchamiaj ją bez ręcznego układania ćwiczeń.
+                    Nie masz jeszcze zapisanych szablonów.
                   </p>
                   <motion.button
                     onClick={() => navigate('/templates/new')}
@@ -924,7 +800,7 @@ export default function DashboardPage() {
                   </motion.button>
                 </div>
               ) : (
-                <div className="grid gap-3 lg:grid-cols-3">
+                <div className="dashboard-template-row">
                   {recentTemplates.map((template) => {
                     const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
                     const isLaunching = launchingTemplateId === template.id
@@ -935,10 +811,8 @@ export default function DashboardPage() {
                         onClick={() => { void handleLaunchTemplate(template) }}
                         disabled={isLaunching}
                         aria-label={`Uruchom szablon ${template.name}`}
-                        className="rounded-[var(--radius-lg)] border p-4 text-left transition-transform hover:-translate-y-0.5"
+                        className="dashboard-template-tile"
                         style={{
-                          borderColor: isLaunching ? 'var(--accent-soft-strong)' : 'var(--border)',
-                          background: 'var(--surface-muted)',
                           opacity: isLaunching ? 0.72 : 1,
                         }}
                         whileTap={{ scale: 0.98 }}
@@ -962,8 +836,7 @@ export default function DashboardPage() {
                           {template.days.slice(0, 3).map((day, index) => (
                             <span
                               key={`${template.id}-${index}`}
-                              className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                              style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+                              className="dashboard-template-day"
                             >
                               {day.name}
                             </span>
@@ -975,10 +848,9 @@ export default function DashboardPage() {
                 </div>
               )}
             </section>
-          </main>
         </motion.div>
 
-        <section className="mt-5">
+        <section className="dashboard-history-section mt-5">
           <div className="mb-4 flex items-end justify-between gap-4">
                 <div>
                   <p className="eyebrow">
@@ -989,10 +861,10 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate('/history')}
-                  className="text-sm font-medium px-3 py-2 rounded-full transition-colors hover:bg-white/5 whitespace-nowrap"
-                  style={{ color: 'var(--accent)' }}
+                  className="puls-link-button px-3 py-2 text-sm font-medium whitespace-nowrap"
                 >
-                  Zobacz wszystkie →
+                  Zobacz wszystkie
+                  <ChevronRight size={15} strokeWidth={2.3} />
                 </button>
               </div>
 
@@ -1013,7 +885,7 @@ export default function DashboardPage() {
                     <div>
                       <p className="font-semibold text-white mb-1">Brak treningów</p>
                       <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        Zacznij pierwszą sesję i odblokuj overview tygodnia, insighty i historię pracy.
+                        Po zapisaniu sesji pojawi się tutaj historia i wykresy.
                       </p>
                     </div>
                     <motion.button
@@ -1026,7 +898,7 @@ export default function DashboardPage() {
                     </motion.button>
                   </motion.div>
                 ) : (
-                  <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="dashboard-history-list">
                     {recentWorkouts.map((workout) => {
                       const accent = workoutAccent(workout)
                       const volume = calcVolume(workout)
@@ -1036,13 +908,11 @@ export default function DashboardPage() {
                       return (
                         <motion.div
                           key={workout.id}
-                          className="cursor-pointer relative overflow-hidden rounded-[var(--radius-xl)]"
+                          className="dashboard-history-row"
                           style={{
                             opacity: deletingId === workout.id ? 0.4 : 1,
-                            background: 'linear-gradient(180deg, rgba(24,32,48,0.92) 0%, rgba(16,22,34,0.96) 100%)',
-                            border: '1px solid var(--border)',
-                            boxShadow: '0 10px 36px rgba(2,8,20,0.38)',
-                          }}
+                            '--workout-accent': accent,
+                          } as React.CSSProperties}
                           initial={false}
                           role="link"
                           tabIndex={0}
@@ -1050,22 +920,18 @@ export default function DashboardPage() {
                           animate={{ opacity: deletingId === workout.id ? 0.4 : 1, x: 0 }}
                           exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
                           transition={{ duration: 0.22 }}
-                          whileHover={{ y: -2, boxShadow: `0 18px 52px rgba(2,8,20,0.55), inset 0 0 0 1px ${accent}33` }}
+                          whileHover={{ y: -2 }}
                           onClick={() => openWorkout(workout)}
                           onKeyDown={(event) => handleWorkoutCardKeyDown(event, workout)}
                         >
-                          <div
-                            className="absolute inset-x-0 top-0 h-px"
-                            style={{ background: `linear-gradient(90deg, ${accent}00 0%, ${accent} 50%, ${accent}00 100%)` }}
-                          />
+                          <div className="dashboard-history-accent" aria-hidden="true" />
 
-                          <div className="p-5">
-                            <div className="mb-4 flex items-start justify-between gap-4">
+                          <div className="dashboard-history-main">
+                            <div className="flex items-start justify-between gap-4">
                               <div className="min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                   <span
-                                    className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                                    style={{ background: `${accent}15`, color: accent, border: `1px solid ${accent}30` }}
+                                    className="dashboard-history-set"
                                   >
                                     {totalSets}×
                                   </span>
@@ -1078,7 +944,7 @@ export default function DashboardPage() {
                                     </span>
                                   )}
                                 </div>
-                                <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white truncate">
+                                <p className="mt-2 text-lg font-semibold text-white truncate">
                                   {workout.label ?? workoutTitle(workout)}
                                 </p>
                                 <div className="mt-2 flex items-center gap-2 flex-wrap">
@@ -1096,10 +962,10 @@ export default function DashboardPage() {
                                 onClick={(e) => handleDelete(workout.id, e)}
                                 className="flex-none rounded-lg p-1.5"
                                 style={{
-                                  color: '#FF5757',
+                                  color: 'var(--danger)',
                                   opacity: 0.72,
-                                  background: 'rgba(255,87,87,0.08)',
-                                  border: '1px solid rgba(255,87,87,0.12)',
+                                  background: 'var(--danger-soft)',
+                                  border: '1px solid rgba(240,167,90,0.18)',
                                 }}
                                 whileHover={{ opacity: 1 }}
                                 whileTap={{ scale: 0.85 }}
@@ -1110,7 +976,7 @@ export default function DashboardPage() {
                               </motion.button>
                             </div>
 
-                            <div className="mb-4 flex flex-wrap gap-2">
+                            <div className="mt-4 flex flex-wrap gap-2">
                               {workout.exercises.slice(0, 3).map((exercise) => (
                                 <span
                                   key={`${workout.id}-${exercise.exerciseId ?? exercise.name}`}
@@ -1129,20 +995,20 @@ export default function DashboardPage() {
                                 </span>
                               )}
                             </div>
+                          </div>
 
-                            <div className="grid grid-cols-3 gap-2">
-                              <div className="rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
-                                <p className="stat-meta">Objętość</p>
-                                <p className="mt-2 text-lg font-semibold text-white tabular-nums">{formatCompactVolume(volume)}</p>
-                              </div>
-                              <div className="rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
-                                <p className="stat-meta">Ćwiczenia</p>
-                                <p className="mt-2 text-lg font-semibold text-white tabular-nums">{totalExercises}</p>
-                              </div>
-                              <div className="rounded-[var(--radius-lg)] border p-3" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
-                                <p className="stat-meta">Czas</p>
-                                <p className="mt-2 text-lg font-semibold text-white tabular-nums">{formatDuration(workout.startedAt, workout.finishedAt)}</p>
-                              </div>
+                          <div className="dashboard-history-metrics">
+                            <div>
+                              <span>Objętość</span>
+                              <strong>{formatCompactVolume(volume)}</strong>
+                            </div>
+                            <div>
+                              <span>Ćwiczenia</span>
+                              <strong>{totalExercises}</strong>
+                            </div>
+                            <div>
+                              <span>Czas</span>
+                              <strong>{formatDuration(workout.startedAt, workout.finishedAt)}</strong>
                             </div>
                           </div>
                         </motion.div>

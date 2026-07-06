@@ -31,13 +31,13 @@ import { getEquipmentLabel } from '../lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 
 const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#4D8EFF',
-  back: '#9B6DFF',
-  legs: '#FF5757',
-  arms: '#FF9F43',
-  shoulders: '#FF6B9D',
-  core: '#00D4AA',
-  cardio: '#FFD700',
+  chest: '#F0435A',
+  back: '#8FB8A0',
+  legs: '#F0A75A',
+  arms: '#D9A06E',
+  shoulders: '#D97B91',
+  core: '#B8A8B2',
+  cardio: '#A7D8BB',
 }
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
@@ -53,8 +53,8 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
-  if (!firstExercise?.exerciseId) return '#808CB3'
-  return CATEGORY_COLORS[exerciseMap.get(firstExercise.exerciseId)?.category ?? ''] ?? '#808CB3'
+  if (!firstExercise?.exerciseId) return '#A09AA0'
+  return CATEGORY_COLORS[exerciseMap.get(firstExercise.exerciseId)?.category ?? ''] ?? '#A09AA0'
 }
 
 function formatDate(ts: number): string {
@@ -323,7 +323,7 @@ export default function WorkoutDetailPage() {
         disabled={saving}
         className="flex-1 py-3 rounded-2xl text-sm font-semibold disabled:opacity-40"
         style={{
-          background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+          background: 'var(--primary-gradient)',
           border: '1px solid var(--accent)',
           color: 'var(--accent-foreground)',
         }}
@@ -351,9 +351,9 @@ export default function WorkoutDetailPage() {
         disabled={deleting}
         className="flex-1 py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
         style={{
-          background: 'rgba(255,87,87,0.08)',
-          border: '1px solid rgba(255,87,87,0.2)',
-          color: '#FF5757',
+          background: 'var(--danger-soft)',
+          border: '1px solid var(--danger-soft-strong)',
+          color: 'var(--danger)',
         }}
         whileTap={{ scale: 0.97 }}
       >
@@ -410,7 +410,7 @@ export default function WorkoutDetailPage() {
               <div className="p-5">
                 {isEditing && (
                   <div className="mb-4">
-                    <p className="text-[10px] uppercase tracking-widest mb-3" style={{ color: accent }}>
+                    <p className="text-[10px] uppercase mb-3" style={{ color: accent }}>
                       Rodzaj treningu
                     </p>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
@@ -447,7 +447,7 @@ export default function WorkoutDetailPage() {
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-2xl p-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
                       <p className="text-lg font-bold text-white">{stat.value}</p>
-                      <p className="text-[10px] uppercase tracking-wider" style={{ color: 'var(--muted)' }}>
+                      <p className="text-[10px] uppercaser" style={{ color: 'var(--muted)' }}>
                         {stat.label}
                       </p>
                     </div>
@@ -599,7 +599,7 @@ export default function WorkoutDetailPage() {
 
                       <div className={`grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 mb-1`}>
                         {[...['#', 'kg', 'Powt.', 'Vol.'], ...(isEditing ? [''] : [])].map((heading, index) => (
-                          <span key={`${heading}-${index}`} className="text-[10px] uppercase tracking-wide text-center" style={{ color: 'var(--muted)' }}>
+                          <span key={`${heading}-${index}`} className="text-[10px] uppercase text-center" style={{ color: 'var(--muted)' }}>
                             {heading === 'Vol.' ? <span className="hidden lg:inline">{heading}</span> : heading || <span aria-hidden="true">{index === 4 ? ' ' : heading}</span>}
                           </span>
                         ))}

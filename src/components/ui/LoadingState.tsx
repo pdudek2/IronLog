@@ -1,5 +1,3 @@
-import { motion } from 'framer-motion'
-
 interface LoadingStateProps {
   message?: string
   fullScreen?: boolean
@@ -8,13 +6,10 @@ interface LoadingStateProps {
 function LoadingPanel({ message }: { message: string }) {
   return (
     <div className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] px-6 py-8 text-center">
-      <motion.div
-        className="mx-auto mb-4 h-11 w-11 rounded-[var(--radius-md)]"
-        style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)' }}
-        animate={{ rotate: 360 }}
-        transition={{ repeat: Infinity, ease: 'linear', duration: 1.4 }}
-      />
-      <p className="text-sm font-medium text-white">{message}</p>
+      <div className="puls-loader mx-auto mb-4" aria-hidden="true">
+        <span>IL</span>
+      </div>
+      <p className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>{message}</p>
       <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>
         To potrwa tylko chwilę.
       </p>

@@ -68,5 +68,5 @@ export function computeReadinessScore(entry: Pick<ReadinessEntry, 'sleep' | 'moo
 
   if (score >= 70) return { score, tone: 'high', color: 'var(--accent)', label: 'Gotowy' }
   if (score >= 40) return { score, tone: 'mid', color: '#f5a623', label: 'Umiarkowany' }
-  return { score, tone: 'low', color: '#FF5757', label: 'Odpoczynek' }
+  return { score, tone: 'low', color: 'var(--danger)', label: 'Odpoczynek' }
 }

@@ -20,17 +20,18 @@ function NavBtn({ icon, label, active, onClick, preloadTo }: NavBtnProps) {
       onClick={onClick}
       onPointerEnter={() => { if (preloadTo) void preloadRouteByPath(preloadTo) }}
       onFocus={() => { if (preloadTo) void preloadRouteByPath(preloadTo) }}
-      className="flex flex-1 flex-col items-center gap-0.5 py-0.5"
+      className="bottom-nav-button flex flex-1 flex-col items-center gap-0.5 py-0.5"
+      data-active={active}
       whileTap={{ scale: 0.88 }}
-      style={{ color: active ? 'var(--accent)' : 'var(--muted)' }}
+      style={{ color: active ? 'var(--text-strong)' : 'var(--muted)' }}
       aria-current={active ? 'page' : undefined}
       aria-label={label}
     >
       {icon}
-      <span className="text-[9px] font-semibold tracking-wide">{label}</span>
+      <span className="text-[9px] font-semibold">{label}</span>
       <span
         className="h-1 w-5 rounded-full transition-opacity"
-        style={{ background: 'var(--accent)', opacity: active ? 1 : 0 }}
+        style={{ background: 'var(--accent-text)', opacity: active ? 1 : 0 }}
         aria-hidden="true"
       />
     </motion.button>
@@ -170,9 +171,9 @@ export default function BottomNav() {
           onFocus={() => { void preloadRouteByPath('/workout/new') }}
           className="mx-1.5 flex h-11 w-11 flex-none items-center justify-center rounded-[var(--radius-lg)]"
           style={{
-            background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)',
+            background: 'var(--primary-gradient)',
             color: 'var(--accent-foreground)',
-            boxShadow: '0 12px 28px rgba(90,166,255,0.22)',
+            boxShadow: '0 12px 28px rgba(240,67,90,0.22)',
           }}
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}

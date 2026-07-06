@@ -32,13 +32,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#4D8EFF',
-  back: '#9B6DFF',
-  legs: '#FF6B6B',
-  shoulders: '#FF7BC0',
-  arms: '#FFB04A',
-  core: '#1FD5B6',
-  cardio: '#F4D35E',
+  chest: '#F0435A',
+  back: '#8FB8A0',
+  legs: '#F0A75A',
+  shoulders: '#D97B91',
+  arms: '#D9A06E',
+  core: '#B8A8B2',
+  cardio: '#A7D8BB',
 }
 
 function formatCompactVolume(volume: number): string {
@@ -222,13 +222,13 @@ export default function HistoryPage() {
           >
             <div className="flex flex-col gap-1 min-w-[6.5rem]">
               <span className="stat-meta">Wyniki</span>
-              <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+              <span className="text-2xl font-bold tabular-nums text-white leading-none">
                 <NumberFlow value={filtered.length} />
               </span>
             </div>
             <div className="flex flex-col gap-1 min-w-[6.5rem]">
               <span className="stat-meta">Objętość</span>
-              <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+              <span className="text-2xl font-bold tabular-nums text-white leading-none">
                 <NumberFlow value={Math.round(totalVolumeInRange)} locales="pl-PL" format={{ useGrouping: true }} /> kg
               </span>
             </div>
@@ -279,7 +279,7 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={() => setSearchText('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-white/5"
+                  className="puls-icon-button absolute right-2 top-1/2 -translate-y-1/2 p-1"
                   aria-label="Wyczyść wyszukiwanie"
                 >
                   <X size={12} style={{ color: 'var(--muted)' }} />
@@ -290,7 +290,7 @@ export default function HistoryPage() {
 
           {availableCategories.length > 0 && (
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[0.68rem] font-semibold uppercase tracking-[0.16em] mr-1" style={{ color: 'var(--muted-soft)' }}>
+              <span className="text-[0.68rem] font-semibold uppercase mr-1" style={{ color: 'var(--muted-soft)' }}>
                 Partie
               </span>
               {availableCategories.map((cat) => {
@@ -366,10 +366,10 @@ export default function HistoryPage() {
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: 'var(--muted)' }}>
+                    <p className="text-xs font-semibold uppercase" style={{ color: 'var(--muted)' }}>
                       {formatDate(workout.startedAt)} · {formatDuration(workout.startedAt, workout.finishedAt)}
                     </p>
-                    <h3 className="mt-1.5 text-lg font-bold tracking-[-0.02em] text-white">
+                    <h3 className="mt-1.5 text-lg font-bold text-white">
                       {workout.label?.trim() || 'Sesja treningowa'}
                     </h3>
                     <p className="mt-2 text-xs truncate" style={{ color: 'var(--muted)' }}>

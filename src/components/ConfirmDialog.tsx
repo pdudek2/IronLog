@@ -44,15 +44,14 @@ export default function ConfirmDialog({
         {/* Backdrop */}
         <div
           className="absolute inset-0"
-          style={{ background: 'rgba(6, 10, 18, 0.76)', backdropFilter: 'blur(8px)' }}
+          style={{ background: 'rgba(8, 7, 9, 0.76)', backdropFilter: 'blur(8px)' }}
         />
 
         {/* Panel */}
         <motion.div
           ref={dialogRef}
-          className="relative z-10 w-full max-w-sm rounded-[var(--radius-xl)] p-6"
+          className="surface-panel relative z-10 w-full max-w-sm rounded-[var(--radius-xl)] p-6"
           style={{
-            background: 'linear-gradient(180deg, rgba(18,25,37,0.98) 0%, rgba(12,17,25,0.99) 100%)',
             border: '1px solid var(--border-strong)',
             boxShadow: 'var(--shadow-panel)',
           }}
@@ -66,10 +65,10 @@ export default function ConfirmDialog({
           aria-labelledby={titleId}
           tabIndex={-1}
         >
-          <p id={titleId} className="mb-2 text-base font-semibold text-white">
+          <p id={titleId} className="mb-2 text-base font-semibold" style={{ color: 'var(--text-strong)' }}>
             {title}
           </p>
-          <p className="mb-6 text-sm leading-relaxed text-white">{message}</p>
+          <p className="mb-6 text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{message}</p>
 
           <div className="flex gap-3">
             <button

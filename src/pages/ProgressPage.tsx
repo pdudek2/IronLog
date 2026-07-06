@@ -34,17 +34,17 @@ const RANGE_OPTIONS = [
 ]
 
 const MUSCLE_COLORS: Record<string, string> = {
-  chest:      '#5aa6ff',
-  shoulders:  '#7b8fff',
-  triceps:    '#a78bfa',
-  back:       '#34d399',
-  biceps:     '#6ee7b7',
-  forearms:   '#a7f3d0',
-  quads:      '#f59e0b',
-  hamstrings: '#fbbf24',
-  glutes:     '#fcd34d',
-  calves:     '#fb923c',
-  core:       '#f87171',
+  chest:      '#F0435A',
+  shoulders:  '#D97B91',
+  triceps:    '#E28A78',
+  back:       '#8FB8A0',
+  biceps:     '#A7D8BB',
+  forearms:   '#B8A8B2',
+  quads:      '#F0A75A',
+  hamstrings: '#D9A06E',
+  glutes:     '#C99571',
+  calves:     '#C8A56C',
+  core:       '#A09AA0',
 }
 
 const MUSCLE_PL: Record<string, string> = {
@@ -63,10 +63,10 @@ const MUSCLE_PL: Record<string, string> = {
 
 const HEATMAP_COLORS = [
   'rgba(255,255,255,0.04)',
-  'rgba(90,166,255,0.15)',
-  'rgba(90,166,255,0.35)',
-  'rgba(90,166,255,0.6)',
-  'rgba(90,166,255,0.9)',
+  'rgba(240,67,90,0.15)',
+  'rgba(240,67,90,0.35)',
+  'rgba(240,67,90,0.6)',
+  'rgba(240,67,90,0.9)',
 ]
 
 const DAY_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd']
@@ -311,7 +311,7 @@ export default function ProgressPage() {
             <p className="hero-editorial-sub">
               {uniqueWorkouts > 0
                 ? `${uniqueWorkouts} ${polishPlural(uniqueWorkouts, 'sesja', 'sesje', 'sesji')} w tym oknie · ${formatVolume(totalVolume)} łącznej objętości`
-                : 'Brak danych w wybranym zakresie. Zaloguj pierwszy trening aby zobaczyć trajektorię.'}
+                : 'Brak danych w wybranym zakresie.'}
             </p>
 
             <div
@@ -326,7 +326,7 @@ export default function ProgressPage() {
               ].map((item) => (
                 <div key={item.label} className="flex flex-col gap-1 min-w-[6.5rem]">
                   <span className="stat-meta">{item.label}</span>
-                  <span className="text-2xl font-bold tabular-nums tracking-[-0.03em] text-white leading-none">
+                  <span className="text-2xl font-bold tabular-nums text-white leading-none">
                     <NumberFlow
                       value={item.value}
                       transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
@@ -371,10 +371,10 @@ export default function ProgressPage() {
               ].map(({ label, current, delta }) => (
                 <div key={label} className="metric-card p-4 text-center">
                   <p className="stat-meta">{label}</p>
-                  <p className="mt-2 text-2xl font-bold text-white tabular-nums tracking-[-0.04em]">{current}</p>
+                  <p className="mt-2 text-2xl font-bold text-white tabular-nums">{current}</p>
                   <p
                     className="mt-1 text-sm font-semibold"
-                    style={{ color: delta >= 0 ? 'var(--success)' : '#ef4444' }}
+                    style={{ color: delta >= 0 ? 'var(--success)' : 'var(--danger)' }}
                   >
                     {delta >= 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(0)}%
                   </p>
@@ -387,23 +387,23 @@ export default function ProgressPage() {
         {/* ── Volume chart ────────────────────────────── */}
         {!error && (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
+            className="progress-chart-panel progress-chart-panel--mobile-clearance surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05, duration: 0.2 }}
           >
             <p className="eyebrow mb-1">Objętość</p>
             <p className="section-title mb-5">Wolumen treningowy</p>
-            <div className="h-[180px] sm:h-[220px]" role="img" aria-label={weeklyVolumeLabel}>
+            <div className="progress-chart-frame h-[180px] sm:h-[220px]" role="img" aria-label={weeklyVolumeLabel}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                   <defs>
                     <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.25} />
+                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.34} />
                       <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
                   <XAxis
                     dataKey="weekLabel"
                     tick={{ fill: 'var(--muted)', fontSize: 12 }}
@@ -422,10 +422,10 @@ export default function ProgressPage() {
                     type="monotone"
                     dataKey="volume"
                     stroke="var(--accent)"
-                    strokeWidth={2}
+                    strokeWidth={2.4}
                     fill="url(#volGrad)"
                     dot={false}
-                    activeDot={{ r: 4, fill: 'var(--accent)', stroke: 'none' }}
+                    activeDot={{ r: 4.5, fill: 'var(--accent)', stroke: 'rgba(255,255,255,0.75)', strokeWidth: 1 }}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -467,17 +467,17 @@ export default function ProgressPage() {
             </div>
           ) : (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
+            className="progress-chart-panel surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08, duration: 0.2 }}
           >
             <p className="eyebrow mb-1">Siła</p>
             <p className="section-title mb-5">Progresja ciężaru</p>
-            <div className="h-[190px] sm:h-[240px]" role="img" aria-label={strengthProgressionLabel}>
+            <div className="progress-chart-frame h-[190px] sm:h-[240px]" role="img" aria-label={strengthProgressionLabel}>
               <ResponsiveContainer width="100%" height="100%" minWidth={0}>
                 <LineChart data={strengthData.data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
                   <XAxis
                     dataKey="date"
                     tick={{ fill: 'var(--muted)', fontSize: 12 }}
@@ -498,7 +498,7 @@ export default function ProgressPage() {
                       type="monotone"
                       dataKey={s.exerciseName}
                       stroke={s.color}
-                      strokeWidth={2}
+                      strokeWidth={2.35}
                       dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
                       connectNulls
                     />
@@ -524,7 +524,7 @@ export default function ProgressPage() {
         {/* ── Muscle balance ───────────────────────────── */}
         {!error && muscleData.length > 0 && (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
+            className="progress-chart-panel surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1, duration: 0.2 }}
@@ -538,7 +538,7 @@ export default function ProgressPage() {
                   layout="vertical"
                   margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" horizontal={false} />
                   <XAxis
                     type="number"
                     tick={{ fill: 'var(--muted)', fontSize: 12 }}
@@ -559,7 +559,7 @@ export default function ProgressPage() {
                     {muscleData.map((entry, index) => (
                       <Cell
                         key={index}
-                        fill={MUSCLE_COLORS[entry.muscle] ?? `rgba(90,166,255,${Math.max(0.4, 1 - index * 0.1)})`}
+                        fill={MUSCLE_COLORS[entry.muscle] ?? `rgba(240,67,90,${Math.max(0.4, 1 - index * 0.1)})`}
                       />
                     ))}
                   </Bar>
@@ -641,7 +641,7 @@ export default function ProgressPage() {
               {records.map((rec) => (
                 <div key={rec.id} className="metric-card p-4">
                   <p className="text-sm font-semibold text-white truncate">{rec.exerciseName}</p>
-                  <p className="mt-3 text-2xl font-bold text-white tabular-nums tracking-[-0.04em]">
+                  <p className="mt-3 text-2xl font-bold text-white tabular-nums">
                     {rec.maxWeight} <span className="text-base font-medium" style={{ color: 'var(--muted)' }}>kg</span>
                   </p>
                   <div className="mt-2 flex items-center justify-between">

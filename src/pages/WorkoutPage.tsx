@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
+import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, Trash2, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type ActiveWorkout, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -30,13 +30,13 @@ const CATEGORY_LABELS: Record<string, string> = {
   cardio: 'Cardio',
 }
 const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#4D8EFF',
-  back: '#9B6DFF',
-  legs: '#FF6B6B',
-  shoulders: '#FF7BC0',
-  arms: '#FFB04A',
-  core: '#1FD5B6',
-  cardio: '#F4D35E',
+  chest: '#F0435A',
+  back: '#8FB8A0',
+  legs: '#F0A75A',
+  shoulders: '#D97B91',
+  arms: '#D9A06E',
+  core: '#B8A8B2',
+  cardio: '#A7D8BB',
 }
 const EQUIPMENT_LABELS: Record<string, string> = {
   barbell: 'Sztanga',
@@ -103,7 +103,7 @@ function SessionQuickLinks({ onNavigate, variant = 'mobile', className = '' }: S
   return (
     <div className={className}>
       {isDesktop && (
-        <p className="mb-3 text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+        <p className="mb-3 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
           Szybki podgląd
         </p>
       )}
@@ -117,14 +117,9 @@ function SessionQuickLinks({ onNavigate, variant = 'mobile', className = '' }: S
             onFocus={() => { void preloadRouteByPath(to) }}
             className={
               isDesktop
-                ? 'flex min-h-11 items-center gap-2 rounded-[var(--radius-lg)] border px-3 text-left text-xs font-semibold transition-colors hover:bg-white/5'
-                : 'flex h-11 flex-none items-center gap-2 rounded-[var(--radius-lg)] border px-3 text-xs font-semibold transition-colors hover:bg-white/5'
+                ? 'session-quick-link flex min-h-11 items-center gap-2 rounded-[var(--radius-lg)] border px-3 text-left text-xs font-semibold transition-colors'
+                : 'session-quick-link flex h-11 flex-none items-center gap-2 rounded-[var(--radius-lg)] border px-3 text-xs font-semibold transition-colors'
             }
-            style={{
-              background: 'rgba(255,255,255,0.035)',
-              borderColor: 'var(--border)',
-              color: 'var(--text-strong)',
-            }}
             whileTap={{ scale: 0.94 }}
             aria-label={`Przejdź do: ${label}`}
           >
@@ -469,7 +464,7 @@ export default function WorkoutPage() {
               onClick={() => { void handleContinueStaleSession() }}
               disabled={handlingStaleSession}
               className="rounded-[var(--radius-lg)] px-4 py-3 text-sm font-semibold disabled:opacity-50"
-              style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+              style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
               whileTap={{ scale: 0.97 }}
             >
               Kontynuuj
@@ -501,7 +496,7 @@ export default function WorkoutPage() {
           <motion.button
             onClick={startWorkout}
             className="rounded-2xl px-6 py-3 text-sm font-semibold"
-            style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
             whileTap={{ scale: 0.97 }}
           >
             Rozpocznij nową sesję
@@ -548,6 +543,22 @@ export default function WorkoutPage() {
     const t = formatDuration(active.startedAt)
     return t.h !== '00' ? `${t.h}:${t.m}:${t.s}` : `${t.m}:${t.s}`
   })()
+  const focusExerciseIndex = (() => {
+    const nextIndex = active.exercises.findIndex((exercise) => exercise.sets.some((set) => !set.done))
+    if (nextIndex >= 0) return nextIndex
+    return active.exercises.length > 0 ? active.exercises.length - 1 : -1
+  })()
+  const focusExercise = focusExerciseIndex >= 0 ? active.exercises[focusExerciseIndex] : null
+  const openSetIndex = focusExercise?.sets.findIndex((set) => !set.done) ?? -1
+  const focusSetIndex = focusExercise
+    ? openSetIndex >= 0
+      ? openSetIndex
+      : Math.max(focusExercise.sets.length - 1, 0)
+    : -1
+  const focusSet = focusExercise && focusSetIndex >= 0 ? focusExercise.sets[focusSetIndex] : null
+  const focusExerciseMeta = focusExercise ? exerciseCatalog.get(focusExercise.exerciseId) : null
+  const focusAccent = CATEGORY_COLORS[focusExerciseMeta?.category ?? ''] ?? 'var(--accent)'
+  const remainingSets = Math.max(totalSets - completedSets, 0)
 
   return (
     <>
@@ -560,7 +571,7 @@ export default function WorkoutPage() {
           paddingBottom: '0.75rem',
           paddingLeft: 'max(1rem, env(safe-area-inset-left, 1rem))',
           paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
-          background: 'rgba(10, 14, 22, 0.9)',
+          background: 'rgba(13, 12, 14, 0.9)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           borderBottom: '1px solid var(--border)',
@@ -580,46 +591,42 @@ export default function WorkoutPage() {
           onClick={handleFinish}
           disabled={saving}
           className="flex-none rounded-xl px-5 py-2 text-sm font-bold"
-          style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+          style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           whileTap={{ scale: 0.93 }}
         >
           {saving ? '...' : 'Zakończ'}
         </motion.button>
       </div>
 
-      <div className="desktop-app-grid pt-[4.5rem] lg:pt-0">
+      <div className="workout-session-grid pt-[4.5rem] lg:pt-0">
 
         {/* ── Desktop sidebar only ─────────────────── */}
-        <aside className="hidden lg:block desktop-sticky space-y-4">
-          <div className="surface-panel rounded-[var(--radius-xl)] p-5">
+        <aside className="hidden lg:block desktop-sticky">
+          <div className="workout-control-panel">
             <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
               Aktywna sesja
             </p>
 
-            <div
-              className="rounded-[var(--radius-xl)] p-4 mb-5"
-              style={{ background: 'linear-gradient(180deg, rgba(90,166,255,0.16) 0%, rgba(90,166,255,0.05) 100%)', border: '1px solid var(--accent-soft-strong)' }}
-            >
+            <div className="workout-time-card">
               <p className="stat-meta mb-2">Czas sesji</p>
               <div className="flex items-end justify-between gap-3">
-                <span className="text-[3rem] font-bold tabular-nums tracking-[-0.06em] leading-none text-white">
+                <span className="workout-time-value">
                   {timerStr}
                 </span>
                 <span
-                  className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-strong)', border: '1px solid rgba(255,255,255,0.12)' }}
+                  className="workout-live-pill"
                 >
                   {activeLabel}
                 </span>
               </div>
-              <div className="mt-4 h-2 rounded-full" style={{ background: 'rgba(255,255,255,0.06)' }}>
+              <div className="workout-progress-track">
                 <div
-                  className="h-full rounded-full"
+                  className="workout-progress-fill"
                   style={{
                     width: `${Math.max(totalSets ? completionPct : 12, totalSets ? 12 : 0)}%`,
                     background: completionPct >= 100
-                      ? 'linear-gradient(90deg, var(--success) 0%, #0fb781 100%)'
-                      : 'linear-gradient(90deg, var(--accent) 0%, #3f8ff4 100%)',
+                      ? 'linear-gradient(90deg, var(--success) 0%, #6f9d83 100%)'
+                      : 'linear-gradient(90deg, var(--accent) 0%, var(--accent-text) 100%)',
                   }}
                 />
               </div>
@@ -628,7 +635,7 @@ export default function WorkoutPage() {
               </p>
             </div>
 
-            {saveError && <p className="mb-4 text-xs" style={{ color: '#FF4B4B' }}>{saveError}</p>}
+            {saveError && <p className="mb-4 text-xs" style={{ color: 'var(--danger)' }}>{saveError}</p>}
 
             <SessionQuickLinks
               variant="desktop"
@@ -636,27 +643,27 @@ export default function WorkoutPage() {
               onNavigate={goQuick}
             />
 
-            <div className="grid grid-cols-2 gap-2 mb-5">
-              <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border)' }}>
+            <div className="workout-side-metrics">
+              <div className="workout-micro-card">
                 <p className="stat-meta">Ćwiczenia</p>
-                <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white tabular-nums">{totalExercises}</p>
+                <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{totalExercises}</p>
               </div>
-              <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border)' }}>
+              <div className="workout-micro-card">
                 <p className="stat-meta">Serie</p>
-                <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white tabular-nums">{completedSets}/{totalSets}</p>
+                <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{completedSets}/{totalSets}</p>
               </div>
-              <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border)' }}>
+              <div className="workout-micro-card">
                 <p className="stat-meta">Objętość</p>
-                <p className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white tabular-nums">{formatCompactVolume(totalVolume)}</p>
+                <p className="mt-2 text-xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume)}</p>
               </div>
-              <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border)' }}>
+              <div className="workout-micro-card">
                 <p className="stat-meta">Najcięższy set</p>
-                <p className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white tabular-nums">{strongestSet ? `${strongestSet} ${units}` : '—'}</p>
+                <p className="mt-2 text-xl font-semibold text-white tabular-nums">{strongestSet ? `${strongestSet} ${units}` : '—'}</p>
               </div>
             </div>
 
             <div>
-              <p className="mb-3 text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+              <p className="mb-3 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
                 Typ sesji
               </p>
               <LabelChips
@@ -678,12 +685,13 @@ export default function WorkoutPage() {
               </div>
               <motion.button
                 onClick={() => setShowPicker(true)}
-                className="w-full rounded-[var(--radius-lg)] py-3.5 text-sm font-semibold tracking-wide mb-3"
-                style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+                className="workout-primary-action mb-3"
+                style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.97 }}
               >
-                + Dodaj ćwiczenie
+                <Plus size={16} strokeWidth={2.4} />
+                <span>Dodaj ćwiczenie</span>
               </motion.button>
               <div className="grid grid-cols-2 gap-2">
                 <motion.button
@@ -698,7 +706,7 @@ export default function WorkoutPage() {
                   onClick={handleFinish}
                   disabled={saving}
                   className="rounded-[var(--radius-lg)] py-3 text-sm font-bold"
-                  style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)', opacity: saving ? 0.6 : 1 }}
+                  style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)', opacity: saving ? 0.6 : 1 }}
                   whileTap={{ scale: 0.97 }}
                 >
                   {saving ? '...' : 'Zakończ'}
@@ -715,7 +723,8 @@ export default function WorkoutPage() {
           />
 
           <motion.section
-            className="surface-panel-hero mb-4 rounded-[var(--radius-xl)] p-4 sm:p-5"
+            className="workout-session-hero mb-4"
+            style={{ '--session-accent': focusAccent } as React.CSSProperties}
             initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
@@ -723,10 +732,35 @@ export default function WorkoutPage() {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0 flex-1">
                 <p className="eyebrow">Aktywna sesja</p>
-                <h2 className="section-title mt-2">{activeLabel}</h2>
+                <h2 className="workout-session-title">{activeLabel}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                   {sessionSignal}
                 </p>
+                <div className="workout-live-strip">
+                  <div className="workout-live-current">
+                    <span>Teraz</span>
+                    <strong>{focusExercise ? focusExercise.name : 'Dodaj ćwiczenie'}</strong>
+                    <small>
+                      {focusSet
+                        ? `Seria ${focusSetIndex + 1} · ${focusSet.weight || '—'} ${units} × ${focusSet.reps || '—'}`
+                        : 'Sesja bez wpisanych serii'}
+                    </small>
+                  </div>
+                  <div className="workout-live-current">
+                    <span>Pozostało</span>
+                    <strong>{remainingSets}</strong>
+                    <small>{remainingSets === 1 ? 'seria otwarta' : 'serii otwartych'}</small>
+                  </div>
+                  <div className="workout-live-wave" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </div>
+                </div>
                 <div className="lg:hidden mt-4">
                   <LabelChips
                     activeLabel={active.label ?? ''}
@@ -735,34 +769,34 @@ export default function WorkoutPage() {
                 </div>
               </div>
               <div className="hidden w-full gap-2 sm:grid sm:grid-cols-3 xl:w-[32rem]">
-                <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                <div className="workout-micro-card">
                   <div className="flex items-center justify-between gap-2">
                     <span className="stat-meta">Serie</span>
                     <Check size={14} style={{ color: completedSets > 0 ? 'var(--success)' : 'var(--accent)' }} />
                   </div>
-                  <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white tabular-nums">{completedSets}/{totalSets || 0}</p>
+                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{completedSets}/{totalSets || 0}</p>
                 </div>
-                <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                <div className="workout-micro-card">
                   <div className="flex items-center justify-between gap-2">
                     <span className="stat-meta">Objętość</span>
                     <Flame size={14} style={{ color: 'var(--accent)' }} />
                   </div>
-                  <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white tabular-nums">{formatCompactVolume(totalVolume)}</p>
+                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume)}</p>
                 </div>
-                <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                <div className="workout-micro-card">
                   <div className="flex items-center justify-between gap-2">
                     <span className="stat-meta">Ćwiczenia</span>
                     <Layers3 size={14} style={{ color: 'var(--accent)' }} />
                   </div>
-                  <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white tabular-nums">{totalExercises}</p>
+                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{totalExercises}</p>
                 </div>
               </div>
             </div>
           </motion.section>
 
-          <div className="mb-4 flex items-end justify-between gap-4">
+          <div className="workout-section-head">
             <div>
-              <p className="text-[10px] uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+              <p className="eyebrow" style={{ color: 'var(--muted)' }}>
                 Ćwiczenia
               </p>
               <h2 className="mt-2 text-2xl font-bold text-white">Bieżąca rozpiska</h2>
@@ -776,54 +810,36 @@ export default function WorkoutPage() {
             {active.exercises.length === 0 && (
               <>
                 <div
-                  className="surface-panel rounded-[var(--radius-xl)] p-5 sm:p-6"
-                  style={{ borderColor: 'rgba(90,166,255,0.14)' }}
+                  className="workout-empty-card"
+                  style={{ borderColor: 'rgba(240,67,90,0.14)' }}
                 >
                   <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(16rem,0.95fr)] lg:items-start">
                     <div>
                       <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>Start sesji</p>
-                      <h3 className="text-2xl font-semibold tracking-[-0.04em] text-white">Dodaj pierwszy ruch</h3>
+                      <h3 className="text-2xl font-semibold text-white">Dodaj pierwszy ruch</h3>
                       <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                        Dodaj ćwiczenie, a potem loguj serie na bieżąco. Obok od razu zobaczysz objętość, postęp i top set.
+                        Wybierz ćwiczenie, wpisz pierwszą serię i prowadź sesję z jednego widoku.
                       </p>
-
-                      <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                        {[
-                          { label: '1', text: 'Wybierz ruch główny dnia' },
-                          { label: '2', text: 'Wpisz ciężar i powtórzenia' },
-                          { label: '3', text: 'Zamykaj serie po wykonaniu' },
-                        ].map((step) => (
-                          <div
-                            key={step.label}
-                            className="rounded-[var(--radius-lg)] border px-4 py-3"
-                            style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
-                          >
-                            <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>Krok {step.label}</span>
-                            <p className="mt-2 text-sm leading-6 text-white">{step.text}</p>
-                          </div>
-                        ))}
-                      </div>
+                      <motion.button
+                        type="button"
+                        onClick={() => setShowPicker(true)}
+                        className="workout-primary-action mt-5 max-w-xs"
+                        style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+                        whileTap={{ scale: 0.97 }}
+                      >
+                        <Plus size={16} strokeWidth={2.4} />
+                        Dodaj ćwiczenie
+                      </motion.button>
                     </div>
 
-                    <div
-                      className="rounded-[var(--radius-xl)] border p-4"
-                      style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border)' }}
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div>
-                          <p className="eyebrow mb-2">Sygnał sesji</p>
-                          <p className="text-lg font-semibold tracking-[-0.03em] text-white">Jeszcze bez ćwiczeń</p>
-                        </div>
-                        <div
-                          className="rounded-[var(--radius-pill)] border px-3 py-1.5 text-xs font-semibold"
-                          style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--border)', color: 'var(--muted)' }}
-                        >
-                          0/{totalSets || 0} serii
-                        </div>
-                      </div>
-                      <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                        Jeśli chcesz wejść szybciej, skorzystaj z szybkiego startu poniżej albo dodaj ruch ręcznie.
-                      </p>
+                    <div className="workout-empty-rhythm" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
                     </div>
                   </div>
                 </div>
@@ -839,7 +855,7 @@ export default function WorkoutPage() {
                             key={`${source}:${id}`}
                             type="button"
                             onClick={() => handlePickExercise(id, name, source)}
-                            className="rounded-[var(--radius-lg)] border p-3.5 text-left transition-all hover:bg-white/5"
+                            className="rounded-[var(--radius-lg)] border p-3.5 text-left transition-all hover:-translate-y-0.5"
                             style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}
                             whileTap={{ scale: 0.98 }}
                           >
@@ -847,7 +863,7 @@ export default function WorkoutPage() {
                               <p className="text-sm font-semibold text-white truncate">{name}</p>
                               {meta?.category && (
                                 <span
-                                  className="flex-none text-[9px] font-semibold uppercase tracking-[0.1em] px-1.5 py-0.5 rounded-full"
+                                  className="flex-none text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-full"
                                   style={{ background: `${exerciseAccent}18`, color: exerciseAccent }}
                                 >
                                   {CATEGORY_LABELS[meta.category] ?? meta.category}
@@ -882,13 +898,14 @@ export default function WorkoutPage() {
                   return (
                     <motion.div
                       key={exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
-                      className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
+                      className="workout-exercise-card"
+                      style={{ '--exercise-accent': exerciseAccent } as React.CSSProperties}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ duration: 0.3, ease: 'easeOut' }}
                     >
-                      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                      <div className="workout-exercise-head mb-4 flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
                             {exerciseMeta?.equipment && (
@@ -908,14 +925,16 @@ export default function WorkoutPage() {
                               </span>
                             )}
                           </div>
-                          <p className="mt-3 text-lg font-semibold tracking-[-0.03em] text-white">{exercise.name}</p>
+                          <p className="mt-3 text-lg font-semibold text-white">{exercise.name}</p>
                         </div>
                         <button
                           onClick={() => handleRemoveExercise(exerciseIndex)}
-                          className="flex-none text-xs transition-opacity hover:opacity-70"
+                          className="workout-danger-action"
                           style={{ color: 'var(--muted)' }}
+                          aria-label={`Usuń ćwiczenie ${exercise.name}`}
                         >
-                          Usuń
+                          <Trash2 size={14} />
+                          <span>Usuń</span>
                         </button>
                       </div>
 
@@ -925,16 +944,16 @@ export default function WorkoutPage() {
                         <span>Top <b className="tabular-nums text-white">{bestSet ? `${bestSet} ${units}` : '—'}</b></span>
                       </div>
 
-                      <div className="hidden sm:grid mb-4 gap-2 sm:grid-cols-3">
-                        <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                      <div className="workout-exercise-metrics">
+                        <div className="workout-micro-card">
                           <p className="stat-meta">Postęp</p>
                           <p className="mt-2 text-lg font-semibold text-white tabular-nums">{exerciseCompleted}/{exercise.sets.length}</p>
                         </div>
-                        <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                        <div className="workout-micro-card">
                           <p className="stat-meta">Objętość</p>
                           <p className="mt-2 text-lg font-semibold text-white tabular-nums">{formatCompactVolume(exerciseVolume)}</p>
                         </div>
-                        <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                        <div className="workout-micro-card">
                           <p className="stat-meta">Top set</p>
                           <p className="mt-2 text-lg font-semibold text-white tabular-nums">{bestSet ? `${bestSet} ${units}` : '—'}</p>
                         </div>
@@ -956,10 +975,10 @@ export default function WorkoutPage() {
                         )
                       })()}
 
-                      <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] gap-2 mb-2">
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-center" style={{ color: 'var(--muted)' }}>#</span>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-center" style={{ color: 'var(--muted)' }}>{units}</span>
-                        <span className="text-[10px] uppercase tracking-[0.16em] text-center" style={{ color: 'var(--muted)' }}>Powt.</span>
+                      <div className="workout-set-header">
+                        <span>#</span>
+                        <span>{units}</span>
+                        <span>Powt.</span>
                         <span />
                       </div>
 
@@ -969,11 +988,11 @@ export default function WorkoutPage() {
                           return (
                             <div
                               key={set.clientId ?? setIndex}
-                              className="rounded-[var(--radius-lg)] border p-2.5"
+                              className="workout-set-row"
                               style={{
-                                background: set.done ? 'rgba(25,213,159,0.12)' : 'rgba(255,255,255,0.025)',
-                                borderColor: set.done ? 'rgba(25,213,159,0.42)' : 'var(--border)',
-                                boxShadow: set.done ? 'inset 0 1px 0 rgba(25,213,159,0.08)' : undefined,
+                                background: set.done ? 'rgba(143,184,160,0.12)' : 'rgba(255,255,255,0.025)',
+                                borderColor: set.done ? 'rgba(143,184,160,0.42)' : 'var(--border)',
+                                boxShadow: set.done ? 'inset 0 1px 0 rgba(143,184,160,0.08)' : undefined,
                               }}
                             >
                               <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_2.5rem] gap-2 items-center">
@@ -982,7 +1001,7 @@ export default function WorkoutPage() {
                                   className="flex h-10 w-9 items-center justify-center rounded-[var(--radius-md)] text-xs font-bold"
                                   style={{
                                     background: set.done ? 'var(--success)' : 'var(--input-bg)',
-                                    color: set.done ? '#081813' : 'var(--muted)',
+                                    color: set.done ? 'var(--success-foreground)' : 'var(--muted)',
                                     border: `1px solid ${set.done ? 'var(--success)' : 'var(--border)'}`,
                                   }}
                                   whileTap={{ scale: 0.85 }}
@@ -1014,7 +1033,7 @@ export default function WorkoutPage() {
                                 />
                                 <button
                                   onClick={() => removeSet(exerciseIndex, setIndex)}
-                                  className="flex h-10 w-full items-center justify-center rounded-[var(--radius-md)] text-base transition-colors hover:bg-white/5 active:bg-white/10"
+                                  className="puls-icon-button flex h-10 w-full items-center justify-center text-base"
                                   style={{ color: 'var(--muted-soft)' }}
                                   aria-label={`Usuń serię ${setIndex + 1}`}
                                 >
@@ -1067,7 +1086,10 @@ export default function WorkoutPage() {
                         className="mt-3 w-full py-2.5 rounded-[var(--radius-lg)] text-sm font-semibold transition-opacity hover:opacity-80"
                         style={{ background: 'var(--input-bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
                       >
-                        + Dodaj serię
+                        <span className="inline-flex items-center justify-center gap-2">
+                          <Plus size={15} strokeWidth={2.4} />
+                          Dodaj serię
+                        </span>
                       </button>
                     </motion.div>
                   )
@@ -1091,7 +1113,7 @@ export default function WorkoutPage() {
               </p>
             </div>
             <div className="rounded-[var(--radius-lg)] border px-3 py-2 text-right" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.03)' }}>
-              <p className="text-[10px] uppercase tracking-[0.18em]" style={{ color: 'var(--muted)' }}>Tempo</p>
+              <p className="text-[10px] uppercase" style={{ color: 'var(--muted)' }}>Tempo</p>
               <p className="mt-1 text-sm font-semibold text-white tabular-nums">{timerStr}</p>
             </div>
           </div>
@@ -1160,12 +1182,13 @@ export default function WorkoutPage() {
 
           <motion.button
             onClick={() => setShowPicker(true)}
-            className="w-full py-3.5 rounded-[var(--radius-lg)] font-semibold text-sm tracking-wide"
-            style={{ background: 'linear-gradient(180deg, var(--accent) 0%, #3f8ff4 100%)', color: 'var(--accent-foreground)' }}
+            className="workout-primary-action"
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.97 }}
           >
-            + Dodaj ćwiczenie
+            <Plus size={16} strokeWidth={2.4} />
+            <span>Dodaj ćwiczenie</span>
           </motion.button>
         </div>
       </div>

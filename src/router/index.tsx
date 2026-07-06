@@ -1,5 +1,5 @@
-import { lazy } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
+import { lazy, useEffect } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { LoadingState } from '../components/ui'
 import AppLayout from '../components/AppLayout'
@@ -52,10 +52,34 @@ function PublicRouteOutlet() {
   return <Outlet />
 }
 
+function RouteScrollReset() {
+  const { pathname, hash } = useLocation()
+
+  useEffect(() => {
+    if ('scrollRestoration' in window.history) {
+      window.history.scrollRestoration = 'manual'
+    }
+  }, [])
+
+  useEffect(() => {
+    if (hash) {
+      window.requestAnimationFrame(() => {
+        document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
+      })
+      return
+    }
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+  }, [pathname, hash])
+
+  return null
+}
+
 export default function AppRouter() {
   return (
     <BrowserRouter>
       <AnalyticsListener />
+      <RouteScrollReset />
       <Routes>
         {/* Public (auth) routes — no AppShell */}
         <Route element={<PublicRouteOutlet />}>

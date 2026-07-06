@@ -26,11 +26,11 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Utwórz konto"
+      title="Załóż konto"
       subtitle={(
         <>
-          Masz już konto?{' '}
-          <Link to="/login" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent)' }}>
+          Masz konto?{' '}
+          <Link to="/login" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent-text)' }}>
             Zaloguj się
           </Link>
         </>
@@ -43,7 +43,7 @@ export default function RegisterPage() {
             id="register-email"
             name="email"
             type="email"
-            placeholder="user@mail.com"
+            placeholder="email@example.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
@@ -68,9 +68,9 @@ export default function RegisterPage() {
           <span id="register-password-help" className="text-xs" style={{ color: 'var(--muted)' }}>Minimum 6 znaków</span>
         </div>
 
-        {error && <p id="register-form-error" role="alert" className="text-sm" style={{ color: '#FF4B4B' }}>{error}</p>}
+        {error && <p id="register-form-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
 
-        <Button type="submit" loading={loading} className="mt-2 w-full">
+        <Button type="submit" loading={loading} className="auth-instrument-submit mt-2 w-full">
           Zarejestruj się
         </Button>
       </form>

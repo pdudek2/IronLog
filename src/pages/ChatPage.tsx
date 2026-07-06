@@ -96,9 +96,9 @@ function SectionError({ message }: { message: string }) {
     <div
       className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
       style={{
-        background: 'rgba(255,87,87,0.08)',
-        borderColor: 'rgba(255,87,87,0.18)',
-        color: '#ff9c9c',
+        background: 'var(--danger-soft)',
+        borderColor: 'var(--danger-soft-strong)',
+        color: 'var(--danger)',
       }}
     >
       {message}
@@ -351,9 +351,9 @@ export default function ChatPage() {
         </motion.div>
       </section>
 
-      <div className="space-y-5">
+      <div className="ai-workspace space-y-5">
 
-        <section className="surface-panel rounded-[var(--radius-xl)] p-2">
+        <section className="ai-mode-switch surface-panel rounded-[var(--radius-xl)] p-2">
           <div className="grid gap-2 sm:grid-cols-2">
             {[
               {
@@ -396,11 +396,11 @@ export default function ChatPage() {
           </div>
         </section>
 
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]">
+        <div className="ai-workspace-grid grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]">
           <div className="space-y-5">
             {activeTab === 'chat' ? (
               <>
-                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
+                <section className="ai-chat-panel surface-panel rounded-[var(--radius-xl)] p-5">
                   <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
                       <p className="eyebrow mb-1">Rozmowa</p>
@@ -456,7 +456,7 @@ export default function ChatPage() {
                               type="button"
                               onClick={() => void handleSend(prompt)}
                               disabled={!configured || sending}
-                              className="rounded-[var(--radius-lg)] border px-4 py-3 text-left text-sm transition hover:border-[rgba(90,166,255,0.3)] hover:bg-[rgba(90,166,255,0.05)] disabled:opacity-50"
+                              className="rounded-[var(--radius-lg)] border px-4 py-3 text-left text-sm transition hover:border-[rgba(240,67,90,0.3)] hover:bg-[rgba(240,67,90,0.05)] disabled:opacity-50"
                               style={{
                                 background: 'rgba(255,255,255,0.025)',
                                 borderColor: 'var(--border)',
@@ -488,7 +488,7 @@ export default function ChatPage() {
                                 borderColor: message.role === 'assistant' ? 'var(--border)' : 'var(--accent-soft-strong)',
                               }}
                             >
-                              <p className="mb-1 text-[11px] font-semibold tracking-[0.04em]" style={{ color: message.role === 'assistant' ? 'var(--muted)' : 'var(--accent)' }}>
+                              <p className="mb-1 text-[11px] font-semibold" style={{ color: message.role === 'assistant' ? 'var(--muted)' : 'var(--accent)' }}>
                                 {message.role === 'assistant' ? 'AI Coach' : 'Ty'}
                               </p>
                               <ChatMarkdown content={message.content} />
@@ -503,7 +503,7 @@ export default function ChatPage() {
                                 borderColor: 'var(--border)',
                               }}
                             >
-                              <p className="mb-1 text-[11px] font-semibold tracking-[0.04em]" style={{ color: 'var(--muted)' }}>
+                              <p className="mb-1 text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>
                                 AI Coach
                               </p>
                               <div className="flex items-center gap-3">
@@ -527,7 +527,7 @@ export default function ChatPage() {
                                 borderColor: 'var(--border)',
                               }}
                             >
-                              <p className="mb-1 text-[11px] font-semibold tracking-[0.04em]" style={{ color: 'var(--muted)' }}>
+                              <p className="mb-1 text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>
                                 AI Coach
                               </p>
                               <div className="flex items-end gap-1">
@@ -585,7 +585,7 @@ export default function ChatPage() {
                   </form>
                 </section>
 
-                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
+                <section className="ai-usage-strip surface-panel rounded-[var(--radius-xl)] p-5">
                   <div className="flex items-center gap-2">
                     <ShieldCheck size={16} style={{ color: 'var(--success)' }} />
                     <p className="text-sm font-semibold text-white">Najczęstsze zastosowania</p>
@@ -802,7 +802,7 @@ export default function ChatPage() {
                             style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
                           >
                             <p className="stat-meta">{metric.label}</p>
-                            <p className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white">{metric.value}</p>
+                            <p className="mt-2 text-xl font-semibold text-white">{metric.value}</p>
                           </div>
                         ))}
                       </div>
@@ -910,7 +910,7 @@ export default function ChatPage() {
             )}
           </div>
 
-          <div className="space-y-5">
+          <div className="ai-side-rail space-y-5">
             {!isDemoUser && (
               <AiKeyPanel
                 onConfiguredChange={setConfigured}
@@ -939,8 +939,8 @@ export default function ChatPage() {
                     <div
                       className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)]"
                       style={{
-                        background: 'rgba(25,213,159,0.08)',
-                        border: '1px solid rgba(25,213,159,0.16)',
+                        background: 'rgba(143,184,160,0.08)',
+                        border: '1px solid rgba(143,184,160,0.16)',
                         color: 'var(--success)',
                       }}
                     >
@@ -1001,7 +1001,7 @@ export default function ChatPage() {
                         style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
                       >
                         <p className="stat-meta">{item.label}</p>
-                        <p className="mt-2 text-2xl font-semibold tracking-[-0.04em] text-white">{item.value}</p>
+                        <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
                       </div>
                     ))}
                   </div>

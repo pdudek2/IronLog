@@ -45,8 +45,8 @@ export default function ReadinessWidget() {
   if (entry === undefined) {
     return (
       <div
-        className="surface-panel rounded-[var(--radius-xl)] p-5 animate-pulse"
-        style={{ minHeight: '80px' }}
+        className="readiness-card readiness-card--loading animate-pulse"
+        style={{ minHeight: '5rem' }}
       />
     )
   }
@@ -61,7 +61,7 @@ export default function ReadinessWidget() {
 
   return (
     <motion.div
-      className="surface-panel rounded-[var(--radius-xl)] p-5"
+      className="readiness-card readiness-card--saved"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
@@ -70,7 +70,7 @@ export default function ReadinessWidget() {
 
       <div className="flex items-center gap-4">
         <div className="relative flex-none">
-          <svg width="72" height="72" viewBox="0 0 100 100">
+          <svg width="62" height="62" viewBox="0 0 100 100">
             <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth="8" />
             <motion.circle
               cx="50" cy="50" r="40" fill="none"
@@ -82,14 +82,14 @@ export default function ReadinessWidget() {
               animate={{ strokeDashoffset: 2 * Math.PI * 40 * (1 - score / 100) }}
               transition={{ delay: 0.1, duration: 0.8, ease: 'easeOut' }}
             />
-            <text x="50" y="54" textAnchor="middle" fill="white" fontSize="22" fontWeight="700" fontFamily="Urbanist">
+            <text x="50" y="54" textAnchor="middle" fill="white" fontSize="22" fontWeight="700" fontFamily="Instrument Sans">
               {score}
             </text>
           </svg>
         </div>
 
         <div className="flex-1 min-w-0">
-          <p className="text-lg font-bold text-white leading-tight">{label}</p>
+          <p className="text-base font-bold text-white leading-tight">{label}</p>
           <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>dzisiejszy wynik</p>
 
           <div className="mt-3 grid grid-cols-3 gap-2">

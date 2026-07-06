@@ -718,6 +718,12 @@ export default function WorkoutPage() {
 
             {saveError && <p className="mb-4 text-xs" style={{ color: 'var(--danger)' }}>{saveError}</p>}
 
+            <AnimatePresence initial={false}>
+              {rest !== null && (
+                <RestTimerBar rest={rest} onAddTime={handleAddRestTime} onSkip={handleSkipRest} />
+              )}
+            </AnimatePresence>
+
             <SessionQuickLinks
               variant="desktop"
               className="mb-5"

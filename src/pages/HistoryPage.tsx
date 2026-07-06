@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
@@ -193,7 +193,7 @@ export default function HistoryPage() {
 
   return (
     <>
-      <section className="hero-editorial">
+      <section className="history-page-hero hero-editorial">
         <motion.div
           className="flex flex-col gap-5"
           initial={{ opacity: 0, y: 6 }}
@@ -216,20 +216,23 @@ export default function HistoryPage() {
               : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} w wyborze · ${formatCompactVolume(totalVolumeInRange)} objętości${activeFiltersCount > 0 ? ` · ${activeFiltersCount} ${polishPlural(activeFiltersCount, 'filtr aktywny', 'filtry aktywne', 'filtrów aktywnych')}` : ''}${historyTruncated ? ' · widok oparty o ostatnie 2000 sesji' : ''}`}
           </p>
 
-          <div
-            className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+          <div className="history-hero-ledger puls-ledger mt-5">
+            <div className="flex flex-col gap-1">
               <span className="stat-meta">Wyniki</span>
               <span className="text-2xl font-bold tabular-nums text-white leading-none">
                 <NumberFlow value={filtered.length} />
               </span>
             </div>
-            <div className="flex flex-col gap-1 min-w-[6.5rem]">
+            <div className="flex flex-col gap-1">
               <span className="stat-meta">Objętość</span>
               <span className="text-2xl font-bold tabular-nums text-white leading-none">
                 <NumberFlow value={Math.round(totalVolumeInRange)} locales="pl-PL" format={{ useGrouping: true }} /> kg
+              </span>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="stat-meta">Filtry</span>
+              <span className="text-2xl font-bold tabular-nums text-white leading-none">
+                <NumberFlow value={activeFiltersCount} />
               </span>
             </div>
           </div>
@@ -238,7 +241,7 @@ export default function HistoryPage() {
 
       <div className="space-y-5">
         {/* Filter bar */}
-        <div className="space-y-3">
+        <div className="history-control-panel puls-panel space-y-3 p-3 sm:p-4">
           {historyTruncated && (
             <div
               className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
@@ -354,55 +357,61 @@ export default function HistoryPage() {
             )}
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="history-workout-list">
             {filtered.map(({ workout, totalSets, totalVolume, categories, exerciseNames }, idx) => (
               <motion.button
                 key={workout.id}
                 type="button"
                 onClick={() => navigate(`/workout/${workout.id}`)}
-                className="surface-panel rounded-[var(--radius-xl)] p-4 text-left transition-transform hover:translate-y-[-1px]"
+                className="history-workout-row"
+                style={{ '--workout-accent': CATEGORY_COLORS[Array.from(categories)[0] ?? ''] ?? 'var(--accent)' } as CSSProperties}
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(idx * 0.02, 0.2), duration: 0.25 }}
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-semibold uppercase" style={{ color: 'var(--muted)' }}>
-                      {formatDate(workout.startedAt)} · {formatDuration(workout.startedAt, workout.finishedAt)}
-                    </p>
-                    <h3 className="mt-1.5 text-lg font-bold text-white">
-                      {workout.label?.trim() || 'Sesja treningowa'}
-                    </h3>
-                    <p className="mt-2 text-xs truncate" style={{ color: 'var(--muted)' }}>
-                      {exerciseNames.length > 0 ? exerciseNames.join(' · ') : 'brak ćwiczeń'}
-                    </p>
-                    <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" style={{ color: 'var(--muted)' }}>
-                      <span>
-                        <b className="tabular-nums text-white">{workout.exercises.length}</b> ćw
-                      </span>
-                      <span>
-                        <b className="tabular-nums text-white">{totalSets}</b> serii
-                      </span>
-                      <span>
-                        <b className="tabular-nums text-white">{formatCompactVolume(totalVolume)}</b>
-                      </span>
-                      {Array.from(categories).slice(0, 3).map((cat) => {
-                        const color = CATEGORY_COLORS[cat] ?? 'var(--accent)'
-                        return (
-                          <span
-                            key={cat}
-                            className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                            style={{ background: `${color}18`, color, border: `1px solid ${color}28` }}
-                          >
-                            {CATEGORY_LABELS[cat] ?? cat}
-                          </span>
-                        )
-                      })}
+                <span className="history-workout-accent" aria-hidden="true" />
+                <div className="history-workout-main">
+                  <div className="min-w-0">
+                    <div className="history-workout-meta">
+                      <span>{formatDate(workout.startedAt)}</span>
+                      <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
                     </div>
+                    <h3>{workout.label?.trim() || 'Sesja treningowa'}</h3>
+                    <p>{exerciseNames.length > 0 ? exerciseNames.join(' · ') : 'brak ćwiczeń'}</p>
+                    {Array.from(categories).length > 0 && (
+                      <div className="history-category-row" aria-label="Partie mięśniowe">
+                        {Array.from(categories).slice(0, 3).map((cat) => {
+                          const color = CATEGORY_COLORS[cat] ?? 'var(--accent)'
+                          return (
+                            <span
+                              key={cat}
+                              className="history-category-pill"
+                              style={{ '--category-accent': color } as CSSProperties}
+                            >
+                              {CATEGORY_LABELS[cat] ?? cat}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
-                  <ChevronRight size={18} className="flex-none mt-1" style={{ color: 'var(--muted-soft)' }} />
+                  <ChevronRight size={18} className="history-workout-arrow" aria-hidden="true" />
                 </div>
-              </motion.button>
+                <div className="history-workout-metrics puls-ledger" aria-label="Statystyki treningu">
+                  <div>
+                    <span>Ćwiczenia</span>
+                    <strong>{workout.exercises.length}</strong>
+                  </div>
+                  <div>
+                    <span>Serie</span>
+                    <strong>{totalSets}</strong>
+                  </div>
+                  <div>
+                    <span>Objętość</span>
+                    <strong>{formatCompactVolume(totalVolume)}</strong>
+                  </div>
+                </div>
+                </motion.button>
             ))}
           </div>
         )}

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
@@ -268,7 +268,7 @@ export default function WorkoutDetailPage() {
   if (!workout) {
     return (
       <div className="flex items-center justify-center">
-        <div className="surface-panel rounded-[var(--radius-xl)] p-8 text-center">
+        <div className="puls-panel rounded-[var(--radius-sm)] p-8 text-center">
           <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Trening nie istnieje.</p>
           <button onClick={handleBack} style={{ color: 'var(--accent)' }}>
             Wróć
@@ -373,7 +373,7 @@ export default function WorkoutDetailPage() {
     <>
       <motion.button
         onClick={handleBack}
-        className="surface-panel mb-4 inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold transition-opacity hover:opacity-70"
+        className="workout-detail-back puls-link-button mb-4 px-3 py-2 text-xs font-semibold"
         style={{ color: 'var(--text)', border: '1px solid var(--border)' }}
         initial={false}
         animate={{ opacity: 1 }}
@@ -401,7 +401,7 @@ export default function WorkoutDetailPage() {
         <div className="desktop-app-grid">
           <aside className="desktop-sticky space-y-4 hidden lg:block">
             <motion.div
-              className="surface-panel rounded-[var(--radius-xl)] overflow-hidden"
+              className="workout-detail-side-panel puls-panel overflow-hidden"
               style={{ borderLeft: `4px solid ${accent}` }}
               initial={false}
               animate={{ opacity: 1, y: 0 }}
@@ -438,16 +438,16 @@ export default function WorkoutDetailPage() {
 
                 <p className="eyebrow mb-3" style={{ color: accent }}>Statystyki sesji</p>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="workout-detail-stat-ledger puls-ledger">
                   {[
                     { label: 'Czas', value: formatDuration(displayedWorkout.startedAt, displayedWorkout.finishedAt) },
                     { label: 'Serie', value: String(totalSets) },
                     { label: 'Ćwiczenia', value: String(totalExercises) },
                     { label: 'Objętość', value: volume > 0 ? formatCompactVolume(volume) : '—' },
                   ].map((stat) => (
-                    <div key={stat.label} className="rounded-2xl p-3" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    <div key={stat.label}>
                       <p className="text-lg font-bold text-white">{stat.value}</p>
-                      <p className="text-[10px] uppercaser" style={{ color: 'var(--muted)' }}>
+                      <p className="text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
                         {stat.label}
                       </p>
                     </div>
@@ -457,27 +457,27 @@ export default function WorkoutDetailPage() {
             </motion.div>
 
             <motion.div
-              className="surface-panel rounded-[var(--radius-xl)] p-5 hidden lg:block"
+              className="workout-detail-side-panel puls-panel p-5 hidden lg:block"
               initial={false}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.18 }}
             >
-              <div className="mb-4 grid gap-2 sm:grid-cols-3">
-                <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+              <div className="workout-detail-mini-ledger puls-ledger mb-4">
+                <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="stat-meta">Powt.</span>
                     <Layers3 size={14} style={{ color: accent }} />
                   </div>
                   <p className="mt-2 text-lg font-semibold text-white tabular-nums">{totalReps}</p>
                 </div>
-                <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="stat-meta">Top set</span>
                     <TrendingUp size={14} style={{ color: accent }} />
                   </div>
                   <p className="mt-2 text-lg font-semibold text-white tabular-nums">{topSetWeight ? `${topSetWeight} kg` : '—'}</p>
                 </div>
-                <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                <div>
                   <div className="flex items-center justify-between gap-2">
                     <span className="stat-meta">Śr. seria</span>
                     <BarChart3 size={14} style={{ color: accent }} />
@@ -491,7 +491,7 @@ export default function WorkoutDetailPage() {
 
           <main className="min-w-0 pb-56 lg:pb-0">
             <motion.section
-              className="surface-panel mb-5 rounded-[var(--radius-xl)] p-4 sm:p-5"
+              className="workout-summary-panel puls-panel mb-5 p-4 sm:p-5"
               initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.18 }}
@@ -501,25 +501,25 @@ export default function WorkoutDetailPage() {
                   <p className="eyebrow">Podsumowanie sesji</p>
                   <h3 className="section-title mt-2">Rozpiska sesji</h3>
                   <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Breakdown ćwiczeń, wolumenu i top setów z całego treningu. To jest już ekran do czytania sesji jak danych, nie tylko lista serii.
+                    Ćwiczenia, serie i obciążenia z tego treningu.
                   </p>
                 </div>
-                <div className="grid w-full gap-2 sm:grid-cols-3 xl:w-[32rem]">
-                  <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                <div className="workout-summary-ledger puls-ledger w-full xl:w-[32rem]">
+                  <div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="stat-meta">Objętość</span>
                       <Target size={14} style={{ color: accent }} />
                     </div>
                     <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{formatCompactVolume(volume)}</p>
                   </div>
-                  <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                  <div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="stat-meta">Top set</span>
                       <TrendingUp size={14} style={{ color: accent }} />
                     </div>
                     <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{topSetWeight ? `${topSetWeight} kg` : '—'}</p>
                   </div>
-                  <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                  <div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="stat-meta">Powt.</span>
                       <Clock3 size={14} style={{ color: accent }} />
@@ -530,7 +530,7 @@ export default function WorkoutDetailPage() {
               </div>
             </motion.section>
 
-            <div className="flex flex-col gap-3">
+              <div className="workout-exercise-list">
               {displayedWorkout.exercises.map((exercise, exerciseIndex) => {
                 const exerciseData = exerciseCatalog.get(exercise.exerciseId ?? '') ?? exerciseMap.get(exercise.exerciseId ?? '')
                 const exerciseColor = CATEGORY_COLORS[exerciseData?.category ?? ''] ?? '#808CB3'
@@ -541,12 +541,13 @@ export default function WorkoutDetailPage() {
                 return (
                   <motion.div
                     key={exerciseIndex}
-                    className="surface-panel rounded-[1.75rem] overflow-hidden"
+                    className="workout-exercise-panel"
+                    style={{ '--exercise-accent': exerciseColor } as CSSProperties}
                     initial={false}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.18 }}
                   >
-                    <div className="px-4 pt-4 pb-2 flex items-center justify-between">
+                    <div className="workout-exercise-header">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           {exerciseData?.equipment && (
@@ -581,23 +582,23 @@ export default function WorkoutDetailPage() {
                       </div>
                     </div>
 
-                    <div className="px-4 pb-4">
-                      <div className="mb-4 grid gap-2 sm:grid-cols-3">
-                        <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                    <div className="workout-exercise-body">
+                      <div className="workout-exercise-metrics puls-ledger">
+                        <div>
                           <p className="stat-meta">Serie</p>
                           <p className="mt-2 text-lg font-semibold text-white tabular-nums">{exercise.sets.length}</p>
                         </div>
-                        <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                        <div>
                           <p className="stat-meta">Objętość</p>
                           <p className="mt-2 text-lg font-semibold text-white tabular-nums">{formatCompactVolume(exerciseVolume)}</p>
                         </div>
-                        <div className="rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                        <div>
                           <p className="stat-meta">Top set</p>
                           <p className="mt-2 text-lg font-semibold text-white tabular-nums">{topExerciseSet ? `${topExerciseSet} kg` : '—'}</p>
                         </div>
                       </div>
 
-                      <div className={`grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 mb-1`}>
+                      <div className={`workout-set-head grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 mb-1`}>
                         {[...['#', 'kg', 'Powt.', 'Vol.'], ...(isEditing ? [''] : [])].map((heading, index) => (
                           <span key={`${heading}-${index}`} className="text-[10px] uppercase text-center" style={{ color: 'var(--muted)' }}>
                             {heading === 'Vol.' ? <span className="hidden lg:inline">{heading}</span> : heading || <span aria-hidden="true">{index === 4 ? ' ' : heading}</span>}
@@ -608,7 +609,7 @@ export default function WorkoutDetailPage() {
                       {exercise.sets.map((set, setIndex) => (
                         <div
                           key={setIndex}
-                          className={`grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 py-1.5 text-center items-center`}
+                          className={`workout-set-row grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 text-center items-center`}
                           style={{ borderTop: '1px solid var(--border)' }}
                         >
                           <span

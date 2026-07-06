@@ -513,7 +513,7 @@ export default function DashboardPage() {
               <span />
             </div>
 
-            <div className="dashboard-metric-strip">
+            <div className="dashboard-metric-strip puls-ledger">
               {dashboardHighlights.map((item) => (
                 <div key={item.label} className="dashboard-metric-item">
                   <span className="stat-meta">{item.label}</span>
@@ -530,7 +530,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.08, duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <div className="dashboard-week-pulse">
+            <div className="dashboard-week-pulse puls-panel">
               <div className="dashboard-week-head">
                 <div>
                   <p className="stat-meta">Ten tydzień</p>
@@ -587,8 +587,8 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12, duration: 0.25 }}
         >
-            <section className="dashboard-overview-grid">
-              <motion.div className="dashboard-week-panel" {...fadeUp(0.09)}>
+            <section className="dashboard-overview-grid puls-panel">
+              <motion.div className="dashboard-week-panel puls-panel" {...fadeUp(0.09)}>
                 <div className="dashboard-panel-head">
                   <div>
                     <p className="eyebrow">Tydzień</p>
@@ -605,7 +605,7 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="dashboard-week-board">
-                  <div className="dashboard-week-chart">
+                  <div className="dashboard-week-chart puls-rail">
                     <div className="dashboard-week-chart-head">
                       <div>
                         <p className="stat-meta">Wolumen tygodnia</p>
@@ -674,7 +674,7 @@ export default function DashboardPage() {
                 </div>
               </motion.div>
 
-              <motion.div className="dashboard-focus-panel" {...fadeUp(0.12)}>
+              <motion.div className="dashboard-focus-panel puls-panel" {...fadeUp(0.12)}>
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="eyebrow">Teraz</p>
@@ -762,7 +762,7 @@ export default function DashboardPage() {
               </motion.div>
             </section>
 
-            <section className="dashboard-plan-strip">
+            <section className="dashboard-plan-strip puls-rail">
               <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
                 <div>
                   <p className="eyebrow">Moje plany</p>
@@ -800,7 +800,7 @@ export default function DashboardPage() {
                   </motion.button>
                 </div>
               ) : (
-                <div className="dashboard-template-row">
+                <div className="dashboard-template-row puls-ledger">
                   {recentTemplates.map((template) => {
                     const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
                     const isLaunching = launchingTemplateId === template.id
@@ -885,7 +885,7 @@ export default function DashboardPage() {
                     <div>
                       <p className="font-semibold text-white mb-1">Brak treningów</p>
                       <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        Po zapisaniu sesji pojawi się tutaj historia i wykresy.
+                        Po zapisaniu sesji pojawi się tutaj historia.
                       </p>
                     </div>
                     <motion.button
@@ -997,7 +997,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                          <div className="dashboard-history-metrics">
+                          <div className="dashboard-history-metrics puls-ledger">
                             <div>
                               <span>Objętość</span>
                               <strong>{formatCompactVolume(volume)}</strong>

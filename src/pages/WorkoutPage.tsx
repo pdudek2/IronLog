@@ -642,6 +642,29 @@ export default function WorkoutPage() {
   const focusExerciseMeta = focusExercise ? exerciseCatalog.get(focusExercise.exerciseId) : null
   const focusAccent = CATEGORY_COLORS[focusExerciseMeta?.category ?? ''] ?? 'var(--accent)'
   const remainingSets = Math.max(totalSets - completedSets, 0)
+  const sessionSetMarkers = active.exercises.flatMap((exercise, exerciseIndex) => {
+    const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
+    const exerciseAccent = CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'
+    return exercise.sets.map((set, setIndex) => {
+      const isCurrent = exerciseIndex === focusExerciseIndex && setIndex === focusSetIndex && !set.done
+      return {
+        key: set.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}:${setIndex}`,
+        label: `${exercise.name}, seria ${setIndex + 1}`,
+        state: set.done ? 'done' : isCurrent ? 'current' : 'open',
+        accent: exerciseAccent,
+      }
+    })
+  })
+  const completedSetSnapshots = active.exercises.flatMap((exercise) => (
+    exercise.sets
+      .filter((set) => set.done)
+      .map((set) => ({
+        exerciseName: exercise.name,
+        weight: set.weight,
+        reps: set.reps,
+      }))
+  ))
+  const lastCompletedSet = completedSetSnapshots[completedSetSnapshots.length - 1] ?? null
 
   return (
     <>
@@ -823,29 +846,61 @@ export default function WorkoutPage() {
                 <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                   {sessionSignal}
                 </p>
-                <div className="workout-live-strip">
-                  <div className="workout-live-current">
-                    <span>Teraz</span>
-                    <strong>{focusExercise ? focusExercise.name : 'Dodaj ćwiczenie'}</strong>
-                    <small>
-                      {focusSet
-                        ? `Seria ${focusSetIndex + 1} · ${focusSet.weight || '—'} ${units} × ${focusSet.reps || '—'}`
-                        : 'Sesja bez wpisanych serii'}
-                    </small>
+                <div
+                  className="session-instrument"
+                  aria-label={`Mapa sesji: zapisane serie ${completedSets} z ${totalSets || 0}`}
+                >
+                  <div className="session-instrument-head">
+                    <div className="session-instrument-node">
+                      <span>Teraz</span>
+                      <strong>{focusExercise ? focusExercise.name : 'Dodaj ćwiczenie'}</strong>
+                      <small>
+                        {focusSet
+                          ? `Seria ${focusSetIndex + 1} · ${focusSet.weight || '—'} ${units} × ${focusSet.reps || '—'}`
+                          : 'Sesja bez wpisanych serii'}
+                      </small>
+                    </div>
+                    <div className="session-instrument-node session-instrument-node--right">
+                      <span>Ostatnio</span>
+                      <strong>{lastCompletedSet ? lastCompletedSet.exerciseName : '—'}</strong>
+                      <small>
+                        {lastCompletedSet
+                          ? `${lastCompletedSet.weight || '—'} ${units} × ${lastCompletedSet.reps || '—'}`
+                          : 'Jeszcze bez zapisanej serii'}
+                      </small>
+                    </div>
                   </div>
-                  <div className="workout-live-current">
-                    <span>Pozostało</span>
-                    <strong>{remainingSets}</strong>
-                    <small>{remainingSets === 1 ? 'seria otwarta' : 'serii otwartych'}</small>
+                  <div className="session-set-rail" role="list" aria-label="Kolejność serii w sesji">
+                    {sessionSetMarkers.length > 0
+                      ? sessionSetMarkers.map((marker) => (
+                        <span
+                          key={marker.key}
+                          className="session-set-marker"
+                          data-state={marker.state}
+                          role="listitem"
+                          style={{ '--marker-accent': marker.accent } as React.CSSProperties}
+                          aria-label={`${marker.label}: ${
+                            marker.state === 'done'
+                              ? 'zapisana'
+                              : marker.state === 'current'
+                                ? 'aktualna'
+                                : 'otwarta'
+                          }`}
+                        />
+                      ))
+                      : Array.from({ length: 7 }, (_, index) => (
+                        <span
+                          key={`empty-marker-${index}`}
+                          className="session-set-marker"
+                          data-state="empty"
+                          aria-hidden="true"
+                        />
+                      ))}
                   </div>
-                  <div className="workout-live-wave" aria-hidden="true">
-                    <i />
-                    <i />
-                    <i />
-                    <i />
-                    <i />
-                    <i />
-                    <i />
+                  <div className="session-instrument-foot">
+                    <span><b>{completedSets}/{totalSets || 0}</b> serii</span>
+                    <span><b>{formatCompactVolume(totalVolume)}</b></span>
+                    <span><b>{remainingSets}</b> otwarte</span>
                   </div>
                 </div>
                 <div className="lg:hidden mt-4">
@@ -855,27 +910,23 @@ export default function WorkoutPage() {
                   />
                 </div>
               </div>
-              <div className="hidden w-full gap-2 sm:grid sm:grid-cols-3 xl:w-[32rem]">
-                <div className="workout-micro-card">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="stat-meta">Serie</span>
-                    <Check size={14} style={{ color: completedSets > 0 ? 'var(--success)' : 'var(--accent)' }} />
+              <div className="hidden w-full xl:block xl:w-[24rem]">
+                <div className="workout-session-totals">
+                  <div>
+                    <span>Serie</span>
+                    <strong className="tabular-nums">{completedSets}/{totalSets || 0}</strong>
+                    <Check size={14} aria-hidden="true" />
                   </div>
-                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{completedSets}/{totalSets || 0}</p>
-                </div>
-                <div className="workout-micro-card">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="stat-meta">Objętość</span>
-                    <Flame size={14} style={{ color: 'var(--accent)' }} />
+                  <div>
+                    <span>Objętość</span>
+                    <strong className="tabular-nums">{formatCompactVolume(totalVolume)}</strong>
+                    <Flame size={14} aria-hidden="true" />
                   </div>
-                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume)}</p>
-                </div>
-                <div className="workout-micro-card">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="stat-meta">Ćwiczenia</span>
-                    <Layers3 size={14} style={{ color: 'var(--accent)' }} />
+                  <div>
+                    <span>Ćwiczenia</span>
+                    <strong className="tabular-nums">{totalExercises}</strong>
+                    <Layers3 size={14} aria-hidden="true" />
                   </div>
-                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{totalExercises}</p>
                 </div>
               </div>
             </div>
@@ -986,6 +1037,7 @@ export default function WorkoutPage() {
                     <motion.div
                       key={exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
                       className="workout-exercise-card"
+                      data-active={exerciseIndex === focusExerciseIndex}
                       style={{ '--exercise-accent': exerciseAccent } as React.CSSProperties}
                       initial={{ opacity: 0, y: 16 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -1025,24 +1077,18 @@ export default function WorkoutPage() {
                         </button>
                       </div>
 
-                      <div className="sm:hidden mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs" style={{ color: 'var(--muted)' }}>
-                        <span>Postęp <b className="tabular-nums text-white">{exerciseCompleted}/{exercise.sets.length}</b></span>
-                        <span>Objętość <b className="tabular-nums text-white">{formatCompactVolume(exerciseVolume)}</b></span>
-                        <span>Top <b className="tabular-nums text-white">{bestSet ? `${bestSet} ${units}` : '—'}</b></span>
-                      </div>
-
-                      <div className="workout-exercise-metrics">
-                        <div className="workout-micro-card">
-                          <p className="stat-meta">Postęp</p>
-                          <p className="mt-2 text-lg font-semibold text-white tabular-nums">{exerciseCompleted}/{exercise.sets.length}</p>
+                      <div className="workout-exercise-ledger" aria-label={`Podsumowanie ćwiczenia ${exercise.name}`}>
+                        <div>
+                          <span>Postęp</span>
+                          <strong className="tabular-nums">{exerciseCompleted}/{exercise.sets.length}</strong>
                         </div>
-                        <div className="workout-micro-card">
-                          <p className="stat-meta">Objętość</p>
-                          <p className="mt-2 text-lg font-semibold text-white tabular-nums">{formatCompactVolume(exerciseVolume)}</p>
+                        <div>
+                          <span>Objętość</span>
+                          <strong className="tabular-nums">{formatCompactVolume(exerciseVolume)}</strong>
                         </div>
-                        <div className="workout-micro-card">
-                          <p className="stat-meta">Top set</p>
-                          <p className="mt-2 text-lg font-semibold text-white tabular-nums">{bestSet ? `${bestSet} ${units}` : '—'}</p>
+                        <div>
+                          <span>Top set</span>
+                          <strong className="tabular-nums">{bestSet ? `${bestSet} ${units}` : '—'}</strong>
                         </div>
                       </div>
 

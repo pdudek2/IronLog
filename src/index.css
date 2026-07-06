@@ -2809,10 +2809,10 @@ a {
   color: var(--danger) !important;
 }
 
-.workout-exercise-metrics {
-  display: none;
+.workout-exercise-ledger {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-bottom: 1rem;
-  gap: 0.5rem;
 }
 
 .workout-set-header {
@@ -2839,10 +2839,6 @@ a {
     padding: 1.25rem;
   }
 
-  .workout-exercise-metrics {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
 @media (min-width: 1024px) {
@@ -2867,7 +2863,6 @@ a {
 .workout-empty-card,
 .workout-exercise-card {
   border-radius: var(--radius-sm);
-  clip-path: polygon(0 0, calc(100% - 1rem) 0, 100% 1rem, 100% 100%, 0 100%);
 }
 
 .workout-control-panel {
@@ -2912,32 +2907,49 @@ a {
   transform: rotate(-2deg);
 }
 
-.workout-live-strip {
+.session-instrument {
+  position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(7rem, 0.4fr);
-  gap: 1px;
-  max-width: 40rem;
-  margin-top: 1.2rem;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: var(--border);
+  max-width: 48rem;
+  margin-top: 1.25rem;
+  gap: 0.85rem;
+  border-top: 1px solid color-mix(in srgb, var(--session-accent, var(--accent)) 36%, transparent);
+  border-bottom: 1px solid rgba(244, 241, 242, 0.09);
+  padding: 0.9rem 0 0.8rem;
 }
 
-.workout-live-current {
+.session-instrument::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 0;
+  width: min(10rem, 36%);
+  height: 1px;
+  background: var(--session-accent, var(--accent));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--session-accent, var(--accent)) 32%, transparent);
+}
+
+.session-instrument-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(7.25rem, 0.65fr);
+  gap: 1rem;
+}
+
+.session-instrument-node {
   display: grid;
   min-width: 0;
-  gap: 0.2rem;
-  background: rgba(18, 17, 20, 0.62);
-  padding: 0.8rem 0.9rem;
+  gap: 0.18rem;
 }
 
-.workout-live-current span {
+.session-instrument-node span,
+.workout-session-totals span,
+.workout-exercise-ledger span {
   color: var(--muted);
   font-size: 0.68rem;
   font-weight: 700;
 }
 
-.workout-live-current strong {
+.session-instrument-node strong {
   overflow: hidden;
   color: var(--text-strong);
   font-size: 1rem;
@@ -2947,14 +2959,105 @@ a {
   white-space: nowrap;
 }
 
-.workout-live-current small {
+.session-instrument-node small {
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.35;
 }
 
-.workout-live-wave {
-  display: none;
+.session-instrument-node--right {
+  text-align: right;
+}
+
+.session-set-rail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
+  min-height: 2rem;
+  align-items: center;
+}
+
+.session-set-marker {
+  --marker-accent: var(--accent);
+  display: block;
+  flex: 1 1 1.2rem;
+  min-width: 0.95rem;
+  max-width: 5.5rem;
+  height: 0.46rem;
+  border: 1px solid rgba(244, 241, 242, 0.12);
+  border-radius: var(--radius-pill);
+  background: rgba(244, 241, 242, 0.055);
+}
+
+.session-set-marker[data-state="done"] {
+  border-color: color-mix(in srgb, var(--marker-accent) 46%, transparent);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--marker-accent) 80%, transparent), color-mix(in srgb, var(--marker-accent) 30%, transparent));
+  box-shadow: 0 0 18px color-mix(in srgb, var(--marker-accent) 18%, transparent);
+}
+
+.session-set-marker[data-state="current"] {
+  height: 0.82rem;
+  border-color: color-mix(in srgb, var(--marker-accent) 82%, transparent);
+  background: var(--marker-accent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--marker-accent) 12%, transparent);
+}
+
+.session-set-marker[data-state="empty"] {
+  opacity: 0.45;
+}
+
+.session-instrument-foot,
+.workout-session-totals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.session-instrument-foot span,
+.workout-session-totals div {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.3;
+}
+
+.session-instrument-foot b,
+.workout-session-totals strong {
+  color: var(--text-strong);
+  font-weight: 760;
+}
+
+.workout-session-totals {
+  border-left: 1px solid rgba(244, 241, 242, 0.1);
+  padding-left: 1rem;
+}
+
+.workout-session-totals div {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.2rem 0.5rem;
+  border-bottom: 1px solid rgba(244, 241, 242, 0.08);
+  padding: 0 0 0.7rem;
+}
+
+.workout-session-totals div:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.workout-session-totals strong {
+  grid-column: 1;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.workout-session-totals svg {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  color: var(--accent);
+  align-self: center;
 }
 
 .workout-exercise-card {
@@ -2970,30 +3073,68 @@ a {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
-  width: 0.25rem;
+  width: 0.2rem;
   background: linear-gradient(180deg, var(--exercise-accent), color-mix(in srgb, var(--exercise-accent) 16%, transparent));
+}
+
+.workout-exercise-card::after {
+  content: "";
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 0.42rem;
+  height: 0.42rem;
+  border-radius: var(--radius-pill);
+  background: transparent;
+}
+
+.workout-exercise-card[data-active="true"] {
+  border-color: color-mix(in srgb, var(--exercise-accent) 18%, var(--border));
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.045),
+    0 0 0 1px color-mix(in srgb, var(--exercise-accent) 8%, transparent);
+}
+
+.workout-exercise-card[data-active="true"]::after {
+  background: var(--exercise-accent);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--exercise-accent) 14%, transparent);
 }
 
 .workout-exercise-head {
   padding-left: 0.35rem;
 }
 
-.workout-exercise-metrics {
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
-  padding: 0.75rem 0;
+.workout-exercise-ledger {
+  border-top: 1px solid rgba(244, 241, 242, 0.09);
+  border-bottom: 1px solid rgba(244, 241, 242, 0.09);
+  padding: 0.72rem 0;
 }
 
-.workout-exercise-metrics .workout-micro-card {
-  border: 0;
-  border-right: 1px solid var(--border);
-  border-radius: 0;
-  background: transparent;
-  padding-block: 0.2rem;
+.workout-exercise-ledger div {
+  min-width: 0;
+  border-right: 1px solid rgba(244, 241, 242, 0.08);
+  padding-inline: 0.72rem;
 }
 
-.workout-exercise-metrics .workout-micro-card:last-child {
+.workout-exercise-ledger div:first-child {
+  padding-left: 0.35rem;
+}
+
+.workout-exercise-ledger div:last-child {
   border-right: 0;
+  padding-right: 0;
+}
+
+.workout-exercise-ledger strong {
+  display: block;
+  overflow: hidden;
+  margin-top: 0.28rem;
+  color: var(--text-strong);
+  font-size: 1rem;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .workout-set-header {
@@ -3045,40 +3186,14 @@ a {
 .workout-empty-rhythm span:nth-child(6) { height: 38%; }
 .workout-empty-rhythm span:nth-child(7) { height: 62%; }
 
-@media (min-width: 900px) {
-  .workout-live-strip {
-    grid-template-columns: minmax(0, 1.05fr) minmax(7rem, 0.35fr) minmax(10rem, 0.55fr);
-  }
-
-  .workout-live-wave {
-    display: flex;
-    align-items: end;
-    gap: 0.35rem;
-    min-height: 4.75rem;
-    background: rgba(18, 17, 20, 0.62);
-    padding: 0.75rem 0.9rem;
-  }
-
-  .workout-live-wave i {
-    flex: 1;
-    min-width: 0.3rem;
-    border: 1px solid color-mix(in srgb, var(--session-accent, var(--accent)) 28%, transparent);
-    border-radius: var(--radius-pill) var(--radius-pill) 0 0;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--session-accent, var(--accent)) 48%, transparent), transparent);
-  }
-
-  .workout-live-wave i:nth-child(1) { height: 24%; }
-  .workout-live-wave i:nth-child(2) { height: 42%; }
-  .workout-live-wave i:nth-child(3) { height: 68%; }
-  .workout-live-wave i:nth-child(4) { height: 48%; }
-  .workout-live-wave i:nth-child(5) { height: 76%; }
-  .workout-live-wave i:nth-child(6) { height: 36%; }
-  .workout-live-wave i:nth-child(7) { height: 58%; }
-}
-
 @media (max-width: 520px) {
-  .workout-live-strip {
+  .session-instrument-head,
+  .session-instrument-foot {
     grid-template-columns: 1fr;
+  }
+
+  .session-instrument-node--right {
+    text-align: left;
   }
 
   .workout-session-title {

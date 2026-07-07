@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import {
@@ -284,80 +284,102 @@ export default function ProgressPage() {
 
   const uniqueExerciseCount = new Set(currentSessions.map((s) => s.exerciseName)).size
   const missingStrengthSessions = Math.max(0, 3 - strengthData.data.length)
+  const hasProgressData = currentSessions.length > 0 || records.length > 0
+  const topMuscle = muscleData[0]
+  const topMuscleName = topMuscle ? (MUSCLE_PL[topMuscle.muscle] ?? topMuscle.muscle) : 'Brak'
+  const topRecord = records[0]
+  const rangeLabel = `ostatnie ${rangeDays} dni`
+  const comparisonItems = [
+    { label: 'Sesje', value: periodComparison.currentSessions, delta: periodComparison.sessionsDelta },
+    { label: 'Wolumen', value: formatVolume(periodComparison.currentVolume), delta: periodComparison.volumeDelta },
+    { label: 'Śr. / sesję', value: formatVolume(periodComparison.currentAvgVolume), delta: periodComparison.avgVolumeDelta },
+  ]
+  const recordAccentKeys = Object.keys(MUSCLE_COLORS)
+  const featuredRecords = records.slice(0, 3)
+  const remainingRecords = records.slice(3)
 
   return (
     <>
-      <div className="space-y-6">
-        {/* ── Editorial hero ──────────────────────────── */}
-        <section className="hero-editorial">
+      <div className="progress-page">
+        <section className="progress-board">
           <motion.div
-            className="flex flex-col gap-5"
+            className="progress-board-head"
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <p className="hero-editorial-date">
-                Analityka · ostatnie {rangeDays} dni
-              </p>
-              <div className="flex gap-2">
-                {RANGE_OPTIONS.map(({ label, days }) => (
-                  <button
-                    key={days}
-                    onClick={() => handleRangeChange(days)}
-                    disabled={rangeDays === days}
-                    className="rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors"
-                    style={
-                      rangeDays === days
-                        ? { background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }
-                        : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
-                    }
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div>
-              <h1 className="hero-editorial-name">Progres<br />treningowy.</h1>
+              <p className="progress-board-kicker">Postępy · {rangeLabel}</p>
+              <h1>Postępy.</h1>
+              <p>
+                {uniqueWorkouts > 0
+                  ? `${uniqueWorkouts} ${polishPlural(uniqueWorkouts, 'sesja', 'sesje', 'sesji')} · ${formatVolume(totalVolume)} · ${uniqueExerciseCount} ${polishPlural(uniqueExerciseCount, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}`
+                  : 'Brak treningów w wybranym zakresie.'}
+              </p>
             </div>
 
-            <p className="hero-editorial-sub">
-              {uniqueWorkouts > 0
-                ? `${uniqueWorkouts} ${polishPlural(uniqueWorkouts, 'sesja', 'sesje', 'sesji')} w tym oknie · ${formatVolume(totalVolume)} łącznej objętości`
-                : 'Brak danych w wybranym zakresie.'}
-            </p>
-
-            <div
-              className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
-              style={{ borderColor: 'var(--border)' }}
-            >
-              {[
-                { label: 'Sesji', value: uniqueWorkouts, suffix: '' },
-                { label: 'Objętość', value: Math.round(totalVolume), suffix: ' kg' },
-                { label: 'Ćwiczeń', value: uniqueExerciseCount, suffix: '' },
-                { label: 'Rekordy', value: records.length, suffix: '' },
-              ].map((item) => (
-                <div key={item.label} className="flex flex-col gap-1 min-w-[6.5rem]">
-                  <span className="stat-meta">{item.label}</span>
-                  <span className="text-2xl font-bold tabular-nums text-white leading-none">
-                    <NumberFlow
-                      value={item.value}
-                      transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
-                      format={{ useGrouping: true }}
-                      locales="pl-PL"
-                    />
-                    {item.suffix}
-                  </span>
-                </div>
+            <div className="progress-range-toggle" aria-label="Zakres danych">
+              {RANGE_OPTIONS.map(({ label, days }) => (
+                <button
+                  key={days}
+                  type="button"
+                  onClick={() => handleRangeChange(days)}
+                  aria-pressed={rangeDays === days}
+                  className="progress-range-button"
+                >
+                  {label}
+                </button>
               ))}
             </div>
           </motion.div>
+
+          <div className="progress-summary-grid">
+            <div className="progress-volume-tile">
+              <span>Objętość</span>
+              <strong>
+                <NumberFlow
+                  value={Math.round(totalVolume)}
+                  transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
+                  format={{ useGrouping: true }}
+                  locales="pl-PL"
+                />
+                <small> kg</small>
+              </strong>
+              <p>{uniqueWorkouts} {polishPlural(uniqueWorkouts, 'sesja', 'sesje', 'sesji')} w zakresie</p>
+            </div>
+
+            <div className="progress-signal-rail">
+              {[
+                { label: 'Ćwiczenia', value: uniqueExerciseCount, meta: 'w zakresie' },
+                { label: 'Rekordy', value: records.length, meta: topRecord ? topRecord.exerciseName : 'brak zapisów' },
+                { label: 'Partia', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${polishPlural(topMuscle.count, 'wpis', 'wpisy', 'wpisów')}` : 'brak danych' },
+              ].map((item) => (
+                <div key={item.label} className="progress-signal-row">
+                  <span>{item.label}</span>
+                  <div>
+                    <strong>{item.value}</strong>
+                    <small>{item.meta}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {periodComparison.previousSessions > 0 && (
+            <div className="progress-comparison-strip" aria-label={`Porównanie z poprzednim okresem: ${rangeDays} dni`}>
+              {comparisonItems.map((item) => (
+                <div key={item.label} className="progress-comparison-item" data-trend={item.delta >= 0 ? 'up' : 'down'}>
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                  <small>{item.delta >= 0 ? '+' : ''}{item.delta.toFixed(0)}% vs poprzednio</small>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {error && (
-          <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center">
+          <div className="progress-panel progress-empty-state">
             <p className="text-base font-semibold text-white">Nie udało się pobrać danych</p>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--muted)' }}>
               Sprawdź połączenie i spróbuj ponownie bez odświeżania strony.
@@ -368,313 +390,306 @@ export default function ProgressPage() {
           </div>
         )}
 
-        {/* ── Period Comparison ───────────────────────── */}
-        {!error && periodComparison.previousSessions > 0 && (
-          <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.03, duration: 0.2 }}
-          >
-            <p className="eyebrow mb-1">Porównanie</p>
-            <p className="section-title mb-5">vs poprzednie {rangeDays} dni</p>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {[
-                { label: 'Sesje', current: periodComparison.currentSessions, delta: periodComparison.sessionsDelta },
-                { label: 'Wolumen', current: formatVolume(periodComparison.currentVolume), delta: periodComparison.volumeDelta },
-                { label: 'Śr. wolumen/sesja', current: formatVolume(periodComparison.currentAvgVolume), delta: periodComparison.avgVolumeDelta },
-              ].map(({ label, current, delta }) => (
-                <div key={label} className="metric-card p-4 text-center">
-                  <p className="stat-meta">{label}</p>
-                  <p className="mt-2 text-2xl font-bold text-white tabular-nums">{current}</p>
-                  <p
-                    className="mt-1 text-sm font-semibold"
-                    style={{ color: delta >= 0 ? 'var(--success)' : 'var(--danger)' }}
-                  >
-                    {delta >= 0 ? '↑' : '↓'} {Math.abs(delta).toFixed(0)}%
-                  </p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Volume chart ────────────────────────────── */}
         {!error && (
-          <motion.div
-            className="progress-chart-panel progress-chart-panel--mobile-clearance surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05, duration: 0.2 }}
-          >
-            <p className="eyebrow mb-1">Objętość</p>
-            <p className="section-title mb-5">Wolumen treningowy</p>
-            <div className="progress-chart-frame h-[180px] sm:h-[220px]" role="img" aria-label={weeklyVolumeLabel}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <AreaChart data={weeklyData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.34} />
-                      <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
-                  <XAxis
-                    dataKey="weekLabel"
-                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tickFormatter={(v) => formatVolume(Number(v))}
-                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={52}
-                  />
-                  <Tooltip content={<DarkTooltip />} />
-                  <Area
-                    type="monotone"
-                    dataKey="volume"
-                    stroke="var(--accent)"
-                    strokeWidth={2.4}
-                    fill="url(#volGrad)"
-                    dot={false}
-                    activeDot={{ r: 4.5, fill: 'var(--accent)', stroke: 'rgba(255,255,255,0.75)', strokeWidth: 1 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Strength Progression ────────────────────── */}
-        {!error && strengthData.data.length > 0 && (
-          strengthData.data.length < 3 ? (
-            <div className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5">
-              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          <div className="progress-analysis-grid">
+            <motion.section
+              className="progress-panel progress-panel--wide"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, duration: 0.2 }}
+            >
+              <div className="progress-panel-head">
                 <div>
-                  <p className="eyebrow mb-1">Siła</p>
-                  <p className="section-title mb-2">Progresja ciężaru</p>
-                  <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Potrzebujesz jeszcze {missingStrengthSessions}{' '}
-                    {polishPlural(missingStrengthSessions, 'sesji', 'sesji', 'sesji')} z tym ćwiczeniem, żeby zobaczyć wykres progresji.
-                  </p>
+                  <p>Objętość</p>
+                  <h2>Wolumen tygodniowy</h2>
                 </div>
-                <div className="flex gap-2">
-                  {Array.from({ length: 3 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="rounded-[var(--radius-lg)] border px-3 py-3 text-center"
-                      style={{
-                        minWidth: '4.5rem',
-                        background: 'rgba(255,255,255,0.025)',
-                        borderColor: index < strengthData.data.length ? 'var(--accent-soft-strong)' : 'var(--border)',
-                        color: index < strengthData.data.length ? 'var(--accent)' : 'var(--muted)',
-                      }}
+                <span>{rangeDays === 30 ? '5 tyg.' : '13 tyg.'}</span>
+              </div>
+              <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
+                <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
+                  <AreaChart data={weeklyData} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
+                    <defs>
+                      <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.34} />
+                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
+                    <XAxis
+                      dataKey="weekLabel"
+                      tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval={rangeDays === 90 ? 1 : 0}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => formatVolume(Number(v))}
+                      tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={52}
+                    />
+                    <Tooltip content={<DarkTooltip />} />
+                    <Area
+                      type="monotone"
+                      dataKey="volume"
+                      stroke="var(--accent)"
+                      strokeWidth={2.4}
+                      fill="url(#volGrad)"
+                      dot={false}
+                      activeDot={{ r: 4.5, fill: 'var(--accent)', stroke: 'rgba(255,255,255,0.75)', strokeWidth: 1 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.section>
+
+            {strengthData.data.length > 0 && (
+              strengthData.data.length < 3 ? (
+                <section className="progress-panel progress-panel--compact">
+                  <div className="progress-panel-head">
+                    <div>
+                      <p>Siła</p>
+                      <h2>Progresja ciężaru</h2>
+                    </div>
+                  </div>
+                  <p className="progress-muted-copy">
+                    Potrzebujesz jeszcze {missingStrengthSessions}{' '}
+                    {polishPlural(missingStrengthSessions, 'sesji', 'sesji', 'sesji')} z tym ćwiczeniem.
+                  </p>
+                  <div className="progress-session-markers" aria-label={`${strengthData.data.length} z 3 sesji do wykresu`}>
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <span key={index} data-active={index < strengthData.data.length} />
+                    ))}
+                  </div>
+                </section>
+              ) : (
+                <motion.section
+                  className="progress-panel progress-panel--wide"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.08, duration: 0.2 }}
+                >
+                  <div className="progress-panel-head">
+                    <div>
+                      <p>Siła</p>
+                      <h2>Progresja ciężaru</h2>
+                    </div>
+                  </div>
+                  <div className="progress-chart-frame progress-chart-frame--strength" role="img" aria-label={strengthProgressionLabel}>
+                    <ResponsiveContainer width="100%" aspect={2.05} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
+                      <LineChart data={strengthData.data} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
+                        <XAxis
+                          dataKey="date"
+                          tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis
+                          tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                          axisLine={false}
+                          tickLine={false}
+                          unit=" kg"
+                          width={56}
+                        />
+                        <Tooltip content={<DarkTooltip />} />
+                        {strengthData.series.map((s) => (
+                          <Line
+                            key={s.exerciseName}
+                            type="monotone"
+                            dataKey={s.exerciseName}
+                            stroke={s.color}
+                            strokeWidth={2.35}
+                            dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
+                            connectNulls
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <div className="progress-legend">
+                    {strengthData.series.map((s) => (
+                      <div key={s.exerciseName}>
+                        <span style={{ background: s.color }} />
+                        <small>{s.exerciseName}</small>
+                      </div>
+                    ))}
+                  </div>
+                </motion.section>
+              )
+            )}
+
+            {muscleData.length > 0 && (
+              <motion.section
+                className="progress-panel progress-panel--compact"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1, duration: 0.2 }}
+              >
+                <div className="progress-panel-head">
+                  <div>
+                    <p>Balans</p>
+                    <h2>Partie mięśniowe</h2>
+                  </div>
+                </div>
+                <div style={{ height: muscleData.length * 34 + 16 }} role="img" aria-label={muscleBalanceLabel}>
+                  <ResponsiveContainer
+                    width="100%"
+                    height={Math.max(230, muscleData.length * 34 + 16)}
+                    minWidth={1}
+                    initialDimension={{ width: 1, height: 1 }}
+                  >
+                    <BarChart
+                      data={muscleData}
+                      layout="vertical"
+                      margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
                     >
-                      <p className="stat-meta">Sesja</p>
-                      <p className="mt-2 text-lg font-semibold tabular-nums">{index + 1}</p>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" horizontal={false} />
+                      <XAxis
+                        type="number"
+                        tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        type="category"
+                        dataKey="muscle"
+                        width={86}
+                        tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v: string) => MUSCLE_PL[v] ?? v}
+                      />
+                      <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                      <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
+                        {muscleData.map((entry, index) => (
+                          <Cell
+                            key={entry.muscle}
+                            fill={MUSCLE_COLORS[entry.muscle] ?? `rgba(240,67,90,${Math.max(0.4, 1 - index * 0.1)})`}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </motion.section>
+            )}
+
+            {currentSessions.length > 0 && (
+              <motion.section
+                className="progress-panel progress-panel--compact"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, duration: 0.2 }}
+              >
+                <div className="progress-panel-head">
+                  <div>
+                    <p>Aktywność</p>
+                    <h2>Kalendarz</h2>
+                  </div>
+                </div>
+                <div className="progress-heatmap" role="img" aria-label={activityHeatmapLabel}>
+                  {DAY_LABELS.map((day, dayIdx) => (
+                    <div key={day} className="progress-heatmap-row">
+                      <span>{dayIdx % 2 === 0 ? day : ''}</span>
+                      {Array.from({ length: 12 }, (_, weekIdx) => {
+                        const cell = heatmapData.find((c) => c.dayOfWeek === dayIdx && c.weekIndex === weekIdx)
+                        return (
+                          <i
+                            key={weekIdx}
+                            title={cell?.date && cell.volume > 0 ? `${cell.date}: ${formatVolume(cell.volume)}` : cell?.date ?? ''}
+                            style={{ background: HEATMAP_COLORS[cell?.level ?? 0] }}
+                          />
+                        )
+                      })}
                     </div>
                   ))}
                 </div>
-              </div>
-            </div>
-          ) : (
-          <motion.div
-            className="progress-chart-panel surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08, duration: 0.2 }}
-          >
-            <p className="eyebrow mb-1">Siła</p>
-            <p className="section-title mb-5">Progresja ciężaru</p>
-            <div className="progress-chart-frame h-[190px] sm:h-[240px]" role="img" aria-label={strengthProgressionLabel}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <LineChart data={strengthData.data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
-                  <XAxis
-                    dataKey="date"
-                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    unit=" kg"
-                    width={56}
-                  />
-                  <Tooltip content={<DarkTooltip />} />
-                  {strengthData.series.map((s) => (
-                    <Line
-                      key={s.exerciseName}
-                      type="monotone"
-                      dataKey={s.exerciseName}
-                      stroke={s.color}
-                      strokeWidth={2.35}
-                      dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
-                      connectNulls
-                    />
+                <div className="progress-heatmap-scale">
+                  <span>Mniej</span>
+                  {HEATMAP_COLORS.map((color) => (
+                    <i key={color} style={{ background: color }} />
                   ))}
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {strengthData.series.map((s) => (
-                <div key={s.exerciseName} className="flex items-center gap-2">
-                  <span
-                    className="inline-block h-2.5 w-2.5 rounded-full"
-                    style={{ background: s.color }}
-                  />
-                  <span className="text-xs" style={{ color: 'var(--muted)' }}>{s.exerciseName}</span>
+                  <span>Więcej</span>
                 </div>
-              ))}
-            </div>
-          </motion.div>
-          )
+              </motion.section>
+            )}
+          </div>
         )}
 
-        {/* ── Muscle balance ───────────────────────────── */}
-        {!error && muscleData.length > 0 && (
-          <motion.div
-            className="progress-chart-panel surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1, duration: 0.2 }}
-          >
-            <p className="eyebrow mb-1">Balans</p>
-            <p className="section-title mb-5">Partie mięśniowe</p>
-            <div style={{ height: muscleData.length * 38 + 16 }} role="img" aria-label={muscleBalanceLabel}>
-              <ResponsiveContainer width="100%" height="100%" minWidth={0}>
-                <BarChart
-                  data={muscleData}
-                  layout="vertical"
-                  margin={{ top: 0, right: 16, left: 0, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" horizontal={false} />
-                  <XAxis
-                    type="number"
-                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    type="category"
-                    dataKey="muscle"
-                    width={96}
-                    tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(v: string) => MUSCLE_PL[v] ?? v}
-                  />
-                  <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                  <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                    {muscleData.map((entry, index) => (
-                      <Cell
-                        key={index}
-                        fill={MUSCLE_COLORS[entry.muscle] ?? `rgba(240,67,90,${Math.max(0.4, 1 - index * 0.1)})`}
-                      />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── Activity Heatmap ─────────────────────────── */}
-        {!error && currentSessions.length > 0 && (
-          <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.12, duration: 0.2 }}
-          >
-            <p className="eyebrow mb-1">Aktywność</p>
-            <p className="section-title mb-5">Kalendarz treningów</p>
-            <div className="overflow-x-auto" role="img" aria-label={activityHeatmapLabel}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1.5rem repeat(12, 1fr)',
-                  gap: 3,
-                  minWidth: 280,
-                }}
-              >
-                {DAY_LABELS.map((day, dayIdx) => (
-                  <div key={day} style={{ display: 'contents' }}>
-                    <span
-                      className="flex items-center justify-end pr-1"
-                      style={{ color: 'var(--muted)', fontSize: 10 }}
-                    >
-                      {dayIdx % 2 === 0 ? day : ''}
-                    </span>
-                    {Array.from({ length: 12 }, (_, weekIdx) => {
-                      const cell = heatmapData.find((c) => c.dayOfWeek === dayIdx && c.weekIndex === weekIdx)
-                      return (
-                        <div
-                          key={weekIdx}
-                          title={cell?.date && cell.volume > 0 ? `${cell.date}: ${formatVolume(cell.volume)}` : cell?.date ?? ''}
-                          style={{
-                            aspectRatio: '1',
-                            borderRadius: 3,
-                            background: HEATMAP_COLORS[cell?.level ?? 0],
-                          }}
-                        />
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="mt-4 flex items-center justify-end gap-1.5">
-              <span className="text-[10px]" style={{ color: 'var(--muted)' }}>Mniej</span>
-              {HEATMAP_COLORS.map((color, i) => (
-                <div
-                  key={i}
-                  style={{ width: 12, height: 12, borderRadius: 2, background: color }}
-                />
-              ))}
-              <span className="text-[10px]" style={{ color: 'var(--muted)' }}>Więcej</span>
-            </div>
-          </motion.div>
-        )}
-
-        {/* ── PR list ──────────────────────────────────── */}
         {!error && records.length > 0 && (
-          <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-4 sm:p-5"
+          <motion.section
+            className="progress-records"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15, duration: 0.2 }}
           >
-            <p className="eyebrow mb-1">Rekordy</p>
-            <p className="section-title mb-5">Rekordy osobiste</p>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {records.map((rec) => (
-                <div key={rec.id} className="metric-card p-4">
-                  <p className="text-sm font-semibold text-white truncate">{rec.exerciseName}</p>
-                  <p className="mt-3 text-2xl font-bold text-white tabular-nums">
-                    {rec.maxWeight} <span className="text-base font-medium" style={{ color: 'var(--muted)' }}>kg</span>
-                  </p>
-                  <div className="mt-2 flex items-center justify-between">
-                    <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                      × {rec.maxReps} powt. • {rec.totalSessions} {polishPlural(rec.totalSessions, 'sesja', 'sesje', 'sesji')}
-                    </p>
-                    <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                      {formatDate(rec.lastPerformedAt)}
-                    </p>
+            <div className="progress-records-head">
+              <div>
+                <p>Rekordy</p>
+                <h2>Najlepsze wyniki</h2>
+              </div>
+              <span>{records.length}</span>
+            </div>
+
+            <div className="progress-record-showcase" aria-label="Trzy najlepsze rekordy">
+              {featuredRecords.map((rec, index) => (
+                <article
+                  key={rec.id}
+                  className="progress-record-feature"
+                  data-rank={index + 1}
+                  style={{ '--record-accent': MUSCLE_COLORS[recordAccentKeys[index % recordAccentKeys.length] ?? 'chest'] } as CSSProperties}
+                >
+                  <div className="progress-record-feature-top">
+                    <span className="progress-record-rank">PR</span>
+                    <span>{formatDate(rec.lastPerformedAt)}</span>
                   </div>
-                </div>
+
+                  <strong>{rec.exerciseName}</strong>
+
+                  <div className="progress-record-result">
+                    <span>{rec.maxWeight}<small> kg</small></span>
+                    <small>× {rec.maxReps}</small>
+                  </div>
+
+                  <p>{rec.totalSessions} {polishPlural(rec.totalSessions, 'sesja', 'sesje', 'sesji')}</p>
+                </article>
               ))}
             </div>
-          </motion.div>
+
+            {remainingRecords.length > 0 && (
+              <div className="progress-record-ledger" aria-label="Pozostałe rekordy">
+                <div className="progress-record-ledger-head" aria-hidden="true">
+                  <span>Pozostałe rekordy</span>
+                  <span>Wynik</span>
+                </div>
+
+                {remainingRecords.map((rec, index) => (
+                  <div
+                    key={rec.id}
+                    className="progress-record-ledger-row"
+                    style={{ '--record-accent': MUSCLE_COLORS[recordAccentKeys[(index + featuredRecords.length) % recordAccentKeys.length] ?? 'chest'] } as CSSProperties}
+                  >
+                    <span className="progress-record-rank">PR</span>
+                    <div className="progress-record-ledger-main">
+                      <strong>{rec.exerciseName}</strong>
+                      <small>
+                        {formatDate(rec.lastPerformedAt)} · {rec.totalSessions}{' '}
+                        {polishPlural(rec.totalSessions, 'sesja', 'sesje', 'sesji')}
+                      </small>
+                    </div>
+                    <span className="progress-record-ledger-result">{rec.maxWeight} kg <small>× {rec.maxReps}</small></span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.section>
         )}
 
-        {!error && records.length === 0 && currentSessions.length === 0 && (
-          <div className="surface-panel rounded-[var(--radius-xl)] p-10 text-center">
+        {!error && !hasProgressData && (
+          <div className="progress-panel progress-empty-state">
             <p className="text-lg font-semibold text-white">Brak danych</p>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
               Ukończ kilka treningów, żeby zobaczyć wykresy i rekordy.

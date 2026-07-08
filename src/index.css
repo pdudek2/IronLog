@@ -4594,6 +4594,364 @@ a {
   }
 }
 
+/* ── Exercise library direction ────────────────── */
+.exercise-library-header {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(0.85rem, 2.2vw, 1.35rem) 0 clamp(1rem, 2.4vw, 1.5rem);
+  border-bottom: 1px solid rgba(244, 241, 242, 0.11);
+}
+
+.exercise-library-header-copy h1 {
+  margin: 0.35rem 0 0;
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: clamp(2.45rem, 5vw, 4.15rem);
+  font-weight: 780;
+  line-height: 0.95;
+  letter-spacing: 0;
+}
+
+.exercise-library-header-copy p:not(.planner-kicker) {
+  max-width: 35rem;
+  margin: 0.6rem 0 0;
+  color: rgba(244, 241, 242, 0.72);
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.exercise-library-stats span[data-active="true"] strong {
+  color: var(--accent-text);
+}
+
+.exercise-command-panel {
+  display: grid;
+  gap: 0.9rem;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(120deg, rgba(240, 67, 90, 0.055), transparent 34%),
+    linear-gradient(180deg, rgba(33, 31, 35, 0.72), rgba(18, 17, 20, 0.94));
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+  padding: 0.9rem;
+}
+
+.exercise-search-box {
+  display: flex;
+  min-height: 3rem;
+  align-items: center;
+  gap: 0.65rem;
+  border: 1px solid rgba(244, 241, 242, 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(9, 8, 10, 0.25);
+  padding: 0 0.75rem;
+}
+
+.exercise-search-box svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.exercise-search-box input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: 0.92rem;
+  outline: none;
+}
+
+.exercise-search-box input::placeholder {
+  color: rgba(244, 241, 242, 0.42);
+}
+
+.exercise-search-box button {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid rgba(244, 241, 242, 0.12);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  padding: 0.48rem 0.62rem;
+  font-size: 0.74rem;
+  font-weight: 720;
+}
+
+.exercise-filter-board {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.exercise-filter-group {
+  display: grid;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.exercise-filter-group > span {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 760;
+}
+
+.exercise-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+}
+
+.exercise-filter-chip {
+  flex: none;
+  border: 1px solid rgba(244, 241, 242, 0.1);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  padding: 0.42rem 0.72rem;
+  font-size: 0.72rem;
+  font-weight: 720;
+  white-space: nowrap;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+
+.exercise-filter-chip[data-active="true"] {
+  border-color: rgba(240, 67, 90, 0.26);
+  background: rgba(240, 67, 90, 0.13);
+  color: var(--accent-text);
+}
+
+.exercise-library-content {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+}
+
+.exercise-library-section {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(120deg, rgba(240, 67, 90, 0.045), transparent 32%),
+    linear-gradient(180deg, rgba(33, 31, 35, 0.7), rgba(18, 17, 20, 0.94));
+  box-shadow:
+    var(--shadow-soft),
+    inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.exercise-section-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid rgba(244, 241, 242, 0.09);
+  padding: 0.95rem 1rem;
+}
+
+.exercise-section-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 760;
+}
+
+.exercise-section-head h2 {
+  margin: 0.18rem 0 0;
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.25rem, 2vw, 1.55rem);
+  font-weight: 760;
+  line-height: 1.05;
+}
+
+.exercise-section-head > span {
+  display: inline-flex;
+  min-width: 2.3rem;
+  justify-content: center;
+  border: 1px solid rgba(244, 241, 242, 0.11);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.035);
+  color: var(--muted);
+  padding: 0.34rem 0.62rem;
+  font-size: 0.74rem;
+  font-weight: 760;
+}
+
+.exercise-library-list {
+  display: grid;
+}
+
+.exercise-library-row {
+  display: grid;
+  grid-template-areas:
+    "main open"
+    "muscles muscles"
+    "actions actions";
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  border-top: 1px solid rgba(244, 241, 242, 0.075);
+  padding: 0.9rem 1rem;
+  background: rgba(255, 255, 255, 0.012);
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+}
+
+.exercise-library-list > *:first-child .exercise-library-row {
+  border-top: 0;
+}
+
+.exercise-library-row:hover {
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.exercise-library-row[data-user="true"] {
+  background:
+    linear-gradient(90deg, rgba(240, 67, 90, 0.07), transparent 35%),
+    rgba(255, 255, 255, 0.014);
+}
+
+.exercise-library-row-main {
+  grid-area: main;
+  display: grid;
+  min-width: 0;
+  gap: 0.24rem;
+  text-align: left;
+}
+
+.exercise-library-row-main span,
+.exercise-library-row-main small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 720;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exercise-library-row-main strong {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-size: 0.96rem;
+  font-weight: 780;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exercise-library-muscles {
+  grid-area: muscles;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.exercise-library-muscles span {
+  border: 1px solid rgba(244, 241, 242, 0.1);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.032);
+  color: var(--muted);
+  padding: 0.28rem 0.52rem;
+  font-size: 0.66rem;
+  font-weight: 680;
+  white-space: nowrap;
+}
+
+.exercise-library-actions {
+  grid-area: actions;
+  display: flex;
+  gap: 0.45rem;
+}
+
+.exercise-library-open {
+  grid-area: open;
+  display: inline-flex;
+  width: 2.1rem;
+  height: 2.1rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(244, 241, 242, 0.1);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted);
+}
+
+.exercise-empty-state {
+  display: grid;
+  gap: 0.55rem;
+  padding: 1.1rem;
+  color: var(--muted);
+  font-size: 0.86rem;
+}
+
+.exercise-empty-state strong {
+  color: var(--text-strong);
+  font-size: 0.95rem;
+}
+
+.exercise-empty-state p {
+  margin: 0;
+}
+
+@media (min-width: 760px) {
+  .exercise-library-header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .exercise-filter-board {
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr);
+  }
+
+  .exercise-library-row {
+    grid-template-areas: "main muscles actions open";
+    grid-template-columns: minmax(14rem, 0.65fr) minmax(0, 1fr) auto auto;
+    gap: 1rem;
+  }
+
+  .exercise-library-row:not([data-user="true"]) {
+    grid-template-areas: "main muscles open";
+    grid-template-columns: minmax(14rem, 0.65fr) minmax(0, 1fr) auto;
+  }
+
+  .exercise-library-actions {
+    justify-content: flex-end;
+  }
+}
+
+@media (max-width: 520px) {
+  .exercise-library-header {
+    padding-top: 3.25rem;
+  }
+
+  .exercise-command-panel {
+    padding: 0.75rem;
+  }
+
+  .exercise-search-box {
+    flex-wrap: wrap;
+    padding-block: 0.65rem;
+  }
+
+  .exercise-search-box input {
+    flex-basis: calc(100% - 2rem);
+  }
+
+  .exercise-search-box button {
+    margin-left: 1.95rem;
+  }
+}
+
 .hero-streak-card {
   position: relative;
   display: flex;

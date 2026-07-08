@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronRight, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
 import NumberFlow from '@number-flow/react'
 import { useAuthStore } from '../store/authStore'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
@@ -265,54 +265,53 @@ interface CardProps {
 }
 
 function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardProps) {
-  const muscleText = exercise.muscles.map((m) => MUSCLE_LABELS[m]).join(', ')
+  const visibleMuscles = exercise.muscles.slice(0, 4)
+  const hiddenMuscleCount = Math.max(exercise.muscles.length - visibleMuscles.length, 0)
+
   return (
-    <article
-      className="rounded-[1.25rem] px-4 py-4 transition-all hover:border-[rgba(240,67,90,0.3)] hover:-translate-y-px"
-      style={{
-        background: 'rgba(255,255,255,0.03)',
-        border: `1px solid ${isUser ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-      }}
-    >
-      <button type="button" onClick={onNavigate} className="block w-full cursor-pointer text-left">
-        <div className="flex items-start gap-2">
-          <span className="flex-1 text-sm font-medium text-white leading-snug">{exercise.name}</span>
-          {isUser && (
-            <span
-              className="flex-none text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-              style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-            >
-              moje
-            </span>
-          )}
-        </div>
-        <span className="mt-1.5 block text-xs" style={{ color: 'var(--muted)' }}>
-          {EQUIPMENT_LABELS[exercise.equipment]}
-          {muscleText ? ` · ${muscleText}` : ''}
-        </span>
+    <article className="exercise-library-row" data-user={isUser}>
+      <button type="button" onClick={onNavigate} className="exercise-library-row-main">
+        <span>{isUser ? 'Moje' : CATEGORY_LABELS[exercise.category]}</span>
+        <strong>{exercise.name}</strong>
+        <small>{EQUIPMENT_LABELS[exercise.equipment]}</small>
       </button>
+
+      <div className="exercise-library-muscles" aria-label={`Partie mięśniowe: ${exercise.muscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
+        {visibleMuscles.map((muscle) => (
+          <span key={muscle}>{MUSCLE_LABELS[muscle]}</span>
+        ))}
+        {hiddenMuscleCount > 0 && <span>+{hiddenMuscleCount}</span>}
+      </div>
+
       {isUser && (
-        <div className="mt-3 flex items-center gap-2">
+        <div className="exercise-library-actions">
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onEdit?.() }}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
-            style={{ background: 'var(--card)', color: 'white', border: '1px solid var(--border)' }}
+            onClick={onEdit}
+            className="planner-icon-action"
+            aria-label={`Edytuj ćwiczenie ${exercise.name}`}
           >
             <Pencil size={12} />
-            Edytuj
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onDelete?.() }}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold transition-opacity hover:opacity-80"
-            style={{ background: 'var(--danger-soft)', color: 'var(--danger)', border: '1px solid var(--danger-soft-strong)' }}
+            onClick={onDelete}
+            className="planner-icon-action planner-icon-action--danger"
+            aria-label={`Usuń ćwiczenie ${exercise.name}`}
           >
             <Trash2 size={12} />
-            Usuń
           </button>
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={onNavigate}
+        className="exercise-library-open"
+        aria-label={`Otwórz ćwiczenie ${exercise.name}`}
+      >
+        <ChevronRight size={16} />
+      </button>
     </article>
   )
 }
@@ -328,55 +327,17 @@ interface ChipRowProps<T extends string> {
 
 function ChipRow<T extends string>({ options, labels, active, onSelect }: ChipRowProps<T>) {
   return (
-    <div className="no-scrollbar flex gap-2 overflow-x-auto" style={{ maskImage: 'linear-gradient(to right, black 85%, transparent)' }}>
+    <div className="exercise-chip-row">
       {options.map((opt) => (
         <button
           key={opt}
           onClick={() => onSelect(opt)}
-          className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
-          style={{
-            background: active === opt ? 'var(--accent-soft)' : 'var(--card)',
-            color: active === opt ? 'var(--text-strong)' : 'var(--muted)',
-            border: `1px solid ${active === opt ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-          }}
+          className="exercise-filter-chip"
+          data-active={active === opt}
         >
           {labels[opt]}
         </button>
       ))}
-    </div>
-  )
-}
-
-// ─── Sidebar Filter Group ─────────────────────────────────────────────────────
-
-interface SidebarFilterProps<T extends string> {
-  title: string
-  options: T[]
-  labels: Record<T, string>
-  active: T
-  onSelect: (v: T) => void
-}
-
-function SidebarFilter<T extends string>({ title, options, labels, active, onSelect }: SidebarFilterProps<T>) {
-  return (
-    <div>
-      <p className="text-[10px] uppercase mb-2" style={{ color: 'var(--muted)' }}>{title}</p>
-      <div className="flex flex-col gap-1">
-        {options.map((opt) => (
-          <button
-            key={opt}
-            onClick={() => onSelect(opt)}
-            className="text-left px-3 py-1.5 rounded-xl text-xs font-medium transition-all"
-            style={{
-              background: active === opt ? 'var(--accent-soft)' : 'transparent',
-              color: active === opt ? 'var(--text-strong)' : 'var(--muted)',
-              border: active === opt ? '1px solid var(--accent-soft-strong)' : '1px solid transparent',
-            }}
-          >
-            {labels[opt]}
-          </button>
-        ))}
-      </div>
     </div>
   )
 }
@@ -393,17 +354,12 @@ function SectionHeader({
   count: number
 }) {
   return (
-    <div className="mb-3 lg:mb-4">
-      <p className="text-[10px] uppercase font-semibold" style={{ color: 'var(--muted)' }}>{eyebrow}</p>
-      <div className="mt-1 flex items-center gap-3">
-        <h2 className="text-xl font-semibold text-white">{title}</h2>
-        <span
-          className="rounded-full px-2 py-0.5 text-[11px] font-semibold"
-          style={{ background: 'rgba(255,255,255,0.06)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-        >
-          {count}
-        </span>
+    <div className="exercise-section-head">
+      <div>
+        <p>{eyebrow}</p>
+        <h2>{title}</h2>
       </div>
+      <span>{count}</span>
     </div>
   )
 }
@@ -445,6 +401,13 @@ export default function ExercisesPage() {
 
   const filteredUser = userExercises.filter(matchesFilters)
   const filteredGlobal = exercises.filter(matchesFilters)
+  const visibleCount = filteredUser.length + filteredGlobal.length
+  const hasActiveFilters = query.trim().length > 0 || category !== 'all' || equipment !== 'all'
+  const clearFilters = () => {
+    setQuery('')
+    setCategory('all')
+    setEquipment('all')
+  }
 
   async function handleCreate(input: UserExerciseInput) {
     if (!user) return
@@ -494,205 +457,157 @@ export default function ExercisesPage() {
 
   return (
     <>
-      <section className="hero-editorial">
+      <section className="exercise-library-header">
         <motion.div
-          className="flex flex-col gap-5"
+          className="exercise-library-header-copy"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <p className="hero-editorial-date">Katalog · baza ćwiczeń</p>
-            <button
-              type="button"
-              onClick={openCreateForm}
-              className="rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors inline-flex items-center gap-1.5"
-              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
-            >
-              <Plus size={14} strokeWidth={2.5} />
-              Dodaj własne
-            </button>
-          </div>
-
-          <div>
-            <h1 className="hero-editorial-name">Baza<br />ćwiczeń.</h1>
-          </div>
-
-          <p className="hero-editorial-sub">
-            Globalny atlas i własna biblioteka w jednym miejscu — gotowe pod wybór do sesji i dalszą analitykę.
-          </p>
-
-          <div
-            className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <div className="flex flex-col gap-1 min-w-[6.5rem]">
-              <span className="stat-meta">Katalog</span>
-              <span className="text-2xl font-bold tabular-nums text-white leading-none">
-                <NumberFlow value={exercises.length} />
-              </span>
-            </div>
-            <div className="flex flex-col gap-1 min-w-[6.5rem]">
-              <span className="stat-meta">Moje</span>
-              <span className="text-2xl font-bold tabular-nums text-white leading-none">
-                <NumberFlow value={userExercises.length} />
-              </span>
-            </div>
-          </div>
+          <p className="planner-kicker">Ćwiczenia</p>
+          <h1>Biblioteka.</h1>
+          <p>Wyszukaj ruch, sprawdź sprzęt i otwórz szczegóły bez przekopywania listy.</p>
         </motion.div>
+
+        <div className="planner-header-actions">
+          <div className="planner-mini-stats exercise-library-stats" aria-label="Podsumowanie biblioteki ćwiczeń">
+            <span>
+              <strong><NumberFlow value={exercises.length} /></strong>
+              katalog
+            </span>
+            <span>
+              <strong><NumberFlow value={userExercises.length} /></strong>
+              moje
+            </span>
+            <span data-active={hasActiveFilters}>
+              <strong><NumberFlow value={visibleCount} /></strong>
+              wyniki
+            </span>
+          </div>
+
+          <motion.button
+            type="button"
+            onClick={openCreateForm}
+            className="planner-primary-action"
+            whileTap={{ scale: 0.97 }}
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            Dodaj własne
+          </motion.button>
+        </div>
       </section>
 
-      <div className="desktop-app-grid">
+      <section className="exercise-command-panel">
+        <div className="exercise-search-box">
+          <Search size={16} aria-hidden="true" />
+          <input
+            type="text"
+            aria-label="Szukaj ćwiczenia"
+            placeholder="Szukaj po nazwie ćwiczenia..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+          {hasActiveFilters && (
+            <button type="button" onClick={clearFilters} aria-label="Wyczyść filtry">
+              <X size={15} />
+              Wyczyść
+            </button>
+          )}
+        </div>
 
-        {/* ── Desktop sidebar ──────────────────────── */}
-        <aside className="hidden lg:block desktop-sticky">
-          <div className="surface-panel rounded-[var(--radius-xl)] p-5 space-y-5">
-            <div>
-              <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
-                Baza ćwiczeń
-              </p>
-
-              {/* Search */}
-              <div className="relative mb-5">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted)' }} />
-                <input
-                  type="text"
-                  aria-label="Szukaj ćwiczenia"
-                  placeholder="Szukaj..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="w-full rounded-xl py-2 pl-8 pr-3 text-sm outline-none text-white"
-                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
-                />
-              </div>
-            </div>
-
-            <SidebarFilter
-              title="Kategoria"
-              options={CATEGORIES}
-              labels={CATEGORY_LABELS}
-              active={category}
-              onSelect={setCategory}
-            />
-
-            <SidebarFilter
-              title="Sprzęt"
-              options={EQUIPMENT_OPTIONS}
-              labels={EQUIPMENT_LABELS}
-              active={equipment}
-              onSelect={setEquipment}
-            />
-
-            <motion.button
-              onClick={openCreateForm}
-              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] py-3 text-sm font-semibold"
-              style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-            >
-              <Plus size={16} strokeWidth={2.5} />
-              Dodaj własne ćwiczenie
-            </motion.button>
-          </div>
-        </aside>
-
-        {/* ── Main content ─────────────────────────── */}
-        <main className="min-w-0 pb-36 lg:pb-0">
-
-          {/* Mobile: search + filter chips */}
-          <div className="lg:hidden space-y-3 mb-5">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted)' }} />
-              <input
-                type="text"
-                aria-label="Szukaj ćwiczenia"
-                placeholder="Szukaj ćwiczenia..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="w-full rounded-xl py-2.5 pl-8 pr-3 text-sm outline-none text-white"
-                style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
-              />
-            </div>
+        <div className="exercise-filter-board">
+          <div className="exercise-filter-group">
+            <span>Partia</span>
             <ChipRow options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
+          </div>
+          <div className="exercise-filter-group">
+            <span>Sprzęt</span>
             <ChipRow options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
           </div>
+        </div>
+      </section>
 
-          {/* User exercises section */}
-          <section className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <SectionHeader eyebrow="Własna biblioteka" title="Moje ćwiczenia" count={filteredUser.length} />
+      <main className="exercise-library-content">
+        <section className="exercise-library-section">
+          <SectionHeader eyebrow="Własna biblioteka" title="Moje ćwiczenia" count={filteredUser.length} />
+
+          {loadingUser ? (
+            <div className="exercise-empty-state">
+              <p>Ładowanie...</p>
             </div>
-
-            {loadingUser ? (
-              <div className="surface-panel rounded-[1.5rem] px-5 py-8 text-center">
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>Ładowanie...</p>
-              </div>
-            ) : filteredUser.length === 0 ? (
-              <div className="surface-panel rounded-[1.5rem] px-5 py-8 text-center">
-                {userExercises.length === 0 ? (
-                  <>
-                    <p className="text-sm font-semibold text-white mb-1">Brak własnych ćwiczeń</p>
-                    <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>
-                      Lista własnych ćwiczeń jest pusta.
-                    </p>
-                    <motion.button
-                      onClick={openCreateForm}
-                      className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-4 py-2 text-xs font-semibold"
-                      style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-                      whileTap={{ scale: 0.95 }}
-                    >
-                      <Plus size={13} strokeWidth={2.5} />
-                      Dodaj pierwsze
-                    </motion.button>
-                  </>
-                ) : (
-                  <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                    Brak wyników dla wybranych filtrów.
-                  </p>
-                )}
-              </div>
-            ) : (
-              <AnimatePresence initial={false}>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {filteredUser.map((ex) => (
-                    <motion.div
-                      key={ex.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <ExerciseCard
-                        exercise={ex}
-                        isUser
-                        onEdit={() => openEditForm(ex)}
-                        onDelete={() => setConfirmDeleteExercise(ex)}
-                        onNavigate={() => navigate(`/exercises/user/${ex.id}`)}
-                      />
-                    </motion.div>
-                  ))}
-                </div>
-              </AnimatePresence>
-            )}
-          </section>
-
-          {/* Global exercises section */}
-          <section>
-            <SectionHeader eyebrow="Atlas startowy" title="Katalog globalny" count={filteredGlobal.length} />
-
-            {filteredGlobal.length === 0 ? (
-              <div className="surface-panel rounded-[1.5rem] px-5 py-8 text-center">
-                <p className="text-sm" style={{ color: 'var(--muted)' }}>Brak wyników dla wybranych filtrów.</p>
-              </div>
-            ) : (
-              <div className="grid gap-2 sm:grid-cols-2">
-                {filteredGlobal.map((ex) => (
-                  <ExerciseCard key={ex.id} exercise={ex} isUser={false} onNavigate={() => navigate(`/exercises/global/${ex.id}`)} />
+          ) : filteredUser.length === 0 ? (
+            <div className="exercise-empty-state">
+              {userExercises.length === 0 ? (
+                <>
+                  <strong>Brak własnych ćwiczeń</strong>
+                  <p>Dodaj ruch, którego nie ma w katalogu globalnym.</p>
+                  <motion.button
+                    type="button"
+                    onClick={openCreateForm}
+                    className="planner-secondary-action"
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Plus size={13} strokeWidth={2.5} />
+                    Dodaj pierwsze
+                  </motion.button>
+                </>
+              ) : (
+                <>
+                  <strong>Brak wyników</strong>
+                  <p>Zmień filtr albo wyczyść wyszukiwanie.</p>
+                </>
+              )}
+            </div>
+          ) : (
+            <AnimatePresence initial={false}>
+              <div className="exercise-library-list">
+                {filteredUser.map((ex) => (
+                  <motion.div
+                    key={ex.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <ExerciseCard
+                      exercise={ex}
+                      isUser
+                      onEdit={() => openEditForm(ex)}
+                      onDelete={() => setConfirmDeleteExercise(ex)}
+                      onNavigate={() => navigate(`/exercises/user/${ex.id}`)}
+                    />
+                  </motion.div>
                 ))}
               </div>
-            )}
-          </section>
-        </main>
-      </div>
+            </AnimatePresence>
+          )}
+        </section>
+
+        <section className="exercise-library-section">
+          <SectionHeader eyebrow="Atlas startowy" title="Katalog globalny" count={filteredGlobal.length} />
+
+          {filteredGlobal.length === 0 ? (
+            <div className="exercise-empty-state">
+              <strong>Brak wyników</strong>
+              <p>Zmień filtr albo wyczyść wyszukiwanie.</p>
+            </div>
+          ) : (
+            <div className="exercise-library-list">
+              <AnimatePresence initial={false}>
+                {filteredGlobal.map((ex) => (
+                  <motion.div
+                    key={ex.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18 }}
+                  >
+                    <ExerciseCard exercise={ex} isUser={false} onNavigate={() => navigate(`/exercises/global/${ex.id}`)} />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </section>
+      </main>
 
       {/* Create form modal */}
       <AnimatePresence>

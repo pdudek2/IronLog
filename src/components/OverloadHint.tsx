@@ -17,15 +17,15 @@ const REASON_LABEL: Record<string, string> = {
 export default function OverloadHint({ suggestion, onApply, onDismiss }: Props) {
   const { suggestedWeight, delta, reason } = suggestion
 
-  const accent =
-    delta > 0 ? 'var(--accent)' :
-    delta < 0 ? 'var(--danger)' :
-    'var(--muted)'
-
   const Icon =
     delta > 0 ? TrendingUp :
     delta < 0 ? TrendingDown :
     Minus
+
+  const trend =
+    delta > 0 ? 'up' :
+    delta < 0 ? 'down' :
+    'flat'
 
   const deltaLabel =
     delta > 0 ? `+${delta} kg` :
@@ -34,41 +34,36 @@ export default function OverloadHint({ suggestion, onApply, onDismiss }: Props) 
 
   return (
     <motion.div
-      className="mb-4 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] px-3.5 py-2.5"
-      style={{
-        background: `${delta > 0 ? 'var(--accent-soft)' : delta < 0 ? 'var(--danger-soft)' : 'rgba(255,255,255,0.04)'}`,
-        border: `1px solid ${delta > 0 ? 'var(--accent-soft-strong)' : delta < 0 ? 'var(--danger-soft-strong)' : 'var(--border)'}`,
-      }}
+      className="overload-hint"
+      data-trend={trend}
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.18 }}
     >
-      <div className="flex items-center gap-2 min-w-0">
-        <Icon size={14} style={{ color: accent, flexShrink: 0 }} />
-        <div className="min-w-0">
-          <p className="text-[11px] font-medium truncate" style={{ color: accent }}>
-            {REASON_LABEL[reason]} • {deltaLabel}
-          </p>
-          <p className="text-xs font-semibold text-white tabular-nums">
-            Sugestia: {suggestedWeight} kg
-          </p>
+      <div className="overload-hint-main">
+        <span className="overload-hint-icon" aria-hidden="true">
+          <Icon size={14} />
+        </span>
+        <div className="overload-hint-copy">
+          <span>
+            {REASON_LABEL[reason]} <small>{deltaLabel}</small>
+          </span>
+          <strong className="tabular-nums">{suggestedWeight} kg</strong>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 flex-none">
+      <div className="overload-hint-actions">
         <button
           onClick={() => onApply(suggestedWeight)}
-          className="rounded-[var(--radius-md)] px-2.5 py-1 text-[11px] font-semibold"
-          style={{ background: accent, color: delta > 0 ? 'var(--accent-foreground)' : delta < 0 ? '#fff' : 'var(--bg)' }}
+          className="overload-hint-apply"
         >
-          Zastosuj
+          Ustaw
         </button>
         <button
           onClick={onDismiss}
           aria-label="Odrzuć sugestię"
-          className="transition-opacity hover:opacity-70"
-          style={{ color: 'var(--muted)' }}
+          className="overload-hint-dismiss"
         >
           <X size={14} />
         </button>

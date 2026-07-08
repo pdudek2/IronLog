@@ -1046,25 +1046,18 @@ export default function WorkoutPage() {
                     >
                       <div className="workout-exercise-head mb-4 flex flex-wrap items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {exerciseMeta?.equipment && (
-                              <span
-                                className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                                style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                              >
-                                {EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment}
-                              </span>
-                            )}
-                            {exerciseMeta?.category && (
-                              <span
-                                className="rounded-full px-2.5 py-1 text-[10px] font-semibold"
-                                style={{ background: `${exerciseAccent}18`, color: exerciseAccent, border: `1px solid ${exerciseAccent}30` }}
-                              >
-                                {CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category}
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-3 text-lg font-semibold text-white">{exercise.name}</p>
+                          {(exerciseMeta?.category || exerciseMeta?.equipment) && (
+                            <p className="workout-exercise-meta">
+                              {exerciseMeta?.category && (
+                                <span style={{ color: exerciseAccent }}>
+                                  {CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category}
+                                </span>
+                              )}
+                              {exerciseMeta?.category && exerciseMeta?.equipment && ' · '}
+                              {exerciseMeta?.equipment && (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment)}
+                            </p>
+                          )}
+                          <p className="mt-1.5 text-lg font-semibold text-white">{exercise.name}</p>
                         </div>
                         <button
                           onClick={() => handleRemoveExercise(exerciseIndex)}
@@ -1112,23 +1105,20 @@ export default function WorkoutPage() {
                         <span>#</span>
                         <span>{units}</span>
                         <span>Powt.</span>
+                        <span>Obj.</span>
                         <span />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="workout-set-list">
                         {exercise.sets.map((set, setIndex) => {
                           const setVolume = calcSetVolume(set)
                           return (
                             <div
                               key={set.clientId ?? setIndex}
                               className="workout-set-row"
-                              style={{
-                                background: set.done ? 'rgba(143,184,160,0.12)' : 'rgba(255,255,255,0.025)',
-                                borderColor: set.done ? 'rgba(143,184,160,0.42)' : 'var(--border)',
-                                boxShadow: set.done ? 'inset 0 1px 0 rgba(143,184,160,0.08)' : undefined,
-                              }}
+                              data-done={set.done || undefined}
                             >
-                              <div className="grid grid-cols-[2.25rem_minmax(0,1fr)_minmax(0,1fr)_2.5rem] gap-2 items-center">
+                              <div className="workout-set-grid">
                                 <motion.button
                                   onClick={() => handleToggleSet(exerciseIndex, setIndex)}
                                   className="flex h-10 w-9 items-center justify-center rounded-[var(--radius-md)] text-xs font-bold"
@@ -1151,8 +1141,7 @@ export default function WorkoutPage() {
                                   value={set.weight}
                                   onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', e.target.value)}
                                   aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, ${units}`}
-                                  className={`px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'opacity-70' : ''}`}
-                                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
+                                  className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                                 />
                                 <input
                                   type="number"
@@ -1161,9 +1150,11 @@ export default function WorkoutPage() {
                                   value={set.reps}
                                   onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
                                   aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
-                                  className={`px-3 py-2.5 rounded-[var(--radius-sm)] text-sm text-center text-white outline-none ${set.done ? 'opacity-70' : ''}`}
-                                  style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
+                                  className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                                 />
+                                <span className="workout-set-vol tabular-nums" aria-label={`Objętość serii ${setIndex + 1}`}>
+                                  {setVolume > 0 ? formatCompactVolume(setVolume) : '—'}
+                                </span>
                                 <button
                                   onClick={() => removeSet(exerciseIndex, setIndex)}
                                   className="puls-icon-button flex h-10 w-full items-center justify-center text-base"
@@ -1172,14 +1163,6 @@ export default function WorkoutPage() {
                                 >
                                   <X size={15} />
                                 </button>
-                              </div>
-                              <div className="mt-2 flex items-center justify-between gap-3 text-[11px]">
-                                <span style={{ color: 'var(--muted)' }}>
-                                  Objętość: <span className="tabular-nums text-white">{formatCompactVolume(setVolume)}</span>
-                                </span>
-                                <span style={{ color: set.done ? 'var(--success)' : 'var(--muted-soft)' }}>
-                                  {set.done ? 'Zapisana' : 'Robocza seria'}
-                                </span>
                               </div>
                               {!set.done && (
                                 <div className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5">
@@ -1216,8 +1199,7 @@ export default function WorkoutPage() {
                           const btn = e.currentTarget
                           setTimeout(() => btn.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
                         }}
-                        className="mt-3 w-full py-2.5 rounded-[var(--radius-lg)] text-sm font-semibold transition-opacity hover:opacity-80"
-                        style={{ background: 'var(--input-bg)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                        className="workout-add-set mt-1 w-full"
                       >
                         <span className="inline-flex items-center justify-center gap-2">
                           <Plus size={15} strokeWidth={2.4} />
@@ -1234,7 +1216,7 @@ export default function WorkoutPage() {
       </div>
 
       <div
-        className="fixed bottom-0 left-0 right-0 flex justify-center px-4 lg:hidden"
+        className="workout-mobile-action-bar fixed bottom-0 left-0 right-0 flex justify-center px-4 lg:hidden"
         style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
       >
         <div className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] p-3">

@@ -302,50 +302,44 @@ export default function TemplateEditorPage() {
 
   return (
     <>
-      <section className="hero-editorial">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-col gap-5">
-            <p className="hero-editorial-date">Planowanie · edytor</p>
+      <section className="planner-header template-editor-header">
+        <div>
+          <p className="planner-kicker">Edytor planu</p>
+          <h1>{isEdit ? 'Plan.' : 'Nowy plan.'}</h1>
+          <p>Ułóż dni, ćwiczenia i domyślne serie tak, żeby start treningu był jednym kliknięciem.</p>
+        </div>
 
-            <div>
-              <h1 className="hero-editorial-name">
-                {isEdit ? (
-                  <>
-                    Edytuj
-                    <br />
-                    szablon.
-                  </>
-                ) : (
-                  <>
-                    Nowy
-                    <br />
-                    szablon.
-                  </>
-                )}
-              </h1>
-            </div>
-
-            <p className="hero-editorial-sub">
-              Złóż dni treningowe z gotowych ćwiczeń, ustaw serie i przygotuj szybszy start kolejnej sesji.
-            </p>
+        <div className="planner-header-actions">
+          <div className="planner-mini-stats" aria-label="Podsumowanie edytowanego planu">
+            <span>
+              <strong>{days.length}</strong>
+              dni
+            </span>
+            <span>
+              <strong>{totalExercises}</strong>
+              ćw.
+            </span>
+            <span data-active={hasUnsavedChanges}>
+              <strong>{hasUnsavedChanges ? '•' : '✓'}</strong>
+              {hasUnsavedChanges ? 'zmiany' : 'zapisany'}
+            </span>
           </div>
 
           <button
             type="button"
             onClick={handleBackToTemplates}
-            className="rounded-[var(--radius-pill)] px-4 py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+            className="planner-secondary-action"
           >
             Wróć
           </button>
         </div>
       </section>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(18rem,0.8fr)]">
-          <main className="min-w-0 space-y-5">
-            <section className="surface-panel rounded-[var(--radius-xl)] p-5">
-              <p className="eyebrow mb-4">Nazwa szablonu</p>
+      <form onSubmit={handleSubmit} className="template-editor-form">
+        <div className="template-editor-layout">
+          <main className="template-editor-main">
+            <section className="template-name-panel">
+              <p className="planner-kicker">Nazwa</p>
               <input
                 type="text"
                 value={name}
@@ -357,10 +351,10 @@ export default function TemplateEditorPage() {
             </section>
 
             {days.map((day, dayIndex) => (
-              <section key={day._id} className="surface-panel rounded-[var(--radius-xl)] p-5">
-                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <section key={day._id} className="template-day-editor">
+                <div className="template-day-editor-head">
                   <div className="min-w-0 flex-1">
-                    <p className="eyebrow">Dzień {dayIndex + 1}</p>
+                    <p className="planner-kicker">Dzień {dayIndex + 1}</p>
                     <input
                       type="text"
                       value={day.name}
@@ -374,8 +368,7 @@ export default function TemplateEditorPage() {
                     <button
                       type="button"
                       onClick={() => removeDay(dayIndex)}
-                      className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
-                      style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger-soft-strong)', color: 'var(--danger)' }}
+                      className="planner-secondary-action planner-secondary-action--danger"
                     >
                       <Trash2 size={13} />
                       Usuń dzień
@@ -387,10 +380,9 @@ export default function TemplateEditorPage() {
                   {day.exercises.map((exercise, exerciseIndex) => (
                     <div
                       key={`${dayIndex}-${exercise.exerciseSource}-${exercise.exerciseId}`}
-                      className="rounded-[var(--radius-lg)] border p-4"
-                      style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
+                      className="template-exercise-row"
                     >
-                      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                      <div className="template-exercise-row-head">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-sm font-semibold text-white">{exercise.name}</p>
@@ -410,15 +402,13 @@ export default function TemplateEditorPage() {
                         <button
                           type="button"
                           onClick={() => removeExercise(dayIndex, exerciseIndex)}
-                          className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
-                          style={{ background: 'var(--danger-soft)', border: '1px solid var(--danger-soft-strong)', color: 'var(--danger)' }}
+                          className="planner-icon-action planner-icon-action--danger"
                         >
                           <Trash2 size={13} />
-                          Usuń
                         </button>
                       </div>
 
-                      <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="template-exercise-inputs">
                         <label className="flex flex-col gap-2">
                           <span className="stat-meta">Serie</span>
                           <input
@@ -473,20 +463,18 @@ export default function TemplateEditorPage() {
 
                   {day.exercises.length === 0 && (
                     <div
-                      className="rounded-[var(--radius-lg)] border border-dashed px-4 py-6 text-sm"
-                      style={{ borderColor: 'var(--border)', color: 'var(--muted)', background: 'rgba(255,255,255,0.02)' }}
+                      className="template-day-empty"
                     >
                       Ten dzień jest pusty. Dodaj ćwiczenia, żeby móc uruchamiać gotową sesję.
                     </div>
                   )}
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-3">
+                <div className="template-day-actions">
                   <motion.button
                     type="button"
                     onClick={() => setPickerDayIndex(dayIndex)}
-                    className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-4 py-2.5 text-sm font-semibold"
-                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+                    className="planner-secondary-action"
                     whileTap={{ scale: 0.97 }}
                   >
                     <Plus size={15} />
@@ -497,36 +485,30 @@ export default function TemplateEditorPage() {
             ))}
           </main>
 
-          <aside className="desktop-sticky hidden xl:block space-y-4">
-            <div className="surface-panel rounded-[var(--radius-xl)] p-5">
-              <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
-                Podsumowanie
-              </p>
-              <div className="grid gap-3">
-                <div className="metric-card p-4">
-                  <p className="stat-meta">Dni</p>
-                  <p className="mt-3 text-2xl font-semibold text-white tabular-nums">{days.length}</p>
+          <aside className="desktop-sticky hidden xl:block template-editor-side">
+            <div className="template-editor-summary">
+              <p className="planner-kicker">Podsumowanie</p>
+              <div className="template-editor-summary-grid">
+                <div>
+                  <span>Dni</span>
+                  <strong>{days.length}</strong>
                 </div>
-                <div className="metric-card p-4">
-                  <p className="stat-meta">Ćwiczenia</p>
-                  <p className="mt-3 text-2xl font-semibold text-white tabular-nums">{totalExercises}</p>
+                <div>
+                  <span>Ćwiczenia</span>
+                  <strong>{totalExercises}</strong>
                 </div>
-                <div className="rounded-[var(--radius-lg)] border p-4" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}>
-                  <p className="text-sm font-semibold text-white">
-                    {(template?.name ?? name.trim()) || 'Nowy plan'}
-                  </p>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Każdy dzień zapisuje zestaw ćwiczeń z domyślnymi seriami, powtórzeniami i ciężarem startowym pod nową aktywną sesję.
-                  </p>
-                </div>
+              </div>
+
+              <div className="template-editor-summary-note">
+                <p>{(template?.name ?? name.trim()) || 'Nowy plan'}</p>
+                <span>Każdy dzień zapisuje ćwiczenia z domyślnymi seriami, powtórzeniami i ciężarem startowym.</span>
               </div>
             </div>
 
             <motion.button
               type="button"
               onClick={addDay}
-              className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-lg)] py-3 text-sm font-semibold"
-              style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+              className="planner-secondary-action template-editor-add-day"
               whileTap={{ scale: 0.97 }}
             >
               <Plus size={15} />
@@ -535,12 +517,11 @@ export default function TemplateEditorPage() {
           </aside>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="template-editor-bottom-actions">
           <motion.button
             type="button"
             onClick={addDay}
-            className="inline-flex items-center gap-2 rounded-[var(--radius-lg)] px-4 py-3 text-sm font-semibold xl:hidden"
-            style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+            className="planner-secondary-action template-editor-mobile-add-day"
             whileTap={{ scale: 0.97 }}
           >
             <Plus size={15} />
@@ -550,11 +531,7 @@ export default function TemplateEditorPage() {
           <motion.button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 rounded-[var(--radius-lg)] px-5 py-3 text-sm font-semibold disabled:opacity-60"
-            style={{
-              background: 'var(--primary-gradient)',
-              color: 'var(--accent-foreground)',
-            }}
+            className="planner-primary-action disabled:opacity-60"
             whileTap={{ scale: 0.97 }}
           >
             <Pencil size={15} />

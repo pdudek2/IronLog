@@ -70,6 +70,11 @@ export default function TemplatesPage() {
     if (active.exercises.length > 0) return true
     return Boolean(active.label?.trim())
   }, [active])
+  const plannerStats = useMemo(() => ({
+    templates: templates.length,
+    days: templates.reduce((sum, template) => sum + template.days.length, 0),
+    exercises: templates.reduce((sum, template) => sum + countTemplateExercises(template), 0),
+  }), [templates])
 
   async function handleDeleteConfirmed() {
     if (!deleteTarget) return
@@ -148,27 +153,37 @@ export default function TemplatesPage() {
 
   return (
     <>
-      <section className="hero-editorial">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex flex-col gap-5">
-            <p className="hero-editorial-date">Planowanie · szablony</p>
+      <section className="planner-header">
+        <div>
+          <p className="planner-kicker">Plany</p>
+          <h1>Plany.</h1>
+          <p>Rozpiski, dni treningowe i szybki start sesji w jednym widoku.</p>
+        </div>
 
-            <div>
-              <h1 className="hero-editorial-name">Szablony<br />treningowe.</h1>
-            </div>
-
-            <p className="hero-editorial-sub">
-              Zapisz rozpiski na dni tygodnia, uruchamiaj je jednym kliknięciem i trzymaj stały rytm pracy.
-            </p>
+        <div className="planner-header-actions">
+          <div className="planner-mini-stats" aria-label="Podsumowanie planów">
+            <span>
+              <strong>{plannerStats.templates}</strong>
+              plany
+            </span>
+            <span>
+              <strong>{plannerStats.days}</strong>
+              dni
+            </span>
+            <span>
+              <strong>{plannerStats.exercises}</strong>
+              ćw.
+            </span>
           </div>
 
           <motion.button
+            type="button"
             onClick={() => navigate('/templates/new')}
-            className="hero-editorial-cta"
+            className="planner-primary-action"
             whileTap={{ scale: 0.97 }}
           >
             <Plus size={16} />
-            Nowy szablon
+            Nowy plan
           </motion.button>
         </div>
       </section>
@@ -266,92 +281,89 @@ export default function TemplatesPage() {
             </div>
           </motion.div>
         ) : (
-          <div className="template-board">
+          <div className="template-board planner-template-board">
             {templates.map((template, index) => {
               const totalExercises = countTemplateExercises(template)
               const expanded = expandedTemplateId === template.id
               return (
-                <motion.div
+                <motion.article
                   key={template.id}
-                  className="template-card"
+                  className="template-card planner-template-row"
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04, duration: 0.2 }}
-                  whileHover={{ y: -2, boxShadow: '0 18px 52px rgba(0,0,0,0.55), inset 0 0 0 1px rgba(240,67,90,0.2)' }}
                 >
-                  <div className="template-card-main">
-                    <div className="min-w-0">
-                      <p className="eyebrow">Szablon</p>
-                      <h2 className="mt-2 text-xl font-semibold text-white">
+                  <div className="planner-template-main">
+                    <div className="planner-template-title">
+                      <span>Plan</span>
+                      <h2>
                         {template.name}
                       </h2>
-                      <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                        {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} • {totalExercises} {totalExercises === 1 ? 'ćwiczenie' : 'ćwiczeń'} • aktualizacja {formatDate(template.updatedAt)}
+                      <p>
+                        {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} · {totalExercises} {totalExercises === 1 ? 'ćwiczenie' : 'ćwiczeń'} · aktualizacja {formatDate(template.updatedAt)}
                       </p>
-
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {template.days.map((day, dayIndex) => (
-                          <span
-                            key={`${template.id}-summary-${dayIndex}`}
-                            className="template-day-chip"
-                          >
-                            {day.name} • {day.exercises.length}
-                          </span>
-                        ))}
-                      </div>
                     </div>
 
-                    <div className="template-card-actions">
+                    <div className="planner-template-days" aria-label={`Dni planu ${template.name}`}>
+                      {template.days.map((day, dayIndex) => (
+                        <button
+                          key={`${template.id}-summary-${dayIndex}`}
+                          type="button"
+                          className="planner-day-chip"
+                          onClick={() => void handleLaunch(template, dayIndex)}
+                          disabled={launching}
+                        >
+                          <span>{day.name}</span>
+                          <small>{day.exercises.length} ćw.</small>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="planner-template-actions">
+                      <motion.button
+                        type="button"
+                        onClick={() => void handleLaunch(template, 0)}
+                        disabled={launching}
+                        className="planner-template-start"
+                        whileTap={{ scale: 0.96 }}
+                      >
+                        <Play size={13} />
+                        Start
+                      </motion.button>
                       <button
+                        type="button"
                         aria-label={`Edytuj szablon ${template.name}`}
                         onClick={() => navigate(`/templates/${template.id}/edit`)}
-                        className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+                        className="planner-icon-action"
                       >
                         <Pencil size={13} />
-                        Edytuj
                       </button>
                       <button
+                        type="button"
                         aria-label={`Usuń szablon ${template.name}`}
                         onClick={() => setDeleteTarget(template)}
-                        className="inline-flex items-center justify-center rounded-[var(--radius-md)] p-2 transition-colors hover:bg-[rgba(240,167,90,0.18)]"
-                        style={{ border: '1px solid var(--danger-soft-strong)', color: 'var(--danger)' }}
+                        className="planner-icon-action planner-icon-action--danger"
                       >
                         <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
 
-                  <div className="template-card-footer">
+                  <div className="planner-template-footer">
                     <button
                       type="button"
                       onClick={() => setExpandedTemplateId((current) => current === template.id ? null : template.id)}
-                      className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold"
-                      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'white' }}
+                      className="planner-secondary-action"
                     >
                       {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      {expanded ? 'Zwiń dni planu' : 'Pokaż dni planu'}
+                      {expanded ? 'Zwiń strukturę' : 'Pokaż strukturę'}
                     </button>
-
-                    <motion.button
-                      onClick={() => void handleLaunch(template, 0)}
-                      disabled={launching}
-                      className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold disabled:opacity-50"
-                      style={{
-                        background: 'var(--primary-gradient)',
-                        color: 'var(--accent-foreground)',
-                      }}
-                      whileTap={{ scale: 0.96 }}
-                    >
-                      <Play size={13} />
-                      Start od dnia 1
-                    </motion.button>
                   </div>
 
                   <AnimatePresence initial={false}>
                     {expanded && (
                       <motion.div
-                        className="mt-4 space-y-3"
+                        className="planner-day-board"
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
@@ -360,48 +372,38 @@ export default function TemplatesPage() {
                         {template.days.map((day, dayIndex) => (
                           <div
                             key={`${template.id}-${dayIndex}`}
-                            className="rounded-[var(--radius-lg)] border p-4"
-                            style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.025)' }}
+                            className="planner-day-row"
                           >
-                            <div className="flex flex-wrap items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <p className="text-sm font-semibold text-white">{day.name}</p>
-                                <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+                            <div className="planner-day-row-head">
+                              <div>
+                                <p>{day.name}</p>
+                                <span>
                                   {day.exercises.length} {day.exercises.length === 1 ? 'ćwiczenie' : 'ćwiczeń'}
-                                </p>
+                                </span>
                               </div>
 
                               <motion.button
+                                type="button"
                                 onClick={() => void handleLaunch(template, dayIndex)}
                                 disabled={launching}
-                                className="inline-flex items-center gap-2 rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold disabled:opacity-50"
-                                style={{
-                                  background: 'rgba(255,255,255,0.04)',
-                                  border: '1px solid var(--border)',
-                                  color: 'white',
-                                }}
+                                className="planner-secondary-action"
                                 whileTap={{ scale: 0.96 }}
                               >
                                 <Play size={13} />
-                                Rozpocznij ten dzień
+                                Start dnia
                               </motion.button>
                             </div>
 
-                            <div className="mt-4 flex flex-wrap gap-2">
+                            <div className="planner-exercise-strip">
                               {day.exercises.slice(0, 5).map((exercise) => (
                                 <span
                                   key={`${day.name}-${exercise.exerciseSource}-${exercise.exerciseId}`}
-                                  className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }}
                                 >
                                   {exercise.name}
                                 </span>
                               ))}
                               {day.exercises.length > 5 && (
-                                <span
-                                  className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)', color: 'var(--muted)' }}
-                                >
+                                <span>
                                   +{day.exercises.length - 5}
                                 </span>
                               )}
@@ -411,7 +413,7 @@ export default function TemplatesPage() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </motion.div>
+                </motion.article>
               )
             })}
           </div>

@@ -11,6 +11,7 @@ interface WorkoutExerciseLedgerItemProps {
   exerciseAccent: string
   exerciseClientId: string
   exerciseIndex: number
+  fallbackExercise: WorkoutExercise | null
   categoryLabel?: string
   equipmentLabel?: string
   focusSetIndex: number
@@ -60,6 +61,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   exerciseAccent,
   exerciseClientId,
   exerciseIndex,
+  fallbackExercise,
   categoryLabel,
   equipmentLabel,
   focusSetIndex,
@@ -77,7 +79,9 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   onToggleSet,
   onUpdateSet,
 }: WorkoutExerciseLedgerItemProps) {
-  const exercise = useWorkoutStore((state) => selectExerciseByIdentity(state, exerciseIndex, exerciseClientId))
+  const liveExercise = useWorkoutStore((state) => selectExerciseByIdentity(state, exerciseIndex, exerciseClientId))
+  // AnimatePresence keeps exiting children mounted after the selector loses the exercise.
+  const exercise = liveExercise ?? fallbackExercise
   if (!exercise) return null
 
   const exerciseVolume = exercise.sets.reduce((sum, set) => (

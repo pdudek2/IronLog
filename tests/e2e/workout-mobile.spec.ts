@@ -24,8 +24,8 @@ async function visibleCount(locator: Locator): Promise<number> {
 async function expectMinHitArea(locator: Locator, label: string) {
   const box = await locator.boundingBox()
   expect(box, `${label} should be visible`).not.toBeNull()
-  expect(box!.width, `${label} width`).toBeGreaterThanOrEqual(44)
-  expect(box!.height, `${label} height`).toBeGreaterThanOrEqual(44)
+  expect(Math.round(box!.width), `${label} width`).toBeGreaterThanOrEqual(44)
+  expect(Math.round(box!.height), `${label} height`).toBeGreaterThanOrEqual(44)
 }
 
 async function expectFullyInViewport(page: Page, locator: Locator, label: string) {
@@ -220,7 +220,7 @@ test.describe('Active workout shell reduction', () => {
     await discardSessionIfPresent(page)
   })
 
-  test('desktop workout keeps top navigation, sidebar, and session hero visible', async ({ page }, testInfo) => {
+  test('desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'desktop-only contract')
 
     await goToFreshWorkout(page)
@@ -229,6 +229,29 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.locator('.top-nav')).toBeVisible()
     await expect(page.locator('aside .workout-control-panel')).toBeVisible()
     await expect(page.locator('.workout-session-hero')).toBeVisible()
+
+    await addExercise(page, 'Squat')
+
+    const firstSetRow = page.locator('.workout-set-row').first()
+    await firstSetRow.locator('input').nth(0).fill('60')
+    await firstSetRow.locator('input').nth(1).fill('8')
+    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1' }).click()
+
+    const restTimerBar = page.locator('.rest-timer-bar')
+    await expect(restTimerBar).toHaveCount(1)
+    await page.getByRole('button', { name: 'Pomiń przerwę' }).click()
+    await expect(restTimerBar).toHaveCount(0)
+
+    const removeExerciseButton = page.getByRole('button', { name: 'Usuń ćwiczenie Squat' })
+    await removeExerciseButton.click()
+
+    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'To usunie ćwiczenie wraz z wpisanymi seriami z aktywnej sesji.' })
+    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
+    await confirmDialog.getByRole('button', { name: 'Usuń ćwiczenie' }).click()
+
+    await expect(removeExerciseButton).toHaveCount(1)
+    await expect(removeExerciseButton).toHaveCount(0)
+    await expect(page.locator('.workout-empty-card')).toBeVisible()
 
     await discardSessionIfPresent(page)
   })

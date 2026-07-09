@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useWorkoutStore, type ActiveWorkout, type WorkoutSet } from '../store/workoutStore'
+import { useWorkoutStore, type ActiveWorkout, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { saveWorkout, getRecentWorkouts } from '../lib/workoutService'
@@ -286,6 +286,10 @@ function formatCompactVolume(volume: number): string {
   return `${Math.round(volume).toLocaleString('pl-PL')} kg`
 }
 
+function getExerciseClientId(exercise: WorkoutExercise, exerciseIndex: number): string {
+  return exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`
+}
+
 export default function WorkoutPage() {
   const { user } = useAuthStore()
   const { profile } = useProfileStore()
@@ -314,6 +318,7 @@ export default function WorkoutPage() {
   const [saving, setSaving] = useState(false)
   const [closingSession, setClosingSession] = useState(false)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
+  const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
@@ -370,6 +375,13 @@ export default function WorkoutPage() {
 
   // Quick picks — top exercises from recent sessions, shown when live session is empty
   const [quickPicks, setQuickPicks] = useState<Array<{ id: string; name: string; source: 'global' | 'user'; count: number }>>([])
+  const activeExercises = active?.exercises ?? null
+  const exerciseSnapshotByClientId = useMemo(() => {
+    if (!activeExercises) return new Map<string, WorkoutExercise>()
+    return new Map(
+      activeExercises.map((exercise, exerciseIndex) => [getExerciseClientId(exercise, exerciseIndex), exercise]),
+    )
+  }, [activeExercises])
 
   useEffect(() => {
     if (!user) return
@@ -492,18 +504,25 @@ export default function WorkoutPage() {
   }
 
   const handleRemoveExercise = useCallback((exerciseIndex: number) => {
-    const exercise = useWorkoutStore.getState().active?.exercises[exerciseIndex]
+    const currentActive = useWorkoutStore.getState().active
+    const exercise = currentActive?.exercises[exerciseIndex]
     if (!exercise) return
     const hasEnteredSets = exercise.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
     if (hasEnteredSets) {
       setPendingExerciseRemovalIndex(exerciseIndex)
       return
     }
+    if (currentActive.exercises.length === 1) {
+      setKeepExerciseStackMounted(true)
+    }
     useWorkoutStore.getState().removeExercise(exerciseIndex)
   }, [])
 
   function handleConfirmRemoveExercise() {
     if (pendingExerciseRemovalIndex === null) return
+    if (useWorkoutStore.getState().active?.exercises.length === 1) {
+      setKeepExerciseStackMounted(true)
+    }
     useWorkoutStore.getState().removeExercise(pendingExerciseRemovalIndex)
     setPendingExerciseRemovalIndex(null)
   }
@@ -676,6 +695,7 @@ export default function WorkoutPage() {
   const focusExerciseMeta = focusExercise ? exerciseCatalog.get(focusExercise.exerciseId) : null
   const focusAccent = CATEGORY_COLORS[focusExerciseMeta?.category ?? ''] ?? 'var(--accent)'
   const remainingSets = Math.max(totalSets - completedSets, 0)
+  const showExerciseStack = active.exercises.length > 0 || keepExerciseStackMounted
   const sessionSetMarkers = active.exercises.flatMap((exercise, exerciseIndex) => {
     const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
     const exerciseAccent = CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'
@@ -981,7 +1001,7 @@ export default function WorkoutPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            {active.exercises.length === 0 && (
+            {active.exercises.length === 0 && !keepExerciseStackMounted && (
               <>
                 <div
                   className="workout-empty-card"
@@ -1056,20 +1076,22 @@ export default function WorkoutPage() {
               </>
             )}
 
-            {active.exercises.length > 0 && (
+            {showExerciseStack && (
               <>
                 <div className="workout-exercise-stack">
-                  <AnimatePresence>
+                  <AnimatePresence onExitComplete={() => setKeepExerciseStackMounted(false)}>
                     {active.exercises.map((exercise, exerciseIndex) => {
                       const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
+                      const exerciseClientId = getExerciseClientId(exercise, exerciseIndex)
                       const hintKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
 
                       return (
                         <WorkoutExerciseLedgerItem
-                          key={exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
+                          key={exerciseClientId}
                           exerciseAccent={CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'}
-                          exerciseClientId={exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
+                          exerciseClientId={exerciseClientId}
                           exerciseIndex={exerciseIndex}
+                          fallbackExercise={exerciseSnapshotByClientId.get(exerciseClientId) ?? exercise}
                           categoryLabel={exerciseMeta?.category ? (CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
                           equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
                           focusSetIndex={exerciseIndex === focusExerciseIndex ? focusSetIndex : -1}
@@ -1092,16 +1114,18 @@ export default function WorkoutPage() {
                   </AnimatePresence>
                 </div>
 
-                <motion.button
-                  type="button"
-                  onClick={() => setShowPicker(true)}
-                  className="workout-primary-action workout-mobile-inline-add"
-                  style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <Plus size={16} strokeWidth={2.4} />
-                  <span>Dodaj ćwiczenie</span>
-                </motion.button>
+                {active.exercises.length > 0 && (
+                  <motion.button
+                    type="button"
+                    onClick={() => setShowPicker(true)}
+                    className="workout-primary-action workout-mobile-inline-add"
+                    style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <Plus size={16} strokeWidth={2.4} />
+                    <span>Dodaj ćwiczenie</span>
+                  </motion.button>
+                )}
               </>
             )}
           </div>

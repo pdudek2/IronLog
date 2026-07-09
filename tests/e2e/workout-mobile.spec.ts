@@ -34,9 +34,27 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
   expect(box, `${label} should be visible`).not.toBeNull()
   expect(viewport, 'Viewport should be available').not.toBeNull()
   expect(box!.x, `${label} left edge`).toBeGreaterThanOrEqual(0)
-  expect(box!.y, `${label} top edge`).toBeGreaterThanOrEqual(0)
   expect(box!.x + box!.width, `${label} right edge`).toBeLessThanOrEqual(viewport!.width)
-  expect(box!.y + box!.height, `${label} bottom edge`).toBeLessThanOrEqual(viewport!.height)
+
+  const lifecycleBar = page.locator('.workout-mobile-lifecycle-bar')
+  const restSurface = page.locator('.workout-mobile-action-bar')
+  let visibleTop = 0
+  let visibleBottom = viewport!.height
+
+  if (await lifecycleBar.isVisible().catch(() => false)) {
+    const lifecycleBox = await lifecycleBar.boundingBox()
+    expect(lifecycleBox, 'Lifecycle bar should have a bounding box when visible').not.toBeNull()
+    visibleTop = Math.max(visibleTop, Math.ceil(lifecycleBox!.y + lifecycleBox!.height))
+  }
+
+  if (await restSurface.isVisible().catch(() => false)) {
+    const restSurfaceBox = await restSurface.boundingBox()
+    expect(restSurfaceBox, 'Rest surface should have a bounding box when visible').not.toBeNull()
+    visibleBottom = Math.min(visibleBottom, Math.floor(restSurfaceBox!.y))
+  }
+
+  expect(box!.y, `${label} top edge`).toBeGreaterThanOrEqual(visibleTop)
+  expect(box!.y + box!.height, `${label} bottom edge`).toBeLessThanOrEqual(visibleBottom)
 }
 
 async function discardSessionIfPresent(page: Page): Promise<void> {
@@ -143,9 +161,11 @@ test.describe('Active workout shell reduction', () => {
 
     const doneButton = page.getByRole('button', { name: 'Oznacz serię 1' })
     const removeSetButton = page.getByRole('button', { name: 'Usuń serię 1' })
+    const actionBar = page.locator('.workout-mobile-action-bar')
 
     await expectMinHitArea(doneButton, 'Done button')
     await expectMinHitArea(removeSetButton, 'Remove set button')
+    await expect(actionBar).toHaveCount(0)
 
     await expect(page.getByRole('button', { name: /Dodaj serię/i })).toBeVisible()
     await page.getByRole('button', { name: /Dodaj serię/i }).click()
@@ -164,12 +184,20 @@ test.describe('Active workout shell reduction', () => {
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
     await doneButton.click()
 
-    const addRestButton = page.getByRole('button', { name: 'Dodaj 30 sekund' })
-    const skipRestButton = page.getByRole('button', { name: 'Pomiń przerwę' })
+    const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar .tabular-nums').innerText()
+    const addRestButton = actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })
+    const skipRestButton = actionBar.getByRole('button', { name: 'Pomiń przerwę' })
+    await expect(actionBar).toBeVisible()
     await expect(addRestButton).toBeVisible()
     await expect(skipRestButton).toBeVisible()
+    await expect(actionBar).not.toContainText(sessionTimerText)
+    await expect(actionBar.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true })).toHaveCount(0)
+    await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(0), 'First weight input during rest')
+    await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(1), 'First reps input during rest')
     await expectMinHitArea(addRestButton, 'Add rest time button')
     await expectMinHitArea(skipRestButton, 'Skip rest button')
+    await skipRestButton.click()
+    await expect(actionBar).toHaveCount(0)
 
     await discardSessionIfPresent(page)
   })

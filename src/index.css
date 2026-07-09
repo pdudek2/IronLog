@@ -5136,6 +5136,10 @@ a {
 }
 
 /* ── Active workout direction ───────────────────── */
+.workout-focus-shell {
+  --workout-mobile-lifecycle-bar-height: calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 44px + 0.75rem + 1px);
+}
+
 .workout-session-grid {
   display: grid;
   gap: 1.25rem;
@@ -5146,7 +5150,7 @@ a {
 }
 
 .workout-mobile-lifecycle-bar {
-  min-height: 4.75rem;
+  min-height: var(--workout-mobile-lifecycle-bar-height);
 }
 
 .workout-control-panel,
@@ -5559,6 +5563,7 @@ a {
 
 @media (max-width: 1023px) {
   .workout-session-grid {
+    padding-top: max(0px, calc(var(--workout-mobile-lifecycle-bar-height) - clamp(1rem, 2vw, 1.75rem)));
     padding-bottom: max(7.5rem, calc(6.5rem + env(safe-area-inset-bottom, 0px)));
   }
 

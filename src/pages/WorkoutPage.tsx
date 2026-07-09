@@ -671,7 +671,7 @@ export default function WorkoutPage() {
   const lastCompletedSet = completedSetSnapshots[completedSetSnapshots.length - 1] ?? null
 
   return (
-    <>
+    <div className="workout-focus-shell">
 
       {/* ── Mobile sticky header ─────────────────── */}
       <div
@@ -708,7 +708,7 @@ export default function WorkoutPage() {
         </motion.button>
       </div>
 
-      <div className="workout-session-grid pt-[5rem] lg:pt-0">
+      <div className="workout-session-grid">
 
         {/* ── Desktop sidebar only ─────────────────── */}
         <aside className="hidden lg:block desktop-sticky">
@@ -1296,6 +1296,6 @@ export default function WorkoutPage() {
           onCancel={() => setPendingExerciseRemovalIndex(null)}
         />
       )}
-    </>
+    </div>
   )
 }

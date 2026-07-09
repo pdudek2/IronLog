@@ -64,7 +64,7 @@ test.describe('Chat UI', () => {
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
     // Input placeholder shows instruction to add key first
-    const msgInput = page.getByPlaceholder('Dodaj najpierw Claude API key', { exact: false })
+    const msgInput = page.getByPlaceholder('Dodaj Claude API key, żeby odblokować czat', { exact: false })
       .or(page.locator('textarea[disabled]'))
       .first()
 
@@ -73,33 +73,23 @@ test.describe('Chat UI', () => {
     await page.screenshot({ path: 'test-results/chat-disabled-input.png' })
   })
 
-  test('can switch between Chat and Generator workspaces', async ({ page }) => {
+  test('can switch between conversation and plan workspaces', async ({ page }) => {
     await page.goto('/chat')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
-    // Chat workspace should be active by default
-    await expect(page.getByText('Chat z kontekstem IronLog')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('heading', { name: 'Decyzje treningowe' })).toBeVisible({ timeout: 5_000 })
 
-    // Switch to Generator — use the eyebrow text "Generator" in the nav switcher
-    // The chat page has two workspaces: "Chat z kontekstem IronLog" and "Generator planu"
-    // Switcher buttons are the ones that change workspace, identified by their eyebrow label
-    const generatorBtn = page.getByRole('button', { name: /Generator/i }).first()
-    await expect(generatorBtn).toBeVisible({ timeout: 5_000 })
-    await generatorBtn.click()
+    const modeSwitch = page.locator('.coach-mode-switch')
+    const planBtn = modeSwitch.getByRole('button', { name: /^Plan/i })
+    await expect(planBtn).toBeVisible({ timeout: 5_000 })
+    await planBtn.click()
 
-    // Generator UI should appear
-    await expect(page.getByText('Generator planu', { exact: true })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('heading', { name: 'Brief treningowy' })).toBeVisible({ timeout: 5_000 })
 
     await page.screenshot({ path: 'test-results/chat-generator.png' })
 
-    // Switch back to chat
-    const chatBtn = page.getByRole('button', { name: /^Chat$/i }).first()
-    if (await chatBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await chatBtn.click()
-    } else {
-      // Alt: use nav link or back navigation
-      await page.goto('/chat')
-    }
-    await expect(page.getByText('Chat z kontekstem IronLog')).toBeVisible({ timeout: 5_000 })
+    const conversationBtn = modeSwitch.getByRole('button', { name: /^Rozmowa/i })
+    await conversationBtn.click()
+    await expect(page.getByRole('heading', { name: 'Decyzje treningowe' })).toBeVisible({ timeout: 5_000 })
   })
 })

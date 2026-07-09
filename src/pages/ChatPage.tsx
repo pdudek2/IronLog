@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type * as React from 'react'
-import { Bot, LoaderCircle, MessagesSquare, RotateCcw, Send, ShieldCheck, Sparkles } from 'lucide-react'
+import { Bot, LoaderCircle, RotateCcw, Send, ShieldCheck, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -23,6 +23,12 @@ const STARTER_PROMPTS = [
   'Na czym powinienem się skupić w kolejnym treningu upper body?',
   'Czy moje readiness sugeruje dziś mocniejszą czy lżejszą sesję?',
 ]
+
+const STARTER_PROMPT_LABELS: Record<string, string> = {
+  'Przeanalizuj mój ostatni tydzień treningowy.': 'Podsumuj tydzień',
+  'Na czym powinienem się skupić w kolejnym treningu upper body?': 'Kolejny upper',
+  'Czy moje readiness sugeruje dziś mocniejszą czy lżejszą sesję?': 'Readiness dziś',
+}
 
 const DEMO_EMAIL = 'demo@ironlog.app'
 
@@ -136,6 +142,8 @@ export default function ChatPage() {
 
   const previewDay = planPreview?.days[selectedPreviewDay] ?? null
   const totalPlanExercises = planPreview?.days.reduce((sum, day) => sum + day.exercises.length, 0) ?? 0
+  const assistantReplies = messages.filter((message) => message.role === 'assistant').length
+  const promptCount = messages.filter((message) => message.role === 'user').length
 
   useEffect(() => {
     if (!isDemoUser || demoSeededRef.current) return
@@ -317,54 +325,52 @@ export default function ChatPage() {
 
   return (
     <>
-      <section className="hero-editorial">
+      <section className="coach-header">
         <motion.div
-          className="flex flex-col gap-5"
+          className="coach-header-copy"
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <p className="hero-editorial-date">AI Coach · Claude 4</p>
-            <div
-              className="rounded-[var(--radius-pill)] px-3 py-1.5 text-xs font-semibold"
-              style={{
-                background: configured ? 'var(--accent-soft)' : 'transparent',
-                borderColor: configured ? 'var(--accent-soft-strong)' : 'var(--border)',
-                border: `1px solid ${configured ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-                color: configured ? 'var(--accent)' : 'var(--muted)',
-              }}
-            >
-              {configured ? '● Klucz gotowy' : 'Skonfiguruj klucz'}
-            </div>
-          </div>
-
-          <div>
-            <h1 className="hero-editorial-name">Asystent<br />treningowy.</h1>
-          </div>
-
-          <p className="hero-editorial-sub">
-            Sprawdź progres, dopytaj o kolejny krok albo ułóż nowy szablon na bazie swojej historii.
-          </p>
+          <p className="coach-kicker">AI Coach</p>
+          <h1>Coach.</h1>
+          <p>Rozmowa, decyzje treningowe i generator planu w jednym miejscu.</p>
         </motion.div>
+
+        <div className="coach-header-panel" aria-label="Status AI Coacha">
+          <div className="coach-status-line">
+            <span data-ready={configured} />
+            <strong>{configured ? 'Klucz gotowy' : 'Klucz wymagany'}</strong>
+          </div>
+          <div className="coach-header-stats">
+            <span>
+              <strong>{promptCount}</strong>
+              pyt.
+            </span>
+            <span>
+              <strong>{assistantReplies}</strong>
+              odp.
+            </span>
+            <span>
+              <strong>{activeTab === 'chat' ? 'Chat' : 'Plan'}</strong>
+              tryb
+            </span>
+          </div>
+        </div>
       </section>
 
-      <div className="ai-workspace space-y-5">
-
-        <section className="ai-mode-switch surface-panel rounded-[var(--radius-xl)] p-2">
-          <div className="grid gap-2 sm:grid-cols-2">
+      <div className="ai-workspace coach-workspace">
+        <section className="coach-mode-switch" aria-label="Tryb AI Coacha">
             {[
               {
                 key: 'chat' as const,
-                eyebrow: 'Rozmowa',
-                title: 'Analiza i pytania',
-                desc: 'Pytania o progres, ostatnie sesje i kolejne decyzje treningowe.',
+                title: 'Rozmowa',
+                desc: 'Pytania, analiza, decyzja na dziś.',
               },
               {
                 key: 'plan' as const,
-                eyebrow: 'Generator',
-                title: 'Nowy szablon z AI',
-                desc: 'Brief, podgląd i zapis gotowego szablonu.',
+                title: 'Plan',
+                desc: 'Brief, podgląd, zapis szablonu.',
               },
             ].map((tab) => {
               const active = activeTab === tab.key
@@ -374,35 +380,25 @@ export default function ChatPage() {
                   key={tab.key}
                   type="button"
                   onClick={() => setActiveTab(tab.key)}
-                  className="rounded-[var(--radius-lg)] border px-4 py-4 text-left transition"
-                  style={{
-                    background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.02)',
-                    borderColor: active ? 'var(--accent-soft-strong)' : 'transparent',
-                    boxShadow: active ? 'inset 0 1px 0 rgba(255,255,255,0.04)' : 'none',
-                  }}
+                  className="coach-mode-button"
+                  data-active={active}
                 >
-                  <p className="eyebrow mb-2" style={{ color: active ? 'var(--accent)' : 'var(--muted)' }}>
-                    {tab.eyebrow}
-                  </p>
-                  <p className="text-base font-semibold text-white">{tab.title}</p>
-                  <p className="mt-1 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    {tab.desc}
-                  </p>
+                  <strong>{tab.title}</strong>
+                  <span>{tab.desc}</span>
                 </button>
               )
             })}
-          </div>
         </section>
 
-        <div className="ai-workspace-grid grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(19rem,0.85fr)]">
-          <div className="space-y-5">
+        <div className="coach-workspace-grid">
+          <div className="coach-main-flow">
             {activeTab === 'chat' ? (
               <>
-                <section className="ai-chat-panel surface-panel rounded-[var(--radius-xl)] p-5">
-                  <div className="mb-4 flex items-start justify-between gap-4">
+                <section className="coach-chat-panel surface-panel">
+                  <div className="coach-panel-head">
                     <div>
-                      <p className="eyebrow mb-1">Rozmowa</p>
-                      <h2 className="section-title">Chat z kontekstem IronLog</h2>
+                      <p>Rozmowa</p>
+                      <h2>Decyzje treningowe</h2>
                     </div>
 
                     <Button
@@ -414,7 +410,7 @@ export default function ChatPage() {
                         setError('')
                       }}
                       disabled={messages.length === 0 && !streamText}
-                      className="inline-flex items-center gap-2"
+                      className="coach-reset-button inline-flex items-center gap-2"
                     >
                       <RotateCcw size={14} />
                       Reset
@@ -422,46 +418,32 @@ export default function ChatPage() {
                   </div>
 
                   <div
-                    className="overflow-hidden rounded-[var(--radius-lg)] border p-4"
-                    style={{
-                      background: 'rgba(255,255,255,0.025)',
-                      borderColor: 'var(--border)',
-                      height: 'min(36rem, calc(100dvh - 22rem))',
-                      minHeight: '20rem',
-                    }}
+                    className={`coach-thread ${messages.length === 0 && !streamText ? 'coach-thread--empty' : ''}`}
                     aria-label="Rozmowa z AI Coachem"
                     aria-busy={sending}
                   >
                     {messages.length === 0 && !streamText ? (
-                      <div className="flex h-full min-h-[20rem] flex-col items-center justify-center gap-8 py-6">
-                        <div className="text-center">
-                          <div
-                            className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--radius-lg)]"
-                            style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
-                          >
+                      <div className="coach-empty-thread">
+                        <div>
+                          <div className="coach-empty-icon">
                             <Bot size={24} />
                           </div>
-                          <p className="text-lg font-semibold text-white">Zacznij od konkretu</p>
-                          <p className="mt-2 max-w-sm text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                            Asystent widzi Twój profil, gotowość, ostatnie sesje i rekordy.
-                          </p>
+                          <p>Zacznij od pytania</p>
+                          <span>Tydzień, kolejny trening, readiness albo plateau.</span>
                         </div>
 
-                        <div className="grid w-full gap-2">
+                        <div className="coach-empty-prompts">
                           {STARTER_PROMPTS.map((prompt) => (
                             <button
                               key={prompt}
                               type="button"
                               onClick={() => void handleSend(prompt)}
                               disabled={!configured || sending}
-                              className="rounded-[var(--radius-lg)] border px-4 py-3 text-left text-sm transition hover:border-[rgba(240,67,90,0.3)] hover:bg-[rgba(240,67,90,0.05)] disabled:opacity-50"
-                              style={{
-                                background: 'rgba(255,255,255,0.025)',
-                                borderColor: 'var(--border)',
-                                color: 'white',
-                              }}
+                              className="coach-prompt-button"
+                              aria-label={prompt}
                             >
-                              {prompt}
+                              <span className="coach-prompt-full">{prompt}</span>
+                              <span className="coach-prompt-short">{STARTER_PROMPT_LABELS[prompt] ?? prompt}</span>
                             </button>
                           ))}
                         </div>
@@ -470,23 +452,19 @@ export default function ChatPage() {
                       <div
                         ref={chatContainerRef}
                         onScroll={handleChatScroll}
-                        className="h-full overflow-y-auto pr-1 no-scrollbar"
+                        className="coach-thread-scroll no-scrollbar"
                         role="log"
                         aria-live={sending ? 'off' : 'polite'}
                         aria-relevant="additions"
                       >
-                        <div className="space-y-4">
+                        <div className="coach-message-list">
                           {messages.map((message) => (
                             <div
                               key={message.id}
-                              className="max-w-[90%] rounded-[var(--radius-lg)] border px-4 py-3"
-                              style={{
-                                marginLeft: message.role === 'assistant' ? 0 : 'auto',
-                                background: message.role === 'assistant' ? 'rgba(255,255,255,0.03)' : 'var(--accent-soft)',
-                                borderColor: message.role === 'assistant' ? 'var(--border)' : 'var(--accent-soft-strong)',
-                              }}
+                              className="coach-message"
+                              data-role={message.role}
                             >
-                              <p className="mb-1 text-[11px] font-semibold" style={{ color: message.role === 'assistant' ? 'var(--muted)' : 'var(--accent)' }}>
+                              <p>
                                 {message.role === 'assistant' ? 'AI Coach' : 'Ty'}
                               </p>
                               <ChatMarkdown content={message.content} />
@@ -494,40 +472,22 @@ export default function ChatPage() {
                           ))}
 
                           {sending && !streamText && (
-                            <div
-                              className="max-w-[90%] rounded-[var(--radius-lg)] border px-4 py-3"
-                              style={{
-                                background: 'rgba(255,255,255,0.03)',
-                                borderColor: 'var(--border)',
-                              }}
-                            >
-                              <p className="mb-1 text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>
-                                AI Coach
-                              </p>
+                            <div className="coach-message" data-role="assistant">
+                              <p>AI Coach</p>
                               <div className="flex items-center gap-3">
                                 <div className="chat-typing-indicator" aria-hidden="true">
                                   <span className="chat-typing-dot" />
                                   <span className="chat-typing-dot" />
                                   <span className="chat-typing-dot" />
                                 </div>
-                                <p className="text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                                  Analizuję historię i składam odpowiedź...
-                                </p>
+                                <span className="coach-thinking">Analizuję kontekst...</span>
                               </div>
                             </div>
                           )}
 
                           {streamText && (
-                            <div
-                              className="max-w-[90%] rounded-[var(--radius-lg)] border px-4 py-3"
-                              style={{
-                                background: 'rgba(255,255,255,0.03)',
-                                borderColor: 'var(--border)',
-                              }}
-                            >
-                              <p className="mb-1 text-[11px] font-semibold" style={{ color: 'var(--muted)' }}>
-                                AI Coach
-                              </p>
+                            <div className="coach-message" data-role="assistant">
+                              <p>AI Coach</p>
                               <div className="flex items-end gap-1">
                                 <div className="min-w-0 flex-1">
                                   <ChatMarkdown content={streamText} />
@@ -544,7 +504,7 @@ export default function ChatPage() {
 
                   {error && <SectionError message={error} />}
 
-                  <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+                  <form onSubmit={handleSubmit} className="coach-composer">
                     <textarea
                       aria-label="Wiadomość do AI Coacha"
                       value={input}
@@ -558,19 +518,11 @@ export default function ChatPage() {
                       placeholder={configured ? 'Zapytaj o progres, plan albo ostatnią sesję' : 'Dodaj Claude API key, żeby odblokować czat'}
                       disabled={!configured || sending}
                       rows={2}
-                      className="w-full resize-none rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none transition-all placeholder:text-[color:var(--muted-soft)] disabled:opacity-60"
-                      style={{
-                        background: 'var(--input-bg)',
-                        border: '1px solid var(--border)',
-                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.03)',
-                        overflowY: 'auto',
-                      }}
+                      className="coach-composer-input"
                     />
 
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>
-                        Koszt odpowiedzi rozlicza Twój klucz Claude.
-                      </p>
+                    <div className="coach-composer-footer">
+                      <p>Koszt odpowiedzi rozlicza Twój klucz Claude.</p>
 
                       <Button
                         type="submit"
@@ -583,61 +535,18 @@ export default function ChatPage() {
                     </div>
                   </form>
                 </section>
-
-                <section className="ai-usage-strip surface-panel rounded-[var(--radius-xl)] p-5">
-                  <div className="flex items-center gap-2">
-                    <ShieldCheck size={16} style={{ color: 'var(--success)' }} />
-                    <p className="text-sm font-semibold text-white">Najczęstsze zastosowania</p>
-                  </div>
-                  <div className="mt-3 grid gap-3 md:grid-cols-3">
-                    {[
-                      {
-                        icon: <MessagesSquare size={16} />,
-                        title: 'Ocena sesji',
-                        desc: 'Ocena ostatniego treningu, wolumenu i jakości pracy.',
-                      },
-                      {
-                        icon: <Sparkles size={16} />,
-                        title: 'Decyzja na dziś',
-                        desc: 'Dobór mocniejszej, lżejszej albo technicznej sesji na dziś.',
-                      },
-                      {
-                        icon: <Bot size={16} />,
-                        title: 'Kolejny krok',
-                        desc: 'Ustalenie priorytetu na kolejny trening i progresji.',
-                      },
-                    ].map((item) => (
-                      <div
-                        key={item.title}
-                        className="rounded-[var(--radius-lg)] border p-4"
-                        style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span style={{ color: 'var(--accent)' }}>{item.icon}</span>
-                          <p className="text-sm font-semibold text-white">{item.title}</p>
-                        </div>
-                        <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                          {item.desc}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </section>
               </>
             ) : (
               <>
-                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
-                  <div className="mb-5 flex items-start justify-between gap-4">
+                <section className="coach-plan-panel surface-panel">
+                  <div className="coach-panel-head">
                     <div>
-                      <p className="eyebrow mb-1">Generator planu</p>
-                      <h2 className="section-title">Wygeneruj szablon z AI</h2>
-                      <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                        Podaj cel i ograniczenia, a IronLog przygotuje plan gotowy do zapisania.
-                      </p>
+                      <p>Generator planu</p>
+                      <h2>Brief treningowy</h2>
                     </div>
 
                     <div
-                      className="rounded-[var(--radius-pill)] border px-3 py-2 text-xs font-semibold"
+                      className="coach-plan-state"
                       style={{
                         background: planPreview ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                         borderColor: planPreview ? 'var(--accent-soft-strong)' : 'var(--border)',
@@ -648,22 +557,20 @@ export default function ChatPage() {
                     </div>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <label className="block md:col-span-2">
+                  <div className="coach-plan-form">
+                    <label className="coach-field md:col-span-2">
                       <span className="stat-meta">Cel planu</span>
                       <input
                         type="text"
                         value={planGoal}
                         onChange={(event) => setPlanGoal(event.target.value)}
                         placeholder="Np. upper/lower pod siłę i prostą progresję"
-                        className="mt-2 w-full rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none"
-                        style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                       />
                     </label>
 
-                    <div>
+                    <div className="coach-field">
                       <span className="stat-meta">Dni w tygodniu</span>
-                      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Liczba dni treningowych w tygodniu">
+                      <div className="coach-chip-row" role="group" aria-label="Liczba dni treningowych w tygodniu">
                         {[2, 3, 4, 5, 6].map((days) => (
                           <button
                             key={days}
@@ -683,9 +590,9 @@ export default function ChatPage() {
                       </div>
                     </div>
 
-                    <div>
+                    <div className="coach-field">
                       <span className="stat-meta">Poziom</span>
-                      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Poziom zaawansowania">
+                      <div className="coach-chip-row" role="group" aria-label="Poziom zaawansowania">
                         {EXPERIENCE_OPTIONS.map((option) => (
                           <button
                             key={option.value}
@@ -705,9 +612,9 @@ export default function ChatPage() {
                       </div>
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div className="coach-field md:col-span-2">
                       <span className="stat-meta">Dostępny sprzęt</span>
-                      <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Dostępny sprzęt">
+                      <div className="coach-chip-row" role="group" aria-label="Dostępny sprzęt">
                         {EQUIPMENT_OPTIONS.map((option) => {
                           const active = planEquipment.includes(option.value)
                           return (
@@ -730,37 +637,31 @@ export default function ChatPage() {
                       </div>
                     </div>
 
-                    <label className="block">
+                    <label className="coach-field">
                       <span className="stat-meta">Fokus</span>
                       <input
                         type="text"
                         value={planFocus}
                         onChange={(event) => setPlanFocus(event.target.value)}
                         placeholder="Np. mocny bench, lepsze plecy, prosty rytm tygodnia"
-                        className="mt-2 w-full rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none"
-                        style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                       />
                     </label>
 
-                    <label className="block">
+                    <label className="coach-field">
                       <span className="stat-meta">Dodatkowe uwagi</span>
                       <textarea
                         value={planNotes}
                         onChange={(event) => setPlanNotes(event.target.value)}
                         rows={4}
                         placeholder="Np. trening do 60 minut, bez martwego ciągu, nacisk na technikę"
-                        className="mt-2 w-full resize-none rounded-[var(--radius-lg)] px-4 py-3 text-sm text-white outline-none"
-                        style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
                       />
                     </label>
                   </div>
 
                   {planError && <div className="mt-4"><SectionError message={planError} /></div>}
 
-                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-xs leading-5" style={{ color: 'var(--muted)' }}>
-                      Generator bierze pod uwagę profil, historię i katalog ćwiczeń.
-                    </p>
+                  <div className="coach-plan-actions">
+                    <p>Profil, historia i katalog ćwiczeń są dołączane do briefu.</p>
 
                     <Button
                       type="button"
@@ -775,17 +676,17 @@ export default function ChatPage() {
                 </section>
 
                 {planPreview && (
-                  <section className="surface-panel rounded-[var(--radius-xl)] p-5">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
+                  <section className="coach-plan-preview surface-panel">
+                    <div className="coach-plan-preview-head">
                       <div>
-                        <p className="eyebrow mb-1">Podgląd planu</p>
-                        <h2 className="section-title">{planPreview.name}</h2>
+                        <p>Podgląd planu</p>
+                        <h2>{planPreview.name}</h2>
                         <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                           {planPreview.summary}
                         </p>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="coach-preview-stats">
                         {[
                           { label: 'Dni', value: String(planPreview.days.length) },
                           { label: 'Ćwiczenia', value: String(totalPlanExercises) },
@@ -800,8 +701,7 @@ export default function ChatPage() {
                         ].map((metric) => (
                           <div
                             key={metric.label}
-                            className="min-w-[5.5rem] rounded-[var(--radius-lg)] border px-3 py-3"
-                            style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
+                            className="coach-preview-stat"
                           >
                             <p className="stat-meta">{metric.label}</p>
                             <p className="mt-2 text-xl font-semibold text-white">{metric.value}</p>
@@ -810,7 +710,7 @@ export default function ChatPage() {
                       </div>
                     </div>
 
-                    <div className="mt-5 flex flex-wrap gap-2">
+                    <div className="coach-chip-row mt-5">
                       {planPreview.days.map((day, index) => (
                         <button
                           key={`${day.name}-${index}`}
@@ -830,7 +730,7 @@ export default function ChatPage() {
 
                     {previewDay && (
                       <div
-                        className="mt-4 rounded-[var(--radius-lg)] border"
+                        className="coach-preview-day"
                         style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
                       >
                         <div className="flex items-center justify-between gap-3 border-b px-4 py-4" style={{ borderColor: 'var(--border)' }}>
@@ -912,7 +812,7 @@ export default function ChatPage() {
             )}
           </div>
 
-          <div className="ai-side-rail space-y-5">
+          <div className="ai-side-rail coach-rail">
             <AiKeyPanel
               onConfiguredChange={setConfigured}
               collapsed={configured && !showConfigPanel}
@@ -922,65 +822,79 @@ export default function ChatPage() {
 
             {activeTab === 'chat' ? (
               showConfigPanel || !configured ? (
-                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
-                  <div className="flex items-center gap-2">
+                <section className="coach-context-panel surface-panel">
+                  <div className="coach-context-head">
                     <ShieldCheck size={16} style={{ color: 'var(--success)' }} />
-                    <p className="text-sm font-semibold text-white">Prywatność i dostęp</p>
+                    <p>Prywatność</p>
                   </div>
-                  <div className="mt-3 space-y-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    <p>Klucz działa tylko na tym urządzeniu i nie jest przypisany do konta.</p>
-                    <p>Na innym urządzeniu dodasz go osobno.</p>
-                    <p>Asystent korzysta z Twojego profilu i historii treningowej, żeby odpowiadać trafniej.</p>
+                  <div className="coach-context-list">
+                    <div>
+                      <span>Klucz</span>
+                      <strong>lokalnie</strong>
+                    </div>
+                    <div>
+                      <span>Konto</span>
+                      <strong>osobno na każdym urządzeniu</strong>
+                    </div>
+                    <div>
+                      <span>Kontekst</span>
+                      <strong>historia, gotowość, rekordy</strong>
+                    </div>
                   </div>
                 </section>
               ) : (
-                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
-                  <div className="flex items-start gap-3">
-                    <div
-                      className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-[var(--radius-md)]"
-                      style={{
-                        background: 'rgba(143,184,160,0.08)',
-                        border: '1px solid rgba(143,184,160,0.16)',
-                        color: 'var(--success)',
-                      }}
-                    >
+                <section className="coach-context-panel surface-panel">
+                  <div className="coach-context-head">
+                    <span>
                       <ShieldCheck size={16} />
+                    </span>
+                    <p>Kontekst</p>
+                  </div>
+                  <div className="coach-context-list">
+                    <div>
+                      <span>Źródła</span>
+                      <strong>profil, treningi, rekordy</strong>
                     </div>
                     <div>
-                      <p className="text-sm font-semibold text-white">Prywatność i dostęp</p>
-                      <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                        Klucz działa lokalnie, a odpowiedzi korzystają z kontekstu Twoich treningów.
-                      </p>
+                      <span>Tryb</span>
+                      <strong>rozmowa</strong>
+                    </div>
+                    <div>
+                      <span>Klucz</span>
+                      <strong>lokalnie w przeglądarce</strong>
                     </div>
                   </div>
                 </section>
               )
             ) : (
               <>
-                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
-                  <p className="eyebrow mb-1">Jak pisać brief</p>
-                  <h2 className="section-title mb-4">Co pomaga generatorowi</h2>
-                  <div className="space-y-3">
+                <section className="coach-context-panel surface-panel">
+                  <div className="coach-context-head">
+                    <Sparkles size={16} />
+                    <p>Brief</p>
+                  </div>
+                  <div className="coach-context-list">
                     {[
-                      'Podaj konkretny cel: siła, masa, powrót po przerwie albo prosty rytm 3-4 dni.',
-                      'Dopisz ograniczenia: czas treningu, brak wybranych ćwiczeń, nacisk na technikę.',
-                      'Wskaż fokus, jeśli chcesz mocniej popchnąć bench, plecy albo nogi.',
-                    ].map((tip) => (
+                      ['Cel', 'siła, masa, powrót, rytm'],
+                      ['Ograniczenia', 'czas, sprzęt, ćwiczenia'],
+                      ['Fokus', 'partia, lift, technika'],
+                    ].map(([label, value]) => (
                       <div
-                        key={tip}
-                        className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm leading-6"
-                        style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)', color: 'var(--muted)' }}
+                        key={label}
                       >
-                        {tip}
+                        <span>{label}</span>
+                        <strong>{value}</strong>
                       </div>
                     ))}
                   </div>
                 </section>
 
-                <section className="surface-panel rounded-[var(--radius-xl)] p-5">
-                  <p className="eyebrow mb-1">Status planu</p>
-                  <h2 className="section-title mb-4">Podsumowanie</h2>
-                  <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+                <section className="coach-context-panel surface-panel">
+                  <div className="coach-context-head">
+                    <Bot size={16} />
+                    <p>Status planu</p>
+                  </div>
+                  <div className="coach-context-list">
                     {[
                       {
                         label: 'Tryb',
@@ -997,11 +911,9 @@ export default function ChatPage() {
                     ].map((item) => (
                       <div
                         key={item.label}
-                        className="rounded-[var(--radius-lg)] border px-4 py-4"
-                        style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
                       >
-                        <p className="stat-meta">{item.label}</p>
-                        <p className="mt-2 text-2xl font-semibold text-white">{item.value}</p>
+                        <span>{item.label}</span>
+                        <strong>{item.value}</strong>
                       </div>
                     ))}
                   </div>

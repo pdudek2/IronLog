@@ -73,8 +73,8 @@ test.describe('Progress analytics', () => {
     await page.waitForTimeout(2_000)
 
     // Scroll down to find records section
-    await page.getByText('Rekordy osobiste').scrollIntoViewIfNeeded()
-    await expect(page.getByText('Rekordy osobiste')).toBeVisible()
+    await page.getByText('Najlepsze wyniki').scrollIntoViewIfNeeded()
+    await expect(page.getByText('Najlepsze wyniki')).toBeVisible()
 
     await page.screenshot({ path: 'test-results/progress-records.png' })
   })

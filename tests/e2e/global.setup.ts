@@ -15,14 +15,16 @@ setup('authenticate', async ({ page }) => {
 
   await page.goto('/login')
 
-  // Fill login form — placeholders match LoginPage.tsx
-  await page.getByPlaceholder('user@mail.pl').fill(email)
-  await page.getByPlaceholder('••••••••').fill(password)
+  await page.getByLabel('Email').fill(email)
+  await page.getByLabel('Hasło').fill(password)
   await page.getByRole('button', { name: 'Zaloguj się' }).click()
 
   // Firebase Auth triggers onAuthStateChanged → PublicRoute redirects to /dashboard
   await page.waitForURL('/dashboard', { timeout: 20_000 })
   await expect(page).toHaveURL('/dashboard')
+
+  // Keep consent UI out of authenticated test flows. Consent has its own public-route spec.
+  await page.evaluate(() => window.localStorage.setItem('ironlog.analyticsConsent', 'denied'))
 
   // Wait for Firebase to flush auth tokens to localStorage (setPersistence is async)
   await page.waitForTimeout(1_000)

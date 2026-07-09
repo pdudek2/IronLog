@@ -20,13 +20,13 @@ test.describe('Workout flow', () => {
   })
 
   test('workout detail page renders without errors', async ({ page }) => {
-    // Navigate to workout history first to find an existing workout
-    await page.goto('/dashboard')
+    await page.goto('/history')
     await expect(page.locator('.page-shell')).toBeVisible()
 
-    // If there are any workout cards in recent history, click the first one
-    const workoutLink = page.locator('a[href^="/workout/"]').first()
-    const hasWorkout = await workoutLink.count() > 0
+    const workoutLink = page.locator('.history-workout-row').first()
+    const hasWorkout = await workoutLink.waitFor({ state: 'visible', timeout: 10_000 })
+      .then(() => true)
+      .catch(() => false)
 
     if (hasWorkout) {
       await workoutLink.click()
@@ -42,9 +42,12 @@ test.describe('Templates flow', () => {
     await page.goto('/templates')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
-    const newBtn = page.getByRole('button', { name: /nowy|utwórz|dodaj/i })
-    if (await newBtn.count() > 0) {
-      await newBtn.first().click()
+    const newBtn = page.getByRole('button', { name: 'Nowy plan' })
+    const hasNewButton = await newBtn.waitFor({ state: 'visible', timeout: 8_000 })
+      .then(() => true)
+      .catch(() => false)
+    if (hasNewButton) {
+      await newBtn.click()
       await page.waitForURL('/templates/new', { timeout: 5_000 })
       await expect(page.locator('.page-shell')).toBeVisible()
     } else {

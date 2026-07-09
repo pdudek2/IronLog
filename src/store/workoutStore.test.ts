@@ -51,6 +51,82 @@ describe('workoutStore set steppers', () => {
   })
 })
 
+describe('workoutStore completed set validation', () => {
+  beforeEach(() => {
+    useWorkoutStore.setState({ active: null })
+  })
+
+  it('does not complete a set without repetitions', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      startedAt: 1,
+      exercises: [
+        {
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: [{ weight: '80', reps: '', done: false }],
+        },
+      ],
+    })
+
+    useWorkoutStore.getState().toggleSetDone(0, 0)
+
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.done).toBe(false)
+  })
+
+  it('allows a bodyweight set with repetitions and no weight', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      startedAt: 1,
+      exercises: [
+        {
+          exerciseId: 'pull-up',
+          exerciseSource: 'global',
+          name: 'Pull-up',
+          sets: [{ weight: '', reps: '8', done: false }],
+        },
+      ],
+    })
+
+    useWorkoutStore.getState().toggleSetDone(0, 0)
+
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.done).toBe(true)
+  })
+
+  it('clears the completed state when repetitions are removed', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      startedAt: 1,
+      exercises: [
+        {
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: [{ weight: '80', reps: '5', done: true }],
+        },
+      ],
+    })
+
+    useWorkoutStore.getState().updateSet(0, 0, 'reps', '')
+
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.done).toBe(false)
+  })
+
+  it('normalizes invalid completed sets when restoring a session', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      startedAt: 1,
+      exercises: [
+        {
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: [{ weight: '80', reps: '0', done: true }],
+        },
+      ],
+    })
+
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.done).toBe(false)
+  })
+})
+
 describe('workoutStore client IDs', () => {
   beforeEach(() => {
     useWorkoutStore.setState({ active: null })

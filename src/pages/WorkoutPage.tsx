@@ -333,6 +333,10 @@ export default function WorkoutPage() {
   const handleToggleSet = (exerciseIndex: number, setIndex: number) => {
     const currentSet = active?.exercises[exerciseIndex]?.sets[setIndex]
     const wasNotDone = currentSet && !currentSet.done
+    if (wasNotDone && parseReps(currentSet.reps) <= 0) {
+      toast.error('Wpisz liczbę powtórzeń, zanim oznaczysz serię jako wykonaną.')
+      return
+    }
     toggleSetDone(exerciseIndex, setIndex)
     if (wasNotDone) {
       setRest({ startedAt: Date.now(), totalSec: 90 })

@@ -20,16 +20,15 @@ async function cleanupTestExercise(page: Page) {
   await page.goto('/exercises')
   await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
-  // Switch to user tab if it exists
-  const userTab = page.getByRole('button', { name: /Własne/i })
-  if (await userTab.isVisible({ timeout: 2_000 }).catch(() => false)) {
-    await userTab.click()
-  }
+  await page.getByLabel('Szukaj ćwiczenia').fill(TEST_EXERCISE_NAME)
 
   // Find and delete the test exercise if it exists
-  const exerciseCard = page.locator('[role="button"]').filter({ hasText: TEST_EXERCISE_NAME }).first()
-  if (await exerciseCard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-    await exerciseCard.getByRole('button', { name: 'Usuń' }).click()
+  const deleteButton = page.getByRole('button', { name: `Usuń ćwiczenie ${TEST_EXERCISE_NAME}` })
+  const hasDeleteButton = await deleteButton.waitFor({ state: 'visible', timeout: 8_000 })
+    .then(() => true)
+    .catch(() => false)
+  if (hasDeleteButton) {
+    await deleteButton.click()
     await page.getByRole('dialog').getByRole('button', { name: 'Usuń' }).click()
     await expect(page.getByText(TEST_EXERCISE_NAME, { exact: false })).not.toBeVisible({ timeout: 8_000 })
   }
@@ -128,10 +127,9 @@ test.describe('Exercises CRUD', () => {
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
     // Find test exercise card and click edit
-    const exerciseCard = page.locator('[role="button"]').filter({ hasText: TEST_EXERCISE_NAME }).first()
-    await expect(exerciseCard).toBeVisible({ timeout: 8_000 })
-
-    await exerciseCard.getByRole('button', { name: 'Edytuj' }).click()
+    const editButton = page.getByRole('button', { name: `Edytuj ćwiczenie ${TEST_EXERCISE_NAME}` })
+    await expect(editButton).toBeVisible({ timeout: 8_000 })
+    await editButton.click()
     // Form is open when placeholder is visible
     const nameInput = page.getByPlaceholder('np. Banded Pull-apart')
     await expect(nameInput).toBeVisible({ timeout: 5_000 })
@@ -155,10 +153,9 @@ test.describe('Exercises CRUD', () => {
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
     // Find test exercise and delete
-    const exerciseCard = page.locator('[role="button"]').filter({ hasText: TEST_EXERCISE_NAME }).first()
-    await expect(exerciseCard).toBeVisible({ timeout: 8_000 })
-
-    await exerciseCard.getByRole('button', { name: 'Usuń' }).click()
+    const deleteButton = page.getByRole('button', { name: `Usuń ćwiczenie ${TEST_EXERCISE_NAME}` })
+    await expect(deleteButton).toBeVisible({ timeout: 8_000 })
+    await deleteButton.click()
 
     // Confirm dialog
     await expect(page.getByRole('dialog')).toBeVisible()
@@ -183,7 +180,7 @@ test.describe('Exercises CRUD', () => {
     // ExerciseCard uses role="button" with onClick navigation (not <a> tags).
     // The global section is identified by "Katalog globalny" heading.
     const globalSection = page.locator('section').filter({ hasText: 'Katalog globalny' })
-    const firstGlobalCard = globalSection.locator('[role="button"]').first()
+    const firstGlobalCard = globalSection.locator('.exercise-library-row-main').first()
     await expect(firstGlobalCard).toBeVisible({ timeout: 8_000 })
     await firstGlobalCard.click()
 

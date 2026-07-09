@@ -1,5 +1,14 @@
 import { test, expect, type Page } from '@playwright/test'
 
+async function waitForWorkoutState(page: Page): Promise<void> {
+  await Promise.race([
+    page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Anuluj', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Rozpocznij nową sesję' }).waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first().waitFor({ state: 'visible', timeout: 25_000 }),
+  ])
+}
+
 /**
  * Workout Guard tests — updated contract after removal of useBlocker.
  *
@@ -28,9 +37,17 @@ async function startFreshSession(page: Page): Promise<string> {
   await expect(page).toHaveURL('/workout/new')
   await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
 
-  // Discard any existing session first
+  const staleDiscardBtn = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
   const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-  if (await discardBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+  const startBtn = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
+  const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
+
+  await waitForWorkoutState(page)
+
+  if (await staleDiscardBtn.isVisible()) {
+    await staleDiscardBtn.click()
+    await expect(addExBtn).toBeVisible({ timeout: 15_000 })
+  } else if (await discardBtn.isVisible()) {
     await discardBtn.click()
     // Target ConfirmDialog specifically (not ExercisePicker which also has role="dialog")
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
@@ -40,16 +57,13 @@ async function startFreshSession(page: Page): Promise<string> {
     // Return to workout
     await page.goto('/workout/new')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+    await waitForWorkoutState(page)
   }
 
-  // Start session
-  const startBtn = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
-  if (await startBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+  if (await startBtn.isVisible()) {
     await startBtn.click()
   }
 
-  // Wait for workout UI
-  const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
   await expect(addExBtn).toBeVisible({ timeout: 15_000 })
 
   // Add one exercise to make the session meaningful

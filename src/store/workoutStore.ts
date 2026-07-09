@@ -48,6 +48,11 @@ function createClientId(prefix: 'exercise' | 'set'): string {
 
 const emptySet = (): WorkoutSet => ({ clientId: createClientId('set'), weight: '', reps: '', done: false })
 
+function hasValidReps(value: string): boolean {
+  const reps = Number.parseInt(value, 10)
+  return Number.isFinite(reps) && reps > 0
+}
+
 function withClientIds(workout: ActiveWorkout): ActiveWorkout {
   return {
     ...workout,
@@ -57,6 +62,7 @@ function withClientIds(workout: ActiveWorkout): ActiveWorkout {
       sets: exercise.sets.map((set) => ({
         ...set,
         clientId: set.clientId ?? createClientId('set'),
+        done: set.done && hasValidReps(set.reps),
       })),
     })),
   }
@@ -147,9 +153,14 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
         i === exerciseIndex
           ? {
               ...ex,
-              sets: ex.sets.map((st, si) =>
-                si === setIndex ? { ...st, [field]: value } : st
-              ),
+              sets: ex.sets.map((st, si) => {
+                if (si !== setIndex) return st
+                return {
+                  ...st,
+                  [field]: value,
+                  done: field === 'reps' && !hasValidReps(value) ? false : st.done,
+                }
+              }),
             }
           : ex
       )
@@ -182,9 +193,11 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
         i === exerciseIndex
           ? {
               ...ex,
-              sets: ex.sets.map((st, si) =>
-                si === setIndex ? { ...st, done: !st.done } : st
-              ),
+              sets: ex.sets.map((st, si) => {
+                if (si !== setIndex) return st
+                if (st.done) return { ...st, done: false }
+                return hasValidReps(st.reps) ? { ...st, done: true } : st
+              }),
             }
           : ex
       )

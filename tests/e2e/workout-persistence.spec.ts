@@ -1,5 +1,14 @@
 import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
 
+async function waitForWorkoutState(page: Page): Promise<void> {
+  await Promise.race([
+    page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Anuluj', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Rozpocznij nową sesję' }).waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first().waitFor({ state: 'visible', timeout: 25_000 }),
+  ])
+}
+
 function captureErrors(page: Page): () => string[] {
   const errors: string[] = []
   page.on('console', (msg: ConsoleMessage) => {
@@ -22,9 +31,16 @@ async function discardActiveSession(page: Page) {
   await expect(page).toHaveURL('/workout/new')
   await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
 
-  // Check if there's an active session (trigger button "Anuluj" visible means session is active)
+  const staleDiscardBtn = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
   const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-  if (await discardBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
+  const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
+
+  await waitForWorkoutState(page)
+
+  if (await staleDiscardBtn.isVisible()) {
+    await staleDiscardBtn.click()
+    await expect(addExBtn).toBeVisible({ timeout: 15_000 })
+  } else if (await discardBtn.isVisible()) {
     await discardBtn.click()
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
     await expect(confirmDialog).toBeVisible({ timeout: 5_000 })

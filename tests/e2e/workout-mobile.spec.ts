@@ -122,6 +122,24 @@ async function addExercise(page: Page, search: string): Promise<void> {
 }
 
 test.describe('Active workout shell reduction', () => {
+  test('mobile workout mounts a single elapsed timer and a single rest timer', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await goToFreshWorkout(page)
+    await addExercise(page, 'Squat')
+
+    await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
+
+    await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
+    await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
+    await page.getByRole('button', { name: 'Oznacz serię 1' }).click()
+
+    await expect(page.locator('.rest-timer-bar')).toHaveCount(1)
+
+    await discardSessionIfPresent(page)
+  })
+
   test('mobile workout removes duplicate shell controls in the empty state', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
 
@@ -207,6 +225,7 @@ test.describe('Active workout shell reduction', () => {
 
     await goToFreshWorkout(page)
 
+    await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
     await expect(page.locator('.top-nav')).toBeVisible()
     await expect(page.locator('aside .workout-control-panel')).toBeVisible()
     await expect(page.locator('.workout-session-hero')).toBeVisible()

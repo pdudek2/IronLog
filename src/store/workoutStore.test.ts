@@ -49,6 +49,64 @@ describe('workoutStore set steppers', () => {
 
     expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.reps).toBe('0')
   })
+
+  it('replaces only the touched exercise object when updating a set', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      startedAt: 1,
+      exercises: [
+        {
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: [{ weight: '80', reps: '5', done: false }],
+        },
+        {
+          exerciseId: 'squat',
+          exerciseSource: 'global',
+          name: 'Squat',
+          sets: [{ weight: '120', reps: '5', done: false }],
+        },
+      ],
+    })
+
+    const before = useWorkoutStore.getState().active
+
+    useWorkoutStore.getState().updateSet(0, 0, 'weight', '82.5')
+
+    const after = useWorkoutStore.getState().active
+
+    expect(after?.exercises[0]).not.toBe(before?.exercises[0])
+    expect(after?.exercises[1]).toBe(before?.exercises[1])
+  })
+
+  it('replaces only the touched exercise object when adjusting a set', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      startedAt: 1,
+      exercises: [
+        {
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: [{ weight: '80', reps: '5', done: false }],
+        },
+        {
+          exerciseId: 'squat',
+          exerciseSource: 'global',
+          name: 'Squat',
+          sets: [{ weight: '120', reps: '5', done: false }],
+        },
+      ],
+    })
+
+    const before = useWorkoutStore.getState().active
+
+    useWorkoutStore.getState().adjustSet(1, 0, 'reps', 1)
+
+    const after = useWorkoutStore.getState().active
+
+    expect(after?.exercises[1]).not.toBe(before?.exercises[1])
+    expect(after?.exercises[0]).toBe(before?.exercises[0])
+  })
 })
 
 describe('workoutStore completed set validation', () => {

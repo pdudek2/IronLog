@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, Trash2, TrendingUp, X } from 'lucide-react'
+import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type ActiveWorkout, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -10,9 +10,10 @@ import { saveWorkout, getRecentWorkouts } from '../lib/workoutService'
 import { getUserExercises } from '../lib/userExercisesService'
 import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
+import { useMediaQuery } from '../hooks/useMediaQuery'
+import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
-import OverloadHint from '../components/OverloadHint'
 import { LoadingState } from '../components/ui'
 import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
@@ -164,7 +165,7 @@ function ElapsedTimer({ startedAt, className = '' }: ElapsedTimerProps) {
     return () => window.clearInterval(interval)
   }, [startedAt])
 
-  return <span className={className}>{formatSessionTimer(startedAt, now)}</span>
+  return <span className={className} data-testid="elapsed-session-timer">{formatSessionTimer(startedAt, now)}</span>
 }
 
 interface RestTimerBarProps {
@@ -294,16 +295,11 @@ export default function WorkoutPage() {
     hydrateFromDoc,
     setLabel,
     addExercise,
-    addSet,
-    removeSet,
-    updateSet,
-    adjustSet,
-    toggleSetDone,
-    removeExercise,
     clearWorkout,
   } = useWorkoutStore()
   const navigate = useNavigate()
   const location = useLocation()
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
   const goQuick = (to: string) => navigateWithAppTransition(navigate, to)
   const appliedTemplateRef = useRef<string | null>(null)
 
@@ -330,8 +326,9 @@ export default function WorkoutPage() {
   // Rest timer state
   const [rest, setRest] = useState<RestTimerState | null>(null)
 
-  const handleToggleSet = (exerciseIndex: number, setIndex: number) => {
-    const currentSet = active?.exercises[exerciseIndex]?.sets[setIndex]
+  const handleToggleSet = useCallback((exerciseIndex: number, setIndex: number) => {
+    const { active: currentActive, toggleSetDone } = useWorkoutStore.getState()
+    const currentSet = currentActive?.exercises[exerciseIndex]?.sets[setIndex]
     const wasNotDone = currentSet && !currentSet.done
     if (wasNotDone && parseReps(currentSet.reps) <= 0) {
       toast.error('Wpisz liczbę powtórzeń, zanim oznaczysz serię jako wykonaną.')
@@ -344,13 +341,32 @@ export default function WorkoutPage() {
     } else {
       setRest(null)
     }
-  }
+  }, [])
 
-  const handleAddRestTime = (deltaSec: number) => {
+  const handleAddRestTime = useCallback((deltaSec: number) => {
     setRest((prev) => prev ? { ...prev, totalSec: prev.totalSec + deltaSec } : prev)
-  }
+  }, [])
 
-  const handleSkipRest = () => setRest(null)
+  const handleSkipRest = useCallback(() => setRest(null), [])
+
+  const handleUpdateSet = useCallback((exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
+    useWorkoutStore.getState().updateSet(exerciseIndex, setIndex, field, value)
+  }, [])
+
+  const handleAdjustSet = useCallback((exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', delta: number) => {
+    useWorkoutStore.getState().adjustSet(exerciseIndex, setIndex, field, delta)
+    if ('vibrate' in navigator) navigator.vibrate(6)
+  }, [])
+
+  const handleRemoveSet = useCallback((exerciseIndex: number, setIndex: number) => {
+    useWorkoutStore.getState().removeSet(exerciseIndex, setIndex)
+  }, [])
+
+  const handleAddSet = useCallback((exerciseIndex: number, button: HTMLButtonElement) => {
+    useWorkoutStore.getState().addSet(exerciseIndex)
+    if ('vibrate' in navigator) navigator.vibrate(8)
+    window.setTimeout(() => button.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
+  }, [])
 
   // Quick picks — top exercises from recent sessions, shown when live session is empty
   const [quickPicks, setQuickPicks] = useState<Array<{ id: string; name: string; source: 'global' | 'user'; count: number }>>([])
@@ -475,25 +491,39 @@ export default function WorkoutPage() {
     setConfirmDiscard(true)
   }
 
-  function exerciseHasEnteredSets(exerciseIndex: number): boolean {
-    const exercise = active?.exercises[exerciseIndex]
-    if (!exercise) return false
-    return exercise.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
-  }
-
-  function handleRemoveExercise(exerciseIndex: number) {
-    if (exerciseHasEnteredSets(exerciseIndex)) {
+  const handleRemoveExercise = useCallback((exerciseIndex: number) => {
+    const exercise = useWorkoutStore.getState().active?.exercises[exerciseIndex]
+    if (!exercise) return
+    const hasEnteredSets = exercise.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
+    if (hasEnteredSets) {
       setPendingExerciseRemovalIndex(exerciseIndex)
       return
     }
-    removeExercise(exerciseIndex)
-  }
+    useWorkoutStore.getState().removeExercise(exerciseIndex)
+  }, [])
 
   function handleConfirmRemoveExercise() {
     if (pendingExerciseRemovalIndex === null) return
-    removeExercise(pendingExerciseRemovalIndex)
+    useWorkoutStore.getState().removeExercise(pendingExerciseRemovalIndex)
     setPendingExerciseRemovalIndex(null)
   }
+
+  const handleApplySuggestion = useCallback((exerciseIndex: number, hintKey: string, weight: number) => {
+    useWorkoutStore.getState().updateSet(exerciseIndex, 0, 'weight', String(weight))
+    setDismissedHints((prev) => {
+      const next = new Set(prev)
+      next.add(hintKey)
+      return next
+    })
+  }, [])
+
+  const handleDismissSuggestion = useCallback((hintKey: string) => {
+    setDismissedHints((prev) => {
+      const next = new Set(prev)
+      next.add(hintKey)
+      return next
+    })
+  }, [])
 
   async function handleConfirmDiscard() {
     if (closingSession) return
@@ -674,256 +704,262 @@ export default function WorkoutPage() {
     <div className="workout-focus-shell">
 
       {/* ── Mobile sticky header ─────────────────── */}
-      <div
-        className="workout-mobile-lifecycle-bar fixed top-0 left-0 right-0 z-40 flex items-center gap-2 lg:hidden"
-        style={{
-          paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-          paddingBottom: '0.75rem',
-          paddingLeft: 'max(1rem, env(safe-area-inset-left, 1rem))',
-          paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
-          background: 'rgba(13, 12, 14, 0.95)',
-          borderBottom: '1px solid var(--border)',
-        }}
-      >
-        <motion.button
-          type="button"
-          onClick={handleDiscard}
-          className="flex-none rounded-xl px-3 text-xs font-semibold min-h-11"
-          style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-          whileTap={{ scale: 0.93 }}
+      {!isDesktop && (
+        <div
+          className="workout-mobile-lifecycle-bar fixed top-0 left-0 right-0 z-40 flex items-center gap-2 lg:hidden"
+          style={{
+            paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
+            paddingBottom: '0.75rem',
+            paddingLeft: 'max(1rem, env(safe-area-inset-left, 1rem))',
+            paddingRight: 'max(1rem, env(safe-area-inset-right, 1rem))',
+            background: 'rgba(13, 12, 14, 0.95)',
+            borderBottom: '1px solid var(--border)',
+          }}
         >
-          Anuluj
-        </motion.button>
-        <ElapsedTimer startedAt={active.startedAt} className="text-xl font-bold tabular-nums text-white flex-none" />
-        <div className="flex-1 min-w-0" />
-        <motion.button
-          type="button"
-          onClick={handleFinish}
-          disabled={saving}
-          className="flex-none rounded-xl px-5 text-sm font-bold min-h-11"
-          style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-          whileTap={{ scale: 0.93 }}
-        >
-          {saving ? '...' : 'Zakończ'}
-        </motion.button>
-      </div>
+          <motion.button
+            type="button"
+            onClick={handleDiscard}
+            className="flex-none rounded-xl px-3 text-xs font-semibold min-h-11"
+            style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+            whileTap={{ scale: 0.93 }}
+          >
+            Anuluj
+          </motion.button>
+          <ElapsedTimer startedAt={active.startedAt} className="text-xl font-bold tabular-nums text-white flex-none" />
+          <div className="flex-1 min-w-0" />
+          <motion.button
+            type="button"
+            onClick={handleFinish}
+            disabled={saving}
+            className="flex-none rounded-xl px-5 text-sm font-bold min-h-11"
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+            whileTap={{ scale: 0.93 }}
+          >
+            {saving ? '...' : 'Zakończ'}
+          </motion.button>
+        </div>
+      )}
 
       <div className="workout-session-grid">
 
         {/* ── Desktop sidebar only ─────────────────── */}
-        <aside className="hidden lg:block desktop-sticky">
-          <div className="workout-control-panel">
-            <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
-              Aktywna sesja
-            </p>
-
-            <div className="workout-time-card">
-              <p className="stat-meta mb-2">Czas sesji</p>
-              <div className="flex items-end justify-between gap-3">
-                <ElapsedTimer startedAt={active.startedAt} className="workout-time-value" />
-                <span
-                  className="workout-live-pill"
-                >
-                  {activeLabel}
-                </span>
-              </div>
-              <div className="workout-progress-track">
-                <div
-                  className="workout-progress-fill"
-                  style={{
-                    width: `${Math.max(totalSets ? completionPct : 12, totalSets ? 12 : 0)}%`,
-                    background: completionPct >= 100
-                      ? 'linear-gradient(90deg, var(--success) 0%, #6f9d83 100%)'
-                      : 'linear-gradient(90deg, var(--accent) 0%, var(--accent-text) 100%)',
-                  }}
-                />
-              </div>
-              <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                {sessionSignal}
+        {isDesktop && (
+          <aside className="hidden lg:block desktop-sticky">
+            <div className="workout-control-panel">
+              <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
+                Aktywna sesja
               </p>
-            </div>
 
-            {saveError && <p className="mb-4 text-xs" style={{ color: 'var(--danger)' }}>{saveError}</p>}
-
-            <AnimatePresence initial={false}>
-              {rest !== null && (
-                <RestTimerBar rest={rest} onAddTime={handleAddRestTime} onSkip={handleSkipRest} />
-              )}
-            </AnimatePresence>
-
-            <SessionQuickLinks
-              variant="desktop"
-              className="mb-5"
-              onNavigate={goQuick}
-            />
-
-            <div className="workout-side-metrics">
-              <div className="workout-micro-card">
-                <p className="stat-meta">Ćwiczenia</p>
-                <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{totalExercises}</p>
-              </div>
-              <div className="workout-micro-card">
-                <p className="stat-meta">Serie</p>
-                <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{completedSets}/{totalSets}</p>
-              </div>
-              <div className="workout-micro-card">
-                <p className="stat-meta">Objętość</p>
-                <p className="mt-2 text-xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume)}</p>
-              </div>
-              <div className="workout-micro-card">
-                <p className="stat-meta">Najcięższy set</p>
-                <p className="mt-2 text-xl font-semibold text-white tabular-nums">{strongestSet ? `${strongestSet} ${units}` : '—'}</p>
-              </div>
-            </div>
-
-            <div>
-              <p className="mb-3 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
-                Typ sesji
-              </p>
-              <LabelChips
-                activeLabel={active.label ?? ''}
-                onToggle={(label) => setLabel(active.label === label ? '' : label)}
-                className="flex-wrap"
-              />
-            </div>
-
-            <div className="mt-5">
-              <div className="mb-3 rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
-                <div className="flex items-center justify-between gap-3">
-                  <span className="stat-meta">Stan sesji</span>
-                  <Target size={14} style={{ color: 'var(--accent)' }} />
+              <div className="workout-time-card">
+                <p className="stat-meta mb-2">Czas sesji</p>
+                <div className="flex items-end justify-between gap-3">
+                  <ElapsedTimer startedAt={active.startedAt} className="workout-time-value" />
+                  <span
+                    className="workout-live-pill"
+                  >
+                    {activeLabel}
+                  </span>
                 </div>
-                <p className="mt-2 text-sm font-semibold text-white">
-                  {totalReps > 0 ? `${totalReps} powtórzeń zapisanych w tej sesji.` : 'Jeszcze bez zapisanych powtórzeń.'}
-                </p>
-              </div>
-              <motion.button
-                onClick={() => setShowPicker(true)}
-                className="workout-primary-action mb-3"
-                style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.97 }}
-              >
-                <Plus size={16} strokeWidth={2.4} />
-                <span>Dodaj ćwiczenie</span>
-              </motion.button>
-              <div className="grid grid-cols-2 gap-2">
-                <motion.button
-                  onClick={handleDiscard}
-                  className="rounded-[var(--radius-lg)] py-3 text-sm font-semibold"
-                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  Anuluj
-                </motion.button>
-                <motion.button
-                  onClick={handleFinish}
-                  disabled={saving}
-                  className="rounded-[var(--radius-lg)] py-3 text-sm font-bold"
-                  style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)', opacity: saving ? 0.6 : 1 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  {saving ? '...' : 'Zakończ'}
-                </motion.button>
-              </div>
-            </div>
-          </div>
-        </aside>
-
-        <main className={`min-w-0 ${rest ? 'pb-36' : 'pb-20'} lg:pb-0`}>
-          <motion.section
-            className="workout-session-hero mb-4 hidden lg:block"
-            style={{ '--session-accent': focusAccent } as React.CSSProperties}
-            initial={false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-          >
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="min-w-0 flex-1">
-                <p className="eyebrow">Aktywna sesja</p>
-                <h2 className="workout-session-title">{activeLabel}</h2>
-                <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                <div className="workout-progress-track">
+                  <div
+                    className="workout-progress-fill"
+                    style={{
+                      width: `${Math.max(totalSets ? completionPct : 12, totalSets ? 12 : 0)}%`,
+                      background: completionPct >= 100
+                        ? 'linear-gradient(90deg, var(--success) 0%, #6f9d83 100%)'
+                        : 'linear-gradient(90deg, var(--accent) 0%, var(--accent-text) 100%)',
+                    }}
+                  />
+                </div>
+                <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                   {sessionSignal}
                 </p>
-                <div
-                  className="session-instrument"
-                  aria-label={`Mapa sesji: zapisane serie ${completedSets} z ${totalSets || 0}`}
-                >
-                  <div className="session-instrument-head">
-                    <div className="session-instrument-node">
-                      <span>Teraz</span>
-                      <strong>{focusExercise ? focusExercise.name : 'Dodaj ćwiczenie'}</strong>
-                      <small>
-                        {focusSet
-                          ? `Seria ${focusSetIndex + 1} · ${focusSet.weight || '—'} ${units} × ${focusSet.reps || '—'}`
-                          : 'Sesja bez wpisanych serii'}
-                      </small>
-                    </div>
-                    <div className="session-instrument-node session-instrument-node--right">
-                      <span>Ostatnio</span>
-                      <strong>{lastCompletedSet ? lastCompletedSet.exerciseName : '—'}</strong>
-                      <small>
-                        {lastCompletedSet
-                          ? `${lastCompletedSet.weight || '—'} ${units} × ${lastCompletedSet.reps || '—'}`
-                          : 'Jeszcze bez zapisanej serii'}
-                      </small>
-                    </div>
-                  </div>
-                  <div className="session-set-rail" role="list" aria-label="Kolejność serii w sesji">
-                    {sessionSetMarkers.length > 0
-                      ? sessionSetMarkers.map((marker) => (
-                        <span
-                          key={marker.key}
-                          className="session-set-marker"
-                          data-state={marker.state}
-                          role="listitem"
-                          style={{ '--marker-accent': marker.accent } as React.CSSProperties}
-                          aria-label={`${marker.label}: ${
-                            marker.state === 'done'
-                              ? 'zapisana'
-                              : marker.state === 'current'
-                                ? 'aktualna'
-                                : 'otwarta'
-                          }`}
-                        />
-                      ))
-                      : Array.from({ length: 7 }, (_, index) => (
-                        <span
-                          key={`empty-marker-${index}`}
-                          className="session-set-marker"
-                          data-state="empty"
-                          aria-hidden="true"
-                        />
-                      ))}
-                  </div>
-                  <div className="session-instrument-foot">
-                    <span><b>{completedSets}/{totalSets || 0}</b> serii</span>
-                    <span><b>{formatCompactVolume(totalVolume)}</b></span>
-                    <span><b>{remainingSets}</b> otwarte</span>
-                  </div>
+              </div>
+
+              {saveError && <p className="mb-4 text-xs" style={{ color: 'var(--danger)' }}>{saveError}</p>}
+
+              <AnimatePresence initial={false}>
+                {rest !== null && (
+                  <RestTimerBar rest={rest} onAddTime={handleAddRestTime} onSkip={handleSkipRest} />
+                )}
+              </AnimatePresence>
+
+              <SessionQuickLinks
+                variant="desktop"
+                className="mb-5"
+                onNavigate={goQuick}
+              />
+
+              <div className="workout-side-metrics">
+                <div className="workout-micro-card">
+                  <p className="stat-meta">Ćwiczenia</p>
+                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{totalExercises}</p>
+                </div>
+                <div className="workout-micro-card">
+                  <p className="stat-meta">Serie</p>
+                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{completedSets}/{totalSets}</p>
+                </div>
+                <div className="workout-micro-card">
+                  <p className="stat-meta">Objętość</p>
+                  <p className="mt-2 text-xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume)}</p>
+                </div>
+                <div className="workout-micro-card">
+                  <p className="stat-meta">Najcięższy set</p>
+                  <p className="mt-2 text-xl font-semibold text-white tabular-nums">{strongestSet ? `${strongestSet} ${units}` : '—'}</p>
                 </div>
               </div>
-              <div className="hidden w-full xl:block xl:w-[24rem]">
-                <div className="workout-session-totals">
-                  <div>
-                    <span>Serie</span>
-                    <strong className="tabular-nums">{completedSets}/{totalSets || 0}</strong>
-                    <Check size={14} aria-hidden="true" />
+
+              <div>
+                <p className="mb-3 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
+                  Typ sesji
+                </p>
+                <LabelChips
+                  activeLabel={active.label ?? ''}
+                  onToggle={(label) => setLabel(active.label === label ? '' : label)}
+                  className="flex-wrap"
+                />
+              </div>
+
+              <div className="mt-5">
+                <div className="mb-3 rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="stat-meta">Stan sesji</span>
+                    <Target size={14} style={{ color: 'var(--accent)' }} />
                   </div>
-                  <div>
-                    <span>Objętość</span>
-                    <strong className="tabular-nums">{formatCompactVolume(totalVolume)}</strong>
-                    <Flame size={14} aria-hidden="true" />
-                  </div>
-                  <div>
-                    <span>Ćwiczenia</span>
-                    <strong className="tabular-nums">{totalExercises}</strong>
-                    <Layers3 size={14} aria-hidden="true" />
-                  </div>
+                  <p className="mt-2 text-sm font-semibold text-white">
+                    {totalReps > 0 ? `${totalReps} powtórzeń zapisanych w tej sesji.` : 'Jeszcze bez zapisanych powtórzeń.'}
+                  </p>
+                </div>
+                <motion.button
+                  onClick={() => setShowPicker(true)}
+                  className="workout-primary-action mb-3"
+                  style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Plus size={16} strokeWidth={2.4} />
+                  <span>Dodaj ćwiczenie</span>
+                </motion.button>
+                <div className="grid grid-cols-2 gap-2">
+                  <motion.button
+                    onClick={handleDiscard}
+                    className="rounded-[var(--radius-lg)] py-3 text-sm font-semibold"
+                    style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    Anuluj
+                  </motion.button>
+                  <motion.button
+                    onClick={handleFinish}
+                    disabled={saving}
+                    className="rounded-[var(--radius-lg)] py-3 text-sm font-bold"
+                    style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)', opacity: saving ? 0.6 : 1 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {saving ? '...' : 'Zakończ'}
+                  </motion.button>
                 </div>
               </div>
             </div>
-          </motion.section>
+          </aside>
+        )}
+
+        <main className={`min-w-0 ${rest ? 'pb-36' : 'pb-20'} lg:pb-0`}>
+          {isDesktop && (
+            <motion.section
+              className="workout-session-hero mb-4 hidden lg:block"
+              style={{ '--session-accent': focusAccent } as React.CSSProperties}
+              initial={false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.18 }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="eyebrow">Aktywna sesja</p>
+                  <h2 className="workout-session-title">{activeLabel}</h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                    {sessionSignal}
+                  </p>
+                  <div
+                    className="session-instrument"
+                    aria-label={`Mapa sesji: zapisane serie ${completedSets} z ${totalSets || 0}`}
+                  >
+                    <div className="session-instrument-head">
+                      <div className="session-instrument-node">
+                        <span>Teraz</span>
+                        <strong>{focusExercise ? focusExercise.name : 'Dodaj ćwiczenie'}</strong>
+                        <small>
+                          {focusSet
+                            ? `Seria ${focusSetIndex + 1} · ${focusSet.weight || '—'} ${units} × ${focusSet.reps || '—'}`
+                            : 'Sesja bez wpisanych serii'}
+                        </small>
+                      </div>
+                      <div className="session-instrument-node session-instrument-node--right">
+                        <span>Ostatnio</span>
+                        <strong>{lastCompletedSet ? lastCompletedSet.exerciseName : '—'}</strong>
+                        <small>
+                          {lastCompletedSet
+                            ? `${lastCompletedSet.weight || '—'} ${units} × ${lastCompletedSet.reps || '—'}`
+                            : 'Jeszcze bez zapisanej serii'}
+                        </small>
+                      </div>
+                    </div>
+                    <div className="session-set-rail" role="list" aria-label="Kolejność serii w sesji">
+                      {sessionSetMarkers.length > 0
+                        ? sessionSetMarkers.map((marker) => (
+                          <span
+                            key={marker.key}
+                            className="session-set-marker"
+                            data-state={marker.state}
+                            role="listitem"
+                            style={{ '--marker-accent': marker.accent } as React.CSSProperties}
+                            aria-label={`${marker.label}: ${
+                              marker.state === 'done'
+                                ? 'zapisana'
+                                : marker.state === 'current'
+                                  ? 'aktualna'
+                                  : 'otwarta'
+                            }`}
+                          />
+                        ))
+                        : Array.from({ length: 7 }, (_, index) => (
+                          <span
+                            key={`empty-marker-${index}`}
+                            className="session-set-marker"
+                            data-state="empty"
+                            aria-hidden="true"
+                          />
+                        ))}
+                    </div>
+                    <div className="session-instrument-foot">
+                      <span><b>{completedSets}/{totalSets || 0}</b> serii</span>
+                      <span><b>{formatCompactVolume(totalVolume)}</b></span>
+                      <span><b>{remainingSets}</b> otwarte</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="hidden w-full xl:block xl:w-[24rem]">
+                  <div className="workout-session-totals">
+                    <div>
+                      <span>Serie</span>
+                      <strong className="tabular-nums">{completedSets}/{totalSets || 0}</strong>
+                      <Check size={14} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <span>Objętość</span>
+                      <strong className="tabular-nums">{formatCompactVolume(totalVolume)}</strong>
+                      <Flame size={14} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <span>Ćwiczenia</span>
+                      <strong className="tabular-nums">{totalExercises}</strong>
+                      <Layers3 size={14} aria-hidden="true" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </motion.section>
+          )}
 
           <div className="workout-section-head">
             <div>
@@ -1024,203 +1060,35 @@ export default function WorkoutPage() {
               <>
                 <div className="workout-exercise-stack">
                   <AnimatePresence>
-                    {active.exercises.map((exercise, exerciseIndex) => (
-                      (() => {
-                        const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
-                        const exerciseVolume = exercise.sets.reduce((sum, set) => (
-                          set.done ? sum + calcSetVolume(set) : sum
-                        ), 0)
-                        const exerciseCompleted = exercise.sets.filter((set) => set.done && parseReps(set.reps) > 0).length
-                        const bestSet = exercise.sets.reduce((top, set) => (
-                          set.done ? Math.max(top, parseWeight(set.weight)) : top
-                        ), 0)
-                        const exerciseAccent = CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'
+                    {active.exercises.map((exercise, exerciseIndex) => {
+                      const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
+                      const hintKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
 
-                        return (
-                          <motion.div
-                            key={exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
-                            className="workout-exercise-card"
-                            data-active={exerciseIndex === focusExerciseIndex}
-                            style={{ '--exercise-accent': exerciseAccent } as React.CSSProperties}
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            transition={{ duration: 0.3, ease: 'easeOut' }}
-                          >
-                            <div className="workout-exercise-head mb-4 flex flex-wrap items-start justify-between gap-3">
-                              <div className="min-w-0">
-                                {(exerciseMeta?.category || exerciseMeta?.equipment) && (
-                                  <p className="workout-exercise-meta">
-                                    {exerciseMeta?.category && (
-                                      <span style={{ color: exerciseAccent }}>
-                                        {CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category}
-                                      </span>
-                                    )}
-                                    {exerciseMeta?.category && exerciseMeta?.equipment && ' · '}
-                                    {exerciseMeta?.equipment && (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment)}
-                                  </p>
-                                )}
-                                <p className="mt-1.5 text-lg font-semibold text-white">{exercise.name}</p>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveExercise(exerciseIndex)}
-                                className="workout-danger-action"
-                                style={{ color: 'var(--muted)' }}
-                                aria-label={`Usuń ćwiczenie ${exercise.name}`}
-                              >
-                                <Trash2 size={14} />
-                                <span>Usuń</span>
-                              </button>
-                            </div>
-
-                            <div className="workout-exercise-ledger" aria-label={`Podsumowanie ćwiczenia ${exercise.name}`}>
-                              <div>
-                                <span>Postęp</span>
-                                <strong className="tabular-nums">{exerciseCompleted}/{exercise.sets.length}</strong>
-                              </div>
-                              <div>
-                                <span>Objętość</span>
-                                <strong className="tabular-nums">{formatCompactVolume(exerciseVolume)}</strong>
-                              </div>
-                              <div>
-                                <span>Top set</span>
-                                <strong className="tabular-nums">{bestSet ? `${bestSet} ${units}` : '—'}</strong>
-                              </div>
-                            </div>
-
-                            {(() => {
-                              const hintKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
-                              const suggestion = suggestions[hintKey]
-                              if (!suggestion || dismissedHints.has(hintKey)) return null
-                              return (
-                                <OverloadHint
-                                  suggestion={suggestion}
-                                  onApply={(weight) => {
-                                    updateSet(exerciseIndex, 0, 'weight', String(weight))
-                                    setDismissedHints((prev) => new Set(prev).add(hintKey))
-                                  }}
-                                  onDismiss={() => setDismissedHints((prev) => new Set(prev).add(hintKey))}
-                                />
-                              )
-                            })()}
-
-                            <div className="workout-set-header">
-                              <span>#</span>
-                              <span>{units}</span>
-                              <span>Powt.</span>
-                              <span>Obj.</span>
-                              <span />
-                            </div>
-
-                            <div className="workout-set-list">
-                              {exercise.sets.map((set, setIndex) => {
-                                const setVolume = calcSetVolume(set)
-                                const showMobileSteppers = !set.done
-                                  && exerciseIndex === focusExerciseIndex
-                                  && setIndex === focusSetIndex
-
-                                return (
-                                  <div
-                                    key={set.clientId ?? setIndex}
-                                    className="workout-set-row"
-                                    data-done={set.done || undefined}
-                                  >
-                                    <div className="workout-set-grid">
-                                      <motion.button
-                                        type="button"
-                                        onClick={() => handleToggleSet(exerciseIndex, setIndex)}
-                                        className="workout-set-toggle"
-                                        style={{
-                                          background: set.done ? 'var(--success)' : 'var(--input-bg)',
-                                          color: set.done ? 'var(--success-foreground)' : 'var(--muted)',
-                                          border: `1px solid ${set.done ? 'var(--success)' : 'var(--border)'}`,
-                                        }}
-                                        whileTap={{ scale: 0.9 }}
-                                        animate={set.done ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-                                        transition={{ duration: 0.25 }}
-                                        aria-label={set.done ? `Odznacz serię ${setIndex + 1}` : `Oznacz serię ${setIndex + 1}`}
-                                      >
-                                        {set.done ? <Check size={16} /> : setIndex + 1}
-                                      </motion.button>
-                                      <input
-                                        type="number"
-                                        inputMode="decimal"
-                                        placeholder="0"
-                                        value={set.weight}
-                                        onChange={(e) => updateSet(exerciseIndex, setIndex, 'weight', e.target.value)}
-                                        aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, ${units}`}
-                                        className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
-                                      />
-                                      <input
-                                        type="number"
-                                        inputMode="numeric"
-                                        placeholder="0"
-                                        value={set.reps}
-                                        onChange={(e) => updateSet(exerciseIndex, setIndex, 'reps', e.target.value)}
-                                        aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
-                                        className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
-                                      />
-                                      <span className="workout-set-vol tabular-nums" aria-label={`Objętość serii ${setIndex + 1}`}>
-                                        {setVolume > 0 ? formatCompactVolume(setVolume) : '—'}
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => removeSet(exerciseIndex, setIndex)}
-                                        className="workout-set-remove"
-                                        style={{ color: 'var(--muted-soft)' }}
-                                        aria-label={`Usuń serię ${setIndex + 1}`}
-                                      >
-                                        <X size={15} />
-                                      </button>
-                                    </div>
-                                    {showMobileSteppers && (
-                                      <div className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5">
-                                        {[
-                                          { label: '−2.5 kg', delta: -2.5, field: 'weight' as const },
-                                          { label: '+2.5 kg', delta: +2.5, field: 'weight' as const },
-                                          { label: '−1 rep', delta: -1, field: 'reps' as const },
-                                          { label: '+1 rep', delta: +1, field: 'reps' as const },
-                                        ].map(({ label, delta, field }) => (
-                                          <button
-                                            key={label}
-                                            type="button"
-                                            onClick={() => {
-                                              adjustSet(exerciseIndex, setIndex, field, delta)
-                                              if ('vibrate' in navigator) navigator.vibrate(6)
-                                            }}
-                                            className="set-stepper-btn"
-                                            aria-label={`Dostosuj ${field === 'weight' ? 'wagę' : 'powtórzenia'} o ${delta}`}
-                                          >
-                                            {label}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
-                                )
-                              })}
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                addSet(exerciseIndex)
-                                if ('vibrate' in navigator) navigator.vibrate(8)
-                                const btn = e.currentTarget
-                                setTimeout(() => btn.scrollIntoView({ behavior: 'smooth', block: 'center' }), 80)
-                              }}
-                              className="workout-add-set mt-1 w-full"
-                            >
-                              <span className="inline-flex items-center justify-center gap-2">
-                                <Plus size={15} strokeWidth={2.4} />
-                                Dodaj serię
-                              </span>
-                            </button>
-                          </motion.div>
-                        )
-                      })()
-                    ))}
+                      return (
+                        <WorkoutExerciseLedgerItem
+                          key={exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
+                          exerciseAccent={CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'}
+                          exerciseClientId={exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
+                          exerciseIndex={exerciseIndex}
+                          categoryLabel={exerciseMeta?.category ? (CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
+                          equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
+                          focusSetIndex={exerciseIndex === focusExerciseIndex ? focusSetIndex : -1}
+                          hintDismissed={dismissedHints.has(hintKey)}
+                          hintKey={hintKey}
+                          isFocusedExercise={exerciseIndex === focusExerciseIndex}
+                          suggestion={suggestions[hintKey] ?? null}
+                          units={units}
+                          onAddSet={handleAddSet}
+                          onAdjustSet={handleAdjustSet}
+                          onApplySuggestion={handleApplySuggestion}
+                          onDismissSuggestion={handleDismissSuggestion}
+                          onRemoveExercise={handleRemoveExercise}
+                          onRemoveSet={handleRemoveSet}
+                          onToggleSet={handleToggleSet}
+                          onUpdateSet={handleUpdateSet}
+                        />
+                      )
+                    })}
                   </AnimatePresence>
                 </div>
 
@@ -1240,7 +1108,7 @@ export default function WorkoutPage() {
         </main>
       </div>
 
-      {rest !== null && (
+      {!isDesktop && rest !== null && (
         <div
           className="workout-mobile-action-bar fixed bottom-0 left-0 right-0 flex justify-center px-4 lg:hidden"
           style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}

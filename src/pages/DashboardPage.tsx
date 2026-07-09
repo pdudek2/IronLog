@@ -6,7 +6,6 @@ import {
   CalendarDays,
   ChevronRight,
   Clock3,
-  Flame,
   Play,
   Plus,
   Sparkles,
@@ -30,7 +29,7 @@ import {
   getRecentWorkouts, deleteWorkout, retryPendingMaterializations, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
-import { fetchRemoteSessionHasWork, saveActiveSession } from '../lib/activeSessionService'
+import { fetchRemoteSessionHasWork, saveActiveSession, subscribeToActiveSession } from '../lib/activeSessionService'
 import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
@@ -38,7 +37,7 @@ import { exercises as exerciseDb } from '../data/exercises'
 import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
-import { useWorkoutStore } from '../store/workoutStore'
+import { useWorkoutStore, type ActiveWorkout } from '../store/workoutStore'
 
 const CATEGORY_COLORS: Record<string, string> = {
   chest: '#F0435A',
@@ -52,15 +51,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const WEEK_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
-const CATEGORY_LABELS: Record<string, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  legs: 'Nogi',
-  arms: 'Ramiona',
-  shoulders: 'Barki',
-  core: 'Core',
-  cardio: 'Cardio',
-}
 
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
@@ -97,6 +87,10 @@ function formatCompactVolume(volume: number): string {
   if (volume >= 10_000) return `${Math.round(volume / 1_000)}k kg`
   if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k kg`
   return `${Math.round(volume).toLocaleString('pl-PL')} kg`
+}
+
+function formatExerciseCount(count: number): string {
+  return `${count} ${polishPlural(count, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}`
 }
 
 function formatWeekRange(dates: Date[]): string {
@@ -145,6 +139,12 @@ function fadeUp(delay: number) {
   }
 }
 
+function hasSessionWork(session: ActiveWorkout | null | undefined): boolean {
+  if (!session) return false
+  if (session.exercises.length > 0) return true
+  return Boolean(session.label?.trim())
+}
+
 export default function DashboardPage() {
   const { user } = useAuthStore()
   const { profile, loading, setProfile, setLoading } = useProfileStore()
@@ -154,7 +154,6 @@ export default function DashboardPage() {
   const {
     workouts,
     weeklyDone,
-    streak,
     ready: dashboardReady,
     setSnapshot,
   } = useDashboardStore()
@@ -165,6 +164,7 @@ export default function DashboardPage() {
   const [templateLaunchTarget, setTemplateLaunchTarget] = useState<{ template: WorkoutTemplate; dayIndex: number } | null>(null)
   const [dashboardError, setDashboardError] = useState(false)
   const [dashboardLoadAttempt, setDashboardLoadAttempt] = useState(0)
+  const [remoteActiveSession, setRemoteActiveSession] = useState<ActiveWorkout | null>(null)
   const workoutsRef = useRef<WorkoutSummary[]>([])
 
   const fetchData = useCallback(async (uid: string) => {
@@ -218,14 +218,20 @@ export default function DashboardPage() {
       .catch(() => toast.error('Nie udało się wczytać szablonów.'))
   }, [user])
 
-  const hasActiveWork = useMemo(() => {
-    if (!active) return false
-    if (active.exercises.length > 0) return true
-    return Boolean(active.label?.trim())
-  }, [active])
+  useEffect(() => {
+    if (!user) return
+    return subscribeToActiveSession(user.uid, ({ session }) => {
+      setRemoteActiveSession(session)
+    })
+  }, [user])
 
-  function handleDelete(id: string, e: React.MouseEvent) {
-    e.stopPropagation()
+  const effectiveActive = useMemo(
+    () => (hasSessionWork(active) ? active : remoteActiveSession),
+    [active, remoteActiveSession],
+  )
+  const hasActiveWork = useMemo(() => hasSessionWork(effectiveActive), [effectiveActive])
+
+  function handleDelete(id: string) {
     setConfirmDelete(id)
   }
 
@@ -233,12 +239,6 @@ export default function DashboardPage() {
     navigate(`/workout/${workout.id}`, {
       state: { workoutPreview: workout },
     })
-  }
-
-  function handleWorkoutCardKeyDown(event: React.KeyboardEvent, workout: WorkoutSummary) {
-    if (event.key !== 'Enter' && event.key !== ' ') return
-    event.preventDefault()
-    openWorkout(workout)
   }
 
   async function confirmDeleteWorkout() {
@@ -357,7 +357,6 @@ export default function DashboardPage() {
   }
 
   const weeklyGoal = profile?.weeklyGoal ?? 3
-  const progressPct = Math.min((weeklyDone / weeklyGoal) * 100, 100)
   const remainingWeeklySessions = Math.max(weeklyGoal - weeklyDone, 0)
   const weekDates = getWeekDates()
   const today = new Date()
@@ -367,16 +366,10 @@ export default function DashboardPage() {
   const weekEnd = (weekDates[6]?.getTime() ?? 0) + 86_400_000
   const previousWeekStart = weekStart - 7 * 86_400_000
   const previousWeekEnd = weekStart
-  const monthStartDate = new Date()
-  monthStartDate.setHours(0, 0, 0, 0)
-  monthStartDate.setDate(1)
   const weeklyWorkouts = workouts.filter((workout) => workout.startedAt >= weekStart && workout.startedAt < weekEnd)
   const previousWeekWorkouts = workouts.filter((workout) => workout.startedAt >= previousWeekStart && workout.startedAt < previousWeekEnd)
   const weeklyVolume = weeklyWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
   const previousWeeklyVolume = previousWeekWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
-  const weeklySetsTotal = weeklyWorkouts.reduce((sum, workout) => (
-    sum + workout.exercises.reduce((innerSum, exercise) => innerSum + exercise.sets.length, 0)
-  ), 0)
   const previousWeeklyDone = previousWeekWorkouts.length
   const avgMinutes = weeklyWorkouts.length
     ? Math.round(weeklyWorkouts.reduce((sum, workout) => (
@@ -409,22 +402,30 @@ export default function DashboardPage() {
   const activeDays = weekDailyStats.filter((day) => day.workouts > 0).length
   const peakDay = [...weekDailyStats].sort((a, b) => b.volume - a.volume)[0]
   const latestWorkout = recentWorkouts[0] ?? null
-  const focusEntries = Object.entries(weeklyWorkouts.reduce<Record<string, number>>((acc, workout) => {
-    workout.exercises.forEach((exercise) => {
-      const category = exercise.exerciseId ? exerciseMap.get(exercise.exerciseId)?.category : null
-      if (!category) return
-      acc[category] = (acc[category] ?? 0) + 1
-    })
-    return acc
-  }, {}))
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 4)
-  const totalFocusCount = focusEntries.reduce((sum, [, count]) => sum + count, 0)
-  const topFocus = focusEntries[0]
-  const upcomingMessage = weeklyDone >= weeklyGoal
-    ? 'Cel tygodnia zamknięty.'
-    : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu w tym tygodniu.`
-  const overviewCards = [
+  const activeExerciseCount = effectiveActive?.exercises.length ?? 0
+  const activeLabel = effectiveActive?.label?.trim()
+  const supportLine = hasActiveWork
+    ? [
+        `Aktywna sesja${activeLabel ? `: ${activeLabel}` : ''}`,
+        activeExerciseCount > 0 ? formatExerciseCount(activeExerciseCount) : null,
+      ].filter(Boolean).join(' • ')
+    : latestWorkout
+      ? `Ostatni trening: ${latestWorkout.label ?? workoutTitle(latestWorkout)} • ${formatDate(latestWorkout.startedAt)} • ${formatDuration(latestWorkout.startedAt, latestWorkout.finishedAt)}`
+      : 'Brak zapisanych treningów.'
+  const comparisonCopy = weeklySessionsDelta === 0
+    ? 'Sesje bez zmian względem poprzedniego tygodnia.'
+    : weeklySessionsDelta > 0
+      ? `${weeklySessionsDelta} ${polishPlural(weeklySessionsDelta, 'sesja', 'sesje', 'sesji')} więcej niż tydzień temu.`
+      : `${Math.abs(weeklySessionsDelta)} ${polishPlural(Math.abs(weeklySessionsDelta), 'sesja', 'sesje', 'sesji')} mniej niż tydzień temu.`
+  const weeklySummaryRows = [
+    {
+      label: 'Cel tygodnia',
+      value: `${weeklyDone}/${weeklyGoal}`,
+      copy: weeklyDone >= weeklyGoal
+        ? 'Cel zamknięty.'
+        : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu w tym tygodniu.`,
+      icon: Target,
+    },
     {
       label: 'Rytm',
       value: `${activeDays}/7 dni`,
@@ -445,27 +446,11 @@ export default function DashboardPage() {
       copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession)} na trening` : 'Brak średniej w tym tygodniu',
       icon: Clock3,
     },
-  ]
-  const dashboardHighlights: Array<{ label: string; value: string; sublabel: string }> = [
     {
-      label: 'Tydzień',
-      value: `${weeklyDone}/${weeklyGoal}`,
-      sublabel: weeklyDone >= weeklyGoal ? 'cel zamknięty' : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu`,
-    },
-    {
-      label: 'Objętość',
-      value: formatCompactVolume(weeklyVolume),
-      sublabel: weeklyVolumeDelta === null ? 'brak porównania' : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs tydzień temu`,
-    },
-    {
-      label: 'Serie',
-      value: String(weeklySetsTotal),
-      sublabel: weeklySetsTotal ? 'zapisane w tym tygodniu' : 'brak serii w tym tygodniu',
-    },
-    {
-      label: 'Śr. czas',
-      value: avgMinutes ? `${avgMinutes} min` : '—',
-      sublabel: avgMinutes ? 'średnia sesja' : 'brak średniej',
+      label: 'Porównanie',
+      value: weeklyVolumeDelta === null ? 'Brak' : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}%`,
+      copy: weeklyVolumeDelta === null ? 'Za mało danych na trend.' : comparisonCopy,
+      icon: BarChart3,
     },
   ]
 
@@ -485,7 +470,7 @@ export default function DashboardPage() {
             <h1 className="dashboard-home-title">
               {profile?.displayName ?? 'treningowcu'}
             </h1>
-            <p className="dashboard-home-copyline">{upcomingMessage}</p>
+            <p className="dashboard-home-copyline">{supportLine}</p>
 
             <div className="dashboard-home-actions">
               <motion.button
@@ -494,33 +479,15 @@ export default function DashboardPage() {
                 className="hero-editorial-cta"
                 whileTap={{ scale: 0.97 }}
               >
-                <Plus size={18} strokeWidth={2.4} />
-                Rozpocznij trening
+                {hasActiveWork ? <Play size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
+                {hasActiveWork ? 'Wróć do sesji' : 'Rozpocznij trening'}
               </motion.button>
-              <button
-                type="button"
-                onClick={() => navigate('/progress')}
-                className="puls-link-button px-3 py-2 text-sm font-medium"
-              >
-                Zobacz postępy
-                <ChevronRight size={15} strokeWidth={2.3} />
-              </button>
             </div>
 
             <div className="dashboard-home-rhythm" aria-hidden="true">
               <span />
               <span />
               <span />
-            </div>
-
-            <div className="dashboard-metric-strip puls-ledger">
-              {dashboardHighlights.map((item) => (
-                <div key={item.label} className="dashboard-metric-item">
-                  <span className="stat-meta">{item.label}</span>
-                  <span className="dashboard-metric-value">{item.value}</span>
-                  <span className="dashboard-metric-note">{item.sublabel}</span>
-                </div>
-              ))}
             </div>
           </motion.div>
 
@@ -530,53 +497,6 @@ export default function DashboardPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.08, duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <div className="dashboard-week-pulse puls-panel">
-              <div className="dashboard-week-head">
-                <div>
-                  <p className="stat-meta">Ten tydzień</p>
-                  <p className="dashboard-week-value">
-                    <span>{weeklyDone}</span> z {weeklyGoal}
-                  </p>
-                </div>
-                <div className={`dashboard-streak-token ${streak === 0 ? '' : 'dashboard-streak-token--active'}`}>
-                  <Flame size={13} strokeWidth={2.4} />
-                  <span>{streak}</span>
-                </div>
-              </div>
-
-              <div className="dashboard-progress-track" aria-label={`Postęp tygodnia ${Math.round(progressPct)} procent`}>
-                <motion.div
-                  className="dashboard-progress-fill"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(progressPct, 100)}%` }}
-                  transition={{ delay: 0.14, duration: 0.55, ease: 'easeOut' }}
-                />
-              </div>
-
-              <div className="dashboard-week-days">
-                {weekDailyStats.map((day, index) => {
-                  const hasWorkout = day.workouts > 0
-                  return (
-                    <div key={day.label} className="dashboard-week-day" data-today={day.isToday} data-active={hasWorkout}>
-                      <span>{day.label}</span>
-                      <motion.i
-                        style={{ height: `${day.volume > 0 ? Math.max(18, Math.round((day.volume / maxDayVolume) * 100)) : 10}%` }}
-                        initial={{ scaleY: 0.4, opacity: 0 }}
-                        animate={{ scaleY: 1, opacity: 1 }}
-                        transition={{ delay: 0.04 * index, duration: 0.22 }}
-                      />
-                    </div>
-                  )
-                })}
-              </div>
-
-              <p className="dashboard-week-summary">
-                {weeklyDone >= weeklyGoal
-                  ? 'Cel tygodnia zamknięty.'
-                  : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu. Ostatni trening: ${latestWorkout ? formatDate(latestWorkout.startedAt) : 'brak'}.`}
-              </p>
-            </div>
-
             <ReadinessWidget />
           </motion.aside>
         </section>
@@ -588,7 +508,7 @@ export default function DashboardPage() {
           transition={{ delay: 0.12, duration: 0.25 }}
         >
             <section className="dashboard-overview-grid puls-panel">
-              <motion.div className="dashboard-week-panel puls-panel" {...fadeUp(0.09)}>
+              <motion.div className="dashboard-week-panel" {...fadeUp(0.09)}>
                 <div className="dashboard-panel-head">
                   <div>
                     <p className="eyebrow">Tydzień</p>
@@ -612,8 +532,8 @@ export default function DashboardPage() {
                         <p className="dashboard-week-total">{formatCompactVolume(weeklyVolume)}</p>
                       </div>
                       <div className="dashboard-week-count">
-                        <strong>{activeDays}/7</strong>
-                        <span>dni z treningiem</span>
+                        <strong>{weeklyDone}/{weeklyGoal}</strong>
+                        <span>sesji / cel</span>
                       </div>
                     </div>
 
@@ -643,17 +563,18 @@ export default function DashboardPage() {
                       <p>{weeklyDone >= weeklyGoal
                         ? 'Cel tygodnia zrobiony'
                         : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu`}</p>
-                    <button
-                      onClick={() => navigate('/progress')}
-                      className="puls-link-button px-0 py-0 text-sm font-semibold"
-                    >
-                      Zobacz progres
-                      <ChevronRight size={15} strokeWidth={2.3} />
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate('/progress')}
+                        className="puls-link-button px-0 py-0 text-sm font-semibold"
+                      >
+                        Zobacz progres
+                        <ChevronRight size={15} strokeWidth={2.3} />
+                      </button>
                     </div>
 
                     <div className="dashboard-signal-list">
-                      {overviewCards.map(({ label, value, copy, icon: Icon }, index) => (
+                      {weeklySummaryRows.map(({ label, value, copy, icon: Icon }, index) => (
                         <motion.div
                           key={label}
                           className="dashboard-signal-row"
@@ -670,93 +591,6 @@ export default function DashboardPage() {
                         </motion.div>
                       ))}
                     </div>
-                  </div>
-                </div>
-              </motion.div>
-
-              <motion.div className="dashboard-focus-panel puls-panel" {...fadeUp(0.12)}>
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="eyebrow">Teraz</p>
-                    <h2 className="section-title mt-2">Status tygodnia</h2>
-                  </div>
-                  <div
-                    className="flex h-11 w-11 items-center justify-center rounded-[var(--radius-lg)]"
-                    style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
-                  >
-                    <Sparkles size={18} />
-                  </div>
-                </div>
-
-                <div className="dashboard-status-list">
-                  <div className="dashboard-status-row">
-                    <BarChart3 size={15} style={{ color: 'var(--accent)' }} />
-                    <span>Trajektoria</span>
-                    <strong>
-                    {weeklyVolumeDelta === null
-                      ? 'Za mało danych na trend'
-                      : weeklyVolumeDelta >= 0
-                        ? `Wolumen +${weeklyVolumeDelta}%`
-                        : `Wolumen -${Math.abs(weeklyVolumeDelta)}%`}
-                    </strong>
-                    <small>
-                    {weeklySessionsDelta === 0
-                      ? 'Sesje bez zmian względem poprzedniego tygodnia.'
-                      : weeklySessionsDelta > 0
-                        ? `${weeklySessionsDelta} ${polishPlural(weeklySessionsDelta, 'sesja', 'sesje', 'sesji')} więcej niż tydzień temu.`
-                        : `${Math.abs(weeklySessionsDelta)} ${polishPlural(Math.abs(weeklySessionsDelta), 'sesja', 'sesje', 'sesji')} mniej niż tydzień temu.`}
-                    </small>
-                  </div>
-
-                  <div className="dashboard-status-row">
-                    <Target size={15} style={{ color: 'var(--accent)' }} />
-                    <span>Główna partia</span>
-                    <strong>{topFocus ? CATEGORY_LABELS[topFocus[0]] ?? topFocus[0] : 'Brak dominującej partii'}</strong>
-                    <small>
-                      {topFocus
-                        ? `${topFocus[1]} logowanych bloków ćwiczeń w tym tygodniu.`
-                        : 'Brak danych w tym tygodniu.'}
-                    </small>
-
-                    {focusEntries.length > 0 && (
-                      <div className="dashboard-focus-bars">
-                        {focusEntries.map(([category, count]) => {
-                          const width = totalFocusCount ? (count / totalFocusCount) * 100 : 0
-                          return (
-                            <div key={category}>
-                              <div className="mb-1 flex items-center justify-between gap-3">
-                                <span className="text-sm font-medium text-white">
-                                  {CATEGORY_LABELS[category] ?? category}
-                                </span>
-                                <span className="text-xs tabular-nums" style={{ color: 'var(--muted)' }}>
-                                  {count}
-                                </span>
-                              </div>
-                              <div className="h-1.5 rounded-full" style={{ background: 'rgba(255,255,255,0.05)' }}>
-                                <div
-                                  className="h-full rounded-full"
-                                  style={{
-                                    width: `${width}%`,
-                                    background: `linear-gradient(90deg, ${CATEGORY_COLORS[category] ?? '#f0435a'} 0%, ${CATEGORY_COLORS[category] ?? '#f0435a'}88 100%)`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="dashboard-status-row">
-                    <Sparkles size={15} style={{ color: 'var(--accent)' }} />
-                    <span>Ostatnia sesja</span>
-                    <strong>{latestWorkout ? (latestWorkout.label ?? workoutTitle(latestWorkout)) : 'Czekamy na pierwszą sesję'}</strong>
-                    <small>
-                      {latestWorkout
-                        ? `${formatDate(latestWorkout.startedAt)} • ${formatDuration(latestWorkout.startedAt, latestWorkout.finishedAt)} • ${formatCompactVolume(calcVolume(latestWorkout))}`
-                        : 'Brak zapisanych treningów.'}
-                    </small>
                   </div>
                 </div>
               </motion.div>
@@ -914,53 +748,55 @@ export default function DashboardPage() {
                             '--workout-accent': accent,
                           } as React.CSSProperties}
                           initial={false}
-                          role="link"
-                          tabIndex={0}
-                          aria-label={`Otwórz trening ${workout.label ?? workoutTitle(workout)}`}
                           animate={{ opacity: deletingId === workout.id ? 0.4 : 1, x: 0 }}
                           exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
                           transition={{ duration: 0.22 }}
                           whileHover={{ y: -2 }}
-                          onClick={() => openWorkout(workout)}
-                          onKeyDown={(event) => handleWorkoutCardKeyDown(event, workout)}
                         >
                           <div className="dashboard-history-accent" aria-hidden="true" />
 
                           <div className="dashboard-history-main">
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span
-                                    className="dashboard-history-set"
-                                  >
-                                    {totalSets}×
-                                  </span>
-                                  {!workout.materialized && (
+                            <div className="dashboard-history-controls">
+                              <button
+                                type="button"
+                                onClick={() => openWorkout(workout)}
+                                className="dashboard-history-open"
+                                aria-label={`Otwórz trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <span
-                                      className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                                      style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+                                      className="dashboard-history-set"
                                     >
-                                      sync
+                                      {totalSets}×
                                     </span>
-                                  )}
+                                    {!workout.materialized && (
+                                      <span
+                                        className="text-[10px] font-bold px-2.5 py-1 rounded-full"
+                                        style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--muted)', border: '1px solid var(--border)' }}
+                                      >
+                                        sync
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="mt-2 text-lg font-semibold text-white truncate">
+                                    {workout.label ?? workoutTitle(workout)}
+                                  </p>
+                                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                                      {formatDate(workout.startedAt)}
+                                    </span>
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>·</span>
+                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>
+                                      {formatDuration(workout.startedAt, workout.finishedAt)}
+                                    </span>
+                                  </div>
                                 </div>
-                                <p className="mt-2 text-lg font-semibold text-white truncate">
-                                  {workout.label ?? workoutTitle(workout)}
-                                </p>
-                                <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                  <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                                    {formatDate(workout.startedAt)}
-                                  </span>
-                                  <span className="text-xs" style={{ color: 'var(--muted)' }}>·</span>
-                                  <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                                    {formatDuration(workout.startedAt, workout.finishedAt)}
-                                  </span>
-                                </div>
-                              </div>
-
+                              </button>
                               <motion.button
-                                onClick={(e) => handleDelete(workout.id, e)}
-                                className="flex-none rounded-lg p-1.5"
+                                type="button"
+                                onClick={() => handleDelete(workout.id)}
+                                className="dashboard-history-delete"
                                 style={{
                                   color: 'var(--danger)',
                                   opacity: 0.72,
@@ -970,7 +806,7 @@ export default function DashboardPage() {
                                 whileHover={{ opacity: 1 }}
                                 whileTap={{ scale: 0.85 }}
                                 disabled={deletingId === workout.id}
-                                aria-label="Usuń trening"
+                                aria-label={`Usuń trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
                               >
                                 <Trash2 size={13} />
                               </motion.button>

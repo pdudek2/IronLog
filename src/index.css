@@ -1523,17 +1523,12 @@ a {
   align-self: start;
 }
 
-.dashboard-week-pulse,
 .readiness-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-xl);
   background:
     linear-gradient(180deg, rgba(33, 31, 35, 0.88) 0%, rgba(18, 16, 18, 0.95) 100%);
   box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.035);
-}
-
-.dashboard-week-pulse {
-  padding: 1rem;
 }
 
 .dashboard-week-head {
@@ -1660,8 +1655,7 @@ a {
   gap: 1rem;
 }
 
-.dashboard-week-panel,
-.dashboard-focus-panel {
+.dashboard-week-panel {
   position: relative;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -1675,7 +1669,6 @@ a {
 }
 
 .dashboard-week-panel::before,
-.dashboard-focus-panel::before,
 .dashboard-plan-strip::before {
   content: "";
   position: absolute;
@@ -2199,15 +2192,13 @@ a {
   background: var(--accent-soft-strong);
 }
 
-.dashboard-week-pulse,
 .readiness-card,
 .dashboard-week-panel,
-.dashboard-focus-panel {
+.dashboard-week-panel {
   border-radius: var(--radius-sm);
   clip-path: polygon(0 0, calc(100% - 1.05rem) 0, 100% 1.05rem, 100% 100%, 0 100%);
 }
 
-.dashboard-week-pulse,
 .readiness-card {
   background:
     linear-gradient(160deg, rgba(240, 67, 90, 0.08) 0%, transparent 36%),
@@ -2215,7 +2206,7 @@ a {
 }
 
 .dashboard-week-panel,
-.dashboard-focus-panel {
+.dashboard-week-panel {
   background:
     linear-gradient(140deg, rgba(255, 255, 255, 0.045) 0%, transparent 22%),
     linear-gradient(180deg, rgba(33, 31, 35, 0.72) 0%, rgba(18, 16, 18, 0.91) 100%);
@@ -2223,11 +2214,6 @@ a {
 
 .dashboard-week-panel {
   min-height: 26rem;
-}
-
-.dashboard-focus-panel {
-  display: flex;
-  flex-direction: column;
 }
 
 .dashboard-week-chart {
@@ -2381,7 +2367,7 @@ a {
 }
 
 .dashboard-week-panel,
-.dashboard-focus-panel {
+.dashboard-week-panel {
   clip-path: none;
   border: 0;
   border-radius: 0;
@@ -2390,16 +2376,12 @@ a {
 }
 
 .dashboard-week-panel::before,
-.dashboard-focus-panel::before {
+.dashboard-week-panel::before {
   opacity: 0.55;
 }
 
 .dashboard-week-panel {
   min-height: 24rem;
-}
-
-.dashboard-focus-panel {
-  border-top: 1px solid var(--border);
 }
 
 .dashboard-week-chart {
@@ -2458,13 +2440,6 @@ a {
     rgba(33, 31, 35, 0.76);
 }
 
-@media (min-width: 1024px) {
-  .dashboard-focus-panel {
-    border-top: 0;
-    border-left: 1px solid var(--border);
-  }
-}
-
 @media (max-width: 900px) {
   .dashboard-overview-grid {
     border-radius: 0;
@@ -2493,18 +2468,9 @@ a {
   border-left: 0;
 }
 
-.dashboard-week-pulse,
 .readiness-card {
   clip-path: none;
   border-radius: var(--radius-sm);
-}
-
-.dashboard-week-pulse.puls-panel {
-  --rail-accent: var(--accent);
-}
-
-.dashboard-week-pulse.puls-panel::before {
-  opacity: 0.42;
 }
 
 .dashboard-overview-grid.puls-panel {
@@ -2524,8 +2490,7 @@ a {
   opacity: 0.72;
 }
 
-.dashboard-overview-grid.puls-panel > .dashboard-week-panel,
-.dashboard-overview-grid.puls-panel > .dashboard-focus-panel {
+.dashboard-overview-grid.puls-panel > .dashboard-week-panel {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -2639,10 +2604,10 @@ a {
 }
 
 .dashboard-history-row:focus-within {
-  border-color: color-mix(in srgb, var(--workout-accent) 38%, var(--border));
-  background:
-    radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--workout-accent) 18%, transparent), transparent 38%),
-    rgba(33, 31, 35, 0.76);
+  border-color: color-mix(in srgb, var(--workout-accent) 42%, var(--text));
+  background: color-mix(in srgb, var(--workout-accent) 20%, rgba(33, 31, 35, 0.76));
+  outline: 2px solid color-mix(in srgb, var(--workout-accent) 48%, transparent);
+  outline-offset: -1px;
 }
 
 @media (min-width: 1024px) {

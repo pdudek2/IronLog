@@ -33,6 +33,10 @@ function shouldHideBottomNav(path: string): boolean {
   return path.startsWith('/workout/new')
 }
 
+function isWorkoutFocusShell(path: string): boolean {
+  return path.startsWith('/workout/new')
+}
+
 function PageFallback() {
   return (
     <div className="flex min-h-[50dvh] items-center justify-center">
@@ -51,10 +55,13 @@ export default function AppLayout() {
   const location = useLocation()
   const section = sectionFromPath(location.pathname)
   const bottomNav = !shouldHideBottomNav(location.pathname)
+  const workoutFocusShell = isWorkoutFocusShell(location.pathname)
 
   return (
     <>
-      <TopNav current={section} />
+      <div className={workoutFocusShell ? 'top-nav-workout-mobile-shell' : undefined}>
+        <TopNav current={section} />
+      </div>
       <div className="page-shell">
         <div className="page-container">
           <div className="min-w-0">

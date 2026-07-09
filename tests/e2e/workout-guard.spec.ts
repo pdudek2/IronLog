@@ -9,6 +9,10 @@ async function waitForWorkoutState(page: Page): Promise<void> {
   ])
 }
 
+function workoutExerciseEntry(page: Page, exerciseName: string) {
+  return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
+}
+
 /**
  * Workout Guard tests — updated contract after removal of useBlocker.
  *
@@ -79,7 +83,7 @@ async function startFreshSession(page: Page): Promise<string> {
   await expect(page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })).not.toBeVisible({ timeout: 5_000 })
 
   // Wait for exercise to appear in workout UI (confirms Zustand state update)
-  await expect(page.getByText(exerciseName, { exact: false }).first()).toBeVisible({ timeout: 8_000 })
+  await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 8_000 })
 
   // Wait for Firestore debounce (400ms) + server write to commit before navigating away.
   // Uses 3s because fresh test contexts have no IndexedDB cache — write must reach server.
@@ -107,7 +111,7 @@ test.describe('Workout navigation guard', () => {
 
     // Session should be restored — exercise card is still visible
     // Firestore restore can take time on mobile/slow network — increase timeout
-    await expect(page.getByText(exerciseName, { exact: false }).first()).toBeVisible({ timeout: 20_000 })
+    await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 20_000 })
 
     await page.screenshot({ path: 'test-results/guard-session-restored.png' })
 
@@ -150,7 +154,7 @@ test.describe('Workout navigation guard', () => {
     const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
     await expect(addExBtn).toBeVisible({ timeout: 15_000 })
     // Old exercise should not be in the session
-    await expect(page.getByText(exerciseName, { exact: false })).not.toBeVisible({ timeout: 5_000 })
+    await expect(workoutExerciseEntry(page, exerciseName)).not.toBeVisible({ timeout: 5_000 })
   })
 
   test('cancel in discard dialog keeps session active', async ({ page }) => {
@@ -172,7 +176,7 @@ test.describe('Workout navigation guard', () => {
 
     // Still on workout page with session intact
     await expect(page).toHaveURL('/workout/new')
-    await expect(page.getByText(exerciseName, { exact: false }).first()).toBeVisible()
+    await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible()
 
     // Cleanup
     const cleanupBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()

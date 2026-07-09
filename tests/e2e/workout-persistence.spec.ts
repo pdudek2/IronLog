@@ -9,6 +9,10 @@ async function waitForWorkoutState(page: Page): Promise<void> {
   ])
 }
 
+function workoutExerciseEntry(page: Page, exerciseName: string) {
+  return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
+}
+
 function captureErrors(page: Page): () => string[] {
   const errors: string[] = []
   page.on('console', (msg: ConsoleMessage) => {
@@ -88,7 +92,7 @@ test.describe('Workout persistence', () => {
     await expect(page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })).not.toBeVisible({ timeout: 5_000 })
 
     // Exercise name appears in the workout card header
-    await expect(page.getByText(exerciseName, { exact: false }).first()).toBeVisible({ timeout: 5_000 })
+    await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 5_000 })
 
     // Wait for Firestore debounce (400ms) + server round-trip to complete.
     // Uses 3s because fresh test contexts have no IndexedDB cache — write must reach server.
@@ -102,7 +106,7 @@ test.describe('Workout persistence', () => {
 
     // Session should restore from Firestore
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
-    await expect(page.getByText(exerciseName, { exact: false }).first()).toBeVisible({ timeout: 20_000 })
+    await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 20_000 })
 
     await page.screenshot({ path: 'test-results/workout-after-reload.png' })
 

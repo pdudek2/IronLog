@@ -171,26 +171,42 @@ test.describe('Template launch contract', () => {
   })
 
   test('offline launch fails on the source page without delayed hydration after reconnect', async ({ context, page }) => {
-    await discardActiveSession(page)
+    await startFreshSessionWithExercise(page, 'Bench Press')
     await page.goto('/templates')
     await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
 
     const launch = page.getByRole('button', {
       name: `Uruchom szablon ${LAUNCH_TEMPLATE_NAME}`,
     })
+
+    if (await launch.count() === 0) {
+      await createLaunchTemplate(page)
+      await page.goto('/templates')
+      await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
+      await expect(launch).toBeVisible({ timeout: 15_000 })
+    }
+
     await expect(launch).toBeVisible({ timeout: 15_000 })
 
+    const dialog = page.getByRole('dialog').filter({ hasText: 'Zastąpić aktywną sesję?' })
+
     try {
-      await context.setOffline(true)
       await launch.click()
+      await expect(dialog).toBeVisible({ timeout: 5_000 })
+
+      await context.setOffline(true)
+      await dialog.getByRole('button', { name: 'Uruchom szablon' }).click()
+
       await expect(page.getByText('Nie udało się uruchomić szablonu.', { exact: true })).toBeVisible({ timeout: 15_000 })
       await expect(page).toHaveURL('/templates')
     } finally {
       await context.setOffline(false)
     }
 
-    await page.waitForTimeout(3_000)
-    await expect(page).toHaveURL('/templates')
-    await expect(page.getByRole('heading', { name: LAUNCH_TEMPLATE_NAME, exact: true }).first()).toBeVisible()
+    await page.waitForTimeout(6_000)
+    await page.goto('/workout/new')
+    await page.reload()
+    await expect(page.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Squat', { exact: true })).toHaveCount(0)
   })
 })

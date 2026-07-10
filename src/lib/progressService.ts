@@ -26,6 +26,16 @@ export interface RecordSummary {
   lastPerformedAt: number
 }
 
+export interface ProgressSessionsResult {
+  sessions: ProgressSessionLite[]
+  truncated: boolean
+}
+
+export interface ProgressRecordsResult {
+  records: RecordSummary[]
+  truncated: boolean
+}
+
 export interface WeeklyPoint {
   weekLabel: string  // "7 kwi"
   weekStart: number  // ms Monday 00:00 local
@@ -43,6 +53,49 @@ function toNum(v: unknown): number {
   return Number.isFinite(n) ? n : 0
 }
 
+const SESSION_LIMIT = 5_000
+const RECORD_LIMIT = 1_000
+const PAGE_SIZE = 500
+
+function normalizeProgressSession(id: string, data: DocumentData): ProgressSessionLite {
+  return {
+    id,
+    workoutId: typeof data.workoutId === 'string' ? data.workoutId : '',
+    exerciseId: typeof data.exerciseId === 'string' ? data.exerciseId : '',
+    exerciseSource: (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global',
+    finishedAt: toNum(data.finishedAt),
+    totalVolume: toNum(data.totalVolume),
+    totalSets: toNum(data.totalSets),
+    bestSetWeight: toNum(data.bestSetWeight),
+    exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : '',
+    muscleGroups: Array.isArray(data.muscleGroups)
+      ? data.muscleGroups.filter((g): g is string => typeof g === 'string')
+      : [],
+  }
+}
+
+function normalizeRecord(id: string, data: DocumentData): RecordSummary {
+  return {
+    id,
+    exerciseId: typeof data.exerciseId === 'string' ? data.exerciseId : '',
+    exerciseSource: (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global',
+    exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : '',
+    maxWeight: toNum(data.maxWeight),
+    maxReps: toNum(data.maxReps),
+    bestVolume: toNum(data.bestVolume),
+    totalSessions: toNum(data.totalSessions),
+    lastPerformedAt: toNum(data.lastPerformedAt),
+  }
+}
+
+function compareRecords(a: RecordSummary, b: RecordSummary): number {
+  return b.maxWeight - a.maxWeight
+    || b.bestVolume - a.bestVolume
+    || b.maxReps - a.maxReps
+    || a.exerciseName.localeCompare(b.exerciseName, 'pl')
+    || a.id.localeCompare(b.id)
+}
+
 // Monday 00:00:00.000 local dla danej daty
 function getWeekMonday(date: Date): Date {
   const d = new Date(date)
@@ -57,15 +110,13 @@ function getWeekMonday(date: Date): Date {
 export async function getProgressSessions(
   uid: string,
   fromMs: number,
-): Promise<ProgressSessionLite[]> {
+): Promise<ProgressSessionsResult> {
   const sessions: ProgressSessionLite[] = []
   let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null
-  const batchSize = 500
-  const maxDocs = 5_000
 
-  while (sessions.length < maxDocs) {
-    const remaining = maxDocs - sessions.length
-    const currentLimit = Math.min(batchSize, remaining)
+  while (sessions.length < SESSION_LIMIT + 1) {
+    const remaining = SESSION_LIMIT + 1 - sessions.length
+    const currentLimit = Math.min(PAGE_SIZE, remaining)
     let snap: QuerySnapshot<DocumentData>
     if (lastDoc) {
       snap = await getDocs(
@@ -90,23 +141,7 @@ export async function getProgressSessions(
       )
     }
 
-    sessions.push(...snap.docs.map((d) => {
-      const data = d.data()
-      return {
-        id: d.id,
-        workoutId: typeof data.workoutId === 'string' ? data.workoutId : '',
-        exerciseId: typeof data.exerciseId === 'string' ? data.exerciseId : '',
-        exerciseSource: (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global',
-        finishedAt: toNum(data.finishedAt),
-        totalVolume: toNum(data.totalVolume),
-        totalSets: toNum(data.totalSets),
-        bestSetWeight: toNum(data.bestSetWeight),
-        exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : '',
-        muscleGroups: Array.isArray(data.muscleGroups)
-          ? data.muscleGroups.filter((g): g is string => typeof g === 'string')
-          : [],
-      }
-    }))
+    sessions.push(...snap.docs.map((document) => normalizeProgressSession(document.id, document.data())))
 
     if (snap.docs.length < currentLimit) break
 
@@ -114,29 +149,51 @@ export async function getProgressSessions(
     if (!lastDoc) break
   }
 
-  return sessions
+  return {
+    sessions: sessions.slice(0, SESSION_LIMIT),
+    truncated: sessions.length > SESSION_LIMIT,
+  }
 }
 
-export async function getRecords(uid: string): Promise<RecordSummary[]> {
-  const snap = await getDocs(
-    query(collection(db, 'records'), where('userId', '==', uid), limit(200)),
-  )
-  return snap.docs
-    .map((d) => {
-      const data = d.data()
-      return {
-        id: d.id,
-        exerciseId: typeof data.exerciseId === 'string' ? data.exerciseId : '',
-        exerciseSource: (data.exerciseSource === 'user' ? 'user' : 'global') as 'user' | 'global',
-        exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : '',
-        maxWeight: toNum(data.maxWeight),
-        maxReps: toNum(data.maxReps),
-        bestVolume: toNum(data.bestVolume),
-        totalSessions: toNum(data.totalSessions),
-        lastPerformedAt: toNum(data.lastPerformedAt),
-      }
-    })
-    .sort((a, b) => b.maxWeight - a.maxWeight)
+export async function getRecords(uid: string): Promise<ProgressRecordsResult> {
+  const records: RecordSummary[] = []
+  let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null
+
+  while (records.length < RECORD_LIMIT + 1) {
+    const remaining = RECORD_LIMIT + 1 - records.length
+    const currentLimit = Math.min(PAGE_SIZE, remaining)
+    let snap: QuerySnapshot<DocumentData>
+    if (lastDoc) {
+      snap = await getDocs(
+        query(
+          collection(db, 'records'),
+          where('userId', '==', uid),
+          startAfter(lastDoc),
+          limit(currentLimit),
+        ),
+      )
+    } else {
+      snap = await getDocs(
+        query(
+          collection(db, 'records'),
+          where('userId', '==', uid),
+          limit(currentLimit),
+        ),
+      )
+    }
+
+    records.push(...snap.docs.map((document) => normalizeRecord(document.id, document.data())))
+
+    if (snap.docs.length < currentLimit) break
+
+    lastDoc = snap.docs[snap.docs.length - 1] ?? null
+    if (!lastDoc) break
+  }
+
+  return {
+    records: records.slice(0, RECORD_LIMIT).sort(compareRecords),
+    truncated: records.length > RECORD_LIMIT,
+  }
 }
 
 // ── Aggregations (pure, client-side) ─────────────────────────────────────────
@@ -144,8 +201,9 @@ export async function getRecords(uid: string): Promise<RecordSummary[]> {
 export function aggregateWeeklyVolume(
   sessions: ProgressSessionLite[],
   weeks = 12,
+  anchorMs = Date.now(),
 ): WeeklyPoint[] {
-  const now = new Date()
+  const now = new Date(anchorMs)
   const buckets = new Map<number, WeeklyPoint>()
 
   // Wygeneruj puste buckety dla ostatnich `weeks` tygodni
@@ -237,8 +295,9 @@ function countUniqueWorkouts(sessions: ProgressSessionLite[]): { count: number; 
 export function aggregatePeriodComparison(
   sessions: ProgressSessionLite[],
   rangeDays: number,
+  anchorMs = Date.now(),
 ): PeriodComparison {
-  const cutoffMs = Date.now() - rangeDays * 86_400_000
+  const cutoffMs = anchorMs - rangeDays * 86_400_000
   const current = sessions.filter((s) => s.finishedAt >= cutoffMs)
   const previous = sessions.filter((s) => s.finishedAt < cutoffMs)
 
@@ -266,10 +325,11 @@ export function aggregatePeriodComparison(
 export interface StrengthPoint {
   date: string
   timestamp: number
-  [exerciseName: string]: number | string
+  [key: string]: number | string
 }
 
 export interface StrengthSeries {
+  key: string
   exerciseName: string
   color: string
 }
@@ -300,7 +360,6 @@ export function aggregateStrengthProgression(
   if (topExercises.length === 0) return { data: [], series: [] }
 
   const topKeys = new Set(topExercises.map(([key]) => key))
-  const topNames = new Map(topExercises.map(([key, val]) => [key, val.name]))
 
   // Zgrupuj bestSetWeight per dzień per ćwiczenie
   const dayMap = new Map<string, { timestamp: number; weights: Map<string, number> }>()
@@ -333,14 +392,14 @@ export function aggregateStrengthProgression(
         timestamp: day.timestamp,
       }
       for (const [key, weight] of day.weights) {
-        const name = topNames.get(key) ?? key
-        point[name] = weight
+        point[key] = weight
       }
       return point
     })
 
-  const series: StrengthSeries[] = topExercises.map(([key], i) => ({
-    exerciseName: topNames.get(key) ?? key,
+  const series: StrengthSeries[] = topExercises.map(([key, meta], i) => ({
+    key,
+    exerciseName: meta.name,
     color: SERIES_COLORS[i % SERIES_COLORS.length],
   }))
 
@@ -360,9 +419,10 @@ export interface HeatmapDay {
 export function aggregateActivityHeatmap(
   sessions: ProgressSessionLite[],
   weeks = 12,
+  anchorMs = Date.now(),
 ): HeatmapDay[] {
   // Wygeneruj grid: weeks tygodni × 7 dni
-  const now = new Date()
+  const now = new Date(anchorMs)
   const startMonday = getWeekMonday(new Date(now.getTime() - (weeks - 1) * 7 * 86_400_000))
 
   const grid: HeatmapDay[] = []

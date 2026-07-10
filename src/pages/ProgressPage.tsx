@@ -98,13 +98,13 @@ function summarizeWeeklyVolume(data: WeeklyPoint[]): string {
 function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSeries[]): string {
   if (data.length === 0 || series.length === 0) return 'Progresja ciężaru: brak danych do wykresu.'
 
-  const summaries = series.slice(0, 5).map(({ exerciseName }) => {
+  const summaries = series.slice(0, 5).map(({ exerciseName, key }) => {
     const values = data
-      .map((point) => Number(point[exerciseName] ?? 0))
+      .map((point) => Number(point[key] ?? 0))
       .filter((value) => value > 0)
     const latest = [...data]
       .reverse()
-      .map((point) => Number(point[exerciseName] ?? 0))
+      .map((point) => Number(point[key] ?? 0))
       .find((value) => value > 0) ?? 0
     const top = values.length ? Math.max(...values) : 0
     return `${exerciseName}: ostatnio ${latest} kg, max ${top} kg`
@@ -216,10 +216,10 @@ export default function ProgressPage() {
       getProgressSessions(user.uid, fromMs),
       getRecords(user.uid),
     ])
-      .then(([s, r]) => {
+      .then(([sessionsResult, recordsResult]) => {
         if (cancelled) return
-        setSessions(s)
-        setRecords(r)
+        setSessions(sessionsResult.sessions)
+        setRecords(recordsResult.records)
         setFetchedAt(Date.now())
         setError(false)
       })
@@ -497,9 +497,9 @@ export default function ProgressPage() {
                         <Tooltip content={<DarkTooltip />} />
                         {strengthData.series.map((s) => (
                           <Line
-                            key={s.exerciseName}
+                            key={s.key}
                             type="monotone"
-                            dataKey={s.exerciseName}
+                            dataKey={s.key}
                             stroke={s.color}
                             strokeWidth={2.35}
                             dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
@@ -511,7 +511,7 @@ export default function ProgressPage() {
                   </div>
                   <div className="progress-legend">
                     {strengthData.series.map((s) => (
-                      <div key={s.exerciseName}>
+                      <div key={s.key}>
                         <span style={{ background: s.color }} />
                         <small>{s.exerciseName}</small>
                       </div>

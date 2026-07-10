@@ -4,8 +4,10 @@ vi.mock('../firebase', () => ({ db: {}, auth: {} }))
 vi.mock('firebase/firestore', () => ({}))
 
 import {
+  aggregateActivityHeatmap,
   aggregateMuscleBalance,
   aggregatePeriodComparison,
+  aggregateStrengthProgression,
   aggregateWeeklyVolume,
   type ProgressSessionLite,
 } from '../progressService'
@@ -158,5 +160,47 @@ describe('aggregateWeeklyVolume', () => {
     const thisWeek = result[result.length - 1]
     expect(thisWeek.sessions).toBe(1)
     expect(thisWeek.volume).toBe(1000) // 400+600
+  })
+})
+
+// ─── Snapshot anchors ───────────────────────────────────────────────────────
+
+describe('snapshot anchors', () => {
+  it('anchors weekly, comparison, and heatmap boundaries to the supplied snapshot time', () => {
+    const anchorMs = new Date('2024-01-10T12:00:00Z').getTime()
+    const anchoredSession: ProgressSessionLite = {
+      id: 'anchored',
+      workoutId: 'workout-anchored',
+      exerciseId: 'bench',
+      exerciseSource: 'global',
+      finishedAt: new Date('2024-01-09T12:00:00Z').getTime(),
+      totalVolume: 1_000,
+      totalSets: 3,
+      bestSetWeight: 80,
+      exerciseName: 'Bench Press',
+      muscleGroups: ['chest'],
+    }
+
+    expect(aggregateWeeklyVolume([anchoredSession], 4, anchorMs).at(-1)?.volume).toBe(1_000)
+    expect(aggregatePeriodComparison([anchoredSession], 30, anchorMs).currentSessions).toBe(1)
+    expect(aggregateActivityHeatmap([anchoredSession], 12, anchorMs).some((day) => day.volume === 1_000)).toBe(true)
+  })
+})
+
+// ─── aggregateStrengthProgression ───────────────────────────────────────────
+
+describe('aggregateStrengthProgression', () => {
+  it('keeps global and user exercises with the same name in separate strength series', () => {
+    const result = aggregateStrengthProgression([
+      session({ daysAgo: 2, exerciseSource: 'global', exerciseId: 'bench', exerciseName: 'Bench Press', bestSetWeight: 80 }),
+      session({ daysAgo: 1, exerciseSource: 'user', exerciseId: 'bench', exerciseName: 'Bench Press', bestSetWeight: 60 }),
+    ], 5)
+
+    expect(result.series.map((series) => series.key)).toEqual([
+      'global:bench',
+      'user:bench',
+    ])
+    expect(result.data.some((point) => point['global:bench'] === 80)).toBe(true)
+    expect(result.data.some((point) => point['user:bench'] === 60)).toBe(true)
   })
 })

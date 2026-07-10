@@ -28,7 +28,7 @@ async function discardActiveSession(page: Page): Promise<void> {
   if (await staleDiscardButton.isVisible()) {
     await staleDiscardButton.click()
     await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
-    return
+    await expect(discardButton).toBeVisible({ timeout: 15_000 })
   }
 
   if (await discardButton.isVisible()) {

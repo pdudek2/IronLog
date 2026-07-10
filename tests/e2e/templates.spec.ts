@@ -3,9 +3,13 @@ import { test, expect, type Page } from '@playwright/test'
 // Fixed name avoids timestamp instability across retries
 const TEST_TEMPLATE_NAME = '_E2E Szablon Test_'
 
+async function waitForTemplatesPageReady(page: Page): Promise<void> {
+  await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
+}
+
 async function cleanupTestTemplate(page: Page) {
   await page.goto('/templates')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+  await waitForTemplatesPageReady(page)
 
   const deleteButtons = page.getByRole('button', {
     name: `Usuń szablon ${TEST_TEMPLATE_NAME}`,
@@ -107,7 +111,7 @@ test.describe('Templates CRUD', () => {
     // Wait for redirect to EXACTLY /templates (not /templates/new or /templates/:id/edit)
     await page.waitForURL('/templates', { timeout: 15_000 })
     await expect(page).toHaveURL('/templates')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await waitForTemplatesPageReady(page)
 
     // Template should appear in the list
     await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 10_000 })
@@ -117,7 +121,7 @@ test.describe('Templates CRUD', () => {
 
   test('edit a template', async ({ page }) => {
     await page.goto('/templates')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await waitForTemplatesPageReady(page)
     await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 8_000 })
 
     // Edit button uses onClick navigate() — not an <a> tag
@@ -143,7 +147,7 @@ test.describe('Templates CRUD', () => {
   test('start workout from the created template', async ({ page }) => {
     await discardActiveSession(page)
     await page.goto('/templates')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await waitForTemplatesPageReady(page)
     await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 8_000 })
 
     await page.getByRole('button', {
@@ -159,7 +163,7 @@ test.describe('Templates CRUD', () => {
 
   test('delete a template', async ({ page }) => {
     await page.goto('/templates')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await waitForTemplatesPageReady(page)
     await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 8_000 })
 
     // Find delete button for our template

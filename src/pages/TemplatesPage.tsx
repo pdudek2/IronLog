@@ -4,17 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { CalendarDays, ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ConfirmDialog from '../components/ConfirmDialog'
+import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
 import { Button, LoadingState } from '../components/ui'
+import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { useAuthStore } from '../store/authStore'
-import { useWorkoutStore } from '../store/workoutStore'
-import { fetchRemoteSessionHasWork, saveActiveSession } from '../lib/activeSessionService'
-import { getExerciseSessions } from '../lib/exerciseDetailService'
 import {
-  buildActiveWorkoutFromTemplate,
   deleteTemplate,
   getTemplates,
-  templateExerciseKey,
-  type TemplateExerciseHistoryMap,
   type WorkoutTemplate,
 } from '../lib/templateService'
 
@@ -32,17 +28,20 @@ function countTemplateExercises(template: WorkoutTemplate): number {
 
 export default function TemplatesPage() {
   const { user } = useAuthStore()
-  const active = useWorkoutStore((state) => state.active)
-  const hydrateFromDoc = useWorkoutStore((state) => state.hydrateFromDoc)
   const navigate = useNavigate()
+  const {
+    pendingLaunch,
+    launchingTemplateId,
+    requestTemplateLaunch,
+    confirmTemplateLaunch,
+    cancelTemplateLaunch,
+  } = useTemplateWorkoutLaunch(user?.uid)
 
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
-  const [launching, setLaunching] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<WorkoutTemplate | null>(null)
-  const [launchTarget, setLaunchTarget] = useState<{ template: WorkoutTemplate; dayIndex: number } | null>(null)
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -65,11 +64,6 @@ export default function TemplatesPage() {
     setLoadAttempt((value) => value + 1)
   }
 
-  const hasActiveWork = useMemo(() => {
-    if (!active) return false
-    if (active.exercises.length > 0) return true
-    return Boolean(active.label?.trim())
-  }, [active])
   const plannerStats = useMemo(() => ({
     templates: templates.length,
     days: templates.reduce((sum, template) => sum + template.days.length, 0),
@@ -89,62 +83,6 @@ export default function TemplatesPage() {
     } catch {
       toast.error('Nie udało się usunąć szablonu.')
     }
-  }
-
-  async function launchTemplate(template: WorkoutTemplate, dayIndex: number) {
-    if (!user) return
-
-    const historyByExercise = await loadTemplateExerciseHistory(user.uid, template, dayIndex)
-    const nextWorkout = buildActiveWorkoutFromTemplate(template, dayIndex, historyByExercise)
-    hydrateFromDoc(nextWorkout)
-    await saveActiveSession(user.uid, nextWorkout)
-    toast.success(`Szablon „${template.name}” gotowy do startu`)
-    navigate('/workout/new')
-  }
-
-  async function handleLaunch(template: WorkoutTemplate, dayIndex: number) {
-    if (!user || launching) return
-    setLaunching(true)
-    try {
-      const remoteHasWork = await fetchRemoteSessionHasWork(user.uid)
-      if (hasActiveWork || remoteHasWork) {
-        setLaunchTarget({ template, dayIndex })
-        return
-      }
-      await launchTemplate(template, dayIndex)
-    } finally {
-      setLaunching(false)
-    }
-  }
-
-  async function loadTemplateExerciseHistory(
-    uid: string,
-    template: WorkoutTemplate,
-    dayIndex: number,
-  ): Promise<TemplateExerciseHistoryMap> {
-    const day = template.days[dayIndex] ?? template.days[0]
-    const exercises = day?.exercises ?? []
-    const uniqueExercises = Array.from(
-      new Map(exercises.map((exercise) => [
-        templateExerciseKey(exercise.exerciseId, exercise.exerciseSource),
-        exercise,
-      ])).values(),
-    )
-
-    const entries = await Promise.all(uniqueExercises.map(async (exercise) => {
-      try {
-        const [last] = await getExerciseSessions(uid, exercise.exerciseId, exercise.exerciseSource, 1)
-        if (!last || last.bestSetWeight <= 0) return null
-        return [
-          templateExerciseKey(exercise.exerciseId, exercise.exerciseSource),
-          { bestSetWeight: last.bestSetWeight, bestSetReps: last.bestSetReps },
-        ] as const
-      } catch {
-        return null
-      }
-    }))
-
-    return new Map(entries.filter((entry): entry is NonNullable<typeof entry> => entry !== null))
   }
 
   if (loading) {
@@ -310,8 +248,9 @@ export default function TemplatesPage() {
                           key={`${template.id}-summary-${dayIndex}`}
                           type="button"
                           className="planner-day-chip"
-                          onClick={() => void handleLaunch(template, dayIndex)}
-                          disabled={launching}
+                          aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
+                          onClick={() => void requestTemplateLaunch(template, dayIndex)}
+                          disabled={launchingTemplateId !== null}
                         >
                           <span>{day.name}</span>
                           <small>{day.exercises.length} ćw.</small>
@@ -322,8 +261,9 @@ export default function TemplatesPage() {
                     <div className="planner-template-actions">
                       <motion.button
                         type="button"
-                        onClick={() => void handleLaunch(template, 0)}
-                        disabled={launching}
+                        aria-label={`Uruchom szablon ${template.name}`}
+                        onClick={() => void requestTemplateLaunch(template, 0)}
+                        disabled={launchingTemplateId !== null}
                         className="planner-template-start"
                         whileTap={{ scale: 0.96 }}
                       >
@@ -384,8 +324,9 @@ export default function TemplatesPage() {
 
                               <motion.button
                                 type="button"
-                                onClick={() => void handleLaunch(template, dayIndex)}
-                                disabled={launching}
+                                aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
+                                onClick={() => void requestTemplateLaunch(template, dayIndex)}
+                                disabled={launchingTemplateId !== null}
                                 className="planner-secondary-action"
                                 whileTap={{ scale: 0.96 }}
                               >
@@ -431,18 +372,11 @@ export default function TemplatesPage() {
         />
       )}
 
-      {launchTarget && (
-        <ConfirmDialog
-          message="Masz już rozpoczętą sesję w pamięci aplikacji. Start z szablonu nadpisze jej bieżący układ."
-          confirmLabel="Uruchom szablon"
-          cancelLabel="Zostań przy sesji"
-          onConfirm={() => {
-            void launchTemplate(launchTarget.template, launchTarget.dayIndex)
-            setLaunchTarget(null)
-          }}
-          onCancel={() => setLaunchTarget(null)}
-        />
-      )}
+      <TemplateLaunchConfirmDialog
+        open={pendingLaunch !== null}
+        onConfirm={() => { void confirmTemplateLaunch() }}
+        onCancel={cancelTemplateLaunch}
+      />
     </>
   )
 }

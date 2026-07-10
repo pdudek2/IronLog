@@ -7,18 +7,51 @@ async function cleanupTestTemplate(page: Page) {
   await page.goto('/templates')
   await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
-  // If a leftover test template exists, delete it
-  const templateCard = page.locator('[class]').filter({ hasText: TEST_TEMPLATE_NAME }).first()
-  if (await templateCard.isVisible({ timeout: 3_000 }).catch(() => false)) {
-    const deleteBtn = page.getByRole('button', {
-      name: new RegExp(`Usuń szablon ${TEST_TEMPLATE_NAME}`, 'i'),
-    }).or(page.getByLabel(new RegExp(`Usuń szablon ${TEST_TEMPLATE_NAME}`, 'i'))).first()
+  const deleteButtons = page.getByRole('button', {
+    name: `Usuń szablon ${TEST_TEMPLATE_NAME}`,
+  })
 
-    if (await deleteBtn.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await deleteBtn.click()
-      await page.getByRole('dialog').getByRole('button', { name: 'Usuń' }).click()
-      await expect(page.getByText(TEST_TEMPLATE_NAME, { exact: false })).not.toBeVisible({ timeout: 8_000 })
-    }
+  while (await deleteButtons.count()) {
+    const initialCount = await deleteButtons.count()
+    await deleteButtons.first().click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Usuń' }).click()
+    await expect(deleteButtons).toHaveCount(initialCount - 1, { timeout: 8_000 })
+  }
+}
+
+async function discardActiveSession(page: Page): Promise<void> {
+  await page.goto('/workout/new')
+  await expect(page).toHaveURL('/workout/new')
+  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+
+  const staleDiscardButton = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
+  const discardButton = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
+  const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
+  const addExerciseButton = page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()
+
+  await Promise.race([
+    staleDiscardButton.waitFor({ state: 'visible', timeout: 25_000 }),
+    discardButton.waitFor({ state: 'visible', timeout: 25_000 }),
+    startButton.waitFor({ state: 'visible', timeout: 25_000 }),
+    addExerciseButton.waitFor({ state: 'visible', timeout: 25_000 }),
+  ])
+
+  if (await staleDiscardButton.isVisible()) {
+    await staleDiscardButton.click()
+    await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
+  } else if (await startButton.isVisible()) {
+    await startButton.click()
+    await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
+  }
+
+  if (await discardButton.isVisible()) {
+    await discardButton.click()
+    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
+    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
+    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
+    await page.waitForURL('/dashboard', { timeout: 10_000 })
+  } else {
+    await expect(startButton).toBeVisible({ timeout: 5_000 })
   }
 }
 
@@ -77,7 +110,7 @@ test.describe('Templates CRUD', () => {
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
     // Template should appear in the list
-    await expect(page.getByText(TEST_TEMPLATE_NAME, { exact: false })).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 10_000 })
 
     await page.screenshot({ path: 'test-results/templates-created.png' })
   })
@@ -85,10 +118,10 @@ test.describe('Templates CRUD', () => {
   test('edit a template', async ({ page }) => {
     await page.goto('/templates')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText(TEST_TEMPLATE_NAME, { exact: false })).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 8_000 })
 
     // Edit button uses onClick navigate() — not an <a> tag
-    const editLink = page.getByRole('button', { name: new RegExp(`Edytuj szablon ${TEST_TEMPLATE_NAME}`, 'i') })
+    const editLink = page.getByRole('button', { name: new RegExp(`Edytuj szablon ${TEST_TEMPLATE_NAME}`, 'i') }).first()
     await expect(editLink).toBeVisible({ timeout: 5_000 })
     await editLink.click()
 
@@ -107,40 +140,27 @@ test.describe('Templates CRUD', () => {
     await page.screenshot({ path: 'test-results/templates-edited.png' })
   })
 
-  test('start workout from template day', async ({ page }) => {
+  test('start workout from the created template', async ({ page }) => {
+    await discardActiveSession(page)
     await page.goto('/templates')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 8_000 })
 
-    // Look for "Rozpocznij ten dzień" button — only visible if template has days with exercises
-    const startBtn = page.getByRole('button', { name: /Rozpocznij ten dzień/i }).first()
+    await page.getByRole('button', {
+      name: `Uruchom szablon ${TEST_TEMPLATE_NAME}`,
+    }).click()
 
-    if (await startBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-      await startBtn.click()
-      await page.waitForURL('/workout/new', { timeout: 10_000 })
-      await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+    await expect(page).toHaveURL('/workout/new', { timeout: 10_000 })
+    await expect(page.getByText('Squat', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Dzień 1', { exact: true }).first()).toBeVisible()
 
-      await page.screenshot({ path: 'test-results/templates-workout-started.png' })
-
-      // Cleanup: discard the session
-      // Trigger button is "Anuluj"; confirm inside dialog is "Anuluj trening"
-      const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-      if (await discardBtn.isVisible({ timeout: 5_000 }).catch(() => false)) {
-        await discardBtn.click()
-        const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-        await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
-        await page.waitForURL('/dashboard', { timeout: 10_000 })
-      }
-    } else {
-      // No template day to start from — skip gracefully
-      // (test template has no exercises; "Rozpocznij" only shows when exercises exist)
-      test.skip(true, 'No template with exercises found — start from template requires exercises in a day')
-    }
+    await discardActiveSession(page)
   })
 
   test('delete a template', async ({ page }) => {
     await page.goto('/templates')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByText(TEST_TEMPLATE_NAME, { exact: false })).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 8_000 })
 
     // Find delete button for our template
     const deleteBtn = page.getByRole('button', {
@@ -159,7 +179,7 @@ test.describe('Templates CRUD', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Usuń' }).click()
 
     // Template should be gone
-    await expect(page.getByText(TEST_TEMPLATE_NAME, { exact: false })).not.toBeVisible({ timeout: 8_000 })
+    await expect(page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true })).toHaveCount(0, { timeout: 8_000 })
 
     await page.screenshot({ path: 'test-results/templates-deleted.png' })
   })

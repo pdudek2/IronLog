@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useWorkoutStore, type ActiveWorkout, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
+import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { saveWorkout, getRecentWorkouts } from '../lib/workoutService'
@@ -296,16 +296,13 @@ export default function WorkoutPage() {
   const {
     active,
     startWorkout,
-    hydrateFromDoc,
     setLabel,
     addExercise,
     clearWorkout,
   } = useWorkoutStore()
   const navigate = useNavigate()
-  const location = useLocation()
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const goQuick = (to: string) => navigateWithAppTransition(navigate, to)
-  const appliedTemplateRef = useRef<string | null>(null)
 
   const {
     clearSession,
@@ -450,21 +447,6 @@ export default function WorkoutPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, active?.exercises.length])
-
-  useEffect(() => {
-    const routeState = location.state as { templateWorkout?: ActiveWorkout; templateName?: string } | null
-    const templateWorkout = routeState?.templateWorkout
-
-    if (!ready || !templateWorkout) return
-
-    const signature = `${templateWorkout.templateId ?? 'adhoc'}:${templateWorkout.startedAt}`
-    if (appliedTemplateRef.current === signature) return
-
-    appliedTemplateRef.current = signature
-    hydrateFromDoc(templateWorkout)
-    navigate(location.pathname, { replace: true, state: null })
-    toast.success(routeState?.templateName ? `Szablon „${routeState.templateName}” gotowy do startu` : 'Szablon gotowy do startu')
-  }, [ready, location.state, location.pathname, hydrateFromDoc, navigate])
 
   async function doFinish() {
     if (!active || !user || saving || closingSession) return

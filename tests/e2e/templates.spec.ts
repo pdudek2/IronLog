@@ -60,6 +60,8 @@ async function discardActiveSession(page: Page): Promise<void> {
 }
 
 test.describe('Templates CRUD', () => {
+  test.describe.configure({ mode: 'serial' })
+
   test.beforeAll(async ({ browser }) => {
     // Clean up any leftover test template from previous runs
     const ctx = await browser.newContext({ storageState: 'tests/e2e/.auth/user.json' })
@@ -156,7 +158,7 @@ test.describe('Templates CRUD', () => {
 
     await expect(page).toHaveURL('/workout/new', { timeout: 10_000 })
     await expect(page.getByText('Squat', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText('Dzień 1', { exact: true }).first()).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Aktywna sesja: Dzień 1' })).toBeVisible()
 
     await discardActiveSession(page)
   })

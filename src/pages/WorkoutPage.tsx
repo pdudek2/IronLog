@@ -703,7 +703,11 @@ export default function WorkoutPage() {
   const lastCompletedSet = completedSetSnapshots[completedSetSnapshots.length - 1] ?? null
 
   return (
-    <div className="workout-focus-shell">
+    <div
+      className="workout-focus-shell"
+      role="region"
+      aria-label={`Aktywna sesja: ${activeLabel}`}
+    >
 
       {/* ── Mobile sticky header ─────────────────── */}
       {!isDesktop && (

@@ -143,7 +143,7 @@ interface DarkTooltipProps {
   label?: string
 }
 
-function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
+export function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
   if (!active || !payload?.length) return null
   const tooltipLabel = typeof label === 'string' ? (MUSCLE_PL[label] ?? label) : label
 
@@ -176,8 +176,11 @@ function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
       }}
     >
       <p style={{ color: 'var(--muted)', marginBottom: 4 }}>{tooltipLabel}</p>
-      {payload.map((p) => (
-        <p key={p.name} style={{ color: p.color ?? 'var(--accent)', fontWeight: 600 }}>
+      {payload.map((p, index) => (
+        <p
+          key={p.dataKey == null ? `${p.name ?? 'tooltip'}-${index}` : String(p.dataKey)}
+          style={{ color: p.color ?? 'var(--accent)', fontWeight: 600 }}
+        >
           {formatTooltipValue(p)}
         </p>
       ))}
@@ -393,7 +396,7 @@ export default function ProgressPage() {
     issues.push('Analizy treningowe obejmują najnowsze 5000 wpisów.')
   }
   if (snapshot?.recordsTruncated) {
-    issues.push('Rekordy od początku obejmują najnowsze 1000 wpisów.')
+    issues.push('Lista rekordów jest ograniczona do 1000 wpisów.')
   }
 
   return (

@@ -1,12 +1,14 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { Children, isValidElement, type ReactNode } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { loadProgressData, type ProgressLoadResult } from '../../lib/progressLoadService'
 import type { ProgressSessionLite, RecordSummary } from '../../lib/progressService'
-import ProgressPage from '../ProgressPage'
+import ProgressPage, { DarkTooltip } from '../ProgressPage'
 
-const { authUser } = vi.hoisted(() => ({ authUser: { uid: 'user-1' } }))
+const { authUser } = vi.hoisted(() => ({
+  authUser: { uid: 'user-1' },
+}))
 
 vi.mock('../../store/authStore', () => ({
   useAuthStore: vi.fn(() => ({ user: authUser })),
@@ -271,7 +273,7 @@ describe('ProgressPage', () => {
       return settledNotice
     })
     expect(notice).toHaveTextContent('Analizy treningowe obejmują najnowsze 5000 wpisów.')
-    expect(notice).toHaveTextContent('Rekordy od początku obejmują najnowsze 1000 wpisów.')
+    expect(notice).toHaveTextContent('Lista rekordów jest ograniczona do 1000 wpisów.')
     expect(screen.getAllByRole('button', { name: 'Spróbuj ponownie' })).toHaveLength(1)
   })
 
@@ -330,7 +332,7 @@ describe('ProgressPage', () => {
       }))
       .mockResolvedValueOnce({
         ...successfulLoad({
-          records: [record('record-2')],
+          records: [record('record-2', { exerciseName: 'Martwy ciąg po odświeżeniu' })],
           fetchedAt: NOW + 30 * DAY_MS,
         }),
         sessions: { status: 'error', error: sessionsError },
@@ -341,9 +343,33 @@ describe('ProgressPage', () => {
     expect(await screen.findByRole('img', { name: /Wolumen treningowy/ })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
 
-    await waitFor(() => expect(mockLoadProgressData).toHaveBeenCalledTimes(2))
-    expect(await screen.findByRole('img', { name: /Wolumen treningowy/ })).toBeInTheDocument()
+    const page = screen.getByTestId('progress-page')
+    await waitFor(() => expect(page).toHaveAttribute('aria-busy', 'false'))
+    expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
+    const recordsSection = screen.getByRole('heading', { name: 'Rekordy od początku' }).closest('section')
+    expect(recordsSection).not.toBeNull()
+    expect(within(recordsSection!).getByText('Martwy ciąg po odświeżeniu')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Wolumen treningowy/ })).toBeInTheDocument()
+    expect(screen.getByText(/1 sesja ·/)).toBeInTheDocument()
     expect(screen.queryByText('Brak treningów w wybranym zakresie.')).not.toBeInTheDocument()
+  })
+
+  it('uses data keys to distinguish tooltip rows with the same strength display name', () => {
+    const tooltip = DarkTooltip({
+      active: true,
+      payload: [
+        { name: 'Wyciskanie sztangi', dataKey: 'global:bench', value: 80 },
+        { name: 'Wyciskanie sztangi', dataKey: 'user:bench', value: 60 },
+      ],
+    })
+    const rows = Children.toArray(tooltip?.props.children).slice(1).filter(isValidElement)
+
+    expect(rows).toHaveLength(2)
+    expect(new Set(rows.map((row) => row.key)).size).toBe(2)
+    expect(rows.map((row) => String(row.key))).toEqual(expect.arrayContaining([
+      expect.stringContaining('global'),
+      expect.stringContaining('user'),
+    ]))
   })
 
   it('uses source-aware strength keys and exposes a visible heatmap summary', async () => {

@@ -15,7 +15,7 @@ import {
 /** Helper: build a ProgressSessionLite N days ago */
 function session(overrides: Partial<ProgressSessionLite> & { daysAgo: number }): ProgressSessionLite {
   const { daysAgo, ...rest } = overrides
-  const finishedAt = Date.now() - daysAgo * 86_400_000
+  const finishedAt = rest.finishedAt ?? Date.now() - daysAgo * 86_400_000
   return {
     id: `sess-${daysAgo}-${Math.random()}`,
     workoutId: rest.workoutId ?? `workout-${daysAgo}`,
@@ -92,6 +92,20 @@ describe('aggregatePeriodComparison', () => {
     const result = aggregatePeriodComparison(sessions, 30)
     expect(result.currentSessions).toBe(2)
     expect(result.previousSessions).toBe(1)
+  })
+
+  it('excludes sessions older than the preceding comparison window', () => {
+    const anchorMs = new Date('2026-07-10T12:00:00Z').getTime()
+    const sessions = [
+      session({ daysAgo: 0, finishedAt: anchorMs - 15 * 86_400_000, workoutId: 'current', totalVolume: 800 }),
+      session({ daysAgo: 0, finishedAt: anchorMs - 45 * 86_400_000, workoutId: 'previous', totalVolume: 500 }),
+      session({ daysAgo: 0, finishedAt: anchorMs - 61 * 86_400_000, workoutId: 'too-old', totalVolume: 9_999 }),
+    ]
+
+    const result = aggregatePeriodComparison(sessions, 30, anchorMs)
+
+    expect(result.previousSessions).toBe(1)
+    expect(result.previousVolume).toBe(500)
   })
 
   it('calculates sessionsDelta as percentage', () => {

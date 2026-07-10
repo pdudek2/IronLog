@@ -298,8 +298,9 @@ export function aggregatePeriodComparison(
   anchorMs = Date.now(),
 ): PeriodComparison {
   const cutoffMs = anchorMs - rangeDays * 86_400_000
+  const previousCutoffMs = cutoffMs - rangeDays * 86_400_000
   const current = sessions.filter((s) => s.finishedAt >= cutoffMs)
-  const previous = sessions.filter((s) => s.finishedAt < cutoffMs)
+  const previous = sessions.filter((s) => s.finishedAt >= previousCutoffMs && s.finishedAt < cutoffMs)
 
   const cur = countUniqueWorkouts(current)
   const prev = countUniqueWorkouts(previous)

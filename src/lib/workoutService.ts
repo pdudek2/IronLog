@@ -49,6 +49,11 @@ export interface WorkoutHistoryResult {
   truncated: boolean
 }
 
+export interface MaterializationRetryResult {
+  attempted: number
+  failed: number
+}
+
 export async function saveWorkout(uid: string, workout: ActiveWorkout): Promise<SaveWorkoutResult> {
   const payload = buildWorkoutPayload(uid, workout)
   const ref = await addDoc(collection(db, 'workouts'), payload)
@@ -143,11 +148,16 @@ export async function deleteWorkout(id: string): Promise<void> {
   await callAuthedApi('/api/delete-workout', { workoutId: id })
 }
 
-export async function retryPendingMaterializations(workouts: WorkoutSummary[]): Promise<void> {
+export async function retryPendingMaterializations(
+  workouts: WorkoutSummary[],
+): Promise<MaterializationRetryResult> {
   const pending = workouts.filter((workout) => !workout.materialized)
-  if (pending.length === 0) return
+  const results = await Promise.allSettled(pending.map((workout) => materializeWorkout(workout.id)))
 
-  await Promise.allSettled(pending.map((workout) => materializeWorkout(workout.id)))
+  return {
+    attempted: pending.length,
+    failed: results.filter((result) => result.status === 'rejected').length,
+  }
 }
 
 export function countWeeklyWorkouts(workouts: WorkoutSummary[]): number {

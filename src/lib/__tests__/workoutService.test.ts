@@ -1,10 +1,16 @@
-import { describe, it, expect, vi } from 'vitest'
+import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
+
+const { auth } = vi.hoisted(() => ({
+  auth: {
+    currentUser: null as { getIdToken: () => Promise<string> } | null,
+  },
+}))
 
 // Mock Firebase before any service imports — prevents initializeApp() from running
-vi.mock('../firebase', () => ({ db: {}, auth: {} }))
+vi.mock('../firebase', () => ({ db: {}, auth }))
 vi.mock('firebase/firestore', () => ({}))
 
-import { calcStreak } from '../workoutService'
+import { calcStreak, retryPendingMaterializations } from '../workoutService'
 import type { WorkoutSummary } from '../workoutService'
 
 /** Returns a WorkoutSummary with startedAt set to N days ago (relative to now) */
@@ -72,5 +78,40 @@ describe('calcStreak', () => {
       workoutDaysAgo(1),
     ]
     expect(calcStreak(workouts)).toBe(2)
+  })
+})
+
+describe('retryPendingMaterializations', () => {
+  beforeEach(() => {
+    auth.currentUser = {
+      getIdToken: vi.fn().mockResolvedValue('token'),
+    }
+  })
+
+  afterEach(() => {
+    auth.currentUser = null
+    vi.unstubAllGlobals()
+  })
+
+  it('returns an empty retry summary when no workouts are pending', async () => {
+    expect(await retryPendingMaterializations([])).toEqual({ attempted: 0, failed: 0 })
+  })
+
+  it('counts attempted and failed pending materializations', async () => {
+    vi.stubGlobal('fetch', vi.fn()
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: false,
+        json: vi.fn().mockResolvedValue({ error: 'Materialization failed' }),
+      }))
+
+    const pendingA = { id: 'pending-a', materialized: false } as WorkoutSummary
+    const done = { id: 'done', materialized: true } as WorkoutSummary
+    const pendingB = { id: 'pending-b', materialized: false } as WorkoutSummary
+
+    expect(await retryPendingMaterializations([pendingA, done, pendingB])).toEqual({
+      attempted: 2,
+      failed: 1,
+    })
   })
 })

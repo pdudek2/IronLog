@@ -16,21 +16,19 @@ import {
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
+import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
 import { Button, LoadingState } from '../components/ui'
 import {
-  buildActiveWorkoutFromTemplate,
   getTemplates,
-  templateExerciseKey,
-  type TemplateExerciseHistoryMap,
   type WorkoutTemplate,
 } from '../lib/templateService'
+import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { getProfile } from '../lib/userProfile'
 import {
   getRecentWorkouts, deleteWorkout, retryPendingMaterializations, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
-import { fetchRemoteSessionHasWork, saveActiveSession, subscribeToActiveSession } from '../lib/activeSessionService'
-import { getExerciseSessions } from '../lib/exerciseDetailService'
+import { hasActiveSessionWork, subscribeToActiveSession } from '../lib/activeSessionService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
 import { exercises as exerciseDb } from '../data/exercises'
@@ -139,18 +137,18 @@ function fadeUp(delay: number) {
   }
 }
 
-function hasSessionWork(session: ActiveWorkout | null | undefined): boolean {
-  if (!session) return false
-  if (session.exercises.length > 0) return true
-  return Boolean(session.label?.trim())
-}
-
 export default function DashboardPage() {
   const { user } = useAuthStore()
   const { profile, loading, setProfile, setLoading } = useProfileStore()
   const active = useWorkoutStore((state) => state.active)
-  const hydrateFromDoc = useWorkoutStore((state) => state.hydrateFromDoc)
   const navigate = useNavigate()
+  const {
+    pendingLaunch,
+    launchingTemplateId,
+    requestTemplateLaunch,
+    confirmTemplateLaunch,
+    cancelTemplateLaunch,
+  } = useTemplateWorkoutLaunch(user?.uid)
   const {
     workouts,
     weeklyDone,
@@ -160,8 +158,6 @@ export default function DashboardPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
-  const [launchingTemplateId, setLaunchingTemplateId] = useState<string | null>(null)
-  const [templateLaunchTarget, setTemplateLaunchTarget] = useState<{ template: WorkoutTemplate; dayIndex: number } | null>(null)
   const [dashboardError, setDashboardError] = useState(false)
   const [dashboardLoadAttempt, setDashboardLoadAttempt] = useState(0)
   const [remoteActiveSession, setRemoteActiveSession] = useState<ActiveWorkout | null>(null)
@@ -226,10 +222,10 @@ export default function DashboardPage() {
   }, [user])
 
   const effectiveActive = useMemo(
-    () => (hasSessionWork(active) ? active : remoteActiveSession),
+    () => (hasActiveSessionWork(active) ? active : remoteActiveSession),
     [active, remoteActiveSession],
   )
-  const hasActiveWork = useMemo(() => hasSessionWork(effectiveActive), [effectiveActive])
+  const hasActiveWork = useMemo(() => hasActiveSessionWork(effectiveActive), [effectiveActive])
 
   function handleDelete(id: string) {
     setConfirmDelete(id)
@@ -253,82 +249,6 @@ export default function DashboardPage() {
       toast.error('Błąd usuwania. Spróbuj ponownie.')
     } finally {
       setDeletingId(null)
-    }
-  }
-
-  async function loadTemplateExerciseHistory(
-    uid: string,
-    template: WorkoutTemplate,
-    dayIndex: number,
-  ): Promise<TemplateExerciseHistoryMap> {
-    const day = template.days[dayIndex] ?? template.days[0]
-    const templateExercises = day?.exercises ?? []
-    const uniqueExercises = Array.from(
-      new Map(templateExercises.map((exercise) => [
-        templateExerciseKey(exercise.exerciseId, exercise.exerciseSource),
-        exercise,
-      ])).values(),
-    )
-
-    const entries = await Promise.all(uniqueExercises.map(async (exercise) => {
-      try {
-        const [last] = await getExerciseSessions(uid, exercise.exerciseId, exercise.exerciseSource, 1)
-        if (!last || last.bestSetWeight <= 0) return null
-        return [
-          templateExerciseKey(exercise.exerciseId, exercise.exerciseSource),
-          { bestSetWeight: last.bestSetWeight, bestSetReps: last.bestSetReps },
-        ] as const
-      } catch {
-        return null
-      }
-    }))
-
-    return new Map(entries.filter((entry): entry is NonNullable<typeof entry> => entry !== null))
-  }
-
-  async function launchTemplate(template: WorkoutTemplate, dayIndex: number) {
-    if (!user) return
-
-    const historyByExercise = await loadTemplateExerciseHistory(user.uid, template, dayIndex)
-    const nextWorkout = buildActiveWorkoutFromTemplate(template, dayIndex, historyByExercise)
-    hydrateFromDoc(nextWorkout)
-    await saveActiveSession(user.uid, nextWorkout)
-    toast.success(`Szablon „${template.name}” gotowy do startu`)
-    navigate('/workout/new')
-  }
-
-  async function handleLaunchTemplate(template: WorkoutTemplate, dayIndex = 0) {
-    if (!user || launchingTemplateId) return
-
-    setLaunchingTemplateId(template.id)
-    try {
-      const remoteHasWork = await fetchRemoteSessionHasWork(user.uid)
-      if (hasActiveWork || remoteHasWork) {
-        setTemplateLaunchTarget({ template, dayIndex })
-        return
-      }
-      await launchTemplate(template, dayIndex)
-    } catch (error) {
-      console.error('[DashboardPage] launch template failed', error)
-      toast.error('Nie udało się uruchomić szablonu.')
-    } finally {
-      setLaunchingTemplateId(null)
-    }
-  }
-
-  async function confirmTemplateLaunch() {
-    if (!templateLaunchTarget || launchingTemplateId) return
-
-    const target = templateLaunchTarget
-    setTemplateLaunchTarget(null)
-    setLaunchingTemplateId(target.template.id)
-    try {
-      await launchTemplate(target.template, target.dayIndex)
-    } catch (error) {
-      console.error('[DashboardPage] confirm launch template failed', error)
-      toast.error('Nie udało się uruchomić szablonu.')
-    } finally {
-      setLaunchingTemplateId(null)
     }
   }
 
@@ -642,7 +562,7 @@ export default function DashboardPage() {
                       <motion.button
                         key={template.id}
                         type="button"
-                        onClick={() => { void handleLaunchTemplate(template) }}
+                        onClick={() => { void requestTemplateLaunch(template, 0) }}
                         disabled={isLaunching}
                         aria-label={`Uruchom szablon ${template.name}`}
                         className="dashboard-template-tile"
@@ -865,16 +785,11 @@ export default function DashboardPage() {
         />
       )}
 
-      {templateLaunchTarget && (
-        <ConfirmDialog
-          title="Zastąpić aktywną sesję?"
-          message="Masz już aktywną sesję. Uruchomienie szablonu zastąpi obecną rozpiskę."
-          confirmLabel="Uruchom szablon"
-          cancelLabel="Zostaw"
-          onConfirm={() => { void confirmTemplateLaunch() }}
-          onCancel={() => setTemplateLaunchTarget(null)}
-        />
-      )}
+      <TemplateLaunchConfirmDialog
+        open={pendingLaunch !== null}
+        onConfirm={() => { void confirmTemplateLaunch() }}
+        onCancel={cancelTemplateLaunch}
+      />
     </>
   )
 }

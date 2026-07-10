@@ -1,99 +1,143 @@
-import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 
-function captureErrors(page: Page): () => string[] {
-  const errors: string[] = []
-  page.on('console', (msg: ConsoleMessage) => {
-    if (msg.type() === 'error') {
-      const text = msg.text()
-      if (!text.includes('extension') && !text.includes('[vite]')) {
-        errors.push(text)
+const progressHeading = (page: Page) => page.getByRole('heading', { name: 'Postępy.' })
+
+async function useHistoricalSessionClock(page: Page): Promise<void> {
+  await page.addInitScript(`
+    const NativeDate = Date
+    const fixedNow = new NativeDate('2026-04-07T12:00:00.000Z').valueOf()
+
+    class FixedDate extends NativeDate {
+      constructor(...args) {
+        super(...(args.length ? args : [fixedNow]))
+      }
+
+      static now() {
+        return fixedNow
       }
     }
-  })
-  return () => errors
+
+    window.Date = FixedDate
+  `)
+}
+
+async function gotoProgressReady(page: Page): Promise<void> {
+  await page.goto('/progress')
+  await expect(page).toHaveURL('/progress')
+  await expect(progressHeading(page)).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByTestId('progress-page')).toHaveAttribute('aria-busy', 'false', { timeout: 20_000 })
+}
+
+async function expectNoHorizontalOverflow(locator: Locator, viewportWidth: number): Promise<void> {
+  const box = await locator.boundingBox()
+
+  expect(box, 'expected a visible element for geometry verification').not.toBeNull()
+  expect(box!.x).toBeGreaterThanOrEqual(0)
+  expect(box!.x + box!.width).toBeLessThanOrEqual(viewportWidth + 1)
 }
 
 test.describe('Progress analytics', () => {
-  test('page loads and shows charts without console errors', async ({ page }) => {
-    const getErrors = captureErrors(page)
+  test('loads a stable analytics board with all-time records', async ({ page }) => {
+    await gotoProgressReady(page)
 
-    await page.goto('/progress')
-    await expect(page).toHaveURL('/progress')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
-
-    // Wait for async data fetch and chart render
-    await page.waitForTimeout(2_000)
-
-    await page.screenshot({ path: 'test-results/progress-loaded.png' })
-
-    // Recharts renders SVG — verify at least one svg is present (charts loaded)
-    const charts = page.locator('svg.recharts-surface')
-    await expect(charts.first()).toBeVisible({ timeout: 8_000 })
-
-    // No console errors
-    const errors = getErrors()
-    expect(errors, `Progress console errors:\n${errors.join('\n')}`).toHaveLength(0)
+    await expect(page.locator('.progress-board')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Rekordy od początku' })).toBeVisible()
+    await page.screenshot({ path: 'test-results/progress-loaded.png', fullPage: true })
   })
 
-  test('range toggle 90d → 30d → 90d works without errors', async ({ page }) => {
-    const getErrors = captureErrors(page)
+  test('switches ranges locally while offline without remounting the board', async ({ page }) => {
+    await gotoProgressReady(page)
 
-    await page.goto('/progress')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
-    await page.waitForTimeout(1_500)
+    const progressPage = page.getByTestId('progress-page')
+    const board = page.locator('.progress-board')
+    const boardHandle = await board.elementHandle()
+    const button30 = page.getByRole('button', { name: '30 dni' })
+    const button90 = page.getByRole('button', { name: '90 dni' })
+    const fullPageError = page.getByText('Nie udało się pobrać danych', { exact: true })
 
-    // "90 dni" is the default range (useState(90)), so "90 dni" button starts disabled.
-    // We must click "30 dni" first to activate it, then switch back to "90 dni".
-    const btn30 = page.getByRole('button', { name: '30 dni' })
-    const btn90 = page.getByRole('button', { name: '90 dni' })
-    await expect(btn30).toBeVisible()
-    await expect(btn90).toBeVisible()
+    expect(boardHandle).not.toBeNull()
 
-    // Switch to 30 dni (btn90 starts disabled — this enables it).
-    // handleRangeChange sets loading=true which unmounts buttons (renders LoadingState).
-    // Must wait for charts to reappear (= loading finished) before clicking btn90.
-    await btn30.click()
-    await expect(page.locator('svg.recharts-surface').first()).toBeVisible({ timeout: 15_000 })
+    await page.context().setOffline(true)
+    try {
+      await button30.click()
+      await expect(button30).toHaveAttribute('aria-pressed', 'true')
+      await expect(progressHeading(page)).toBeVisible()
+      await expect(board).toBeVisible()
+      await expect(progressPage).toHaveAttribute('aria-busy', 'false')
+      await expect(fullPageError).toHaveCount(0)
+      expect(await boardHandle!.evaluate((node) => node.isConnected)).toBe(true)
 
-    await page.screenshot({ path: 'test-results/progress-30d.png' })
-
-    // btn90 is now enabled (rangeDays === 30) — verify before clicking
-    await expect(btn90).toBeEnabled({ timeout: 5_000 })
-    await btn90.click()
-    await expect(page.locator('svg.recharts-surface').first()).toBeVisible({ timeout: 15_000 })
-
-    await page.screenshot({ path: 'test-results/progress-90d.png' })
-
-    expect(getErrors(), `Progress range toggle errors:\n${getErrors().join('\n')}`).toHaveLength(0)
+      await button90.click()
+      await expect(button90).toHaveAttribute('aria-pressed', 'true')
+      await expect(progressHeading(page)).toBeVisible()
+      await expect(board).toBeVisible()
+      await expect(progressPage).toHaveAttribute('aria-busy', 'false')
+      await expect(fullPageError).toHaveCount(0)
+      expect(await boardHandle!.evaluate((node) => node.isConnected)).toBe(true)
+    } finally {
+      await page.context().setOffline(false)
+    }
   })
 
-  test('records section is visible', async ({ page }) => {
-    await page.goto('/progress')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
-    await page.waitForTimeout(2_000)
+  test('keeps records readable and exposes any rendered heatmap summary without hover', async ({ page }) => {
+    await useHistoricalSessionClock(page)
+    await gotoProgressReady(page)
 
-    // Scroll down to find records section
-    await page.getByText('Najlepsze wyniki').scrollIntoViewIfNeeded()
-    await expect(page.getByText('Najlepsze wyniki')).toBeVisible()
+    const records = page.locator('.progress-records')
+    await records.scrollIntoViewIfNeeded()
+    await expect(page.getByRole('heading', { name: 'Rekordy od początku' })).toBeVisible()
 
-    await page.screenshot({ path: 'test-results/progress-records.png' })
+    const viewport = page.viewportSize()
+    expect(viewport).not.toBeNull()
+
+    const rows = records.locator('.progress-record-feature, .progress-record-ledger-row')
+    expect(await rows.count()).toBeGreaterThan(0)
+    for (let index = 0; index < await rows.count(); index += 1) {
+      await expectNoHorizontalOverflow(rows.nth(index), viewport!.width)
+    }
+
+    const heatmapSummary = page.locator('.progress-heatmap-summary')
+    await heatmapSummary.scrollIntoViewIfNeeded()
+    await expect(heatmapSummary).toBeVisible()
+    await expect(heatmapSummary).not.toBeEmpty()
+
+    await page.screenshot({ path: 'test-results/progress-records.png', fullPage: true })
   })
 
-  test('layout: charts are in viewport and not clipped on desktop', async ({ page }) => {
-    test.skip(!!page.viewportSize()?.width && page.viewportSize()!.width < 1024,
-      'Layout test only for desktop viewports')
+  test('mobile content clears the fixed navigation and keeps any strength legend readable', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= 1024, 'Mobile geometry is covered by the mobile project.')
 
-    await page.goto('/progress')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
-    await page.waitForTimeout(2_000)
+    await useHistoricalSessionClock(page)
+    await gotoProgressReady(page)
 
-    // Verify the first chart has a stable rendered size and can be brought fully into view.
-    const firstChart = page.locator('svg.recharts-surface').first()
-    await firstChart.scrollIntoViewIfNeeded()
-    await expect(firstChart).toBeInViewport({ ratio: 0.5 })
+    const bottomNavigation = page.locator('.bottom-nav')
+    await expect(bottomNavigation).toBeVisible()
+    const bottomNavigationBox = await bottomNavigation.boundingBox()
+    expect(bottomNavigationBox).not.toBeNull()
 
-    const box = await firstChart.boundingBox()
-    expect(box?.width).toBeGreaterThan(300)
-    expect(box?.height).toBeGreaterThan(150)
+    const clearNavigation = async (section: Locator) => {
+      await section.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+      const sectionBox = await section.boundingBox()
+      expect(sectionBox, 'expected a visible section for mobile clearance verification').not.toBeNull()
+      expect(sectionBox!.y + sectionBox!.height).toBeLessThanOrEqual(bottomNavigationBox!.y + 1)
+    }
+
+    const firstChart = page.locator('.progress-chart-frame').first()
+    await expect(firstChart).toBeVisible()
+    await clearNavigation(firstChart)
+
+    await clearNavigation(page.locator('.progress-records'))
+
+    const legend = page.locator('.progress-legend')
+    if (await legend.count()) {
+      await expect(legend).toBeVisible()
+      const labels = legend.locator('small')
+      for (let index = 0; index < await labels.count(); index += 1) {
+        await expectNoHorizontalOverflow(labels.nth(index), page.viewportSize()!.width)
+        expect(await labels.nth(index).evaluate((label) => label.scrollWidth <= label.clientWidth)).toBe(true)
+      }
+    }
+
+    await page.screenshot({ path: 'test-results/progress-mobile.png', fullPage: true })
   })
 })

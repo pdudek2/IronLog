@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../exerciseDetailService', () => ({ getExerciseSessions: vi.fn() }))
-vi.mock('../activeSessionService', () => ({ saveActiveSession: vi.fn() }))
+vi.mock('../activeSessionService', () => ({
+  persistTemplateLaunchSession: vi.fn(),
+  saveActiveSession: vi.fn(),
+}))
 
-import { saveActiveSession } from '../activeSessionService'
+import { persistTemplateLaunchSession, saveActiveSession } from '../activeSessionService'
 import { getExerciseSessions } from '../exerciseDetailService'
 import { createPersistedTemplateWorkout } from '../templateLaunchService'
 import type { WorkoutTemplate } from '../templateService'
@@ -52,6 +55,7 @@ describe('createPersistedTemplateWorkout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(saveActiveSession).mockResolvedValue()
+    vi.mocked(persistTemplateLaunchSession).mockResolvedValue()
     vi.mocked(getExerciseSessions).mockResolvedValue([])
   })
 
@@ -69,28 +73,34 @@ describe('createPersistedTemplateWorkout', () => {
       sets: [{ weight: 42.5, reps: 6 }],
     }])
 
-    const workout = await createPersistedTemplateWorkout('user-1', templateWithDuplicateExercise(), 0)
+    const workout = await createPersistedTemplateWorkout(
+      'user-1',
+      templateWithDuplicateExercise(),
+      0,
+      false,
+    )
 
     expect(getExerciseSessions).toHaveBeenCalledTimes(1)
     expect(getExerciseSessions).toHaveBeenCalledWith('user-1', 'incline-bench-press', 'global', 1)
     expect(workout.exercises[0].sets[0]).toEqual({ weight: '42.5', reps: '6', done: false })
-    expect(saveActiveSession).toHaveBeenCalledWith('user-1', workout)
+    expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, false)
+    expect(saveActiveSession).not.toHaveBeenCalled()
   })
 
-  it('falls back to template targets when one history read fails', async () => {
+  it('falls back to template targets and forwards replacement intent', async () => {
     vi.mocked(getExerciseSessions).mockRejectedValue(new Error('history unavailable'))
 
-    const workout = await createPersistedTemplateWorkout('user-1', templateWithTargets(), 0)
+    const workout = await createPersistedTemplateWorkout('user-1', templateWithTargets(), 0, true)
 
     expect(workout.exercises[0].sets[0]).toEqual({ weight: '100', reps: '5', done: false })
-    expect(saveActiveSession).toHaveBeenCalledWith('user-1', workout)
+    expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, true)
   })
 
   it('rejects without returning a workout when persistence fails', async () => {
-    vi.mocked(saveActiveSession).mockRejectedValue(new Error('write failed'))
+    vi.mocked(persistTemplateLaunchSession).mockRejectedValue(new Error('write failed'))
 
     await expect(
-      createPersistedTemplateWorkout('user-1', templateWithTargets(), 0),
+      createPersistedTemplateWorkout('user-1', templateWithTargets(), 0, false),
     ).rejects.toThrow('write failed')
   })
 })

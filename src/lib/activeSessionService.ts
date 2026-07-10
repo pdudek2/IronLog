@@ -1,4 +1,4 @@
-import { deleteDoc, doc, getDoc, onSnapshot, setDoc, type Unsubscribe } from 'firebase/firestore'
+import { deleteDoc, doc, onSnapshot, runTransaction, setDoc, type Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
 import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
 
@@ -6,6 +6,13 @@ interface ActiveSessionSnapshot {
   session: ActiveWorkout | null
   fromCache: boolean
   hasPendingWrites: boolean
+}
+
+export class TemplateLaunchConflictError extends Error {
+  constructor() {
+    super('An active workout already contains work.')
+    this.name = 'TemplateLaunchConflictError'
+  }
 }
 
 export function activeSessionRef(uid: string) {
@@ -30,15 +37,36 @@ export function subscribeToActiveSession(
 }
 
 export async function saveActiveSession(uid: string, workout: ActiveWorkout): Promise<void> {
+  await setDoc(activeSessionRef(uid), activeSessionDocument(uid, workout))
+}
+
+export async function persistTemplateLaunchSession(
+  uid: string,
+  workout: ActiveWorkout,
+  replaceExisting: boolean,
+): Promise<void> {
+  const ref = activeSessionRef(uid)
+
+  await runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ref)
+    if (!replaceExisting && snapshot.exists() && sessionDocumentHasWork(snapshot.data())) {
+      throw new TemplateLaunchConflictError()
+    }
+
+    transaction.set(ref, activeSessionDocument(uid, workout))
+  })
+}
+
+function activeSessionDocument(uid: string, workout: ActiveWorkout) {
   const persistableWorkout = stripWorkoutClientIds(workout)
-  await setDoc(activeSessionRef(uid), {
+  return {
     userId: uid,
     startedAt: persistableWorkout.startedAt,
     templateId: typeof persistableWorkout.templateId === 'string' ? persistableWorkout.templateId : null,
     label: persistableWorkout.label?.trim() || null,
     exercises: persistableWorkout.exercises,
     updatedAt: Date.now(),
-  })
+  }
 }
 
 export async function deleteActiveSession(uid: string): Promise<void> {
@@ -52,10 +80,7 @@ export function hasActiveSessionWork(
   return session.exercises.length > 0 || Boolean(session.label?.trim())
 }
 
-export async function fetchRemoteSessionHasWork(uid: string): Promise<boolean> {
-  const snap = await getDoc(activeSessionRef(uid)).catch(() => null)
-  if (!snap?.exists()) return false
-  const data = snap.data()
+function sessionDocumentHasWork(data: Record<string, unknown>): boolean {
   const exercises = Array.isArray(data?.exercises) ? data.exercises : []
   return exercises.length > 0 || (typeof data?.label === 'string' && data.label.trim().length > 0)
 }

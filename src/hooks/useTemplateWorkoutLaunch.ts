@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
-  fetchRemoteSessionHasWork,
   hasActiveSessionWork,
+  TemplateLaunchConflictError,
 } from '../lib/activeSessionService'
 import { createPersistedTemplateWorkout } from '../lib/templateLaunchService'
 import type { WorkoutTemplate } from '../lib/templateService'
@@ -31,60 +31,92 @@ export function useTemplateWorkoutLaunch(
   const [pendingLaunch, setPendingLaunch] = useState<TemplateLaunchTarget | null>(null)
   const [launchingTemplateId, setLaunchingTemplateId] = useState<string | null>(null)
   const launchLockRef = useRef(false)
+  const launchGenerationRef = useRef(0)
+  const mountedRef = useRef(true)
 
-  const executeLaunch = useCallback(async (target: TemplateLaunchTarget) => {
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      launchGenerationRef.current += 1
+      launchLockRef.current = false
+    }
+  }, [])
+
+  const isCurrentLaunch = useCallback((generation: number) => (
+    mountedRef.current && launchGenerationRef.current === generation
+  ), [])
+
+  const executeLaunch = useCallback(async (
+    target: TemplateLaunchTarget,
+    replaceExisting: boolean,
+    generation: number,
+  ) => {
     if (!uid) return
     const workout = await createPersistedTemplateWorkout(
       uid,
       target.template,
       target.dayIndex,
+      replaceExisting,
     )
+    if (!isCurrentLaunch(generation)) return
     hydrateFromDoc(workout)
     toast.success(`Szablon „${target.template.name}” gotowy do startu`)
     navigate('/workout/new')
-  }, [hydrateFromDoc, navigate, uid])
+  }, [hydrateFromDoc, isCurrentLaunch, navigate, uid])
 
   const requestTemplateLaunch = useCallback(async (
     template: WorkoutTemplate,
     dayIndex = 0,
   ) => {
-    if (!uid || launchingTemplateId || launchLockRef.current) return
+    if (!uid || launchLockRef.current) return
     launchLockRef.current = true
+    const generation = ++launchGenerationRef.current
     const target = { template, dayIndex }
-    setLaunchingTemplateId(template.id)
     try {
-      const hasConflict = hasActiveSessionWork(active)
-        || await fetchRemoteSessionHasWork(uid)
-      if (hasConflict) {
+      if (hasActiveSessionWork(active)) {
         setPendingLaunch(target)
         return
       }
-      await executeLaunch(target)
+
+      setLaunchingTemplateId(template.id)
+      await executeLaunch(target, false, generation)
     } catch (error) {
+      if (!isCurrentLaunch(generation)) return
+      if (error instanceof TemplateLaunchConflictError) {
+        setPendingLaunch(target)
+        return
+      }
       console.error('[useTemplateWorkoutLaunch] launch failed', error)
       toast.error('Nie udało się uruchomić szablonu.')
     } finally {
-      setLaunchingTemplateId(null)
+      if (isCurrentLaunch(generation)) {
+        setLaunchingTemplateId(null)
+      }
       launchLockRef.current = false
     }
-  }, [active, executeLaunch, launchingTemplateId, uid])
+  }, [active, executeLaunch, isCurrentLaunch, uid])
 
   const confirmTemplateLaunch = useCallback(async () => {
-    if (!pendingLaunch || launchingTemplateId || launchLockRef.current) return
+    if (!pendingLaunch || launchLockRef.current) return
     launchLockRef.current = true
+    const generation = ++launchGenerationRef.current
     const target = pendingLaunch
     setPendingLaunch(null)
     setLaunchingTemplateId(target.template.id)
     try {
-      await executeLaunch(target)
+      await executeLaunch(target, true, generation)
     } catch (error) {
+      if (!isCurrentLaunch(generation)) return
       console.error('[useTemplateWorkoutLaunch] confirmed launch failed', error)
       toast.error('Nie udało się uruchomić szablonu.')
     } finally {
-      setLaunchingTemplateId(null)
+      if (isCurrentLaunch(generation)) {
+        setLaunchingTemplateId(null)
+      }
       launchLockRef.current = false
     }
-  }, [executeLaunch, launchingTemplateId, pendingLaunch])
+  }, [executeLaunch, isCurrentLaunch, pendingLaunch])
 
   const cancelTemplateLaunch = useCallback(() => {
     setPendingLaunch(null)

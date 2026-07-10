@@ -1,5 +1,5 @@
 import type { ActiveWorkout } from '../store/workoutStore'
-import { saveActiveSession } from './activeSessionService'
+import { persistTemplateLaunchSession } from './activeSessionService'
 import { getExerciseSessions } from './exerciseDetailService'
 import {
   buildActiveWorkoutFromTemplate,
@@ -46,10 +46,11 @@ async function loadTemplateExerciseHistory(
 export async function createPersistedTemplateWorkout(
   uid: string,
   template: WorkoutTemplate,
-  dayIndex = 0,
+  dayIndex: number,
+  replaceExisting: boolean,
 ): Promise<ActiveWorkout> {
   const history = await loadTemplateExerciseHistory(uid, template, dayIndex)
   const workout = buildActiveWorkoutFromTemplate(template, dayIndex, history)
-  await saveActiveSession(uid, workout)
+  await persistTemplateLaunchSession(uid, workout, replaceExisting)
   return workout
 }

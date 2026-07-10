@@ -76,13 +76,21 @@ test.describe('Templates CRUD', () => {
   })
 
   test.afterAll(async ({ browser }) => {
-    // Ensure cleanup even if delete test was skipped or failed
+    // Ensure cleanup even if lifecycle assertions were skipped or failed.
     const ctx = await browser.newContext({ storageState: 'tests/e2e/.auth/user.json' })
     const page = await ctx.newPage()
     try {
-      await cleanupTestTemplate(page)
-    } catch {
-      // Best-effort
+      try {
+        await discardActiveSession(page)
+      } catch {
+        // Best-effort
+      } finally {
+        try {
+          await cleanupTestTemplate(page)
+        } catch {
+          // Best-effort
+        }
+      }
     } finally {
       await ctx.close()
     }

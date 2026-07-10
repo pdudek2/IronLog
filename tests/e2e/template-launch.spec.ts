@@ -107,6 +107,8 @@ async function startFreshSessionWithExercise(page: Page, exerciseName: string): 
 }
 
 test.describe('Template launch contract', () => {
+  test.describe.configure({ mode: 'serial' })
+
   test.beforeAll(async ({ browser }) => {
     const context = await browser.newContext({ storageState: 'tests/e2e/.auth/user.json' })
     const page = await context.newPage()
@@ -125,8 +127,17 @@ test.describe('Template launch contract', () => {
     const page = await context.newPage()
 
     try {
-      await discardActiveSession(page)
-      await cleanupLaunchTemplate(page)
+      try {
+        await discardActiveSession(page)
+      } catch {
+        // Best-effort
+      } finally {
+        try {
+          await cleanupLaunchTemplate(page)
+        } catch {
+          // Best-effort
+        }
+      }
     } finally {
       await context.close()
     }
@@ -157,5 +168,29 @@ test.describe('Template launch contract', () => {
     await expect(page).toHaveURL('/workout/new', { timeout: 10_000 })
     await expect(page.getByText('Squat', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('Bench Press', { exact: true })).toHaveCount(0)
+  })
+
+  test('offline launch fails on the source page without delayed hydration after reconnect', async ({ context, page }) => {
+    await discardActiveSession(page)
+    await page.goto('/templates')
+    await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
+
+    const launch = page.getByRole('button', {
+      name: `Uruchom szablon ${LAUNCH_TEMPLATE_NAME}`,
+    })
+    await expect(launch).toBeVisible({ timeout: 15_000 })
+
+    try {
+      await context.setOffline(true)
+      await launch.click()
+      await expect(page.getByText('Nie udało się uruchomić szablonu.', { exact: true })).toBeVisible({ timeout: 15_000 })
+      await expect(page).toHaveURL('/templates')
+    } finally {
+      await context.setOffline(false)
+    }
+
+    await page.waitForTimeout(3_000)
+    await expect(page).toHaveURL('/templates')
+    await expect(page.getByRole('heading', { name: LAUNCH_TEMPLATE_NAME, exact: true }).first()).toBeVisible()
   })
 })

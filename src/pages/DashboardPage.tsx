@@ -563,7 +563,7 @@ export default function DashboardPage() {
                         key={template.id}
                         type="button"
                         onClick={() => { void requestTemplateLaunch(template, 0) }}
-                        disabled={isLaunching}
+                        disabled={launchingTemplateId !== null}
                         aria-label={`Uruchom szablon ${template.name}`}
                         className="dashboard-template-tile"
                         style={{

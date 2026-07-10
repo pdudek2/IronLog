@@ -140,7 +140,7 @@ test.describe('Active workout shell reduction', () => {
     await discardSessionIfPresent(page)
   })
 
-  test('mobile workout removes duplicate shell controls in the empty state', async ({ page }, testInfo) => {
+  test('mobile workout keeps the compact shell and normal app navigation', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
 
     await page.setViewportSize({ width: 390, height: 844 })
@@ -148,7 +148,17 @@ test.describe('Active workout shell reduction', () => {
 
     await expect(page.locator('.top-nav')).not.toBeVisible()
     expect(await visibleCount(page.locator('.session-quick-link'))).toBe(0)
-    expect(await visibleCount(page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }))).toBe(1)
+    await expect(page.getByRole('navigation', { name: 'Nawigacja dolna' })).toBeVisible()
+
+    await addExercise(page, 'Squat')
+    await page.getByRole('button', { name: 'Plany', exact: true }).click()
+    await expect(page).toHaveURL('/templates')
+
+    await page.goto('/workout/new')
+    await expect.poll(
+      () => page.getByRole('button', { name: 'Usuń ćwiczenie Squat' }).count(),
+      { message: 'Squat should remain in the active session after route navigation' },
+    ).toBeGreaterThan(0)
 
     await discardSessionIfPresent(page)
   })
@@ -210,6 +220,17 @@ test.describe('Active workout shell reduction', () => {
     await expect(skipRestButton).toBeVisible()
     await expect(actionBar).not.toContainText(sessionTimerText)
     await expect(actionBar.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true })).toHaveCount(0)
+
+    const bottomNavigation = page.getByRole('navigation', { name: 'Nawigacja dolna' })
+    const actionBarBox = await actionBar.boundingBox()
+    const bottomNavigationBox = await bottomNavigation.boundingBox()
+    expect(actionBarBox, 'Rest timer should have a bounding box').not.toBeNull()
+    expect(bottomNavigationBox, 'Bottom navigation should have a bounding box').not.toBeNull()
+    expect(
+      Math.round(actionBarBox!.y + actionBarBox!.height),
+      'Rest timer should end above the bottom navigation',
+    ).toBeLessThanOrEqual(Math.round(bottomNavigationBox!.y))
+
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(0), 'First weight input during rest')
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(1), 'First reps input during rest')
     await expectMinHitArea(addRestButton, 'Add rest time button')

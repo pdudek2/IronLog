@@ -1134,8 +1134,8 @@ export default function WorkoutPage() {
 
       {!isDesktop && rest !== null && (
         <div
-          className="workout-mobile-action-bar fixed bottom-0 left-0 right-0 flex justify-center px-4 lg:hidden"
-          style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+          className="workout-mobile-action-bar fixed left-0 right-0 flex justify-center px-4 lg:hidden"
+          style={{ paddingBottom: '1rem' }}
         >
           <div className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] p-3">
             <AnimatePresence initial={false}>

@@ -28,11 +28,6 @@ function sectionFromPath(path: string): AppSection | undefined {
   return undefined
 }
 
-/** Routes where BottomNav should be hidden (distraction-free focus mode). */
-function shouldHideBottomNav(path: string): boolean {
-  return path.startsWith('/workout/new')
-}
-
 function isWorkoutFocusShell(path: string): boolean {
   return path.startsWith('/workout/new')
 }
@@ -54,7 +49,6 @@ function PageFallback() {
 export default function AppLayout() {
   const location = useLocation()
   const section = sectionFromPath(location.pathname)
-  const bottomNav = !shouldHideBottomNav(location.pathname)
   const workoutFocusShell = isWorkoutFocusShell(location.pathname)
 
   return (
@@ -71,7 +65,7 @@ export default function AppLayout() {
           </div>
         </div>
       </div>
-      {bottomNav && <BottomNav />}
+      <BottomNav />
     </>
   )
 }

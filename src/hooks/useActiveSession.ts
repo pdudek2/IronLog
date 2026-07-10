@@ -45,6 +45,13 @@ export function useActiveSession(uid: string | null) {
     }
 
     const currentUid = uid
+    const currentAtMount = useWorkoutStore.getState().active
+    const backupAtMount = readActiveSessionBackup(currentUid)
+    hasUnsyncedLocalChangesRef.current = Boolean(
+      currentAtMount
+      && backupAtMount
+      && serializeActiveWorkout(currentAtMount) === serializeActiveWorkout(backupAtMount),
+    )
     setReady(false)
     staleSessionRef.current = null
     setStaleSession(null)
@@ -85,6 +92,8 @@ export function useActiveSession(uid: string | null) {
           setStaleSession(null)
 
           if (current && hasUnsyncedLocalChangesRef.current && currentSerialized !== nextSerialized) {
+            writeActiveSessionBackup(currentUid, current)
+            void saveActiveSession(currentUid, current).catch(console.error)
             setReady(true)
             return
           }
@@ -212,9 +221,9 @@ export function useActiveSession(uid: string | null) {
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
+      flushPendingSession()
       unsubscribeRemote()
       unsubscribe()
-      if (timerRef.current) clearTimeout(timerRef.current)
       window.removeEventListener('pagehide', flushPendingSession)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }

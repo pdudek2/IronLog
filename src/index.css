@@ -5031,6 +5031,7 @@ a {
 }
 
 .workout-mobile-action-bar {
+  bottom: calc(5.9rem + env(safe-area-inset-bottom, 0px));
   z-index: 45;
 }
 
@@ -5450,6 +5451,10 @@ a {
   .workout-session-grid {
     padding-top: max(0px, calc(var(--workout-mobile-lifecycle-bar-height) - clamp(1rem, 2vw, 1.75rem)));
     padding-bottom: max(7.5rem, calc(6.5rem + env(safe-area-inset-bottom, 0px)));
+  }
+
+  .workout-focus-shell:has(.workout-mobile-action-bar) .workout-session-grid {
+    padding-bottom: max(14rem, calc(12.75rem + env(safe-area-inset-bottom, 0px)));
   }
 
   .workout-empty-card,

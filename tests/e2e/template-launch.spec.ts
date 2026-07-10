@@ -149,7 +149,7 @@ test.describe('Template launch contract', () => {
 
     const launch = page.getByRole('button', {
       name: `Uruchom szablon ${LAUNCH_TEMPLATE_NAME}`,
-    })
+    }).first()
     await expect(launch).toBeVisible({ timeout: 15_000 })
     await launch.click()
 
@@ -171,25 +171,24 @@ test.describe('Template launch contract', () => {
   })
 
   test('offline launch fails on the source page without delayed hydration after reconnect', async ({ context, page }) => {
-    await startFreshSessionWithExercise(page, 'Bench Press')
     await page.goto('/templates')
     await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
-
     const launch = page.getByRole('button', {
       name: `Uruchom szablon ${LAUNCH_TEMPLATE_NAME}`,
-    })
+    }).first()
+    await expect(launch).toBeVisible({ timeout: 15_000 })
 
-    if (await launch.count() === 0) {
-      await createLaunchTemplate(page)
-      await page.goto('/templates')
-      await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
-      await expect(launch).toBeVisible({ timeout: 15_000 })
-    }
-
+    await startFreshSessionWithExercise(page, 'Bench Press')
+    const bottomNav = page.getByRole('navigation', { name: 'Nawigacja dolna' })
+    const topNav = page.getByRole('navigation', { name: 'Nawigacja główna' })
+    const plansNav = (await bottomNav.isVisible())
+      ? bottomNav.getByRole('button', { name: 'Plany', exact: true })
+      : topNav.getByRole('button', { name: 'Plany', exact: true })
+    await plansNav.click()
+    await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
     await expect(launch).toBeVisible({ timeout: 15_000 })
 
     const dialog = page.getByRole('dialog').filter({ hasText: 'Zastąpić aktywną sesję?' })
-
     try {
       await launch.click()
       await expect(dialog).toBeVisible({ timeout: 5_000 })
@@ -201,12 +200,20 @@ test.describe('Template launch contract', () => {
       await expect(page).toHaveURL('/templates')
     } finally {
       await context.setOffline(false)
-    }
+      await page.waitForTimeout(6_000)
 
-    await page.waitForTimeout(6_000)
-    await page.goto('/workout/new')
-    await page.reload()
-    await expect(page.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
-    await expect(page.getByText('Squat', { exact: true })).toHaveCount(0)
+      const verifyContext = await context.browser().newContext({ storageState: 'tests/e2e/.auth/user.json' })
+      const verifyPage = await verifyContext.newPage()
+      try {
+        await verifyPage.goto('/workout/new')
+        await expect(verifyPage.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+        await waitForWorkoutState(verifyPage)
+        await expect(verifyPage.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+        await expect(verifyPage.getByText('Squat', { exact: true })).toHaveCount(0)
+      } finally {
+        await verifyPage.close()
+        await verifyContext.close()
+      }
+    }
   })
 })

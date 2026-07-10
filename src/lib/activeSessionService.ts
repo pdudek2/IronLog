@@ -45,6 +45,13 @@ export async function deleteActiveSession(uid: string): Promise<void> {
   await deleteDoc(activeSessionRef(uid))
 }
 
+export function hasActiveSessionWork(
+  session: ActiveWorkout | null | undefined,
+): boolean {
+  if (!session) return false
+  return session.exercises.length > 0 || Boolean(session.label?.trim())
+}
+
 export async function fetchRemoteSessionHasWork(uid: string): Promise<boolean> {
   const snap = await getDoc(activeSessionRef(uid)).catch(() => null)
   if (!snap?.exists()) return false

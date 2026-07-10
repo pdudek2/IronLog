@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
+import { AlertCircle } from 'lucide-react'
 import {
   Area, AreaChart, CartesianGrid, Cell,
   Line, LineChart,
@@ -8,16 +9,15 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 
-import { Button, LoadingState } from '../components/ui'
+import { Button } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
+import { loadProgressData } from '../lib/progressLoadService'
 import {
   aggregateActivityHeatmap,
   aggregateMuscleBalance,
   aggregatePeriodComparison,
   aggregateStrengthProgression,
   aggregateWeeklyVolume,
-  getProgressSessions,
-  getRecords,
   type HeatmapDay,
   type MuscleBalancePoint,
   type ProgressSessionLite,
@@ -70,6 +70,8 @@ const HEATMAP_COLORS = [
 ]
 
 const DAY_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd']
+const EMPTY_SESSIONS: ProgressSessionLite[] = []
+const EMPTY_RECORDS: RecordSummary[] = []
 
 function formatVolume(kg: number): string {
   if (kg >= 1_000_000) return `${(kg / 1_000_000).toFixed(1)}M kg`
@@ -183,26 +185,55 @@ function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
   )
 }
 
+interface ProgressSnapshot {
+  sessions: ProgressSessionLite[]
+  sessionsTruncated: boolean
+  records: RecordSummary[]
+  recordsTruncated: boolean
+  fetchedAt: number
+}
+
+function ProgressLoadingSkeleton() {
+  return (
+    <>
+      <span className="progress-visually-hidden" role="status">Ładowanie postępów</span>
+      <section className="progress-board progress-skeleton-board" aria-hidden="true">
+        <div className="progress-skeleton-head">
+          <span />
+          <span />
+          <span />
+        </div>
+        <div className="progress-skeleton-summary">
+          {Array.from({ length: 4 }).map((_, index) => <span key={index} />)}
+        </div>
+      </section>
+      <div className="progress-analysis-grid progress-skeleton-analysis" aria-hidden="true">
+        <div className="progress-panel progress-skeleton-chart" />
+        <div className="progress-panel progress-skeleton-chart" />
+      </div>
+    </>
+  )
+}
+
 export default function ProgressPage() {
   const { user } = useAuthStore()
   const [rangeDays, setRangeDays] = useState(90)
-  const [sessions, setSessions] = useState<ProgressSessionLite[]>([])
-  const [records, setRecords] = useState<RecordSummary[]>([])
-  const [fetchedAt, setFetchedAt] = useState(0)
+  const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [sessionsError, setSessionsError] = useState(false)
+  const [recordsError, setRecordsError] = useState(false)
+  const [recordsLoadedOnce, setRecordsLoadedOnce] = useState(false)
+  const [freshnessUncertain, setFreshnessUncertain] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
 
   function handleRangeChange(days: number) {
     if (days === rangeDays) return
-    setError(false)
-    setLoading(true)
     setRangeDays(days)
   }
 
   function handleRetry() {
-    setError(false)
-    setLoading(true)
+    setRefreshing(true)
     setLoadAttempt((current) => current + 1)
   }
 
@@ -210,32 +241,68 @@ export default function ProgressPage() {
     if (!user) return
 
     let cancelled = false
-    const fromMs = Date.now() - rangeDays * 2 * 86_400_000
+    loadProgressData(user.uid)
+      .then((result) => {
+        if (cancelled) return
 
-    Promise.all([
-      getProgressSessions(user.uid, fromMs),
-      getRecords(user.uid),
-    ])
-      .then(([sessionsResult, recordsResult]) => {
-        if (cancelled) return
-        setSessions(sessionsResult.sessions)
-        setRecords(recordsResult.records)
-        setFetchedAt(Date.now())
-        setError(false)
+        if (result.sessions.status === 'error') {
+          console.error('[ProgressPage] sessions load failed', result.sessions.error)
+        }
+        if (result.records.status === 'error') {
+          console.error('[ProgressPage] records load failed', result.records.error)
+        }
+
+        setSnapshot((previous) => {
+          let next = previous
+
+          if (result.sessions.status === 'success') {
+            next = {
+              sessions: result.sessions.value.sessions,
+              sessionsTruncated: result.sessions.value.truncated,
+              records: next?.records ?? [],
+              recordsTruncated: next?.recordsTruncated ?? false,
+              fetchedAt: result.fetchedAt,
+            }
+          }
+
+          if (result.records.status === 'success') {
+            next = {
+              sessions: next?.sessions ?? [],
+              sessionsTruncated: next?.sessionsTruncated ?? false,
+              records: result.records.value.records,
+              recordsTruncated: result.records.value.truncated,
+              fetchedAt: next?.fetchedAt ?? 0,
+            }
+          }
+
+          return next
+        })
+        setSessionsError(result.sessions.status === 'error')
+        setRecordsError(result.records.status === 'error')
+        if (result.records.status === 'success') setRecordsLoadedOnce(true)
+        setFreshnessUncertain(result.freshness === 'uncertain')
       })
-      .catch((err) => {
-        console.error('[progress load error]', err)
+      .catch((error) => {
         if (cancelled) return
-        setError(true)
+        console.error('[ProgressPage] load failed', error)
+        setSessionsError(true)
+        setRecordsError(true)
+        setFreshnessUncertain(true)
       })
       .finally(() => {
-        if (!cancelled) setLoading(false)
+        if (cancelled) return
+        setLoading(false)
+        setRefreshing(false)
       })
 
     return () => {
       cancelled = true
     }
-  }, [user, rangeDays, loadAttempt])
+  }, [user, loadAttempt])
+
+  const sessions = snapshot?.sessions ?? EMPTY_SESSIONS
+  const records = snapshot?.records ?? EMPTY_RECORDS
+  const fetchedAt = snapshot?.fetchedAt ?? 0
 
   const currentSessions = useMemo(() => {
     const cutoff = fetchedAt - rangeDays * 86_400_000
@@ -243,15 +310,15 @@ export default function ProgressPage() {
   }, [sessions, rangeDays, fetchedAt])
 
   const weeklyData = useMemo(
-    () => aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : 13),
-    [currentSessions, rangeDays],
+    () => aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : 13, fetchedAt),
+    [currentSessions, rangeDays, fetchedAt],
   )
 
   const muscleData = useMemo(() => aggregateMuscleBalance(currentSessions), [currentSessions])
 
   const periodComparison = useMemo(
-    () => aggregatePeriodComparison(sessions, rangeDays),
-    [sessions, rangeDays],
+    () => aggregatePeriodComparison(sessions, rangeDays, fetchedAt),
+    [sessions, rangeDays, fetchedAt],
   )
 
   const strengthData = useMemo(
@@ -260,8 +327,8 @@ export default function ProgressPage() {
   )
 
   const heatmapData = useMemo(
-    () => aggregateActivityHeatmap(currentSessions, 12),
-    [currentSessions],
+    () => aggregateActivityHeatmap(currentSessions, 12, fetchedAt),
+    [currentSessions, fetchedAt],
   )
   const weeklyVolumeLabel = useMemo(() => summarizeWeeklyVolume(weeklyData), [weeklyData])
   const strengthProgressionLabel = useMemo(
@@ -270,6 +337,16 @@ export default function ProgressPage() {
   )
   const muscleBalanceLabel = useMemo(() => summarizeMuscleBalance(muscleData), [muscleData])
   const activityHeatmapLabel = useMemo(() => summarizeActivityHeatmap(heatmapData), [heatmapData])
+  const activityHeatmapSummary = useMemo(() => {
+    const activeDays = heatmapData.filter((cell) => cell.volume > 0)
+    const peak = activeDays.reduce<HeatmapDay | null>(
+      (top, cell) => !top || cell.volume > top.volume ? cell : top,
+      null,
+    )
+    if (!peak) return ''
+
+    return `${activeDays.length} ${polishPlural(activeDays.length, 'aktywny dzień', 'aktywne dni', 'aktywnych dni')} · najmocniejszy dzień ${peak.date} · ${formatVolume(peak.volume)}`
+  }, [heatmapData])
 
   const totalVolume = useMemo(
     () => currentSessions.reduce((sum, s) => sum + s.totalVolume, 0),
@@ -280,11 +357,20 @@ export default function ProgressPage() {
     [currentSessions],
   )
 
-  if (loading) return <LoadingState message="Ładowanie postępów..." />
-
-  const uniqueExerciseCount = new Set(currentSessions.map((s) => s.exerciseName)).size
+  const uniqueExerciseCount = new Set(
+    currentSessions.map((s) => `${s.exerciseSource}:${s.exerciseId}`),
+  ).size
   const missingStrengthSessions = Math.max(0, 3 - strengthData.data.length)
-  const hasProgressData = currentSessions.length > 0 || records.length > 0
+  const hasUsableData = snapshot !== null
+  const hasSessionSnapshot = fetchedAt > 0
+  const hasStoredData = sessions.length > 0 || records.length > 0
+  const showEmptyState = hasUsableData
+    && !sessionsError
+    && !recordsError
+    && !hasStoredData
+  const showRangeEmpty = hasSessionSnapshot
+    && currentSessions.length === 0
+    && !showEmptyState
   const topMuscle = muscleData[0]
   const topMuscleName = topMuscle ? (MUSCLE_PL[topMuscle.muscle] ?? topMuscle.muscle) : 'Brak'
   const topRecord = records[0]
@@ -297,10 +383,30 @@ export default function ProgressPage() {
   const recordAccentKeys = Object.keys(MUSCLE_COLORS)
   const featuredRecords = records.slice(0, 3)
   const remainingRecords = records.slice(3)
+  const issues: string[] = []
+  if (freshnessUncertain) {
+    issues.push('Nie udało się potwierdzić świeżości danych. Ostatnie treningi mogą być jeszcze niewidoczne.')
+  }
+  if (sessionsError) issues.push('Nie udało się odświeżyć danych treningowych.')
+  if (recordsError) issues.push('Nie udało się odświeżyć rekordów od początku.')
+  if (snapshot?.sessionsTruncated) {
+    issues.push('Analizy treningowe obejmują najnowsze 5000 wpisów.')
+  }
+  if (snapshot?.recordsTruncated) {
+    issues.push('Rekordy od początku obejmują najnowsze 1000 wpisów.')
+  }
 
   return (
-    <>
-      <div className="progress-page">
+    <div
+      className="progress-page"
+      data-testid="progress-page"
+      aria-busy={loading || refreshing}
+    >
+      {loading && !snapshot ? (
+        <ProgressLoadingSkeleton />
+      ) : (
+        <>
+        {hasUsableData && (
         <section className="progress-board">
           <motion.div
             className="progress-board-head"
@@ -312,7 +418,9 @@ export default function ProgressPage() {
               <p className="progress-board-kicker">Postępy · {rangeLabel}</p>
               <h1>Postępy.</h1>
               <p>
-                {uniqueWorkouts > 0
+                {!hasSessionSnapshot
+                  ? 'Dane treningowe są chwilowo niedostępne.'
+                  : uniqueWorkouts > 0
                   ? `${uniqueWorkouts} ${polishPlural(uniqueWorkouts, 'sesja', 'sesje', 'sesji')} · ${formatVolume(totalVolume)} · ${uniqueExerciseCount} ${polishPlural(uniqueExerciseCount, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}`
                   : 'Brak treningów w wybranym zakresie.'}
               </p>
@@ -333,6 +441,8 @@ export default function ProgressPage() {
             </div>
           </motion.div>
 
+          {hasSessionSnapshot && (
+            <>
           <div className="progress-summary-grid">
             <div className="progress-volume-tile">
               <span>Objętość</span>
@@ -351,7 +461,13 @@ export default function ProgressPage() {
             <div className="progress-signal-rail">
               {[
                 { label: 'Ćwiczenia', value: uniqueExerciseCount, meta: 'w zakresie' },
-                { label: 'Rekordy', value: records.length, meta: topRecord ? topRecord.exerciseName : 'brak zapisów' },
+                {
+                  label: 'Rekordy',
+                  value: recordsLoadedOnce ? records.length : '—',
+                  meta: recordsLoadedOnce
+                    ? (topRecord ? topRecord.exerciseName : 'brak zapisów')
+                    : 'niedostępne',
+                },
                 { label: 'Partia', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${polishPlural(topMuscle.count, 'wpis', 'wpisy', 'wpisów')}` : 'brak danych' },
               ].map((item) => (
                 <div key={item.label} className="progress-signal-row">
@@ -376,21 +492,25 @@ export default function ProgressPage() {
               ))}
             </div>
           )}
+            </>
+          )}
         </section>
+        )}
 
-        {error && (
-          <div className="progress-panel progress-empty-state">
-            <p className="text-base font-semibold text-white">Nie udało się pobrać danych</p>
-            <p className="mx-auto mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              Sprawdź połączenie i spróbuj ponownie bez odświeżania strony.
-            </p>
-            <Button type="button" className="mt-5 min-w-[12rem]" onClick={handleRetry}>
-              Spróbuj ponownie
+        {issues.length > 0 && (
+          <div className="progress-data-notice" role={hasUsableData ? 'status' : 'alert'}>
+            <AlertCircle aria-hidden="true" />
+            <div>
+              <strong>{hasUsableData ? 'Dane wymagają odświeżenia' : 'Nie udało się pobrać danych'}</strong>
+              {issues.map((issue) => <p key={issue}>{issue}</p>)}
+            </div>
+            <Button type="button" onClick={handleRetry} disabled={refreshing}>
+              {refreshing ? 'Odświeżanie…' : 'Spróbuj ponownie'}
             </Button>
           </div>
         )}
 
-        {!error && (
+        {hasSessionSnapshot && currentSessions.length > 0 && (
           <div className="progress-analysis-grid">
             <motion.section
               className="progress-panel progress-panel--wide"
@@ -454,10 +574,9 @@ export default function ProgressPage() {
                     </div>
                   </div>
                   <p className="progress-muted-copy">
-                    Potrzebujesz jeszcze {missingStrengthSessions}{' '}
-                    {polishPlural(missingStrengthSessions, 'sesji', 'sesji', 'sesji')} z tym ćwiczeniem.
+                    Potrzebujesz jeszcze {missingStrengthSessions} dni z zapisanym ciężarem do wykresu.
                   </p>
-                  <div className="progress-session-markers" aria-label={`${strengthData.data.length} z 3 sesji do wykresu`}>
+                  <div className="progress-session-markers" aria-label={`${strengthData.data.length} z 3 dni do wykresu`}>
                     {Array.from({ length: 3 }).map((_, index) => (
                       <span key={index} data-active={index < strengthData.data.length} />
                     ))}
@@ -500,6 +619,7 @@ export default function ProgressPage() {
                             key={s.key}
                             type="monotone"
                             dataKey={s.key}
+                            name={s.exerciseName}
                             stroke={s.color}
                             strokeWidth={2.35}
                             dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
@@ -607,6 +727,9 @@ export default function ProgressPage() {
                     </div>
                   ))}
                 </div>
+                {activityHeatmapSummary && (
+                  <p className="progress-heatmap-summary">{activityHeatmapSummary}</p>
+                )}
                 <div className="progress-heatmap-scale">
                   <span>Mniej</span>
                   {HEATMAP_COLORS.map((color) => (
@@ -619,7 +742,16 @@ export default function ProgressPage() {
           </div>
         )}
 
-        {!error && records.length > 0 && (
+        {showRangeEmpty && (
+          <div className="progress-panel progress-empty-state" role="status">
+            <p className="text-base font-semibold text-white">Brak treningów w wybranym zakresie.</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
+              Wybierz dłuższy zakres albo zapisz kolejny trening.
+            </p>
+          </div>
+        )}
+
+        {records.length > 0 && (
           <motion.section
             className="progress-records"
             initial={{ opacity: 0, y: 8 }}
@@ -628,8 +760,8 @@ export default function ProgressPage() {
           >
             <div className="progress-records-head">
               <div>
-                <p>Rekordy</p>
-                <h2>Najlepsze wyniki</h2>
+                <p>Wyniki · od początku</p>
+                <h2>Rekordy od początku</h2>
               </div>
               <span>{records.length}</span>
             </div>
@@ -688,7 +820,7 @@ export default function ProgressPage() {
           </motion.section>
         )}
 
-        {!error && !hasProgressData && (
+        {showEmptyState && (
           <div className="progress-panel progress-empty-state">
             <p className="text-lg font-semibold text-white">Brak danych</p>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
@@ -696,7 +828,8 @@ export default function ProgressPage() {
             </p>
           </div>
         )}
-      </div>
-    </>
+        </>
+      )}
+    </div>
   )
 }

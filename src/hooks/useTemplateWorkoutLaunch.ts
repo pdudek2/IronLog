@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import {
@@ -30,6 +30,7 @@ export function useTemplateWorkoutLaunch(
   const navigate = useNavigate()
   const [pendingLaunch, setPendingLaunch] = useState<TemplateLaunchTarget | null>(null)
   const [launchingTemplateId, setLaunchingTemplateId] = useState<string | null>(null)
+  const launchLockRef = useRef(false)
 
   const executeLaunch = useCallback(async (target: TemplateLaunchTarget) => {
     if (!uid) return
@@ -47,7 +48,8 @@ export function useTemplateWorkoutLaunch(
     template: WorkoutTemplate,
     dayIndex = 0,
   ) => {
-    if (!uid || launchingTemplateId) return
+    if (!uid || launchingTemplateId || launchLockRef.current) return
+    launchLockRef.current = true
     const target = { template, dayIndex }
     setLaunchingTemplateId(template.id)
     try {
@@ -63,11 +65,13 @@ export function useTemplateWorkoutLaunch(
       toast.error('Nie udało się uruchomić szablonu.')
     } finally {
       setLaunchingTemplateId(null)
+      launchLockRef.current = false
     }
   }, [active, executeLaunch, launchingTemplateId, uid])
 
   const confirmTemplateLaunch = useCallback(async () => {
-    if (!pendingLaunch || launchingTemplateId) return
+    if (!pendingLaunch || launchingTemplateId || launchLockRef.current) return
+    launchLockRef.current = true
     const target = pendingLaunch
     setPendingLaunch(null)
     setLaunchingTemplateId(target.template.id)
@@ -78,6 +82,7 @@ export function useTemplateWorkoutLaunch(
       toast.error('Nie udało się uruchomić szablonu.')
     } finally {
       setLaunchingTemplateId(null)
+      launchLockRef.current = false
     }
   }, [executeLaunch, launchingTemplateId, pendingLaunch])
 

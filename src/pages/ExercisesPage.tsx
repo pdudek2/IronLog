@@ -527,7 +527,7 @@ export default function ExercisesPage() {
         </div>
       </section>
 
-      <main className="exercise-library-content">
+      <div className="exercise-library-content">
         <section className="exercise-library-section">
           <SectionHeader eyebrow="Własna biblioteka" title="Moje ćwiczenia" count={filteredUser.length} />
 
@@ -607,7 +607,7 @@ export default function ExercisesPage() {
             </div>
           )}
         </section>
-      </main>
+      </div>
 
       {/* Create form modal */}
       <AnimatePresence>

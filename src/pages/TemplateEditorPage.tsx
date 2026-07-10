@@ -337,7 +337,7 @@ export default function TemplateEditorPage() {
 
       <form onSubmit={handleSubmit} className="template-editor-form">
         <div className="template-editor-layout">
-          <main className="template-editor-main">
+          <div className="template-editor-main">
             <section className="template-name-panel">
               <p className="planner-kicker">Nazwa</p>
               <input
@@ -483,7 +483,7 @@ export default function TemplateEditorPage() {
                 </div>
               </section>
             ))}
-          </main>
+          </div>
 
           <aside className="desktop-sticky hidden xl:block template-editor-side">
             <div className="template-editor-summary">

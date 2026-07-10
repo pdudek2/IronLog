@@ -489,7 +489,7 @@ export default function WorkoutDetailPage() {
             </motion.div>
           </aside>
 
-          <main className="min-w-0 pb-56 lg:pb-0">
+          <div className="min-w-0 pb-56 lg:pb-0">
             <motion.section
               className="workout-summary-panel puls-panel mb-5 p-4 sm:p-5"
               initial={false}
@@ -726,7 +726,7 @@ export default function WorkoutDetailPage() {
               </div>
             )}
 
-          </main>
+          </div>
         </div>
       <div
         className="fixed left-0 right-0 z-40 px-4 lg:hidden"

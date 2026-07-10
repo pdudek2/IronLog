@@ -263,6 +263,10 @@ a {
     max(8rem, calc(6.75rem + env(safe-area-inset-bottom, 0px)));
 }
 
+.page-shell:focus {
+  outline: none;
+}
+
 @media (min-width: 1024px) {
   .page-shell {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));

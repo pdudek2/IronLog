@@ -14,8 +14,6 @@ export const loadProgressPage = () => import('../pages/ProgressPage')
 export const loadChatPage = () => import('../pages/ChatPage')
 export const loadNotFoundPage = () => import('../pages/NotFoundPage')
 
-let didPreloadPrimaryRoutes = false
-
 export function preloadRouteByPath(path: string) {
   if (path.startsWith('/dashboard')) return loadDashboardPage().then(() => undefined)
   if (path.startsWith('/history')) return loadHistoryPage().then(() => undefined)
@@ -32,24 +30,4 @@ export function preloadRouteByPath(path: string) {
   if (path.startsWith('/login')) return loadLoginPage().then(() => undefined)
   if (path.startsWith('/register')) return loadRegisterPage().then(() => undefined)
   return Promise.resolve()
-}
-
-export function preloadPrimaryRoutes() {
-  if (didPreloadPrimaryRoutes) {
-    return Promise.resolve()
-  }
-
-  didPreloadPrimaryRoutes = true
-
-  return Promise.allSettled([
-    loadDashboardPage(),
-    loadHistoryPage(),
-    loadProgressPage(),
-    loadTemplatesPage(),
-    loadExercisesPage(),
-    loadChatPage(),
-    loadProfilePage(),
-    loadWorkoutPage(),
-    loadTemplateEditorPage(),
-  ]).then(() => undefined)
 }

@@ -1,4 +1,4 @@
-import { Suspense } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import BottomNav from './BottomNav'
@@ -48,15 +48,24 @@ function PageFallback() {
 
 export default function AppLayout() {
   const location = useLocation()
+  const mainRef = useRef<HTMLElement>(null)
   const section = sectionFromPath(location.pathname)
   const workoutFocusShell = isWorkoutFocusShell(location.pathname)
+
+  useEffect(() => {
+    const focusFrame = window.requestAnimationFrame(() => {
+      mainRef.current?.focus({ preventScroll: true })
+    })
+
+    return () => window.cancelAnimationFrame(focusFrame)
+  }, [location.pathname])
 
   return (
     <>
       <div className={workoutFocusShell ? 'top-nav-workout-mobile-shell' : undefined}>
         <TopNav current={section} />
       </div>
-      <div className="page-shell">
+      <main ref={mainRef} className="page-shell" tabIndex={-1}>
         <div className="page-container">
           <div className="min-w-0">
             <Suspense fallback={<PageFallback />}>
@@ -64,7 +73,7 @@ export default function AppLayout() {
             </Suspense>
           </div>
         </div>
-      </div>
+      </main>
       <BottomNav />
     </>
   )

@@ -1,10 +1,9 @@
-import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
 import { logoutUser } from '../lib/auth'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
-import { preloadPrimaryRoutes, preloadRouteByPath } from '../router/pageLoaders'
+import { preloadRouteByPath } from '../router/pageLoaders'
 import { useDashboardStore } from '../store/dashboardStore'
 
 type AppSection = 'dashboard' | 'history' | 'templates' | 'exercises' | 'profile' | 'progress' | 'chat'
@@ -38,14 +37,6 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
 
   const isActive = (item: (typeof NAV_ITEMS)[number]) =>
     current ? current === item.key : item.match ? item.match(path) : path === item.to
-
-  useEffect(() => {
-    const preloadTimeoutId = window.setTimeout(() => {
-      void preloadPrimaryRoutes()
-    }, 120)
-
-    return () => window.clearTimeout(preloadTimeoutId)
-  }, [])
 
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 

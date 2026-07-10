@@ -17,6 +17,7 @@ createRoot(document.getElementById('root')!).render(
       <AppRouter />
       <AnalyticsConsentBanner />
       <Toaster
+        containerAriaLabel="Powiadomienia"
         theme="dark"
         position="top-center"
         toastOptions={{

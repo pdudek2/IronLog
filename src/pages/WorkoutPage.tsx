@@ -884,7 +884,7 @@ export default function WorkoutPage() {
           </aside>
         )}
 
-        <main className={`min-w-0 ${rest ? 'pb-36' : 'pb-20'} lg:pb-0`}>
+        <div className={`min-w-0 ${rest ? 'pb-36' : 'pb-20'} lg:pb-0`}>
           {isDesktop && (
             <motion.section
               className="workout-session-hero mb-4 hidden lg:block"
@@ -1129,7 +1129,7 @@ export default function WorkoutPage() {
               </>
             )}
           </div>
-        </main>
+        </div>
       </div>
 
       {!isDesktop && rest !== null && (

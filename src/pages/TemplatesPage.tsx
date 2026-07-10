@@ -248,6 +248,7 @@ export default function TemplatesPage() {
                           key={`${template.id}-summary-${dayIndex}`}
                           type="button"
                           className="planner-day-chip"
+                          data-testid={`template-day-summary-${template.id}-${dayIndex}`}
                           aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
                           onClick={() => void requestTemplateLaunch(template, dayIndex)}
                           disabled={launchingTemplateId !== null}
@@ -324,6 +325,7 @@ export default function TemplatesPage() {
 
                               <motion.button
                                 type="button"
+                                data-testid={`template-day-detail-${template.id}-${dayIndex}`}
                                 aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
                                 onClick={() => void requestTemplateLaunch(template, dayIndex)}
                                 disabled={launchingTemplateId !== null}

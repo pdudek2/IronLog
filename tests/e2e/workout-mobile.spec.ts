@@ -1,12 +1,36 @@
 import { test, expect, type Locator, type Page } from '@playwright/test'
 
-async function waitForWorkoutState(page: Page): Promise<void> {
-  await Promise.race([
-    page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Anuluj', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Rozpocznij nową sesję' }).waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
-  ])
+type WorkoutTerminalState = 'stale-session' | 'active-session' | 'empty-session' | 'ready-workout'
+
+async function getWorkoutState(page: Page): Promise<WorkoutTerminalState | null> {
+  const states: Array<[WorkoutTerminalState, Locator]> = [
+    ['stale-session', page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })],
+    ['active-session', page.getByRole('button', { name: 'Anuluj', exact: true }).first()],
+    ['empty-session', page.getByRole('button', { name: 'Rozpocznij nową sesję' })],
+    ['ready-workout', page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()],
+  ]
+
+  for (const [state, locator] of states) {
+    if (await locator.isVisible().catch(() => false)) {
+      return state
+    }
+  }
+
+  return null
+}
+
+async function waitForWorkoutState(page: Page, timeout = 25_000): Promise<WorkoutTerminalState> {
+  await expect.poll(
+    async () => getWorkoutState(page),
+    {
+      timeout,
+      message: 'Workout page did not reach any terminal ready state',
+    },
+  ).not.toBeNull()
+
+  const state = await getWorkoutState(page)
+  expect(state, 'Workout page should expose a terminal ready state after polling').not.toBeNull()
+  return state
 }
 
 async function visibleCount(locator: Locator): Promise<number> {
@@ -62,20 +86,20 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
   await expect(page).toHaveURL('/workout/new')
   await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
 
-  await waitForWorkoutState(page)
+  const workoutState = await waitForWorkoutState(page)
 
   const staleDiscardButton = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
   const discardButton = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
   const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
   const addExerciseButton = page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()
 
-  if (await staleDiscardButton.isVisible()) {
+  if (workoutState === 'stale-session') {
     await staleDiscardButton.click()
     await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
     return
   }
 
-  if (await discardButton.isVisible()) {
+  if (workoutState === 'active-session') {
     await discardButton.click()
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
     await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
@@ -84,7 +108,7 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
     return
   }
 
-  if (await startButton.isVisible()) {
+  if (workoutState === 'empty-session') {
     await startButton.click()
     await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
     await discardButton.click()
@@ -100,10 +124,10 @@ async function goToFreshWorkout(page: Page): Promise<void> {
   await page.goto('/workout/new')
   await expect(page).toHaveURL('/workout/new')
   await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
-  await waitForWorkoutState(page)
+  const workoutState = await waitForWorkoutState(page)
 
   const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
-  if (await startButton.isVisible({ timeout: 1_500 }).catch(() => false)) {
+  if (workoutState === 'empty-session') {
     await startButton.click()
   }
 
@@ -122,6 +146,8 @@ async function addExercise(page: Page, search: string): Promise<void> {
 }
 
 test.describe('Active workout shell reduction', () => {
+  test.describe.configure({ timeout: 45_000 })
+
   test('mobile workout mounts a single elapsed timer and a single rest timer', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
 

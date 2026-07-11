@@ -98,7 +98,12 @@ test.describe('Template launch contract', () => {
     await expect(page.getByText('Bench Press', { exact: true })).toHaveCount(0)
   })
 
-  test('offline launch fails on the source page without delayed hydration after reconnect', async ({ context, page, cleanup }) => {
+  test('offline launch fails on the source page without delayed hydration after reconnect', async ({
+    context,
+    page,
+    cleanup,
+    observedContextFactory,
+  }) => {
     cleanup.add('delete offline template', () => deleteTemplateByName(page, OFFLINE_TEMPLATE_NAME))
     cleanup.add('discard active session', () => discardActiveSession(page))
     await createLaunchTemplate(page, OFFLINE_TEMPLATE_NAME)
@@ -134,15 +139,14 @@ test.describe('Template launch contract', () => {
       await context.setOffline(false)
       await page.waitForTimeout(6_000)
 
-      const verifyPage = await context.newPage()
-      try {
-        await verifyPage.goto('/workout/new')
-        await expectAppReady(verifyPage, '/workout/new', 25_000)
-        await expect(verifyPage.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
-        await expect(verifyPage.getByText('Squat', { exact: true })).toHaveCount(0)
-      } finally {
-        await verifyPage.close()
-      }
+      const verifyContext = await observedContextFactory.newContext({
+        storageState: await context.storageState(),
+      })
+      const verifyPage = await verifyContext.newPage()
+      await verifyPage.goto('/workout/new')
+      await expectAppReady(verifyPage, '/workout/new', 25_000)
+      await expect(verifyPage.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+      await expect(verifyPage.getByText('Squat', { exact: true })).toHaveCount(0)
     }
   })
 })

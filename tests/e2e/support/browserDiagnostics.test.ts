@@ -2,7 +2,11 @@ import { describe, expect, it } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { isBlockingConsole, isBlockingRequestFailure } from './browserDiagnostics'
 import { createBrowserDiagnosticsController } from './browserDiagnosticsController'
-import { isExpectedWorkoutReviewProjectionDiagnostic } from './workoutReviewDiagnostics'
+import {
+  isExpectedWorkoutLifecycleAckLossDiagnostic,
+  isExpectedWorkoutLifecycleProjectionDiagnostic,
+  isExpectedWorkoutLifecycleTombstoneDiagnostic,
+} from './workoutLifecycleDiagnostics'
 import type { BrowserContext, ConsoleMessage, Page } from '@playwright/test'
 
 describe('browser diagnostics classification', () => {
@@ -144,7 +148,7 @@ describe('browser diagnostics controller', () => {
 
     await controller.runExpectingDiagnostics(
       'intentional projection failure',
-      isExpectedWorkoutReviewProjectionDiagnostic,
+      isExpectedWorkoutLifecycleProjectionDiagnostic,
       async () => {
         page.emit('console', {
           type: () => 'error',
@@ -167,6 +171,37 @@ describe('browser diagnostics controller', () => {
       url: 'http://localhost:5174/api/unrelated',
       blocking: true,
     })
+  })
+
+  it('matches acknowledgement loss only for aborted closure POST requests', () => {
+    expect(isExpectedWorkoutLifecycleAckLossDiagnostic({
+      kind: 'requestfailed',
+      message: 'net::ERR_FAILED',
+      method: 'POST',
+      url: 'http://localhost:5174/api/finalize-workout',
+      blocking: true,
+    })).toBe(true)
+    expect(isExpectedWorkoutLifecycleAckLossDiagnostic({
+      kind: 'requestfailed',
+      message: 'net::ERR_FAILED',
+      method: 'POST',
+      url: 'http://localhost:5174/api/materialize-workout',
+      blocking: true,
+    })).toBe(false)
+  })
+
+  it('matches only the active-session tombstone rule rejection', () => {
+    const ruleFailure = "[active session save error] FirebaseError: PERMISSION_DENIED: false for 'create' @ L478"
+    expect(isExpectedWorkoutLifecycleTombstoneDiagnostic({
+      kind: 'console',
+      message: ruleFailure,
+      blocking: true,
+    })).toBe(true)
+    expect(isExpectedWorkoutLifecycleTombstoneDiagnostic({
+      kind: 'console',
+      message: '[profile save error] FirebaseError: PERMISSION_DENIED: missing permissions',
+      blocking: true,
+    })).toBe(false)
   })
 
   it('rejects an expectation scope that did not observe a matching diagnostic', async () => {

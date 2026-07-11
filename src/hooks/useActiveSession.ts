@@ -56,6 +56,7 @@ export function useActiveSession(uid: string | null) {
   const applyingRemoteRef = useRef(false)
   const hadRemoteSessionRef = useRef(false)
   const hasUnsyncedLocalChangesRef = useRef(false)
+  const confirmedClosureRef = useRef(false)
   const [ready, setReady] = useState(uid === null)
   const [staleSession, setStaleSession] = useState<{ ageLabel: string } | null>(null)
   const [closureIntent, setClosureIntent] = useState<WorkoutClosureIntent | null>(null)
@@ -107,6 +108,7 @@ export function useActiveSession(uid: string | null) {
       }
       return
     }
+    confirmedClosureRef.current = true
     staleSessionRef.current = null
     setStaleSession(null)
     applyingRemoteRef.current = true
@@ -120,6 +122,7 @@ export function useActiveSession(uid: string | null) {
     session = activeRef.current,
   ): WorkoutClosureIntent | null {
     if (!uid || !session) return null
+    confirmedClosureRef.current = false
     cancelPendingPersistence()
     const existing = closureIntentRef.current
     const intent = existing
@@ -199,6 +202,7 @@ export function useActiveSession(uid: string | null) {
     setStaleSession(null)
     hadRemoteSessionRef.current = false
     remoteSessionRef.current = null
+    confirmedClosureRef.current = false
 
     const { hydrateFromDoc, clearWorkout, startWorkout } = useWorkoutStore.getState()
     if (intentAtMount) {
@@ -324,7 +328,7 @@ export function useActiveSession(uid: string | null) {
         } else if (awaitingServerConfirmation) {
           if (current) setReady(true)
           return
-        } else if (!current) {
+        } else if (!current && !confirmedClosureRef.current) {
           const backup = readActiveSessionBackup(currentUid)
           if (backup) {
             if (isActiveSessionStale(backup)) {
@@ -345,7 +349,7 @@ export function useActiveSession(uid: string | null) {
               persistSession(createdSession)
             }
           }
-        } else if (!closureIntentRef.current) {
+        } else if (current && !closureIntentRef.current) {
           writeActiveSessionBackup(currentUid, current)
           persistSession(current)
         }

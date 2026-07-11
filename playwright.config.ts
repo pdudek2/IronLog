@@ -65,11 +65,20 @@ export default defineConfig({
     },
   ],
 
-  webServer: {
-    command: emulatorMode ? 'npm run dev -- --port 5174' : 'npm run dev',
-    url: webServerUrl,
-    reuseExistingServer: !emulatorMode && !process.env.CI,
-    timeout: 30_000,
-    env: emulatorMode ? emulatorWebEnv : undefined,
-  },
+  webServer: [
+    {
+      command: 'npm run dev:api',
+      port: 3000,
+      reuseExistingServer: !emulatorMode && !process.env.CI,
+      timeout: 30_000,
+      env: emulatorMode ? emulatorWebEnv : undefined,
+    },
+    {
+      command: emulatorMode ? 'npm run dev -- --port 5174' : 'npm run dev',
+      url: webServerUrl,
+      reuseExistingServer: !emulatorMode && !process.env.CI,
+      timeout: 30_000,
+      env: emulatorMode ? emulatorWebEnv : undefined,
+    },
+  ],
 })

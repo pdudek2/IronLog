@@ -4,6 +4,8 @@
 
 Przegląd objął finalizację i odrzucenie treningu od zapisu `workouts`, przez materializację `exerciseSessions` i `records`, po usunięcie `activeSessions/{uid}` oraz zachowanie dashboardu, reloadu, niezależnego klienta, offline i starej sesji. Badanie wykonano na commitach od `ea9d41e` do `32971da`, z Firebase Auth i Firestore Emulator Suite oraz Chromium przez Playwright. Faza R nie wprowadza napraw produktowych: punkty awarii i ich implementacje znajdują się wyłącznie w testach.
 
+> **Nota historyczna:** reprodukcje opisują stan bazowy z commita `448e46a`. Po wdrożeniu Fazy 1 usunięto runtime tests oczekujące duplikacji i odtwarzania zamkniętej sesji; zastępują je regresje `tests/e2e/workout-lifecycle.spec.ts`, które wymagają poprawnego kontraktu zamknięcia.
+
 Statusy zastosowano dokładnie według zatwierdzonej tabeli klasyfikacji:
 
 | Hipoteza | Status | Konsekwencja dla Fazy 1 |

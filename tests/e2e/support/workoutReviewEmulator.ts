@@ -149,7 +149,7 @@ export async function cleanupWorkoutReviewState(): Promise<void> {
     .get()
   const reviewWorkouts = workouts.docs.filter((snapshot) => (
     snapshot.id.startsWith('phase-r-')
-    || String(snapshot.get('label')).startsWith('Phase R')
+    || snapshot.get('label') === 'Phase R active session'
   ))
 
   const cleanupResults = await Promise.allSettled([

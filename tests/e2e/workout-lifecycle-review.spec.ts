@@ -143,9 +143,11 @@ test.describe('Workout lifecycle review evidence', () => {
     const session = await waitForReviewActiveSession((candidate) => (
       candidate !== null
       && candidate.startedAt > staleStartedAt
+      && Date.now() - candidate.startedAt <= MAX_ACTIVE_SESSION_AGE_MS
       && candidate.exercises.length === 0
     ))
     expect(session?.exercises).toEqual([])
+    expect(Date.now() - session!.startedAt).toBeLessThanOrEqual(MAX_ACTIVE_SESSION_AGE_MS)
     await discardCurrentWorkout(page)
   })
 

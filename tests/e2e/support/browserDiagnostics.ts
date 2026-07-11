@@ -15,8 +15,17 @@ export function isBlockingConsole(type: string, text: string): boolean {
     && !NON_BLOCKING_CONSOLE_PATTERNS.some((pattern) => pattern.test(text))
 }
 
-export function isBlockingRequestFailure(resourceType: string, errorText: string): boolean {
-  return !(resourceType === 'document' && errorText === 'net::ERR_ABORTED')
+export function isBlockingRequestFailure(
+  resourceType: string,
+  errorText: string,
+  url = '',
+): boolean {
+  if (resourceType === 'document' && errorText === 'net::ERR_ABORTED') return false
+
+  const isEmulatorFirestoreChannel = (resourceType === 'fetch' || resourceType === 'xhr')
+    && /^http:\/\/127\.0\.0\.1:8080\/google\.firestore\.v1\.Firestore\/(?:Listen|Write)\/channel\?/.test(url)
+
+  return !(isEmulatorFirestoreChannel && errorText === 'net::ERR_ABORTED')
 }
 
 export function formatBlockingDiagnostics(entries: BrowserDiagnostic[]): string {

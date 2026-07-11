@@ -44,7 +44,7 @@ export const test = base.extend<IronLogFixtures>({
         message: errorText,
         url: request.url(),
         method: request.method(),
-        blocking: isBlockingRequestFailure(request.resourceType(), errorText),
+        blocking: isBlockingRequestFailure(request.resourceType(), errorText, request.url()),
       })
     }
 
@@ -68,13 +68,13 @@ export const test = base.extend<IronLogFixtures>({
     const blocking = entries.filter((entry) => entry.blocking)
     expect.soft(blocking, formatBlockingDiagnostics(blocking)).toEqual([])
   }, { auto: true }],
-  cleanup: async ({ page }, fixtureUse, testInfo) => {
+  cleanup: async ({ page }, fixtureUse) => {
     const actions: CleanupAction[] = []
     await fixtureUse({ add: (name, action) => actions.push({ name, run: action }) })
 
     const failures = await runCleanupActions(actions.map((action) => ({
       ...action,
-      run: () => testInfo.step(`cleanup: ${action.name}`, action.run),
+      run: () => base.step(`cleanup: ${action.name}`, action.run),
     })))
 
     expect.soft(failures, failures.join('\n')).toEqual([])

@@ -401,7 +401,7 @@ Punkty `MOBILE-03–05` wchodzą do implementacji wyłącznie po reprodukcji. Br
 - główne przepływy przechodzą na desktopie i mobile bez anonimowych kontrolek i niewidocznego fokusu;
 - dokumentacja i demo odpowiadają faktycznemu zachowaniu aplikacji.
 
-**Blokada:** pełny dowód E2E wymaga resetu quota albo realizacji TEST-06.
+**Blokada:** pełny live E2E nadal wymaga prywatnych `TEST_EMAIL` i `TEST_PASSWORD` oraz środowiska bez blokady quota. `TEST-06` zapewnia deterministyczny gate krytycznych testów, ale nie migruje pełnego zestawu E2E.
 
 ## 6. Backlog LATER
 

@@ -4,6 +4,8 @@ import type { WorkoutClosureIntent } from '../workoutClosureIntent'
 import {
   canCreateStaleReplacement,
   classifyActiveSessionWriteError,
+  classifyClosureFailure,
+  decideConfirmedClosure,
   decideRemoteSessionSync,
   shouldPersistActiveSession,
 } from '../activeSessionSyncPolicy'
@@ -63,8 +65,68 @@ describe('active session sync policy', () => {
     })).toBe('accept_remote')
   })
 
+  it('preserves session B when confirmation belongs to session A', () => {
+    expect(decideConfirmedClosure({
+      confirmedSessionId: 'session-A',
+      currentSessionId: 'session-B',
+      remoteSessionId: 'session-B',
+    })).toBe('preserve_authoritative')
+    expect(decideConfirmedClosure({
+      confirmedSessionId: 'session-A',
+      currentSessionId: 'session-A',
+      remoteSessionId: 'session-A',
+    })).toBe('clear_confirmed')
+  })
+
+  it('presents a newly loaded different stale remote before accepting it', () => {
+    expect(decideRemoteSessionSync({
+      localSession: session('session-A'),
+      remoteSession: session('session-B'),
+      closureIntent: null,
+      remoteSessionIsStale: true,
+    })).toBe('review_stale_remote')
+  })
+
+  it('rehydrates the pending intent snapshot after observed session B is deleted', () => {
+    expect(decideRemoteSessionSync({
+      localSession: session('session-B'),
+      remoteSession: null,
+      closureIntent: intent('session-A'),
+    })).toBe('retain_closure_snapshot')
+  })
+
+  it('maps definitive conflicts separately from ambiguous closure retries', () => {
+    expect(classifyClosureFailure({
+      kind: 'definitive',
+      code: 'closure_conflict',
+      status: 409,
+    })).toBe('closure_conflict')
+    expect(classifyClosureFailure({
+      kind: 'definitive',
+      code: 'session_not_active',
+      status: 409,
+    })).toBe('closure_conflict')
+    expect(classifyClosureFailure({
+      kind: 'definitive',
+      code: 'unauthenticated',
+      status: 401,
+    })).toBe('auth_required')
+    expect(classifyClosureFailure({ kind: 'ambiguous' })).toBe('closure_unconfirmed')
+  })
+
   it('permits stale replacement only after confirmed discard', () => {
     expect(canCreateStaleReplacement({ status: 'discarded' })).toBe(true)
     expect(canCreateStaleReplacement({ status: 'closure_unconfirmed' })).toBe(false)
+  })
+
+  it('does not replace confirmed stale session A when session B won the race', () => {
+    expect(canCreateStaleReplacement(
+      { status: 'discarded' },
+      {
+        confirmedSessionId: 'session-A',
+        currentSessionId: 'session-B',
+        remoteSessionId: 'session-B',
+      },
+    )).toBe(false)
   })
 })

@@ -314,16 +314,16 @@ export default function WorkoutPage() {
     confirmClosure,
     continueStaleSession,
     discardStaleSession,
+    markClosureError,
     markClosureUnconfirmed,
-    markSessionMismatch,
     ready,
+    reloadAuthentication,
     reloadCurrentSession,
     staleSession,
   } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
-  const [saveError, setSaveError] = useState('')
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [pendingExerciseRemovalIndex, setPendingExerciseRemovalIndex] = useState<number | null>(null)
@@ -459,16 +459,12 @@ export default function WorkoutPage() {
   const closureLocked = closureState !== 'idle'
 
   function handleClosureError(error: unknown) {
-    if (error instanceof WorkoutClosureError && error.code === 'session_mismatch') {
-      markSessionMismatch()
-      return
-    }
-    markClosureUnconfirmed()
+    if (error instanceof WorkoutClosureError) markClosureError(error)
+    else markClosureUnconfirmed()
   }
 
   async function submitFinish(intent: WorkoutClosureIntent) {
     if (!user) return
-    setSaveError('')
     try {
       const result = await finishWorkoutLifecycle({
         uid: user.uid,
@@ -590,10 +586,14 @@ export default function WorkoutPage() {
     try {
       const result = await discardStaleSession()
       if (!result || result.status === 'closure_unconfirmed') return
-      toast.success('Stara sesja odrzucona. Zaczynamy od nowa.')
+      toast.success(result.replacement
+        ? 'Stara sesja odrzucona. Zaczynamy od nowa.'
+        : 'Stara sesja odrzucona. Zachowano aktualną sesję.')
     } catch (error) {
       console.error('[discard stale session error]', error)
-      toast.error('Nie udało się odrzucić starej sesji. Spróbuj ponownie.')
+      if (!(error instanceof WorkoutClosureError)) {
+        toast.error('Nie udało się odrzucić starej sesji. Spróbuj ponownie.')
+      }
     } finally {
       setHandlingStaleSession(false)
     }
@@ -806,6 +806,57 @@ export default function WorkoutPage() {
         </div>
       )}
 
+      {closureState === 'closure_conflict' && (
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+          <p className="text-sm font-semibold text-white">Serwer odrzucił zamknięcie tej sesji.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
+            Sesja nie jest już aktywna albo została wcześniej zamknięta w inny sposób. Wczytaj aktualny stan przed kolejną akcją.
+          </p>
+          <button
+            type="button"
+            onClick={reloadCurrentSession}
+            className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+          >
+            Wczytaj aktualny stan
+          </button>
+        </div>
+      )}
+
+      {closureState === 'auth_required' && (
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+          <p className="text-sm font-semibold text-white">Sesja logowania wymaga odświeżenia.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
+            Dane treningu są zachowane. Odśwież logowanie, a potem ponów zamknięcie sesji.
+          </p>
+          <button
+            type="button"
+            onClick={reloadAuthentication}
+            className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+          >
+            Odśwież logowanie
+          </button>
+        </div>
+      )}
+
+      {closureState === 'closure_failed' && (
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+          <p className="text-sm font-semibold text-white">Nie można zamknąć tej sesji.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
+            Serwer definitywnie odrzucił operację. Wczytaj aktualny stan, aby bezpiecznie kontynuować.
+          </p>
+          <button
+            type="button"
+            onClick={reloadCurrentSession}
+            className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+          >
+            Wczytaj aktualny stan
+          </button>
+        </div>
+      )}
+
       <div className="contents" inert={closureLocked ? true : undefined}>
 
       {/* ── Mobile sticky header ─────────────────── */}
@@ -880,8 +931,6 @@ export default function WorkoutPage() {
                   {sessionSignal}
                 </p>
               </div>
-
-              {saveError && <p className="mb-4 text-xs" style={{ color: 'var(--danger)' }}>{saveError}</p>}
 
               <AnimatePresence initial={false}>
                 {rest !== null && (

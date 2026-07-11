@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { EventEmitter } from 'node:events'
 import { isBlockingConsole, isBlockingRequestFailure } from './browserDiagnostics'
 import { createBrowserDiagnosticsController } from './browserDiagnosticsController'
+import { isExpectedWorkoutReviewProjectionDiagnostic } from './workoutReviewDiagnostics'
 import type { BrowserContext, ConsoleMessage, Page } from '@playwright/test'
 
 describe('browser diagnostics classification', () => {
@@ -52,6 +53,7 @@ describe('browser diagnostics controller', () => {
     page.emit('console', {
       type: () => 'error',
       text: () => '[secondary] failed',
+      location: () => ({ url: '' }),
     } as ConsoleMessage)
 
     expect(controller.entries).toEqual([{
@@ -64,6 +66,32 @@ describe('browser diagnostics controller', () => {
     controller.detachAll()
     expect(context.listenerCount('page')).toBe(0)
     expect(page.eventNames()).toEqual([])
+  })
+
+  it('records the console message source URL and falls back to the page URL', () => {
+    const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    context.pages = () => [page as unknown as Page]
+    page.url = () => 'http://localhost:5174/dashboard'
+    page.mainFrame = () => ({}) as ReturnType<Page['mainFrame']>
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(context as unknown as BrowserContext)
+
+    page.emit('console', {
+      type: () => 'error',
+      text: () => 'materialization failed',
+      location: () => ({ url: 'http://localhost:5174/api/materialize-workout' }),
+    } as ConsoleMessage)
+    page.emit('console', {
+      type: () => 'error',
+      text: () => 'dashboard failed',
+      location: () => ({ url: '' }),
+    } as ConsoleMessage)
+
+    expect(controller.entries.map((entry) => entry.url)).toEqual([
+      'http://localhost:5174/api/materialize-workout',
+      'http://localhost:5174/dashboard',
+    ])
   })
 
   it('marks only predicate matches emitted inside an explicit expectation scope', async () => {
@@ -79,17 +107,66 @@ describe('browser diagnostics controller', () => {
       'intentional offline failure',
       (entry) => entry.message === 'expected offline error',
       async () => {
-        page.emit('console', { type: () => 'error', text: () => 'expected offline error' } as ConsoleMessage)
-        page.emit('console', { type: () => 'error', text: () => 'unexpected error' } as ConsoleMessage)
+        page.emit('console', {
+          type: () => 'error',
+          text: () => 'expected offline error',
+          location: () => ({ url: '' }),
+        } as ConsoleMessage)
+        page.emit('console', {
+          type: () => 'error',
+          text: () => 'unexpected error',
+          location: () => ({ url: '' }),
+        } as ConsoleMessage)
       },
     )
-    page.emit('console', { type: () => 'error', text: () => 'expected offline error' } as ConsoleMessage)
+    page.emit('console', {
+      type: () => 'error',
+      text: () => 'expected offline error',
+      location: () => ({ url: '' }),
+    } as ConsoleMessage)
 
     expect(controller.entries.map((entry) => entry.expectedBy)).toEqual([
       'intentional offline failure',
       undefined,
       undefined,
     ])
+  })
+
+  it('expects the projection 503 only from its exact endpoint source URL', async () => {
+    const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    context.pages = () => [page as unknown as Page]
+    page.url = () => 'http://localhost:5174/dashboard'
+    page.mainFrame = () => ({}) as ReturnType<Page['mainFrame']>
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(context as unknown as BrowserContext)
+    const message = 'Failed to load resource: the server responded with a status of 503 (Service Unavailable)'
+
+    await controller.runExpectingDiagnostics(
+      'intentional projection failure',
+      isExpectedWorkoutReviewProjectionDiagnostic,
+      async () => {
+        page.emit('console', {
+          type: () => 'error',
+          text: () => message,
+          location: () => ({ url: 'http://localhost:5174/api/materialize-workout' }),
+        } as ConsoleMessage)
+        page.emit('console', {
+          type: () => 'error',
+          text: () => message,
+          location: () => ({ url: 'http://localhost:5174/api/unrelated' }),
+        } as ConsoleMessage)
+      },
+    )
+
+    expect(controller.entries.map((entry) => entry.expectedBy)).toEqual([
+      'intentional projection failure',
+      undefined,
+    ])
+    expect(controller.entries[1]).toMatchObject({
+      url: 'http://localhost:5174/api/unrelated',
+      blocking: true,
+    })
   })
 
   it('rejects an expectation scope that did not observe a matching diagnostic', async () => {

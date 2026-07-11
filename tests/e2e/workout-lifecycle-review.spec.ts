@@ -1,6 +1,5 @@
 import { test, expect } from './fixtures'
 import { expectAppReady } from './support/appReady'
-import type { BrowserDiagnostic } from './support/browserDiagnostics'
 import {
   cleanupWorkoutReviewState,
   closeWorkoutReviewEmulator,
@@ -9,6 +8,7 @@ import {
   seedReviewWorkout,
   waitForReviewActiveSession,
 } from './support/workoutReviewEmulator'
+import { isExpectedWorkoutReviewProjectionDiagnostic } from './support/workoutReviewDiagnostics'
 
 test.afterAll(closeWorkoutReviewEmulator)
 
@@ -66,25 +66,25 @@ test.describe('Workout lifecycle review evidence', () => {
       body: '{"error":"phase-r projection failure"}',
     }))
 
+    const pendingRow = page.locator('.dashboard-history-row').filter({
+      hasText: 'Phase R pending projection',
+    })
+    const projectionFailureResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url())
+      return url.pathname === '/api/materialize-workout' && response.status() === 503
+    })
+
     await expectedBrowserDiagnostics.during(
       'intentional Phase R projection failure',
-      isExpectedProjectionFailureDiagnostic,
+      isExpectedWorkoutReviewProjectionDiagnostic,
       async () => {
         await page.goto('/dashboard')
         await expectAppReady(page, '/dashboard')
-
-        const pendingRow = page.locator('.dashboard-history-row').filter({
-          hasText: 'Phase R pending projection',
-        })
+        await projectionFailureResponse
         await expect(pendingRow).toBeVisible()
         await expect(pendingRow.getByText('sync', { exact: true })).toBeVisible()
-        await expect(pendingRow).not.toContainText(/spróbuj ponownie|oczekuje|błąd synchronizacji/i)
       },
     )
+    await expect(pendingRow).not.toContainText(/spróbuj ponownie|oczekuje|błąd synchronizacji/i)
   })
 })
-
-function isExpectedProjectionFailureDiagnostic(entry: BrowserDiagnostic): boolean {
-  return entry.kind === 'console'
-    && entry.message === 'Failed to load resource: the server responded with a status of 503 (Service Unavailable)'
-}

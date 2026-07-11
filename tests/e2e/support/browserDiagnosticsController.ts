@@ -79,10 +79,11 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       const onConsole = (message: ConsoleMessage) => {
         if (message.type() !== 'error') return
         const text = message.text()
+        const sourceUrl = message.location().url
         record({
           kind: 'console',
           message: text,
-          url: page.url(),
+          url: sourceUrl || page.url(),
           blocking: isBlockingConsole(message.type(), text),
         })
       }

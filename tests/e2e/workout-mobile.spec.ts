@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from './fixtures'
+import { discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
 
 type WorkoutTerminalState = 'stale-session' | 'active-session' | 'empty-session' | 'ready-workout'
@@ -147,8 +148,9 @@ async function addExercise(page: Page, search: string): Promise<void> {
 test.describe('Active workout shell reduction', () => {
   test.describe.configure({ timeout: 45_000 })
 
-  test('mobile workout mounts a single elapsed timer and a single rest timer', async ({ page }, testInfo) => {
+  test('mobile workout mounts a single elapsed timer and a single rest timer', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSession(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -162,11 +164,11 @@ test.describe('Active workout shell reduction', () => {
 
     await expect(page.locator('.rest-timer-bar')).toHaveCount(1)
 
-    await discardSessionIfPresent(page)
   })
 
-  test('mobile workout keeps the compact shell and normal app navigation', async ({ page }, testInfo) => {
+  test('mobile workout keeps the compact shell and normal app navigation', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSession(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -185,11 +187,11 @@ test.describe('Active workout shell reduction', () => {
       { message: 'Squat should remain in the active session after route navigation' },
     ).toBeGreaterThan(0)
 
-    await discardSessionIfPresent(page)
   })
 
-  test('mobile workout keeps the first set visible and a single add action after adding an exercise', async ({ page }, testInfo) => {
+  test('mobile workout keeps the first set visible and a single add action after adding an exercise', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSession(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -201,11 +203,11 @@ test.describe('Active workout shell reduction', () => {
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(0), 'First weight input')
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(1), 'First reps input')
 
-    await discardSessionIfPresent(page)
   })
 
-  test('mobile workout shows steppers only for the focused incomplete set and keeps controls tappable', async ({ page }, testInfo) => {
+  test('mobile workout shows steppers only for the focused incomplete set and keeps controls tappable', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSession(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -263,11 +265,11 @@ test.describe('Active workout shell reduction', () => {
     await skipRestButton.click()
     await expect(actionBar).toHaveCount(0)
 
-    await discardSessionIfPresent(page)
   })
 
-  test('desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract', async ({ page }, testInfo) => {
+  test('desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'desktop-only contract')
+    cleanup.add('discard active session', () => discardActiveSession(page))
 
     await goToFreshWorkout(page)
 
@@ -299,6 +301,5 @@ test.describe('Active workout shell reduction', () => {
     await expect(removeExerciseButton).toHaveCount(0)
     await expect(page.locator('.workout-empty-card')).toBeVisible()
 
-    await discardSessionIfPresent(page)
   })
 })

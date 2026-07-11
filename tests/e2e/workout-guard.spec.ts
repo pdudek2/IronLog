@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures'
+import { discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
 
 async function waitForWorkoutState(page: Page): Promise<void> {
@@ -93,7 +94,8 @@ async function startFreshSession(page: Page): Promise<string> {
 }
 
 test.describe('Workout navigation guard', () => {
-  test('navigating away preserves the session', async ({ page }) => {
+  test('navigating away preserves the session', async ({ page, cleanup }) => {
+    cleanup.add('discard active session', () => discardActiveSession(page))
     const exerciseName = await startFreshSession(page)
 
     // Navigate away via URL
@@ -113,16 +115,10 @@ test.describe('Workout navigation guard', () => {
 
     await page.screenshot({ path: 'test-results/guard-session-restored.png' })
 
-    // Cleanup: "Anuluj" triggers dialog, "Anuluj trening" confirms
-    const cleanupBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-    await cleanupBtn.click()
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible()
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
-    await page.waitForURL('/dashboard', { timeout: 10_000 })
   })
 
-  test('explicit discard clears session and redirects to dashboard', async ({ page }) => {
+  test('explicit discard clears session and redirects to dashboard', async ({ page, cleanup }) => {
+    cleanup.add('discard active session', () => discardActiveSession(page))
     const exerciseName = await startFreshSession(page)
 
     // Trigger discard via the "Anuluj" button
@@ -155,7 +151,8 @@ test.describe('Workout navigation guard', () => {
     await expect(workoutExerciseEntry(page, exerciseName)).not.toBeVisible({ timeout: 5_000 })
   })
 
-  test('cancel in discard dialog keeps session active', async ({ page }) => {
+  test('cancel in discard dialog keeps session active', async ({ page, cleanup }) => {
+    cleanup.add('discard active session', () => discardActiveSession(page))
     const exerciseName = await startFreshSession(page)
 
     // Click "Anuluj" to trigger dialog
@@ -176,11 +173,5 @@ test.describe('Workout navigation guard', () => {
     await expect(page).toHaveURL('/workout/new')
     await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible()
 
-    // Cleanup
-    const cleanupBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-    await cleanupBtn.click()
-    const cleanupDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await cleanupDialog.getByRole('button', { name: 'Anuluj trening' }).click()
-    await page.waitForURL('/dashboard', { timeout: 10_000 })
   })
 })

@@ -10,12 +10,18 @@ import {
   isBlockingRequestFailure,
   type BrowserDiagnostic,
 } from './support/browserDiagnostics'
+import { runCleanupActions, type CleanupAction } from './support/cleanupRegistry'
 
-interface DiagnosticFixture {
-  browserDiagnostics: BrowserDiagnostic[]
+export interface CleanupRegistry {
+  add(name: string, action: () => Promise<void>): void
 }
 
-export const test = base.extend<DiagnosticFixture>({
+interface IronLogFixtures {
+  browserDiagnostics: BrowserDiagnostic[]
+  cleanup: CleanupRegistry
+}
+
+export const test = base.extend<IronLogFixtures>({
   browserDiagnostics: [async ({ page }, use, testInfo) => {
     const entries: BrowserDiagnostic[] = []
 
@@ -62,6 +68,18 @@ export const test = base.extend<DiagnosticFixture>({
     const blocking = entries.filter((entry) => entry.blocking)
     expect.soft(blocking, formatBlockingDiagnostics(blocking)).toEqual([])
   }, { auto: true }],
+  cleanup: async ({ page }, fixtureUse, testInfo) => {
+    const actions: CleanupAction[] = []
+    await fixtureUse({ add: (name, action) => actions.push({ name, run: action }) })
+
+    const failures = await runCleanupActions(actions.map((action) => ({
+      ...action,
+      run: () => testInfo.step(`cleanup: ${action.name}`, action.run),
+    })))
+
+    expect.soft(failures, failures.join('\n')).toEqual([])
+    void page
+  },
 })
 
 export { expect }

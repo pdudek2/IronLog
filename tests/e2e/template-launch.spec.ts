@@ -1,7 +1,9 @@
 import { test, expect, type Page } from './fixtures'
+import { deleteTemplateByName, discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
 
-const LAUNCH_TEMPLATE_NAME = '_E2E Launch Contract_'
+const REPLACE_TEMPLATE_NAME = '_E2E Launch Replace_'
+const OFFLINE_TEMPLATE_NAME = '_E2E Launch Offline_'
 
 function workoutExerciseRow(page: Page, exerciseName: string) {
   return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
@@ -16,51 +18,11 @@ async function waitForWorkoutState(page: Page): Promise<void> {
   ])
 }
 
-async function discardActiveSession(page: Page): Promise<void> {
-  await page.goto('/workout/new')
-  await expectAppReady(page, '/workout/new', 25_000)
-  await waitForWorkoutState(page)
-
-  const staleDiscardButton = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
-  const discardButton = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-  const addExerciseButton = page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()
-
-  if (await staleDiscardButton.isVisible()) {
-    await staleDiscardButton.click()
-    await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
-    await expect(discardButton).toBeVisible({ timeout: 15_000 })
-  }
-
-  if (await discardButton.isVisible()) {
-    await discardButton.click()
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
-    await page.waitForURL('/dashboard', { timeout: 10_000 })
-  }
-}
-
-async function cleanupLaunchTemplate(page: Page): Promise<void> {
-  await page.goto('/templates')
-  await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
-
-  const deleteButtons = page.getByRole('button', {
-    name: `Usuń szablon ${LAUNCH_TEMPLATE_NAME}`,
-  })
-
-  while (await deleteButtons.count()) {
-    const initialCount = await deleteButtons.count()
-    await deleteButtons.first().click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Usuń' }).click()
-    await expect(deleteButtons).toHaveCount(initialCount - 1, { timeout: 8_000 })
-  }
-}
-
-async function createLaunchTemplate(page: Page): Promise<void> {
+async function createLaunchTemplate(page: Page, templateName: string): Promise<void> {
   await page.goto('/templates/new')
   await expectAppReady(page, '/templates/new')
 
-  await page.getByPlaceholder('np. Upper / Lower 4 dni').fill(LAUNCH_TEMPLATE_NAME)
+  await page.getByPlaceholder('np. Upper / Lower 4 dni').fill(templateName)
   await page.getByRole('button', { name: 'Dodaj ćwiczenie' }).first().click()
 
   const picker = page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })
@@ -73,7 +35,7 @@ async function createLaunchTemplate(page: Page): Promise<void> {
 
   await page.getByRole('button', { name: 'Zapisz szablon' }).click()
   await page.waitForURL('/templates', { timeout: 15_000 })
-  await expect(page.getByRole('heading', { name: LAUNCH_TEMPLATE_NAME, exact: true }).first()).toBeVisible({ timeout: 10_000 })
+  await expect(page.getByRole('heading', { name: templateName, exact: true }).first()).toBeVisible({ timeout: 10_000 })
 }
 
 async function startFreshSessionWithExercise(page: Page, exerciseName: string): Promise<void> {
@@ -105,48 +67,16 @@ async function startFreshSessionWithExercise(page: Page, exerciseName: string): 
 }
 
 test.describe('Template launch contract', () => {
-  test.describe.configure({ mode: 'serial' })
+  test('cancel keeps the current session and confirm replaces it from dashboard', async ({ page, cleanup }) => {
+    cleanup.add('delete replace template', () => deleteTemplateByName(page, REPLACE_TEMPLATE_NAME))
+    cleanup.add('discard active session', () => discardActiveSession(page))
+    await createLaunchTemplate(page, REPLACE_TEMPLATE_NAME)
 
-  test.beforeAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: 'tests/e2e/.auth/user.json' })
-    const page = await context.newPage()
-
-    try {
-      await cleanupLaunchTemplate(page)
-      await discardActiveSession(page)
-      await createLaunchTemplate(page)
-    } finally {
-      await context.close()
-    }
-  })
-
-  test.afterAll(async ({ browser }) => {
-    const context = await browser.newContext({ storageState: 'tests/e2e/.auth/user.json' })
-    const page = await context.newPage()
-
-    try {
-      try {
-        await discardActiveSession(page)
-      } catch {
-        // Best-effort
-      } finally {
-        try {
-          await cleanupLaunchTemplate(page)
-        } catch {
-          // Best-effort
-        }
-      }
-    } finally {
-      await context.close()
-    }
-  })
-
-  test('cancel keeps the current session and confirm replaces it from dashboard', async ({ page }) => {
     await startFreshSessionWithExercise(page, 'Bench Press')
     await page.goto('/dashboard')
 
     const launch = page.getByRole('button', {
-      name: `Uruchom szablon ${LAUNCH_TEMPLATE_NAME}`,
+      name: `Uruchom szablon ${REPLACE_TEMPLATE_NAME}`,
     }).first()
     await expect(launch).toBeVisible({ timeout: 15_000 })
     await launch.click()
@@ -168,11 +98,15 @@ test.describe('Template launch contract', () => {
     await expect(page.getByText('Bench Press', { exact: true })).toHaveCount(0)
   })
 
-  test('offline launch fails on the source page without delayed hydration after reconnect', async ({ context, page }) => {
+  test('offline launch fails on the source page without delayed hydration after reconnect', async ({ context, page, cleanup }) => {
+    cleanup.add('delete offline template', () => deleteTemplateByName(page, OFFLINE_TEMPLATE_NAME))
+    cleanup.add('discard active session', () => discardActiveSession(page))
+    await createLaunchTemplate(page, OFFLINE_TEMPLATE_NAME)
+
     await page.goto('/templates')
     await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
     const launch = page.getByRole('button', {
-      name: `Uruchom szablon ${LAUNCH_TEMPLATE_NAME}`,
+      name: `Uruchom szablon ${OFFLINE_TEMPLATE_NAME}`,
     }).first()
     await expect(launch).toBeVisible({ timeout: 15_000 })
 

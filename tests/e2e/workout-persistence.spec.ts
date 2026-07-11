@@ -1,47 +1,14 @@
 import { test, expect, type Page } from './fixtures'
+import { discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
-
-async function waitForWorkoutState(page: Page): Promise<void> {
-  await Promise.race([
-    page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Anuluj', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Rozpocznij nową sesję' }).waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first().waitFor({ state: 'visible', timeout: 25_000 }),
-  ])
-}
 
 function workoutExerciseEntry(page: Page, exerciseName: string) {
   return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
 }
 
-/**
- * Ensures no active session exists at the start of a test.
- * Navigates to workout, discards session if one exists.
- */
-async function discardActiveSession(page: Page) {
-  await page.goto('/workout/new')
-  await expectAppReady(page, '/workout/new', 25_000)
-
-  const staleDiscardBtn = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
-  const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-  const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
-
-  await waitForWorkoutState(page)
-
-  if (await staleDiscardBtn.isVisible()) {
-    await staleDiscardBtn.click()
-    await expect(addExBtn).toBeVisible({ timeout: 15_000 })
-  } else if (await discardBtn.isVisible()) {
-    await discardBtn.click()
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
-    await page.waitForURL('/dashboard', { timeout: 10_000 })
-  }
-}
-
 test.describe('Workout persistence', () => {
-  test('active session survives page refresh', async ({ page }) => {
+  test('active session survives page refresh', async ({ page, cleanup }) => {
+    cleanup.add('discard active session', () => discardActiveSession(page))
     await discardActiveSession(page)
 
     // Navigate fresh to workout page
@@ -94,12 +61,5 @@ test.describe('Workout persistence', () => {
 
     await page.screenshot({ path: 'test-results/workout-after-reload.png' })
 
-    // Cleanup: "Anuluj" triggers dialog, "Anuluj trening" confirms. Scope to ConfirmDialog.
-    const cleanupBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-    await cleanupBtn.click()
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible()
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
-    await page.waitForURL('/dashboard', { timeout: 10_000 })
   })
 })

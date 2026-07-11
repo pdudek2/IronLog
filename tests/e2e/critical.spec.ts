@@ -1,8 +1,10 @@
 import { test, expect } from './fixtures'
+import { discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
 
 test.describe('Critical application contract', () => {
-  test('workout route reaches a terminal ready state', async ({ page }) => {
+  test('workout route reaches a terminal ready state', async ({ page, cleanup }) => {
+    cleanup.add('discard active session', () => discardActiveSession(page))
     await page.goto('/workout/new')
     await expectAppReady(page, '/workout/new', 25_000)
   })

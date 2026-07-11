@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures'
+import { restoreProfileName } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
 
 /**
@@ -26,7 +27,7 @@ test.describe('Profile hydration and save', () => {
 
   })
 
-  test('save changes and verify persistence after reload', async ({ page }) => {
+  test('save changes and verify persistence after reload', async ({ page, cleanup }) => {
     await page.goto('/profile')
     await expectAppReady(page, '/profile')
 
@@ -36,10 +37,9 @@ test.describe('Profile hydration and save', () => {
     await expect(nameInput).not.toHaveValue('', { timeout: 10_000 })
 
     // Read current name and create a modified version
-    const originalName = await nameInput.inputValue()
-    const testName = originalName.includes('[test]')
-      ? originalName
-      : `${originalName.trim()} [test]`.trim().slice(0, 50)
+    const originalName = (await nameInput.inputValue()).trim()
+    cleanup.add('restore profile name', () => restoreProfileName(page, originalName))
+    const testName = `${originalName.replace(/ \[test\]$/, '')} [test]`.slice(0, 50)
 
     // Change name
     await nameInput.fill(testName)
@@ -62,10 +62,6 @@ test.describe('Profile hydration and save', () => {
 
     await page.screenshot({ path: 'test-results/profile-after-reload.png' })
 
-    // Restore original name to avoid polluting the test account
-    await nameInputAfterReload.fill(originalName.trim())
-    await page.getByRole('button', { name: /Zapisz zmiany/ }).click()
-    await expect(page.getByText('Profil zapisany')).toBeVisible({ timeout: 8_000 })
   })
 
   test('profile page has no console errors', async ({ page }) => {

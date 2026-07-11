@@ -1,83 +1,137 @@
 import { describe, expect, it, vi } from 'vitest'
+import type { ActiveWorkout } from '../../store/workoutStore'
+import { WorkoutClosureError } from '../workoutClosureService'
 import {
   discardStaleSessionLifecycle,
   discardWorkoutLifecycle,
   finishWorkoutLifecycle,
 } from '../workoutLifecycle'
 
-const savedWorkout = { id: 'workout-1', materialized: false }
+class MemoryStorage implements Storage {
+  private readonly values = new Map<string, string>()
+  get length(): number { return this.values.size }
+  clear(): void { this.values.clear() }
+  getItem(key: string): string | null { return this.values.get(key) ?? null }
+  key(index: number): string | null { return [...this.values.keys()][index] ?? null }
+  removeItem(key: string): void { this.values.delete(key) }
+  setItem(key: string, value: string): void { this.values.set(key, value) }
+}
+
+const session: ActiveWorkout = {
+  sessionId: 'session-1',
+  startedAt: 100,
+  exercises: [{
+    exerciseId: 'bench-press',
+    exerciseSource: 'global',
+    name: 'Bench Press',
+    sets: [{ weight: '80', reps: '5', done: true }],
+  }],
+}
 
 describe('finishWorkoutLifecycle', () => {
-  it('does not clear local or remote session state when workout save fails', async () => {
-    const clearWorkout = vi.fn()
-    const clearSession = vi.fn()
-
-    await expect(finishWorkoutLifecycle({
-      saveWorkout: vi.fn().mockRejectedValue(new Error('ambiguous write result')),
-      clearWorkout,
-      clearSession,
-    })).rejects.toThrow('ambiguous write result')
-
-    expect(clearWorkout).not.toHaveBeenCalled()
-    expect(clearSession).not.toHaveBeenCalled()
-  })
-
-  it('reports unconfirmed cleanup after a saved workout without rejecting the finish', async () => {
+  it('persists intent before request and clears recovery only after confirmed success', async () => {
     const order: string[] = []
-    const clearWorkout = vi.fn(() => { order.push('clear-local') })
-    const clearSession = vi.fn(async () => { order.push('clear-remote'); throw new Error('delete failed') })
+    const storage = new MemoryStorage()
+    const originalSetItem = storage.setItem.bind(storage)
+    storage.setItem = vi.fn((key, value) => { order.push('prepare-intent'); originalSetItem(key, value) })
+
     const result = await finishWorkoutLifecycle({
-      saveWorkout: vi.fn(async () => { order.push('save'); return savedWorkout }),
-      clearWorkout,
-      clearSession,
+      uid: 'user-1',
+      session,
+      storage,
+      request: vi.fn(async () => { order.push('request'); return { workoutId: 'session-1', status: 'materialized' as const } }),
+      clearConfirmed: vi.fn(async () => { order.push('confirmed-clear') }),
     })
 
-    expect(order).toEqual(['save', 'clear-local', 'clear-remote'])
-    expect(result.workout).toEqual(savedWorkout)
-    expect(result.sessionCleanup).toBe('unconfirmed')
-    expect(result.cleanupError).toEqual(new Error('delete failed'))
-    expect(clearWorkout).toHaveBeenCalledOnce()
-    expect(clearSession).toHaveBeenCalledOnce()
+    expect(result).toEqual({ workoutId: 'session-1', status: 'materialized' })
+    expect(order).toEqual(['prepare-intent', 'request', 'confirmed-clear'])
+    expect(storage.length).toBe(0)
+  })
+
+  it('returns closure_unconfirmed and keeps the intent and session on ambiguous failure', async () => {
+    const order: string[] = []
+    const storage = new MemoryStorage()
+    const clearConfirmed = vi.fn()
+
+    const result = await finishWorkoutLifecycle({
+      uid: 'user-1',
+      session,
+      storage,
+      request: vi.fn(async () => {
+        order.push('request-fails')
+        throw new WorkoutClosureError('ambiguous', 'No acknowledgement')
+      }),
+      clearConfirmed,
+    })
+
+    expect(result.status).toBe('closure_unconfirmed')
+    expect(order).toEqual(['request-fails'])
+    expect(clearConfirmed).not.toHaveBeenCalled()
+    expect(storage.length).toBe(1)
   })
 })
 
 describe('discardWorkoutLifecycle', () => {
-  it('clears local state first and reports a failed cloud cleanup', async () => {
+  it('uses the same prepare-request-confirmed-clear ordering', async () => {
     const order: string[] = []
-    const clearWorkout = vi.fn(() => { order.push('clear-local') })
-    const clearSession = vi.fn(async () => { order.push('clear-remote'); throw new Error('delete failed') })
+    const storage = new MemoryStorage()
+    const originalSetItem = storage.setItem.bind(storage)
+    storage.setItem = vi.fn((key, value) => { order.push('prepare-intent'); originalSetItem(key, value) })
+
     const result = await discardWorkoutLifecycle({
-      clearWorkout,
-      clearSession,
+      uid: 'user-1',
+      session,
+      storage,
+      request: vi.fn(async () => { order.push('request'); return { status: 'discarded' as const } }),
+      clearConfirmed: vi.fn(async () => { order.push('confirmed-clear') }),
     })
 
-    expect(order).toEqual(['clear-local', 'clear-remote'])
-    expect(result.sessionCleanup).toBe('unconfirmed')
-    expect(clearWorkout).toHaveBeenCalledOnce()
-    expect(clearSession).toHaveBeenCalledOnce()
+    expect(result).toEqual({ status: 'discarded' })
+    expect(order).toEqual(['prepare-intent', 'request', 'confirmed-clear'])
   })
 })
 
 describe('discardStaleSessionLifecycle', () => {
-  it('starts and persists a replacement after the old remote delete fails', async () => {
-    const replacement = { sessionId: 'session-1', startedAt: 200, exercises: [] }
-    const clearLocal = vi.fn()
-    const deleteRemote = vi.fn().mockRejectedValue(new Error('delete failed'))
-    const startReplacement = vi.fn(() => replacement)
-    const persistReplacement = vi.fn(async () => undefined)
+  it('creates and persists a replacement only after confirmed discard', async () => {
+    const order: string[] = []
+    const storage = new MemoryStorage()
+    const replacement = { sessionId: 'session-2', startedAt: 200, exercises: [] }
+
     const result = await discardStaleSessionLifecycle({
-      clearLocal,
-      deleteRemote,
-      startReplacement,
-      persistReplacement,
+      uid: 'user-1',
+      session,
+      storage,
+      request: vi.fn(async () => { order.push('request-confirmed'); return { status: 'discarded' as const } }),
+      clearConfirmed: vi.fn(async () => { order.push('confirmed-clear') }),
+      startReplacement: vi.fn(() => { order.push('start-replacement'); return replacement }),
+      persistReplacement: vi.fn(async () => { order.push('persist-replacement') }),
     })
 
-    expect(result.sessionCleanup).toBe('unconfirmed')
-    expect(result.replacement).toBe(replacement)
-    expect(clearLocal).toHaveBeenCalledOnce()
-    expect(deleteRemote).toHaveBeenCalledOnce()
-    expect(startReplacement).toHaveBeenCalledOnce()
-    expect(persistReplacement).toHaveBeenCalledOnce()
-    expect(persistReplacement).toHaveBeenCalledWith(replacement)
+    expect(result).toEqual({ status: 'discarded', replacement })
+    expect(order).toEqual([
+      'request-confirmed',
+      'confirmed-clear',
+      'start-replacement',
+      'persist-replacement',
+    ])
+  })
+
+  it('does not create a replacement after an ambiguous discard', async () => {
+    const storage = new MemoryStorage()
+    const startReplacement = vi.fn()
+
+    const result = await discardStaleSessionLifecycle({
+      uid: 'user-1',
+      session,
+      storage,
+      request: vi.fn().mockRejectedValue(new WorkoutClosureError('ambiguous', 'No acknowledgement')),
+      clearConfirmed: vi.fn(),
+      startReplacement,
+      persistReplacement: vi.fn(),
+    })
+
+    expect(result).toMatchObject({ status: 'closure_unconfirmed', replacement: null })
+    expect(startReplacement).not.toHaveBeenCalled()
+    expect(storage.length).toBe(1)
   })
 })

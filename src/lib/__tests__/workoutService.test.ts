@@ -10,7 +10,7 @@ const { auth } = vi.hoisted(() => ({
 vi.mock('../firebase', () => ({ db: {}, auth }))
 vi.mock('firebase/firestore', () => ({}))
 
-import { calcStreak, retryPendingMaterializations, saveWorkoutWithPort } from '../workoutService'
+import { buildFinishedWorkoutPayload, calcStreak, retryPendingMaterializations } from '../workoutService'
 import type { WorkoutSummary } from '../workoutService'
 import type { ActiveWorkout } from '../../store/workoutStore'
 
@@ -130,30 +130,22 @@ describe('retryPendingMaterializations', () => {
   })
 })
 
-describe('saveWorkoutWithPort', () => {
-  it('propagates an ambiguous create error without attempting materialization', async () => {
-    const port = {
-      createWorkout: vi.fn().mockRejectedValue(new Error('ack lost')),
-      materializeWorkout: vi.fn(),
-    }
+describe('buildFinishedWorkoutPayload', () => {
+  it('builds the endpoint payload without client-owned administrative fields', () => {
+    const payload = buildFinishedWorkoutPayload(workout)
 
-    await expect(saveWorkoutWithPort('user-1', workout, port)).rejects.toThrow('ack lost')
-    expect(port.createWorkout).toHaveBeenCalledOnce()
-    expect(port.materializeWorkout).not.toHaveBeenCalled()
-  })
-
-  it('returns a pending result when materialization fails after create', async () => {
-    const port = {
-      createWorkout: vi.fn().mockResolvedValue({ id: 'workout-1' }),
-      materializeWorkout: vi.fn().mockRejectedValue(new Error('projection failed')),
-    }
-
-    await expect(saveWorkoutWithPort('user-1', workout, port)).resolves.toEqual({
-      id: 'workout-1',
-      materialized: false,
+    expect(payload).toMatchObject({
+      sessionId: 'session-1',
+      templateId: null,
+      startedAt: workout.startedAt,
+      label: 'Phase R workout',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        sets: [{ weight: 80, reps: 5 }],
+      }],
     })
-    expect(port.createWorkout).toHaveBeenCalledOnce()
-    expect(port.materializeWorkout).toHaveBeenCalledOnce()
-    expect(port.materializeWorkout).toHaveBeenCalledWith('workout-1')
+    expect(payload).not.toHaveProperty('userId')
+    expect(payload).not.toHaveProperty('materialized')
   })
 })

@@ -2,7 +2,6 @@ import {
   type QueryDocumentSnapshot,
   type DocumentData,
   type QuerySnapshot,
-  addDoc,
   collection,
   doc,
   getDoc,
@@ -29,19 +28,13 @@ export interface WorkoutExerciseSummary {
   sets: WorkoutSetSummary[]
 }
 
-export interface WorkoutWritePayload {
-  userId: string
+export interface FinishedWorkoutPayload {
+  sessionId: string
   templateId: string | null
   startedAt: number
   finishedAt: number
-  materialized: false
   label: string | null
   exercises: WorkoutExerciseSummary[]
-}
-
-export interface WorkoutWritePort {
-  createWorkout(payload: WorkoutWritePayload): Promise<{ id: string }>
-  materializeWorkout(workoutId: string): Promise<void>
 }
 
 export interface WorkoutSummary {
@@ -69,32 +62,10 @@ export interface MaterializationRetryResult {
   failed: number
 }
 
-export async function saveWorkoutWithPort(
-  uid: string,
-  workout: ActiveWorkout,
-  port: WorkoutWritePort,
-): Promise<SaveWorkoutResult> {
-  const payload = buildWorkoutPayload(uid, workout)
-  const created = await port.createWorkout(payload)
-  try {
-    await port.materializeWorkout(created.id)
-    return { id: created.id, materialized: true }
-  } catch (error) {
-    console.error('[materializeWorkout error]', error)
-    return { id: created.id, materialized: false }
-  }
-}
-
-const defaultWorkoutWritePort: WorkoutWritePort = {
-  async createWorkout(payload) {
-    const ref = await addDoc(collection(db, 'workouts'), payload)
-    return { id: ref.id }
-  },
-  materializeWorkout,
-}
-
-export async function saveWorkout(uid: string, workout: ActiveWorkout): Promise<SaveWorkoutResult> {
-  return saveWorkoutWithPort(uid, workout, defaultWorkoutWritePort)
+export async function saveWorkout(_uid: string, workout: ActiveWorkout): Promise<SaveWorkoutResult> {
+  const { finalizeWorkout } = await import('./workoutClosureService')
+  const result = await finalizeWorkout(workout)
+  return { id: result.workoutId, materialized: result.status === 'materialized' }
 }
 
 export async function getRecentWorkouts(uid: string, count = 20): Promise<WorkoutSummary[]> {
@@ -226,14 +197,13 @@ export function calcVolume(workout: WorkoutSummary): number {
   )
 }
 
-function buildWorkoutPayload(uid: string, workout: ActiveWorkout): WorkoutWritePayload {
+export function buildFinishedWorkoutPayload(workout: ActiveWorkout): FinishedWorkoutPayload {
   const persistableWorkout = stripWorkoutClientIds(workout)
   return {
-    userId: uid,
+    sessionId: persistableWorkout.sessionId,
     templateId: persistableWorkout.templateId ?? null,
     startedAt: persistableWorkout.startedAt,
     finishedAt: getCappedWorkoutFinishedAt(persistableWorkout.startedAt),
-    materialized: false,
     label: persistableWorkout.label?.trim() ? persistableWorkout.label : null,
     exercises: persistableWorkout.exercises.map((exercise) => ({
       exerciseId: exercise.exerciseId,
@@ -318,7 +288,7 @@ function toFiniteNumber(value: unknown): number {
   return Number.isFinite(numeric) ? numeric : 0
 }
 
-async function materializeWorkout(workoutId: string): Promise<void> {
+export async function materializeWorkout(workoutId: string): Promise<void> {
   await callAuthedApi('/api/materialize-workout', { workoutId })
 }
 

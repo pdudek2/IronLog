@@ -167,6 +167,22 @@ export default function DashboardPage() {
   const [projectionRetryStates, setProjectionRetryStates] = useState<Record<string, ProjectionRetryState>>({})
   const workoutsRef = useRef<WorkoutSummary[]>([])
   const snapshotRequestRef = useRef(0)
+  const materializationRetriesRef = useRef(new Map<string, Promise<void>>())
+
+  const retryProjectionOnce = useCallback((workoutId: string): Promise<void> => {
+    const existingRetry = materializationRetriesRef.current.get(workoutId)
+    if (existingRetry) return existingRetry
+
+    const retry = Promise.resolve()
+      .then(() => retryWorkoutMaterialization(workoutId))
+      .finally(() => {
+        if (materializationRetriesRef.current.get(workoutId) === retry) {
+          materializationRetriesRef.current.delete(workoutId)
+        }
+      })
+    materializationRetriesRef.current.set(workoutId, retry)
+    return retry
+  }, [])
 
   const setDashboardSnapshot = useCallback((all: WorkoutSummary[]) => {
     setSnapshot({
@@ -184,9 +200,12 @@ export default function DashboardPage() {
 
     setDashboardSnapshot(all)
     setProjectionRetryStates((current) => {
-      const next = { ...current }
-      all.filter((workout) => workout.materialized).forEach((workout) => {
-        delete next[workout.id]
+      const pendingIds = new Set(
+        all.filter((workout) => !workout.materialized).map((workout) => workout.id),
+      )
+      const next: Record<string, ProjectionRetryState> = {}
+      Object.entries(current).forEach(([workoutId, state]) => {
+        if (pendingIds.has(workoutId)) next[workoutId] = state
       })
       return next
     })
@@ -206,7 +225,7 @@ export default function DashboardPage() {
     }))
 
     const results = await Promise.allSettled(
-      pending.map((workout) => retryWorkoutMaterialization(workout.id)),
+      pending.map((workout) => retryProjectionOnce(workout.id)),
     )
 
     const fulfilledIds = pending.flatMap((workout, index) => (
@@ -239,7 +258,7 @@ export default function DashboardPage() {
         }))
       }
     }
-  }, [refreshDashboardSnapshot])
+  }, [refreshDashboardSnapshot, retryProjectionOnce])
 
   const fetchData = useCallback(async (uid: string) => {
     setDashboardError(false)
@@ -313,7 +332,7 @@ export default function DashboardPage() {
     if (!user || projectionRetryStates[workoutId] === 'retrying') return
     setProjectionRetryStates((current) => ({ ...current, [workoutId]: 'retrying' }))
     try {
-      await retryWorkoutMaterialization(workoutId)
+      await retryProjectionOnce(workoutId)
       const refreshed = await refreshDashboardSnapshot(user.uid)
       if (!refreshed) return
       const workout = refreshed.find((item) => item.id === workoutId)

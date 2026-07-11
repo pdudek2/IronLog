@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -193,5 +193,73 @@ describe('Dashboard workout projection status', () => {
     await act(async () => staleRetryRefresh.resolve([pendingWorkout]))
 
     expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+  })
+
+  it('deduplicates concurrent automatic retries and releases the workout after completion', async () => {
+    const initialRetry = deferred<void>()
+    mocks.getRecentWorkouts.mockResolvedValue([pendingWorkout])
+    mocks.retryWorkoutMaterialization
+      .mockReturnValueOnce(initialRetry.promise)
+      .mockRejectedValueOnce(new Error('later retry failed'))
+
+    render(<DashboardPage />)
+
+    await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(1))
+
+    await act(async () => window.dispatchEvent(new Event('online')))
+
+    expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(1)
+
+    await act(async () => initialRetry.resolve())
+    await waitFor(() => expect(mocks.getRecentWorkouts.mock.calls.length).toBeGreaterThan(1))
+
+    await act(async () => window.dispatchEvent(new Event('online')))
+
+    await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(2))
+  })
+
+  it('forgets retry state for a workout absent from an authoritative snapshot', async () => {
+    const pendingWorkoutA = { ...pendingWorkout, id: 'workout-a', label: 'Workout A' }
+    const pendingWorkoutB = { ...pendingWorkout, id: 'workout-b', label: 'Workout B' }
+    const pendingWorkoutC = { ...pendingWorkout, id: 'workout-c', label: 'Workout C' }
+
+    mocks.getRecentWorkouts
+      .mockResolvedValueOnce([pendingWorkoutA, pendingWorkoutB, pendingWorkoutC])
+      .mockResolvedValueOnce([
+        { ...pendingWorkoutB, materialized: true },
+        pendingWorkoutC,
+      ])
+      .mockResolvedValueOnce([
+        pendingWorkoutA,
+        { ...pendingWorkoutB, materialized: true },
+        { ...pendingWorkoutC, materialized: true },
+      ])
+    mocks.retryWorkoutMaterialization
+      .mockRejectedValueOnce(new Error('automatic A failed'))
+      .mockRejectedValueOnce(new Error('automatic B failed'))
+      .mockRejectedValueOnce(new Error('automatic C failed'))
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined)
+
+    render(<DashboardPage />)
+
+    await screen.findAllByRole('button', { name: 'Ponów synchronizację' })
+    const workoutBRow = screen.getByText('Workout B').closest('.dashboard-history-row')
+    expect(workoutBRow).not.toBeNull()
+    const retryWorkoutB = within(workoutBRow as HTMLElement).getByRole('button', {
+      name: 'Ponów synchronizację',
+    })
+    fireEvent.click(retryWorkoutB)
+
+    await waitFor(() => expect(screen.queryByText('Workout A')).not.toBeInTheDocument())
+    const workoutCRow = screen.getByText('Workout C').closest('.dashboard-history-row')
+    expect(workoutCRow).not.toBeNull()
+    fireEvent.click(within(workoutCRow as HTMLElement).getByRole('button', { name: 'Ponów synchronizację' }))
+
+    const returnedWorkoutARow = (await screen.findByText('Workout A')).closest('.dashboard-history-row')
+    expect(returnedWorkoutARow).not.toBeNull()
+    expect(within(returnedWorkoutARow as HTMLElement).queryByRole('button', {
+      name: 'Ponów synchronizację',
+    })).not.toBeInTheDocument()
   })
 })

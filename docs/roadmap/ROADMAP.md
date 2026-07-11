@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — gotowy do planowania fazy A**
+Stan przeglądu: **APPROVED — faza A zakończona; gotowy do planowania minimalnej fazy 0**
 Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
 Ostatnia aktualizacja: 2026-07-11
 
@@ -430,9 +430,9 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-Najbliższy pakiet powinien objąć **fazę A — kontrolowane usunięcie analityki**. Jest mały, ma zaakceptowaną decyzję produktową i upraszcza profil, E2E oraz CSP przed dalszymi zmianami.
+Najbliższy pakiet powinien objąć **fazę 0 — minimalny fundament weryfikacji** w zakresie `TEST-01`, `TEST-03`, `TEST-05` i `TEST-06`.
 
-Następnie należy wykonać **fazę 0** w minimalnym zakresie oraz **fazę R**. Dopiero wynik fazy R rozstrzyga, czy i jaki plan implementacyjny powstaje dla fazy 1. Nie wolno planować całej fazy 1 na podstawie samych hipotez.
+Po fazie 0 należy wykonać **fazę R** jako kolejny krok. Dopiero wynik fazy R rozstrzyga, czy i jaki plan implementacyjny powstaje dla fazy 1. Nie wolno planować całej fazy 1 na podstawie samych hipotez.
 
 Po fazie 0 można równolegle przygotować fazy 2, 2B i 3 oraz niezależne pakiety AI. Nie należy zaczynać od kosmetycznego copy, chunków, trwałej historii AI ani dziennego budżetu AI, dopóki zweryfikowane P0/P1 pozostają otwarte.
 

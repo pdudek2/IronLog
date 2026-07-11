@@ -47,7 +47,7 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 19 plików i 108 testów jednostkowych przechodzi,
+- 19 plików i 106 testów jednostkowych przechodzi,
 - pełny E2E jest obecnie zależny od limitu żywego Firestore dla części testów szablonów.
 
 ## 4. Mapa faz

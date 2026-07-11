@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'rea
 import { useAuthStore } from '../store/authStore'
 import { LoadingState } from '../components/ui'
 import AppLayout from '../components/AppLayout'
-import AnalyticsListener from '../components/AnalyticsListener'
 import {
   loadChatPage,
   loadDashboardPage,
@@ -78,7 +77,6 @@ function RouteScrollReset() {
 export default function AppRouter() {
   return (
     <BrowserRouter>
-      <AnalyticsListener />
       <RouteScrollReset />
       <Routes>
         {/* Public (auth) routes — no AppShell */}

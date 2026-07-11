@@ -4,18 +4,14 @@ import { MotionConfig } from 'framer-motion'
 import { Toaster } from 'sonner'
 import './index.css'
 import AppRouter from './router'
-import AnalyticsConsentBanner from './components/AnalyticsConsentBanner'
 import { initAuthListener } from './lib/auth'
-import { initAnalytics } from './lib/analytics'
 
 initAuthListener()
-initAnalytics()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MotionConfig reducedMotion="user">
       <AppRouter />
-      <AnalyticsConsentBanner />
       <Toaster
         containerAriaLabel="Powiadomienia"
         theme="dark"

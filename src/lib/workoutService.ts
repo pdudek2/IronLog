@@ -153,7 +153,9 @@ export async function retryPendingMaterializations(
   workouts: WorkoutSummary[],
 ): Promise<MaterializationRetryResult> {
   const pending = workouts.filter((workout) => !workout.materialized)
-  const results = await Promise.allSettled(pending.map((workout) => materializeWorkout(workout.id)))
+  const results = await Promise.allSettled(
+    pending.map((workout) => retryWorkoutMaterialization(workout.id)),
+  )
 
   return {
     attempted: pending.length,
@@ -290,6 +292,10 @@ function toFiniteNumber(value: unknown): number {
 
 export async function materializeWorkout(workoutId: string): Promise<void> {
   await callAuthedApi('/api/materialize-workout', { workoutId })
+}
+
+export async function retryWorkoutMaterialization(workoutId: string): Promise<void> {
+  await materializeWorkout(workoutId)
 }
 
 async function callAuthedApi(path: string, body: unknown): Promise<void> {

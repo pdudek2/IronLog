@@ -17,6 +17,9 @@ import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
+import WorkoutProjectionStatus, {
+  type ProjectionRetryState,
+} from '../components/workout/WorkoutProjectionStatus'
 import { Button, LoadingState } from '../components/ui'
 import {
   getTemplates,
@@ -25,7 +28,7 @@ import {
 import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { getProfile } from '../lib/userProfile'
 import {
-  getRecentWorkouts, deleteWorkout, retryPendingMaterializations, countWeeklyWorkouts,
+  getRecentWorkouts, deleteWorkout, retryWorkoutMaterialization, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
 import { hasActiveSessionWork, subscribeToActiveSession } from '../lib/activeSessionService'
@@ -161,19 +164,88 @@ export default function DashboardPage() {
   const [dashboardError, setDashboardError] = useState(false)
   const [dashboardLoadAttempt, setDashboardLoadAttempt] = useState(0)
   const [remoteActiveSession, setRemoteActiveSession] = useState<ActiveWorkout | null>(null)
+  const [projectionRetryStates, setProjectionRetryStates] = useState<Record<string, ProjectionRetryState>>({})
   const workoutsRef = useRef<WorkoutSummary[]>([])
+  const snapshotRequestRef = useRef(0)
 
-  const fetchData = useCallback(async (uid: string) => {
-    setDashboardError(false)
-    const all = await getRecentWorkouts(uid, 50)
+  const setDashboardSnapshot = useCallback((all: WorkoutSummary[]) => {
     setSnapshot({
       workouts: all,
       weeklyDone: countWeeklyWorkouts(all),
       streak: calcStreak(all),
     })
     workoutsRef.current = all
-    void retryPendingMaterializations(all)
   }, [setSnapshot])
+
+  const refreshDashboardSnapshot = useCallback(async (uid: string): Promise<WorkoutSummary[] | null> => {
+    const requestId = ++snapshotRequestRef.current
+    const all = await getRecentWorkouts(uid, 50)
+    if (requestId !== snapshotRequestRef.current) return null
+
+    setDashboardSnapshot(all)
+    setProjectionRetryStates((current) => {
+      const next = { ...current }
+      all.filter((workout) => workout.materialized).forEach((workout) => {
+        delete next[workout.id]
+      })
+      return next
+    })
+    return all
+  }, [setDashboardSnapshot])
+
+  const retryPendingProjections = useCallback(async (
+    uid: string,
+    all: WorkoutSummary[],
+  ) => {
+    const pending = all.filter((workout) => !workout.materialized)
+    if (pending.length === 0) return
+
+    setProjectionRetryStates((current) => ({
+      ...current,
+      ...Object.fromEntries(pending.map((workout) => [workout.id, 'retrying'])),
+    }))
+
+    const results = await Promise.allSettled(
+      pending.map((workout) => retryWorkoutMaterialization(workout.id)),
+    )
+
+    const fulfilledIds = pending.flatMap((workout, index) => (
+      results[index]?.status === 'fulfilled' ? [workout.id] : []
+    ))
+    setProjectionRetryStates((current) => ({
+      ...current,
+      ...Object.fromEntries(pending.flatMap((workout, index) => (
+        results[index]?.status === 'rejected' ? [[workout.id, 'failed']] : []
+      ))),
+    }))
+
+    if (fulfilledIds.length > 0) {
+      try {
+        const refreshed = await refreshDashboardSnapshot(uid)
+        if (!refreshed) return
+        setProjectionRetryStates((current) => {
+          const next = { ...current }
+          fulfilledIds.forEach((workoutId) => {
+            const workout = refreshed.find((item) => item.id === workoutId)
+            if (workout?.materialized) delete next[workoutId]
+            else if (workout) next[workoutId] = 'failed'
+          })
+          return next
+        })
+      } catch {
+        setProjectionRetryStates((current) => ({
+          ...current,
+          ...Object.fromEntries(fulfilledIds.map((workoutId) => [workoutId, 'failed'])),
+        }))
+      }
+    }
+  }, [refreshDashboardSnapshot])
+
+  const fetchData = useCallback(async (uid: string) => {
+    setDashboardError(false)
+    const all = await refreshDashboardSnapshot(uid)
+    if (all) void retryPendingProjections(uid, all)
+  }, [refreshDashboardSnapshot, retryPendingProjections])
 
   const handleDashboardFetchError = useCallback((error: unknown) => {
     console.error('[DashboardPage] getRecentWorkouts failed', error)
@@ -201,11 +273,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     function handleOnline() {
-      void retryPendingMaterializations(workoutsRef.current)
+      if (user) void retryPendingProjections(user.uid, workoutsRef.current)
     }
     window.addEventListener('online', handleOnline)
     return () => window.removeEventListener('online', handleOnline)
-  }, [])
+  }, [retryPendingProjections, user])
 
   useEffect(() => {
     if (!user) return
@@ -235,6 +307,22 @@ export default function DashboardPage() {
     navigate(`/workout/${workout.id}`, {
       state: { workoutPreview: workout },
     })
+  }
+
+  async function handleProjectionRetry(workoutId: string) {
+    if (!user || projectionRetryStates[workoutId] === 'retrying') return
+    setProjectionRetryStates((current) => ({ ...current, [workoutId]: 'retrying' }))
+    try {
+      await retryWorkoutMaterialization(workoutId)
+      const refreshed = await refreshDashboardSnapshot(user.uid)
+      if (!refreshed) return
+      const workout = refreshed.find((item) => item.id === workoutId)
+      if (workout && !workout.materialized) {
+        setProjectionRetryStates((current) => ({ ...current, [workoutId]: 'failed' }))
+      }
+    } catch {
+      setProjectionRetryStates((current) => ({ ...current, [workoutId]: 'failed' }))
+    }
   }
 
   async function confirmDeleteWorkout() {
@@ -690,14 +778,6 @@ export default function DashboardPage() {
                                     >
                                       {totalSets}×
                                     </span>
-                                    {!workout.materialized && (
-                                      <span
-                                        className="text-[10px] font-bold px-2.5 py-1 rounded-full"
-                                        style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                                      >
-                                        sync
-                                      </span>
-                                    )}
                                   </div>
                                   <p className="mt-2 text-lg font-semibold text-white truncate">
                                     {workout.label ?? workoutTitle(workout)}
@@ -731,6 +811,13 @@ export default function DashboardPage() {
                                 <Trash2 size={13} />
                               </motion.button>
                             </div>
+
+                            {!workout.materialized && (
+                              <WorkoutProjectionStatus
+                                state={projectionRetryStates[workout.id] ?? 'idle'}
+                                onRetry={() => void handleProjectionRetry(workout.id)}
+                              />
+                            )}
 
                             <div className="mt-4 flex flex-wrap gap-2">
                               {workout.exercises.slice(0, 3).map((exercise) => (

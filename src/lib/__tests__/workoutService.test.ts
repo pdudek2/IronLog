@@ -10,7 +10,12 @@ const { auth } = vi.hoisted(() => ({
 vi.mock('../firebase', () => ({ db: {}, auth }))
 vi.mock('firebase/firestore', () => ({}))
 
-import { buildFinishedWorkoutPayload, calcStreak, retryPendingMaterializations } from '../workoutService'
+import {
+  buildFinishedWorkoutPayload,
+  calcStreak,
+  retryPendingMaterializations,
+  retryWorkoutMaterialization,
+} from '../workoutService'
 import type { WorkoutSummary } from '../workoutService'
 import type { ActiveWorkout } from '../../store/workoutStore'
 
@@ -127,6 +132,40 @@ describe('retryPendingMaterializations', () => {
       attempted: 2,
       failed: 1,
     })
+  })
+})
+
+describe('retryWorkoutMaterialization', () => {
+  beforeEach(() => {
+    auth.currentUser = {
+      getIdToken: vi.fn().mockResolvedValue('token'),
+    }
+  })
+
+  afterEach(() => {
+    auth.currentUser = null
+    vi.unstubAllGlobals()
+  })
+
+  it('retries only the requested workout and resolves on success', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(retryWorkoutMaterialization('workout-42')).resolves.toBeUndefined()
+    expect(fetchMock).toHaveBeenCalledWith('/api/materialize-workout', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ workoutId: 'workout-42' }),
+    }))
+  })
+
+  it('propagates a failed retry', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      json: vi.fn().mockResolvedValue({ error: 'Projection unavailable' }),
+    }))
+
+    await expect(retryWorkoutMaterialization('workout-42'))
+      .rejects.toThrow('Projection unavailable')
   })
 })
 

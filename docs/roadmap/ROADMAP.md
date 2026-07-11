@@ -48,7 +48,7 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 21 plików i 111 testów jednostkowych oraz testów wsparcia przechodzi,
+- 21 plików i 114 testów jednostkowych oraz testów wsparcia przechodzi,
 - 1 plik i 8 testów reguł Firestore przechodzi,
 - izolowany gate Auth+Firestore emulator przechodzi dwukrotnie: 13 testów Playwright na świeżych emulatorach w każdym uruchomieniu,
 - live `npm run test:e2e` pozostaje kontrolą integracyjną; bieżące uruchomienie bez prywatnych danych uwierzytelniających poprawnie wykrywa 131 testów, po czym zatrzymuje się w setupie z powodu braku `TEST_EMAIL` i `TEST_PASSWORD`.

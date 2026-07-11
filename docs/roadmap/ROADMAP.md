@@ -41,6 +41,7 @@ Poniższe obszary są częścią aktualnego baseline'u i nie wracają jako aktyw
 - **BASE-03 — Start szablonu: DONE.** Start sesji jest natychmiastowy, zapis do `activeSessions` jest transakcyjny, a konflikt z istniejącą sesją ma jawny kontrakt.
 - **BASE-04 — Odporność startu szablonu offline: DONE.** Brak opóźnionego, niejawnego uruchomienia po odzyskaniu sieci.
 - **BASE-05 — Kierunek wizualny Puls: LOCKED.** Roadmapa poprawia zachowanie i dostępność bez ponownego projektowania całego interfejsu.
+- **BASE-06 — Analityka runtime: DONE.** GA4 i Contentsquare/Hotjar zostały usunięte z aplikacji, konfiguracji i zależności; materiały zaliczeniowe pozostają w archiwum historycznym. Cleanup zmiennych Vercel pozostaje kontrolą release `RELEASE-08`.
 
 Aktualny baseline jakości:
 
@@ -53,7 +54,7 @@ Aktualny baseline jakości:
 
 | Kolejność | Faza | Priorytet | Status | Główny rezultat |
 |---:|---|---|---|---|
-| 1 | A — Kontrolowane usunięcie analityki | P1 | READY | GA4 i Contentsquare/Hotjar znikają z runtime, a dowody integracji pozostają jako archiwum zaliczenia |
+| 1 | A — Kontrolowane usunięcie analityki | P1 | DONE | GA4 i Contentsquare/Hotjar usunięte z runtime; dowody integracji zachowane jako archiwum zaliczenia |
 | 2 | 0 — Minimalny fundament weryfikacji | P0 | READY | Krytyczne E2E mają bezpieczny cleanup, prawdziwe readiness assertions i kontrolę błędów runtime |
 | 3 | R — Focused review cyklu życia treningu | P0 | READY | Hipotezy `WORKOUT-01–06` zostają potwierdzone, zawężone albo odrzucone przed implementacją |
 | 4 | 1 — Integralność cyklu życia treningu | P0 | BLOCKED | Powstaje tylko z zakresu potwierdzonego przez fazę R |

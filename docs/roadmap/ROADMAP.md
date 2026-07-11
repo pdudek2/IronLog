@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A i 0 zakończone; gotowy do planowania fazy R**
+Stan przeglądu: **APPROVED — fazy A, 0 i R zakończone; Faza 1 gotowa do planowania dla potwierdzonego zakresu**
 Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
 Ostatnia aktualizacja: 2026-07-11
 
@@ -43,14 +43,17 @@ Poniższe obszary są częścią aktualnego baseline'u i nie wracają jako aktyw
 - **BASE-05 — Kierunek wizualny Puls: LOCKED.** Roadmapa poprawia zachowanie i dostępność bez ponownego projektowania całego interfejsu.
 - **BASE-06 — Analityka runtime: DONE.** GA4 i Contentsquare/Hotjar zostały usunięte z aplikacji, konfiguracji i zależności; materiały zaliczeniowe pozostają w archiwum historycznym. Cleanup zmiennych Vercel pozostaje kontrolą release `RELEASE-08`.
 - **BASE-07 — Fundament E2E: DONE.** Krytyczne testy używają gotowości właściwych ekranów, automatycznej diagnostyki przeglądarki i cleanupu mutacji; osobny gate Auth+Firestore emulator działa bez sekretów i produkcyjnego quota.
+- **BASE-08 — Materializacja workoutu: ALREADY PROTECTED.** `WORKOUT-04` ma status `already_protected`: częściowe stany przed sesjami, po sesjach i po rekordach konwergują przy pierwszym retry, a dodatkowy retry zachowuje tę samą projekcję.
 
 Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 21 plików i 114 testów jednostkowych oraz testów wsparcia przechodzi,
+- 22 pliki i 122 testy jednostkowe oraz testy wsparcia przechodzą,
 - 1 plik i 8 testów reguł Firestore przechodzi,
-- izolowany gate Auth+Firestore emulator przechodzi dwukrotnie: 13 testów Playwright na świeżych emulatorach w każdym uruchomieniu,
+- focused review Firestore przechodzi: 2 pliki i 7 testów,
+- isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
+- focused workout review przechodzi: 6 testów Playwright bez retry,
 - live `npm run test:e2e` pozostaje kontrolą integracyjną; bieżące uruchomienie bez prywatnych danych uwierzytelniających poprawnie wykrywa 131 testów, po czym zatrzymuje się w setupie z powodu braku `TEST_EMAIL` i `TEST_PASSWORD`.
 
 ## 4. Mapa faz
@@ -59,8 +62,8 @@ Aktualny baseline jakości:
 |---:|---|---|---|---|
 | 1 | A — Kontrolowane usunięcie analityki | P1 | DONE | GA4 i Contentsquare/Hotjar usunięte z runtime; dowody integracji zachowane jako archiwum zaliczenia |
 | 2 | 0 — Minimalny fundament weryfikacji | P0 | DONE | Krytyczny gate działa bez produkcyjnego quota; readiness, diagnostyka i cleanup mają wspólne kontrakty |
-| 3 | R — Focused review cyklu życia treningu | P0 | READY | Hipotezy `WORKOUT-01–06` zostają potwierdzone, zawężone albo odrzucone przed implementacją |
-| 4 | 1 — Integralność cyklu życia treningu | P0 | BLOCKED | Powstaje tylko z zakresu potwierdzonego przez fazę R |
+| 3 | R — Focused review cyklu życia treningu | P0 | DONE | `WORKOUT-01–06` mają dowody i jednoznaczne statusy |
+| 4 | 1 — Integralność cyklu życia treningu | P0 | READY | Potwierdzony zakres: `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05`, `WORKOUT-06` |
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | READY | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | READY | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
@@ -86,7 +89,7 @@ Faza A ──► Faza 0 ──► Faza R ──► Faza 1 (tylko potwierdzony za
 Faza A ──► Faza S ──────────────────────────────────────────────────► Faza 7
 ```
 
-Faza A jest pierwsza, ponieważ upraszcza profil, global setup E2E, monitoring requestów i CSP przed zmianami w testach. Faza 1 pozostaje zablokowana do zakończenia fazy R. Po fazie 0 można równolegle przygotowywać fazy 2, 2B, 3 i pakiety AI. Fazy 6A oraz 6B są wymagane do zamknięcia zweryfikowanych P1; decyzje o historii czatu i dziennym limicie pozostają w backlogu LATER.
+Faza A jest pierwsza, ponieważ upraszcza profil, global setup E2E, monitoring requestów i CSP przed zmianami w testach. Faza R zakończyła blokadę Fazy 1 i zawęziła ją do pięciu potwierdzonych punktów. Po fazie 0 można równolegle przygotowywać fazy 2, 2B, 3 i pakiety AI. Fazy 6A oraz 6B są wymagane do zamknięcia zweryfikowanych P1; decyzje o historii czatu i dziennym limicie pozostają w backlogu LATER.
 
 ## 5. Fazy programu
 
@@ -141,6 +144,8 @@ Faza A jest pierwsza, ponieważ upraszcza profil, global setup E2E, monitoring r
 
 ### Faza R — Focused review cyklu życia treningu
 
+**Status: DONE.** Raport kanoniczny: `docs/audits/2026-07-11-phase-r-workout-lifecycle-review.md`.
+
 **Cel:** zweryfikować hipotezy dodane podczas syntezy roadmapy, zanim otrzymają status potwierdzonych problemów P0.
 
 **Zakres kanoniczny:**
@@ -159,28 +164,29 @@ Faza A jest pierwsza, ponieważ upraszcza profil, global setup E2E, monitoring r
 
 **Poza zakresem:** wdrażanie napraw produktowych. Faza R jest diagnostyczna; może dodać lub zachować test reprodukcyjny, ale nie zmienia kontraktu aplikacji.
 
+**Wynik:** `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06` mają status `confirmed`. `WORKOUT-04` ma status `already_protected` i pozostaje w baseline, nie w Fazie 1. Żadna hipoteza nie otrzymała statusu `rejected`.
+
 ### Faza 1 — Integralność cyklu życia treningu
 
 **Cel:** usunąć ryzyko utraty, duplikacji albo ponownego pojawienia się sesji w najważniejszym przepływie produktu.
 
 **Zakres kanoniczny:**
 
-Poniższe punkty są hipotezami do czasu zakończenia fazy R. Szczegółowy plan fazy 1 nie może powstać na podstawie niepotwierdzonego zakresu.
+Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zakresem implementacyjnym Fazy 1:
 
 - **WORKOUT-01:** nadać finalizacji idempotentny identyfikator lub inny kontrakt zapobiegający utworzeniu dwóch workoutów po niejednoznacznym wyniku requestu/retry.
 - **WORKOUT-02:** nie traktować czyszczenia sesji jako zakończonego, jeśli lokalny stan został usunięty, ale dokument `activeSessions/{uid}` nadal istnieje.
 - **WORKOUT-03:** zaprojektować retry/tombstone dla nieudanego usunięcia aktywnej sesji po zakończeniu i odrzuceniu treningu.
-- **WORKOUT-04:** zachować czytelny status `materialized: false`, kontrolowany retry i spójność rekordów po częściowym błędzie projekcji.
 - **WORKOUT-05:** rozróżnić w UI „trening zapisany”, „trening zapisany, projekcja oczekuje” i „nie udało się potwierdzić zamknięcia sesji”.
-- **WORKOUT-06:** zweryfikować zachowanie przy refreshu, dwóch kartach, pracy offline i wygaśnięciu starej sesji.
-- **TEST-02:** dla potwierdzonego kontraktu dodać E2E przechodzący przez granicę finalizacji: aktywna sesja → zapis workoutu → materializacja → brak aktywnej sesji → widoczność w historii.
+- **WORKOUT-06:** zapobiec odtworzeniu zamkniętej sesji przez spóźniony zapis niezależnego lub offline klienta.
 
 **Kryteria wyjścia:**
 
 - wielokrotne wywołanie finalizacji tego samego logicznego treningu daje jeden workout;
 - po udanym zakończeniu lub odrzuceniu dashboard nie proponuje wznowienia tej samej sesji;
 - błąd usunięcia dokumentu z chmury jest odzyskiwalny, a nie tylko raportowany toastem;
-- testy obejmują odświeżenie i co najmniej jeden niejednoznaczny błąd sieciowy;
+- UI odróżnia zapis, oczekującą projekcję i niepotwierdzone zamknięcie oraz podaje właściwy następny krok;
+- testy obejmują odświeżenie, niezależnego klienta offline i co najmniej jeden niejednoznaczny błąd sieciowy;
 - istnieje deterministyczny, zielony dowód pełnej finalizacji treningu.
 
 **Zależności:** zakończona faza R, TEST-03 i podstawowy mechanizm izolacji z fazy 0.
@@ -433,9 +439,9 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-Najbliższy pakiet powinien objąć **fazę R — focused review cyklu życia treningu** w zakresie `REVIEW-WORKOUT-01`–`REVIEW-WORKOUT-05`.
+Najbliższy pakiet może objąć **Fazę 1 — integralność cyklu życia treningu** wyłącznie w zakresie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06`.
 
-Po fazie 0 należy wykonać **fazę R** jako kolejny krok. Dopiero wynik fazy R rozstrzyga, czy i jaki plan implementacyjny powstaje dla fazy 1. Nie wolno planować całej fazy 1 na podstawie samych hipotez.
+Faza R jest zakończona. Jej raport jest wejściem do planu Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 
 Po fazie 0 można równolegle przygotować fazy 2, 2B i 3 oraz niezależne pakiety AI. Nie należy zaczynać od kosmetycznego copy, chunków, trwałej historii AI ani dziennego budżetu AI, dopóki zweryfikowane P0/P1 pozostają otwarte.
 
@@ -482,19 +488,19 @@ Ta sekcja jest obowiązkową warstwą kontroli kompletności. `ASR-1` oznacza te
 | ASR-UI-13 | Konto demo pokazuje niewiarygodny trening `12h 0m` | P3 | DEMO-01 | pełne |
 | ASR-UI-14 | Krytyczne E2E potrafią asertywnie sprawdzać tylko shell | P2 | TEST-01 | pełne |
 | ASR-UI-15 | Capture screenshotów nie jest regresją wizualną | P2 | TEST-04 | pełne |
-| ASR-UI-16 | Brakuje E2E pełnej finalizacji treningu | P2 | TEST-02 | pełne |
+| ASR-UI-16 | Brakuje E2E pełnej finalizacji treningu | P2 | kryterium wyjścia Fazy 1 | pełne |
 | ASR-UI-17 | Cleanup testu profilu nie jest odporny na przerwanie | P2 | TEST-03 | pełne |
 
 ### FOLLOWUP — hipotezy dodane podczas syntezy roadmapy
 
-Poniższe punkty nie pochodzą bezpośrednio z dwóch audytów. Nie mogą być traktowane jako potwierdzone problemy, dopóki wskazany etap walidacji nie dostarczy dowodu.
+Poniższe punkty nie pochodzą bezpośrednio z dwóch audytów. Hipotezy workoutu zostały rozstrzygnięte w Fazie R; hipotezy UI nadal wymagają wskazanej walidacji.
 
-| ID | Hipoteza | Walidacja | Możliwy punkt implementacyjny |
+| ID | Hipoteza | Wynik walidacji | Punkt implementacyjny |
 |---|---|---|---|
-| FOLLOWUP-WORKOUT-01 | Finalizacja może utworzyć duplikat po niejednoznacznym wyniku zapisu | Faza R | WORKOUT-01 |
-| FOLLOWUP-WORKOUT-02 | Nieudane usunięcie `activeSessions` może odtworzyć zamkniętą sesję | Faza R | WORKOUT-02, WORKOUT-03, WORKOUT-05 |
-| FOLLOWUP-WORKOUT-03 | Retry materializacji może wymagać dodatkowego kontraktu spójności | Faza R | WORKOUT-04 |
-| FOLLOWUP-WORKOUT-04 | Refresh, dwie karty, offline lub stale session mogą ujawnić dodatkowy wyścig | Faza R | WORKOUT-06 |
+| FOLLOWUP-WORKOUT-01 | Finalizacja może utworzyć duplikat po niejednoznacznym wyniku zapisu | `confirmed` w Fazie R | WORKOUT-01 |
+| FOLLOWUP-WORKOUT-02 | Nieudane usunięcie `activeSessions` może odtworzyć zamkniętą sesję | `confirmed` w Fazie R | WORKOUT-02, WORKOUT-03, WORKOUT-05 |
+| FOLLOWUP-WORKOUT-03 | Retry materializacji może wymagać dodatkowego kontraktu spójności | `already_protected` w Fazie R | brak pracy w Fazie 1 (`WORKOUT-04`) |
+| FOLLOWUP-WORKOUT-04 | Refresh, dwie karty, offline lub stale session mogą ujawnić dodatkowy wyścig | `confirmed` w Fazie R | WORKOUT-06 |
 | FOLLOWUP-UI-01 | Klawiatura może zasłaniać zapis dużego planu | Reprodukcja mobile w fazie 4 | MOBILE-03 |
 | FOLLOWUP-UI-02 | Stałe elementy mogą nakładać się na inputy lub safe-area | Reprodukcja mobile w fazie 4 | MOBILE-04 |
 | FOLLOWUP-UI-03 | Edytor może wymagać ochrony niezapisanych zmian | Reprodukcja nawigacji w fazie 4 | MOBILE-05 |

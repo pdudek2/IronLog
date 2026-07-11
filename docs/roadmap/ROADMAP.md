@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0 i R zakończone; Faza 1 gotowa do planowania dla potwierdzonego zakresu**
+Stan przeglądu: **APPROVED — fazy A, 0 i R zakończone; Faza 1 zakończona w potwierdzonym zakresie**
 Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
 Ostatnia aktualizacja: 2026-07-11
 

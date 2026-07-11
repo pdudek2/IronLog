@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 // Pages to smoke-test: [name, path]
 const PAGES = [
@@ -14,9 +15,7 @@ for (const [name, route] of PAGES) {
   test(`${name} page loads without console errors`, async ({ page }) => {
     await page.goto(route)
 
-    // Must stay on the requested route (not redirected to /login)
-    await expect(page).toHaveURL(route, { timeout: 10_000 })
-    await expect(page.locator('.page-shell')).toBeVisible()
+    await expectAppReady(page, route)
 
     // Screenshot for visual regression baseline
     await page.screenshot({ path: `test-results/${name.toLowerCase()}.png`, fullPage: true })

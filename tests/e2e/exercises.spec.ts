@@ -1,11 +1,12 @@
 import { test, expect, type Page } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 // Fixed name avoids timestamp instability across retries
 const TEST_EXERCISE_NAME = '_E2E Curl Test_'
 
 async function cleanupTestExercise(page: Page) {
   await page.goto('/exercises')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+  await expectAppReady(page, '/exercises')
 
   await page.getByLabel('Szukaj ćwiczenia').fill(TEST_EXERCISE_NAME)
 
@@ -48,8 +49,7 @@ test.describe('Exercises CRUD', () => {
 
   test('create user exercise with valid data', async ({ page }) => {
     await page.goto('/exercises')
-    await expect(page).toHaveURL('/exercises')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/exercises')
 
     await page.screenshot({ path: 'test-results/exercises-list.png' })
 
@@ -79,8 +79,7 @@ test.describe('Exercises CRUD', () => {
 
   test('duplicate name is prevented (BUG-07 freeze)', async ({ page }) => {
     await page.goto('/exercises')
-    await expect(page).toHaveURL('/exercises')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/exercises')
 
     // Open create form
     const addBtn = page.getByRole('button', { name: /Dodaj własne/i })
@@ -108,7 +107,7 @@ test.describe('Exercises CRUD', () => {
 
   test('edit user exercise', async ({ page }) => {
     await page.goto('/exercises')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/exercises')
 
     // Find test exercise card and click edit
     const editButton = page.getByRole('button', { name: `Edytuj ćwiczenie ${TEST_EXERCISE_NAME}` })
@@ -134,7 +133,7 @@ test.describe('Exercises CRUD', () => {
 
   test('delete user exercise with confirmation', async ({ page }) => {
     await page.goto('/exercises')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/exercises')
 
     // Find test exercise and delete
     const deleteButton = page.getByRole('button', { name: `Usuń ćwiczenie ${TEST_EXERCISE_NAME}` })
@@ -157,7 +156,7 @@ test.describe('Exercises CRUD', () => {
 
   test('global exercise detail page is reachable', async ({ page }) => {
     await page.goto('/exercises')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/exercises')
 
     // ExerciseCard uses role="button" with onClick navigation (not <a> tags).
     // The global section is identified by "Katalog globalny" heading.
@@ -167,7 +166,8 @@ test.describe('Exercises CRUD', () => {
     await firstGlobalCard.click()
 
     await expect(page).toHaveURL(/\/exercises\/global\//, { timeout: 5_000 })
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator('.hero-editorial-name')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByText('Nie udało się wczytać ćwiczenia', { exact: true })).toHaveCount(0)
 
     await page.screenshot({ path: 'test-results/exercises-detail.png' })
 

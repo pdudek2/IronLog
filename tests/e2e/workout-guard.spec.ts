@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
@@ -38,8 +39,7 @@ function workoutExerciseEntry(page: Page, exerciseName: string) {
 
 async function startFreshSession(page: Page): Promise<string> {
   await page.goto('/workout/new')
-  await expect(page).toHaveURL('/workout/new')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+  await expectAppReady(page, '/workout/new', 25_000)
 
   const staleDiscardBtn = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
   const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
@@ -60,7 +60,7 @@ async function startFreshSession(page: Page): Promise<string> {
     await page.waitForURL('/dashboard', { timeout: 10_000 })
     // Return to workout
     await page.goto('/workout/new')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+    await expectAppReady(page, '/workout/new', 25_000)
     await waitForWorkoutState(page)
   }
 
@@ -98,16 +98,14 @@ test.describe('Workout navigation guard', () => {
 
     // Navigate away via URL
     await page.goto('/dashboard')
-    await expect(page).toHaveURL('/dashboard')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/dashboard')
     await expect(page.getByRole('button', { name: 'Wróć do sesji' })).toBeVisible({ timeout: 10_000 })
 
     await page.screenshot({ path: 'test-results/guard-navigated-away.png' })
 
     // Return to workout
     await page.goto('/workout/new')
-    await expect(page).toHaveURL('/workout/new')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+    await expectAppReady(page, '/workout/new', 25_000)
 
     // Session should be restored — exercise card is still visible
     // Firestore restore can take time on mobile/slow network — increase timeout
@@ -149,7 +147,7 @@ test.describe('Workout navigation guard', () => {
     // After discard, returning to /workout/new shows workout UI (hook auto-starts new empty session).
     // Verify the OLD session data (exerciseName) is gone — not that an empty screen shows.
     await page.goto('/workout/new')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+    await expectAppReady(page, '/workout/new', 25_000)
     // Wait for workout UI to be ready
     const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
     await expect(addExBtn).toBeVisible({ timeout: 15_000 })

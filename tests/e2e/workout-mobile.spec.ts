@@ -1,4 +1,5 @@
 import { test, expect, type Locator, type Page } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 type WorkoutTerminalState = 'stale-session' | 'active-session' | 'empty-session' | 'ready-workout'
 
@@ -83,8 +84,7 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
 
 async function discardSessionIfPresent(page: Page): Promise<void> {
   await page.goto('/workout/new')
-  await expect(page).toHaveURL('/workout/new')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+  await expectAppReady(page, '/workout/new', 25_000)
 
   const workoutState = await waitForWorkoutState(page)
 
@@ -122,8 +122,7 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
 async function goToFreshWorkout(page: Page): Promise<void> {
   await discardSessionIfPresent(page)
   await page.goto('/workout/new')
-  await expect(page).toHaveURL('/workout/new')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+  await expectAppReady(page, '/workout/new', 25_000)
   const workoutState = await waitForWorkoutState(page)
 
   const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })

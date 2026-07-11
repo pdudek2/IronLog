@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 const LAUNCH_TEMPLATE_NAME = '_E2E Launch Contract_'
 
@@ -17,8 +18,7 @@ async function waitForWorkoutState(page: Page): Promise<void> {
 
 async function discardActiveSession(page: Page): Promise<void> {
   await page.goto('/workout/new')
-  await expect(page).toHaveURL('/workout/new')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+  await expectAppReady(page, '/workout/new', 25_000)
   await waitForWorkoutState(page)
 
   const staleDiscardButton = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
@@ -58,8 +58,7 @@ async function cleanupLaunchTemplate(page: Page): Promise<void> {
 
 async function createLaunchTemplate(page: Page): Promise<void> {
   await page.goto('/templates/new')
-  await expect(page).toHaveURL('/templates/new')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 15_000 })
+  await expectAppReady(page, '/templates/new')
 
   await page.getByPlaceholder('np. Upper / Lower 4 dni').fill(LAUNCH_TEMPLATE_NAME)
   await page.getByRole('button', { name: 'Dodaj ćwiczenie' }).first().click()
@@ -80,8 +79,7 @@ async function createLaunchTemplate(page: Page): Promise<void> {
 async function startFreshSessionWithExercise(page: Page, exerciseName: string): Promise<void> {
   await discardActiveSession(page)
   await page.goto('/workout/new')
-  await expect(page).toHaveURL('/workout/new')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+  await expectAppReady(page, '/workout/new', 25_000)
   await waitForWorkoutState(page)
 
   const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })

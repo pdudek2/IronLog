@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 /**
  * Profile tests — freeze BUG-03/05/06 fixes:
@@ -9,8 +10,7 @@ import { test, expect } from './fixtures'
 test.describe('Profile hydration and save', () => {
   test('profile loads on direct entry — not showing placeholder dashes', async ({ page }) => {
     await page.goto('/profile')
-    await expect(page).toHaveURL('/profile')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/profile')
 
     await page.screenshot({ path: 'test-results/profile-loaded.png' })
 
@@ -28,8 +28,7 @@ test.describe('Profile hydration and save', () => {
 
   test('save changes and verify persistence after reload', async ({ page }) => {
     await page.goto('/profile')
-    await expect(page).toHaveURL('/profile')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/profile')
 
     const nameInput = page.getByPlaceholder('np. Jan')
     await expect(nameInput).toBeVisible()
@@ -55,8 +54,7 @@ test.describe('Profile hydration and save', () => {
 
     // Reload and verify persistence
     await page.reload()
-    await expect(page).toHaveURL('/profile')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/profile')
 
     const nameInputAfterReload = page.getByPlaceholder('np. Jan')
     await expect(nameInputAfterReload).toBeVisible()
@@ -72,8 +70,7 @@ test.describe('Profile hydration and save', () => {
 
   test('profile page has no console errors', async ({ page }) => {
     await page.goto('/profile')
-    await expect(page).toHaveURL('/profile')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/profile')
 
     // Wait for async data to settle
     await expect(page.getByPlaceholder('np. Jan')).toBeVisible({ timeout: 5_000 })

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 // Fixed name avoids timestamp instability across retries
 const TEST_TEMPLATE_NAME = '_E2E Szablon Test_'
@@ -25,8 +26,7 @@ async function cleanupTestTemplate(page: Page) {
 
 async function discardActiveSession(page: Page): Promise<void> {
   await page.goto('/workout/new')
-  await expect(page).toHaveURL('/workout/new')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+  await expectAppReady(page, '/workout/new', 25_000)
 
   const staleDiscardButton = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
   const discardButton = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
@@ -98,8 +98,7 @@ test.describe('Templates CRUD', () => {
 
   test('create a template', async ({ page }) => {
     await page.goto('/templates/new')
-    await expect(page).toHaveURL('/templates/new')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/templates/new')
 
     // Fill template name
     await page.getByPlaceholder('np. Upper / Lower 4 dni').fill(TEST_TEMPLATE_NAME)
@@ -140,7 +139,6 @@ test.describe('Templates CRUD', () => {
     await editLink.click()
 
     await expect(page).toHaveURL(/\/templates\/.*\/edit/, { timeout: 5_000 })
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
     // Verify template name is loaded in editor
     await expect(page.getByPlaceholder('np. Upper / Lower 4 dni')).toHaveValue(TEST_TEMPLATE_NAME)

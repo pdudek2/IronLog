@@ -1,9 +1,9 @@
 import { test, expect, type Page } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 async function openDashboard(page: Page) {
   await page.goto('/dashboard')
-  await expect(page).toHaveURL('/dashboard', { timeout: 15_000 })
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 15_000 })
+  await expectAppReady(page, '/dashboard')
   await expect(page.getByRole('heading', { name: 'Ostatnie treningi' })).toBeVisible({ timeout: 15_000 })
 }
 

@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
@@ -19,8 +20,7 @@ function workoutExerciseEntry(page: Page, exerciseName: string) {
  */
 async function discardActiveSession(page: Page) {
   await page.goto('/workout/new')
-  await expect(page).toHaveURL('/workout/new')
-  await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+  await expectAppReady(page, '/workout/new', 25_000)
 
   const staleDiscardBtn = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
   const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
@@ -46,8 +46,7 @@ test.describe('Workout persistence', () => {
 
     // Navigate fresh to workout page
     await page.goto('/workout/new')
-    await expect(page).toHaveURL('/workout/new')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+    await expectAppReady(page, '/workout/new', 25_000)
 
     // Start session if not already active
     const startBtn = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
@@ -90,7 +89,7 @@ test.describe('Workout persistence', () => {
     await expect(page).toHaveURL('/workout/new')
 
     // Session should restore from Firestore
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
+    await expectAppReady(page, '/workout/new', 25_000)
     await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 20_000 })
 
     await page.screenshot({ path: 'test-results/workout-after-reload.png' })

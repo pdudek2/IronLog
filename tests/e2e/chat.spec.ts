@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 /**
  * Chat E2E tests — UI level only.
@@ -20,8 +21,7 @@ import { test, expect } from './fixtures'
 test.describe('Chat UI', () => {
   test('chat page loads without console errors', async ({ page }) => {
     await page.goto('/chat')
-    await expect(page).toHaveURL('/chat')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/chat')
 
     await page.screenshot({ path: 'test-results/chat-loaded.png' })
 
@@ -29,7 +29,7 @@ test.describe('Chat UI', () => {
 
   test('AiKeyPanel is visible and shows correct empty state', async ({ page }) => {
     await page.goto('/chat')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/chat')
 
     // Key panel should show "Brak klucza" badge when no key is configured
     // (assuming test account has no saved key — localStorage is fresh per storageState)
@@ -45,7 +45,7 @@ test.describe('Chat UI', () => {
 
   test('message input is disabled without API key', async ({ page }) => {
     await page.goto('/chat')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/chat')
 
     // Input placeholder shows instruction to add key first
     const msgInput = page.getByPlaceholder('Dodaj Claude API key, żeby odblokować czat', { exact: false })
@@ -59,7 +59,7 @@ test.describe('Chat UI', () => {
 
   test('can switch between conversation and plan workspaces', async ({ page }) => {
     await page.goto('/chat')
-    await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
+    await expectAppReady(page, '/chat')
 
     await expect(page.getByRole('heading', { name: 'Decyzje treningowe' })).toBeVisible({ timeout: 5_000 })
 

@@ -39,7 +39,7 @@ export interface WorkoutSummary {
   exercises: WorkoutExerciseSummary[]
 }
 
-interface SaveWorkoutResult {
+export interface SaveWorkoutResult {
   id: string
   materialized: boolean
 }

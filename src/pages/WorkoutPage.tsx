@@ -7,6 +7,7 @@ import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { saveWorkout, getRecentWorkouts } from '../lib/workoutService'
+import { discardWorkoutLifecycle, finishWorkoutLifecycle } from '../lib/workoutLifecycle'
 import { getUserExercises } from '../lib/userExercisesService'
 import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
@@ -454,14 +455,13 @@ export default function WorkoutPage() {
     setClosingSession(true)
     setSaveError('')
     try {
-      await saveWorkout(user.uid, active)
-      // clearWorkout() must come before clearSession() so the debounce timer
-      // is cancelled synchronously before we delete the Firestore document.
-      clearWorkout()
-      try {
-        await clearSession()
-      } catch (error) {
-        console.error('[clearSession after finish error]', error)
+      const result = await finishWorkoutLifecycle({
+        saveWorkout: () => saveWorkout(user.uid, active),
+        clearWorkout,
+        clearSession,
+      })
+      if (result.cleanupError) {
+        console.error('[clearSession after finish error]', result.cleanupError)
         toast.error('Trening zapisany, ale aktywna sesja nie została jeszcze usunięta z chmury.')
       }
       navigate('/dashboard', { replace: true })
@@ -529,11 +529,9 @@ export default function WorkoutPage() {
   async function handleConfirmDiscard() {
     if (closingSession) return
     setClosingSession(true)
-    clearWorkout()
-    try {
-      await clearSession()
-    } catch (error) {
-      console.error('[clearSession after discard error]', error)
+    const result = await discardWorkoutLifecycle({ clearWorkout, clearSession })
+    if (result.cleanupError) {
+      console.error('[clearSession after discard error]', result.cleanupError)
       toast.error('Nie udało się od razu usunąć sesji w chmurze, ale wróciłem do dashboardu.')
     }
     navigate('/dashboard', { replace: true })

@@ -11,6 +11,7 @@ import {
   isActiveSessionStale,
   refreshStaleActiveSession,
 } from '../lib/sessionDuration'
+import { discardStaleSessionLifecycle } from '../lib/workoutLifecycle'
 
 function serializeActiveWorkout(value: unknown): string {
   return JSON.stringify(value ?? null)
@@ -256,28 +257,35 @@ export function useActiveSession(uid: string | null) {
   async function discardStaleSession(): Promise<void> {
     if (!uid) return
 
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-
-    staleSessionRef.current = null
-    setStaleSession(null)
-    clearActiveSessionBackup(uid)
-
     const { clearWorkout, startWorkout } = useWorkoutStore.getState()
-    applyingRemoteRef.current = true
-    hasUnsyncedLocalChangesRef.current = false
-    activeRef.current = null
-    clearWorkout()
-    await deleteActiveSession(uid).catch(console.error)
-
-    startWorkout()
-    const createdSession = useWorkoutStore.getState().active
-    activeRef.current = createdSession
-    if (createdSession) {
-      writeActiveSessionBackup(uid, createdSession)
-      await saveActiveSession(uid, createdSession)
+    const result = await discardStaleSessionLifecycle({
+      clearLocal: () => {
+        if (timerRef.current) {
+          clearTimeout(timerRef.current)
+          timerRef.current = null
+        }
+        staleSessionRef.current = null
+        setStaleSession(null)
+        clearActiveSessionBackup(uid)
+        applyingRemoteRef.current = true
+        hasUnsyncedLocalChangesRef.current = false
+        activeRef.current = null
+        clearWorkout()
+      },
+      deleteRemote: () => deleteActiveSession(uid),
+      startReplacement: () => {
+        startWorkout()
+        const createdSession = useWorkoutStore.getState().active
+        activeRef.current = createdSession
+        return createdSession
+      },
+      persistReplacement: async (createdSession) => {
+        writeActiveSessionBackup(uid, createdSession)
+        await saveActiveSession(uid, createdSession)
+      },
+    })
+    if (result.cleanupError) {
+      console.error('[discard stale session error]', result.cleanupError)
     }
   }
 

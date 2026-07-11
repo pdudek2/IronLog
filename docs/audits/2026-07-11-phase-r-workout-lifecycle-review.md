@@ -87,13 +87,32 @@ Statusy zastosowano dokładnie według zatwierdzonej tabeli klasyfikacji:
 - **Status:** `confirmed` — niezależny, nieaktualny klient może odtworzyć zamkniętą sesję.
 - **Faza 1:** wieloklientowy kontrakt zamknięcia musi odrzucać lub bezpiecznie godzić spóźnione zapisy aktywnej sesji.
 
-## Zakres rekomendowany dla Fazy 1
+## Remediacja Fazy 1
 
-Faza 1 ma status `READY` i obejmuje wyłącznie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` oraz `WORKOUT-06`. `WORKOUT-04` pozostaje udokumentowany jako `already_protected` i nie jest pracą implementacyjną Fazy 1. Szczegółowy projekt Fazy 1 powinien opisać wspólny kontrakt tożsamości finalizacji, konwergencji cleanupu, uczciwego stanu UI oraz ochrony przed spóźnionym zapisem wieloklientowym, bez rozszerzania zakresu o inne hipotezy.
+Faza 1 ma status `DONE` i objęła wyłącznie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` oraz `WORKOUT-06`. Implementacja znajduje się w commitach `1cb59af–8cd4731` na bazie `1e140d0`. `WORKOUT-04` pozostaje `already_protected`; Faza 1 nie zmienia jego kontraktu materializacji. Historyczne reprodukcje powyżej nadal opisują baseline `448e46a`, a poniższe regresje dowodzą zachowania po remediacji.
+
+| Punkt | Status po Fazie 1 | Nazwany dowód regresyjny |
+|---|---|---|
+| `WORKOUT-01` | `remediated` | `survives a lost transaction acknowledgement and retry` (`tests/integration/workoutClosure.integration.test.ts`) oraz `lost finalize acknowledgement keeps recovery intent and retry creates exactly one workout` (`tests/e2e/workout-lifecycle.spec.ts`) — utrata potwierdzenia i retry pozostawiają jeden workout. |
+| `WORKOUT-02` | `remediated` | `persists intent before request and clears recovery only after confirmed success` oraz `returns closure_unconfirmed and keeps the intent and session on ambiguous failure` (`src/lib/__tests__/workoutLifecycle.test.ts`) — lokalne recovery nie jest czyszczone przed potwierdzeniem zamknięcia. |
+| `WORKOUT-03` | `remediated` | `round-trips a complete finish snapshot`, `round-trips a complete discard snapshot` (`src/lib/__tests__/workoutClosureIntent.test.ts`) oraz `lost finalize acknowledgement keeps recovery intent and retry creates exactly one workout` (`tests/e2e/workout-lifecycle.spec.ts`) — po utracie odpowiedzi reload odtwarza trwały intent, a retry domyka tę samą operację. |
+| `WORKOUT-04` | `already_protected` | `retries consistently after beforeExerciseSessions`, `retries consistently after afterExerciseSessions` i `retries consistently after afterRecords` (`tests/integration/workoutProjection.integration.test.ts`) — projekcja nadal konwerguje i drugi retry pozostaje idempotentny. |
+| `WORKOUT-05` | `remediated` | `lost finalize acknowledgement keeps recovery intent and retry creates exactly one workout`, `projection_pending reflects committed closure and remains visible on dashboard` oraz `failed dashboard materialization offers retry and later success clears the failure` (`tests/e2e/workout-lifecycle.spec.ts`) — UI rozróżnia `closure_unconfirmed`, `projection_pending` i zapis zmaterializowany oraz podaje właściwe akcje. |
+| `WORKOUT-06` | `remediated` | `rejects creation and update using a tombstoned sessionId`, `does not let a late tombstoned write overwrite a newer session` (`tests/rules/firestore.rules.test.ts`) oraz `offline client write cannot resurrect a session closed by another client` (`tests/e2e/workout-lifecycle.spec.ts`) — tombstone odrzuca spóźniony zapis offline. |
 
 ## Weryfikacja i ograniczenia
 
-Świeża pełna bramka Task 6 na `32971da` zakończyła się następująco:
+Świeża pełna bramka Fazy 1 na `9cb3f30` zakończyła się następująco:
+
+- `npm run lint` — exit 0;
+- `npm run test:unit` — 28/28 plików, 190/190 testów;
+- `npm run test:rules` — 1/1 plik, 10/10 testów;
+- `npm run test:integration:workout` — 2/2 pliki, 18/18 testów, w tym natychmiastowe finish i discard legacy sesji bez pola `sessionId`;
+- `npm run build` — exit 0, z nieblokującym ostrzeżeniem Vite o chunku przekraczającym 500 kB;
+- `npm run test:e2e:workout` — 9/9 testów Playwright, bez retry;
+- `npm run test:e2e:isolated` — 13/13 testów Playwright, bez retry.
+
+Historyczna pełna bramka Fazy R (Task 6) na `32971da` zakończyła się następująco:
 
 - `npm run lint` — exit 0;
 - `npm run test:unit` — 22/22 pliki, 122/122 testy;
@@ -104,4 +123,4 @@ Faza 1 ma status `READY` i obejmuje wyłącznie `WORKOUT-01`, `WORKOUT-02`, `WOR
 - `npm run test:e2e:workout-review` — 6/6 testów Playwright, bez retry;
 - `git diff --check` — exit 0.
 
-W wynikach emulatorów pozostały nieblokujące ostrzeżenia Node o `url.parse()` i konflikt `NO_COLOR`/`FORCE_COLOR`; podczas celowego przejścia offline pojawiły się oczekiwane diagnostyki WebChannel Firestore. Pełny live `npm run test:e2e` nie jest częścią dowodu klasyfikacyjnego: nadal wymaga prywatnych `TEST_EMAIL` i `TEST_PASSWORD` oraz środowiska bez blokady quota. Zestawy emulatorowe dają deterministyczny dowód dla opisanych granic, ale nie zastępują pełnej kontroli integracyjnej live przed release.
+W wynikach emulatorów pozostały nieblokujące ostrzeżenia Node o `url.parse()` i konflikt `NO_COLOR`/`FORCE_COLOR`; celowe scenariusze offline wygenerowały oczekiwane odmowy reguł po tombstone. Pełny live `npm run test:e2e`, kontrole produkcyjnego deploymentu Vercel i publikacja reguł Firestore nie zostały wykonane i pozostają otwarte w `RELEASE-08`. Kolejność rolloutowa to: (1) API i SPA, (2) smoke finish/discard, (3) restrykcyjne reguły Firestore. Zestawy emulatorowe dają deterministyczny dowód dla opisanych granic, ale nie zastępują pełnej kontroli live przed release.

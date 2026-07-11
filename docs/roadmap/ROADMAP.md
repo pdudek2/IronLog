@@ -49,12 +49,12 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 22 pliki i 122 testy jednostkowe oraz testy wsparcia przechodzą,
-- 1 plik i 8 testów reguł Firestore przechodzi,
-- ukierunkowany przegląd Firestore przechodzi: 2 pliki i 7 testów,
+- 28 plików i 190 testów jednostkowych oraz testów wsparcia przechodzi,
+- 1 plik i 10 testów reguł Firestore przechodzi,
+- ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 18 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
-- ukierunkowany przegląd cyklu treningu przechodzi: 6 testów Playwright bez retry,
-- live `npm run test:e2e` pozostaje kontrolą integracyjną; bieżące uruchomienie bez prywatnych danych uwierzytelniających poprawnie wykrywa 131 testów, po czym zatrzymuje się w setupie z powodu braku `TEST_EMAIL` i `TEST_PASSWORD`.
+- ukierunkowana regresja cyklu treningu przechodzi: 9 testów Playwright bez retry,
+- live `npm run test:e2e` pozostaje otwartą kontrolą release wymagającą prywatnych `TEST_EMAIL` i `TEST_PASSWORD`.
 
 ## 4. Mapa faz
 
@@ -63,7 +63,7 @@ Aktualny baseline jakości:
 | 1 | A — Kontrolowane usunięcie analityki | P1 | DONE | GA4 i Contentsquare/Hotjar usunięte z runtime; dowody integracji zachowane jako archiwum zaliczenia |
 | 2 | 0 — Minimalny fundament weryfikacji | P0 | DONE | Krytyczny gate działa bez produkcyjnego quota; readiness, diagnostyka i cleanup mają wspólne kontrakty |
 | 3 | R — Ukierunkowany przegląd cyklu życia treningu | P0 | DONE | `WORKOUT-01–06` mają dowody i jednoznaczne statusy |
-| 4 | 1 — Integralność cyklu życia treningu | P0 | READY | Potwierdzony zakres: `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05`, `WORKOUT-06` |
+| 4 | 1 — Integralność cyklu życia treningu | P0 | DONE | `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06` naprawione w commitach `1cb59af–8cd4731` |
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | READY | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | READY | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
@@ -168,6 +168,8 @@ Faza A jest pierwsza, ponieważ upraszcza profil, global setup E2E, monitoring r
 
 ### Faza 1 — Integralność cyklu życia treningu
 
+**Status: DONE.** Implementacja: commity `1cb59af–8cd4731` na bazie `1e140d0`. Dowody regresyjne i aktualny dług weryfikacyjny opisuje raport Fazy R.
+
 **Cel:** usunąć ryzyko utraty, duplikacji albo ponownego pojawienia się sesji w najważniejszym przepływie produktu.
 
 **Zakres kanoniczny:**
@@ -190,6 +192,12 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 - istnieje deterministyczny, zielony dowód pełnej finalizacji treningu.
 
 **Zależności:** zakończona faza R, TEST-03 i podstawowy mechanizm izolacji z fazy 0.
+
+**Handoff wdrożeniowy:** artefakty są gotowe, ale produkcyjne czynności pozostają otwarte w `RELEASE-08`. Obowiązuje kolejność:
+
+1. wdrożyć API i SPA;
+2. wykonać smoke zakończenia i odrzucenia treningu;
+3. opublikować restrykcyjne reguły Firestore.
 
 ### Faza 2 — Uczciwe stany danych i błędów
 
@@ -396,7 +404,7 @@ Punkty `MOBILE-03–05` wchodzą do implementacji wyłącznie po reprodukcji. Br
 - **RELEASE-05:** potwierdzić wiarygodność danych konta demo oraz zgodność README, screenshotów i produkcyjnego UI.
 - **RELEASE-06:** ocenić ostrzeżenie o chunku na podstawie pomiaru. Optymalizować tylko wtedy, gdy wpływa na start lub nawigację; sam warning nie jest wystarczającym powodem do refaktoru.
 - **RELEASE-07:** zapisać wynik odbioru w `WORKING_CONTEXT.md` i wskazać świadomie odłożone elementy LATER.
-- **RELEASE-08:** potwierdzić w produkcyjnym Network panelu brak requestów do GA4, Google Tag Manager, Hotjar i Contentsquare oraz brak analitycznych zmiennych w aktywnym deployment environment.
+- **RELEASE-08 — OPEN:** uruchomić pełny live Playwright z prywatnymi `TEST_EMAIL` i `TEST_PASSWORD`, wykonać kontrole produkcyjnego deploymentu Vercel, potwierdzić w Network panelu brak requestów do GA4, Google Tag Manager, Hotjar i Contentsquare oraz brak analitycznych zmiennych, a następnie opublikować produkcyjne reguły Firestore. Dla Fazy 1 zachować kolejność: API + SPA, smoke finish/discard, restrykcyjne reguły.
 - **RELEASE-09:** potwierdzić docelowy tryb CSP i zgodność pozostałej allowlisty z rzeczywistymi requestami aplikacji.
 
 **Kryteria wyjścia:**
@@ -439,9 +447,9 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-Najbliższy pakiet może objąć **Fazę 1 — integralność cyklu życia treningu** wyłącznie w zakresie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06`.
+**Faza 1 — integralność cyklu życia treningu** jest zakończona w zakresie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06`. Następne pakiety można wybierać spośród gotowych faz zgodnie z priorytetem programu; czynności produkcyjne Fazy 1 pozostają w `RELEASE-08`.
 
-Faza R jest zakończona. Jej raport jest wejściem do planu Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
+Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 
 Po fazie 0 można równolegle przygotować fazy 2, 2B i 3 oraz niezależne pakiety AI. Nie należy zaczynać od kosmetycznego copy, chunków, trwałej historii AI ani dziennego budżetu AI, dopóki zweryfikowane P0/P1 pozostają otwarte.
 

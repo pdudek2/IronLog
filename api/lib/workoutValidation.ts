@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { ApiError } from './errors.js'
+import { MAX_ACTIVE_SESSION_AGE_MS } from '../../src/lib/sessionDuration.js'
 
 export type ExerciseSource = 'global' | 'user'
 
@@ -14,6 +15,15 @@ export interface ValidatedWorkoutExercise {
   exerciseSource: ExerciseSource
   name: string
   sets: ValidatedWorkoutSet[]
+}
+
+export interface FinalizeWorkoutInput {
+  sessionId: string
+  templateId: string | null
+  startedAt: number
+  finishedAt: number
+  label: string | null
+  exercises: ValidatedWorkoutExercise[]
 }
 
 interface NormalizeWorkoutExercisesOptions {
@@ -30,6 +40,44 @@ export const MAX_SET_WEIGHT_KG = 2_000
 export const MAX_SET_REPS = 1_000
 
 const EXERCISE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/
+const FINALIZE_FIELDS = new Set([
+  'sessionId',
+  'templateId',
+  'startedAt',
+  'finishedAt',
+  'label',
+  'exercises',
+])
+
+export function parseFinalizeWorkoutInput(raw: unknown): FinalizeWorkoutInput {
+  const record = asRecord(raw, 'Niepoprawny payload treningu.')
+  for (const field of Object.keys(record)) {
+    if (!FINALIZE_FIELDS.has(field)) throw badRequest(`Nieoczekiwane pole ${field}.`)
+  }
+
+  const sessionId = validateFirestoreDocumentId(record.sessionId, 'sessionId')
+  const templateId = record.templateId === undefined || record.templateId === null
+    ? null
+    : validateFirestoreDocumentId(record.templateId, 'templateId')
+  const startedAt = normalizeTimestamp(record.startedAt, 'startedAt')
+  const finishedAt = normalizeTimestamp(record.finishedAt, 'finishedAt')
+
+  if (finishedAt < startedAt) {
+    throw badRequest('Czas zakończenia nie może poprzedzać rozpoczęcia.')
+  }
+  if (finishedAt - startedAt > MAX_ACTIVE_SESSION_AGE_MS) {
+    throw badRequest('Czas treningu przekracza dozwolony limit.')
+  }
+
+  return {
+    sessionId,
+    templateId,
+    startedAt,
+    finishedAt,
+    label: validateWorkoutLabel(record.label),
+    exercises: normalizeWorkoutExercises(record.exercises),
+  }
+}
 
 export function normalizeWorkoutExercises(
   raw: unknown,
@@ -166,6 +214,13 @@ function normalizeNumber(value: unknown, message: string): number {
   const numeric = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(numeric)) throw badRequest(message)
   return numeric
+}
+
+function normalizeTimestamp(value: unknown, fieldName: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    throw badRequest(`Niepoprawne pole ${fieldName}.`)
+  }
+  return value
 }
 
 function asRecord(value: unknown, message: string): Record<string, unknown> {

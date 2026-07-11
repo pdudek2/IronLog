@@ -32,7 +32,9 @@ export function sendApiError(
   { fallbackMessage, fallbackStatus = 400 }: SendApiErrorOptions,
 ): void {
   if (isApiError(error)) {
-    sendJson(res, error.status, { error: error.message })
+    sendJson(res, error.status, error.code
+      ? { error: error.message, code: error.code }
+      : { error: error.message })
     return
   }
 

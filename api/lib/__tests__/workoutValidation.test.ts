@@ -5,6 +5,7 @@ import {
   MAX_WORKOUT_EXERCISES,
   buildExerciseSessionDocumentId,
   normalizeWorkoutExercises,
+  parseFinalizeWorkoutInput,
   validateFirestoreDocumentId,
   validateWorkoutLabel,
 } from '../workoutValidation.js'
@@ -17,6 +18,15 @@ const validExercise = {
     { weight: '80.5', reps: '5' },
     { weightKg: 75, reps: 8 },
   ],
+}
+
+const validFinalizeBody = {
+  sessionId: 'session-1',
+  templateId: null,
+  startedAt: 1_790_000_000_000,
+  finishedAt: 1_790_003_600_000,
+  label: ' Push ',
+  exercises: [validExercise],
 }
 
 describe('normalizeWorkoutExercises', () => {
@@ -92,5 +102,43 @@ describe('buildExerciseSessionDocumentId', () => {
 
     expect(id).toMatch(/^workout-1_global_0_[a-f0-9]{24}$/)
     expect(id).not.toContain('bench-press')
+  })
+})
+
+describe('parseFinalizeWorkoutInput', () => {
+  it('normalizes a valid finalize body', () => {
+    expect(parseFinalizeWorkoutInput(validFinalizeBody)).toEqual({
+      sessionId: 'session-1',
+      templateId: null,
+      startedAt: 1_790_000_000_000,
+      finishedAt: 1_790_003_600_000,
+      label: 'Push',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [
+          { weight: 80.5, reps: 5 },
+          { weight: 75, reps: 8 },
+        ],
+      }],
+    })
+  })
+
+  it.each([
+    [{ ...validFinalizeBody, sessionId: undefined }, 'Brak pola sessionId.'],
+    [{ ...validFinalizeBody, sessionId: 'unsafe/session' }, 'Niepoprawne pole sessionId.'],
+    [{ ...validFinalizeBody, exercises: [{ ...validExercise, exerciseSource: 'shared' }] }, 'Niepoprawne źródło ćwiczenia.'],
+    [{ ...validFinalizeBody, exercises: [{ ...validExercise, sets: [{ weight: -1, reps: 5 }] }] }, 'Niepoprawny ciężar w serii.'],
+    [{ ...validFinalizeBody, label: 'x'.repeat(121) }, 'Nazwa treningu jest za długa.'],
+    [{ ...validFinalizeBody, finishedAt: validFinalizeBody.startedAt - 1 }, 'Czas zakończenia nie może poprzedzać rozpoczęcia.'],
+    [{ ...validFinalizeBody, finishedAt: validFinalizeBody.startedAt + 12 * 60 * 60 * 1000 + 1 }, 'Czas treningu przekracza dozwolony limit.'],
+  ])('rejects invalid finalize input', (body, message) => {
+    expect(() => parseFinalizeWorkoutInput(body)).toThrow(message)
+  })
+
+  it.each(['userId', 'materialized', 'closedAt'])('rejects request-supplied %s', (field) => {
+    expect(() => parseFinalizeWorkoutInput({ ...validFinalizeBody, [field]: field === 'materialized' ? true : 'value' }))
+      .toThrow(`Nieoczekiwane pole ${field}.`)
   })
 })

@@ -5,7 +5,7 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     fileParallelism: false,
-    include: ['tests/review/**/*.review.test.ts'],
+    include: ['tests/integration/**/*.integration.test.ts'],
     env: {
       VITE_FIREBASE_API_KEY: 'phase-r-test-key',
       VITE_FIREBASE_AUTH_DOMAIN: 'demo-ironlog.firebaseapp.com',

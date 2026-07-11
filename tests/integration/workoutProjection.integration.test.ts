@@ -1,14 +1,14 @@
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ReviewFault } from './support/faultOutcomes'
+import { ReviewFault } from '../review/support/faultOutcomes'
 import {
   clearReviewAdminDatabase,
   closeReviewAdminDatabase,
   getReviewAdminDatabase,
-} from './support/adminReviewDatabase'
+} from '../review/support/adminReviewDatabase'
 
 vi.mock('../../api/lib/firebaseAdmin.js', async () => {
-  const { getReviewAdminDatabase } = await import('./support/adminReviewDatabase')
+  const { getReviewAdminDatabase } = await import('../review/support/adminReviewDatabase')
   return { adminDb: getReviewAdminDatabase() }
 })
 

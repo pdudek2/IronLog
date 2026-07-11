@@ -2,6 +2,8 @@ import { createServer } from 'node:http'
 import aiChatHandler from '../api/ai-chat.ts'
 import aiModelsHandler from '../api/ai-models.ts'
 import deleteWorkoutHandler from '../api/delete-workout.ts'
+import discardSessionHandler from '../api/discard-session.ts'
+import finalizeWorkoutHandler from '../api/finalize-workout.ts'
 import materializeWorkoutHandler from '../api/materialize-workout.ts'
 import updateWorkoutHandler from '../api/update-workout.ts'
 import { sendJson, type ApiRequest, type ApiResponse } from '../api/lib/http.ts'
@@ -12,6 +14,8 @@ const routes = new Map<string, RouteHandler>([
   ['/api/ai-chat', aiChatHandler],
   ['/api/ai-models', aiModelsHandler],
   ['/api/delete-workout', deleteWorkoutHandler],
+  ['/api/discard-session', discardSessionHandler],
+  ['/api/finalize-workout', finalizeWorkoutHandler],
   ['/api/materialize-workout', materializeWorkoutHandler],
   ['/api/update-workout', updateWorkoutHandler],
 ])

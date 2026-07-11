@@ -63,11 +63,53 @@ describe('workout closure intent', () => {
     ['wrong UID', JSON.stringify({ uid: 'user-2', intent: intent('finish') })],
     ['invalid action', JSON.stringify({ uid: 'user-1', intent: { ...intent('finish'), action: 'archive' } })],
     ['missing session', JSON.stringify({ uid: 'user-1', intent: { action: 'finish', createdAt: 100 } })],
+    ['numeric label', JSON.stringify({
+      uid: 'user-1',
+      intent: { ...intent('finish'), session: { ...session, label: 42 } },
+    })],
+    ['object label', JSON.stringify({
+      uid: 'user-1',
+      intent: { ...intent('finish'), session: { ...session, label: { text: 'Push' } } },
+    })],
+    ['numeric template ID', JSON.stringify({
+      uid: 'user-1',
+      intent: { ...intent('finish'), session: { ...session, templateId: 42 } },
+    })],
+    ['object template ID', JSON.stringify({
+      uid: 'user-1',
+      intent: { ...intent('finish'), session: { ...session, templateId: { id: 'template-1' } } },
+    })],
   ])('returns null for %s', (_case, stored) => {
     const storage = new MemoryStorage()
     storage.setItem('ironlog:workout-closure:user-1', stored)
 
     expect(readWorkoutClosureIntent('user-1', storage)).toBeNull()
+  })
+
+  it.each([
+    ['omitted', {}, {}],
+    ['null template ID', { templateId: null }, { templateId: null }],
+    ['string values', { templateId: 'template-1', label: 'Push' }, { templateId: 'template-1', label: 'Push' }],
+  ])('round-trips valid optional fields when %s', (_case, optionalFields, expectedFields) => {
+    const storage = new MemoryStorage()
+    const validIntent: WorkoutClosureIntent = {
+      action: 'finish',
+      session: { ...session, label: undefined, templateId: undefined, ...optionalFields },
+      createdAt: 100,
+    }
+
+    writeWorkoutClosureIntent('user-1', validIntent, storage)
+
+    expect(readWorkoutClosureIntent('user-1', storage)).toEqual({
+      action: 'finish',
+      session: {
+        sessionId: session.sessionId,
+        startedAt: session.startedAt,
+        exercises: session.exercises,
+        ...expectedFields,
+      },
+      createdAt: 100,
+    })
   })
 
   it('clears only when explicitly requested', () => {

@@ -67,6 +67,8 @@ function isActiveWorkout(value: unknown): value is ActiveWorkout {
   if (!isRecord(value)) return false
   if (typeof value.sessionId !== 'string' || !value.sessionId) return false
   if (typeof value.startedAt !== 'number' || !Number.isFinite(value.startedAt)) return false
+  if (value.label !== undefined && typeof value.label !== 'string') return false
+  if (value.templateId !== undefined && value.templateId !== null && typeof value.templateId !== 'string') return false
   if (!Array.isArray(value.exercises)) return false
 
   return value.exercises.every((exercise) => {

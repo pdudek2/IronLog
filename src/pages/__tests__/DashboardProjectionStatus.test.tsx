@@ -116,10 +116,12 @@ const pendingWorkout: WorkoutSummary = {
 
 function deferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((promiseResolve) => {
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
     resolve = promiseResolve
+    reject = promiseReject
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
 }
 
 describe('Dashboard workout projection status', () => {
@@ -255,6 +257,62 @@ describe('Dashboard workout projection status', () => {
     const workoutCRow = screen.getByText('Workout C').closest('.dashboard-history-row')
     expect(workoutCRow).not.toBeNull()
     fireEvent.click(within(workoutCRow as HTMLElement).getByRole('button', { name: 'Ponów synchronizację' }))
+
+    const returnedWorkoutARow = (await screen.findByText('Workout A')).closest('.dashboard-history-row')
+    expect(returnedWorkoutARow).not.toBeNull()
+    expect(within(returnedWorkoutARow as HTMLElement).queryByRole('button', {
+      name: 'Ponów synchronizację',
+    })).not.toBeInTheDocument()
+  })
+
+  it('does not restore failed state when an obsolete retry rejects after removal', async () => {
+    const pendingWorkoutA = { ...pendingWorkout, id: 'workout-a', label: 'Workout A' }
+    const pendingWorkoutB = { ...pendingWorkout, id: 'workout-b', label: 'Workout B' }
+    const pendingWorkoutC = { ...pendingWorkout, id: 'workout-c', label: 'Workout C' }
+    const retryWorkoutA = deferred<void>()
+
+    mocks.getRecentWorkouts
+      .mockResolvedValueOnce([pendingWorkoutB, pendingWorkoutC])
+      .mockResolvedValueOnce([
+        pendingWorkoutA,
+        { ...pendingWorkoutB, materialized: true },
+        pendingWorkoutC,
+      ])
+      .mockResolvedValueOnce([
+        { ...pendingWorkoutB, materialized: true },
+        { ...pendingWorkoutC, materialized: true },
+      ])
+      .mockResolvedValueOnce([
+        pendingWorkoutA,
+        { ...pendingWorkoutB, materialized: true },
+        { ...pendingWorkoutC, materialized: true },
+      ])
+    mocks.retryWorkoutMaterialization
+      .mockRejectedValueOnce(new Error('automatic B failed'))
+      .mockRejectedValueOnce(new Error('automatic C failed'))
+      .mockResolvedValueOnce(undefined)
+      .mockReturnValueOnce(retryWorkoutA.promise)
+      .mockResolvedValueOnce(undefined)
+    mocks.deleteWorkout.mockResolvedValue(undefined)
+
+    render(<DashboardPage />)
+
+    await screen.findAllByRole('button', { name: 'Ponów synchronizację' })
+    const workoutBRow = screen.getByText('Workout B').closest('.dashboard-history-row')
+    expect(workoutBRow).not.toBeNull()
+    fireEvent.click(within(workoutBRow as HTMLElement).getByRole('button', {
+      name: 'Ponów synchronizację',
+    }))
+
+    await screen.findByText('Workout A')
+    await act(async () => window.dispatchEvent(new Event('online')))
+    await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(5))
+
+    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Workout A/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    await waitFor(() => expect(screen.queryByText('Workout A')).not.toBeInTheDocument())
+
+    await act(async () => retryWorkoutA.reject(new Error('obsolete A failed')))
 
     const returnedWorkoutARow = (await screen.findByText('Workout A')).closest('.dashboard-history-row')
     expect(returnedWorkoutARow).not.toBeNull()

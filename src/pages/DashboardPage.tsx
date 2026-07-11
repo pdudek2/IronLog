@@ -184,6 +184,20 @@ export default function DashboardPage() {
     return retry
   }, [])
 
+  const markProjectionRetriesFailed = useCallback((workoutIds: string[]) => {
+    const pendingIds = new Set(
+      workoutsRef.current
+        .filter((workout) => !workout.materialized)
+        .map((workout) => workout.id),
+    )
+    const failedIds = workoutIds.filter((workoutId) => pendingIds.has(workoutId))
+    if (failedIds.length === 0) return
+    setProjectionRetryStates((current) => ({
+      ...current,
+      ...Object.fromEntries(failedIds.map((workoutId) => [workoutId, 'failed'])),
+    }))
+  }, [])
+
   const setDashboardSnapshot = useCallback((all: WorkoutSummary[]) => {
     setSnapshot({
       workouts: all,
@@ -231,34 +245,21 @@ export default function DashboardPage() {
     const fulfilledIds = pending.flatMap((workout, index) => (
       results[index]?.status === 'fulfilled' ? [workout.id] : []
     ))
-    setProjectionRetryStates((current) => ({
-      ...current,
-      ...Object.fromEntries(pending.flatMap((workout, index) => (
-        results[index]?.status === 'rejected' ? [[workout.id, 'failed']] : []
-      ))),
-    }))
+    const rejectedIds = pending.flatMap((workout, index) => (
+      results[index]?.status === 'rejected' ? [workout.id] : []
+    ))
+    markProjectionRetriesFailed(rejectedIds)
 
     if (fulfilledIds.length > 0) {
       try {
         const refreshed = await refreshDashboardSnapshot(uid)
         if (!refreshed) return
-        setProjectionRetryStates((current) => {
-          const next = { ...current }
-          fulfilledIds.forEach((workoutId) => {
-            const workout = refreshed.find((item) => item.id === workoutId)
-            if (workout?.materialized) delete next[workoutId]
-            else if (workout) next[workoutId] = 'failed'
-          })
-          return next
-        })
+        markProjectionRetriesFailed(fulfilledIds)
       } catch {
-        setProjectionRetryStates((current) => ({
-          ...current,
-          ...Object.fromEntries(fulfilledIds.map((workoutId) => [workoutId, 'failed'])),
-        }))
+        markProjectionRetriesFailed(fulfilledIds)
       }
     }
-  }, [refreshDashboardSnapshot, retryProjectionOnce])
+  }, [markProjectionRetriesFailed, refreshDashboardSnapshot, retryProjectionOnce])
 
   const fetchData = useCallback(async (uid: string) => {
     setDashboardError(false)
@@ -335,12 +336,9 @@ export default function DashboardPage() {
       await retryProjectionOnce(workoutId)
       const refreshed = await refreshDashboardSnapshot(user.uid)
       if (!refreshed) return
-      const workout = refreshed.find((item) => item.id === workoutId)
-      if (workout && !workout.materialized) {
-        setProjectionRetryStates((current) => ({ ...current, [workoutId]: 'failed' }))
-      }
+      markProjectionRetriesFailed([workoutId])
     } catch {
-      setProjectionRetryStates((current) => ({ ...current, [workoutId]: 'failed' }))
+      markProjectionRetriesFailed([workoutId])
     }
   }
 

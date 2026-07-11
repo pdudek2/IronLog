@@ -19,7 +19,7 @@ Roadmapa odpowiada na cztery pytania:
 ## 2. Zasady prowadzenia roadmapy
 
 - Identyfikatory faz i punktów są trwałe. Nie należy ich zmieniać po rozpoczęciu implementacji.
-- Jedna faza powinna być możliwa do zaplanowania, wdrożenia, przetestowania i zreviewowania niezależnie.
+- Jedna faza powinna być możliwa do zaplanowania, wdrożenia, przetestowania i poddania niezależnemu przeglądowi.
 - Naprawa produktowa i jej test regresyjny należą do tej samej fazy.
 - Nie uznajemy fazy za zakończoną tylko dlatego, że działa happy path. Kryteria wyjścia muszą obejmować błędy, odświeżenie, nawigację i odpowiedni viewport.
 - Nie otwieramy ponownie świadomych decyzji zapisanych w `WORKING_CONTEXT.md`, chyba że pojawią się nowe dane produktowe.
@@ -51,9 +51,9 @@ Aktualny baseline jakości:
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
 - 22 pliki i 122 testy jednostkowe oraz testy wsparcia przechodzą,
 - 1 plik i 8 testów reguł Firestore przechodzi,
-- focused review Firestore przechodzi: 2 pliki i 7 testów,
+- ukierunkowany przegląd Firestore przechodzi: 2 pliki i 7 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
-- focused workout review przechodzi: 6 testów Playwright bez retry,
+- ukierunkowany przegląd cyklu treningu przechodzi: 6 testów Playwright bez retry,
 - live `npm run test:e2e` pozostaje kontrolą integracyjną; bieżące uruchomienie bez prywatnych danych uwierzytelniających poprawnie wykrywa 131 testów, po czym zatrzymuje się w setupie z powodu braku `TEST_EMAIL` i `TEST_PASSWORD`.
 
 ## 4. Mapa faz
@@ -62,7 +62,7 @@ Aktualny baseline jakości:
 |---:|---|---|---|---|
 | 1 | A — Kontrolowane usunięcie analityki | P1 | DONE | GA4 i Contentsquare/Hotjar usunięte z runtime; dowody integracji zachowane jako archiwum zaliczenia |
 | 2 | 0 — Minimalny fundament weryfikacji | P0 | DONE | Krytyczny gate działa bez produkcyjnego quota; readiness, diagnostyka i cleanup mają wspólne kontrakty |
-| 3 | R — Focused review cyklu życia treningu | P0 | DONE | `WORKOUT-01–06` mają dowody i jednoznaczne statusy |
+| 3 | R — Ukierunkowany przegląd cyklu życia treningu | P0 | DONE | `WORKOUT-01–06` mają dowody i jednoznaczne statusy |
 | 4 | 1 — Integralność cyklu życia treningu | P0 | READY | Potwierdzony zakres: `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05`, `WORKOUT-06` |
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | READY | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
@@ -142,7 +142,7 @@ Faza A jest pierwsza, ponieważ upraszcza profil, global setup E2E, monitoring r
 
 **Poza zakresem:** pełna migracja wszystkich testów na emulator, jeśli prostsza izolacja daje wystarczającą deterministyczność.
 
-### Faza R — Focused review cyklu życia treningu
+### Faza R — Ukierunkowany przegląd cyklu życia treningu
 
 **Status: DONE.** Raport kanoniczny: `docs/audits/2026-07-11-phase-r-workout-lifecycle-review.md`.
 
@@ -305,7 +305,7 @@ Punkty `MOBILE-03–05` wchodzą do implementacji wyłącznie po reprodukcji. Br
 - konto demo pokazuje wiarygodne scenariusze prezentacyjne.
 - artefakty desktop/mobile nie nadpisują się, a żaden test nie jest nazywany regresją wizualną bez wykonywania porównania.
 
-**Zależności:** semantyka nawigacji z fazy 3. `FEEDBACK-02` korzysta z docelowego kontraktu aktywnej sesji z fazy 1 tylko wtedy, gdy faza R potwierdzi związany problem; copy i TEST-04 są niezależne.
+**Zależności:** semantyka nawigacji z fazy 3. `FEEDBACK-02` korzysta z docelowego kontraktu aktywnej sesji z fazy 1; copy i TEST-04 są niezależne.
 
 ### Faza 6A — Stream i concurrency AI
 
@@ -435,7 +435,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 7. **Strategia testów** — unit, rules, E2E, mobile, keyboard i failure injection.
 8. **Kryteria akceptacji** — obserwowalne wyniki, nie opis implementacji.
 9. **Plan commitów i rollbacku** — szczególnie dla cyklu życia workoutu i backendu.
-10. **Definition of Done** — kod, testy, dokumentacja, review i aktualizacja tej roadmapy.
+10. **Definition of Done** — kod, testy, dokumentacja, przegląd i aktualizacja tej roadmapy.
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 

@@ -180,7 +180,12 @@ function requireMatchingActiveSession(
 ): void {
   if (!active.exists) throw sessionMismatch()
   const stored = requireOwnedRecord(active, userId, 'active session')
-  if (stored.sessionId !== sessionId) throw sessionMismatch()
+  const storedSessionId = typeof stored.sessionId === 'string' && stored.sessionId.trim()
+    ? stored.sessionId.trim()
+    : typeof stored.startedAt === 'number'
+      ? `legacy-${stored.startedAt}`
+      : undefined
+  if (storedSessionId !== sessionId) throw sessionMismatch()
 }
 
 function requireOwnedRecord(

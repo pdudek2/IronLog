@@ -20,7 +20,6 @@ import {
 } from '../lib/workoutClosureIntent'
 import {
   canCreateStaleReplacement,
-  classifyActiveSessionWriteError,
   classifyClosureFailure,
   decideConfirmedClosure,
   decideRemoteSessionSync,
@@ -40,12 +39,6 @@ export type ClosureUiState =
 
 function serializeActiveWorkout(value: unknown): string {
   return JSON.stringify(value ?? null)
-}
-
-function errorCode(error: unknown): string | undefined {
-  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined
-  const code = String(error.code)
-  return code.endsWith('permission-denied') ? 'permission-denied' : code
 }
 
 export function useActiveSession(uid: string | null) {
@@ -214,25 +207,10 @@ export function useActiveSession(uid: string | null) {
       writeActiveSessionBackup(currentUid, intentAtMount.session)
     }
 
-    function handleRemoteClosure(snapshot: ActiveWorkout) {
-      if (closureIntentRef.current?.session.sessionId === snapshot.sessionId) return
-      clearActiveSessionBackup(currentUid)
-      if (useWorkoutStore.getState().active?.sessionId !== snapshot.sessionId) return
-      applyingRemoteRef.current = true
-      activeRef.current = null
-      clearWorkout()
-    }
-
     function persistSession(snapshot: ActiveWorkout) {
       if (!shouldPersistActiveSession(snapshot, closureIntentRef.current)) return
       void saveActiveSession(currentUid, snapshot).catch((error: unknown) => {
-        const classification = classifyActiveSessionWriteError({
-          code: errorCode(error),
-          attemptedSessionId: snapshot.sessionId,
-          localSessionId: useWorkoutStore.getState().active?.sessionId,
-        })
-        if (classification === 'remote_closure') handleRemoteClosure(snapshot)
-        else console.error('[active session save error]', error)
+        console.error('[active session save error]', error)
       })
     }
 

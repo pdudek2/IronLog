@@ -171,6 +171,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)
     expect(await readLifecycleActiveSession()).toBeNull()
+    await page.reload()
+    await expect(page.getByRole('alert')).toContainText('Nie udało się potwierdzić zamknięcia sesji.')
     await page.getByRole('button', { name: 'Spróbuj ponownie' }).click()
     await page.waitForURL('/dashboard', { timeout: RESPONSE_TIMEOUT_MS })
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)

@@ -94,20 +94,6 @@ export function classifyClosureFailure({
   return 'closure_failed'
 }
 
-export function classifyActiveSessionWriteError({
-  code,
-  attemptedSessionId,
-  localSessionId,
-}: {
-  code: string | undefined
-  attemptedSessionId: string
-  localSessionId: string | undefined
-}): 'remote_closure' | 'sync_error' {
-  return code === 'permission-denied' && attemptedSessionId === localSessionId
-    ? 'remote_closure'
-    : 'sync_error'
-}
-
 export function canCreateStaleReplacement(
   result: { status: 'discarded' | 'closure_unconfirmed' },
   sessionState?: {

@@ -54,6 +54,16 @@ async function seedActive(sessionId = input.sessionId) {
   })
 }
 
+async function seedLegacyActive() {
+  await db.collection('activeSessions').doc(USER_ID).set({
+    userId: USER_ID,
+    startedAt: STARTED_AT,
+    templateId: null,
+    label: input.label,
+    exercises: input.exercises,
+  })
+}
+
 async function readClosure(sessionId = input.sessionId) {
   const [workout, tombstone, active, workouts] = await Promise.all([
     db.collection('workouts').doc(sessionId).get(),
@@ -65,6 +75,41 @@ async function readClosure(sessionId = input.sessionId) {
 }
 
 describe('workout closure', () => {
+  it('finishes a legacy active session using its deterministic derived ID', async () => {
+    const legacySessionId = `legacy-${STARTED_AT}`
+    await seedLegacyActive()
+    const materialize = vi.fn().mockImplementation(async (_userId, workoutId: string) => {
+      await db.collection('workouts').doc(workoutId).update({ materialized: true })
+    })
+
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      ...input,
+      sessionId: legacySessionId,
+    }, {
+      db,
+      now: () => FINISHED_AT + 1,
+      materialize,
+    })).resolves.toEqual({ workoutId: legacySessionId, status: 'materialized' })
+
+    const state = await readClosure(legacySessionId)
+    expect(state.active.exists).toBe(false)
+    expect(state.workouts.size).toBe(1)
+  })
+
+  it('discards a legacy active session using its deterministic derived ID', async () => {
+    const legacySessionId = `legacy-${STARTED_AT}`
+    await seedLegacyActive()
+
+    await expect(discardSessionForUser(USER_ID, legacySessionId, {
+      db,
+      now: () => FINISHED_AT + 1,
+    })).resolves.toEqual({ status: 'discarded' })
+
+    const state = await readClosure(legacySessionId)
+    expect(state.active.exists).toBe(false)
+    expect(state.tombstone.data()?.outcome).toBe('discarded')
+  })
+
   it('atomically finishes the active session with deterministic documents', async () => {
     await seedActive()
     const materialize = vi.fn().mockImplementation(async (_userId, workoutId: string) => {

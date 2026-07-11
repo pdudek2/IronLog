@@ -3,7 +3,6 @@ import type { ActiveWorkout } from '../../store/workoutStore'
 import type { WorkoutClosureIntent } from '../workoutClosureIntent'
 import {
   canCreateStaleReplacement,
-  classifyActiveSessionWriteError,
   classifyClosureFailure,
   decideConfirmedClosure,
   decideRemoteSessionSync,
@@ -45,17 +44,12 @@ describe('active session sync policy', () => {
     })).toBe('clear_local')
   })
 
-  it('classifies permission denial as remote closure only for the same session', () => {
-    expect(classifyActiveSessionWriteError({
-      code: 'permission-denied',
-      attemptedSessionId: 'session-1',
-      localSessionId: 'session-1',
-    })).toBe('remote_closure')
-    expect(classifyActiveSessionWriteError({
-      code: 'permission-denied',
-      attemptedSessionId: 'session-1',
-      localSessionId: 'session-2',
-    })).toBe('sync_error')
+  it('keeps local data while the authoritative remote session still matches', () => {
+    expect(decideRemoteSessionSync({
+      localSession: session('session-1'),
+      remoteSession: session('session-1'),
+      closureIntent: null,
+    })).toBe('keep_local')
   })
 
   it('accepts a different remote session over a stale local session and intent', () => {

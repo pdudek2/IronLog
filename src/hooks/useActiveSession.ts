@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useWorkoutStore, type ActiveWorkout } from '../store/workoutStore'
-import { saveActiveSession, deleteActiveSession, subscribeToActiveSession } from '../lib/activeSessionService'
+import { saveActiveSession, subscribeToActiveSession } from '../lib/activeSessionService'
 import {
   clearActiveSessionBackup,
   readActiveSessionBackup,
@@ -12,28 +12,117 @@ import {
   refreshStaleActiveSession,
 } from '../lib/sessionDuration'
 import { discardStaleSessionLifecycle } from '../lib/workoutLifecycle'
+import {
+  clearWorkoutClosureIntent,
+  readWorkoutClosureIntent,
+  writeWorkoutClosureIntent,
+  type WorkoutClosureIntent,
+} from '../lib/workoutClosureIntent'
+import {
+  classifyActiveSessionWriteError,
+  decideRemoteSessionSync,
+  shouldPersistActiveSession,
+} from '../lib/activeSessionSyncPolicy'
+import { WorkoutClosureError } from '../lib/workoutClosureService'
+
+export type ClosureUiState = 'idle' | 'submitting' | 'closure_unconfirmed' | 'session_mismatch'
 
 function serializeActiveWorkout(value: unknown): string {
   return JSON.stringify(value ?? null)
 }
 
-/**
- * Subscribes to the Zustand workout store and syncs changes to Firestore
- * (activeSessions/{uid}) with a debounce. Provides clearSession() to delete
- * the Firestore document when the workout ends (finish or discard).
- *
- * IMPORTANT: always call clearWorkout() before clearSession() to prevent
- * a residual debounce timer from re-writing the deleted document.
- */
+function errorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null || !('code' in error)) return undefined
+  const code = String(error.code)
+  return code.endsWith('permission-denied') ? 'permission-denied' : code
+}
+
 export function useActiveSession(uid: string | null) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const activeRef = useRef(useWorkoutStore.getState().active)
   const staleSessionRef = useRef<ActiveWorkout | null>(null)
+  const closureIntentRef = useRef<WorkoutClosureIntent | null>(null)
   const applyingRemoteRef = useRef(false)
   const hadRemoteSessionRef = useRef(false)
   const hasUnsyncedLocalChangesRef = useRef(false)
   const [ready, setReady] = useState(uid === null)
   const [staleSession, setStaleSession] = useState<{ ageLabel: string } | null>(null)
+  const [closureIntent, setClosureIntent] = useState<WorkoutClosureIntent | null>(null)
+  const [closureState, setClosureState] = useState<ClosureUiState>('idle')
+
+  function cancelPendingPersistence() {
+    if (!timerRef.current) return
+    clearTimeout(timerRef.current)
+    timerRef.current = null
+  }
+
+  function setPendingIntent(intent: WorkoutClosureIntent | null) {
+    closureIntentRef.current = intent
+    setClosureIntent(intent)
+  }
+
+  function clearConfirmedClosure() {
+    cancelPendingPersistence()
+    staleSessionRef.current = null
+    setStaleSession(null)
+    hasUnsyncedLocalChangesRef.current = false
+    applyingRemoteRef.current = true
+    activeRef.current = null
+    if (uid) {
+      clearActiveSessionBackup(uid)
+      clearWorkoutClosureIntent(uid)
+    }
+    setPendingIntent(null)
+    setClosureState('idle')
+    useWorkoutStore.getState().clearWorkout()
+  }
+
+  function beginClosure(
+    action: WorkoutClosureIntent['action'],
+    session = activeRef.current,
+  ): WorkoutClosureIntent | null {
+    if (!uid || !session) return null
+    cancelPendingPersistence()
+    const existing = closureIntentRef.current
+    const intent = existing
+      && existing.action === action
+      && existing.session.sessionId === session.sessionId
+      ? existing
+      : { action, session, createdAt: Date.now() }
+    writeWorkoutClosureIntent(uid, intent)
+    setPendingIntent(intent)
+    setClosureState('submitting')
+    staleSessionRef.current = null
+    setStaleSession(null)
+    if (activeRef.current?.sessionId !== intent.session.sessionId) {
+      applyingRemoteRef.current = true
+      activeRef.current = intent.session
+      useWorkoutStore.getState().hydrateFromDoc(intent.session)
+      writeActiveSessionBackup(uid, intent.session)
+    }
+    return intent
+  }
+
+  function markClosureUnconfirmed() {
+    cancelPendingPersistence()
+    setClosureState('closure_unconfirmed')
+  }
+
+  function markSessionMismatch() {
+    cancelPendingPersistence()
+    setClosureState('session_mismatch')
+  }
+
+  function reloadCurrentSession() {
+    cancelPendingPersistence()
+    if (uid) {
+      clearWorkoutClosureIntent(uid)
+      clearActiveSessionBackup(uid)
+    }
+    setPendingIntent(null)
+    setClosureState('idle')
+    window.location.reload()
+  }
 
   useEffect(() => {
     activeRef.current = useWorkoutStore.getState().active
@@ -48,6 +137,10 @@ export function useActiveSession(uid: string | null) {
     const currentUid = uid
     const currentAtMount = useWorkoutStore.getState().active
     const backupAtMount = readActiveSessionBackup(currentUid)
+    const intentAtMount = readWorkoutClosureIntent(currentUid)
+    closureIntentRef.current = intentAtMount
+    setClosureIntent(intentAtMount)
+    setClosureState(intentAtMount ? 'closure_unconfirmed' : 'idle')
     hasUnsyncedLocalChangesRef.current = Boolean(
       currentAtMount
       && backupAtMount
@@ -58,11 +151,36 @@ export function useActiveSession(uid: string | null) {
     setStaleSession(null)
     hadRemoteSessionRef.current = false
 
-    const {
-      hydrateFromDoc,
-      clearWorkout,
-      startWorkout,
-    } = useWorkoutStore.getState()
+    const { hydrateFromDoc, clearWorkout, startWorkout } = useWorkoutStore.getState()
+    if (intentAtMount) {
+      applyingRemoteRef.current = true
+      hasUnsyncedLocalChangesRef.current = false
+      activeRef.current = intentAtMount.session
+      hydrateFromDoc(intentAtMount.session)
+      writeActiveSessionBackup(currentUid, intentAtMount.session)
+    }
+
+    function handleRemoteClosure(snapshot: ActiveWorkout) {
+      if (closureIntentRef.current?.session.sessionId === snapshot.sessionId) return
+      clearActiveSessionBackup(currentUid)
+      if (useWorkoutStore.getState().active?.sessionId !== snapshot.sessionId) return
+      applyingRemoteRef.current = true
+      activeRef.current = null
+      clearWorkout()
+    }
+
+    function persistSession(snapshot: ActiveWorkout) {
+      if (!shouldPersistActiveSession(snapshot, closureIntentRef.current)) return
+      void saveActiveSession(currentUid, snapshot).catch((error: unknown) => {
+        const classification = classifyActiveSessionWriteError({
+          code: errorCode(error),
+          attemptedSessionId: snapshot.sessionId,
+          localSessionId: useWorkoutStore.getState().active?.sessionId,
+        })
+        if (classification === 'remote_closure') handleRemoteClosure(snapshot)
+        else console.error('[active session save error]', error)
+      })
+    }
 
     const unsubscribeRemote = subscribeToActiveSession(
       currentUid,
@@ -78,10 +196,26 @@ export function useActiveSession(uid: string | null) {
           && typeof navigator !== 'undefined'
           && navigator.onLine
         )
+        const decision = decideRemoteSessionSync({
+          localSession: current,
+          remoteSession: session,
+          closureIntent: closureIntentRef.current,
+        })
 
-        if (session) {
-          if (isActiveSessionStale(session)) {
-            hadRemoteSessionRef.current = true
+        if (session && decision === 'accept_remote') {
+          hadRemoteSessionRef.current = true
+          staleSessionRef.current = null
+          setStaleSession(null)
+          writeActiveSessionBackup(currentUid, session)
+          applyingRemoteRef.current = true
+          hasUnsyncedLocalChangesRef.current = false
+          activeRef.current = session
+          hydrateFromDoc(session)
+          if (closureIntentRef.current) setClosureState('session_mismatch')
+        } else if (session) {
+          hadRemoteSessionRef.current = true
+          const matchingIntent = closureIntentRef.current?.session.sessionId === session.sessionId
+          if (!matchingIntent && isActiveSessionStale(session)) {
             staleSessionRef.current = session
             writeActiveSessionBackup(currentUid, session)
             setStaleSession({ ageLabel: getStaleSessionAgeLabel(session.startedAt) })
@@ -91,18 +225,14 @@ export function useActiveSession(uid: string | null) {
 
           staleSessionRef.current = null
           setStaleSession(null)
-
-          if (current && hasUnsyncedLocalChangesRef.current && currentSerialized !== nextSerialized) {
+          if (!matchingIntent && current && hasUnsyncedLocalChangesRef.current && currentSerialized !== nextSerialized) {
             writeActiveSessionBackup(currentUid, current)
-            void saveActiveSession(currentUid, current).catch(console.error)
+            persistSession(current)
             setReady(true)
             return
           }
-
-          hadRemoteSessionRef.current = true
-          writeActiveSessionBackup(currentUid, session)
-
-          if (currentSerialized !== nextSerialized) {
+          writeActiveSessionBackup(currentUid, matchingIntent ? closureIntentRef.current!.session : session)
+          if (!matchingIntent && currentSerialized !== nextSerialized) {
             applyingRemoteRef.current = true
             hasUnsyncedLocalChangesRef.current = false
             activeRef.current = session
@@ -110,16 +240,12 @@ export function useActiveSession(uid: string | null) {
           } else {
             hasUnsyncedLocalChangesRef.current = false
           }
-        } else if (hadRemoteSessionRef.current) {
+        } else if (decision === 'retain_closure_snapshot') {
+          hasUnsyncedLocalChangesRef.current = false
+        } else if (decision === 'clear_local' && !awaitingServerConfirmation) {
+          hadRemoteSessionRef.current = false
           staleSessionRef.current = null
           setStaleSession(null)
-
-          if (current && hasUnsyncedLocalChangesRef.current) {
-            setReady(true)
-            return
-          }
-
-          hadRemoteSessionRef.current = false
           clearActiveSessionBackup(currentUid)
           if (current) {
             applyingRemoteRef.current = true
@@ -139,31 +265,32 @@ export function useActiveSession(uid: string | null) {
               setReady(true)
               return
             }
-
             activeRef.current = backup
             hydrateFromDoc(backup)
-            void saveActiveSession(currentUid, backup).catch(console.error)
-          } else {
+            persistSession(backup)
+          } else if (!closureIntentRef.current) {
             startWorkout()
             const createdSession = useWorkoutStore.getState().active
             activeRef.current = createdSession
             if (createdSession) {
               writeActiveSessionBackup(currentUid, createdSession)
-              void saveActiveSession(currentUid, createdSession).catch(console.error)
+              persistSession(createdSession)
             }
           }
-        } else {
+        } else if (!closureIntentRef.current) {
           writeActiveSessionBackup(currentUid, current)
-          void saveActiveSession(currentUid, current).catch(console.error)
+          persistSession(current)
         }
-
         setReady(true)
       },
       (error) => {
         console.error('[activeSession subscribe error]', error)
+        if (closureIntentRef.current) {
+          setReady(true)
+          return
+        }
         const current = useWorkoutStore.getState().active
         const backup = readActiveSessionBackup(currentUid)
-
         if (!current && backup) {
           activeRef.current = backup
           hydrateFromDoc(backup)
@@ -173,45 +300,33 @@ export function useActiveSession(uid: string | null) {
           activeRef.current = createdSession
           if (createdSession) writeActiveSessionBackup(currentUid, createdSession)
         }
-
         setReady(true)
       },
     )
 
     const unsubscribe = useWorkoutStore.subscribe((state) => {
       activeRef.current = state.active
-
-      // Always clear the pending timer on any state change
-      if (timerRef.current) clearTimeout(timerRef.current)
-
+      cancelPendingPersistence()
       if (applyingRemoteRef.current) {
         applyingRemoteRef.current = false
         return
       }
-
-      // If active is null (clearWorkout was called), do not reschedule
       if (!state.active) {
         hasUnsyncedLocalChangesRef.current = false
         return
       }
-
       const snapshot = state.active
+      if (!shouldPersistActiveSession(snapshot, closureIntentRef.current)) return
       hasUnsyncedLocalChangesRef.current = true
       writeActiveSessionBackup(currentUid, snapshot)
-      timerRef.current = setTimeout(() => {
-        saveActiveSession(currentUid, snapshot).catch(console.error)
-      }, 400)
+      timerRef.current = setTimeout(() => persistSession(snapshot), 400)
     })
 
     function flushPendingSession() {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current)
-        timerRef.current = null
-      }
-
-      if (!activeRef.current) return
+      cancelPendingPersistence()
+      if (!activeRef.current || !shouldPersistActiveSession(activeRef.current, closureIntentRef.current)) return
       writeActiveSessionBackup(currentUid, activeRef.current)
-      void saveActiveSession(currentUid, activeRef.current)
+      persistSession(activeRef.current)
     }
 
     function handleVisibilityChange() {
@@ -220,7 +335,6 @@ export function useActiveSession(uid: string | null) {
 
     window.addEventListener('pagehide', flushPendingSession)
     document.addEventListener('visibilitychange', handleVisibilityChange)
-
     return () => {
       flushPendingSession()
       unsubscribeRemote()
@@ -230,19 +344,8 @@ export function useActiveSession(uid: string | null) {
     }
   }, [uid])
 
-  function clearSession(): Promise<void> {
-    if (timerRef.current) {
-      clearTimeout(timerRef.current)
-      timerRef.current = null
-    }
-    if (!uid) return Promise.resolve()
-    clearActiveSessionBackup(uid)
-    return deleteActiveSession(uid)
-  }
-
   async function continueStaleSession(): Promise<void> {
-    if (!uid || !staleSessionRef.current) return
-
+    if (!uid || !staleSessionRef.current || closureIntentRef.current) return
     const refreshedSession = refreshStaleActiveSession(staleSessionRef.current)
     staleSessionRef.current = null
     setStaleSession(null)
@@ -254,40 +357,58 @@ export function useActiveSession(uid: string | null) {
     await saveActiveSession(uid, refreshedSession)
   }
 
-  async function discardStaleSession(): Promise<void> {
-    if (!uid) return
-
-    const { clearWorkout, startWorkout } = useWorkoutStore.getState()
-    const result = await discardStaleSessionLifecycle({
-      clearLocal: () => {
-        if (timerRef.current) {
-          clearTimeout(timerRef.current)
-          timerRef.current = null
-        }
-        staleSessionRef.current = null
-        setStaleSession(null)
-        clearActiveSessionBackup(uid)
-        applyingRemoteRef.current = true
-        hasUnsyncedLocalChangesRef.current = false
-        activeRef.current = null
-        clearWorkout()
-      },
-      deleteRemote: () => deleteActiveSession(uid),
-      startReplacement: () => {
-        startWorkout()
-        const createdSession = useWorkoutStore.getState().active
-        activeRef.current = createdSession
-        return createdSession
-      },
-      persistReplacement: async (createdSession) => {
-        writeActiveSessionBackup(uid, createdSession)
-        await saveActiveSession(uid, createdSession)
-      },
-    })
-    if (result.cleanupError) {
-      console.error('[discard stale session error]', result.cleanupError)
+  async function discardStaleSession() {
+    const pendingStaleDiscard = closureIntentRef.current?.action === 'discard'
+      ? closureIntentRef.current.session
+      : null
+    const session = staleSessionRef.current ?? pendingStaleDiscard
+    if (!uid || !session) return null
+    const intent = beginClosure('discard', session)
+    if (!intent) return null
+    try {
+      const result = await discardStaleSessionLifecycle({
+        uid,
+        session: intent.session,
+        now: () => intent.createdAt,
+        clearConfirmed: clearConfirmedClosure,
+        startReplacement: () => {
+          useWorkoutStore.getState().startWorkout()
+          const createdSession = useWorkoutStore.getState().active
+          activeRef.current = createdSession
+          return createdSession
+        },
+        persistReplacement: async (createdSession) => {
+          writeActiveSessionBackup(uid, createdSession)
+          try {
+            await saveActiveSession(uid, createdSession)
+          } catch (error) {
+            console.error('[persist stale replacement error]', error)
+          }
+        },
+      })
+      if (result.status === 'closure_unconfirmed') markClosureUnconfirmed()
+      return result
+    } catch (error) {
+      if (error instanceof WorkoutClosureError && error.code === 'session_mismatch') {
+        markSessionMismatch()
+      } else {
+        markClosureUnconfirmed()
+      }
+      throw error
     }
   }
 
-  return { clearSession, continueStaleSession, discardStaleSession, ready, staleSession }
+  return {
+    beginClosure,
+    closureIntent,
+    closureState,
+    confirmClosure: clearConfirmedClosure,
+    continueStaleSession,
+    discardStaleSession,
+    markClosureUnconfirmed,
+    markSessionMismatch,
+    ready,
+    reloadCurrentSession,
+    staleSession,
+  }
 }

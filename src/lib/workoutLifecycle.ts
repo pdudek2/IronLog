@@ -12,6 +12,7 @@ import {
   type FinalizeWorkoutResult,
 } from './workoutClosureService'
 import type { SaveWorkoutResult } from './workoutService'
+import { canCreateStaleReplacement } from './activeSessionSyncPolicy'
 
 export interface ClosureUnconfirmedResult {
   status: 'closure_unconfirmed'
@@ -127,7 +128,7 @@ export async function discardStaleSessionLifecycle(
     dependencies,
     dependencies.request ?? (() => discardWorkoutSession(dependencies.session.sessionId)),
   )
-  if (result.status === 'closure_unconfirmed') return { ...result, replacement: null }
+  if (!canCreateStaleReplacement(result)) return { ...result, replacement: null }
 
   const replacement = dependencies.startReplacement()
   if (replacement) await dependencies.persistReplacement(replacement)

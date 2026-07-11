@@ -6,8 +6,10 @@ import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
-import { saveWorkout, getRecentWorkouts } from '../lib/workoutService'
+import { getRecentWorkouts } from '../lib/workoutService'
 import { discardWorkoutLifecycle, finishWorkoutLifecycle } from '../lib/workoutLifecycle'
+import { WorkoutClosureError } from '../lib/workoutClosureService'
+import type { WorkoutClosureIntent } from '../lib/workoutClosureIntent'
 import { getUserExercises } from '../lib/userExercisesService'
 import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
@@ -20,6 +22,7 @@ import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadServ
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
+import { isActiveSessionStale } from '../lib/sessionDuration'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
 const CATEGORY_LABELS: Record<string, string> = {
@@ -299,22 +302,25 @@ export default function WorkoutPage() {
     startWorkout,
     setLabel,
     addExercise,
-    clearWorkout,
   } = useWorkoutStore()
   const navigate = useNavigate()
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const goQuick = (to: string) => navigateWithAppTransition(navigate, to)
 
   const {
-    clearSession,
+    beginClosure,
+    closureIntent,
+    closureState,
+    confirmClosure,
     continueStaleSession,
     discardStaleSession,
+    markClosureUnconfirmed,
+    markSessionMismatch,
     ready,
+    reloadCurrentSession,
     staleSession,
   } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [closingSession, setClosingSession] = useState(false)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
   const [saveError, setSaveError] = useState('')
@@ -449,33 +455,49 @@ export default function WorkoutPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, active?.exercises.length])
 
-  async function doFinish() {
-    if (!active || !user || saving || closingSession) return
-    setSaving(true)
-    setClosingSession(true)
+  const saving = closureState === 'submitting'
+  const closureLocked = closureState !== 'idle'
+
+  function handleClosureError(error: unknown) {
+    if (error instanceof WorkoutClosureError && error.code === 'session_mismatch') {
+      markSessionMismatch()
+      return
+    }
+    markClosureUnconfirmed()
+  }
+
+  async function submitFinish(intent: WorkoutClosureIntent) {
+    if (!user) return
     setSaveError('')
     try {
       const result = await finishWorkoutLifecycle({
-        saveWorkout: () => saveWorkout(user.uid, active),
-        clearWorkout,
-        clearSession,
+        uid: user.uid,
+        session: intent.session,
+        now: () => intent.createdAt,
+        clearConfirmed: confirmClosure,
       })
-      if (result.cleanupError) {
-        console.error('[clearSession after finish error]', result.cleanupError)
-        toast.error('Trening zapisany, ale aktywna sesja nie została jeszcze usunięta z chmury.')
+      if (result.status === 'closure_unconfirmed') {
+        markClosureUnconfirmed()
+        return
       }
       navigate('/dashboard', { replace: true })
-      toast.success('Trening zapisany!')
-    } catch {
-      setSaveError('Błąd zapisu. Spróbuj ponownie.')
-      toast.error('Błąd zapisu. Spróbuj ponownie.')
-      setClosingSession(false)
-      setSaving(false)
+      toast.success(result.status === 'materialized'
+        ? 'Trening zapisany!'
+        : 'Trening zapisany. Statystyki oczekują na synchronizację.')
+    } catch (error) {
+      console.error('[finish workout closure error]', error)
+      handleClosureError(error)
     }
   }
 
+  async function doFinish() {
+    if (!active || !user || closureLocked) return
+    const intent = beginClosure('finish', active)
+    if (intent) await submitFinish(intent)
+  }
+
   function handleFinish() {
-    if (!active || !user || saving) return
+    if (!active || !user || closureLocked) return
     const hasSets = active.exercises.some((exercise) => exercise.sets.some((set) => set.done))
     if (!hasSets) { setConfirmFinishEmpty(true); return }
     void doFinish()
@@ -527,14 +549,25 @@ export default function WorkoutPage() {
   }, [])
 
   async function handleConfirmDiscard() {
-    if (closingSession) return
-    setClosingSession(true)
-    const result = await discardWorkoutLifecycle({ clearWorkout, clearSession })
-    if (result.cleanupError) {
-      console.error('[clearSession after discard error]', result.cleanupError)
-      toast.error('Nie udało się od razu usunąć sesji w chmurze, ale wróciłem do dashboardu.')
+    if (!active || !user || closureLocked) return
+    const intent = beginClosure('discard', active)
+    if (!intent) return
+    try {
+      const result = await discardWorkoutLifecycle({
+        uid: user.uid,
+        session: intent.session,
+        now: () => intent.createdAt,
+        clearConfirmed: confirmClosure,
+      })
+      if (result.status === 'closure_unconfirmed') {
+        markClosureUnconfirmed()
+        return
+      }
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      console.error('[discard workout closure error]', error)
+      handleClosureError(error)
     }
-    navigate('/dashboard', { replace: true })
   }
 
   async function handleContinueStaleSession() {
@@ -555,7 +588,8 @@ export default function WorkoutPage() {
     if (handlingStaleSession) return
     setHandlingStaleSession(true)
     try {
-      await discardStaleSession()
+      const result = await discardStaleSession()
+      if (!result || result.status === 'closure_unconfirmed') return
       toast.success('Stara sesja odrzucona. Zaczynamy od nowa.')
     } catch (error) {
       console.error('[discard stale session error]', error)
@@ -565,8 +599,40 @@ export default function WorkoutPage() {
     }
   }
 
-  if (!ready || closingSession) {
-    return <LoadingState message={closingSession ? 'Zamykam sesję...' : 'Przygotowuję trening...'} />
+  async function retryClosure() {
+    if (!closureIntent || closureState === 'submitting') return
+    if (closureIntent.action === 'finish') {
+      const intent = beginClosure('finish', closureIntent.session)
+      if (intent) await submitFinish(intent)
+      return
+    }
+    if (isActiveSessionStale(closureIntent.session, closureIntent.createdAt)) {
+      await handleDiscardStaleSession()
+      return
+    }
+    if (!user) return
+    const intent = beginClosure('discard', closureIntent.session)
+    if (!intent) return
+    try {
+      const result = await discardWorkoutLifecycle({
+        uid: user.uid,
+        session: intent.session,
+        now: () => intent.createdAt,
+        clearConfirmed: confirmClosure,
+      })
+      if (result.status === 'closure_unconfirmed') {
+        markClosureUnconfirmed()
+        return
+      }
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      console.error('[retry discard closure error]', error)
+      handleClosureError(error)
+    }
+  }
+
+  if (!ready) {
+    return <LoadingState message="Przygotowuję trening..." />
   }
 
   if (staleSession) {
@@ -706,6 +772,41 @@ export default function WorkoutPage() {
       role="region"
       aria-label={`Aktywna sesja: ${activeLabel}`}
     >
+      {closureState === 'closure_unconfirmed' && (
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+          <p className="text-sm font-semibold text-white">Nie udało się potwierdzić zamknięcia sesji.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
+            Dane treningu są zachowane. Edycja pozostaje zablokowana, dopóki serwer nie potwierdzi wyniku.
+          </p>
+          <button
+            type="button"
+            onClick={() => { void retryClosure() }}
+            className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+          >
+            Spróbuj ponownie
+          </button>
+        </div>
+      )}
+
+      {closureState === 'session_mismatch' && (
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+          <p className="text-sm font-semibold text-white">Ta sesja nie jest już aktywna na serwerze.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
+            Wczytaj aktualny stan, aby nie nadpisać treningu otwartego na innym urządzeniu.
+          </p>
+          <button
+            type="button"
+            onClick={reloadCurrentSession}
+            className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+          >
+            Wczytaj aktualny stan
+          </button>
+        </div>
+      )}
+
+      <div className="contents" inert={closureLocked ? true : undefined}>
 
       {/* ── Mobile sticky header ─────────────────── */}
       {!isDesktop && (
@@ -1172,6 +1273,7 @@ export default function WorkoutPage() {
           onCancel={() => setPendingExerciseRemovalIndex(null)}
         />
       )}
+      </div>
     </div>
   )
 }

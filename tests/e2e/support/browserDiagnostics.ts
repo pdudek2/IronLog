@@ -6,6 +6,7 @@ export interface BrowserDiagnostic {
   url?: string
   method?: string
   blocking: boolean
+  expectedBy?: string
 }
 
 const NON_BLOCKING_CONSOLE_PATTERNS = [

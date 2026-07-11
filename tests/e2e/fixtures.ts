@@ -22,12 +22,21 @@ export interface ObservedContextFactory {
   newContext(options?: Parameters<Browser['newContext']>[0]): Promise<BrowserContext>
 }
 
+export interface ExpectedBrowserDiagnostics {
+  during<T>(
+    name: string,
+    predicate: (entry: BrowserDiagnostic) => boolean,
+    action: () => Promise<T>,
+  ): Promise<T>
+}
+
 interface IronLogFixtures {
   browserDiagnostics: BrowserDiagnostic[]
   cleanup: CleanupRegistry
   diagnosticsController: BrowserDiagnosticsController
   observeDefaultContext: void
   observedContextFactory: ObservedContextFactory
+  expectedBrowserDiagnostics: ExpectedBrowserDiagnostics
 }
 
 export const test = base.extend<IronLogFixtures>({
@@ -59,9 +68,18 @@ export const test = base.extend<IronLogFixtures>({
       })
     }
 
-    const blocking = entries.filter((entry) => entry.blocking)
+    const blocking = entries.filter((entry) => entry.blocking && !entry.expectedBy)
     expect.soft(blocking, formatBlockingDiagnostics(blocking)).toEqual([])
   }, { auto: true }],
+  expectedBrowserDiagnostics: async ({ diagnosticsController }, fixtureUse) => {
+    await fixtureUse({
+      during: (name, predicate, action) => diagnosticsController.runExpectingDiagnostics(
+        name,
+        predicate,
+        action,
+      ),
+    })
+  },
   observedContextFactory: async ({ browser, diagnosticsController }, fixtureUse) => {
     const contexts: BrowserContext[] = []
     await fixtureUse({

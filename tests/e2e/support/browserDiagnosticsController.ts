@@ -16,12 +16,31 @@ export interface BrowserDiagnosticsController {
   detachContext(context: BrowserContext): void
   detachAll(): void
   runInIntentionalTeardown<T>(action: () => Promise<T>): Promise<T>
+  runExpectingDiagnostics<T>(
+    name: string,
+    predicate: (entry: BrowserDiagnostic) => boolean,
+    action: () => Promise<T>,
+  ): Promise<T>
 }
 
 export function createBrowserDiagnosticsController(): BrowserDiagnosticsController {
   const entries: BrowserDiagnostic[] = []
   const contextCleanups = new Map<BrowserContext, () => void>()
+  const activeExpectations: Array<{
+    name: string
+    predicate: (entry: BrowserDiagnostic) => boolean
+    matchCount: number
+  }> = []
   let teardownDepth = 0
+
+  const record = (entry: BrowserDiagnostic) => {
+    const expectation = activeExpectations.findLast(({ predicate }) => predicate(entry))
+    if (expectation) {
+      expectation.matchCount += 1
+      entry.expectedBy = expectation.name
+    }
+    entries.push(entry)
+  }
 
   const observeContext = (context: BrowserContext) => {
     if (contextCleanups.has(context)) return
@@ -50,7 +69,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
         }
       }
       const onPageError = (error: Error) => {
-        entries.push({
+        record({
           kind: 'pageerror',
           message: error.message,
           url: page.url(),
@@ -60,7 +79,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       const onConsole = (message: ConsoleMessage) => {
         if (message.type() !== 'error') return
         const text = message.text()
-        entries.push({
+        record({
           kind: 'console',
           message: text,
           url: page.url(),
@@ -69,7 +88,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       }
       const onRequestFailed = (request: Request) => {
         const errorText = request.failure()?.errorText ?? 'unknown request failure'
-        entries.push({
+        record({
           kind: 'requestfailed',
           message: errorText,
           url: request.url(),
@@ -131,6 +150,21 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       } finally {
         teardownDepth -= 1
       }
+    },
+    async runExpectingDiagnostics<T>(name, predicate, action): Promise<T> {
+      const expectation = { name, predicate, matchCount: 0 }
+      activeExpectations.push(expectation)
+      let result: T
+      try {
+        result = await action()
+      } finally {
+        const index = activeExpectations.lastIndexOf(expectation)
+        if (index >= 0) activeExpectations.splice(index, 1)
+      }
+      if (expectation.matchCount === 0) {
+        throw new Error(`Expected browser diagnostics were not observed: ${name}`)
+      }
+      return result
     },
   }
 }

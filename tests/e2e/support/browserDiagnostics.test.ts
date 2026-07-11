@@ -65,4 +65,39 @@ describe('browser diagnostics controller', () => {
     expect(context.listenerCount('page')).toBe(0)
     expect(page.eventNames()).toEqual([])
   })
+
+  it('marks only predicate matches emitted inside an explicit expectation scope', async () => {
+    const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    context.pages = () => [page as unknown as Page]
+    page.url = () => 'http://localhost/templates'
+    page.mainFrame = () => ({}) as ReturnType<Page['mainFrame']>
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(context as unknown as BrowserContext)
+
+    await controller.runExpectingDiagnostics(
+      'intentional offline failure',
+      (entry) => entry.message === 'expected offline error',
+      async () => {
+        page.emit('console', { type: () => 'error', text: () => 'expected offline error' } as ConsoleMessage)
+        page.emit('console', { type: () => 'error', text: () => 'unexpected error' } as ConsoleMessage)
+      },
+    )
+    page.emit('console', { type: () => 'error', text: () => 'expected offline error' } as ConsoleMessage)
+
+    expect(controller.entries.map((entry) => entry.expectedBy)).toEqual([
+      'intentional offline failure',
+      undefined,
+      undefined,
+    ])
+  })
+
+  it('rejects an expectation scope that did not observe a matching diagnostic', async () => {
+    const controller = createBrowserDiagnosticsController()
+    await expect(controller.runExpectingDiagnostics(
+      'missing expected failure',
+      () => true,
+      async () => undefined,
+    )).rejects.toThrow('missing expected failure')
+  })
 })

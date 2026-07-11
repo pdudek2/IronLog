@@ -1,4 +1,5 @@
 import { adminDb } from './firebaseAdmin.js'
+import type { Firestore } from 'firebase-admin/firestore'
 import {
   buildExerciseSessionDocumentId,
   normalizeWorkoutExercises,
@@ -74,9 +75,25 @@ interface ExerciseMetadata {
 const exerciseMap = new Map(exerciseCatalog.map((exercise) => [exercise.id, exercise]))
 const MAX_BATCH_WRITES = 450
 
-export async function materializeWorkoutForUser(userId: string, workoutId: string): Promise<void> {
+export interface MaterializationReviewCheckpoints {
+  beforeExerciseSessions?(): void | Promise<void>
+  afterExerciseSessions?(): void | Promise<void>
+  afterRecords?(): void | Promise<void>
+}
+
+export interface MaterializationReviewOptions {
+  db?: Firestore
+  checkpoints?: MaterializationReviewCheckpoints
+}
+
+export async function materializeWorkoutForUser(
+  userId: string,
+  workoutId: string,
+  options: MaterializationReviewOptions = {},
+): Promise<void> {
+  const database = options.db ?? adminDb
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
-  const workoutRef = adminDb.collection('workouts').doc(workoutDocumentId)
+  const workoutRef = database.collection('workouts').doc(workoutDocumentId)
   const workoutSnap = await workoutRef.get()
 
   if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
@@ -85,13 +102,16 @@ export async function materializeWorkoutForUser(userId: string, workoutId: strin
   assertOwnership(userId, workout.userId)
   assertFinishedWorkout(workout)
 
-  const existingSessions = await listExerciseSessionsForWorkout(workoutDocumentId)
-  const userExerciseMetadata = await loadUserExerciseMetadata(workout.userId, workout.exercises)
+  const existingSessions = await listExerciseSessionsForWorkout(database, workoutDocumentId)
+  const userExerciseMetadata = await loadUserExerciseMetadata(database, workout.userId, workout.exercises)
   const nextSessions = buildExerciseSessions(workoutDocumentId, workout, userExerciseMetadata)
   const affectedExercises = collectExerciseKeys(existingSessions, nextSessions)
 
-  await replaceExerciseSessions(existingSessions, nextSessions)
-  await recomputeRecords(workout.userId, affectedExercises)
+  await options.checkpoints?.beforeExerciseSessions?.()
+  await replaceExerciseSessions(database, existingSessions, nextSessions)
+  await options.checkpoints?.afterExerciseSessions?.()
+  await recomputeRecords(database, workout.userId, affectedExercises)
+  await options.checkpoints?.afterRecords?.()
   await workoutRef.update({ materialized: true })
 }
 
@@ -132,7 +152,7 @@ export async function deleteFinishedWorkoutForUser(userId: string, workoutId: st
   assertOwnership(userId, workout.userId)
   assertFinishedWorkout(workout)
 
-  const existingSessions = await listExerciseSessionsForWorkout(workoutDocumentId)
+  const existingSessions = await listExerciseSessionsForWorkout(adminDb, workoutDocumentId)
   const affectedExercises = collectExerciseKeys(existingSessions)
 
   let batch = adminDb.batch()
@@ -156,7 +176,7 @@ export async function deleteFinishedWorkoutForUser(userId: string, workoutId: st
     await batch.commit()
   }
 
-  await recomputeRecords(workout.userId, affectedExercises)
+  await recomputeRecords(adminDb, workout.userId, affectedExercises)
 }
 
 function assertOwnership(currentUserId: string, resourceUserId: string): void {
@@ -239,6 +259,7 @@ function toFiniteNumber(value: unknown): number {
 }
 
 async function loadUserExerciseMetadata(
+  database: Firestore,
   userId: string,
   exercises: WorkoutExercise[],
 ): Promise<Map<string, ExerciseMetadata>> {
@@ -250,8 +271,8 @@ async function loadUserExerciseMetadata(
 
   if (ids.length === 0) return new Map()
 
-  const refs = ids.map((id) => adminDb.collection('userExercises').doc(id))
-  const snapshots = await adminDb.getAll(...refs)
+  const refs = ids.map((id) => database.collection('userExercises').doc(id))
+  const snapshots = await database.getAll(...refs)
   const metadataMap = new Map<string, ExerciseMetadata>()
 
   for (const snapshot of snapshots) {
@@ -328,38 +349,42 @@ function buildExerciseSessions(
   })
 }
 
-async function listExerciseSessionsForWorkout(workoutId: string): Promise<ExerciseSessionDoc[]> {
-  const snap = await adminDb.collection('exerciseSessions').where('workoutId', '==', workoutId).get()
+async function listExerciseSessionsForWorkout(
+  database: Firestore,
+  workoutId: string,
+): Promise<ExerciseSessionDoc[]> {
+  const snap = await database.collection('exerciseSessions').where('workoutId', '==', workoutId).get()
   return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<ExerciseSessionDoc, 'id'>) }))
 }
 
 async function replaceExerciseSessions(
+  database: Firestore,
   existingSessions: ExerciseSessionDoc[],
   nextSessions: ExerciseSessionDoc[]
 ): Promise<void> {
-  let batch = adminDb.batch()
+  let batch = database.batch()
   let writeCount = 0
   const nextIds = new Set(nextSessions.map((session) => session.id))
 
   for (const session of nextSessions) {
-    batch.set(adminDb.collection('exerciseSessions').doc(session.id), session)
+    batch.set(database.collection('exerciseSessions').doc(session.id), session)
     writeCount += 1
 
     if (writeCount >= MAX_BATCH_WRITES) {
       await batch.commit()
-      batch = adminDb.batch()
+      batch = database.batch()
       writeCount = 0
     }
   }
 
   for (const session of existingSessions) {
     if (!nextIds.has(session.id)) {
-      batch.delete(adminDb.collection('exerciseSessions').doc(session.id))
+      batch.delete(database.collection('exerciseSessions').doc(session.id))
       writeCount += 1
 
       if (writeCount >= MAX_BATCH_WRITES) {
         await batch.commit()
-        batch = adminDb.batch()
+        batch = database.batch()
         writeCount = 0
       }
     }
@@ -388,18 +413,26 @@ function collectExerciseKeys(...groups: Array<Array<Pick<ExerciseSessionDoc, 'ex
   return [...map.values()]
 }
 
-async function recomputeRecords(userId: string, exercises: ExerciseKey[]): Promise<void> {
-  await Promise.all(exercises.map((exercise) => recomputeRecordForExercise(userId, exercise)))
+async function recomputeRecords(
+  database: Firestore,
+  userId: string,
+  exercises: ExerciseKey[],
+): Promise<void> {
+  await Promise.all(exercises.map((exercise) => recomputeRecordForExercise(database, userId, exercise)))
 }
 
-async function recomputeRecordForExercise(userId: string, exercise: ExerciseKey): Promise<void> {
-  const sessionsSnap = await adminDb.collection('exerciseSessions')
+async function recomputeRecordForExercise(
+  database: Firestore,
+  userId: string,
+  exercise: ExerciseKey,
+): Promise<void> {
+  const sessionsSnap = await database.collection('exerciseSessions')
     .where('userId', '==', userId)
     .where('exerciseId', '==', exercise.exerciseId)
     .where('exerciseSource', '==', exercise.exerciseSource)
     .get()
 
-  const recordRef = adminDb.collection('records').doc(buildRecordId(userId, exercise))
+  const recordRef = database.collection('records').doc(buildRecordId(userId, exercise))
 
   if (sessionsSnap.empty) {
     await recordRef.delete()

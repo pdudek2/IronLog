@@ -23,9 +23,6 @@ setup('authenticate', async ({ page }) => {
   await page.waitForURL('/dashboard', { timeout: 20_000 })
   await expect(page).toHaveURL('/dashboard')
 
-  // Keep consent UI out of authenticated test flows. Consent has its own public-route spec.
-  await page.evaluate(() => window.localStorage.setItem('ironlog.analyticsConsent', 'denied'))
-
   // Wait for Firebase to flush auth tokens to localStorage (setPersistence is async)
   await page.waitForTimeout(1_000)
 

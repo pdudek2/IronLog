@@ -51,7 +51,7 @@ Aktualny baseline jakości:
 - 21 plików i 111 testów jednostkowych oraz testów wsparcia przechodzi,
 - 1 plik i 8 testów reguł Firestore przechodzi,
 - izolowany gate Auth+Firestore emulator przechodzi dwukrotnie: 13 testów Playwright na świeżych emulatorach w każdym uruchomieniu,
-- live `npm run test:e2e` pozostaje kontrolą integracyjną; bieżące uruchomienie bez prywatnych zmiennych zatrzymuje się przed uwierzytelnieniem na konflikcie matcherów Vitest wykrytych przez Playwright.
+- live `npm run test:e2e` pozostaje kontrolą integracyjną; bieżące uruchomienie bez prywatnych danych uwierzytelniających poprawnie wykrywa 131 testów, po czym zatrzymuje się w setupie z powodu braku `TEST_EMAIL` i `TEST_PASSWORD`.
 
 ## 4. Mapa faz
 

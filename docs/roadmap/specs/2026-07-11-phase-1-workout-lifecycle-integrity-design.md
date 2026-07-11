@@ -195,8 +195,10 @@ Klient bez własnego intentu może nadal mieć starszy snapshot. Po zamknięciu 
 
 - jego oczekujący zapis zostaje odrzucony przez reguły z powodu tombstone'a;
 - zapis nie zastępuje nowszej sesji ani nie odtwarza starej;
-- snapshot serwera usuwa zamkniętą sesję z lokalnego UI;
-- błąd permission-denied dla takiego zapisu jest obsługiwany jako zamknięcie zdalne, a nie jako ogólny błąd synchronizacji.
+- autorytatywny snapshot serwera z `onSnapshot` usuwa zamkniętą sesję z lokalnego UI, gdy zwraca brak dokumentu, albo zastępuje ją, gdy zwraca inne `sessionId`;
+- sam błąd `permission-denied` zapisu nie jest dowodem tombstone'a ani zamknięcia zdalnego: klient zachowuje lokalną sesję i stan recovery, raportuje błąd synchronizacji i czeka na autorytatywne uzgodnienie przez `onSnapshot`.
+
+**Zatwierdzona korekta implementacyjna:** sam błąd zapisu nigdy nie czyści lokalnego snapshotu ani recovery. Lokalny stan może zostać usunięty lub zastąpiony wyłącznie po autorytatywnym uzgodnieniu `onSnapshot` (`remote null` albo inna sesja). Chroni to dane użytkownika przed błędną interpretacją niezwiązanego z tombstone'em `permission-denied`.
 
 ## 8. UI i komunikaty
 

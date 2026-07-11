@@ -102,7 +102,7 @@ Faza 1 ma status `DONE` i objęła wyłącznie `WORKOUT-01`, `WORKOUT-02`, `WORK
 
 ## Weryfikacja i ograniczenia
 
-Świeża pełna bramka Fazy 1 na `9cb3f30` zakończyła się następująco:
+Świeża pełna bramka Fazy 1 na checkoutcie `8cd4731` zakończyła się następująco:
 
 - `npm run lint` — exit 0;
 - `npm run test:unit` — 28/28 plików, 190/190 testów;

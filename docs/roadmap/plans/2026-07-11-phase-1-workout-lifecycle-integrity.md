@@ -514,12 +514,12 @@ Extract pure decisions into `activeSessionSyncPolicy.ts` and cover them without 
 
 - a matching pending intent blocks active-session persistence;
 - a pending intent retains its snapshot when the remote active document disappears;
-- no intent accepts remote deletion and clears stale local state;
-- a tombstone-related permission error is classified as remote closure only for the same `sessionId`;
-- a different active `sessionId` wins over the stale local session;
+- no intent accepts an authoritative `onSnapshot` remote deletion and clears stale local state;
+- a write failure, including same-session `permission-denied`, preserves local and recovery state because it is not authoritative proof of a tombstone or remote closure;
+- an authoritative `onSnapshot` with a different active `sessionId` replaces the stale local session;
 - confirmed stale discard permits replacement creation; ambiguous discard does not.
 
-The hook still owns timer cancellation and storage calls. Focused Playwright in Task 7 proves the complete browser behavior.
+**Approved implementation correction:** only authoritative `onSnapshot` reconciliation (`remote null` or a different session) may clear or replace local state. A rejected write reports a sync error and waits for that reconciliation. The hook still owns timer cancellation and storage calls. Focused Playwright in Task 7 proves the complete browser behavior.
 
 - [ ] **Step 2: Verify RED**
 

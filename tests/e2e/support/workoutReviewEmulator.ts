@@ -6,6 +6,8 @@ const APP_NAME = 'phase-r-playwright-workout-review'
 const PROJECT_ID = 'demo-ironlog'
 const POLL_INTERVAL_MS = 100
 const DEFAULT_POLL_TIMEOUT_MS = 10_000
+const ACTIVE_SESSION_DEBOUNCE_MS = 400
+const ACTIVE_SESSION_SCHEDULING_ALLOWANCE_MS = 200
 
 interface SeedReviewWorkoutOptions {
   id: string
@@ -117,6 +119,26 @@ export async function waitForReviewActiveSession(
   return session
 }
 
+export async function waitForSettledReviewActiveSession(
+  timeoutMs = DEFAULT_POLL_TIMEOUT_MS,
+): Promise<ReviewActiveSession | null> {
+  const settleWindowMs = ACTIVE_SESSION_DEBOUNCE_MS + ACTIVE_SESSION_SCHEDULING_ALLOWANCE_MS
+  const deadline = Date.now() + timeoutMs
+  let session = await readReviewActiveSession()
+  let absentSince = session === null ? Date.now() : null
+
+  while (Date.now() < deadline) {
+    if (session !== null) return session
+    if (absentSince !== null && Date.now() - absentSince >= settleWindowMs) return null
+
+    await new Promise<void>((resolve) => setTimeout(resolve, POLL_INTERVAL_MS))
+    session = await readReviewActiveSession()
+    absentSince ??= session === null ? Date.now() : null
+  }
+
+  throw new Error(`Timed out waiting for the Phase R active session outcome after ${timeoutMs} ms.`)
+}
+
 export async function cleanupWorkoutReviewState(): Promise<void> {
   const app = getWorkoutReviewApp()
   const uid = await getReviewUid()
@@ -125,7 +147,10 @@ export async function cleanupWorkoutReviewState(): Promise<void> {
     .where('userId', '==', uid)
     .orderBy(FieldPath.documentId())
     .get()
-  const reviewWorkouts = workouts.docs.filter((snapshot) => snapshot.id.startsWith('phase-r-'))
+  const reviewWorkouts = workouts.docs.filter((snapshot) => (
+    snapshot.id.startsWith('phase-r-')
+    || String(snapshot.get('label')).startsWith('Phase R')
+  ))
 
   const cleanupResults = await Promise.allSettled([
     database.doc(`activeSessions/${uid}`).delete(),

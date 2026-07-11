@@ -44,6 +44,7 @@ AGENTS.md
 .mcp.json
 .codex/
 .playwright-mcp/
+.worktrees/
 
 # TPF dokumentacja i tooling (poza repo)
 *.docx

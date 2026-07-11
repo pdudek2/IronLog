@@ -262,4 +262,75 @@ describe('workout closure', () => {
     })).rejects.toMatchObject({ status: 409 })
     expect((await readClosure()).tombstone.data()?.outcome).toBe('discarded')
   })
+
+  it('validates ownership before classifying a workout-only closure as incomplete', async () => {
+    await db.collection('workouts').doc(input.sessionId).set({
+      ...input,
+      userId: 'other-user',
+      materialized: false,
+    })
+
+    await expect(finalizeWorkoutForUser(USER_ID, input, {
+      db,
+      materialize: vi.fn(),
+    })).rejects.toMatchObject({ status: 403, code: 'resource_owner_mismatch' })
+  })
+
+  it('validates ownership before classifying a tombstone-only closure as incomplete', async () => {
+    await db.collection('closedSessions').doc(input.sessionId).set({
+      userId: 'other-user',
+      sessionId: input.sessionId,
+      outcome: 'finished',
+      workoutId: input.sessionId,
+      closedAt: FINISHED_AT,
+    })
+
+    await expect(finalizeWorkoutForUser(USER_ID, input, {
+      db,
+      materialize: vi.fn(),
+    })).rejects.toMatchObject({ status: 403, code: 'resource_owner_mismatch' })
+  })
+
+  it('validates both existing records before classifying a contradictory finish', async () => {
+    await Promise.all([
+      db.collection('workouts').doc(input.sessionId).set({
+        ...input,
+        userId: USER_ID,
+        materialized: false,
+      }),
+      db.collection('closedSessions').doc(input.sessionId).set({
+        userId: 'other-user',
+        sessionId: input.sessionId,
+        outcome: 'discarded',
+        workoutId: null,
+        closedAt: FINISHED_AT,
+      }),
+    ])
+
+    await expect(finalizeWorkoutForUser(USER_ID, input, {
+      db,
+      materialize: vi.fn(),
+    })).rejects.toMatchObject({ status: 403, code: 'resource_owner_mismatch' })
+  })
+
+  it('validates an existing workout before accepting a discarded tombstone retry', async () => {
+    await Promise.all([
+      db.collection('workouts').doc(input.sessionId).set({
+        ...input,
+        userId: 'other-user',
+        materialized: false,
+      }),
+      db.collection('closedSessions').doc(input.sessionId).set({
+        userId: USER_ID,
+        sessionId: input.sessionId,
+        outcome: 'discarded',
+        workoutId: null,
+        closedAt: FINISHED_AT,
+      }),
+    ])
+
+    await expect(discardSessionForUser(USER_ID, input.sessionId, {
+      db,
+    })).rejects.toMatchObject({ status: 403, code: 'resource_owner_mismatch' })
+  })
 })

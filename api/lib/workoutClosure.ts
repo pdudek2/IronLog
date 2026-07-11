@@ -99,19 +99,31 @@ export async function discardSessionForUser(
       activeRef,
     )
 
-    if (tombstone.exists) {
-      const stored = requireOwnedRecord(tombstone, userId, 'tombstone')
-      requireIdentity(stored.sessionId, normalizedSessionId)
-      if (stored.outcome !== 'discarded' || stored.workoutId !== null || workout.exists) {
+    const storedWorkout = validateExistingClosureRecord(
+      workout,
+      userId,
+      normalizedSessionId,
+      'workout',
+    )
+    const storedTombstone = validateExistingClosureRecord(
+      tombstone,
+      userId,
+      normalizedSessionId,
+      'tombstone',
+    )
+
+    if (storedTombstone) {
+      if (
+        storedTombstone.outcome !== 'discarded'
+        || storedTombstone.workoutId !== null
+        || storedWorkout
+      ) {
         throw closureConflict()
       }
       return
     }
 
-    if (workout.exists) {
-      requireOwnedRecord(workout, userId, 'workout')
-      throw closureConflict()
-    }
+    if (storedWorkout) throw closureConflict()
 
     if (active.exists) {
       requireMatchingActiveSession(userId, normalizedSessionId, active)
@@ -136,18 +148,29 @@ function validateExistingFinishedClosure(
   workout: DocumentSnapshot,
   tombstone: DocumentSnapshot,
 ): ClosureTransactionResult {
-  if (!workout.exists || !tombstone.exists) throw closureConflict()
+  const storedWorkout = validateExistingClosureRecord(workout, userId, sessionId, 'workout')
+  const storedTombstone = validateExistingClosureRecord(tombstone, userId, sessionId, 'tombstone')
 
-  const storedWorkout = requireOwnedRecord(workout, userId, 'workout')
-  const storedTombstone = requireOwnedRecord(tombstone, userId, 'tombstone')
-  requireIdentity(storedWorkout.sessionId, sessionId)
-  requireIdentity(storedTombstone.sessionId, sessionId)
+  if (!storedWorkout || !storedTombstone) throw closureConflict()
 
   if (storedTombstone.outcome !== 'finished' || storedTombstone.workoutId !== sessionId) {
     throw closureConflict()
   }
 
   return { materialized: storedWorkout.materialized === true }
+}
+
+function validateExistingClosureRecord(
+  snapshot: DocumentSnapshot,
+  userId: string,
+  sessionId: string,
+  resource: string,
+): DocumentData | undefined {
+  if (!snapshot.exists) return undefined
+
+  const stored = requireOwnedRecord(snapshot, userId, resource)
+  requireIdentity(stored.sessionId, sessionId)
+  return stored
 }
 
 function requireMatchingActiveSession(

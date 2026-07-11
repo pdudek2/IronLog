@@ -12,6 +12,10 @@ Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.
 
 Kanoniczny program prac po audycie technicznym i audycie UI znajduje się w [docs/roadmap/ROADMAP.md](docs/roadmap/ROADMAP.md). Każda faza z tego dokumentu może zostać rozwinięta w osobny plan implementacyjny.
 
+## Archiwum zaliczenia
+
+Historyczne materiały potwierdzające wcześniejszą integrację GA4 i Hotjar/Contentsquare znajdują się w [archiwum integracji analityki](docs/archive/analytics-assignment.md). Analityka nie jest częścią aktualnego runtime aplikacji.
+
 ## Screeny aplikacji
 
 ![Widok desktop](docs/screenshots/app/desktop-showcase.png)
@@ -48,7 +52,6 @@ Kanoniczny program prac po audycie technicznym i audycie UI znajduje się w [doc
 - Firebase Authentication + Firestore
 - Vercel Serverless Functions (Node.js, Firebase Admin SDK)
 - Hosting: Vercel, produkcyjny deploy przez CLI (`vercel --prod`)
-- Analityka opcjonalna po zgodzie: Google Analytics 4 (`react-ga4`) + Hotjar/Contentsquare
 
 ## Struktura projektu
 
@@ -59,7 +62,7 @@ src/
     ui/         # podstawowe komponenty reużywalne (Button, Card, Input, LoadingState)
   router/       # konfiguracja React Router + lazy loading stron
   store/        # stan globalny (Zustand)
-  lib/          # serwisy: Firebase, auth, analityka, logika Firestore
+  lib/          # serwisy: Firebase, auth, logika Firestore
   data/         # globalna baza ćwiczeń (seed)
 api/            # endpointy serverless (czat AI, finalizacja treningu)
 ```
@@ -87,27 +90,9 @@ Wszystkie ekrany są dostępne przez React Router (nawigacja bez przeładowania 
 
 Uwierzytelnianie przez Firebase Authentication (metoda Email/Password). Stan sesji trzymany jest w store Zustand i zasilany przez `onAuthStateChanged`, więc odświeżenie strony nie wylogowuje użytkownika. Komponenty `PrivateRouteOutlet` / `PublicRouteOutlet` w `src/router/index.tsx` pilnują dostępu do tras.
 
-## Google Analytics
+## Prywatność
 
-Integracja przez `react-ga4` (`src/lib/analytics.ts`). GA4 nie inicjalizuje się przed zgodą użytkownika. Po wybraniu „Akceptuję analitykę” aplikacja uruchamia GA4 i wysyła zdarzenie `pageview` przy zmianie trasy (`AnalyticsListener` + `useLocation`). Przy wyborze „Tylko niezbędne” pageview nie jest wysyłany.
-
-Identyfikator pomiaru jest podawany przez zmienną środowiskową `VITE_GA_MEASUREMENT_ID` — bez niej moduł nie inicjalizuje się nawet po zgodzie.
-
-![Google Analytics — przegląd](docs/screenshots/analytics/ga-overview.png)
-![Google Analytics — strony](docs/screenshots/analytics/ga-pages.png)
-
-## Hotjar (Contentsquare)
-
-Hotjar działa obecnie na platformie Contentsquare — nowe konta zamiast numerycznego Site ID dostają tag identyfikowany hashem. Skrypt Session Replay/heatmap jest doładowywany dopiero po zgodzie użytkownika, hash podaje zmienna `VITE_CSQ_TAG_ID`. Starszy numeryczny `VITE_HOTJAR_SITE_ID` zostaje jako fallback.
-
-![Hotjar — heatmapa](docs/screenshots/analytics/hotjar-heatmap.png)
-![Hotjar — nagrania sesji](docs/screenshots/analytics/hotjar-recordings.png)
-
-## Prywatność i zgoda
-
-Zgoda na analitykę jest zapisywana lokalnie w przeglądarce (`localStorage`) jako wybór `granted` albo `denied`. Brak wyboru oznacza brak inicjalizacji GA4 i Contentsquare/Hotjar. Użytkownik może zmienić zgodę w profilu.
-
-Klucz Claude w modelu BYOK również jest przechowywany lokalnie w przeglądarce. Nie zapisujemy go w Firestore; backend serverless używa go tylko do obsłużenia bieżącego zapytania do Anthropic.
+Klucz Claude w modelu BYOK jest przechowywany lokalnie w przeglądarce. Nie zapisujemy go w Firestore; backend serverless używa go tylko do obsłużenia bieżącego zapytania do Anthropic.
 
 ## AI Coach
 
@@ -124,7 +109,7 @@ npm run dev                  # frontend (Vite)
 npm run dev:all              # frontend + lokalne API
 ```
 
-Wymagane zmienne środowiskowe — patrz `.env.example`. Konfiguracja Firebase pochodzi z konsoli Firebase (Project settings → Web app). Zmienne analityki (`VITE_GA_MEASUREMENT_ID`, `VITE_CSQ_TAG_ID`) są opcjonalne — bez nich analityka jest po prostu wyłączona.
+Wymagane zmienne środowiskowe — patrz `.env.example`. Konfiguracja Firebase pochodzi z konsoli Firebase (Project settings → Web app).
 
 ## Testy
 

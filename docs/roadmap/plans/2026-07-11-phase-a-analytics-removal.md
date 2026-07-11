@@ -1,6 +1,6 @@
 # Phase A Analytics Removal Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Status: COMPLETED.** Plan wdrożono na branchu `puls-rebrand`; końcowy HEAD fazy A: `6e2c1f3`. Wszystkie bramki i finalny review przeszły. Ten dokument jest historycznym zapisem wykonania — nie należy uruchamiać jego pustych checkboxów ponownie. Aktualny następny krok znajduje się w `docs/roadmap/ROADMAP.md`.
 
 **Goal:** Remove GA4 and Contentsquare/Hotjar completely from the IronLog runtime while preserving the assignment evidence as a clearly historical archive.
 

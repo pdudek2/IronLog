@@ -58,13 +58,13 @@ test.describe('Workout lifecycle review evidence', () => {
     const clientB = await openIndependentWorkoutClient(observedContextFactory, storageState)
     const reps = clientB.page.getByLabel('Powtórzenia, Bench Press, seria 1')
 
-    await reps.fill('6')
     let resultingSession: Awaited<ReturnType<typeof waitForSettledReviewActiveSession>> = null
     await expectedBrowserDiagnostics.during(
       'intentional Phase R second-client offline write',
       isExpectedFirestoreOfflineDiagnostic,
       async () => {
         await clientB.context.setOffline(true)
+        await reps.fill('6')
         await clientA.page.route('**/api/materialize-workout', (route) => route.fulfill({
           status: 200,
           contentType: 'application/json',

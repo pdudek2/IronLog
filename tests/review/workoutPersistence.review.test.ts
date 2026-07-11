@@ -94,12 +94,13 @@ describe('workout persistence review', () => {
       where('userId', '==', USER_ID),
     ))
     const documents = snapshot.docs.map((document) => ({ id: document.id, ...document.data() }))
-    const ids = documents.map(({ id }) => id)
+    const logicalWorkouts = documents.map(({ id, ...payload }) => ({ id, payload }))
+    const ids = logicalWorkouts.map(({ id }) => id)
 
     console.info(`[review observation] ack-loss workout ids: ${ids.sort().join(', ')}`)
     expect(documents).toHaveLength(2)
     expect(new Set(ids).size).toBe(2)
-    expect(documents[0]?.exercises).toEqual(documents[1]?.exercises)
+    expect(logicalWorkouts[0]?.payload).toEqual(logicalWorkouts[1]?.payload)
   })
 
   it('finish cleanup failure leaves activeSessions document after local clear', async () => {

@@ -23,18 +23,21 @@ const checkpointCases = [
     checkpoint: 'beforeExerciseSessions',
     outcome: 'failed_after_workout_before_projection',
     expectedSessionCount: 0,
+    expectsStaleSession: true,
     expectsRecord: false,
   },
   {
     checkpoint: 'afterExerciseSessions',
     outcome: 'failed_after_sessions_before_records',
     expectedSessionCount: 1,
+    expectsStaleSession: false,
     expectsRecord: false,
   },
   {
     checkpoint: 'afterRecords',
     outcome: 'failed_after_records_before_materialized_flag',
     expectedSessionCount: 1,
+    expectsStaleSession: false,
     expectsRecord: true,
   },
 ] as const
@@ -79,18 +82,15 @@ async function readProjectionState(workoutId: string) {
 }
 
 function projectionEvidence(state: Awaited<ReturnType<typeof readProjectionState>>) {
+  const stableRecord = state.record ? { ...state.record } : undefined
+  if (stableRecord) delete stableRecord.updatedAt
+
   return {
-    materialized: state.workout?.materialized,
-    exerciseSessions: state.exerciseSessions.map((session) => ({
-      id: session.id,
-      workoutId: session.workoutId,
-    })),
-    record: {
-      totalSessions: state.record?.totalSessions,
-      maxWeight: state.record?.maxWeight,
-      maxReps: state.record?.maxReps,
-      bestVolume: state.record?.bestVolume,
-    },
+    workout: state.workout,
+    exerciseSessions: [...state.exerciseSessions].sort((left, right) => (
+      left.id.localeCompare(right.id)
+    )),
+    record: stableRecord,
   }
 }
 
@@ -98,18 +98,24 @@ function expectRecoveredProjection(
   state: Awaited<ReturnType<typeof readProjectionState>>,
   workoutId: string,
 ) {
-  expect(projectionEvidence(state)).toEqual({
-    materialized: true,
-    exerciseSessions: [{
-      id: expect.any(String),
-      workoutId,
-    }],
-    record: {
-      totalSessions: 1,
-      maxWeight: 80,
-      maxReps: 5,
-      bestVolume: 400,
-    },
+  const expectedSessionId = `${workoutId}_global_0_eb1b4441075b583cdfb78f5b`
+  expect(state.workout?.materialized).toBe(true)
+  expect(state.exerciseSessions).toHaveLength(1)
+  expect(state.exerciseSessions[0]).toMatchObject({
+    id: expectedSessionId,
+    workoutId,
+    userId: USER_ID,
+    finishedAt: FINISHED_AT,
+    exerciseId: 'bench-press',
+    exerciseSource: 'global',
+    orderIndex: 0,
+  })
+  expect(state.record).toMatchObject({
+    totalSessions: 1,
+    maxWeight: 80,
+    maxReps: 5,
+    bestVolume: 400,
+    lastPerformedAt: FINISHED_AT,
   })
 }
 
@@ -117,6 +123,7 @@ describe('workout projection retry review', () => {
   for (const checkpointCase of checkpointCases) {
     it(`retries consistently after ${checkpointCase.checkpoint}`, async () => {
       const workoutId = `phase-r-${checkpointCase.checkpoint}`
+      const staleSessionId = `${workoutId}_stale-projection`
       await db.collection('workouts').doc(workoutId).set({
         userId: USER_ID,
         startedAt: STARTED_AT,
@@ -129,6 +136,27 @@ describe('workout projection retry review', () => {
           name: 'Bench Press',
           sets: [{ weight: 80, reps: 5 }],
         }],
+      })
+      await db.collection('exerciseSessions').doc(staleSessionId).set({
+        id: staleSessionId,
+        userId: USER_ID,
+        workoutId,
+        startedAt: STARTED_AT - 10_000,
+        finishedAt: FINISHED_AT - 10_000,
+        label: 'Stale projection',
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        exerciseName: 'Bench Press',
+        orderIndex: 99,
+        totalSets: 1,
+        totalReps: 1,
+        totalVolume: 1,
+        bestSetWeight: 1,
+        bestSetReps: 1,
+        category: null,
+        equipment: null,
+        muscleGroups: [],
+        sets: [{ weight: 1, reps: 1 }],
       })
 
       const checkpoints = {
@@ -147,7 +175,12 @@ describe('workout projection retry review', () => {
         `[review observation] ${checkpointCase.checkpoint} intermediate: materialized=${String(intermediate.workout?.materialized)}, sessions=${intermediate.exerciseSessions.length}, record=${intermediate.record ? 'present' : 'absent'}`,
       )
       expect(intermediate.workout?.materialized).toBe(false)
-      expect(intermediate.exerciseSessions).toHaveLength(checkpointCase.expectedSessionCount)
+      expect(intermediate.exerciseSessions).toHaveLength(
+        checkpointCase.expectedSessionCount + (checkpointCase.expectsStaleSession ? 1 : 0),
+      )
+      expect(intermediate.exerciseSessions.some(({ id }) => id === staleSessionId)).toBe(
+        checkpointCase.expectsStaleSession,
+      )
       expect(Boolean(intermediate.record)).toBe(checkpointCase.expectsRecord)
 
       if (checkpointCase.expectsRecord) {
@@ -165,6 +198,7 @@ describe('workout projection retry review', () => {
         `[review observation] ${checkpointCase.checkpoint} recovered: materialized=${String(recovered.workout?.materialized)}, sessions=${recovered.exerciseSessions.length}, totalSessions=${String(recovered.record?.totalSessions)}, maxWeight=${String(recovered.record?.maxWeight)}, maxReps=${String(recovered.record?.maxReps)}, bestVolume=${String(recovered.record?.bestVolume)}`,
       )
       expectRecoveredProjection(recovered, workoutId)
+      expect(recovered.exerciseSessions.some(({ id }) => id === staleSessionId)).toBe(false)
 
       await materializeWorkoutForUser(USER_ID, workoutId, { db })
       const idempotentRetry = await readProjectionState(workoutId)
@@ -172,6 +206,7 @@ describe('workout projection retry review', () => {
         `[review observation] ${checkpointCase.checkpoint} idempotent retry: materialized=${String(idempotentRetry.workout?.materialized)}, sessions=${idempotentRetry.exerciseSessions.length}, totalSessions=${String(idempotentRetry.record?.totalSessions)}, maxWeight=${String(idempotentRetry.record?.maxWeight)}, maxReps=${String(idempotentRetry.record?.maxReps)}, bestVolume=${String(idempotentRetry.record?.bestVolume)}`,
       )
       expectRecoveredProjection(idempotentRetry, workoutId)
+      expect(idempotentRetry.exerciseSessions.some(({ id }) => id === staleSessionId)).toBe(false)
       expect(projectionEvidence(idempotentRetry)).toEqual(projectionEvidence(recovered))
     })
   }

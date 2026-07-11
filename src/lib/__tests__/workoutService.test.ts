@@ -137,6 +137,7 @@ describe('saveWorkoutWithPort', () => {
     }
 
     await expect(saveWorkoutWithPort('user-1', workout, port)).rejects.toThrow('ack lost')
+    expect(port.createWorkout).toHaveBeenCalledOnce()
     expect(port.materializeWorkout).not.toHaveBeenCalled()
   })
 
@@ -150,5 +151,8 @@ describe('saveWorkoutWithPort', () => {
       id: 'workout-1',
       materialized: false,
     })
+    expect(port.createWorkout).toHaveBeenCalledOnce()
+    expect(port.materializeWorkout).toHaveBeenCalledOnce()
+    expect(port.materializeWorkout).toHaveBeenCalledWith('workout-1')
   })
 })

@@ -9,6 +9,7 @@ describe('workoutStore set steppers', () => {
   it('accumulates rapid weight adjustments from the latest store value', () => {
     const store = useWorkoutStore.getState()
     store.hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -31,6 +32,7 @@ describe('workoutStore set steppers', () => {
   it('accumulates rapid rep adjustments and clamps at zero', () => {
     const store = useWorkoutStore.getState()
     store.hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -52,6 +54,7 @@ describe('workoutStore set steppers', () => {
 
   it('replaces only the touched exercise object when updating a set', () => {
     useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -81,6 +84,7 @@ describe('workoutStore set steppers', () => {
 
   it('replaces only the touched exercise object when adjusting a set', () => {
     useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -116,6 +120,7 @@ describe('workoutStore completed set validation', () => {
 
   it('does not complete a set without repetitions', () => {
     useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -134,6 +139,7 @@ describe('workoutStore completed set validation', () => {
 
   it('allows a bodyweight set with repetitions and no weight', () => {
     useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -152,6 +158,7 @@ describe('workoutStore completed set validation', () => {
 
   it('clears the completed state when repetitions are removed', () => {
     useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -170,6 +177,7 @@ describe('workoutStore completed set validation', () => {
 
   it('normalizes invalid completed sets when restoring a session', () => {
     useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -201,8 +209,23 @@ describe('workoutStore client IDs', () => {
     expect(exercise?.sets[0]?.clientId).toMatch(/^set-/)
   })
 
+  it('assigns one stable session ID when starting and editing a workout', () => {
+    const store = useWorkoutStore.getState()
+    store.startWorkout()
+    const sessionId = useWorkoutStore.getState().active?.sessionId
+
+    expect(sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f-]{27}$/)
+
+    useWorkoutStore.getState().setLabel('Push')
+    useWorkoutStore.getState().addExercise('bench-press', 'Bench Press', 'global')
+    useWorkoutStore.getState().updateSet(0, 0, 'weight', '80')
+
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(sessionId)
+  })
+
   it('adds missing client IDs when hydrating an active session', () => {
     useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {
@@ -235,6 +258,7 @@ describe('workoutStore client IDs', () => {
 
   it('strips client IDs before persistence', () => {
     const clean = stripWorkoutClientIds({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [
         {

@@ -10,6 +10,7 @@ import type { ActiveWorkout } from '../../store/workoutStore'
 
 function session(startedAt: number): ActiveWorkout {
   return {
+    sessionId: 'session-1',
     startedAt,
     templateId: null,
     label: 'Push',
@@ -37,6 +38,7 @@ describe('sessionDuration', () => {
     const refreshed = refreshStaleActiveSession(original, 500)
 
     expect(refreshed.startedAt).toBe(500)
+    expect(refreshed.sessionId).toBe('session-1')
     expect(refreshed.exercises).toEqual(original.exercises)
     expect(refreshed.label).toBe('Push')
   })

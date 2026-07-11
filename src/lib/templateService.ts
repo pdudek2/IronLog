@@ -11,6 +11,7 @@ import {
 } from 'firebase/firestore'
 import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
 import { db } from './firebase'
+import { createSessionId } from './sessionIdentity'
 
 export interface TemplateExercise {
   exerciseId: string
@@ -111,6 +112,7 @@ export function buildActiveWorkoutFromTemplate(
     : template.name.trim()
 
   return {
+    sessionId: createSessionId(),
     startedAt: Date.now(),
     templateId: template.id,
     label,

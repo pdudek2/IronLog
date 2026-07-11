@@ -21,6 +21,7 @@ import type { ActiveWorkout } from '../../store/workoutStore'
 const sessionRef = { path: 'activeSessions/user-1' }
 const transactionGet = vi.fn()
 const transactionSet = vi.fn()
+let snapshotHandler: ((snapshot: ReturnType<typeof sessionSnapshot>) => void) | undefined
 
 function sessionSnapshot(data?: Record<string, unknown>) {
   return {
@@ -30,6 +31,7 @@ function sessionSnapshot(data?: Record<string, unknown>) {
 }
 
 const workout: ActiveWorkout = {
+  sessionId: 'session-1',
   startedAt: 123,
   templateId: 'template-1',
   label: '  Push A  ',
@@ -51,6 +53,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(doc).mockReturnValue(sessionRef as never)
   vi.spyOn(Date, 'now').mockReturnValue(999)
+  snapshotHandler = undefined
   vi.mocked(runTransaction).mockImplementation(async (_db, update) => (
     update({
       get: transactionGet,
@@ -62,10 +65,11 @@ beforeEach(() => {
 describe('hasActiveSessionWork', () => {
   it('detects whether an active session contains resumable work', () => {
     expect(hasActiveSessionWork(null)).toBe(false)
-    expect(hasActiveSessionWork({ startedAt: 1, exercises: [] })).toBe(false)
-    expect(hasActiveSessionWork({ startedAt: 1, label: '   ', exercises: [] })).toBe(false)
-    expect(hasActiveSessionWork({ startedAt: 1, label: 'Push A', exercises: [] })).toBe(true)
+    expect(hasActiveSessionWork({ sessionId: 'session-1', startedAt: 1, exercises: [] })).toBe(false)
+    expect(hasActiveSessionWork({ sessionId: 'session-1', startedAt: 1, label: '   ', exercises: [] })).toBe(false)
+    expect(hasActiveSessionWork({ sessionId: 'session-1', startedAt: 1, label: 'Push A', exercises: [] })).toBe(true)
     expect(hasActiveSessionWork({
+      sessionId: 'session-1',
       startedAt: 1,
       exercises: [{
         exerciseId: 'squat',
@@ -82,6 +86,7 @@ describe('persistTemplateLaunchSession', () => {
     transactionGet.mockResolvedValue(sessionSnapshot({ label: '   ', exercises: [] }))
     const expectedDocument = {
       userId: 'user-1',
+      sessionId: 'session-1',
       startedAt: 123,
       templateId: 'template-1',
       label: 'Push A',
@@ -127,5 +132,34 @@ describe('persistTemplateLaunchSession', () => {
       persistTemplateLaunchSession('user-1', workout, false),
     ).rejects.toBe(offlineError)
     expect(transactionSet).not.toHaveBeenCalled()
+  })
+})
+
+describe('active session hydration', () => {
+  it('derives a deterministic session ID for a legacy remote document', async () => {
+    const { onSnapshot } = await import('firebase/firestore')
+    const { subscribeToActiveSession } = await import('../activeSessionService')
+    vi.mocked(onSnapshot).mockImplementation(((
+      _ref: unknown,
+      _options: unknown,
+      onNext: (snapshot: unknown) => void,
+    ) => {
+      snapshotHandler = onNext as typeof snapshotHandler
+      return vi.fn()
+    }) as never)
+    const onChange = vi.fn()
+
+    subscribeToActiveSession('user-1', onChange)
+    snapshotHandler?.({
+      exists: () => true,
+      data: () => ({ startedAt: 500, exercises: [] }),
+      metadata: { fromCache: false, hasPendingWrites: false },
+    } as never)
+
+    expect(onChange).toHaveBeenCalledWith({
+      session: { sessionId: 'legacy-500', startedAt: 500, templateId: null, exercises: [] },
+      fromCache: false,
+      hasPendingWrites: false,
+    })
   })
 })

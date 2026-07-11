@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { createSessionId } from '../lib/sessionIdentity'
 
 export type ExerciseSource = 'global' | 'user'
 
@@ -18,6 +19,7 @@ export interface WorkoutExercise {
 }
 
 export interface ActiveWorkout {
+  sessionId: string
   startedAt: number
   templateId?: string | null
   label?: string
@@ -102,7 +104,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
   active: null,
 
   startWorkout: () =>
-    set({ active: { startedAt: Date.now(), templateId: null, exercises: [] } }),
+    set({ active: { sessionId: createSessionId(), startedAt: Date.now(), templateId: null, exercises: [] } }),
 
   hydrateFromDoc: (workout) =>
     set({ active: withClientIds(workout) }),

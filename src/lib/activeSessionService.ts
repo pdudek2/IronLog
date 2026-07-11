@@ -1,6 +1,7 @@
 import { deleteDoc, doc, onSnapshot, runTransaction, setDoc, type Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
 import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
+import { normalizeSessionId } from './sessionIdentity'
 
 interface ActiveSessionSnapshot {
   session: ActiveWorkout | null
@@ -61,6 +62,7 @@ function activeSessionDocument(uid: string, workout: ActiveWorkout) {
   const persistableWorkout = stripWorkoutClientIds(workout)
   return {
     userId: uid,
+    sessionId: persistableWorkout.sessionId,
     startedAt: persistableWorkout.startedAt,
     templateId: typeof persistableWorkout.templateId === 'string' ? persistableWorkout.templateId : null,
     label: persistableWorkout.label?.trim() || null,
@@ -86,8 +88,10 @@ function sessionDocumentHasWork(data: Record<string, unknown>): boolean {
 }
 
 function parseSessionDoc(data: Record<string, unknown>): ActiveWorkout {
+  const startedAt = typeof data.startedAt === 'number' ? data.startedAt : Date.now()
   return {
-    startedAt: typeof data.startedAt === 'number' ? data.startedAt : Date.now(),
+    sessionId: normalizeSessionId(data.sessionId, startedAt),
+    startedAt,
     templateId: typeof data.templateId === 'string' && data.templateId ? data.templateId : null,
     label: typeof data.label === 'string' && data.label ? data.label : undefined,
     exercises: Array.isArray(data.exercises)

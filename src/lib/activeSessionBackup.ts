@@ -1,4 +1,5 @@
 import type { ActiveWorkout } from '../store/workoutStore'
+import { normalizeSessionId } from './sessionIdentity'
 
 const BACKUP_PREFIX = 'ironlog-active-session-backup:'
 const MAX_BACKUP_AGE_MS = 24 * 60 * 60 * 1000
@@ -30,7 +31,12 @@ export function readActiveSessionBackup(uid: string): ActiveWorkout | null {
 
     const session = parsed.session
     if (!session || typeof session !== 'object') return null
-    return session as ActiveWorkout
+    const startedAt = typeof session.startedAt === 'number' ? session.startedAt : Date.now()
+    return {
+      ...session,
+      sessionId: normalizeSessionId(session.sessionId, startedAt),
+      startedAt,
+    } as ActiveWorkout
   } catch {
     return null
   }

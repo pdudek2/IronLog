@@ -76,6 +76,8 @@ describe('buildActiveWorkoutFromTemplate', () => {
       }],
     }))
 
+    expect(workout.sessionId).toMatch(/^[0-9a-f]{8}-[0-9a-f-]{27}$/)
+
     expect(workout.exercises[0].sets).toEqual([
       { weight: '100', reps: '5', done: false },
       { weight: '100', reps: '5', done: false },

@@ -29,6 +29,7 @@ const USER_ID = 'phase-r-user'
 const STARTED_AT = 1_780_000_000_000
 
 const workout: ActiveWorkout = {
+  sessionId: 'session-1',
   startedAt: STARTED_AT,
   templateId: null,
   label: 'Phase R workout',
@@ -57,6 +58,7 @@ afterAll(async () => {
 function activeSessionDocument(session: ActiveWorkout) {
   return {
     userId: USER_ID,
+    sessionId: session.sessionId,
     startedAt: session.startedAt,
     templateId: session.templateId ?? null,
     label: session.label ?? null,

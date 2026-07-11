@@ -60,7 +60,7 @@ describe('discardWorkoutLifecycle', () => {
 
 describe('discardStaleSessionLifecycle', () => {
   it('starts and persists a replacement after the old remote delete fails', async () => {
-    const replacement = { startedAt: 200, exercises: [] }
+    const replacement = { sessionId: 'session-1', startedAt: 200, exercises: [] }
     const clearLocal = vi.fn()
     const deleteRemote = vi.fn().mockRejectedValue(new Error('delete failed'))
     const startReplacement = vi.fn(() => replacement)

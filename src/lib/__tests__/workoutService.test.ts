@@ -15,6 +15,7 @@ import type { WorkoutSummary } from '../workoutService'
 import type { ActiveWorkout } from '../../store/workoutStore'
 
 const workout: ActiveWorkout = {
+  sessionId: 'session-1',
   startedAt: 1_790_000_000_000,
   templateId: null,
   label: 'Phase R workout',

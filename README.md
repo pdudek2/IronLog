@@ -8,6 +8,10 @@ Konto testowe: `demo@ironlog.app` / `demo123`
 
 Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.
 
+## Roadmapa
+
+Kanoniczny program prac po audycie technicznym i audycie UI znajduje się w [docs/roadmap/ROADMAP.md](docs/roadmap/ROADMAP.md). Każda faza z tego dokumentu może zostać rozwinięta w osobny plan implementacyjny.
+
 ## Screeny aplikacji
 
 ![Widok desktop](docs/screenshots/app/desktop-showcase.png)

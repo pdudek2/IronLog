@@ -1,31 +1,57 @@
-import { test as setup, expect } from './fixtures'
+import { test as setup, expect, type APIRequestContext } from './fixtures'
 import path from 'path'
 import { fileURLToPath } from 'url'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const authFile = path.join(__dirname, '.auth/user.json')
+const emulatorMode = process.env.E2E_BACKEND === 'emulator'
+const authFile = path.join(
+  __dirname,
+  emulatorMode ? '.auth/emulator-user.json' : '.auth/user.json',
+)
 
-setup('authenticate', async ({ page }) => {
+async function ensureEmulatorUser(
+  request: APIRequestContext,
+  email: string,
+  password: string,
+): Promise<void> {
+  const response = await request.post(
+    'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-api-key',
+    { data: { email, password, returnSecureToken: true } },
+  )
+
+  if (response.ok()) return
+  const body = await response.json() as { error?: { message?: string } }
+  if (body.error?.message !== 'EMAIL_EXISTS') {
+    throw new Error(`Auth emulator user bootstrap failed: ${JSON.stringify(body)}`)
+  }
+}
+
+setup('authenticate', async ({ page, request }) => {
   const email = process.env.TEST_EMAIL
   const password = process.env.TEST_PASSWORD
-
   if (!email || !password) {
-    throw new Error('TEST_EMAIL and TEST_PASSWORD must be set in .env.test')
+    throw new Error('TEST_EMAIL and TEST_PASSWORD must be provided by the selected E2E backend')
   }
 
-  await page.goto('/login')
+  if (emulatorMode) await ensureEmulatorUser(request, email, password)
 
+  await page.goto('/login')
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Hasło').fill(password)
   await page.getByRole('button', { name: 'Zaloguj się' }).click()
-
-  // Firebase Auth triggers onAuthStateChanged → PublicRoute redirects to /dashboard
   await page.waitForURL('/dashboard', { timeout: 20_000 })
-  await expect(page).toHaveURL('/dashboard')
 
-  // Wait for Firebase to flush auth tokens to localStorage (setPersistence is async)
+  if (emulatorMode) {
+    const onboardingHeading = page.getByRole('heading', { name: 'Skonfiguruj profil' })
+    const dashboardAction = page.getByRole('button', { name: /Rozpocznij trening|Wróć do sesji/ })
+    await expect(onboardingHeading.or(dashboardAction).first()).toBeVisible({ timeout: 20_000 })
+    if (await dashboardAction.isVisible()) await page.goto('/onboarding')
+    await expect(onboardingHeading).toBeVisible()
+    await page.getByLabel('Jak mamy się do Ciebie zwracać?').fill('IronLog E2E')
+    await page.getByRole('button', { name: 'Zaczynajmy' }).click()
+    await page.waitForURL('/dashboard', { timeout: 20_000 })
+  }
+
   await page.waitForTimeout(1_000)
-
-  // Save storage state — localStorage now contains Firebase Auth tokens
   await page.context().storageState({ path: authFile })
 })

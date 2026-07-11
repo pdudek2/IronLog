@@ -114,10 +114,13 @@ Wymagane zmienne środowiskowe — patrz `.env.example`. Konfiguracja Firebase p
 ## Testy
 
 ```bash
-npm run test:unit    # testy jednostkowe (Vitest)
-npm run test:rules   # testy reguł Firestore (emulator)
-npm run test:e2e     # testy end-to-end (Playwright)
+npm run test:unit          # testy jednostkowe (Vitest)
+npm run test:rules         # testy reguł Firestore (emulator)
+npm run test:e2e:isolated  # krytyczny, deterministyczny gate Auth + Firestore emulator
+npm run test:e2e           # pełna integracja Playwright z backendem z .env.test
 ```
+
+`test:e2e:isolated` nie wymaga sekretów ani produkcyjnego quota. Wymaga zainstalowanego Firebase CLI — tego samego, którego używa `test:rules`.
 
 ## Deploy
 

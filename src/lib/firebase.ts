@@ -1,6 +1,16 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth, initializeAuth, browserLocalPersistence } from 'firebase/auth'
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
+import {
+  connectAuthEmulator,
+  getAuth,
+  initializeAuth,
+  browserLocalPersistence,
+} from 'firebase/auth'
+import {
+  connectFirestoreEmulator,
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -26,3 +36,16 @@ export const auth = (() => {
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 })
+
+const emulatorState = globalThis as typeof globalThis & {
+  __ironlogFirebaseEmulatorsConnected?: boolean
+}
+
+if (
+  import.meta.env.VITE_FIREBASE_USE_EMULATORS === 'true'
+  && !emulatorState.__ironlogFirebaseEmulatorsConnected
+) {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true })
+  connectFirestoreEmulator(db, '127.0.0.1', 8080)
+  emulatorState.__ironlogFirebaseEmulatorsConnected = true
+}

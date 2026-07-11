@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './fixtures'
 
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([

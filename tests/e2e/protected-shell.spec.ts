@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test.describe('Protected application shell', () => {
   test('provides one main landmark and moves focus after route navigation', async ({ page }, testInfo) => {

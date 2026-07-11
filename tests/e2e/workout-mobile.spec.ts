@@ -1,4 +1,4 @@
-import { test, expect, type Locator, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from './fixtures'
 
 type WorkoutTerminalState = 'stale-session' | 'active-session' | 'empty-session' | 'ready-workout'
 

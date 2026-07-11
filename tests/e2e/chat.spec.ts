@@ -1,4 +1,4 @@
-import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 /**
  * Chat E2E tests — UI level only.
@@ -17,30 +17,14 @@ import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
  *   b) A mock server intercepting /api/ai-chat (future work)
  */
 
-function captureErrors(page: Page): () => string[] {
-  const errors: string[] = []
-  page.on('console', (msg: ConsoleMessage) => {
-    if (msg.type() === 'error') {
-      const text = msg.text()
-      if (!text.includes('extension') && !text.includes('[vite]')) {
-        errors.push(text)
-      }
-    }
-  })
-  return () => errors
-}
-
 test.describe('Chat UI', () => {
   test('chat page loads without console errors', async ({ page }) => {
-    const getErrors = captureErrors(page)
-
     await page.goto('/chat')
     await expect(page).toHaveURL('/chat')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
     await page.screenshot({ path: 'test-results/chat-loaded.png' })
 
-    expect(getErrors(), `Chat console errors:\n${getErrors().join('\n')}`).toHaveLength(0)
   })
 
   test('AiKeyPanel is visible and shows correct empty state', async ({ page }) => {

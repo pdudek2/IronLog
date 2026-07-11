@@ -1,4 +1,4 @@
-import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
+import { test, expect, type Page } from './fixtures'
 
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
@@ -11,19 +11,6 @@ async function waitForWorkoutState(page: Page): Promise<void> {
 
 function workoutExerciseEntry(page: Page, exerciseName: string) {
   return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
-}
-
-function captureErrors(page: Page): () => string[] {
-  const errors: string[] = []
-  page.on('console', (msg: ConsoleMessage) => {
-    if (msg.type() === 'error') {
-      const text = msg.text()
-      if (!text.includes('extension') && !text.includes('[vite]')) {
-        errors.push(text)
-      }
-    }
-  })
-  return () => errors
 }
 
 /**
@@ -55,8 +42,6 @@ async function discardActiveSession(page: Page) {
 
 test.describe('Workout persistence', () => {
   test('active session survives page refresh', async ({ page }) => {
-    const getErrors = captureErrors(page)
-
     await discardActiveSession(page)
 
     // Navigate fresh to workout page
@@ -109,9 +94,6 @@ test.describe('Workout persistence', () => {
     await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 20_000 })
 
     await page.screenshot({ path: 'test-results/workout-after-reload.png' })
-
-    // No console errors during the whole flow
-    expect(getErrors(), `Console errors: ${getErrors().join('\n')}`).toHaveLength(0)
 
     // Cleanup: "Anuluj" triggers dialog, "Anuluj trening" confirms. Scope to ConfirmDialog.
     const cleanupBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect } from './fixtures'
 
 test.describe('Workout flow', () => {
   test('workout page loads and exits loading state', async ({ page }) => {
@@ -65,21 +65,12 @@ test.describe('Templates flow', () => {
 
 test.describe('Progress analytics', () => {
   test('progress page renders charts without error', async ({ page }) => {
-    const errors: string[] = []
-    page.on('console', (msg) => {
-      if (msg.type() === 'error') errors.push(msg.text())
-    })
-
     await page.goto('/progress')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
     // Wait for async data fetch to settle
     await page.waitForTimeout(2_000)
 
-    const criticalErrors = errors.filter(
-      (e) => !e.includes('extension') && !e.includes('[vite]'),
-    )
-    expect(criticalErrors, `Progress page errors:\n${criticalErrors.join('\n')}`).toHaveLength(0)
   })
 })
 

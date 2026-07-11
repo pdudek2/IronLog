@@ -3,7 +3,7 @@
  * Run with: npx playwright test tests/e2e/audit-screenshots.ts --headed=false
  * Captures each key screen at desktop (1280x800) and mobile (390x844).
  */
-import { test } from '@playwright/test'
+import { test } from './fixtures'
 
 const SCREENS = [
   { name: 'login', path: '/login', requiresAuth: false },

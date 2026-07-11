@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 
 const ANALYTICS_VENDOR = /(?:google-analytics\.com|googletagmanager\.com|contentsquare\.net|hotjar\.com|hotjar\.io)/i
 

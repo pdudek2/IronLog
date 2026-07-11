@@ -1,17 +1,4 @@
-import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
-
-function captureErrors(page: Page): () => string[] {
-  const errors: string[] = []
-  page.on('console', (msg: ConsoleMessage) => {
-    if (msg.type() === 'error') {
-      const text = msg.text()
-      if (!text.includes('extension') && !text.includes('[vite]')) {
-        errors.push(text)
-      }
-    }
-  })
-  return () => errors
-}
+import { test, expect, type Page } from './fixtures'
 
 // Fixed name avoids timestamp instability across retries
 const TEST_EXERCISE_NAME = '_E2E Curl Test_'
@@ -60,8 +47,6 @@ test.describe('Exercises CRUD', () => {
   })
 
   test('create user exercise with valid data', async ({ page }) => {
-    const getErrors = captureErrors(page)
-
     await page.goto('/exercises')
     await expect(page).toHaveURL('/exercises')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
@@ -90,7 +75,6 @@ test.describe('Exercises CRUD', () => {
 
     await page.screenshot({ path: 'test-results/exercises-created.png' })
 
-    expect(getErrors()).toHaveLength(0)
   })
 
   test('duplicate name is prevented (BUG-07 freeze)', async ({ page }) => {
@@ -172,8 +156,6 @@ test.describe('Exercises CRUD', () => {
   })
 
   test('global exercise detail page is reachable', async ({ page }) => {
-    const getErrors = captureErrors(page)
-
     await page.goto('/exercises')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
 
@@ -189,6 +171,5 @@ test.describe('Exercises CRUD', () => {
 
     await page.screenshot({ path: 'test-results/exercises-detail.png' })
 
-    expect(getErrors()).toHaveLength(0)
   })
 })

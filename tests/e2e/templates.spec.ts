@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './fixtures'
 
 // Fixed name avoids timestamp instability across retries
 const TEST_TEMPLATE_NAME = '_E2E Szablon Test_'

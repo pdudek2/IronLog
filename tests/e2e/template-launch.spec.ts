@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Page } from './fixtures'
 
 const LAUNCH_TEMPLATE_NAME = '_E2E Launch Contract_'
 

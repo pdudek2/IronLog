@@ -1,15 +1,4 @@
-import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
-
-// Collect console errors during each test
-function collectConsoleErrors(page: Page): () => ConsoleMessage[] {
-  const errors: ConsoleMessage[] = []
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') {
-      errors.push(msg)
-    }
-  })
-  return () => errors
-}
+import { test, expect } from './fixtures'
 
 // Pages to smoke-test: [name, path]
 const PAGES = [
@@ -23,8 +12,6 @@ const PAGES = [
 
 for (const [name, route] of PAGES) {
   test(`${name} page loads without console errors`, async ({ page }) => {
-    const getErrors = collectConsoleErrors(page)
-
     await page.goto(route)
 
     // Must stay on the requested route (not redirected to /login)
@@ -34,15 +21,6 @@ for (const [name, route] of PAGES) {
     // Screenshot for visual regression baseline
     await page.screenshot({ path: `test-results/${name.toLowerCase()}.png`, fullPage: true })
 
-    // No red console errors
-    const errors = getErrors()
-    const relevantErrors = errors.filter((e) => {
-      const text = e.text()
-      // Ignore known browser extension noise and HMR messages
-      return !text.includes('extension') && !text.includes('[vite]')
-    })
-
-    expect(relevantErrors, `Console errors on ${name}: ${relevantErrors.map((e) => e.text()).join('\n')}`).toHaveLength(0)
   })
 }
 

@@ -15,8 +15,9 @@ export default defineConfig({
             'src/**/*.test.ts',
             'api/**/__tests__/**/*.test.ts',
             'server/**/__tests__/**/*.test.ts',
+            'tests/e2e/support/**/*.test.ts',
           ],
-          exclude: ['**/node_modules/**', '**/dist/**', 'tests/e2e/**'],
+          exclude: ['**/node_modules/**', '**/dist/**'],
         },
       },
       {

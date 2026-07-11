@@ -1,17 +1,4 @@
-import { test, expect, type Page, type ConsoleMessage } from '@playwright/test'
-
-function captureErrors(page: Page): () => string[] {
-  const errors: string[] = []
-  page.on('console', (msg: ConsoleMessage) => {
-    if (msg.type() === 'error') {
-      const text = msg.text()
-      if (!text.includes('extension') && !text.includes('[vite]')) {
-        errors.push(text)
-      }
-    }
-  })
-  return () => errors
-}
+import { test, expect } from './fixtures'
 
 /**
  * Profile tests — freeze BUG-03/05/06 fixes:
@@ -21,8 +8,6 @@ function captureErrors(page: Page): () => string[] {
  */
 test.describe('Profile hydration and save', () => {
   test('profile loads on direct entry — not showing placeholder dashes', async ({ page }) => {
-    const getErrors = captureErrors(page)
-
     await page.goto('/profile')
     await expect(page).toHaveURL('/profile')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
@@ -39,7 +24,6 @@ test.describe('Profile hydration and save', () => {
     const nameValue = await nameInput.inputValue()
     expect(nameValue.length, 'Profile name should be loaded (not empty)').toBeGreaterThan(0)
 
-    expect(getErrors()).toHaveLength(0)
   })
 
   test('save changes and verify persistence after reload', async ({ page }) => {
@@ -87,8 +71,6 @@ test.describe('Profile hydration and save', () => {
   })
 
   test('profile page has no console errors', async ({ page }) => {
-    const getErrors = captureErrors(page)
-
     await page.goto('/profile')
     await expect(page).toHaveURL('/profile')
     await expect(page.locator('.page-shell')).toBeVisible({ timeout: 10_000 })
@@ -96,6 +78,5 @@ test.describe('Profile hydration and save', () => {
     // Wait for async data to settle
     await expect(page.getByPlaceholder('np. Jan')).toBeVisible({ timeout: 5_000 })
 
-    expect(getErrors(), `Profile console errors:\n${getErrors().join('\n')}`).toHaveLength(0)
   })
 })

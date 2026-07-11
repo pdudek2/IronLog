@@ -22,11 +22,26 @@ interface WorkoutSetSummary {
   reps: number
 }
 
-interface WorkoutExerciseSummary {
+export interface WorkoutExerciseSummary {
   exerciseId?: string
   exerciseSource?: ExerciseSource
   name: string
   sets: WorkoutSetSummary[]
+}
+
+export interface WorkoutWritePayload {
+  userId: string
+  templateId: string | null
+  startedAt: number
+  finishedAt: number
+  materialized: false
+  label: string | null
+  exercises: WorkoutExerciseSummary[]
+}
+
+export interface WorkoutWritePort {
+  createWorkout(payload: WorkoutWritePayload): Promise<{ id: string }>
+  materializeWorkout(workoutId: string): Promise<void>
 }
 
 export interface WorkoutSummary {
@@ -54,17 +69,32 @@ export interface MaterializationRetryResult {
   failed: number
 }
 
-export async function saveWorkout(uid: string, workout: ActiveWorkout): Promise<SaveWorkoutResult> {
+export async function saveWorkoutWithPort(
+  uid: string,
+  workout: ActiveWorkout,
+  port: WorkoutWritePort,
+): Promise<SaveWorkoutResult> {
   const payload = buildWorkoutPayload(uid, workout)
-  const ref = await addDoc(collection(db, 'workouts'), payload)
-
+  const created = await port.createWorkout(payload)
   try {
-    await materializeWorkout(ref.id)
-    return { id: ref.id, materialized: true }
+    await port.materializeWorkout(created.id)
+    return { id: created.id, materialized: true }
   } catch (error) {
     console.error('[materializeWorkout error]', error)
-    return { id: ref.id, materialized: false }
+    return { id: created.id, materialized: false }
   }
+}
+
+const defaultWorkoutWritePort: WorkoutWritePort = {
+  async createWorkout(payload) {
+    const ref = await addDoc(collection(db, 'workouts'), payload)
+    return { id: ref.id }
+  },
+  materializeWorkout,
+}
+
+export async function saveWorkout(uid: string, workout: ActiveWorkout): Promise<SaveWorkoutResult> {
+  return saveWorkoutWithPort(uid, workout, defaultWorkoutWritePort)
 }
 
 export async function getRecentWorkouts(uid: string, count = 20): Promise<WorkoutSummary[]> {
@@ -196,7 +226,7 @@ export function calcVolume(workout: WorkoutSummary): number {
   )
 }
 
-function buildWorkoutPayload(uid: string, workout: ActiveWorkout) {
+function buildWorkoutPayload(uid: string, workout: ActiveWorkout): WorkoutWritePayload {
   const persistableWorkout = stripWorkoutClientIds(workout)
   return {
     userId: uid,

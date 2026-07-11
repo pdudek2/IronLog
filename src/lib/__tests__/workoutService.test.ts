@@ -10,8 +10,21 @@ const { auth } = vi.hoisted(() => ({
 vi.mock('../firebase', () => ({ db: {}, auth }))
 vi.mock('firebase/firestore', () => ({}))
 
-import { calcStreak, retryPendingMaterializations } from '../workoutService'
+import { calcStreak, retryPendingMaterializations, saveWorkoutWithPort } from '../workoutService'
 import type { WorkoutSummary } from '../workoutService'
+import type { ActiveWorkout } from '../../store/workoutStore'
+
+const workout: ActiveWorkout = {
+  startedAt: 1_790_000_000_000,
+  templateId: null,
+  label: 'Phase R workout',
+  exercises: [{
+    exerciseId: 'bench-press',
+    exerciseSource: 'global',
+    name: 'Bench Press',
+    sets: [{ weight: '80', reps: '5', done: true }],
+  }],
+}
 
 /** Returns a WorkoutSummary with startedAt set to N days ago (relative to now) */
 function workoutDaysAgo(daysAgo: number): WorkoutSummary {
@@ -112,6 +125,30 @@ describe('retryPendingMaterializations', () => {
     expect(await retryPendingMaterializations([pendingA, done, pendingB])).toEqual({
       attempted: 2,
       failed: 1,
+    })
+  })
+})
+
+describe('saveWorkoutWithPort', () => {
+  it('propagates an ambiguous create error without attempting materialization', async () => {
+    const port = {
+      createWorkout: vi.fn().mockRejectedValue(new Error('ack lost')),
+      materializeWorkout: vi.fn(),
+    }
+
+    await expect(saveWorkoutWithPort('user-1', workout, port)).rejects.toThrow('ack lost')
+    expect(port.materializeWorkout).not.toHaveBeenCalled()
+  })
+
+  it('returns a pending result when materialization fails after create', async () => {
+    const port = {
+      createWorkout: vi.fn().mockResolvedValue({ id: 'workout-1' }),
+      materializeWorkout: vi.fn().mockRejectedValue(new Error('projection failed')),
+    }
+
+    await expect(saveWorkoutWithPort('user-1', workout, port)).resolves.toEqual({
+      id: 'workout-1',
+      materialized: false,
     })
   })
 })

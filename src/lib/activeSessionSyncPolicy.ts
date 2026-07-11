@@ -22,6 +22,16 @@ export function shouldPersistActiveSession(
   return closureIntent?.session.sessionId !== session.sessionId
 }
 
+export function shouldAutoStartEmptySession({
+  currentSession,
+  confirmedClosure,
+}: {
+  currentSession: ActiveWorkout | null
+  confirmedClosure: boolean
+}): boolean {
+  return currentSession === null && !confirmedClosure
+}
+
 export function decideRemoteSessionSync({
   localSession,
   remoteSession,

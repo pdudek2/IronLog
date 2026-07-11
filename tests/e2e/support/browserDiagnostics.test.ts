@@ -7,6 +7,7 @@ import {
   isExpectedWorkoutLifecycleProjectionDiagnostic,
   isExpectedWorkoutLifecycleTombstoneDiagnostic,
 } from './workoutLifecycleDiagnostics'
+import { isExpectedFirestoreOfflineDiagnostic } from './offlineDiagnostics'
 import type { BrowserContext, ConsoleMessage, Page } from '@playwright/test'
 
 describe('browser diagnostics classification', () => {
@@ -200,6 +201,33 @@ describe('browser diagnostics controller', () => {
     expect(isExpectedWorkoutLifecycleTombstoneDiagnostic({
       kind: 'console',
       message: '[profile save error] FirebaseError: PERMISSION_DENIED: missing permissions',
+      blocking: true,
+    })).toBe(false)
+  })
+
+  it('matches offline resource console errors only for Firestore request URLs', () => {
+    const message = 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED'
+    expect(isExpectedFirestoreOfflineDiagnostic({
+      kind: 'console',
+      message,
+      url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+      blocking: true,
+    })).toBe(true)
+    expect(isExpectedFirestoreOfflineDiagnostic({
+      kind: 'console',
+      message,
+      url: 'http://127.0.0.1:8080/v1/projects/demo-ironlog/databases/(default)/documents:batchGet?key=x',
+      blocking: true,
+    })).toBe(true)
+    expect(isExpectedFirestoreOfflineDiagnostic({
+      kind: 'console',
+      message,
+      url: 'http://localhost:5174/assets/unrelated.js',
+      blocking: true,
+    })).toBe(false)
+    expect(isExpectedFirestoreOfflineDiagnostic({
+      kind: 'console',
+      message,
       blocking: true,
     })).toBe(false)
   })

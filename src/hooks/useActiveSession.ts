@@ -24,6 +24,7 @@ import {
   classifyClosureFailure,
   decideConfirmedClosure,
   decideRemoteSessionSync,
+  shouldAutoStartEmptySession,
   shouldPersistActiveSession,
 } from '../lib/activeSessionSyncPolicy'
 import { WorkoutClosureError } from '../lib/workoutClosureService'
@@ -328,7 +329,10 @@ export function useActiveSession(uid: string | null) {
         } else if (awaitingServerConfirmation) {
           if (current) setReady(true)
           return
-        } else if (!current && !confirmedClosureRef.current) {
+        } else if (shouldAutoStartEmptySession({
+          currentSession: current,
+          confirmedClosure: confirmedClosureRef.current,
+        })) {
           const backup = readActiveSessionBackup(currentUid)
           if (backup) {
             if (isActiveSessionStale(backup)) {

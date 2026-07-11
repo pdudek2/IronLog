@@ -31,6 +31,46 @@ import { MAX_ACTIVE_SESSION_AGE_MS } from '../../src/lib/sessionDuration'
 
 const RESPONSE_TIMEOUT_MS = 20_000
 
+async function readCachedActiveSessionWrite(page: Page) {
+  return page.evaluate(async () => {
+    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
+    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
+      readCachedActiveSessionWrite(): Promise<{
+        exists: boolean
+        hasPendingWrites: boolean
+        sessionId: string | null
+        reps: string | null
+      }>
+    }
+    return diagnostics.readCachedActiveSessionWrite()
+  })
+}
+
+async function setFirestoreNetworkEnabled(page: Page, enabled: boolean): Promise<void> {
+  await page.evaluate(async (nextEnabled) => {
+    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
+    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
+      setFirestoreNetworkEnabled(enabled: boolean): Promise<void>
+    }
+    await diagnostics.setFirestoreNetworkEnabled(nextEnabled)
+  }, enabled)
+}
+
+async function expectQueuedActiveSessionEdit(
+  page: Page,
+  expected: { sessionId: string; reps: string },
+): Promise<void> {
+  await expect.poll(
+    () => readCachedActiveSessionWrite(page),
+    { timeout: RESPONSE_TIMEOUT_MS },
+  ).toEqual({
+    exists: true,
+    hasPendingWrites: true,
+    sessionId: expected.sessionId,
+    reps: expected.reps,
+  })
+}
+
 async function openWorkoutClient(
   observedContextFactory: ObservedContextFactory,
   storageState: Awaited<ReturnType<BrowserContext['storageState']>>,
@@ -93,6 +133,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
   })
 
   test('lost finalize acknowledgement keeps recovery intent and retry creates exactly one workout', async ({
+    browserDiagnostics,
     context,
     cleanup,
     expectedBrowserDiagnostics,
@@ -122,6 +163,9 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         await page.getByRole('button', { name: 'Zakończ' }).click()
         await expect(page.getByRole('alert')).toContainText('Nie udało się potwierdzić zamknięcia sesji.')
         await failedRequest
+        await expect.poll(() => browserDiagnostics.some((entry) => (
+          entry.kind === 'console' && isExpectedWorkoutLifecycleAckLossDiagnostic(entry)
+        ))).toBe(true)
       },
     )
 
@@ -308,6 +352,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
   })
 
   test('offline client write cannot resurrect a session closed by another client', async ({
+    browserDiagnostics,
     context,
     cleanup,
     expectedBrowserDiagnostics,
@@ -322,26 +367,39 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     const clientB = await openWorkoutClient(observedContextFactory, storageState)
 
     await expectedBrowserDiagnostics.during(
-      'intentional Phase 1 offline tombstone rejection',
+      'intentional Phase 1 Firestore network suspension',
       (entry) => isExpectedFirestoreOfflineDiagnostic(entry)
         || isExpectedWorkoutLifecycleTombstoneDiagnostic(entry),
       async () => {
-        await clientB.context.setOffline(true)
+        await setFirestoreNetworkEnabled(clientB.page, false)
         await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
+        await expectQueuedActiveSessionEdit(clientB.page, { sessionId, reps: '6' })
         await finishWorkout(clientA.page)
         expect(await readLifecycleActiveSession()).toBeNull()
-        await clientB.context.setOffline(false)
-        await waitForSettledLifecycleActiveSession((session) => session === null)
-        await expect(clientB.page.getByText('Nie ma aktywnej sesji', { exact: true })).toBeVisible()
-        await clientB.context.close()
-        await clientA.context.close()
+        await expectedBrowserDiagnostics.during(
+          'exact Phase 1 closed-session tombstone rejection',
+          isExpectedWorkoutLifecycleTombstoneDiagnostic,
+          async () => {
+            const previousRejections = browserDiagnostics.filter(
+              isExpectedWorkoutLifecycleTombstoneDiagnostic,
+            ).length
+            await setFirestoreNetworkEnabled(clientB.page, true)
+            await expect.poll(() => browserDiagnostics.filter(
+              isExpectedWorkoutLifecycleTombstoneDiagnostic,
+            ).length).toBeGreaterThan(previousRejections)
+            await clientB.context.close()
+            await clientA.context.close()
+          },
+        )
       },
     )
+    await waitForSettledLifecycleActiveSession((session) => session === null)
     expect(await readLifecycleActiveSession()).toBeNull()
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)
   })
 
   test('offline old write cannot replace the newer session observed by a third client', async ({
+    browserDiagnostics,
     context,
     cleanup,
     expectedBrowserDiagnostics,
@@ -357,24 +415,36 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     const clientB = await openWorkoutClient(observedContextFactory, storageState)
 
     await expectedBrowserDiagnostics.during(
-      'intentional Phase 1 stale offline write rejection',
+      'intentional Phase 1 stale Firestore network suspension',
       (entry) => isExpectedFirestoreOfflineDiagnostic(entry)
         || isExpectedWorkoutLifecycleTombstoneDiagnostic(entry),
       async () => {
-        await clientB.context.setOffline(true)
+        await setFirestoreNetworkEnabled(clientB.page, false)
         await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
+        await expectQueuedActiveSessionEdit(clientB.page, { sessionId: oldSessionId, reps: '6' })
         await finishWorkout(clientA.page)
         await seedLifecycleActiveSession({ sessionId: newSessionId, label: 'Phase 1 offline new' })
         const clientC = await openWorkoutClient(observedContextFactory, storageState)
         await expect(clientC.page.getByText('Phase 1 offline new', { exact: true }).first()).toBeVisible()
-        await clientB.context.setOffline(false)
-        await waitForSettledLifecycleActiveSession((session) => session?.sessionId === newSessionId)
-        await expect(clientB.page.getByText('Phase 1 offline new', { exact: true }).first()).toBeVisible()
-        await clientC.context.close()
-        await clientB.context.close()
-        await clientA.context.close()
+        await expectedBrowserDiagnostics.during(
+          'exact Phase 1 stale-session tombstone rejection',
+          isExpectedWorkoutLifecycleTombstoneDiagnostic,
+          async () => {
+            const previousRejections = browserDiagnostics.filter(
+              isExpectedWorkoutLifecycleTombstoneDiagnostic,
+            ).length
+            await setFirestoreNetworkEnabled(clientB.page, true)
+            await expect.poll(() => browserDiagnostics.filter(
+              isExpectedWorkoutLifecycleTombstoneDiagnostic,
+            ).length).toBeGreaterThan(previousRejections)
+            await clientC.context.close()
+            await clientB.context.close()
+            await clientA.context.close()
+          },
+        )
       },
     )
+    await waitForSettledLifecycleActiveSession((session) => session?.sessionId === newSessionId)
     expect(await readLifecycleActiveSession()).toMatchObject({
       sessionId: newSessionId,
       label: 'Phase 1 offline new',

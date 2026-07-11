@@ -8,6 +8,7 @@ import {
   decideConfirmedClosure,
   decideRemoteSessionSync,
   shouldPersistActiveSession,
+  shouldAutoStartEmptySession,
 } from '../activeSessionSyncPolicy'
 
 const session = (sessionId: string): ActiveWorkout => ({
@@ -117,6 +118,21 @@ describe('active session sync policy', () => {
   it('permits stale replacement only after confirmed discard', () => {
     expect(canCreateStaleReplacement({ status: 'discarded' })).toBe(true)
     expect(canCreateStaleReplacement({ status: 'closure_unconfirmed' })).toBe(false)
+  })
+
+  it('suppresses empty auto-start after this hook instance confirms closure', () => {
+    expect(shouldAutoStartEmptySession({
+      currentSession: null,
+      confirmedClosure: true,
+    })).toBe(false)
+    expect(shouldAutoStartEmptySession({
+      currentSession: null,
+      confirmedClosure: false,
+    })).toBe(true)
+    expect(shouldAutoStartEmptySession({
+      currentSession: { sessionId: 'session-A' } as ActiveWorkout,
+      confirmedClosure: false,
+    })).toBe(false)
   })
 
   it('does not replace confirmed stale session A when session B won the race', () => {

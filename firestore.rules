@@ -364,10 +364,12 @@ service cloud.firestore {
     }
 
     function isActiveSession(uid, data) {
-      return data.keys().hasOnly(['userId', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
-             && data.keys().hasAll(['userId', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
+      return data.keys().hasOnly(['userId', 'sessionId', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
+             && data.keys().hasAll(['userId', 'sessionId', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
              && currentUid() == uid
              && data.userId == currentUid()
+             && isDocumentId(data.sessionId)
+             && !exists(/databases/$(database)/documents/closedSessions/$(data.sessionId))
              && isMillis(data.startedAt)
              && isMillis(data.updatedAt)
              && data.updatedAt >= data.startedAt
@@ -389,10 +391,8 @@ service cloud.firestore {
     }
 
     match /workouts/{id} {
-      allow create: if ownsNewDoc()
-                    && isWorkoutCreate(request.resource.data);
       allow read: if ownsDoc();
-      allow update, delete: if false;
+      allow create, update, delete: if false;
     }
 
     match /exerciseSessions/{id} {
@@ -411,6 +411,10 @@ service cloud.firestore {
     }
 
     match /dailyAiUsage/{id} {
+      allow read, write: if false;
+    }
+
+    match /closedSessions/{id} {
       allow read, write: if false;
     }
 

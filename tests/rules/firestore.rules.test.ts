@@ -6,8 +6,8 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { doc, setDoc } from 'firebase/firestore'
-import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
+import { doc, getDoc, setDoc } from 'firebase/firestore'
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 const PROJECT_ID = 'demo-ironlog-rules'
 
@@ -31,33 +31,16 @@ afterAll(async () => {
 })
 
 describe('workouts rules', () => {
-  it('allows the owner to create a valid pending workout', async () => {
+  it('rejects client creation while preserving owner read access to server-created history', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
 
-    await assertSucceeds(setDoc(doc(db, 'workouts', 'workout-valid'), validWorkout('alice')))
-  })
+    await assertFails(setDoc(doc(db, 'workouts', 'workout-valid'), validWorkout('alice')))
 
-  it('rejects workouts with unexpected top-level fields', async () => {
-    const db = testEnv.authenticatedContext('alice').firestore()
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'workouts', 'workout-history'), validWorkout('alice'))
+    })
 
-    await assertFails(setDoc(doc(db, 'workouts', 'workout-extra'), {
-      ...validWorkout('alice'),
-      debug: true,
-    }))
-  })
-
-  it('rejects workouts with too many exercises or invalid set values', async () => {
-    const db = testEnv.authenticatedContext('alice').firestore()
-
-    await assertFails(setDoc(doc(db, 'workouts', 'workout-large'), {
-      ...validWorkout('alice'),
-      exercises: Array.from({ length: 61 }, () => validFinishedExercise()),
-    }))
-
-    await assertFails(setDoc(doc(db, 'workouts', 'workout-bad-set'), {
-      ...validWorkout('alice'),
-      exercises: [{ ...validFinishedExercise(), sets: [{ weight: -1, reps: 5 }] }],
-    }))
+    await assertSucceeds(getDoc(doc(db, 'workouts', 'workout-history')))
   })
 })
 
@@ -102,7 +85,7 @@ describe('readiness rules', () => {
 })
 
 describe('activeSessions rules', () => {
-  it('allows valid active sessions and rejects oversized drafts', async () => {
+  it('allows valid active sessions containing a sessionId and rejects oversized drafts', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
 
     await assertSucceeds(setDoc(doc(db, 'activeSessions', 'alice'), validActiveSession('alice')))
@@ -110,6 +93,59 @@ describe('activeSessions rules', () => {
       ...validActiveSession('alice'),
       exercises: Array.from({ length: 61 }, () => validActiveExercise()),
     }))
+  })
+
+  it('rejects active sessions without a sessionId', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const sessionWithoutId = structuredClone(validActiveSession('alice'))
+    Reflect.deleteProperty(sessionWithoutId, 'sessionId')
+
+    await assertFails(setDoc(doc(db, 'activeSessions', 'alice'), sessionWithoutId))
+  })
+
+  it('rejects creation and update using a tombstoned sessionId', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+
+    await seedClosedSession('session-1')
+
+    await assertFails(setDoc(doc(db, 'activeSessions', 'alice'), validActiveSession('alice')))
+
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), 'activeSessions', 'alice'),
+        validActiveSession('alice', 'session-2'),
+      )
+    })
+
+    await assertFails(setDoc(doc(db, 'activeSessions', 'alice'), validActiveSession('alice')))
+  })
+
+  it('does not let a late tombstoned write overwrite a newer session', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const newerSession = validActiveSession('alice', 'session-2')
+
+    await seedClosedSession('session-1')
+    await assertSucceeds(setDoc(doc(db, 'activeSessions', 'alice'), newerSession))
+
+    await assertFails(setDoc(doc(db, 'activeSessions', 'alice'), {
+      ...validActiveSession('alice', 'session-1'),
+      label: 'Late offline write',
+      updatedAt: newerSession.updatedAt + 1,
+    }))
+
+    const retainedSnapshot = await assertSucceeds(getDoc(doc(db, 'activeSessions', 'alice')))
+    expect(retainedSnapshot.data()).toEqual(newerSession)
+  })
+})
+
+describe('closedSessions rules', () => {
+  it('rejects client reads and writes', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+
+    await seedClosedSession('session-1')
+
+    await assertFails(getDoc(doc(db, 'closedSessions', 'session-1')))
+    await assertFails(setDoc(doc(db, 'closedSessions', 'session-2'), closedSession('session-2')))
   })
 })
 
@@ -188,15 +224,32 @@ function validReadiness(userId: string) {
   }
 }
 
-function validActiveSession(userId: string) {
+function validActiveSession(userId: string, sessionId = 'session-1') {
   return {
     userId,
+    sessionId,
     startedAt: 1_790_000_000_000,
     templateId: null,
     label: 'Push',
     updatedAt: 1_790_000_100_000,
     exercises: [validActiveExercise()],
   }
+}
+
+function closedSession(sessionId: string) {
+  return {
+    userId: 'alice',
+    sessionId,
+    outcome: 'discarded',
+    workoutId: null,
+    closedAt: 1_790_000_200_000,
+  }
+}
+
+async function seedClosedSession(sessionId: string) {
+  await testEnv.withSecurityRulesDisabled(async (context) => {
+    await setDoc(doc(context.firestore(), 'closedSessions', sessionId), closedSession(sessionId))
+  })
 }
 
 function validActiveExercise() {

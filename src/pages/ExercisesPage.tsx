@@ -374,6 +374,7 @@ export default function ExercisesPage() {
   const [equipment, setEquipment] = useState<Equipment | 'all'>('all')
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
   const [loadingUser, setLoadingUser] = useState(true)
+  const [userExercisesLoadError, setUserExercisesLoadError] = useState(false)
   const [formExercise, setFormExercise] = useState<Exercise | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [confirmDeleteExercise, setConfirmDeleteExercise] = useState<Exercise | null>(null)
@@ -383,6 +384,7 @@ export default function ExercisesPage() {
     getUserExercises(user.uid)
       .then(setUserExercises)
       .catch((err) => {
+        setUserExercisesLoadError(true)
         console.error('[userExercises load error]', err)
         toast.error('Nie udało się wczytać Twoich ćwiczeń.')
       })
@@ -527,7 +529,11 @@ export default function ExercisesPage() {
         </div>
       </section>
 
-      <div className="exercise-library-content">
+      <div
+        className="exercise-library-content"
+        data-testid="exercises-page"
+        data-load-state={loadingUser ? 'loading' : userExercisesLoadError ? 'error' : 'ready'}
+      >
         <section className="exercise-library-section">
           <SectionHeader eyebrow="Własna biblioteka" title="Moje ćwiczenia" count={filteredUser.length} />
 

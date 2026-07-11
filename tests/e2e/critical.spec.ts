@@ -32,15 +32,16 @@ test.describe('Critical application contract', () => {
     await expectAppReady(page, '/dashboard')
   })
 
-  test('unauthenticated user is redirected to login', async ({ browser }) => {
-    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } })
+})
+
+test.describe('Unauthenticated application contract', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('unauthenticated user is redirected to login', async ({ context }) => {
     const page = await context.newPage()
-    try {
-      await page.goto('/dashboard')
-      await expect(page).toHaveURL('/login', { timeout: 10_000 })
-      await expect(page.getByRole('button', { name: 'Zaloguj się' })).toBeVisible()
-    } finally {
-      await context.close()
-    }
+    await page.goto('/dashboard')
+    await expect(page).toHaveURL('/login', { timeout: 10_000 })
+    await expect(page.getByRole('button', { name: 'Zaloguj się' })).toBeVisible()
+    await page.close()
   })
 })

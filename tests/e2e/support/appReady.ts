@@ -53,7 +53,8 @@ export async function expectAppReady(
     case '/exercises':
       await expect(page.getByRole('heading', { name: 'Biblioteka.' })).toBeVisible({ timeout })
       await expect(page.getByLabel('Szukaj ćwiczenia')).toBeVisible({ timeout })
-      await expect(page.locator('.exercise-library-content')).toBeVisible({ timeout })
+      await expect(page.getByTestId('exercises-page')).toHaveAttribute('data-load-state', /^(?:ready|error)$/, { timeout })
+      await expect(page.getByTestId('exercises-page')).toHaveAttribute('data-load-state', 'ready')
       return
     case '/chat':
       await expect(page.getByRole('heading', { name: 'Coach.' })).toBeVisible({ timeout })

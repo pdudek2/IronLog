@@ -134,17 +134,14 @@ test.describe('Template launch contract', () => {
       await context.setOffline(false)
       await page.waitForTimeout(6_000)
 
-      const verifyContext = await context.browser().newContext({ storageState: 'tests/e2e/.auth/user.json' })
-      const verifyPage = await verifyContext.newPage()
+      const verifyPage = await context.newPage()
       try {
         await verifyPage.goto('/workout/new')
-        await expect(verifyPage.locator('.page-shell')).toBeVisible({ timeout: 25_000 })
-        await waitForWorkoutState(verifyPage)
+        await expectAppReady(verifyPage, '/workout/new', 25_000)
         await expect(verifyPage.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
         await expect(verifyPage.getByText('Squat', { exact: true })).toHaveCount(0)
       } finally {
         await verifyPage.close()
-        await verifyContext.close()
       }
     }
   })

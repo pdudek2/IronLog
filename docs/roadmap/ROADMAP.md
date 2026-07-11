@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — faza A zakończona; gotowy do planowania minimalnej fazy 0**
+Stan przeglądu: **APPROVED — fazy A i 0 zakończone; gotowy do planowania fazy R**
 Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
 Ostatnia aktualizacja: 2026-07-11
 
@@ -42,20 +42,23 @@ Poniższe obszary są częścią aktualnego baseline'u i nie wracają jako aktyw
 - **BASE-04 — Odporność startu szablonu offline: DONE.** Brak opóźnionego, niejawnego uruchomienia po odzyskaniu sieci.
 - **BASE-05 — Kierunek wizualny Puls: LOCKED.** Roadmapa poprawia zachowanie i dostępność bez ponownego projektowania całego interfejsu.
 - **BASE-06 — Analityka runtime: DONE.** GA4 i Contentsquare/Hotjar zostały usunięte z aplikacji, konfiguracji i zależności; materiały zaliczeniowe pozostają w archiwum historycznym. Cleanup zmiennych Vercel pozostaje kontrolą release `RELEASE-08`.
+- **BASE-07 — Fundament E2E: DONE.** Krytyczne testy używają gotowości właściwych ekranów, automatycznej diagnostyki przeglądarki i cleanupu mutacji; osobny gate Auth+Firestore emulator działa bez sekretów i produkcyjnego quota.
 
 Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 19 plików i 106 testów jednostkowych przechodzi,
-- pełny E2E jest obecnie zależny od limitu żywego Firestore dla części testów szablonów.
+- 21 plików i 111 testów jednostkowych oraz testów wsparcia przechodzi,
+- 1 plik i 8 testów reguł Firestore przechodzi,
+- izolowany gate Auth+Firestore emulator przechodzi dwukrotnie: 13 testów Playwright na świeżych emulatorach w każdym uruchomieniu,
+- live `npm run test:e2e` pozostaje kontrolą integracyjną; bieżące uruchomienie bez prywatnych zmiennych zatrzymuje się przed uwierzytelnieniem na konflikcie matcherów Vitest wykrytych przez Playwright.
 
 ## 4. Mapa faz
 
 | Kolejność | Faza | Priorytet | Status | Główny rezultat |
 |---:|---|---|---|---|
 | 1 | A — Kontrolowane usunięcie analityki | P1 | DONE | GA4 i Contentsquare/Hotjar usunięte z runtime; dowody integracji zachowane jako archiwum zaliczenia |
-| 2 | 0 — Minimalny fundament weryfikacji | P0 | READY | Krytyczne E2E mają bezpieczny cleanup, prawdziwe readiness assertions i kontrolę błędów runtime |
+| 2 | 0 — Minimalny fundament weryfikacji | P0 | DONE | Krytyczny gate działa bez produkcyjnego quota; readiness, diagnostyka i cleanup mają wspólne kontrakty |
 | 3 | R — Focused review cyklu życia treningu | P0 | READY | Hipotezy `WORKOUT-01–06` zostają potwierdzone, zawężone albo odrzucone przed implementacją |
 | 4 | 1 — Integralność cyklu życia treningu | P0 | BLOCKED | Powstaje tylko z zakresu potwierdzonego przez fazę R |
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | READY | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
@@ -430,7 +433,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-Najbliższy pakiet powinien objąć **fazę 0 — minimalny fundament weryfikacji** w zakresie `TEST-01`, `TEST-03`, `TEST-05` i `TEST-06`.
+Najbliższy pakiet powinien objąć **fazę R — focused review cyklu życia treningu** w zakresie `REVIEW-WORKOUT-01`–`REVIEW-WORKOUT-05`.
 
 Po fazie 0 należy wykonać **fazę R** jako kolejny krok. Dopiero wynik fazy R rozstrzyga, czy i jaki plan implementacyjny powstaje dla fazy 1. Nie wolno planować całej fazy 1 na podstawie samych hipotez.
 

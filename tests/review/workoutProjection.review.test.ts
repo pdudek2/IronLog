@@ -78,6 +78,41 @@ async function readProjectionState(workoutId: string) {
   }
 }
 
+function projectionEvidence(state: Awaited<ReturnType<typeof readProjectionState>>) {
+  return {
+    materialized: state.workout?.materialized,
+    exerciseSessions: state.exerciseSessions.map((session) => ({
+      id: session.id,
+      workoutId: session.workoutId,
+    })),
+    record: {
+      totalSessions: state.record?.totalSessions,
+      maxWeight: state.record?.maxWeight,
+      maxReps: state.record?.maxReps,
+      bestVolume: state.record?.bestVolume,
+    },
+  }
+}
+
+function expectRecoveredProjection(
+  state: Awaited<ReturnType<typeof readProjectionState>>,
+  workoutId: string,
+) {
+  expect(projectionEvidence(state)).toEqual({
+    materialized: true,
+    exerciseSessions: [{
+      id: expect.any(String),
+      workoutId,
+    }],
+    record: {
+      totalSessions: 1,
+      maxWeight: 80,
+      maxReps: 5,
+      bestVolume: 400,
+    },
+  })
+}
+
 describe('workout projection retry review', () => {
   for (const checkpointCase of checkpointCases) {
     it(`retries consistently after ${checkpointCase.checkpoint}`, async () => {
@@ -125,19 +160,19 @@ describe('workout projection retry review', () => {
       }
 
       await materializeWorkoutForUser(USER_ID, workoutId, { db })
-      await materializeWorkoutForUser(USER_ID, workoutId, { db })
-
-      const final = await readProjectionState(workoutId)
+      const recovered = await readProjectionState(workoutId)
       console.info(
-        `[review observation] ${checkpointCase.checkpoint} final: materialized=${String(final.workout?.materialized)}, sessions=${final.exerciseSessions.length}, totalSessions=${String(final.record?.totalSessions)}, maxWeight=${String(final.record?.maxWeight)}, maxReps=${String(final.record?.maxReps)}, bestVolume=${String(final.record?.bestVolume)}`,
+        `[review observation] ${checkpointCase.checkpoint} recovered: materialized=${String(recovered.workout?.materialized)}, sessions=${recovered.exerciseSessions.length}, totalSessions=${String(recovered.record?.totalSessions)}, maxWeight=${String(recovered.record?.maxWeight)}, maxReps=${String(recovered.record?.maxReps)}, bestVolume=${String(recovered.record?.bestVolume)}`,
       )
-      expect(final.workout?.materialized).toBe(true)
-      expect(final.exerciseSessions).toHaveLength(1)
-      expect(final.exerciseSessions[0]?.workoutId).toBe(workoutId)
-      expect(final.record?.totalSessions).toBe(1)
-      expect(final.record?.maxWeight).toBe(80)
-      expect(final.record?.maxReps).toBe(5)
-      expect(final.record?.bestVolume).toBe(400)
+      expectRecoveredProjection(recovered, workoutId)
+
+      await materializeWorkoutForUser(USER_ID, workoutId, { db })
+      const idempotentRetry = await readProjectionState(workoutId)
+      console.info(
+        `[review observation] ${checkpointCase.checkpoint} idempotent retry: materialized=${String(idempotentRetry.workout?.materialized)}, sessions=${idempotentRetry.exerciseSessions.length}, totalSessions=${String(idempotentRetry.record?.totalSessions)}, maxWeight=${String(idempotentRetry.record?.maxWeight)}, maxReps=${String(idempotentRetry.record?.maxReps)}, bestVolume=${String(idempotentRetry.record?.bestVolume)}`,
+      )
+      expectRecoveredProjection(idempotentRetry, workoutId)
+      expect(projectionEvidence(idempotentRetry)).toEqual(projectionEvidence(recovered))
     })
   }
 })

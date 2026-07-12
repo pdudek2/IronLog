@@ -1,4 +1,4 @@
-import React, { useEffect, useId, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
@@ -15,6 +15,7 @@ import {
 } from '../lib/userExercisesService'
 import { useDialogA11y } from '../hooks/useDialogA11y'
 import ConfirmDialog from '../components/ConfirmDialog'
+import type { DataState } from '../types/dataState'
 
 // ─── Labels ──────────────────────────────────────────────────────────────────
 
@@ -351,7 +352,7 @@ function SectionHeader({
 }: {
   eyebrow: string
   title: string
-  count: number
+  count: number | string
 }) {
   return (
     <div className="exercise-section-head">
@@ -366,30 +367,76 @@ function SectionHeader({
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+interface UserExercisesResource {
+  uid: string | null
+  state: DataState<Exercise[]>
+}
+
 export default function ExercisesPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
   const [equipment, setEquipment] = useState<Equipment | 'all'>('all')
-  const [userExercises, setUserExercises] = useState<Exercise[]>([])
-  const [loadingUser, setLoadingUser] = useState(true)
-  const [userExercisesLoadError, setUserExercisesLoadError] = useState(false)
+  const [userExercisesResource, setUserExercisesResource] = useState<UserExercisesResource>({
+    uid: user?.uid ?? null,
+    state: { status: 'loading' },
+  })
+  const userExercisesMountedRef = useRef(false)
+  const userExercisesRequestRef = useRef(0)
+  const requestedUserRef = useRef<string | null>(null)
+  const inFlightUserRef = useRef<string | null>(null)
   const [formExercise, setFormExercise] = useState<Exercise | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [confirmDeleteExercise, setConfirmDeleteExercise] = useState<Exercise | null>(null)
 
+  const loadUserExercises = useCallback((uid: string) => {
+    if (inFlightUserRef.current === uid) return
+    const requestId = ++userExercisesRequestRef.current
+    inFlightUserRef.current = uid
+
+    getUserExercises(uid)
+      .then((data) => {
+        if (!userExercisesMountedRef.current || requestId !== userExercisesRequestRef.current) return
+        setUserExercisesResource({ uid, state: { status: 'success', data } })
+      })
+      .catch((error: unknown) => {
+        console.error('[userExercises load error]', error)
+        toast.error('Nie udało się wczytać Twoich ćwiczeń.')
+        if (!userExercisesMountedRef.current || requestId !== userExercisesRequestRef.current) return
+        setUserExercisesResource({ uid, state: { status: 'error', error } })
+      })
+      .finally(() => {
+        if (requestId === userExercisesRequestRef.current) inFlightUserRef.current = null
+      })
+  }, [])
+
   useEffect(() => {
     if (!user) return
-    getUserExercises(user.uid)
-      .then(setUserExercises)
-      .catch((err) => {
-        setUserExercisesLoadError(true)
-        console.error('[userExercises load error]', err)
-        toast.error('Nie udało się wczytać Twoich ćwiczeń.')
-      })
-      .finally(() => setLoadingUser(false))
-  }, [user])
+    userExercisesMountedRef.current = true
+    if (requestedUserRef.current !== user.uid) {
+      requestedUserRef.current = user.uid
+      loadUserExercises(user.uid)
+    }
+    return () => {
+      userExercisesMountedRef.current = false
+    }
+  }, [loadUserExercises, user])
+
+  const userExercisesState: DataState<Exercise[]> =
+    userExercisesResource.uid === user?.uid
+      ? userExercisesResource.state
+      : { status: 'loading' }
+  const userExercises = userExercisesState.status === 'success'
+    ? userExercisesState.data
+    : []
+
+  function handleRetryUserExercises() {
+    if (!user) return
+    requestedUserRef.current = user.uid
+    setUserExercisesResource({ uid: user.uid, state: { status: 'loading' } })
+    loadUserExercises(user.uid)
+  }
 
   const q = query.toLowerCase()
 
@@ -414,7 +461,12 @@ export default function ExercisesPage() {
   async function handleCreate(input: UserExerciseInput) {
     if (!user) return
     const created = await createUserExercise(user.uid, input)
-    setUserExercises((prev) => [created, ...prev])
+    setUserExercisesResource((current) => current.state.status === 'success'
+      ? {
+          ...current,
+          state: { status: 'success', data: [created, ...current.state.data] },
+        }
+      : current)
     setShowForm(false)
     setFormExercise(null)
     toast.success('Ćwiczenie dodane!')
@@ -423,9 +475,19 @@ export default function ExercisesPage() {
   async function handleUpdate(input: UserExerciseInput) {
     if (!formExercise) return
     await updateUserExercise(formExercise.id, input)
-    setUserExercises((prev) => prev.map((exercise) => (
-      exercise.id === formExercise.id ? { ...exercise, ...input } : exercise
-    )))
+    setUserExercisesResource((current) => current.state.status === 'success'
+      ? {
+          ...current,
+          state: {
+            status: 'success',
+            data: current.state.data.map((exercise) => (
+              exercise.id === formExercise.id
+                ? { ...exercise, ...input }
+                : exercise
+            )),
+          },
+        }
+      : current)
     setShowForm(false)
     setFormExercise(null)
     toast.success('Ćwiczenie zaktualizowane!')
@@ -439,7 +501,15 @@ export default function ExercisesPage() {
 
     try {
       await deleteUserExercise(deletingId)
-      setUserExercises((prev) => prev.filter((exercise) => exercise.id !== deletingId))
+      setUserExercisesResource((current) => current.state.status === 'success'
+        ? {
+            ...current,
+            state: {
+              status: 'success',
+              data: current.state.data.filter((exercise) => exercise.id !== deletingId),
+            },
+          }
+        : current)
       toast.success('Ćwiczenie usunięte!')
     } catch (err) {
       console.error('[userExercise delete error]', err)
@@ -478,7 +548,11 @@ export default function ExercisesPage() {
               katalog
             </span>
             <span>
-              <strong><NumberFlow value={userExercises.length} /></strong>
+              <strong>
+                {userExercisesState.status === 'success'
+                  ? <NumberFlow value={userExercises.length} />
+                  : '—'}
+              </strong>
               moje
             </span>
             <span data-active={hasActiveFilters}>
@@ -490,6 +564,8 @@ export default function ExercisesPage() {
           <motion.button
             type="button"
             onClick={openCreateForm}
+            disabled={userExercisesState.status !== 'success'}
+            aria-describedby={userExercisesState.status === 'error' ? 'user-exercises-load-error' : undefined}
             className="planner-primary-action"
             whileTap={{ scale: 0.97 }}
           >
@@ -532,14 +608,34 @@ export default function ExercisesPage() {
       <div
         className="exercise-library-content"
         data-testid="exercises-page"
-        data-load-state={loadingUser ? 'loading' : userExercisesLoadError ? 'error' : 'ready'}
+        data-load-state={
+          userExercisesState.status === 'success'
+            ? 'ready'
+            : userExercisesState.status
+        }
       >
         <section className="exercise-library-section">
-          <SectionHeader eyebrow="Własna biblioteka" title="Moje ćwiczenia" count={filteredUser.length} />
+          <SectionHeader
+            eyebrow="Własna biblioteka"
+            title="Moje ćwiczenia"
+            count={userExercisesState.status === 'success' ? filteredUser.length : '—'}
+          />
 
-          {loadingUser ? (
+          {userExercisesState.status === 'loading' ? (
             <div className="exercise-empty-state">
               <p>Ładowanie...</p>
+            </div>
+          ) : userExercisesState.status === 'error' ? (
+            <div id="user-exercises-load-error" className="exercise-empty-state">
+              <strong>Nie udało się wczytać Twoich ćwiczeń</strong>
+              <p>Katalog globalny nadal jest dostępny. Sprawdź połączenie i spróbuj ponownie.</p>
+              <button
+                type="button"
+                onClick={handleRetryUserExercises}
+                className="planner-secondary-action"
+              >
+                Spróbuj ponownie
+              </button>
             </div>
           ) : filteredUser.length === 0 ? (
             <div className="exercise-empty-state">

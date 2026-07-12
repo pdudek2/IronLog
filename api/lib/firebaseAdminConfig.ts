@@ -22,7 +22,7 @@ export function resolveFirebaseAdminRuntime(
 
   return {
     projectId: usesEmulator
-      ? env.GCLOUD_PROJECT ?? env.FIREBASE_PROJECT_ID
+      ? env.GCLOUD_PROJECT || env.FIREBASE_PROJECT_ID
       : env.FIREBASE_PROJECT_ID,
     useConfiguredCredential: !usesEmulator,
   }

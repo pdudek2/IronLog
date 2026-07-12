@@ -401,9 +401,9 @@ export default function ExercisesPage() {
         setUserExercisesResource({ uid, state: { status: 'success', data } })
       })
       .catch((error: unknown) => {
+        if (!userExercisesMountedRef.current || requestId !== userExercisesRequestRef.current) return
         console.error('[userExercises load error]', error)
         toast.error('Nie udało się wczytać Twoich ćwiczeń.')
-        if (!userExercisesMountedRef.current || requestId !== userExercisesRequestRef.current) return
         setUserExercisesResource({ uid, state: { status: 'error', error } })
       })
       .finally(() => {

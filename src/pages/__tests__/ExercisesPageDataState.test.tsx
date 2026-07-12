@@ -6,6 +6,7 @@ import ExercisesPage from '../ExercisesPage'
 const mocks = vi.hoisted(() => ({
   getUserExercises: vi.fn(),
   navigate: vi.fn(),
+  toastError: vi.fn(),
 }))
 
 vi.mock('../../store/authStore', () => ({
@@ -39,7 +40,7 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mocks.navigate }
 })
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: mocks.toastError },
 }))
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
@@ -70,6 +71,7 @@ describe('ExercisesPage user library states', () => {
   beforeEach(() => {
     mocks.getUserExercises.mockReset()
     mocks.navigate.mockReset()
+    mocks.toastError.mockReset()
   })
 
   it('shows a persistent error, unknown counts and the usable global catalog', async () => {
@@ -83,6 +85,22 @@ describe('ExercisesPage user library states', () => {
     expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeDisabled()
     expect(screen.getByText('Przysiad')).toBeInTheDocument()
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+    expect(mocks.toastError).toHaveBeenCalledWith('Nie udało się wczytać Twoich ćwiczeń.')
+  })
+
+  it('does not show an error toast when a request rejects after unmount', async () => {
+    let rejectRequest: (error: Error) => void = () => undefined
+    const request = new Promise<never>((_resolve, reject) => {
+      rejectRequest = reject
+    })
+    mocks.getUserExercises.mockReturnValueOnce(request)
+
+    const { unmount } = render(<ExercisesPage />)
+    unmount()
+    rejectRequest(new Error('offline'))
+    await request.catch(() => undefined)
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('recovers from an error and replaces the unknown state with the full list', async () => {

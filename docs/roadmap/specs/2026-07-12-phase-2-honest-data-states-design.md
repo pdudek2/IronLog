@@ -1,6 +1,6 @@
 # IronLog — projekt Fazy 2: uczciwe stany danych i błędów
 
-**Status:** do finalnego review przed planowaniem
+**Status:** zatwierdzona do planowania
 
 **Data:** 2026-07-12
 

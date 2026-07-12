@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R i 1 zakończone; projekt Fazy 2 gotowy do finalnego review**
+Stan przeglądu: **APPROVED — fazy A, 0, R i 1 zakończone; specyfikacja Fazy 2 zatwierdzona**
 Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
 Ostatnia aktualizacja: 2026-07-12
 
@@ -201,7 +201,7 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 
 ### Faza 2 — Uczciwe stany danych i błędów
 
-**Status: READY — kierunek zatwierdzony, specyfikacja oczekuje finalnego review przed napisaniem planu.**
+**Status: READY — specyfikacja zatwierdzona, plan wdrożeniowy gotowy do review.**
 
 **Cel:** oddzielić `loading`, `success-empty`, `success-data`, `error` i — tam gdzie ma sens — `stale-data`.
 

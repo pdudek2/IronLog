@@ -10,6 +10,8 @@ const mocks = vi.hoisted(() => ({
   getRecentWorkouts: vi.fn(),
   retryWorkoutMaterialization: vi.fn(),
   deleteWorkout: vi.fn(),
+  getTemplates: vi.fn(),
+  toastError: vi.fn(),
   user: { uid: 'user-1' },
   profile: { displayName: 'Patryk', weeklyGoal: 3 },
   setProfile: vi.fn(),
@@ -40,7 +42,7 @@ vi.mock('../../lib/workoutService', () => ({
 }))
 
 vi.mock('../../lib/templateService', () => ({
-  getTemplates: vi.fn().mockResolvedValue([]),
+  getTemplates: mocks.getTemplates,
 }))
 
 vi.mock('../../lib/userProfile', () => ({
@@ -79,7 +81,7 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: mocks.toastError },
 }))
 
 vi.mock('framer-motion', () => ({
@@ -129,6 +131,10 @@ describe('Dashboard workout projection status', () => {
     mocks.getRecentWorkouts.mockReset()
     mocks.retryWorkoutMaterialization.mockReset()
     mocks.deleteWorkout.mockReset()
+    mocks.getTemplates.mockReset()
+    mocks.getTemplates.mockResolvedValue([])
+    mocks.toastError.mockReset()
+    mocks.user = { uid: 'user-1' }
     useDashboardStore.getState().clearSnapshot()
   })
 
@@ -319,5 +325,81 @@ describe('Dashboard workout projection status', () => {
     expect(within(returnedWorkoutARow as HTMLElement).queryByRole('button', {
       name: 'Ponów synchronizację',
     })).not.toBeInTheDocument()
+  })
+
+  it('shows a persistent template error and reaches the empty state only after retry succeeds', async () => {
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates
+      .mockRejectedValueOnce(new Error('templates offline'))
+      .mockResolvedValueOnce([])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('Nie udało się wczytać planów')).toBeInTheDocument()
+    expect(screen.queryByText('Brak zapisanych szablonów')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Utwórz pierwszy plan' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+
+    expect(await screen.findByText('Brak zapisanych szablonów')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Utwórz pierwszy plan' })).toBeInTheDocument()
+    expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
+  })
+
+  it('renders template data after a successful read', async () => {
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([{
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Upper / Lower',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [{ name: 'Upper', exercises: [] }],
+    }])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('Upper / Lower')).toBeInTheDocument()
+    expect(screen.queryByText('Brak zapisanych szablonów')).not.toBeInTheDocument()
+  })
+
+  it('ignores a template failure that arrives after unmount, including its side effects', async () => {
+    const templatesRequest = deferred<never>()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockReturnValueOnce(templatesRequest.promise)
+
+    const { unmount } = render(<DashboardPage />)
+    await waitFor(() => expect(mocks.getTemplates).toHaveBeenCalledTimes(1))
+    unmount()
+
+    await act(async () => templatesRequest.reject(new Error('late templates failure')))
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('ignores an obsolete template failure after the authenticated user changes', async () => {
+    const obsoleteRequest = deferred<never>()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates
+      .mockReturnValueOnce(obsoleteRequest.promise)
+      .mockResolvedValueOnce([])
+
+    const { rerender } = render(<DashboardPage />)
+    await waitFor(() => expect(mocks.getTemplates).toHaveBeenCalledTimes(1))
+
+    mocks.user = { uid: 'user-2' }
+    rerender(<DashboardPage />)
+
+    await screen.findByText('Brak zapisanych szablonów')
+    await act(async () => obsoleteRequest.reject(new Error('obsolete templates failure')))
+
+    expect(screen.getByText('Brak zapisanych szablonów')).toBeInTheDocument()
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 })

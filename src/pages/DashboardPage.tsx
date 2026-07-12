@@ -39,6 +39,12 @@ import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore, type ActiveWorkout } from '../store/workoutStore'
+import type { DataState } from '../types/dataState'
+
+interface TemplatesResource {
+  uid: string | null
+  state: DataState<WorkoutTemplate[]>
+}
 
 const CATEGORY_COLORS: Record<string, string> = {
   chest: '#F0435A',
@@ -160,7 +166,10 @@ export default function DashboardPage() {
   } = useDashboardStore()
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
+  const [templatesResource, setTemplatesResource] = useState<TemplatesResource>({
+    uid: user?.uid ?? null,
+    state: { status: 'loading' },
+  })
   const [dashboardError, setDashboardError] = useState(false)
   const [dashboardLoadAttempt, setDashboardLoadAttempt] = useState(0)
   const [remoteActiveSession, setRemoteActiveSession] = useState<ActiveWorkout | null>(null)
@@ -168,6 +177,31 @@ export default function DashboardPage() {
   const workoutsRef = useRef<WorkoutSummary[]>([])
   const snapshotRequestRef = useRef(0)
   const materializationRetriesRef = useRef(new Map<string, Promise<void>>())
+  const templatesMountedRef = useRef(false)
+  const templatesRequestRef = useRef(0)
+  const requestedTemplatesUserRef = useRef<string | null>(null)
+  const inFlightTemplatesUserRef = useRef<string | null>(null)
+
+  const loadTemplates = useCallback((uid: string) => {
+    if (inFlightTemplatesUserRef.current === uid) return
+    const requestId = ++templatesRequestRef.current
+    inFlightTemplatesUserRef.current = uid
+
+    getTemplates(uid)
+      .then((data) => {
+        if (!templatesMountedRef.current || requestId !== templatesRequestRef.current) return
+        setTemplatesResource({ uid, state: { status: 'success', data } })
+      })
+      .catch((error: unknown) => {
+        if (!templatesMountedRef.current || requestId !== templatesRequestRef.current) return
+        console.error('[DashboardPage] getTemplates failed', error)
+        toast.error('Nie udało się wczytać szablonów.')
+        setTemplatesResource({ uid, state: { status: 'error', error } })
+      })
+      .finally(() => {
+        if (requestId === templatesRequestRef.current) inFlightTemplatesUserRef.current = null
+      })
+  }, [])
 
   const retryProjectionOnce = useCallback((workoutId: string): Promise<void> => {
     const existingRetry = materializationRetriesRef.current.get(workoutId)
@@ -301,10 +335,15 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    getTemplates(user.uid)
-      .then(setTemplates)
-      .catch(() => toast.error('Nie udało się wczytać szablonów.'))
-  }, [user])
+    templatesMountedRef.current = true
+    if (requestedTemplatesUserRef.current !== user.uid) {
+      requestedTemplatesUserRef.current = user.uid
+      loadTemplates(user.uid)
+    }
+    return () => {
+      templatesMountedRef.current = false
+    }
+  }, [loadTemplates, user])
 
   useEffect(() => {
     if (!user) return
@@ -386,7 +425,19 @@ export default function DashboardPage() {
   const weekDates = getWeekDates()
   const today = new Date()
   const recentWorkouts = workouts.slice(0, 4)
+  const templatesState: DataState<WorkoutTemplate[]> =
+    templatesResource.uid === user?.uid
+      ? templatesResource.state
+      : { status: 'loading' }
+  const templates = templatesState.status === 'success' ? templatesState.data : []
   const recentTemplates = templates.slice(0, 3)
+
+  function handleRetryTemplates() {
+    if (!user) return
+    requestedTemplatesUserRef.current = user.uid
+    setTemplatesResource({ uid: user.uid, state: { status: 'loading' } })
+    loadTemplates(user.uid)
+  }
   const weekStart = weekDates[0]?.getTime() ?? 0
   const weekEnd = (weekDates[6]?.getTime() ?? 0) + 86_400_000
   const previousWeekStart = weekStart - 7 * 86_400_000
@@ -640,7 +691,27 @@ export default function DashboardPage() {
                 </motion.button>
               </div>
 
-              {recentTemplates.length === 0 ? (
+              {templatesState.status === 'loading' ? (
+                <div
+                  className="rounded-[var(--radius-lg)] px-5 py-8 text-center"
+                  style={{ background: 'var(--surface-muted)' }}
+                >
+                  <p className="text-sm font-semibold text-white">Ładowanie planów...</p>
+                </div>
+              ) : templatesState.status === 'error' ? (
+                <div
+                  className="rounded-[var(--radius-lg)] border border-dashed px-5 py-8 text-center"
+                  style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}
+                >
+                  <p className="text-sm font-semibold text-white">Nie udało się wczytać planów</p>
+                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                    Sprawdź połączenie i spróbuj ponownie.
+                  </p>
+                  <Button type="button" className="mt-5" onClick={handleRetryTemplates}>
+                    Spróbuj ponownie
+                  </Button>
+                </div>
+              ) : recentTemplates.length === 0 ? (
                 <div
                   className="rounded-[var(--radius-lg)] border border-dashed px-5 py-8 text-center"
                   style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}

@@ -49,9 +49,9 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 28 plików i 190 testów jednostkowych oraz testów wsparcia przechodzi,
+- 31 plików i 205 testów jednostkowych oraz testów wsparcia przechodzi,
 - 1 plik i 10 testów reguł Firestore przechodzi,
-- ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 18 testów,
+- ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 20 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
 - ukierunkowana regresja cyklu treningu przechodzi: 9 testów Playwright bez retry,
 - live `npm run test:e2e` pozostaje otwartą kontrolą release wymagającą prywatnych `TEST_EMAIL` i `TEST_PASSWORD`.
@@ -63,7 +63,7 @@ Aktualny baseline jakości:
 | 1 | A — Kontrolowane usunięcie analityki | P1 | DONE | GA4 i Contentsquare/Hotjar usunięte z runtime; dowody integracji zachowane jako archiwum zaliczenia |
 | 2 | 0 — Minimalny fundament weryfikacji | P0 | DONE | Krytyczny gate działa bez produkcyjnego quota; readiness, diagnostyka i cleanup mają wspólne kontrakty |
 | 3 | R — Ukierunkowany przegląd cyklu życia treningu | P0 | DONE | `WORKOUT-01–06` mają dowody i jednoznaczne statusy |
-| 4 | 1 — Integralność cyklu życia treningu | P0 | DONE | `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06` naprawione w commitach `1cb59af–8cd4731` |
+| 4 | 1 — Integralność cyklu życia treningu | P0 | DONE | `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06` naprawione w `1cb59af–4fe1ec5` |
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | READY | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | READY | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
@@ -168,7 +168,7 @@ Faza A jest pierwsza, ponieważ upraszcza profil, global setup E2E, monitoring r
 
 ### Faza 1 — Integralność cyklu życia treningu
 
-**Status: DONE.** Implementacja: commity `1cb59af–8cd4731` na bazie `1e140d0`. Dowody regresyjne i aktualny dług weryfikacyjny opisuje raport Fazy R.
+**Status: DONE.** Implementacja: commity `1cb59af–4fe1ec5` na bazie `1e140d0`, łącznie z końcową korektą po niezależnym review. Dowody regresyjne i aktualny dług weryfikacyjny opisuje raport Fazy R.
 
 **Cel:** usunąć ryzyko utraty, duplikacji albo ponownego pojawienia się sesji w najważniejszym przepływie produktu.
 
@@ -447,7 +447,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 1 — integralność cyklu życia treningu** jest zakończona w zakresie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06`. Następne pakiety można wybierać spośród gotowych faz zgodnie z priorytetem programu; czynności produkcyjne Fazy 1 pozostają w `RELEASE-08`.
+**Faza 1 — integralność cyklu życia treningu** jest zakończona w zakresie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06`, łącznie z user-scoped legacy identity, bezpiecznym 500 dla nieoczekiwanych błędów, autorytatywnością snapshotów metadata oraz widocznym retry autosave. Następne pakiety można wybierać spośród gotowych faz zgodnie z priorytetem programu; czynności produkcyjne Fazy 1 pozostają w `RELEASE-08`.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

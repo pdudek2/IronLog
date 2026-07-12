@@ -27,6 +27,14 @@
 - After each task: run its focused tests, inspect the diff, request independent review, then commit.
 - Do not update the roadmap to `DONE` until every final gate passes.
 
+### Approved final-review corrections
+
+- Legacy sessions without a stored `sessionId` derive one shared browser/server ID from UID and `startedAt`; it is deterministic, user-scoped, Firestore-safe, and at most 160 characters. Stored IDs are never rewritten.
+- A first discard requires a matching active session. Only an existing owned compatible `discarded` tombstone makes an absent active session an idempotent success; preemptive tombstone creation is forbidden.
+- Unexpected non-`ApiError` endpoint failures return a non-sensitive HTTP 500. Typed `ApiError` statuses and codes remain unchanged, so the client retains ambiguous recovery intent.
+- Only `fromCache === false && hasPendingWrites === false` snapshots are authoritative for cleanup, closure confirmation, stale replacement, or replacing recovery.
+- Active-session autosave failure is a persistent `WorkoutPage` state with retry; backup survives and the warning clears only after a successful write or resolving authoritative reconciliation.
+
 ## Planned file map
 
 | File | Responsibility |
@@ -81,7 +89,7 @@ Add `src/lib/__tests__/sessionIdentity.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest'
-import { createSessionId, normalizeSessionId } from '../sessionIdentity'
+import { createSessionId, deriveLegacySessionId, normalizeSessionId } from '../sessionIdentity'
 
 describe('session identity', () => {
   it('creates a Firestore-safe UUID', () => {
@@ -89,12 +97,12 @@ describe('session identity', () => {
   })
 
   it('keeps an existing session id', () => {
-    expect(normalizeSessionId('session-123', 500)).toBe('session-123')
+    expect(normalizeSessionId('session-123', 'user-1', 500)).toBe('session-123')
   })
 
-  it('derives the same legacy id from startedAt on every client', () => {
-    expect(normalizeSessionId(undefined, 500)).toBe('legacy-500')
-    expect(normalizeSessionId('', 500)).toBe('legacy-500')
+  it('derives the same user-scoped legacy id on every client', () => {
+    expect(normalizeSessionId(undefined, 'user-1', 500))
+      .toBe(deriveLegacySessionId('user-1', 500))
   })
 })
 ```
@@ -105,7 +113,7 @@ Extend store, service, and backup tests to assert:
 - store edits preserve that ID;
 - a new template workout receives an ID;
 - `activeSessionDocument()` includes `sessionId`;
-- a remote document without it hydrates as `legacy-${startedAt}`;
+- a remote document without it hydrates as `legacy-${ownerToken}-${startedAt}`;
 - an old local backup hydrates with the same legacy ID.
 
 - [ ] **Step 2: Verify RED**
@@ -127,9 +135,9 @@ export function createSessionId(): string {
   return crypto.randomUUID()
 }
 
-export function normalizeSessionId(value: unknown, startedAt: number): string {
+export function normalizeSessionId(value: unknown, userId: string, startedAt: number): string {
   if (typeof value === 'string' && value.trim()) return value.trim()
-  return `legacy-${startedAt}`
+  return deriveLegacySessionId(userId, startedAt)
 }
 ```
 
@@ -300,7 +308,7 @@ Create `tests/integration/workoutClosure.integration.test.ts` with Admin-seeded 
 - a materialization failure returns `projection_pending` while workout and tombstone stay committed;
 - a retry changes the response to `materialized` after the materializer succeeds;
 - discard is idempotent and creates no workout;
-- missing active session can still be tombstoned by discard;
+- missing active session fails unless an owned compatible discard tombstone already proves an idempotent retry;
 - `session_mismatch` does not delete a newer active session;
 - a `finished` tombstone cannot become `discarded`, and vice versa.
 
@@ -358,7 +366,7 @@ Inside the finish transaction:
 
 Call the existing `materializeWorkoutForUser()` after the transaction. Convert only materialization failure to `projection_pending`; transaction/auth/validation/conflict failures remain errors.
 
-Discard follows the same ownership/conflict checks but creates only a tombstone and deletes the matching active session. An absent active document may be tombstoned unless a conflicting tombstone already exists.
+Discard follows the same ownership/conflict checks but creates only a tombstone and deletes the matching active session. It never creates a first tombstone without a matching active document; absence is successful only for an existing owned compatible discard tombstone.
 
 - [ ] **Step 5: Add endpoint handlers and local routes**
 
@@ -369,6 +377,7 @@ Both handlers must:
 - use `readJsonBody` with an explicit cap;
 - return structured success JSON;
 - use `sendApiError` for typed errors.
+- map unexpected non-`ApiError` failures to a non-sensitive HTTP 500.
 
 Register both routes in `scripts/dev-api.ts`.
 
@@ -517,9 +526,13 @@ Extract pure decisions into `activeSessionSyncPolicy.ts` and cover them without 
 - no intent accepts an authoritative `onSnapshot` remote deletion and clears stale local state;
 - a write failure, including same-session `permission-denied`, preserves local and recovery state because it is not authoritative proof of a tombstone or remote closure;
 - an authoritative `onSnapshot` with a different active `sessionId` replaces the stale local session;
+- cache or pending-write metadata never clear/replace recovery or become the authoritative remote reference;
+- autosave failure exposes persistent hook state, preserves backup, and clears only after successful write/retry or resolving authoritative reconciliation;
 - confirmed stale discard permits replacement creation; ambiguous discard does not.
 
 **Approved implementation correction:** only authoritative `onSnapshot` reconciliation (`remote null` or a different session) may clear or replace local state. A rejected write reports a sync error and waits for that reconciliation. The hook still owns timer cancellation and storage calls. Focused Playwright in Task 7 proves the complete browser behavior.
+
+Authoritative means exactly `fromCache === false && hasPendingWrites === false`. `WorkoutPage` renders a compact persistent Polish sync-warning panel with `Ponów synchronizację`; console logging is diagnostic only.
 
 - [ ] **Step 2: Verify RED**
 
@@ -697,6 +710,8 @@ Cover at least:
 6. failed dashboard materialization shows `Ponów synchronizację`, and a later success clears the failure;
 7. client B goes offline and queues an edit, client A closes the session, client B reconnects, and the active session remains absent;
 8. if client A has already started a new session, client B's old queued write cannot replace it.
+
+Keep client B open after the rules rejection in scenarios 7–8. Assert its pending/cache state does not prematurely clear or replace recovery, then wait for the authoritative `onSnapshot` result in local UI and verify final Admin state.
 
 Every independent client uses a separate observed `BrowserContext`.
 

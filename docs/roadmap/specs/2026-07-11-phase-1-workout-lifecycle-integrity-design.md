@@ -47,7 +47,7 @@ sessionId: string
 
 Nowe sesje używają UUID generowanego po stronie klienta. Identyfikator nie zmienia się podczas edycji, synchronizacji ani odświeżenia strony.
 
-Istniejące sesje bez tego pola są odczytywane jako `legacy-${startedAt}`. Wartość jest deterministyczna, więc dwa klienty wyprowadzą ten sam identyfikator. Pierwszy kolejny zapis migruje dokument do nowego schematu.
+Istniejące sesje bez tego pola są odczytywane jako `legacy-${ownerToken}-${startedAt}`, gdzie `ownerToken` jest krótkim deterministycznym hashem UID. Browser i serwer używają tej samej funkcji, więc dwa klienty tego samego użytkownika wyprowadzą ten sam identyfikator, a użytkownicy z tym samym `startedAt` nie współdzielą globalnego namespace'u workoutów i tombstone'ów. Wynik pasuje do wzorca document ID reguł i ma najwyżej 160 znaków. Pierwszy kolejny zapis migruje dokument do nowego schematu. Istniejące zapisane wartości `sessionId` pozostają bez zmian.
 
 Lokalny backup stosuje tę samą normalizację. Nie wolno generować nowego losowego ID podczas odczytu starego dokumentu lub backupu.
 
@@ -110,13 +110,15 @@ Ponowienie z tym samym `sessionId` nie tworzy kolejnego workoutu. Jeżeli workou
 
 Transakcja zapisuje tombstone z `outcome: 'discarded'` i usuwa pasującą aktywną sesję. Ponowienie tego samego requestu zwraca sukces. Tombstone z `outcome: 'finished'` nie może zostać zamieniony na `discarded`.
 
-Brak aktywnego dokumentu nie blokuje odrzucenia, jeśli nie istnieje sprzeczny tombstone. Serwer zapisuje tombstone, aby zabezpieczyć późniejszy offline write.
+Brak aktywnego dokumentu pozwala na sukces wyłącznie wtedy, gdy istnieje już własny, zgodny tombstone `discarded`. Pierwsza próba bez pasującej aktywnej sesji zwraca definitywny `session_mismatch` i nie rezerwuje tombstone'a. Dzięki temu retry pozostaje idempotentny, ale użytkownik nie może prewencyjnie zająć namespace'u innej sesji.
 
 ### 4.3 Konflikty
 
 Jeżeli `activeSessions/{uid}` wskazuje inne `sessionId`, endpoint nie usuwa nowej sesji. Zwraca kontrolowany konflikt `session_mismatch`.
 
 Kody błędów i statusy w TypeScript pozostają po angielsku. Polski tekst jest warstwą prezentacji.
+
+Nieoczekiwany błąd transakcji albo Admin SDK, który nie jest `ApiError`, zwraca HTTP 500 z niesensytywnym komunikatem fallback. Statusy i kody jawnych `ApiError` pozostają bez zmian. Klient klasyfikuje 5xx jako wynik niejednoznaczny i zachowuje intent oraz snapshot do retry.
 
 ## 5. Idempotencja i kolejność operacji
 
@@ -196,9 +198,10 @@ Klient bez własnego intentu może nadal mieć starszy snapshot. Po zamknięciu 
 - jego oczekujący zapis zostaje odrzucony przez reguły z powodu tombstone'a;
 - zapis nie zastępuje nowszej sesji ani nie odtwarza starej;
 - autorytatywny snapshot serwera z `onSnapshot` usuwa zamkniętą sesję z lokalnego UI, gdy zwraca brak dokumentu, albo zastępuje ją, gdy zwraca inne `sessionId`;
+- wyłącznie metadata `fromCache === false && hasPendingWrites === false` oznaczają snapshot autorytatywny dla czyszczenia recovery, potwierdzania zamknięcia i zastępowania sesji; cache oraz pending write mogą być renderowane, ale nie sterują tymi decyzjami;
 - sam błąd `permission-denied` zapisu nie jest dowodem tombstone'a ani zamknięcia zdalnego: klient zachowuje lokalną sesję i stan recovery, raportuje błąd synchronizacji i czeka na autorytatywne uzgodnienie przez `onSnapshot`.
 
-**Zatwierdzona korekta implementacyjna:** sam błąd zapisu nigdy nie czyści lokalnego snapshotu ani recovery. Lokalny stan może zostać usunięty lub zastąpiony wyłącznie po autorytatywnym uzgodnieniu `onSnapshot` (`remote null` albo inna sesja). Chroni to dane użytkownika przed błędną interpretacją niezwiązanego z tombstone'em `permission-denied`.
+**Zatwierdzone korekty implementacyjne:** sam błąd zapisu nigdy nie czyści lokalnego snapshotu ani recovery. Lokalny stan może zostać usunięty lub zastąpiony wyłącznie po autorytatywnym uzgodnieniu `onSnapshot` (`remote null` albo inna sesja) z metadata serwerowymi bez pending writes. Chroni to dane użytkownika przed błędną interpretacją niezwiązanego z tombstone'em `permission-denied` oraz przed uznaniem cache za stan końcowy.
 
 ## 8. UI i komunikaty
 
@@ -210,10 +213,13 @@ Stan końcowy jest widoczny także poza toastem.
 | `projection_pending` | „Trening zapisany. Statystyki oczekują na synchronizację.” | automatyczny retry i przycisk „Ponów synchronizację” |
 | `closure_unconfirmed` | „Nie udało się potwierdzić zamknięcia sesji.” | „Spróbuj ponownie” |
 | `session_mismatch` | „Ta sesja nie jest już aktywna na serwerze.” | ponowne wczytanie aktualnego stanu |
+| `active_session_sync_failed` | „Nie udało się zsynchronizować aktywnej sesji. Dane są zachowane na tym urządzeniu.” | „Ponów synchronizację” albo oczekiwanie na autorytatywne uzgodnienie |
 
 W `closure_unconfirmed` snapshot treningu pozostaje widoczny, ale pola edycji oraz akcje zmieniające sesję są zablokowane. Użytkownik nie może przypadkiem rozpocząć drugiej finalizacji z nowym ID.
 
 Dashboard pokazuje przy oczekującym workoucie pełny opis zamiast samego badge'a `sync`. Po nieudanym automatycznym retry widoczny jest przycisk ręcznego ponowienia i stan błędu.
+
+Błąd autosave aktywnej sesji ma trwały panel na `WorkoutPage`, nie tylko toast lub wpis konsoli. Ostrzeżenie znika dopiero po udanym zapisie/retry albo po autorytatywnym uzgodnieniu, które bezpiecznie usuwa lub zastępuje lokalny stan. Backup pozostaje zachowany przez błąd.
 
 ## 9. Reguły Firestore i bezpieczeństwo
 
@@ -232,7 +238,7 @@ Endpointy korzystają z istniejącego `requireUserId`, limitu body i walidatoró
 ### Unit
 
 - generowanie i zachowanie `sessionId`;
-- deterministyczna migracja starej sesji i backupu;
+- deterministyczna, user-scoped migracja starej sesji i backupu, w tym format dla niebezpiecznych UID i brak kolizji dwóch użytkowników z tym samym `startedAt`;
 - zapis, odczyt i usunięcie closure intentu;
 - mapowanie odpowiedzi i błędów API na angielskie statusy;
 - lifecycle nie czyści danych przed potwierdzeniem.
@@ -254,6 +260,8 @@ Endpointy korzystają z istniejącego `requireUserId`, limitu body i walidatoró
 - discard jest idempotentny;
 - `session_mismatch` nie usuwa nowej sesji;
 - sprzeczne tombstone'y są odrzucane.
+- pierwszy discard bez aktywnej sesji nie tworzy tombstone'a, a retry istniejącego własnego discardu pozostaje sukcesem;
+- nieoczekiwany błąd handlera daje bezpieczne HTTP 500, a klient zachowuje recovery;
 
 ### Playwright
 
@@ -261,6 +269,7 @@ Endpointy korzystają z istniejącego `requireUserId`, limitu body i walidatoró
 - utrata odpowiedzi pokazuje `closure_unconfirmed`, a retry kończy ten sam workout;
 - oczekująca projekcja ma trwały komunikat i działający retry;
 - klient B zapisujący offline nie odtwarza sesji zamkniętej przez klienta A;
+- klient B pozostaje otwarty przez odrzucenie pending write i końcowe `onSnapshot`; cache/pending nie czyszczą recovery, a dopiero serwerowy snapshot usuwa lub zastępuje UI;
 - nieudany discard zachowuje intent i nie nawiguje do dashboardu;
 - odrzucenie starej sesji tworzy replacement dopiero po potwierdzonym sukcesie.
 
@@ -294,7 +303,7 @@ Faza 1 jest zakończona, gdy:
 - każdy punkt `WORKOUT-01/02/03/05/06` ma zielony test regresyjny;
 - powtórzona i równoległa finalizacja daje jeden workout;
 - tombstone blokuje zapis offline klienta po zamknięciu;
-- żaden flow nie czyści lokalnego snapshotu przed jednoznacznym sukcesem;
+- żaden flow nie czyści lokalnego snapshotu przed jednoznacznym sukcesem endpointu albo autorytatywnym uzgodnieniem serwera;
 - UI pokazuje właściwy stan i następny krok bez polegania wyłącznie na toastach;
 - przechodzą lint, unit, rules, focused integration, build i focused Playwright;
 - istniejące testy materializacji z `WORKOUT-04` nadal przechodzą;

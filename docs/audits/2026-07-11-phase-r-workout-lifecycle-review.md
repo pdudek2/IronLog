@@ -89,7 +89,7 @@ Statusy zastosowano dokładnie według zatwierdzonej tabeli klasyfikacji:
 
 ## Remediacja Fazy 1
 
-Faza 1 ma status `DONE` i objęła wyłącznie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` oraz `WORKOUT-06`. Implementacja znajduje się w commitach `1cb59af–8cd4731` na bazie `1e140d0`. `WORKOUT-04` pozostaje `already_protected`; Faza 1 nie zmienia jego kontraktu materializacji. Historyczne reprodukcje powyżej nadal opisują baseline `448e46a`, a poniższe regresje dowodzą zachowania po remediacji.
+Faza 1 ma status `DONE` i objęła wyłącznie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` oraz `WORKOUT-06`. Implementacja znajduje się w commitach `1cb59af–4fe1ec5` na bazie `1e140d0`, łącznie z końcową korektą po niezależnym review. `WORKOUT-04` pozostaje `already_protected`; Faza 1 nie zmienia jego kontraktu materializacji. Historyczne reprodukcje powyżej nadal opisują baseline `448e46a`, a poniższe regresje dowodzą zachowania po remediacji.
 
 | Punkt | Status po Fazie 1 | Nazwany dowód regresyjny |
 |---|---|---|
@@ -97,19 +97,27 @@ Faza 1 ma status `DONE` i objęła wyłącznie `WORKOUT-01`, `WORKOUT-02`, `WORK
 | `WORKOUT-02` | `remediated` | `persists intent before request and clears recovery only after confirmed success` oraz `returns closure_unconfirmed and keeps the intent and session on ambiguous failure` (`src/lib/__tests__/workoutLifecycle.test.ts`) — lokalne recovery nie jest czyszczone przed potwierdzeniem zamknięcia. |
 | `WORKOUT-03` | `remediated` | `round-trips a complete finish snapshot`, `round-trips a complete discard snapshot` (`src/lib/__tests__/workoutClosureIntent.test.ts`) oraz `lost finalize acknowledgement keeps recovery intent and retry creates exactly one workout` (`tests/e2e/workout-lifecycle.spec.ts`) — po utracie odpowiedzi reload odtwarza trwały intent, a retry domyka tę samą operację. |
 | `WORKOUT-04` | `already_protected` | `retries consistently after beforeExerciseSessions`, `retries consistently after afterExerciseSessions` i `retries consistently after afterRecords` (`tests/integration/workoutProjection.integration.test.ts`) — projekcja nadal konwerguje i drugi retry pozostaje idempotentny. |
-| `WORKOUT-05` | `remediated` | `lost finalize acknowledgement keeps recovery intent and retry creates exactly one workout`, `projection_pending reflects committed closure and remains visible on dashboard` oraz `failed dashboard materialization offers retry and later success clears the failure` (`tests/e2e/workout-lifecycle.spec.ts`) — UI rozróżnia `closure_unconfirmed`, `projection_pending` i zapis zmaterializowany oraz podaje właściwe akcje. |
-| `WORKOUT-06` | `remediated` | `rejects creation and update using a tombstoned sessionId`, `does not let a late tombstoned write overwrite a newer session` (`tests/rules/firestore.rules.test.ts`) oraz `offline client write cannot resurrect a session closed by another client` (`tests/e2e/workout-lifecycle.spec.ts`) — tombstone odrzuca spóźniony zapis offline. |
+| `WORKOUT-05` | `remediated` | `lost finalize acknowledgement keeps recovery intent and retry creates exactly one workout`, `projection_pending reflects committed closure and remains visible on dashboard`, `failed dashboard materialization offers retry and later success clears the failure` (`tests/e2e/workout-lifecycle.spec.ts`) oraz `keeps a persistent Polish warning with a viable retry action after autosave failure` (`src/pages/__tests__/WorkoutActiveSessionSyncStatus.test.tsx`) — UI rozróżnia wynik zamknięcia, projekcję i błąd autosave oraz podaje właściwe akcje. |
+| `WORKOUT-06` | `remediated` | `rejects creation and update using a tombstoned sessionId`, `does not let a late tombstoned write overwrite a newer session` (`tests/rules/firestore.rules.test.ts`) oraz dwa scenariusze offline w `tests/e2e/workout-lifecycle.spec.ts` — pending/cache zachowują recovery, a dopiero autorytatywny snapshot czyści zamkniętą sesję lub zastępuje ją nowszą. |
+
+### Korekty po końcowym review
+
+- Handlery finalizacji i discardu mapują nieoczekiwane błędy transakcji/Admin SDK na niesensytywne HTTP 500; test handlera potwierdza oba endpointy, a test klienta klasyfikuje 5xx jako `ambiguous`, więc intent i snapshot pozostają dostępne do retry.
+- Brakujące legacy ID jest wyprowadzane identycznie w browserze i na serwerze jako user-scoped `legacy-${ownerToken}-${startedAt}`. Format jest zgodny z regułami i ograniczony do 160 znaków; integracja dwóch użytkowników z tym samym `startedAt` potwierdza brak kolizji oraz brak prewencyjnej rezerwacji tombstone'a.
+- Pierwszy discard bez pasującej aktywnej sesji i bez własnego zgodnego tombstone'a zwraca definitywny `session_mismatch`. Nieobecna sesja pozostaje sukcesem wyłącznie przy idempotentnym retry istniejącego własnego tombstone'a `discarded`.
+- Snapshot jest autorytatywny dla czyszczenia/zastępowania recovery, potwierdzenia closure i stale replacement wyłącznie przy `fromCache === false && hasPendingWrites === false`. Focused E2E utrzymuje klienta offline otwartego przez odmowę i końcowe uzgodnienie UI/cache/Admin.
+- Błąd autosave ma trwały panel na `WorkoutPage`, zachowuje lokalny backup i udostępnia `Ponów synchronizację`; ostrzeżenie znika dopiero po udanym zapisie albo rozwiązującym autorytatywnym uzgodnieniu.
 
 ## Weryfikacja i ograniczenia
 
-Świeża pełna bramka Fazy 1 na checkoutcie `8cd4731` zakończyła się następująco:
+Świeża pełna bramka końcowej korekty Fazy 1 zakończyła się następująco:
 
 - `npm run lint` — exit 0;
-- `npm run test:unit` — 28/28 plików, 190/190 testów;
+- `npm run test:unit` — 31/31 plików, 205/205 testów;
 - `npm run test:rules` — 1/1 plik, 10/10 testów;
-- `npm run test:integration:workout` — 2/2 pliki, 18/18 testów, w tym natychmiastowe finish i discard legacy sesji bez pola `sessionId`;
+- `npm run test:integration:workout` — 2/2 pliki, 20/20 testów, w tym user-scoped legacy finish/discard, dwaj właściciele z tym samym `startedAt` i zakaz prewencyjnego tombstone'a;
 - `npm run build` — exit 0, z nieblokującym ostrzeżeniem Vite o chunku przekraczającym 500 kB;
-- `npm run test:e2e:workout` — 9/9 testów Playwright, bez retry;
+- `npm run test:e2e:workout` — dwa kolejne przebiegi po 9/9 testów Playwright, bez retry;
 - `npm run test:e2e:isolated` — 13/13 testów Playwright, bez retry.
 
 Historyczna pełna bramka Fazy R (Task 6) na `32971da` zakończyła się następująco:

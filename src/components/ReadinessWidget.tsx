@@ -31,11 +31,6 @@ export default function ReadinessWidget() {
   const requestIdRef = useRef(0)
   const requestedKeyRef = useRef('')
   const inFlightKeyRef = useRef('')
-  const currentUidRef = useRef(user?.uid ?? null)
-
-  useEffect(() => {
-    currentUidRef.current = user?.uid ?? null
-  }, [user?.uid])
 
   const loadReadiness = useCallback((uid: string, date: string) => {
     const key = resourceKey(uid, date)
@@ -105,7 +100,7 @@ export default function ReadinessWidget() {
   }
 
   function handleSaved(saved: ReadinessEntry) {
-    if (saved.userId !== currentUidRef.current) return
+    if (saved.userId !== useAuthStore.getState().user?.uid) return
     const savedKey = resourceKey(saved.userId, saved.date)
     requestedKeyRef.current = savedKey
     setResource({

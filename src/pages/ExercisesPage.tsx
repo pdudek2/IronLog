@@ -390,12 +390,7 @@ export default function ExercisesPage() {
   const [showForm, setShowForm] = useState(false)
   const [confirmDeleteExercise, setConfirmDeleteExercise] = useState<Exercise | null>(null)
   const currentUid = user?.uid ?? null
-  const currentUidRef = useRef(currentUid)
   const [interactionUid, setInteractionUid] = useState(currentUid)
-
-  useEffect(() => {
-    currentUidRef.current = currentUid
-  }, [currentUid])
 
   if (interactionUid !== currentUid) {
     setInteractionUid(currentUid)
@@ -476,7 +471,7 @@ export default function ExercisesPage() {
     if (!user) return
     const operationUid = user.uid
     const created = await createUserExercise(operationUid, input)
-    if (currentUidRef.current !== operationUid) return
+    if (useAuthStore.getState().user?.uid !== operationUid) return
     setUserExercisesResource((current) => (
       current.uid === operationUid && current.state.status === 'success'
       ? {
@@ -495,7 +490,7 @@ export default function ExercisesPage() {
     const operationUid = user.uid
     const updatingId = formExercise.id
     await updateUserExercise(updatingId, input)
-    if (currentUidRef.current !== operationUid) return
+    if (useAuthStore.getState().user?.uid !== operationUid) return
     setUserExercisesResource((current) => (
       current.uid === operationUid && current.state.status === 'success'
       ? {
@@ -525,7 +520,7 @@ export default function ExercisesPage() {
 
     try {
       await deleteUserExercise(deletingId)
-      if (currentUidRef.current !== operationUid) return
+      if (useAuthStore.getState().user?.uid !== operationUid) return
       setUserExercisesResource((current) => (
         current.uid === operationUid && current.state.status === 'success'
         ? {
@@ -539,7 +534,7 @@ export default function ExercisesPage() {
       ))
       toast.success('Ćwiczenie usunięte!')
     } catch (err) {
-      if (currentUidRef.current !== operationUid) return
+      if (useAuthStore.getState().user?.uid !== operationUid) return
       console.error('[userExercise delete error]', err)
       toast.error('Nie udało się usunąć ćwiczenia.')
     }

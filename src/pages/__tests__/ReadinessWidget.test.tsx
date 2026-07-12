@@ -11,9 +11,13 @@ const mocks = vi.hoisted(() => ({
   onSaved: undefined as undefined | ((saved: ReadinessEntry) => void),
 }))
 
-vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: mocks.currentUser }),
-}))
+vi.mock('../../store/authStore', () => {
+  const useAuthStore = Object.assign(
+    () => ({ user: mocks.currentUser }),
+    { getState: () => ({ user: mocks.currentUser }) },
+  )
+  return { useAuthStore }
+})
 
 vi.mock('../../lib/readinessService', () => ({
   todayKey: () => mocks.currentDate,
@@ -165,10 +169,12 @@ describe('ReadinessWidget data states', () => {
     const lateOnSaved = mocks.onSaved
 
     mocks.currentUser = { uid: 'user-2' }
+    act(() => lateOnSaved?.(entry('2026-07-12', 1, 'user-1')))
+    expect(screen.getByText('readiness-prompt')).toBeInTheDocument()
+
     view.rerender(<ReadinessWidget />)
     expect(await screen.findByText('2026-07-12')).toBeInTheDocument()
 
-    act(() => lateOnSaved?.(entry('2026-07-12', 1, 'user-1')))
     expect(screen.getByText('2026-07-12')).toBeInTheDocument()
     expect(screen.getByText('5')).toBeInTheDocument()
     expect(screen.queryByText('1')).not.toBeInTheDocument()

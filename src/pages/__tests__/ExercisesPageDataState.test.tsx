@@ -9,11 +9,16 @@ const mocks = vi.hoisted(() => ({
   createUserExercise: vi.fn(),
   navigate: vi.fn(),
   toastError: vi.fn(),
+  toastSuccess: vi.fn(),
 }))
 
-vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: mocks.currentUser }),
-}))
+vi.mock('../../store/authStore', () => {
+  const useAuthStore = Object.assign(
+    () => ({ user: mocks.currentUser }),
+    { getState: () => ({ user: mocks.currentUser }) },
+  )
+  return { useAuthStore }
+})
 
 vi.mock('../../data/exercises', () => ({
   exercises: [{
@@ -42,7 +47,7 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mocks.navigate }
 })
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: mocks.toastError },
+  toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }))
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
@@ -76,6 +81,7 @@ describe('ExercisesPage user library states', () => {
     mocks.createUserExercise.mockReset()
     mocks.navigate.mockReset()
     mocks.toastError.mockReset()
+    mocks.toastSuccess.mockReset()
   })
 
   it('shows a persistent error, unknown counts and the usable global catalog', async () => {
@@ -156,11 +162,12 @@ describe('ExercisesPage user library states', () => {
     ))
 
     mocks.currentUser = { uid: 'user-2' }
+    await act(async () => resolveCreate({ ...customExercise, id: 'user-one', name: 'Ćwiczenie A' }))
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+
     view.rerender(<ExercisesPage />)
     expect(await screen.findByText('Ćwiczenie B')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-
-    await act(async () => resolveCreate({ ...customExercise, id: 'user-one', name: 'Ćwiczenie A' }))
 
     expect(screen.getByText('Ćwiczenie B')).toBeInTheDocument()
     expect(screen.queryByText('Ćwiczenie A')).not.toBeInTheDocument()

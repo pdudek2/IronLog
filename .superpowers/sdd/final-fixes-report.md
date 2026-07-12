@@ -100,3 +100,32 @@ Single containing commit: `fix: guard stale user data mutations`.
 - No blocking concern.
 - Vite retains its existing advisory for chunks over 500 kB; this change does not materially affect bundle architecture.
 - Update/delete use the same reviewed UID guard as create; only create received the additional end-to-end component race test to keep the suite focused and non-brittle.
+
+## Follow-up final review: synchronous auth snapshot guards
+
+### Finding and fix
+
+The `currentUidRef` introduced by the first fix wave was synchronized in a passive effect. An auth-store identity change could therefore be visible to async completion code before React rerendered and flushed the effect. `ReadinessWidget` and all create/update/delete completion guards now read `useAuthStore.getState().user?.uid` directly at callback/continuation time. The ref and its synchronization effects were removed; the independent `current.uid === operationUid` resource guards remain.
+
+### TDD RED
+
+The existing stale-save and stale-create tests were tightened without adding tests. Their mock stores now expose `.getState()`, mutate the underlying auth user, and complete the callback/promise before rerendering user B.
+
+Command:
+
+```text
+npm run test:unit -- src/pages/__tests__/ReadinessWidget.test.tsx src/pages/__tests__/ExercisesPageDataState.test.tsx
+```
+
+Observed on `currentUidRef`: 2 files failed; 2 failed / 11 passed. The readiness callback accepted user A and left the widget loading against user B; create A emitted `Ćwiczenie dodane!` before user B rerendered.
+
+### TDD GREEN and final verification
+
+- Focused unit: 2 files, 13/13 passed.
+- Test count unchanged: 35 files / 229 tests. Per follow-up instruction, the full unit suite was not rerun because no test was added or removed; the preceding full gate in this report remains 229/229.
+- `npm run lint`: passed.
+- `npm run build`: passed; only the existing Vite chunk-size advisory remains.
+- `git diff --check`: passed.
+- No push, deploy, rules publication, or `RELEASE-08` change.
+
+Follow-up containing commit: `fix: read current auth state for async guards`.

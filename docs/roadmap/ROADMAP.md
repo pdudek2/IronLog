@@ -1,9 +1,9 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0 i R zakończone; Faza 1 zakończona w potwierdzonym zakresie**
+Stan przeglądu: **APPROVED — fazy A, 0, R i 1 zakończone; projekt Fazy 2 gotowy do finalnego review**
 Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
-Ostatnia aktualizacja: 2026-07-11
+Ostatnia aktualizacja: 2026-07-12
 
 ## 1. Cel dokumentu
 
@@ -49,7 +49,7 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 31 plików i 205 testów jednostkowych oraz testów wsparcia przechodzi,
+- 32 pliki i 209 testów jednostkowych oraz testów wsparcia przechodzą,
 - 1 plik i 10 testów reguł Firestore przechodzi,
 - ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 20 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
@@ -201,13 +201,15 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 
 ### Faza 2 — Uczciwe stany danych i błędów
 
+**Status: READY — kierunek zatwierdzony, specyfikacja oczekuje finalnego review przed napisaniem planu.**
+
 **Cel:** oddzielić `loading`, `success-empty`, `success-data`, `error` i — tam gdzie ma sens — `stale-data`.
 
 **Zakres kanoniczny:**
 
 - **STATE-01:** błąd odczytu readiness nie może renderować formularza „brak wpisu” ani umożliwiać nieświadomego nadpisania istniejącej ankiety.
 - **STATE-02:** błąd pobrania własnych ćwiczeń nie może renderować komunikatu „Brak własnych ćwiczeń”.
-- **STATE-03:** błąd pobrania szablonów na dashboardzie i stronie planów nie może renderować komunikatu „Brak zapisanych szablonów”.
+- **STATE-03:** dashboard ma otrzymać jawny stan błędu pobrania szablonów. Strona planów już rozróżnia błąd od pustej listy; w Fazie 2 zabezpieczamy ten kontrakt testem regresji zamiast przepisywać działające UI.
 - **STATE-05:** każdy stan błędu otrzymuje retry albo jasny następny krok; toast nie może być jedynym trwałym nośnikiem informacji.
 - **STATE-06:** współdzielony kontrakt stanu danych powinien być prosty i dopasowany do Vite SPA — bez budowania nowego frameworka zapytań.
 - **STATE-07:** usunąć deterministyczny drugi odczyt Readiness wywoływany przez zmianę `lastCheckedDate`; ponowny odczyt ma następować tylko przy rzeczywistej zmianie dnia lub jawnym retry.
@@ -216,10 +218,12 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 
 - testy wymuszają błąd każdego objętego odczytu i odróżniają go od pustej kolekcji;
 - żaden ekran nie zachęca do utworzenia „pierwszego” zasobu po nieudanym odczycie;
-- zachowane dane są oznaczone jako nieaktualne, jeśli ekran korzysta z retained snapshotu.
+- zachowane dane są oznaczone jako nieaktualne, jeśli ekran korzysta z retained snapshotu;
 - pierwszy render Readiness wykonuje jeden odczyt.
 
 **Zależności:** mechanizm błędów requestów z TEST-05.
+
+**Poza zakresem:** wtórni konsumenci własnych ćwiczeń w selektorach treningu i edytora planu, historii oraz widokach szczegółowych. Nie udają oni obecnie pełnego pustego ekranu, a ich rozszerzenie zwiększyłoby Fazę 2 o kilka niezależnych przepływów. Zostają zapisani jako `LATER-07`.
 
 ### Faza 2B — Integralność własnych ćwiczeń
 
@@ -427,6 +431,7 @@ Poniższe elementy nie powinny blokować odbioru, o ile wszystkie wymagane fazy 
 - **LATER-04:** dalszy podział dużych chunków po potwierdzeniu problemu w realnym pomiarze wydajności.
 - **LATER-05:** szersza automatyczna regresja wizualna wszystkich tras; na start wystarczy mały stabilny zestaw widoków reprezentatywnych.
 - **LATER-06:** usunięcie nieużywanego scaffoldingu i domyślnych assetów Vite po potwierdzeniu braku importów.
+- **LATER-07:** jawny stan częściowego błędu własnych ćwiczeń w selektorze treningu, edytorze planu, historii i widokach szczegółowych; katalog globalny powinien pozostać dostępny, a brak własnych pozycji nie może wyglądać jak ich usunięcie.
 
 Decyzje odpowiadające dawnym punktom `AI-02` i `AI-03` są zamknięte na poziomie obecnego scope: nie wdrażamy teraz dziennego budżetu ani trwałej historii czatu. Jeżeli wrócą jako wymaganie produktowe, otrzymają nowe plany w ramach `LATER-01` i `LATER-02`.
 
@@ -447,7 +452,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 1 — integralność cyklu życia treningu** jest zakończona w zakresie `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06`, łącznie z user-scoped legacy identity, bezpiecznym 500 dla nieoczekiwanych błędów, autorytatywnością snapshotów metadata oraz widocznym retry autosave. Następne pakiety można wybierać spośród gotowych faz zgodnie z priorytetem programu; czynności produkcyjne Fazy 1 pozostają w `RELEASE-08`.
+**Faza 2 — uczciwe stany danych i błędów** jest następnym rekomendowanym pakietem. Jej kierunek został zatwierdzony, a specyfikacja wymaga finalnego review przed rozpisaniem planu wdrożeniowego. Czynności produkcyjne Fazy 1 pozostają w `RELEASE-08`.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

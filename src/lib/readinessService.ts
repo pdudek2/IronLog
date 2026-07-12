@@ -30,18 +30,25 @@ function buildDocId(uid: string, date: string): string {
   return `${uid}_${date}`
 }
 
-export async function getTodayReadiness(uid: string): Promise<ReadinessEntry | null> {
-  const snap = await getDoc(doc(db, 'readiness', buildDocId(uid, todayKey())))
+export async function getReadiness(
+  uid: string,
+  date: string,
+): Promise<ReadinessEntry | null> {
+  const snap = await getDoc(doc(db, 'readiness', buildDocId(uid, date)))
   if (!snap.exists()) return null
-  const d = snap.data()
+  const data = snap.data()
   return {
-    userId: String(d.userId ?? ''),
-    date: String(d.date ?? ''),
-    sleep: Number(d.sleep ?? 3),
-    mood: Number(d.mood ?? 3),
-    soreness: Number(d.soreness ?? 3),
-    createdAt: Number(d.createdAt ?? 0),
+    userId: String(data.userId ?? ''),
+    date: String(data.date ?? ''),
+    sleep: Number(data.sleep ?? 3),
+    mood: Number(data.mood ?? 3),
+    soreness: Number(data.soreness ?? 3),
+    createdAt: Number(data.createdAt ?? 0),
   }
+}
+
+export function getTodayReadiness(uid: string): Promise<ReadinessEntry | null> {
+  return getReadiness(uid, todayKey())
 }
 
 export async function saveReadiness(

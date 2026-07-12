@@ -1,12 +1,58 @@
 import { describe, it, expect, vi } from 'vitest'
 
-vi.mock('../firebase', () => ({ db: {}, auth: {} }))
-vi.mock('firebase/firestore', () => ({}))
+const firestore = vi.hoisted(() => ({
+  doc: vi.fn(() => 'readiness-ref'),
+  getDoc: vi.fn(),
+  setDoc: vi.fn(),
+}))
 
-import { computeReadinessScore } from '../readinessService'
+vi.mock('../firebase', () => ({ db: { name: 'test-db' }, auth: {} }))
+vi.mock('firebase/firestore', () => ({
+  doc: firestore.doc,
+  getDoc: firestore.getDoc,
+  setDoc: firestore.setDoc,
+}))
+
+import { computeReadinessScore, getReadiness } from '../readinessService'
 
 // Formula: sleep×0.4 + mood×0.3 + (6−soreness)×0.3 → scale to 0..100
 // raw ∈ [1,5] → min=1, max=5 → score = round(((raw-1)/4)*100)
+
+describe('getReadiness', () => {
+  it('reads the document for the exact local date supplied by the caller', async () => {
+    firestore.getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({
+        userId: 'user-1',
+        date: '2026-07-12',
+        sleep: 4,
+        mood: 5,
+        soreness: 2,
+        createdAt: 123,
+      }),
+    })
+
+    await expect(getReadiness('user-1', '2026-07-12')).resolves.toEqual({
+      userId: 'user-1',
+      date: '2026-07-12',
+      sleep: 4,
+      mood: 5,
+      soreness: 2,
+      createdAt: 123,
+    })
+    expect(firestore.doc).toHaveBeenCalledWith(
+      { name: 'test-db' },
+      'readiness',
+      'user-1_2026-07-12',
+    )
+  })
+
+  it('returns null only when the requested document does not exist', async () => {
+    firestore.getDoc.mockResolvedValueOnce({ exists: () => false })
+
+    await expect(getReadiness('user-1', '2026-07-12')).resolves.toBeNull()
+  })
+})
 
 describe('computeReadinessScore', () => {
   it('returns max score (100) for perfect inputs (5,5,1)', () => {

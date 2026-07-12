@@ -1,48 +1,105 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
 import {
   computeReadinessScore,
-  getTodayReadiness,
+  getReadiness,
   todayKey,
   type ReadinessEntry,
 } from '../lib/readinessService'
+import type { DataState } from '../types/dataState'
 import ReadinessPrompt from './ReadinessPrompt'
+import Button from './ui/Button'
+
+interface ReadinessResource {
+  key: string
+  state: DataState<ReadinessEntry | null>
+}
+
+function resourceKey(uid: string, date: string): string {
+  return `${uid}:${date}`
+}
 
 export default function ReadinessWidget() {
   const { user } = useAuthStore()
-  const [entry, setEntry] = useState<ReadinessEntry | null | undefined>(undefined) // undefined = loading
-  const [lastCheckedDate, setLastCheckedDate] = useState<string>('')
+  const initialDate = todayKey()
+  const [resource, setResource] = useState<ReadinessResource>({
+    key: user ? resourceKey(user.uid, initialDate) : '',
+    state: { status: 'loading' },
+  })
+  const mountedRef = useRef(false)
+  const requestIdRef = useRef(0)
+  const requestedKeyRef = useRef('')
+  const inFlightKeyRef = useRef('')
+
+  const loadReadiness = useCallback((uid: string, date: string) => {
+    const key = resourceKey(uid, date)
+    if (inFlightKeyRef.current === key) return
+
+    const requestId = ++requestIdRef.current
+    inFlightKeyRef.current = key
+    getReadiness(uid, date)
+      .then((data) => {
+        if (!mountedRef.current || requestId !== requestIdRef.current) return
+        setResource({ key, state: { status: 'success', data } })
+      })
+      .catch((error: unknown) => {
+        console.error('[ReadinessWidget] load failed', error)
+        if (!mountedRef.current || requestId !== requestIdRef.current) return
+        setResource({ key, state: { status: 'error', error } })
+      })
+      .finally(() => {
+        if (requestId === requestIdRef.current) inFlightKeyRef.current = ''
+      })
+  }, [])
 
   useEffect(() => {
     if (!user) return
+    mountedRef.current = true
 
-    function load() {
-      const today = todayKey()
-      setLastCheckedDate(today)
-      getTodayReadiness(user!.uid)
-        .then(setEntry)
-        .catch((err) => {
-          console.error('[ReadinessWidget] load failed', err)
-          setEntry(null)
-        })
+    const requestCurrentDay = () => {
+      const date = todayKey()
+      const key = resourceKey(user.uid, date)
+      if (requestedKeyRef.current === key) return
+      requestedKeyRef.current = key
+      loadReadiness(user.uid, date)
     }
 
-    load()
+    requestCurrentDay()
 
-    // Re-fetch jeśli tab był otwarty przez noc i data się zmieniła
-    function onVisibilityChange() {
-      if (document.visibilityState === 'visible' && todayKey() !== lastCheckedDate) {
-        load()
-      }
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible') return
+      const date = todayKey()
+      const key = resourceKey(user.uid, date)
+      if (requestedKeyRef.current === key) return
+      requestedKeyRef.current = key
+      setResource({ key, state: { status: 'loading' } })
+      loadReadiness(user.uid, date)
     }
 
     document.addEventListener('visibilitychange', onVisibilityChange)
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange)
-  }, [user, lastCheckedDate])
+    return () => {
+      mountedRef.current = false
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [loadReadiness, user])
 
-  // loading
-  if (entry === undefined) {
+  const date = todayKey()
+  const key = user ? resourceKey(user.uid, date) : ''
+  const state: DataState<ReadinessEntry | null> = resource.key === key
+    ? resource.state
+    : { status: 'loading' }
+
+  function handleRetry() {
+    if (!user) return
+    const retryDate = todayKey()
+    const retryKey = resourceKey(user.uid, retryDate)
+    requestedKeyRef.current = retryKey
+    setResource({ key: retryKey, state: { status: 'loading' } })
+    loadReadiness(user.uid, retryDate)
+  }
+
+  if (state.status === 'loading') {
     return (
       <div
         className="readiness-card readiness-card--loading animate-pulse"
@@ -51,12 +108,39 @@ export default function ReadinessWidget() {
     )
   }
 
-  // brak wpisu — pokaż formularz
-  if (entry === null) {
-    return <ReadinessPrompt onSaved={(saved) => setEntry(saved)} />
+  if (state.status === 'error') {
+    return (
+      <motion.div
+        className="readiness-card"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        <p className="text-sm font-semibold text-white">
+          Nie udało się wczytać gotowości
+        </p>
+        <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+          Sprawdź połączenie i spróbuj ponownie.
+        </p>
+        <Button type="button" className="mt-4" onClick={handleRetry}>
+          Spróbuj ponownie
+        </Button>
+      </motion.div>
+    )
   }
 
-  // jest wpis — pokaż score
+  if (state.data === null) {
+    return (
+      <ReadinessPrompt
+        onSaved={(saved) => setResource({
+          key,
+          state: { status: 'success', data: saved },
+        })}
+      />
+    )
+  }
+
+  const entry = state.data
   const { score, color, label } = computeReadinessScore(entry)
 
   return (

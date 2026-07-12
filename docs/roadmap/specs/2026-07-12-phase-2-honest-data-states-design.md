@@ -1,6 +1,6 @@
 # IronLog — projekt Fazy 2: uczciwe stany danych i błędów
 
-**Status:** zatwierdzona do planowania
+**Status:** wdrożona i zweryfikowana
 
 **Data:** 2026-07-12
 
@@ -276,4 +276,10 @@ Specyfikacja nie narzuca jeszcze kolejności implementacji, ale plan powinien uw
 - testy komponentowe readiness, ćwiczeń, dashboardu i strony planów;
 - style nowych trwałych stanów błędu tylko wtedy, gdy istniejące komponenty UI nie wystarczą.
 
-Szczegółowy plan powstaje dopiero po zatwierdzeniu tej specyfikacji.
+Szczegółowy plan wykonawczy został zrealizowany w zakresie opisanym poniżej.
+
+## 14. Wynik wdrożenia
+
+Zakres `STATE-01`, `STATE-02`, `STATE-03`, `STATE-05`, `STATE-06` i `STATE-07` został wdrożony. Testy komponentowe rozróżniają błąd, poprawny pusty wynik i dane. Review desktop/mobile potwierdziło układ trwałych stanów błędu. Wtórni konsumenci własnych ćwiczeń pozostają w `LATER-07`, a czynności produkcyjne w `RELEASE-08`.
+
+Pełna bramka jednostkowa zakończyła się wynikiem 35 plików i 224 testów. To o 3 testy więcej niż prognoza planu (221), ponieważ wcześniejsze review rozszerzyły pokrycie regresji, w tym zachowanie przy spóźnionej odpowiedzi i unmount.

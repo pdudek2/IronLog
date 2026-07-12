@@ -49,7 +49,7 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 32 pliki i 209 testów jednostkowych oraz testów wsparcia przechodzą,
+- 35 plików i 224 testy jednostkowe oraz testy wsparcia przechodzą,
 - 1 plik i 10 testów reguł Firestore przechodzi,
 - ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 20 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
@@ -64,7 +64,7 @@ Aktualny baseline jakości:
 | 2 | 0 — Minimalny fundament weryfikacji | P0 | DONE | Krytyczny gate działa bez produkcyjnego quota; readiness, diagnostyka i cleanup mają wspólne kontrakty |
 | 3 | R — Ukierunkowany przegląd cyklu życia treningu | P0 | DONE | `WORKOUT-01–06` mają dowody i jednoznaczne statusy |
 | 4 | 1 — Integralność cyklu życia treningu | P0 | DONE | `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06` naprawione w `1cb59af–4fe1ec5` |
-| 5 | 2 — Uczciwe stany danych i błędów | P0 | READY | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
+| 5 | 2 — Uczciwe stany danych i błędów | P0 | DONE | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | READY | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | READY | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
@@ -201,7 +201,7 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 
 ### Faza 2 — Uczciwe stany danych i błędów
 
-**Status: READY — specyfikacja zatwierdzona, plan wdrożeniowy gotowy do review.**
+**Status: DONE.** Zakres wdrożony i zweryfikowany testami oraz kontrolowanym review desktop/mobile.
 
 **Cel:** oddzielić `loading`, `success-empty`, `success-data`, `error` i — tam gdzie ma sens — `stale-data`.
 
@@ -452,11 +452,11 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 2 — uczciwe stany danych i błędów** jest następnym rekomendowanym pakietem. Jej kierunek został zatwierdzony, a specyfikacja wymaga finalnego review przed rozpisaniem planu wdrożeniowego. Czynności produkcyjne Fazy 1 pozostają w `RELEASE-08`.
+**Faza 3 — krytyczna dostępność i nawigacja** jest następnym rekomendowanym pakietem po zamknięciu Fazy 2. Niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 
-Po fazie 0 można równolegle przygotować fazy 2, 2B i 3 oraz niezależne pakiety AI. Nie należy zaczynać od kosmetycznego copy, chunków, trwałej historii AI ani dziennego budżetu AI, dopóki zweryfikowane P0/P1 pozostają otwarte.
+Po fazie 0 można równolegle przygotować fazę 2B, kolejne fazy po Fazie 3 oraz niezależne pakiety AI. Nie należy zaczynać od kosmetycznego copy, chunków, trwałej historii AI ani dziennego budżetu AI, dopóki zweryfikowane P0/P1 pozostają otwarte.
 
 ## 9. Macierz śledzenia audytów
 

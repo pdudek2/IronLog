@@ -3,8 +3,11 @@ import { resolve } from 'node:path'
 import { applicationDefault, cert, getApps, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import { getFirestore } from 'firebase-admin/firestore'
+import { resolveFirebaseAdminRuntime } from './firebaseAdminConfig.js'
 
 loadLocalEnvFile()
+
+const adminRuntime = resolveFirebaseAdminRuntime(process.env)
 
 function createCredential() {
   const projectId = process.env.FIREBASE_PROJECT_ID
@@ -51,8 +54,8 @@ function loadLocalEnvFile() {
 }
 
 const adminApp = getApps()[0] ?? initializeApp({
-  credential: createCredential(),
-  projectId: process.env.FIREBASE_PROJECT_ID,
+  ...(adminRuntime.useConfiguredCredential ? { credential: createCredential() } : {}),
+  projectId: adminRuntime.projectId,
 })
 
 export const adminAuth = getAuth(adminApp)

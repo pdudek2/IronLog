@@ -143,7 +143,7 @@ export function normalizeSessionId(value: unknown, userId: string, startedAt: nu
 
 Add `sessionId: string` to `ActiveWorkout`. Call `createSessionId()` only when starting a genuinely new workout or building one from a template. Do not generate an ID during hydration.
 
-In `parseSessionDoc`, calculate `startedAt` first, then call `normalizeSessionId(data.sessionId, startedAt)`. Apply the same rule in `readActiveSessionBackup`.
+In `parseSessionDoc`, calculate `startedAt` first, then call `normalizeSessionId(data.sessionId, uid, startedAt)`. Apply the same three-argument rule in `readActiveSessionBackup`.
 
 `refreshStaleActiveSession()` must preserve the original `sessionId` even though it refreshes `startedAt`.
 

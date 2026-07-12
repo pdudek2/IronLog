@@ -23,10 +23,13 @@ import {
   classifyClosureFailure,
   decideConfirmedClosure,
   decideRemoteSessionSync,
+  isAuthoritativeActiveSessionSnapshot,
   shouldAutoStartEmptySession,
   shouldPersistActiveSession,
+  shouldResolveActiveSessionSyncFailure,
 } from '../lib/activeSessionSyncPolicy'
 import { WorkoutClosureError } from '../lib/workoutClosureService'
+import type { ActiveSessionSyncStatusValue } from '../components/workout/ActiveSessionSyncStatus'
 
 export type ClosureUiState =
   | 'idle'
@@ -55,6 +58,7 @@ export function useActiveSession(uid: string | null) {
   const [staleSession, setStaleSession] = useState<{ ageLabel: string } | null>(null)
   const [closureIntent, setClosureIntent] = useState<WorkoutClosureIntent | null>(null)
   const [closureState, setClosureState] = useState<ClosureUiState>('idle')
+  const [activeSessionSyncStatus, setActiveSessionSyncStatus] = useState<ActiveSessionSyncStatusValue>('idle')
 
   function cancelPendingPersistence() {
     if (!timerRef.current) return
@@ -209,32 +213,39 @@ export function useActiveSession(uid: string | null) {
 
     function persistSession(snapshot: ActiveWorkout) {
       if (!shouldPersistActiveSession(snapshot, closureIntentRef.current)) return
-      void saveActiveSession(currentUid, snapshot).catch((error: unknown) => {
-        console.error('[active session save error]', error)
-      })
+      void saveActiveSession(currentUid, snapshot)
+        .then(() => {
+          if (shouldResolveActiveSessionSyncFailure({
+            writeSucceeded: true,
+            authoritative: false,
+            reconciliationResolved: false,
+          })) setActiveSessionSyncStatus('idle')
+        })
+        .catch((error: unknown) => {
+          setActiveSessionSyncStatus('failed')
+          console.error('[active session save error]', error)
+        })
     }
 
     const unsubscribeRemote = subscribeToActiveSession(
       currentUid,
       ({ session, fromCache, hasPendingWrites }) => {
-        remoteSessionRef.current = session
+        const authoritative = isAuthoritativeActiveSessionSnapshot({ fromCache, hasPendingWrites })
+        if (authoritative) remoteSessionRef.current = session
         const current = useWorkoutStore.getState().active
         const currentSerialized = serializeActiveWorkout(current)
         const nextSerialized = serializeActiveWorkout(session)
-        const awaitingServerConfirmation = (
-          session === null
-          && !hadRemoteSessionRef.current
-          && fromCache
-          && !hasPendingWrites
-          && typeof navigator !== 'undefined'
-          && navigator.onLine
-        )
         const decision = decideRemoteSessionSync({
           localSession: current,
           remoteSession: session,
           closureIntent: closureIntentRef.current,
           remoteSessionIsStale: session ? isActiveSessionStale(session) : false,
+          authoritative,
         })
+        if (!authoritative) {
+          if (current || closureIntentRef.current) setReady(true)
+          return
+        }
 
         if (session && decision === 'review_stale_remote') {
           hadRemoteSessionRef.current = true
@@ -293,7 +304,7 @@ export function useActiveSession(uid: string | null) {
             writeActiveSessionBackup(currentUid, pendingSnapshot)
             setClosureState('closure_unconfirmed')
           }
-        } else if (decision === 'clear_local' && !awaitingServerConfirmation) {
+        } else if (decision === 'clear_local') {
           hadRemoteSessionRef.current = false
           staleSessionRef.current = null
           setStaleSession(null)
@@ -304,9 +315,6 @@ export function useActiveSession(uid: string | null) {
             activeRef.current = null
             clearWorkout()
           }
-        } else if (awaitingServerConfirmation) {
-          if (current) setReady(true)
-          return
         } else if (shouldAutoStartEmptySession({
           currentSession: current,
           confirmedClosure: confirmedClosureRef.current,
@@ -335,6 +343,16 @@ export function useActiveSession(uid: string | null) {
           writeActiveSessionBackup(currentUid, current)
           persistSession(current)
         }
+        const reconciliationResolved = authoritative && (
+          decision === 'clear_local'
+          || decision === 'accept_remote'
+          || (decision === 'keep_local' && currentSerialized === nextSerialized)
+        )
+        if (shouldResolveActiveSessionSyncFailure({
+          writeSucceeded: false,
+          authoritative,
+          reconciliationResolved,
+        })) setActiveSessionSyncStatus('idle')
         setReady(true)
       },
       (error) => {
@@ -409,6 +427,7 @@ export function useActiveSession(uid: string | null) {
     useWorkoutStore.getState().hydrateFromDoc(refreshedSession)
     writeActiveSessionBackup(uid, refreshedSession)
     await saveActiveSession(uid, refreshedSession)
+    setActiveSessionSyncStatus('idle')
   }
 
   async function discardStaleSession() {
@@ -442,7 +461,9 @@ export function useActiveSession(uid: string | null) {
           writeActiveSessionBackup(uid, createdSession)
           try {
             await saveActiveSession(uid, createdSession)
+            setActiveSessionSyncStatus('idle')
           } catch (error) {
+            setActiveSessionSyncStatus('failed')
             console.error('[persist stale replacement error]', error)
           }
         },
@@ -456,7 +477,23 @@ export function useActiveSession(uid: string | null) {
     }
   }
 
+  async function retryActiveSessionSync(): Promise<void> {
+    if (!uid || !activeRef.current || closureIntentRef.current) return
+    const snapshot = activeRef.current
+    writeActiveSessionBackup(uid, snapshot)
+    setActiveSessionSyncStatus('retrying')
+    try {
+      await saveActiveSession(uid, snapshot)
+      hasUnsyncedLocalChangesRef.current = false
+      setActiveSessionSyncStatus('idle')
+    } catch (error) {
+      setActiveSessionSyncStatus('failed')
+      console.error('[active session retry error]', error)
+    }
+  }
+
   return {
+    activeSessionSyncStatus,
     beginClosure,
     closureIntent,
     closureState,
@@ -469,6 +506,7 @@ export function useActiveSession(uid: string | null) {
     ready,
     reloadCurrentSession,
     reloadAuthentication,
+    retryActiveSessionSync,
     staleSession,
   }
 }

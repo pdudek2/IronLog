@@ -46,6 +46,19 @@ async function readCachedActiveSessionWrite(page: Page) {
   })
 }
 
+async function readLocalActiveSessionRecovery(page: Page) {
+  return page.evaluate(async () => {
+    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
+    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
+      readLocalActiveSessionRecovery(): {
+        sessionId: string | null
+        reps: string | null
+      }
+    }
+    return diagnostics.readLocalActiveSessionRecovery()
+  })
+}
+
 async function setFirestoreNetworkEnabled(page: Page, enabled: boolean): Promise<void> {
   await page.evaluate(async (nextEnabled) => {
     const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
@@ -376,6 +389,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
         await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
         await expectQueuedActiveSessionEdit(clientB.page, { sessionId, reps: '6' })
+        await expect(clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()).toHaveValue('6')
+        expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({ sessionId, reps: '6' })
         await finishWorkout(clientA.page)
         expect(await readLifecycleActiveSession()).toBeNull()
         await expectedBrowserDiagnostics.during(
@@ -389,6 +404,18 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
             await expect.poll(() => browserDiagnostics.filter(
               isExpectedWorkoutLifecycleTombstoneDiagnostic,
             ).length).toBeGreaterThan(previousRejections)
+            await expect(clientB.page.getByText('Nie ma aktywnej sesji', { exact: true })).toBeVisible()
+            await expect(clientB.page.getByText('Nie udało się zsynchronizować aktywnej sesji.', { exact: true })).not.toBeVisible()
+            await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toEqual({
+              exists: false,
+              hasPendingWrites: false,
+              sessionId: null,
+              reps: null,
+            })
+            expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
+              sessionId: null,
+              reps: null,
+            })
             await clientB.context.close()
             await clientA.context.close()
           },
@@ -424,6 +451,10 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
         await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
         await expectQueuedActiveSessionEdit(clientB.page, { sessionId: oldSessionId, reps: '6' })
+        expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
+          sessionId: oldSessionId,
+          reps: '6',
+        })
         await finishWorkout(clientA.page)
         await seedLifecycleActiveSession({ sessionId: newSessionId, label: 'Phase 1 offline new' })
         const clientC = await openWorkoutClient(observedContextFactory, storageState)
@@ -439,6 +470,13 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
             await expect.poll(() => browserDiagnostics.filter(
               isExpectedWorkoutLifecycleTombstoneDiagnostic,
             ).length).toBeGreaterThan(previousRejections)
+            await expect(clientB.page.getByText('Phase 1 offline new', { exact: true }).first()).toBeVisible()
+            await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toMatchObject({
+              exists: true,
+              hasPendingWrites: false,
+              sessionId: newSessionId,
+            })
+            expect((await readLocalActiveSessionRecovery(clientB.page)).sessionId).toBe(newSessionId)
             await clientC.context.close()
             await clientB.context.close()
             await clientA.context.close()

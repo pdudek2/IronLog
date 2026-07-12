@@ -34,7 +34,7 @@ export function readActiveSessionBackup(uid: string): ActiveWorkout | null {
     const startedAt = typeof session.startedAt === 'number' ? session.startedAt : Date.now()
     return {
       ...session,
-      sessionId: normalizeSessionId(session.sessionId, startedAt),
+      sessionId: normalizeSessionId(session.sessionId, uid, startedAt),
       startedAt,
     } as ActiveWorkout
   } catch {

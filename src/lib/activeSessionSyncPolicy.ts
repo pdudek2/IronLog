@@ -15,6 +15,18 @@ export type ClosureFailureState =
   | 'closure_unconfirmed'
   | 'session_mismatch'
 
+export interface ActiveSessionSnapshotMetadata {
+  fromCache: boolean
+  hasPendingWrites: boolean
+}
+
+export function isAuthoritativeActiveSessionSnapshot({
+  fromCache,
+  hasPendingWrites,
+}: ActiveSessionSnapshotMetadata): boolean {
+  return !fromCache && !hasPendingWrites
+}
+
 export function shouldPersistActiveSession(
   session: ActiveWorkout,
   closureIntent: WorkoutClosureIntent | null,
@@ -37,12 +49,17 @@ export function decideRemoteSessionSync({
   remoteSession,
   closureIntent,
   remoteSessionIsStale = false,
+  authoritative = true,
 }: {
   localSession: ActiveWorkout | null
   remoteSession: ActiveWorkout | null
   closureIntent: WorkoutClosureIntent | null
   remoteSessionIsStale?: boolean
+  authoritative?: boolean
 }): RemoteSessionSyncDecision {
+  if (!authoritative) {
+    return closureIntent ? 'retain_closure_snapshot' : 'keep_local'
+  }
   if (remoteSession) {
     if (
       remoteSessionIsStale
@@ -55,6 +72,18 @@ export function decideRemoteSessionSync({
   }
   if (closureIntent) return 'retain_closure_snapshot'
   return localSession ? 'clear_local' : 'keep_local'
+}
+
+export function shouldResolveActiveSessionSyncFailure({
+  writeSucceeded,
+  authoritative,
+  reconciliationResolved,
+}: {
+  writeSucceeded: boolean
+  authoritative: boolean
+  reconciliationResolved: boolean
+}): boolean {
+  return writeSucceeded || (authoritative && reconciliationResolved)
 }
 
 export function decideConfirmedClosure({

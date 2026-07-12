@@ -6,6 +6,8 @@ import {
   classifyClosureFailure,
   decideConfirmedClosure,
   decideRemoteSessionSync,
+  isAuthoritativeActiveSessionSnapshot,
+  shouldResolveActiveSessionSyncFailure,
   shouldPersistActiveSession,
   shouldAutoStartEmptySession,
 } from '../activeSessionSyncPolicy'
@@ -23,6 +25,21 @@ const intent = (sessionId: string): WorkoutClosureIntent => ({
 })
 
 describe('active session sync policy', () => {
+  it('accepts only server-confirmed snapshots as authoritative', () => {
+    expect(isAuthoritativeActiveSessionSnapshot({
+      fromCache: false,
+      hasPendingWrites: false,
+    })).toBe(true)
+    expect(isAuthoritativeActiveSessionSnapshot({
+      fromCache: true,
+      hasPendingWrites: false,
+    })).toBe(false)
+    expect(isAuthoritativeActiveSessionSnapshot({
+      fromCache: false,
+      hasPendingWrites: true,
+    })).toBe(false)
+  })
+
   it('blocks persistence for the session captured by a pending closure intent', () => {
     expect(shouldPersistActiveSession(session('session-1'), intent('session-1'))).toBe(false)
     expect(shouldPersistActiveSession(session('session-2'), intent('session-1'))).toBe(true)
@@ -41,7 +58,32 @@ describe('active session sync policy', () => {
       localSession: session('session-1'),
       remoteSession: null,
       closureIntent: null,
+      authoritative: true,
     })).toBe('clear_local')
+  })
+
+  it.each([
+    { fromCache: true, hasPendingWrites: false },
+    { fromCache: false, hasPendingWrites: true },
+  ])('does not clear local recovery from a non-authoritative snapshot: %o', (metadata) => {
+    expect(decideRemoteSessionSync({
+      localSession: session('session-1'),
+      remoteSession: null,
+      closureIntent: null,
+      authoritative: isAuthoritativeActiveSessionSnapshot(metadata),
+    })).toBe('keep_local')
+  })
+
+  it.each([
+    { fromCache: true, hasPendingWrites: false },
+    { fromCache: false, hasPendingWrites: true },
+  ])('does not replace closure recovery from a non-authoritative snapshot: %o', (metadata) => {
+    expect(decideRemoteSessionSync({
+      localSession: session('session-1'),
+      remoteSession: session('session-2'),
+      closureIntent: intent('session-1'),
+      authoritative: isAuthoritativeActiveSessionSnapshot(metadata),
+    })).toBe('retain_closure_snapshot')
   })
 
   it('keeps local data while the authoritative remote session still matches', () => {
@@ -138,5 +180,23 @@ describe('active session sync policy', () => {
         remoteSessionId: 'session-B',
       },
     )).toBe(false)
+  })
+
+  it('clears a sync failure only after a successful write or resolving authoritative snapshot', () => {
+    expect(shouldResolveActiveSessionSyncFailure({
+      writeSucceeded: true,
+      authoritative: false,
+      reconciliationResolved: false,
+    })).toBe(true)
+    expect(shouldResolveActiveSessionSyncFailure({
+      writeSucceeded: false,
+      authoritative: false,
+      reconciliationResolved: true,
+    })).toBe(false)
+    expect(shouldResolveActiveSessionSyncFailure({
+      writeSucceeded: false,
+      authoritative: true,
+      reconciliationResolved: true,
+    })).toBe(true)
   })
 })

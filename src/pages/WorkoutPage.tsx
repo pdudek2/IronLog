@@ -13,6 +13,7 @@ import type { WorkoutClosureIntent } from '../lib/workoutClosureIntent'
 import { getUserExercises } from '../lib/userExercisesService'
 import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
+import { ActiveSessionSyncStatus } from '../components/workout/ActiveSessionSyncStatus'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
 import ExercisePicker from '../components/ExercisePicker'
@@ -308,6 +309,7 @@ export default function WorkoutPage() {
   const goQuick = (to: string) => navigateWithAppTransition(navigate, to)
 
   const {
+    activeSessionSyncStatus,
     beginClosure,
     closureIntent,
     closureState,
@@ -319,6 +321,7 @@ export default function WorkoutPage() {
     ready,
     reloadAuthentication,
     reloadCurrentSession,
+    retryActiveSessionSync,
     staleSession,
   } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
@@ -772,6 +775,10 @@ export default function WorkoutPage() {
       role="region"
       aria-label={`Aktywna sesja: ${activeLabel}`}
     >
+      <ActiveSessionSyncStatus
+        status={activeSessionSyncStatus}
+        onRetry={() => { void retryActiveSessionSync() }}
+      />
       {closureState === 'closure_unconfirmed' && (
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">Nie udało się potwierdzić zamknięcia sesji.</p>

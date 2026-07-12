@@ -6,6 +6,7 @@ import {
   finalizeWorkoutForUser,
   type FinalizeWorkoutInput,
 } from '../../api/lib/workoutClosure'
+import { deriveLegacySessionId } from '../../src/lib/sessionIdentity'
 import {
   clearReviewAdminDatabase,
   closeReviewAdminDatabase,
@@ -13,6 +14,7 @@ import {
 } from '../review/support/adminReviewDatabase'
 
 const USER_ID = 'closure-user'
+const OTHER_USER_ID = 'closure-user-2'
 const STARTED_AT = 1_790_000_000_000
 const FINISHED_AT = STARTED_AT + 3_600_000
 const db = getReviewAdminDatabase()
@@ -43,9 +45,9 @@ afterAll(async () => {
   await closeReviewAdminDatabase()
 })
 
-async function seedActive(sessionId = input.sessionId) {
-  await db.collection('activeSessions').doc(USER_ID).set({
-    userId: USER_ID,
+async function seedActive(sessionId = input.sessionId, userId = USER_ID) {
+  await db.collection('activeSessions').doc(userId).set({
+    userId,
     sessionId,
     startedAt: STARTED_AT,
     templateId: null,
@@ -54,9 +56,9 @@ async function seedActive(sessionId = input.sessionId) {
   })
 }
 
-async function seedLegacyActive() {
-  await db.collection('activeSessions').doc(USER_ID).set({
-    userId: USER_ID,
+async function seedLegacyActive(userId = USER_ID) {
+  await db.collection('activeSessions').doc(userId).set({
+    userId,
     startedAt: STARTED_AT,
     templateId: null,
     label: input.label,
@@ -76,7 +78,7 @@ async function readClosure(sessionId = input.sessionId) {
 
 describe('workout closure', () => {
   it('finishes a legacy active session using its deterministic derived ID', async () => {
-    const legacySessionId = `legacy-${STARTED_AT}`
+    const legacySessionId = deriveLegacySessionId(USER_ID, STARTED_AT)
     await seedLegacyActive()
     const materialize = vi.fn().mockImplementation(async (_userId, workoutId: string) => {
       await db.collection('workouts').doc(workoutId).update({ materialized: true })
@@ -97,7 +99,7 @@ describe('workout closure', () => {
   })
 
   it('discards a legacy active session using its deterministic derived ID', async () => {
-    const legacySessionId = `legacy-${STARTED_AT}`
+    const legacySessionId = deriveLegacySessionId(USER_ID, STARTED_AT)
     await seedLegacyActive()
 
     await expect(discardSessionForUser(USER_ID, legacySessionId, {
@@ -254,19 +256,44 @@ describe('workout closure', () => {
     expect(state.active.exists).toBe(false)
   })
 
-  it('tombstones discard when the active session is already absent', async () => {
+  it('rejects a first discard when the active session and owned tombstone are absent', async () => {
     await expect(discardSessionForUser(USER_ID, input.sessionId, {
       db,
       now: () => FINISHED_AT + 1,
-    })).resolves.toEqual({ status: 'discarded' })
+    })).rejects.toMatchObject({ status: 409, code: 'session_mismatch' })
 
-    expect((await readClosure()).tombstone.data()).toEqual({
-      userId: USER_ID,
-      sessionId: input.sessionId,
-      outcome: 'discarded',
-      workoutId: null,
-      closedAt: FINISHED_AT + 1,
-    })
+    expect((await readClosure()).tombstone.exists).toBe(false)
+  })
+
+  it('isolates same-startedAt legacy sessions by owner', async () => {
+    const firstId = deriveLegacySessionId(USER_ID, STARTED_AT)
+    const secondId = deriveLegacySessionId(OTHER_USER_ID, STARTED_AT)
+    await Promise.all([seedLegacyActive(USER_ID), seedLegacyActive(OTHER_USER_ID)])
+
+    await discardSessionForUser(USER_ID, firstId, { db, now: () => FINISHED_AT + 1 })
+    await discardSessionForUser(OTHER_USER_ID, secondId, { db, now: () => FINISHED_AT + 2 })
+
+    expect(firstId).not.toBe(secondId)
+    await expect(db.collection('closedSessions').doc(firstId).get())
+      .resolves.toMatchObject({ exists: true })
+    await expect(db.collection('closedSessions').doc(secondId).get())
+      .resolves.toMatchObject({ exists: true })
+  })
+
+  it('does not let another user preemptively reserve a legacy namespace', async () => {
+    const ownerLegacyId = deriveLegacySessionId(USER_ID, STARTED_AT)
+    await seedLegacyActive(USER_ID)
+
+    await expect(discardSessionForUser(OTHER_USER_ID, ownerLegacyId, {
+      db,
+      now: () => FINISHED_AT + 1,
+    })).rejects.toMatchObject({ status: 409, code: 'session_mismatch' })
+    expect((await db.collection('closedSessions').doc(ownerLegacyId).get()).exists).toBe(false)
+
+    await expect(discardSessionForUser(USER_ID, ownerLegacyId, {
+      db,
+      now: () => FINISHED_AT + 2,
+    })).resolves.toEqual({ status: 'discarded' })
   })
 
   it('reports session_mismatch without deleting a newer active session', async () => {
@@ -299,6 +326,7 @@ describe('workout closure', () => {
     expect((await readClosure()).tombstone.data()?.outcome).toBe('finished')
 
     await clearReviewAdminDatabase()
+    await seedActive()
     await discardSessionForUser(USER_ID, input.sessionId, { db, now: () => FINISHED_AT + 3 })
     await expect(finalizeWorkoutForUser(USER_ID, input, {
       db,

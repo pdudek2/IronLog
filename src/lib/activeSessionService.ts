@@ -29,7 +29,7 @@ export function subscribeToActiveSession(
     activeSessionRef(uid),
     { includeMetadataChanges: true },
     (snap) => onChange({
-      session: snap.exists() ? parseSessionDoc(snap.data()) : null,
+      session: snap.exists() ? parseSessionDoc(uid, snap.data()) : null,
       fromCache: snap.metadata.fromCache,
       hasPendingWrites: snap.metadata.hasPendingWrites,
     }),
@@ -87,10 +87,10 @@ function sessionDocumentHasWork(data: Record<string, unknown>): boolean {
   return exercises.length > 0 || (typeof data?.label === 'string' && data.label.trim().length > 0)
 }
 
-function parseSessionDoc(data: Record<string, unknown>): ActiveWorkout {
+function parseSessionDoc(uid: string, data: Record<string, unknown>): ActiveWorkout {
   const startedAt = typeof data.startedAt === 'number' ? data.startedAt : Date.now()
   return {
-    sessionId: normalizeSessionId(data.sessionId, startedAt),
+    sessionId: normalizeSessionId(data.sessionId, uid, startedAt),
     startedAt,
     templateId: typeof data.templateId === 'string' && data.templateId ? data.templateId : null,
     label: typeof data.label === 'string' && data.label ? data.label : undefined,

@@ -20,6 +20,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const result = await discardSessionForUser(userId, body.sessionId as string)
     sendJson(res, 200, result)
   } catch (error) {
-    sendApiError(res, error, { fallbackMessage: 'Nie udało się odrzucić sesji.' })
+    sendApiError(res, error, {
+      fallbackMessage: 'Nie udało się odrzucić sesji.',
+      fallbackStatus: 500,
+    })
   }
 }

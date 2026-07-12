@@ -7,6 +7,7 @@ import {
   validateFirestoreDocumentId,
   type FinalizeWorkoutInput,
 } from './workoutValidation.js'
+import { deriveLegacySessionId } from '../../src/lib/sessionIdentity.js'
 
 export type { FinalizeWorkoutInput } from './workoutValidation.js'
 
@@ -125,9 +126,8 @@ export async function discardSessionForUser(
 
     if (storedWorkout) throw closureConflict()
 
-    if (active.exists) {
-      requireMatchingActiveSession(userId, normalizedSessionId, active)
-    }
+    if (!active.exists) throw sessionMismatch()
+    requireMatchingActiveSession(userId, normalizedSessionId, active)
 
     transaction.create(tombstoneRef, {
       userId,
@@ -136,7 +136,7 @@ export async function discardSessionForUser(
       workoutId: null,
       closedAt: (options.now ?? Date.now)(),
     })
-    if (active.exists) transaction.delete(activeRef)
+    transaction.delete(activeRef)
   })
 
   return { status: 'discarded' }
@@ -183,7 +183,7 @@ function requireMatchingActiveSession(
   const storedSessionId = typeof stored.sessionId === 'string' && stored.sessionId.trim()
     ? stored.sessionId.trim()
     : typeof stored.startedAt === 'number'
-      ? `legacy-${stored.startedAt}`
+      ? deriveLegacySessionId(userId, stored.startedAt)
       : undefined
   if (storedSessionId !== sessionId) throw sessionMismatch()
 }

@@ -17,6 +17,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const result = await finalizeWorkoutForUser(userId, parseFinalizeWorkoutInput(body))
     sendJson(res, 200, result)
   } catch (error) {
-    sendApiError(res, error, { fallbackMessage: 'Nie udało się zakończyć treningu.' })
+    sendApiError(res, error, {
+      fallbackMessage: 'Nie udało się zakończyć treningu.',
+      fallbackStatus: 500,
+    })
   }
 }

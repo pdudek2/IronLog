@@ -8,6 +8,27 @@ export interface CachedActiveSessionWrite {
   reps: string | null
 }
 
+export interface LocalActiveSessionRecovery {
+  sessionId: string | null
+  reps: string | null
+}
+
+export function readLocalActiveSessionRecovery(): LocalActiveSessionRecovery {
+  const uid = auth.currentUser?.uid
+  if (!uid) throw new Error('Authenticated Firebase user is required to inspect active-session recovery.')
+  const raw = window.localStorage.getItem(`ironlog-active-session-backup:${uid}`)
+  if (!raw) return { sessionId: null, reps: null }
+  const parsed = JSON.parse(raw) as { session?: { sessionId?: unknown; exercises?: unknown } }
+  const exercises = Array.isArray(parsed.session?.exercises) ? parsed.session.exercises : []
+  const firstExercise = exercises[0] as { sets?: unknown } | undefined
+  const sets = Array.isArray(firstExercise?.sets) ? firstExercise.sets : []
+  const firstSet = sets[0] as { reps?: unknown } | undefined
+  return {
+    sessionId: typeof parsed.session?.sessionId === 'string' ? parsed.session.sessionId : null,
+    reps: typeof firstSet?.reps === 'string' ? firstSet.reps : null,
+  }
+}
+
 export async function readCachedActiveSessionWrite(): Promise<CachedActiveSessionWrite> {
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Authenticated Firebase user is required to inspect active-session cache metadata.')

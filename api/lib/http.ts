@@ -38,8 +38,7 @@ export function sendApiError(
     return
   }
 
-  const message = error instanceof Error && error.message ? error.message : fallbackMessage
-  sendJson(res, fallbackStatus, { error: message })
+  sendJson(res, fallbackStatus, { error: fallbackMessage })
 }
 
 export async function readJsonBody<T>(

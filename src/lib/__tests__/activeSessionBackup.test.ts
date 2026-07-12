@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { readActiveSessionBackup, writeActiveSessionBackup } from '../activeSessionBackup'
+import { deriveLegacySessionId } from '../sessionIdentity'
 
 const uid = 'user-1'
 const storageKey = `ironlog-active-session-backup:${uid}`
@@ -35,7 +36,7 @@ describe('active session backup identity', () => {
     }))
 
     expect(readActiveSessionBackup(uid)).toEqual({
-      sessionId: 'legacy-500',
+      sessionId: deriveLegacySessionId(uid, 500),
       startedAt: 500,
       exercises: [],
     })

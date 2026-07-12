@@ -16,6 +16,7 @@ import {
   saveActiveSession,
   TemplateLaunchConflictError,
 } from '../activeSessionService'
+import { deriveLegacySessionId } from '../sessionIdentity'
 import type { ActiveWorkout } from '../../store/workoutStore'
 
 const sessionRef = { path: 'activeSessions/user-1' }
@@ -157,7 +158,12 @@ describe('active session hydration', () => {
     } as never)
 
     expect(onChange).toHaveBeenCalledWith({
-      session: { sessionId: 'legacy-500', startedAt: 500, templateId: null, exercises: [] },
+      session: {
+        sessionId: deriveLegacySessionId('user-1', 500),
+        startedAt: 500,
+        templateId: null,
+        exercises: [],
+      },
       fromCache: false,
       hasPendingWrites: false,
     })

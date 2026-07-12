@@ -6,11 +6,13 @@ import ReadinessWidget from '../../components/ReadinessWidget'
 
 const mocks = vi.hoisted(() => ({
   currentDate: '2026-07-12',
+  currentUser: { uid: 'user-1' },
   getReadiness: vi.fn(),
+  onSaved: undefined as undefined | ((saved: ReadinessEntry) => void),
 }))
 
 vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: { uid: 'user-1' } }),
+  useAuthStore: () => ({ user: mocks.currentUser }),
 }))
 
 vi.mock('../../lib/readinessService', () => ({
@@ -25,7 +27,10 @@ vi.mock('../../lib/readinessService', () => ({
 }))
 
 vi.mock('../../components/ReadinessPrompt', () => ({
-  default: () => <div>readiness-prompt</div>,
+  default: ({ onSaved }: { onSaved: (saved: ReadinessEntry) => void }) => {
+    mocks.onSaved = onSaved
+    return <div>readiness-prompt</div>
+  },
 }))
 
 vi.mock('framer-motion', () => ({
@@ -52,9 +57,9 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function entry(date: string, sleep = 4): ReadinessEntry {
+function entry(date: string, sleep = 4, userId = 'user-1'): ReadinessEntry {
   return {
-    userId: 'user-1',
+    userId,
     date,
     sleep,
     mood: 4,
@@ -66,7 +71,9 @@ function entry(date: string, sleep = 4): ReadinessEntry {
 describe('ReadinessWidget data states', () => {
   beforeEach(() => {
     mocks.currentDate = '2026-07-12'
+    mocks.currentUser = { uid: 'user-1' }
     mocks.getReadiness.mockReset()
+    mocks.onSaved = undefined
     vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('visible')
   })
 
@@ -132,5 +139,65 @@ describe('ReadinessWidget data states', () => {
     await act(async () => oldDay.resolve(entry('2026-07-12', 1)))
     expect(screen.getByText('2026-07-13')).toBeInTheDocument()
     expect(screen.queryByText('2026-07-12')).not.toBeInTheDocument()
+  })
+
+  it('keys a save by the saved entry date when submission crosses midnight', async () => {
+    mocks.getReadiness.mockResolvedValueOnce(null)
+
+    render(<ReadinessWidget />)
+    expect(await screen.findByText('readiness-prompt')).toBeInTheDocument()
+
+    mocks.currentDate = '2026-07-13'
+    act(() => mocks.onSaved?.(entry('2026-07-13', 5)))
+
+    expect(await screen.findByText('2026-07-13')).toBeInTheDocument()
+    act(() => document.dispatchEvent(new Event('visibilitychange')))
+    expect(mocks.getReadiness).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores a late save from the previous user', async () => {
+    mocks.getReadiness
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(entry('2026-07-12', 5, 'user-2'))
+
+    const view = render(<ReadinessWidget />)
+    expect(await screen.findByText('readiness-prompt')).toBeInTheDocument()
+    const lateOnSaved = mocks.onSaved
+
+    mocks.currentUser = { uid: 'user-2' }
+    view.rerender(<ReadinessWidget />)
+    expect(await screen.findByText('2026-07-12')).toBeInTheDocument()
+
+    act(() => lateOnSaved?.(entry('2026-07-12', 1, 'user-1')))
+    expect(screen.getByText('2026-07-12')).toBeInTheDocument()
+    expect(screen.getByText('5')).toBeInTheDocument()
+    expect(screen.queryByText('1')).not.toBeInTheDocument()
+  })
+
+  it('does not log a load rejection after unmount', async () => {
+    const request = deferred<ReadinessEntry | null>()
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.getReadiness.mockReturnValueOnce(request.promise)
+
+    const { unmount } = render(<ReadinessWidget />)
+    unmount()
+    await act(async () => request.reject(new Error('offline')))
+
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('logs the current load rejection', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    mocks.getReadiness.mockRejectedValueOnce(new Error('offline'))
+
+    render(<ReadinessWidget />)
+
+    expect(await screen.findByText('Nie udało się wczytać gotowości')).toBeInTheDocument()
+    expect(consoleError).toHaveBeenCalledWith(
+      '[ReadinessWidget] load failed',
+      expect.any(Error),
+    )
+    consoleError.mockRestore()
   })
 })

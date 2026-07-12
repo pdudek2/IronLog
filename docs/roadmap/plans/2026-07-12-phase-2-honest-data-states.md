@@ -12,6 +12,8 @@
 
 **Base commit:** `1ca8682` na branchu `puls-rebrand`.
 
+**Status wykonania:** COMPLETE. Wszystkie kroki i Definition of Done zostały wykonane. Historyczne oczekiwania komend pozostają poniżej bez zmian; końcowe korekty broad final review i aktualna bramka 35 plików / 229 testów są udokumentowane w `.superpowers/sdd/final-fixes-report.md`.
+
 ## Global Constraints
 
 - Statusy i kody w TypeScript pozostają po angielsku; tekst UI jest po polsku.
@@ -57,7 +59,7 @@
 - Produces: `getReadiness(uid: string, date: string): Promise<ReadinessEntry | null>`.
 - Preserves: `getTodayReadiness(uid: string): Promise<ReadinessEntry | null>` jako wrapper kompatybilności.
 
-- [ ] **Step 1: Rozszerz mock Firestore i dopisz dwa testy odczytu daty**
+- [x] **Step 1: Rozszerz mock Firestore i dopisz dwa testy odczytu daty**
 
 Na początku `src/lib/__tests__/readinessService.test.ts` zastąp obecne mocki tym blokiem:
 
@@ -118,7 +120,7 @@ describe('getReadiness', () => {
 })
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź czerwony stan**
+- [x] **Step 2: Uruchom test i potwierdź czerwony stan**
 
 Run:
 
@@ -128,7 +130,7 @@ npm run test:unit -- src/lib/__tests__/readinessService.test.ts
 
 Expected: FAIL, ponieważ `getReadiness` nie jest eksportowane.
 
-- [ ] **Step 3: Dodaj typ i jawny odczyt daty**
+- [x] **Step 3: Dodaj typ i jawny odczyt daty**
 
 Utwórz `src/types/dataState.ts`:
 
@@ -164,7 +166,7 @@ export function getTodayReadiness(uid: string): Promise<ReadinessEntry | null> {
 }
 ```
 
-- [ ] **Step 4: Uruchom test serwisu**
+- [x] **Step 4: Uruchom test serwisu**
 
 Run:
 
@@ -174,7 +176,7 @@ npm run test:unit -- src/lib/__tests__/readinessService.test.ts
 
 Expected: PASS, 9 testów w pliku.
 
-- [ ] **Step 5: Sprawdź typy i wykonaj commit**
+- [x] **Step 5: Sprawdź typy i wykonaj commit**
 
 Run:
 
@@ -200,7 +202,7 @@ Expected: build przechodzi; commit zawiera wyłącznie trzy wskazane pliki.
 - Consumes: `getReadiness(uid, date)` z Task 1.
 - Produces: jeden request dla klucza UID + data, także pod `React.StrictMode`.
 
-- [ ] **Step 1: Napisz testy kontraktu widgetu**
+- [x] **Step 1: Napisz testy kontraktu widgetu**
 
 Utwórz `src/pages/__tests__/ReadinessWidget.test.tsx`:
 
@@ -343,7 +345,7 @@ describe('ReadinessWidget data states', () => {
 })
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź błędy**
+- [x] **Step 2: Uruchom test i potwierdź błędy**
 
 Run:
 
@@ -353,7 +355,7 @@ npm run test:unit -- src/pages/__tests__/ReadinessWidget.test.tsx
 
 Expected: FAIL. Obecny widget importuje `getTodayReadiness`, po błędzie pokazuje prompt i wykonuje dodatkowy odczyt.
 
-- [ ] **Step 3: Zastąp loader widgetu stanem kluczowanym przez UID i datę**
+- [x] **Step 3: Zastąp loader widgetu stanem kluczowanym przez UID i datę**
 
 W `src/components/ReadinessWidget.tsx`:
 
@@ -499,7 +501,7 @@ Zastąp trzy obecne gałęzie `undefined/null/entry` tym blokiem. Istniejący JS
   const entry = state.data
 ```
 
-- [ ] **Step 4: Uruchom test widgetu, lint i test serwisu**
+- [x] **Step 4: Uruchom test widgetu, lint i test serwisu**
 
 Run:
 
@@ -510,7 +512,7 @@ npm run lint
 
 Expected: oba pliki przechodzą; lint nie zgłasza `set-state-in-effect` ani brakujących zależności hooków.
 
-- [ ] **Step 5: Wykonaj commit**
+- [x] **Step 5: Wykonaj commit**
 
 ```bash
 git diff --check
@@ -531,7 +533,7 @@ git commit -m "fix: make readiness loading states honest"
 - Produces: trwały błąd sekcji z retry; katalog globalny pozostaje aktywny.
 - Preserves: `data-load-state="loading" | "error" | "ready"` dla `expectAppReady`.
 
-- [ ] **Step 1: Napisz trzy testy strony ćwiczeń**
+- [x] **Step 1: Napisz trzy testy strony ćwiczeń**
 
 Utwórz `src/pages/__tests__/ExercisesPageDataState.test.tsx`:
 
@@ -648,7 +650,7 @@ describe('ExercisesPage user library states', () => {
 })
 ```
 
-- [ ] **Step 2: Uruchom test i potwierdź czerwony stan**
+- [x] **Step 2: Uruchom test i potwierdź czerwony stan**
 
 Run:
 
@@ -658,7 +660,7 @@ npm run test:unit -- src/pages/__tests__/ExercisesPageDataState.test.tsx
 
 Expected: FAIL, ponieważ błąd nadal przechodzi do `filteredUser.length === 0`, a akcja tworzenia pozostaje aktywna.
 
-- [ ] **Step 3: Zastąp booleany kluczowanym `DataState`**
+- [x] **Step 3: Zastąp booleany kluczowanym `DataState`**
 
 W `src/pages/ExercisesPage.tsx` dodaj `useCallback` do importu Reacta i importuj `DataState`. Zmień typ `count` w `SectionHeader` na `number | string`.
 
@@ -771,7 +773,7 @@ setUserExercisesResource((current) => current.state.status === 'success'
   : current)
 ```
 
-- [ ] **Step 4: Zmień liczniki, akcję tworzenia i kolejność gałęzi renderu**
+- [x] **Step 4: Zmień liczniki, akcję tworzenia i kolejność gałęzi renderu**
 
 Licznik „moje” i licznik sekcji pokazują dane wyłącznie po sukcesie:
 
@@ -830,7 +832,7 @@ Przed gałęzią `filteredUser.length === 0` dodaj:
 
 Domknij istniejącą gałąź bez zmiany jej success-empty i success-data JSX.
 
-- [ ] **Step 5: Uruchom testy ćwiczeń i izolowane E2E tej trasy**
+- [x] **Step 5: Uruchom testy ćwiczeń i izolowane E2E tej trasy**
 
 Run:
 
@@ -842,7 +844,7 @@ npm run lint
 
 Expected: 3 testy komponentowe i 2 testy Playwright przechodzą; katalog globalny i CRUD po poprawnym odczycie pozostają bez regresji.
 
-- [ ] **Step 6: Wykonaj commit**
+- [x] **Step 6: Wykonaj commit**
 
 ```bash
 git diff --check
@@ -864,7 +866,7 @@ git commit -m "fix: distinguish exercise library errors"
 - Produces: niezależne `loading/success/error` sekcji planów na dashboardzie.
 - Preserves: istniejące zachowanie `TemplatesPage`; produkcyjny plik strony nie wymaga refaktoru.
 
-- [ ] **Step 1: Uczyń mock `getTemplates` sterowalnym w teście dashboardu**
+- [x] **Step 1: Uczyń mock `getTemplates` sterowalnym w teście dashboardu**
 
 W obiekcie `mocks` w `DashboardProjectionStatus.test.tsx` dodaj:
 
@@ -927,7 +929,7 @@ it('renders template data after a successful read', async () => {
 })
 ```
 
-- [ ] **Step 2: Dodaj test regresji strony planów**
+- [x] **Step 2: Dodaj test regresji strony planów**
 
 Utwórz `src/pages/__tests__/TemplatesPageDataState.test.tsx`:
 
@@ -1011,7 +1013,7 @@ describe('TemplatesPage data states', () => {
 })
 ```
 
-- [ ] **Step 3: Uruchom testy i potwierdź, że tylko dashboard jest czerwony**
+- [x] **Step 3: Uruchom testy i potwierdź, że tylko dashboard jest czerwony**
 
 Run:
 
@@ -1021,7 +1023,7 @@ npm run test:unit -- src/pages/__tests__/DashboardProjectionStatus.test.tsx src/
 
 Expected: nowy test `TemplatesPage` przechodzi na istniejącym kodzie; dwa nowe testy dashboardu nie przechodzą.
 
-- [ ] **Step 4: Zastąp tablicę szablonów kluczowanym stanem**
+- [x] **Step 4: Zastąp tablicę szablonów kluczowanym stanem**
 
 W `DashboardPage.tsx` importuj `DataState`. Zastąp `templates` następującym zasobem i referencjami:
 
@@ -1102,7 +1104,7 @@ function handleRetryTemplates() {
 
 Usuń dawne `const recentTemplates = templates.slice(0, 3)`.
 
-- [ ] **Step 5: Nadaj sekcji planów cztery rozłączne gałęzie**
+- [x] **Step 5: Nadaj sekcji planów cztery rozłączne gałęzie**
 
 Zastąp warunek `recentTemplates.length === 0` kolejnością:
 
@@ -1132,7 +1134,7 @@ Zastąp warunek `recentTemplates.length === 0` kolejnością:
 
 Pozostaw dotychczasowy success-empty i success-data JSX bez zmiany treści.
 
-- [ ] **Step 6: Uruchom testy szablonów, dashboardu i E2E planów**
+- [x] **Step 6: Uruchom testy szablonów, dashboardu i E2E planów**
 
 Run:
 
@@ -1144,7 +1146,7 @@ npm run lint
 
 Expected: testy komponentowe przechodzą; Playwright potwierdza stronę planów, dashboard i brak regresji tworzenia szablonu.
 
-- [ ] **Step 7: Wykonaj commit**
+- [x] **Step 7: Wykonaj commit**
 
 ```bash
 git diff --check
@@ -1167,7 +1169,7 @@ git commit -m "fix: distinguish template loading errors"
 - Consumes: kompletne UI z Tasks 1–4.
 - Produces: wizualny dowód desktop/mobile, zielone bramki i status `DONE`.
 
-- [ ] **Step 1: Wymuś błędy wyłącznie na czas lokalnego review**
+- [x] **Step 1: Wymuś błędy wyłącznie na czas lokalnego review**
 
 Za pomocą `apply_patch` dodaj jako pierwszą linię ciała `getReadiness`, `getUserExercises` i `getTemplates`:
 
@@ -1189,7 +1191,7 @@ Przez Playwright albo Computer Use sprawdź viewporty `1440×900` i `393×851`:
 
 Expected: żaden komunikat ani przycisk nie wychodzi poza viewport; na mobile nie powstaje poziomy scroll.
 
-- [ ] **Step 2: Usuń trzy tymczasowe wyjątki i potwierdź czysty kod produktu**
+- [x] **Step 2: Usuń trzy tymczasowe wyjątki i potwierdź czysty kod produktu**
 
 Za pomocą odwrotnego `apply_patch` usuń dokładnie trzy linie `throw new Error('Phase 2 visual QA')`.
 
@@ -1202,7 +1204,7 @@ git diff --check
 
 Expected: `rg` nie zwraca dopasowań. Diff zawiera tylko docelową implementację i dokumentację.
 
-- [ ] **Step 3: Uruchom pełną bramkę automatyczną**
+- [x] **Step 3: Uruchom pełną bramkę automatyczną**
 
 Run:
 
@@ -1228,7 +1230,7 @@ Expected:
 
 Live `npm run test:e2e` pozostaje kontrolą `RELEASE-08` i nie blokuje Fazy 2.
 
-- [ ] **Step 4: Zamknij Fazę 2 w dokumentacji**
+- [x] **Step 4: Zamknij Fazę 2 w dokumentacji**
 
 W `docs/roadmap/ROADMAP.md`:
 
@@ -1252,7 +1254,7 @@ Dodaj na końcu specyfikacji:
 Zakres `STATE-01`, `STATE-02`, `STATE-03`, `STATE-05`, `STATE-06` i `STATE-07` został wdrożony. Testy komponentowe rozróżniają błąd, poprawny pusty wynik i dane. Review desktop/mobile potwierdziło układ trwałych stanów błędu. Wtórni konsumenci własnych ćwiczeń pozostają w `LATER-07`, a czynności produkcyjne w `RELEASE-08`.
 ```
 
-- [ ] **Step 5: Sprawdź spójność dokumentów i wykonaj commit**
+- [x] **Step 5: Sprawdź spójność dokumentów i wykonaj commit**
 
 Run:
 
@@ -1270,18 +1272,18 @@ Expected: dokumenty zgadzają się co do statusu, zakresu i bramek; working tree
 
 ## Definition of Done
 
-- [ ] `STATE-01`: błąd readiness nie renderuje promptu.
-- [ ] `STATE-02`: błąd własnych ćwiczeń nie renderuje pustej biblioteki ani potwierdzonego zera.
-- [ ] `STATE-03`: dashboard rozróżnia błąd szablonów, a `TemplatesPage` ma test regresji.
-- [ ] `STATE-05`: każdy objęty błąd ma trwały komunikat i retry.
-- [ ] `STATE-06`: wspólny kontrakt ogranicza się do `DataState<T>`; brak nowego frameworka zapytań.
-- [ ] `STATE-07`: pierwszy odczyt readiness jest pojedynczy także w `StrictMode`, a rollover dnia pobiera nową datę raz.
-- [ ] Spóźnione odpowiedzi nie nadpisują nowszego stanu.
-- [ ] Globalny katalog ćwiczeń działa podczas błędu własnej biblioteki.
-- [ ] Review desktop/mobile nie wykazuje overflow ani uciętych akcji.
-- [ ] Wszystkie bramki Task 5 przechodzą.
-- [ ] Roadmapa i specyfikacja mają status `DONE`.
-- [ ] Brak pushu, deployu i zmian `RELEASE-08`.
+- [x] `STATE-01`: błąd readiness nie renderuje promptu.
+- [x] `STATE-02`: błąd własnych ćwiczeń nie renderuje pustej biblioteki ani potwierdzonego zera.
+- [x] `STATE-03`: dashboard rozróżnia błąd szablonów, a `TemplatesPage` ma test regresji.
+- [x] `STATE-05`: każdy objęty błąd ma trwały komunikat i retry.
+- [x] `STATE-06`: wspólny kontrakt ogranicza się do `DataState<T>`; brak nowego frameworka zapytań.
+- [x] `STATE-07`: pierwszy odczyt readiness jest pojedynczy także w `StrictMode`, a rollover dnia pobiera nową datę raz.
+- [x] Spóźnione odpowiedzi nie nadpisują nowszego stanu.
+- [x] Globalny katalog ćwiczeń działa podczas błędu własnej biblioteki.
+- [x] Review desktop/mobile nie wykazuje overflow ani uciętych akcji.
+- [x] Wszystkie bramki Task 5 przechodzą.
+- [x] Roadmapa i specyfikacja mają status `DONE`.
+- [x] Brak pushu, deployu i zmian `RELEASE-08`.
 
 ## Handoff wykonawczy
 

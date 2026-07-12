@@ -282,4 +282,6 @@ Szczegółowy plan wykonawczy został zrealizowany w zakresie opisanym poniżej.
 
 Zakres `STATE-01`, `STATE-02`, `STATE-03`, `STATE-05`, `STATE-06` i `STATE-07` został wdrożony. Testy komponentowe rozróżniają błąd, poprawny pusty wynik i dane. Review desktop/mobile potwierdziło układ trwałych stanów błędu. Wtórni konsumenci własnych ćwiczeń pozostają w `LATER-07`, a czynności produkcyjne w `RELEASE-08`.
 
-Pełna bramka jednostkowa zakończyła się wynikiem 35 plików i 224 testów. To o 3 testy więcej niż prognoza planu (221), ponieważ wcześniejsze review rozszerzyły pokrycie regresji, w tym zachowanie przy spóźnionej odpowiedzi i unmount.
+Historyczna bramka Task 5 zakończyła się wynikiem 35 plików i 224 testów. To o 3 testy więcej niż prognoza planu (221), ponieważ wcześniejsze review rozszerzyły pokrycie regresji, w tym zachowanie przy spóźnionej odpowiedzi i unmount.
+
+Korekty broad final review dodały 5 regresji: zapis readiness przez północ, spóźniony zapis po zmianie UID, logowanie aktualnego i ignorowanie nieaktualnego błędu oraz spóźniony create własnego ćwiczenia po zmianie UID. Końcowa bramka po tych poprawkach wynosi 35 plików i 229 testów; szczegółowe dowody zawiera `.superpowers/sdd/final-fixes-report.md`.

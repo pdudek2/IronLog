@@ -389,6 +389,20 @@ export default function ExercisesPage() {
   const [formExercise, setFormExercise] = useState<Exercise | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [confirmDeleteExercise, setConfirmDeleteExercise] = useState<Exercise | null>(null)
+  const currentUid = user?.uid ?? null
+  const currentUidRef = useRef(currentUid)
+  const [interactionUid, setInteractionUid] = useState(currentUid)
+
+  useEffect(() => {
+    currentUidRef.current = currentUid
+  }, [currentUid])
+
+  if (interactionUid !== currentUid) {
+    setInteractionUid(currentUid)
+    setShowForm(false)
+    setFormExercise(null)
+    setConfirmDeleteExercise(null)
+  }
 
   const loadUserExercises = useCallback((uid: string) => {
     if (inFlightUserRef.current === uid) return
@@ -460,48 +474,60 @@ export default function ExercisesPage() {
 
   async function handleCreate(input: UserExerciseInput) {
     if (!user) return
-    const created = await createUserExercise(user.uid, input)
-    setUserExercisesResource((current) => current.state.status === 'success'
+    const operationUid = user.uid
+    const created = await createUserExercise(operationUid, input)
+    if (currentUidRef.current !== operationUid) return
+    setUserExercisesResource((current) => (
+      current.uid === operationUid && current.state.status === 'success'
       ? {
           ...current,
           state: { status: 'success', data: [created, ...current.state.data] },
         }
-      : current)
+      : current
+    ))
     setShowForm(false)
     setFormExercise(null)
     toast.success('Ćwiczenie dodane!')
   }
 
   async function handleUpdate(input: UserExerciseInput) {
-    if (!formExercise) return
-    await updateUserExercise(formExercise.id, input)
-    setUserExercisesResource((current) => current.state.status === 'success'
+    if (!user || !formExercise) return
+    const operationUid = user.uid
+    const updatingId = formExercise.id
+    await updateUserExercise(updatingId, input)
+    if (currentUidRef.current !== operationUid) return
+    setUserExercisesResource((current) => (
+      current.uid === operationUid && current.state.status === 'success'
       ? {
           ...current,
           state: {
             status: 'success',
             data: current.state.data.map((exercise) => (
-              exercise.id === formExercise.id
+              exercise.id === updatingId
                 ? { ...exercise, ...input }
                 : exercise
             )),
           },
         }
-      : current)
+      : current
+    ))
     setShowForm(false)
     setFormExercise(null)
     toast.success('Ćwiczenie zaktualizowane!')
   }
 
   async function handleDeleteConfirmed() {
-    if (!confirmDeleteExercise) return
+    if (!user || !confirmDeleteExercise) return
 
+    const operationUid = user.uid
     const deletingId = confirmDeleteExercise.id
     setConfirmDeleteExercise(null)
 
     try {
       await deleteUserExercise(deletingId)
-      setUserExercisesResource((current) => current.state.status === 'success'
+      if (currentUidRef.current !== operationUid) return
+      setUserExercisesResource((current) => (
+        current.uid === operationUid && current.state.status === 'success'
         ? {
             ...current,
             state: {
@@ -509,9 +535,11 @@ export default function ExercisesPage() {
               data: current.state.data.filter((exercise) => exercise.id !== deletingId),
             },
           }
-        : current)
+        : current
+      ))
       toast.success('Ćwiczenie usunięte!')
     } catch (err) {
+      if (currentUidRef.current !== operationUid) return
       console.error('[userExercise delete error]', err)
       toast.error('Nie udało się usunąć ćwiczenia.')
     }

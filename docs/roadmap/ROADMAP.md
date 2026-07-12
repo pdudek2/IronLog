@@ -49,7 +49,7 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 35 plików i 224 testy jednostkowe oraz testy wsparcia przechodzą,
+- 35 plików i 229 testów jednostkowych oraz testów wsparcia przechodzi,
 - 1 plik i 10 testów reguł Firestore przechodzi,
 - ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 20 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
@@ -201,7 +201,7 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 
 ### Faza 2 — Uczciwe stany danych i błędów
 
-**Status: DONE.** Zakres wdrożony i zweryfikowany testami oraz kontrolowanym review desktop/mobile.
+**Status: DONE.** Zakres wdrożony i zweryfikowany testami oraz kontrolowanym review desktop/mobile. Korekty broad final review są opisane w `.superpowers/sdd/final-fixes-report.md` i podniosły końcową bramkę unit z 224 do 229 testów.
 
 **Cel:** oddzielić `loading`, `success-empty`, `success-data`, `error` i — tam gdzie ma sens — `stale-data`.
 

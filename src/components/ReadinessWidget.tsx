@@ -31,6 +31,11 @@ export default function ReadinessWidget() {
   const requestIdRef = useRef(0)
   const requestedKeyRef = useRef('')
   const inFlightKeyRef = useRef('')
+  const currentUidRef = useRef(user?.uid ?? null)
+
+  useEffect(() => {
+    currentUidRef.current = user?.uid ?? null
+  }, [user?.uid])
 
   const loadReadiness = useCallback((uid: string, date: string) => {
     const key = resourceKey(uid, date)
@@ -44,8 +49,8 @@ export default function ReadinessWidget() {
         setResource({ key, state: { status: 'success', data } })
       })
       .catch((error: unknown) => {
-        console.error('[ReadinessWidget] load failed', error)
         if (!mountedRef.current || requestId !== requestIdRef.current) return
+        console.error('[ReadinessWidget] load failed', error)
         setResource({ key, state: { status: 'error', error } })
       })
       .finally(() => {
@@ -99,6 +104,16 @@ export default function ReadinessWidget() {
     loadReadiness(user.uid, retryDate)
   }
 
+  function handleSaved(saved: ReadinessEntry) {
+    if (saved.userId !== currentUidRef.current) return
+    const savedKey = resourceKey(saved.userId, saved.date)
+    requestedKeyRef.current = savedKey
+    setResource({
+      key: savedKey,
+      state: { status: 'success', data: saved },
+    })
+  }
+
   if (state.status === 'loading') {
     return (
       <div
@@ -132,10 +147,7 @@ export default function ReadinessWidget() {
   if (state.data === null) {
     return (
       <ReadinessPrompt
-        onSaved={(saved) => setResource({
-          key,
-          state: { status: 'success', data: saved },
-        })}
+        onSaved={handleSaved}
       />
     )
   }

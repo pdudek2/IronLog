@@ -1,16 +1,18 @@
 import { createElement, type ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ExercisesPage from '../ExercisesPage'
 
 const mocks = vi.hoisted(() => ({
+  currentUser: { uid: 'user-1' },
   getUserExercises: vi.fn(),
+  createUserExercise: vi.fn(),
   navigate: vi.fn(),
   toastError: vi.fn(),
 }))
 
 vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: { uid: 'user-1' } }),
+  useAuthStore: () => ({ user: mocks.currentUser }),
 }))
 
 vi.mock('../../data/exercises', () => ({
@@ -25,7 +27,7 @@ vi.mock('../../data/exercises', () => ({
 
 vi.mock('../../lib/userExercisesService', () => ({
   getUserExercises: mocks.getUserExercises,
-  createUserExercise: vi.fn(),
+  createUserExercise: mocks.createUserExercise,
   updateUserExercise: vi.fn(),
   deleteUserExercise: vi.fn(),
 }))
@@ -69,7 +71,9 @@ const customExercise = {
 
 describe('ExercisesPage user library states', () => {
   beforeEach(() => {
+    mocks.currentUser = { uid: 'user-1' }
     mocks.getUserExercises.mockReset()
+    mocks.createUserExercise.mockReset()
     mocks.navigate.mockReset()
     mocks.toastError.mockReset()
   })
@@ -124,5 +128,41 @@ describe('ExercisesPage user library states', () => {
     expect(await screen.findByText('Brak własnych ćwiczeń')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dodaj pierwsze' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeEnabled()
+  })
+
+  it('does not apply a late create result to a different user resource', async () => {
+    let resolveCreate: (exercise: typeof customExercise) => void = () => undefined
+    const createRequest = new Promise<typeof customExercise>((resolve) => {
+      resolveCreate = resolve
+    })
+    const userTwoExercise = { ...customExercise, id: 'user-two', name: 'Ćwiczenie B' }
+    mocks.getUserExercises
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([userTwoExercise])
+    mocks.createUserExercise.mockReturnValueOnce(createRequest)
+
+    const view = render(<ExercisesPage />)
+    await waitFor(() => expect(
+      screen.getByRole('button', { name: 'Dodaj własne' }),
+    ).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
+    fireEvent.change(await screen.findByPlaceholderText('np. Banded Pull-apart'), {
+      target: { value: 'Ćwiczenie A' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj ćwiczenie' }))
+    await waitFor(() => expect(mocks.createUserExercise).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ name: 'Ćwiczenie A' }),
+    ))
+
+    mocks.currentUser = { uid: 'user-2' }
+    view.rerender(<ExercisesPage />)
+    expect(await screen.findByText('Ćwiczenie B')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+    await act(async () => resolveCreate({ ...customExercise, id: 'user-one', name: 'Ćwiczenie A' }))
+
+    expect(screen.getByText('Ćwiczenie B')).toBeInTheDocument()
+    expect(screen.queryByText('Ćwiczenie A')).not.toBeInTheDocument()
   })
 })

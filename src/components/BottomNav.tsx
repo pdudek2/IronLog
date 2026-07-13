@@ -45,6 +45,7 @@ export default function BottomNav() {
   const [hidden, setHidden] = useState(false)
   const [inputFocused, setInputFocused] = useState(false)
   const navRef = useRef<HTMLElement>(null)
+  const movingFocusFromNavRef = useRef(false)
   const lastScrollYRef = useRef(0)
   const hiddenRef = useRef(false)
 
@@ -96,7 +97,7 @@ export default function BottomNav() {
       if (!(target instanceof HTMLElement)) return
       if (target.matches('main.page-shell')) {
         lastScrollYRef.current = window.scrollY
-        setHidden(false)
+        if (!movingFocusFromNavRef.current) setHidden(false)
       }
       const tag = target.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
@@ -133,7 +134,12 @@ export default function BottomNav() {
     const activeElement = document.activeElement
     if (!(activeElement instanceof HTMLElement) || !navRef.current?.contains(activeElement)) return
 
-    document.querySelector<HTMLElement>('main.page-shell')?.focus({ preventScroll: true })
+    const main = document.querySelector<HTMLElement>('main.page-shell')
+    if (!main) return
+
+    movingFocusFromNavRef.current = true
+    main.focus({ preventScroll: true })
+    movingFocusFromNavRef.current = false
   }, [navHidden])
 
   return (

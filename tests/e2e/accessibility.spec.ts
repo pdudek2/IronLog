@@ -25,6 +25,29 @@ test.describe('Phase 3 navigation accessibility', () => {
     await expect(start).toBeFocused()
   })
 
+  test('scroll-hidden mobile navigation transfers focus without reopening', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only scroll focus contract')
+
+    await page.goto('/profile')
+    await expectAppReady(page, '/profile')
+
+    const main = page.getByRole('main')
+    const nav = page.locator('nav.bottom-nav')
+    const start = nav.locator('button[aria-label="Start"]')
+
+    await start.focus()
+    await expect(start).toBeFocused()
+    await page.mouse.wheel(0, 600)
+
+    await expect(main).toBeFocused()
+    await expect(nav).toHaveAttribute('aria-hidden', 'true')
+    await expect.poll(() => nav.evaluate((element) => (element as HTMLElement).inert)).toBe(true)
+
+    await page.mouse.wheel(0, -600)
+    await expect(nav).not.toHaveAttribute('aria-hidden', 'true')
+    await expect.poll(() => nav.evaluate((element) => (element as HTMLElement).inert)).toBe(false)
+  })
+
   test('desktop profile action communicates the current page', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'desktop profile navigation contract')
 

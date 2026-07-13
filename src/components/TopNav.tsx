@@ -114,6 +114,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             onPointerEnter={() => { void preloadRouteByPath('/profile') }}
             onFocus={() => { void preloadRouteByPath('/profile') }}
             data-active={current === 'profile'}
+            aria-current={current === 'profile' ? 'page' : undefined}
             aria-label="Profil"
             style={current === 'profile' ? { color: 'var(--text-strong)', background: 'var(--selected-bg)' } : undefined}
           >

@@ -17,6 +17,7 @@ interface NavBtnProps {
 function NavBtn({ icon, label, active, onClick, preloadTo }: NavBtnProps) {
   return (
     <motion.button
+      type="button"
       onClick={onClick}
       onPointerEnter={() => { if (preloadTo) void preloadRouteByPath(preloadTo) }}
       onFocus={() => { if (preloadTo) void preloadRouteByPath(preloadTo) }}
@@ -43,10 +44,12 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const [hidden, setHidden] = useState(false)
   const [inputFocused, setInputFocused] = useState(false)
+  const navRef = useRef<HTMLElement>(null)
   const lastScrollYRef = useRef(0)
   const hiddenRef = useRef(false)
 
   const path = location.pathname
+  const workoutActive = path.startsWith('/workout/new')
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
   useEffect(() => {
@@ -91,6 +94,10 @@ export default function BottomNav() {
     const onFocusIn = (event: FocusEvent) => {
       const target = event.target
       if (!(target instanceof HTMLElement)) return
+      if (target.matches('main.page-shell')) {
+        lastScrollYRef.current = window.scrollY
+        setHidden(false)
+      }
       const tag = target.tagName
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
         setInputFocused(true)
@@ -120,9 +127,21 @@ export default function BottomNav() {
 
   const navHidden = hidden || inputFocused
 
+  useEffect(() => {
+    if (!navHidden) return
+
+    const activeElement = document.activeElement
+    if (!(activeElement instanceof HTMLElement) || !navRef.current?.contains(activeElement)) return
+
+    document.querySelector<HTMLElement>('main.page-shell')?.focus({ preventScroll: true })
+  }, [navHidden])
+
   return (
     <nav
+      ref={navRef}
       aria-label="Nawigacja dolna"
+      aria-hidden={navHidden ? true : undefined}
+      inert={navHidden}
       className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 lg:hidden"
       style={{
         paddingBottom: 'max(0.85rem, env(safe-area-inset-bottom, 0px))',
@@ -166,6 +185,7 @@ export default function BottomNav() {
         />
 
         <motion.button
+          type="button"
           onClick={() => go('/workout/new')}
           onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
           onFocus={() => { void preloadRouteByPath('/workout/new') }}
@@ -177,6 +197,7 @@ export default function BottomNav() {
           }}
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}
+          aria-current={workoutActive ? 'page' : undefined}
           aria-label="Rozpocznij nowy trening"
         >
           <Plus size={22} strokeWidth={2.5} />

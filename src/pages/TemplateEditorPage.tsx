@@ -339,8 +339,9 @@ export default function TemplateEditorPage() {
         <div className="template-editor-layout">
           <div className="template-editor-main">
             <section className="template-name-panel">
-              <p className="planner-kicker">Nazwa</p>
+              <label htmlFor="template-name" className="planner-kicker">Nazwa</label>
               <input
+                id="template-name"
                 type="text"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
@@ -350,12 +351,19 @@ export default function TemplateEditorPage() {
               />
             </section>
 
-            {days.map((day, dayIndex) => (
-              <section key={day._id} className="template-day-editor">
+            {days.map((day, dayIndex) => {
+              const dayNameInputId = `template-day-name-${day._id}`
+              const dayDisplayName = day.name.trim() || `Dzień ${dayIndex + 1}`
+
+              return (
+                <section key={day._id} className="template-day-editor">
                 <div className="template-day-editor-head">
                   <div className="min-w-0 flex-1">
-                    <p className="planner-kicker">Dzień {dayIndex + 1}</p>
+                    <label htmlFor={dayNameInputId} className="planner-kicker">
+                      Dzień {dayIndex + 1}
+                    </label>
                     <input
+                      id={dayNameInputId}
                       type="text"
                       value={day.name}
                       onChange={(event) => updateDay(dayIndex, { ...day, name: event.target.value })}
@@ -402,9 +410,10 @@ export default function TemplateEditorPage() {
                         <button
                           type="button"
                           onClick={() => removeExercise(dayIndex, exerciseIndex)}
+                          aria-label={`Usuń ćwiczenie ${exercise.name} z dnia ${dayDisplayName}`}
                           className="planner-icon-action planner-icon-action--danger"
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={13} aria-hidden="true" />
                         </button>
                       </div>
 
@@ -481,8 +490,9 @@ export default function TemplateEditorPage() {
                     Dodaj ćwiczenie
                   </motion.button>
                 </div>
-              </section>
-            ))}
+                </section>
+              )
+            })}
           </div>
 
           <aside className="desktop-sticky hidden xl:block template-editor-side">

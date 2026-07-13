@@ -729,8 +729,7 @@ export default function WorkoutDetailPage() {
           </div>
         </div>
       <div
-        className="fixed left-0 right-0 z-40 px-4 lg:hidden"
-        style={{ bottom: 'calc(7.25rem + env(safe-area-inset-bottom, 0px))' }}
+        className="workout-detail-mobile-actions fixed left-0 right-0 z-40 px-4 lg:hidden"
       >
         <div className="mx-auto w-full max-w-sm">
           <motion.div

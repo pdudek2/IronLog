@@ -7226,6 +7226,15 @@ a {
   border-color: var(--selected-border);
 }
 
+.workout-detail-mobile-actions {
+  bottom: calc(7.25rem + env(safe-area-inset-bottom, 0px));
+  transition: bottom 220ms ease;
+}
+
+body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
 @media (max-width: 1023px) {
   .bottom-nav-panel {
     backdrop-filter: none;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { Eye, EyeOff, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button, Card, Input } from './ui'
 import {
@@ -29,6 +29,9 @@ export default function AiKeyPanel({
   onExpand,
   onCollapse,
 }: AiKeyPanelProps) {
+  const keyInputId = useId()
+  const modelSelectId = useId()
+  const modelsErrorId = useId()
   const [draft, setDraft] = useState(() => getClaudeApiKey())
   const [savedKey, setSavedKey] = useState(() => getClaudeApiKey())
   const [selectedModel, setSelectedModel] = useState(() => getClaudeModel())
@@ -215,10 +218,11 @@ export default function AiKeyPanel({
       )}
 
       <div className="grid gap-3">
-        <label className="flex flex-col gap-2">
-          <span className="stat-meta">Twój klucz</span>
+        <div className="flex flex-col gap-2">
+          <label htmlFor={keyInputId} className="stat-meta">Twój klucz</label>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Input
+              id={keyInputId}
               type={showKey ? 'text' : 'password'}
               placeholder="Wklej Claude API key"
               value={draft}
@@ -256,7 +260,7 @@ export default function AiKeyPanel({
               </Button>
             </div>
           </div>
-        </label>
+        </div>
 
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)]">
           <div
@@ -313,14 +317,16 @@ export default function AiKeyPanel({
         >
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">Model Claude</p>
+              <label htmlFor={modelSelectId} className="text-sm font-semibold text-white">
+                Model Claude
+              </label>
               <p className="mt-1 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                 Wybrany model obsługuje czat i generator planu.
               </p>
             </div>
 
             {loadingModels && (
-              <span className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>
+              <span role="status" className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>
                 Ładowanie...
               </span>
             )}
@@ -328,8 +334,11 @@ export default function AiKeyPanel({
 
           <div className="mt-4">
             <select
+              id={modelSelectId}
               value={selectedModel}
               disabled={!hasSavedKey || loadingModels || models.length === 0}
+              aria-invalid={modelsError ? true : undefined}
+              aria-describedby={modelsError ? modelsErrorId : undefined}
               onChange={(event) => {
                 const nextModel = setClaudeModel(event.target.value)
                 setSelectedModel(nextModel)
@@ -362,7 +371,7 @@ export default function AiKeyPanel({
           )}
 
           {modelsError && (
-            <p className="mt-3 text-xs leading-5" style={{ color: 'var(--danger)' }}>
+            <p id={modelsErrorId} role="alert" className="mt-3 text-xs leading-5" style={{ color: 'var(--danger)' }}>
               {modelsError}
             </p>
           )}

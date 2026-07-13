@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type * as React from 'react'
 import { Bot, LoaderCircle, RotateCcw, Send, ShieldCheck, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -97,9 +97,16 @@ const EQUIPMENT_OPTIONS = [
 
 type AiWorkspaceTab = 'chat' | 'plan'
 
-function SectionError({ message }: { message: string }) {
+interface PlanErrorState {
+  message: string
+  field: 'goal' | null
+}
+
+function SectionError({ message, id }: { message: string; id?: string }) {
   return (
     <div
+      id={id}
+      role="alert"
       className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
       style={{
         background: 'var(--danger-soft)',
@@ -133,7 +140,9 @@ export default function ChatPage() {
   const [planNotes, setPlanNotes] = useState('')
   const [planEquipment, setPlanEquipment] = useState<string[]>(['barbell', 'dumbbell', 'bodyweight'])
   const [planPreview, setPlanPreview] = useState<GeneratedTrainingPlan | null>(null)
-  const [planError, setPlanError] = useState('')
+  const [planError, setPlanError] = useState<PlanErrorState | null>(null)
+  const planGoalId = useId()
+  const planErrorId = useId()
   const [generatingPlan, setGeneratingPlan] = useState(false)
   const [savingPlan, setSavingPlan] = useState(false)
   const [selectedPreviewDay, setSelectedPreviewDay] = useState(0)
@@ -252,16 +261,16 @@ export default function ChatPage() {
     const apiKey = getClaudeApiKey()
     if (!apiKey) {
       setConfigured(false)
-      setPlanError('Dodaj Claude API key, żeby odblokować generator planu.')
+      setPlanError({ message: 'Dodaj Claude API key, żeby odblokować generator planu.', field: null })
       return
     }
 
     if (planGoal.trim().length < 2) {
-      setPlanError('Podaj cel planu, zanim uruchomisz generator.')
+      setPlanError({ message: 'Podaj cel planu, zanim uruchomisz generator.', field: 'goal' })
       return
     }
 
-    setPlanError('')
+    setPlanError(null)
     setGeneratingPlan(true)
 
     try {
@@ -282,7 +291,7 @@ export default function ChatPage() {
       toast.success('Plan wygenerowany. Możesz go zapisać jako szablon.')
     } catch (nextError) {
       const message = nextError instanceof Error ? nextError.message : 'Nie udało się wygenerować planu.'
-      setPlanError(message)
+      setPlanError({ message, field: null })
       setPlanPreview(null)
     } finally {
       setGeneratingPlan(false)
@@ -304,9 +313,9 @@ export default function ChatPage() {
       setPlanGoal('')
       setPlanFocus('')
       setPlanNotes('')
-      setPlanError('')
+      setPlanError(null)
     } catch {
-      setPlanError('Nie udało się zapisać wygenerowanego planu.')
+      setPlanError({ message: 'Nie udało się zapisać wygenerowanego planu.', field: null })
     } finally {
       setSavingPlan(false)
     }
@@ -360,7 +369,7 @@ export default function ChatPage() {
       </section>
 
       <div className="ai-workspace coach-workspace">
-        <section className="coach-mode-switch" aria-label="Tryb AI Coacha">
+        <section className="coach-mode-switch" role="group" aria-label="Tryb AI Coacha">
             {[
               {
                 key: 'chat' as const,
@@ -379,6 +388,7 @@ export default function ChatPage() {
                 <button
                   key={tab.key}
                   type="button"
+                  aria-pressed={active}
                   onClick={() => setActiveTab(tab.key)}
                   className="coach-mode-button"
                   data-active={active}
@@ -558,12 +568,18 @@ export default function ChatPage() {
                   </div>
 
                   <div className="coach-plan-form">
-                    <label className="coach-field md:col-span-2">
+                    <label htmlFor={planGoalId} className="coach-field md:col-span-2">
                       <span className="stat-meta">Cel planu</span>
                       <input
+                        id={planGoalId}
                         type="text"
                         value={planGoal}
-                        onChange={(event) => setPlanGoal(event.target.value)}
+                        onChange={(event) => {
+                          setPlanGoal(event.target.value)
+                          if (planError?.field === 'goal') setPlanError(null)
+                        }}
+                        aria-invalid={planError?.field === 'goal' ? true : undefined}
+                        aria-describedby={planError?.field === 'goal' ? planErrorId : undefined}
                         placeholder="Np. upper/lower pod siłę i prostą progresję"
                       />
                     </label>
@@ -658,7 +674,11 @@ export default function ChatPage() {
                     </label>
                   </div>
 
-                  {planError && <div className="mt-4"><SectionError message={planError} /></div>}
+                  {planError && (
+                    <div className="mt-4">
+                      <SectionError id={planErrorId} message={planError.message} />
+                    </div>
+                  )}
 
                   <div className="coach-plan-actions">
                     <p>Profil, historia i katalog ćwiczeń są dołączane do briefu.</p>
@@ -710,11 +730,12 @@ export default function ChatPage() {
                       </div>
                     </div>
 
-                    <div className="coach-chip-row mt-5">
+                    <div className="coach-chip-row mt-5" role="group" aria-label="Dzień podglądu planu">
                       {planPreview.days.map((day, index) => (
                         <button
                           key={`${day.name}-${index}`}
                           type="button"
+                          aria-pressed={selectedPreviewDay === index}
                           onClick={() => setSelectedPreviewDay(index)}
                           className="rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
                           style={{

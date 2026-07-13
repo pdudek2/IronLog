@@ -73,7 +73,7 @@
 - Consumes: istniejące `InputProps.error: string | undefined`; istniejące `ConfirmDialogProps` i `useDialogA11y`.
 - Produces: błąd `Input` jako element `role="alert"` połączony przez istniejące `aria-describedby`; dialog z `aria-labelledby=<titleId>` i `aria-describedby=<descriptionId>`.
 
-- [ ] **Step 1: Write the failing shared accessibility tests**
+- [x] **Step 1: Write the failing shared accessibility tests**
 
 Utwórz `src/pages/__tests__/SharedAccessibilityContracts.test.tsx`:
 
@@ -175,7 +175,7 @@ describe('shared accessibility contracts', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests and verify the semantic assertions fail**
+- [x] **Step 2: Run the tests and verify the semantic assertions fail**
 
 Run:
 
@@ -185,7 +185,7 @@ npx vitest run src/pages/__tests__/SharedAccessibilityContracts.test.tsx --proje
 
 Expected: FAIL because the `Input` error is not an alert and `ConfirmDialog` has no accessible description. Focus assertions may already pass and must remain green after the fix.
 
-- [ ] **Step 3: Add the minimal field-error and dialog semantics**
+- [x] **Step 3: Add the minimal field-error and dialog semantics**
 
 W `src/components/ui/Input.tsx` zmień render komunikatu na:
 
@@ -228,7 +228,7 @@ Nadaj ID treści:
 
 Nie zmieniaj hooka `useDialogA11y` ani kolejności przycisków.
 
-- [ ] **Step 4: Run the focused tests**
+- [x] **Step 4: Run the focused tests**
 
 Run:
 
@@ -238,7 +238,7 @@ npx vitest run src/pages/__tests__/SharedAccessibilityContracts.test.tsx --proje
 
 Expected: 2 tests PASS.
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```bash
 git add src/components/ui/Input.tsx src/components/ConfirmDialog.tsx src/pages/__tests__/SharedAccessibilityContracts.test.tsx
@@ -257,7 +257,7 @@ git commit -m "fix: expose shared accessibility semantics"
 - Consumes: stabilne `DraftDay._id`, `TemplateExercise.name`, `DraftDay.name` i istniejący draft AI.
 - Produces: textbox `Nazwa`, textbox `Dzień N` i przycisk `Usuń ćwiczenie <exercise> z dnia <day>`.
 
-- [ ] **Step 1: Write a failing editor accessibility test**
+- [x] **Step 1: Write a failing editor accessibility test**
 
 Utwórz `src/pages/__tests__/TemplateEditorAccessibility.test.tsx`:
 
@@ -348,7 +348,7 @@ describe('TemplateEditorPage accessibility', () => {
 })
 ```
 
-- [ ] **Step 2: Run the test and verify it fails**
+- [x] **Step 2: Run the test and verify it fails**
 
 Run:
 
@@ -358,7 +358,7 @@ npx vitest run src/pages/__tests__/TemplateEditorAccessibility.test.tsx --projec
 
 Expected: FAIL because the two textboxes have no labels and the trash button has no accessible name.
 
-- [ ] **Step 3: Connect visible editor labels to stable input IDs**
+- [x] **Step 3: Connect visible editor labels to stable input IDs**
 
 W `src/pages/TemplateEditorPage.tsx` zamień panel nazwy na:
 
@@ -406,7 +406,7 @@ Zastąp tekst i input dnia:
 
 Domknij callback `days.map` przez `)})` po sekcji dnia, zachowując istniejącą strukturę.
 
-- [ ] **Step 4: Give the trash button exercise and day context**
+- [x] **Step 4: Give the trash button exercise and day context**
 
 Do ikonowego przycisku usuwania ćwiczenia dodaj:
 
@@ -420,7 +420,7 @@ Ikonę oznacz dekoracyjnie:
 <Trash2 size={13} aria-hidden="true" />
 ```
 
-- [ ] **Step 5: Run focused editor tests**
+- [x] **Step 5: Run focused editor tests**
 
 Run:
 
@@ -431,7 +431,7 @@ npx vitest run src/pages/__tests__/TemplatesPageDataState.test.tsx --project dom
 
 Expected: both files PASS.
 
-- [ ] **Step 6: Commit Task 2**
+- [x] **Step 6: Commit Task 2**
 
 ```bash
 git add src/pages/TemplateEditorPage.tsx src/pages/__tests__/TemplateEditorAccessibility.test.tsx
@@ -451,7 +451,7 @@ git commit -m "fix: label template editor controls"
 - Consumes: `ChipRow<T>`, `ExerciseCard`, `CreateExerciseForm`, picker category state and existing Puls classes.
 - Produces: named filter groups, `aria-pressed` selection state, field-specific exercise-name errors and one `Otwórz ćwiczenie <name>` action per row.
 
-- [ ] **Step 1: Add failing filter, form, and row-action tests**
+- [x] **Step 1: Add failing filter, form, and row-action tests**
 
 W `src/pages/__tests__/ExercisesPageDataState.test.tsx` rozszerz import:
 
@@ -505,7 +505,7 @@ it('announces only a field-specific name validation error and exposes muscle sta
 })
 ```
 
-- [ ] **Step 2: Run the tests and verify they fail for the intended contracts**
+- [x] **Step 2: Run the tests and verify they fail for the intended contracts**
 
 Run:
 
@@ -515,7 +515,7 @@ npx vitest run src/pages/__tests__/ExercisesPageDataState.test.tsx --project dom
 
 Expected: existing data-state tests PASS; new tests FAIL because groups and pressed states are missing, the exercise row has duplicate navigation actions, and the form error is not associated with the name field.
 
-- [ ] **Step 3: Make `ChipRow` named and stateful**
+- [x] **Step 3: Make `ChipRow` named and stateful**
 
 Rozszerz props i komponent w `src/pages/ExercisesPage.tsx`:
 
@@ -555,7 +555,7 @@ Wywołania zmień na:
 <ChipRow label="Sprzęt" options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
 ```
 
-- [ ] **Step 4: Distinguish field and general errors in `CreateExerciseForm`**
+- [x] **Step 4: Distinguish field and general errors in `CreateExerciseForm`**
 
 Dodaj typ obok props formularza:
 
@@ -620,7 +620,7 @@ Komunikat zmień na:
 )}
 ```
 
-- [ ] **Step 5: Collapse duplicate exercise navigation into one accessible action**
+- [x] **Step 5: Collapse duplicate exercise navigation into one accessible action**
 
 W `ExerciseCard` nadaj głównej akcji jednoznaczną nazwę:
 
@@ -647,7 +647,7 @@ Końcowy przycisk `.exercise-library-open` zastąp nieinteraktywnym elementem de
 
 Zachowaj `.exercise-library-muscles`, `.exercise-library-actions` i istniejący CSS bez zmian. Chevron pozostaje wizualnie w tym samym miejscu, ale nie tworzy drugiej akcji w Tab ani accessibility tree.
 
-- [ ] **Step 6: Expose picker category state**
+- [x] **Step 6: Expose picker category state**
 
 W `src/components/ExercisePicker.tsx` nazwij grupę:
 
@@ -667,7 +667,7 @@ type="button"
 aria-pressed={category === c.value}
 ```
 
-- [ ] **Step 7: Run focused tests and lint the touched files**
+- [x] **Step 7: Run focused tests and lint the touched files**
 
 Run:
 
@@ -678,7 +678,7 @@ npx eslint src/pages/ExercisesPage.tsx src/components/ExercisePicker.tsx src/pag
 
 Expected: all ExercisesPage tests PASS; ESLint exits 0.
 
-- [ ] **Step 8: Commit Task 3**
+- [x] **Step 8: Commit Task 3**
 
 ```bash
 git add src/pages/ExercisesPage.tsx src/components/ExercisePicker.tsx src/pages/__tests__/ExercisesPageDataState.test.tsx
@@ -697,7 +697,7 @@ git commit -m "fix: expose exercise selection semantics"
 - Consumes: `AiKeyPanel` configuration lifecycle, `GeneratedTrainingPlan`, existing `SectionError` and button groups.
 - Produces: combobox `Model Claude`, alert `modelsError`, group `Tryb AI Coacha`, group `Dzień podglądu planu` and field-specific `PlanErrorState`.
 
-- [ ] **Step 1: Write deterministic AI accessibility tests**
+- [x] **Step 1: Write deterministic AI accessibility tests**
 
 Utwórz `src/pages/__tests__/ChatPageAccessibility.test.tsx`:
 
@@ -844,7 +844,7 @@ describe('ChatPage accessibility', () => {
 })
 ```
 
-- [ ] **Step 2: Run the tests and verify the intended failures**
+- [x] **Step 2: Run the tests and verify the intended failures**
 
 Run:
 
@@ -854,7 +854,7 @@ npx vitest run src/pages/__tests__/ChatPageAccessibility.test.tsx --project dom
 
 Expected: FAIL because the model select is unnamed, mode/day buttons lack `aria-pressed`, and error regions/field associations are incomplete.
 
-- [ ] **Step 3: Label the model select and connect its status/error**
+- [x] **Step 3: Label the model select and connect its status/error**
 
 W `src/components/AiKeyPanel.tsx` importuj `useId`:
 
@@ -954,7 +954,7 @@ Komunikat błędu zmień na:
 )}
 ```
 
-- [ ] **Step 4: Introduce a field-aware plan error contract**
+- [x] **Step 4: Introduce a field-aware plan error contract**
 
 W `src/pages/ChatPage.tsx` importuj `useId`:
 
@@ -1012,7 +1012,7 @@ setPlanError({ message: 'Nie udało się zapisać wygenerowanego planu.', field:
 
 Nie zmieniaj `error` używanego przez czat; `SectionError` zacznie go ogłaszać dzięki `role="alert"`.
 
-- [ ] **Step 5: Expose AI mode, goal, and preview-day state**
+- [x] **Step 5: Expose AI mode, goal, and preview-day state**
 
 Kontener trybu uzupełnij:
 
@@ -1068,7 +1068,7 @@ Każdy przycisk dnia uzupełnij:
 aria-pressed={selectedPreviewDay === index}
 ```
 
-- [ ] **Step 6: Run focused AI and shared tests**
+- [x] **Step 6: Run focused AI and shared tests**
 
 Run:
 
@@ -1079,7 +1079,7 @@ npx eslint src/pages/ChatPage.tsx src/components/AiKeyPanel.tsx src/pages/__test
 
 Expected: 6 focused tests PASS; ESLint exits 0.
 
-- [ ] **Step 7: Commit Task 4**
+- [x] **Step 7: Commit Task 4**
 
 ```bash
 git add src/components/AiKeyPanel.tsx src/pages/ChatPage.tsx src/pages/__tests__/ChatPageAccessibility.test.tsx
@@ -1099,7 +1099,7 @@ git commit -m "fix: expose ai control and error state"
 - Consumes: `BottomNav.navHidden`, shared `main.page-shell[tabindex="-1"]`, current pathname and existing `aria-current` on ordinary nav items.
 - Produces: hidden nav `inert + aria-hidden`, no focused descendant, restored interactivity, profile `aria-current="page"` and mobile workout `aria-current="page"`.
 
-- [ ] **Step 1: Write failing Playwright navigation contracts**
+- [x] **Step 1: Write failing Playwright navigation contracts**
 
 Utwórz `tests/e2e/accessibility.spec.ts`:
 
@@ -1151,7 +1151,7 @@ test.describe('Phase 3 navigation accessibility', () => {
 })
 ```
 
-- [ ] **Step 2: Run the new E2E file and verify the semantic failures**
+- [x] **Step 2: Run the new E2E file and verify the semantic failures**
 
 Run:
 
@@ -1163,7 +1163,7 @@ firebase emulators:exec --only auth,firestore --project demo-ironlog \
 
 Expected: tests fail on missing `inert`, `aria-hidden` and the two missing `aria-current` attributes. Existing browser diagnostics must remain clean.
 
-- [ ] **Step 3: Make the hidden mobile nav truly inert**
+- [x] **Step 3: Make the hidden mobile nav truly inert**
 
 W `src/components/BottomNav.tsx` wykorzystaj osobny ref na nav:
 
@@ -1197,7 +1197,7 @@ Element nav uzupełnij:
 
 Zachowaj istniejące style `transform`, `opacity`, `pointerEvents` i transition. Do `NavBtn` oraz centralnego przycisku treningu dodaj `type="button"`.
 
-- [ ] **Step 4: Expose the current profile and workout routes**
+- [x] **Step 4: Expose the current profile and workout routes**
 
 W `src/components/TopNav.tsx` do przycisku profilu dodaj:
 
@@ -1219,7 +1219,7 @@ aria-current={workoutActive ? 'page' : undefined}
 
 Nie dodawaj `aria-current` do streaku, wylogowania ani kontrolek niebędących bieżącą lokalizacją.
 
-- [ ] **Step 5: Run navigation E2E and existing shell regressions**
+- [x] **Step 5: Run navigation E2E and existing shell regressions**
 
 Run:
 
@@ -1231,7 +1231,7 @@ firebase emulators:exec --only auth,firestore --project demo-ironlog \
 
 Expected: new navigation tests PASS; existing shell/smoke tests PASS; viewport-specific cases are reported only as intentional skips.
 
-- [ ] **Step 6: Commit Task 5**
+- [x] **Step 6: Commit Task 5**
 
 ```bash
 git add src/components/BottomNav.tsx src/components/TopNav.tsx tests/e2e/accessibility.spec.ts
@@ -1251,7 +1251,7 @@ git commit -m "fix: remove hidden navigation from focus order"
 - Consumes: `expectAppReady`, Playwright projects `desktop`/`mobile`, emulator credentials and all semantics from Tasks 1–5.
 - Produces: `npm run test:e2e:a11y`, blocking Phase 3 Axe rule set and per-route `.aria.yml` artifacts for manual review.
 
-- [ ] **Step 1: Install the test-only Axe integration**
+- [x] **Step 1: Install the test-only Axe integration**
 
 Run:
 
@@ -1267,7 +1267,7 @@ Add this script to `package.json` next to the existing E2E scripts:
 "test:e2e:a11y": "E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/accessibility.spec.ts --project=desktop --project=mobile\""
 ```
 
-- [ ] **Step 2: Add the blocking Phase 3 Axe smoke**
+- [x] **Step 2: Add the blocking Phase 3 Axe smoke**
 
 Na górze `tests/e2e/accessibility.spec.ts` dodaj:
 
@@ -1335,7 +1335,7 @@ test.describe('Phase 3 targeted Axe smoke', () => {
 
 Jeżeli TypeScript zgłosi nieistniejącą nazwę reguły, sprawdź listę uruchomieniową zainstalowanego Axe i skoryguj wyłącznie nazwę. Nie usuwaj pokrywanego kontraktu i nie wyłączaj naruszenia `A11Y-01–08`.
 
-- [ ] **Step 3: Attach non-golden accessibility snapshots for review**
+- [x] **Step 3: Attach non-golden accessibility snapshots for review**
 
 Dodaj na końcu `tests/e2e/accessibility.spec.ts`:
 
@@ -1368,7 +1368,7 @@ test('attaches route accessibility snapshots for manual review', async ({ page }
 
 Snapshoty są artefaktami testu do ręcznej inspekcji. Nie używaj `toMatchAriaSnapshot()` dla całych stron i nie commituj ich jako kruche goldeny.
 
-- [ ] **Step 4: Run the new accessibility gate**
+- [x] **Step 4: Run the new accessibility gate**
 
 Run:
 
@@ -1376,9 +1376,9 @@ Run:
 npm run test:e2e:a11y
 ```
 
-Expected: 14 tests PASS (w tym zależny setup uwierzytelnienia) and 3 viewport-specific cases SKIP. Jeżeli Axe zwróci naruszenie, raport musi zawierać ID reguły i selektory; napraw potwierdzone `A11Y-01–08` w odpowiedzialnym komponencie przed ponownym uruchomieniem.
+Measured: 15 tests PASS (w tym zależny setup uwierzytelnienia) and 4 viewport-specific cases SKIP. Jeżeli Axe zwróci naruszenie, raport musi zawierać ID reguły i selektory; napraw potwierdzone `A11Y-01–08` w odpowiedzialnym komponencie przed ponownym uruchomieniem.
 
-- [ ] **Step 5: Inspect the generated semantic evidence**
+- [x] **Step 5: Inspect the generated semantic evidence**
 
 Run:
 
@@ -1389,7 +1389,7 @@ rg -n --glob '*.aria.yml' "navigation|button|textbox|combobox|dialog|alert|press
 
 Expected: artefakty istnieją dla czterech tras i obu regionów w każdym projekcie; kontrolki objęte Fazą 3 mają nazwy, wybrane przyciski komunikują stan, a snapshot nie pokazuje anonimowego `button`, `textbox` ani `combobox` w objętych powierzchniach.
 
-- [ ] **Step 6: Commit Task 6**
+- [x] **Step 6: Commit Task 6**
 
 ```bash
 git add package.json package-lock.json tests/e2e/accessibility.spec.ts
@@ -1399,6 +1399,8 @@ git commit -m "test: add critical accessibility gate"
 ---
 
 ### Task 7: Full verification, review, and Phase 3 closure
+
+**Stan:** Steps 1–5 i 7–9 wykonane; dokumentacja zamknięcia implementacji jest przygotowana na feature branchu. Step 6 oraz finalne domknięcie Task 7 pozostają otwarte do niezależnego finalnego review.
 
 **Files:**
 - Modify: `docs/roadmap/ROADMAP.md`
@@ -1410,7 +1412,7 @@ git commit -m "test: add critical accessibility gate"
 - Consumes: all Task 1–6 commits, existing verification scripts and generated `.aria.yml` evidence.
 - Produces: verified Phase 3 baseline, `DONE` roadmap state and handoff to Phase 4 without changing `RELEASE-08`.
 
-- [ ] **Step 1: Run every focused DOM regression**
+- [x] **Step 1: Run every focused DOM regression**
 
 Run:
 
@@ -1423,9 +1425,9 @@ npx vitest run \
   --project dom
 ```
 
-Expected: 4 files and 14 tests PASS.
+Measured: 4 files and 15 tests PASS.
 
-- [ ] **Step 2: Run the static and full unit gates**
+- [x] **Step 2: Run the static and full unit gates**
 
 Run:
 
@@ -1438,14 +1440,14 @@ npm run build
 Expected:
 
 - ESLint exits 0;
-- 38 files and 238 unit/support tests PASS;
+- 38 files and 239 unit/support tests PASS;
 - production build exits 0;
 - the existing chunk-size warning may remain, because `RELEASE-06` requires measurement before optimization;
 - no new warning is introduced by `inert`, ARIA props or test code.
 
-Jeżeli liczba testów jest wyższa z powodu zaakceptowanych review fixes, zapisz zmierzoną wartość w dokumentacji. Liczba niższa niż 238 wymaga wyjaśnienia przed zamknięciem fazy.
+Jeżeli liczba testów zmieni się z powodu zaakceptowanych review fixes, zapisz ponownie zmierzoną wartość w dokumentacji. Aktualny baseline wynosi 239 i każda niższa liczba wymaga wyjaśnienia przed zamknięciem fazy.
 
-- [ ] **Step 3: Re-run data and workout safety gates**
+- [x] **Step 3: Re-run data and workout safety gates**
 
 Run:
 
@@ -1456,7 +1458,7 @@ npm run test:integration:workout
 
 Expected: 10 Firestore rules tests and 20 focused workout integration tests PASS. Phase 3 nie powinna zmienić danych, ale te bramki chronią przed przypadkowym rozszerzeniem diffu.
 
-- [ ] **Step 4: Run all emulator-backed browser gates**
+- [x] **Step 4: Run all emulator-backed browser gates**
 
 Run:
 
@@ -1468,12 +1470,12 @@ npm run test:e2e:workout
 
 Expected:
 
-- Phase 3 accessibility: 14 PASS including auth setup, 3 intentional viewport skips;
+- Phase 3 accessibility: 15 PASS including auth setup, 4 intentional viewport skips;
 - isolated critical gate: 13 PASS;
 - workout lifecycle gate: 9 PASS without retry;
 - browser diagnostics contain no unexpected console, page or failed-request errors.
 
-- [ ] **Step 5: Perform the headed keyboard and snapshot review**
+- [x] **Step 5: Perform the headed keyboard and snapshot review**
 
 Run:
 
@@ -1508,14 +1510,14 @@ Użyj `superpowers:requesting-code-review` dla pełnego diffu Fazy 3. Review mus
 
 Każde potwierdzone znalezisko napraw w osobnym commicie i ponów właściwy focused test oraz bramkę z Steps 1–4.
 
-- [ ] **Step 7: Close Phase 3 in canonical documentation**
+- [x] **Step 7: Close Phase 3 in canonical documentation**
 
 W `docs/roadmap/ROADMAP.md`:
 
 - ustaw datę aktualizacji na `2026-07-13`;
 - zmień status wiersza Fazy 3 z `READY` na `DONE`;
 - uzupełnij stan przeglądu o zakończoną Fazę 3;
-- zaktualizuj baseline unit/support do co najmniej `38 plików i 238 testów` albo wyższej wartości zmierzonej po review;
+- zaktualizuj baseline unit/support do zmierzonej wartości `38 plików i 239 testów` albo wyższej wartości po review;
 - pod sekcją Fazy 3 dodaj wynik:
 
 ```markdown
@@ -1541,20 +1543,20 @@ Zakres `A11Y-01–08` został wdrożony bez zmiany kierunku wizualnego Puls. Foc
 
 W `WORKING_CONTEXT.md` ustaw:
 
-- focus: Faza 3 zmergowana do `puls-rebrand`; przygotować Fazę 4 — ergonomia mobile i edytor planów;
+- focus: Faza 3 wdrożona i zweryfikowana na feature branchu, gotowa do finalnego review i merge do `puls-rebrand`;
 - passing: zmierzone wyniki lint, unit/support, build, Axe, isolated i workout E2E;
 - broken: puste;
 - untested: nadal live private-account Playwright i produkcyjne czynności `RELEASE-08`;
-- next actions: zaprojektować i zaplanować Fazę 4; zachować `RELEASE-08` jako otwarte.
+- next actions: wykonać finalny review, po zgodzie użytkownika zmergować do `puls-rebrand`, następnie zaprojektować i zaplanować Fazę 4; zachować `RELEASE-08` jako otwarte.
 
-W tym planie zaznacz wykonane checkboxy Task 1–7. Nie usuwaj planu; pozostaje audytowalnym zapisem wykonania tak jak plan Fazy 2.
+W tym planie zaznacz wykonane Tasks 1–6 oraz wykonane kroki Task 7. Step 6 i finalne domknięcie Task 7 pozostaw otwarte do niezależnego review. Nie usuwaj planu; pozostaje audytowalnym zapisem wykonania tak jak plan Fazy 2.
 
-- [ ] **Step 8: Verify documentation consistency**
+- [x] **Step 8: Verify documentation consistency**
 
 Run:
 
 ```bash
-rg -n "Faza 3|A11Y-0[1-8]|38 plików|238 testów|Faza 4|RELEASE-08" \
+rg -n "Faza 3|A11Y-0[1-8]|38 plików|239 testów|Faza 4|RELEASE-08" \
   docs/roadmap/ROADMAP.md \
   docs/roadmap/specs/2026-07-13-phase-3-critical-accessibility-navigation-design.md \
   WORKING_CONTEXT.md
@@ -1564,7 +1566,7 @@ git status --short
 
 Expected: Faza 3 jest wszędzie `DONE`/wdrożona, Faza 4 jest następnym focusem, `RELEASE-08` pozostaje otwarte, diff nie ma błędów whitespace, a brak niepowiązanych plików.
 
-- [ ] **Step 9: Commit Phase 3 closure**
+- [x] **Step 9: Commit Phase 3 closure**
 
 ```bash
 git add \
@@ -1572,7 +1574,7 @@ git add \
   docs/roadmap/specs/2026-07-13-phase-3-critical-accessibility-navigation-design.md \
   docs/roadmap/plans/2026-07-13-phase-3-critical-accessibility-navigation.md \
   WORKING_CONTEXT.md
-git commit -m "docs: close critical accessibility phase"
+git commit -m "docs: prepare critical accessibility closure"
 ```
 
 Po commicie wykonaj `git status --short --branch`. Oczekiwany wynik: czysty feature branch, gotowy do finalnego review i lokalnego fast-forward merge do `puls-rebrand` po zgodzie użytkownika.
@@ -1581,16 +1583,16 @@ Po commicie wykonaj `git status --short --branch`. Oczekiwany wynik: czysty feat
 
 ## Definition of Done
 
-- [ ] `A11Y-01–08` mają kod, test i obserwowalny dowód runtime.
-- [ ] Ukryta dolna nawigacja jest `inert`, `aria-hidden` i nie zawiera aktywnego fokusu.
-- [ ] Edytor planu, filtry ćwiczeń, picker, formularz ćwiczenia, AI i dialog mają uzgodnioną semantykę.
-- [ ] Jeden wiersz ćwiczenia ma jedną akcję otwarcia w Tab i accessibility tree.
-- [ ] `@axe-core/playwright` jest zależnością deweloperską, a `npm run test:e2e:a11y` przechodzi bez maskowania reguł Fazy 3.
-- [ ] Ręczny headed keyboard walkthrough i `.aria.yml` review są zakończone na desktopie i mobile.
-- [ ] Lint, 238+ unit/support, build, rules, workout integration, isolated E2E, workout E2E i accessibility E2E przechodzą.
+- [x] `A11Y-01–08` mają kod, test i obserwowalny dowód runtime.
+- [x] Ukryta dolna nawigacja jest `inert`, `aria-hidden` i nie zawiera aktywnego fokusu.
+- [x] Edytor planu, filtry ćwiczeń, picker, formularz ćwiczenia, AI i dialog mają uzgodnioną semantykę.
+- [x] Jeden wiersz ćwiczenia ma jedną akcję otwarcia w Tab i accessibility tree.
+- [x] `@axe-core/playwright` jest zależnością deweloperską, a `npm run test:e2e:a11y` przechodzi bez maskowania reguł Fazy 3.
+- [x] Ręczny headed keyboard walkthrough i `.aria.yml` review są zakończone na desktopie i mobile.
+- [x] Lint, 239 unit/support, build, rules, workout integration, isolated E2E, workout E2E i accessibility E2E przechodzą.
 - [ ] Final code review nie ma otwartych Critical, Important ani Minor findings w zakresie fazy.
-- [ ] Roadmapa, spec, plan i `WORKING_CONTEXT.md` opisują ten sam stan.
-- [ ] Brak pushu, deployu i zmian produkcyjnych; `RELEASE-08` pozostaje otwarte.
+- [x] Roadmapa, spec, plan i `WORKING_CONTEXT.md` opisują ten sam stan.
+- [x] Brak pushu, deployu i zmian produkcyjnych; `RELEASE-08` pozostaje otwarte.
 
 ## Rollback
 

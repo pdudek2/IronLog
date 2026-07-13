@@ -1,6 +1,8 @@
 # IronLog — projekt Fazy 3: krytyczna dostępność i nawigacja
 
-**Status:** zatwierdzona do planowania
+**Status:** wdrożona i zweryfikowana
+
+**Stan integracji:** implementacja znajduje się na branchu `phase-3-accessibility-navigation`; niezależny finalny review i merge do `puls-rebrand` pozostają otwarte. Nie wykonano pushu, deployu ani czynności produkcyjnych.
 
 **Data:** 2026-07-13
 
@@ -348,3 +350,25 @@ Plan implementacyjny powinien uwzględnić co najmniej:
 - `docs/roadmap/ROADMAP.md` i `WORKING_CONTEXT.md` przy zamknięciu fazy.
 
 Dokładny podział zadań, kolejność testów, komendy, oczekiwane wyniki i commity należą do osobnego planu implementacyjnego.
+
+## 17. Wynik wdrożenia
+
+Zakres `A11Y-01–08` został wdrożony bez zmiany kierunku wizualnego Puls. Focused testy komponentowe, ukierunkowany Axe, emulatorowy Playwright, pełny unit/support, lint i build przechodzą. Ręczny keyboard walkthrough oraz accessibility snapshot potwierdziły nazwane kontrolki i prawidłową kolejność fokusu na desktopie i mobile. Produkcyjny live Playwright, deploy Vercel i publikacja reguł pozostają otwarte w `RELEASE-08`.
+
+Świeży baseline z 2026-07-13:
+
+- focused DOM: 4 pliki i 15 testów;
+- pełny unit/support: 38 plików i 239 testów;
+- lint i build: kod 0; build zachowuje wyłącznie znane ostrzeżenie o chunku większym niż 500 kB;
+- reguły Firestore: 1 plik i 10 testów;
+- integracja workoutu: 2 pliki i 20 testów;
+- accessibility E2E: 15 PASS i 4 zamierzone SKIP viewportowe, w tym setup uwierzytelnienia;
+- isolated E2E: 13 PASS;
+- workout lifecycle E2E: 9 PASS bez retry;
+- headed `accessibility.spec.ts`: 15 PASS i 4 zamierzone SKIP viewportowe.
+
+Ręczny walkthrough został dodatkowo utrwalony w 17 screenshotach emulatorowego konta testowego: 8 dla desktopu 1280×800 i 9 dla projektu Pixel 5. Obrazy potwierdzają widoczny fokus na top/bottom nav, polach edytora, filtrach, trybie AI i dialogu; ukrycie oraz ponowne udostępnienie dolnej nawigacji; jedną akcję otwarcia wiersza z osobnymi akcjami edycji/usuwania; a także focus trap, Escape i focus restore dialogu. Artefakty znajdują się w ignorowanym katalogu `.superpowers/sdd/task-7-screenshots/` i zawierają wyłącznie dane lokalnego emulatora.
+
+Przegląd 16 wygenerowanych plików `.aria.yml` dla `/dashboard`, `/templates/new`, `/exercises` i `/chat` w obu projektach potwierdził nazwane regiony nawigacji i objęte kontrolki. Snapshoty pokazują między innymi `textbox "Nazwa"`, `textbox "Dzień 1"`, `combobox "Model Claude"`, stany `[pressed]` filtrów i trybu AI oraz dokładnie jedną nazwaną akcję `Otwórz ćwiczenie <nazwa>` na wiersz; nie wykryto anonimowego `button`, `textbox` ani `combobox` w objętych powierzchniach.
+
+Dokumentacja zamknięcia implementacji jest przygotowana do niezależnego finalnego review. Merge do `puls-rebrand` wymaga osobnej zgody użytkownika i nie jest częścią tego kroku.

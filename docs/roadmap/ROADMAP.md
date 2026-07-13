@@ -1,9 +1,9 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R i 1 zakończone; specyfikacja Fazy 2 zatwierdzona**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1 i 2 zakończone; Faza 3 wdrożona i zweryfikowana na feature branchu, oczekuje finalnego review i merge**
 Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
-Ostatnia aktualizacja: 2026-07-12
+Ostatnia aktualizacja: 2026-07-13
 
 ## 1. Cel dokumentu
 
@@ -49,11 +49,12 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 35 plików i 229 testów jednostkowych oraz testów wsparcia przechodzi,
+- 38 plików i 239 testów jednostkowych oraz testów wsparcia przechodzi,
 - 1 plik i 10 testów reguł Firestore przechodzi,
 - ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 20 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
 - ukierunkowana regresja cyklu treningu przechodzi: 9 testów Playwright bez retry,
+- ukierunkowana bramka dostępności przechodzi: 15 testów Playwright, 4 zamierzone skipy viewportowe, 16 artefaktów `.aria.yml` oraz kontrolowany headed walkthrough na desktopie 1280×800 i Pixel 5,
 - live `npm run test:e2e` pozostaje otwartą kontrolą release wymagającą prywatnych `TEST_EMAIL` i `TEST_PASSWORD`.
 
 ## 4. Mapa faz
@@ -66,7 +67,7 @@ Aktualny baseline jakości:
 | 4 | 1 — Integralność cyklu życia treningu | P0 | DONE | `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06` naprawione w `1cb59af–4fe1ec5` |
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | DONE | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
-| 7 | 3 — Krytyczna dostępność i nawigacja | P1 | READY | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
+| 7 | 3 — Krytyczna dostępność i nawigacja | P1 | DONE | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | READY | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
 | 9 | 5 — Feedback, copy i uczciwe testy wizualne | P2 | READY | Akcje komunikują stan, teksty są poprawne, a capture screenshotów nie udaje regresji wizualnej |
 | 10 | 6A — Stream i concurrency AI | P1 | READY | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
@@ -246,6 +247,10 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 ### Faza 3 — Krytyczna dostępność i nawigacja
 
 **Cel:** zamknąć problemy blokujące obsługę klawiaturą, czytnikiem ekranu i sterowaniem głosowym.
+
+**Wynik wdrożenia:** `A11Y-01–08` zostały wdrożone i zweryfikowane. Ukryta dolna nawigacja jest inert, edytor i AI mają trwałe nazwy oraz dostępne błędy, filtry komunikują wybór, dialog ma opis, a wiersz ćwiczenia jedną akcję otwarcia. Ukierunkowany Axe, testy klawiatury i ręczny accessibility snapshot przechodzą na desktopie i mobile. Pełny audyt WCAG oraz ergonomia dotykowa pozostają poza zakresem zgodnie z Fazą 4 i bramką release.
+
+Status `DONE` opisuje zakończoną i zweryfikowaną implementację na branchu `phase-3-accessibility-navigation`. Niezależny finalny review oraz merge do `puls-rebrand` pozostają otwarte; push, deploy i czynności produkcyjne nie zostały wykonane.
 
 **Zakres kanoniczny:**
 
@@ -452,7 +457,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 3 — krytyczna dostępność i nawigacja** jest następnym rekomendowanym pakietem po zamknięciu Fazy 2. Niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
+**Faza 4 — ergonomia mobile i edytor planów** jest następnym rekomendowanym pakietem po finalnym review i merge Fazy 3. Niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

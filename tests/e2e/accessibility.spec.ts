@@ -1,5 +1,40 @@
+import { writeFile } from 'node:fs/promises'
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from './fixtures'
 import { expectAppReady } from './support/appReady'
+
+const PHASE_3_AXE_RULES = [
+  'aria-allowed-attr',
+  'aria-command-name',
+  'aria-dialog-name',
+  'aria-hidden-focus',
+  'aria-input-field-name',
+  'aria-required-attr',
+  'aria-roles',
+  'aria-valid-attr-value',
+  'button-name',
+  'duplicate-id-aria',
+  'form-field-multiple-labels',
+  'label',
+  'nested-interactive',
+  'select-name',
+] as const
+
+const AXE_ROUTES = [
+  '/dashboard',
+  '/templates/new',
+  '/exercises',
+  '/chat',
+] as const
+
+function formatViolations(violations: Awaited<ReturnType<AxeBuilder['analyze']>>['violations']) {
+  return violations.map((violation) => ({
+    id: violation.id,
+    impact: violation.impact,
+    help: violation.help,
+    targets: violation.nodes.flatMap((node) => node.target),
+  }))
+}
 
 test.describe('Phase 3 navigation accessibility', () => {
   test('hidden mobile navigation leaves the focus order and returns safely', async ({ page }, testInfo) => {
@@ -65,4 +100,45 @@ test.describe('Phase 3 navigation accessibility', () => {
       name: 'Rozpocznij nowy trening',
     })).toHaveAttribute('aria-current', 'page')
   })
+})
+
+test.describe('Phase 3 targeted Axe smoke', () => {
+  for (const route of AXE_ROUTES) {
+    test(`${route} has no Phase 3 Axe violations`, async ({ page }) => {
+      await page.goto(route)
+      await expectAppReady(page, route)
+
+      const results = await new AxeBuilder({ page })
+        .withRules([...PHASE_3_AXE_RULES])
+        .analyze()
+
+      expect(results.violations, JSON.stringify(formatViolations(results.violations), null, 2))
+        .toEqual([])
+    })
+  }
+})
+
+test('attaches route accessibility snapshots for manual review', async ({ page }, testInfo) => {
+  for (const route of AXE_ROUTES) {
+    await page.goto(route)
+    await expectAppReady(page, route)
+
+    const regions = {
+      navigation: testInfo.project.name === 'mobile'
+        ? page.locator('nav.bottom-nav')
+        : page.getByRole('navigation', { name: 'Nawigacja główna' }),
+      main: page.getByRole('main'),
+    }
+
+    for (const [regionName, locator] of Object.entries(regions)) {
+      const snapshot = await locator.ariaSnapshot()
+      const routeName = route === '/dashboard' ? 'dashboard' : route.slice(1).replaceAll('/', '-')
+      const snapshotPath = testInfo.outputPath(`${routeName}-${regionName}.aria.yml`)
+      await writeFile(snapshotPath, snapshot, 'utf8')
+      await testInfo.attach(`${routeName}-${regionName}.aria.yml`, {
+        path: snapshotPath,
+        contentType: 'text/yaml',
+      })
+    }
+  }
 })

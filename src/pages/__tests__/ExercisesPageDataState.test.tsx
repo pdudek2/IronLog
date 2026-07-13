@@ -183,6 +183,29 @@ describe('ExercisesPage user library states', () => {
     expect(name).toHaveAccessibleDescription('Nazwa musi mieć co najmniej 2 znaki.')
   })
 
+  it('announces a create failure without marking the valid name field as invalid', async () => {
+    mocks.getUserExercises.mockResolvedValueOnce([])
+    mocks.createUserExercise.mockRejectedValueOnce(new Error('Nie udało się zapisać ćwiczenia.'))
+    render(<ExercisesPage />)
+
+    await waitFor(() => expect(
+      screen.getByRole('button', { name: 'Dodaj własne' }),
+    ).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
+    const dialog = screen.getByRole('dialog', { name: 'Dodaj własne ćwiczenie' })
+    const name = within(dialog).getByRole('textbox', { name: 'Nazwa *' })
+    fireEvent.change(name, { target: { value: 'Ćwiczenie testowe' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Dodaj ćwiczenie' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Nie udało się zapisać ćwiczenia.')
+    expect(mocks.createUserExercise).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({ name: 'Ćwiczenie testowe' }),
+    )
+    expect(name).not.toHaveAttribute('aria-invalid')
+    expect(name).not.toHaveAttribute('aria-describedby')
+  })
+
   it('exposes the selected category in the exercise picker', () => {
     render(<ExercisePicker onSelect={vi.fn()} onClose={vi.fn()} />)
 

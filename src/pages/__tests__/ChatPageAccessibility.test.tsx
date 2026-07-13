@@ -84,6 +84,24 @@ describe('ChatPage accessibility', () => {
     expect(goal).toHaveAccessibleDescription('Podaj cel planu, zanim uruchomisz generator.')
   })
 
+  it('announces a generation failure without marking the valid goal field as invalid', async () => {
+    mocks.generateTrainingPlan.mockRejectedValueOnce(new Error('Nie udało się wygenerować planu testowego.'))
+    render(<ChatPage />)
+
+    await screen.findByRole('combobox', { name: 'Model Claude' })
+    fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
+    const goal = screen.getByRole('textbox', { name: 'Cel planu' })
+    fireEvent.change(goal, { target: { value: 'Budowa siły' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generuj plan' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się wygenerować planu testowego.')
+    expect(mocks.generateTrainingPlan).toHaveBeenCalledWith(expect.objectContaining({
+      request: expect.objectContaining({ goal: 'Budowa siły' }),
+    }))
+    expect(goal).not.toHaveAttribute('aria-invalid')
+    expect(goal).not.toHaveAttribute('aria-describedby')
+  })
+
   it('exposes the selected generated-plan day without relying on color', async () => {
     mocks.generateTrainingPlan.mockResolvedValueOnce({
       name: 'Plan testowy',

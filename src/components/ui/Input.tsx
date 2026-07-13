@@ -30,7 +30,11 @@ export default function Input({
         }}
         {...props}
       />
-      {error && <p id={errorId} className="ui-field-error">{error}</p>}
+      {error && (
+        <p id={errorId} role="alert" className="ui-field-error">
+          {error}
+        </p>
+      )}
     </div>
   )
 }

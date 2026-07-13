@@ -24,6 +24,7 @@ export default function ConfirmDialog({
   const dialogRef = useRef<HTMLDivElement>(null)
   const cancelButtonRef = useRef<HTMLButtonElement>(null)
   const titleId = useId()
+  const descriptionId = useId()
 
   useDialogA11y({
     containerRef: dialogRef,
@@ -63,12 +64,19 @@ export default function ConfirmDialog({
           role="dialog"
           aria-modal="true"
           aria-labelledby={titleId}
+          aria-describedby={descriptionId}
           tabIndex={-1}
         >
           <p id={titleId} className="mb-2 text-base font-semibold" style={{ color: 'var(--text-strong)' }}>
             {title}
           </p>
-          <p className="mb-6 text-sm leading-relaxed" style={{ color: 'var(--muted)' }}>{message}</p>
+          <p
+            id={descriptionId}
+            className="mb-6 text-sm leading-relaxed"
+            style={{ color: 'var(--muted)' }}
+          >
+            {message}
+          </p>
 
           <div className="flex gap-3">
             <button

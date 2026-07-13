@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1 i 2 zakończone; Faza 3 wdrożona i zweryfikowana na feature branchu, oczekuje finalnego review i merge**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2 i 3 zakończone; final review Fazy 3 clean, feature branch gotowy do merge po zgodzie użytkownika**
 Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
 Ostatnia aktualizacja: 2026-07-13
 
@@ -49,7 +49,7 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 38 plików i 239 testów jednostkowych oraz testów wsparcia przechodzi,
+- 38 plików i 241 testów jednostkowych oraz testów wsparcia przechodzi,
 - 1 plik i 10 testów reguł Firestore przechodzi,
 - ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 20 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
@@ -250,7 +250,7 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 
 **Wynik wdrożenia:** `A11Y-01–08` zostały wdrożone i zweryfikowane. Ukryta dolna nawigacja jest inert, edytor i AI mają trwałe nazwy oraz dostępne błędy, filtry komunikują wybór, dialog ma opis, a wiersz ćwiczenia jedną akcję otwarcia. Ukierunkowany Axe, testy klawiatury i ręczny accessibility snapshot przechodzą na desktopie i mobile. Pełny audyt WCAG oraz ergonomia dotykowa pozostają poza zakresem zgodnie z Fazą 4 i bramką release.
 
-Status `DONE` opisuje zakończoną i zweryfikowaną implementację na branchu `phase-3-accessibility-navigation`. Niezależny finalny review oraz merge do `puls-rebrand` pozostają otwarte; push, deploy i czynności produkcyjne nie zostały wykonane.
+Status `DONE` opisuje zakończoną i zweryfikowaną implementację na branchu `phase-3-accessibility-navigation`. Final re-review zakończył się `PASS / Approved` bez znalezisk Critical, Important ani Minor. Feature branch jest gotowy do merge do `puls-rebrand` po zgodzie użytkownika; merge, push, deploy i czynności produkcyjne nie zostały wykonane.
 
 **Zakres kanoniczny:**
 
@@ -457,7 +457,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 4 — ergonomia mobile i edytor planów** jest następnym rekomendowanym pakietem po finalnym review i merge Fazy 3. Niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
+**Faza 4 — ergonomia mobile i edytor planów** jest następnym rekomendowanym pakietem po merge Fazy 3. Niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

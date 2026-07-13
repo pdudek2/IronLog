@@ -1400,7 +1400,7 @@ git commit -m "test: add critical accessibility gate"
 
 ### Task 7: Full verification, review, and Phase 3 closure
 
-**Stan:** Steps 1–5 i 7–9 wykonane; dokumentacja zamknięcia implementacji jest przygotowana na feature branchu. Step 6 oraz finalne domknięcie Task 7 pozostają otwarte do niezależnego finalnego review.
+**Stan:** Task 7 zakończony. Steps 1–9 wykonane, final re-review ma wynik `PASS / Approved` (Critical 0, Important 0, Minor 0), a feature branch jest gotowy do merge po zgodzie użytkownika.
 
 **Files:**
 - Modify: `docs/roadmap/ROADMAP.md`
@@ -1440,12 +1440,12 @@ npm run build
 Expected:
 
 - ESLint exits 0;
-- 38 files and 239 unit/support tests PASS;
+- 38 files and 241 unit/support tests PASS;
 - production build exits 0;
 - the existing chunk-size warning may remain, because `RELEASE-06` requires measurement before optimization;
 - no new warning is introduced by `inert`, ARIA props or test code.
 
-Jeżeli liczba testów zmieni się z powodu zaakceptowanych review fixes, zapisz ponownie zmierzoną wartość w dokumentacji. Aktualny baseline wynosi 239 i każda niższa liczba wymaga wyjaśnienia przed zamknięciem fazy.
+Jeżeli liczba testów zmieni się z powodu zaakceptowanych review fixes, zapisz ponownie zmierzoną wartość w dokumentacji. Końcowy baseline wynosi 241 i każda niższa liczba wymaga wyjaśnienia przed merge.
 
 - [x] **Step 3: Re-run data and workout safety gates**
 
@@ -1496,7 +1496,7 @@ W trakcie kontrolowanego przebiegu potwierdź wizualnie:
 
 Następnie przejrzyj `.aria.yml` komendami ze Step 5 Task 6 i zapisz wynik w specyfikacji. Nie publikuj screenshotów zawierających prywatne dane.
 
-- [ ] **Step 6: Request final code review and address findings**
+- [x] **Step 6: Request final code review and address findings**
 
 Użyj `superpowers:requesting-code-review` dla pełnego diffu Fazy 3. Review musi sprawdzić:
 
@@ -1510,6 +1510,8 @@ Użyj `superpowers:requesting-code-review` dla pełnego diffu Fazy 3. Review mus
 
 Każde potwierdzone znalezisko napraw w osobnym commicie i ponów właściwy focused test oraz bramkę z Steps 1–4.
 
+Outcome: final re-review `PASS / Approved`; Critical 0, Important 0, Minor 0. Korekty i dodatkowe testy błędów ogólnych są w commicie `04e086e`; pełna bramka unit/support po poprawce przechodzi: 38 plików i 241 testów.
+
 - [x] **Step 7: Close Phase 3 in canonical documentation**
 
 W `docs/roadmap/ROADMAP.md`:
@@ -1517,7 +1519,7 @@ W `docs/roadmap/ROADMAP.md`:
 - ustaw datę aktualizacji na `2026-07-13`;
 - zmień status wiersza Fazy 3 z `READY` na `DONE`;
 - uzupełnij stan przeglądu o zakończoną Fazę 3;
-- zaktualizuj baseline unit/support do zmierzonej wartości `38 plików i 239 testów` albo wyższej wartości po review;
+- zaktualizuj baseline unit/support do końcowej zmierzonej wartości `38 plików i 241 testów`;
 - pod sekcją Fazy 3 dodaj wynik:
 
 ```markdown
@@ -1543,20 +1545,20 @@ Zakres `A11Y-01–08` został wdrożony bez zmiany kierunku wizualnego Puls. Foc
 
 W `WORKING_CONTEXT.md` ustaw:
 
-- focus: Faza 3 wdrożona i zweryfikowana na feature branchu, gotowa do finalnego review i merge do `puls-rebrand`;
+- focus: Faza 3 wdrożona, zweryfikowana i po czystym final review na feature branchu, gotowa do merge do `puls-rebrand` po zgodzie użytkownika;
 - passing: zmierzone wyniki lint, unit/support, build, Axe, isolated i workout E2E;
 - broken: puste;
 - untested: nadal live private-account Playwright i produkcyjne czynności `RELEASE-08`;
-- next actions: wykonać finalny review, po zgodzie użytkownika zmergować do `puls-rebrand`, następnie zaprojektować i zaplanować Fazę 4; zachować `RELEASE-08` jako otwarte.
+- next actions: po zgodzie użytkownika zmergować do `puls-rebrand`, następnie zaprojektować i zaplanować Fazę 4; zachować `RELEASE-08` jako otwarte.
 
-W tym planie zaznacz wykonane Tasks 1–6 oraz wykonane kroki Task 7. Step 6 i finalne domknięcie Task 7 pozostaw otwarte do niezależnego review. Nie usuwaj planu; pozostaje audytowalnym zapisem wykonania tak jak plan Fazy 2.
+W tym planie zaznacz wykonane Tasks 1–7. Nie usuwaj planu; pozostaje audytowalnym zapisem wykonania tak jak plan Fazy 2.
 
 - [x] **Step 8: Verify documentation consistency**
 
 Run:
 
 ```bash
-rg -n "Faza 3|A11Y-0[1-8]|38 plików|239 testów|Faza 4|RELEASE-08" \
+rg -n "Faza 3|A11Y-0[1-8]|38 plików|241 testów|Faza 4|RELEASE-08" \
   docs/roadmap/ROADMAP.md \
   docs/roadmap/specs/2026-07-13-phase-3-critical-accessibility-navigation-design.md \
   WORKING_CONTEXT.md
@@ -1574,10 +1576,10 @@ git add \
   docs/roadmap/specs/2026-07-13-phase-3-critical-accessibility-navigation-design.md \
   docs/roadmap/plans/2026-07-13-phase-3-critical-accessibility-navigation.md \
   WORKING_CONTEXT.md
-git commit -m "docs: prepare critical accessibility closure"
+git commit -m "docs: close critical accessibility phase"
 ```
 
-Po commicie wykonaj `git status --short --branch`. Oczekiwany wynik: czysty feature branch, gotowy do finalnego review i lokalnego fast-forward merge do `puls-rebrand` po zgodzie użytkownika.
+Po commicie wykonaj `git status --short --branch`. Oczekiwany wynik: czysty feature branch, gotowy do lokalnego fast-forward merge do `puls-rebrand` po zgodzie użytkownika.
 
 ---
 
@@ -1589,8 +1591,8 @@ Po commicie wykonaj `git status --short --branch`. Oczekiwany wynik: czysty feat
 - [x] Jeden wiersz ćwiczenia ma jedną akcję otwarcia w Tab i accessibility tree.
 - [x] `@axe-core/playwright` jest zależnością deweloperską, a `npm run test:e2e:a11y` przechodzi bez maskowania reguł Fazy 3.
 - [x] Ręczny headed keyboard walkthrough i `.aria.yml` review są zakończone na desktopie i mobile.
-- [x] Lint, 239 unit/support, build, rules, workout integration, isolated E2E, workout E2E i accessibility E2E przechodzą.
-- [ ] Final code review nie ma otwartych Critical, Important ani Minor findings w zakresie fazy.
+- [x] Lint, 241 unit/support, build, rules, workout integration, isolated E2E, workout E2E i accessibility E2E przechodzą.
+- [x] Final code review nie ma otwartych Critical, Important ani Minor findings w zakresie fazy.
 - [x] Roadmapa, spec, plan i `WORKING_CONTEXT.md` opisują ten sam stan.
 - [x] Brak pushu, deployu i zmian produkcyjnych; `RELEASE-08` pozostaje otwarte.
 

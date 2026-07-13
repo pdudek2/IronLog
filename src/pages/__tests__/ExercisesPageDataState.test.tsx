@@ -1,6 +1,7 @@
 import { createElement, type ReactNode } from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import ExercisePicker from '../../components/ExercisePicker'
 import ExercisesPage from '../ExercisesPage'
 
 const mocks = vi.hoisted(() => ({
@@ -21,6 +22,7 @@ vi.mock('../../store/authStore', () => {
 })
 
 vi.mock('../../data/exercises', () => ({
+  searchExercises: vi.fn(() => []),
   exercises: [{
     id: 'squat',
     name: 'Przysiad',
@@ -134,6 +136,66 @@ describe('ExercisesPage user library states', () => {
     expect(await screen.findByText('Brak własnych ćwiczeń')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dodaj pierwsze' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeEnabled()
+  })
+
+  it('exposes filter state and exactly one open action per exercise', async () => {
+    mocks.getUserExercises.mockResolvedValueOnce([])
+    render(<ExercisesPage />)
+
+    const muscleGroup = await screen.findByRole('group', { name: 'Partia' })
+    const equipmentGroup = screen.getByRole('group', { name: 'Sprzęt' })
+    const allMuscles = within(muscleGroup).getByRole('button', { name: 'Wszystkie' })
+    const chest = within(muscleGroup).getByRole('button', { name: 'Klatka' })
+
+    expect(allMuscles).toHaveAttribute('aria-pressed', 'true')
+    expect(chest).toHaveAttribute('aria-pressed', 'false')
+    expect(within(equipmentGroup).getByRole('button', { name: 'Wszystkie' }))
+      .toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(chest)
+    expect(chest).toHaveAttribute('aria-pressed', 'true')
+    expect(allMuscles).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(allMuscles)
+    expect(screen.getAllByRole('button', { name: 'Otwórz ćwiczenie Przysiad' })).toHaveLength(1)
+  })
+
+  it('announces only a field-specific name validation error and exposes muscle state', async () => {
+    mocks.getUserExercises.mockResolvedValueOnce([])
+    render(<ExercisesPage />)
+
+    await waitFor(() => expect(
+      screen.getByRole('button', { name: 'Dodaj własne' }),
+    ).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
+    const dialog = screen.getByRole('dialog', { name: 'Dodaj własne ćwiczenie' })
+    const name = within(dialog).getByRole('textbox', { name: 'Nazwa *' })
+    const muscles = within(dialog).getByRole('group', { name: 'Partie mięśniowe' })
+    const chest = within(muscles).getByRole('button', { name: 'Klatka' })
+
+    expect(chest).toHaveAttribute('aria-pressed', 'false')
+    fireEvent.click(chest)
+    expect(chest).toHaveAttribute('aria-pressed', 'true')
+
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Dodaj ćwiczenie' }))
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Nazwa musi mieć co najmniej 2 znaki.')
+    expect(name).toHaveAttribute('aria-invalid', 'true')
+    expect(name).toHaveAccessibleDescription('Nazwa musi mieć co najmniej 2 znaki.')
+  })
+
+  it('exposes the selected category in the exercise picker', () => {
+    render(<ExercisePicker onSelect={vi.fn()} onClose={vi.fn()} />)
+
+    const categoryGroup = screen.getByRole('group', { name: 'Kategoria ćwiczenia' })
+    const allCategories = within(categoryGroup).getByRole('button', { name: 'Wszystkie' })
+    const chest = within(categoryGroup).getByRole('button', { name: 'Klatka' })
+
+    expect(allCategories).toHaveAttribute('aria-pressed', 'true')
+    expect(chest).toHaveAttribute('aria-pressed', 'false')
+
+    fireEvent.click(chest)
+    expect(chest).toHaveAttribute('aria-pressed', 'true')
+    expect(allCategories).toHaveAttribute('aria-pressed', 'false')
   })
 
   it('does not apply a late create result to a different user resource', async () => {

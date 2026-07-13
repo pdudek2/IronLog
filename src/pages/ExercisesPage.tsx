@@ -67,17 +67,23 @@ interface CreateFormProps {
   onClose: () => void
 }
 
+interface ExerciseFormError {
+  message: string
+  field: 'name' | null
+}
+
 function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFormProps) {
   const [name, setName] = useState(initialValue?.name ?? '')
   const [category, setCategory] = useState<Category>(initialValue?.category ?? 'chest')
   const [equipment, setEquipment] = useState<Equipment>(initialValue?.equipment ?? 'barbell')
   const [muscles, setMuscles] = useState<MuscleGroup[]>(initialValue?.muscles ?? [])
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<ExerciseFormError | null>(null)
 
   const dialogRef = useRef<HTMLDivElement>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
   const titleId = useId()
+  const errorId = useId()
   const nameInputId = useId()
   const categoryInputId = useId()
   const equipmentInputId = useId()
@@ -93,15 +99,18 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
     e.preventDefault()
     const trimmed = name.trim()
     if (trimmed.length < 2) {
-      setError('Nazwa musi mieć co najmniej 2 znaki.')
+      setError({ message: 'Nazwa musi mieć co najmniej 2 znaki.', field: 'name' })
       return
     }
     setSaving(true)
-    setError('')
+    setError(null)
     try {
       await onSubmit({ name: trimmed, category, equipment, muscles })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Błąd zapisu. Spróbuj ponownie.')
+    } catch (nextError) {
+      setError({
+        message: nextError instanceof Error ? nextError.message : 'Błąd zapisu. Spróbuj ponownie.',
+        field: null,
+      })
       setSaving(false)
     }
   }
@@ -163,7 +172,12 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
               ref={nameInputRef}
               type="text"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={(event) => {
+                setName(event.target.value)
+                if (error?.field === 'name') setError(null)
+              }}
+              aria-invalid={error?.field === 'name' ? true : undefined}
+              aria-describedby={error?.field === 'name' ? errorId : undefined}
               placeholder="np. Banded Pull-apart"
               maxLength={60}
               style={{
@@ -219,6 +233,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
                     key={m}
                     type="button"
                     onClick={() => toggleMuscle(m)}
+                    aria-pressed={active}
                     className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                     style={{
                       background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
@@ -234,7 +249,9 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
           </div>
 
           {error && (
-            <p className="text-xs" style={{ color: 'var(--danger)' }}>{error}</p>
+            <p id={errorId} role="alert" className="text-xs" style={{ color: 'var(--danger)' }}>
+              {error.message}
+            </p>
           )}
 
           <motion.button
@@ -271,7 +288,12 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
 
   return (
     <article className="exercise-library-row" data-user={isUser}>
-      <button type="button" onClick={onNavigate} className="exercise-library-row-main">
+      <button
+        type="button"
+        onClick={onNavigate}
+        className="exercise-library-row-main"
+        aria-label={`Otwórz ćwiczenie ${exercise.name}`}
+      >
         <span>{isUser ? 'Moje' : CATEGORY_LABELS[exercise.category]}</span>
         <strong>{exercise.name}</strong>
         <small>{EQUIPMENT_LABELS[exercise.equipment]}</small>
@@ -305,14 +327,9 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={onNavigate}
-        className="exercise-library-open"
-        aria-label={`Otwórz ćwiczenie ${exercise.name}`}
-      >
+      <span className="exercise-library-open" aria-hidden="true">
         <ChevronRight size={16} />
-      </button>
+      </span>
     </article>
   )
 }
@@ -320,23 +337,26 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
 // ─── Filter Chips (horizontal scroll row) ────────────────────────────────────
 
 interface ChipRowProps<T extends string> {
+  label: string
   options: T[]
   labels: Record<T, string>
   active: T
   onSelect: (v: T) => void
 }
 
-function ChipRow<T extends string>({ options, labels, active, onSelect }: ChipRowProps<T>) {
+function ChipRow<T extends string>({ label, options, labels, active, onSelect }: ChipRowProps<T>) {
   return (
-    <div className="exercise-chip-row">
-      {options.map((opt) => (
+    <div className="exercise-chip-row" role="group" aria-label={label}>
+      {options.map((option) => (
         <button
-          key={opt}
-          onClick={() => onSelect(opt)}
+          key={option}
+          type="button"
+          onClick={() => onSelect(option)}
           className="exercise-filter-chip"
-          data-active={active === opt}
+          data-active={active === option}
+          aria-pressed={active === option}
         >
-          {labels[opt]}
+          {labels[option]}
         </button>
       ))}
     </div>
@@ -619,11 +639,11 @@ export default function ExercisesPage() {
         <div className="exercise-filter-board">
           <div className="exercise-filter-group">
             <span>Partia</span>
-            <ChipRow options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
+            <ChipRow label="Partia" options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
           </div>
           <div className="exercise-filter-group">
             <span>Sprzęt</span>
-            <ChipRow options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
+            <ChipRow label="Sprzęt" options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
           </div>
         </div>
       </section>

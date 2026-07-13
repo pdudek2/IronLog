@@ -101,13 +101,17 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
         <div
           className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3 sm:px-5"
           style={{ borderBottom: '1px solid var(--border)' }}
+          role="group"
+          aria-label="Kategoria ćwiczenia"
         >
           {CATEGORIES.map((c) => (
             <button
               key={c.value}
+              type="button"
               onClick={() => setCategory(c.value)}
-            className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
-            style={{
+              aria-pressed={category === c.value}
+              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
+              style={{
                 background: category === c.value ? 'var(--accent-soft)' : 'var(--card)',
                 color: category === c.value ? 'var(--text-strong)' : 'var(--muted)',
                 border: `1px solid ${category === c.value ? 'var(--accent-soft-strong)' : 'var(--border)'}`,

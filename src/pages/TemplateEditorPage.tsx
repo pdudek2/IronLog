@@ -528,7 +528,7 @@ export default function TemplateEditorPage() {
           <motion.button
             type="submit"
             disabled={saving}
-            aria-label={saving ? 'Zapisywanie szablonu w formularzu' : isEdit ? 'Zapisz zmiany w formularzu' : 'Zapisz szablon w formularzu'}
+            aria-label={saving ? 'Zapisuję... w formularzu' : isEdit ? 'Zapisz zmiany w formularzu' : 'Zapisz szablon w formularzu'}
             className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
             whileTap={{ scale: 0.97 }}
           >

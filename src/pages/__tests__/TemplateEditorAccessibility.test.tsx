@@ -106,6 +106,7 @@ describe('TemplateEditorPage accessibility', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Wróć' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Zapis w toku' })
+    expect(screen.getByRole('button', { name: 'Zapisuję... w formularzu' })).toBeDisabled()
     expect(within(dialog).getByRole('button', { name: 'Zapisuję...' })).toBeDisabled()
 
     resolveSave()

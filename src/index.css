@@ -4580,6 +4580,10 @@ a {
   gap: 0.75rem;
 }
 
+.template-save-dock {
+  display: none;
+}
+
 @media (min-width: 760px) {
   .planner-header {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -4644,19 +4648,6 @@ a {
 
   .template-editor-form {
     margin-top: 0.75rem;
-    padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
-  }
-
-  .template-editor-bottom-actions {
-    position: sticky;
-    bottom: calc(4.75rem + env(safe-area-inset-bottom));
-    z-index: 30;
-    padding: 0.65rem;
-    border: 1px solid rgba(244, 241, 242, 0.12);
-    border-radius: var(--radius-sm);
-    background: rgba(18, 17, 20, 0.82);
-    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
-    backdrop-filter: blur(18px);
   }
 
   .template-name-panel,
@@ -4686,6 +4677,55 @@ a {
 
   .planner-template-actions {
     justify-content: flex-start;
+  }
+}
+
+@media (max-width: 1023px) {
+  .template-editor-form {
+    padding-bottom: calc(12rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .template-editor-desktop-save {
+    display: none;
+  }
+
+  .template-save-dock {
+    position: fixed;
+    left: max(0.5rem, env(safe-area-inset-left, 0px));
+    right: max(0.5rem, env(safe-area-inset-right, 0px));
+    bottom: calc(var(--mobile-viewport-bottom-inset, 0px) + 5.9rem + env(safe-area-inset-bottom, 0px));
+    z-index: 46;
+    display: flex;
+    justify-content: center;
+    transition: bottom 180ms ease;
+  }
+
+  body:has(.bottom-nav[aria-hidden="true"]) .template-save-dock {
+    bottom: calc(var(--mobile-viewport-bottom-inset, 0px) + 0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .template-save-dock-panel {
+    display: flex;
+    width: min(100%, 24rem);
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem;
+    border: 1px solid rgba(244, 241, 242, 0.12);
+    border-radius: var(--radius-sm);
+    background: rgba(18, 17, 20, 0.98);
+    box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.42);
+  }
+
+  .template-save-dock-status {
+    flex: 1;
+    color: var(--muted);
+    font-size: 0.7rem;
+    line-height: 1.25;
+  }
+
+  .template-editor-form input {
+    scroll-margin-top: 7.5rem;
+    scroll-margin-bottom: calc(var(--mobile-viewport-bottom-inset, 0px) + 8rem);
   }
 }
 

@@ -5,6 +5,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
+import TemplateSaveDock from '../components/TemplateSaveDock'
 import { LoadingState } from '../components/ui'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { useAuthStore } from '../store/authStore'
@@ -517,7 +518,7 @@ export default function TemplateEditorPage() {
           <motion.button
             type="button"
             onClick={addDay}
-            className="planner-secondary-action template-editor-mobile-add-day"
+            className="planner-secondary-action template-editor-mobile-add-day mobile-touch-target"
             whileTap={{ scale: 0.97 }}
           >
             <Plus size={15} />
@@ -527,13 +528,15 @@ export default function TemplateEditorPage() {
           <motion.button
             type="submit"
             disabled={saving}
-            className="planner-primary-action disabled:opacity-60"
+            aria-label={saving ? 'Zapisywanie szablonu w formularzu' : isEdit ? 'Zapisz zmiany w formularzu' : 'Zapisz szablon w formularzu'}
+            className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
             whileTap={{ scale: 0.97 }}
           >
             <Pencil size={15} />
             {saving ? 'Zapisuję...' : isEdit ? 'Zapisz zmiany' : 'Zapisz szablon'}
           </motion.button>
         </div>
+        <TemplateSaveDock dirty={hasUnsavedChanges} saving={saving} isEdit={isEdit} />
       </form>
 
       {pickerDayIndex !== null && (

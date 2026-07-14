@@ -250,7 +250,7 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 
 **Wynik wdrożenia:** `A11Y-01–08` zostały wdrożone i zweryfikowane. Ukryta dolna nawigacja jest inert, edytor i AI mają trwałe nazwy oraz dostępne błędy, filtry komunikują wybór, dialog ma opis, a wiersz ćwiczenia jedną akcję otwarcia. Ukierunkowany Axe, testy klawiatury i ręczny accessibility snapshot przechodzą na desktopie i mobile. Pełny audyt WCAG oraz ergonomia dotykowa pozostają poza zakresem zgodnie z Fazą 4 i bramką release.
 
-Status `DONE` opisuje zakończoną i zweryfikowaną implementację na branchu `phase-3-accessibility-navigation`. Final re-review zakończył się `PASS / Approved` bez znalezisk Critical, Important ani Minor. Feature branch jest gotowy do merge do `puls-rebrand` po zgodzie użytkownika; merge, push, deploy i czynności produkcyjne nie zostały wykonane.
+Status `DONE` opisuje zakończoną i zweryfikowaną implementację. Final re-review zakończył się `PASS / Approved` bez znalezisk Critical, Important ani Minor. Feature branch został zmergowany lokalnie do `puls-rebrand`; push, deploy i czynności produkcyjne nie zostały wykonane.
 
 **Zakres kanoniczny:**
 
@@ -276,19 +276,24 @@ Status `DONE` opisuje zakończoną i zweryfikowaną implementację na branchu `p
 
 **Cel:** zapewnić wygodną obsługę najczęstszych akcji na telefonie bez zmiany kierunku wizualnego Puls.
 
+**Status:** `DESIGN APPROVED` — projekt jest zapisany w [`specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md`](specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md); następnym krokiem jest szczegółowy plan implementacji.
+
 **Zakres kanoniczny:**
 
 - **MOBILE-01:** podnieść aktywne obszary dolnej nawigacji, filtrów i ikonowych akcji do uzgodnionego minimum dotykowego; cel projektowy: co najmniej 44×44 px dla głównych akcji.
 - **MOBILE-02:** zapewnić stale dostępny zapis dużego planu — sticky action bar, zapis w nagłówku albo równoważne rozwiązanie.
+- **MOBILE-03:** utrzymać dock zapisu w bezpiecznym obszarze aktualnego `visualViewport` i przewijać aktywne pole ponad dock.
+- **MOBILE-04:** skoordynować dolną nawigację, rest timer, inputy treningu i safe-area; przy klawiaturze timer przechodzi do kompaktowego wariantu bez nakładania na pole.
+- **MOBILE-05:** chronić niezapisane zmiany edytora przy każdej nawigacji SPA, browser back oraz zamknięciu lub odświeżeniu karty.
 - **MOBILE-06:** zweryfikować długie plany i biblioteki przy 320/375/390 px oraz przy powiększonym tekście.
 
-**Hipotezy do walidacji podczas planowania fazy:**
+**Wynik walidacji hipotez z 2026-07-14:**
 
-- **FOLLOWUP-UI-01 / MOBILE-03:** czy klawiatura i zmiany `visualViewport` zasłaniają główną akcję edytora;
-- **FOLLOWUP-UI-02 / MOBILE-04:** czy dolna nawigacja, rest timer, inputy treningu i safe-area nakładają się na rzeczywistych wysokościach mobilnych;
-- **FOLLOWUP-UI-03 / MOBILE-05:** czy utrata niezapisanych zmian w edytorze jest realnym problemem, który uzasadnia guard opuszczenia strony.
+- **FOLLOWUP-UI-01 / MOBILE-03 — `confirmed`:** po skupieniu inputu i zmniejszeniu `visualViewport` zapis pozostaje poza widokiem;
+- **FOLLOWUP-UI-02 / MOBILE-04 — `confirmed`:** rest timer pozostaje fixed po ukryciu dolnej nawigacji i nachodzi na aktywne pole przy niskim viewportcie;
+- **FOLLOWUP-UI-03 / MOBILE-05 — `confirmed`:** dolna nawigacja omija lokalny guard edytora i pozwala utracić niezapisane zmiany.
 
-Punkty `MOBILE-03–05` wchodzą do implementacji wyłącznie po reprodukcji. Brak reprodukcji zamyka odpowiadającą hipotezę bez zmiany kodu.
+Wszystkie trzy punkty wchodzą do implementacji Fazy 4. Dowody i docelowe kontrakty opisuje zatwierdzony spec fazy.
 
 **Kryteria wyjścia:**
 
@@ -457,7 +462,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 4 — ergonomia mobile i edytor planów** jest następnym rekomendowanym pakietem po merge Fazy 3. Niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
+**Faza 4 — ergonomia mobile i edytor planów** jest następnym rekomendowanym pakietem; Faza 3 została zmergowana lokalnie do `puls-rebrand`. Niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 
@@ -519,8 +524,8 @@ Poniższe punkty nie pochodzą bezpośrednio z dwóch audytów. Hipotezy workout
 | FOLLOWUP-WORKOUT-02 | Nieudane usunięcie `activeSessions` może odtworzyć zamkniętą sesję | `confirmed` w Fazie R | WORKOUT-02, WORKOUT-03, WORKOUT-05 |
 | FOLLOWUP-WORKOUT-03 | Retry materializacji może wymagać dodatkowego kontraktu spójności | `already_protected` w Fazie R | brak pracy w Fazie 1 (`WORKOUT-04`) |
 | FOLLOWUP-WORKOUT-04 | Refresh, dwie karty, offline lub stale session mogą ujawnić dodatkowy wyścig | `confirmed` w Fazie R | WORKOUT-06 |
-| FOLLOWUP-UI-01 | Klawiatura może zasłaniać zapis dużego planu | Reprodukcja mobile w fazie 4 | MOBILE-03 |
-| FOLLOWUP-UI-02 | Stałe elementy mogą nakładać się na inputy lub safe-area | Reprodukcja mobile w fazie 4 | MOBILE-04 |
-| FOLLOWUP-UI-03 | Edytor może wymagać ochrony niezapisanych zmian | Reprodukcja nawigacji w fazie 4 | MOBILE-05 |
+| FOLLOWUP-UI-01 | Klawiatura może zasłaniać zapis dużego planu | `confirmed` 2026-07-14: zapis poza zmniejszonym `visualViewport` | MOBILE-03 |
+| FOLLOWUP-UI-02 | Stałe elementy mogą nakładać się na inputy lub safe-area | `confirmed` 2026-07-14: rest timer nachodzi na aktywny input | MOBILE-04 |
+| FOLLOWUP-UI-03 | Edytor może wymagać ochrony niezapisanych zmian | `confirmed` 2026-07-14: dolna nawigacja omija istniejący guard | MOBILE-05 |
 
 Przy każdej zmianie zakresu fazy należy zaktualizować również odpowiadający jej wiersz w tej macierzy. Jeśli nowe ustalenie audytowe nie pasuje do żadnego istniejącego punktu, najpierw otrzymuje nowy trwały identyfikator roadmapy, a dopiero potem trafia do planu implementacyjnego.

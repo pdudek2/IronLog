@@ -73,7 +73,7 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
         >
           <button
             onClick={onClose}
-            className="flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
+            className="mobile-touch-target flex h-11 w-11 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
             style={{ color: 'var(--muted)' }}
             aria-label="Zamknij wybór ćwiczenia"
           >
@@ -110,7 +110,7 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
               type="button"
               onClick={() => setCategory(c.value)}
               aria-pressed={category === c.value}
-              className="px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
+              className="mobile-touch-target px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
               style={{
                 background: category === c.value ? 'var(--accent-soft)' : 'var(--card)',
                 color: category === c.value ? 'var(--text-strong)' : 'var(--muted)',

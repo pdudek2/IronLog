@@ -234,7 +234,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
                     type="button"
                     onClick={() => toggleMuscle(m)}
                     aria-pressed={active}
-                    className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                    className="mobile-touch-target px-3 py-1.5 rounded-full text-xs font-medium transition-all"
                     style={{
                       background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                       color: active ? 'var(--text-strong)' : 'var(--muted)',
@@ -352,7 +352,7 @@ function ChipRow<T extends string>({ label, options, labels, active, onSelect }:
           key={option}
           type="button"
           onClick={() => onSelect(option)}
-          className="exercise-filter-chip"
+          className="exercise-filter-chip mobile-touch-target"
           data-active={active === option}
           aria-pressed={active === option}
         >

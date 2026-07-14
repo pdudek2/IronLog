@@ -593,7 +593,7 @@ export default function ChatPage() {
                             type="button"
                             aria-pressed={planDays === days}
                             onClick={() => setPlanDays(days)}
-                            className="rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
+                            className="mobile-touch-target rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
                             style={{
                               background: planDays === days ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                               borderColor: planDays === days ? 'var(--accent-soft-strong)' : 'var(--border)',
@@ -615,7 +615,7 @@ export default function ChatPage() {
                             type="button"
                             aria-pressed={planExperience === option.value}
                             onClick={() => setPlanExperience(option.value)}
-                            className="rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
+                            className="mobile-touch-target rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
                             style={{
                               background: planExperience === option.value ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                               borderColor: planExperience === option.value ? 'var(--accent-soft-strong)' : 'var(--border)',
@@ -639,7 +639,7 @@ export default function ChatPage() {
                               type="button"
                               aria-pressed={active}
                               onClick={() => toggleEquipment(option.value)}
-                              className="rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
+                              className="mobile-touch-target rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
                               style={{
                                 background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                                 borderColor: active ? 'var(--accent-soft-strong)' : 'var(--border)',
@@ -737,7 +737,7 @@ export default function ChatPage() {
                           type="button"
                           aria-pressed={selectedPreviewDay === index}
                           onClick={() => setSelectedPreviewDay(index)}
-                          className="rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
+                          className="mobile-touch-target rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
                           style={{
                             background: selectedPreviewDay === index ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                             borderColor: selectedPreviewDay === index ? 'var(--accent-soft-strong)' : 'var(--border)',

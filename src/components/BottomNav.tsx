@@ -22,7 +22,7 @@ function NavBtn({ icon, label, active, onClick, preloadTo }: NavBtnProps) {
       onClick={onClick}
       onPointerEnter={() => { if (preloadTo) void preloadRouteByPath(preloadTo) }}
       onFocus={() => { if (preloadTo) void preloadRouteByPath(preloadTo) }}
-      className="bottom-nav-button flex flex-1 flex-col items-center gap-0.5 py-0.5"
+      className="bottom-nav-button mobile-touch-target flex flex-1 flex-col items-center gap-0.5 py-0.5"
       data-active={active}
       whileTap={{ scale: 0.88 }}
       style={{ color: active ? 'var(--text-strong)' : 'var(--muted)' }}
@@ -177,7 +177,7 @@ export default function BottomNav() {
           onClick={() => go('/workout/new')}
           onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
           onFocus={() => { void preloadRouteByPath('/workout/new') }}
-          className="mx-1.5 flex h-11 w-11 flex-none items-center justify-center rounded-[var(--radius-lg)]"
+          className="bottom-nav-primary-action mobile-touch-target flex h-11 w-11 flex-none items-center justify-center rounded-[var(--radius-lg)]"
           style={{
             background: 'var(--primary-gradient)',
             color: 'var(--accent-foreground)',

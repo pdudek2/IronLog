@@ -83,7 +83,7 @@ function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) 
           <motion.button
             key={label}
             onClick={() => onToggle(label)}
-            className="flex-none whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-semibold"
+            className="mobile-touch-target flex-none whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-semibold"
             style={{
               backgroundColor: isActive ? 'var(--accent-soft)' : 'rgba(255,255,255,0.06)',
               color: isActive ? 'var(--text-strong)' : 'var(--muted)',

@@ -247,7 +247,7 @@ export default function HistoryPage() {
                   key={key}
                   type="button"
                   onClick={() => setRangePreset(key)}
-                  className="rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors"
+                  className="mobile-touch-target rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors"
                   style={
                     rangePreset === key
                       ? { background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }
@@ -274,7 +274,7 @@ export default function HistoryPage() {
                 <button
                   type="button"
                   onClick={() => setSearchText('')}
-                  className="puls-icon-button absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                  className="puls-icon-button mobile-touch-target absolute right-2 top-1/2 -translate-y-1/2 p-1"
                   aria-label="Wyczyść wyszukiwanie"
                 >
                   <X size={12} style={{ color: 'var(--muted)' }} />
@@ -296,7 +296,7 @@ export default function HistoryPage() {
                     key={cat}
                     type="button"
                     onClick={() => setActiveCategory(active ? null : cat)}
-                    className="rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold transition-colors"
+                    className="mobile-touch-target rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold transition-colors"
                     style={
                       active
                         ? { background: `${color}22`, border: `1px solid ${color}55`, color }

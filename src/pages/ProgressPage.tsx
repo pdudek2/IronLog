@@ -436,7 +436,7 @@ export default function ProgressPage() {
                   type="button"
                   onClick={() => handleRangeChange(days)}
                   aria-pressed={rangeDays === days}
-                  className="progress-range-button"
+                  className="progress-range-button mobile-touch-target"
                 >
                   {label}
                 </button>

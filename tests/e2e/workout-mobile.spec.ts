@@ -83,6 +83,65 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
   expect(box!.y + box!.height, `${label} bottom edge`).toBeLessThanOrEqual(visibleBottom)
 }
 
+interface ScrollIntoViewCall {
+  tagName: string
+  insideWorkoutSetRow: boolean
+}
+
+async function installScrollIntoViewSpy(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const testWindow = window as typeof window & { __workoutScrollIntoViewCalls: ScrollIntoViewCall[] }
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
+    testWindow.__workoutScrollIntoViewCalls = []
+    HTMLElement.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewOptions) {
+      testWindow.__workoutScrollIntoViewCalls.push({
+        tagName: this.tagName,
+        insideWorkoutSetRow: this.matches('.workout-focus-shell .workout-set-row input'),
+      })
+      originalScrollIntoView.call(this, options)
+    }
+  })
+}
+
+async function readScrollIntoViewCalls(page: Page): Promise<ScrollIntoViewCall[]> {
+  return page.evaluate(() => (
+    window as typeof window & { __workoutScrollIntoViewCalls: ScrollIntoViewCall[] }
+  ).__workoutScrollIntoViewCalls)
+}
+
+async function clearScrollIntoViewCalls(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const testWindow = window as typeof window & { __workoutScrollIntoViewCalls: ScrollIntoViewCall[] }
+    testWindow.__workoutScrollIntoViewCalls = []
+  })
+}
+
+async function setVisualViewportBottomInset(page: Page, bottomInset: number): Promise<void> {
+  await page.evaluate((inset) => {
+    const viewport = window.visualViewport
+    if (!viewport) throw new Error('visualViewport is required for this mobile contract')
+    Object.defineProperty(viewport, 'height', {
+      configurable: true,
+      value: window.innerHeight - inset,
+    })
+    window.dispatchEvent(new Event('resize'))
+    viewport.dispatchEvent(new Event('resize'))
+  }, bottomInset)
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
+  }))
+}
+
+async function restoreVisualViewportHeight(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+    Reflect.deleteProperty(viewport, 'height')
+    window.dispatchEvent(new Event('resize'))
+    viewport.dispatchEvent(new Event('resize'))
+  })
+}
+
 async function discardSessionIfPresent(page: Page): Promise<void> {
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new', 25_000)
@@ -285,6 +344,53 @@ test.describe('Active workout shell reduction', () => {
     await skipRestButton.click()
     await expect(actionBar).toHaveCount(0)
 
+  })
+
+  test('mobile compact rest timer scrolls only the focused workout set input', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await goToFreshWorkout(page)
+    await addExercise(page, 'Squat')
+
+    const firstSetRow = page.locator('.workout-set-row').first()
+    const weightInput = firstSetRow.locator('input').nth(0)
+    await weightInput.fill('60')
+    await firstSetRow.locator('input').nth(1).fill('8')
+    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1' }).click()
+
+    const actionBar = page.locator('.workout-mobile-action-bar')
+    const skipRestButton = actionBar.getByRole('button', { name: 'Pomiń przerwę' })
+    await expect(actionBar).toHaveAttribute('data-variant', 'full')
+    await installScrollIntoViewSpy(page)
+
+    await weightInput.focus()
+    await page.setViewportSize({ width: 390, height: 500 })
+    await expect(actionBar).toHaveAttribute('data-variant', 'compact')
+    await expect.poll(async () => (await readScrollIntoViewCalls(page)).length).toBeGreaterThan(0)
+    expect(await readScrollIntoViewCalls(page)).toEqual(
+      expect.arrayContaining([{ tagName: 'INPUT', insideWorkoutSetRow: true }]),
+    )
+
+    await clearScrollIntoViewCalls(page)
+    await weightInput.blur()
+    await setVisualViewportBottomInset(page, 120)
+    await expect(actionBar).toHaveAttribute('data-variant', 'compact')
+    expect(await readScrollIntoViewCalls(page)).toEqual([])
+
+    await skipRestButton.focus()
+    await setVisualViewportBottomInset(page, 121)
+    expect(await readScrollIntoViewCalls(page)).toEqual([])
+
+    await skipRestButton.blur()
+    await restoreVisualViewportHeight(page)
+    await page.setViewportSize({ width: 390, height: 844 })
+
+    await page.getByRole('button', { name: 'Anuluj', exact: true }).first().click()
+    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
+    await expect(confirmDialog).toBeVisible()
+    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
+    await expectAppReady(page, '/dashboard')
   })
 
   test('desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract', async ({ page, cleanup }, testInfo) => {

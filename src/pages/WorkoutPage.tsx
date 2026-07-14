@@ -348,8 +348,12 @@ export default function WorkoutPage() {
   useEffect(() => {
     if (isDesktop || !compactFixedUi || rest === null) return
     const frame = window.requestAnimationFrame(() => {
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.scrollIntoView({ block: 'nearest' })
+      const activeElement = document.activeElement
+      if (
+        activeElement instanceof HTMLInputElement
+        && activeElement.matches('.workout-focus-shell .workout-set-row input')
+      ) {
+        activeElement.scrollIntoView({ block: 'nearest' })
       }
     })
     return () => window.cancelAnimationFrame(frame)

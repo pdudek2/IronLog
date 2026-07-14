@@ -262,6 +262,26 @@ test.describe('Active workout shell reduction', () => {
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(1), 'First reps input during rest')
     await expectMinHitArea(addRestButton, 'Add rest time button')
     await expectMinHitArea(skipRestButton, 'Skip rest button')
+
+    const weightInput = page.locator('.workout-set-row').first().locator('input').nth(0)
+    await weightInput.focus()
+    await page.setViewportSize({ width: 390, height: 500 })
+    await expect(actionBar).toHaveAttribute('data-variant', 'compact')
+    await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toHaveCount(0)
+    await expect(actionBar.getByRole('button', { name: 'Pomiń przerwę' })).toBeVisible()
+
+    const compactBox = await actionBar.boundingBox()
+    const inputBox = await weightInput.boundingBox()
+    expect(compactBox).not.toBeNull()
+    expect(inputBox).not.toBeNull()
+    expect(inputBox!.y).toBeGreaterThanOrEqual(compactBox!.y + compactBox!.height)
+    expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(500)
+
+    await weightInput.blur()
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(actionBar).toHaveAttribute('data-variant', 'full')
+    await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toBeVisible()
+
     await skipRestButton.click()
     await expect(actionBar).toHaveCount(0)
 

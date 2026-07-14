@@ -5215,6 +5215,16 @@ a {
   z-index: 45;
 }
 
+.workout-mobile-action-bar[data-variant="compact"] {
+  top: calc(var(--workout-mobile-lifecycle-bar-height) + 0.5rem);
+  bottom: auto;
+  padding-bottom: 0;
+}
+
+.workout-mobile-action-bar[data-variant="compact"] > .surface-panel {
+  padding: 0.35rem;
+}
+
 .workout-mobile-lifecycle-bar {
   min-height: var(--workout-mobile-lifecycle-bar-height);
 }
@@ -5635,6 +5645,16 @@ a {
 
   .workout-focus-shell:has(.workout-mobile-action-bar) .workout-session-grid {
     padding-bottom: max(14rem, calc(12.75rem + env(safe-area-inset-bottom, 0px)));
+  }
+
+  .workout-focus-shell:has(.workout-mobile-action-bar[data-variant="compact"]) .workout-session-grid {
+    padding-top: calc(var(--workout-mobile-lifecycle-bar-height) + 4rem);
+    padding-bottom: max(7.5rem, calc(6.5rem + env(safe-area-inset-bottom, 0px)));
+  }
+
+  .workout-set-row input {
+    scroll-margin-top: calc(var(--workout-mobile-lifecycle-bar-height) + 4.5rem);
+    scroll-margin-bottom: calc(var(--mobile-viewport-bottom-inset, 0px) + 1rem);
   }
 
   .workout-empty-card,
@@ -7090,6 +7110,15 @@ a {
   gap: 0.55rem;
   padding: 0.7rem 0.85rem;
   color: var(--text);
+}
+
+.rest-timer-bar[data-variant="compact"] .rest-timer-content {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.65rem;
+}
+
+.rest-timer-bar[data-variant="compact"] .rest-timer-progress {
+  height: 2px;
 }
 
 .rest-timer-label {

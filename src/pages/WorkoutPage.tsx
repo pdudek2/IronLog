@@ -24,6 +24,7 @@ import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { isActiveSessionStale } from '../lib/sessionDuration'
+import { useMobileInteraction } from '../components/MobileInteractionProvider'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
 const CATEGORY_LABELS: Record<string, string> = {
@@ -177,9 +178,10 @@ interface RestTimerBarProps {
   rest: RestTimerState
   onAddTime: (deltaSec: number) => void
   onSkip: () => void
+  variant?: 'full' | 'compact'
 }
 
-function RestTimerBar({ rest, onAddTime, onSkip }: RestTimerBarProps) {
+function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBarProps) {
   const [now, setNow] = useState(() => Date.now())
   const firedRef = useRef(false)
   const onSkipRef = useRef(onSkip)
@@ -211,11 +213,12 @@ function RestTimerBar({ rest, onAddTime, onSkip }: RestTimerBarProps) {
     <motion.div
       key="rest-timer-bar"
       initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-      animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
+      animate={{ opacity: 1, height: 'auto', marginBottom: variant === 'full' ? 12 : 0 }}
       exit={{ opacity: 0, height: 0, marginBottom: 0 }}
       transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
       className="rest-timer-bar"
       data-finished={restRemainingMs === 0}
+      data-variant={variant}
       role="status"
       aria-live={restRemainingMs === 0 ? 'polite' : 'off'}
     >
@@ -238,14 +241,16 @@ function RestTimerBar({ rest, onAddTime, onSkip }: RestTimerBarProps) {
         </div>
         {restRemainingMs > 0 ? (
           <>
-            <button
-              type="button"
-              onClick={() => onAddTime(30)}
-              className="rest-timer-action"
-              aria-label="Dodaj 30 sekund"
-            >
-              +30s
-            </button>
+            {variant === 'full' && (
+              <button
+                type="button"
+                onClick={() => onAddTime(30)}
+                className="rest-timer-action"
+                aria-label="Dodaj 30 sekund"
+              >
+                +30s
+              </button>
+            )}
             <button
               type="button"
               onClick={onSkip}
@@ -306,6 +311,8 @@ export default function WorkoutPage() {
   } = useWorkoutStore()
   const navigate = useNavigate()
   const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const { compactFixedUi, visualViewportHeight } = useMobileInteraction()
+  const mobileRestVariant = compactFixedUi ? 'compact' : 'full'
   const goQuick = (to: string) => navigateWithAppTransition(navigate, to)
 
   const {
@@ -337,6 +344,16 @@ export default function WorkoutPage() {
 
   // Rest timer state
   const [rest, setRest] = useState<RestTimerState | null>(null)
+
+  useEffect(() => {
+    if (isDesktop || !compactFixedUi || rest === null) return
+    const frame = window.requestAnimationFrame(() => {
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.scrollIntoView({ block: 'nearest' })
+      }
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [compactFixedUi, isDesktop, rest, visualViewportHeight])
 
   const handleToggleSet = useCallback((exerciseIndex: number, setIndex: number) => {
     const { active: currentActive, toggleSetDone } = useWorkoutStore.getState()
@@ -1276,11 +1293,17 @@ export default function WorkoutPage() {
       {!isDesktop && rest !== null && (
         <div
           className="workout-mobile-action-bar fixed left-0 right-0 flex justify-center px-4 lg:hidden"
-          style={{ paddingBottom: '1rem' }}
+          data-variant={mobileRestVariant}
+          style={{ paddingBottom: mobileRestVariant === 'full' ? '1rem' : undefined }}
         >
           <div className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] p-3">
             <AnimatePresence initial={false}>
-              <RestTimerBar rest={rest} onAddTime={handleAddRestTime} onSkip={handleSkipRest} />
+              <RestTimerBar
+                rest={rest}
+                onAddTime={handleAddRestTime}
+                onSkip={handleSkipRest}
+                variant={mobileRestVariant}
+              />
             </AnimatePresence>
           </div>
         </div>

@@ -73,7 +73,7 @@ export default function ExercisePicker({ onSelect, onClose, userExercises = [] }
         >
           <button
             onClick={onClose}
-            className="mobile-touch-target flex h-11 w-11 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
+            className="mobile-touch-target flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
             style={{ color: 'var(--muted)' }}
             aria-label="Zamknij wybór ćwiczenia"
           >

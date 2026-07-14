@@ -6,11 +6,24 @@ import { openLargeTemplateDraft } from './support/templateDraft'
 async function expectMinHitArea(locator: Locator, label: string) {
   const box = await locator.boundingBox()
   expect(box, `${label} should be visible`).not.toBeNull()
-  expect(Math.round(box!.width), `${label} width`).toBeGreaterThanOrEqual(44)
-  expect(Math.round(box!.height), `${label} height`).toBeGreaterThanOrEqual(44)
+  expect(box!.width, `${label} width`).toBeGreaterThanOrEqual(44)
+  expect(box!.height, `${label} height`).toBeGreaterThanOrEqual(44)
 }
 
 test.describe('Phase 4 mobile ergonomics', () => {
+  test('preserves the 32px desktop picker close control', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'desktop-only geometry contract')
+    await openLargeTemplateDraft(page)
+    await page.getByRole('button', { name: 'Dodaj ćwiczenie' }).first().click()
+
+    const close = page.getByRole('dialog', { name: /Wybierz ćwiczenie/ })
+      .getByRole('button', { name: 'Zamknij wybór ćwiczenia' })
+    const box = await close.boundingBox()
+    expect(box, 'picker close should be visible').not.toBeNull()
+    expect(box!.width).toBe(32)
+    expect(box!.height).toBe(32)
+  })
+
   for (const width of [320, 375, 390]) {
     test(`keeps the save dock visible without horizontal overflow at ${width}px`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')

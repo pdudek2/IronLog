@@ -42,6 +42,17 @@ describe('browser diagnostics classification', () => {
     expect(isBlockingRequestFailure('xhr', 'net::ERR_ABORTED', 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Commit', true)).toBe(true)
     expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', writeChannelUrl, true)).toBe(true)
   })
+
+  it('ignores aborted local Vite source modules only during intentional navigation or teardown', () => {
+    const viteModuleUrl = 'http://localhost:5174/src/components/ReadinessWidget.tsx'
+
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', viteModuleUrl)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', viteModuleUrl, false)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', viteModuleUrl, true)).toBe(false)
+    expect(isBlockingRequestFailure('script', 'net::ERR_FAILED', viteModuleUrl, true)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'http://localhost:5174/assets/app.js', true)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'https://example.com/src/app.ts', true)).toBe(true)
+  })
 })
 
 describe('browser diagnostics controller', () => {

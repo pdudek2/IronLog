@@ -17,10 +17,11 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await dialog.getByRole('button', { name: 'Zostań' }).click()
     await expect(page).toHaveURL(/\/templates\/new/)
     await expect(dialog).toBeHidden()
+    await expect(name).toHaveValue('Upper / Lower 4× zmieniony')
 
     await page.evaluate(() => history.back())
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: 'Opuść bez zapisu' }).click({ noWaitAfter: true })
-    await expect(page).not.toHaveURL(/\/templates\/new/)
+    await expect(page).toHaveURL(/\/templates$/)
   })
 })

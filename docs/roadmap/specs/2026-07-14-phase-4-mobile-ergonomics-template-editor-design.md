@@ -1,6 +1,6 @@
 # IronLog — projekt Fazy 4: ergonomia mobile i edytor planów
 
-**Status:** projekt zatwierdzony; gotowy do szczegółowego planowania
+**Status:** projekt zatwierdzony; szczegółowy plan gotowy do wykonania
 
 **Data:** 2026-07-14
 
@@ -124,6 +124,8 @@ Dock ma cztery stany:
 | error | ponownie aktywne „Zapisz…” | formularz i dirty state pozostają zachowane |
 
 Dock nie przechowuje kopii formularza. Otrzymuje stan z istniejącego `savedSnapshot`, `hasUnsavedChanges` i `saving`.
+
+Draft zaimportowany z AI nie jest jeszcze zapisanym szablonem: jego bazowy snapshot pozostaje pusty, więc od pierwszego renderu ma stan dirty i aktywną akcję „Zapisz szablon”. Stan clean wolno pokazać dopiero dla pustego, niezmienionego formularza create albo danych rzeczywiście wczytanych/zapisanych w Firestore.
 
 Gdy dolna nawigacja jest widoczna, dock znajduje się nad nią z uwzględnieniem safe-area. Gdy input ma fokus i nav się chowa, dock ustawia się przy dolnej krawędzi aktualnego `visualViewport`. Formularz otrzymuje dynamiczny scroll padding równy wysokości docka i wymaganym odstępom, aby aktywne pole mogło zostać przewinięte ponad dock.
 
@@ -269,4 +271,4 @@ Zmiana routera i guard są wdrażane oraz testowane przed komponentami zależnym
 
 ## 14. Następny etap
 
-Po zatwierdzeniu tego dokumentu `superpowers:writing-plans` przygotuje szczegółowy plan implementacji. Plan ma rozbić pracę na małe, testowane kroki oraz wskazać pliki, polecenia weryfikacyjne i granice commitów. Implementacja nie rozpoczyna się w ramach tego dokumentu.
+Szczegółowy plan implementacji znajduje się w `docs/roadmap/plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md`. Implementacja rozpoczyna się dopiero po wyborze trybu wykonania i użyciu `superpowers:subagent-driven-development` albo `superpowers:executing-plans`.

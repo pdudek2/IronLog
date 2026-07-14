@@ -276,7 +276,7 @@ Status `DONE` opisuje zakończoną i zweryfikowaną implementację. Final re-rev
 
 **Cel:** zapewnić wygodną obsługę najczęstszych akcji na telefonie bez zmiany kierunku wizualnego Puls.
 
-**Status:** `DESIGN APPROVED` — projekt jest zapisany w [`specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md`](specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md); następnym krokiem jest szczegółowy plan implementacji.
+**Status:** `PLANNED` — projekt jest zapisany w [`specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md`](specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md), a wykonywalny plan w [`plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md`](plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md).
 
 **Zakres kanoniczny:**
 

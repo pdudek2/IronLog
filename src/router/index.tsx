@@ -1,5 +1,13 @@
 import { lazy, useEffect } from 'react'
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  Navigate,
+  Outlet,
+  Route,
+  RouterProvider,
+  useLocation,
+} from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { LoadingState } from '../components/ui'
 import AppLayout from '../components/AppLayout'
@@ -74,42 +82,42 @@ function RouteScrollReset() {
   return null
 }
 
-export default function AppRouter() {
+function RootRoute() {
   return (
-    <BrowserRouter>
+    <>
       <RouteScrollReset />
-      <Routes>
-        {/* Public (auth) routes — no AppShell */}
-        <Route element={<PublicRouteOutlet />}>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-        </Route>
-
-        {/* Private routes */}
-        <Route element={<PrivateRouteOutlet />}>
-          {/* Onboarding does not live inside the shared AppLayout */}
-          <Route path="/onboarding" element={<OnboardingPage />} />
-
-          {/* Everything else shares a single AppLayout instance. TopNav and
-              BottomNav render once here and stay mounted across route changes. */}
-          <Route element={<AppLayout />}>
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/progress" element={<ProgressPage />} />
-            <Route path="/templates" element={<TemplatesPage />} />
-            <Route path="/templates/new" element={<TemplateEditorPage />} />
-            <Route path="/templates/:id/edit" element={<TemplateEditorPage />} />
-            <Route path="/exercises" element={<ExercisesPage />} />
-            <Route path="/exercises/:source/:id" element={<ExerciseDetailPage />} />
-            <Route path="/chat" element={<ChatPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/workout/new" element={<WorkoutPage />} />
-            <Route path="/workout/:id" element={<WorkoutDetailPage />} />
-          </Route>
-        </Route>
-
-        <Route path="*" element={<NotFoundPage />} />
-      </Routes>
-    </BrowserRouter>
+      <Outlet />
+    </>
   )
+}
+
+const router = createBrowserRouter(createRoutesFromElements(
+  <Route element={<RootRoute />}>
+    <Route element={<PublicRouteOutlet />}>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+    </Route>
+    <Route element={<PrivateRouteOutlet />}>
+      <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route element={<AppLayout />}>
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/history" element={<HistoryPage />} />
+        <Route path="/progress" element={<ProgressPage />} />
+        <Route path="/templates" element={<TemplatesPage />} />
+        <Route path="/templates/new" element={<TemplateEditorPage />} />
+        <Route path="/templates/:id/edit" element={<TemplateEditorPage />} />
+        <Route path="/exercises" element={<ExercisesPage />} />
+        <Route path="/exercises/:source/:id" element={<ExerciseDetailPage />} />
+        <Route path="/chat" element={<ChatPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/workout/new" element={<WorkoutPage />} />
+        <Route path="/workout/:id" element={<WorkoutDetailPage />} />
+      </Route>
+    </Route>
+    <Route path="*" element={<NotFoundPage />} />
+  </Route>,
+))
+
+export default function AppRouter() {
+  return <RouterProvider router={router} />
 }

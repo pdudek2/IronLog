@@ -2,6 +2,7 @@ import { Suspense, useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import BottomNav from './BottomNav'
+import MobileInteractionProvider from './MobileInteractionProvider'
 import TopNav from './TopNav'
 
 export type AppSection =
@@ -61,7 +62,7 @@ export default function AppLayout() {
   }, [location.pathname])
 
   return (
-    <>
+    <MobileInteractionProvider>
       <div className={workoutFocusShell ? 'top-nav-workout-mobile-shell' : undefined}>
         <TopNav current={section} />
       </div>
@@ -75,6 +76,6 @@ export default function AppLayout() {
         </div>
       </main>
       <BottomNav />
-    </>
+    </MobileInteractionProvider>
   )
 }

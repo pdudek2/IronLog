@@ -5,6 +5,7 @@ import { Dumbbell, History, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp
 import type { ReactNode } from 'react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
+import { useMobileInteraction } from './MobileInteractionProvider'
 
 interface NavBtnProps {
   icon: ReactNode
@@ -43,7 +44,7 @@ export default function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
   const [hidden, setHidden] = useState(false)
-  const [inputFocused, setInputFocused] = useState(false)
+  const { inputFocused } = useMobileInteraction()
   const navRef = useRef<HTMLElement>(null)
   const movingFocusFromNavRef = useRef(false)
   const lastScrollYRef = useRef(0)
@@ -99,30 +100,11 @@ export default function BottomNav() {
         lastScrollYRef.current = window.scrollY
         if (!movingFocusFromNavRef.current) setHidden(false)
       }
-      const tag = target.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable) {
-        setInputFocused(true)
-      }
-    }
-
-    const onFocusOut = () => {
-      window.setTimeout(() => {
-        const active = document.activeElement
-        if (!(active instanceof HTMLElement)) {
-          setInputFocused(false)
-          return
-        }
-        const tag = active.tagName
-        const stillEditing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || active.isContentEditable
-        setInputFocused(stillEditing)
-      }, 0)
     }
 
     window.addEventListener('focusin', onFocusIn)
-    window.addEventListener('focusout', onFocusOut)
     return () => {
       window.removeEventListener('focusin', onFocusIn)
-      window.removeEventListener('focusout', onFocusOut)
     }
   }, [])
 

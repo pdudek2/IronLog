@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { useAuthStore } from '../store/authStore'
 import type { ExerciseSource } from '../store/workoutStore'
 import { getUserExercises } from '../lib/userExercisesService'
@@ -97,10 +98,9 @@ export default function TemplateEditorPage() {
   const [pickerDayIndex, setPickerDayIndex] = useState<number | null>(null)
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
   const [savedSnapshot, setSavedSnapshot] = useState(() => serializeDraftState(
-    initialDraft?.name ?? '',
-    initialDraft?.days.length ? initialDraft.days : defaultSerializableDays(),
+    '',
+    defaultSerializableDays(),
   ))
-  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState(false)
 
   useEffect(() => {
     if (!user) return
@@ -164,25 +164,9 @@ export default function TemplateEditorPage() {
   )
   const currentSnapshot = useMemo(() => serializeDraftState(name, days), [name, days])
   const hasUnsavedChanges = !loading && currentSnapshot !== savedSnapshot
-
-  useEffect(() => {
-    if (!hasUnsavedChanges || saving) return
-
-    function handleBeforeUnload(event: BeforeUnloadEvent) {
-      event.preventDefault()
-      event.returnValue = ''
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [hasUnsavedChanges, saving])
+  const leaveGuard = useUnsavedChangesGuard(hasUnsavedChanges || saving)
 
   function handleBackToTemplates() {
-    if (hasUnsavedChanges && !saving) {
-      setConfirmLeaveOpen(true)
-      return
-    }
-
     navigate('/templates')
   }
 
@@ -289,6 +273,8 @@ export default function TemplateEditorPage() {
         toast.success('Szablon zapisany')
       }
       setSavedSnapshot(serializeDraftState(payload.name, payload.days))
+      leaveGuard.reset()
+      leaveGuard.allowNextNavigation()
       navigate('/templates')
     } catch {
       toast.error('Nie udało się zapisać szablonu.')
@@ -558,18 +544,18 @@ export default function TemplateEditorPage() {
         />
       )}
 
-      {confirmLeaveOpen && (
+      {leaveGuard.blocked && (
         <ConfirmDialog
-          title="Opuścić edytor?"
-          message="Masz niezapisane zmiany w szablonie. Jeśli wyjdziesz teraz, stracisz bieżące poprawki."
-          confirmLabel="Opuść bez zapisu"
+          title={saving ? 'Zapis w toku' : 'Opuścić edytor?'}
+          message={saving
+            ? 'Poczekaj na wynik zapisu. Po zakończeniu przejdziesz dalej albo będzie można ponowić zapis.'
+            : 'Masz niezapisane zmiany w szablonie. Jeśli wyjdziesz teraz, stracisz bieżące poprawki.'}
+          confirmLabel={saving ? 'Zapisuję...' : 'Opuść bez zapisu'}
           cancelLabel="Zostań"
-          danger
-          onConfirm={() => {
-            setConfirmLeaveOpen(false)
-            navigate('/templates')
-          }}
-          onCancel={() => setConfirmLeaveOpen(false)}
+          danger={!saving}
+          confirmDisabled={saving}
+          onConfirm={leaveGuard.proceed}
+          onCancel={leaveGuard.reset}
         />
       )}
     </>

@@ -8,6 +8,7 @@ interface ConfirmDialogProps {
   confirmLabel?: string
   cancelLabel?: string
   danger?: boolean
+  confirmDisabled?: boolean
   onConfirm: () => void
   onCancel: () => void
 }
@@ -18,6 +19,7 @@ export default function ConfirmDialog({
   confirmLabel = 'Tak',
   cancelLabel = 'Anuluj',
   danger = false,
+  confirmDisabled = false,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -92,13 +94,15 @@ export default function ConfirmDialog({
               {cancelLabel}
             </button>
             <motion.button
+              type="button"
               onClick={onConfirm}
-              className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold"
+              disabled={confirmDisabled}
+              className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55"
               style={{
                 background: danger ? 'var(--danger)' : 'var(--primary-gradient)',
                 color: danger ? '#fff' : 'var(--accent-foreground)',
               }}
-              whileTap={{ scale: 0.95 }}
+              whileTap={confirmDisabled ? undefined : { scale: 0.95 }}
             >
               {confirmLabel}
             </motion.button>

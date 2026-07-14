@@ -92,4 +92,23 @@ describe('shared accessibility contracts', () => {
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(trigger).toHaveFocus()
   })
+
+  it('keeps a disabled confirm action non-interactive', () => {
+    const onConfirm = vi.fn()
+    render(
+      <ConfirmDialog
+        title="Zapis w toku"
+        message="Poczekaj na wynik zapisu."
+        confirmLabel="Zapisuję..."
+        confirmDisabled
+        onConfirm={onConfirm}
+        onCancel={vi.fn()}
+      />,
+    )
+
+    const confirm = screen.getByRole('button', { name: 'Zapisuję...' })
+    expect(confirm).toBeDisabled()
+    fireEvent.click(confirm)
+    expect(onConfirm).not.toHaveBeenCalled()
+  })
 })

@@ -278,6 +278,8 @@ Status `DONE` opisuje zakończoną i zweryfikowaną implementację. Final re-rev
 
 **Status: DONE.** Zakres `MOBILE-01–06` wdrożono i zweryfikowano unitami, lintem, buildem oraz izolowanym gate'em Playwright (53 passed, 22 oczekiwane skipy). Headed review potwierdził brak overflow przy 320/375/390 px i tekście 150%, stały dock nad polem przy wysokości 500 px, czytelny siedmioelementowy `BottomNav` oraz przejście rest timera `full → compact → full` bez zasłaniania inputu. Projekt i dowody pozostają w [`specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md`](specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md) oraz [`plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md`](plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md).
 
+Post-integration closeout zakończono po finalnym re-review bez znalezisk Critical, Important ani Minor. Feature branch został zmergowany lokalnie do `puls-rebrand` na `96155ef` i usunięty razem z worktree; push, deploy i czynności `RELEASE-08` nie zostały wykonane. Następnym zależnym etapem pozostaje Faza 5, a niezależna Faza 2B nadal ma status `READY`.
+
 **Zakres kanoniczny:**
 
 - **MOBILE-01:** podnieść aktywne obszary dolnej nawigacji, filtrów i ikonowych akcji do uzgodnionego minimum dotykowego; cel projektowy: co najmniej 44×44 px dla głównych akcji.

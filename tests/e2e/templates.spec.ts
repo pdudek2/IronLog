@@ -15,6 +15,7 @@ test.describe('Templates CRUD', () => {
 
     await page.goto('/templates/new')
     await expectAppReady(page, '/templates/new')
+    await page.evaluate(() => document.fonts.ready)
     await page.getByPlaceholder('np. Upper / Lower 4 dni').fill(TEST_TEMPLATE_NAME)
     const addExercise = page.getByRole('button', { name: 'Dodaj ćwiczenie' }).first()
     await addExercise.scrollIntoViewIfNeeded()

@@ -7320,6 +7320,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     min-height: 2.75rem;
   }
 
+  .progress-range-button {
+    min-height: 2.8125rem;
+  }
+
   .planner-icon-action {
     width: 2.75rem;
     height: 2.75rem;

@@ -1,4 +1,4 @@
-import { lazy, useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import {
   createBrowserRouter,
   createRoutesFromElements,
@@ -18,6 +18,7 @@ import {
   loadExercisesPage,
   loadHistoryPage,
   loadLoginPage,
+  loadLogoutPage,
   loadNotFoundPage,
   loadOnboardingPage,
   loadProfilePage,
@@ -30,6 +31,7 @@ import {
 } from './pageLoaders'
 
 const LoginPage = lazy(loadLoginPage)
+const LogoutPage = lazy(loadLogoutPage)
 const RegisterPage = lazy(loadRegisterPage)
 const DashboardPage = lazy(loadDashboardPage)
 const OnboardingPage = lazy(loadOnboardingPage)
@@ -44,6 +46,14 @@ const TemplateEditorPage = lazy(loadTemplateEditorPage)
 const ProgressPage = lazy(loadProgressPage)
 const ChatPage = lazy(loadChatPage)
 const NotFoundPage = lazy(loadNotFoundPage)
+
+function LogoutRoute() {
+  return (
+    <Suspense fallback={<LoadingState message="Wylogowywanie..." />}>
+      <LogoutPage />
+    </Suspense>
+  )
+}
 
 function PrivateRouteOutlet() {
   const { user, loading } = useAuthStore()
@@ -99,6 +109,7 @@ const router = createBrowserRouter(createRoutesFromElements(
     </Route>
     <Route element={<PrivateRouteOutlet />}>
       <Route path="/onboarding" element={<OnboardingPage />} />
+      <Route path="/logout" element={<LogoutRoute />} />
       <Route element={<AppLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/history" element={<HistoryPage />} />

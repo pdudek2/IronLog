@@ -1,12 +1,15 @@
 import { createElement, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import { createMemoryRouter, RouterProvider } from 'react-router-dom'
+import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TemplateEditorPage from '../TemplateEditorPage'
+import TopNav from '../../components/TopNav'
 
 const mocks = vi.hoisted(() => ({
   createTemplate: vi.fn(),
   getUserExercises: vi.fn(),
+  logoutUser: vi.fn(),
+  preloadRouteByPath: vi.fn(),
 }))
 
 vi.mock('../../store/authStore', () => ({
@@ -14,6 +17,12 @@ vi.mock('../../store/authStore', () => ({
 }))
 vi.mock('../../lib/userExercisesService', () => ({
   getUserExercises: mocks.getUserExercises,
+}))
+vi.mock('../../lib/auth', () => ({
+  logoutUser: mocks.logoutUser,
+}))
+vi.mock('../../router/pageLoaders', () => ({
+  preloadRouteByPath: mocks.preloadRouteByPath,
 }))
 vi.mock('../../lib/templateDraftStorage', () => ({
   readTemplateDraft: () => ({
@@ -58,13 +67,29 @@ vi.mock('framer-motion', () => ({
   }),
 }))
 
+function EditorShell() {
+  return (
+    <>
+      <TopNav />
+      <Outlet />
+    </>
+  )
+}
+
 function renderEditor() {
   const router = createMemoryRouter([
-    { path: '/templates/new', element: <TemplateEditorPage /> },
-    { path: '/templates', element: <p>Lista planów</p> },
+    {
+      element: <EditorShell />,
+      children: [
+        { path: '/templates/new', element: <TemplateEditorPage /> },
+        { path: '/templates', element: <p>Lista planów</p> },
+        { path: '/logout', element: <p>Trasa wylogowania</p> },
+      ],
+    },
   ], { initialEntries: ['/templates/new?draft=ai'] })
 
   render(<RouterProvider router={router} />)
+  return router
 }
 
 describe('TemplateEditorPage accessibility', () => {
@@ -73,6 +98,10 @@ describe('TemplateEditorPage accessibility', () => {
     mocks.createTemplate.mockResolvedValue(undefined)
     mocks.getUserExercises.mockReset()
     mocks.getUserExercises.mockResolvedValue([])
+    mocks.logoutUser.mockReset()
+    mocks.logoutUser.mockResolvedValue(undefined)
+    mocks.preloadRouteByPath.mockReset()
+    mocks.preloadRouteByPath.mockResolvedValue(undefined)
   })
 
   it('labels the plan and day names and gives delete action full context', async () => {
@@ -94,6 +123,21 @@ describe('TemplateEditorPage accessibility', () => {
     expect(screen.getByRole('button', { name: 'Opuść bez zapisu' })).toBeEnabled()
   })
 
+  it('keeps a dirty draft when logout is cancelled', async () => {
+    const router = renderEditor()
+    const name = await screen.findByRole('textbox', { name: 'Nazwa' })
+    fireEvent.change(name, { target: { value: 'Upper / Lower zmieniony' } })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wyloguj' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Opuścić edytor?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Zostań' }))
+
+    expect(router.state.location.pathname).toBe('/templates/new')
+    expect(name).toHaveValue('Upper / Lower zmieniony')
+    expect(mocks.logoutUser).not.toHaveBeenCalled()
+  })
+
   it('does not allow leaving while template save is pending', async () => {
     let resolveSave!: () => void
     mocks.createTemplate.mockReturnValue(new Promise((resolve) => { resolveSave = () => resolve(undefined) }))
@@ -111,6 +155,35 @@ describe('TemplateEditorPage accessibility', () => {
 
     resolveSave()
     expect(await screen.findByText('Lista planów')).toBeInTheDocument()
+  })
+
+  it('keeps logout blocked during save and lets save success win', async () => {
+    let resolveSave!: () => void
+    let settleLogoutPreload!: () => void
+    const logoutPreload = new Promise<void>((resolve) => { settleLogoutPreload = resolve })
+    mocks.createTemplate.mockReturnValue(new Promise((resolve) => { resolveSave = () => resolve(undefined) }))
+    mocks.preloadRouteByPath.mockImplementation((path: string) => (
+      path === '/logout' ? logoutPreload : Promise.resolve()
+    ))
+    const router = renderEditor()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Zapisz szablon' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Wyloguj' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Zapis w toku' })
+    expect(within(dialog).getByRole('button', { name: 'Zapisuję...' })).toBeDisabled()
+    expect(mocks.logoutUser).not.toHaveBeenCalled()
+
+    resolveSave()
+    expect(await screen.findByText('Lista planów')).toBeInTheDocument()
+    await waitFor(() => expect(router.state.location.pathname).toBe('/templates'))
+
+    settleLogoutPreload()
+    await Promise.resolve()
+    await Promise.resolve()
+
+    expect(router.state.location.pathname).toBe('/templates')
+    expect(mocks.logoutUser).not.toHaveBeenCalled()
   })
 
   it('keeps the draft dirty and retryable after a failed save', async () => {

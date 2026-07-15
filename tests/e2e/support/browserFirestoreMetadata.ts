@@ -5,11 +5,13 @@ export interface CachedActiveSessionWrite {
   exists: boolean
   hasPendingWrites: boolean
   sessionId: string | null
+  exerciseNames: string[]
   reps: string | null
 }
 
 export interface LocalActiveSessionRecovery {
   sessionId: string | null
+  exerciseNames: string[]
   reps: string | null
 }
 
@@ -17,7 +19,7 @@ export function readLocalActiveSessionRecovery(): LocalActiveSessionRecovery {
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Authenticated Firebase user is required to inspect active-session recovery.')
   const raw = window.localStorage.getItem(`ironlog-active-session-backup:${uid}`)
-  if (!raw) return { sessionId: null, reps: null }
+  if (!raw) return { sessionId: null, exerciseNames: [], reps: null }
   const parsed = JSON.parse(raw) as { session?: { sessionId?: unknown; exercises?: unknown } }
   const exercises = Array.isArray(parsed.session?.exercises) ? parsed.session.exercises : []
   const firstExercise = exercises[0] as { sets?: unknown } | undefined
@@ -25,6 +27,10 @@ export function readLocalActiveSessionRecovery(): LocalActiveSessionRecovery {
   const firstSet = sets[0] as { reps?: unknown } | undefined
   return {
     sessionId: typeof parsed.session?.sessionId === 'string' ? parsed.session.sessionId : null,
+    exerciseNames: exercises.flatMap((exercise) => {
+      const name = (exercise as { name?: unknown }).name
+      return typeof name === 'string' ? [name] : []
+    }),
     reps: typeof firstSet?.reps === 'string' ? firstSet.reps : null,
   }
 }
@@ -44,6 +50,10 @@ export async function readCachedActiveSessionWrite(): Promise<CachedActiveSessio
     exists: snapshot.exists(),
     hasPendingWrites: snapshot.metadata.hasPendingWrites,
     sessionId: typeof data?.sessionId === 'string' ? data.sessionId : null,
+    exerciseNames: exercises.flatMap((exercise) => {
+      const name = (exercise as { name?: unknown }).name
+      return typeof name === 'string' ? [name] : []
+    }),
     reps: typeof firstSet?.reps === 'string' ? firstSet.reps : null,
   }
 }

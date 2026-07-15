@@ -1,4 +1,5 @@
 export const loadLoginPage = () => import('../pages/LoginPage')
+export const loadLogoutPage = () => import('../pages/LogoutPage')
 export const loadRegisterPage = () => import('../pages/RegisterPage')
 export const loadDashboardPage = () => import('../pages/DashboardPage')
 export const loadOnboardingPage = () => import('../pages/OnboardingPage')
@@ -15,6 +16,7 @@ export const loadChatPage = () => import('../pages/ChatPage')
 export const loadNotFoundPage = () => import('../pages/NotFoundPage')
 
 export function preloadRouteByPath(path: string) {
+  if (path.startsWith('/logout')) return loadLogoutPage().then(() => undefined)
   if (path.startsWith('/dashboard')) return loadDashboardPage().then(() => undefined)
   if (path.startsWith('/history')) return loadHistoryPage().then(() => undefined)
   if (path.startsWith('/progress')) return loadProgressPage().then(() => undefined)

@@ -1,7 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
-import { logoutUser } from '../lib/auth'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { useDashboardStore } from '../store/dashboardStore'
@@ -124,7 +123,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           <button
             type="button"
             className="top-nav-icon-btn inline-flex"
-            onClick={logoutUser}
+            onClick={() => go('/logout')}
             aria-label="Wyloguj"
             title="Wyloguj"
           >

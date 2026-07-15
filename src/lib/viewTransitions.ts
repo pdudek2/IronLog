@@ -2,7 +2,7 @@ import type { NavigateFunction, NavigateOptions, To } from 'react-router-dom'
 import { preloadRouteByPath } from '../router/pageLoaders'
 
 /**
- * Navigate after ensuring the target route's JS chunk is available.
+ * Navigate immediately so router blockers observe the user's transition.
  *
  * We deliberately don't use `document.startViewTransition` here — on mobile
  * Chromium emulation it adds 150–300ms of snapshot/animate overhead for a
@@ -26,7 +26,6 @@ export function navigateWithAppTransition(
     return
   }
 
-  void preloadRouteByPath(targetPath).finally(() => {
-    navigate(to, options)
-  })
+  void preloadRouteByPath(targetPath).catch(() => undefined)
+  navigate(to, options)
 }

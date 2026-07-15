@@ -150,10 +150,25 @@ async function readCachedActiveSessionWrite(page: Page) {
         exists: boolean
         hasPendingWrites: boolean
         sessionId: string | null
+        exerciseNames: string[]
         reps: string | null
       }>
     }
     return diagnostics.readCachedActiveSessionWrite()
+  })
+}
+
+async function readLocalActiveSessionRecovery(page: Page) {
+  return page.evaluate(async () => {
+    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
+    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
+      readLocalActiveSessionRecovery(): {
+        sessionId: string | null
+        exerciseNames: string[]
+        reps: string | null
+      }
+    }
+    return diagnostics.readLocalActiveSessionRecovery()
   })
 }
 
@@ -252,8 +267,25 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.getByRole('navigation', { name: 'Nawigacja dolna' })).toBeVisible()
 
     await addExercise(page, 'Squat')
+    const expectedSession = await readLocalActiveSessionRecovery(page)
+    expect(expectedSession.sessionId, 'Active session should expose its stable session ID').not.toBeNull()
+    expect(expectedSession.exerciseNames).toEqual(['Squat'])
+    expect(expectedSession.reps).toBe('')
+
     await page.getByRole('button', { name: 'Plany', exact: true }).click()
     await expect(page).toHaveURL('/templates')
+
+    await expect.poll(
+      () => readCachedActiveSessionWrite(page),
+      {
+        timeout: 20_000,
+        message: 'Ordinary app navigation should flush the active-session snapshot',
+      },
+    ).toEqual({
+      exists: true,
+      hasPendingWrites: false,
+      ...expectedSession,
+    })
 
     await page.goto('/workout/new')
     await expect.poll(
@@ -417,6 +449,7 @@ test.describe('Active workout shell reduction', () => {
       exists: true,
       hasPendingWrites: false,
       sessionId,
+      exerciseNames: ['Squat'],
       reps: '8',
     })
   })

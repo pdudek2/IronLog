@@ -50,8 +50,8 @@ async function visibleCount(locator: Locator): Promise<number> {
 async function expectMinHitArea(locator: Locator, label: string) {
   const box = await locator.boundingBox()
   expect(box, `${label} should be visible`).not.toBeNull()
-  expect(Math.round(box!.width), `${label} width`).toBeGreaterThanOrEqual(44)
-  expect(Math.round(box!.height), `${label} height`).toBeGreaterThanOrEqual(44)
+  expect(box!.width, `${label} width`).toBeGreaterThanOrEqual(44)
+  expect(box!.height, `${label} height`).toBeGreaterThanOrEqual(44)
 }
 
 async function expectFullyInViewport(page: Page, locator: Locator, label: string) {
@@ -279,8 +279,9 @@ test.describe('Active workout shell reduction', () => {
 
   })
 
-  test('mobile workout shows steppers only for the focused incomplete set and keeps controls tappable', async ({ page }, testInfo) => {
+  test('mobile workout shows steppers only for the focused incomplete set and keeps controls tappable', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSession(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -335,20 +336,24 @@ test.describe('Active workout shell reduction', () => {
     expect(actionBarBox, 'Rest timer should have a bounding box').not.toBeNull()
     expect(bottomNavigationBox, 'Bottom navigation should have a bounding box').not.toBeNull()
     expect(
-      Math.round(actionBarBox!.y + actionBarBox!.height),
+      actionBarBox!.y + actionBarBox!.height,
       'Rest timer should end above the bottom navigation',
-    ).toBeLessThanOrEqual(Math.round(bottomNavigationBox!.y))
-
-    await discardActiveSession(page)
+    ).toBeLessThanOrEqual(bottomNavigationBox!.y)
 
   })
 
-  test('mobile compact rest timer scrolls only the focused workout set input', async ({ page }, testInfo) => {
+  test('mobile compact rest timer scrolls only the focused workout set input', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSession(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
     await addExercise(page, 'Squat')
+
+    const initialWrite = await readCachedActiveSessionWrite(page)
+    expect(initialWrite.exists, 'Active session should be present in the Firestore cache').toBe(true)
+    expect(initialWrite.sessionId, 'Active session should expose its stable session ID').not.toBeNull()
+    const sessionId = initialWrite.sessionId
 
     const firstSetRow = page.locator('.workout-set-row').first()
     const weightInput = firstSetRow.locator('input').nth(0)
@@ -364,10 +369,23 @@ test.describe('Active workout shell reduction', () => {
     await weightInput.focus()
     await page.setViewportSize({ width: 390, height: 500 })
     await expect(actionBar).toHaveAttribute('data-variant', 'compact')
+    await expect(skipRestButton).toBeVisible()
+    await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toHaveCount(0)
     await expect.poll(async () => (await readScrollIntoViewCalls(page)).length).toBeGreaterThan(0)
-    expect(await readScrollIntoViewCalls(page)).toEqual(
+    const focusedInputScrollCalls = await readScrollIntoViewCalls(page)
+    expect(focusedInputScrollCalls).toEqual(
       expect.arrayContaining([{ tagName: 'INPUT', insideWorkoutSetRow: true }]),
     )
+    expect(focusedInputScrollCalls.filter(({ tagName }) => tagName === 'BODY' || tagName === 'BUTTON')).toEqual([])
+
+    const compactActionBarBox = await actionBar.boundingBox()
+    const focusedInputBox = await weightInput.boundingBox()
+    expect(compactActionBarBox, 'Compact rest timer should have a bounding box').not.toBeNull()
+    expect(focusedInputBox, 'Focused workout input should have a bounding box').not.toBeNull()
+    expect(focusedInputBox!.y).toBeGreaterThanOrEqual(
+      compactActionBarBox!.y + compactActionBarBox!.height,
+    )
+    expect(focusedInputBox!.y + focusedInputBox!.height).toBeLessThanOrEqual(500)
 
     await weightInput.blur()
     await expect(page.locator('html')).not.toHaveAttribute('data-mobile-input-focused', '')
@@ -389,24 +407,18 @@ test.describe('Active workout shell reduction', () => {
     await expect(actionBar).toHaveAttribute('data-variant', 'full')
     await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toBeVisible()
 
-    const sessionId = (await readCachedActiveSessionWrite(page)).sessionId
-    expect(sessionId, 'Active session should be present in the Firestore cache').not.toBeNull()
-    await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+    await skipRestButton.click()
+    await expect(actionBar).toHaveCount(0)
+
     await expect.poll(
       () => readCachedActiveSessionWrite(page),
       { timeout: 20_000 },
-    ).toMatchObject({
+    ).toEqual({
       exists: true,
       hasPendingWrites: false,
       sessionId,
       reps: '8',
     })
-
-    await page.getByRole('button', { name: 'Anuluj', exact: true }).first().click()
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible()
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
-    await expectAppReady(page, '/dashboard')
   })
 
   test('desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract', async ({ page, cleanup }, testInfo) => {

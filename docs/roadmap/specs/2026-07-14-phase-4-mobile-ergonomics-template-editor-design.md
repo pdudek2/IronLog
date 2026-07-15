@@ -34,11 +34,13 @@ Faza nie wynika z audytu `docs/audits/2026-07-14-senior-design-review.md`. Ten a
 - `MOBILE-03–05` były hipotezami `FOLLOWUP-UI-01–03` zapisanymi podczas wcześniejszej syntezy roadmapy;
 - `MOBILE-06` jest bramką walidacji długich widoków na telefonie.
 
-## 3. Potwierdzony stan obecny
+## 3. Stan bazowy potwierdzony przed wdrożeniem
 
 Walidację wykonano na localhost przez Playwright na testowym koncie. Duży plan został dostarczony przez jednorazowy draft w `sessionStorage`; nie tworzono szablonu w Firestore. Testową aktywną sesję treningową utworzoną do sprawdzenia rest timera anulowano po reprodukcji.
 
-| ID | Dowód runtime | Wynik |
+Poniższa tabela dokumentuje punkt wyjścia sprzed implementacji. Wszystkie opisane problemy zostały następnie usunięte i objęte bramkami regresyjnymi Fazy 4.
+
+| ID | Dowód runtime przed wdrożeniem | Wynik bazowy |
 |---|---|---|
 | `MOBILE-01` | close pickera ma 32×32 px; usuwanie ćwiczenia około 36,8×36,8 px; część akcji 39–42 px; elementy dolnej nawigacji przy 320 px mają miejscami tylko 22–45 px szerokości | `confirmed` |
 | `MOBILE-02` | plan `Upper / Lower 4×` ma 9352–9423 px wysokości; przycisk zapisu zaczyna się około 9050–9121 px od góry | `confirmed` |

@@ -57,10 +57,6 @@ export const test = base.extend<IronLogFixtures>({
 
     await use(entries)
 
-    await diagnosticsController.runInIntentionalTeardown(
-      () => new Promise<void>((resolve) => setTimeout(resolve, 0)),
-    )
-
     if (entries.length > 0) {
       await testInfo.attach('browser-diagnostics.json', {
         body: Buffer.from(JSON.stringify(entries, null, 2)),
@@ -94,7 +90,7 @@ export const test = base.extend<IronLogFixtures>({
     const closeFailures: string[] = []
     for (const context of contexts.reverse()) {
       try {
-        await diagnosticsController.runInIntentionalTeardown(() => context.close())
+        await diagnosticsController.runInIntentionalTeardown(context, () => context.close())
       } catch (error) {
         closeFailures.push(error instanceof Error ? error.message : String(error))
       } finally {

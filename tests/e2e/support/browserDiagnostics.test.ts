@@ -8,7 +8,7 @@ import {
   isExpectedWorkoutLifecycleTombstoneDiagnostic,
 } from './workoutLifecycleDiagnostics'
 import { isExpectedFirestoreOfflineDiagnostic } from './offlineDiagnostics'
-import type { BrowserContext, ConsoleMessage, Page } from '@playwright/test'
+import type { BrowserContext, ConsoleMessage, Page, Request } from '@playwright/test'
 
 describe('browser diagnostics classification', () => {
   it('blocks application console errors but ignores Vite and extension-origin noise', () => {
@@ -56,6 +56,65 @@ describe('browser diagnostics classification', () => {
 })
 
 describe('browser diagnostics controller', () => {
+  it('does not apply an auxiliary context teardown scope to the default page', async () => {
+    const defaultContext = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const auxiliaryContext = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const defaultPage = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    const auxiliaryPage = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    const defaultFrame = {}
+    const auxiliaryFrame = {}
+
+    defaultContext.pages = () => [defaultPage as unknown as Page]
+    auxiliaryContext.pages = () => [auxiliaryPage as unknown as Page]
+    defaultPage.url = () => 'http://localhost:5174/dashboard'
+    auxiliaryPage.url = () => 'http://localhost:5174/templates'
+    defaultPage.mainFrame = () => defaultFrame as ReturnType<Page['mainFrame']>
+    auxiliaryPage.mainFrame = () => auxiliaryFrame as ReturnType<Page['mainFrame']>
+
+    const failedViteRequest = {
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+      frame: () => defaultFrame,
+      isNavigationRequest: () => false,
+      method: () => 'GET',
+      resourceType: () => 'script',
+      url: () => 'http://localhost:5174/src/pages/DashboardPage.tsx',
+    } as Request
+    const auxiliaryFailedViteRequest = {
+      ...failedViteRequest,
+      frame: () => auxiliaryFrame,
+      url: () => 'http://localhost:5174/src/pages/TemplatesPage.tsx',
+    } as Request
+
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(defaultContext as unknown as BrowserContext)
+    controller.observeContext(auxiliaryContext as unknown as BrowserContext)
+
+    await controller.runInIntentionalTeardown(
+      auxiliaryContext as unknown as BrowserContext,
+      async () => {
+        defaultPage.emit('requestfailed', failedViteRequest)
+        auxiliaryPage.emit('requestfailed', auxiliaryFailedViteRequest)
+      },
+    )
+
+    expect(controller.entries).toEqual([
+      {
+        kind: 'requestfailed',
+        message: 'net::ERR_ABORTED',
+        method: 'GET',
+        url: 'http://localhost:5174/src/pages/DashboardPage.tsx',
+        blocking: true,
+      },
+      {
+        kind: 'requestfailed',
+        message: 'net::ERR_ABORTED',
+        method: 'GET',
+        url: 'http://localhost:5174/src/pages/TemplatesPage.tsx',
+        blocking: false,
+      },
+    ])
+  })
+
   it('observes future context pages and detaches every listener', () => {
     const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
     context.pages = () => []

@@ -15,7 +15,7 @@ export interface BrowserDiagnosticsController {
   observeContext(context: BrowserContext): void
   detachContext(context: BrowserContext): void
   detachAll(): void
-  runInIntentionalTeardown<T>(action: () => Promise<T>): Promise<T>
+  runInIntentionalTeardown<T>(context: BrowserContext, action: () => Promise<T>): Promise<T>
   runExpectingDiagnostics<T>(
     name: string,
     predicate: (entry: BrowserDiagnostic) => boolean,
@@ -31,7 +31,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
     predicate: (entry: BrowserDiagnostic) => boolean
     matchCount: number
   }> = []
-  let teardownDepth = 0
+  const teardownDepthByContext = new Map<BrowserContext, number>()
 
   const record = (entry: BrowserDiagnostic) => {
     const expectation = activeExpectations.findLast(({ predicate }) => predicate(entry))
@@ -98,7 +98,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
             request.resourceType(),
             errorText,
             request.url(),
-            documentNavigationInProgress || teardownDepth > 0,
+            documentNavigationInProgress || (teardownDepthByContext.get(context) ?? 0) > 0,
           ),
         })
       }
@@ -144,12 +144,14 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       contextCleanups.forEach((removeListeners) => removeListeners())
       contextCleanups.clear()
     },
-    async runInIntentionalTeardown<T>(action: () => Promise<T>): Promise<T> {
-      teardownDepth += 1
+    async runInIntentionalTeardown<T>(context, action): Promise<T> {
+      teardownDepthByContext.set(context, (teardownDepthByContext.get(context) ?? 0) + 1)
       try {
         return await action()
       } finally {
-        teardownDepth -= 1
+        const remainingDepth = (teardownDepthByContext.get(context) ?? 1) - 1
+        if (remainingDepth > 0) teardownDepthByContext.set(context, remainingDepth)
+        else teardownDepthByContext.delete(context)
       }
     },
     async runExpectingDiagnostics<T>(name, predicate, action): Promise<T> {

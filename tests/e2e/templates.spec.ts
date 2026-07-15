@@ -20,6 +20,7 @@ test.describe('Templates CRUD', () => {
     await addExercise.scrollIntoViewIfNeeded()
     await expect(addExercise).toBeVisible()
     await expect(addExercise).toBeEnabled()
+    await addExercise.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }))
     await addExercise.click()
 
     const picker = page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })

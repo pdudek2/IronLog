@@ -142,6 +142,21 @@ async function restoreVisualViewportHeight(page: Page): Promise<void> {
   })
 }
 
+async function readCachedActiveSessionWrite(page: Page) {
+  return page.evaluate(async () => {
+    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
+    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
+      readCachedActiveSessionWrite(): Promise<{
+        exists: boolean
+        hasPendingWrites: boolean
+        sessionId: string | null
+        reps: string | null
+      }>
+    }
+    return diagnostics.readCachedActiveSessionWrite()
+  })
+}
+
 async function discardSessionIfPresent(page: Page): Promise<void> {
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new', 25_000)
@@ -373,6 +388,19 @@ test.describe('Active workout shell reduction', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await expect(actionBar).toHaveAttribute('data-variant', 'full')
     await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toBeVisible()
+
+    const sessionId = (await readCachedActiveSessionWrite(page)).sessionId
+    expect(sessionId, 'Active session should be present in the Firestore cache').not.toBeNull()
+    await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+    await expect.poll(
+      () => readCachedActiveSessionWrite(page),
+      { timeout: 20_000 },
+    ).toMatchObject({
+      exists: true,
+      hasPendingWrites: false,
+      sessionId,
+      reps: '8',
+    })
 
     await page.getByRole('button', { name: 'Anuluj', exact: true }).first().click()
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })

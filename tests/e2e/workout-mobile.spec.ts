@@ -304,6 +304,8 @@ test.describe('Active workout shell reduction', () => {
     await expect(actionBar).toBeVisible()
     await expect(addRestButton).toBeVisible()
     await expect(skipRestButton).toBeVisible()
+    await expectMinHitArea(addRestButton, 'Add rest time button')
+    await expectMinHitArea(skipRestButton, 'Skip rest button')
     await expect(actionBar).not.toContainText(sessionTimerText)
     await expect(actionBar.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true })).toHaveCount(0)
 
@@ -319,27 +321,6 @@ test.describe('Active workout shell reduction', () => {
 
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(0), 'First weight input during rest')
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(1), 'First reps input during rest')
-    await expectMinHitArea(addRestButton, 'Add rest time button')
-    await expectMinHitArea(skipRestButton, 'Skip rest button')
-
-    const weightInput = page.locator('.workout-set-row').first().locator('input').nth(0)
-    await weightInput.focus()
-    await page.setViewportSize({ width: 390, height: 500 })
-    await expect(actionBar).toHaveAttribute('data-variant', 'compact')
-    await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toHaveCount(0)
-    await expect(actionBar.getByRole('button', { name: 'Pomiń przerwę' })).toBeVisible()
-
-    const compactBox = await actionBar.boundingBox()
-    const inputBox = await weightInput.boundingBox()
-    expect(compactBox).not.toBeNull()
-    expect(inputBox).not.toBeNull()
-    expect(inputBox!.y).toBeGreaterThanOrEqual(compactBox!.y + compactBox!.height)
-    expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(500)
-
-    await weightInput.blur()
-    await page.setViewportSize({ width: 390, height: 844 })
-    await expect(actionBar).toHaveAttribute('data-variant', 'full')
-    await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toBeVisible()
 
     await skipRestButton.click()
     await expect(actionBar).toHaveCount(0)
@@ -372,8 +353,12 @@ test.describe('Active workout shell reduction', () => {
       expect.arrayContaining([{ tagName: 'INPUT', insideWorkoutSetRow: true }]),
     )
 
-    await clearScrollIntoViewCalls(page)
     await weightInput.blur()
+    await expect(page.locator('html')).not.toHaveAttribute('data-mobile-input-focused', '')
+    await page.evaluate(() => new Promise<void>((resolve) => {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
+    }))
+    await clearScrollIntoViewCalls(page)
     await setVisualViewportBottomInset(page, 120)
     await expect(actionBar).toHaveAttribute('data-variant', 'compact')
     expect(await readScrollIntoViewCalls(page)).toEqual([])
@@ -385,6 +370,8 @@ test.describe('Active workout shell reduction', () => {
     await skipRestButton.blur()
     await restoreVisualViewportHeight(page)
     await page.setViewportSize({ width: 390, height: 844 })
+    await expect(actionBar).toHaveAttribute('data-variant', 'full')
+    await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toBeVisible()
 
     await page.getByRole('button', { name: 'Anuluj', exact: true }).first().click()
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })

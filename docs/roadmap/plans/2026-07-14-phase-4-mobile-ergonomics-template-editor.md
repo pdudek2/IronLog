@@ -1,5 +1,7 @@
 # Phase 4 Mobile Ergonomics and Template Editor Implementation Plan
 
+**Status:** COMPLETE
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Zapewnić stale dostępny i bezpieczny zapis planu, skoordynować mobile fixed UI z klawiaturą oraz podnieść objęte targety dotykowe do minimum 44×44 px.
@@ -85,7 +87,7 @@ export interface UnsavedChangesGuard {
 export function useUnsavedChangesGuard(shouldBlock: boolean): UnsavedChangesGuard
 ```
 
-- [ ] **Step 1: Write failing blocker tests**
+- [x] **Step 1: Write failing blocker tests**
 
 Create `src/hooks/__tests__/useUnsavedChangesGuard.test.tsx` with a Data Router harness:
 
@@ -164,7 +166,7 @@ describe('useUnsavedChangesGuard', () => {
 })
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -174,7 +176,7 @@ npm run test:unit -- src/hooks/__tests__/useUnsavedChangesGuard.test.tsx
 
 Expected: FAIL because `../useUnsavedChangesGuard` does not exist.
 
-- [ ] **Step 3: Implement the blocker hook**
+- [x] **Step 3: Implement the blocker hook**
 
 Create `src/hooks/useUnsavedChangesGuard.ts`:
 
@@ -234,7 +236,7 @@ export function useUnsavedChangesGuard(shouldBlock: boolean): UnsavedChangesGuar
 }
 ```
 
-- [ ] **Step 4: Convert the router without changing route behavior**
+- [x] **Step 4: Convert the router without changing route behavior**
 
 In `src/router/index.tsx`, replace the declarative bootstrap with one Data Router root:
 
@@ -293,7 +295,7 @@ export default function AppRouter() {
 
 Keep the existing lazy imports, auth outlets and `RouteScrollReset` implementation unchanged.
 
-- [ ] **Step 5: Run unit and router smoke gates**
+- [x] **Step 5: Run unit and router smoke gates**
 
 Run:
 
@@ -304,7 +306,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: focused Vitest PASS; all smoke/protected-shell cases PASS with the same URLs and one protected shell.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/router/index.tsx src/hooks/useUnsavedChangesGuard.ts src/hooks/__tests__/useUnsavedChangesGuard.test.tsx
@@ -338,7 +340,7 @@ export function useMobileInteraction(): MobileInteractionState
 export default function MobileInteractionProvider(props: PropsWithChildren): ReactElement
 ```
 
-- [ ] **Step 1: Write failing provider tests**
+- [x] **Step 1: Write failing provider tests**
 
 Create `src/components/__tests__/MobileInteractionProvider.test.tsx`. Use a real `EventTarget` as the viewport mock and assert the public contract:
 
@@ -394,7 +396,7 @@ describe('MobileInteractionProvider', () => {
 })
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -404,7 +406,7 @@ npm run test:unit -- src/components/__tests__/MobileInteractionProvider.test.tsx
 
 Expected: FAIL because `MobileInteractionProvider` does not exist.
 
-- [ ] **Step 3: Implement the provider**
+- [x] **Step 3: Implement the provider**
 
 Create `src/components/MobileInteractionProvider.tsx` with this state boundary:
 
@@ -498,7 +500,7 @@ export default function MobileInteractionProvider({ children }: PropsWithChildre
 }
 ```
 
-- [ ] **Step 4: Mount once in AppLayout and remove duplicate input listeners**
+- [x] **Step 4: Mount once in AppLayout and remove duplicate input listeners**
 
 Wrap the complete return of `AppLayout` in `MobileInteractionProvider` so `Outlet` and `BottomNav` share one instance:
 
@@ -530,7 +532,7 @@ const { inputFocused } = useMobileInteraction()
 
 Delete only the input/editable branches from the old focus listener. Retain a small `focusin` listener for `main.page-shell`, because it resets scroll-hide state and focus transfer remains `BottomNav` responsibility.
 
-- [ ] **Step 5: Run focused and accessibility gates**
+- [x] **Step 5: Run focused and accessibility gates**
 
 Run:
 
@@ -541,7 +543,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: provider tests PASS; hidden nav remains `inert`, `aria-hidden` and outside focus order.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/MobileInteractionProvider.tsx src/components/__tests__/MobileInteractionProvider.test.tsx src/components/AppLayout.tsx src/components/BottomNav.tsx
@@ -564,7 +566,7 @@ git commit -m "feat: share mobile viewport interaction state"
 - Consumes: `useUnsavedChangesGuard(shouldBlock)` from Task 1.
 - Produces: `ConfirmDialogProps.confirmDisabled?: boolean`; helper `openLargeTemplateDraft(page: Page): Promise<void>`.
 
-- [ ] **Step 1: Add failing disabled-confirm and dirty-navigation tests**
+- [x] **Step 1: Add failing disabled-confirm and dirty-navigation tests**
 
 Extend the shared dialog test with:
 
@@ -657,7 +659,7 @@ test.describe('Phase 4 mobile ergonomics', () => {
 })
 ```
 
-- [ ] **Step 2: Run focused tests and verify RED**
+- [x] **Step 2: Run focused tests and verify RED**
 
 Run:
 
@@ -668,7 +670,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: disabled-confirm test FAIL; E2E navigates away without the expected blocker.
 
-- [ ] **Step 3: Add confirmDisabled to ConfirmDialog**
+- [x] **Step 3: Add confirmDisabled to ConfirmDialog**
 
 Extend the props and confirm button:
 
@@ -702,7 +704,7 @@ confirmDisabled = false,
 </motion.button>
 ```
 
-- [ ] **Step 4: Replace the local editor guard with the shared blocker**
+- [x] **Step 4: Replace the local editor guard with the shared blocker**
 
 In `TemplateEditorPage`:
 
@@ -805,13 +807,13 @@ it('keeps the draft dirty and retryable after a failed save', async () => {
 
 `renderEditor()` in this test file must create a memory router with `/templates/new?draft=ai` and `/templates` (`<p>Lista planów</p>`). Expose `createTemplate` through the existing hoisted `mocks` object, use it from the `templateService` mock, reset it in `beforeEach`, and add `waitFor` to the Testing Library imports.
 
-- [ ] **Step 5: Run focused unit and E2E tests**
+- [x] **Step 5: Run focused unit and E2E tests**
 
 Run the Step 2 commands again.
 
 Expected: all focused tests PASS; `BottomNav` and history back both show the same accessible dialog; „Zostań” preserves the draft.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/components/ConfirmDialog.tsx src/pages/TemplateEditorPage.tsx src/pages/__tests__/SharedAccessibilityContracts.test.tsx src/pages/__tests__/TemplateEditorAccessibility.test.tsx tests/e2e/support/templateDraft.ts tests/e2e/mobile-ergonomics.spec.ts
@@ -841,7 +843,7 @@ export interface TemplateSaveDockProps {
 }
 ```
 
-- [ ] **Step 1: Write failing dock state tests**
+- [x] **Step 1: Write failing dock state tests**
 
 Create `src/components/__tests__/TemplateSaveDock.test.tsx`:
 
@@ -871,7 +873,7 @@ describe('TemplateSaveDock', () => {
 })
 ```
 
-- [ ] **Step 2: Run the focused test and verify RED**
+- [x] **Step 2: Run the focused test and verify RED**
 
 Run:
 
@@ -881,7 +883,7 @@ npm run test:unit -- src/components/__tests__/TemplateSaveDock.test.tsx
 
 Expected: FAIL because `TemplateSaveDock` does not exist.
 
-- [ ] **Step 3: Implement TemplateSaveDock**
+- [x] **Step 3: Implement TemplateSaveDock**
 
 Create `src/components/TemplateSaveDock.tsx`:
 
@@ -918,7 +920,7 @@ export default function TemplateSaveDock({ dirty, saving, isEdit }: TemplateSave
 }
 ```
 
-- [ ] **Step 4: Integrate mobile dock and keep desktop actions in flow**
+- [x] **Step 4: Integrate mobile dock and keep desktop actions in flow**
 
 Inside the form:
 
@@ -995,7 +997,7 @@ Add mobile CSS under `@media (max-width: 1023px)`:
 
 Remove the old `@media (max-width: 520px)` sticky positioning from `.template-editor-bottom-actions`; it returns to normal document flow.
 
-- [ ] **Step 5: Add large-plan geometry tests**
+- [x] **Step 5: Add large-plan geometry tests**
 
 Extend `tests/e2e/mobile-ergonomics.spec.ts`:
 
@@ -1034,7 +1036,7 @@ test('keeps the dock and focused input separated at 150% text and reduced viewpo
 })
 ```
 
-- [ ] **Step 6: Run focused unit and mobile geometry tests**
+- [x] **Step 6: Run focused unit and mobile geometry tests**
 
 Run:
 
@@ -1045,7 +1047,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: all PASS; dock visible in first viewport; no horizontal overflow; focused input ends above dock at 500 px.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/TemplateSaveDock.tsx src/components/__tests__/TemplateSaveDock.test.tsx src/pages/TemplateEditorPage.tsx src/index.css tests/e2e/mobile-ergonomics.spec.ts
@@ -1071,7 +1073,7 @@ git commit -m "feat: keep template save action visible"
 - Consumes: existing semantic buttons and `mobile-touch-target` used by `TemplateSaveDock`.
 - Produces: reusable CSS class `.mobile-touch-target`; all listed controls expose non-overlapping 44×44 px hitboxes below 1024 px.
 
-- [ ] **Step 1: Add failing E2E hitbox assertions**
+- [x] **Step 1: Add failing E2E hitbox assertions**
 
 Add a shared helper in `tests/e2e/mobile-ergonomics.spec.ts`:
 
@@ -1113,7 +1115,7 @@ test('exposes 44px BottomNav, picker and template-editor targets at 320px', asyn
 })
 ```
 
-- [ ] **Step 2: Run the mobile test and verify RED**
+- [x] **Step 2: Run the mobile test and verify RED**
 
 Run:
 
@@ -1123,7 +1125,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: FAIL on current 22–42 px targets.
 
-- [ ] **Step 3: Add the shared target utility and compact BottomNav geometry**
+- [x] **Step 3: Add the shared target utility and compact BottomNav geometry**
 
 Add to `src/index.css`:
 
@@ -1175,7 +1177,7 @@ Apply these exact class changes:
 
 Do not add the class to non-interactive badges such as the preview label „Dzień N”.
 
-- [ ] **Step 4: Add route-level target coverage for filters**
+- [x] **Step 4: Add route-level target coverage for filters**
 
 Extend the same E2E file to visit `/exercises`, `/history`, `/progress`, `/chat` and `/workout/new`, asserting the first visible filter/chip on each route has both dimensions ≥44. For `/workout/new`, register `cleanup.add('discard active session', () => discardActiveSession(page))` before creating or resuming a session.
 
@@ -1189,7 +1191,7 @@ await page.goto('/history')
 await expectMinHitArea(page.getByRole('button', { name: 'Wszystko' }).first(), 'history range')
 ```
 
-- [ ] **Step 5: Run targeted accessibility and ergonomics gates**
+- [x] **Step 5: Run targeted accessibility and ergonomics gates**
 
 Run:
 
@@ -1199,7 +1201,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: all target assertions PASS at 320 px; hidden-nav accessibility remains unchanged; no horizontal overflow.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/index.css src/components/BottomNav.tsx src/components/ExercisePicker.tsx src/pages/ExercisesPage.tsx src/pages/HistoryPage.tsx src/pages/ProgressPage.tsx src/pages/ChatPage.tsx src/pages/WorkoutPage.tsx tests/e2e/mobile-ergonomics.spec.ts
@@ -1219,7 +1221,7 @@ git commit -m "fix: enlarge mobile touch targets"
 - Consumes: `useMobileInteraction().compactFixedUi` from Task 2.
 - Produces: `RestTimerBarProps.variant: 'full' | 'compact'`; `.workout-mobile-action-bar[data-variant]` geometry.
 
-- [ ] **Step 1: Extend the existing workout E2E with a failing compact-mode contract**
+- [x] **Step 1: Extend the existing workout E2E with a failing compact-mode contract**
 
 In the current test `mobile workout shows steppers only for the focused incomplete set and keeps controls tappable`, after the full timer assertions add:
 
@@ -1244,7 +1246,7 @@ await expect(actionBar).toHaveAttribute('data-variant', 'full')
 await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toBeVisible()
 ```
 
-- [ ] **Step 2: Run the focused workout test and verify RED**
+- [x] **Step 2: Run the focused workout test and verify RED**
 
 Run:
 
@@ -1254,7 +1256,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: FAIL because the timer remains full and fixed at the bottom.
 
-- [ ] **Step 3: Add the compact presentation without duplicating timer state**
+- [x] **Step 3: Add the compact presentation without duplicating timer state**
 
 Extend the local props:
 
@@ -1356,7 +1358,7 @@ const mobileRestVariant = compactFixedUi ? 'compact' : 'full'
 
 Desktop `RestTimerBar` keeps the default `full` variant.
 
-- [ ] **Step 4: Implement compact geometry and input clearance**
+- [x] **Step 4: Implement compact geometry and input clearance**
 
 Add/adjust CSS:
 
@@ -1395,7 +1397,7 @@ Add/adjust CSS:
 
 Do not reset `rest.startedAt`, `rest.totalSec`, `now` or `firedRef` when changing the variant.
 
-- [ ] **Step 5: Run focused and full workout-mobile tests**
+- [x] **Step 5: Run focused and full workout-mobile tests**
 
 Run:
 
@@ -1405,7 +1407,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: all mobile workout tests PASS; full timer remains above nav, compact timer remains below lifecycle header, focused input remains below compact timer and no timer state resets.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/pages/WorkoutPage.tsx src/index.css tests/e2e/workout-mobile.spec.ts
@@ -1425,7 +1427,7 @@ git commit -m "fix: compact rest timer around mobile keyboard"
 - Consumes: completed Tasks 1–6 and all acceptance criteria from the approved spec.
 - Produces: verified Phase 4 `DONE` state, recorded commands/results and handoff to the next roadmap phase without changing `RELEASE-08`.
 
-- [ ] **Step 1: Run the focused Phase 4 unit suite**
+- [x] **Step 1: Run the focused Phase 4 unit suite**
 
 Run:
 
@@ -1435,7 +1437,7 @@ npm run test:unit -- src/hooks/__tests__/useUnsavedChangesGuard.test.tsx src/com
 
 Expected: all focused files and tests PASS with no React `act` warnings.
 
-- [ ] **Step 2: Run full unit, lint and build gates**
+- [x] **Step 2: Run full unit, lint and build gates**
 
 Run:
 
@@ -1447,7 +1449,7 @@ npm run build
 
 Expected: all commands exit 0; build may show only the already known chunk-size advisory.
 
-- [ ] **Step 3: Run isolated Phase 4 browser gates**
+- [x] **Step 3: Run isolated Phase 4 browser gates**
 
 Run:
 
@@ -1457,7 +1459,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: all selected mobile tests PASS; cleanup reports no active session or template residue.
 
-- [ ] **Step 4: Perform visible runtime review on the test account**
+- [x] **Step 4: Perform visible runtime review on the test account**
 
 Start the complete localhost stack and inspect with Playwright at 320/375/390 px:
 
@@ -1477,7 +1479,7 @@ Verify and record in the plan:
 
 Expected: no visual regression, overlap, inaccessible action or unclean test-account state. Playwright evidence belongs in ignored test output, not in Git.
 
-- [ ] **Step 5: Review the implementation diff**
+- [x] **Step 5: Review the implementation diff**
 
 Run:
 
@@ -1490,7 +1492,7 @@ git diff -- src/router/index.tsx src/components/AppLayout.tsx src/components/Bot
 
 Expected: no whitespace errors, no senior-design-review changes, no Firestore/API/rules changes and no unrelated files.
 
-- [ ] **Step 6: Update canonical documentation**
+- [x] **Step 6: Update canonical documentation**
 
 Make these exact status changes only after all gates pass:
 
@@ -1500,7 +1502,7 @@ Make these exact status changes only after all gates pass:
 - keep Faza 2B and `RELEASE-08` unchanged;
 - do not import findings from `docs/audits/2026-07-14-senior-design-review.md`.
 
-- [ ] **Step 7: Run documentation consistency check**
+- [x] **Step 7: Run documentation consistency check**
 
 Run:
 
@@ -1511,28 +1513,39 @@ git diff --check
 
 Expected: Faza 4 is consistently `DONE`; `MOBILE-01–06` are covered; `RELEASE-08` remains open; senior review remains outside scope.
 
-- [ ] **Step 8: Commit closure documentation**
+- [x] **Step 8: Commit closure documentation**
 
 ```bash
 git add docs/roadmap/ROADMAP.md docs/roadmap/specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md docs/roadmap/plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md
 git commit -m "docs: close phase 4 mobile ergonomics"
 ```
 
+## Task 7 verification evidence
+
+- Focused Phase 4 unit gate: 5 files, 15 tests passed, without React `act` warnings.
+- Full gates: 41 files and 254 tests passed; lint exited 0; build processed 873 modules and emitted only the known chunk-size advisory.
+- Selected emulator browser gate, explicitly without retries: 53 passed, 22 expected project-specific skips, 0 failed; cleanup left no template or active-session residue.
+- Headed Playwright review: the large `Upper / Lower 4×` draft kept its dock visible at 320/375/390 px; clean, dirty and saving labels retain the specified accessible names; BottomNav, browser back and „Wróć” share the dirty-navigation contract covered by the selected gate.
+- At 150% text the 320 px view had zero horizontal overflow. At 320×500 px the last focused input ended at 277.6 px and the dock began at 382.8 px.
+- The workout rest timer retained one timer state while changing `full → compact → full` at 390×844 → 390×500 → 390×844; the focused input remained usable. Covered touch targets passed the automated minimum 44×44 px assertions, and the 0.5rem BottomNav labels remained readable at 320 px.
+- Final corrected localhost cleanup returned to the dashboard with 0 console errors and 0 warnings. Playwright CLI output and screenshots were removed after review.
+- Scoped diff review found no Firestore, API, rules, production, deployment, `RELEASE-08` or senior-design-review changes.
+
 ## Definition of Done
 
-- [ ] Tasks 1–7 were executed in order with RED/GREEN evidence where specified.
-- [ ] `MOBILE-01–06` have observable runtime evidence and regression coverage.
-- [ ] The router uses the official Data Router blocker; no custom `popstate` guard exists.
-- [ ] Dirty template edits are protected across app navigation, history and unload.
-- [ ] Active workout navigation remains warning-free and session persistence remains unchanged.
-- [ ] The template save dock is continuously visible on mobile and does not cover focused fields.
-- [ ] Rest timer changes presentation without duplicating or resetting timer state.
-- [ ] Covered mobile targets measure at least 44×44 px without horizontal overflow at 320 px.
-- [ ] Full unit, lint, build and selected browser gates pass.
-- [ ] Visible Playwright runtime review passes on the test account.
-- [ ] No Firestore, API, rules, production, push, deploy or `RELEASE-08` action occurred.
-- [ ] The deferred senior design review was not folded into Phase 4.
-- [ ] Roadmap, spec and plan have consistent final statuses.
+- [x] Tasks 1–7 were executed in order with RED/GREEN evidence where specified.
+- [x] `MOBILE-01–06` have observable runtime evidence and regression coverage.
+- [x] The router uses the official Data Router blocker; no custom `popstate` guard exists.
+- [x] Dirty template edits are protected across app navigation, history and unload.
+- [x] Active workout navigation remains warning-free and session persistence remains unchanged.
+- [x] The template save dock is continuously visible on mobile and does not cover focused fields.
+- [x] Rest timer changes presentation without duplicating or resetting timer state.
+- [x] Covered mobile targets measure at least 44×44 px without horizontal overflow at 320 px.
+- [x] Full unit, lint, build and selected browser gates pass.
+- [x] Visible Playwright runtime review passes on the test account.
+- [x] No Firestore, API, rules, production, push, deploy or `RELEASE-08` action occurred.
+- [x] The deferred senior design review was not folded into Phase 4.
+- [x] Roadmap, spec and plan have consistent final statuses.
 
 ## Spec Coverage Map
 

@@ -1,6 +1,6 @@
 # IronLog — projekt Fazy 4: ergonomia mobile i edytor planów
 
-**Status:** projekt zatwierdzony; szczegółowy plan gotowy do wykonania
+**Status:** wdrożona i zweryfikowana
 
 **Data:** 2026-07-14
 

@@ -68,7 +68,7 @@ Aktualny baseline jakości:
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | DONE | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | DONE | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
-| 8 | 4 — Ergonomia mobile i edytor planów | P1 | READY | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
+| 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
 | 9 | 5 — Feedback, copy i uczciwe testy wizualne | P2 | READY | Akcje komunikują stan, teksty są poprawne, a capture screenshotów nie udaje regresji wizualnej |
 | 10 | 6A — Stream i concurrency AI | P1 | READY | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
 | 11 | 6B — Poprawność i koszt kontekstu AI | P1 | READY | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
@@ -276,7 +276,7 @@ Status `DONE` opisuje zakończoną i zweryfikowaną implementację. Final re-rev
 
 **Cel:** zapewnić wygodną obsługę najczęstszych akcji na telefonie bez zmiany kierunku wizualnego Puls.
 
-**Status:** `PLANNED` — projekt jest zapisany w [`specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md`](specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md), a wykonywalny plan w [`plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md`](plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md).
+**Status: DONE.** Zakres `MOBILE-01–06` wdrożono i zweryfikowano unitami, lintem, buildem oraz izolowanym gate'em Playwright (53 passed, 22 oczekiwane skipy). Headed review potwierdził brak overflow przy 320/375/390 px i tekście 150%, stały dock nad polem przy wysokości 500 px, czytelny siedmioelementowy `BottomNav` oraz przejście rest timera `full → compact → full` bez zasłaniania inputu. Projekt i dowody pozostają w [`specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md`](specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md) oraz [`plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md`](plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md).
 
 **Zakres kanoniczny:**
 
@@ -293,7 +293,7 @@ Status `DONE` opisuje zakończoną i zweryfikowaną implementację. Final re-rev
 - **FOLLOWUP-UI-02 / MOBILE-04 — `confirmed`:** rest timer pozostaje fixed po ukryciu dolnej nawigacji i nachodzi na aktywne pole przy niskim viewportcie;
 - **FOLLOWUP-UI-03 / MOBILE-05 — `confirmed`:** dolna nawigacja omija lokalny guard edytora i pozwala utracić niezapisane zmiany.
 
-Wszystkie trzy punkty wchodzą do implementacji Fazy 4. Dowody i docelowe kontrakty opisuje zatwierdzony spec fazy.
+Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontrakty opisuje zatwierdzony spec fazy.
 
 **Kryteria wyjścia:**
 
@@ -462,7 +462,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 4 — ergonomia mobile i edytor planów** jest następnym rekomendowanym pakietem; Faza 3 została zmergowana lokalnie do `puls-rebrand`. Niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
+**Faza 4 — ergonomia mobile i edytor planów** jest zakończona i zweryfikowana. Następnym zależnym pakietem jest Faza 5; niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

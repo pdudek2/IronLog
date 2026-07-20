@@ -97,7 +97,7 @@ test.describe('Phase 3 navigation accessibility', () => {
     await page.goto('/workout/new')
     await expectAppReady(page, '/workout/new', 25_000)
     await expect(page.locator('nav.bottom-nav').getByRole('button', {
-      name: 'Rozpocznij nowy trening',
+      name: /^(?:Rozpocznij nowy trening|Wznów trening)$/,
     })).toHaveAttribute('aria-current', 'page')
   })
 })

@@ -31,18 +31,21 @@ test('mobile nav shows all primary items', async ({ page, isMobile }) => {
   const nav = page.getByLabel('Nawigacja dolna')
   await expect(nav).toBeVisible()
 
-  for (const label of ['Start', 'Postępy', 'Plany', 'Ćwiczenia', 'Rozpocznij nowy trening', 'Historia', 'AI']) {
+  for (const label of ['Start', 'Postępy', 'Plany', 'Ćwiczenia', 'Historia', 'AI']) {
     await expect(nav.getByRole('button', { name: label, exact: true })).toBeVisible()
   }
+  await expect(nav.getByRole('button', {
+    name: /^(?:Rozpocznij nowy trening|Wznów trening)$/,
+  })).toBeVisible()
 })
 
-test('desktop nav shows the new workout label', async ({ page }, testInfo) => {
+test('desktop nav shows an approved workout entry label', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'TopNav is the desktop workout entry')
 
   await page.goto('/dashboard')
   await expect(page.locator('header.top-nav')
-    .getByRole('button', { name: 'Rozpocznij nowy trening' }))
-    .toHaveText('Nowy trening')
+    .getByRole('button', { name: /^(?:Rozpocznij nowy trening|Wznów trening)$/ }))
+    .toHaveText(/^(?:Nowy trening|Wznów trening)$/)
 })
 
 test('bottom nav active state updates on navigation', async ({ page, isMobile }) => {

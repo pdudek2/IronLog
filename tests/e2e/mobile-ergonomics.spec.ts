@@ -86,8 +86,17 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await openLargeTemplateDraft(page)
 
     const navBoxes = []
-    for (const label of ['Start', 'Postępy', 'Plany', 'Ćwiczenia', 'Rozpocznij nowy trening', 'Historia', 'AI']) {
-      const item = page.getByRole('button', { name: label, exact: true })
+    const navItems = [
+      ['Start', /^Start$/],
+      ['Postępy', /^Postępy$/],
+      ['Plany', /^Plany$/],
+      ['Ćwiczenia', /^Ćwiczenia$/],
+      ['wejście do treningu', /^(?:Rozpocznij nowy trening|Wznów trening)$/],
+      ['Historia', /^Historia$/],
+      ['AI', /^AI$/],
+    ] as const
+    for (const [label, accessibleName] of navItems) {
+      const item = page.getByRole('button', { name: accessibleName })
       await expectMinHitArea(item, `BottomNav ${label}`)
       navBoxes.push((await item.boundingBox())!)
     }

@@ -43,9 +43,21 @@ setup('authenticate', async ({ page, request }) => {
 
   if (emulatorMode) {
     const onboardingHeading = page.getByRole('heading', { name: 'Skonfiguruj profil' })
-    const dashboardAction = page.getByRole('button', { name: /Rozpocznij trening|Wróć do sesji/ })
+    const dashboardAction = page.getByRole('button', {
+      name: /^(?:Rozpocznij nowy trening|Wznów trening)$/,
+    }).first()
     await expect(onboardingHeading.or(dashboardAction).first()).toBeVisible({ timeout: 20_000 })
-    if (await dashboardAction.isVisible()) await page.goto('/onboarding')
+    if (await dashboardAction.isVisible()) {
+      await page.evaluate(() => {
+        const currentState = history.state as { idx?: number } | null
+        history.pushState({
+          ...currentState,
+          key: 'e2e-onboarding',
+          idx: (currentState?.idx ?? 0) + 1,
+        }, '', '/onboarding')
+        window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }))
+      })
+    }
     await expect(onboardingHeading).toBeVisible()
     await page.getByLabel('Jak mamy się do Ciebie zwracać?').fill('IronLog E2E')
     await page.getByRole('button', { name: 'Zaczynajmy' }).click()

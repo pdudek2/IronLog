@@ -7,6 +7,10 @@ import {
   type DemoSeedExpectations,
   type DemoSeedSnapshot,
 } from './demoSeedContract.js'
+import {
+  DemoSeedSnapshotValidationError,
+  runDemoSeed,
+} from './demoSeedOrchestrator.js'
 
 /**
  * Seed demo account with 26 realistic workouts across ~60 days.
@@ -610,19 +614,6 @@ async function main(): Promise<void> {
   }
 
   const userId = userRecord.uid
-  try {
-    assertDemoSeedConfirmation({
-      actualEmail: userRecord.email ?? '',
-      expectedEmail: DEMO_EMAIL,
-      actualProjectId,
-      confirmedEmail: process.env.DEMO_SEED_CONFIRM_EMAIL,
-      confirmedProjectId: process.env.DEMO_SEED_CONFIRM_PROJECT_ID,
-    })
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Nieznany błąd preflightu.'
-    throw new SafeOperationalError(`Preflight odrzucony: ${message}`)
-  }
-
   const expectations = buildExpectations()
 
   console.log('\n🌱 IronLog demo seed')
@@ -630,25 +621,44 @@ async function main(): Promise<void> {
   console.log(`   Konto docelowe: ${DEMO_EMAIL}`)
   console.log(`   Projekt Firebase: ${actualProjectId}`)
 
-  if (dryRun) {
-    const snapshot = await readDemoSnapshot(userId)
-    printSnapshot(snapshot, validateDemoSeedSnapshot(snapshot, expectations))
-    console.log('\nℹ️  Dry-run zakończony. Nie wykonano resetu, zapisu ani materializacji.\n')
-    return
+  let result
+  try {
+    result = await runDemoSeed({ dryRun }, {
+      preflight: () => {
+        try {
+          assertDemoSeedConfirmation({
+            actualEmail: userRecord.email ?? '',
+            expectedEmail: DEMO_EMAIL,
+            actualProjectId,
+            confirmedEmail: process.env.DEMO_SEED_CONFIRM_EMAIL,
+            confirmedProjectId: process.env.DEMO_SEED_CONFIRM_PROJECT_ID,
+          })
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Nieznany błąd preflightu.'
+          throw new SafeOperationalError(`Preflight odrzucony: ${message}`)
+        }
+      },
+      readSnapshot: () => readDemoSnapshot(userId),
+      validateSnapshot: (snapshot) => validateDemoSeedSnapshot(snapshot, expectations),
+      resetDemo: () => resetDemo(userId),
+      seedUserExercises: () => seedUserExercises(userId),
+      seedTemplate: () => seedTemplate(userId),
+      seedWorkouts: () => seedWorkouts(userId),
+      materializeAll: (workoutIds) => materializeAll(userId, workoutIds),
+      seedReadiness: () => seedReadiness(userId),
+    })
+  } catch (error) {
+    if (error instanceof DemoSeedSnapshotValidationError) {
+      printSnapshot(error.snapshot, error.issues)
+      throw new SafeOperationalError(error.message)
+    }
+    throw error
   }
 
-  await resetDemo(userId)
-  await seedUserExercises(userId)
-  await seedTemplate(userId)
-  const workoutIds = await seedWorkouts(userId)
-  await materializeAll(userId, workoutIds)
-  await seedReadiness(userId)
-
-  const snapshot = await readDemoSnapshot(userId)
-  const issues = validateDemoSeedSnapshot(snapshot, expectations)
-  printSnapshot(snapshot, issues)
-  if (issues.length > 0) {
-    throw new SafeOperationalError('Walidacja snapshotu po reseedzie nie powiodła się.')
+  printSnapshot(result.snapshot, result.issues)
+  if (result.mode === 'dry-run') {
+    console.log('\nℹ️  Dry-run zakończony. Nie wykonano resetu, zapisu ani materializacji.\n')
+    return
   }
 
   console.log(`\n✅ Gotowe. Zaloguj się jako ${DEMO_EMAIL} i rób screeny.\n`)

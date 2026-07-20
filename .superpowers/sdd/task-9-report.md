@@ -59,3 +59,34 @@ This is the intended dry-run/validation summary from code and fixtures, not a re
 - `git diff --check`: PASS.
 
 No `npm run seed:demo`, operational `--dry-run`, push or deploy was performed.
+
+## Important review finding follow-up
+
+The Important finding in `task-9-review.md` was addressed with a separate pure orchestration boundary in `scripts/demoSeedOrchestrator.ts`. The module imports only the snapshot type and receives every external read/write/materialization operation through dependency injection; its unit tests do not import or initialize Firebase Admin.
+
+### Follow-up TDD evidence
+
+1. Added the three required orchestration tests before the production module existed.
+2. RED command:
+   - `npm run test:unit -- scripts/__tests__/demoSeedOrchestrator.test.ts scripts/__tests__/demoSeedContract.test.ts`
+   - EXIT 1: the contract suite passed 16/16, while the orchestration suite failed with `Cannot find module '../demoSeedOrchestrator.js'`.
+3. GREEN after the minimal implementation and CLI integration:
+   - focused orchestration + contract suites: PASS, 2 files / 19 tests.
+
+### Orchestration guarantees now covered
+
+- A rejected preflight performs zero snapshot reads, resets, seed writes or materialization calls.
+- Dry-run performs one snapshot read and validation, with zero reset, seed writer or materialization calls.
+- A real seed with an invalid post-seed snapshot rejects with the snapshot issues; the CLI prints the invalid snapshot and cannot reach its success message.
+- The existing CLI flags, exact `demo@ironlog.app` / `ironlog-ede05` confirmations, sanitized error logging, fixture-derived expectations and reset collection list remain unchanged.
+
+### Follow-up verification
+
+- Focused orchestration + contract unit tests: PASS, 2 files / 19 tests.
+- Full unit gate: PASS, 51 files / 335 tests.
+- Static script and script-test typecheck (`tsc --noEmit`, ESNext/Bundler): PASS.
+- `npm run lint -- --quiet`: PASS.
+- `npm run build`: PASS.
+- `git diff --check`: PASS.
+
+No operational seed or dry-run was executed while addressing the review finding. Demo data remained untouched.

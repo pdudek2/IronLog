@@ -33,6 +33,16 @@ const remoteSession: ActiveWorkout = {
   exercises: [],
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise
+    reject = rejectPromise
+  })
+  return { promise, reject, resolve }
+}
+
 describe('useActiveSession snapshot authority', () => {
   beforeEach(() => {
     const values = new Map<string, string>()
@@ -46,7 +56,7 @@ describe('useActiveSession snapshot authority', () => {
     })
     useWorkoutStore.getState().clearWorkout()
     listener.current = null
-    saveActiveSession.mockClear()
+    saveActiveSession.mockReset().mockResolvedValue(undefined)
   })
 
   it.each([
@@ -121,5 +131,75 @@ describe('useActiveSession snapshot authority', () => {
     expect(useWorkoutStore.getState().active?.sessionId).toBe(replacement?.sessionId)
     expect(saveActiveSession).toHaveBeenCalledTimes(1)
     expect(saveActiveSession).toHaveBeenCalledWith('user-1', replacement)
+  })
+
+  it('ignores a late failed write for a session after its closure is confirmed', async () => {
+    const closedWrite = createDeferred<void>()
+    const saveError = new Error('permission-denied')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    saveActiveSession.mockImplementationOnce(() => closedWrite.promise)
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => window.dispatchEvent(new Event('pagehide')))
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', remoteSession)
+
+    act(() => {
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+    })
+
+    await act(async () => {
+      closedWrite.reject(saveError)
+      await closedWrite.promise.catch(() => undefined)
+      await Promise.resolve()
+    })
+
+    expect(useWorkoutStore.getState().active).toBeNull()
+    expect(result.current.activeSessionSyncStatus).toBe('idle')
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('does not let a late successful closed-session write hide a newer replacement failure', async () => {
+    const closedWrite = createDeferred<void>()
+    const replacementWrite = createDeferred<void>()
+    const replacementError = new Error('replacement write failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    saveActiveSession
+      .mockImplementationOnce(() => closedWrite.promise)
+      .mockImplementationOnce(() => replacementWrite.promise)
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => window.dispatchEvent(new Event('pagehide')))
+    act(() => {
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+      useWorkoutStore.getState().startWorkout()
+      window.dispatchEvent(new Event('pagehide'))
+    })
+    const replacement = useWorkoutStore.getState().active
+    expect(replacement?.sessionId).not.toBe(remoteSession.sessionId)
+    expect(saveActiveSession).toHaveBeenNthCalledWith(2, 'user-1', replacement)
+
+    await act(async () => {
+      replacementWrite.reject(replacementError)
+      await replacementWrite.promise.catch(() => undefined)
+      await Promise.resolve()
+    })
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledWith('[active session save error]', replacementError)
+
+    await act(async () => {
+      closedWrite.resolve()
+      await closedWrite.promise
+      await Promise.resolve()
+    })
+
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(replacement?.sessionId)
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledTimes(1)
+    consoleError.mockRestore()
   })
 })

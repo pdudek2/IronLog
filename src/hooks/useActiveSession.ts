@@ -219,6 +219,7 @@ export function useActiveSession(uid: string | null) {
       if (!shouldPersistActiveSession(snapshot, closureIntentRef.current)) return
       void saveActiveSession(currentUid, snapshot)
         .then(() => {
+          if (snapshot.sessionId === confirmedClosedSessionIdRef.current) return
           if (shouldResolveActiveSessionSyncFailure({
             writeSucceeded: true,
             authoritative: false,
@@ -226,6 +227,7 @@ export function useActiveSession(uid: string | null) {
           })) setActiveSessionSyncStatus('idle')
         })
         .catch((error: unknown) => {
+          if (snapshot.sessionId === confirmedClosedSessionIdRef.current) return
           setActiveSessionSyncStatus('failed')
           console.error('[active session save error]', error)
         })

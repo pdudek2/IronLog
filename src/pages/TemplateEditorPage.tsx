@@ -5,7 +5,7 @@ import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
-import TemplateSaveDock from '../components/TemplateSaveDock'
+import TemplateSaveDock, { type TemplateSaveState } from '../components/TemplateSaveDock'
 import { LoadingState } from '../components/ui'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { useAuthStore } from '../store/authStore'
@@ -89,6 +89,7 @@ export default function TemplateEditorPage() {
   const isEdit = Boolean(id)
   const [loading, setLoading] = useState(isEdit)
   const [saving, setSaving] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
   const [template, setTemplate] = useState<WorkoutTemplate | null>(null)
   const [name, setName] = useState(() => initialDraft?.name ?? '')
   const [days, setDays] = useState<DraftDay[]>(() => (
@@ -165,6 +166,17 @@ export default function TemplateEditorPage() {
   )
   const currentSnapshot = useMemo(() => serializeDraftState(name, days), [name, days])
   const hasUnsavedChanges = !loading && currentSnapshot !== savedSnapshot
+  const canSubmit = name.trim().length >= 2
+    && days.some((day) => day.exercises.length > 0)
+  const saveState: TemplateSaveState = saving
+    ? 'saving'
+    : saveError
+      ? 'error'
+      : hasUnsavedChanges
+        ? 'dirty'
+        : template
+          ? 'persisted-clean'
+          : 'new-pristine'
   const leaveGuard = useUnsavedChangesGuard(hasUnsavedChanges || saving)
 
   function handleBackToTemplates() {
@@ -239,9 +251,8 @@ export default function TemplateEditorPage() {
     }))
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    if (!user) return
+  async function saveTemplate() {
+    if (!user || saving) return
 
     const trimmedName = name.trim()
     if (trimmedName.length < 2) {
@@ -254,6 +265,7 @@ export default function TemplateEditorPage() {
       return
     }
 
+    setSaveError(null)
     setSaving(true)
 
     const payload = {
@@ -278,9 +290,14 @@ export default function TemplateEditorPage() {
       leaveGuard.allowNextNavigation()
       navigate('/templates')
     } catch {
-      toast.error('Nie udało się zapisać szablonu.')
+      setSaveError('Nie udało się zapisać planu.')
       setSaving(false)
     }
+  }
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    void saveTemplate()
   }
 
   if (loading) {
@@ -306,9 +323,17 @@ export default function TemplateEditorPage() {
               <strong>{totalExercises}</strong>
               ćw.
             </span>
-            <span data-active={hasUnsavedChanges}>
-              <strong>{hasUnsavedChanges ? '•' : '✓'}</strong>
-              {hasUnsavedChanges ? 'zmiany' : 'zapisany'}
+            <span data-active={saveState === 'dirty' || saveState === 'error'}>
+              <strong>{saveState === 'persisted-clean' ? '✓' : '•'}</strong>
+              {saveState === 'new-pristine'
+                ? 'niezapisany'
+                : saveState === 'dirty'
+                  ? 'zmiany'
+                  : saveState === 'saving'
+                    ? 'zapis'
+                    : saveState === 'error'
+                      ? 'błąd'
+                      : 'zapisany'}
             </span>
           </div>
 
@@ -527,16 +552,35 @@ export default function TemplateEditorPage() {
 
           <motion.button
             type="submit"
-            disabled={saving}
-            aria-label={saving ? 'Zapisuję... w formularzu' : isEdit ? 'Zapisz zmiany w formularzu' : 'Zapisz szablon w formularzu'}
+            disabled={!canSubmit || saveState === 'saving' || saveState === 'error' || saveState === 'persisted-clean'}
+            aria-label={saveState === 'saving'
+              ? 'Zapisuję… w formularzu'
+              : saveState === 'persisted-clean'
+                ? 'Zapisano w formularzu'
+                : isEdit
+                  ? 'Zapisz zmiany w formularzu'
+                  : 'Zapisz szablon w formularzu'}
             className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
             whileTap={{ scale: 0.97 }}
           >
             <Pencil size={15} />
-            {saving ? 'Zapisuję...' : isEdit ? 'Zapisz zmiany' : 'Zapisz szablon'}
+            {saveState === 'saving'
+              ? 'Zapisuję…'
+              : saveState === 'persisted-clean'
+                ? 'Zapisano'
+                : isEdit
+                  ? 'Zapisz zmiany'
+                  : 'Zapisz szablon'}
           </motion.button>
         </div>
-        <TemplateSaveDock dirty={hasUnsavedChanges} saving={saving} isEdit={isEdit} />
+        <TemplateSaveDock
+          state={saveState}
+          isEdit={isEdit}
+          canSubmit={canSubmit}
+          errorMessage={saveError ?? undefined}
+          onRetry={() => { void saveTemplate() }}
+          onDismissError={() => setSaveError(null)}
+        />
       </form>
 
       {pickerDayIndex !== null && (
@@ -553,7 +597,7 @@ export default function TemplateEditorPage() {
           message={saving
             ? 'Poczekaj na wynik zapisu. Po zakończeniu przejdziesz dalej albo będzie można ponowić zapis.'
             : 'Masz niezapisane zmiany w szablonie. Jeśli wyjdziesz teraz, stracisz bieżące poprawki.'}
-          confirmLabel={saving ? 'Zapisuję...' : 'Opuść bez zapisu'}
+          confirmLabel={saving ? 'Zapisuję…' : 'Opuść bez zapisu'}
           cancelLabel="Zostań"
           danger={!saving}
           confirmDisabled={saving}

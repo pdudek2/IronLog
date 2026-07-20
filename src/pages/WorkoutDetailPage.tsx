@@ -26,6 +26,7 @@ import type { ExerciseSource } from '../store/workoutStore'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { ActionFeedback } from '../components/ActionFeedback'
 import { LoadingState } from '../components/ui'
 import { getEquipmentLabel } from '../lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
@@ -50,6 +51,11 @@ const CATEGORY_LABELS: Record<string, string> = {
   arms: 'Ramiona',
   core: 'Core',
   cardio: 'Cardio',
+}
+
+interface WorkoutDeleteOperation {
+  workoutId: string
+  status: 'pending' | 'error'
 }
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
@@ -117,7 +123,7 @@ export default function WorkoutDetailPage() {
   const [workout, setWorkout] = useState<WorkoutSummary | null>(() => previewWorkout)
   const [userExercises, setUserExercises] = useState<Exercise[]>([])
   const [loading, setLoading] = useState(() => previewWorkout === null)
-  const [deleting, setDeleting] = useState(false)
+  const [deleteOperation, setDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
@@ -238,17 +244,30 @@ export default function WorkoutDetailPage() {
     }
   }
 
-  async function doDelete() {
-    if (!workout) return
-    setDeleting(true)
+  async function runWorkoutDelete(workoutId: string) {
+    setDeleteOperation({ workoutId, status: 'pending' })
     try {
-      await deleteWorkout(workout.id)
+      await deleteWorkout(workoutId)
       navigate('/history', { replace: true })
       toast.success('Trening usunięty')
     } catch {
-      toast.error('Błąd usuwania. Spróbuj ponownie.')
-      setDeleting(false)
+      setDeleteOperation((current) => (
+        current?.workoutId === workoutId
+          ? { workoutId, status: 'error' }
+          : current
+      ))
+      toast.error('Nie udało się usunąć treningu.')
     }
+  }
+
+  function doDelete() {
+    if (!workout) return
+    void runWorkoutDelete(workout.id)
+  }
+
+  function retryWorkoutDelete() {
+    if (!deleteOperation || deleteOperation.status !== 'error') return
+    void runWorkoutDelete(deleteOperation.workoutId)
   }
 
   function handleDelete() {
@@ -302,6 +321,8 @@ export default function WorkoutDetailPage() {
   const topFocus = focusEntries[0]
   const mobileReadGrid = 'grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[1.5rem_1fr_1fr_1fr]'
   const mobileEditGrid = 'grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] lg:grid-cols-[1.5rem_1fr_1fr_1fr_1.25rem]'
+  const isDeleting = deleteOperation?.status === 'pending'
+  const deleteFeedbackId = `workout-detail-delete-feedback-${workout.id}`
 
   const actionButtons = isEditing ? (
     <div className="flex gap-3">
@@ -348,7 +369,8 @@ export default function WorkoutDetailPage() {
       </motion.button>
       <motion.button
         onClick={handleDelete}
-        disabled={deleting}
+        disabled={isDeleting}
+        aria-describedby={deleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
         className="flex-1 py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
         style={{
           background: 'var(--danger-soft)',
@@ -358,7 +380,7 @@ export default function WorkoutDetailPage() {
         whileTap={{ scale: 0.97 }}
       >
         <Trash2 size={15} />
-        {deleting ? 'Usuwanie...' : 'Usuń trening'}
+        {isDeleting ? 'Usuwanie...' : 'Usuń trening'}
       </motion.button>
     </div>
   )
@@ -397,6 +419,21 @@ export default function WorkoutDetailPage() {
           <p className="hero-editorial-sub">{heroInsight}</p>
         </div>
       </section>
+
+      {deleteOperation && (
+        <ActionFeedback
+          id={deleteFeedbackId}
+          status={deleteOperation.status}
+          message={deleteOperation.status === 'pending'
+            ? 'Usuwanie treningu…'
+            : 'Nie udało się usunąć treningu.'}
+          onRetry={deleteOperation.status === 'error' ? retryWorkoutDelete : undefined}
+          onDismiss={deleteOperation.status === 'error'
+            ? () => setDeleteOperation(null)
+            : undefined}
+          className="workout-detail-delete-feedback"
+        />
+      )}
 
         <div className="desktop-app-grid">
           <aside className="desktop-sticky space-y-4 hidden lg:block">
@@ -756,7 +793,7 @@ export default function WorkoutDetailPage() {
           message="Usunąć ten trening? Tej operacji nie można cofnąć."
           confirmLabel="Usuń"
           danger
-          onConfirm={() => { setConfirmDeleteOpen(false); void doDelete() }}
+          onConfirm={() => { setConfirmDeleteOpen(false); doDelete() }}
           onCancel={() => setConfirmDeleteOpen(false)}
         />
       )}

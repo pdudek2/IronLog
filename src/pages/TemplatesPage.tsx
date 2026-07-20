@@ -15,6 +15,11 @@ import {
   type WorkoutTemplate,
 } from '../lib/templateService'
 
+interface TemplateDeleteOperation {
+  target: WorkoutTemplate
+  status: 'pending' | 'error'
+}
+
 function formatDate(ts: number): string {
   if (!ts) return 'teraz'
   return new Date(ts).toLocaleDateString('pl-PL', {
@@ -46,6 +51,7 @@ export default function TemplatesPage() {
   const [error, setError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState<WorkoutTemplate | null>(null)
+  const [deleteOperation, setDeleteOperation] = useState<TemplateDeleteOperation | null>(null)
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -74,19 +80,29 @@ export default function TemplatesPage() {
     exercises: templates.reduce((sum, template) => sum + countTemplateExercises(template), 0),
   }), [templates])
 
-  async function handleDeleteConfirmed() {
-    if (!deleteTarget) return
-
-    const deletingId = deleteTarget.id
-    setDeleteTarget(null)
-
+  async function runTemplateDelete(target: WorkoutTemplate) {
+    setDeleteOperation({ target, status: 'pending' })
     try {
-      await deleteTemplate(deletingId)
-      setTemplates((prev) => prev.filter((template) => template.id !== deletingId))
+      await deleteTemplate(target.id)
+      setTemplates((prev) => prev.filter((template) => template.id !== target.id))
+      setDeleteOperation(null)
       toast.success('Szablon usunięty')
     } catch {
-      toast.error('Nie udało się usunąć szablonu.')
+      setDeleteOperation({ target, status: 'error' })
+      toast.error('Nie udało się usunąć planu.')
     }
+  }
+
+  function handleDeleteConfirmed() {
+    if (!deleteTarget) return
+    const target = deleteTarget
+    setDeleteTarget(null)
+    void runTemplateDelete(target)
+  }
+
+  function retryTemplateDelete() {
+    if (!deleteOperation || deleteOperation.status !== 'error') return
+    void runTemplateDelete(deleteOperation.target)
   }
 
   if (loading) {
@@ -232,9 +248,15 @@ export default function TemplatesPage() {
                 : null
               const isTemplateLaunching = templateLaunchOperation?.status === 'pending'
               const launchErrorId = `template-launch-error-${template.id}`
-              const launchErrorDescription = templateLaunchOperation?.status === 'error'
-                ? launchErrorId
-                : undefined
+              const templateDeleteOperation = deleteOperation?.target.id === template.id
+                ? deleteOperation
+                : null
+              const isTemplateDeleting = templateDeleteOperation?.status === 'pending'
+              const deleteFeedbackId = `template-delete-feedback-${template.id}`
+              const feedbackDescription = [
+                templateLaunchOperation?.status === 'error' ? launchErrorId : null,
+                templateDeleteOperation?.status === 'error' ? deleteFeedbackId : null,
+              ].filter(Boolean).join(' ') || undefined
               const isLaunchingControl = (requestKey: string) => (
                 isTemplateLaunching
                 && templateLaunchOperation.target.requestKey === requestKey
@@ -243,8 +265,8 @@ export default function TemplatesPage() {
                 <motion.article
                   key={template.id}
                   className="template-card planner-template-row"
-                  aria-busy={isTemplateLaunching ? 'true' : undefined}
-                  aria-describedby={launchErrorDescription}
+                  aria-busy={isTemplateLaunching || isTemplateDeleting ? 'true' : undefined}
+                  aria-describedby={feedbackDescription}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04, duration: 0.2 }}
@@ -268,7 +290,7 @@ export default function TemplatesPage() {
                           className="planner-day-chip"
                           data-testid={`template-day-summary-${template.id}-${dayIndex}`}
                           aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
-                          aria-describedby={launchErrorDescription}
+                          aria-describedby={feedbackDescription}
                           onClick={() => void requestTemplateLaunch(
                             template,
                             dayIndex,
@@ -292,7 +314,7 @@ export default function TemplatesPage() {
                       <motion.button
                         type="button"
                         aria-label={`Uruchom szablon ${template.name}`}
-                        aria-describedby={launchErrorDescription}
+                        aria-describedby={feedbackDescription}
                         onClick={() => void requestTemplateLaunch(
                           template,
                           0,
@@ -317,6 +339,8 @@ export default function TemplatesPage() {
                         type="button"
                         aria-label={`Usuń szablon ${template.name}`}
                         onClick={() => setDeleteTarget(template)}
+                        disabled={isTemplateDeleting}
+                        aria-describedby={templateDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
                         className="planner-icon-action planner-icon-action--danger"
                       >
                         <Trash2 size={14} />
@@ -332,6 +356,22 @@ export default function TemplatesPage() {
                         message={templateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
                         onRetry={() => { void retryTemplateLaunch() }}
                         onDismiss={dismissTemplateLaunchError}
+                      />
+                    </div>
+                  )}
+
+                  {templateDeleteOperation && (
+                    <div className="planner-template-feedback">
+                      <ActionFeedback
+                        id={deleteFeedbackId}
+                        status={templateDeleteOperation.status}
+                        message={templateDeleteOperation.status === 'pending'
+                          ? 'Usuwanie planu…'
+                          : 'Nie udało się usunąć planu.'}
+                        onRetry={templateDeleteOperation.status === 'error' ? retryTemplateDelete : undefined}
+                        onDismiss={templateDeleteOperation.status === 'error'
+                          ? () => setDeleteOperation(null)
+                          : undefined}
                       />
                     </div>
                   )}
@@ -373,7 +413,7 @@ export default function TemplatesPage() {
                                 type="button"
                                 data-testid={`template-day-detail-${template.id}-${dayIndex}`}
                                 aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
-                                aria-describedby={launchErrorDescription}
+                                aria-describedby={feedbackDescription}
                                 onClick={() => void requestTemplateLaunch(
                                   template,
                                   dayIndex,

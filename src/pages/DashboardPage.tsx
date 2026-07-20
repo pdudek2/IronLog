@@ -47,6 +47,11 @@ interface TemplatesResource {
   state: DataState<WorkoutTemplate[]>
 }
 
+interface WorkoutDeleteOperation {
+  workoutId: string
+  status: 'pending' | 'error'
+}
+
 const CATEGORY_COLORS: Record<string, string> = {
   chest: '#F0435A',
   back: '#8FB8A0',
@@ -168,7 +173,7 @@ export default function DashboardPage() {
     ready: dashboardReady,
     setSnapshot,
   } = useDashboardStore()
-  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deleteOperation, setDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [templatesResource, setTemplatesResource] = useState<TemplatesResource>({
     uid: user?.uid ?? null,
@@ -314,11 +319,16 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user) return
     if (profile) {
-      void fetchData(user.uid).catch(handleDashboardFetchError)
+      void Promise.resolve()
+        .then(() => fetchData(user.uid))
+        .catch(handleDashboardFetchError)
       return
     }
-    setLoading(true)
-    getProfile(user.uid)
+    void Promise.resolve()
+      .then(() => {
+        setLoading(true)
+        return getProfile(user.uid)
+      })
       .then((nextProfile) => {
         if (!nextProfile) navigate('/onboarding', { replace: true })
         else setProfile(nextProfile)
@@ -385,19 +395,30 @@ export default function DashboardPage() {
     }
   }
 
-  async function confirmDeleteWorkout() {
-    if (!confirmDelete) return
-    setDeletingId(confirmDelete)
-    setConfirmDelete(null)
+  async function runWorkoutDelete(workoutId: string) {
+    setDeleteOperation({ workoutId, status: 'pending' })
     try {
-      await deleteWorkout(confirmDelete)
+      await deleteWorkout(workoutId)
+      setDashboardSnapshot(workoutsRef.current.filter((workout) => workout.id !== workoutId))
+      setDeleteOperation(null)
       if (user) void fetchData(user.uid).catch(handleDashboardFetchError)
       toast.success('Trening usunięty')
     } catch {
-      toast.error('Błąd usuwania. Spróbuj ponownie.')
-    } finally {
-      setDeletingId(null)
+      setDeleteOperation({ workoutId, status: 'error' })
+      toast.error('Nie udało się usunąć treningu.')
     }
+  }
+
+  function confirmDeleteWorkout() {
+    if (!confirmDelete) return
+    const workoutId = confirmDelete
+    setConfirmDelete(null)
+    void runWorkoutDelete(workoutId)
+  }
+
+  function retryWorkoutDelete() {
+    if (!deleteOperation || deleteOperation.status !== 'error') return
+    void runWorkoutDelete(deleteOperation.workoutId)
   }
 
   if (dashboardError && !dashboardReady) {
@@ -856,20 +877,26 @@ export default function DashboardPage() {
                       const volume = calcVolume(workout)
                       const totalSets = workout.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
                       const totalExercises = workout.exercises.length
+                      const workoutDeleteOperation = deleteOperation?.workoutId === workout.id
+                        ? deleteOperation
+                        : null
+                      const isDeleting = workoutDeleteOperation?.status === 'pending'
+                      const deleteFeedbackId = `dashboard-workout-delete-feedback-${workout.id}`
 
                       return (
                         <motion.div
                           key={workout.id}
                           className="dashboard-history-row"
                           style={{
-                            opacity: deletingId === workout.id ? 0.4 : 1,
                             '--workout-accent': accent,
                           } as React.CSSProperties}
                           initial={false}
-                          animate={{ opacity: deletingId === workout.id ? 0.4 : 1, x: 0 }}
+                          animate={{ opacity: 1, x: 0 }}
                           exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
                           transition={{ duration: 0.22 }}
                           whileHover={{ y: -2 }}
+                          aria-busy={isDeleting ? 'true' : undefined}
+                          aria-describedby={workoutDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
                         >
                           <div className="dashboard-history-accent" aria-hidden="true" />
 
@@ -915,12 +942,28 @@ export default function DashboardPage() {
                                 }}
                                 whileHover={{ opacity: 1 }}
                                 whileTap={{ scale: 0.85 }}
-                                disabled={deletingId === workout.id}
+                                disabled={isDeleting}
+                                aria-describedby={workoutDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
                                 aria-label={`Usuń trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
                               >
                                 <Trash2 size={13} />
                               </motion.button>
                             </div>
+
+                            {workoutDeleteOperation && (
+                              <ActionFeedback
+                                id={deleteFeedbackId}
+                                status={workoutDeleteOperation.status}
+                                message={workoutDeleteOperation.status === 'pending'
+                                  ? 'Usuwanie treningu…'
+                                  : 'Nie udało się usunąć treningu.'}
+                                onRetry={workoutDeleteOperation.status === 'error' ? retryWorkoutDelete : undefined}
+                                onDismiss={workoutDeleteOperation.status === 'error'
+                                  ? () => setDeleteOperation(null)
+                                  : undefined}
+                                className="dashboard-workout-delete-feedback"
+                              />
+                            )}
 
                             {!workout.materialized && (
                               <WorkoutProjectionStatus

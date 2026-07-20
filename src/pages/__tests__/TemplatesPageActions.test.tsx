@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TemplateWorkoutLaunch } from '../../hooks/useTemplateWorkoutLaunch'
 import type { WorkoutTemplate } from '../../lib/templateService'
@@ -36,6 +36,7 @@ const templates: WorkoutTemplate[] = [
 
 const mocks = vi.hoisted(() => ({
   getTemplates: vi.fn(),
+  deleteTemplate: vi.fn(),
   navigate: vi.fn(),
   requestTemplateLaunch: vi.fn(),
   confirmTemplateLaunch: vi.fn(),
@@ -43,19 +44,27 @@ const mocks = vi.hoisted(() => ({
   retryTemplateLaunch: vi.fn(),
   dismissTemplateLaunchError: vi.fn(),
   launchState: {} as TemplateWorkoutLaunch,
+  user: { uid: 'user-1' },
 }))
 
 vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: { uid: 'user-1' } }),
+  useAuthStore: () => ({ user: mocks.user }),
 }))
 vi.mock('../../lib/templateService', () => ({
   getTemplates: mocks.getTemplates,
-  deleteTemplate: vi.fn(),
+  deleteTemplate: mocks.deleteTemplate,
 }))
 vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
   useTemplateWorkoutLaunch: () => mocks.launchState,
 }))
-vi.mock('../../components/ConfirmDialog', () => ({ default: () => null }))
+vi.mock('../../components/ConfirmDialog', () => ({
+  default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
+    <div>
+      <button type="button" onClick={onConfirm}>Potwierdź usunięcie</button>
+      <button type="button" onClick={onCancel}>Anuluj usunięcie</button>
+    </div>
+  ),
+}))
 vi.mock('../../components/TemplateLaunchConfirmDialog', () => ({ default: () => null }))
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
@@ -105,10 +114,21 @@ function cardFor(name: string): HTMLElement {
   return card
 }
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+  return { promise, resolve, reject }
+}
+
 describe('TemplatesPage launch actions', () => {
   beforeEach(() => {
     mocks.getTemplates.mockReset()
     mocks.getTemplates.mockResolvedValue(templates)
+    mocks.deleteTemplate.mockReset()
     mocks.navigate.mockReset()
     mocks.requestTemplateLaunch.mockReset()
     mocks.confirmTemplateLaunch.mockReset()
@@ -210,5 +230,69 @@ describe('TemplatesPage launch actions', () => {
       expect(mocks.retryTemplateLaunch).toHaveBeenCalledTimes(1)
       expect(mocks.dismissTemplateLaunchError).toHaveBeenCalledTimes(1)
     })
+  })
+
+  it('keeps a failed deletion attached to its plan until retry succeeds', async () => {
+    const firstDelete = deferred<void>()
+    const retryDelete = deferred<void>()
+    mocks.deleteTemplate
+      .mockReturnValueOnce(firstDelete.promise)
+      .mockReturnValueOnce(retryDelete.promise)
+
+    await renderPage()
+
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Usuń szablon Plan A' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    const pending = within(cardFor('Plan A')).getByRole('status')
+    expect(pending).toHaveTextContent('Usuwanie planu…')
+    expect(cardFor('Plan A')).toBeInTheDocument()
+    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Usuń szablon Plan B' }))
+      .toBeEnabled()
+    expect(mocks.deleteTemplate).toHaveBeenLastCalledWith('template-a')
+
+    firstDelete.reject(new Error('offline'))
+    await act(async () => {
+      await firstDelete.promise.catch(() => undefined)
+    })
+
+    const alert = await within(cardFor('Plan A')).findByRole('alert')
+    expect(alert).toHaveTextContent('Nie udało się usunąć planu.')
+    expect(cardFor('Plan A')).toBeInTheDocument()
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))
+
+    expect(within(cardFor('Plan A')).getByRole('status')).toHaveTextContent('Usuwanie planu…')
+    expect(mocks.deleteTemplate).toHaveBeenNthCalledWith(2, 'template-a')
+    expect(cardFor('Plan A')).toBeInTheDocument()
+
+    retryDelete.resolve()
+    await act(async () => {
+      await retryDelete.promise
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Plan A' })).not.toBeInTheDocument()
+    })
+    expect(cardFor('Plan B')).toBeInTheDocument()
+  })
+
+  it('dismisses deletion feedback without mutating the plan', async () => {
+    mocks.deleteTemplate.mockRejectedValueOnce(new Error('offline'))
+
+    await renderPage()
+
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Usuń szablon Plan A' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    await act(async () => {
+      await expect(mocks.deleteTemplate.mock.results[0]?.value).rejects.toThrow('offline')
+    })
+    const alert = await within(cardFor('Plan A')).findByRole('alert')
+    fireEvent.click(within(alert).getByRole('button', { name: 'Zamknij' }))
+
+    expect(within(cardFor('Plan A')).queryByRole('alert')).not.toBeInTheDocument()
+    expect(cardFor('Plan A')).toBeInTheDocument()
+    expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
   })
 })

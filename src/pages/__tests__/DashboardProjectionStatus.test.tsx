@@ -206,6 +206,86 @@ describe('Dashboard workout projection status', () => {
     expect(screen.queryByText('Push day')).not.toBeInTheDocument()
   })
 
+  it('keeps a failed deletion attached to its workout until retry succeeds', async () => {
+    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
+    const firstDelete = deferred<void>()
+    const retryDelete = deferred<void>()
+    mocks.getRecentWorkouts
+      .mockResolvedValueOnce([{ ...pendingWorkout, materialized: true }, workoutB])
+      .mockResolvedValueOnce([workoutB])
+    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
+    mocks.deleteWorkout
+      .mockReturnValueOnce(firstDelete.promise)
+      .mockReturnValueOnce(retryDelete.promise)
+
+    render(<DashboardPage />)
+
+    await screen.findByText('Push day')
+    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
+    const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
+    expect(pushRow).not.toBeNull()
+    expect(pullRow).not.toBeNull()
+    expect(within(pushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
+    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Usuń trening Pull day/ }))
+      .toBeEnabled()
+    expect(mocks.deleteWorkout).toHaveBeenLastCalledWith('workout-pending')
+
+    firstDelete.reject(new Error('offline'))
+    await act(async () => {
+      await firstDelete.promise.catch(() => undefined)
+    })
+
+    const failedPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
+    expect(failedPushRow).not.toBeNull()
+    const alert = await within(failedPushRow as HTMLElement).findByRole('alert')
+    expect(alert).toHaveTextContent('Nie udało się usunąć treningu.')
+    expect(screen.getByText('Push day')).toBeInTheDocument()
+
+    fireEvent.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))
+
+    const retryingPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
+    expect(retryingPushRow).not.toBeNull()
+    expect(within(retryingPushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
+    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
+
+    retryDelete.resolve()
+    await act(async () => {
+      await retryDelete.promise
+    })
+
+    await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
+    expect(screen.getByText('Pull day')).toBeInTheDocument()
+  })
+
+  it('dismisses workout deletion feedback without removing the row', async () => {
+    mocks.getRecentWorkouts.mockResolvedValueOnce([{ ...pendingWorkout, materialized: true }])
+    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
+    mocks.deleteWorkout.mockRejectedValueOnce(new Error('offline'))
+
+    render(<DashboardPage />)
+
+    await screen.findByText('Push day')
+    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    const row = screen.getByText('Push day').closest('.dashboard-history-row')
+    expect(row).not.toBeNull()
+    await act(async () => {
+      await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
+    })
+    const failedRow = screen.getByText('Push day').closest('.dashboard-history-row')
+    expect(failedRow).not.toBeNull()
+    const alert = await within(failedRow as HTMLElement).findByRole('alert')
+    fireEvent.click(within(alert).getByRole('button', { name: 'Zamknij' }))
+
+    expect(within(failedRow as HTMLElement).queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.getByText('Push day')).toBeInTheDocument()
+    expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
+  })
+
   it('deduplicates concurrent automatic retries and releases the workout after completion', async () => {
     const initialRetry = deferred<void>()
     mocks.getRecentWorkouts.mockResolvedValue([pendingWorkout])

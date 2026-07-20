@@ -1,9 +1,9 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2 i 3 zakończone; final review Fazy 3 clean, feature branch gotowy do merge po zgodzie użytkownika**
-Źródła: audyt techniczny aplikacji oraz audyt UI wykonany na desktopie i mobile
-Ostatnia aktualizacja: 2026-07-13
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3 i 4 zakończone; projekt Fazy 5 w toku; Faza 2B pozostaje niezależnie READY**
+Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
+Ostatnia aktualizacja: 2026-07-20
 
 ## 1. Cel dokumentu
 
@@ -28,6 +28,7 @@ Roadmapa odpowiada na cztery pytania:
 ### Statusy
 
 - **READY** — zakres można rozwinąć w szczegółowy plan.
+- **DESIGN IN PROGRESS** — trwa uzgadnianie docelowego kontraktu; implementacja nie jest jeszcze autoryzowana.
 - **BLOCKED** — przed planowaniem potrzebna jest decyzja albo zewnętrzna zmiana.
 - **DONE** — zakres wdrożony i zweryfikowany.
 - **LATER** — wartościowy, ale nieblokujący odbioru projektu.
@@ -49,7 +50,7 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 38 plików i 241 testów jednostkowych oraz testów wsparcia przechodzi,
+- 261 testów jednostkowych oraz testów wsparcia przechodzi,
 - 1 plik i 10 testów reguł Firestore przechodzi,
 - ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 20 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
@@ -69,10 +70,10 @@ Aktualny baseline jakości:
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | DONE | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
-| 9 | 5 — Feedback, copy i uczciwe testy wizualne | P2 | READY | Akcje komunikują stan, teksty są poprawne, a capture screenshotów nie udaje regresji wizualnej |
+| 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DESIGN IN PROGRESS | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
 | 10 | 6A — Stream i concurrency AI | P1 | READY | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
 | 11 | 6B — Poprawność i koszt kontekstu AI | P1 | READY | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
-| 12 | 6C — Walidacja planów i obsługa modeli AI | P2 | READY | Plan respektuje brief, a błędy modeli mają prawidłową klasyfikację |
+| 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | READY | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
 | 13 | S — Hardening CSP | P2 | READY | Pozostała polityka CSP jest egzekwowana albo rzeczywiście raportuje naruszenia |
 | 14 | 7 — Bramka release | P0 | BLOCKED | Jedna powtarzalna procedura potwierdza gotowość po zakończeniu wymaganych faz |
 
@@ -307,29 +308,44 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 **Zależności:** A11Y-01–A11Y-03, ponieważ rozmiar i semantyka tych samych kontrolek powinny być poprawiane razem.
 
-### Faza 5 — Feedback, copy i uczciwe testy wizualne
+### Faza 5 — Feedback, copy i integralność interfejsu
 
-**Cel:** usunąć miejsca, w których działająca aplikacja wygląda jak zawieszona albo komunikuje niewłaściwą akcję.
+**Status: DESIGN IN PROGRESS.** Zakres został ponownie skonsolidowany 2026-07-20 po pełnym audycie runtime i weryfikacji Senior Design Review względem aktualnego kodu. Nie otwiera ponownie Fazy 4 i nie obejmuje strategicznego redesignu marki.
+
+**Cel:** usunąć miejsca, w których działająca aplikacja wygląda jak zawieszona, komunikuje niewłaściwy stan albo utrudnia odczyt podstawowej akcji.
 
 **Zakres kanoniczny:**
 
 - **FEEDBACK-01:** start szablonu i dnia planu musi pokazywać jawny stan `launching` — tekst, spinner lub status — zamiast samego `disabled`/zmiany opacity.
 - **FEEDBACK-02:** centralne CTA treningu powinno rozróżniać „Rozpocznij nowy trening” i „Wznów trening” oraz komunikować aktywny stan nawigacji.
-- **FEEDBACK-03:** operacje zapisu/usunięcia mają zachować komunikat w obrębie ekranu, jeśli wynik wymaga działania użytkownika; toast pozostaje uzupełnieniem.
+- **FEEDBACK-03:** uruchomienie, zapis i usunięcie planu oraz usunięcie ukończonego treningu z dashboardu lub szczegółów mają zachować komunikat w obrębie właściwej karty, formularza albo docka, jeśli wynik wymaga działania użytkownika; toast pozostaje uzupełnieniem. Pozostałe formularze profilu, readiness, ćwiczeń i AI są poza tym punktem.
+- **FEEDBACK-04:** nowy plan ma zaczynać jako jawnie „nowy / niezapisany”. Stan „Zapisano” wolno pokazać dopiero po udanym utworzeniu dokumentu; czysty, jeszcze nieutworzony draft nie jest zapisanym planem.
+- **NAV-01:** wejście na `/` ma prowadzić do `/dashboard`; istniejący kontrakt trasy prywatnej nadal przekierowuje niezalogowanego użytkownika do `/login`, a nieznane ścieżki nadal pokazują 404.
+- **MOBILE-07:** stały pasek „Edytuj / Usuń trening” w szczegółach treningu nie może zasłaniać podsumowania ani ćwiczeń przy widocznej lub ukrytej dolnej nawigacji. Każdy fragment treści musi dać się przewinąć do w pełni widocznej pozycji ponad paskiem.
+- **A11Y-09:** tekst korzystający z `--muted-soft` musi osiągać co najmniej kontrast 4.5:1 na rzeczywiście używanych tłach, jeśli ma rozmiar normalnego tekstu. Zmiana tokenu nie zastępuje późniejszej, selektywnej oceny wielkości mikrotekstu.
+- **A11Y-10:** etykiety primary CTA muszą osiągać co najmniej kontrast 4.5:1 w całym użytym gradiencie i w stanach interakcji; nie wolno zakładać progu AA-large dla obecnych etykiet około 15 px.
 - **COPY-01:** poprawić odmianę kategorii w szczegółach treningu, np. „na klatkę”, zamiast interpolować surowe etykiety.
 - **COPY-02:** stosować `polishPlural` w opisach wykresów i dostępności, np. „4 wpisy”, „22 wpisy”.
-- **DEMO-01:** wyczyścić lub ponownie zasiać niewiarygodne dane demo, w szczególności trening `12h 0m`.
-- **TEST-04:** rozdzielić narzędzie do diagnostycznego capture screenshotów od prawdziwej regresji wizualnej. Capture ma mieć uczciwą nazwę i unikalne ścieżki; wybrane stabilne widoki mogą używać `toHaveScreenshot`, a szerszy zestaw pozostaje w `LATER-05`.
+- **COPY-03:** dialog odrzucenia aktywnego treningu ma używać jednoznacznej pary „Wróć” / „Odrzuć trening”, zamiast dwóch akcji zaczynających się od „Anuluj”.
+- **DEMO-01:** wykonać pełny, idempotentny reseed konta demo przez istniejący skrypt, z kontrolą docelowego adresu konta i końcową weryfikacją czasu, etykiet oraz liczby treningów. Ponowne uruchomienie seeda jest procedurą odzyskania; nie budujemy osobnej warstwy rollbacku dla danych demonstracyjnych.
+- **TEST-04:** rozdzielić narzędzie do diagnostycznego capture screenshotów od prawdziwej regresji wizualnej. Capture ma mieć uczciwą nazwę i unikalne ścieżki. Pierwszy stabilny baseline obejmuje wyłącznie pusty ekran Planów na desktopie i mobile przez `toHaveScreenshot`; szerszy zestaw pozostaje w `LATER-05`.
 
 **Kryteria wyjścia:**
 
-- każda akcja asynchroniczna dłuższa niż natychmiastowa ma widoczny i dostępny stan;
+- każda akcja asynchroniczna objęta `FEEDBACK-01–04` ma widoczny i dostępny stan;
 - CTA treningu odpowiada rzeczywistemu stanowi sesji;
+- nowy plan nie przedstawia nieutworzonego draftu jako zapisanego zasobu;
+- `/` kończy na dashboardzie dla zalogowanego użytkownika i na logowaniu dla niezalogowanego, podczas gdy nieznana trasa nadal kończy na 404;
+- mobilny pasek akcji szczegółów treningu nie zasłania treści przy żadnym stanie dolnej nawigacji;
+- `--muted-soft` i primary CTA spełniają kontrast 4.5:1 w objętych zastosowaniach;
+- para akcji w dialogu odrzucenia treningu jednoznacznie rozróżnia powrót od operacji destrukcyjnej;
 - dynamiczne polskie teksty przechodzą zestaw testów odmiany;
-- konto demo pokazuje wiarygodne scenariusze prezentacyjne.
+- konto demo pokazuje wiarygodne scenariusze prezentacyjne;
 - artefakty desktop/mobile nie nadpisują się, a żaden test nie jest nazywany regresją wizualną bez wykonywania porównania.
 
-**Zależności:** semantyka nawigacji z fazy 3. `FEEDBACK-02` korzysta z docelowego kontraktu aktywnej sesji z fazy 1; copy i TEST-04 są niezależne.
+**Poza zakresem:** strategiczny redesign marki Puls/IronLog, hurtowe zwiększanie wszystkich małych etykiet, centralizacja całej palety kategorii, przebudowa profilu i konsolidacja poprawnych stanów z małą liczbą danych. Elementy uznane za wartościowe, ale nieblokujące, są zapisane w `LATER-08–10`.
+
+**Zależności:** semantyka nawigacji z fazy 3. `FEEDBACK-02` korzysta z docelowego kontraktu aktywnej sesji z fazy 1; `A11Y-09–10` muszą zostać zamknięte przed zapisaniem baseline'ów `TEST-04`; copy pozostaje niezależne.
 
 ### Faza 6A — Stream i concurrency AI
 
@@ -368,7 +384,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 **Zależności:** standard stanów błędu z fazy 2.
 
-### Faza 6C — Walidacja planów i obsługa modeli AI
+### Faza 6C — Walidacja planów i obsługa konfiguracji AI
 
 **Cel:** zapewnić zgodność wygenerowanego planu z briefem oraz prawidłową klasyfikację błędów konfiguracji AI.
 
@@ -379,11 +395,13 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 - **AI-06:** utrzymać BYOK i zakaz zapisu klucza w Firestore; zweryfikować brak klucza i treści wrażliwych w logach.
 - **AI-12:** zwalidować plan względem liczby dni, sprzętu, źródeł ćwiczeń i limitów szablonu.
 - **AI-13:** rozróżnić invalid key, upstream unavailable i retryable network error; błąd modeli nie może bezpodstawnie blokować czatu.
+- **AI-14:** na mobile stan bez klucza ma eksponować konfigurację przed nieaktywnym czatem albo zastąpić nim główną powierzchnię. Użytkownik nie może widzieć przede wszystkim zablokowanej rozmowy, gdy wymagane działanie znajduje się poniżej viewportu.
 
 **Kryteria wyjścia:**
 
 - plan niespełniający briefu jest naprawiany albo odrzucany przed pokazaniem jako gotowy szablon;
 - testy obejmują 401, 429, błąd upstreamu, błąd sieci i niezgodny plan;
+- test mobile bez klucza prowadzi bezpośrednio do panelu konfiguracji i nie przedstawia zablokowanego czatu jako głównego zadania;
 - README opisuje rzeczywisty minutowy rate limit;
 - klucz API nie trafia do logów, bazy ani diagnostyki.
 
@@ -422,6 +440,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 - **RELEASE-07:** zapisać wynik odbioru w `WORKING_CONTEXT.md` i wskazać świadomie odłożone elementy LATER.
 - **RELEASE-08 — OPEN:** uruchomić pełny live Playwright z prywatnymi `TEST_EMAIL` i `TEST_PASSWORD`, wykonać kontrole produkcyjnego deploymentu Vercel, potwierdzić w Network panelu brak requestów do GA4, Google Tag Manager, Hotjar i Contentsquare oraz brak analitycznych zmiennych, a następnie opublikować produkcyjne reguły Firestore. Dla Fazy 1 zachować kolejność: API + SPA, smoke finish/discard, restrykcyjne reguły.
 - **RELEASE-09:** potwierdzić docelowy tryb CSP i zgodność pozostałej allowlisty z rzeczywistymi requestami aplikacji.
+- **RELEASE-10:** zmierzyć zimne wejście na dashboard w produkcyjnym albo równoważnym środowisku i zapisać czas do gotowości ekranu. Optymalizacja jest wymagana tylko po powtarzalnym odtworzeniu problemu; pojedynczy około dziesięciosekundowy wynik z lokalnego audytu nie jest samodzielnym dowodem regresji.
 
 **Kryteria wyjścia:**
 
@@ -429,6 +448,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 - brak otwartych P0/P1;
 - nie istnieje znany przypadek utraty lub duplikacji treningu;
 - główne przepływy przechodzą na desktopie i mobile bez anonimowych kontrolek i niewidocznego fokusu;
+- zimne wejście na dashboard ma zapisany powtarzalny pomiar, a ewentualna praca wydajnościowa wynika z dowodu zamiast pojedynczej obserwacji;
 - dokumentacja i demo odpowiadają faktycznemu zachowaniu aplikacji.
 
 **Blokada:** pełny live E2E nadal wymaga prywatnych `TEST_EMAIL` i `TEST_PASSWORD` oraz środowiska bez blokady quota. `TEST-06` zapewnia deterministyczny gate krytycznych testów, ale nie migruje pełnego zestawu E2E.
@@ -444,6 +464,9 @@ Poniższe elementy nie powinny blokować odbioru, o ile wszystkie wymagane fazy 
 - **LATER-05:** szersza automatyczna regresja wizualna wszystkich tras; na start wystarczy mały stabilny zestaw widoków reprezentatywnych.
 - **LATER-06:** usunięcie nieużywanego scaffoldingu i domyślnych assetów Vite po potwierdzeniu braku importów.
 - **LATER-07:** jawny stan częściowego błędu własnych ćwiczeń w selektorze treningu, edytorze planu, historii i widokach szczegółowych; katalog globalny powinien pozostać dostępny, a brak własnych pozycji nie może wyglądać jak ich usunięcie.
+- **LATER-08:** scentralizować `CATEGORY_COLORS` i neutralny fallback w jednym kontrakcie design systemu; usunąć pozostałość starego motywu `#808CB3`. Jest to porządek systemowy, a nie warunek odbioru bieżących przepływów.
+- **LATER-09:** wykonać selektywny przegląd mikrotekstu na rzeczywistych ekranach. Podnosić rozmiar istotnych metadanych, a pozostawić mniejsze etykiety dekoracyjne i zwarte nagłówki tabel; nie stosować globalnego mechanicznego bumpu.
+- **LATER-10:** po zamknięciu roadmapy zdecydować, czy rozwijać sygnaturę EKG, dualizm wysiłek/recovery oraz relację nazwy „IronLog” z identyfikacją „Puls”. Jest to osobny moduł brandingowy, nie naprawa produktu ani blokada release.
 
 Decyzje odpowiadające dawnym punktom `AI-02` i `AI-03` są zamknięte na poziomie obecnego scope: nie wdrażamy teraz dziennego budżetu ani trwałej historii czatu. Jeżeli wrócą jako wymaganie produktowe, otrzymają nowe plany w ramach `LATER-01` i `LATER-02`.
 
@@ -472,7 +495,7 @@ Po fazie 0 można równolegle przygotować fazę 2B, kolejne fazy po Fazie 3 ora
 
 ## 9. Macierz śledzenia audytów
 
-Ta sekcja jest obowiązkową warstwą kontroli kompletności. `ASR-1` oznacza techniczny Agent Sanity Review z brancha `puls-rebrand` na `8607eb6`. Punkty audytu UI są oznaczone jako `ASR-UI`. Jeden punkt audytu może zasilać kilka elementów roadmapy, ale żaden zweryfikowany problem nie może pozostać bez przypisania. Wartość `pełne` oznacza pełne odwzorowanie problemu w zakresie roadmapy — nie oznacza jeszcze, że problem został wdrożony lub zamknięty.
+Ta sekcja jest obowiązkową warstwą kontroli kompletności. `ASR-1` oznacza techniczny Agent Sanity Review z brancha `puls-rebrand` na `8607eb6`, `ASR-UI` pierwszy audyt UI, `SDR` Senior Design Review z 2026-07-14, a `REFINE-UI` pełny audyt runtime z 2026-07-20. Jeden punkt audytu może zasilać kilka elementów roadmapy, ale żaden zweryfikowany problem nie może pozostać bez przypisania. Wartość `pełne` oznacza pełne odwzorowanie problemu w zakresie roadmapy — nie oznacza jeszcze, że problem został wdrożony lub zamknięty. Punkty odrzucone albo już zabezpieczone pozostają w macierzy, żeby nie wracały bez nowych dowodów.
 
 ### ASR-1 — audyt techniczny
 
@@ -516,9 +539,34 @@ Ta sekcja jest obowiązkową warstwą kontroli kompletności. `ASR-1` oznacza te
 | ASR-UI-16 | Brakuje E2E pełnej finalizacji treningu | P2 | kryterium wyjścia Fazy 1 | pełne |
 | ASR-UI-17 | Cleanup testu profilu nie jest odporny na przerwanie | P2 | TEST-03 | pełne |
 
+### SDR — Senior Design Review, 2026-07-14
+
+| ID audytu | Ustalenie | Ocena po rewalidacji 2026-07-20 | Punkt roadmapy | Pokrycie |
+|---|---|---|---|---|
+| SDR-01 | `/` pokazuje 404 zamiast wejścia do aplikacji | `confirmed` w aktualnym routerze | NAV-01 | pełne |
+| SDR-02 | Widoki z rzadkimi danymi wyglądają na niedokończone | `not confirmed` w nowszym review dashboardu, Planów i Ćwiczeń | brak pracy | zamknięte bez implementacji |
+| SDR-03 | Profil łączy dwie niespójne osie layoutu | `not confirmed`; nowszy review daje ekranowi PASS | brak pracy | zamknięte bez implementacji |
+| SDR-04 | `--muted-soft` ma kontrast 3.20–3.71 dla małego tekstu | `confirmed` w aktualnych tokenach i zastosowaniach | A11Y-09 | pełne |
+| SDR-05 | Primary CTA używa białego tekstu na fragmencie czerwonego gradientu o kontraście 3.71 | `confirmed` w aktualnych tokenach | A11Y-10 | pełne |
+| SDR-06 | Mapy `CATEGORY_COLORS` są zduplikowane, a `#808CB3` pozostał po starym motywie | `confirmed`, lecz nieblokujące produktowo | LATER-08 | pełne, świadomie odłożone |
+| SDR-07 | Profil nie pokazuje wybranego celu i jednostek | `already protected`: widoczny stan oraz `aria-pressed` istnieją | brak pracy | zamknięte bez implementacji |
+| SDR-08 | Dialog używa mylącej pary „Anuluj” / „Anuluj trening” | `confirmed` w aktualnym flow | COPY-03 | pełne |
+| SDR-09 | Pierwszy render dashboardu trwał około 10 sekund | `unverified`: pojedynczy lokalny pomiar | RELEASE-10 | pełne jako obowiązek pomiaru, nie założona optymalizacja |
+| SDR-10 | Motyw EKG, recovery i relacja nazwy do marki są niedokorzystane | kierunek strategiczny, nie bug | LATER-10 | pełne, świadomie odłożone |
+
+### REFINE-UI — pełny audyt runtime, 2026-07-20
+
+| ID audytu | Ustalenie | Priorytet po weryfikacji | Punkt roadmapy | Pokrycie |
+|---|---|---:|---|---|
+| REFINE-UI-01 | AI Coach bez klucza eksponuje zablokowany czat przed konfiguracją | P2 | AI-14 | pełne |
+| REFINE-UI-02 | Nowy plan pokazuje „Zapisano”, mimo że dokument nie istnieje | P1 | FEEDBACK-04 | pełne |
+| REFINE-UI-03 | Mobilny pasek akcji zasłania część podsumowania treningu | P2 | MOBILE-07 | pełne |
+| REFINE-UI-04 | Istotne metadane bywają zbyt małe do szybkiego skanowania | P2 | A11Y-09, LATER-09 | częściowe teraz przez kontrast; rozmiar świadomie odłożony do selektywnego review |
+| REFINE-UI-05 | Logowanie, dashboard, historia, postępy, Plany, Ćwiczenia, Profil, aktywny trening i sam ekran 404 nie mają innych potwierdzonych blockerów wizualnych | PASS | brak pracy | wynik zachowany jako baseline review; nie rozstrzyga błędu routingu z SDR-01 |
+
 ### FOLLOWUP — hipotezy dodane podczas syntezy roadmapy
 
-Poniższe punkty nie pochodzą bezpośrednio z dwóch audytów. Hipotezy workoutu zostały rozstrzygnięte w Fazie R; hipotezy UI nadal wymagają wskazanej walidacji.
+Poniższe punkty nie pochodzą bezpośrednio z audytów źródłowych. Hipotezy workoutu zostały rozstrzygnięte w Fazie R, a hipotezy UI w Fazie 4.
 
 | ID | Hipoteza | Wynik walidacji | Punkt implementacyjny |
 |---|---|---|---|

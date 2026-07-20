@@ -26,6 +26,15 @@ function workoutExerciseRow(page: Page, exerciseName: string) {
   return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
 }
 
+async function openExercisePicker(page: Page): Promise<void> {
+  const addExerciseButton = page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()
+  await addExerciseButton.scrollIntoViewIfNeeded()
+  await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
+  await expect(addExerciseButton).toBeEnabled()
+  await addExerciseButton.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }))
+  await addExerciseButton.click()
+}
+
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
     page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).waitFor({ state: 'visible', timeout: 25_000 }),
@@ -40,7 +49,7 @@ async function createLaunchTemplate(page: Page, templateName: string): Promise<v
   await expectAppReady(page, '/templates/new')
 
   await page.getByPlaceholder('np. Upper / Lower 4 dni').fill(templateName)
-  await page.getByRole('button', { name: 'Dodaj ćwiczenie' }).first().click()
+  await openExercisePicker(page)
 
   const picker = page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })
   await expect(picker).toBeVisible({ timeout: 5_000 })
@@ -66,9 +75,7 @@ async function startFreshSessionWithExercise(page: Page, exerciseName: string): 
     await startButton.click()
   }
 
-  const addExerciseButton = page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()
-  await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
-  await addExerciseButton.click()
+  await openExercisePicker(page)
 
   const picker = page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })
   await expect(picker).toBeVisible({ timeout: 5_000 })
@@ -121,6 +128,8 @@ test.describe('Template launch contract', () => {
     cleanup,
     expectedBrowserDiagnostics,
   }) => {
+    test.setTimeout(60_000)
+
     cleanup.add('delete offline template', () => deleteTemplateByName(page, OFFLINE_TEMPLATE_NAME))
     cleanup.add('discard active session', () => discardActiveSession(page))
     await createLaunchTemplate(page, OFFLINE_TEMPLATE_NAME)

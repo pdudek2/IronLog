@@ -31,11 +31,13 @@ export function isBlockingRequestFailure(
     && /^http:\/\/127\.0\.0\.1:8080\/google\.firestore\.v1\.Firestore\/(?:Listen|Write)\/channel\?/.test(url)
   const isLocalViteSourceModule = resourceType === 'script'
     && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/src\/.+\.[cm]?[jt]sx?(?:\?.*)?$/.test(url)
+  const isTrustedGoogleFont = resourceType === 'font'
+    && /^https:\/\/fonts\.gstatic\.com\//.test(url)
 
   return !(
     intentionalNavigationOrTeardown
     && errorText === 'net::ERR_ABORTED'
-    && (isEmulatorFirestoreChannel || isLocalViteSourceModule)
+    && (isEmulatorFirestoreChannel || isLocalViteSourceModule || isTrustedGoogleFont)
   )
 }
 

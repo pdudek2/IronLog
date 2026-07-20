@@ -53,6 +53,18 @@ describe('browser diagnostics classification', () => {
     expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'http://localhost:5174/assets/app.js', true)).toBe(true)
     expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'https://example.com/src/app.ts', true)).toBe(true)
   })
+
+  it('ignores only aborted fonts.gstatic.com font requests during intentional navigation or teardown', () => {
+    const googleFontUrl = 'https://fonts.gstatic.com/s/urbanist/v17/L0x5DF02iFML4hGCyMqlbSnbfM3k.woff2'
+
+    expect(isBlockingRequestFailure('font', 'net::ERR_ABORTED', googleFontUrl)).toBe(true)
+    expect(isBlockingRequestFailure('font', 'net::ERR_ABORTED', googleFontUrl, false)).toBe(true)
+    expect(isBlockingRequestFailure('font', 'net::ERR_ABORTED', googleFontUrl, true)).toBe(false)
+    expect(isBlockingRequestFailure('font', 'net::ERR_FAILED', googleFontUrl, true)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', googleFontUrl, true)).toBe(true)
+    expect(isBlockingRequestFailure('font', 'net::ERR_ABORTED', 'https://fonts.googleapis.com/css2?family=Urbanist', true)).toBe(true)
+    expect(isBlockingRequestFailure('font', 'net::ERR_ABORTED', 'https://fonts.gstatic.com.evil.example/font.woff2', true)).toBe(true)
+  })
 })
 
 describe('browser diagnostics controller', () => {

@@ -1,13 +1,23 @@
+import { getApps } from 'firebase-admin/app'
 import { adminAuth, adminDb } from '../api/lib/firebaseAdmin.js'
 import { materializeWorkoutForUser } from '../api/lib/workoutProjection.js'
+import {
+  assertDemoSeedConfirmation,
+  validateDemoSeedSnapshot,
+  type DemoSeedExpectations,
+  type DemoSeedSnapshot,
+} from './demoSeedContract.js'
 
 /**
- * Seed demo account with ~60 days of realistic workout history.
+ * Seed demo account with 26 realistic workouts across ~60 days.
  *
- * Usage: npm run seed:demo
+ * Usage:
+ *   DEMO_SEED_CONFIRM_EMAIL=demo@ironlog.app \
+ *   DEMO_SEED_CONFIRM_PROJECT_ID=ironlog-ede05 \
+ *   npm run seed:demo [-- --dry-run]
  *
  * Konta pisze:
- *   - workouts (~22 w ostatnich 60 dniach)
+ *   - workouts (26 w ostatnich 60 dniach)
  *   - exerciseSessions + records (przez materializację)
  *   - userExercises (4 custom)
  *   - templates (1 Upper/Lower)
@@ -107,6 +117,16 @@ const USER_EXERCISES: UserExerciseSeed[] = [
     muscles: ['back', 'biceps'],
   },
 ]
+
+const READINESS_PATTERNS = [
+  { sleep: 4, mood: 4, soreness: 2 },
+  { sleep: 3, mood: 3, soreness: 3 },
+  { sleep: 5, mood: 5, soreness: 1 },
+  { sleep: 4, mood: 4, soreness: 2 },
+  { sleep: 3, mood: 4, soreness: 3 },
+  { sleep: 4, mood: 3, soreness: 2 },
+  { sleep: 5, mood: 5, soreness: 2 },
+] as const
 
 // === WORKOUT BUILDERS — per split day, parametrized by week ===
 function upperA(week: number): WorkoutExerciseSpec[] {
@@ -287,7 +307,7 @@ function lowerB(week: number): WorkoutExerciseSpec[] {
   ]
 }
 
-// === SCHEDULE — 22 workouts over ~56 days ===
+// === SCHEDULE — 26 workouts over ~56 days ===
 // Format: [daysAgo, splitName]. Sorted newest-first in source, but seeded oldest-first.
 // Gaps simulate rest days, busy weeks, an illness week around day 28.
 const SCHEDULE: Array<{ daysAgo: number; split: 'UA' | 'LA' | 'UB' | 'LB' }> = [
@@ -345,6 +365,67 @@ function buildSchedule(): ScheduledWorkout[] {
       exercises: fn(weekIdx),
     }
   })
+}
+
+function buildExpectations(): DemoSeedExpectations {
+  const schedule = buildSchedule()
+
+  return {
+    workoutCount: schedule.length,
+    templateCount: 1,
+    userExerciseCount: USER_EXERCISES.length,
+    readinessCount: READINESS_PATTERNS.length,
+    maxDurationMin: Math.max(...schedule.map((workout) => workout.durationMin)),
+  }
+}
+
+async function readDemoSnapshot(userId: string): Promise<DemoSeedSnapshot> {
+  const [workouts, templates, userExercises, readiness, activeSession] = await Promise.all([
+    adminDb.collection('workouts').where('userId', '==', userId).get(),
+    adminDb.collection('templates').where('userId', '==', userId).get(),
+    adminDb.collection('userExercises').where('userId', '==', userId).get(),
+    adminDb.collection('readiness').where('userId', '==', userId).get(),
+    adminDb.collection('activeSessions').doc(userId).get(),
+  ])
+
+  const durations = workouts.docs.map((document) => {
+    const data = document.data()
+    const startedAt = typeof data.startedAt === 'number' ? data.startedAt : 0
+    const finishedAt = typeof data.finishedAt === 'number' ? data.finishedAt : 0
+    return Math.max(0, finishedAt - startedAt) / 60_000
+  })
+
+  return {
+    workoutCount: workouts.size,
+    templateCount: templates.size,
+    userExerciseCount: userExercises.size,
+    readinessCount: readiness.size,
+    maxDurationMin: durations.length > 0 ? Math.max(...durations) : 0,
+    blankWorkoutLabels: workouts.docs.filter((document) => {
+      const label = document.data().label
+      return typeof label !== 'string' || label.trim().length === 0
+    }).length,
+    hasActiveSession: activeSession.exists,
+  }
+}
+
+function printSnapshot(snapshot: DemoSeedSnapshot, issues: string[]): void {
+  console.log('\n🔎 Snapshot demo (tylko odczyt):')
+  console.log(`   Treningi: ${snapshot.workoutCount}`)
+  console.log(`   Szablony: ${snapshot.templateCount}`)
+  console.log(`   Własne ćwiczenia: ${snapshot.userExerciseCount}`)
+  console.log(`   Ankiety gotowości: ${snapshot.readinessCount}`)
+  console.log(`   Maksymalny czas treningu: ${snapshot.maxDurationMin} min`)
+  console.log(`   Puste etykiety treningów: ${snapshot.blankWorkoutLabels}`)
+  console.log(`   Aktywna sesja: ${snapshot.hasActiveSession ? 'tak' : 'nie'}`)
+
+  if (issues.length === 0) {
+    console.log('   ✓ Snapshot spełnia kontrakt fixture’ów.')
+    return
+  }
+
+  console.log('   Problemy:')
+  issues.forEach((issue) => console.log(`   - ${issue}`))
 }
 
 // === FIRESTORE WRITERS ===
@@ -483,17 +564,7 @@ async function seedReadiness(userId: string): Promise<void> {
   const batch = adminDb.batch()
   const now = Date.now()
 
-  const patterns = [
-    { sleep: 4, mood: 4, soreness: 2 },
-    { sleep: 3, mood: 3, soreness: 3 },
-    { sleep: 5, mood: 5, soreness: 1 },
-    { sleep: 4, mood: 4, soreness: 2 },
-    { sleep: 3, mood: 4, soreness: 3 },
-    { sleep: 4, mood: 3, soreness: 2 },
-    { sleep: 5, mood: 5, soreness: 2 },
-  ]
-
-  for (let i = 0; i < 7; i++) {
+  for (let i = 0; i < READINESS_PATTERNS.length; i++) {
     const ts = now - i * dayMs
     const date = new Date(ts)
     const yyyy = date.getFullYear()
@@ -506,32 +577,65 @@ async function seedReadiness(userId: string): Promise<void> {
     batch.set(ref, {
       userId,
       date: dateStr,
-      ...patterns[i],
+      ...READINESS_PATTERNS[i],
       createdAt: ts,
     })
   }
   await batch.commit()
-  console.log('   ✓ 7 wpisów')
+  console.log(`   ✓ ${READINESS_PATTERNS.length} wpisów`)
 }
 
 // === MAIN ===
+class SafeOperationalError extends Error {}
+
+function parseDryRun(args: string[]): boolean {
+  const unexpected = args.filter((arg) => arg !== '--dry-run')
+  if (unexpected.length > 0) {
+    throw new SafeOperationalError('Nieznany argument. Obsługiwany jest wyłącznie --dry-run.')
+  }
+  return args.includes('--dry-run')
+}
+
 async function main(): Promise<void> {
-  console.log(`\n🌱 IronLog demo seed`)
-  console.log(`   Konto: ${DEMO_EMAIL}`)
+  const dryRun = parseDryRun(process.argv.slice(2))
+  const actualProjectId = getApps()[0]?.options.projectId ?? ''
 
   let userRecord
   try {
     userRecord = await adminAuth.getUserByEmail(DEMO_EMAIL)
   } catch {
-    console.error(
-      `\n❌ Nie znalazłem użytkownika ${DEMO_EMAIL} w Firebase Auth.\n` +
-      `   Najpierw stwórz konto w apce (Rejestracja) albo w Firebase Console.\n`,
+    throw new SafeOperationalError(
+      `Nie znaleziono użytkownika ${DEMO_EMAIL} w Firebase Auth.`,
     )
-    process.exit(1)
   }
 
   const userId = userRecord.uid
-  console.log(`   UID: ${userId}`)
+  try {
+    assertDemoSeedConfirmation({
+      actualEmail: userRecord.email ?? '',
+      expectedEmail: DEMO_EMAIL,
+      actualProjectId,
+      confirmedEmail: process.env.DEMO_SEED_CONFIRM_EMAIL,
+      confirmedProjectId: process.env.DEMO_SEED_CONFIRM_PROJECT_ID,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Nieznany błąd preflightu.'
+    throw new SafeOperationalError(`Preflight odrzucony: ${message}`)
+  }
+
+  const expectations = buildExpectations()
+
+  console.log('\n🌱 IronLog demo seed')
+  console.log(`   Tryb: ${dryRun ? 'dry-run (tylko odczyt)' : 'reset i deterministyczny reseed'}`)
+  console.log(`   Konto docelowe: ${DEMO_EMAIL}`)
+  console.log(`   Projekt Firebase: ${actualProjectId}`)
+
+  if (dryRun) {
+    const snapshot = await readDemoSnapshot(userId)
+    printSnapshot(snapshot, validateDemoSeedSnapshot(snapshot, expectations))
+    console.log('\nℹ️  Dry-run zakończony. Nie wykonano resetu, zapisu ani materializacji.\n')
+    return
+  }
 
   await resetDemo(userId)
   await seedUserExercises(userId)
@@ -540,11 +644,23 @@ async function main(): Promise<void> {
   await materializeAll(userId, workoutIds)
   await seedReadiness(userId)
 
+  const snapshot = await readDemoSnapshot(userId)
+  const issues = validateDemoSeedSnapshot(snapshot, expectations)
+  printSnapshot(snapshot, issues)
+  if (issues.length > 0) {
+    throw new SafeOperationalError('Walidacja snapshotu po reseedzie nie powiodła się.')
+  }
+
   console.log(`\n✅ Gotowe. Zaloguj się jako ${DEMO_EMAIL} i rób screeny.\n`)
-  process.exit(0)
 }
 
-main().catch((err) => {
-  console.error('\n❌ Seed failed:', err)
+main().then(() => {
+  process.exit(0)
+}).catch((error) => {
+  if (error instanceof SafeOperationalError) {
+    console.error(`\n❌ ${error.message}\n`)
+  } else {
+    console.error('\n❌ Seed failed. Szczegóły pominięto, aby nie ujawnić danych uwierzytelniających.\n')
+  }
   process.exit(1)
 })

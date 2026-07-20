@@ -45,9 +45,16 @@ export function useTemplateWorkoutLaunch(
   const navigate = useNavigate()
   const [pendingLaunch, setPendingLaunch] = useState<TemplateLaunchTarget | null>(null)
   const [launchOperation, setLaunchOperation] = useState<TemplateLaunchOperation | null>(null)
+  const [launchStateUid, setLaunchStateUid] = useState(uid)
   const launchLockRef = useRef(false)
   const launchGenerationRef = useRef(0)
   const mountedRef = useRef(true)
+
+  if (launchStateUid !== uid) {
+    setLaunchStateUid(uid)
+    setPendingLaunch(null)
+    setLaunchOperation(null)
+  }
 
   useEffect(() => {
     mountedRef.current = true

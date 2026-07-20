@@ -232,6 +232,9 @@ export default function TemplatesPage() {
                 : null
               const isTemplateLaunching = templateLaunchOperation?.status === 'pending'
               const launchErrorId = `template-launch-error-${template.id}`
+              const launchErrorDescription = templateLaunchOperation?.status === 'error'
+                ? launchErrorId
+                : undefined
               const isLaunchingControl = (requestKey: string) => (
                 isTemplateLaunching
                 && templateLaunchOperation.target.requestKey === requestKey
@@ -241,7 +244,7 @@ export default function TemplatesPage() {
                   key={template.id}
                   className="template-card planner-template-row"
                   aria-busy={isTemplateLaunching ? 'true' : undefined}
-                  aria-describedby={templateLaunchOperation?.status === 'error' ? launchErrorId : undefined}
+                  aria-describedby={launchErrorDescription}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04, duration: 0.2 }}
@@ -265,6 +268,7 @@ export default function TemplatesPage() {
                           className="planner-day-chip"
                           data-testid={`template-day-summary-${template.id}-${dayIndex}`}
                           aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
+                          aria-describedby={launchErrorDescription}
                           onClick={() => void requestTemplateLaunch(
                             template,
                             dayIndex,
@@ -288,6 +292,7 @@ export default function TemplatesPage() {
                       <motion.button
                         type="button"
                         aria-label={`Uruchom szablon ${template.name}`}
+                        aria-describedby={launchErrorDescription}
                         onClick={() => void requestTemplateLaunch(
                           template,
                           0,
@@ -368,6 +373,7 @@ export default function TemplatesPage() {
                                 type="button"
                                 data-testid={`template-day-detail-${template.id}-${dayIndex}`}
                                 aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
+                                aria-describedby={launchErrorDescription}
                                 onClick={() => void requestTemplateLaunch(
                                   template,
                                   dayIndex,

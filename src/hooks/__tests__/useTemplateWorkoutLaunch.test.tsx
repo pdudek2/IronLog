@@ -252,6 +252,48 @@ describe('useTemplateWorkoutLaunch', () => {
     expect(mocks.navigate).not.toHaveBeenCalled()
   })
 
+  it('clears a failed operation on uid change and cannot retry the old target', async () => {
+    mocks.createPersistedTemplateWorkout.mockRejectedValue(new Error('offline'))
+    const { result, rerender } = renderHook(
+      ({ uid }: { uid: string }) => useTemplateWorkoutLaunch(uid),
+      { initialProps: { uid: 'user-1' }, wrapper },
+    )
+
+    await act(async () => {
+      await result.current.requestTemplateLaunch(template, 0, 'templates:template-a:primary')
+    })
+    expect(result.current.launchOperation?.status).toBe('error')
+
+    rerender({ uid: 'user-2' })
+
+    expect(result.current.launchOperation).toBeNull()
+    await act(async () => {
+      await result.current.retryTemplateLaunch()
+    })
+    expect(mocks.createPersistedTemplateWorkout).toHaveBeenCalledTimes(1)
+  })
+
+  it('clears the conflict dialog on uid change and cannot confirm the old target', async () => {
+    mocks.active = { ...workout, label: 'Trwająca sesja' }
+    const { result, rerender } = renderHook(
+      ({ uid }: { uid: string }) => useTemplateWorkoutLaunch(uid),
+      { initialProps: { uid: 'user-1' }, wrapper },
+    )
+
+    await act(async () => {
+      await result.current.requestTemplateLaunch(template, 0, 'templates:template-a:primary')
+    })
+    expect(result.current.pendingLaunch).not.toBeNull()
+
+    rerender({ uid: 'user-2' })
+
+    expect(result.current.pendingLaunch).toBeNull()
+    await act(async () => {
+      await result.current.confirmTemplateLaunch()
+    })
+    expect(mocks.createPersistedTemplateWorkout).not.toHaveBeenCalled()
+  })
+
   it('does not hydrate or navigate after unmount', async () => {
     const launch = deferred<ActiveWorkout>()
     mocks.createPersistedTemplateWorkout.mockReturnValue(launch.promise)

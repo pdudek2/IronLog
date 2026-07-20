@@ -196,6 +196,12 @@ describe('TemplatesPage launch actions', () => {
     expect(alert).toHaveTextContent('Nie udało się uruchomić planu.')
     expect(otherCard).not.toContainElement(alert)
     expect(matchingCard).toHaveAttribute('aria-describedby', alert.id)
+    expect(within(matchingCard).getByRole('button', { name: 'Uruchom szablon Plan A' }))
+      .toHaveAttribute('aria-describedby', alert.id)
+    expect(within(matchingCard).getByTestId('template-day-summary-template-a-0'))
+      .toHaveAttribute('aria-describedby', alert.id)
+    expect(within(otherCard).getByRole('button', { name: 'Uruchom szablon Plan B' }))
+      .not.toHaveAttribute('aria-describedby')
 
     fireEvent.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))
     fireEvent.click(within(alert).getByRole('button', { name: 'Zamknij' }))

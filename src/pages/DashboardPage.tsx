@@ -373,6 +373,7 @@ export default function DashboardPage() {
   const hasActiveWork = useMemo(() => hasActiveSessionWork(effectiveActive), [effectiveActive])
 
   function handleDelete(id: string) {
+    if (deleteOperation?.status === 'pending') return
     setConfirmDelete(id)
   }
 
@@ -410,7 +411,7 @@ export default function DashboardPage() {
   }
 
   function confirmDeleteWorkout() {
-    if (!confirmDelete) return
+    if (!confirmDelete || deleteOperation?.status === 'pending') return
     const workoutId = confirmDelete
     setConfirmDelete(null)
     void runWorkoutDelete(workoutId)
@@ -942,7 +943,7 @@ export default function DashboardPage() {
                                 }}
                                 whileHover={{ opacity: 1 }}
                                 whileTap={{ scale: 0.85 }}
-                                disabled={isDeleting}
+                                disabled={deleteOperation?.status === 'pending'}
                                 aria-describedby={workoutDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
                                 aria-label={`Usuń trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
                               >

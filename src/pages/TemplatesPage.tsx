@@ -94,10 +94,15 @@ export default function TemplatesPage() {
   }
 
   function handleDeleteConfirmed() {
-    if (!deleteTarget) return
+    if (!deleteTarget || deleteOperation?.status === 'pending') return
     const target = deleteTarget
     setDeleteTarget(null)
     void runTemplateDelete(target)
+  }
+
+  function requestTemplateDelete(target: WorkoutTemplate) {
+    if (deleteOperation?.status === 'pending') return
+    setDeleteTarget(target)
   }
 
   function retryTemplateDelete() {
@@ -338,8 +343,8 @@ export default function TemplatesPage() {
                       <button
                         type="button"
                         aria-label={`Usuń szablon ${template.name}`}
-                        onClick={() => setDeleteTarget(template)}
-                        disabled={isTemplateDeleting}
+                        onClick={() => requestTemplateDelete(template)}
+                        disabled={deleteOperation?.status === 'pending'}
                         aria-describedby={templateDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
                         className="planner-icon-action planner-icon-action--danger"
                       >

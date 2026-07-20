@@ -229,7 +229,7 @@ describe('Dashboard workout projection status', () => {
     expect(pushRow).not.toBeNull()
     expect(pullRow).not.toBeNull()
     expect(within(pushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
-    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Usuń trening Pull day/ }))
+    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Otwórz trening Pull day/ }))
       .toBeEnabled()
     expect(mocks.deleteWorkout).toHaveBeenLastCalledWith('workout-pending')
 
@@ -258,6 +258,65 @@ describe('Dashboard workout projection status', () => {
 
     await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
     expect(screen.getByText('Pull day')).toBeInTheDocument()
+  })
+
+  it('keeps the pending delete owner when another workout delete is attempted', async () => {
+    const workoutA = { ...pendingWorkout, materialized: true }
+    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
+    const firstDelete = deferred<void>()
+    mocks.getRecentWorkouts
+      .mockResolvedValueOnce([workoutA, workoutB])
+      .mockResolvedValueOnce([workoutB])
+      .mockResolvedValueOnce([])
+    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
+    mocks.deleteWorkout
+      .mockReturnValueOnce(firstDelete.promise)
+      .mockResolvedValueOnce(undefined)
+
+    render(<DashboardPage />)
+
+    await screen.findByText('Push day')
+    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
+    expect(pullRow).not.toBeNull()
+    const pullDelete = within(pullRow as HTMLElement).getByRole('button', {
+      name: /Usuń trening Pull day/,
+    })
+    fireEvent.click(pullDelete)
+    const secondConfirm = screen.queryByRole('button', { name: 'Potwierdź usunięcie' })
+    if (secondConfirm) fireEvent.click(secondConfirm)
+
+    const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
+    expect(pushRow).not.toBeNull()
+    expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
+    expect(pullDelete).toBeDisabled()
+    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Otwórz trening Pull day/ }))
+      .toBeEnabled()
+    expect(within(pushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
+    expect(within(pullRow as HTMLElement).queryByRole('status')).not.toBeInTheDocument()
+
+    firstDelete.resolve()
+    await act(async () => {
+      await firstDelete.promise
+    })
+
+    await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
+    const availablePullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
+    expect(availablePullRow).not.toBeNull()
+    const availablePullDelete = within(availablePullRow as HTMLElement).getByRole('button', {
+      name: /Usuń trening Pull day/,
+    })
+    expect(availablePullDelete).toBeEnabled()
+
+    fireEvent.click(availablePullDelete)
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    await waitFor(() => {
+      expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-b')
+      expect(screen.queryByText('Pull day')).not.toBeInTheDocument()
+    })
   })
 
   it('dismisses workout deletion feedback without removing the row', async () => {

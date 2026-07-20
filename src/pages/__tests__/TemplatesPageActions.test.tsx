@@ -247,7 +247,7 @@ describe('TemplatesPage launch actions', () => {
     const pending = within(cardFor('Plan A')).getByRole('status')
     expect(pending).toHaveTextContent('Usuwanie planu…')
     expect(cardFor('Plan A')).toBeInTheDocument()
-    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Usuń szablon Plan B' }))
+    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edytuj szablon Plan B' }))
       .toBeEnabled()
     expect(mocks.deleteTemplate).toHaveBeenLastCalledWith('template-a')
 
@@ -275,6 +275,51 @@ describe('TemplatesPage launch actions', () => {
       expect(screen.queryByRole('heading', { name: 'Plan A' })).not.toBeInTheDocument()
     })
     expect(cardFor('Plan B')).toBeInTheDocument()
+  })
+
+  it('keeps the pending delete owner when another plan delete is attempted', async () => {
+    const firstDelete = deferred<void>()
+    mocks.deleteTemplate
+      .mockReturnValueOnce(firstDelete.promise)
+      .mockResolvedValueOnce(undefined)
+
+    await renderPage()
+
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Usuń szablon Plan A' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Usuń szablon Plan B' })
+    fireEvent.click(planBDelete)
+    const secondConfirm = screen.queryByRole('button', { name: 'Potwierdź usunięcie' })
+    if (secondConfirm) fireEvent.click(secondConfirm)
+
+    expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
+    expect(planBDelete).toBeDisabled()
+    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edytuj szablon Plan B' }))
+      .toBeEnabled()
+    expect(within(cardFor('Plan A')).getByRole('status')).toHaveTextContent('Usuwanie planu…')
+    expect(within(cardFor('Plan B')).queryByRole('status')).not.toBeInTheDocument()
+
+    firstDelete.resolve()
+    await act(async () => {
+      await firstDelete.promise
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: 'Plan A' })).not.toBeInTheDocument()
+    })
+    const availablePlanBDelete = within(cardFor('Plan B')).getByRole('button', {
+      name: 'Usuń szablon Plan B',
+    })
+    expect(availablePlanBDelete).toBeEnabled()
+
+    fireEvent.click(availablePlanBDelete)
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    await waitFor(() => {
+      expect(mocks.deleteTemplate).toHaveBeenNthCalledWith(2, 'template-b')
+      expect(screen.queryByRole('heading', { name: 'Plan B' })).not.toBeInTheDocument()
+    })
   })
 
   it('dismisses deletion feedback without mutating the plan', async () => {

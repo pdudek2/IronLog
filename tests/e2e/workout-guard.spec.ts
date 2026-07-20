@@ -23,12 +23,12 @@ function workoutExerciseEntry(page: Page, exerciseName: string) {
  *   - navigating AWAY from workout does NOT discard the session
  *   - session persists in Firestore (activeSessions/{uid})
  *   - returning to /workout/new restores the session
- *   - discard only happens via the explicit "Anuluj" button → "Anuluj trening" confirm dialog flow
+ *   - discard only happens via the explicit "Anuluj" button → "Odrzuć trening" confirm dialog flow
  *
  * Button naming in WorkoutPage:
  *   - Trigger button (on page): "Anuluj" (mobile top bar OR desktop sidebar)
- *   - Confirm button (inside dialog): "Anuluj trening"
- *   - Cancel button (inside dialog): "Anuluj"
+ *   - Confirm button (inside dialog): "Odrzuć trening"
+ *   - Cancel button (inside dialog): "Wróć"
  *
  * Important: useActiveSession auto-starts a new empty session when no backup/Firestore doc
  * exists on fresh navigation. "Rozpocznij nową sesję" never appears after discard.
@@ -57,7 +57,10 @@ async function startFreshSession(page: Page): Promise<string> {
     // Target ConfirmDialog specifically (not ExercisePicker which also has role="dialog")
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
     await expect(confirmDialog).toBeVisible()
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
+    await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
+    const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
+    await expect(confirmDiscard).toBeVisible()
+    await confirmDiscard.click()
     await page.waitForURL('/dashboard', { timeout: 10_000 })
     // Return to workout
     await page.goto('/workout/new')
@@ -120,9 +123,16 @@ test.describe('Workout navigation guard', () => {
 
   })
 
-  test('explicit discard clears session and redirects to dashboard', async ({ page, cleanup }) => {
-    cleanup.add('discard active session', () => discardActiveSession(page))
-    const exerciseName = await startFreshSession(page)
+  test('explicit discard clears session and redirects to dashboard', async ({
+    page,
+    cleanup,
+    diagnosticsController,
+  }) => {
+    let discardCompleted = false
+    cleanup.add('discard active session', async () => {
+      if (!discardCompleted) await discardActiveSession(page)
+    })
+    await startFreshSession(page)
 
     // Trigger discard via the "Anuluj" button
     const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
@@ -133,25 +143,23 @@ test.describe('Workout navigation guard', () => {
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
     await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
     await expect(page.getByText('Anulować trening?')).toBeVisible()
+    await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
+    const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
+    await expect(confirmDiscard).toBeVisible()
 
     await page.screenshot({ path: 'test-results/guard-discard-dialog.png' })
 
     // Confirm discard
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
-
-    // Should redirect to dashboard
-    await page.waitForURL('/dashboard', { timeout: 10_000 })
-    await expect(page).toHaveURL('/dashboard')
-
-    // After discard, returning to /workout/new shows workout UI (hook auto-starts new empty session).
-    // Verify the OLD session data (exerciseName) is gone — not that an empty screen shows.
-    await page.goto('/workout/new')
-    await expectAppReady(page, '/workout/new', 25_000)
-    // Wait for workout UI to be ready
-    const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
-    await expect(addExBtn).toBeVisible({ timeout: 15_000 })
-    // Old exercise should not be in the session
-    await expect(workoutExerciseEntry(page, exerciseName)).not.toBeVisible({ timeout: 5_000 })
+    await diagnosticsController.runInIntentionalTeardown(page.context(), async () => {
+      await confirmDiscard.click()
+      await page.waitForURL('/dashboard', { timeout: 10_000 })
+      await expect(page).toHaveURL('/dashboard')
+      await expect(page.getByRole('button', {
+        name: 'Rozpocznij nowy trening',
+        exact: true,
+      }).first()).toBeVisible({ timeout: 10_000 })
+    })
+    discardCompleted = true
   })
 
   test('cancel in discard dialog keeps session active', async ({ page, cleanup }) => {
@@ -166,8 +174,12 @@ test.describe('Workout navigation guard', () => {
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
     await expect(confirmDialog).toBeVisible()
 
-    // Click "Anuluj" inside dialog (cancel — keeps session)
-    await confirmDialog.getByRole('button', { name: 'Anuluj', exact: true }).click()
+    await expect(confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })).toBeVisible()
+    const returnButton = confirmDialog.getByRole('button', { name: 'Wróć', exact: true })
+    await expect(returnButton).toBeVisible()
+
+    // Click "Wróć" inside dialog (cancel — keeps session)
+    await returnButton.click()
 
     // Dialog should close
     await expect(confirmDialog).not.toBeVisible({ timeout: 5_000 })

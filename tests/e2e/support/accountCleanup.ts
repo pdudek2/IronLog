@@ -49,7 +49,7 @@ export async function discardActiveSession(page: Page): Promise<void> {
     await discard.click()
     const dialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
     await expect(dialog).toBeVisible({ timeout: 5_000 })
-    await dialog.getByRole('button', { name: 'Anuluj trening' }).click()
+    await dialog.getByRole('button', { name: 'Odrzuć trening', exact: true }).click()
     await expect(page).toHaveURL('/dashboard', { timeout: 10_000 })
   }
 }

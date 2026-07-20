@@ -390,4 +390,19 @@ describe('ProgressPage', () => {
     ])
     expect(screen.getByText(/3 aktywne dni · najmocniejszy dzień/i)).toBeInTheDocument()
   })
+
+  it('uses singular and paucal forms in the muscle balance accessible summary', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      sessions: [
+        session('chest', 2, { muscleGroups: ['chest'] }),
+        session('back', 1, { muscleGroups: ['back'] }),
+      ],
+    }))
+
+    render(<ProgressPage />)
+
+    expect(await screen.findByRole('img', {
+      name: 'Balans partii mięśniowych. Najczęściej trenowana partia: Klatka, 1 wpis. Łącznie 2 wpisy w zestawieniu.',
+    })).toBeInTheDocument()
+  })
 })

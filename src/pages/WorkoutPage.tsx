@@ -1327,7 +1327,8 @@ export default function WorkoutPage() {
       {confirmDiscard && (
         <ConfirmDialog
           message="Anulować trening? Wszystkie dane sesji zostaną utracone."
-          confirmLabel="Anuluj trening"
+          confirmLabel="Odrzuć trening"
+          cancelLabel="Wróć"
           danger
           onConfirm={() => { setConfirmDiscard(false); void handleConfirmDiscard() }}
           onCancel={() => {

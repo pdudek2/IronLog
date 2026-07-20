@@ -172,6 +172,11 @@ async function readLocalActiveSessionRecovery(page: Page) {
   })
 }
 
+async function discardActiveSessionAfterFontsSettle(page: Page): Promise<void> {
+  await page.evaluate(() => document.fonts.ready)
+  await discardActiveSession(page)
+}
+
 async function discardSessionIfPresent(page: Page): Promise<void> {
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new', 25_000)
@@ -193,7 +198,10 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
     await discardButton.click()
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
     await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
+    await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
+    const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
+    await expect(confirmDiscard).toBeVisible()
+    await confirmDiscard.click()
     await page.waitForURL('/dashboard', { timeout: 10_000 })
     return
   }
@@ -204,7 +212,10 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
     await discardButton.click()
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
     await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
-    await confirmDialog.getByRole('button', { name: 'Anuluj trening' }).click()
+    await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
+    const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
+    await expect(confirmDiscard).toBeVisible()
+    await confirmDiscard.click()
     await page.waitForURL('/dashboard', { timeout: 10_000 })
   }
 }
@@ -239,7 +250,7 @@ test.describe('Active workout shell reduction', () => {
 
   test('mobile workout mounts a single elapsed timer and a single rest timer', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
-    cleanup.add('discard active session', () => discardActiveSession(page))
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -257,7 +268,7 @@ test.describe('Active workout shell reduction', () => {
 
   test('mobile workout keeps the compact shell and normal app navigation', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
-    cleanup.add('discard active session', () => discardActiveSession(page))
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -297,7 +308,7 @@ test.describe('Active workout shell reduction', () => {
 
   test('mobile workout keeps the first set visible and a single add action after adding an exercise', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
-    cleanup.add('discard active session', () => discardActiveSession(page))
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -313,7 +324,7 @@ test.describe('Active workout shell reduction', () => {
 
   test('mobile workout shows steppers only for the focused incomplete set and keeps controls tappable', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
-    cleanup.add('discard active session', () => discardActiveSession(page))
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -376,7 +387,7 @@ test.describe('Active workout shell reduction', () => {
 
   test('mobile compact rest timer scrolls only the focused workout set input', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
-    cleanup.add('discard active session', () => discardActiveSession(page))
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
     await page.setViewportSize({ width: 390, height: 844 })
     await goToFreshWorkout(page)
@@ -456,7 +467,7 @@ test.describe('Active workout shell reduction', () => {
 
   test('desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'desktop-only contract')
-    cleanup.add('discard active session', () => discardActiveSession(page))
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
     await goToFreshWorkout(page)
 

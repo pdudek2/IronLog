@@ -123,7 +123,7 @@ function summarizeMuscleBalance(data: MuscleBalancePoint[]): string {
   const total = data.reduce((sum, point) => sum + point.count, 0)
   const muscleName = MUSCLE_PL[top.muscle] ?? top.muscle
 
-  return `Balans partii mięśniowych. Najczęściej trenowana partia: ${muscleName}, ${top.count} wpisów. Łącznie ${total} wpisów w zestawieniu.`
+  return `Balans partii mięśniowych. Najczęściej trenowana partia: ${muscleName}, ${top.count} ${polishPlural(top.count, 'wpis', 'wpisy', 'wpisów')}. Łącznie ${total} ${polishPlural(total, 'wpis', 'wpisy', 'wpisów')} w zestawieniu.`
 }
 
 function summarizeActivityHeatmap(data: HeatmapDay[]): string {

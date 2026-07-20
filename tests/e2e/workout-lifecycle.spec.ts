@@ -39,6 +39,7 @@ async function readCachedActiveSessionWrite(page: Page) {
         exists: boolean
         hasPendingWrites: boolean
         sessionId: string | null
+        exerciseNames: string[]
         reps: string | null
       }>
     }
@@ -52,6 +53,7 @@ async function readLocalActiveSessionRecovery(page: Page) {
     const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
       readLocalActiveSessionRecovery(): {
         sessionId: string | null
+        exerciseNames: string[]
         reps: string | null
       }
     }
@@ -71,7 +73,7 @@ async function setFirestoreNetworkEnabled(page: Page, enabled: boolean): Promise
 
 async function expectQueuedActiveSessionEdit(
   page: Page,
-  expected: { sessionId: string; reps: string },
+  expected: { sessionId: string; exerciseNames: string[]; reps: string },
 ): Promise<void> {
   await expect.poll(
     () => readCachedActiveSessionWrite(page),
@@ -80,6 +82,7 @@ async function expectQueuedActiveSessionEdit(
     exists: true,
     hasPendingWrites: true,
     sessionId: expected.sessionId,
+    exerciseNames: expected.exerciseNames,
     reps: expected.reps,
   })
 }
@@ -105,7 +108,10 @@ async function confirmOrdinaryDiscard(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Anuluj', exact: true }).first().click()
   const dialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
   await expect(dialog).toBeVisible()
-  await dialog.getByRole('button', { name: 'Anuluj trening' }).click()
+  await expect(dialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
+  const confirmDiscard = dialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
+  await expect(confirmDiscard).toBeVisible()
+  await confirmDiscard.click()
 }
 
 function phase1Id(scenario: string): string {
@@ -388,9 +394,17 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       async () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
         await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
-        await expectQueuedActiveSessionEdit(clientB.page, { sessionId, reps: '6' })
+        await expectQueuedActiveSessionEdit(clientB.page, {
+          sessionId,
+          exerciseNames: ['Phase 1 Bench Press'],
+          reps: '6',
+        })
         await expect(clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()).toHaveValue('6')
-        expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({ sessionId, reps: '6' })
+        expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
+          sessionId,
+          exerciseNames: ['Phase 1 Bench Press'],
+          reps: '6',
+        })
         await finishWorkout(clientA.page)
         expect(await readLifecycleActiveSession()).toBeNull()
         await expectedBrowserDiagnostics.during(
@@ -410,10 +424,12 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
               exists: false,
               hasPendingWrites: false,
               sessionId: null,
+              exerciseNames: [],
               reps: null,
             })
             expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
               sessionId: null,
+              exerciseNames: [],
               reps: null,
             })
             await clientB.context.close()
@@ -450,15 +466,22 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       async () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
         await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
-        await expectQueuedActiveSessionEdit(clientB.page, { sessionId: oldSessionId, reps: '6' })
+        await expectQueuedActiveSessionEdit(clientB.page, {
+          sessionId: oldSessionId,
+          exerciseNames: ['Phase 1 Bench Press'],
+          reps: '6',
+        })
         expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
           sessionId: oldSessionId,
+          exerciseNames: ['Phase 1 Bench Press'],
           reps: '6',
         })
         await finishWorkout(clientA.page)
         await seedLifecycleActiveSession({ sessionId: newSessionId, label: 'Phase 1 offline new' })
-        const clientC = await openWorkoutClient(observedContextFactory, storageState)
-        await expect(clientC.page.getByText('Phase 1 offline new', { exact: true }).first()).toBeVisible()
+        const clientC = await openWorkoutClient(observedContextFactory, storageState, '/dashboard')
+        await expect(clientC.page.getByText('Aktywna sesja: Phase 1 offline new • 1 ćwiczenie', { exact: true })).toBeVisible({
+          timeout: RESPONSE_TIMEOUT_MS,
+        })
         await expectedBrowserDiagnostics.during(
           'exact Phase 1 stale-session tombstone rejection',
           isExpectedWorkoutLifecycleTombstoneDiagnostic,
@@ -470,13 +493,19 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
             await expect.poll(() => browserDiagnostics.filter(
               isExpectedWorkoutLifecycleTombstoneDiagnostic,
             ).length).toBeGreaterThan(previousRejections)
-            await expect(clientB.page.getByText('Phase 1 offline new', { exact: true }).first()).toBeVisible()
             await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toMatchObject({
               exists: true,
               hasPendingWrites: false,
               sessionId: newSessionId,
+              exerciseNames: ['Phase 1 Bench Press'],
+              reps: '5',
             })
-            expect((await readLocalActiveSessionRecovery(clientB.page)).sessionId).toBe(newSessionId)
+            expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
+              sessionId: newSessionId,
+              exerciseNames: ['Phase 1 Bench Press'],
+              reps: '5',
+            })
+            await expect(clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()).toHaveValue('5')
             await clientC.context.close()
             await clientB.context.close()
             await clientA.context.close()

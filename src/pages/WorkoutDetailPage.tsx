@@ -31,6 +31,7 @@ import { WorkoutDetailMobileActions } from '../components/WorkoutDetailMobileAct
 import { LoadingState } from '../components/ui'
 import { getEquipmentLabel } from '../lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
+import { getCategoryWorkloadInsight } from '../lib/workoutCopy'
 
 const CATEGORY_COLORS: Record<string, string> = {
   chest: '#F0435A',
@@ -389,7 +390,7 @@ export default function WorkoutDetailPage() {
   const heroLabel = displayedWorkout.label
     ?? (topFocus ? (CATEGORY_LABELS[topFocus[0]] ?? 'Trening') : 'Trening')
   const heroInsight = topFocus
-    ? `Najwięcej pracy poszło w ${(CATEGORY_LABELS[topFocus[0]] ?? topFocus[0]).toLowerCase()}.`
+    ? getCategoryWorkloadInsight(topFocus[0], CATEGORY_LABELS[topFocus[0]] ?? topFocus[0])
     : 'Pierwsza pełna sesja pokaże dominujący fokus treningu.'
 
   return (

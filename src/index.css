@@ -48,12 +48,14 @@
   --text: #f4f1f2;
   --text-strong: #ffffff;
   --muted: #a09aa0;
-  --muted-soft: #726c73;
+  --muted-soft: #8f8990;
   --border: rgba(244, 241, 242, 0.12);
   --border-strong: rgba(244, 241, 242, 0.2);
   --input-bg: rgba(255, 255, 255, 0.045);
   --focus-ring: rgba(240, 67, 90, 0.24);
-  --primary-gradient: linear-gradient(180deg, var(--puls-effort) 0%, var(--puls-effort-deep) 100%);
+  --primary-start: #c72e44;
+  --primary-end: #a91f35;
+  --primary-gradient: linear-gradient(180deg, var(--primary-start) 0%, var(--primary-end) 100%);
   --success-gradient: linear-gradient(180deg, var(--success) 0%, #6f9d83 100%);
   --card-glow: 0 18px 48px rgba(0, 0, 0, 0.34);
   --shadow-panel: 0 22px 58px rgba(0, 0, 0, 0.38);

@@ -17,6 +17,7 @@ import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
+import { ActionFeedback } from '../components/ActionFeedback'
 import WorkoutProjectionStatus, {
   type ProjectionRetryState,
 } from '../components/workout/WorkoutProjectionStatus'
@@ -153,10 +154,13 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const {
     pendingLaunch,
+    launchOperation,
     launchingTemplateId,
     requestTemplateLaunch,
     confirmTemplateLaunch,
     cancelTemplateLaunch,
+    retryTemplateLaunch,
+    dismissTemplateLaunchError,
   } = useTemplateWorkoutLaunch(user?.uid)
   const {
     workouts,
@@ -733,46 +737,64 @@ export default function DashboardPage() {
                 <div className="dashboard-template-row puls-ledger">
                   {recentTemplates.map((template) => {
                     const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
-                    const isLaunching = launchingTemplateId === template.id
+                    const requestKey = `dashboard:${template.id}:primary`
+                    const templateLaunchOperation = launchOperation?.target.requestKey === requestKey
+                      ? launchOperation
+                      : null
+                    const isLaunching = templateLaunchOperation?.status === 'pending'
+                    const launchErrorId = `dashboard-template-launch-error-${template.id}`
                     return (
-                      <motion.button
-                        key={template.id}
-                        type="button"
-                        onClick={() => { void requestTemplateLaunch(template, 0) }}
-                        disabled={launchingTemplateId !== null}
-                        aria-label={`Uruchom szablon ${template.name}`}
-                        className="dashboard-template-tile"
-                        style={{
-                          opacity: isLaunching ? 0.72 : 1,
-                        }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-white truncate">{template.name}</p>
-                            <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>
-                              {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} • {exerciseCount} {exerciseCount === 1 ? 'ćwiczenie' : 'ćwiczeń'}
-                            </p>
+                      <div key={template.id} className="dashboard-template-launch-item">
+                        <motion.button
+                          type="button"
+                          onClick={() => { void requestTemplateLaunch(template, 0, requestKey) }}
+                          disabled={launchingTemplateId !== null}
+                          aria-busy={isLaunching ? 'true' : undefined}
+                          aria-describedby={templateLaunchOperation?.status === 'error' ? launchErrorId : undefined}
+                          aria-label={`Uruchom szablon ${template.name}`}
+                          className="dashboard-template-tile"
+                          style={{
+                            opacity: isLaunching ? 0.72 : 1,
+                          }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-white truncate">{template.name}</p>
+                              <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>
+                                {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} • {exerciseCount} {exerciseCount === 1 ? 'ćwiczenie' : 'ćwiczeń'}
+                              </p>
+                            </div>
+                            {isLaunching ? (
+                              <span className="text-[11px] font-semibold" style={{ color: 'var(--accent)' }}>
+                                Uruchamiam…
+                              </span>
+                            ) : (
+                              <Play size={15} style={{ color: 'var(--accent)' }} />
+                            )}
                           </div>
-                          {isLaunching ? (
-                            <span className="text-[11px] font-semibold" style={{ color: 'var(--accent)' }}>
-                              Start...
-                            </span>
-                          ) : (
-                            <Play size={15} style={{ color: 'var(--accent)' }} />
-                          )}
-                        </div>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {template.days.slice(0, 3).map((day, index) => (
-                            <span
-                              key={`${template.id}-${index}`}
-                              className="dashboard-template-day"
-                            >
-                              {day.name}
-                            </span>
-                          ))}
-                        </div>
-                      </motion.button>
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {template.days.slice(0, 3).map((day, index) => (
+                              <span
+                                key={`${template.id}-${index}`}
+                                className="dashboard-template-day"
+                              >
+                                {day.name}
+                              </span>
+                            ))}
+                          </div>
+                        </motion.button>
+                        {templateLaunchOperation?.status === 'error' && (
+                          <ActionFeedback
+                            id={launchErrorId}
+                            status="error"
+                            message={templateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                            onRetry={() => { void retryTemplateLaunch() }}
+                            onDismiss={dismissTemplateLaunchError}
+                            className="dashboard-template-feedback"
+                          />
+                        )}
+                      </div>
                     )
                   })}
                 </div>

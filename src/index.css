@@ -2424,6 +2424,24 @@ a {
   border-right: 0;
 }
 
+.dashboard-template-launch-item {
+  min-width: 0;
+  border-right: 1px solid rgba(244, 241, 242, 0.08);
+}
+
+.dashboard-template-launch-item:last-child {
+  border-right: 0;
+}
+
+.dashboard-template-launch-item .dashboard-template-tile {
+  width: 100%;
+  border-right: 0;
+}
+
+.dashboard-template-feedback {
+  margin: 0 0.8rem 0.8rem;
+}
+
 .dashboard-history-metrics.puls-ledger {
   border-top: 0;
   border-bottom: 0;
@@ -4411,6 +4429,10 @@ a {
 .planner-template-footer {
   border-top: 1px solid rgba(244, 241, 242, 0.085);
   padding: 0.75rem 1rem;
+}
+
+.planner-template-feedback {
+  padding: 0 1rem 1rem;
 }
 
 .planner-day-board {

@@ -19,10 +19,13 @@ vi.mock('../../lib/templateService', () => ({
 vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
   useTemplateWorkoutLaunch: () => ({
     pendingLaunch: null,
+    launchOperation: null,
     launchingTemplateId: null,
     requestTemplateLaunch: vi.fn(),
     confirmTemplateLaunch: vi.fn(),
     cancelTemplateLaunch: vi.fn(),
+    retryTemplateLaunch: vi.fn(),
+    dismissTemplateLaunchError: vi.fn(),
   }),
 }))
 vi.mock('../../components/ConfirmDialog', () => ({ default: () => null }))

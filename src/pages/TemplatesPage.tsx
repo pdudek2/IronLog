@@ -5,6 +5,7 @@ import { CalendarDays, ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from
 import { toast } from 'sonner'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
+import { ActionFeedback } from '../components/ActionFeedback'
 import { Button, LoadingState } from '../components/ui'
 import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { useAuthStore } from '../store/authStore'
@@ -31,10 +32,13 @@ export default function TemplatesPage() {
   const navigate = useNavigate()
   const {
     pendingLaunch,
+    launchOperation,
     launchingTemplateId,
     requestTemplateLaunch,
     confirmTemplateLaunch,
     cancelTemplateLaunch,
+    retryTemplateLaunch,
+    dismissTemplateLaunchError,
   } = useTemplateWorkoutLaunch(user?.uid)
 
   const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
@@ -223,10 +227,21 @@ export default function TemplatesPage() {
             {templates.map((template, index) => {
               const totalExercises = countTemplateExercises(template)
               const expanded = expandedTemplateId === template.id
+              const templateLaunchOperation = launchOperation?.target.template.id === template.id
+                ? launchOperation
+                : null
+              const isTemplateLaunching = templateLaunchOperation?.status === 'pending'
+              const launchErrorId = `template-launch-error-${template.id}`
+              const isLaunchingControl = (requestKey: string) => (
+                isTemplateLaunching
+                && templateLaunchOperation.target.requestKey === requestKey
+              )
               return (
                 <motion.article
                   key={template.id}
                   className="template-card planner-template-row"
+                  aria-busy={isTemplateLaunching ? 'true' : undefined}
+                  aria-describedby={templateLaunchOperation?.status === 'error' ? launchErrorId : undefined}
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.04, duration: 0.2 }}
@@ -250,11 +265,21 @@ export default function TemplatesPage() {
                           className="planner-day-chip"
                           data-testid={`template-day-summary-${template.id}-${dayIndex}`}
                           aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
-                          onClick={() => void requestTemplateLaunch(template, dayIndex)}
+                          onClick={() => void requestTemplateLaunch(
+                            template,
+                            dayIndex,
+                            `templates:${template.id}:summary:${dayIndex}`,
+                          )}
                           disabled={launchingTemplateId !== null}
                         >
-                          <span>{day.name}</span>
-                          <small>{day.exercises.length} ćw.</small>
+                          {isLaunchingControl(`templates:${template.id}:summary:${dayIndex}`) ? (
+                            <span>Uruchamiam…</span>
+                          ) : (
+                            <>
+                              <span>{day.name}</span>
+                              <small>{day.exercises.length} ćw.</small>
+                            </>
+                          )}
                         </button>
                       ))}
                     </div>
@@ -263,13 +288,17 @@ export default function TemplatesPage() {
                       <motion.button
                         type="button"
                         aria-label={`Uruchom szablon ${template.name}`}
-                        onClick={() => void requestTemplateLaunch(template, 0)}
+                        onClick={() => void requestTemplateLaunch(
+                          template,
+                          0,
+                          `templates:${template.id}:primary`,
+                        )}
                         disabled={launchingTemplateId !== null}
                         className="planner-template-start"
                         whileTap={{ scale: 0.96 }}
                       >
-                        <Play size={13} />
-                        Start
+                        {!isLaunchingControl(`templates:${template.id}:primary`) && <Play size={13} />}
+                        {isLaunchingControl(`templates:${template.id}:primary`) ? 'Uruchamiam…' : 'Start'}
                       </motion.button>
                       <button
                         type="button"
@@ -289,6 +318,18 @@ export default function TemplatesPage() {
                       </button>
                     </div>
                   </div>
+
+                  {templateLaunchOperation?.status === 'error' && (
+                    <div className="planner-template-feedback">
+                      <ActionFeedback
+                        id={launchErrorId}
+                        status="error"
+                        message={templateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                        onRetry={() => { void retryTemplateLaunch() }}
+                        onDismiss={dismissTemplateLaunchError}
+                      />
+                    </div>
+                  )}
 
                   <div className="planner-template-footer">
                     <button
@@ -327,13 +368,19 @@ export default function TemplatesPage() {
                                 type="button"
                                 data-testid={`template-day-detail-${template.id}-${dayIndex}`}
                                 aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
-                                onClick={() => void requestTemplateLaunch(template, dayIndex)}
+                                onClick={() => void requestTemplateLaunch(
+                                  template,
+                                  dayIndex,
+                                  `templates:${template.id}:detail:${dayIndex}`,
+                                )}
                                 disabled={launchingTemplateId !== null}
                                 className="planner-secondary-action"
                                 whileTap={{ scale: 0.96 }}
                               >
-                                <Play size={13} />
-                                Start dnia
+                                {!isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`) && <Play size={13} />}
+                                {isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`)
+                                  ? 'Uruchamiam…'
+                                  : 'Start dnia'}
                               </motion.button>
                             </div>
 

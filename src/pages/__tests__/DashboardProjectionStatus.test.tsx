@@ -52,10 +52,13 @@ vi.mock('../../lib/userProfile', () => ({
 vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
   useTemplateWorkoutLaunch: () => ({
     pendingLaunch: null,
+    launchOperation: null,
     launchingTemplateId: null,
     requestTemplateLaunch: vi.fn(),
     confirmTemplateLaunch: vi.fn(),
     cancelTemplateLaunch: vi.fn(),
+    retryTemplateLaunch: vi.fn(),
+    dismissTemplateLaunchError: vi.fn(),
   }),
 }))
 

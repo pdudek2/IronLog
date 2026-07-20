@@ -1,10 +1,26 @@
 import { test, expect, type Page } from './fixtures'
 import { deleteTemplateByName, discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
+import type { BrowserDiagnostic } from './support/browserDiagnostics'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
 
 const REPLACE_TEMPLATE_NAME = '_E2E Launch Replace_'
 const OFFLINE_TEMPLATE_NAME = '_E2E Launch Offline_'
+
+function isExpectedTemplateLaunchOfflineDiagnostic(entry: BrowserDiagnostic): boolean {
+  if (isExpectedFirestoreOfflineDiagnostic(entry)) return true
+
+  if (entry.kind === 'console' && (
+    entry.message === '[useTemplateWorkoutLaunch] launch failed FirebaseError: Connection failed.'
+    || entry.message === '[useTemplateWorkoutLaunch] launch failed FirebaseError: Failed to get document because the client is offline.'
+  )) return true
+
+  return entry.message === 'net::ERR_INTERNET_DISCONNECTED'
+    && Boolean(entry.url?.startsWith('https://www.google.com/images/cleardot.gif'))
+    || entry.kind === 'console'
+      && entry.message === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED'
+      && Boolean(entry.url?.startsWith('https://www.google.com/images/cleardot.gif'))
+}
 
 function workoutExerciseRow(page: Page, exerciseName: string) {
   return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
@@ -99,11 +115,10 @@ test.describe('Template launch contract', () => {
     await expect(page.getByText('Bench Press', { exact: true })).toHaveCount(0)
   })
 
-  test('offline launch fails on the source page without delayed hydration after reconnect', async ({
+  test('offline launch stays retryable on the source page and preserves its target', async ({
     context,
     page,
     cleanup,
-    observedContextFactory,
     expectedBrowserDiagnostics,
   }) => {
     cleanup.add('delete offline template', () => deleteTemplateByName(page, OFFLINE_TEMPLATE_NAME))
@@ -130,7 +145,7 @@ test.describe('Template launch contract', () => {
     const dialog = page.getByRole('dialog').filter({ hasText: 'Zastąpić aktywną sesję?' })
     await expectedBrowserDiagnostics.during(
       'intentional offline template launch',
-      isExpectedFirestoreOfflineDiagnostic,
+      isExpectedTemplateLaunchOfflineDiagnostic,
       async () => {
         try {
           await launch.click()
@@ -139,7 +154,13 @@ test.describe('Template launch contract', () => {
           await context.setOffline(true)
           await dialog.getByRole('button', { name: 'Uruchom szablon' }).click()
 
-          await expect(page.getByText('Nie udało się uruchomić szablonu.', { exact: true })).toBeVisible({ timeout: 15_000 })
+          const matchingCard = page.locator('article').filter({
+            has: page.getByRole('heading', { name: OFFLINE_TEMPLATE_NAME, exact: true }),
+          })
+          await expect(matchingCard.getByRole('alert')).toHaveText(
+            /Nie udało się uruchomić planu\./,
+            { timeout: 15_000 },
+          )
           await expect(page).toHaveURL('/templates')
         } finally {
           await context.setOffline(false)
@@ -148,14 +169,13 @@ test.describe('Template launch contract', () => {
       },
     )
 
-    const verifyContext = await observedContextFactory.newContext({
-      storageState: await context.storageState(),
+    const matchingCard = page.locator('article').filter({
+      has: page.getByRole('heading', { name: OFFLINE_TEMPLATE_NAME, exact: true }),
     })
-    const verifyPage = await verifyContext.newPage()
-    await verifyPage.goto('/workout/new')
-    await expectAppReady(verifyPage, '/workout/new', 25_000)
-    await expect(verifyPage.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
-    await expect(verifyPage.getByText('Squat', { exact: true })).toHaveCount(0)
-    await verifyPage.evaluate(() => document.fonts.ready)
+    await matchingCard.getByRole('button', { name: 'Spróbuj ponownie' }).click()
+
+    await expect(page).toHaveURL('/workout/new', { timeout: 15_000 })
+    await expect(page.getByText('Squat', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('Bench Press', { exact: true })).toHaveCount(0)
   })
 })

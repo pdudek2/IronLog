@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3 i 4 zakończone; projekt Fazy 5 w toku; Faza 2B pozostaje niezależnie READY**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3 i 4 zakończone; projekt Fazy 5 zatwierdzony; Faza 2B pozostaje niezależnie READY**
 Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
 Ostatnia aktualizacja: 2026-07-20
 
@@ -29,6 +29,7 @@ Roadmapa odpowiada na cztery pytania:
 
 - **READY** — zakres można rozwinąć w szczegółowy plan.
 - **DESIGN IN PROGRESS** — trwa uzgadnianie docelowego kontraktu; implementacja nie jest jeszcze autoryzowana.
+- **DESIGN APPROVED** — docelowy kontrakt został zaakceptowany i może zostać rozwinięty przez szczegółowy plan wykonawczy.
 - **BLOCKED** — przed planowaniem potrzebna jest decyzja albo zewnętrzna zmiana.
 - **DONE** — zakres wdrożony i zweryfikowany.
 - **LATER** — wartościowy, ale nieblokujący odbioru projektu.
@@ -70,7 +71,7 @@ Aktualny baseline jakości:
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | DONE | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
-| 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DESIGN IN PROGRESS | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
+| 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DESIGN APPROVED | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
 | 10 | 6A — Stream i concurrency AI | P1 | READY | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
 | 11 | 6B — Poprawność i koszt kontekstu AI | P1 | READY | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
 | 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | READY | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
@@ -310,7 +311,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 ### Faza 5 — Feedback, copy i integralność interfejsu
 
-**Status: DESIGN IN PROGRESS.** Zakres został ponownie skonsolidowany 2026-07-20 po pełnym audycie runtime i weryfikacji Senior Design Review względem aktualnego kodu. Nie otwiera ponownie Fazy 4 i nie obejmuje strategicznego redesignu marki.
+**Status: DESIGN APPROVED.** Zakres został ponownie skonsolidowany 2026-07-20 po pełnym audycie runtime i weryfikacji Senior Design Review względem aktualnego kodu. Zatwierdzony projekt znajduje się w [`specs/2026-07-20-phase-5-feedback-copy-interface-integrity-design.md`](specs/2026-07-20-phase-5-feedback-copy-interface-integrity-design.md). Faza nie otwiera ponownie Fazy 4 i nie obejmuje strategicznego redesignu marki.
 
 **Cel:** usunąć miejsca, w których działająca aplikacja wygląda jak zawieszona, komunikuje niewłaściwy stan albo utrudnia odczyt podstawowej akcji.
 

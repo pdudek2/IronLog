@@ -10,9 +10,10 @@ type SnapshotListener = (snapshot: {
 }) => void
 
 const listener = vi.hoisted(() => ({ current: null as SnapshotListener | null }))
+const saveActiveSession = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 
 vi.mock('../../lib/activeSessionService', () => ({
-  saveActiveSession: vi.fn().mockResolvedValue(undefined),
+  saveActiveSession,
   subscribeToActiveSession: vi.fn((_uid: string, onChange: SnapshotListener) => {
     listener.current = onChange
     return vi.fn()
@@ -45,6 +46,7 @@ describe('useActiveSession snapshot authority', () => {
     })
     useWorkoutStore.getState().clearWorkout()
     listener.current = null
+    saveActiveSession.mockClear()
   })
 
   it.each([
@@ -71,5 +73,53 @@ describe('useActiveSession snapshot authority', () => {
     }))
     expect(result.current.ready).toBe(true)
     expect(useWorkoutStore.getState().active?.sessionId).toBe('server-session')
+  })
+
+  it('does not resurrect or persist a confirmed closed session from a late authoritative snapshot', () => {
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => {
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+    })
+    expect(useWorkoutStore.getState().active).toBeNull()
+
+    act(() => listener.current?.({
+      session: remoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    act(() => window.dispatchEvent(new Event('pagehide')))
+
+    expect(useWorkoutStore.getState().active).toBeNull()
+    expect(saveActiveSession).not.toHaveBeenCalled()
+  })
+
+  it('keeps and persists a newer replacement when the closed session snapshot arrives late', async () => {
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => {
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+      useWorkoutStore.getState().startWorkout()
+    })
+    const replacement = useWorkoutStore.getState().active
+    expect(replacement?.sessionId).not.toBe(remoteSession.sessionId)
+
+    act(() => listener.current?.({
+      session: remoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'))
+      await Promise.resolve()
+    })
+
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(replacement?.sessionId)
+    expect(saveActiveSession).toHaveBeenCalledTimes(1)
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', replacement)
   })
 })

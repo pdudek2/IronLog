@@ -54,6 +54,7 @@ export function useActiveSession(uid: string | null) {
   const hadRemoteSessionRef = useRef(false)
   const hasUnsyncedLocalChangesRef = useRef(false)
   const confirmedClosureRef = useRef(false)
+  const confirmedClosedSessionIdRef = useRef<string | null>(null)
   const [ready, setReady] = useState(uid === null)
   const [staleSession, setStaleSession] = useState<{ ageLabel: string } | null>(null)
   const [closureIntent, setClosureIntent] = useState<WorkoutClosureIntent | null>(null)
@@ -107,6 +108,7 @@ export function useActiveSession(uid: string | null) {
       return
     }
     confirmedClosureRef.current = true
+    confirmedClosedSessionIdRef.current = confirmedSessionId
     staleSessionRef.current = null
     setStaleSession(null)
     applyingRemoteRef.current = true
@@ -201,6 +203,7 @@ export function useActiveSession(uid: string | null) {
     hadRemoteSessionRef.current = false
     remoteSessionRef.current = null
     confirmedClosureRef.current = false
+    confirmedClosedSessionIdRef.current = null
 
     const { hydrateFromDoc, clearWorkout, startWorkout } = useWorkoutStore.getState()
     if (intentAtMount) {
@@ -212,6 +215,7 @@ export function useActiveSession(uid: string | null) {
     }
 
     function persistSession(snapshot: ActiveWorkout) {
+      if (snapshot.sessionId === confirmedClosedSessionIdRef.current) return
       if (!shouldPersistActiveSession(snapshot, closureIntentRef.current)) return
       void saveActiveSession(currentUid, snapshot)
         .then(() => {
@@ -231,6 +235,10 @@ export function useActiveSession(uid: string | null) {
       currentUid,
       ({ session, fromCache, hasPendingWrites }) => {
         const authoritative = isAuthoritativeActiveSessionSnapshot({ fromCache, hasPendingWrites })
+        if (authoritative && session?.sessionId === confirmedClosedSessionIdRef.current) {
+          setReady(true)
+          return
+        }
         if (authoritative) remoteSessionRef.current = session
         const current = useWorkoutStore.getState().active
         const currentSerialized = serializeActiveWorkout(current)
@@ -388,6 +396,7 @@ export function useActiveSession(uid: string | null) {
         return
       }
       const snapshot = state.active
+      if (snapshot.sessionId === confirmedClosedSessionIdRef.current) return
       if (!shouldPersistActiveSession(snapshot, closureIntentRef.current)) return
       hasUnsyncedLocalChangesRef.current = true
       writeActiveSessionBackup(currentUid, snapshot)
@@ -396,6 +405,7 @@ export function useActiveSession(uid: string | null) {
 
     function flushPendingSession() {
       cancelPendingPersistence()
+      if (activeRef.current?.sessionId === confirmedClosedSessionIdRef.current) return
       if (!activeRef.current || !shouldPersistActiveSession(activeRef.current, closureIntentRef.current)) return
       writeActiveSessionBackup(currentUid, activeRef.current)
       persistSession(activeRef.current)
@@ -479,6 +489,7 @@ export function useActiveSession(uid: string | null) {
 
   async function retryActiveSessionSync(): Promise<void> {
     if (!uid || !activeRef.current || closureIntentRef.current) return
+    if (activeRef.current.sessionId === confirmedClosedSessionIdRef.current) return
     const snapshot = activeRef.current
     writeActiveSessionBackup(uid, snapshot)
     setActiveSessionSyncStatus('retrying')

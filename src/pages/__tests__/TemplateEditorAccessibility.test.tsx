@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createMemoryRouter, Outlet, RouterProvider } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TemplateEditorPage from '../TemplateEditorPage'
@@ -266,12 +266,33 @@ describe('TemplateEditorPage accessibility', () => {
         }],
       }],
     })
-    renderEditor('/templates/template-1/edit')
+    const router = renderEditor('/templates/template-1/edit')
 
-    expect(await screen.findByRole('textbox', { name: 'Nazwa' })).toHaveValue('Plan zapisany')
+    const name = await screen.findByRole('textbox', { name: 'Nazwa' })
+    const form = name.closest('form')
+    expect(name).toHaveValue('Plan zapisany')
+    expect(form).not.toBeNull()
     expect(screen.getByText('Wszystkie zmiany zapisane')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Zapisano' })).toBeDisabled()
     expect(within(screen.getByLabelText('Podsumowanie edytowanego planu'))
       .getByText('zapisany')).toBeInTheDocument()
+
+    await act(async () => {
+      fireEvent.submit(form!)
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mocks.updateTemplate).not.toHaveBeenCalled()
+    expect(router.state.location.pathname).toBe('/templates/template-1/edit')
+
+    fireEvent.change(name, { target: { value: 'Plan zapisany po zmianie' } })
+    fireEvent.submit(form!)
+
+    expect(await screen.findByText('Lista planów')).toBeInTheDocument()
+    expect(mocks.updateTemplate).toHaveBeenCalledOnce()
+    expect(mocks.updateTemplate).toHaveBeenCalledWith('template-1', expect.objectContaining({
+      name: 'Plan zapisany po zmianie',
+    }))
   })
 })

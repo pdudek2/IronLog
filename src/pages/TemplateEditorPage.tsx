@@ -252,7 +252,7 @@ export default function TemplateEditorPage() {
   }
 
   async function saveTemplate() {
-    if (!user || saving) return
+    if (!user || saving || saveState === 'persisted-clean') return
 
     const trimmedName = name.trim()
     if (trimmedName.length < 2) {

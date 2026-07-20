@@ -7405,9 +7405,52 @@ a {
   border-color: var(--selected-border);
 }
 
+.workout-detail-content {
+  --workout-detail-action-height: 4.75rem;
+  --workout-detail-bottom-nav-clearance: 7.25rem;
+  --workout-detail-safe-area-clearance: env(safe-area-inset-bottom, 0px);
+}
+
+.workout-detail-mobile-actions-slot {
+  position: relative;
+  min-height: var(--workout-detail-action-height);
+  margin-bottom: 1.25rem;
+}
+
+.workout-detail-mobile-actions-anchor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
 .workout-detail-mobile-actions {
-  bottom: calc(7.25rem + env(safe-area-inset-bottom, 0px));
+  min-height: var(--workout-detail-action-height);
   transition: bottom 220ms ease;
+}
+
+.workout-detail-mobile-actions[data-placement='inline'] {
+  position: relative;
+}
+
+.workout-detail-mobile-actions[data-placement='fixed'] {
+  position: fixed;
+  right: 0;
+  bottom: calc(
+    var(--workout-detail-bottom-nav-clearance)
+    + var(--workout-detail-safe-area-clearance)
+  );
+  left: 0;
+  z-index: 40;
+  padding-inline: 1rem;
+}
+
+.workout-detail-mobile-actions-inner {
+  width: 100%;
+  max-width: 24rem;
+  margin-inline: auto;
 }
 
 .workout-detail-delete-feedback {
@@ -7416,10 +7459,18 @@ a {
 }
 
 body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
-  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  --workout-detail-bottom-nav-clearance: 0px;
 }
 
 @media (max-width: 1023px) {
+  .workout-detail-content {
+    padding-bottom: calc(
+      var(--workout-detail-action-height)
+      + 1rem
+      + var(--workout-detail-safe-area-clearance)
+    );
+  }
+
   .mobile-touch-target {
     min-width: 2.75rem;
     min-height: 2.75rem;

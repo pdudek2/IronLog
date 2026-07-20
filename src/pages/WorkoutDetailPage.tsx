@@ -27,6 +27,7 @@ import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { ActionFeedback } from '../components/ActionFeedback'
+import { WorkoutDetailMobileActions } from '../components/WorkoutDetailMobileActions'
 import { LoadingState } from '../components/ui'
 import { getEquipmentLabel } from '../lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
@@ -526,7 +527,7 @@ export default function WorkoutDetailPage() {
             </motion.div>
           </aside>
 
-          <div className="min-w-0 pb-56 lg:pb-0">
+          <div className="workout-detail-content min-w-0">
             <motion.section
               className="workout-summary-panel puls-panel mb-5 p-4 sm:p-5"
               initial={false}
@@ -567,7 +568,18 @@ export default function WorkoutDetailPage() {
               </div>
             </motion.section>
 
-              <div className="workout-exercise-list">
+            <WorkoutDetailMobileActions>
+              <motion.div
+                className="surface-panel rounded-[1.75rem] p-3"
+                initial={false}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18 }}
+              >
+                {actionButtons}
+              </motion.div>
+            </WorkoutDetailMobileActions>
+
+            <div className="workout-exercise-list">
               {displayedWorkout.exercises.map((exercise, exerciseIndex) => {
                 const exerciseData = exerciseCatalog.get(exercise.exerciseId ?? '') ?? exerciseMap.get(exercise.exerciseId ?? '')
                 const exerciseColor = CATEGORY_COLORS[exerciseData?.category ?? ''] ?? '#808CB3'
@@ -765,21 +777,6 @@ export default function WorkoutDetailPage() {
 
           </div>
         </div>
-      <div
-        className="workout-detail-mobile-actions fixed left-0 right-0 z-40 px-4 lg:hidden"
-      >
-        <div className="mx-auto w-full max-w-sm">
-          <motion.div
-            className="surface-panel rounded-[1.75rem] p-3"
-            initial={false}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
-          >
-            {actionButtons}
-          </motion.div>
-        </div>
-      </div>
-
       {showPicker && (
         <ExercisePicker
           onSelect={handleAddExercise}

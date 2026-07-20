@@ -60,3 +60,37 @@ GREEN evidence:
 - full unit suite: 51 files, 344/344 passed;
 - lint: passed;
 - production build: passed, 877 modules transformed.
+
+## Re-review follow-up: retry and user lifecycle generations
+
+The closed-ID set still left two completion paths unsafe:
+
+- `retryActiveSessionSync()` checked the ID only before its `await`;
+- changing `uid` reset the closed-ID set, so an old user's pending promise lost
+  its closure protection.
+
+RED reproduced four failures:
+
+- retry rejection for A after confirmed closure A changed `retrying` to `failed`
+  and logged;
+- retry success for closed A hid a real retry failure for replacement B;
+- old user-1 persistence rejection changed user-2 state to `failed` and logged;
+- old user-1 persistence success hid a real user-2 persistence failure.
+
+Each write now captures `{ generation, sessionId }`. A shared predicate permits
+completion side effects only while both the user lifecycle generation is still
+current and the session ID has not been confirmed closed. The effect captures
+its own generation for persistence, increments the generation on uid changes,
+and invalidates it on cleanup/unmount.
+
+The same post-completion rule is applied to automatic persistence, manual retry,
+stale-session continuation, and stale-session replacement persistence. Errors
+from the current generation remain visible and logged; stale completions are
+ignored.
+
+GREEN evidence:
+
+- focused authority tests: 11/11 passed;
+- full unit suite: 51 files, 348/348 passed;
+- lint: passed without warnings;
+- production build: passed, 877 modules transformed.

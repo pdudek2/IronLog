@@ -249,4 +249,154 @@ describe('useActiveSession snapshot authority', () => {
 
     expect(useWorkoutStore.getState().active?.sessionId).toBe(remoteSession.sessionId)
   })
+
+  it('ignores a late retry rejection after that session is confirmed closed', async () => {
+    const retryWrite = createDeferred<void>()
+    const retryError = new Error('closed retry failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    saveActiveSession.mockImplementationOnce(() => retryWrite.promise)
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    let retryPromise!: Promise<void>
+    act(() => {
+      retryPromise = result.current.retryActiveSessionSync()
+    })
+    expect(result.current.activeSessionSyncStatus).toBe('retrying')
+    act(() => {
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+    })
+
+    await act(async () => {
+      retryWrite.reject(retryError)
+      await retryPromise
+    })
+
+    expect(useWorkoutStore.getState().active).toBeNull()
+    expect(result.current.activeSessionSyncStatus).toBe('retrying')
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('does not let a late successful closed-session retry hide a replacement retry failure', async () => {
+    const closedRetry = createDeferred<void>()
+    const replacementRetry = createDeferred<void>()
+    const replacementError = new Error('replacement retry failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    saveActiveSession
+      .mockImplementationOnce(() => closedRetry.promise)
+      .mockImplementationOnce(() => replacementRetry.promise)
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    let closedRetryPromise!: Promise<void>
+    act(() => {
+      closedRetryPromise = result.current.retryActiveSessionSync()
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+      useWorkoutStore.getState().startWorkout()
+    })
+    const replacement = useWorkoutStore.getState().active
+    expect(replacement).not.toBeNull()
+
+    let replacementRetryPromise!: Promise<void>
+    act(() => {
+      replacementRetryPromise = result.current.retryActiveSessionSync()
+    })
+    await act(async () => {
+      replacementRetry.reject(replacementError)
+      await replacementRetryPromise
+    })
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledWith('[active session retry error]', replacementError)
+
+    await act(async () => {
+      closedRetry.resolve()
+      await closedRetryPromise
+    })
+
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(replacement?.sessionId)
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledTimes(1)
+    consoleError.mockRestore()
+  })
+
+  it('ignores a late write rejection from the previous user lifecycle', async () => {
+    const oldUserWrite = createDeferred<void>()
+    const oldUserError = new Error('old user write failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    saveActiveSession.mockImplementationOnce(() => oldUserWrite.promise)
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result, rerender } = renderHook(
+      ({ uid }: { uid: string }) => useActiveSession(uid),
+      { initialProps: { uid: 'user-1' } },
+    )
+
+    act(() => window.dispatchEvent(new Event('pagehide')))
+    act(() => {
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+    })
+    rerender({ uid: 'user-2' })
+
+    await act(async () => {
+      oldUserWrite.reject(oldUserError)
+      await oldUserWrite.promise.catch(() => undefined)
+      await Promise.resolve()
+    })
+
+    expect(result.current.activeSessionSyncStatus).toBe('idle')
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
+  it('does not let a late previous-user success hide a current-user write failure', async () => {
+    const oldUserWrite = createDeferred<void>()
+    const currentUserWrite = createDeferred<void>()
+    const currentUserError = new Error('current user write failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    saveActiveSession
+      .mockImplementationOnce(() => oldUserWrite.promise)
+      .mockImplementationOnce(() => currentUserWrite.promise)
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result, rerender } = renderHook(
+      ({ uid }: { uid: string }) => useActiveSession(uid),
+      { initialProps: { uid: 'user-1' } },
+    )
+
+    act(() => window.dispatchEvent(new Event('pagehide')))
+    act(() => {
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+    })
+    rerender({ uid: 'user-2' })
+    const currentUserSession: ActiveWorkout = {
+      ...remoteSession,
+      sessionId: 'current-user-session',
+    }
+    act(() => {
+      useWorkoutStore.getState().hydrateFromDoc(currentUserSession)
+      window.dispatchEvent(new Event('pagehide'))
+    })
+
+    await act(async () => {
+      currentUserWrite.reject(currentUserError)
+      await currentUserWrite.promise.catch(() => undefined)
+      await Promise.resolve()
+    })
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledWith('[active session save error]', currentUserError)
+
+    await act(async () => {
+      oldUserWrite.resolve()
+      await oldUserWrite.promise
+      await Promise.resolve()
+    })
+
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(currentUserSession.sessionId)
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledTimes(1)
+    consoleError.mockRestore()
+  })
 })

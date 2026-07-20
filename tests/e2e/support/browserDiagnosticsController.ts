@@ -32,6 +32,8 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
     matchCount: number
   }> = []
   const teardownDepthByContext = new Map<BrowserContext, number>()
+  const activeRequestsByContext = new Map<BrowserContext, Set<Request>>()
+  const intentionalNavigationRequests = new WeakSet<Request>()
 
   const record = (entry: BrowserDiagnostic) => {
     const expectation = activeExpectations.findLast(({ predicate }) => predicate(entry))
@@ -45,12 +47,15 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
   const observeContext = (context: BrowserContext) => {
     if (contextCleanups.has(context)) return
 
+    const contextActiveRequests = new Set<Request>()
+    activeRequestsByContext.set(context, contextActiveRequests)
     const pageCleanups = new Map<Page, () => void>()
     const instrumentPage = (page: Page) => {
       if (pageCleanups.has(page)) return
 
       let documentNavigationInProgress = false
       const onRequest = (request: Request) => {
+        contextActiveRequests.add(request)
         if (
           request.resourceType() === 'document'
           && request.isNavigationRequest()
@@ -58,8 +63,12 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
         ) {
           documentNavigationInProgress = true
         }
+        if ((teardownDepthByContext.get(context) ?? 0) > 0) {
+          intentionalNavigationRequests.add(request)
+        }
       }
       const onRequestSettled = (request: Request) => {
+        contextActiveRequests.delete(request)
         if (
           request.resourceType() === 'document'
           && request.isNavigationRequest()
@@ -98,7 +107,9 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
             request.resourceType(),
             errorText,
             request.url(),
-            documentNavigationInProgress || (teardownDepthByContext.get(context) ?? 0) > 0,
+            intentionalNavigationRequests.has(request)
+              || documentNavigationInProgress
+              || (teardownDepthByContext.get(context) ?? 0) > 0,
           ),
         })
       }
@@ -128,12 +139,15 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       context.off('page', onPage)
       pageCleanups.forEach((removeListeners) => removeListeners())
       pageCleanups.clear()
+      contextActiveRequests.clear()
     })
   }
 
   const detachContext = (context: BrowserContext) => {
     contextCleanups.get(context)?.()
     contextCleanups.delete(context)
+    activeRequestsByContext.delete(context)
+    teardownDepthByContext.delete(context)
   }
 
   return {
@@ -143,9 +157,14 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
     detachAll() {
       contextCleanups.forEach((removeListeners) => removeListeners())
       contextCleanups.clear()
+      activeRequestsByContext.clear()
+      teardownDepthByContext.clear()
     },
     async runInIntentionalTeardown<T>(context, action): Promise<T> {
       teardownDepthByContext.set(context, (teardownDepthByContext.get(context) ?? 0) + 1)
+      activeRequestsByContext.get(context)?.forEach((request) => {
+        intentionalNavigationRequests.add(request)
+      })
       try {
         return await action()
       } finally {

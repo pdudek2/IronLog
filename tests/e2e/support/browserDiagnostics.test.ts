@@ -68,6 +68,95 @@ describe('browser diagnostics classification', () => {
 })
 
 describe('browser diagnostics controller', () => {
+  it('retains intentional teardown context for a Firestore channel that fails after the scope ends', async () => {
+    const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    const frame = {}
+    context.pages = () => [page as unknown as Page]
+    page.url = () => 'http://localhost:5174/workout/new'
+    page.mainFrame = () => frame as ReturnType<Page['mainFrame']>
+
+    const request = {
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+      frame: () => frame,
+      isNavigationRequest: () => false,
+      method: () => 'GET',
+      resourceType: () => 'fetch',
+      url: () => 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+    } as Request
+    const unrelatedRequest = {
+      ...request,
+      url: () => 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Listen/channel?VER=8',
+    } as Request
+
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(context as unknown as BrowserContext)
+
+    page.emit('request', request)
+    await controller.runInIntentionalTeardown(
+      context as unknown as BrowserContext,
+      async () => undefined,
+    )
+    page.emit('requestfailed', request)
+
+    page.emit('request', unrelatedRequest)
+    page.emit('requestfailed', unrelatedRequest)
+
+    expect(controller.entries).toEqual([
+      {
+        kind: 'requestfailed',
+        message: 'net::ERR_ABORTED',
+        method: 'GET',
+        url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+        blocking: false,
+      },
+      {
+        kind: 'requestfailed',
+        message: 'net::ERR_ABORTED',
+        method: 'GET',
+        url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Listen/channel?VER=8',
+        blocking: true,
+      },
+    ])
+  })
+
+  it('retains intentional teardown context for a Firestore channel started inside the scope', async () => {
+    const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    const frame = {}
+    context.pages = () => [page as unknown as Page]
+    page.url = () => 'http://localhost:5174/workout/new'
+    page.mainFrame = () => frame as ReturnType<Page['mainFrame']>
+
+    const request = {
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+      frame: () => frame,
+      isNavigationRequest: () => false,
+      method: () => 'GET',
+      resourceType: () => 'xhr',
+      url: () => 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Listen/channel?VER=8',
+    } as Request
+
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(context as unknown as BrowserContext)
+
+    await controller.runInIntentionalTeardown(
+      context as unknown as BrowserContext,
+      async () => {
+        page.emit('request', request)
+      },
+    )
+    page.emit('requestfailed', request)
+
+    expect(controller.entries).toEqual([{
+      kind: 'requestfailed',
+      message: 'net::ERR_ABORTED',
+      method: 'GET',
+      url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Listen/channel?VER=8',
+      blocking: false,
+    }])
+  })
+
   it('does not apply an auxiliary context teardown scope to the default page', async () => {
     const defaultContext = new EventEmitter() as EventEmitter & { pages(): Page[] }
     const auxiliaryContext = new EventEmitter() as EventEmitter & { pages(): Page[] }

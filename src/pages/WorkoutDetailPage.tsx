@@ -422,21 +422,6 @@ export default function WorkoutDetailPage() {
         </div>
       </section>
 
-      {deleteOperation && (
-        <ActionFeedback
-          id={deleteFeedbackId}
-          status={deleteOperation.status}
-          message={deleteOperation.status === 'pending'
-            ? 'Usuwanie treningu…'
-            : 'Nie udało się usunąć treningu.'}
-          onRetry={deleteOperation.status === 'error' ? retryWorkoutDelete : undefined}
-          onDismiss={deleteOperation.status === 'error'
-            ? () => setDeleteOperation(null)
-            : undefined}
-          className="workout-detail-delete-feedback"
-        />
-      )}
-
         <div className="desktop-app-grid">
           <aside className="desktop-sticky space-y-4 hidden lg:block">
             <motion.div
@@ -571,12 +556,28 @@ export default function WorkoutDetailPage() {
 
             <WorkoutDetailMobileActions>
               <motion.div
-                className="surface-panel rounded-[1.75rem] p-3"
+                className={`workout-detail-mobile-action-panel surface-panel rounded-[1.75rem] p-3${deleteOperation ? ' has-feedback' : ''}`}
                 initial={false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.18 }}
               >
-                {actionButtons}
+                {deleteOperation && (
+                  <ActionFeedback
+                    id={deleteFeedbackId}
+                    status={deleteOperation.status}
+                    message={deleteOperation.status === 'pending'
+                      ? 'Usuwanie treningu…'
+                      : 'Nie udało się usunąć treningu.'}
+                    onRetry={deleteOperation.status === 'error' ? retryWorkoutDelete : undefined}
+                    onDismiss={deleteOperation.status === 'error'
+                      ? () => setDeleteOperation(null)
+                      : undefined}
+                    className="workout-detail-delete-feedback"
+                  />
+                )}
+                <div className={deleteOperation ? 'workout-detail-mobile-action-controls mt-3' : 'workout-detail-mobile-action-controls'}>
+                  {actionButtons}
+                </div>
               </motion.div>
             </WorkoutDetailMobileActions>
 

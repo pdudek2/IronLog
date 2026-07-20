@@ -23,7 +23,7 @@ export function WorkoutDetailMobileActions({ children }: WorkoutDetailMobileActi
   }, [])
 
   return (
-    <div className="workout-detail-mobile-actions-slot lg:hidden">
+    <div className="workout-detail-mobile-actions-slot">
       <div
         ref={anchorRef}
         className="workout-detail-mobile-actions-anchor"

@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -109,7 +109,8 @@ describe('WorkoutDetailPage delete action', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { name: 'Push day.' })).toBeInTheDocument()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
+    const mobileActions = screen.getByRole('group', { name: 'Akcje treningu' })
+    fireEvent.click(within(mobileActions).getByRole('button', { name: 'Usuń trening' }))
     fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('Usuwanie treningu…')
@@ -123,6 +124,8 @@ describe('WorkoutDetailPage delete action', () => {
 
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent('Nie udało się usunąć treningu.')
+    expect(mobileActions).toContainElement(alert)
+    expect(screen.getAllByText('Nie udało się usunąć treningu.')).toHaveLength(1)
     expect(screen.getByRole('heading', { name: 'Push day.' })).toBeInTheDocument()
     expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
 

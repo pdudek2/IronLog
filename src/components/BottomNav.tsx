@@ -4,7 +4,9 @@ import { motion } from 'framer-motion'
 import { Dumbbell, History, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
+import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { preloadRouteByPath } from '../router/pageLoaders'
+import { useWorkoutStore } from '../store/workoutStore'
 import { useMobileInteraction } from './MobileInteractionProvider'
 
 interface NavBtnProps {
@@ -45,6 +47,7 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const [hidden, setHidden] = useState(false)
   const { inputFocused } = useMobileInteraction()
+  const active = useWorkoutStore((state) => state.active)
   const navRef = useRef<HTMLElement>(null)
   const movingFocusFromNavRef = useRef(false)
   const lastScrollYRef = useRef(0)
@@ -52,6 +55,7 @@ export default function BottomNav() {
 
   const path = location.pathname
   const workoutActive = path.startsWith('/workout/new')
+  const hasActiveWork = hasActiveSessionWork(active)
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
   useEffect(() => {
@@ -186,7 +190,7 @@ export default function BottomNav() {
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}
           aria-current={workoutActive ? 'page' : undefined}
-          aria-label="Rozpocznij nowy trening"
+          aria-label={hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening'}
         >
           <Plus size={22} strokeWidth={2.5} />
         </motion.button>

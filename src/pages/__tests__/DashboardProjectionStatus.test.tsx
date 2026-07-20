@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { WorkoutSummary } from '../../lib/workoutService'
 import { useDashboardStore } from '../../store/dashboardStore'
+import { useWorkoutStore, type ActiveWorkout } from '../../store/workoutStore'
 import DashboardPage from '../DashboardPage'
 
 const mocks = vi.hoisted(() => ({
@@ -17,6 +18,8 @@ const mocks = vi.hoisted(() => ({
   setProfile: vi.fn(),
   setLoading: vi.fn(),
   navigate: vi.fn(),
+  preloadRouteByPath: vi.fn(),
+  activeSessionHasWork: false,
 }))
 
 vi.mock('../../store/authStore', () => ({
@@ -63,8 +66,14 @@ vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
 }))
 
 vi.mock('../../lib/activeSessionService', () => ({
-  hasActiveSessionWork: () => false,
+  hasActiveSessionWork: (session: ActiveWorkout | null | undefined) => (
+    Boolean(session) && mocks.activeSessionHasWork
+  ),
   subscribeToActiveSession: () => vi.fn(),
+}))
+
+vi.mock('../../router/pageLoaders', () => ({
+  preloadRouteByPath: mocks.preloadRouteByPath,
 }))
 
 vi.mock('../../components/ReadinessWidget', () => ({
@@ -137,8 +146,64 @@ describe('Dashboard workout projection status', () => {
     mocks.getTemplates.mockReset()
     mocks.getTemplates.mockResolvedValue([])
     mocks.toastError.mockReset()
+    mocks.navigate.mockReset()
+    mocks.preloadRouteByPath.mockReset()
+    mocks.preloadRouteByPath.mockResolvedValue(undefined)
+    mocks.activeSessionHasWork = false
     mocks.user = { uid: 'user-1' }
     useDashboardStore.getState().clearSnapshot()
+    useWorkoutStore.getState().clearWorkout()
+  })
+
+  it('hands off a new workout route once after its preload settles', async () => {
+    const preload = deferred<void>()
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.preloadRouteByPath.mockReturnValueOnce(preload.promise)
+
+    render(<DashboardPage />)
+
+    const [workoutCta] = await screen.findAllByRole('button', { name: 'Rozpocznij nowy trening' })
+    fireEvent.click(workoutCta)
+    fireEvent.click(workoutCta)
+
+    screen.getAllByRole('button', { name: 'Otwieram trening…' })
+      .forEach((button) => expect(button).toBeDisabled())
+    expect(mocks.preloadRouteByPath).toHaveBeenCalledTimes(1)
+    expect(mocks.preloadRouteByPath).toHaveBeenCalledWith('/workout/new')
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/workout/new')
+
+    await act(async () => preload.resolve())
+
+    expect(mocks.navigate).toHaveBeenCalledTimes(1)
+    expect(mocks.navigate).toHaveBeenCalledWith('/workout/new')
+  })
+
+  it('hands off an active workout route and clears pending state when preload fails', async () => {
+    const preload = deferred<void>()
+    mocks.activeSessionHasWork = true
+    useWorkoutStore.setState({
+      active: {
+        sessionId: 'active-session',
+        startedAt: 1,
+        label: 'Push',
+        exercises: [],
+      },
+    })
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.preloadRouteByPath.mockReturnValueOnce(preload.promise)
+
+    render(<DashboardPage />)
+
+    const [workoutCta] = await screen.findAllByRole('button', { name: 'Wznów trening' })
+    fireEvent.click(workoutCta)
+    screen.getAllByRole('button', { name: 'Otwieram sesję…' })
+      .forEach((button) => expect(button).toBeDisabled())
+
+    await act(async () => preload.reject(new Error('chunk unavailable')))
+
+    expect(mocks.navigate).toHaveBeenCalledTimes(1)
+    expect(mocks.navigate).toHaveBeenCalledWith('/workout/new')
+    expect(screen.getAllByRole('button', { name: 'Wznów trening' })[0]).toBeEnabled()
   })
 
   it('keeps pending feedback visible and recovers one workout after a failed automatic retry', async () => {

@@ -28,7 +28,7 @@ export async function expectAppReady(
 
   switch (route) {
     case '/dashboard':
-      await expect(page.getByRole('button', { name: /Rozpocznij trening|Wróć do sesji/ })).toBeVisible({ timeout })
+      await expect(page.getByRole('button', { name: /^(?:Rozpocznij nowy trening|Wznów trening)$/ }).first()).toBeVisible({ timeout })
       await expect(page.getByText('Nie udało się wczytać dashboardu', { exact: true })).toHaveCount(0)
       return
     case '/history':

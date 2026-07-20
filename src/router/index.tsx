@@ -108,6 +108,7 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/register" element={<RegisterPage />} />
     </Route>
     <Route element={<PrivateRouteOutlet />}>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/logout" element={<LogoutRoute />} />
       <Route element={<AppLayout />}>

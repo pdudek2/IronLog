@@ -1,8 +1,13 @@
 import { createElement, useState, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import BottomNav from '../../components/BottomNav'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import MobileInteractionProvider from '../../components/MobileInteractionProvider'
+import TopNav from '../../components/TopNav'
 import Input from '../../components/ui/Input'
+import { useWorkoutStore } from '../../store/workoutStore'
 
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
@@ -43,6 +48,7 @@ function DialogHarness() {
 
 describe('shared accessibility contracts', () => {
   beforeEach(() => {
+    useWorkoutStore.getState().clearWorkout()
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       callback(0)
       return 1
@@ -110,5 +116,44 @@ describe('shared accessibility contracts', () => {
     expect(confirm).toBeDisabled()
     fireEvent.click(confirm)
     expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  it('labels shell workout entry actions when no active work exists', () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <MobileInteractionProvider>
+          <TopNav />
+          <BottomNav />
+        </MobileInteractionProvider>
+      </MemoryRouter>,
+    )
+
+    const workoutActions = screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })
+    expect(workoutActions).toHaveLength(2)
+    expect(workoutActions[0]).toHaveTextContent('Nowy trening')
+  })
+
+  it('labels shell workout entry actions when the workout store contains active work', () => {
+    useWorkoutStore.setState({
+      active: {
+        sessionId: 'active-session',
+        startedAt: 1,
+        label: 'Push',
+        exercises: [],
+      },
+    })
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <MobileInteractionProvider>
+          <TopNav />
+          <BottomNav />
+        </MobileInteractionProvider>
+      </MemoryRouter>,
+    )
+
+    const workoutActions = screen.getAllByRole('button', { name: 'Wznów trening' })
+    expect(workoutActions).toHaveLength(2)
+    expect(workoutActions[0]).toHaveTextContent('Wznów trening')
   })
 })

@@ -1,6 +1,28 @@
 import { expect, test } from './fixtures'
 
 test.describe('Protected application shell', () => {
+  test('routes authenticated and anonymous root visits through the private boundary', async ({
+    page,
+    observedContextFactory,
+  }) => {
+    await page.goto('/')
+    await expect(page).toHaveURL('/dashboard', { timeout: 15_000 })
+
+    const anonymousContext = await observedContextFactory.newContext({
+      storageState: { cookies: [], origins: [] },
+    })
+    const anonymousPage = await anonymousContext.newPage()
+    await anonymousPage.goto('/')
+    await expect(anonymousPage).toHaveURL('/login', { timeout: 15_000 })
+  })
+
+  test('keeps a genuinely unknown route on the 404 page', async ({ page }) => {
+    await page.goto('/definitely-missing')
+
+    await expect(page).toHaveURL('/definitely-missing')
+    await expect(page.getByRole('heading', { name: 'Ta strona nie istnieje' })).toBeVisible()
+  })
+
   test('provides one main landmark and moves focus after route navigation', async ({ page }, testInfo) => {
     await page.goto('/dashboard')
     await expect(page).toHaveURL('/dashboard', { timeout: 15_000 })

@@ -27,6 +27,7 @@ import {
   type WorkoutTemplate,
 } from '../lib/templateService'
 import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
+import { preloadRouteByPath } from '../router/pageLoaders'
 import { getProfile } from '../lib/userProfile'
 import {
   getRecentWorkouts, deleteWorkout, retryWorkoutMaterialization, countWeeklyWorkouts,
@@ -174,6 +175,7 @@ export default function DashboardPage() {
     setSnapshot,
   } = useDashboardStore()
   const [deleteOperation, setDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
+  const [openingWorkout, setOpeningWorkout] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [templatesResource, setTemplatesResource] = useState<TemplatesResource>({
     uid: user?.uid ?? null,
@@ -377,6 +379,17 @@ export default function DashboardPage() {
     setConfirmDelete(id)
   }
 
+  async function handleOpenWorkout() {
+    if (openingWorkout) return
+    setOpeningWorkout(true)
+    try {
+      await preloadRouteByPath('/workout/new')
+    } finally {
+      navigate('/workout/new')
+      setOpeningWorkout(false)
+    }
+  }
+
   function openWorkout(workout: WorkoutSummary) {
     navigate(`/workout/${workout.id}`, {
       state: { workoutPreview: workout },
@@ -577,12 +590,15 @@ export default function DashboardPage() {
             <div className="dashboard-home-actions">
               <motion.button
                 type="button"
-                onClick={() => navigate('/workout/new')}
+                onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                disabled={openingWorkout}
                 className="hero-editorial-cta"
                 whileTap={{ scale: 0.97 }}
               >
                 {hasActiveWork ? <Play size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
-                {hasActiveWork ? 'Wróć do sesji' : 'Rozpocznij trening'}
+                {openingWorkout
+                  ? (hasActiveWork ? 'Otwieram sesję…' : 'Otwieram trening…')
+                  : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
               </motion.button>
             </div>
 
@@ -863,12 +879,16 @@ export default function DashboardPage() {
                       </p>
                     </div>
                     <motion.button
-                      onClick={() => navigate('/workout/new')}
+                      type="button"
+                      onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                      disabled={openingWorkout}
                       className="mt-2 rounded-[var(--radius-md)] px-6 py-2.5 text-sm font-semibold"
                       style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
                       whileTap={{ scale: 0.96 }}
                     >
-                      + Nowy trening
+                      {openingWorkout
+                        ? (hasActiveWork ? 'Otwieram sesję…' : 'Otwieram trening…')
+                        : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
                     </motion.button>
                   </motion.div>
                 ) : (

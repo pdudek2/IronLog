@@ -3,7 +3,9 @@ import { motion } from 'framer-motion'
 import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
+import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { useDashboardStore } from '../store/dashboardStore'
+import { useWorkoutStore } from '../store/workoutStore'
 
 type AppSection = 'dashboard' | 'history' | 'templates' | 'exercises' | 'profile' | 'progress' | 'chat'
 
@@ -32,7 +34,9 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
   const location = useLocation()
   const path = location.pathname
   const storeStreak = useDashboardStore((s) => s.streak)
+  const active = useWorkoutStore((state) => state.active)
   const streak = typeof streakProp === 'number' ? streakProp : storeStreak
+  const hasActiveWork = hasActiveSessionWork(active)
 
   const isActive = (item: (typeof NAV_ITEMS)[number]) =>
     current ? current === item.key : item.match ? item.match(path) : path === item.to
@@ -100,10 +104,10 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
             onFocus={() => { void preloadRouteByPath('/workout/new') }}
             whileTap={{ scale: 0.97 }}
-            aria-label="Rozpocznij nowy trening"
+            aria-label={hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening'}
           >
             <Plus size={15} strokeWidth={2.4} />
-            <span>Nowy trening</span>
+            <span>{hasActiveWork ? 'Wznów trening' : 'Nowy trening'}</span>
           </motion.button>
 
           <button

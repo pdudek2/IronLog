@@ -16,10 +16,6 @@ for (const [name, route] of PAGES) {
     await page.goto(route)
 
     await expectAppReady(page, route)
-
-    // Screenshot for visual regression baseline
-    await page.screenshot({ path: `test-results/${name.toLowerCase()}.png`, fullPage: true })
-
   })
 }
 

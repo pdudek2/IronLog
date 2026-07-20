@@ -22,6 +22,7 @@
     "test:e2e:a11y": "E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/accessibility.spec.ts --project=desktop --project=mobile\"",
     "test:e2e:isolated": "E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/critical.spec.ts tests/e2e/profile.spec.ts tests/e2e/exercises.spec.ts tests/e2e/templates.spec.ts --project=desktop\"",
     "test:e2e:workout": "E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/workout-lifecycle.spec.ts --project=desktop\"",
+    "test:e2e:visual": "E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/templates.visual.spec.ts --project=desktop --project=mobile --retries=0\"",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"
   },

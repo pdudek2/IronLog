@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page } from '../fixtures'
 
 export type AppReadyRoute =
+  | '/login'
   | '/dashboard'
   | '/history'
   | '/progress'
@@ -10,6 +11,7 @@ export type AppReadyRoute =
   | '/chat'
   | '/profile'
   | '/workout/new'
+  | `/exercises/${'global' | 'user'}/${string}`
 
 function workoutTerminalState(page: Page): Locator {
   return page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
@@ -26,7 +28,18 @@ export async function expectAppReady(
 ): Promise<void> {
   await expect(page).toHaveURL(route, { timeout })
 
+  if (route.startsWith('/exercises/')) {
+    await expect(page.locator('.hero-editorial-name')).toBeVisible({ timeout })
+    await expect(page.getByText('Nie udało się wczytać ćwiczenia', { exact: true })).toHaveCount(0)
+    return
+  }
+
   switch (route) {
+    case '/login':
+      await expect(page.getByRole('heading', { name: 'Zaloguj się' })).toBeVisible({ timeout })
+      await expect(page.getByLabel('Email')).toBeVisible({ timeout })
+      await expect(page.getByRole('button', { name: 'Zaloguj się' })).toBeVisible({ timeout })
+      return
     case '/dashboard':
       await expect(page.getByRole('button', { name: /^(?:Rozpocznij nowy trening|Wznów trening)$/ }).first()).toBeVisible({ timeout })
       await expect(page.getByText('Nie udało się wczytać dashboardu', { exact: true })).toHaveCount(0)

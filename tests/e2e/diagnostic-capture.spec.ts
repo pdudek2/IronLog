@@ -1,9 +1,12 @@
 /**
  * Visual audit screenshot capture script.
- * Run with: npx playwright test tests/e2e/audit-screenshots.ts --headed=false
+ * Run with: npx playwright test tests/e2e/diagnostic-capture.spec.ts --project=desktop --retries=0
  * Captures each key screen at desktop (1280x800) and mobile (390x844).
+ * These images are inspection artifacts, not visual-regression baselines.
  */
+import { expect } from '@playwright/test'
 import { test } from './fixtures'
+import { expectAppReady, type AppReadyRoute } from './support/appReady'
 
 const SCREENS = [
   { name: 'login', path: '/login', requiresAuth: false },
@@ -21,27 +24,37 @@ const VIEWPORTS = [
   { name: 'mobile', width: 390, height: 844 },
 ]
 
-test.use({ storageState: 'tests/e2e/.auth/user.json' })
-
 for (const screen of SCREENS) {
   for (const vp of VIEWPORTS) {
-    test(`${screen.name} [${vp.name}]`, async ({ page }) => {
+    test(`${screen.name} [${vp.name}]`, async ({ page, observedContextFactory }, testInfo) => {
+      if (!screen.requiresAuth) {
+        const anonymousContext = await observedContextFactory.newContext({
+          storageState: { cookies: [], origins: [] },
+          viewport: { width: vp.width, height: vp.height },
+          reducedMotion: 'reduce',
+        })
+        page = await anonymousContext.newPage()
+      }
+
       await page.setViewportSize({ width: vp.width, height: vp.height })
+      await page.emulateMedia({ reducedMotion: 'reduce' })
       await page.goto(screen.path)
-      await page.locator('.page-shell').waitFor({ timeout: 25_000 })
       // Let async data settle
-      await page.waitForTimeout(2_500)
+      await expectAppReady(page, screen.path as AppReadyRoute)
+      await page.evaluate(() => document.fonts.ready)
       await page.screenshot({
-        path: `test-results/audit/${screen.name}-${vp.name}.png`,
+        path: testInfo.outputPath('diagnostic', `${screen.name}-${vp.name}.png`),
         fullPage: true,
       })
 
       // For dashboard and exercises — also capture after scroll
       if (['dashboard', 'exercises', 'progress'].includes(screen.name)) {
         await page.evaluate(() => window.scrollTo(0, 600))
-        await page.waitForTimeout(500)
+        await page.evaluate(() => new Promise<void>((resolve) => {
+          window.requestAnimationFrame(() => resolve())
+        }))
         await page.screenshot({
-          path: `test-results/audit/${screen.name}-${vp.name}-scrolled.png`,
+          path: testInfo.outputPath('diagnostic', `${screen.name}-${vp.name}-scrolled.png`),
           fullPage: false,
         })
         await page.evaluate(() => window.scrollTo(0, 0))
@@ -52,20 +65,21 @@ for (const screen of SCREENS) {
 
 // Additional: exercise detail (global)
 for (const vp of VIEWPORTS) {
-  test(`exercise-detail [${vp.name}]`, async ({ page }) => {
+  test(`exercise-detail [${vp.name}]`, async ({ page }, testInfo) => {
     await page.setViewportSize({ width: vp.width, height: vp.height })
+    await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/exercises')
-    await page.locator('.page-shell').waitFor({ timeout: 15_000 })
-    await page.waitForTimeout(1_500)
+    await expectAppReady(page, '/exercises')
     // Click the first global exercise card
     const card = page.locator('section').filter({ hasText: 'Katalog globalny' }).locator('[role="button"]').first()
-    if (await card.isVisible({ timeout: 3_000 }).catch(() => false)) {
-      await card.click()
-      await page.locator('.page-shell').waitFor({ timeout: 10_000 })
-      await page.waitForTimeout(1_500)
-    }
+    await expect(card).toBeVisible()
+    await card.click()
+    await expect(page).toHaveURL(/\/exercises\/global\/[^/]+$/)
+    const detailRoute = new URL(page.url()).pathname as AppReadyRoute
+    await expectAppReady(page, detailRoute)
+    await page.evaluate(() => document.fonts.ready)
     await page.screenshot({
-      path: `test-results/audit/exercise-detail-${vp.name}.png`,
+      path: testInfo.outputPath('diagnostic', `exercise-detail-${vp.name}.png`),
       fullPage: true,
     })
   })

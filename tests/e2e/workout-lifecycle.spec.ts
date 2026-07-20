@@ -141,7 +141,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     await page.reload()
     await expectAppReady(page, '/dashboard')
-    await expect(page.getByRole('button', { name: 'Wróć do sesji' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Rozpocznij nowy trening' }).first()).toBeVisible()
     expect(await readLifecycleActiveSession()).toBeNull()
   })
 

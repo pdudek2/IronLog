@@ -85,12 +85,19 @@ describe('useActiveSession snapshot authority', () => {
     expect(useWorkoutStore.getState().active?.sessionId).toBe('server-session')
   })
 
-  it('does not resurrect or persist a confirmed closed session from a late authoritative snapshot', () => {
+  it('does not resurrect the first session after a later replacement is also confirmed closed', async () => {
     useWorkoutStore.getState().hydrateFromDoc(remoteSession)
     const { result } = renderHook(() => useActiveSession('user-1'))
 
     act(() => {
       result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+      useWorkoutStore.getState().startWorkout()
+    })
+    const secondSession = useWorkoutStore.getState().active
+    expect(secondSession).not.toBeNull()
+    act(() => {
+      result.current.beginClosure('discard', secondSession)
       result.current.confirmClosure()
     })
     expect(useWorkoutStore.getState().active).toBeNull()
@@ -100,7 +107,10 @@ describe('useActiveSession snapshot authority', () => {
       fromCache: false,
       hasPendingWrites: false,
     }))
-    act(() => window.dispatchEvent(new Event('pagehide')))
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'))
+      await Promise.resolve()
+    })
 
     expect(useWorkoutStore.getState().active).toBeNull()
     expect(saveActiveSession).not.toHaveBeenCalled()
@@ -133,7 +143,7 @@ describe('useActiveSession snapshot authority', () => {
     expect(saveActiveSession).toHaveBeenCalledWith('user-1', replacement)
   })
 
-  it('ignores a late failed write for a session after its closure is confirmed', async () => {
+  it('ignores a late failed write for the first of two confirmed closed sessions', async () => {
     const closedWrite = createDeferred<void>()
     const saveError = new Error('permission-denied')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -146,6 +156,13 @@ describe('useActiveSession snapshot authority', () => {
 
     act(() => {
       result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+      useWorkoutStore.getState().startWorkout()
+    })
+    const secondSession = useWorkoutStore.getState().active
+    expect(secondSession).not.toBeNull()
+    act(() => {
+      result.current.beginClosure('discard', secondSession)
       result.current.confirmClosure()
     })
 
@@ -161,7 +178,7 @@ describe('useActiveSession snapshot authority', () => {
     consoleError.mockRestore()
   })
 
-  it('does not let a late successful closed-session write hide a newer replacement failure', async () => {
+  it('does not let a late successful first-session write hide a failure after two closures', async () => {
     const closedWrite = createDeferred<void>()
     const replacementWrite = createDeferred<void>()
     const replacementError = new Error('replacement write failed')
@@ -175,6 +192,13 @@ describe('useActiveSession snapshot authority', () => {
     act(() => window.dispatchEvent(new Event('pagehide')))
     act(() => {
       result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+      useWorkoutStore.getState().startWorkout()
+    })
+    const secondSession = useWorkoutStore.getState().active
+    expect(secondSession).not.toBeNull()
+    act(() => {
+      result.current.beginClosure('discard', secondSession)
       result.current.confirmClosure()
       useWorkoutStore.getState().startWorkout()
       window.dispatchEvent(new Event('pagehide'))
@@ -201,5 +225,28 @@ describe('useActiveSession snapshot authority', () => {
     expect(result.current.activeSessionSyncStatus).toBe('failed')
     expect(consoleError).toHaveBeenCalledTimes(1)
     consoleError.mockRestore()
+  })
+
+  it('resets confirmed closure identities when the active user changes', () => {
+    useWorkoutStore.getState().hydrateFromDoc(remoteSession)
+    const { result, rerender } = renderHook(
+      ({ uid }: { uid: string }) => useActiveSession(uid),
+      { initialProps: { uid: 'user-1' } },
+    )
+
+    act(() => {
+      result.current.beginClosure('discard', remoteSession)
+      result.current.confirmClosure()
+    })
+    expect(useWorkoutStore.getState().active).toBeNull()
+
+    rerender({ uid: 'user-2' })
+    act(() => listener.current?.({
+      session: remoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(remoteSession.sessionId)
   })
 })

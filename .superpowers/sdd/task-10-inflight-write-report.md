@@ -35,3 +35,28 @@ and is still logged.
 
 The regression coverage also verifies that neither late completion resurrects
 the closed workout and that a late old success cannot hide a newer failure.
+
+## Re-review follow-up: consecutive closures
+
+The first guard retained only one closed session ID. A second confirmed closure
+therefore replaced the first identity and allowed a still-pending completion or
+authoritative snapshot for the first session through.
+
+RED reproduced all three consequences after closing session A and then B:
+
+- an authoritative snapshot for A resurrected it;
+- a late rejection for A set the sync status to `failed` and logged an error;
+- a late success for A reset the real failure of a newer session C to `idle`.
+
+The hook now retains a `Set` of every confirmed closed session ID for the current
+user lifecycle. One predicate is used consistently by snapshot reconciliation,
+write start and completion, store persistence, page flush, and manual retry. The
+set is reset whenever `uid` changes, so an ID from one account cannot suppress a
+valid session belonging to another account.
+
+GREEN evidence:
+
+- focused authority tests: 7/7 passed, including the user-change reset contract;
+- full unit suite: 51 files, 344/344 passed;
+- lint: passed;
+- production build: passed, 877 modules transformed.

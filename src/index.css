@@ -147,6 +147,63 @@ body::after {
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
+.action-feedback {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  line-height: 1.35;
+}
+
+.action-feedback--pending {
+  color: var(--muted);
+  background: var(--surface-muted);
+}
+
+.action-feedback--error {
+  flex-wrap: wrap;
+  color: var(--text);
+  border-color: var(--danger-soft-strong);
+  background: var(--danger-soft);
+}
+
+.action-feedback-spinner {
+  flex: 0 0 auto;
+  animation: action-feedback-spin 0.8s linear infinite;
+}
+
+.action-feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.action-feedback-actions button {
+  min-height: 2.25rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.045);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.action-feedback-actions button:hover {
+  border-color: var(--text);
+}
+
+@keyframes action-feedback-spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Input number — hide arrows */
 input[type='number']::-webkit-inner-spin-button,
 input[type='number']::-webkit-outer-spin-button {
@@ -7364,6 +7421,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .action-feedback-spinner {
+    animation: none;
+  }
+
   *,
   *::before,
   *::after {

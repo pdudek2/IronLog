@@ -108,8 +108,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
             errorText,
             request.url(),
             intentionalNavigationRequests.has(request)
-              || documentNavigationInProgress
-              || (teardownDepthByContext.get(context) ?? 0) > 0,
+              || documentNavigationInProgress,
           ),
         })
       }

@@ -157,6 +157,50 @@ describe('browser diagnostics controller', () => {
     }])
   })
 
+  it('keeps unobserved request failures blocking even while an intentional scope is open', async () => {
+    const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    const frame = {}
+    context.pages = () => [page as unknown as Page]
+    page.url = () => 'http://localhost:5174/workout/new'
+    page.mainFrame = () => frame as ReturnType<Page['mainFrame']>
+
+    const requests = [
+      {
+        resourceType: () => 'fetch',
+        url: () => 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+      },
+      {
+        resourceType: () => 'script',
+        url: () => 'http://localhost:5174/src/pages/WorkoutPage.tsx',
+      },
+      {
+        resourceType: () => 'font',
+        url: () => 'https://fonts.gstatic.com/s/urbanist/v17/urbanist.woff2',
+      },
+    ].map(({ resourceType, url }) => ({
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+      frame: () => frame,
+      isNavigationRequest: () => false,
+      method: () => 'GET',
+      resourceType,
+      url,
+    }) as Request)
+
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(context as unknown as BrowserContext)
+
+    await controller.runInIntentionalTeardown(
+      context as unknown as BrowserContext,
+      async () => {
+        requests.forEach((request) => page.emit('requestfailed', request))
+      },
+    )
+
+    expect(controller.entries).toHaveLength(3)
+    expect(controller.entries.every((entry) => entry.blocking)).toBe(true)
+  })
+
   it('does not apply an auxiliary context teardown scope to the default page', async () => {
     const defaultContext = new EventEmitter() as EventEmitter & { pages(): Page[] }
     const auxiliaryContext = new EventEmitter() as EventEmitter & { pages(): Page[] }
@@ -193,6 +237,8 @@ describe('browser diagnostics controller', () => {
     await controller.runInIntentionalTeardown(
       auxiliaryContext as unknown as BrowserContext,
       async () => {
+        defaultPage.emit('request', failedViteRequest)
+        auxiliaryPage.emit('request', auxiliaryFailedViteRequest)
         defaultPage.emit('requestfailed', failedViteRequest)
         auxiliaryPage.emit('requestfailed', auxiliaryFailedViteRequest)
       },

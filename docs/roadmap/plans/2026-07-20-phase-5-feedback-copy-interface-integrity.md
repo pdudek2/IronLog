@@ -1,6 +1,6 @@
 # Phase 5 Feedback, Copy, and Interface Integrity Implementation Plan
 
-**Status:** IMPLEMENTATION COMPLETE — AWAITING BRANCH INTEGRATION
+**Status:** COMPLETED — INTEGRATED LOCALLY TO `puls-rebrand`
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Use `superpowers:test-driven-development` for every behavior change and `superpowers:verification-before-completion` before claiming a task or the phase complete.
 
@@ -1011,7 +1011,7 @@ git commit -m "docs: close phase 5 feedback integrity"
 
 Do not stage `docs/audits/2026-07-14-senior-design-review.md`.
 
-- [ ] **Step 7: Finish the branch locally**
+- [x] **Step 7: Finish the branch locally**
 
 Use `superpowers:finishing-a-development-branch`. Present local merge/PR/keep-branch choices. Do not push, deploy or mutate production without fresh authorization.
 
@@ -1051,5 +1051,5 @@ Use `superpowers:finishing-a-development-branch`. Present local merge/PR/keep-br
 - Runtime matrix wykonano jako deterministyczny Playwright desktop/mobile; nie raportujemy osobnego interaktywnego headed walkthrough, którego nie wykonano.
 - Visual: `3/3` porównań przechodzi, `2` baselines zatwierdzone (`desktop 1280x784`, `mobile 393x1345`), brak produktu-specific tolerance/retry; tylko środowiskowa normalizacja scrollbara desktop jako odchylenie testowe.
 - DEMO-01: wykonany reseed po potwierdzeniu na `demo@ironlog.app` / `ironlog-ede05`; usunięto `27 workouts,145 exerciseSessions,21 records,4 userExercises,1 template,7 readiness`; zweryfikowano `26 workouts`, `1 template`, `4 custom exercises`, `7 readiness`, `max 74min`, `blank labels 0`, `hasActiveSession false`.
-- `project-convergence` 2026-07-21: route `Phased`, risk `Elevated`, implementacja i dowody zaakceptowane; bezpośrednia obserwacja Browser potwierdziła cold-load active-session copy i brak mobile overflow. Gate integracji pozostaje otwarty, dlatego plan, worktree i phase-owned SDD residue są zachowane.
-- Task10 Step7 pozostaje celowo nieukończony oczekując decyzji Patryka nt. sposobu finalizacji gałęzi.
+- `project-convergence` 2026-07-21: route `Phased`, risk `Elevated`; bezpośrednia obserwacja Browser potwierdziła cold-load active-session copy i brak mobile overflow. Po fast-forward merge do `puls-rebrand` końcowy gate integracji został zamknięty.
+- Task10 Step7 zakończono przez lokalny fast-forward merge do `puls-rebrand`; bez pushu i deployu. Plan pozostaje zachowany jako ukończony artefakt wykonawczy.

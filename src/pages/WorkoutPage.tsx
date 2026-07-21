@@ -347,16 +347,22 @@ export default function WorkoutPage() {
 
   useEffect(() => {
     if (isDesktop || !compactFixedUi || rest === null) return
-    const frame = window.requestAnimationFrame(() => {
-      const activeElement = document.activeElement
-      if (
-        activeElement instanceof HTMLInputElement
-        && activeElement.matches('.workout-focus-shell .workout-set-row input')
-      ) {
-        activeElement.scrollIntoView({ block: 'nearest' })
-      }
+    let settledFrame: number | null = null
+    const layoutFrame = window.requestAnimationFrame(() => {
+      settledFrame = window.requestAnimationFrame(() => {
+        const activeElement = document.activeElement
+        if (
+          activeElement instanceof HTMLInputElement
+          && activeElement.matches('.workout-focus-shell .workout-set-row input')
+        ) {
+          activeElement.scrollIntoView({ block: 'nearest' })
+        }
+      })
     })
-    return () => window.cancelAnimationFrame(frame)
+    return () => {
+      window.cancelAnimationFrame(layoutFrame)
+      if (settledFrame !== null) window.cancelAnimationFrame(settledFrame)
+    }
   }, [compactFixedUi, isDesktop, rest, visualViewportHeight])
 
   const handleToggleSet = useCallback((exerciseIndex: number, setIndex: number) => {

@@ -86,6 +86,83 @@ test.describe('Chat UI', () => {
     await expect(page.getByRole('heading', { name: 'Decyzje treningowe' })).toBeVisible({ timeout: 5_000 })
   })
 
+  test('mock runtime rejects invalid AI request contracts without consuming an attempt', async ({ page }) => {
+    await openChatWithMock(page, [{
+      frames: [
+        { delayMs: 20, frame: { type: 'chunk', text: 'Pełna odpowiedź' } },
+        { delayMs: 20, frame: { type: 'done' } },
+      ],
+    }])
+
+    const contractResults = await page.evaluate(async () => {
+      const jsonHeaders = {
+        Authorization: 'Bearer test-token',
+        'Content-Type': 'application/json',
+      }
+      const cases: Array<[string, RequestInit]> = [
+        ['/api/ai-models', { method: 'GET' }],
+        ['/api/ai-models', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: 'test-only-key' }),
+        }],
+        ['/api/ai-models', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer test-token', 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ apiKey: 'test-only-key' }),
+        }],
+        ['/api/ai-models', { method: 'POST', headers: jsonHeaders, body: '{' }],
+        ['/api/ai-models', { method: 'POST', headers: jsonHeaders, body: '{}' }],
+        ['/api/ai-chat', { method: 'GET' }],
+        ['/api/ai-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ apiKey: 'test-only-key', model: 'claude-test', messages: [] }),
+        }],
+        ['/api/ai-chat', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer test-token', 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ apiKey: 'test-only-key', model: 'claude-test', messages: [] }),
+        }],
+        ['/api/ai-chat', { method: 'POST', headers: jsonHeaders, body: '{' }],
+        ['/api/ai-chat', {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({
+            apiKey: 'test-only-key',
+            model: 'claude-test',
+            messages: [{ role: 'system', content: 'invalid role' }],
+          }),
+        }],
+      ]
+
+      return Promise.all(cases.map(async ([url, init]) => {
+        try {
+          await fetch(url, init)
+          return 'resolved'
+        } catch (error) {
+          return error instanceof Error ? error.message : 'non-error rejection'
+        }
+      }))
+    })
+
+    expect(contractResults).toEqual([
+      'Mock AI request contract violation: /api/ai-models requires POST.',
+      'Mock AI request contract violation: /api/ai-models requires Bearer authorization.',
+      'Mock AI request contract violation: /api/ai-models requires application/json Content-Type.',
+      'Mock AI request contract violation: /api/ai-models requires valid JSON.',
+      'Mock AI request contract violation: /api/ai-models requires body { apiKey }.',
+      'Mock AI request contract violation: /api/ai-chat requires POST.',
+      'Mock AI request contract violation: /api/ai-chat requires Bearer authorization.',
+      'Mock AI request contract violation: /api/ai-chat requires application/json Content-Type.',
+      'Mock AI request contract violation: /api/ai-chat requires valid JSON.',
+      'Mock AI request contract violation: /api/ai-chat requires body { apiKey, model, messages }.',
+    ])
+
+    await sendQuestion(page)
+    await expect(page.getByText('Pełna odpowiedź', { exact: true })).toBeVisible()
+  })
+
   test('removes a partial answer and exposes retry after a stream error', async ({ page }) => {
     await openChatWithMock(page, [{
       frames: [

@@ -78,6 +78,29 @@ describe('readChatStream', () => {
     })).rejects.toBeInstanceOf(ChatStreamProtocolError)
   })
 
+  it('rejects a done frame that is not newline-delimited at EOF', async () => {
+    await expect(readChatStream(streamFrom(
+      '{"type":"chunk","text":"Cześć"}\n{"type":"done"}',
+    ), {
+      signal: new AbortController().signal,
+      onChunk: vi.fn(),
+    })).rejects.toMatchObject({
+      name: 'ChatStreamProtocolError',
+      message: 'Stream AI zakończył się bez potwierdzenia.',
+    })
+  })
+
+  it.each([
+    ['chunk', '{"type":"chunk","text":"Cześć","extra":true}\n{"type":"done"}\n'],
+    ['done', '{"type":"chunk","text":"Cześć"}\n{"type":"done","extra":true}\n'],
+    ['error', '{"type":"error","message":"Niepowodzenie","extra":true}\n'],
+  ])('rejects surplus fields on %s frames', async (_type, body) => {
+    await expect(readChatStream(streamFrom(body), {
+      signal: new AbortController().signal,
+      onChunk: vi.fn(),
+    })).rejects.toBeInstanceOf(ChatStreamProtocolError)
+  })
+
   it('rejects non-whitespace data after a terminal frame', async () => {
     await expect(readChatStream(streamFrom(
       '{"type":"chunk","text":"Cześć"}\n{"type":"done"}\n',

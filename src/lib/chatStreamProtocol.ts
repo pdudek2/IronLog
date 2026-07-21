@@ -27,6 +27,11 @@ export function isAbortError(error: unknown): boolean {
     && error.name === 'AbortError'
 }
 
+function hasExactKeys(frame: Record<string, unknown>, keys: string[]): boolean {
+  const frameKeys = Object.keys(frame)
+  return frameKeys.length === keys.length && keys.every((key) => key in frame)
+}
+
 function parseFrame(line: string): ChatStreamFrame {
   let value: unknown
   try {
@@ -40,11 +45,12 @@ function parseFrame(line: string): ChatStreamFrame {
   }
 
   const frame = value as Record<string, unknown>
-  if (frame.type === 'chunk' && typeof frame.text === 'string') {
+  if (frame.type === 'chunk' && hasExactKeys(frame, ['type', 'text']) && typeof frame.text === 'string') {
     return { type: 'chunk', text: frame.text }
   }
-  if (frame.type === 'done') return { type: 'done' }
-  if (frame.type === 'error' && typeof frame.message === 'string' && frame.message.trim()) {
+  if (frame.type === 'done' && hasExactKeys(frame, ['type'])) return { type: 'done' }
+  if (frame.type === 'error' && hasExactKeys(frame, ['type', 'message'])
+    && typeof frame.message === 'string' && frame.message.trim()) {
     return { type: 'error', message: frame.message.trim() }
   }
   throw new ChatStreamProtocolError('Stream AI zwrócił nieznany typ ramki.')

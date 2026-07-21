@@ -36,6 +36,16 @@ export function encodeChatStreamFrame(frame: ServerChatStreamFrame): string {
   return `${JSON.stringify(frame)}\n`
 }
 
+export function writeChatStreamFrame(
+  res: ServerResponse,
+  frame: ServerChatStreamFrame,
+): boolean {
+  if (res.writableEnded || res.destroyed) return false
+
+  res.write(encodeChatStreamFrame(frame))
+  return true
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

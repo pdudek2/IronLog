@@ -3,6 +3,11 @@ import { requireUserId } from './lib/auth.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
 import {
+  createClientAbortBridge,
+  pipeAnthropicStream,
+  writeChatStreamFrame,
+} from './lib/aiChatStream.js'
+import {
   buildAiUserContext,
   buildChatContextSections,
   createEmptyAiUserContext,
@@ -519,96 +524,83 @@ async function streamChatReply(
   model: string,
   context: AiUserContext,
   messages: NormalizedMessage[],
+  req: ApiRequest,
   res: ApiResponse,
 ): Promise<void> {
-  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: 700,
-      stream: true,
-      system: buildSystemPrompt(context),
-      messages: messages.map((message) => ({
-        role: message.role,
-        content: message.content,
-      })),
-    }),
-  })
-
-  if (!upstream.ok) {
-    const error = await readAnthropicError(upstream)
-    console.error('[ai-chat upstream error]', {
-      status: error.status,
-      model,
-      message: error.message,
-    })
-    throw Object.assign(new Error(error.message), { status: error.status })
-  }
-
-  const body = upstream.body
-  if (!body) {
-    throw new Error('Claude API nie zwróciło treści odpowiedzi.')
-  }
-
-  res.statusCode = 200
-  res.setHeader('Content-Type', 'text/plain; charset=utf-8')
-  res.setHeader('Cache-Control', 'no-store')
-
-  const reader = (body as ReadableStream<Uint8Array>).getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let hasContent = false
+  const bridge = createClientAbortBridge(req, res)
 
   try {
-    for (;;) {
-      const { value, done } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-
-      for (;;) {
-        const eventEnd = buffer.indexOf('\n\n')
-        if (eventEnd === -1) break
-
-        const eventBlock = buffer.slice(0, eventEnd)
-        buffer = buffer.slice(eventEnd + 2)
-
-        for (const line of eventBlock.split('\n')) {
-          if (!line.startsWith('data: ')) continue
-          const data = line.slice(6).trim()
-          if (!data || data === '[DONE]') continue
-
-          try {
-            const parsed = JSON.parse(data) as Record<string, unknown>
-            const delta = parsed.delta as Record<string, unknown> | undefined
-            if (
-              parsed.type === 'content_block_delta' &&
-              delta?.type === 'text_delta' &&
-              typeof delta.text === 'string'
-            ) {
-              res.write(delta.text)
-              hasContent = true
-            }
-          } catch {
-            // skip malformed SSE event
-          }
-        }
-      }
+    let upstream: Response
+    try {
+      upstream = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model,
+          max_tokens: 700,
+          stream: true,
+          system: buildSystemPrompt(context),
+          messages: messages.map((message) => ({
+            role: message.role,
+            content: message.content,
+          })),
+        }),
+        signal: bridge.signal,
+      })
+    } catch (error) {
+      if (bridge.signal.aborted) return
+      throw error
     }
-  } catch (streamError) {
-    console.error('[ai-chat stream error]', streamError)
-  }
 
-  if (!hasContent) {
-    res.write('Claude API nie zwróciło treści odpowiedzi.')
-  }
+    if (!upstream.ok) {
+      const error = await readAnthropicError(upstream)
+      console.error('[ai-chat upstream error]', {
+        status: error.status,
+        model,
+        message: error.message,
+      })
+      throw Object.assign(new Error(error.message), { status: error.status })
+    }
 
-  res.end()
+    const body = upstream.body
+    if (!body) {
+      if (bridge.signal.aborted) return
+      throw new Error('Claude API nie zwróciło treści odpowiedzi.')
+    }
+
+    res.statusCode = 200
+    res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
+    res.setHeader('Cache-Control', 'no-store')
+
+    const result = await pipeAnthropicStream({
+      body: body as ReadableStream<Uint8Array>,
+      signal: bridge.signal,
+      isClientOpen: () => !res.writableEnded && !res.destroyed,
+      writeFrame: (frame) => {
+        if (!writeChatStreamFrame(res, frame)) {
+          throw new Error('Client response is closed.')
+        }
+      },
+    })
+
+    if (result.status === 'aborted') return
+
+    if (result.status === 'error') {
+      console.error('[ai-chat stream terminal]', {
+        reason: result.reason,
+        model,
+      })
+    }
+
+    bridge.markTerminal()
+    if (!res.writableEnded && !res.destroyed) res.end()
+  } finally {
+    bridge.dispose()
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -672,9 +664,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    await streamChatReply(apiKey, model, context, messages, res)
+    await streamChatReply(apiKey, model, context, messages, req, res)
     return
   } catch (error) {
+    if (res.headersSent || res.writableEnded || res.destroyed) return
+
     if (error instanceof RateLimitError) {
       res.setHeader('Retry-After', String(error.retryAfterSeconds))
       sendJson(res, 429, { error: error.message })

@@ -6,6 +6,7 @@ import {
   createClientAbortBridge,
   encodeChatStreamFrame,
   pipeAnthropicStream,
+  writeChatStreamFrame,
   type ServerChatStreamFrame,
 } from '../aiChatStream'
 
@@ -56,6 +57,38 @@ function createHttpDoubles(): {
 describe('encodeChatStreamFrame', () => {
   it('encodes one newline-delimited JSON frame', () => {
     expect(encodeChatStreamFrame({ type: 'done' })).toBe('{"type":"done"}\n')
+  })
+})
+
+describe('writeChatStreamFrame', () => {
+  it('writes one NDJSON frame while the response is open', () => {
+    let written = ''
+    const response = {
+      writableEnded: false,
+      destroyed: false,
+      write: (chunk: string) => {
+        written += chunk
+      },
+    } as unknown as ServerResponse
+
+    expect(writeChatStreamFrame(response, { type: 'done' })).toBe(true)
+    expect(written).toBe('{"type":"done"}\n')
+  })
+
+  it.each([
+    { writableEnded: true, destroyed: false },
+    { writableEnded: false, destroyed: true },
+  ])('does not write after the response is closed (%o)', (state) => {
+    let written = ''
+    const response = {
+      ...state,
+      write: (chunk: string) => {
+        written += chunk
+      },
+    } as unknown as ServerResponse
+
+    expect(writeChatStreamFrame(response, { type: 'error', message: 'x' })).toBe(false)
+    expect(written).toBe('')
   })
 })
 

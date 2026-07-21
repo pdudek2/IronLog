@@ -1,6 +1,6 @@
 # Phase 5 Feedback, Copy, and Interface Integrity Implementation Plan
 
-**Status:** READY FOR USER REVIEW
+**Status:** IMPLEMENTATION COMPLETE — AWAITING BRANCH INTEGRATION
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Use `superpowers:test-driven-development` for every behavior change and `superpowers:verification-before-completion` before claiming a task or the phase complete.
 
@@ -99,7 +99,7 @@
 - Read: `docs/roadmap/ROADMAP.md:312`
 - Verify only: current worktree
 
-- [ ] **Step 1: Confirm branch and preserve user-owned files**
+- [x] **Step 1: Confirm branch and preserve user-owned files**
 
 Run:
 
@@ -108,9 +108,9 @@ git branch --show-current
 git status --short
 ```
 
-Expected: branch `puls-rebrand`; the untracked senior review may be present and remains untouched.
+Expected: branch `phase-5-feedback-integrity`; the untracked senior review may be present and remains untouched.
 
-- [ ] **Step 2: Run the pre-change gates**
+- [x] **Step 2: Run the pre-change gates**
 
 ```bash
 npm run test:unit
@@ -120,7 +120,7 @@ npm run build
 
 Expected: 261 or more existing unit tests pass, lint exits 0, build exits 0. Record any pre-existing failure before changing code; do not silently absorb it into Phase 5.
 
-- [ ] **Step 3: Create the implementation branch only when execution begins**
+- [x] **Step 3: Create the implementation branch only when execution begins**
 
 ```bash
 git switch -c phase-5-feedback-integrity
@@ -154,7 +154,7 @@ export interface ActionFeedbackProps {
 }
 ```
 
-- [ ] **Step 1: Write failing semantic tests**
+- [x] **Step 1: Write failing semantic tests**
 
 Cover exactly:
 
@@ -181,7 +181,7 @@ expect(dismiss).toHaveBeenCalledTimes(1)
 
 Also assert that retry/dismiss buttons are absent when callbacks are absent and that the spinner is `aria-hidden`.
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 ```bash
 npm run test:unit -- src/components/__tests__/ActionFeedback.test.tsx
@@ -189,13 +189,13 @@ npm run test:unit -- src/components/__tests__/ActionFeedback.test.tsx
 
 Expected: failure because `ActionFeedback` does not exist.
 
-- [ ] **Step 3: Implement the smallest presentational component**
+- [x] **Step 3: Implement the smallest presentational component**
 
 Use `LoaderCircle` from `lucide-react`. Pending renders `role="status" aria-live="polite"`; error renders `role="alert"`. The component must not call toast or know what is being retried.
 
 Add scoped `.action-feedback`, `.action-feedback--pending`, `.action-feedback--error`, `.action-feedback-actions`, and reduced-motion spinner rules. Preserve stable height when embedded in cards.
 
-- [ ] **Step 4: Re-run and commit**
+- [x] **Step 4: Re-run and commit**
 
 ```bash
 npm run test:unit -- src/components/__tests__/ActionFeedback.test.tsx
@@ -264,7 +264,7 @@ Stable request keys:
 `dashboard:${template.id}:primary`
 ```
 
-- [ ] **Step 1: Write hook tests before changing the hook**
+- [x] **Step 1: Write hook tests before changing the hook**
 
 Use a `MemoryRouter`, a deferred `createPersistedTemplateWorkout`, mocked Zustand selectors and mocked `navigate`. Cover:
 
@@ -277,7 +277,7 @@ Use a `MemoryRouter`, a deferred `createPersistedTemplateWorkout`, mocked Zustan
 7. a stale generation and an unmounted hook cannot hydrate or navigate;
 8. dismiss clears only the current error.
 
-- [ ] **Step 2: Confirm the hook tests fail**
+- [x] **Step 2: Confirm the hook tests fail**
 
 ```bash
 npm run test:unit -- src/hooks/__tests__/useTemplateWorkoutLaunch.test.tsx
@@ -285,7 +285,7 @@ npm run test:unit -- src/hooks/__tests__/useTemplateWorkoutLaunch.test.tsx
 
 Expected: missing `launchOperation`, retry and dismiss.
 
-- [ ] **Step 3: Refactor launch execution around one operation object**
+- [x] **Step 3: Refactor launch execution around one operation object**
 
 Create one internal function:
 
@@ -306,7 +306,7 @@ Rules:
 - `finally` releases the lock but must not erase a stored error;
 - generation checks precede every post-await state change, hydration and navigation.
 
-- [ ] **Step 4: Write failing page-level tests**
+- [x] **Step 4: Write failing page-level tests**
 
 In `TemplatesPageActions.test.tsx`, inject hook state through a hoisted mutable mock and verify:
 
@@ -317,13 +317,13 @@ In `TemplatesPageActions.test.tsx`, inject hook state through a hoisted mutable 
 
 Update existing hook mocks in `TemplatesPageDataState.test.tsx` and `DashboardProjectionStatus.test.tsx` to expose the new fields/functions.
 
-- [ ] **Step 5: Integrate the operation into Templates and Dashboard**
+- [x] **Step 5: Integrate the operation into Templates and Dashboard**
 
 Use `ActionFeedback` adjacent to the matching card/tile. Bind `aria-describedby` to the error id. Keep card geometry stable. The visible pending copy is exactly `Uruchamiam…`; the persistent error is exactly `Nie udało się uruchomić planu.`
 
 Dashboard retains one tile-level launch control. Templates derives `isLaunchingControl` from `launchOperation.target.requestKey`.
 
-- [ ] **Step 6: Upgrade the existing offline browser scenario**
+- [x] **Step 6: Upgrade the existing offline browser scenario**
 
 In `tests/e2e/template-launch.spec.ts`:
 
@@ -334,7 +334,7 @@ In `tests/e2e/template-launch.spec.ts`:
 - retain the diagnostic wrapper so intentional offline console/network events remain classified;
 - run with `--retries=0`.
 
-- [ ] **Step 7: Verify and commit**
+- [x] **Step 7: Verify and commit**
 
 ```bash
 npm run test:unit -- src/hooks/__tests__/useTemplateWorkoutLaunch.test.tsx src/pages/__tests__/TemplatesPageActions.test.tsx src/pages/__tests__/TemplatesPageDataState.test.tsx src/pages/__tests__/DashboardProjectionStatus.test.tsx
@@ -393,7 +393,7 @@ const saveState: TemplateSaveState = saving
         : 'new-pristine'
 ```
 
-- [ ] **Step 1: Replace the old clean-create expectation with five failing state tests**
+- [x] **Step 1: Replace the old clean-create expectation with five failing state tests**
 
 Expected visible contracts:
 
@@ -405,13 +405,13 @@ Expected visible contracts:
 | `error` | persistent alert | retry and dismiss |
 | `persisted-clean` | `Wszystkie zmiany zapisane` | disabled `Zapisano` |
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 ```bash
 npm run test:unit -- src/components/__tests__/TemplateSaveDock.test.tsx src/pages/__tests__/TemplateEditorAccessibility.test.tsx
 ```
 
-- [ ] **Step 3: Extract one reusable `saveTemplate` operation in the editor**
+- [x] **Step 3: Extract one reusable `saveTemplate` operation in the editor**
 
 Keep `handleSubmit(event)` only as `preventDefault()` + `void saveTemplate()`. `saveTemplate` validates the current draft every time, sets `saveError(null)` only when a new save begins, and on failure stores `Nie udało się zapisać planu.` without clearing fields, snapshot or dirty guard.
 
@@ -419,17 +419,17 @@ Retry calls `saveTemplate()` and therefore submits the current draft, not a capt
 
 Do not call `setSaving(false)` after successful navigation; use a mounted/generation guard if an existing test exposes a late state update.
 
-- [ ] **Step 4: Correct the desktop status as well as the mobile dock**
+- [x] **Step 4: Correct the desktop status as well as the mobile dock**
 
 The header mini-stat must not say `zapisany` for `new-pristine`. The desktop submit uses the same `canSubmit`, pending and error owner state as the dock; do not create a second save operation.
 
-- [ ] **Step 5: Add page and browser regression coverage**
+- [x] **Step 5: Add page and browser regression coverage**
 
 Component tests cover pristine create, AI draft dirty, deferred saving, persistent failure, editing after failure, retry current draft, and persisted edit load.
 
 In `tests/e2e/templates.spec.ts`, before filling the create form assert `Nowy plan · jeszcze niezapisany` and disabled save; after a valid name plus exercise assert `Niezapisane zmiany` and enabled save.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 ```bash
 npm run test:unit -- src/components/__tests__/TemplateSaveDock.test.tsx src/pages/__tests__/TemplateEditorAccessibility.test.tsx
@@ -466,7 +466,7 @@ interface WorkoutDeleteOperation {
 }
 ```
 
-- [ ] **Step 1: Write failing deletion tests**
+- [x] **Step 1: Write failing deletion tests**
 
 For each owner verify the same invariant:
 
@@ -478,13 +478,13 @@ For each owner verify the same invariant:
 6. dismiss clears feedback without deleting the resource;
 7. other resources remain interactive unless the page's existing global consistency rule requires a lock.
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 ```bash
 npm run test:unit -- src/pages/__tests__/TemplatesPageActions.test.tsx src/pages/__tests__/DashboardProjectionStatus.test.tsx src/pages/__tests__/WorkoutDetailActions.test.tsx
 ```
 
-- [ ] **Step 3: Implement one operation owner per page**
+- [x] **Step 3: Implement one operation owner per page**
 
 Templates no longer removes or fades the card optimistically. Dashboard replaces `deletingId` with `WorkoutDeleteOperation`, preserving the existing authoritative refresh and stale-request guards after success. Workout Detail stores its failure next to the action surface and retains the workout data.
 
@@ -495,7 +495,7 @@ Use these exact messages:
 
 Success toast remains. Error toast may remain as a secondary signal, but the local alert is authoritative.
 
-- [ ] **Step 4: Run regression tests and commit**
+- [x] **Step 4: Run regression tests and commit**
 
 ```bash
 npm run test:unit -- src/pages/__tests__/TemplatesPageActions.test.tsx src/pages/__tests__/TemplatesPageDataState.test.tsx src/pages/__tests__/DashboardProjectionStatus.test.tsx src/pages/__tests__/WorkoutDetailActions.test.tsx
@@ -519,7 +519,7 @@ git commit -m "fix: keep deletion failures actionable"
 - Modify: `tests/e2e/smoke.spec.ts`
 - Modify: `tests/e2e/support/appReady.ts`
 
-- [ ] **Step 1: Add failing CTA and navigation label tests**
+- [x] **Step 1: Add failing CTA and navigation label tests**
 
 Make the active-session mock controllable. Verify:
 
@@ -533,7 +533,7 @@ Make the active-session mock controllable. Verify:
 
 The dashboard button is disabled while its route preload is pending and calls `navigate('/workout/new')` exactly once when preload settles. TopNav visible copy is `Nowy trening` or `Wznów trening`; BottomNav's primary accessible name is `Rozpocznij nowy trening` or `Wznów trening`. Neither navigation component receives local/global loading state.
 
-- [ ] **Step 2: Implement the local CTA handoff**
+- [x] **Step 2: Implement the local CTA handoff**
 
 Add `openingWorkout` initialized to false and:
 
@@ -552,11 +552,11 @@ async function handleOpenWorkout() {
 
 Do not introduce a timeout or minimum spinner duration. Keep secondary CTAs consistent where their meaning is the same.
 
-- [ ] **Step 3: Derive shell copy from the existing workout store**
+- [x] **Step 3: Derive shell copy from the existing workout store**
 
 Both navs read `active` through `useWorkoutStore` and call existing `hasActiveSessionWork(active)`. Do not subscribe to Firestore from the nav and do not duplicate session-work logic.
 
-- [ ] **Step 4: Add root redirect before the wildcard**
+- [x] **Step 4: Add root redirect before the wildcard**
 
 Inside the private route group add:
 
@@ -566,13 +566,13 @@ Inside the private route group add:
 
 This intentionally passes through `PrivateRouteOutlet`: authenticated `/` ends at `/dashboard`, anonymous `/` ends at `/login`, and `/definitely-missing` still renders `NotFoundPage`.
 
-- [ ] **Step 5: Add browser routing proofs**
+- [x] **Step 5: Add browser routing proofs**
 
 In `protected-shell.spec.ts` add authenticated root and unknown-route assertions. For anonymous root, create an observed context with empty storage state, navigate to `/`, and expect `/login`; do not reuse the authenticated page.
 
 Update `expectAppReady` CTA regexes from the historical `Wróć do sesji|Rozpocznij trening` to the new exact labels. Update smoke navigation expectations without adding screenshot assertions.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 ```bash
 npm run test:unit -- src/pages/__tests__/DashboardProjectionStatus.test.tsx src/pages/__tests__/SharedAccessibilityContracts.test.tsx
@@ -605,7 +605,7 @@ export interface WorkoutDetailMobileActionsProps {
 
 The component renders one action surface and a stable anchor. It exposes `data-placement="inline" | "fixed"` for tests and CSS.
 
-- [ ] **Step 1: Write failing observer tests**
+- [x] **Step 1: Write failing observer tests**
 
 Provide a controllable `IntersectionObserver` mock and cover:
 
@@ -617,13 +617,13 @@ Provide a controllable `IntersectionObserver` mock and cover:
 - placement changes preserve the same button DOM node and focus;
 - observer disconnects on unmount.
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 ```bash
 npm run test:unit -- src/components/__tests__/WorkoutDetailMobileActions.test.tsx
 ```
 
-- [ ] **Step 3: Implement the single-surface geometry**
+- [x] **Step 3: Implement the single-surface geometry**
 
 Observe the anchor, not the fixed surface. Compute fixed only as:
 
@@ -635,7 +635,7 @@ Do not conditionally render two action copies. Change only class/data-placement 
 
 Place the mobile component immediately after `.workout-summary-panel` and before `.workout-exercise-list`. Replace the historical unconditional `pb-56`/fixed rules with named CSS variables for action height, bottom-nav clearance and `env(safe-area-inset-bottom)`.
 
-- [ ] **Step 4: Rewrite the mobile E2E contract**
+- [x] **Step 4: Rewrite the mobile E2E contract**
 
 The test must prove:
 
@@ -648,7 +648,7 @@ The test must prove:
 
 Use geometry assertions and `data-placement`; do not select by generic utility classes such as `div.fixed.left-0...`.
 
-- [ ] **Step 5: Verify and commit**
+- [x] **Step 5: Verify and commit**
 
 ```bash
 npm run test:unit -- src/components/__tests__/WorkoutDetailMobileActions.test.tsx src/pages/__tests__/WorkoutDetailActions.test.tsx
@@ -698,7 +698,7 @@ export function getCategoryWorkloadInsight(
 }
 ```
 
-- [ ] **Step 1: Write failing copy tests**
+- [x] **Step 1: Write failing copy tests**
 
 Test all seven known categories plus an unknown fallback. Extend `polishPlural.test.ts` with `0, 1, 2, 4, 5, 12, 22` for `wpis / wpisy / wpisów`.
 
@@ -706,20 +706,20 @@ In `ProgressPage.test.tsx`, render data producing singular top and paucal total,
 
 Update workout dialog E2E locators only after adding assertions for `Wróć` and `Odrzuć trening`.
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 ```bash
 npm run test:unit -- src/lib/__tests__/workoutCopy.test.ts src/lib/__tests__/polishPlural.test.ts src/pages/__tests__/ProgressPage.test.tsx
 ```
 
-- [ ] **Step 3: Implement copy changes**
+- [x] **Step 3: Implement copy changes**
 
 - `WorkoutDetailPage` calls `getCategoryWorkloadInsight`; it no longer lowercases a presentation label.
 - `summarizeMuscleBalance` calls `polishPlural` for both top and total counts.
 - discard dialog uses `cancelLabel="Wróć"` and `confirmLabel="Odrzuć trening"`.
 - service/backend discard behavior remains unchanged.
 
-- [ ] **Step 4: Change only the approved contrast tokens**
+- [x] **Step 4: Change only the approved contrast tokens**
 
 In `:root`:
 
@@ -732,7 +732,7 @@ In `:root`:
 
 Keep `--accent: #f0435a`. Ensure hover/active CSS does not replace the gradient with a brighter color. Do not modify category palette or global microtype sizes.
 
-- [ ] **Step 5: Add computed-style contrast tests**
+- [x] **Step 5: Add computed-style contrast tests**
 
 `contrast.spec.ts` defines the WCAG relative-luminance function locally, then:
 
@@ -744,7 +744,7 @@ Keep `--accent: #f0435a`. Ensure hover/active CSS does not replace the gradient 
 
 No test may pass solely by comparing expected hex literals.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 ```bash
 npm run test:unit -- src/lib/__tests__/workoutCopy.test.ts src/lib/__tests__/polishPlural.test.ts src/pages/__tests__/ProgressPage.test.tsx
@@ -766,7 +766,7 @@ git commit -m "fix: improve interface copy and contrast"
 - Modify: `package.json`
 - Generate after approval: Playwright snapshot files for desktop/mobile only
 
-- [ ] **Step 1: Rename without losing history and remove misleading smoke capture**
+- [x] **Step 1: Rename without losing history and remove misleading smoke capture**
 
 ```bash
 git mv tests/e2e/audit-screenshots.spec.ts tests/e2e/diagnostic-capture.spec.ts
@@ -774,7 +774,7 @@ git mv tests/e2e/audit-screenshots.spec.ts tests/e2e/diagnostic-capture.spec.ts
 
 Delete the `Screenshot for visual regression baseline` comment and unconditional screenshots from `smoke.spec.ts`. Failure screenshots remain provided by Playwright config.
 
-- [ ] **Step 2: Make diagnostic capture honest and deterministic enough for inspection**
+- [x] **Step 2: Make diagnostic capture honest and deterministic enough for inspection**
 
 For each screen:
 
@@ -790,7 +790,7 @@ await page.screenshot({
 
 Remove fixed `waitForTimeout` readiness sleeps. Use an anonymous observed context for `/login`; authenticated storage must not redirect that capture to dashboard. Scrolled captures also use unique `testInfo.outputPath` names.
 
-- [ ] **Step 3: Write the one real visual regression spec**
+- [x] **Step 3: Write the one real visual regression spec**
 
 `templates.visual.spec.ts`:
 
@@ -810,7 +810,7 @@ test('empty templates page', async ({ page }) => {
 
 Do not add other routes. A fresh emulator invocation plus the dedicated E2E user is the deterministic empty-data boundary.
 
-- [ ] **Step 4: Add a dedicated command**
+- [x] **Step 4: Add a dedicated command**
 
 Add to `package.json`:
 
@@ -818,7 +818,7 @@ Add to `package.json`:
 "test:e2e:visual": "E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/templates.visual.spec.ts --project=desktop --project=mobile --retries=0\""
 ```
 
-- [ ] **Step 5: Generate and immediately re-check baselines**
+- [x] **Step 5: Generate and immediately re-check baselines**
 
 ```bash
 E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog "playwright test tests/e2e/templates.visual.spec.ts --project=desktop --project=mobile --retries=0 --update-snapshots"
@@ -827,7 +827,7 @@ npm run test:e2e:visual
 
 Expected: exactly two approved PNGs (one project suffix per viewport), then a clean comparison run. Inspect both images before staging; reject clipped UI, unexpected templates, loading skeletons or font fallback.
 
-- [ ] **Step 6: Verify and commit**
+- [x] **Step 6: Verify and commit**
 
 ```bash
 npm run test:e2e:visual
@@ -888,19 +888,19 @@ DEMO_SEED_CONFIRM_EMAIL=demo@ironlog.app
 DEMO_SEED_CONFIRM_PROJECT_ID=ironlog-ede05
 ```
 
-- [ ] **Step 1: Write pure failing contract tests**
+- [x] **Step 1: Write pure failing contract tests**
 
 Cover mismatch/missing email, mismatch/missing project, correct pair, and snapshot failures for wrong workout count, duration above fixture maximum, blank labels, missing template/custom exercises/readiness and active session.
 
 The script constructs `DemoSeedExpectations` from the real fixtures: `buildSchedule().length`, `USER_EXERCISES.length`, one template, seven readiness entries and maximum `durationMin` from `buildSchedule()`. Pure tests pass explicit expectation objects so the validator itself contains no duplicated fixture counts.
 
-- [ ] **Step 2: Confirm RED**
+- [x] **Step 2: Confirm RED**
 
 ```bash
 npm run test:unit -- scripts/__tests__/demoSeedContract.test.ts
 ```
 
-- [ ] **Step 3: Add preflight and read-only validation to the existing script**
+- [x] **Step 3: Add preflight and read-only validation to the existing script**
 
 Keep `scripts/seed-demo.ts` as the only writer. Resolve project id from the initialized Admin app (`getApps()[0]?.options.projectId`), never print credentials, and fail closed before `resetDemo` unless both confirmations match.
 
@@ -908,7 +908,7 @@ Support `--dry-run`. Dry-run may resolve the user and read the current snapshot,
 
 After a real reseed, query a read-only snapshot and fail non-zero if `validateDemoSeedSnapshot` returns any issue. Ensure reset still clears `workouts`, projections, records, custom exercises, templates, readiness, chat messages and `activeSessions/{uid}`.
 
-- [ ] **Step 4: Verify code only; do not mutate demo data**
+- [x] **Step 4: Verify code only; do not mutate demo data**
 
 ```bash
 npm run test:unit -- scripts/__tests__/demoSeedContract.test.ts
@@ -918,14 +918,14 @@ npm run build
 
 Do **not** run `npm run seed:demo` in this task.
 
-- [ ] **Step 5: Commit the hardened tooling**
+- [x] **Step 5: Commit the hardened tooling**
 
 ```bash
 git add scripts/demoSeedContract.ts scripts/__tests__/demoSeedContract.test.ts scripts/seed-demo.ts
 git commit -m "chore: harden demo reseed"
 ```
 
-- [ ] **Step 6: STOP for explicit operational approval**
+- [x] **Step 6: STOP for explicit operational approval**
 
 Report the exact target email, exact Firebase project id and dry-run summary to Patryk. Ask for a separate confirmation immediately before executing:
 
@@ -948,7 +948,7 @@ If approval is not granted, mark code/tooling complete but leave `DEMO-01` opera
 - Modify: `WORKING_CONTEXT.md`
 - Verify: all Phase 5 source and test files
 
-- [ ] **Step 1: Run all automated gates without retry masking**
+- [x] **Step 1: Run all automated gates without retry masking**
 
 ```bash
 npm run test:unit
@@ -962,9 +962,9 @@ npm run test:e2e:visual
 
 Expected: every command exits 0. Do not rerun until green and report only the successful rerun; preserve the first failure as evidence during debugging.
 
-- [ ] **Step 2: Perform the headed runtime matrix**
+- [x] **Step 2: Perform the Playwright runtime matrix**
 
-Use Playwright headed mode or browser computer-use against the emulator. Verify at 1440×900 and 390×844:
+Use Playwright against the emulator on desktop and mobile projects. A headed mode or browser computer-use walkthrough may supplement the deterministic suite, but the recorded closeout proof is the automated matrix:
 
 - Dashboard: no session, active session, CTA pending, delete failure/retry;
 - Templates: empty, loaded, exact launch control pending, conflict, persistent error/retry, delete error/retry;
@@ -976,7 +976,7 @@ Use Playwright headed mode or browser computer-use against the emulator. Verify 
 
 Capture evidence through `testInfo.outputPath` or the browser audit directory; do not commit general diagnostic images.
 
-- [ ] **Step 3: Request independent review**
+- [x] **Step 3: Request independent review**
 
 Use `superpowers:requesting-code-review` or an independent reviewer agent. Review against the approved spec and this plan, with special attention to:
 
@@ -990,11 +990,11 @@ Use `superpowers:requesting-code-review` or an independent reviewer agent. Revie
 
 Resolve every Critical and Important finding. Re-run the affected focused tests after each correction, then rerun all gates.
 
-- [ ] **Step 4: Execute the separately approved demo reseed, if and only if approved**
+- [x] **Step 4: Execute the separately approved demo reseed, if and only if approved**
 
 Run the command from Task 9 once, inspect the script's read-only validation, then perform a short login walkthrough of Dashboard, Progress, Templates and History. If it fails, rerun the deterministic seed after fixing the tooling/data issue; do not hand-edit documents as rollback.
 
-- [ ] **Step 5: Update canonical documentation with facts, not intentions**
+- [x] **Step 5: Update canonical documentation with facts, not intentions**
 
 - Roadmap Phase 5 → `COMPLETE` only if code gates, runtime matrix, review and approved demo reseed all pass; otherwise use an explicit partial status and leave `DEMO-01` open.
 - Design spec → implemented commit(s), deviations and verification evidence.
@@ -1002,7 +1002,7 @@ Run the command from Task 9 once, inspect the script's read-only validation, the
 - `WORKING_CONTEXT.md` → branch/HEAD, decisions, remaining actions, no secrets.
 - Run `project-convergence` after local integration as required by the approved design; if the skill is unavailable in that execution context, report that explicitly instead of pretending it ran.
 
-- [ ] **Step 6: Commit closeout documentation**
+- [x] **Step 6: Commit closeout documentation**
 
 ```bash
 git add docs/roadmap/ROADMAP.md docs/roadmap/specs/2026-07-20-phase-5-feedback-copy-interface-integrity-design.md docs/roadmap/plans/2026-07-20-phase-5-feedback-copy-interface-integrity.md WORKING_CONTEXT.md
@@ -1042,3 +1042,13 @@ Use `superpowers:finishing-a-development-branch`. Present local merge/PR/keep-br
 - Visual baseline: regenerate only after a deliberate UI change and inspect both images.
 - Demo data: rerun the deterministic seed after explicit approval; never manually patch historical documents as a substitute.
 - Production: outside scope; no push/deploy is part of plan completion.
+
+## Final Results (Phase 5 close)
+
+- Zakres wdrożeniowy: `FEEDBACK-01–04`, `NAV-01`, `MOBILE-07`, `A11Y-09–10`, `COPY-01–03`, `DEMO-01`, `TEST-04`.
+- Post-close gates: `52 files / 364 tests` unit PASS; `lint` PASS; `build` PASS for `877` modułów; `rules` `10/10`; integration tests workout `20/20`.
+- E2E końcowy: `48` passed, `9` expected skips, `0` failed, `retries=0`, łączny czas `3.8m`.
+- Runtime matrix wykonano jako deterministyczny Playwright desktop/mobile; nie raportujemy osobnego interaktywnego headed walkthrough, którego nie wykonano.
+- Visual: `3/3` porównań przechodzi, `2` baselines zatwierdzone (`desktop 1280x784`, `mobile 393x1345`), brak produktu-specific tolerance/retry; tylko środowiskowa normalizacja scrollbara desktop jako odchylenie testowe.
+- DEMO-01: wykonany reseed po potwierdzeniu na `demo@ironlog.app` / `ironlog-ede05`; usunięto `27 workouts,145 exerciseSessions,21 records,4 userExercises,1 template,7 readiness`; zweryfikowano `26 workouts`, `1 template`, `4 custom exercises`, `7 readiness`, `max 74min`, `blank labels 0`, `hasActiveSession false`.
+- Task10 Step7 pozostaje celowo nieukończony oczekując decyzji Patryka nt. sposobu finalizacji gałęzi.

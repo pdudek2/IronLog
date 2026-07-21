@@ -1,9 +1,9 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3 i 4 zakończone; projekt Fazy 5 zatwierdzony; Faza 2B pozostaje niezależnie READY**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4 i 5 zakończone; Faza 2B pozostaje niezależnie READY**
 Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
-Ostatnia aktualizacja: 2026-07-20
+Ostatnia aktualizacja: 2026-07-21
 
 ## 1. Cel dokumentu
 
@@ -71,7 +71,7 @@ Aktualny baseline jakości:
 | 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | DONE | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
-| 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DESIGN APPROVED | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
+| 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DONE | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
 | 10 | 6A — Stream i concurrency AI | P1 | READY | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
 | 11 | 6B — Poprawność i koszt kontekstu AI | P1 | READY | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
 | 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | READY | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
@@ -311,7 +311,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 ### Faza 5 — Feedback, copy i integralność interfejsu
 
-**Status: DESIGN APPROVED.** Zakres został ponownie skonsolidowany 2026-07-20 po pełnym audycie runtime i weryfikacji Senior Design Review względem aktualnego kodu. Zatwierdzony projekt znajduje się w [`specs/2026-07-20-phase-5-feedback-copy-interface-integrity-design.md`](specs/2026-07-20-phase-5-feedback-copy-interface-integrity-design.md). Faza nie otwiera ponownie Fazy 4 i nie obejmuje strategicznego redesignu marki.
+**Status: DONE.** Zakres został zaimplementowany i zweryfikowany jako `FEEDBACK-01–04`, `NAV-01`, `MOBILE-07`, `A11Y-09–10`, `COPY-01–03`, `DEMO-01`, `TEST-04`. Zatwierdzony projekt znajduje się w [`specs/2026-07-20-phase-5-feedback-copy-interface-integrity-design.md`](specs/2026-07-20-phase-5-feedback-copy-interface-integrity-design.md). Faza nie otwiera ponownie Fazy 4 i nie obejmuje strategicznego redesignu marki.
 
 **Cel:** usunąć miejsca, w których działająca aplikacja wygląda jak zawieszona, komunikuje niewłaściwy stan albo utrudnia odczyt podstawowej akcji.
 
@@ -488,7 +488,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 4 — ergonomia mobile i edytor planów** jest zakończona i zweryfikowana. Następnym zależnym pakietem jest Faza 5; niezależna Faza 2B pozostaje `READY`, a czynności produkcyjne pozostają otwarte w `RELEASE-08`.
+**Faza 5 — feedback, copy i integralność interfejsu** jest zakończona i zweryfikowana. Następnym zależnym pakietem jest Faza 6A. Niezależna Faza 2B pozostaje `READY`, a także `READY` pozostają Fazy 6B i 6C per zależności.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

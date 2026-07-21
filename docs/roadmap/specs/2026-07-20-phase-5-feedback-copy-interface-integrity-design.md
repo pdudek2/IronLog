@@ -1,8 +1,8 @@
 # IronLog — projekt Fazy 5: feedback, copy i integralność interfejsu
 
-**Status:** zatwierdzony projekt, gotowy do rozpisania planu implementacyjnego
+**Status:** zaimplementowany i zweryfikowany (Faza 5 domknięta)
 
-**Data:** 2026-07-20
+**Data:** 2026-07-21
 
 **Zakres roadmapy:** `FEEDBACK-01–04`, `NAV-01`, `MOBILE-07`, `A11Y-09–10`, `COPY-01–03`, `DEMO-01`, `TEST-04`
 
@@ -462,3 +462,18 @@ Plan powinien:
 6. zakończyć niezależnym review, integracją, aktualizacją roadmapy i `project-convergence`.
 
 Implementacja nie rozpoczyna się na podstawie samego speca. Wymaga zatwierdzonego planu wykonawczego i wyboru trybu realizacji.
+
+## 19. Wynik wdrożenia i dowody
+
+### Wynik
+
+- Zakres `FEEDBACK-01–04`, `NAV-01`, `MOBILE-07`, `A11Y-09–10`, `COPY-01–03`, `DEMO-01`, `TEST-04` został wdrożony i zweryfikowany.
+- Weryfikacja końcowa: `52 files / 364 tests` jednostkowo PASS, `lint` PASS, `build` PASS dla `877` modułów, reguły Firestore `10/10`, integracja treningów `20/20`.
+- Ostateczny E2E: `48` passed, `9` oczekiwanych skipów (viewport/platform), `0` failures, `retries=0`, czas `3.8m`.
+- Weryfikacja wizualna: `3/3` przejść, `2` baselines (desktop `1280x784`, mobile `393x1345`), bez zmiany tolerancji ani retry; normalizacja scrollbara działa wyłącznie w desktopowym harnessie testowym.
+- Reseed demo po osobnym potwierdzeniu wykonano na `demo@ironlog.app`, `ironlog-ede05`: usunięto `27 workouts,145 exerciseSessions,21 records,4 userExercises,1 template,7 readiness`; po odświeżeniu potwierdzono `26 workouts,1 template,4 custom exercises,7 readiness`, materializacja `26/26`, max `74min`, `blank labels: 0`, brak aktywnej sesji.
+
+### Odchylenia od planu
+
+- Normalizacja scrollbara okna dla desktopowego harnessu testowego pozostała odchyleniem testowym, nieproduktowym.
+- Nie uruchamiano `project-convergence` (brak wsparcia w bieżącym kontekście wykonania); nie zgłaszano go jako otwartej blokady, tylko jako ograniczenie operacyjne.

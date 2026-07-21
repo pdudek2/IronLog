@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4 i 5 zakończone; Faza 2B pozostaje niezależnie READY**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4, 5 i 6A zakończone; Faza 2B pozostaje niezależnie READY**
 Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
 Ostatnia aktualizacja: 2026-07-21
 
@@ -72,7 +72,7 @@ Aktualny baseline jakości:
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | DONE | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
 | 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DONE | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
-| 10 | 6A — Stream i concurrency AI | P1 | READY | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
+| 10 | 6A — Stream i concurrency AI | P1 | DONE | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
 | 11 | 6B — Poprawność i koszt kontekstu AI | P1 | READY | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
 | 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | READY | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
 | 13 | S — Hardening CSP | P2 | READY | Pozostała polityka CSP jest egzekwowana albo rzeczywiście raportuje naruszenia |
@@ -350,6 +350,8 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 ### Faza 6A — Stream i concurrency AI
 
+**Status: DONE.** Zakres `AI-07–08` został zaimplementowany i zweryfikowany na branchu `phase-6a-ai-stream-concurrency`; oczekuje na jawną decyzję integracyjną. Końcowa bramka obejmuje 66/66 testów fazy, 425/425 testów całego repozytorium, lint, build oraz deterministyczny Playwright 9/9 na emulatorach Auth+Firestore. Dwa niezależne finalne review zakończyły się `Ready to merge: Yes`, a bezpośrednia obserwacja potwierdziła poprawne stany błędu i przerwania bez zachowania częściowej odpowiedzi.
+
 **Cel:** zapewnić bezpieczny lifecycle pojedynczej generacji bez spóźnionych odpowiedzi i niejednoznacznego końca streamu.
 
 **Zakres kanoniczny:**
@@ -488,7 +490,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 5 — feedback, copy i integralność interfejsu** jest zakończona, zweryfikowana i zintegrowana. Następnym zależnym pakietem jest Faza 6A. Niezależna Faza 2B pozostaje `READY`, a także `READY` pozostają Fazy 6B i 6C per zależności.
+**Faza 6A — stream i concurrency AI** jest zakończona i zweryfikowana na branchu oczekującym na integrację. Następnym zależnym pakietem jest Faza 6B. Niezależna Faza 2B pozostaje `READY`, a Faza 6C pozostaje `READY` zgodnie z zależnościami.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

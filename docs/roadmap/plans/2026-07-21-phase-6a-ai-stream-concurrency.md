@@ -1,6 +1,6 @@
 # Phase 6A AI Stream and Concurrency Implementation Plan
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. Use `superpowers:test-driven-development` for every behavior change and `superpowers:verification-before-completion` before claiming a task or the phase complete.
 
@@ -69,7 +69,7 @@
 - Consumes: zatwierdzony kontrakt `AI-07`, `AI-08`.
 - Produces: czysty worktree na branchu `phase-6a-ai-stream-concurrency` oraz zapisany baseline jakości.
 
-- [ ] **Step 1: Confirm the integration branch and preserve user-owned files**
+- [x] **Step 1: Confirm the integration branch and preserve user-owned files**
 
 Run:
 
@@ -81,7 +81,7 @@ git log -3 --oneline
 
 Expected: integration branch `puls-rebrand`; `docs/audits/2026-07-14-senior-design-review.md` może być untracked i pozostaje nietknięty.
 
-- [ ] **Step 2: Create an isolated implementation worktree**
+- [x] **Step 2: Create an isolated implementation worktree**
 
 Invoke `superpowers:using-git-worktrees`, then create a plain branch:
 
@@ -91,7 +91,7 @@ git worktree add .worktrees/phase-6a-ai-stream-concurrency -b phase-6a-ai-stream
 
 Expected: worktree points at the accepted plan commit; no `codex/` prefix.
 
-- [ ] **Step 3: Run the pre-change gates inside the worktree**
+- [x] **Step 3: Run the pre-change gates inside the worktree**
 
 ```bash
 npm run test:unit
@@ -136,7 +136,7 @@ export function readChatStream(
 ): Promise<string>
 ```
 
-- [ ] **Step 1: Write the failing parser tests**
+- [x] **Step 1: Write the failing parser tests**
 
 Create helpers that encode controlled transport chunks:
 
@@ -188,7 +188,7 @@ it('rejects an error terminal after exposing temporary chunks', async () => {
 
 Add separate tests for EOF without terminal, malformed JSON, unknown frame, empty `done`, data after terminal and an already-aborted signal. Assert `isAbortError` only recognizes errors with name `AbortError`.
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 ```bash
 npm run test:unit -- src/lib/__tests__/chatStreamProtocol.test.ts
@@ -196,7 +196,7 @@ npm run test:unit -- src/lib/__tests__/chatStreamProtocol.test.ts
 
 Expected: FAIL because `chatStreamProtocol.ts` does not exist.
 
-- [ ] **Step 3: Implement strict line buffering and terminal validation**
+- [x] **Step 3: Implement strict line buffering and terminal validation**
 
 Implement the frame parser as a private function and keep all public types in this file:
 
@@ -238,7 +238,7 @@ function parseFrame(line: string): ChatStreamFrame {
 
 Do not accept a terminal frame that is not newline-delimited; every frame in the approved wire contract ends with `\n`.
 
-- [ ] **Step 4: Run focused tests and static checks**
+- [x] **Step 4: Run focused tests and static checks**
 
 ```bash
 npm run test:unit -- src/lib/__tests__/chatStreamProtocol.test.ts
@@ -247,7 +247,7 @@ npm run lint -- --quiet
 
 Expected: parser tests PASS; lint exits 0.
 
-- [ ] **Step 5: Commit the client protocol unit**
+- [x] **Step 5: Commit the client protocol unit**
 
 ```bash
 git add src/lib/chatStreamProtocol.ts src/lib/__tests__/chatStreamProtocol.test.ts
@@ -277,7 +277,7 @@ interface StreamChatReplyOptions {
 export function streamChatReply(options: StreamChatReplyOptions): Promise<string>
 ```
 
-- [ ] **Step 1: Write failing service tests**
+- [x] **Step 1: Write failing service tests**
 
 Mock Firebase Auth before importing the service:
 
@@ -321,7 +321,7 @@ expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining('/api/ai-chat'),
 
 Add tests preserving existing JSON HTTP errors, rejecting an empty body, rejecting a successful non-NDJSON response, and propagating `AbortError` without replacing it with the local-backend help message.
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 ```bash
 npm run test:unit -- src/lib/__tests__/chatService.test.ts
@@ -329,7 +329,7 @@ npm run test:unit -- src/lib/__tests__/chatService.test.ts
 
 Expected: FAIL because `streamChatReply` does not accept or forward `signal` and still parses raw text.
 
-- [ ] **Step 3: Integrate the protocol reader**
+- [x] **Step 3: Integrate the protocol reader**
 
 Modify the request and success path:
 
@@ -357,7 +357,7 @@ return readChatStream(response.body, { signal, onChunk })
 
 In the fetch catch, rethrow when `isAbortError(error)` is true. Only genuine connection failures receive the existing localhost instruction.
 
-- [ ] **Step 4: Run client protocol and service tests**
+- [x] **Step 4: Run client protocol and service tests**
 
 ```bash
 npm run test:unit -- src/lib/__tests__/chatStreamProtocol.test.ts src/lib/__tests__/chatService.test.ts
@@ -366,7 +366,7 @@ npm run lint -- --quiet
 
 Expected: both files PASS; lint exits 0.
 
-- [ ] **Step 5: Commit the transport integration**
+- [x] **Step 5: Commit the transport integration**
 
 ```bash
 git add src/lib/chatService.ts src/lib/__tests__/chatService.test.ts
@@ -403,7 +403,7 @@ interface ActiveChatGeneration {
 }
 ```
 
-- [ ] **Step 1: Build a controlled stream mock and write RED lifecycle tests**
+- [x] **Step 1: Build a controlled stream mock and write RED lifecycle tests**
 
 Reuse the existing auth, key, router, toast and Framer Motion mocks from `ChatPageAccessibility.test.tsx`. Capture every service call:
 
@@ -456,7 +456,7 @@ it('keeps one question and exposes retry after a mode-change abort', async () =>
 
 Add separate tests for unmount abort, partial chunk followed by rejection, retry success, and stale rejection/finally from generation A while generation B is still streaming. In the last case assert the composer remains disabled until B resolves.
 
-- [ ] **Step 2: Run the component test and confirm RED**
+- [x] **Step 2: Run the component test and confirm RED**
 
 ```bash
 npm run test:unit -- src/pages/__tests__/ChatPageStreamLifecycle.test.tsx
@@ -464,7 +464,7 @@ npm run test:unit -- src/pages/__tests__/ChatPageStreamLifecycle.test.tsx
 
 Expected: FAIL because no signal, generation identity, interruption state or retry action exists.
 
-- [ ] **Step 3: Replace `sending` with the generation state machine**
+- [x] **Step 3: Replace `sending` with the generation state machine**
 
 Add:
 
@@ -487,7 +487,7 @@ if (active) {
 }
 ```
 
-- [ ] **Step 4: Implement a generation-guarded request runner**
+- [x] **Step 4: Implement a generation-guarded request runner**
 
 Extract a local `runChatGeneration(requestMessages, questionId)` that:
 
@@ -507,7 +507,7 @@ if (activeGenerationRef.current?.generationId !== generationId) return
 
 `handleSend` adds the new user message once and passes the resulting array into the runner. `handleRetry` passes the existing `messages` array and stored `questionId`, without adding a user message.
 
-- [ ] **Step 5: Wire Reset, mode switching and accessible feedback**
+- [x] **Step 5: Wire Reset, mode switching and accessible feedback**
 
 Replace direct `setActiveTab` calls with `handleModeChange(nextTab)`. When leaving `chat` during `streaming`, call `cancelActiveGeneration('mode-change')` before setting the tab.
 
@@ -537,7 +537,7 @@ Render feedback after the message list:
 
 Add scoped CSS using existing surface, border, muted and danger tokens. Do not alter the page layout or message styling.
 
-- [ ] **Step 6: Run lifecycle and accessibility regressions**
+- [x] **Step 6: Run lifecycle and accessibility regressions**
 
 ```bash
 npm run test:unit -- src/pages/__tests__/ChatPageStreamLifecycle.test.tsx src/pages/__tests__/ChatPageAccessibility.test.tsx
@@ -546,7 +546,7 @@ npm run lint -- --quiet
 
 Expected: lifecycle and existing accessibility tests PASS; lint exits 0.
 
-- [ ] **Step 7: Commit the component lifecycle**
+- [x] **Step 7: Commit the component lifecycle**
 
 ```bash
 git add src/pages/ChatPage.tsx src/pages/__tests__/ChatPageStreamLifecycle.test.tsx src/index.css
@@ -609,7 +609,7 @@ export function createClientAbortBridge(
 ): ClientAbortBridge
 ```
 
-- [ ] **Step 1: Write failing translator tests**
+- [x] **Step 1: Write failing translator tests**
 
 Use an encoder helper that wraps Anthropic events as `data: <json>\n\n`. Cover:
 
@@ -658,7 +658,7 @@ Add tests for malformed Anthropic JSON, reader exception, EOF without `message_s
 
 For `createClientAbortBridge`, use `EventEmitter`-backed request and response doubles. Assert `req.emit('aborted')` and premature `res.emit('close')` abort the signal, while `markTerminal()` before `close` does not.
 
-- [ ] **Step 2: Run the focused server test and confirm RED**
+- [x] **Step 2: Run the focused server test and confirm RED**
 
 ```bash
 npm run test:unit -- api/lib/__tests__/aiChatStream.test.ts
@@ -666,7 +666,7 @@ npm run test:unit -- api/lib/__tests__/aiChatStream.test.ts
 
 Expected: FAIL because `api/lib/aiChatStream.ts` does not exist.
 
-- [ ] **Step 3: Implement the SSE event buffer and single-terminal writer**
+- [x] **Step 3: Implement the SSE event buffer and single-terminal writer**
 
 `encodeChatStreamFrame` is exactly:
 
@@ -680,7 +680,7 @@ export function encodeChatStreamFrame(frame: ServerChatStreamFrame): string {
 
 Before every write, check `isClientOpen()`. If the signal is aborted or the client is closed, return `{ status: 'aborted' }` without trying to write `error`. Błędy zwracają stabilny, nietreściowy `reason`, aby handler mógł zapisać minimalną diagnostykę. Nie umieszczaj komunikatu upstreamu w ramce klienta ani logach tego helpera.
 
-- [ ] **Step 4: Implement the client disconnect bridge**
+- [x] **Step 4: Implement the client disconnect bridge**
 
 Use one `AbortController`, attach `req.once('aborted', onDisconnect)` and `res.once('close', onDisconnect)`, and guard normal completion:
 
@@ -700,7 +700,7 @@ return {
 }
 ```
 
-- [ ] **Step 5: Run focused server tests and lint**
+- [x] **Step 5: Run focused server tests and lint**
 
 ```bash
 npm run test:unit -- api/lib/__tests__/aiChatStream.test.ts
@@ -709,7 +709,7 @@ npm run lint -- --quiet
 
 Expected: translator and bridge tests PASS; lint exits 0.
 
-- [ ] **Step 6: Commit the server protocol unit**
+- [x] **Step 6: Commit the server protocol unit**
 
 ```bash
 git add api/lib/aiChatStream.ts api/lib/__tests__/aiChatStream.test.ts
@@ -736,7 +736,7 @@ export function writeChatStreamFrame(
 ): boolean
 ```
 
-- [ ] **Step 1: Add a RED integration-shaped writer test**
+- [x] **Step 1: Add a RED integration-shaped writer test**
 
 Extend `aiChatStream.test.ts` with a `ServerResponse` double. Export `writeChatStreamFrame(res, frame): boolean` from `api/lib/aiChatStream.ts` and assert it does not write after `writableEnded` or `destroyed`:
 
@@ -749,7 +749,7 @@ expect(writeChatStreamFrame(closedResponse, { type: 'error', message: 'x' })).to
 expect(writtenAfterClose).toBe('')
 ```
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 ```bash
 npm run test:unit -- api/lib/__tests__/aiChatStream.test.ts
@@ -757,7 +757,7 @@ npm run test:unit -- api/lib/__tests__/aiChatStream.test.ts
 
 Expected: FAIL until the guarded writer contract exists.
 
-- [ ] **Step 3: Replace raw text streaming in `api/ai-chat.ts`**
+- [x] **Step 3: Replace raw text streaming in `api/ai-chat.ts`**
 
 In chat mode:
 
@@ -781,7 +781,7 @@ If the upstream fetch itself rejects after the client disconnects but before a b
 
 Remove the old `hasContent` fallback that wrote `Claude API nie zwróciło treści odpowiedzi.` as if it were assistant content.
 
-- [ ] **Step 4: Prevent a second JSON response after streaming starts**
+- [x] **Step 4: Prevent a second JSON response after streaming starts**
 
 At the handler catch boundary, return without `sendApiError` when the response can no longer accept a fresh HTTP response:
 
@@ -791,7 +791,7 @@ if (res.headersSent || res.writableEnded || res.destroyed) return
 
 Pre-stream authentication, rate-limit, body and upstream HTTP failures keep their current JSON response shapes and status codes.
 
-- [ ] **Step 5: Run server, client protocol and build checks**
+- [x] **Step 5: Run server, client protocol and build checks**
 
 ```bash
 npm run test:unit -- api/lib/__tests__/aiChatStream.test.ts src/lib/__tests__/chatStreamProtocol.test.ts src/lib/__tests__/chatService.test.ts
@@ -801,7 +801,7 @@ npm run build
 
 Expected: focused tests PASS; lint and build exit 0.
 
-- [ ] **Step 6: Commit the API integration**
+- [x] **Step 6: Commit the API integration**
 
 ```bash
 git add api/ai-chat.ts api/lib/aiChatStream.ts api/lib/__tests__/aiChatStream.test.ts
@@ -834,7 +834,7 @@ export interface MockAiAttempt {
 export function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Promise<void>
 ```
 
-- [ ] **Step 1: Implement the browser-local mock runtime**
+- [x] **Step 1: Implement the browser-local mock runtime**
 
 Use `page.addInitScript` before navigation. The script must:
 
@@ -854,7 +854,7 @@ return new Response(stream, {
 })
 ```
 
-- [ ] **Step 2: Write the deterministic browser tests**
+- [x] **Step 2: Write the deterministic browser tests**
 
 Replace the obsolete blocker comment in `chat.spec.ts`. Add tests for:
 
@@ -873,7 +873,7 @@ await expect(page.getByText('Czy progresuję?', { exact: true })).toHaveCount(1)
 
 Wrap intentional request aborts with the existing `expectedBrowserDiagnostics.during(...)` fixture only when the diagnostics layer actually records them. Do not broadly suppress all `requestfailed` entries.
 
-- [ ] **Step 3: Run the isolated chat E2E gate**
+- [x] **Step 3: Run the isolated chat E2E gate**
 
 ```bash
 E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e \
@@ -883,7 +883,7 @@ firebase emulators:exec --only auth,firestore --project demo-ironlog \
 
 Expected: all chat tests PASS without any Anthropic request, unexpected browser diagnostic or live Firebase quota.
 
-- [ ] **Step 4: Perform direct browser observation**
+- [x] **Step 4: Perform direct browser observation**
 
 Use Playwright or computer use against the same deterministic mock. Observe and record:
 
@@ -895,7 +895,7 @@ Use Playwright or computer use against the same deterministic mock. Observe and 
 
 Capture one desktop screenshot for the failed state and one for the interrupted state under `test-results/`; these are diagnostic evidence, not pixel baselines and are not committed.
 
-- [ ] **Step 5: Commit browser coverage**
+- [x] **Step 5: Commit browser coverage**
 
 ```bash
 git add tests/e2e/chat.spec.ts tests/e2e/support/mockAiStream.ts
@@ -916,7 +916,7 @@ git commit -m "test: cover AI stream lifecycle in browser"
 - Consumes: all completed Tasks 1–6 and direct browser evidence.
 - Produces: reviewed Phase 6A branch, truthful canonical status and integration-ready handoff. It does not merge, push or deploy.
 
-- [ ] **Step 1: Run all focused Phase 6A tests together**
+- [x] **Step 1: Run all focused Phase 6A tests together**
 
 ```bash
 npm run test:unit -- \
@@ -929,7 +929,7 @@ npm run test:unit -- \
 
 Expected: every focused file PASS.
 
-- [ ] **Step 2: Run the full repository quality gate**
+- [x] **Step 2: Run the full repository quality gate**
 
 ```bash
 npm run test:unit
@@ -939,7 +939,7 @@ npm run build
 
 Expected: full unit suite, lint and build PASS. The existing Vite chunk-size warning may remain informational; no new warning is silently accepted.
 
-- [ ] **Step 3: Re-run the deterministic browser gate**
+- [x] **Step 3: Re-run the deterministic browser gate**
 
 ```bash
 E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e \
@@ -949,7 +949,7 @@ firebase emulators:exec --only auth,firestore --project demo-ironlog \
 
 Expected: PASS with only explicitly scoped intentional abort diagnostics, if any.
 
-- [ ] **Step 4: Request two-stage review before closure**
+- [x] **Step 4: Request two-stage review before closure**
 
 Use `superpowers:requesting-code-review` and review the complete diff against the approved spec. Require:
 
@@ -958,7 +958,7 @@ Use `superpowers:requesting-code-review` and review the complete diff against th
 
 Fix every confirmed P0/P1 issue and rerun the affected focused tests plus lint. Do not expand into Fazy 6B or 6C.
 
-- [ ] **Step 5: Run project convergence without integrating**
+- [x] **Step 5: Run project convergence without integrating**
 
 Invoke `project-convergence` on the reviewed branch. Required evidence:
 
@@ -969,13 +969,13 @@ Invoke `project-convergence` on the reviewed branch. Required evidence:
 - only expected files in `git status`;
 - branch is ready for an explicit merge decision.
 
-- [ ] **Step 6: Update canonical docs only after every gate passes**
+- [x] **Step 6: Update canonical docs only after every gate passes**
 
 Change the Phase 6A row and section in `docs/roadmap/ROADMAP.md` from `READY` to `DONE`. Update the spec status to `zaimplementowany i zweryfikowany — oczekuje na integrację` and this plan status to `COMPLETED — VERIFIED — AWAITING INTEGRATION`.
 
 Check all completed task boxes truthfully. Do not mark integration complete before the merge actually happens.
 
-- [ ] **Step 7: Commit the phase closeout**
+- [x] **Step 7: Commit the phase closeout**
 
 ```bash
 git add \
@@ -985,7 +985,7 @@ git add \
 git commit -m "docs: close phase 6a AI stream integrity"
 ```
 
-- [ ] **Step 8: Save project memory and hand back the merge decision**
+- [x] **Step 8: Save project memory and hand back the merge decision**
 
 Invoke `memory-save` with:
 
@@ -1002,18 +1002,18 @@ Return to Patryk with the local merge choice. Do not merge, delete the worktree,
 
 ## Implementation Completion Checklist
 
-- [ ] NDJSON client parser rejects malformed, missing and error terminals.
-- [ ] `streamChatReply` forwards `AbortSignal` and requires NDJSON.
-- [ ] Reset, mode change and unmount abort the active request.
-- [ ] Generation identity blocks every stale chunk, resolve, catch and finally.
-- [ ] Partial assistant text is never committed after failure.
-- [ ] Retry preserves exactly one user question.
-- [ ] Server emits exactly one `done` or `error`, or finishes as expected abort.
-- [ ] Client disconnect aborts the Anthropic request and prevents write-after-close.
-- [ ] Expected aborts are not logged as product errors; sensitive values never enter logs.
-- [ ] Deterministic component, server and browser tests pass without real Claude API.
-- [ ] Full unit, lint and build gates pass.
-- [ ] Direct browser observation matches the approved UX.
-- [ ] Two-stage code review and convergence gate pass.
-- [ ] Roadmap, spec, plan and memory are updated truthfully.
-- [ ] No push, deploy, integration or user-owned audit mutation occurred without permission.
+- [x] NDJSON client parser rejects malformed, missing and error terminals.
+- [x] `streamChatReply` forwards `AbortSignal` and requires NDJSON.
+- [x] Reset, mode change and unmount abort the active request.
+- [x] Generation identity blocks every stale chunk, resolve, catch and finally.
+- [x] Partial assistant text is never committed after failure.
+- [x] Retry preserves exactly one user question.
+- [x] Server emits exactly one `done` or `error`, or finishes as expected abort.
+- [x] Client disconnect aborts the Anthropic request and prevents write-after-close.
+- [x] Expected aborts are not logged as product errors; sensitive values never enter logs.
+- [x] Deterministic component, server and browser tests pass without real Claude API.
+- [x] Full unit, lint and build gates pass.
+- [x] Direct browser observation matches the approved UX.
+- [x] Two-stage code review and convergence gate pass.
+- [x] Roadmap, spec, plan and memory are updated truthfully.
+- [x] No push, deploy, integration or user-owned audit mutation occurred without permission.

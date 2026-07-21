@@ -71,9 +71,15 @@ export async function readChatStream(
   let buffer = ''
   let response = ''
   let didFinish = false
+  let cancelPromise: Promise<void> | null = null
+
+  const cancelReader = () => {
+    cancelPromise ??= reader.cancel().catch(() => undefined)
+    return cancelPromise
+  }
 
   const onAbort = () => {
-    void reader.cancel().catch(() => undefined)
+    void cancelReader()
   }
 
   const processLines = () => {
@@ -138,8 +144,11 @@ export async function readChatStream(
     if (buffer.trim()) {
       throw new ChatStreamProtocolError('Stream AI zwrócił dane po zakończeniu.')
     }
-
     return response
+  } catch (error) {
+    await cancelReader()
+    if (options.signal.aborted) throw createAbortError()
+    throw error
   } finally {
     options.signal.removeEventListener('abort', onAbort)
     reader.releaseLock()

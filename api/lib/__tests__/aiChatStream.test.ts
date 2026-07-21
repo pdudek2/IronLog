@@ -37,6 +37,21 @@ function streamThatErrors(error: Error): ReadableStream<Uint8Array> {
   })
 }
 
+function cancellableStreamFrom(...chunks: string[]): {
+  body: ReadableStream<Uint8Array>
+  cancel: ReturnType<typeof vi.fn>
+} {
+  const cancel = vi.fn()
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)))
+    },
+    cancel,
+  })
+
+  return { body, cancel }
+}
+
 function createHttpDoubles(): {
   req: IncomingMessage
   res: ServerResponse
@@ -175,11 +190,15 @@ describe('pipeAnthropicStream', () => {
 
   it('turns an upstream error after content into an error terminal', async () => {
     const frames: ServerChatStreamFrame[] = []
+    const { body, cancel } = cancellableStreamFrom(
+      anthropicEvent({
+        type: 'content_block_delta',
+        delta: { type: 'text_delta', text: 'Część' },
+      }),
+      anthropicEvent({ type: 'error', error: { message: 'connection lost' } }),
+    )
     const result = await pipeAnthropicStream({
-      body: anthropicStream(
-        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Część' } },
-        { type: 'error', error: { message: 'connection lost' } },
-      ),
+      body,
       signal: new AbortController().signal,
       isClientOpen: () => true,
       writeFrame: (frame) => frames.push(frame),
@@ -192,12 +211,14 @@ describe('pipeAnthropicStream', () => {
     })
     expect(frames.some((frame) => frame.type === 'done')).toBe(false)
     expect(JSON.stringify(frames)).not.toContain('connection lost')
+    expect(cancel).toHaveBeenCalledOnce()
   })
 
   it('turns malformed Anthropic JSON into an invalid-event terminal', async () => {
     const frames: ServerChatStreamFrame[] = []
+    const { body, cancel } = cancellableStreamFrom('data: {not-json}\n\n')
     const result = await pipeAnthropicStream({
-      body: streamFrom('data: {not-json}\n\n'),
+      body,
       signal: new AbortController().signal,
       isClientOpen: () => true,
       writeFrame: (frame) => frames.push(frame),
@@ -208,6 +229,7 @@ describe('pipeAnthropicStream', () => {
       type: 'error',
       message: 'Nie udało się dokończyć odpowiedzi.',
     }])
+    expect(cancel).toHaveBeenCalledOnce()
   })
 
   it('turns a reader exception into a reader-error terminal', async () => {

@@ -85,15 +85,15 @@ export async function pipeAnthropicStream({
   let cancelPromise: Promise<void> | null = null
 
   const isDisconnected = () => signal.aborted || !isClientOpen()
-  const cancelReader = () => {
-    cancelPromise ??= reader.cancel('client-disconnected').catch(() => undefined)
+  const cancelReader = (reason: 'client-disconnected' | 'stream-failed') => {
+    cancelPromise ??= reader.cancel(reason).catch(() => undefined)
     return cancelPromise
   }
   const onAbort = () => {
-    void cancelReader()
+    void cancelReader('client-disconnected')
   }
   const abortStream = async (): Promise<AnthropicStreamResult> => {
-    await cancelReader()
+    await cancelReader('client-disconnected')
     return { status: 'aborted' }
   }
   const writeSafely = async (
@@ -101,7 +101,7 @@ export async function pipeAnthropicStream({
     isTerminal = false,
   ): Promise<boolean> => {
     if (isDisconnected()) {
-      await cancelReader()
+      await cancelReader('client-disconnected')
       return false
     }
 
@@ -109,7 +109,7 @@ export async function pipeAnthropicStream({
       writeFrame(frame)
     } catch (error) {
       if (isDisconnected()) {
-        await cancelReader()
+        await cancelReader('client-disconnected')
         return false
       }
       throw error
@@ -127,6 +127,7 @@ export async function pipeAnthropicStream({
       if (!written) return { status: 'aborted' }
     }
 
+    await cancelReader('stream-failed')
     return { status: 'error', reason }
   }
 
@@ -205,6 +206,9 @@ export async function pipeAnthropicStream({
     }
 
     return { status: 'done' }
+  } catch (error) {
+    await cancelReader('stream-failed')
+    throw error
   } finally {
     signal.removeEventListener('abort', onAbort)
     reader.releaseLock()

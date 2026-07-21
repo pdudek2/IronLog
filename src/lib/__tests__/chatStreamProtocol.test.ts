@@ -17,6 +17,21 @@ function streamFrom(...chunks: string[]): ReadableStream<Uint8Array> {
   })
 }
 
+function cancellableStreamFrom(...chunks: string[]): {
+  body: ReadableStream<Uint8Array>
+  cancel: ReturnType<typeof vi.fn>
+} {
+  const cancel = vi.fn()
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      chunks.forEach((chunk) => controller.enqueue(encoder.encode(chunk)))
+    },
+    cancel,
+  })
+
+  return { body, cancel }
+}
+
 describe('readChatStream', () => {
   it('reassembles NDJSON frames split across transport chunks', async () => {
     const onChunk = vi.fn()
@@ -35,7 +50,7 @@ describe('readChatStream', () => {
 
   it('rejects an error terminal after exposing temporary chunks', async () => {
     const onChunk = vi.fn()
-    const body = streamFrom(
+    const { body, cancel } = cancellableStreamFrom(
       '{"type":"chunk","text":"Część"}\n',
       '{"type":"error","message":"Stream przerwany."}\n',
     )
@@ -45,6 +60,7 @@ describe('readChatStream', () => {
       onChunk,
     })).rejects.toMatchObject({ name: 'ChatStreamRemoteError', message: 'Stream przerwany.' })
     expect(onChunk).toHaveBeenCalledWith('Część')
+    expect(cancel).toHaveBeenCalledOnce()
   })
 
   it('rejects EOF without a terminal frame', async () => {
@@ -58,10 +74,13 @@ describe('readChatStream', () => {
   })
 
   it('rejects malformed JSON frames', async () => {
-    await expect(readChatStream(streamFrom('{not-json}\n'), {
+    const { body, cancel } = cancellableStreamFrom('{not-json}\n')
+
+    await expect(readChatStream(body, {
       signal: new AbortController().signal,
       onChunk: vi.fn(),
     })).rejects.toBeInstanceOf(ChatStreamProtocolError)
+    expect(cancel).toHaveBeenCalledOnce()
   })
 
   it('rejects unknown frames', async () => {

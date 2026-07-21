@@ -1,5 +1,6 @@
 import { adminDb } from './lib/firebaseAdmin.js'
 import { requireUserId } from './lib/auth.js'
+import { ApiError } from './lib/errors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
 import {
@@ -519,7 +520,7 @@ async function generatePlan(
   return normalizeGeneratedPlan(parsed, catalog, request.goal)
 }
 
-async function streamChatReply(
+export async function streamChatReply(
   apiKey: string,
   model: string,
   context: AiUserContext,
@@ -530,6 +531,8 @@ async function streamChatReply(
   const bridge = createClientAbortBridge(req, res)
 
   try {
+    if (bridge.signal.aborted) return
+
     let upstream: Response
     try {
       upstream = await fetch('https://api.anthropic.com/v1/messages', {
@@ -558,12 +561,14 @@ async function streamChatReply(
 
     if (!upstream.ok) {
       const error = await readAnthropicError(upstream)
+      if (bridge.signal.aborted) return
+
       console.error('[ai-chat upstream error]', {
         status: error.status,
         model,
         message: error.message,
       })
-      throw Object.assign(new Error(error.message), { status: error.status })
+      throw new ApiError(error.status, error.message)
     }
 
     const body = upstream.body

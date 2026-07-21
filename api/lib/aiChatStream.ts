@@ -224,6 +224,10 @@ export function createClientAbortBridge(
   req.once('aborted', onDisconnect)
   res.once('close', onDisconnect)
 
+  if (req.aborted || res.writableEnded || res.destroyed) {
+    onDisconnect()
+  }
+
   return {
     signal: controller.signal,
     markTerminal: () => {

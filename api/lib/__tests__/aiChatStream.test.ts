@@ -430,6 +430,31 @@ describe('pipeAnthropicStream', () => {
 })
 
 describe('createClientAbortBridge', () => {
+  it('starts aborted when the request is already disconnected', () => {
+    const { req, res } = createHttpDoubles()
+    Object.assign(req, { aborted: true })
+
+    const bridge = createClientAbortBridge(req, res)
+
+    expect(bridge.signal.aborted).toBe(true)
+    expect(bridge.signal.reason).toBe('client-disconnected')
+    bridge.dispose()
+  })
+
+  it.each([
+    { writableEnded: true, destroyed: false },
+    { writableEnded: false, destroyed: true },
+  ])('starts aborted when the response is already closed (%o)', (state) => {
+    const { req, res } = createHttpDoubles()
+    Object.assign(res, state)
+
+    const bridge = createClientAbortBridge(req, res)
+
+    expect(bridge.signal.aborted).toBe(true)
+    expect(bridge.signal.reason).toBe('client-disconnected')
+    bridge.dispose()
+  })
+
   it('aborts when the request emits aborted', () => {
     const { req, res, requestEvents } = createHttpDoubles()
     const bridge = createClientAbortBridge(req, res)

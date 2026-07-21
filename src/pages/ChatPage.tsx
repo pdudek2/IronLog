@@ -102,6 +102,21 @@ interface PlanErrorState {
   field: 'goal' | null
 }
 
+type ChatGenerationState =
+  | { status: 'idle' }
+  | { status: 'streaming'; questionId: string }
+  | { status: 'interrupted'; questionId: string }
+  | { status: 'failed'; questionId: string; message: string }
+
+type ChatCancelReason = 'reset' | 'mode-change' | 'unmount' | 'superseded'
+
+interface ActiveChatGeneration {
+  generationId: string
+  questionId: string
+  controller: AbortController
+  cancelReason: ChatCancelReason | null
+}
+
 function SectionError({ message, id }: { message: string; id?: string }) {
   return (
     <div
@@ -130,7 +145,8 @@ export default function ChatPage() {
   const demoSeededRef = useRef(isDemoUser)
   const [input, setInput] = useState('')
   const [streamText, setStreamText] = useState('')
-  const [sending, setSending] = useState(false)
+  const [generationState, setGenerationState] = useState<ChatGenerationState>({ status: 'idle' })
+  const activeGenerationRef = useRef<ActiveChatGeneration | null>(null)
   const [error, setError] = useState('')
 
   const [planGoal, setPlanGoal] = useState('')
@@ -153,6 +169,31 @@ export default function ChatPage() {
   const totalPlanExercises = planPreview?.days.reduce((sum, day) => sum + day.exercises.length, 0) ?? 0
   const assistantReplies = messages.filter((message) => message.role === 'assistant').length
   const promptCount = messages.filter((message) => message.role === 'user').length
+  const sending = generationState.status === 'streaming'
+
+  function cancelActiveGeneration(reason: ChatCancelReason, updateUi = true) {
+    const active = activeGenerationRef.current
+    activeGenerationRef.current = null
+
+    if (active) {
+      active.cancelReason = reason
+      active.controller.abort(reason)
+    }
+
+    if (!updateUi) return
+
+    setStreamText('')
+    if (reason === 'mode-change' && active) {
+      setGenerationState({ status: 'interrupted', questionId: active.questionId })
+      return
+    }
+    setGenerationState({ status: 'idle' })
+  }
+
+  function clearActiveGeneration(generationId: string) {
+    if (activeGenerationRef.current?.generationId !== generationId) return
+    activeGenerationRef.current = null
+  }
 
   useEffect(() => {
     if (!isDemoUser || demoSeededRef.current) return
@@ -176,12 +217,74 @@ export default function ChatPage() {
     }
   }, [configured])
 
+  useEffect(() => () => {
+    const active = activeGenerationRef.current
+    activeGenerationRef.current = null
+    if (active) {
+      active.cancelReason = 'unmount'
+      active.controller.abort('unmount')
+    }
+  }, [])
+
+  async function runChatGeneration(requestMessages: ChatMessage[], questionId: string) {
+    cancelActiveGeneration('superseded', false)
+
+    const generationId = crypto.randomUUID()
+    const controller = new AbortController()
+    activeGenerationRef.current = {
+      generationId,
+      questionId,
+      controller,
+      cancelReason: null,
+    }
+
+    setGenerationState({ status: 'streaming', questionId })
+    setError('')
+    setStreamText('')
+
+    try {
+      const reply = await streamChatReply({
+        apiKey: getClaudeApiKey(),
+        messages: requestMessages.map(({ role, content }) => ({ role, content })),
+        signal: controller.signal,
+        onChunk: (chunk) => {
+          if (activeGenerationRef.current?.generationId !== generationId) return
+          setStreamText((current) => current + chunk)
+        },
+      })
+
+      if (activeGenerationRef.current?.generationId !== generationId) return
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          role: 'assistant',
+          content: reply || 'Nie udało się wygenerować odpowiedzi.',
+        },
+      ])
+      setStreamText('')
+      setGenerationState({ status: 'idle' })
+    } catch (nextError) {
+      if (activeGenerationRef.current?.generationId !== generationId) return
+      if (controller.signal.aborted || (nextError instanceof Error && nextError.name === 'AbortError')) {
+        setStreamText('')
+        setGenerationState({ status: 'interrupted', questionId })
+        return
+      }
+
+      const message = nextError instanceof Error ? nextError.message : 'Nie udało się połączyć z AI Coachem.'
+      setStreamText('')
+      setGenerationState({ status: 'failed', questionId, message })
+    } finally {
+      clearActiveGeneration(generationId)
+    }
+  }
+
   async function handleSend(rawPrompt?: string) {
     const prompt = (rawPrompt ?? input).trim()
     if (!prompt || sending) return
 
-    const apiKey = getClaudeApiKey()
-    if (!apiKey) {
+    if (!getClaudeApiKey()) {
       setConfigured(false)
       setError('Dodaj Claude API key, żeby uruchomić AI Coach.')
       return
@@ -196,38 +299,32 @@ export default function ChatPage() {
         content: prompt,
       },
     ]
+    const questionId = nextMessages[nextMessages.length - 1].id
 
     setMessages(nextMessages)
     setInput('')
-    setError('')
-    setSending(true)
-    setStreamText('')
+    await runChatGeneration(nextMessages, questionId)
+  }
 
-    try {
-      const reply = await streamChatReply({
-        apiKey,
-        messages: nextMessages.map(({ role, content }) => ({ role, content })),
-        onChunk: (chunk) => {
-          setStreamText((current) => current + chunk)
-        },
-      })
+  function handleRetry() {
+    if (generationState.status !== 'interrupted' && generationState.status !== 'failed') return
+    const { questionId } = generationState
+    if (!messages.some((message) => message.id === questionId && message.role === 'user')) return
+    void runChatGeneration(messages, questionId)
+  }
 
-      setMessages((current) => [
-        ...current,
-        {
-          id: crypto.randomUUID(),
-          role: 'assistant',
-          content: reply || 'Nie udało się wygenerować odpowiedzi.',
-        },
-      ])
-      setStreamText('')
-    } catch (nextError) {
-      const message = nextError instanceof Error ? nextError.message : 'Nie udało się połączyć z AI Coachem.'
-      setError(message)
-      setStreamText('')
-    } finally {
-      setSending(false)
+  function handleModeChange(nextTab: AiWorkspaceTab) {
+    if (activeTab === 'chat' && nextTab !== 'chat' && generationState.status === 'streaming') {
+      cancelActiveGeneration('mode-change')
     }
+    setActiveTab(nextTab)
+  }
+
+  function handleReset() {
+    cancelActiveGeneration('reset')
+    setMessages([])
+    setStreamText('')
+    setError('')
   }
 
   function handleChatScroll() {
@@ -389,7 +486,7 @@ export default function ChatPage() {
                   key={tab.key}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => setActiveTab(tab.key)}
+                  onClick={() => handleModeChange(tab.key)}
                   className="coach-mode-button"
                   data-active={active}
                 >
@@ -414,11 +511,7 @@ export default function ChatPage() {
                     <Button
                       type="button"
                       variant="ghost"
-                      onClick={() => {
-                        setMessages([])
-                        setStreamText('')
-                        setError('')
-                      }}
+                      onClick={handleReset}
                       disabled={messages.length === 0 && !streamText}
                       className="coach-reset-button inline-flex items-center gap-2"
                     >
@@ -511,6 +604,24 @@ export default function ChatPage() {
                       </div>
                     )}
                   </div>
+
+                  {generationState.status === 'interrupted' && (
+                    <div className="coach-generation-feedback" role="status" aria-live="polite">
+                      <span>Generowanie przerwane.</span>
+                      <Button type="button" variant="ghost" onClick={handleRetry}>
+                        Ponów odpowiedź AI
+                      </Button>
+                    </div>
+                  )}
+
+                  {generationState.status === 'failed' && (
+                    <div className="coach-generation-feedback coach-generation-feedback--error" role="alert">
+                      <span>{generationState.message}</span>
+                      <Button type="button" variant="ghost" onClick={handleRetry}>
+                        Ponów odpowiedź AI
+                      </Button>
+                    </div>
+                  )}
 
                   {error && <SectionError message={error} />}
 

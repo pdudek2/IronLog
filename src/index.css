@@ -6517,6 +6517,26 @@ a {
   margin-top: 1rem;
 }
 
+.coach-generation-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.025);
+  padding: 0.75rem 0.9rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.coach-generation-feedback--error {
+  border-color: var(--danger-soft-strong);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
 .coach-composer-input,
 .coach-field input,
 .coach-field textarea {

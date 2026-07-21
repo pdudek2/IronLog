@@ -83,6 +83,14 @@ describe('streamChatReply', () => {
     await expect(streamChatReply(options())).rejects.toThrow('Stream AI zwrócił niepoprawny format odpowiedzi.')
   })
 
+  it('rejects a content type that only starts with the NDJSON media type', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Gotowe', { status: 200, headers: {
+      'Content-Type': 'application/x-ndjson-extra; charset=utf-8',
+    } })))
+
+    await expect(streamChatReply(options())).rejects.toThrow('Stream AI zwrócił niepoprawny format odpowiedzi.')
+  })
+
   it('propagates AbortError instead of replacing it with local backend guidance', async () => {
     const aborted = new DOMException('Przerwano', 'AbortError')
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(aborted))

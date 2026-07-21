@@ -116,8 +116,8 @@ export async function streamChatReply({
     throw new Error('Stream AI nie zwrócił danych.')
   }
 
-  const contentType = response.headers.get('Content-Type')?.toLowerCase() ?? ''
-  if (!contentType.includes('application/x-ndjson')) {
+  const mediaType = response.headers.get('Content-Type')?.split(';', 1)[0]?.trim().toLowerCase()
+  if (mediaType !== 'application/x-ndjson') {
     throw new Error('Stream AI zwrócił niepoprawny format odpowiedzi.')
   }
 

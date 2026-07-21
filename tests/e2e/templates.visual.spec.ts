@@ -1,24 +1,26 @@
 import { expect, test } from './fixtures'
 import { expectAppReady } from './support/appReady'
 
-test('empty templates page', async ({ page }) => {
+test('empty templates page', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/templates')
   await expectAppReady(page, '/templates')
   await expect(page.getByText('Nie masz jeszcze szablonów')).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
-  await page.addStyleTag({
-    content: `
-      html {
-        scrollbar-gutter: auto !important;
-        scrollbar-width: none !important;
-      }
+  if (testInfo.project.name === 'desktop') {
+    await page.addStyleTag({
+      content: `
+        html {
+          scrollbar-gutter: auto !important;
+          scrollbar-width: none !important;
+        }
 
-      html::-webkit-scrollbar {
-        display: none !important;
-      }
-    `,
-  })
+        html::-webkit-scrollbar {
+          display: none !important;
+        }
+      `,
+    })
+  }
 
   const scrollGeometry = await page.evaluate(() => ({
     windowScrollX: window.scrollX,

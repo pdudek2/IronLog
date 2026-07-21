@@ -594,7 +594,8 @@ export default function WorkoutPage() {
     if (handlingStaleSession) return
     setHandlingStaleSession(true)
     try {
-      await continueStaleSession()
+      const result = await continueStaleSession()
+      if (result.status === 'ignored') return
       toast.success('Wróciłem do zapisanej sesji z odświeżonym timerem.')
     } catch (error) {
       console.error('[continue stale session error]', error)
@@ -609,7 +610,7 @@ export default function WorkoutPage() {
     setHandlingStaleSession(true)
     try {
       const result = await discardStaleSession()
-      if (!result || result.status === 'closure_unconfirmed') return
+      if (result.status === 'ignored' || result.status === 'closure_unconfirmed') return
       toast.success(result.replacement
         ? 'Stara sesja odrzucona. Zaczynamy od nowa.'
         : 'Stara sesja odrzucona. Zachowano aktualną sesję.')

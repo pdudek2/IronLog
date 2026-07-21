@@ -94,3 +94,35 @@ GREEN evidence:
 - full unit suite: 51 files, 348/348 passed;
 - lint: passed without warnings;
 - production build: passed, 877 modules transformed.
+
+## Re-review follow-up: hook-to-UI invalidation feedback
+
+Write-side guards prevented stale state mutation, but the public hook operations
+did not describe invalidation to their caller. `continueStaleSession()` returned
+`void` after a stale success and propagated a stale rejection; `WorkoutPage`
+therefore displayed success or error feedback for an operation that no longer
+belonged to the mounted user lifecycle. Stale discard had the same result gap.
+
+RED reproduced six failures covering missing completed/ignored results, stale
+rejection propagation, and a discarded result escaping after uid/unmount
+invalidation.
+
+The continuation now returns an explicit English status of `completed` or
+`ignored`. A current failure still rejects. Stale success or failure after
+confirmed closure, uid change, or unmount resolves as `ignored`. Stale discard
+also returns `ignored` after lifecycle invalidation, including its catch path;
+current successful discard keeps its existing `discarded` result. Discard result
+validity uses the lifecycle generation rather than the now-closed stale session
+ID.
+
+`WorkoutPage` reports success only for completed/current results and reports an
+error only for a real current rejection. It emits no toast for `ignored`.
+
+Focused GREEN evidence: 2 files, 24/24 tests passed (19 hook contracts and 5
+page-level feedback contracts).
+
+Full GREEN evidence:
+
+- unit suite: 52 files, 361/361 passed;
+- lint: passed without warnings;
+- production build: passed, 877 modules transformed.

@@ -40,6 +40,13 @@ export type ClosureUiState =
   | 'auth_required'
   | 'closure_failed'
 
+export type StaleSessionOperationResult =
+  | { status: 'completed' }
+  | { status: 'ignored' }
+
+const COMPLETED_STALE_SESSION_OPERATION = { status: 'completed' } as const
+const IGNORED_STALE_SESSION_OPERATION = { status: 'ignored' } as const
+
 function serializeActiveWorkout(value: unknown): string {
   return JSON.stringify(value ?? null)
 }
@@ -67,6 +74,13 @@ function isSessionWriteCurrent(
 ): boolean {
   return write.generation === currentGeneration
     && !isConfirmedClosedSessionId(write.sessionId, closedSessionIds)
+}
+
+function isSessionWriteGenerationCurrent(
+  generation: number,
+  currentGeneration: number,
+): boolean {
+  return generation === currentGeneration
 }
 
 export function useActiveSession(uid: string | null) {
@@ -485,8 +499,10 @@ export function useActiveSession(uid: string | null) {
     }
   }, [uid])
 
-  async function continueStaleSession(): Promise<void> {
-    if (!uid || !staleSessionRef.current || closureIntentRef.current) return
+  async function continueStaleSession(): Promise<StaleSessionOperationResult> {
+    if (!uid || !staleSessionRef.current || closureIntentRef.current) {
+      return IGNORED_STALE_SESSION_OPERATION
+    }
     const refreshedSession = refreshStaleActiveSession(staleSessionRef.current)
     staleSessionRef.current = null
     setStaleSession(null)
@@ -499,13 +515,23 @@ export function useActiveSession(uid: string | null) {
       refreshedSession.sessionId,
       sessionWriteGenerationRef.current,
     )
-    await saveActiveSession(uid, refreshedSession)
+    try {
+      await saveActiveSession(uid, refreshedSession)
+    } catch (error) {
+      if (!isSessionWriteCurrent(
+        write,
+        sessionWriteGenerationRef.current,
+        confirmedClosedSessionIdsRef.current,
+      )) return IGNORED_STALE_SESSION_OPERATION
+      throw error
+    }
     if (!isSessionWriteCurrent(
       write,
       sessionWriteGenerationRef.current,
       confirmedClosedSessionIdsRef.current,
-    )) return
+    )) return IGNORED_STALE_SESSION_OPERATION
     setActiveSessionSyncStatus('idle')
+    return COMPLETED_STALE_SESSION_OPERATION
   }
 
   async function discardStaleSession() {
@@ -513,17 +539,27 @@ export function useActiveSession(uid: string | null) {
       ? closureIntentRef.current.session
       : null
     const session = staleSessionRef.current ?? pendingStaleDiscard
-    if (!uid || !session) return null
+    if (!uid || !session) return IGNORED_STALE_SESSION_OPERATION
     const sessionWriteGeneration = sessionWriteGenerationRef.current
     const intent = beginClosure('discard', session)
-    if (!intent) return null
+    if (!intent) return IGNORED_STALE_SESSION_OPERATION
     try {
       const result = await discardStaleSessionLifecycle({
         uid,
         session: intent.session,
         now: () => intent.createdAt,
-        clearConfirmed: clearConfirmedClosure,
+        clearConfirmed: () => {
+          if (!isSessionWriteGenerationCurrent(
+            sessionWriteGeneration,
+            sessionWriteGenerationRef.current,
+          )) return
+          clearConfirmedClosure()
+        },
         startReplacement: () => {
+          if (!isSessionWriteGenerationCurrent(
+            sessionWriteGeneration,
+            sessionWriteGenerationRef.current,
+          )) return null
           const pendingSessionId = intent.session.sessionId
           const currentSessionId = useWorkoutStore.getState().active?.sessionId
           const remoteSessionId = remoteSessionRef.current?.sessionId
@@ -563,9 +599,17 @@ export function useActiveSession(uid: string | null) {
           }
         },
       })
+      if (!isSessionWriteGenerationCurrent(
+        sessionWriteGeneration,
+        sessionWriteGenerationRef.current,
+      )) return IGNORED_STALE_SESSION_OPERATION
       if (result.status === 'closure_unconfirmed') markClosureUnconfirmed()
       return result
     } catch (error) {
+      if (!isSessionWriteGenerationCurrent(
+        sessionWriteGeneration,
+        sessionWriteGenerationRef.current,
+      )) return IGNORED_STALE_SESSION_OPERATION
       if (error instanceof WorkoutClosureError) markClosureError(error)
       else markClosureUnconfirmed()
       throw error

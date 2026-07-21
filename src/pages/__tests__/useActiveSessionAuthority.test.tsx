@@ -11,6 +11,7 @@ type SnapshotListener = (snapshot: {
 
 const listener = vi.hoisted(() => ({ current: null as SnapshotListener | null }))
 const saveActiveSession = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const discardStaleSessionLifecycle = vi.hoisted(() => vi.fn())
 
 vi.mock('../../lib/activeSessionService', () => ({
   saveActiveSession,
@@ -24,6 +25,10 @@ vi.mock('../../lib/workoutClosureService', () => ({
   WorkoutClosureError: class WorkoutClosureError extends Error {},
 }))
 
+vi.mock('../../lib/workoutLifecycle', () => ({
+  discardStaleSessionLifecycle,
+}))
+
 import { useActiveSession } from '../../hooks/useActiveSession'
 import { useWorkoutStore } from '../../store/workoutStore'
 
@@ -31,6 +36,12 @@ const remoteSession: ActiveWorkout = {
   sessionId: 'server-session',
   startedAt: Date.now(),
   exercises: [],
+}
+
+const staleRemoteSession: ActiveWorkout = {
+  ...remoteSession,
+  sessionId: 'stale-server-session',
+  startedAt: Date.now() - (13 * 60 * 60 * 1000),
 }
 
 function createDeferred<T>() {
@@ -57,6 +68,7 @@ describe('useActiveSession snapshot authority', () => {
     useWorkoutStore.getState().clearWorkout()
     listener.current = null
     saveActiveSession.mockReset().mockResolvedValue(undefined)
+    discardStaleSessionLifecycle.mockReset()
   })
 
   it.each([
@@ -398,5 +410,180 @@ describe('useActiveSession snapshot authority', () => {
     expect(result.current.activeSessionSyncStatus).toBe('failed')
     expect(consoleError).toHaveBeenCalledTimes(1)
     consoleError.mockRestore()
+  })
+
+  it('returns completed when the current stale session is continued successfully', async () => {
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    let outcome: Awaited<ReturnType<typeof result.current.continueStaleSession>>
+    await act(async () => {
+      outcome = await result.current.continueStaleSession()
+    })
+
+    expect(outcome!).toEqual({ status: 'completed' })
+  })
+
+  it('still rejects a current stale-session continuation failure', async () => {
+    const currentError = new Error('current continuation failed')
+    saveActiveSession.mockRejectedValueOnce(currentError)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    await act(async () => {
+      await expect(result.current.continueStaleSession()).rejects.toBe(currentError)
+    })
+  })
+
+  it('returns ignored for a late continuation success after confirmed closure', async () => {
+    const continuationWrite = createDeferred<void>()
+    saveActiveSession.mockImplementationOnce(() => continuationWrite.promise)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    let operation!: ReturnType<typeof result.current.continueStaleSession>
+    act(() => {
+      operation = result.current.continueStaleSession()
+    })
+    const refreshedSession = useWorkoutStore.getState().active
+    expect(refreshedSession).not.toBeNull()
+    act(() => {
+      result.current.beginClosure('discard', refreshedSession)
+      result.current.confirmClosure()
+    })
+
+    let outcome: Awaited<typeof operation>
+    await act(async () => {
+      continuationWrite.resolve()
+      outcome = await operation
+    })
+
+    expect(outcome!).toEqual({ status: 'ignored' })
+    expect(useWorkoutStore.getState().active).toBeNull()
+  })
+
+  it('returns ignored instead of rejecting a continuation invalidated by uid change', async () => {
+    const continuationWrite = createDeferred<void>()
+    saveActiveSession.mockImplementationOnce(() => continuationWrite.promise)
+    const { result, rerender } = renderHook(
+      ({ uid }: { uid: string }) => useActiveSession(uid),
+      { initialProps: { uid: 'user-1' } },
+    )
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    let operation!: ReturnType<typeof result.current.continueStaleSession>
+    act(() => {
+      operation = result.current.continueStaleSession()
+    })
+    rerender({ uid: 'user-2' })
+
+    let outcome: Awaited<typeof operation>
+    await act(async () => {
+      continuationWrite.reject(new Error('old continuation failed'))
+      outcome = await operation
+    })
+
+    expect(outcome!).toEqual({ status: 'ignored' })
+  })
+
+  it('returns ignored for a continuation completed after unmount', async () => {
+    const continuationWrite = createDeferred<void>()
+    saveActiveSession.mockImplementationOnce(() => continuationWrite.promise)
+    const { result, unmount } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    let operation!: ReturnType<typeof result.current.continueStaleSession>
+    act(() => {
+      operation = result.current.continueStaleSession()
+    })
+    unmount()
+    continuationWrite.resolve()
+
+    await expect(operation).resolves.toEqual({ status: 'ignored' })
+  })
+
+  it('returns discarded for a valid stale discard even though that session is now closed', async () => {
+    discardStaleSessionLifecycle.mockImplementationOnce(async (
+      dependencies: { clearConfirmed(): void },
+    ) => {
+      dependencies.clearConfirmed()
+      return { status: 'discarded', replacement: null }
+    })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    let outcome: Awaited<ReturnType<typeof result.current.discardStaleSession>>
+    await act(async () => {
+      outcome = await result.current.discardStaleSession()
+    })
+
+    expect(outcome!).toEqual({ status: 'discarded', replacement: null })
+  })
+
+  it('returns ignored for a stale discard result invalidated by uid change', async () => {
+    const lifecycle = createDeferred<{ status: 'discarded'; replacement: null }>()
+    discardStaleSessionLifecycle.mockReturnValueOnce(lifecycle.promise)
+    const { result, rerender } = renderHook(
+      ({ uid }: { uid: string }) => useActiveSession(uid),
+      { initialProps: { uid: 'user-1' } },
+    )
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    let operation!: ReturnType<typeof result.current.discardStaleSession>
+    act(() => {
+      operation = result.current.discardStaleSession()
+    })
+    rerender({ uid: 'user-2' })
+    lifecycle.resolve({ status: 'discarded', replacement: null })
+
+    await expect(operation).resolves.toEqual({ status: 'ignored' })
+  })
+
+  it('returns ignored instead of rejecting a stale discard invalidated by unmount', async () => {
+    const lifecycle = createDeferred<{ status: 'discarded'; replacement: null }>()
+    discardStaleSessionLifecycle.mockReturnValueOnce(lifecycle.promise)
+    const { result, unmount } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    let operation!: ReturnType<typeof result.current.discardStaleSession>
+    act(() => {
+      operation = result.current.discardStaleSession()
+    })
+    unmount()
+    lifecycle.reject(new Error('old discard failed'))
+
+    await expect(operation).resolves.toEqual({ status: 'ignored' })
   })
 })

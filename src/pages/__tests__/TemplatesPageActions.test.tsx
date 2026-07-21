@@ -340,4 +340,26 @@ describe('TemplatesPage launch actions', () => {
     expect(cardFor('Plan A')).toBeInTheDocument()
     expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
   })
+
+  it('keeps an unresolved plan A delete error when plan B delete is attempted', async () => {
+    mocks.deleteTemplate.mockRejectedValueOnce(new Error('offline'))
+
+    await renderPage()
+
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Usuń szablon Plan A' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    await act(async () => {
+      await expect(mocks.deleteTemplate.mock.results[0]?.value).rejects.toThrow('offline')
+    })
+
+    const alert = await within(cardFor('Plan A')).findByRole('alert')
+    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Usuń szablon Plan B' })
+
+    expect(planBDelete).toBeDisabled()
+    fireEvent.click(planBDelete)
+    expect(screen.queryByRole('button', { name: 'Potwierdź usunięcie' })).not.toBeInTheDocument()
+    expect(within(cardFor('Plan A')).getByRole('alert')).toBe(alert)
+    expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
+  })
 })

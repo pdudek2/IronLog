@@ -1,7 +1,11 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import BottomNav from '../../components/BottomNav'
+import MobileInteractionProvider from '../../components/MobileInteractionProvider'
+import TopNav from '../../components/TopNav'
 import type { WorkoutSummary } from '../../lib/workoutService'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useWorkoutStore, type ActiveWorkout } from '../../store/workoutStore'
@@ -20,6 +24,7 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   preloadRouteByPath: vi.fn(),
   activeSessionHasWork: false,
+  activeSessionListener: null as null | ((snapshot: { session: ActiveWorkout | null }) => void),
 }))
 
 vi.mock('../../store/authStore', () => ({
@@ -69,7 +74,13 @@ vi.mock('../../lib/activeSessionService', () => ({
   hasActiveSessionWork: (session: ActiveWorkout | null | undefined) => (
     Boolean(session) && mocks.activeSessionHasWork
   ),
-  subscribeToActiveSession: () => vi.fn(),
+  subscribeToActiveSession: (
+    _uid: string,
+    onChange: (snapshot: { session: ActiveWorkout | null }) => void,
+  ) => {
+    mocks.activeSessionListener = onChange
+    return vi.fn()
+  },
 }))
 
 vi.mock('../../router/pageLoaders', () => ({
@@ -150,9 +161,46 @@ describe('Dashboard workout projection status', () => {
     mocks.preloadRouteByPath.mockReset()
     mocks.preloadRouteByPath.mockResolvedValue(undefined)
     mocks.activeSessionHasWork = false
+    mocks.activeSessionListener = null
     mocks.user = { uid: 'user-1' }
     useDashboardStore.getState().clearSnapshot()
     useWorkoutStore.getState().clearWorkout()
+  })
+
+  it('hydrates cold dashboard remote work so the hero and shell agree to resume', async () => {
+    mocks.getRecentWorkouts.mockResolvedValue([])
+
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <MobileInteractionProvider>
+          <TopNav />
+          <DashboardPage />
+          <BottomNav />
+        </MobileInteractionProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' }))
+        .toHaveLength(4)
+    })
+
+    mocks.activeSessionHasWork = true
+    act(() => {
+      mocks.activeSessionListener?.({
+        session: {
+          sessionId: 'remote-session',
+          startedAt: 1,
+          label: 'Push',
+          exercises: [],
+        },
+      })
+    })
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Wznów trening' })).toHaveLength(4)
+    })
+    expect(useWorkoutStore.getState().active?.sessionId).toBe('remote-session')
   })
 
   it('hands off a new workout route once after its preload settles', async () => {
@@ -407,6 +455,39 @@ describe('Dashboard workout projection status', () => {
 
     expect(within(failedRow as HTMLElement).queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('Push day')).toBeInTheDocument()
+    expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps an unresolved workout A delete error when workout B delete is attempted', async () => {
+    const workoutA = { ...pendingWorkout, materialized: true }
+    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
+    mocks.getRecentWorkouts.mockResolvedValueOnce([workoutA, workoutB])
+    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
+    mocks.deleteWorkout.mockRejectedValueOnce(new Error('offline'))
+
+    render(<DashboardPage />)
+
+    await screen.findByText('Push day')
+    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    await act(async () => {
+      await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
+    })
+
+    const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
+    const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
+    expect(pushRow).not.toBeNull()
+    expect(pullRow).not.toBeNull()
+    const alert = await within(pushRow as HTMLElement).findByRole('alert')
+    const pullDelete = within(pullRow as HTMLElement).getByRole('button', {
+      name: /Usuń trening Pull day/,
+    })
+
+    expect(pullDelete).toBeDisabled()
+    fireEvent.click(pullDelete)
+    expect(screen.queryByRole('button', { name: 'Potwierdź usunięcie' })).not.toBeInTheDocument()
+    expect(within(pushRow as HTMLElement).getByRole('alert')).toBe(alert)
     expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
   })
 

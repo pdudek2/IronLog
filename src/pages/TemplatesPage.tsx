@@ -94,14 +94,14 @@ export default function TemplatesPage() {
   }
 
   function handleDeleteConfirmed() {
-    if (!deleteTarget || deleteOperation?.status === 'pending') return
+    if (!deleteTarget || deleteOperation) return
     const target = deleteTarget
     setDeleteTarget(null)
     void runTemplateDelete(target)
   }
 
   function requestTemplateDelete(target: WorkoutTemplate) {
-    if (deleteOperation?.status === 'pending') return
+    if (deleteOperation) return
     setDeleteTarget(target)
   }
 
@@ -344,7 +344,7 @@ export default function TemplatesPage() {
                         type="button"
                         aria-label={`Usuń szablon ${template.name}`}
                         onClick={() => requestTemplateDelete(template)}
-                        disabled={deleteOperation?.status === 'pending'}
+                        disabled={deleteOperation !== null}
                         aria-describedby={templateDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
                         className="planner-icon-action planner-icon-action--danger"
                       >

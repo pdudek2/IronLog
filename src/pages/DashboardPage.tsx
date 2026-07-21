@@ -157,6 +157,7 @@ export default function DashboardPage() {
   const { user } = useAuthStore()
   const { profile, loading, setProfile, setLoading } = useProfileStore()
   const active = useWorkoutStore((state) => state.active)
+  const hydrateActiveWorkout = useWorkoutStore((state) => state.hydrateFromDoc)
   const navigate = useNavigate()
   const {
     pendingLaunch,
@@ -365,8 +366,11 @@ export default function DashboardPage() {
     if (!user) return
     return subscribeToActiveSession(user.uid, ({ session }) => {
       setRemoteActiveSession(session)
+      if (session && hasActiveSessionWork(session) && !hasActiveSessionWork(useWorkoutStore.getState().active)) {
+        hydrateActiveWorkout(session)
+      }
     })
-  }, [user])
+  }, [hydrateActiveWorkout, user])
 
   const effectiveActive = useMemo(
     () => (hasActiveSessionWork(active) ? active : remoteActiveSession),
@@ -375,7 +379,7 @@ export default function DashboardPage() {
   const hasActiveWork = useMemo(() => hasActiveSessionWork(effectiveActive), [effectiveActive])
 
   function handleDelete(id: string) {
-    if (deleteOperation?.status === 'pending') return
+    if (deleteOperation) return
     setConfirmDelete(id)
   }
 
@@ -424,7 +428,7 @@ export default function DashboardPage() {
   }
 
   function confirmDeleteWorkout() {
-    if (!confirmDelete || deleteOperation?.status === 'pending') return
+    if (!confirmDelete || deleteOperation) return
     const workoutId = confirmDelete
     setConfirmDelete(null)
     void runWorkoutDelete(workoutId)
@@ -963,7 +967,7 @@ export default function DashboardPage() {
                                 }}
                                 whileHover={{ opacity: 1 }}
                                 whileTap={{ scale: 0.85 }}
-                                disabled={deleteOperation?.status === 'pending'}
+                                disabled={deleteOperation !== null}
                                 aria-describedby={workoutDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
                                 aria-label={`Usuń trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
                               >

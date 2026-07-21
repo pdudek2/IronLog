@@ -1,6 +1,6 @@
 # Faza 6A — Stream i concurrency AI
 
-**Status:** zatwierdzony projekt — oczekuje na przegląd zapisanej specyfikacji
+**Status:** zatwierdzony — plan wdrożenia gotowy
 
 **Data:** 2026-07-21
 

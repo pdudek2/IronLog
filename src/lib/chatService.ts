@@ -1,5 +1,6 @@
 import { auth } from './firebase'
 import { getClaudeModel } from './aiKeyStorage'
+import { isAbortError, readChatStream } from './chatStreamProtocol'
 
 export type ChatRole = 'user' | 'assistant'
 
@@ -43,9 +44,10 @@ export interface ClaudeModelOption {
   label: string
 }
 
-interface StreamChatReplyOptions {
+export interface StreamChatReplyOptions {
   apiKey: string
   messages: Array<Pick<ChatMessage, 'role' | 'content'>>
+  signal: AbortSignal
   onChunk: (chunk: string) => void
 }
 
@@ -65,6 +67,7 @@ async function getAuthenticatedUserToken() {
 export async function streamChatReply({
   apiKey,
   messages,
+  signal,
   onChunk,
 }: StreamChatReplyOptions): Promise<string> {
   const idToken = await getAuthenticatedUserToken()
@@ -75,6 +78,7 @@ export async function streamChatReply({
   try {
     response = await fetch(chatApiUrl, {
       method: 'POST',
+      signal,
       headers: {
         Authorization: `Bearer ${idToken}`,
         'Content-Type': 'application/json',
@@ -85,7 +89,8 @@ export async function streamChatReply({
         messages,
       }),
     })
-  } catch {
+  } catch (error) {
+    if (isAbortError(error)) throw error
     throw new Error(
       `Lokalnie endpoint AI nie jest dostępny pod ${chatApiUrl}. Uruchom \`npm run dev:api\` obok \`npm run dev:web\`, albo po prostu \`npm run dev:all\`.`,
     )
@@ -108,31 +113,15 @@ export async function streamChatReply({
   }
 
   if (!response.body) {
-    return response.text()
+    throw new Error('Stream AI nie zwrócił danych.')
   }
 
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let fullText = ''
-
-  while (true) {
-    const { value, done } = await reader.read()
-    if (done) break
-
-    const chunk = decoder.decode(value, { stream: true })
-    if (!chunk) continue
-
-    fullText += chunk
-    onChunk(chunk)
+  const contentType = response.headers.get('Content-Type')?.toLowerCase() ?? ''
+  if (!contentType.includes('application/x-ndjson')) {
+    throw new Error('Stream AI zwrócił niepoprawny format odpowiedzi.')
   }
 
-  const tail = decoder.decode()
-  if (tail) {
-    fullText += tail
-    onChunk(tail)
-  }
-
-  return fullText.trim()
+  return readChatStream(response.body, { signal, onChunk })
 }
 
 export async function generateTrainingPlan({

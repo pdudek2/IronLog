@@ -1,22 +1,31 @@
-import { test, expect } from './fixtures'
+import { test, expect, type Page } from './fixtures'
 import { expectAppReady } from './support/appReady'
+import { installMockAiRuntime, type MockAiAttempt } from './support/mockAiStream'
 
 /**
- * Chat E2E tests — UI level only.
- *
- * Full flow with real AI responses is NOT tested here because it requires
- * a real Claude API key (BYOK model). This is a deliberate decision:
- * - API keys should not be in CI/CD secrets for a student project
- * - Real API calls add non-determinism and latency to the test suite
- * - AI response quality cannot be asserted deterministically
- *
- * To test the full chat flow manually: add your Claude API key via the
- * AiKeyPanel on /chat and use the app normally.
- *
- * BLOCKER: Full AI chat E2E requires either:
- *   a) A real Anthropic API key in .env.test (opt-in, manual only)
- *   b) A mock server intercepting /api/ai-chat (future work)
+ * Chat E2E tests use a browser-local NDJSON runtime for AI lifecycle coverage.
+ * No Anthropic request or test API key leaves the browser context.
  */
+
+const QUESTION = 'Czy progresuję?'
+
+async function openChatWithMock(page: Page, attempts: MockAiAttempt[]) {
+  await installMockAiRuntime(page, attempts)
+  await page.goto('/chat')
+  await expectAppReady(page, '/chat')
+  await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
+}
+
+async function sendQuestion(page: Page) {
+  await page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' }).fill(QUESTION)
+  await page.getByRole('button', { name: 'Wyślij' }).click()
+}
+
+async function expectAbortCount(page: Page, count: number) {
+  await expect.poll(() => page.evaluate(() => (
+    window as typeof window & { __ironlogMockAiAbortCount?: number }
+  ).__ironlogMockAiAbortCount ?? 0)).toBe(count)
+}
 
 test.describe('Chat UI', () => {
   test('chat page loads without console errors', async ({ page }) => {
@@ -75,5 +84,81 @@ test.describe('Chat UI', () => {
     const conversationBtn = modeSwitch.getByRole('button', { name: /^Rozmowa/i })
     await conversationBtn.click()
     await expect(page.getByRole('heading', { name: 'Decyzje treningowe' })).toBeVisible({ timeout: 5_000 })
+  })
+
+  test('removes a partial answer and exposes retry after a stream error', async ({ page }) => {
+    await openChatWithMock(page, [{
+      frames: [
+        { delayMs: 20, frame: { type: 'chunk', text: 'Częściowa odpowiedź' } },
+        { delayMs: 150, frame: { type: 'error', message: 'Połączenie zostało zerwane.' } },
+      ],
+    }])
+
+    await sendQuestion(page)
+    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toBeVisible()
+    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toHaveCount(0)
+    await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
+
+    const alert = page.getByRole('alert')
+    await expect(alert).toContainText('Połączenie zostało zerwane.')
+    const retry = page.getByRole('button', { name: 'Ponów odpowiedź AI' })
+    await expect(retry).toBeVisible()
+    await retry.focus()
+    await expect(retry).toBeFocused()
+    await page.screenshot({ path: 'test-results/chat-stream-failed.png', fullPage: true })
+  })
+
+  test('aborts on mode switch and retries without duplicating the question', async ({ page }) => {
+    await openChatWithMock(page, [
+      {
+        frames: [{ delayMs: 20, frame: { type: 'chunk', text: 'Częściowa odpowiedź' } }],
+        holdOpen: true,
+      },
+      {
+        frames: [
+          { delayMs: 20, frame: { type: 'chunk', text: 'Pełna odpowiedź' } },
+          { delayMs: 20, frame: { type: 'done' } },
+        ],
+      },
+    ])
+
+    await sendQuestion(page)
+    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toBeVisible()
+
+    const modeSwitch = page.getByRole('group', { name: 'Tryb AI Coacha' })
+    await modeSwitch.getByRole('button', { name: /^Plan/i }).click()
+    await expectAbortCount(page, 1)
+    await expect(page.getByRole('heading', { name: 'Brief treningowy' })).toBeVisible()
+
+    await modeSwitch.getByRole('button', { name: /^Rozmowa/i }).click()
+    await expect(page.getByRole('status')).toContainText('Generowanie przerwane')
+    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toHaveCount(0)
+    await page.screenshot({ path: 'test-results/chat-stream-interrupted.png', fullPage: true })
+
+    await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
+    await page.getByRole('button', { name: 'Ponów odpowiedź AI' }).click()
+    await expect(page.getByText('Pełna odpowiedź', { exact: true })).toBeVisible()
+    await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
+  })
+
+  test('aborts on Reset and ignores late assistant text', async ({ page }) => {
+    await openChatWithMock(page, [{
+      frames: [
+        { delayMs: 20, frame: { type: 'chunk', text: 'Częściowa odpowiedź' } },
+        { delayMs: 250, frame: { type: 'chunk', text: 'Spóźniony tekst' } },
+      ],
+      holdOpen: true,
+    }])
+
+    await sendQuestion(page)
+    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Reset' }).click()
+    await expectAbortCount(page, 1)
+
+    await expect(page.getByText('Zacznij od pytania', { exact: true })).toBeVisible()
+    await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toHaveCount(0)
+    await page.waitForTimeout(350)
+    await expect(page.getByText('Spóźniony tekst', { exact: true })).toHaveCount(0)
   })
 })

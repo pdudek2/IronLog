@@ -86,12 +86,35 @@ export async function pipeAnthropicStream({
     await cancelReader()
     return { status: 'aborted' }
   }
-  const fail = async (reason: ChatStreamFailureReason): Promise<AnthropicStreamResult> => {
-    if (isDisconnected()) return abortStream()
+  const writeSafely = async (
+    frame: ServerChatStreamFrame,
+    isTerminal = false,
+  ): Promise<boolean> => {
+    if (isDisconnected()) {
+      await cancelReader()
+      return false
+    }
 
+    try {
+      writeFrame(frame)
+    } catch (error) {
+      if (isDisconnected()) {
+        await cancelReader()
+        return false
+      }
+      throw error
+    }
+
+    if (isTerminal) terminalSent = true
+    return true
+  }
+  const fail = async (reason: ChatStreamFailureReason): Promise<AnthropicStreamResult> => {
     if (!terminalSent) {
-      terminalSent = true
-      writeFrame({ type: 'error', message: GENERIC_STREAM_ERROR })
+      const written = await writeSafely(
+        { type: 'error', message: GENERIC_STREAM_ERROR },
+        true,
+      )
+      if (!written) return { status: 'aborted' }
     }
 
     return { status: 'error', reason }
@@ -143,10 +166,8 @@ export async function pipeAnthropicStream({
 
           if (event.type === 'message_stop') {
             if (!hasContent) return await fail('empty-response')
-            if (isDisconnected()) return await abortStream()
-
-            terminalSent = true
-            writeFrame({ type: 'done' })
+            const written = await writeSafely({ type: 'done' }, true)
+            if (!written) return { status: 'aborted' }
             return { status: 'done' }
           }
 
@@ -161,8 +182,8 @@ export async function pipeAnthropicStream({
               }
 
               if (event.delta.text.length > 0) {
-                if (isDisconnected()) return await abortStream()
-                writeFrame({ type: 'chunk', text: event.delta.text })
+                const written = await writeSafely({ type: 'chunk', text: event.delta.text })
+                if (!written) return { status: 'aborted' }
                 hasContent = true
               }
             }

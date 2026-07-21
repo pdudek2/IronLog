@@ -100,6 +100,46 @@ describe('pipeAnthropicStream', () => {
     ])
   })
 
+  it('parses CRLF-delimited SSE events', async () => {
+    const frames: ServerChatStreamFrame[] = []
+    const result = await pipeAnthropicStream({
+      body: streamFrom(
+        'event: content_block_delta\r\n',
+        'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Plan"}}\r\n\r\n',
+        'event: message_stop\r\ndata: {"type":"message_stop"}\r\n\r\n',
+      ),
+      signal: new AbortController().signal,
+      isClientOpen: () => true,
+      writeFrame: (frame) => frames.push(frame),
+    })
+
+    expect(result).toEqual({ status: 'done' })
+    expect(frames).toEqual([
+      { type: 'chunk', text: 'Plan' },
+      { type: 'done' },
+    ])
+  })
+
+  it('joins multiple data lines within one SSE event', async () => {
+    const frames: ServerChatStreamFrame[] = []
+    const result = await pipeAnthropicStream({
+      body: streamFrom(
+        'data: {"type":"content_block_delta",\n',
+        'data: "delta":{"type":"text_delta","text":"Plan"}}\n\n',
+        'data: {"type":"message_stop"}\n\n',
+      ),
+      signal: new AbortController().signal,
+      isClientOpen: () => true,
+      writeFrame: (frame) => frames.push(frame),
+    })
+
+    expect(result).toEqual({ status: 'done' })
+    expect(frames).toEqual([
+      { type: 'chunk', text: 'Plan' },
+      { type: 'done' },
+    ])
+  })
+
   it('turns an upstream error after content into an error terminal', async () => {
     const frames: ServerChatStreamFrame[] = []
     const result = await pipeAnthropicStream({
@@ -240,6 +280,64 @@ describe('pipeAnthropicStream', () => {
     expect(frames).toEqual([])
   })
 
+  it.each([
+    {
+      target: 'chunk' as const,
+      events: [
+        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
+      ],
+    },
+    {
+      target: 'done' as const,
+      events: [
+        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
+        { type: 'message_stop' },
+      ],
+    },
+    {
+      target: 'error' as const,
+      events: [
+        { type: 'error', error: { message: 'upstream detail' } },
+      ],
+    },
+  ])('returns aborted when a $target write loses the client and throws', async ({ target, events }) => {
+    const controller = new AbortController()
+    const writtenFrames: ServerChatStreamFrame[] = []
+    let clientOpen = true
+
+    const resultPromise = pipeAnthropicStream({
+      body: anthropicStream(...events),
+      signal: controller.signal,
+      isClientOpen: () => clientOpen,
+      writeFrame: (frame) => {
+        if (frame.type === target) {
+          clientOpen = false
+          controller.abort('client-disconnected')
+          throw new Error('socket write failed')
+        }
+        writtenFrames.push(frame)
+      },
+    })
+
+    await expect(resultPromise).resolves.toEqual({ status: 'aborted' })
+    expect(writtenFrames.some((frame) => frame.type === target)).toBe(false)
+  })
+
+  it('rethrows a writer exception while the signal and client remain open', async () => {
+    const writeError = new Error('writer programming failure')
+
+    await expect(pipeAnthropicStream({
+      body: anthropicStream(
+        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
+      ),
+      signal: new AbortController().signal,
+      isClientOpen: () => true,
+      writeFrame: () => {
+        throw writeError
+      },
+    })).rejects.toBe(writeError)
+  })
+
   it('cancels a pending reader when the signal aborts', async () => {
     const controller = new AbortController()
     const cancel = vi.fn()
@@ -260,6 +358,41 @@ describe('pipeAnthropicStream', () => {
 
     await expect(resultPromise).resolves.toEqual({ status: 'aborted' })
     expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('removes the abort listener and releases the reader lock after completion', async () => {
+    const controller = new AbortController()
+    const addEventListener = vi.spyOn(controller.signal, 'addEventListener')
+    const removeEventListener = vi.spyOn(controller.signal, 'removeEventListener')
+    const cancel = vi.fn()
+    const body = new ReadableStream<Uint8Array>({
+      start(streamController) {
+        streamController.enqueue(encoder.encode([
+          anthropicEvent({
+            type: 'content_block_delta',
+            delta: { type: 'text_delta', text: 'Plan' },
+          }),
+          anthropicEvent({ type: 'message_stop' }),
+        ].join('')))
+      },
+      cancel,
+    })
+
+    await expect(pipeAnthropicStream({
+      body,
+      signal: controller.signal,
+      isClientOpen: () => true,
+      writeFrame: vi.fn(),
+    })).resolves.toEqual({ status: 'done' })
+
+    const abortListener = addEventListener.mock.calls.find(([type]) => type === 'abort')?.[1]
+    expect(abortListener).toBeDefined()
+    expect(removeEventListener).toHaveBeenCalledWith('abort', abortListener)
+    expect(body.locked).toBe(false)
+
+    controller.abort('after-terminal')
+    await Promise.resolve()
+    expect(cancel).not.toHaveBeenCalled()
   })
 })
 

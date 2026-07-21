@@ -195,6 +195,16 @@ export default function ChatPage() {
     activeGenerationRef.current = null
   }
 
+  function getChatActionApiKey(): string | null {
+    const apiKey = getClaudeApiKey()
+    if (configured && apiKey) return apiKey
+
+    cancelActiveGeneration('superseded')
+    setConfigured(false)
+    setError('Dodaj Claude API key, żeby uruchomić AI Coach.')
+    return null
+  }
+
   useEffect(() => {
     if (!isDemoUser || demoSeededRef.current) return
     demoSeededRef.current = true
@@ -226,7 +236,7 @@ export default function ChatPage() {
     }
   }, [])
 
-  async function runChatGeneration(requestMessages: ChatMessage[], questionId: string) {
+  async function runChatGeneration(requestMessages: ChatMessage[], questionId: string, apiKey: string) {
     cancelActiveGeneration('superseded', false)
 
     const generationId = crypto.randomUUID()
@@ -244,7 +254,7 @@ export default function ChatPage() {
 
     try {
       const reply = await streamChatReply({
-        apiKey: getClaudeApiKey(),
+        apiKey,
         messages: requestMessages.map(({ role, content }) => ({ role, content })),
         signal: controller.signal,
         onChunk: (chunk) => {
@@ -284,11 +294,8 @@ export default function ChatPage() {
     const prompt = (rawPrompt ?? input).trim()
     if (!prompt || sending) return
 
-    if (!getClaudeApiKey()) {
-      setConfigured(false)
-      setError('Dodaj Claude API key, żeby uruchomić AI Coach.')
-      return
-    }
+    const apiKey = getChatActionApiKey()
+    if (!apiKey) return
 
     shouldStickToBottomRef.current = true
     const nextMessages: ChatMessage[] = [
@@ -303,14 +310,16 @@ export default function ChatPage() {
 
     setMessages(nextMessages)
     setInput('')
-    await runChatGeneration(nextMessages, questionId)
+    await runChatGeneration(nextMessages, questionId, apiKey)
   }
 
   function handleRetry() {
     if (generationState.status !== 'interrupted' && generationState.status !== 'failed') return
     const { questionId } = generationState
     if (!messages.some((message) => message.id === questionId && message.role === 'user')) return
-    void runChatGeneration(messages, questionId)
+    const apiKey = getChatActionApiKey()
+    if (!apiKey) return
+    void runChatGeneration(messages, questionId, apiKey)
   }
 
   function handleModeChange(nextTab: AiWorkspaceTab) {

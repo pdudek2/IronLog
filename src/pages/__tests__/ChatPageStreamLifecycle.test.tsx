@@ -1,6 +1,6 @@
 import { createElement, type ReactNode } from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { streamChatReply } from '../../lib/chatService'
 import ChatPage from '../ChatPage'
 
@@ -9,18 +9,24 @@ const mocks = vi.hoisted(() => ({
   generateTrainingPlan: vi.fn(),
   streamChatReply: vi.fn(),
   navigate: vi.fn(),
+  apiKey: 'sk-ant-test-key-longer-than-twenty-characters',
 }))
 
 vi.mock('../../store/authStore', () => ({
   useAuthStore: () => ({ user: { uid: 'user-1', email: 'user@example.com' } }),
 }))
 vi.mock('../../lib/aiKeyStorage', () => ({
-  clearClaudeApiKey: vi.fn(),
+  clearClaudeApiKey: () => {
+    mocks.apiKey = ''
+  },
   clearClaudeModel: vi.fn(),
-  getClaudeApiKey: () => 'sk-ant-test-key-longer-than-twenty-characters',
+  getClaudeApiKey: () => mocks.apiKey,
   getClaudeModel: () => 'claude-test',
-  hasClaudeApiKey: () => true,
-  setClaudeApiKey: (value: string) => value.trim(),
+  hasClaudeApiKey: () => Boolean(mocks.apiKey),
+  setClaudeApiKey: (value: string) => {
+    mocks.apiKey = value.trim()
+    return mocks.apiKey
+  },
   setClaudeModel: (value: string) => value.trim(),
 }))
 vi.mock('../../lib/chatService', () => ({
@@ -66,6 +72,16 @@ function deferredReply(options: PendingReply['options']): Promise<string> {
   })
 }
 
+function rejectWithLateChunkOnAbort(options: PendingReply['options']): Promise<string> {
+  return new Promise((resolve, reject) => {
+    pendingReplies.push({ options, resolve, reject })
+    options.signal.addEventListener('abort', () => {
+      options.onChunk('Spóźniony tekst po unmount')
+      reject(new DOMException('Komponent odmontowany.', 'AbortError'))
+    }, { once: true })
+  })
+}
+
 async function sendPrompt(prompt: string) {
   const composer = screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })
   await waitFor(() => expect(composer).toBeEnabled())
@@ -78,6 +94,7 @@ async function sendPrompt(prompt: string) {
 describe('ChatPage stream lifecycle', () => {
   beforeEach(() => {
     pendingReplies.length = 0
+    mocks.apiKey = 'sk-ant-test-key-longer-than-twenty-characters'
     mocks.fetchAvailableClaudeModels.mockReset()
     mocks.fetchAvailableClaudeModels.mockResolvedValue([
       { id: 'claude-test', label: 'Claude Test' },
@@ -86,6 +103,10 @@ describe('ChatPage stream lifecycle', () => {
     mocks.streamChatReply.mockReset()
     mocks.streamChatReply.mockImplementation(deferredReply)
     mocks.navigate.mockReset()
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
   })
 
   it('aborts and invalidates a generation when Reset is pressed', async () => {
@@ -123,14 +144,59 @@ describe('ChatPage stream lifecycle', () => {
   })
 
   it('aborts the active generation on unmount', async () => {
+    mocks.streamChatReply.mockImplementationOnce(rejectWithLateChunkOnAbort)
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const { unmount } = render(<ChatPage />)
     await sendPrompt('Czy progresuję?')
     const first = pendingReplies[0]
 
     unmount()
+    await act(async () => Promise.resolve())
 
     expect(first.options.signal).toBeInstanceOf(AbortSignal)
     expect(first.options.signal.aborted).toBe(true)
+    expect(screen.queryByText('Spóźniony tekst po unmount')).not.toBeInTheDocument()
+    expect(consoleError.mock.calls.flat().join(' ')).not.toMatch(/unmounted component|not wrapped in act/i)
+  })
+
+  it('does not retry an interrupted generation after the API key is removed', async () => {
+    render(<ChatPage />)
+    await sendPrompt('Czy progresuję?')
+
+    fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
+    mocks.apiKey = ''
+    fireEvent.click(screen.getByRole('button', { name: /Rozmowa/ }))
+    expect(screen.getByRole('status')).toHaveTextContent('Generowanie przerwane')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ponów odpowiedź AI' }))
+
+    expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('alert')).toHaveTextContent('Dodaj Claude API key, żeby uruchomić AI Coach.')
+    expect(screen.queryByRole('button', { name: 'Ponów odpowiedź AI' })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+  })
+
+  it('clears failed-generation feedback when a new send finds no API key', async () => {
+    render(<ChatPage />)
+    await sendPrompt('Czy progresuję?')
+    const first = pendingReplies[0]
+
+    await act(async () => {
+      first.reject(new Error('Awaria testowa.'))
+    })
+    expect(screen.getByRole('button', { name: 'Ponów odpowiedź AI' })).toBeEnabled()
+
+    mocks.apiKey = ''
+    fireEvent.change(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' }), {
+      target: { value: 'Nowe pytanie' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Wyślij' }))
+
+    expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
+    expect(within(screen.getByRole('log')).queryByText('Nowe pytanie')).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Dodaj Claude API key, żeby uruchomić AI Coach.')
+    expect(screen.queryByText('Awaria testowa.')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ponów odpowiedź AI' })).not.toBeInTheDocument()
   })
 
   it('clears a partial chunk and exposes retry after a generation failure', async () => {

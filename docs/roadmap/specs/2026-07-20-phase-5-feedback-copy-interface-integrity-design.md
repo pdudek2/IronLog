@@ -1,6 +1,6 @@
 # IronLog — projekt Fazy 5: feedback, copy i integralność interfejsu
 
-**Status:** zaimplementowany i zweryfikowany (Faza 5 domknięta)
+**Status:** zaimplementowany i zweryfikowany na feature branchu; integracja oczekuje na decyzję
 
 **Data:** 2026-07-21
 
@@ -476,4 +476,5 @@ Implementacja nie rozpoczyna się na podstawie samego speca. Wymaga zatwierdzone
 ### Odchylenia od planu
 
 - Normalizacja scrollbara okna dla desktopowego harnessu testowego pozostała odchyleniem testowym, nieproduktowym.
-- Nie uruchamiano `project-convergence` (brak wsparcia w bieżącym kontekście wykonania); nie zgłaszano go jako otwartej blokady, tylko jako ograniczenie operacyjne.
+- `project-convergence` uruchomiono 2026-07-21. Wynik: kontrakt i implementacja są zbieżne, ryzyko pozostaje podwyższone przez lifecycle sesji i operacyjny reseed demo, a końcowy post-integration closeout jest prawidłowo wstrzymany do wyboru sposobu integracji brancha.
+- Bezpośrednia obserwacja w lokalnej przeglądarce na emulatorach potwierdziła po zimnym wejściu spójne „Wznów trening” w dashboardzie i shellu, viewport `390×844` bez poziomego overflow oraz brak błędów konsoli.

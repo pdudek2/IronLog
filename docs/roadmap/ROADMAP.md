@@ -1,9 +1,9 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4, 5 i 6A zakończone; Faza 2B pozostaje niezależnie READY**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4, 5 i 6A zakończone; projekt Fazy 6B zatwierdzony; Faza 2B pozostaje niezależnie READY**
 Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
-Ostatnia aktualizacja: 2026-07-21
+Ostatnia aktualizacja: 2026-07-22
 
 ## 1. Cel dokumentu
 
@@ -73,7 +73,7 @@ Aktualny baseline jakości:
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
 | 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DONE | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
 | 10 | 6A — Stream i concurrency AI | P1 | DONE | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
-| 11 | 6B — Poprawność i koszt kontekstu AI | P1 | READY | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
+| 11 | 6B — Poprawność i koszt kontekstu AI | P1 | DESIGN APPROVED | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
 | 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | READY | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
 | 13 | S — Hardening CSP | P2 | READY | Pozostała polityka CSP jest egzekwowana albo rzeczywiście raportuje naruszenia |
 | 14 | 7 — Bramka release | P0 | BLOCKED | Jedna powtarzalna procedura potwierdza gotowość po zakończeniu wymaganych faz |
@@ -368,6 +368,8 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 **Zależności:** minimalna obserwacja błędów z TEST-05.
 
 ### Faza 6B — Poprawność i koszt kontekstu AI
+
+**Status: DESIGN APPROVED.** Docelowy kontrakt został zatwierdzony i zapisany w [`specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md`](specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md). Szczegółowy plan wykonawczy powstaje dopiero po przeglądzie zapisanego speca.
 
 **Cel:** nie utożsamiać awarii odczytu z brakiem danych oraz ograniczyć koszt budowy kontekstu.
 

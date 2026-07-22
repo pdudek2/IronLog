@@ -5,6 +5,7 @@ import {
   loadAiUserContext,
   type AiContextReaders,
 } from '../aiContextLoader'
+import { buildChatContextSections } from '../../../server/aiContext'
 
 const emptyReaders = (): AiContextReaders => ({
   profile: vi.fn().mockResolvedValue(null),
@@ -12,6 +13,29 @@ const emptyReaders = (): AiContextReaders => ({
   workouts: vi.fn().mockResolvedValue([]),
   records: vi.fn().mockResolvedValue([]),
 })
+
+const populatedReaders = (): AiContextReaders => ({
+  profile: vi.fn().mockResolvedValue({ displayName: 'Patryk', primaryGoal: 'strength', weeklyGoal: 3, units: 'kg' }),
+  readiness: vi.fn().mockResolvedValue([{ date: '2026-07-22', createdAt: Date.now(), sleep: 4, mood: 4, soreness: 2 }]),
+  workouts: vi.fn().mockResolvedValue([{
+    label: 'Upper A',
+    startedAt: Date.now(),
+    exercises: [{ name: 'Bench Press', sets: [{ weight: 100, reps: 5 }] }],
+  }]),
+  records: vi.fn().mockResolvedValue([{
+    exerciseName: 'Deadlift',
+    maxWeight: 180,
+    maxReps: 3,
+    bestVolume: 3000,
+  }]),
+})
+
+const preservedPromptSignals = {
+  profile: ['Readiness: 75/100', 'Upper A', 'Deadlift: max 180 kg'],
+  readiness: ['Użytkownik: Patryk', 'Upper A', 'Deadlift: max 180 kg'],
+  workouts: ['Użytkownik: Patryk', 'Readiness: 75/100', 'Deadlift: max 180 kg'],
+  records: ['Użytkownik: Patryk', 'Readiness: 75/100', 'Upper A'],
+} as const
 
 describe('loadAiUserContext', () => {
   beforeEach(() => vi.restoreAllMocks())
@@ -36,15 +60,19 @@ describe('loadAiUserContext', () => {
   it.each(['profile', 'readiness', 'workouts', 'records'] as const)(
     'keeps the other fulfilled sources when %s fails',
     async (source) => {
-      const readers = emptyReaders()
+      const readers = populatedReaders()
       vi.mocked(readers[source]).mockRejectedValueOnce(new Error('private source error'))
       vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
       const context = await loadAiUserContext('user-secret', readers)
+      const promptSections = Object.values(buildChatContextSections(context)).join('\n')
 
       expect(context.sources[source]).toBe('unavailable')
       for (const otherSource of ['profile', 'readiness', 'workouts', 'records'] as const) {
         if (otherSource !== source) expect(context.sources[otherSource]).toBe('available')
+      }
+      for (const signal of preservedPromptSignals[source]) {
+        expect(promptSections).toContain(signal)
       }
       expect(console.error).toHaveBeenCalledWith('[ai-chat context source unavailable]', {
         source,

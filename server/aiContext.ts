@@ -223,7 +223,11 @@ export function buildChatContextSections(context: AiUserContext) {
     : formatRecords(context.topRecords)
 
   const monthlyLine = context.sources.workouts === 'unavailable'
-    ? 'Analiza treningów: dane chwilowo niedostępne.'
+    ? [
+        'Analiza treningów: dane chwilowo niedostępne.',
+        ...context.monthlyInsights.signals.map((signal) => `- ${signal}`),
+        ...context.monthlyInsights.recommendations.map((recommendation) => `Rekomendacja: ${recommendation}`),
+      ].join('\n')
     : formatMonthlyInsights(context.monthlyInsights)
 
   return {
@@ -326,26 +330,34 @@ function buildMonthlyInsights({
   readinessEntries: AiReadinessInput[]
   sources: AiContextSourceStatuses
 }): AiMonthlyInsights {
+  const since = now - MONTH_WINDOW_DAYS * DAY_MS
+  const signals: string[] = []
+  const recommendations: string[] = []
+  const lowReadinessStreak = sources.readiness === 'available'
+    ? findLowReadinessStreak(readinessEntries, since, now)
+    : []
+  if (lowReadinessStreak.length >= 2) {
+    signals.push(`readiness był obniżony przez ${lowReadinessStreak.length} dni z rzędu; główne sygnały to sen/nastrój/obolałość.`)
+    recommendations.push('Po takim okresie wracaj przez 1-2 treningi na 80-90% normalnej objętości zamiast nadrabiać wszystko jedną sesją.')
+  }
+
   if (sources.workouts === 'unavailable') {
     return {
       windowDays: MONTH_WINDOW_DAYS,
       workoutCount: 0,
       totalVolume: 0,
       averageWorkoutVolume: 0,
-      signals: [],
-      recommendations: [],
+      signals,
+      recommendations,
     }
   }
 
-  const since = now - MONTH_WINDOW_DAYS * DAY_MS
   const monthlyWorkouts = workouts
     .filter((workout) => workout.startedAt >= since && workout.startedAt <= now)
     .map(summarizeWorkout)
 
   const totalVolume = monthlyWorkouts.reduce((sum, workout) => sum + workout.totalVolume, 0)
   const averageWorkoutVolume = monthlyWorkouts.length > 0 ? Math.round(totalVolume / monthlyWorkouts.length) : 0
-  const signals: string[] = []
-  const recommendations: string[] = []
   const weeklyBuckets = buildWeeklyBuckets(now, monthlyWorkouts)
   const goal = weeklyGoal ?? 3
   const weakBuckets = sources.profile === 'available'
@@ -359,14 +371,6 @@ function buildMonthlyInsights({
 
   for (const bucket of weakBuckets.slice(0, 2)) {
     signals.push(`Wykryto słabszy tydzień ${bucket.index + 1}: ${bucket.workouts} treningów i ${bucket.volume} kg objętości względem celu ${goal} sesji.`)
-  }
-
-  const lowReadinessStreak = sources.readiness === 'available'
-    ? findLowReadinessStreak(readinessEntries, since, now)
-    : []
-  if (lowReadinessStreak.length >= 2) {
-    signals.push(`readiness był obniżony przez ${lowReadinessStreak.length} dni z rzędu; główne sygnały to sen/nastrój/obolałość.`)
-    recommendations.push('Po takim okresie wracaj przez 1-2 treningi na 80-90% normalnej objętości zamiast nadrabiać wszystko jedną sesją.')
   }
 
   if (monthlyWorkouts.length === 0) {

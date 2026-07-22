@@ -275,6 +275,9 @@ function buildPlanSystemPrompt(
     'SYGNAŁY Z OSTATNICH 30 DNI',
     sections.monthlyLine,
     '',
+    sections.recordsHeading,
+    sections.recordsLine,
+    '',
     'DOSTĘPNE ĆWICZENIA',
     catalogLines,
   ].join('\n')

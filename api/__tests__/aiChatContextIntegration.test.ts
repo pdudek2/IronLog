@@ -67,6 +67,39 @@ const validBody = {
   messages: [{ role: 'user', content: 'Pomóż' }],
 }
 
+const validPlanBody = {
+  ...validBody,
+  mode: 'plan' as const,
+  planRequest: {
+    goal: 'siła',
+    daysPerWeek: 2,
+  },
+}
+
+const generatedPlanResponse = {
+  ok: true,
+  status: 200,
+  json: async () => ({
+    content: [{
+      type: 'text',
+      text: JSON.stringify({
+        name: 'Plan siłowy',
+        summary: 'Dwa dni bazowe.',
+        days: [
+          {
+            name: 'Dzień A',
+            exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 80 }],
+          },
+          {
+            name: 'Dzień B',
+            exercises: [{ exerciseId: 'squat', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 100 }],
+          },
+        ],
+      }),
+    }],
+  }),
+} as Response
+
 beforeEach(() => {
   mocks.loadAiUserContext.mockReset()
   mocks.requireUserId.mockReset()
@@ -140,5 +173,47 @@ describe('AI context response metadata', () => {
 
     expect(captured.header('X-IronLog-AI-Context')).toBe('limited;unavailable=readiness')
     expect(captured.text()).toBe('{"type":"chunk","text":"Gotowe"}\n{"type":"done"}\n')
+  })
+
+  it.each([
+    {
+      name: 'available record content',
+      sources: AVAILABLE_AI_CONTEXT_SOURCES,
+      records: [{ exerciseName: 'Deadlift', maxWeight: 180, maxReps: 3, bestVolume: 3000 }],
+      expected: 'Deadlift: max 180 kg, reps 3, volume 3000',
+    },
+    {
+      name: 'unavailable record wording',
+      sources: { ...AVAILABLE_AI_CONTEXT_SOURCES, records: 'unavailable' as const },
+      records: [],
+      expected: 'Rekordy: dane chwilowo niedostępne.',
+    },
+  ])('includes $name in the plan Anthropic prompt', async ({ sources, records, expected }) => {
+    mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
+      sources,
+      profile: null,
+      readinessEntries: [],
+      workouts: [],
+      records,
+    }))
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const fetchMock = vi.fn().mockResolvedValue(generatedPlanResponse)
+    vi.stubGlobal('fetch', fetchMock)
+
+    const captured = createHandlerDoubles(validPlanBody)
+    await handler(captured.req, captured.res)
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const anthropicBody = JSON.parse(String(init.body)) as { system: string }
+    expect(anthropicBody.system).toContain('TOP REKORDY')
+    expect(anthropicBody.system).toContain(expected)
+    expect(captured.status()).toBe(200)
+    expect(captured.json()).toEqual({
+      plan: {
+        name: 'Plan siłowy',
+        summary: 'Dwa dni bazowe.',
+        days: expect.any(Array),
+      },
+    })
   })
 })

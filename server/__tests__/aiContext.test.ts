@@ -114,7 +114,7 @@ describe('buildAiUserContext', () => {
     expect(sections.monthlyLine).toContain('Brak treningów w ostatnich 30 dniach.')
   })
 
-  it('does not derive workout insights when workouts are unavailable', () => {
+  it('keeps a low-readiness streak when workout analysis is unavailable', () => {
     const context = buildAiUserContext({
       now: NOW,
       sources: { ...AVAILABLE_AI_CONTEXT_SOURCES, workouts: 'unavailable' },
@@ -126,8 +126,31 @@ describe('buildAiUserContext', () => {
 
     const sections = buildChatContextSections(context)
     expect(sections.workoutsLine).toBe('Historia treningów: dane chwilowo niedostępne.')
-    expect(sections.monthlyLine).toBe('Analiza treningów: dane chwilowo niedostępne.')
+    expect(sections.monthlyLine).toContain('Analiza treningów: dane chwilowo niedostępne.')
+    expect(sections.monthlyLine).toContain('2 dni z rzędu')
+    expect(sections.monthlyLine).toContain('80-90%')
+    expect(sections.monthlyLine).not.toContain('0 treningów')
     expect(sections.monthlyLine).not.toContain('Brak treningów')
+    expect(sections.monthlyLine).not.toContain('Średnio')
+  })
+
+  it('keeps readiness-derived monthly signals silent when readiness is unavailable', () => {
+    const context = buildAiUserContext({
+      now: NOW,
+      sources: {
+        ...AVAILABLE_AI_CONTEXT_SOURCES,
+        readiness: 'unavailable',
+        workouts: 'unavailable',
+      },
+      profile: { weeklyGoal: 3 },
+      readinessEntries: [readiness(0, 2, 2, 5), readiness(1, 2, 2, 5)],
+      workouts: [],
+      records: [],
+    })
+
+    const sections = buildChatContextSections(context)
+    expect(sections.monthlyLine).toBe('Analiza treningów: dane chwilowo niedostępne.')
+    expect(sections.monthlyLine).not.toContain('readiness')
   })
 
   it('does not call non-consecutive low readiness entries days in a row', () => {

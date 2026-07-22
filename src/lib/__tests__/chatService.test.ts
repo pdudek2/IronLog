@@ -7,11 +7,11 @@ const { auth } = vi.hoisted(() => ({
 vi.mock('../firebase', () => ({ auth, db: {} }))
 vi.mock('../aiKeyStorage', () => ({ getClaudeModel: () => 'claude-test' }))
 
-import { streamChatReply } from '../chatService'
+import { generateTrainingPlan, streamChatReply } from '../chatService'
 
 const encoder = new TextEncoder()
 
-function ndjsonResponse(frames: string): Response {
+function ndjsonResponse(frames: string, context = 'full'): Response {
   const body = new ReadableStream({
     start(controller) {
       controller.enqueue(encoder.encode(frames))
@@ -21,7 +21,10 @@ function ndjsonResponse(frames: string): Response {
 
   return new Response(body, {
     status: 200,
-    headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' },
+    headers: {
+      'Content-Type': 'application/x-ndjson; charset=utf-8',
+      'X-IronLog-AI-Context': context,
+    },
   })
 }
 
@@ -29,6 +32,7 @@ const options = () => ({
   apiKey: 'sk-ant-test-key-longer-than-twenty-characters',
   messages: [{ role: 'user' as const, content: 'Pomóż' }],
   signal: new AbortController().signal,
+  onContext: vi.fn(),
   onChunk: vi.fn(),
 })
 
@@ -70,6 +74,7 @@ describe('streamChatReply', () => {
   it('rejects a successful response without a body', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 200, headers: {
       'Content-Type': 'application/x-ndjson',
+      'X-IronLog-AI-Context': 'full',
     } })))
 
     await expect(streamChatReply(options())).rejects.toThrow('Stream AI nie zwrócił danych.')
@@ -78,6 +83,7 @@ describe('streamChatReply', () => {
   it('rejects a successful response with a non-NDJSON content type', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Gotowe', { status: 200, headers: {
       'Content-Type': 'text/plain',
+      'X-IronLog-AI-Context': 'full',
     } })))
 
     await expect(streamChatReply(options())).rejects.toThrow('Stream AI zwrócił niepoprawny format odpowiedzi.')
@@ -86,6 +92,7 @@ describe('streamChatReply', () => {
   it('rejects a content type that only starts with the NDJSON media type', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Gotowe', { status: 200, headers: {
       'Content-Type': 'application/x-ndjson-extra; charset=utf-8',
+      'X-IronLog-AI-Context': 'full',
     } })))
 
     await expect(streamChatReply(options())).rejects.toThrow('Stream AI zwrócił niepoprawny format odpowiedzi.')
@@ -96,5 +103,67 @@ describe('streamChatReply', () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(aborted))
 
     await expect(streamChatReply(options())).rejects.toBe(aborted)
+  })
+
+  it('reports limited context before reading stream chunks', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ndjsonResponse(
+      '{"type":"chunk","text":"Gotowe"}\n{"type":"done"}\n',
+      'limited;unavailable=readiness,records',
+    )))
+    const onContext = vi.fn()
+    const onChunk = vi.fn(() => {
+      expect(onContext).toHaveBeenCalledWith({
+        status: 'limited',
+        unavailableSources: ['readiness', 'records'],
+      })
+    })
+
+    await streamChatReply({ ...options(), onContext, onChunk })
+
+    expect(onContext).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    null,
+    '',
+    'limited',
+    'limited;unavailable=',
+    'limited;unavailable=unknown',
+    'limited;unavailable=records,records',
+    'limited;unavailable=records,readiness',
+    'full;unavailable=records',
+  ])('rejects invalid AI context metadata %s', async (context) => {
+    const response = ndjsonResponse('{"type":"done"}\n')
+    if (context === null) response.headers.delete('X-IronLog-AI-Context')
+    else response.headers.set('X-IronLog-AI-Context', context)
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
+
+    await expect(streamChatReply({ ...options(), onContext: vi.fn() }))
+      .rejects.toThrow('AI Coach zwrócił niepoprawny status kontekstu.')
+  })
+})
+
+describe('generateTrainingPlan', () => {
+  it('returns plan data with the same parsed context metadata', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      plan: { name: 'Plan', summary: 'Opis', days: [] },
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-IronLog-AI-Context': 'limited;unavailable=profile',
+      },
+    })))
+
+    await expect(generateTrainingPlan({
+      apiKey: 'sk-ant-test-key-longer-than-twenty-characters',
+      request: {
+        goal: 'Siła', daysPerWeek: 3, experience: 'intermediate',
+        equipment: [], focus: '', notes: '',
+      },
+    })).resolves.toEqual({
+      plan: { name: 'Plan', summary: 'Opis', days: [] },
+      context: { status: 'limited', unavailableSources: ['profile'] },
+    })
   })
 })

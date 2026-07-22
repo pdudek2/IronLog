@@ -369,13 +369,16 @@ Szczegółowy plan wykonawczy znajduje się w `docs/roadmap/plans/2026-07-22-pha
 
 ## 18. Wynik weryfikacji
 
-- Focused matrix: 8 plików, 87/87 testów; bez retry, unhandled rejection i prywatnych szczegółów w output.
-- Pełny unit/support: 59 plików, 457/457 testów.
+- Focused matrix po final review: 8 plików, 90/90 testów; bez retry, unhandled rejection i prywatnych szczegółów w output.
+- Pełny unit/support po final review: 59 plików, 460/460 testów.
 - Lint: `eslint .`, exit 0 bez uwag.
 - Build: `tsc -b && vite build`, 878 modułów, exit 0 bez ostrzeżenia.
 - Fresh-emulator desktop chat E2E: 12/12 testów, `--retries=0`; cały `/api/ai-chat` był deterministycznie przechwycony w przeglądarce, więc nie wykonano prawdziwego requestu Anthropic. Narzędzia wypisały wyłącznie ostrzeżenie emulatora Node `DEP0169 url.parse()` oraz ostrzeżenia Playwright/WebServer o `NO_COLOR` ignorowanym przy `FORCE_COLOR`; nie są to ostrzeżenia Fazy 6B.
 - Visual evidence: Observed — surface: Browser; proof: completed Browser DOM events returned limited status before first chunk, attached after done, plan status, 503 alert and successful one-question retry; emitted narrow and desktop screenshots showed clean wrapping/layout, with final browser logs `[]`.
 - Obserwacja wykryła wcześniej brak komunikatu przed pierwszym chunkiem; poprawka `7d9586a` ma pokrycie 18/18 i została ponownie przejrzana bez znalezisk.
-- Focused Elevated-risk review pełnego diffu od `21b15d35af99cd221dfcff0b677dcc577a562084` nie wykazał otwartych znalezisk w ośmiu wymaganych obszarach.
+- Final-review fixes w `83941fe` doprecyzowały zależności analiz: trendy treningowe wymagają treningów, porównanie słabszych tygodni wymaga treningów i profilu, a streak readiness wymaga wyłącznie readiness. Przy niedostępnych treningach prompt zachowuje dostępny niski streak i rekomendację, jawnie oznacza analizę treningów jako niedostępną i nie emituje fałszywego `0 treningów` ani twierdzenia o braku aktywności.
+- Ten sam commit dodał do promptu planu istniejącą sekcję rekordów dla wariantu dostępnego i niedostępnego oraz wzmocnił parametryczną regresję loadera: każda pojedyncza awaria jest teraz sprawdzana przy niepustych spełnionych źródłach wraz z ich znormalizowanym outputem promptu.
+- Finalny whole-branch re-review pełnego diffu od `21b15d35af99cd221dfcff0b677dcc577a562084` przez `83941fe` zakończył się `Ready to merge: Yes`; Critical: 0, Important: 0, Minor: 0.
+- E2E 12/12 i bezpośrednia obserwacja Browser pozostają aktualnym dowodem. Nie ponawiano ich po `83941fe`, ponieważ commit nie dotknął kodu UI ani transportu klienta.
 - Caveat operacyjny: reload HMR wysłał do lokalnego backendu walidacyjny request `/api/ai-models` z fałszywym kluczem i otrzymał `invalid x-api-key`; nie przesłano prawdziwego sekretu, promptu, odpowiedzi ani danych użytkownika. Wszystkie zachowania `/api/ai-chat` były deterministycznie przechwycone.
 - Produkcyjna publikacja indeksów, integracja, push, deploy i `RELEASE-08` pozostają niewykonane. Fazy 2B i 6C nadal mają niezależny status `READY`, a Faza S pozostaje bez zmian.

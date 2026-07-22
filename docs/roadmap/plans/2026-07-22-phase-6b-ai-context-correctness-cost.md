@@ -1912,8 +1912,8 @@ Potwierdź, że pamięć wskazuje HEAD commita dokumentacyjnego oraz nie traktuj
     src/pages/__tests__/ChatPageAccessibility.test.tsx
   ```
 
-  PASS — 8 plików, 87/87 testów, exit 0; bez retry, unhandled rejection i prywatnych szczegółów w output.
-- `npm run test:unit`: PASS — 59 plików, 457/457 testów, exit 0.
+  PASS po final review — 8 plików, 90/90 testów, exit 0; bez retry, unhandled rejection i prywatnych szczegółów w output.
+- `npm run test:unit`: PASS po final review — 59 plików, 460/460 testów, exit 0.
 - `npm run lint`: PASS — `eslint .`, exit 0 bez uwag.
 - `npm run build`: PASS — `tsc -b && vite build`, 878 modułów, exit 0 bez ostrzeżenia.
 - Fresh-emulator desktop chat E2E:
@@ -1926,9 +1926,11 @@ Potwierdź, że pamięć wskazuje HEAD commita dokumentacyjnego oraz nie traktuj
 - Visual evidence: Observed — surface: Browser; proof: completed Browser DOM events returned limited status before first chunk, attached after done, plan status, 503 alert and successful one-question retry; emitted narrow and desktop screenshots showed clean wrapping/layout, with final browser logs `[]`.
 - Szczegóły obserwacji: przed pierwszym chunkiem DOM pokazał `Analizuję kontekst...` i status `Odpowiedź powstała bez części danych: gotowości i rekordów.`; ukończona odpowiedź `Druga odpowiedź obserwacyjna` zachowała ten status. Plan `Plan obserwacyjny` pokazał `Plan powstał bez części danych: profilu i treningów.`. Całkowita awaria pokazała alert `Nie udało się załadować kontekstu. Spróbuj ponownie.` i retry; wynik retry zawierał `questionCount: 1` oraz `Odpowiedź po ponowieniu`. Screenshoty 390×844 i desktop potwierdziły czyste zawijanie/layout.
 - Obserwacja początkowo wykryła brak statusu przed pierwszym chunkiem. Poprawka `7d9586a` ma focused coverage 18/18 i została ponownie przejrzana bez znalezisk.
+- E2E 12/12 i powyższa obserwacja Browser nie były ponawiane po `83941fe`, ponieważ final-review fix nie dotknął kodu UI ani transportu klienta; zachowane dowody nadal pokrywają niezmienione zachowanie runtime.
 - Caveat operacyjny: reload HMR wysłał walidacyjny `/api/ai-models` z fałszywym kluczem do lokalnego backendu, który zwrócił `invalid x-api-key`; nie przesłano prawdziwego sekretu, promptu, odpowiedzi ani danych użytkownika. Wszystkie zachowania `/api/ai-chat` były deterministycznie przechwycone.
-- Focused Elevated-risk review pełnego diffu od `PHASE6B_BASE` przez `7d9586a` zakończył się bez otwartych znalezisk dla: awarii pojedynczych/całkowitej, empty-vs-unavailable, limitów 1+31+31+6=69 i faktycznych query, niezmienionego `chunk | done | error` oraz `{ plan }`, generation ID/abort/reset/stale callbacków, prywatności logów, indeksów i rollout/recovery oraz granic Fazy 6C/`userExercises`/`RELEASE-08`.
-- Hygiene: `git diff --check` czysty; worktree był czysty przed lifecycle docs; diff implementacji zawierał 15 planowanych plików (`1050 insertions`, `159 deletions`); `docs/audits/2026-07-14-senior-design-review.md` pozostał poza diffem i nietknięty.
+- Final-review fixes w `83941fe` zachowują gotowościowy niski streak i rekomendację przy niedostępnej historii treningów, bez fałszywego `0 treningów` lub braku aktywności. Kontrakt zależności pozostaje jawny: workout trends wymagają treningów, weak-week comparison treningów i profilu, a readiness streak wyłącznie readiness. Prompt planu otrzymał istniejące heading/line rekordów dla wariantu available i unavailable, a parametryczna regresja loadera dowodzi zachowania znormalizowanych, niepustych sibling data przy odrzuceniu każdego pojedynczego źródła.
+- Finalny whole-branch re-review pełnego diffu od `PHASE6B_BASE` przez `83941fe` zakończył się `Ready to merge: Yes`; Critical: 0, Important: 0, Minor: 0. Ponownie sprawdzono awarie pojedyncze/całkowitą, empty-vs-unavailable, zależności analiz, limity 1+31+31+6=69 i faktyczne query, oba prompty, niezmienione `chunk | done | error` oraz `{ plan }`, generation ID/abort/reset/stale callbacki, prywatność logów, indeksy i rollout/recovery oraz granice Fazy 6C/`userExercises`/`RELEASE-08`.
+- Hygiene: `git diff --check` czysty; worktree był czysty przed lifecycle refresh; finalny diff implementacji obejmuje 15 planowanych plików (`1190 insertions`, `166 deletions`); `docs/audits/2026-07-14-senior-design-review.md` pozostał poza diffem i nietknięty.
 - Lifecycle: Faza 6B ma status `DONE` / `COMPLETED — VERIFIED — AWAITING INTEGRATION`; Fazy 2B i 6C pozostają `READY`, Faza S bez zmian, `RELEASE-08` otwarte. Indeksy nie zostały opublikowane; integracja, push i deploy nie zostały wykonane.
 - Krok zapisu pamięci pozostaje tu niezaznaczony celowo: zgodnie z procedurą następuje dopiero po commicie tych dokumentów, aby pamięć mogła wskazać jego HEAD; nie powstanie drugi commit tylko dla odnotowania zewnętrznego save.
 

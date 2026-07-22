@@ -46,7 +46,7 @@ export interface AiContextRecordInput {
   lastPerformedAt?: number
 }
 
-interface AiContextProfileInput {
+export interface AiContextProfileInput {
   displayName?: string | null
   primaryGoal?: string | null
   weeklyGoal?: number | null

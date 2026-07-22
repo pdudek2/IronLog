@@ -9,6 +9,22 @@
       ]
     },
     {
+      "collectionGroup": "readiness",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "maxWeight", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "exerciseSessions",
       "queryScope": "COLLECTION",
       "fields": [

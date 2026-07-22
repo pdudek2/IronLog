@@ -79,6 +79,16 @@ export interface ClaudeModelOption {
   label: string
 }
 
+export class AiApiError extends Error {
+  readonly code?: string
+
+  constructor(message: string, code?: string) {
+    super(message)
+    this.name = 'AiApiError'
+    this.code = code
+  }
+}
+
 export interface StreamChatReplyOptions {
   apiKey: string
   messages: Array<Pick<ChatMessage, 'role' | 'content'>>
@@ -134,7 +144,7 @@ export async function streamChatReply({
   }
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { error?: string } | null
+    const payload = await response.json().catch(() => null) as { error?: string; code?: string } | null
 
     if (
       response.status === 404 &&
@@ -146,7 +156,7 @@ export async function streamChatReply({
         `Frontend działa lokalnie, ale backend AI zwrócił 404 pod ${chatApiUrl}. Uruchom \`npm run dev:api\` albo \`npm run dev:all\`.`,
       )
     }
-    throw new Error(payload?.error ?? 'AI Coach nie odpowiedział poprawnie.')
+    throw new AiApiError(payload?.error ?? 'AI Coach nie odpowiedział poprawnie.', payload?.code)
   }
 
   const context = parseAiContextHeader(response.headers)
@@ -197,11 +207,11 @@ export async function generateTrainingPlan({
   }
 
   const payload = await response.json().catch(() => null) as
-    | { error?: string; plan?: GeneratedTrainingPlan }
+    | { error?: string; code?: string; plan?: GeneratedTrainingPlan }
     | null
 
   if (!response.ok) {
-    throw new Error(payload?.error ?? 'Nie udało się wygenerować planu.')
+    throw new AiApiError(payload?.error ?? 'Nie udało się wygenerować planu.', payload?.code)
   }
 
   if (!payload?.plan) {
@@ -237,11 +247,11 @@ export async function fetchAvailableClaudeModels(apiKey: string): Promise<Claude
   }
 
   const payload = await response.json().catch(() => null) as
-    | { error?: string; models?: ClaudeModelOption[] }
+    | { error?: string; code?: string; models?: ClaudeModelOption[] }
     | null
 
   if (!response.ok) {
-    throw new Error(payload?.error ?? 'Nie udało się pobrać listy modeli Claude.')
+    throw new AiApiError(payload?.error ?? 'Nie udało się pobrać listy modeli Claude.', payload?.code)
   }
 
   return Array.isArray(payload?.models) ? payload.models : []

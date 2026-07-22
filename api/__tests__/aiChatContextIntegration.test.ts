@@ -19,7 +19,7 @@ vi.mock('../lib/rateLimit.js', async (importOriginal) => {
 vi.mock('../lib/firebaseAdmin.js', () => ({ adminDb: {} }))
 
 import { AVAILABLE_AI_CONTEXT_SOURCES, buildAiUserContext } from '../../server/aiContext.js'
-import handler, { serializeAiContextHeader } from '../ai-chat.js'
+import handler, { normalizeGeneratedPlan, serializeAiContextHeader } from '../ai-chat.js'
 import { ApiError } from '../lib/errors.js'
 import type { ApiRequest, ApiResponse } from '../lib/http.js'
 
@@ -215,5 +215,41 @@ describe('AI context response metadata', () => {
         days: expect.any(Array),
       },
     })
+  })
+
+  it('rejects generated plans with the wrong day count', () => {
+    expect(() => normalizeGeneratedPlan({
+      name: 'Plan',
+      days: [
+        { name: 'Dzień A', exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 80 }] },
+      ],
+    }, [
+      { id: 'bench-press', name: 'Bench Press', source: 'global', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
+    ], {
+      goal: 'siła',
+      daysPerWeek: 2,
+      experience: 'intermediate',
+      equipment: ['barbell'],
+      focus: '',
+      notes: '',
+    })).toThrow('Generator zwrócił 1 dni zamiast 2.')
+  })
+
+  it('filters exercises outside the requested equipment before accepting a plan', () => {
+    expect(() => normalizeGeneratedPlan({
+      name: 'Plan',
+      days: [
+        { name: 'Dzień A', exercises: [{ exerciseId: 'leg-press', exerciseSource: 'global', sets: 4, targetReps: 8, targetWeight: 120 }] },
+      ],
+    }, [
+      { id: 'leg-press', name: 'Leg Press', source: 'global', equipment: 'machine', category: 'legs', muscles: ['quads'] },
+    ], {
+      goal: 'siła',
+      daysPerWeek: 1,
+      experience: 'intermediate',
+      equipment: ['barbell'],
+      focus: '',
+      notes: '',
+    })).toThrow('Generator nie zwrócił żadnego poprawnego dnia treningowego.')
   })
 })

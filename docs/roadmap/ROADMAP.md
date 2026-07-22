@@ -74,7 +74,7 @@ Aktualny baseline jakości:
 | 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DONE | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
 | 10 | 6A — Stream i concurrency AI | P1 | DONE | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
 | 11 | 6B — Poprawność i koszt kontekstu AI | P1 | DONE | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
-| 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | READY | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
+| 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | DONE | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
 | 13 | S — Hardening CSP | P2 | READY | Pozostała polityka CSP jest egzekwowana albo rzeczywiście raportuje naruszenia |
 | 14 | 7 — Bramka release | P0 | BLOCKED | Jedna powtarzalna procedura potwierdza gotowość po zakończeniu wymaganych faz |
 
@@ -390,6 +390,8 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 **Zależności:** standard stanów błędu z fazy 2.
 
 ### Faza 6C — Walidacja planów i obsługa konfiguracji AI
+
+**Status: DONE.** Zakres `AI-04`, `AI-05`, `AI-06`, `AI-12`, `AI-13` i `AI-14` został zaimplementowany i zweryfikowany lokalnie na branchu `phase-6c-ai-plan-validation-config`. Bramka objęła focused Vitest 51/51, pełny unit/support Vitest 59 plików i 467/467 testów, `npm run lint` oraz `npm run build` z 878 modułami. API klasyfikuje błędy Anthropic przez publiczne kody, waliduje plan przed zwróceniem go do UI, nie przepuszcza surowych detali upstreamu ani klucza do logów, a mobile bez klucza pokazuje konfigurację przed zablokowanym czatem. README opisuje rzeczywisty limit `8/min` liczony transakcyjnie w Firestore. Push, deploy, publikacja indeksów i `RELEASE-08` nie zostały wykonane. Szczegóły znajdują się w [`specs/2026-07-22-phase-6c-ai-plan-validation-config-design.md`](specs/2026-07-22-phase-6c-ai-plan-validation-config-design.md) oraz [`plans/2026-07-22-phase-6c-ai-plan-validation-config.md`](plans/2026-07-22-phase-6c-ai-plan-validation-config.md).
 
 **Cel:** zapewnić zgodność wygenerowanego planu z briefem oraz prawidłową klasyfikację błędów konfiguracji AI.
 

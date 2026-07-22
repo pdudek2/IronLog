@@ -9,7 +9,7 @@ import {
   setClaudeApiKey,
   setClaudeModel,
 } from '../lib/aiKeyStorage'
-import { fetchAvailableClaudeModels, type ClaudeModelOption } from '../lib/chatService'
+import { AiApiError, fetchAvailableClaudeModels, type ClaudeModelOption } from '../lib/chatService'
 
 interface AiKeyPanelProps {
   onConfiguredChange?: (configured: boolean) => void
@@ -21,6 +21,13 @@ interface AiKeyPanelProps {
 function maskKey(key: string): string {
   if (key.length <= 10) return key
   return `${key.slice(0, 7)}...${key.slice(-4)}`
+}
+
+function getAiErrorCode(error: unknown): string | undefined {
+  if (error instanceof AiApiError) return error.code
+  return typeof error === 'object' && error !== null && 'code' in error && typeof error.code === 'string'
+    ? error.code
+    : undefined
 }
 
 export default function AiKeyPanel({
@@ -39,11 +46,12 @@ export default function AiKeyPanel({
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
   const [models, setModels] = useState<ClaudeModelOption[]>([])
-  const [modelsError, setModelsError] = useState('')
+  const [modelsError, setModelsError] = useState<{ message: string; code?: string }>({ message: '' })
   const [loadingModels, setLoadingModels] = useState(false)
 
   const hasSavedKey = savedKey.length > 0
-  const keyVerified = hasSavedKey && models.length > 0 && !modelsError && !loadingModels
+  const keyRejected = modelsError.code === 'invalid-key'
+  const keyVerified = hasSavedKey && !keyRejected
 
   const savedPreview = useMemo(() => (
     hasSavedKey ? maskKey(savedKey) : ''
@@ -60,7 +68,7 @@ export default function AiKeyPanel({
 
     async function loadModels() {
       setLoadingModels(true)
-      setModelsError('')
+      setModelsError({ message: '' })
 
       try {
         const nextModels = await fetchAvailableClaudeModels(savedKey)
@@ -77,8 +85,10 @@ export default function AiKeyPanel({
         if (nextSelected) setClaudeModel(nextSelected)
       } catch (nextError) {
         if (cancelled) return
-        const message = nextError instanceof Error ? nextError.message : 'Nie udało się pobrać modeli Claude.'
-        setModelsError(message)
+        setModelsError({
+          message: nextError instanceof Error ? nextError.message : 'Nie udało się pobrać modeli Claude.',
+          code: getAiErrorCode(nextError),
+        })
       } finally {
         if (!cancelled) setLoadingModels(false)
       }
@@ -115,7 +125,7 @@ export default function AiKeyPanel({
     setDraft('')
     setSelectedModel('')
     setModels([])
-    setModelsError('')
+    setModelsError({ message: '' })
     setShowKey(false)
     setSaved(false)
     setError('')
@@ -182,19 +192,19 @@ export default function AiKeyPanel({
           style={{
             background: keyVerified
               ? 'var(--success-soft)'
-              : modelsError && hasSavedKey
+              : keyRejected && hasSavedKey
                 ? 'var(--danger-soft)'
                 : 'rgba(255,255,255,0.04)',
             border: `1px solid ${
               keyVerified
                 ? 'rgba(143,184,160,0.18)'
-                : modelsError && hasSavedKey
+                : keyRejected && hasSavedKey
                   ? 'var(--danger-soft-strong)'
                   : 'var(--border)'
             }`,
             color: keyVerified
               ? 'var(--success)'
-              : modelsError && hasSavedKey
+              : keyRejected && hasSavedKey
                 ? 'var(--danger)'
                 : 'var(--muted)',
           }}
@@ -203,8 +213,10 @@ export default function AiKeyPanel({
             ? 'Brak klucza'
             : loadingModels
               ? 'Weryfikacja...'
-              : modelsError
+              : keyRejected
                 ? 'Nieprawidłowy klucz'
+                : modelsError.message
+                  ? 'Lista modeli niedostępna'
                 : 'Klucz gotowy'}
         </div>
       </div>
@@ -337,8 +349,8 @@ export default function AiKeyPanel({
               id={modelSelectId}
               value={selectedModel}
               disabled={!hasSavedKey || loadingModels || models.length === 0}
-              aria-invalid={modelsError ? true : undefined}
-              aria-describedby={modelsError ? modelsErrorId : undefined}
+              aria-invalid={keyRejected ? true : undefined}
+              aria-describedby={modelsError.message ? modelsErrorId : undefined}
               onChange={(event) => {
                 const nextModel = setClaudeModel(event.target.value)
                 setSelectedModel(nextModel)
@@ -370,9 +382,9 @@ export default function AiKeyPanel({
             </p>
           )}
 
-          {modelsError && (
+          {modelsError.message && (
             <p id={modelsErrorId} role="alert" className="mt-3 text-xs leading-5" style={{ color: 'var(--danger)' }}>
-              {modelsError}
+              {modelsError.message}
             </p>
           )}
         </div>

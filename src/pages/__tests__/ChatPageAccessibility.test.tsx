@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from 'react'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatPage from '../ChatPage'
 
@@ -23,6 +23,14 @@ vi.mock('../../lib/aiKeyStorage', () => ({
   setClaudeModel: (value: string) => value.trim(),
 }))
 vi.mock('../../lib/chatService', () => ({
+  AiApiError: class AiApiError extends Error {
+    code?: string
+
+    constructor(message: string, code?: string) {
+      super(message)
+      this.code = code
+    }
+  },
   fetchAvailableClaudeModels: mocks.fetchAvailableClaudeModels,
   generateTrainingPlan: mocks.generateTrainingPlan,
   streamChatReply: mocks.streamChatReply,
@@ -51,6 +59,14 @@ vi.mock('framer-motion', () => ({
   }),
 }))
 
+async function openModelSelect() {
+  const current = screen.queryByRole('combobox', { name: 'Model Claude' })
+  if (current) return current
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Pokaż szczegóły' }))
+  return screen.findByRole('combobox', { name: 'Model Claude' })
+}
+
 describe('ChatPage accessibility', () => {
   beforeEach(() => {
     mocks.fetchAvailableClaudeModels.mockReset()
@@ -65,7 +81,7 @@ describe('ChatPage accessibility', () => {
   it('labels the model, exposes mode state, and links goal validation', async () => {
     render(<ChatPage />)
 
-    expect(await screen.findByRole('combobox', { name: 'Model Claude' })).toHaveValue('claude-test')
+    expect(await openModelSelect()).toHaveValue('claude-test')
 
     const modeGroup = screen.getByRole('group', { name: 'Tryb AI Coacha' })
     const chatMode = within(modeGroup).getByRole('button', { name: /Rozmowa/ })
@@ -88,7 +104,7 @@ describe('ChatPage accessibility', () => {
     mocks.generateTrainingPlan.mockRejectedValueOnce(new Error('Nie udało się wygenerować planu testowego.'))
     render(<ChatPage />)
 
-    await screen.findByRole('combobox', { name: 'Model Claude' })
+    await openModelSelect()
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
     const goal = screen.getByRole('textbox', { name: 'Cel planu' })
     fireEvent.change(goal, { target: { value: 'Budowa siły' } })
@@ -116,7 +132,7 @@ describe('ChatPage accessibility', () => {
     })
     render(<ChatPage />)
 
-    await screen.findByRole('combobox', { name: 'Model Claude' })
+    await openModelSelect()
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
     fireEvent.change(screen.getByRole('textbox', { name: 'Cel planu' }), {
       target: { value: 'Siła' },
@@ -141,7 +157,7 @@ describe('ChatPage accessibility', () => {
     })
     render(<ChatPage />)
 
-    await screen.findByRole('combobox', { name: 'Model Claude' })
+    await openModelSelect()
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
     const goal = screen.getByRole('textbox', { name: 'Cel planu' })
     fireEvent.change(goal, { target: { value: 'Siła' } })
@@ -153,21 +169,40 @@ describe('ChatPage accessibility', () => {
     expect(goal).not.toHaveAttribute('aria-invalid')
   })
 
-  it('announces and associates a model-list failure', async () => {
+  it('announces and associates a retryable model-list failure without blocking chat', async () => {
     mocks.fetchAvailableClaudeModels.mockRejectedValueOnce(new Error('Nie udało się pobrać modeli Claude.'))
     render(<ChatPage />)
 
-    const model = await screen.findByRole('combobox', { name: 'Model Claude' })
+    const model = await openModelSelect()
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent('Nie udało się pobrać modeli Claude.')
-    expect(model).toHaveAttribute('aria-invalid', 'true')
+    expect(model).not.toHaveAttribute('aria-invalid')
     expect(model).toHaveAccessibleDescription('Nie udało się pobrać modeli Claude.')
+    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
+  })
+
+  it('marks the model selector invalid when Claude rejects the API key', async () => {
+    const error = Object.assign(
+      new Error('Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.'),
+      { code: 'invalid-key' },
+    )
+    mocks.fetchAvailableClaudeModels.mockRejectedValue(error)
+    render(<ChatPage />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Claude API odrzuciło klucz.')
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Model Claude' })).toHaveAttribute('aria-invalid', 'true')
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Model Claude' }))
+        .toHaveAccessibleDescription('Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.')
+    })
   })
 
   it('keeps the API key name stable while announcing its field error', async () => {
     render(<ChatPage />)
 
-    await screen.findByRole('combobox', { name: 'Model Claude' })
+    await openModelSelect()
     const key = screen.getByLabelText('Twój klucz', { selector: 'input' })
     fireEvent.change(key, { target: { value: 'short' } })
     fireEvent.click(screen.getByRole('button', { name: 'Zaktualizuj klucz' }))

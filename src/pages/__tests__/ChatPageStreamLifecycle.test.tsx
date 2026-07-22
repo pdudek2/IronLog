@@ -30,6 +30,14 @@ vi.mock('../../lib/aiKeyStorage', () => ({
   setClaudeModel: (value: string) => value.trim(),
 }))
 vi.mock('../../lib/chatService', () => ({
+  AiApiError: class AiApiError extends Error {
+    code?: string
+
+    constructor(message: string, code?: string) {
+      super(message)
+      this.code = code
+    }
+  },
   fetchAvailableClaudeModels: mocks.fetchAvailableClaudeModels,
   generateTrainingPlan: mocks.generateTrainingPlan,
   streamChatReply: mocks.streamChatReply,
@@ -235,6 +243,17 @@ describe('ChatPage stream lifecycle', () => {
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('alert')).toHaveTextContent('Dodaj Claude API key, żeby uruchomić AI Coach.')
     expect(screen.queryByRole('button', { name: 'Ponów odpowiedź AI' })).not.toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+  })
+
+  it('puts API key configuration before the blocked chat when no key is saved', () => {
+    mocks.apiKey = ''
+    render(<ChatPage />)
+
+    const keyInput = screen.getByLabelText('Twój klucz', { selector: 'input' })
+    const chat = screen.getByLabelText('Rozmowa z AI Coachem')
+
+    expect(keyInput.compareDocumentPosition(chat) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
   })
 

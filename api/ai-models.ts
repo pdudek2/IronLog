@@ -1,4 +1,5 @@
 import { requireUserId } from './lib/auth.js'
+import { anthropicApiError, anthropicNetworkError } from './lib/anthropicErrors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
 
@@ -66,16 +67,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
         'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
+    }).catch(() => {
+      throw anthropicNetworkError()
     })
 
     if (!upstream.ok) {
-      const payload = await upstream.json().catch(() => null) as { error?: { message?: string } } | null
-      const message = payload?.error?.message?.trim()
-        || (upstream.status === 401
-          ? 'Nie udało się uwierzytelnić z Claude API. Sprawdź swój klucz.'
-          : 'Nie udało się pobrać listy modeli Claude.')
-      sendJson(res, upstream.status, { error: message })
-      return
+      throw anthropicApiError(upstream.status)
     }
 
     const payload = await upstream.json().catch(() => null) as

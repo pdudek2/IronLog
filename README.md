@@ -42,7 +42,7 @@ Historyczne materiały potwierdzające wcześniejszą integrację GA4 i Hotjar/C
 - wykresy progresu i automatyczne wykrywanie rekordów (PR),
 - szablony treningów + własne ćwiczenia użytkownika,
 - ankieta gotowości (readiness) przed treningiem,
-- czat z trenerem AI przez własny klucz Claude (BYOK) z lekkim limitem per instancja,
+- czat z trenerem AI przez własny klucz Claude (BYOK) z lekkim minutowym limitem w Firestore,
 - responsywny interfejs mobile-first z osobną nawigacją na desktop.
 
 ## Stack
@@ -98,7 +98,7 @@ Klucz Claude w modelu BYOK jest przechowywany lokalnie w przeglądarce. Nie zapi
 
 Czat AI działa w modelu BYOK: użytkownik podaje własny klucz Claude, który jest przechowywany lokalnie w przeglądarce. Backend serverless pośredniczy w wywołaniach Anthropic i dodaje kontekst profilu, gotowości, ostatnich sesji oraz rekordów.
 
-Obecny limit jest lekki i procesowy (`8/min` na użytkownika + IP w pamięci instancji serverless). Nie jest to jeszcze trwały dzienny limit produktowy: kolekcja `dailyAiUsage` nie jest obecnie używana, a wiadomości czatu nie są persystowane w `chatMessages`.
+Obecny limit jest lekki i minutowy (`8/min` na użytkownika + IP) liczony transakcyjnie w Firestore w kolekcji `aiRateLimits`. Nie jest to jeszcze trwały dzienny limit produktowy: kolekcja `dailyAiUsage` nie jest obecnie używana, a wiadomości czatu nie są persystowane w `chatMessages`.
 
 ## Uruchomienie lokalne
 

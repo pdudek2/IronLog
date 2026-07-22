@@ -111,12 +111,12 @@ describe('streamChatReply integration', () => {
     expect(endCalls()).toBe(0)
   })
 
-  it('returns silently when the client disconnects while reading a non-ok response', async () => {
+  it('returns silently when the client disconnects before a non-ok response is classified', async () => {
     const req = createRequest()
-    const fetchMock = vi.fn().mockResolvedValue(upstreamError(429, async () => {
+    const fetchMock = vi.fn().mockImplementation(async () => {
       req.emit('aborted')
-      throw new Error('response body cancelled')
-    }))
+      return upstreamError(429, async () => ({ error: { message: 'private upstream detail' } }))
+    })
     vi.stubGlobal('fetch', fetchMock)
 
     const { res, written, endCalls } = createResponse()
@@ -136,12 +136,34 @@ describe('streamChatReply integration', () => {
   })
 
   it.each([
-    { status: 401, message: 'Klucz Claude jest nieprawidłowy.' },
-    { status: 429, message: 'Limit Claude został osiągnięty.' },
-  ])('preserves upstream $status as an ApiError with its public message', async ({ status, message }) => {
+    {
+      status: 401,
+      expectedStatus: 401,
+      code: 'invalid-key',
+      message: 'Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.',
+    },
+    {
+      status: 429,
+      expectedStatus: 429,
+      code: 'rate-limited',
+      message: 'Claude API zgłosiło limit lub brak środków na kluczu. Odczekaj chwilę albo sprawdź konto Anthropic.',
+    },
+    {
+      status: 404,
+      expectedStatus: 400,
+      code: 'model-unavailable',
+      message: 'Wybrany model Claude nie jest dostępny dla tego klucza. Wybierz inny model w konfiguracji.',
+    },
+    {
+      status: 503,
+      expectedStatus: 503,
+      code: 'upstream-unavailable',
+      message: 'Claude API jest chwilowo niedostępne. Spróbuj ponownie za chwilę.',
+    },
+  ])('classifies upstream $status without exposing upstream detail', async ({ status, expectedStatus, code, message }) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamError(
       status,
-      async () => ({ error: { message } }),
+      async () => ({ error: { message: 'private upstream detail' } }),
     )))
 
     const { res } = createResponse()
@@ -155,8 +177,29 @@ describe('streamChatReply integration', () => {
       res,
     )).rejects.toMatchObject({
       name: 'ApiError',
-      status,
+      status: expectedStatus,
+      code,
       message,
+    })
+  })
+
+  it('classifies Anthropic network errors as retryable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('private network detail')))
+
+    const { res } = createResponse()
+
+    await expect(streamChatReply(
+      'sk-ant-test-key-long-enough',
+      'claude-test',
+      context,
+      messages,
+      createRequest(),
+      res,
+    )).rejects.toMatchObject({
+      name: 'ApiError',
+      status: 503,
+      code: 'network-retryable',
+      message: 'Nie udało się połączyć z Claude API. Spróbuj ponownie za chwilę.',
     })
   })
 

@@ -553,6 +553,14 @@ export default function ChatPage() {
 
         <div className="coach-workspace-grid">
           <div className="coach-main-flow">
+            {!configured && (
+              <AiKeyPanel
+                onConfiguredChange={setConfigured}
+                onExpand={() => setShowConfigPanel(true)}
+                onCollapse={() => setShowConfigPanel(false)}
+              />
+            )}
+
             {activeTab === 'chat' ? (
               <>
                 <section className="coach-chat-panel surface-panel">
@@ -1021,12 +1029,14 @@ export default function ChatPage() {
           </div>
 
           <div className="ai-side-rail coach-rail">
-            <AiKeyPanel
-              onConfiguredChange={setConfigured}
-              collapsed={configured && !showConfigPanel}
-              onExpand={() => setShowConfigPanel(true)}
-              onCollapse={() => setShowConfigPanel(false)}
-            />
+            {configured && (
+              <AiKeyPanel
+                onConfiguredChange={setConfigured}
+                collapsed={!showConfigPanel}
+                onExpand={() => setShowConfigPanel(true)}
+                onCollapse={() => setShowConfigPanel(false)}
+              />
+            )}
 
             {activeTab === 'chat' ? (
               showConfigPanel || !configured ? (

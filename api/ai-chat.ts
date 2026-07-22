@@ -1,7 +1,7 @@
 import { adminDb } from './lib/firebaseAdmin.js'
 import { requireUserId } from './lib/auth.js'
 import { loadAiUserContext } from './lib/aiContextLoader.js'
-import { ApiError } from './lib/errors.js'
+import { anthropicApiError, anthropicNetworkError } from './lib/anthropicErrors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
 import {
@@ -304,25 +304,6 @@ function buildPlanUserPrompt(
   ].join('\n')
 }
 
-async function readAnthropicError(response: Response): Promise<{ status: number; message: string }> {
-  const fallback = response.status === 401
-    ? 'Nie udało się uwierzytelnić z Claude API. Sprawdź swój klucz.'
-    : response.status === 429
-      ? 'Claude API odrzuciło żądanie przez limit lub brak środków na kluczu.'
-      : response.status === 404
-        ? 'Wybrany model Claude nie istnieje albo nie jest dostępny dla tego klucza.'
-      : 'Claude API zwróciło błąd i nie udało się wygenerować odpowiedzi.'
-
-  const payload = await response.json().catch(() => null) as
-    | { error?: { message?: string } }
-    | null
-
-  return {
-    status: response.status,
-    message: payload?.error?.message?.trim() || fallback,
-  }
-}
-
 function readAnthropicTextPayload(payload: unknown): string {
   const record = asRecord(payload)
   const content = Array.isArray(record.content) ? record.content : []
@@ -366,10 +347,15 @@ function normalizeExerciseName(value: string) {
     .trim()
 }
 
-function normalizeGeneratedPlan(raw: unknown, catalog: AvailableExercise[], goal: string): GeneratedPlan {
+export function normalizeGeneratedPlan(
+  raw: unknown,
+  catalog: AvailableExercise[],
+  request: ReturnType<typeof normalizePlanRequest>,
+): GeneratedPlan {
   const record = asRecord(raw)
   const catalogByKey = new Map(catalog.map((exercise) => [`${exercise.source}:${exercise.id}`, exercise]))
   const catalogByName = new Map(catalog.map((exercise) => [normalizeExerciseName(exercise.name), exercise]))
+  const allowedEquipment = new Set(request.equipment)
 
   const daysRaw = Array.isArray(record.days) ? record.days : []
   const days = daysRaw.flatMap((day, dayIndex) => {
@@ -389,6 +375,7 @@ function normalizeGeneratedPlan(raw: unknown, catalog: AvailableExercise[], goal
         ?? (requestedName ? catalogByName.get(normalizeExerciseName(requestedName)) : undefined)
 
       if (!matchedExercise) return []
+      if (allowedEquipment.size > 0 && !allowedEquipment.has(matchedExercise.equipment)) return []
 
       return [{
         exerciseId: matchedExercise.id,
@@ -406,15 +393,18 @@ function normalizeGeneratedPlan(raw: unknown, catalog: AvailableExercise[], goal
       name: typeof dayRecord.name === 'string' && dayRecord.name.trim()
         ? dayRecord.name.trim().slice(0, 80)
         : `Dzień ${dayIndex + 1}`,
-      exercises,
+      exercises: exercises.slice(0, 20),
     }]
   })
 
   if (days.length === 0) {
     throw new Error('Generator nie zwrócił żadnego poprawnego dnia treningowego.')
   }
+  if (days.length !== request.daysPerWeek) {
+    throw new Error(`Generator zwrócił ${days.length} dni zamiast ${request.daysPerWeek}. Spróbuj wygenerować plan ponownie.`)
+  }
 
-  const fallbackName = goal.trim().length > 1 ? `Plan: ${goal.trim()}` : 'Nowy plan'
+  const fallbackName = request.goal.trim().length > 1 ? `Plan: ${request.goal.trim()}` : 'Nowy plan'
   const name = typeof record.name === 'string' && record.name.trim()
     ? record.name.trim().slice(0, 80)
     : fallbackName
@@ -449,22 +439,22 @@ async function generatePlan(
         content: buildPlanUserPrompt(request, context),
       }],
     }),
+  }).catch(() => {
+    throw anthropicNetworkError()
   })
 
   if (!upstream.ok) {
-    const error = await readAnthropicError(upstream)
     console.error('[plan-generator upstream error]', {
-      status: error.status,
+      status: upstream.status,
       model,
-      message: error.message,
     })
-    throw Object.assign(new Error(error.message), { status: error.status })
+    throw anthropicApiError(upstream.status)
   }
 
   const payload = await upstream.json().catch(() => null)
   const text = readAnthropicTextPayload(payload)
   const parsed = JSON.parse(extractJsonObject(text)) as unknown
-  return normalizeGeneratedPlan(parsed, catalog, request.goal)
+  return normalizeGeneratedPlan(parsed, catalog, request)
 }
 
 export async function streamChatReply(
@@ -500,6 +490,9 @@ export async function streamChatReply(
           })),
         }),
         signal: bridge.signal,
+      }).catch((error) => {
+        if (bridge.signal.aborted) throw error
+        throw anthropicNetworkError()
       })
     } catch (error) {
       if (bridge.signal.aborted) return
@@ -507,15 +500,13 @@ export async function streamChatReply(
     }
 
     if (!upstream.ok) {
-      const error = await readAnthropicError(upstream)
       if (bridge.signal.aborted) return
 
       console.error('[ai-chat upstream error]', {
-        status: error.status,
+        status: upstream.status,
         model,
-        message: error.message,
       })
-      throw new ApiError(error.status, error.message)
+      throw anthropicApiError(upstream.status)
     }
 
     const body = upstream.body

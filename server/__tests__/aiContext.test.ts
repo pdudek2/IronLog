@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  AVAILABLE_AI_CONTEXT_SOURCES,
   buildAiUserContext,
   buildChatContextSections,
+  type AiContextSourceStatuses,
   type AiContextRecordInput,
   type AiContextWorkoutInput,
   type AiReadinessInput,
@@ -88,5 +90,102 @@ describe('buildAiUserContext', () => {
     expect(context.monthlyInsights.signals.join('\n')).toContain('słabszy tydzień')
     expect(context.monthlyInsights.signals.join('\n')).toContain('readiness')
     expect(context.monthlyInsights.recommendations.join('\n')).toContain('80-90%')
+  })
+
+  it('distinguishes available empty data from an unavailable source', () => {
+    const sources: AiContextSourceStatuses = {
+      ...AVAILABLE_AI_CONTEXT_SOURCES,
+      records: 'unavailable',
+    }
+    const context = buildAiUserContext({
+      now: NOW,
+      sources,
+      profile: null,
+      readinessEntries: [],
+      workouts: [],
+      records: [],
+    })
+
+    const sections = buildChatContextSections(context)
+
+    expect(sections.profileLine).toBe('Profil: brak danych.')
+    expect(sections.workoutsLine).toBe('Brak ostatnich treningów.')
+    expect(sections.recordsLine).toBe('Rekordy: dane chwilowo niedostępne.')
+    expect(sections.monthlyLine).toContain('Brak treningów w ostatnich 30 dniach.')
+  })
+
+  it('does not derive workout insights when workouts are unavailable', () => {
+    const context = buildAiUserContext({
+      now: NOW,
+      sources: { ...AVAILABLE_AI_CONTEXT_SOURCES, workouts: 'unavailable' },
+      profile: { weeklyGoal: 3 },
+      readinessEntries: [readiness(0, 2, 2, 5), readiness(1, 2, 2, 5)],
+      workouts: [],
+      records: [],
+    })
+
+    const sections = buildChatContextSections(context)
+    expect(sections.workoutsLine).toBe('Historia treningów: dane chwilowo niedostępne.')
+    expect(sections.monthlyLine).toBe('Analiza treningów: dane chwilowo niedostępne.')
+    expect(sections.monthlyLine).not.toContain('Brak treningów')
+  })
+
+  it('does not call non-consecutive low readiness entries days in a row', () => {
+    const context = buildAiUserContext({
+      now: NOW,
+      profile: { weeklyGoal: 3 },
+      readinessEntries: [
+        readiness(0, 2, 2, 5),
+        readiness(2, 2, 2, 5),
+      ],
+      workouts: [workout(1, 'Upper', 1200)],
+      records: [],
+    })
+
+    expect(context.monthlyInsights.signals.join('\n')).not.toContain('dni z rzędu')
+  })
+
+  it('detects consecutive low readiness across a calendar boundary', () => {
+    const first = readiness(0, 2, 2, 5)
+    const second = readiness(0, 2, 2, 5)
+    first.date = '2025-12-31'
+    first.createdAt = Date.UTC(2025, 11, 31, 12)
+    second.date = '2026-01-01'
+    second.createdAt = Date.UTC(2026, 0, 1, 12)
+
+    const context = buildAiUserContext({
+      now: Date.UTC(2026, 0, 2, 12),
+      profile: { weeklyGoal: 3 },
+      readinessEntries: [first, second],
+      workouts: [workout(1, 'Upper', 1200)],
+      records: [],
+    })
+
+    expect(context.monthlyInsights.signals.join('\n')).toContain('2 dni z rzędu')
+  })
+
+  it.each([
+    {
+      name: 'a high score',
+      middle: readiness(1, 5, 5, 1),
+    },
+    {
+      name: 'an invalid calendar date',
+      middle: { ...readiness(1, 2, 2, 5), date: '2026-02-31' },
+    },
+  ])('treats $name as a streak break', ({ middle }) => {
+    const context = buildAiUserContext({
+      now: NOW,
+      profile: { weeklyGoal: 3 },
+      readinessEntries: [
+        readiness(2, 2, 2, 5),
+        middle,
+        readiness(0, 2, 2, 5),
+      ],
+      workouts: [workout(1, 'Upper', 1200)],
+      records: [],
+    })
+
+    expect(context.monthlyInsights.signals.join('\n')).not.toContain('dni z rzędu')
   })
 })

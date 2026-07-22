@@ -1,6 +1,6 @@
 # Faza 6B — Poprawność i koszt kontekstu AI
 
-**Status:** projekt zatwierdzony — szczegółowy plan gotowy do wykonania
+**Status:** zaimplementowany i zweryfikowany — oczekuje na integrację
 
 **Data:** 2026-07-22
 
@@ -365,4 +365,17 @@ Faza 6B jest gotowa do zamknięcia, gdy:
 
 ## 17. Plan implementacyjny
 
-Szczegółowy plan wykonawczy znajduje się w `docs/roadmap/plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`. Implementacja rozpoczyna się dopiero po wyborze trybu wykonania i utworzeniu osobnego worktree/brancha `phase-6b-ai-context-integrity`.
+Szczegółowy plan wykonawczy znajduje się w `docs/roadmap/plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`. Implementację wykonano w osobnym worktree/branchu `phase-6b-ai-context-integrity`; lokalna integracja pozostaje osobnym, nieautoryzowanym jeszcze krokiem.
+
+## 18. Wynik weryfikacji
+
+- Focused matrix: 8 plików, 87/87 testów; bez retry, unhandled rejection i prywatnych szczegółów w output.
+- Pełny unit/support: 59 plików, 457/457 testów.
+- Lint: `eslint .`, exit 0 bez uwag.
+- Build: `tsc -b && vite build`, 878 modułów, exit 0 bez ostrzeżenia.
+- Fresh-emulator desktop chat E2E: 12/12 testów, `--retries=0`; cały `/api/ai-chat` był deterministycznie przechwycony w przeglądarce, więc nie wykonano prawdziwego requestu Anthropic. Narzędzia wypisały wyłącznie ostrzeżenie emulatora Node `DEP0169 url.parse()` oraz ostrzeżenia Playwright/WebServer o `NO_COLOR` ignorowanym przy `FORCE_COLOR`; nie są to ostrzeżenia Fazy 6B.
+- Visual evidence: Observed — surface: Browser; proof: completed Browser DOM events returned limited status before first chunk, attached after done, plan status, 503 alert and successful one-question retry; emitted narrow and desktop screenshots showed clean wrapping/layout, with final browser logs `[]`.
+- Obserwacja wykryła wcześniej brak komunikatu przed pierwszym chunkiem; poprawka `7d9586a` ma pokrycie 18/18 i została ponownie przejrzana bez znalezisk.
+- Focused Elevated-risk review pełnego diffu od `21b15d35af99cd221dfcff0b677dcc577a562084` nie wykazał otwartych znalezisk w ośmiu wymaganych obszarach.
+- Caveat operacyjny: reload HMR wysłał do lokalnego backendu walidacyjny request `/api/ai-models` z fałszywym kluczem i otrzymał `invalid x-api-key`; nie przesłano prawdziwego sekretu, promptu, odpowiedzi ani danych użytkownika. Wszystkie zachowania `/api/ai-chat` były deterministycznie przechwycone.
+- Produkcyjna publikacja indeksów, integracja, push, deploy i `RELEASE-08` pozostają niewykonane. Fazy 2B i 6C nadal mają niezależny status `READY`, a Faza S pozostaje bez zmian.

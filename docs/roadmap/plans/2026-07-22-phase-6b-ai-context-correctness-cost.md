@@ -1,6 +1,6 @@
 # Phase 6B AI Context Correctness and Cost Implementation Plan
 
-**Status:** READY FOR EXECUTION
+**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -89,7 +89,7 @@
 - Produces: `buildChatContextSections(context)` rozróżniające empty i unavailable
 - Consumes later: Task 2 składa statusy i przekazuje je do `buildAiUserContext`
 
-- [ ] **Step 1: Add failing tests for available-empty versus unavailable**
+- [x] **Step 1: Add failing tests for available-empty versus unavailable**
 
 Dodaj importy nowych typów i test:
 
@@ -140,7 +140,7 @@ it('does not derive workout insights when workouts are unavailable', () => {
 })
 ```
 
-- [ ] **Step 2: Add failing calendar-streak tests**
+- [x] **Step 2: Add failing calendar-streak tests**
 
 ```ts
 it('does not call non-consecutive low readiness entries days in a row', () => {
@@ -203,7 +203,7 @@ it.each([
 })
 ```
 
-- [ ] **Step 3: Run the focused test and verify RED**
+- [x] **Step 3: Run the focused test and verify RED**
 
 Run:
 
@@ -213,7 +213,7 @@ npx vitest run server/__tests__/aiContext.test.ts
 
 Expected: FAIL because source status exports do not exist and non-consecutive low entries still form a streak.
 
-- [ ] **Step 4: Add source status to the context model**
+- [x] **Step 4: Add source status to the context model**
 
 Dodaj przy stałych:
 
@@ -281,7 +281,7 @@ const resolvedSources = sources
 
 Zwróć `sources: resolvedSources` w wyniku i przekaż `resolvedSources` do `buildMonthlyInsights`.
 
-- [ ] **Step 5: Gate derived insights and prompt sections by source status**
+- [x] **Step 5: Gate derived insights and prompt sections by source status**
 
 Rozszerz argument `buildMonthlyInsights` o `sources: AiContextSourceStatuses`. Przed obliczeniami workoutów dodaj:
 
@@ -384,7 +384,7 @@ function formatMonthlyInsights(insights: AiMonthlyInsights): string {
 }
 ```
 
-- [ ] **Step 6: Replace entry adjacency with calendar-day adjacency**
+- [x] **Step 6: Replace entry adjacency with calendar-day adjacency**
 
 Dodaj helper:
 
@@ -435,7 +435,7 @@ function findLowReadinessStreak(entries: AiReadinessInput[], since: number, now:
 }
 ```
 
-- [ ] **Step 7: Run focused tests and commit**
+- [x] **Step 7: Run focused tests and commit**
 
 Run:
 
@@ -469,7 +469,7 @@ git commit -m "fix: distinguish unavailable AI context"
 - Produces: `AiContextReaders`, `createFirestoreAiContextReaders(database)`, `loadAiUserContext(uid, readers?)`
 - Consumes later: Task 3 zastępuje `fetchUserContextSafe` przez `loadAiUserContext`
 
-- [ ] **Step 1: Write failing tests for budget, partial failure and total failure**
+- [x] **Step 1: Write failing tests for budget, partial failure and total failure**
 
 Utwórz test z lokalnym reader double:
 
@@ -567,7 +567,7 @@ describe('loadAiUserContext', () => {
 })
 ```
 
-- [ ] **Step 2: Run the loader test and verify RED**
+- [x] **Step 2: Run the loader test and verify RED**
 
 Run:
 
@@ -577,7 +577,7 @@ npx vitest run api/lib/__tests__/aiContextLoader.test.ts
 
 Expected: FAIL because `aiContextLoader.ts` does not exist.
 
-- [ ] **Step 3: Define limits and the reader boundary**
+- [x] **Step 3: Define limits and the reader boundary**
 
 Utwórz `api/lib/aiContextLoader.ts` z kontraktem:
 
@@ -616,7 +616,7 @@ export interface AiContextReaders {
 
 Eksportuj `AiContextProfileInput` z `server/aiContext.ts`, ponieważ reader używa tego istniejącego wejścia zamiast tworzenia równoległego typu.
 
-- [ ] **Step 4: Implement the four bounded Firestore readers**
+- [x] **Step 4: Implement the four bounded Firestore readers**
 
 ```ts
 export function createFirestoreAiContextReaders(database: Firestore = adminDb): AiContextReaders {
@@ -684,7 +684,7 @@ export function createFirestoreAiContextReaders(database: Firestore = adminDb): 
 }
 ```
 
-- [ ] **Step 5: Implement independent settlement and safe logging**
+- [x] **Step 5: Implement independent settlement and safe logging**
 
 ```ts
 const SOURCE_ORDER: AiContextSource[] = ['profile', 'readiness', 'workouts', 'records']
@@ -728,7 +728,7 @@ export async function loadAiUserContext(
 }
 ```
 
-- [ ] **Step 6: Add the two required indexes**
+- [x] **Step 6: Add the two required indexes**
 
 Dopisz do tablicy `indexes` w `firestore.indexes.json`:
 
@@ -751,7 +751,7 @@ Dopisz do tablicy `indexes` w `firestore.indexes.json`:
 }
 ```
 
-- [ ] **Step 7: Run focused tests and commit**
+- [x] **Step 7: Run focused tests and commit**
 
 Run:
 
@@ -786,7 +786,7 @@ git commit -m "feat: bound AI context reads"
 - Produces: success header `full | limited;unavailable=...`
 - Consumes later: Task 4 implementuje ścisły parser tego kontraktu
 
-- [ ] **Step 1: Write failing serializer and API integration tests**
+- [x] **Step 1: Write failing serializer and API integration tests**
 
 Utwórz plik z kompletnym setupem handlera:
 
@@ -945,7 +945,7 @@ it('sets limited metadata without changing successful NDJSON frames', async () =
 })
 ```
 
-- [ ] **Step 2: Run the integration test and verify RED**
+- [x] **Step 2: Run the integration test and verify RED**
 
 Run:
 
@@ -955,7 +955,7 @@ npx vitest run api/__tests__/aiChatContextIntegration.test.ts
 
 Expected: FAIL because serializer and loader integration do not exist.
 
-- [ ] **Step 3: Replace the all-or-nothing loader in `api/ai-chat.ts`**
+- [x] **Step 3: Replace the all-or-nothing loader in `api/ai-chat.ts`**
 
 Usuń `fetchUserContext`, `recentReadinessDateKeys` i `fetchUserContextSafe`. Dodaj import:
 
@@ -989,7 +989,7 @@ res.setHeader(AI_CONTEXT_HEADER, serializeAiContextHeader(context.sources))
 
 Linia musi pozostać przed rozgałęzieniem `mode === 'plan'`, aby identyczny nagłówek obowiązywał oba tryby.
 
-- [ ] **Step 4: Make prompts consume source-aware sections**
+- [x] **Step 4: Make prompts consume source-aware sections**
 
 W `buildPlanSystemPrompt` usuń lokalne komunikaty, które ponownie interpretują puste tablice jako brak danych. Użyj sekcji:
 
@@ -1023,7 +1023,7 @@ Dodaj do systemowych instrukcji obu trybów:
 Źródło oznaczone jako chwilowo niedostępne nie dowodzi braku aktywności ani braku danych użytkownika; nie wyciągaj z niego wniosków.
 ```
 
-- [ ] **Step 5: Expose the custom header in the local API server**
+- [x] **Step 5: Expose the custom header in the local API server**
 
 W `applyCors` dodaj:
 
@@ -1033,7 +1033,7 @@ res.setHeader('Access-Control-Expose-Headers', 'X-IronLog-AI-Context')
 
 Nie zmieniaj production headers ani Vite proxy; produkcja jest same-origin, a proxy nie wymaga CORS.
 
-- [ ] **Step 6: Preserve the stream protocol in existing integration tests**
+- [x] **Step 6: Preserve the stream protocol in existing integration tests**
 
 W teście sukcesu `streamChatReply integration` pozostaw dokładny output:
 
@@ -1047,7 +1047,7 @@ expect(written()).toBe([
 
 Dodaj asercję na serializer w nowym teście zamiast dodawania czwartej ramki NDJSON.
 
-- [ ] **Step 7: Run API tests and commit**
+- [x] **Step 7: Run API tests and commit**
 
 Run:
 
@@ -1081,7 +1081,7 @@ git commit -m "feat: expose AI context availability"
 - Changes: `generateTrainingPlan()` → `Promise<{ plan: GeneratedTrainingPlan; context: AiContextMetadata }>`
 - Consumes later: Task 5 przechowuje metadane w stanie właściwej generacji
 
-- [ ] **Step 1: Update response helpers and write failing parser tests**
+- [x] **Step 1: Update response helpers and write failing parser tests**
 
 Zmień helper testowy:
 
@@ -1152,7 +1152,7 @@ it.each([
 })
 ```
 
-- [ ] **Step 2: Run the client service test and verify RED**
+- [x] **Step 2: Run the client service test and verify RED**
 
 Run:
 
@@ -1162,7 +1162,7 @@ npx vitest run src/lib/__tests__/chatService.test.ts
 
 Expected: FAIL because `onContext` and strict metadata parsing do not exist.
 
-- [ ] **Step 3: Add the client metadata types and strict parser**
+- [x] **Step 3: Add the client metadata types and strict parser**
 
 W `src/lib/chatService.ts` dodaj:
 
@@ -1202,7 +1202,7 @@ export function parseAiContextHeader(headers: Headers): AiContextMetadata {
 }
 ```
 
-- [ ] **Step 4: Parse metadata before streaming and return it with plans**
+- [x] **Step 4: Parse metadata before streaming and return it with plans**
 
 Rozszerz opcje:
 
@@ -1238,7 +1238,7 @@ Zmień return type na:
 Promise<{ plan: GeneratedTrainingPlan; context: AiContextMetadata }>
 ```
 
-- [ ] **Step 5: Add a plan-response contract test**
+- [x] **Step 5: Add a plan-response contract test**
 
 ```ts
 it('returns plan data with the same parsed context metadata', async () => {
@@ -1265,7 +1265,7 @@ it('returns plan data with the same parsed context metadata', async () => {
 })
 ```
 
-- [ ] **Step 6: Run client tests and commit**
+- [x] **Step 6: Run client tests and commit**
 
 Run:
 
@@ -1298,7 +1298,7 @@ git commit -m "feat: parse AI context metadata"
 - Extends: `ChatMessage.contextUnavailableSources?: AiContextSource[]`
 - Produces: lokalny `ContextAvailabilityNotice`
 
-- [ ] **Step 1: Update mock return types and write failing chat lifecycle tests**
+- [x] **Step 1: Update mock return types and write failing chat lifecycle tests**
 
 Rozszerz `PendingReply.options` automatycznie przez aktualny `streamChatReply`. Pozostaw promise zwracający tekst, ale w teście wywołuj callback:
 
@@ -1343,7 +1343,7 @@ function reportFullContext(reply: PendingReply) {
 
 Limited test wywołuje tylko własny callback `limited`; nie wysyłaj po nim drugiego `full`.
 
-- [ ] **Step 2: Write failing plan accessibility tests**
+- [x] **Step 2: Write failing plan accessibility tests**
 
 Zmień istniejący mock w teście wybranego dnia na nowy return shape:
 
@@ -1384,7 +1384,7 @@ it('announces limited context on the generated plan without marking the form inv
 })
 ```
 
-- [ ] **Step 3: Run component tests and verify RED**
+- [x] **Step 3: Run component tests and verify RED**
 
 Run:
 
@@ -1394,7 +1394,7 @@ npx vitest run src/pages/__tests__/ChatPageStreamLifecycle.test.tsx src/pages/__
 
 Expected: FAIL because context callbacks and notices are not rendered.
 
-- [ ] **Step 4: Add message metadata and the local notice component**
+- [x] **Step 4: Add message metadata and the local notice component**
 
 W `src/lib/chatService.ts` rozszerz `ChatMessage`:
 
@@ -1432,7 +1432,7 @@ function ContextAvailabilityNotice({
 
 Jeżeli powyższa odmiana utrudnia czytelność JSX, użyj pełnych dwóch zdań w mapie `subject`; nie dodawaj biblioteki do copy.
 
-- [ ] **Step 5: Bind streaming metadata to `generationId`**
+- [x] **Step 5: Bind streaming metadata to `generationId`**
 
 Dodaj stan:
 
@@ -1470,7 +1470,7 @@ contextUnavailableSources: generationUnavailableSources,
 
 Po zapisaniu wiadomości wyczyść `streamUnavailableSources`. Stale callback pozostaje zablokowany przez istniejący `generationId`.
 
-- [ ] **Step 6: Store plan metadata with the preview**
+- [x] **Step 6: Store plan metadata with the preview**
 
 Zmień wywołanie:
 
@@ -1493,7 +1493,7 @@ setPlanUnavailableSources(context.unavailableSources)
 
 Przed nową generacją i w każdej ścieżce `setPlanPreview(null)` dodaj `setPlanUnavailableSources([])`. Nie dodawaj `useEffect` tylko do synchronizacji tych dwóch stanów.
 
-- [ ] **Step 7: Render notices next to their exact result**
+- [x] **Step 7: Render notices next to their exact result**
 
 Pod każdą ukończoną wiadomością asystenta:
 
@@ -1526,7 +1526,7 @@ W `coach-plan-preview`, bezpośrednio po nagłówku podglądu:
 
 Nie dodawaj notice do bocznego raila ani pełnych odpowiedzi.
 
-- [ ] **Step 8: Run component tests and commit**
+- [x] **Step 8: Run component tests and commit**
 
 Run:
 
@@ -1558,7 +1558,7 @@ git commit -m "feat: show limited AI context"
 - Produces: mock success header, plan response i kontrolowany HTTP error
 - Produces: deterministyczne E2E dla trzech zaakceptowanych failure paths
 
-- [ ] **Step 1: Extend the mock attempt contract**
+- [x] **Step 1: Extend the mock attempt contract**
 
 Zachowaj istniejące chat attempts bez obowiązkowej migracji wszystkich call sites:
 
@@ -1599,7 +1599,7 @@ interface MockAiErrorAttempt {
 export type MockAiAttempt = MockAiChatAttempt | MockAiPlanAttempt | MockAiErrorAttempt
 ```
 
-- [ ] **Step 2: Support plan request validation and successful metadata headers**
+- [x] **Step 2: Support plan request validation and successful metadata headers**
 
 Dodaj walidator wymagający dokładnie `apiKey`, `model`, `mode`, `planRequest`:
 
@@ -1644,7 +1644,7 @@ W istniejącej odpowiedzi streamu dodaj:
 'X-IronLog-AI-Context': attempt.contextHeader ?? 'full',
 ```
 
-- [ ] **Step 3: Add a limited-chat E2E test**
+- [x] **Step 3: Add a limited-chat E2E test**
 
 ```ts
 test('attaches limited context to the completed answer', async ({ page }) => {
@@ -1664,7 +1664,7 @@ test('attaches limited context to the completed answer', async ({ page }) => {
 })
 ```
 
-- [ ] **Step 4: Add a limited-plan E2E test**
+- [x] **Step 4: Add a limited-plan E2E test**
 
 ```ts
 test('attaches limited context to the generated plan preview', async ({ page }) => {
@@ -1690,7 +1690,7 @@ test('attaches limited context to the generated plan preview', async ({ page }) 
 })
 ```
 
-- [ ] **Step 5: Add total-failure retry E2E**
+- [x] **Step 5: Add total-failure retry E2E**
 
 ```ts
 test('retries after total context failure without duplicating the question', async ({ page }) => {
@@ -1713,7 +1713,7 @@ test('retries after total context failure without duplicating the question', asy
 })
 ```
 
-- [ ] **Step 6: Run deterministic E2E and commit**
+- [x] **Step 6: Run deterministic E2E and commit**
 
 Run:
 
@@ -1745,7 +1745,7 @@ git commit -m "test: cover degraded AI context"
 - Consumes: Tasks 1–6 and all acceptance criteria from the approved spec
 - Produces: verified implementation state, focused review, runtime evidence and truthful handoff
 
-- [ ] **Step 1: Run the complete focused test matrix**
+- [x] **Step 1: Run the complete focused test matrix**
 
 Run:
 
@@ -1763,7 +1763,7 @@ npx vitest run \
 
 Expected: PASS with no retries, unhandled rejections or private error details in output.
 
-- [ ] **Step 2: Run full unit/support, lint and build**
+- [x] **Step 2: Run full unit/support, lint and build**
 
 Run serially:
 
@@ -1775,7 +1775,7 @@ npm run build
 
 Expected: all commands exit 0. Existing non-blocking Vite chunk warning may remain; no new warning from Phase 6B is accepted.
 
-- [ ] **Step 3: Re-run deterministic browser coverage on fresh emulators**
+- [x] **Step 3: Re-run deterministic browser coverage on fresh emulators**
 
 Run:
 
@@ -1785,7 +1785,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e fire
 
 Expected: PASS; browser diagnostics remain clean and no external Anthropic request occurs.
 
-- [ ] **Step 4: Perform one serial direct runtime observation**
+- [x] **Step 4: Perform one serial direct runtime observation**
 
 Przed obserwacją przeczytaj `project-convergence/references/visual-observation.md` i wybierz jedną podstawową powierzchnię browserową. Uruchom lokalny runtime:
 
@@ -1803,7 +1803,7 @@ Na żywej stronie `/chat`, z deterministycznym interception `/api/ai-chat`, bez 
 
 Zapisz wynik jako `Observed` wyłącznie po bezpośrednim walkthrough. Jeżeli powierzchnia nie jest dostępna, zapisz `Pending` i nie zamykaj fazy.
 
-- [ ] **Step 5: Perform one focused review for Elevated risk**
+- [x] **Step 5: Perform one focused review for Elevated risk**
 
 Przejrzyj pełny diff od base commita brancha do HEAD pod kątem:
 
@@ -1818,7 +1818,7 @@ Przejrzyj pełny diff od base commita brancha do HEAD pod kątem:
 
 Każde realne znalezisko popraw przez TDD i powtórz dotknięte bramki. Nie uruchamiaj kolejnego review bez nowego diffu zamykającego nazwane ryzyko.
 
-- [ ] **Step 6: Verify scoped diff and repository hygiene**
+- [x] **Step 6: Verify scoped diff and repository hygiene**
 
 Run:
 
@@ -1839,7 +1839,7 @@ Expected:
 
 Zapisz wartość `PHASE6B_BASE` w `Final Results`, aby dowód końcowy wskazywał konkretny SHA.
 
-- [ ] **Step 7: Update lifecycle documents only after every gate passes**
+- [x] **Step 7: Update lifecycle documents only after every gate passes**
 
 W `docs/roadmap/ROADMAP.md`:
 
@@ -1862,7 +1862,7 @@ COMPLETED — VERIFIED — AWAITING INTEGRATION
 
 Zaznacz tylko rzeczywiście wykonane checkboxy i zapisz dokładne komendy/wyniki w sekcji `Final Results`.
 
-- [ ] **Step 8: Commit documentation closeout**
+- [x] **Step 8: Commit documentation closeout**
 
 Run:
 
@@ -1895,6 +1895,43 @@ node /Users/patryk/.agent-memory-scripts/drift-check.js "$(pwd)"
 
 Potwierdź, że pamięć wskazuje HEAD commita dokumentacyjnego oraz nie traktuje audytu użytkownika jako własnej zmiany.
 
+## Final Results
+
+- `PHASE6B_BASE=21b15d35af99cd221dfcff0b677dcc577a562084` (`git merge-base HEAD puls-rebrand`).
+- Focused matrix:
+
+  ```bash
+  npx vitest run \
+    server/__tests__/aiContext.test.ts \
+    api/lib/__tests__/aiContextLoader.test.ts \
+    api/__tests__/aiChatContextIntegration.test.ts \
+    api/__tests__/aiChatStreamIntegration.test.ts \
+    api/lib/__tests__/aiChatStream.test.ts \
+    src/lib/__tests__/chatService.test.ts \
+    src/pages/__tests__/ChatPageStreamLifecycle.test.tsx \
+    src/pages/__tests__/ChatPageAccessibility.test.tsx
+  ```
+
+  PASS — 8 plików, 87/87 testów, exit 0; bez retry, unhandled rejection i prywatnych szczegółów w output.
+- `npm run test:unit`: PASS — 59 plików, 457/457 testów, exit 0.
+- `npm run lint`: PASS — `eslint .`, exit 0 bez uwag.
+- `npm run build`: PASS — `tsc -b && vite build`, 878 modułów, exit 0 bez ostrzeżenia.
+- Fresh-emulator desktop chat E2E:
+
+  ```bash
+  E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog "npx playwright test tests/e2e/chat.spec.ts --project=desktop --retries=0"
+  ```
+
+  PASS — 12/12 testów, exit 0. Mock instalowany w przeglądarce przejął cały `/api/ai-chat`, więc nie wykonano prawdziwego requestu Anthropic. Narzędzia wypisały ostrzeżenie emulatora Node `DEP0169 url.parse()` oraz ostrzeżenia Playwright/WebServer o `NO_COLOR` ignorowanym przy `FORCE_COLOR`; nie powstało nowe ostrzeżenie Fazy 6B.
+- Visual evidence: Observed — surface: Browser; proof: completed Browser DOM events returned limited status before first chunk, attached after done, plan status, 503 alert and successful one-question retry; emitted narrow and desktop screenshots showed clean wrapping/layout, with final browser logs `[]`.
+- Szczegóły obserwacji: przed pierwszym chunkiem DOM pokazał `Analizuję kontekst...` i status `Odpowiedź powstała bez części danych: gotowości i rekordów.`; ukończona odpowiedź `Druga odpowiedź obserwacyjna` zachowała ten status. Plan `Plan obserwacyjny` pokazał `Plan powstał bez części danych: profilu i treningów.`. Całkowita awaria pokazała alert `Nie udało się załadować kontekstu. Spróbuj ponownie.` i retry; wynik retry zawierał `questionCount: 1` oraz `Odpowiedź po ponowieniu`. Screenshoty 390×844 i desktop potwierdziły czyste zawijanie/layout.
+- Obserwacja początkowo wykryła brak statusu przed pierwszym chunkiem. Poprawka `7d9586a` ma focused coverage 18/18 i została ponownie przejrzana bez znalezisk.
+- Caveat operacyjny: reload HMR wysłał walidacyjny `/api/ai-models` z fałszywym kluczem do lokalnego backendu, który zwrócił `invalid x-api-key`; nie przesłano prawdziwego sekretu, promptu, odpowiedzi ani danych użytkownika. Wszystkie zachowania `/api/ai-chat` były deterministycznie przechwycone.
+- Focused Elevated-risk review pełnego diffu od `PHASE6B_BASE` przez `7d9586a` zakończył się bez otwartych znalezisk dla: awarii pojedynczych/całkowitej, empty-vs-unavailable, limitów 1+31+31+6=69 i faktycznych query, niezmienionego `chunk | done | error` oraz `{ plan }`, generation ID/abort/reset/stale callbacków, prywatności logów, indeksów i rollout/recovery oraz granic Fazy 6C/`userExercises`/`RELEASE-08`.
+- Hygiene: `git diff --check` czysty; worktree był czysty przed lifecycle docs; diff implementacji zawierał 15 planowanych plików (`1050 insertions`, `159 deletions`); `docs/audits/2026-07-14-senior-design-review.md` pozostał poza diffem i nietknięty.
+- Lifecycle: Faza 6B ma status `DONE` / `COMPLETED — VERIFIED — AWAITING INTEGRATION`; Fazy 2B i 6C pozostają `READY`, Faza S bez zmian, `RELEASE-08` otwarte. Indeksy nie zostały opublikowane; integracja, push i deploy nie zostały wykonane.
+- Krok zapisu pamięci pozostaje tu niezaznaczony celowo: zgodnie z procedurą następuje dopiero po commicie tych dokumentów, aby pamięć mogła wskazać jego HEAD; nie powstanie drugi commit tylko dla odnotowania zewnętrznego save.
+
 ---
 
 ## Spec Coverage Map
@@ -1922,19 +1959,19 @@ Potwierdź, że pamięć wskazuje HEAD commita dokumentacyjnego oraz nie traktuj
 
 ## Definition of Done
 
-- [ ] Każda pojedyncza awaria zachowuje trzy pozostałe źródła.
-- [ ] Empty snapshot pozostaje `available`.
-- [ ] Cztery awarie zwracają retryable 503 bez Anthropic fetch.
-- [ ] Budżet podstawowego kontekstu wynosi najwyżej 69 dokumentów.
-- [ ] Niskie readiness wymaga kolejnych dat kalendarzowych.
-- [ ] Header jest kanoniczny i ścisłe walidowany przez klienta.
-- [ ] Pełny kontekst jest cichy; limited jest przypisany do właściwej odpowiedzi/planu.
-- [ ] Reset, abort, supersede i retry nie zostawiają stale metadata.
-- [ ] NDJSON i body planu pozostają zgodne z Fazą 6A.
-- [ ] Focused tests, pełny unit/support, lint i build przechodzą.
-- [ ] Deterministyczny Playwright przechodzi bez prawdziwego Claude API.
-- [ ] Direct runtime observation ma status `Observed`.
-- [ ] Focused Elevated-risk review nie ma otwartych znalezisk.
+- [x] Każda pojedyncza awaria zachowuje trzy pozostałe źródła.
+- [x] Empty snapshot pozostaje `available`.
+- [x] Cztery awarie zwracają retryable 503 bez Anthropic fetch.
+- [x] Budżet podstawowego kontekstu wynosi najwyżej 69 dokumentów.
+- [x] Niskie readiness wymaga kolejnych dat kalendarzowych.
+- [x] Header jest kanoniczny i ścisłe walidowany przez klienta.
+- [x] Pełny kontekst jest cichy; limited jest przypisany do właściwej odpowiedzi/planu.
+- [x] Reset, abort, supersede i retry nie zostawiają stale metadata.
+- [x] NDJSON i body planu pozostają zgodne z Fazą 6A.
+- [x] Focused tests, pełny unit/support, lint i build przechodzą.
+- [x] Deterministyczny Playwright przechodzi bez prawdziwego Claude API.
+- [x] Direct runtime observation ma status `Observed`.
+- [x] Focused Elevated-risk review nie ma otwartych znalezisk.
 - [ ] Roadmapa, spec, plan i pamięć opisują rzeczywisty poziom zakończenia.
-- [ ] Audyt użytkownika pozostaje nietknięty.
-- [ ] Brak pushu, deployu, publikacji indeksów i zmian `RELEASE-08`.
+- [x] Audyt użytkownika pozostaje nietknięty.
+- [x] Brak pushu, deployu, publikacji indeksów i zmian `RELEASE-08`.

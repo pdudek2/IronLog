@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4, 5 i 6A zakończone; projekt Fazy 6B zatwierdzony; Faza 2B pozostaje niezależnie READY**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4, 5, 6A i 6B zakończone; Faza 6B oczekuje na integrację; Faza 2B pozostaje niezależnie READY**
 Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
 Ostatnia aktualizacja: 2026-07-22
 
@@ -73,7 +73,7 @@ Aktualny baseline jakości:
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
 | 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DONE | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
 | 10 | 6A — Stream i concurrency AI | P1 | DONE | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
-| 11 | 6B — Poprawność i koszt kontekstu AI | P1 | DESIGN APPROVED | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
+| 11 | 6B — Poprawność i koszt kontekstu AI | P1 | DONE | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
 | 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | READY | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
 | 13 | S — Hardening CSP | P2 | READY | Pozostała polityka CSP jest egzekwowana albo rzeczywiście raportuje naruszenia |
 | 14 | 7 — Bramka release | P0 | BLOCKED | Jedna powtarzalna procedura potwierdza gotowość po zakończeniu wymaganych faz |
@@ -369,7 +369,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 ### Faza 6B — Poprawność i koszt kontekstu AI
 
-**Status: DESIGN APPROVED.** Docelowy kontrakt został zatwierdzony i zapisany w [`specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md`](specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md). Szczegółowy plan wykonawczy znajduje się w [`plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`](plans/2026-07-22-phase-6b-ai-context-correctness-cost.md).
+**Status: DONE.** Zakres `AI-01`, `AI-09`, `AI-10` i `AI-11` został zaimplementowany i zweryfikowany na branchu `phase-6b-ai-context-integrity`; oczekuje na osobną decyzję integracyjną. Bramka końcowa objęła focused Vitest 87/87, pełny unit/support 457/457, czysty lint, build 878 modułów bez ostrzeżenia oraz świeży emulatorowy Playwright desktop 12/12 bez prawdziwego requestu Anthropic. Focused Elevated-risk review pełnego diffu od `21b15d35af99cd221dfcff0b677dcc577a562084` nie znalazł otwartych problemów. Bezpośrednia obserwacja Browser potwierdziła ograniczony status przed pierwszym chunkiem i przy ukończonej odpowiedzi, status planu, alert 503 z pojedynczym pytaniem po retry oraz poprawne zawijanie na 390×844 i desktopie z końcowymi `logs: []`. Indeksy nie zostały opublikowane; push, deploy, integracja i `RELEASE-08` nie zostały wykonane. Docelowy kontrakt i pełne dowody znajdują się w [`specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md`](specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md) oraz [`plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`](plans/2026-07-22-phase-6b-ai-context-correctness-cost.md).
 
 **Cel:** nie utożsamiać awarii odczytu z brakiem danych oraz ograniczyć koszt budowy kontekstu.
 
@@ -492,7 +492,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 6A — stream i concurrency AI** jest zakończona, zweryfikowana i zintegrowana lokalnie. Następnym zależnym pakietem jest Faza 6B. Niezależna Faza 2B pozostaje `READY`, a Faza 6C pozostaje `READY` zgodnie z zależnościami.
+**Faza 6B — poprawność i koszt kontekstu AI** jest zakończona i zweryfikowana na feature branchu, ale nie została jeszcze zintegrowana z `puls-rebrand`. Następnym krokiem jest osobna decyzja o lokalnej integracji. Niezależne Fazy 2B i 6C pozostają `READY`, Faza S pozostaje bez zmian, a `RELEASE-08` jest nadal otwarte.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

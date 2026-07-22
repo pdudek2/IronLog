@@ -645,6 +645,10 @@ export default function ChatPage() {
                                 </div>
                                 <span className="coach-thinking">Analizuję kontekst...</span>
                               </div>
+                              <ContextAvailabilityNotice
+                                subject="Odpowiedź"
+                                unavailableSources={streamUnavailableSources}
+                              />
                             </div>
                           )}
 

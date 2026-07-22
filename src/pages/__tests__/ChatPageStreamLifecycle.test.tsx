@@ -150,6 +150,33 @@ describe('ChatPage stream lifecycle', () => {
     )
   })
 
+  it('shows limited context before the first stream chunk while keeping the thinking placeholder', async () => {
+    render(<ChatPage />)
+    await sendPrompt('Czy progresuję?')
+    const pending = pendingReplies[0]
+
+    act(() => {
+      pending.options.onContext({ status: 'limited', unavailableSources: ['readiness', 'records'] })
+    })
+
+    expect(screen.getByText('Analizuję kontekst...')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Odpowiedź powstała bez części danych: gotowości i rekordów.',
+    )
+  })
+
+  it('keeps full context silent before the first stream chunk', async () => {
+    render(<ChatPage />)
+    await sendPrompt('Czy progresuję?')
+    const pending = pendingReplies[0]
+
+    reportFullContext(pending)
+
+    expect(screen.getByText('Analizuję kontekst...')).toBeInTheDocument()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
+  })
+
   it('ignores stale context metadata after Reset', async () => {
     render(<ChatPage />)
     await sendPrompt('Czy progresuję?')

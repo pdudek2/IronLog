@@ -369,7 +369,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 ### Faza 6B — Poprawność i koszt kontekstu AI
 
-**Status: DESIGN APPROVED.** Docelowy kontrakt został zatwierdzony i zapisany w [`specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md`](specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md). Szczegółowy plan wykonawczy powstaje dopiero po przeglądzie zapisanego speca.
+**Status: DESIGN APPROVED.** Docelowy kontrakt został zatwierdzony i zapisany w [`specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md`](specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md). Szczegółowy plan wykonawczy znajduje się w [`plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`](plans/2026-07-22-phase-6b-ai-context-correctness-cost.md).
 
 **Cel:** nie utożsamiać awarii odczytu z brakiem danych oraz ograniczyć koszt budowy kontekstu.
 

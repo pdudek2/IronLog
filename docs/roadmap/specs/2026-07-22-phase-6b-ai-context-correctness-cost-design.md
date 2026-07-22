@@ -1,6 +1,6 @@
 # Faza 6B — Poprawność i koszt kontekstu AI
 
-**Status:** projekt zatwierdzony — oczekuje na przegląd zapisanego speca
+**Status:** projekt zatwierdzony — szczegółowy plan gotowy do wykonania
 
 **Data:** 2026-07-22
 
@@ -362,3 +362,7 @@ Faza 6B jest gotowa do zamknięcia, gdy:
 11. deterministyczny Playwright i bezpośrednia obserwacja potwierdzają oba ostrzeżenia oraz recovery;
 12. roadmapa, spec, plan i pamięć zostają zaktualizowane dopiero zgodnie z rzeczywistym stanem integracji;
 13. push, deploy, publikacja indeksów i `RELEASE-08` nie są wykonywane bez osobnej zgody.
+
+## 17. Plan implementacyjny
+
+Szczegółowy plan wykonawczy znajduje się w `docs/roadmap/plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`. Implementacja rozpoczyna się dopiero po wyborze trybu wykonania i utworzeniu osobnego worktree/brancha `phase-6b-ai-context-integrity`.

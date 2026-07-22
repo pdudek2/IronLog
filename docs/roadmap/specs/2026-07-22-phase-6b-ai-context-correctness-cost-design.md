@@ -1,6 +1,6 @@
 # Faza 6B — Poprawność i koszt kontekstu AI
 
-**Status:** zaimplementowany i zweryfikowany — oczekuje na integrację
+**Status:** zaimplementowany, zweryfikowany i zintegrowany lokalnie
 
 **Data:** 2026-07-22
 
@@ -365,7 +365,7 @@ Faza 6B jest gotowa do zamknięcia, gdy:
 
 ## 17. Plan implementacyjny
 
-Szczegółowy plan wykonawczy znajduje się w `docs/roadmap/plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`. Implementację wykonano w osobnym worktree/branchu `phase-6b-ai-context-integrity`; lokalna integracja pozostaje osobnym, nieautoryzowanym jeszcze krokiem.
+Szczegółowy plan wykonawczy znajduje się w `docs/roadmap/plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`. Implementację wykonano w osobnym worktree/branchu `phase-6b-ai-context-integrity`, następnie zintegrowano lokalnie przez fast-forward do `puls-rebrand`; feature branch i worktree zostały usunięte.
 
 ## 18. Wynik weryfikacji
 
@@ -381,4 +381,4 @@ Szczegółowy plan wykonawczy znajduje się w `docs/roadmap/plans/2026-07-22-pha
 - Finalny whole-branch re-review pełnego diffu od `21b15d35af99cd221dfcff0b677dcc577a562084` przez `83941fe` zakończył się `Ready to merge: Yes`; Critical: 0, Important: 0, Minor: 0.
 - E2E 12/12 i bezpośrednia obserwacja Browser pozostają aktualnym dowodem. Nie ponawiano ich po `83941fe`, ponieważ commit nie dotknął kodu UI ani transportu klienta.
 - Caveat operacyjny: reload HMR wysłał do lokalnego backendu walidacyjny request `/api/ai-models` z fałszywym kluczem i otrzymał `invalid x-api-key`; nie przesłano prawdziwego sekretu, promptu, odpowiedzi ani danych użytkownika. Wszystkie zachowania `/api/ai-chat` były deterministycznie przechwycone.
-- Produkcyjna publikacja indeksów, integracja, push, deploy i `RELEASE-08` pozostają niewykonane. Fazy 2B i 6C nadal mają niezależny status `READY`, a Faza S pozostaje bez zmian.
+- Po lokalnej integracji `npm run test:unit` ponownie przeszedł: 59 plików, 460/460 testów. Produkcyjna publikacja indeksów, push, deploy i `RELEASE-08` pozostają niewykonane. Fazy 2B i 6C nadal mają niezależny status `READY`, a Faza S pozostaje bez zmian.

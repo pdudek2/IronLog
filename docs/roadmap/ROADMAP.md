@@ -1,7 +1,7 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4, 5, 6A i 6B zakończone; Faza 6B oczekuje na integrację; Faza 2B pozostaje niezależnie READY**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4, 5, 6A i 6B zakończone i zintegrowane lokalnie; Faza 2B pozostaje niezależnie READY**
 Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
 Ostatnia aktualizacja: 2026-07-22
 
@@ -369,7 +369,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 ### Faza 6B — Poprawność i koszt kontekstu AI
 
-**Status: DONE.** Zakres `AI-01`, `AI-09`, `AI-10` i `AI-11` został zaimplementowany i zweryfikowany na branchu `phase-6b-ai-context-integrity`; oczekuje na osobną decyzję integracyjną. Bramka końcowa po poprawkach final review objęła focused Vitest 90/90, pełny unit/support 460/460, czysty lint, build 878 modułów bez ostrzeżenia oraz zachowany emulatorowy Playwright desktop 12/12 bez prawdziwego requestu Anthropic. Poprawki `83941fe` zachowują readiness-only streak przy niedostępnych treningach bez fałszywych twierdzeń o zerowej aktywności, przekazują rekordy do promptu planu i wzmacniają regresję pojedynczych awarii o niepuste spełnione źródła. Finalny whole-branch re-review pełnego diffu od `21b15d35af99cd221dfcff0b677dcc577a562084` zakończył się `Ready to merge: Yes` z zerem znalezisk Critical, Important i Minor. Bezpośrednia obserwacja Browser potwierdziła ograniczony status przed pierwszym chunkiem i przy ukończonej odpowiedzi, status planu, alert 503 z pojedynczym pytaniem po retry oraz poprawne zawijanie na 390×844 i desktopie z końcowymi `logs: []`; nie była ponawiana, ponieważ `83941fe` nie zmienił UI. Indeksy nie zostały opublikowane; push, deploy, integracja i `RELEASE-08` nie zostały wykonane. Docelowy kontrakt i pełne dowody znajdują się w [`specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md`](specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md) oraz [`plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`](plans/2026-07-22-phase-6b-ai-context-correctness-cost.md).
+**Status: DONE.** Zakres `AI-01`, `AI-09`, `AI-10` i `AI-11` został zaimplementowany, zweryfikowany i zintegrowany lokalnie z `puls-rebrand` przez fast-forward do `c76d358`. Bramka końcowa po poprawkach final review objęła focused Vitest 90/90, pełny unit/support 460/460, czysty lint, build 878 modułów bez ostrzeżenia oraz zachowany emulatorowy Playwright desktop 12/12 bez prawdziwego requestu Anthropic; po integracji pełny unit/support ponownie przeszedł 460/460. Poprawki `83941fe` zachowują readiness-only streak przy niedostępnych treningach bez fałszywych twierdzeń o zerowej aktywności, przekazują rekordy do promptu planu i wzmacniają regresję pojedynczych awarii o niepuste spełnione źródła. Finalny whole-branch re-review pełnego diffu od `21b15d35af99cd221dfcff0b677dcc577a562084` zakończył się `Ready to merge: Yes` z zerem znalezisk Critical, Important i Minor. Bezpośrednia obserwacja Browser potwierdziła ograniczony status przed pierwszym chunkiem i przy ukończonej odpowiedzi, status planu, alert 503 z pojedynczym pytaniem po retry oraz poprawne zawijanie na 390×844 i desktopie z końcowymi `logs: []`; nie była ponawiana, ponieważ `83941fe` nie zmienił UI. Feature branch i własny worktree zostały usunięte. Indeksy nie zostały opublikowane; push, deploy i `RELEASE-08` nie zostały wykonane. Docelowy kontrakt i pełne dowody znajdują się w [`specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md`](specs/2026-07-22-phase-6b-ai-context-correctness-cost-design.md) oraz [`plans/2026-07-22-phase-6b-ai-context-correctness-cost.md`](plans/2026-07-22-phase-6b-ai-context-correctness-cost.md).
 
 **Cel:** nie utożsamiać awarii odczytu z brakiem danych oraz ograniczyć koszt budowy kontekstu.
 
@@ -492,7 +492,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 6B — poprawność i koszt kontekstu AI** jest zakończona i zweryfikowana na feature branchu, ale nie została jeszcze zintegrowana z `puls-rebrand`. Następnym krokiem jest osobna decyzja o lokalnej integracji. Niezależne Fazy 2B i 6C pozostają `READY`, Faza S pozostaje bez zmian, a `RELEASE-08` jest nadal otwarte.
+**Faza 6B — poprawność i koszt kontekstu AI** jest zakończona, zweryfikowana i zintegrowana lokalnie z `puls-rebrand`. Niezależne Fazy 2B i 6C pozostają `READY`, Faza S pozostaje bez zmian, a `RELEASE-08` jest nadal otwarte.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

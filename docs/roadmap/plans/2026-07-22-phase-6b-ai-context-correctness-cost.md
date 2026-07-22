@@ -1,6 +1,6 @@
 # Phase 6B AI Context Correctness and Cost Implementation Plan
 
-**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
+**Status:** COMPLETED — VERIFIED — INTEGRATED LOCALLY
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1876,7 +1876,7 @@ git commit -m "docs: close phase 6b AI context integrity"
 
 Expected: commit contains only lifecycle documentation. Integration do `puls-rebrand`, cleanup worktree, push, deploy and `RELEASE-08` wymagają osobnego kroku oraz właściwej zgody.
 
-- [ ] **Step 9: Save the truthful pre-integration memory state**
+- [x] **Step 9: Save the truthful pre-integration memory state**
 
 Przeczytaj i użyj `memory-save` po commicie dokumentacji. Zapisz:
 
@@ -1931,8 +1931,9 @@ Potwierdź, że pamięć wskazuje HEAD commita dokumentacyjnego oraz nie traktuj
 - Final-review fixes w `83941fe` zachowują gotowościowy niski streak i rekomendację przy niedostępnej historii treningów, bez fałszywego `0 treningów` lub braku aktywności. Kontrakt zależności pozostaje jawny: workout trends wymagają treningów, weak-week comparison treningów i profilu, a readiness streak wyłącznie readiness. Prompt planu otrzymał istniejące heading/line rekordów dla wariantu available i unavailable, a parametryczna regresja loadera dowodzi zachowania znormalizowanych, niepustych sibling data przy odrzuceniu każdego pojedynczego źródła.
 - Finalny whole-branch re-review pełnego diffu od `PHASE6B_BASE` przez `83941fe` zakończył się `Ready to merge: Yes`; Critical: 0, Important: 0, Minor: 0. Ponownie sprawdzono awarie pojedyncze/całkowitą, empty-vs-unavailable, zależności analiz, limity 1+31+31+6=69 i faktyczne query, oba prompty, niezmienione `chunk | done | error` oraz `{ plan }`, generation ID/abort/reset/stale callbacki, prywatność logów, indeksy i rollout/recovery oraz granice Fazy 6C/`userExercises`/`RELEASE-08`.
 - Hygiene: `git diff --check` czysty; worktree był czysty przed lifecycle refresh; finalny diff implementacji obejmuje 15 planowanych plików (`1190 insertions`, `166 deletions`); `docs/audits/2026-07-14-senior-design-review.md` pozostał poza diffem i nietknięty.
-- Lifecycle: Faza 6B ma status `DONE` / `COMPLETED — VERIFIED — AWAITING INTEGRATION`; Fazy 2B i 6C pozostają `READY`, Faza S bez zmian, `RELEASE-08` otwarte. Indeksy nie zostały opublikowane; integracja, push i deploy nie zostały wykonane.
-- Krok zapisu pamięci pozostaje tu niezaznaczony celowo: zgodnie z procedurą następuje dopiero po commicie tych dokumentów, aby pamięć mogła wskazać jego HEAD; nie powstanie drugi commit tylko dla odnotowania zewnętrznego save.
+- Integracja lokalna: `puls-rebrand` został przesunięty fast-forward z `21b15d35af99cd221dfcff0b677dcc577a562084` do `c76d3588454a1c61e13c6fd45f14ee1dc1512edc`; brak upstreamu dla `puls-rebrand` wykluczył `git pull`. Po integracji `npm run test:unit` przeszedł ponownie: 59 plików, 460/460 testów. Własny worktree `.worktrees/phase-6b-ai-context-integrity` i feature branch zostały usunięte.
+- Lifecycle: Faza 6B ma status `DONE` / `COMPLETED — VERIFIED — INTEGRATED LOCALLY`; Fazy 2B i 6C pozostają `READY`, Faza S bez zmian, `RELEASE-08` otwarte. Indeksy nie zostały opublikowane; push i deploy nie zostały wykonane.
+- Pamięć pre-integration została zapisana na feature branchu jako schema v2, sequence 8. Po tym commicie lifecycle zostaje zaktualizowana ponownie do stanu post-integration i sprawdzona drift-checkiem; nie powstaje drugi commit tylko dla odnotowania zewnętrznego save.
 
 ---
 
@@ -1974,6 +1975,6 @@ Potwierdź, że pamięć wskazuje HEAD commita dokumentacyjnego oraz nie traktuj
 - [x] Deterministyczny Playwright przechodzi bez prawdziwego Claude API.
 - [x] Direct runtime observation ma status `Observed`.
 - [x] Focused Elevated-risk review nie ma otwartych znalezisk.
-- [ ] Roadmapa, spec, plan i pamięć opisują rzeczywisty poziom zakończenia.
+- [x] Roadmapa, spec, plan i pamięć opisują rzeczywisty poziom zakończenia.
 - [x] Audyt użytkownika pozostaje nietknięty.
 - [x] Brak pushu, deployu, publikacji indeksów i zmian `RELEASE-08`.

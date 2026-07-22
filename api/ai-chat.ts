@@ -1,5 +1,6 @@
 import { adminDb } from './lib/firebaseAdmin.js'
 import { requireUserId } from './lib/auth.js'
+import { loadAiUserContext } from './lib/aiContextLoader.js'
 import { ApiError } from './lib/errors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
 import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
@@ -9,14 +10,23 @@ import {
   writeChatStreamFrame,
 } from './lib/aiChatStream.js'
 import {
-  buildAiUserContext,
+  AI_CONTEXT_SOURCES,
   buildChatContextSections,
-  createEmptyAiUserContext,
+  type AiContextSourceStatuses,
   type AiUserContext,
 } from '../server/aiContext.js'
 
 export const config = {
   maxDuration: 30,
+}
+
+export const AI_CONTEXT_HEADER = 'X-IronLog-AI-Context'
+
+export function serializeAiContextHeader(sources: AiContextSourceStatuses): string {
+  const unavailable = AI_CONTEXT_SOURCES.filter((source) => sources[source] === 'unavailable')
+  return unavailable.length === 0
+    ? 'full'
+    : `limited;unavailable=${unavailable.join(',')}`
 }
 
 interface IncomingChatMessage {
@@ -129,67 +139,6 @@ function normalizePlanRequest(raw: AiChatBody['planRequest']) {
   return { goal, daysPerWeek, experience, focus, notes, equipment }
 }
 
-async function fetchUserContext(uid: string): Promise<AiUserContext> {
-  const readinessRefs = recentReadinessDateKeys(Date.now(), 32)
-    .map((dateKey) => adminDb.collection('readiness').doc(`${uid}_${dateKey}`))
-  const [profileSnap, readinessSnap, workoutsSnap, recordsSnap] = await Promise.all([
-    adminDb.collection('users').doc(uid).get(),
-    Promise.all(readinessRefs.map((ref) => ref.get())),
-    adminDb.collection('workouts').where('userId', '==', uid).orderBy('startedAt', 'desc').limit(60).get(),
-    adminDb.collection('records').where('userId', '==', uid).limit(100).get(),
-  ])
-
-  const profile = profileSnap.exists ? profileSnap.data() : null
-
-  return buildAiUserContext({
-    profile: {
-      displayName: typeof profile?.displayName === 'string' ? profile.displayName : null,
-      primaryGoal: typeof profile?.primaryGoal === 'string' ? profile.primaryGoal : null,
-      weeklyGoal: typeof profile?.weeklyGoal === 'number' ? profile.weeklyGoal : null,
-      units: typeof profile?.units === 'string' ? profile.units : null,
-    },
-    readinessEntries: readinessSnap.flatMap((docSnap) => {
-      if (!docSnap.exists) return []
-      const data = docSnap.data() ?? {}
-      return [{
-        date: typeof data.date === 'string' ? data.date : '',
-        createdAt: Number(data.createdAt ?? 0),
-        sleep: Number(data.sleep ?? 3),
-        mood: Number(data.mood ?? 3),
-        soreness: Number(data.soreness ?? 3),
-      }]
-    }),
-    workouts: workoutsSnap.docs.map((docSnap) => {
-      const data = docSnap.data()
-      return {
-        label: typeof data.label === 'string' ? data.label : null,
-        startedAt: Number(data.startedAt ?? 0),
-        exercises: Array.isArray(data.exercises) ? data.exercises : [],
-      }
-    }),
-    records: recordsSnap.docs.map((docSnap) => {
-      const data = docSnap.data()
-      return {
-        exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : 'Ćwiczenie',
-        maxWeight: Number(data.maxWeight ?? 0),
-        maxReps: Number(data.maxReps ?? 0),
-        bestVolume: Number(data.bestVolume ?? 0),
-        lastPerformedAt: Number(data.lastPerformedAt ?? 0),
-      }
-    }),
-  })
-}
-
-function recentReadinessDateKeys(now: number, days: number): string[] {
-  return Array.from({ length: days }, (_, index) => {
-    const date = new Date(now - index * 24 * 60 * 60 * 1000)
-    const year = date.getFullYear()
-    const month = String(date.getMonth() + 1).padStart(2, '0')
-    const day = String(date.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  })
-}
-
 async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]> {
   const userExercisesSnap = await adminDb.collection('userExercises').where('userId', '==', uid).get()
   const globalExercises = await loadGlobalExercises()
@@ -221,15 +170,6 @@ async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]
   return [...fromGlobal, ...fromUser]
 }
 
-async function fetchUserContextSafe(uid: string): Promise<AiUserContext> {
-  try {
-    return await fetchUserContext(uid)
-  } catch (error) {
-    console.error('[ai-chat context error]', error)
-    return createEmptyAiUserContext()
-  }
-}
-
 async function fetchAvailableExercisesSafe(uid: string): Promise<AvailableExercise[]> {
   try {
     return await fetchAvailableExercises(uid)
@@ -258,6 +198,7 @@ function buildSystemPrompt(context: AiUserContext): string {
     'Jeśli użytkownik pyta o plan lub progres, odnoś się do jego celu, readiness i ostatnich sesji.',
     'Jeśli w sekcji OSTATNIE 4 TRENINGI widzisz ćwiczenia i sety, traktuj to jako dostęp do szczegółów sesji i nie proś ponownie o listę ćwiczeń.',
     'Jeśli użytkownik pyta o miesiąc, spadki formy lub gorsze momenty, korzystaj z sekcji SYGNAŁY Z OSTATNICH 30 DNI.',
+    'Źródło oznaczone jako chwilowo niedostępne nie dowodzi braku aktywności ani braku danych użytkownika; nie wyciągaj z niego wniosków.',
     'Nie streszczaj samych danych. Każda odpowiedź ma prowadzić do wniosku, decyzji albo poprawki na kolejny trening.',
     'Używaj krótkiego markdownu: krótkie nagłówki, zwięzłe bullet pointy, bez ściany tekstu.',
     'Gdy użytkownik pyta, czy ostatni trening był dobry, odpowiedz w strukturze:',
@@ -294,11 +235,13 @@ function buildPlanSystemPrompt(
 ): string {
   const sections = buildChatContextSections(context)
 
-  const recentContext = context.recentWorkouts.length > 0
-    ? context.recentWorkouts
-        .map((workout) => `${workout.label}: ${workout.exerciseCount} ćwiczeń, ${workout.totalVolume} kg`)
-        .join('\n')
-    : 'Brak historii treningów.'
+  const recentContext = context.sources.workouts === 'unavailable'
+    ? sections.workoutsLine
+    : context.recentWorkouts.length > 0
+      ? context.recentWorkouts
+          .map((workout) => `${workout.label}: ${workout.exerciseCount} ćwiczeń, ${workout.totalVolume} kg`)
+          .join('\n')
+      : 'Brak historii treningów.'
 
   const catalogLines = catalog
     .map((exercise) => [
@@ -320,14 +263,13 @@ function buildPlanSystemPrompt(
     `Zwróć dokładnie ${request.daysPerWeek} dni treningowe.`,
     'Każdy dzień powinien mieć zwykle 4-6 ćwiczeń, chyba że kontekst sugeruje mniej.',
     'Dobieraj plan do celu użytkownika, readiness i ostatnich sesji, ale nie wymyślaj nieistniejących danych.',
+    'Źródło oznaczone jako chwilowo niedostępne nie dowodzi braku aktywności ani braku danych użytkownika; nie wyciągaj z niego wniosków.',
     'JSON ma mieć shape:',
     '{"name":"string","summary":"string","days":[{"name":"string","exercises":[{"exerciseId":"string","exerciseSource":"global|user","sets":4,"targetReps":8,"targetWeight":0}]}]}',
     '',
     'KONTEKST UŻYTKOWNIKA',
     sections.profileLine,
-    context.readiness
-      ? `Readiness: ${context.readiness.score}/100 (${context.readiness.label})`
-      : 'Readiness: brak danych.',
+    sections.readinessLine,
     'OSTATNIE 4 TRENINGI',
     recentContext,
     'SYGNAŁY Z OSTATNICH 30 DNI',
@@ -353,7 +295,9 @@ function buildPlanUserPrompt(
     `Dostępny sprzęt: ${equipmentLine}`,
     `Fokus: ${request.focus || 'brak dodatkowego fokusu'}`,
     `Uwagi: ${request.notes || 'brak dodatkowych uwag'}`,
-    `Priorytet wynikający z profilu: ${context.primaryGoal || 'brak danych'}`,
+    context.sources.profile === 'unavailable'
+      ? 'Priorytet wynikający z profilu: dane chwilowo niedostępne'
+      : `Priorytet wynikający z profilu: ${context.primaryGoal || 'brak danych'}`,
   ].join('\n')
 }
 
@@ -657,7 +601,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    const context = await fetchUserContextSafe(userId)
+    const context = await loadAiUserContext(userId)
+    res.setHeader(AI_CONTEXT_HEADER, serializeAiContextHeader(context.sources))
     const requestedModel = typeof body.model === 'string' ? body.model.trim() : ''
     const model = requestedModel || process.env.CLAUDE_CHAT_MODEL || 'claude-sonnet-4-20250514'
 

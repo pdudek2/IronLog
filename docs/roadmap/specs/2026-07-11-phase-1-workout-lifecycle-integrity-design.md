@@ -1,6 +1,6 @@
 # IronLog — projekt Fazy 1: integralność cyklu życia treningu
 
-**Status:** zatwierdzona do planowania
+**Status:** wdrożona i zweryfikowana
 
 **Data:** 2026-07-11
 

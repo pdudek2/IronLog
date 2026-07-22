@@ -273,4 +273,4 @@ Zmiana routera i guard są wdrażane oraz testowane przed komponentami zależnym
 
 ## 14. Następny etap
 
-Szczegółowy plan implementacji znajduje się w `docs/roadmap/plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md`. Implementacja rozpoczyna się dopiero po wyborze trybu wykonania i użyciu `superpowers:subagent-driven-development` albo `superpowers:executing-plans`.
+Szczegółowy plan implementacji znajduje się w `docs/roadmap/plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md`. Plan został wykonany, zweryfikowany i zamknięty; pozostaje historycznym artefaktem wykonawczym.

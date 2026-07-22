@@ -1,5 +1,7 @@
 # Phase 3 Critical Accessibility and Navigation Implementation Plan
 
+**Status:** COMPLETED — INTEGRATED LOCALLY TO `puls-rebrand`
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Usunąć potwierdzone bariery `A11Y-01–08`, tak aby główne przepływy IronLog były poprawnie nazwane, fokusowalne i komunikowały stan bez polegania na kolorze.
@@ -1400,7 +1402,7 @@ git commit -m "test: add critical accessibility gate"
 
 ### Task 7: Full verification, review, and Phase 3 closure
 
-**Stan:** Task 7 zakończony. Steps 1–9 wykonane, final re-review ma wynik `PASS / Approved` (Critical 0, Important 0, Minor 0), a feature branch jest gotowy do merge po zgodzie użytkownika.
+**Stan:** Task 7 zakończony. Steps 1–9 wykonane, final re-review ma wynik `PASS / Approved` (Critical 0, Important 0, Minor 0), implementacja została lokalnie zintegrowana z `puls-rebrand`, a feature branch usunięty.
 
 **Files:**
 - Modify: `docs/roadmap/ROADMAP.md`
@@ -1543,7 +1545,7 @@ oraz dodaj sekcję:
 Zakres `A11Y-01–08` został wdrożony bez zmiany kierunku wizualnego Puls. Focused testy komponentowe, ukierunkowany Axe, emulatorowy Playwright, pełny unit/support, lint i build przechodzą. Ręczny keyboard walkthrough oraz accessibility snapshot potwierdziły nazwane kontrolki i prawidłową kolejność fokusu na desktopie i mobile. Produkcyjny live Playwright, deploy Vercel i publikacja reguł pozostają otwarte w `RELEASE-08`.
 ```
 
-W `WORKING_CONTEXT.md` ustaw:
+Historyczny payload zamknięcia przed integracją, zapisany w `WORKING_CONTEXT.md` na tym etapie:
 
 - focus: Faza 3 wdrożona, zweryfikowana i po czystym final review na feature branchu, gotowa do merge do `puls-rebrand` po zgodzie użytkownika;
 - passing: zmierzone wyniki lint, unit/support, build, Axe, isolated i workout E2E;

@@ -2,7 +2,7 @@
 
 **Status:** wdrożona i zweryfikowana
 
-**Stan integracji:** implementacja znajduje się na branchu `phase-3-accessibility-navigation`; final re-review zakończył się `PASS / Approved` z wynikiem Critical 0, Important 0, Minor 0. Feature branch jest gotowy do merge do `puls-rebrand` po zgodzie użytkownika. Nie wykonano merge, pushu, deployu ani czynności produkcyjnych.
+**Stan integracji:** implementacja została lokalnie zintegrowana z `puls-rebrand`; final re-review zakończył się `PASS / Approved` z wynikiem Critical 0, Important 0, Minor 0. Feature branch został usunięty. Nie wykonano pushu, deployu ani czynności produkcyjnych.
 
 **Data:** 2026-07-13
 
@@ -371,4 +371,4 @@ Ręczny walkthrough został dodatkowo utrwalony w 17 screenshotach emulatorowego
 
 Przegląd 16 wygenerowanych plików `.aria.yml` dla `/dashboard`, `/templates/new`, `/exercises` i `/chat` w obu projektach potwierdził nazwane regiony nawigacji i objęte kontrolki. Snapshoty pokazują między innymi `textbox "Nazwa"`, `textbox "Dzień 1"`, `combobox "Model Claude"`, stany `[pressed]` filtrów i trybu AI oraz dokładnie jedną nazwaną akcję `Otwórz ćwiczenie <nazwa>` na wiersz; nie wykryto anonimowego `button`, `textbox` ani `combobox` w objętych powierzchniach.
 
-Final re-review pełnego diffu zakończył się `PASS / Approved` bez znalezisk Critical, Important ani Minor po korekcie chronionej commitem `04e086e`. Dokumentacja zamknięcia jest kompletna, a feature branch gotowy do merge. Merge do `puls-rebrand` wymaga osobnej zgody użytkownika i nie jest częścią tego kroku.
+Final re-review pełnego diffu zakończył się `PASS / Approved` bez znalezisk Critical, Important ani Minor po korekcie chronionej commitem `04e086e`. Dokumentacja zamknięcia jest kompletna, implementacja została lokalnie zintegrowana z `puls-rebrand`, a feature branch usunięty. Push, deploy i czynności produkcyjne nie zostały wykonane.

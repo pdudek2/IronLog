@@ -1,6 +1,6 @@
 # IronLog — projekt Fazy R: review cyklu życia treningu
 
-**Status:** zatwierdzona do planowania
+**Status:** zakończona — raport zatwierdzony; historyczny projekt diagnostyczny
 
 **Data:** 2026-07-11
 

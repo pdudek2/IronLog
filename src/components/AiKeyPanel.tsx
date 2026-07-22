@@ -58,10 +58,6 @@ export default function AiKeyPanel({
   ), [hasSavedKey, savedKey])
 
   useEffect(() => {
-    onConfiguredChange?.(keyVerified)
-  }, [keyVerified, onConfiguredChange])
-
-  useEffect(() => {
     if (!savedKey) return
 
     let cancelled = false
@@ -83,12 +79,15 @@ export default function AiKeyPanel({
 
         setSelectedModel(nextSelected)
         if (nextSelected) setClaudeModel(nextSelected)
+        onConfiguredChange?.(true)
       } catch (nextError) {
         if (cancelled) return
+        const code = getAiErrorCode(nextError)
         setModelsError({
           message: nextError instanceof Error ? nextError.message : 'Nie udało się pobrać modeli Claude.',
-          code: getAiErrorCode(nextError),
+          code,
         })
+        onConfiguredChange?.(code !== 'invalid-key')
       } finally {
         if (!cancelled) setLoadingModels(false)
       }
@@ -99,7 +98,7 @@ export default function AiKeyPanel({
     return () => {
       cancelled = true
     }
-  }, [savedKey])
+  }, [onConfiguredChange, savedKey])
 
   function handleSave() {
     const normalized = draft.trim()
@@ -129,6 +128,7 @@ export default function AiKeyPanel({
     setShowKey(false)
     setSaved(false)
     setError('')
+    onConfiguredChange?.(false)
   }
 
   if (collapsed) {

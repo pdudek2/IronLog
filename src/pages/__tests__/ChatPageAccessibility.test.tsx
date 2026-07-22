@@ -197,6 +197,10 @@ describe('ChatPage accessibility', () => {
       expect(screen.getByRole('combobox', { name: 'Model Claude' }))
         .toHaveAccessibleDescription('Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.')
     })
+    await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2))
+    await new Promise((resolve) => window.setTimeout(resolve, 0))
+    expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2)
+    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
   })
 
   it('keeps the API key name stable while announcing its field error', async () => {

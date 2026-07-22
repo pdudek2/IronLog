@@ -104,12 +104,15 @@ describe('ChatPage accessibility', () => {
 
   it('exposes the selected generated-plan day without relying on color', async () => {
     mocks.generateTrainingPlan.mockResolvedValueOnce({
-      name: 'Plan testowy',
-      summary: 'Dwa dni',
-      days: [
-        { name: 'Upper', exercises: [] },
-        { name: 'Lower', exercises: [] },
-      ],
+      plan: {
+        name: 'Plan testowy',
+        summary: 'Dwa dni',
+        days: [
+          { name: 'Upper', exercises: [] },
+          { name: 'Lower', exercises: [] },
+        ],
+      },
+      context: { status: 'full', unavailableSources: [] },
     })
     render(<ChatPage />)
 
@@ -129,6 +132,25 @@ describe('ChatPage accessibility', () => {
     fireEvent.click(lower)
     expect(lower).toHaveAttribute('aria-pressed', 'true')
     expect(upper).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('announces limited context on the generated plan without marking the form invalid', async () => {
+    mocks.generateTrainingPlan.mockResolvedValueOnce({
+      plan: { name: 'Plan testowy', summary: 'Dwa dni', days: [] },
+      context: { status: 'limited', unavailableSources: ['profile', 'workouts'] },
+    })
+    render(<ChatPage />)
+
+    await screen.findByRole('combobox', { name: 'Model Claude' })
+    fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
+    const goal = screen.getByRole('textbox', { name: 'Cel planu' })
+    fireEvent.change(goal, { target: { value: 'Siła' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generuj plan' }))
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Plan powstał bez części danych: profilu i treningów.',
+    )
+    expect(goal).not.toHaveAttribute('aria-invalid')
   })
 
   it('announces and associates a model-list failure', async () => {

@@ -13,6 +13,7 @@ import { saveTemplateDraft } from '../lib/templateDraftStorage'
 import {
   generateTrainingPlan,
   streamChatReply,
+  type AiContextSource,
   type ChatMessage,
   type GeneratedTrainingPlan,
 } from '../lib/chatService'
@@ -95,6 +96,14 @@ const EQUIPMENT_OPTIONS = [
   { value: 'kettlebell', label: 'Kettlebell' },
 ]
 
+const CONTEXT_SOURCE_LABELS: Record<AiContextSource, string> = {
+  profile: 'profilu',
+  readiness: 'gotowości',
+  workouts: 'treningów',
+  records: 'rekordów',
+}
+const polishList = new Intl.ListFormat('pl-PL', { style: 'long', type: 'conjunction' })
+
 type AiWorkspaceTab = 'chat' | 'plan'
 
 interface PlanErrorState {
@@ -134,6 +143,22 @@ function SectionError({ message, id }: { message: string; id?: string }) {
   )
 }
 
+function ContextAvailabilityNotice({
+  subject,
+  unavailableSources,
+}: {
+  subject: 'Odpowiedź' | 'Plan'
+  unavailableSources: AiContextSource[]
+}) {
+  if (unavailableSources.length === 0) return null
+  const labels = unavailableSources.map((source) => CONTEXT_SOURCE_LABELS[source])
+  return (
+    <div className="coach-generation-feedback" role="status">
+      {subject} powstał{subject === 'Odpowiedź' ? 'a' : ''} bez części danych: {polishList.format(labels)}.
+    </div>
+  )
+}
+
 export default function ChatPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
@@ -145,6 +170,7 @@ export default function ChatPage() {
   const demoSeededRef = useRef(isDemoUser)
   const [input, setInput] = useState('')
   const [streamText, setStreamText] = useState('')
+  const [streamUnavailableSources, setStreamUnavailableSources] = useState<AiContextSource[]>([])
   const [generationState, setGenerationState] = useState<ChatGenerationState>({ status: 'idle' })
   const activeGenerationRef = useRef<ActiveChatGeneration | null>(null)
   const [error, setError] = useState('')
@@ -156,6 +182,7 @@ export default function ChatPage() {
   const [planNotes, setPlanNotes] = useState('')
   const [planEquipment, setPlanEquipment] = useState<string[]>(['barbell', 'dumbbell', 'bodyweight'])
   const [planPreview, setPlanPreview] = useState<GeneratedTrainingPlan | null>(null)
+  const [planUnavailableSources, setPlanUnavailableSources] = useState<AiContextSource[]>([])
   const [planError, setPlanError] = useState<PlanErrorState | null>(null)
   const planGoalId = useId()
   const planErrorId = useId()
@@ -183,6 +210,7 @@ export default function ChatPage() {
     if (!updateUi) return
 
     setStreamText('')
+    setStreamUnavailableSources([])
     if (reason === 'mode-change' && active) {
       setGenerationState({ status: 'interrupted', questionId: active.questionId })
       return
@@ -251,12 +279,20 @@ export default function ChatPage() {
     setGenerationState({ status: 'streaming', questionId })
     setError('')
     setStreamText('')
+    setStreamUnavailableSources([])
+
+    let generationUnavailableSources: AiContextSource[] = []
 
     try {
       const reply = await streamChatReply({
         apiKey,
         messages: requestMessages.map(({ role, content }) => ({ role, content })),
         signal: controller.signal,
+        onContext: (context) => {
+          if (activeGenerationRef.current?.generationId !== generationId) return
+          generationUnavailableSources = context.unavailableSources
+          setStreamUnavailableSources(context.unavailableSources)
+        },
         onChunk: (chunk) => {
           if (activeGenerationRef.current?.generationId !== generationId) return
           setStreamText((current) => current + chunk)
@@ -270,20 +306,24 @@ export default function ChatPage() {
           id: crypto.randomUUID(),
           role: 'assistant',
           content: reply || 'Nie udało się wygenerować odpowiedzi.',
+          contextUnavailableSources: generationUnavailableSources,
         },
       ])
       setStreamText('')
+      setStreamUnavailableSources([])
       setGenerationState({ status: 'idle' })
     } catch (nextError) {
       if (activeGenerationRef.current?.generationId !== generationId) return
       if (controller.signal.aborted || (nextError instanceof Error && nextError.name === 'AbortError')) {
         setStreamText('')
+        setStreamUnavailableSources([])
         setGenerationState({ status: 'interrupted', questionId })
         return
       }
 
       const message = nextError instanceof Error ? nextError.message : 'Nie udało się połączyć z AI Coachem.'
       setStreamText('')
+      setStreamUnavailableSources([])
       setGenerationState({ status: 'failed', questionId, message })
     } finally {
       clearActiveGeneration(generationId)
@@ -377,10 +417,12 @@ export default function ChatPage() {
     }
 
     setPlanError(null)
+    setPlanPreview(null)
+    setPlanUnavailableSources([])
     setGeneratingPlan(true)
 
     try {
-      const plan = await generateTrainingPlan({
+      const { plan, context } = await generateTrainingPlan({
         apiKey,
         request: {
           goal: planGoal,
@@ -393,12 +435,14 @@ export default function ChatPage() {
       })
 
       setPlanPreview(plan)
+      setPlanUnavailableSources(context.unavailableSources)
       setActiveTab('plan')
       toast.success('Plan wygenerowany. Możesz go zapisać jako szablon.')
     } catch (nextError) {
       const message = nextError instanceof Error ? nextError.message : 'Nie udało się wygenerować planu.'
       setPlanError({ message, field: null })
       setPlanPreview(null)
+      setPlanUnavailableSources([])
     } finally {
       setGeneratingPlan(false)
     }
@@ -416,6 +460,7 @@ export default function ChatPage() {
       })
       toast.success('Plan zapisany jako nowy szablon.')
       setPlanPreview(null)
+      setPlanUnavailableSources([])
       setPlanGoal('')
       setPlanFocus('')
       setPlanNotes('')
@@ -580,6 +625,12 @@ export default function ChatPage() {
                                 {message.role === 'assistant' ? 'AI Coach' : 'Ty'}
                               </p>
                               <ChatMarkdown content={message.content} />
+                              {message.role === 'assistant' && (
+                                <ContextAvailabilityNotice
+                                  subject="Odpowiedź"
+                                  unavailableSources={message.contextUnavailableSources ?? []}
+                                />
+                              )}
                             </div>
                           ))}
 
@@ -603,6 +654,10 @@ export default function ChatPage() {
                               <div className="flex items-end gap-1">
                                 <div className="min-w-0 flex-1">
                                   <ChatMarkdown content={streamText} />
+                                  <ContextAvailabilityNotice
+                                    subject="Odpowiedź"
+                                    unavailableSources={streamUnavailableSources}
+                                  />
                                 </div>
                                 <span className="chat-stream-cursor" aria-hidden="true" />
                               </div>
@@ -850,6 +905,11 @@ export default function ChatPage() {
                       </div>
                     </div>
 
+                    <ContextAvailabilityNotice
+                      subject="Plan"
+                      unavailableSources={planUnavailableSources}
+                    />
+
                     <div className="coach-chip-row mt-5" role="group" aria-label="Dzień podglądu planu">
                       {planPreview.days.map((day, index) => (
                         <button
@@ -942,7 +1002,10 @@ export default function ChatPage() {
                       <Button
                         type="button"
                         variant="ghost"
-                        onClick={() => setPlanPreview(null)}
+                        onClick={() => {
+                          setPlanPreview(null)
+                          setPlanUnavailableSources([])
+                        }}
                       >
                         Zamknij podgląd
                       </Button>

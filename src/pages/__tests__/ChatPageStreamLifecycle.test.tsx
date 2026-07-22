@@ -72,6 +72,10 @@ function deferredReply(options: PendingReply['options']): Promise<string> {
   })
 }
 
+function reportFullContext(reply: PendingReply) {
+  act(() => reply.options.onContext({ status: 'full', unavailableSources: [] }))
+}
+
 function rejectWithLateChunkOnAbort(options: PendingReply['options']): Promise<string> {
   return new Promise((resolve, reject) => {
     pendingReplies.push({ options, resolve, reject })
@@ -127,6 +131,35 @@ describe('ChatPage stream lifecycle', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
+  it('shows limited context during streaming and keeps it on the completed answer', async () => {
+    render(<ChatPage />)
+    await sendPrompt('Czy progresuję?')
+    const pending = pendingReplies[0]
+
+    act(() => {
+      pending.options.onContext({ status: 'limited', unavailableSources: ['readiness', 'records'] })
+      pending.options.onChunk('Odpowiedź')
+    })
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Odpowiedź powstała bez części danych: gotowości i rekordów.',
+    )
+
+    await act(async () => pending.resolve('Odpowiedź'))
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Odpowiedź powstała bez części danych: gotowości i rekordów.',
+    )
+  })
+
+  it('ignores stale context metadata after Reset', async () => {
+    render(<ChatPage />)
+    await sendPrompt('Czy progresuję?')
+    const pending = pendingReplies[0]
+    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+
+    act(() => pending.options.onContext({ status: 'limited', unavailableSources: ['records'] }))
+    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
+  })
+
   it('keeps one question and exposes retry after a mode-change abort', async () => {
     render(<ChatPage />)
     await sendPrompt('Czy progresuję?')
@@ -135,9 +168,11 @@ describe('ChatPage stream lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
     expect(first.options.signal).toBeInstanceOf(AbortSignal)
     expect(first.options.signal.aborted).toBe(true)
+    act(() => first.options.onContext({ status: 'limited', unavailableSources: ['records'] }))
     fireEvent.click(screen.getByRole('button', { name: /Rozmowa/ }))
 
     expect(screen.getByRole('status')).toHaveTextContent('Generowanie przerwane')
+    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Ponów odpowiedź AI' }))
     expect(screen.getAllByText('Czy progresuję?')).toHaveLength(1)
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(2)
@@ -230,12 +265,14 @@ describe('ChatPage stream lifecycle', () => {
     expect(screen.getAllByText('Czy progresuję?')).toHaveLength(1)
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(2)
 
+    reportFullContext(retry)
     await act(async () => {
       retry.options.onChunk('Pełna odpowiedź')
       retry.resolve('Pełna odpowiedź')
     })
 
     expect(screen.getAllByText('Pełna odpowiedź')).toHaveLength(1)
+    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
   })
@@ -252,18 +289,24 @@ describe('ChatPage stream lifecycle', () => {
     const composer = screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })
 
     await act(async () => {
+      first.options.onContext({ status: 'limited', unavailableSources: ['records'] })
       first.reject(new Error('Spóźniona awaria.'))
     })
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByText('Spóźniona awaria.')).not.toBeInTheDocument()
+    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
     expect(composer).toBeDisabled()
 
+    act(() => retry.options.onContext({ status: 'limited', unavailableSources: ['profile'] }))
     await act(async () => {
       retry.resolve('Aktualna odpowiedź')
     })
 
     expect(screen.getByText('Aktualna odpowiedź')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Odpowiedź powstała bez części danych: profilu.',
+    )
     expect(composer).toBeEnabled()
   })
 })

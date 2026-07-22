@@ -42,6 +42,7 @@ export interface ChatMessage {
   id: string
   role: ChatRole
   content: string
+  contextUnavailableSources?: AiContextSource[]
 }
 
 export interface TrainingPlanExercise {

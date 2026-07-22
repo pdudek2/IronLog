@@ -163,6 +163,64 @@ test.describe('Chat UI', () => {
     await expect(page.getByText('Pełna odpowiedź', { exact: true })).toBeVisible()
   })
 
+  test('attaches limited context to the completed answer', async ({ page }) => {
+    await openChatWithMock(page, [{
+      contextHeader: 'limited;unavailable=readiness,records',
+      frames: [
+        { delayMs: 20, frame: { type: 'chunk', text: 'Odpowiedź z częściowym kontekstem' } },
+        { delayMs: 20, frame: { type: 'done' } },
+      ],
+    }])
+
+    await sendQuestion(page)
+    await expect(page.getByRole('status')).toContainText(
+      'Odpowiedź powstała bez części danych: gotowości i rekordów.',
+    )
+    await expect(page.getByText('Odpowiedź z częściowym kontekstem', { exact: true })).toBeVisible()
+  })
+
+  test('attaches limited context to the generated plan preview', async ({ page }) => {
+    await installMockAiRuntime(page, [{
+      kind: 'plan',
+      contextHeader: 'limited;unavailable=profile,workouts',
+      plan: {
+        name: 'Plan testowy',
+        summary: 'Plan z ograniczonym kontekstem',
+        days: [{ name: 'Upper', exercises: [] }],
+      },
+    }])
+    await page.goto('/chat')
+    await expectAppReady(page, '/chat')
+    await page.getByRole('group', { name: 'Tryb AI Coacha' })
+      .getByRole('button', { name: /^Plan/ }).click()
+    await page.getByRole('textbox', { name: 'Cel planu' }).fill('Budowa siły')
+    await page.getByRole('button', { name: 'Generuj plan' }).click()
+
+    await expect(page.getByRole('heading', { name: 'Plan testowy' })).toBeVisible()
+    await expect(page.getByRole('status')).toContainText(
+      'Plan powstał bez części danych: profilu i treningów.',
+    )
+  })
+
+  test('retries after total context failure without duplicating the question', async ({ page }) => {
+    await openChatWithMock(page, [
+      { kind: 'error', status: 503, message: 'Nie udało się załadować kontekstu. Spróbuj ponownie.' },
+      {
+        frames: [
+          { delayMs: 20, frame: { type: 'chunk', text: 'Odpowiedź po ponowieniu' } },
+          { delayMs: 20, frame: { type: 'done' } },
+        ],
+      },
+    ])
+
+    await sendQuestion(page)
+    await expect(page.getByRole('alert')).toContainText('Nie udało się załadować kontekstu.')
+    await page.getByRole('button', { name: 'Ponów odpowiedź AI' }).click()
+
+    await expect(page.getByText('Odpowiedź po ponowieniu', { exact: true })).toBeVisible()
+    await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
+  })
+
   test('removes a partial answer and exposes retry after a stream error', async ({ page }) => {
     await openChatWithMock(page, [{
       frames: [

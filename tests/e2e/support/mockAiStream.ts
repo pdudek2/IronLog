@@ -5,10 +5,40 @@ export type MockAiFrame =
   | { delayMs: number; frame: { type: 'done' } }
   | { delayMs: number; frame: { type: 'error'; message: string } }
 
-export interface MockAiAttempt {
+export interface MockAiChatAttempt {
+  kind?: 'chat'
   frames: MockAiFrame[]
   holdOpen?: boolean
+  contextHeader?: string
 }
+
+export interface MockAiPlanAttempt {
+  kind: 'plan'
+  plan: {
+    name: string
+    summary: string
+    days: Array<{
+      name: string
+      exercises: Array<{
+        exerciseId: string
+        exerciseSource: 'global' | 'user'
+        name: string
+        sets: number
+        targetReps: number
+        targetWeight: number
+      }>
+    }>
+  }
+  contextHeader?: string
+}
+
+export interface MockAiErrorAttempt {
+  kind: 'error'
+  status: number
+  message: string
+}
+
+export type MockAiAttempt = MockAiChatAttempt | MockAiPlanAttempt | MockAiErrorAttempt
 
 export function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Promise<void> {
   return page.addInitScript((configuredAttempts: MockAiAttempt[]) => {
@@ -72,6 +102,14 @@ export function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Pro
         && isNonEmptyString(message.content)
       ))
     )
+    const isPlanBody = (value: unknown) => (
+      isRecord(value)
+      && hasExactKeys(value, ['apiKey', 'model', 'mode', 'planRequest'])
+      && isNonEmptyString(value.apiKey)
+      && isNonEmptyString(value.model)
+      && value.mode === 'plan'
+      && isRecord(value.planRequest)
+    )
 
     runtimeWindow.__ironlogMockAiAbortCount = 0
     window.localStorage.setItem('ironlog.claudeApiKey', 'sk-ant-test-only-browser-key')
@@ -98,13 +136,33 @@ export function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Pro
       if (pathname !== '/api/ai-chat') return originalFetch(input, init)
 
       const body = await readJsonRequest(new Request(input, init), pathname)
+      const attempt = configuredAttempts[nextAttempt]
+      if (!attempt) throw new Error(`Missing mock AI attempt ${nextAttempt}.`)
+
+      if (attempt.kind === 'error') {
+        nextAttempt += 1
+        return new Response(JSON.stringify({ error: attempt.message }), {
+          status: attempt.status,
+          headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        })
+      }
+
+      if (attempt.kind === 'plan') {
+        if (!isPlanBody(body)) throw contractViolation(pathname, 'plan request body')
+        nextAttempt += 1
+        return new Response(JSON.stringify({ plan: attempt.plan }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-IronLog-AI-Context': attempt.contextHeader ?? 'full',
+          },
+        })
+      }
+
       if (!isChatBody(body)) {
         throw contractViolation(pathname, 'body { apiKey, model, messages }')
       }
-
-      const attempt = configuredAttempts[nextAttempt]
       nextAttempt += 1
-      if (!attempt) throw new Error(`Missing mock AI attempt ${nextAttempt}.`)
 
       const signal = init?.signal ?? (input instanceof Request ? input.signal : null)
       let timerId: number | null = null
@@ -160,7 +218,10 @@ export function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Pro
 
       return new Response(stream, {
         status: 200,
-        headers: { 'Content-Type': 'application/x-ndjson; charset=utf-8' },
+        headers: {
+          'Content-Type': 'application/x-ndjson; charset=utf-8',
+          'X-IronLog-AI-Context': attempt.contextHeader ?? 'full',
+        },
       })
     }
   }, attempts).then(() => undefined)

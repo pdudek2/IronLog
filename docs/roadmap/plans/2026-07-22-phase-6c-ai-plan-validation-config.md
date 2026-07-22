@@ -1,6 +1,6 @@
 # Phase 6C AI Plan Validation and Config Handling Plan
 
-**Status:** COMPLETED — VERIFIED LOCALLY
+**Status:** COMPLETED — VERIFIED — INTEGRATED LOCALLY
 
 **Goal:** Sklasyfikować błędy konfiguracji AI, utrzymać BYOK bez zapisu klucza, zwalidować wygenerowany plan względem briefu i ustawić mobile bez klucza na konfigurację przed zablokowanym czatem.
 
@@ -25,6 +25,13 @@
 - [x] `npm run test:unit` — 59 plików, 467/467 pass.
 - [x] `npm run lint` — pass.
 - [x] `npm run build` — pass.
+
+## Closeout
+
+- [x] Focused whole-branch review: Critical 0, Important 0, Minor 0 po poprawce `f0f5f7f`, która zatrzymała powtarzaną walidację odrzuconego klucza po przeniesieniu panelu konfiguracji.
+- [x] Browser 390×844: konfiguracja klucza była widoczna przed czatem; composer był wyłączony i wskazywał wymagane działanie.
+- [x] `puls-rebrand` został zintegrowany lokalnie przez fast-forward do `f0f5f7f`.
+- [x] Plan zachowany jako zakończony artefakt dowodowy zgodnie z konwencją roadmapy.
 
 ## Not Included
 

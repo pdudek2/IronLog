@@ -391,7 +391,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 ### Faza 6C — Walidacja planów i obsługa konfiguracji AI
 
-**Status: DONE.** Zakres `AI-04`, `AI-05`, `AI-06`, `AI-12`, `AI-13` i `AI-14` został zaimplementowany i zweryfikowany lokalnie na branchu `phase-6c-ai-plan-validation-config`. Bramka objęła focused Vitest 51/51, pełny unit/support Vitest 59 plików i 467/467 testów, `npm run lint` oraz `npm run build` z 878 modułami. API klasyfikuje błędy Anthropic przez publiczne kody, waliduje plan przed zwróceniem go do UI, nie przepuszcza surowych detali upstreamu ani klucza do logów, a mobile bez klucza pokazuje konfigurację przed zablokowanym czatem. README opisuje rzeczywisty limit `8/min` liczony transakcyjnie w Firestore. Push, deploy, publikacja indeksów i `RELEASE-08` nie zostały wykonane. Szczegóły znajdują się w [`specs/2026-07-22-phase-6c-ai-plan-validation-config-design.md`](specs/2026-07-22-phase-6c-ai-plan-validation-config-design.md) oraz [`plans/2026-07-22-phase-6c-ai-plan-validation-config.md`](plans/2026-07-22-phase-6c-ai-plan-validation-config.md).
+**Status: DONE.** Zakres `AI-04`, `AI-05`, `AI-06`, `AI-12`, `AI-13` i `AI-14` został zaimplementowany, zweryfikowany i zintegrowany lokalnie z `puls-rebrand` przez fast-forward do `f0f5f7f`. Bramka objęła focused Vitest 51/51, pełny unit/support Vitest 59 plików i 467/467 testów, `npm run lint`, `npm run build` z 878 modułami oraz focused whole-branch review zakończony z Critical 0, Important 0 i Minor 0 po usunięciu pętli ponownej walidacji odrzuconego klucza. Bezpośrednia obserwacja Browser przy 390×844 potwierdziła konfigurację przed czatem i wyłączony composer z właściwą instrukcją. API klasyfikuje błędy Anthropic przez publiczne kody, waliduje plan przed zwróceniem go do UI i nie przepuszcza surowych detali upstreamu ani klucza do logów. README opisuje rzeczywisty limit `8/min` liczony transakcyjnie w Firestore. Push, deploy, publikacja indeksów i `RELEASE-08` nie zostały wykonane. Szczegóły znajdują się w [`specs/2026-07-22-phase-6c-ai-plan-validation-config-design.md`](specs/2026-07-22-phase-6c-ai-plan-validation-config-design.md) oraz [`plans/2026-07-22-phase-6c-ai-plan-validation-config.md`](plans/2026-07-22-phase-6c-ai-plan-validation-config.md).
 
 **Cel:** zapewnić zgodność wygenerowanego planu z briefem oraz prawidłową klasyfikację błędów konfiguracji AI.
 
@@ -494,7 +494,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Faza 6B — poprawność i koszt kontekstu AI** jest zakończona, zweryfikowana i zintegrowana lokalnie z `puls-rebrand`. Niezależne Fazy 2B i 6C pozostają `READY`, Faza S pozostaje bez zmian, a `RELEASE-08` jest nadal otwarte.
+**Fazy 6B i 6C** są zakończone, zweryfikowane i zintegrowane lokalnie z `puls-rebrand`. Niezależna Faza 2B pozostaje `READY`, Faza S pozostaje bez zmian, a `RELEASE-08` jest nadal otwarte.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

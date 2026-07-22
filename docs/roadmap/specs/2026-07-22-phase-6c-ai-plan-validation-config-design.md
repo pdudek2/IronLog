@@ -1,6 +1,6 @@
 # Faza 6C — Walidacja planów i obsługa konfiguracji AI
 
-**Status:** zaimplementowany i zweryfikowany lokalnie
+**Status:** COMPLETED — VERIFIED — INTEGRATED LOCALLY
 
 **Data:** 2026-07-22
 
@@ -8,7 +8,7 @@
 
 **Route:** Medium — zmiana kontraktu błędów AI, walidacji planu i kolejności powierzchni konfiguracji
 
-**Ryzyko:** Standard — błędna klasyfikacja mogłaby zablokować działający czat albo przyjąć plan niezgodny z briefem
+**Ryzyko:** Elevated — zakres obejmuje BYOK, granicę API i poprawność planu zapisywanego jako szablon
 
 ## 1. Cel
 
@@ -41,5 +41,8 @@ README opisuje rzeczywisty limit `8/min` liczony transakcyjnie w Firestore w kol
 - Pełny unit/support Vitest: 59 plików, 467/467 testów.
 - `npm run lint`: pass.
 - `npm run build`: pass, 878 modułów.
+- Focused whole-branch review: Critical 0, Important 0, Minor 0 po usunięciu pętli ponownej walidacji odrzuconego klucza.
+- Bezpośrednia obserwacja Browser przy 390×844: pole konfiguracji było widoczne przed czatem, a composer pozostawał wyłączony z instrukcją dodania klucza.
+- Lokalna integracja: fast-forward `puls-rebrand` do `f0f5f7f`.
 
 Nie wykonano pushu, deployu, publikacji indeksów ani `RELEASE-08`.

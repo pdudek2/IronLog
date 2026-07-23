@@ -7,12 +7,12 @@ import {
   getReviewAdminDatabase,
 } from '../review/support/adminReviewDatabase'
 
-vi.mock('../../api/lib/firebaseAdmin.js', async () => {
+vi.mock('../../api/_lib/firebaseAdmin.js', async () => {
   const { getReviewAdminDatabase } = await import('../review/support/adminReviewDatabase')
   return { adminDb: getReviewAdminDatabase() }
 })
 
-import { materializeWorkoutForUser } from '../../api/lib/workoutProjection'
+import { materializeWorkoutForUser } from '../../api/_lib/workoutProjection'
 
 const USER_ID = 'phase-r-user'
 const STARTED_AT = 1_780_000_000_000

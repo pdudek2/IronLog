@@ -1,8 +1,8 @@
 import type { ServerResponse } from 'node:http'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { ApiError } from '../lib/errors.js'
-import type { ApiRequest, ApiResponse } from '../lib/http.js'
+import { ApiError } from '../_lib/errors.js'
+import type { ApiRequest, ApiResponse } from '../_lib/http.js'
 
 const mocks = vi.hoisted(() => ({
   requireUserId: vi.fn(),
@@ -11,12 +11,12 @@ const mocks = vi.hoisted(() => ({
   parseFinalizeWorkoutInput: vi.fn((body: unknown) => body),
 }))
 
-vi.mock('../lib/auth.js', () => ({ requireUserId: mocks.requireUserId }))
-vi.mock('../lib/workoutClosure.js', () => ({
+vi.mock('../_lib/auth.js', () => ({ requireUserId: mocks.requireUserId }))
+vi.mock('../_lib/workoutClosure.js', () => ({
   finalizeWorkoutForUser: mocks.finalizeWorkoutForUser,
   discardSessionForUser: mocks.discardSessionForUser,
 }))
-vi.mock('../lib/workoutValidation.js', () => ({
+vi.mock('../_lib/workoutValidation.js', () => ({
   parseFinalizeWorkoutInput: mocks.parseFinalizeWorkoutInput,
 }))
 

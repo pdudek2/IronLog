@@ -8,20 +8,20 @@ const mocks = vi.hoisted(() => ({
   assertRateLimit: vi.fn().mockResolvedValue(undefined),
 }))
 
-vi.mock('../lib/aiContextLoader.js', () => ({
+vi.mock('../_lib/aiContextLoader.js', () => ({
   loadAiUserContext: mocks.loadAiUserContext,
 }))
-vi.mock('../lib/auth.js', () => ({ requireUserId: mocks.requireUserId }))
-vi.mock('../lib/rateLimit.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../lib/rateLimit.js')>()
+vi.mock('../_lib/auth.js', () => ({ requireUserId: mocks.requireUserId }))
+vi.mock('../_lib/rateLimit.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../_lib/rateLimit.js')>()
   return { ...actual, assertRateLimit: mocks.assertRateLimit }
 })
-vi.mock('../lib/firebaseAdmin.js', () => ({ adminDb: {} }))
+vi.mock('../_lib/firebaseAdmin.js', () => ({ adminDb: {} }))
 
 import { AVAILABLE_AI_CONTEXT_SOURCES, buildAiUserContext } from '../../server/aiContext.js'
 import handler, { normalizeGeneratedPlan, serializeAiContextHeader } from '../ai-chat.js'
-import { ApiError } from '../lib/errors.js'
-import type { ApiRequest, ApiResponse } from '../lib/http.js'
+import { ApiError } from '../_lib/errors.js'
+import type { ApiRequest, ApiResponse } from '../_lib/http.js'
 
 function createHandlerDoubles(body: unknown) {
   const events = new EventEmitter()

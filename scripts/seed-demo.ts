@@ -1,6 +1,6 @@
 import { getApps } from 'firebase-admin/app'
-import { adminAuth, adminDb } from '../api/lib/firebaseAdmin.js'
-import { materializeWorkoutForUser } from '../api/lib/workoutProjection.js'
+import { adminAuth, adminDb } from '../api/_lib/firebaseAdmin.js'
+import { materializeWorkoutForUser } from '../api/_lib/workoutProjection.js'
 import {
   assertDemoSeedConfirmation,
   validateDemoSeedSnapshot,

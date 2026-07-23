@@ -6,7 +6,7 @@ import discardSessionHandler from '../api/discard-session.ts'
 import finalizeWorkoutHandler from '../api/finalize-workout.ts'
 import materializeWorkoutHandler from '../api/materialize-workout.ts'
 import updateWorkoutHandler from '../api/update-workout.ts'
-import { sendJson, type ApiRequest, type ApiResponse } from '../api/lib/http.ts'
+import { sendJson, type ApiRequest, type ApiResponse } from '../api/_lib/http.ts'
 
 type RouteHandler = (req: ApiRequest, res: ApiResponse) => Promise<void>
 

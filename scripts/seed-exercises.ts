@@ -1,4 +1,4 @@
-import { adminDb } from '../api/lib/firebaseAdmin.js'
+import { adminDb } from '../api/_lib/firebaseAdmin.js'
 import { exercises } from '../data/exercises.js'
 
 const BATCH_SIZE = 500

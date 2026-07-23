@@ -1,7 +1,7 @@
-import { requireUserId } from './lib/auth.js'
-import { anthropicApiError, anthropicNetworkError } from './lib/anthropicErrors.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
-import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
+import { requireUserId } from './_lib/auth.js'
+import { anthropicApiError, anthropicNetworkError } from './_lib/anthropicErrors.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
+import { RateLimitError, assertRateLimit } from './_lib/rateLimit.js'
 
 export const config = {
   maxDuration: 15,

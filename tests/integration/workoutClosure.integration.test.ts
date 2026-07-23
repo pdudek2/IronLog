@@ -5,7 +5,7 @@ import {
   discardSessionForUser,
   finalizeWorkoutForUser,
   type FinalizeWorkoutInput,
-} from '../../api/lib/workoutClosure'
+} from '../../api/_lib/workoutClosure'
 import { deriveLegacySessionId } from '../../src/lib/sessionIdentity'
 import {
   clearReviewAdminDatabase,

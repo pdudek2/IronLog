@@ -438,7 +438,7 @@ function findLowReadinessStreak(entries: AiReadinessInput[], since: number, now:
       continue
     }
 
-    const previous = current.at(-1)
+    const previous = current[current.length - 1]
     const item = { entry, dayNumber }
     current = previous && dayNumber === previous.dayNumber + 1 ? [...current, item] : [item]
 

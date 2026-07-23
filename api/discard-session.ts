@@ -1,6 +1,6 @@
-import { requireUserId } from './lib/auth.js'
-import { discardSessionForUser } from './lib/workoutClosure.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
+import { requireUserId } from './_lib/auth.js'
+import { discardSessionForUser } from './_lib/workoutClosure.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
 
 interface DiscardSessionBody {
   sessionId?: unknown

@@ -1,7 +1,7 @@
-import { requireUserId } from './lib/auth.js'
-import { finalizeWorkoutForUser } from './lib/workoutClosure.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
-import { parseFinalizeWorkoutInput } from './lib/workoutValidation.js'
+import { requireUserId } from './_lib/auth.js'
+import { finalizeWorkoutForUser } from './_lib/workoutClosure.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
+import { parseFinalizeWorkoutInput } from './_lib/workoutValidation.js'
 
 const MAX_FINALIZE_BODY_BYTES = 128 * 1024
 

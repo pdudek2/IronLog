@@ -76,22 +76,22 @@
 - Consumes: green Task 2 candidate
 - Produces: remote Git rollback branch, ready indexes, and clean Vercel environment names
 
-- [ ] Create the archive branch at the exact old-main SHA and push it:
+- [x] Create the archive branch at the exact old-main SHA and push it:
 
   ```bash
   git branch main-before-puls-2026-07-23 origin/main
   git push -u origin main-before-puls-2026-07-23
   ```
 
-- [ ] Verify the remote archive SHA before changing `main`.
-- [ ] Publish indexes and poll until all seven configured composite indexes are present:
+- [x] Verify the remote archive SHA before changing `main`.
+- [x] Publish indexes and poll until all seven configured composite indexes are present:
 
   ```bash
   firebase deploy --only firestore:indexes --project ironlog-ede05
   firebase firestore:indexes --project ironlog-ede05
   ```
 
-- [ ] Remove the retired production analytics variables and verify their names are absent:
+- [x] Remove the retired production analytics variables and verify their names are absent:
 
   ```bash
   vercel env rm VITE_CSQ_TAG_ID production --yes
@@ -99,7 +99,7 @@
   vercel env ls
   ```
 
-- [ ] Fast-forward local `main` to `puls-rebrand`, push `main`, and verify `origin/main` equals the candidate SHA.
+- [x] Fast-forward local `main` to `puls-rebrand`, push `main`, and verify `origin/main` equals the candidate SHA.
 
 ### Task 4: Deploy Puls and verify the pre-rules boundary
 
@@ -116,6 +116,7 @@
   vercel --prod --yes
   ```
 
+- [x] If Vercel counts support files as functions, move the shared API implementation under the reserved `api/_lib` path, update imports, rerun the focused and release gates, commit and push the corrected candidate, then retry the deployment.
 - [ ] Inspect the returned deployment until Ready and verify `ironlog-coach.vercel.app` resolves to it.
 - [ ] Verify public `/login`, SPA routing, security headers, and the enforced CSP.
 - [ ] Using the private release account, execute one finish flow and one discard flow. Delete the temporary completed workout and confirm no active session remains.

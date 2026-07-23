@@ -3,10 +3,10 @@ import type { ServerResponse } from 'node:http'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { createEmptyAiUserContext } from '../../server/aiContext.js'
-import type { ApiRequest, ApiResponse } from '../lib/http.js'
+import type { ApiRequest, ApiResponse } from '../_lib/http.js'
 
-vi.mock('../lib/firebaseAdmin.js', () => ({ adminDb: {} }))
-vi.mock('../lib/auth.js', () => ({ requireUserId: vi.fn() }))
+vi.mock('../_lib/firebaseAdmin.js', () => ({ adminDb: {} }))
+vi.mock('../_lib/auth.js', () => ({ requireUserId: vi.fn() }))
 
 import { streamChatReply } from '../ai-chat.js'
 

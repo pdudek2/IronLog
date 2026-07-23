@@ -1,4 +1,4 @@
-import type { ActiveWorkout } from '../store/workoutStore'
+import type { ActiveWorkout } from '../store/workoutStore.js'
 
 export const MAX_ACTIVE_SESSION_AGE_MS = 12 * 60 * 60 * 1000
 

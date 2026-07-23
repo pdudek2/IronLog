@@ -1,14 +1,14 @@
-import { adminDb } from './lib/firebaseAdmin.js'
-import { requireUserId } from './lib/auth.js'
-import { loadAiUserContext } from './lib/aiContextLoader.js'
-import { anthropicApiError, anthropicNetworkError } from './lib/anthropicErrors.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
-import { RateLimitError, assertRateLimit } from './lib/rateLimit.js'
+import { adminDb } from './_lib/firebaseAdmin.js'
+import { requireUserId } from './_lib/auth.js'
+import { loadAiUserContext } from './_lib/aiContextLoader.js'
+import { anthropicApiError, anthropicNetworkError } from './_lib/anthropicErrors.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
+import { RateLimitError, assertRateLimit } from './_lib/rateLimit.js'
 import {
   createClientAbortBridge,
   pipeAnthropicStream,
   writeChatStreamFrame,
-} from './lib/aiChatStream.js'
+} from './_lib/aiChatStream.js'
 import {
   AI_CONTEXT_SOURCES,
   buildChatContextSections,

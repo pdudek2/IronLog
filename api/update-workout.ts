@@ -1,6 +1,6 @@
-import { requireUserId } from './lib/auth.js'
-import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './lib/http.js'
-import { updateFinishedWorkoutForUser } from './lib/workoutProjection.js'
+import { requireUserId } from './_lib/auth.js'
+import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
+import { updateFinishedWorkoutForUser } from './_lib/workoutProjection.js'
 
 interface UpdateWorkoutBody {
   workoutId?: string

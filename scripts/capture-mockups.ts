@@ -4,7 +4,7 @@
 import { chromium, devices, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { adminAuth, adminDb } from '../api/lib/firebaseAdmin.js'
+import { adminAuth, adminDb } from '../api/_lib/firebaseAdmin.js'
 
 /**
  * Capture mockup screenshots of the app using the demo account.

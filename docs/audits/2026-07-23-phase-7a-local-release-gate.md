@@ -51,6 +51,8 @@ Dwa scenariusze ochrony sesji offline importowały pomocniczy moduł TypeScript 
 
 Po przywróceniu bridge'a scenariusze poprawnie dochodziły do odrzucenia zapisu przez tombstone, lecz matcher oczekiwanej diagnostyki był związany ze starym numerem linii `L478` w `firestore.rules`. Zmieniono go na semantyczny kontrakt: dokładny prefiks błędu zapisu aktywnej sesji, `PERMISSION_DENIED` oraz odmowa `create` albo `update` z dowolnym numerem linii. Inne odmowy uprawnień nadal pozostają blokujące.
 
+Pełny przebieg ujawnił mobilny race w composerze AI Coach. Fokus textarea chował dolną nawigację, ale pointer down na „Wyślij” przenosił fokus na przycisk, przez co nawigacja wracała w trakcie gestu i zasłaniała submit. Composer zachowuje teraz fokus textarea dla pointer click; wysłanie klawiaturą i dostępnościowy submit formularza pozostają bez zmian.
+
 ## Pozostałe obowiązki
 
 - 7B: manualny smoke, klawiatura, accessibility snapshot i zgodność demo/dokumentacji;

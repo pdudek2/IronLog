@@ -721,6 +721,7 @@ export default function ChatPage() {
                       <Button
                         type="submit"
                         disabled={!configured || !input.trim() || sending}
+                        onPointerDown={(event) => event.preventDefault()}
                         className="inline-flex items-center gap-2"
                       >
                         {sending ? <LoaderCircle size={15} className="animate-spin" /> : <Send size={15} />}

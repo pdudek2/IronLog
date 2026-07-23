@@ -246,10 +246,6 @@ export default function ChatPage() {
   }, [messages, streamText])
 
   useEffect(() => {
-    setSelectedPreviewDay(0)
-  }, [planPreview])
-
-  useEffect(() => {
     if (!configured) {
       setShowConfigPanel(true)
     }
@@ -434,6 +430,7 @@ export default function ChatPage() {
         },
       })
 
+      setSelectedPreviewDay(0)
       setPlanPreview(plan)
       setPlanUnavailableSources(context.unavailableSources)
       setActiveTab('plan')

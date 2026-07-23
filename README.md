@@ -1,133 +1,113 @@
 # IronLog
 
-Webowa aplikacja do prowadzenia dziennika treningowego, wzorowana na Hevy. Pozwala rejestrować treningi siłowe na żywo, śledzić progres i rekordy, budować własne szablony treningów i rozmawiać z trenerem AI.
+IronLog to webowy dziennik treningów siłowych. Zapisuje serie podczas treningu, pokazuje historię i progres, wykrywa rekordy oraz obsługuje własne ćwiczenia i szablony.
 
-**Demo (produkcja):** https://ironlog-coach.vercel.app
-**Repozytorium:** https://github.com/pdudek2/IronLog
-Konto testowe: `demo@ironlog.app` / `demo123`
+[Otwórz demo](https://ironlog-coach.vercel.app) · [Repozytorium](https://github.com/pdudek2/IronLog)
 
-Projekt zaliczeniowy z przedmiotu *Techniki projektowania frontendowego*.
+Konto demonstracyjne: `demo@ironlog.app` / `demo123`
 
-## Roadmapa
+Konto jest współdzielone. Nie zapisuj w nim prywatnych danych ani własnego klucza API.
 
-Kanoniczny program prac po audycie technicznym i audycie UI znajduje się w [docs/roadmap/ROADMAP.md](docs/roadmap/ROADMAP.md). Każda faza z tego dokumentu może zostać rozwinięta w osobny plan implementacyjny.
+![IronLog na desktopie](docs/screenshots/app/desktop-showcase.png)
 
-## Archiwum zaliczenia
-
-Historyczne materiały potwierdzające wcześniejszą integrację GA4 i Hotjar/Contentsquare znajdują się w [archiwum integracji analityki](docs/archive/analytics-assignment.md). Analityka nie jest częścią aktualnego runtime aplikacji.
-
-## Screeny aplikacji
-
-![Widok desktop](docs/screenshots/app/desktop-showcase.png)
-
-![Widok mobilny](docs/screenshots/app/mobile-showcase.png)
-
-| Ekran | Screen |
-|---|---|
-| Logowanie | ![Logowanie](docs/screenshots/app/login.png) |
-| Dashboard | ![Dashboard](docs/screenshots/app/dashboard.png) |
-| Aktywny trening | ![Aktywny trening](docs/screenshots/app/workout-new.png) |
-| Historia | ![Historia](docs/screenshots/app/history.png) |
-| Progres | ![Progres](docs/screenshots/app/progress.png) |
-| Szablony | ![Szablony](docs/screenshots/app/templates.png) |
-| Baza ćwiczeń | ![Ćwiczenia](docs/screenshots/app/exercises.png) |
-| Czat AI | ![Czat AI](docs/screenshots/app/chat.png) |
-| Profil | ![Profil](docs/screenshots/app/profile.png) |
+![IronLog na telefonie](docs/screenshots/app/mobile-showcase.png)
 
 ## Funkcje
 
-- rejestracja i logowanie (Firebase Authentication, e-mail + hasło),
-- rejestrowanie treningu na żywo: serie, powtórzenia, ciężar, rest timer, prefill na podstawie historii,
-- historia treningów ze szczegółami każdej sesji,
-- wykresy progresu i automatyczne wykrywanie rekordów (PR),
-- szablony treningów + własne ćwiczenia użytkownika,
-- ankieta gotowości (readiness) przed treningiem,
-- czat z trenerem AI przez własny klucz Claude (BYOK) z lekkim minutowym limitem w Firestore,
-- responsywny interfejs mobile-first z osobną nawigacją na desktop.
+- aktywny trening z seriami, powtórzeniami, ciężarem i timerem przerw;
+- podpowiadanie ostatnich wyników dla wybranego ćwiczenia;
+- historia treningów i szczegóły każdej sesji;
+- wykresy progresu z zakresem 30 lub 90 dni;
+- automatycznie wykrywane rekordy;
+- własne ćwiczenia i szablony treningowe;
+- krótka ankieta gotowości przed treningiem;
+- AI Coach korzystający z własnego klucza Claude;
+- interfejs dostosowany do telefonu i desktopu.
 
-## Stack
-
-- React 19 + TypeScript + Vite
-- React Router 7, Zustand, Framer Motion, Recharts, Tailwind CSS 4
-- Firebase Authentication + Firestore
-- Vercel Serverless Functions (Node.js, Firebase Admin SDK)
-- Hosting: Vercel, produkcyjny deploy przez CLI (`vercel --prod`)
-
-## Struktura projektu
-
-```
-src/
-  pages/        # widoki powiązane z trasami (DashboardPage, WorkoutPage, ...)
-  components/   # współdzielone komponenty (TopNav, BottomNav, ExercisePicker, ...)
-    ui/         # podstawowe komponenty reużywalne (Button, Card, Input, LoadingState)
-  router/       # konfiguracja React Router + lazy loading stron
-  store/        # stan globalny (Zustand)
-  lib/          # serwisy: Firebase, auth, logika Firestore
-  data/         # globalna baza ćwiczeń (seed)
-api/            # endpointy serverless (czat AI, finalizacja treningu)
-```
-
-## Routing
-
-Wszystkie ekrany są dostępne przez React Router (nawigacja bez przeładowania strony). Trasy prywatne są chronione — bez zalogowania następuje przekierowanie na `/login`. Strony ładują się lazy (code-splitting per trasa), a widoki prywatne współdzielą jeden layout (`AppLayout`).
-
-| Trasa | Ekran | Dostęp |
-|---|---|---|
-| `/login`, `/register` | logowanie / rejestracja | publiczny |
-| `/onboarding` | konfiguracja konta | prywatny |
-| `/dashboard` | dashboard | prywatny |
-| `/workout/new` | aktywny trening | prywatny |
-| `/workout/:id` | szczegóły treningu | prywatny |
-| `/history` | historia treningów | prywatny |
-| `/progress` | wykresy progresu | prywatny |
-| `/templates`, `/templates/new`, `/templates/:id/edit` | szablony | prywatny |
-| `/exercises`, `/exercises/:source/:id` | baza ćwiczeń | prywatny |
-| `/chat` | czat AI | prywatny |
-| `/profile` | profil | prywatny |
-| `*` | strona 404 | publiczny |
-
-## Logowanie
-
-Uwierzytelnianie przez Firebase Authentication (metoda Email/Password). Stan sesji trzymany jest w store Zustand i zasilany przez `onAuthStateChanged`, więc odświeżenie strony nie wylogowuje użytkownika. Komponenty `PrivateRouteOutlet` / `PublicRouteOutlet` w `src/router/index.tsx` pilnują dostępu do tras.
-
-## Prywatność
-
-Klucz Claude w modelu BYOK jest przechowywany lokalnie w przeglądarce. Nie zapisujemy go w Firestore; backend serverless używa go tylko do obsłużenia bieżącego zapytania do Anthropic.
+Ciężary są przechowywane w kilogramach. Profil pozwala wyświetlać je także w funtach.
 
 ## AI Coach
 
-Czat AI działa w modelu BYOK: użytkownik podaje własny klucz Claude, który jest przechowywany lokalnie w przeglądarce. Backend serverless pośredniczy w wywołaniach Anthropic i dodaje kontekst profilu, gotowości, ostatnich sesji oraz rekordów.
+AI Coach odpowiada na pytania o trening i może przygotować plan na podstawie profilu, gotowości, ostatnich sesji oraz rekordów użytkownika. Wygenerowany plan można poprawić przed zapisaniem go jako szablonu.
 
-Obecny limit jest lekki i minutowy (`8/min` na użytkownika + IP) liczony transakcyjnie w Firestore w kolekcji `aiRateLimits`. Nie jest to jeszcze trwały dzienny limit produktowy: kolekcja `dailyAiUsage` nie jest obecnie używana, a wiadomości czatu nie są persystowane w `chatMessages`.
+Integracja działa w modelu BYOK. Klucz Claude jest przechowywany lokalnie w przeglądarce i trafia do funkcji serverless tylko na czas bieżącego zapytania. IronLog nie zapisuje go w Firestore.
+
+## Stack
+
+- React 19, TypeScript i Vite
+- React Router, Zustand i Framer Motion
+- Tailwind CSS i Recharts
+- Firebase Authentication oraz Firestore
+- Vercel Functions z Firebase Admin SDK
+- Vitest, Playwright i Firebase Emulator Suite
+
+## Architektura
+
+Frontend jest aplikacją SPA. Chronione widoki korzystają ze wspólnego layoutu i ładują się osobno dla każdej trasy. Logika dostępu do Firestore znajduje się w serwisach w `src/lib`.
+
+Aktywna sesja jest synchronizowana na żywo. Pozostałe dane są pobierane jednorazowo. Zakończenie treningu trafia do funkcji serverless, która zapisuje sesje ćwiczeń i aktualizuje rekordy.
+
+```text
+src/
+  components/   współdzielone komponenty interfejsu
+  data/         katalog globalnych ćwiczeń
+  lib/          Firebase, serwisy danych i logika domenowa
+  pages/        widoki aplikacji
+  router/       trasy publiczne i chronione
+  store/        stan aplikacji w Zustand
+api/            funkcje serverless
+tests/e2e/      scenariusze Playwright
+```
 
 ## Uruchomienie lokalne
 
+Wymagane są Node.js, npm i projekt Firebase z włączonym logowaniem przez e-mail i hasło.
+
 ```bash
+git clone https://github.com/pdudek2/IronLog.git
+cd IronLog
 npm install
-cp .env.example .env.local   # uzupełnij wartości
-npm run dev                  # frontend (Vite)
-npm run dev:all              # frontend + lokalne API
+cp .env.example .env.local
+npm run dev:all
 ```
 
-Wymagane zmienne środowiskowe — patrz `.env.example`. Konfiguracja Firebase pochodzi z konsoli Firebase (Project settings → Web app).
+Uzupełnij `.env.local` danymi aplikacji webowej z Firebase:
+
+```dotenv
+VITE_FIREBASE_API_KEY=
+VITE_FIREBASE_AUTH_DOMAIN=
+VITE_FIREBASE_PROJECT_ID=
+VITE_FIREBASE_STORAGE_BUCKET=
+VITE_FIREBASE_MESSAGING_SENDER_ID=
+VITE_FIREBASE_APP_ID=
+```
+
+`npm run dev` uruchamia sam frontend. `npm run dev:all` uruchamia frontend razem z lokalnym serwerem obsługującym endpointy z katalogu `api`.
 
 ## Testy
 
 ```bash
-npm run test:unit          # testy jednostkowe (Vitest)
-npm run test:rules         # testy reguł Firestore (emulator)
-npm run test:e2e:isolated  # krytyczny, deterministyczny gate Auth + Firestore emulator
-npm run test:e2e           # pełna integracja Playwright z backendem z .env.test
+npm run lint
+npm run build
+npm run test:unit
+npm run test:rules
+npm run test:e2e:isolated
 ```
 
-`test:e2e:isolated` nie wymaga sekretów ani produkcyjnego quota. Wymaga zainstalowanego Firebase CLI — tego samego, którego używa `test:rules`.
+`test:rules` i `test:e2e:isolated` wymagają Firebase CLI. Testy izolowane korzystają z emulatorów Auth i Firestore, więc nie zużywają produkcyjnego limitu i nie potrzebują danych dostępowych do środowiska produkcyjnego.
 
-## Deploy
+Pełny zestaw Playwright korzysta z danych logowania zapisanych w `.env.test`. Szablon znajduje się w `.env.test.example`.
 
-Aplikacja jest wdrożona na Vercel (preset Vite + funkcje serverless w `api/`). Produkcyjny deploy jest obecnie wykonywany ręcznie z lokalnego checkoutu:
+```bash
+npm run test:e2e
+```
+
+## Wdrożenie
+
+Frontend i funkcje z katalogu `api` są wdrażane na Vercel. Zmienne Firebase trzeba wcześniej ustawić dla środowiska docelowego.
 
 ```bash
 vercel --prod --yes
 ```
 
-GitHub pozostaje repozytorium kodu, ale push na `main` nie jest traktowany jako kanoniczny mechanizm produkcyjnego deployu. Zmienne środowiskowe są ustawione w panelu Vercela.
+Reguły Firestore są utrzymywane osobno w `firestore.rules`.

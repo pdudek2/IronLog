@@ -1,6 +1,6 @@
 # Phase 7B — Manual Release Acceptance
 
-> Status: PLANNED — awaiting execution
+> Status: IN PROGRESS
 > Parent: Phase 7 — Release Readiness
 > Scope: RELEASE-02 through RELEASE-07
 > Remaining after this path: RELEASE-08 through RELEASE-10
@@ -258,12 +258,17 @@ find test-results -type f -name '*.aria.yml' -print
 
 Record whether labels, landmarks, headings, dialogs, and interactive names agree with what was observed manually. The automated snapshots support the Browser observations; they do not replace them.
 
-## Task 6 — Production demo and documentation credibility
+## Task 6 — Professional README, production demo, and documentation credibility
 
 Use the same Browser as the only interactive observation surface. Open the public demo from `README.md` and perform read-only checks only.
 
-1. Sign in with the public demo credentials documented in `README.md`.
-2. Inspect, without modifying data:
+1. Rewrite `README.md` as professional product and developer documentation:
+   - remove every reference to a university assignment or assignment archive;
+   - describe only capabilities confirmed in the current code;
+   - keep setup, tests, privacy boundaries, architecture, demo access, and screenshots useful to an external reader;
+   - apply `humanizer` and `my-humanizer`, then perform a final anti-AI language pass.
+2. Sign in with the public demo credentials documented in `README.md`.
+3. Inspect, without modifying data:
    - dashboard;
    - history and a workout detail;
    - progress;
@@ -271,17 +276,17 @@ Use the same Browser as the only interactive observation surface. Open the publi
    - exercises;
    - AI no-key state if opening it is read-only;
    - profile display without saving.
-3. Confirm the demo remains credible against the Phase 5 evidence:
+4. Confirm the demo remains credible against the Phase 5 evidence:
    - populated workout history;
    - one or more useful templates/exercises;
    - plausible readiness and workout values;
    - no leftover active session.
-4. Compare visible navigation, route names, key copy, and screen composition with:
+5. Compare visible navigation, route names, key copy, and screen composition with:
    - `README.md`;
    - `docs/screenshots/app/`.
-5. Capture representative desktop and mobile visual evidence from Browser.
-6. If production differs because Phase 7 has not been deployed, record the mismatch as release evidence. Do not deploy from this path.
-7. If production access is unavailable, mark RELEASE-05 as blocked or partial and keep 7B open instead of bypassing the check.
+6. Capture representative desktop and mobile visual evidence from Browser.
+7. If production differs because Phase 7 has not been deployed, record the mismatch as release evidence. Do not deploy from this path.
+8. If production access is unavailable, mark RELEASE-05 as blocked or partial and keep 7B open instead of bypassing the check.
 
 ## Task 7 — Evaluate findings without expanding scope
 

@@ -6,6 +6,7 @@ import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnosti
 
 const REPLACE_TEMPLATE_NAME = '_E2E Launch Replace_'
 const OFFLINE_TEMPLATE_NAME = '_E2E Launch Offline_'
+const CLEARDOT_URL = 'https://www.google.com/images/cleardot.gif'
 
 function isExpectedTemplateLaunchOfflineDiagnostic(entry: BrowserDiagnostic): boolean {
   if (isExpectedFirestoreOfflineDiagnostic(entry)) return true
@@ -15,11 +16,18 @@ function isExpectedTemplateLaunchOfflineDiagnostic(entry: BrowserDiagnostic): bo
     || entry.message === '[useTemplateWorkoutLaunch] launch failed FirebaseError: Failed to get document because the client is offline.'
   )) return true
 
-  return entry.message === 'net::ERR_INTERNET_DISCONNECTED'
-    && Boolean(entry.url?.startsWith('https://www.google.com/images/cleardot.gif'))
+  return entry.kind === 'requestfailed'
+    && (entry.message === 'net::ERR_INTERNET_DISCONNECTED' || entry.message === 'csp')
+    && Boolean(entry.url?.startsWith(CLEARDOT_URL))
     || entry.kind === 'console'
       && entry.message === 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED'
-      && Boolean(entry.url?.startsWith('https://www.google.com/images/cleardot.gif'))
+      && Boolean(entry.url?.startsWith(CLEARDOT_URL))
+    || entry.kind === 'console'
+      && new RegExp(
+        `^Loading the image '${CLEARDOT_URL.replaceAll('.', '\\.')}\\?[^']+' `
+        + 'violates the following Content Security Policy directive: '
+        + `"img-src 'self' data:". The action has been blocked\\.$`,
+      ).test(entry.message)
 }
 
 function workoutExerciseRow(page: Page, exerciseName: string) {

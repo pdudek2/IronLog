@@ -43,6 +43,8 @@ Kolejny przebieg zatrzymał się na testach Progress. Testy zakładały dane ist
 
 Następny przebieg wykazał, że test prefetchu Progress rozpoznawał wyłącznie ścieżkę modułu serwera deweloperskiego (`/src/pages/ProgressPage.tsx`). Gate CSP korzysta z produkcyjnego preview, gdzie ten sam moduł jest chunkiem `/assets/ProgressPage-<hash>.js`. Matcher rozszerzono o produkcyjną nazwę chunka bez osłabienia kontraktu „brak requestu przed intencją, request po hover”.
 
+Scenariusz celowego offline przy uruchamianiu szablonu wywołał transportowy fallback Firestore do `google.com/images/cleardot.gif`. Minimalny `img-src 'self' data:` poprawnie zablokował beacon, ale matcher oczekiwanych diagnostyk znał tylko wariant `ERR_INTERNET_DISCONNECTED`, nie wariant `csp`. Matcher zawężono do dokładnego URL-a beacona i dokładnego komunikatu tej dyrektywy; polityka CSP nie została poluzowana.
+
 ## Pozostałe obowiązki
 
 - 7B: manualny smoke, klawiatura, accessibility snapshot i zgodność demo/dokumentacji;

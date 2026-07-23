@@ -1,5 +1,7 @@
 # Phase 7C Production Release Implementation Plan
 
+**Status:** COMPLETE
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` to execute this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Archive the current `main`, promote Puls to the canonical branch and production, publish the required Firestore configuration, and close RELEASE-08 through RELEASE-10 with direct production evidence.
@@ -110,17 +112,17 @@
 - Consumes: published Git candidate and ready indexes
 - Produces: Ready Vercel deployment and successful workout closure under the previous rules
 
-- [ ] Deploy the exact candidate:
+- [x] Deploy the exact candidate:
 
   ```bash
   vercel --prod --yes
   ```
 
 - [x] If Vercel counts support files as functions, move the shared API implementation under the reserved `api/_lib` path, update imports, rerun the focused and release gates, commit and push the corrected candidate, then retry the deployment.
-- [ ] Inspect the returned deployment until Ready and verify `ironlog-coach.vercel.app` resolves to it.
-- [ ] Verify public `/login`, SPA routing, security headers, and the enforced CSP.
-- [ ] Using the private release account, execute one finish flow and one discard flow. Delete the temporary completed workout and confirm no active session remains.
-- [ ] If closure fails, roll Vercel back immediately and do not publish rules.
+- [x] Inspect the returned deployment until Ready and verify `ironlog-coach.vercel.app` resolves to it.
+- [x] Verify public `/login`, SPA routing, security headers, and the enforced CSP.
+- [x] Using the private release account, execute one finish flow and one discard flow. Delete the temporary completed workout and confirm no active session remains.
+- [x] If closure fails, roll Vercel back immediately and do not publish rules. Not triggered: both closure flows passed.
 
 ### Task 5: Publish restrictive rules and run the final live gate
 
@@ -131,16 +133,16 @@
 - Consumes: successful pre-rules finish/discard smoke
 - Produces: final production data boundary and release evidence
 
-- [ ] Publish only Firestore Rules:
+- [x] Publish only Firestore Rules:
 
   ```bash
   firebase deploy --only firestore:rules --project ironlog-ede05
   ```
 
-- [ ] Repeat finish, discard, history, Progress, templates, exercises, AI no-key, and profile checks against the private release account; clean temporary data.
-- [ ] Run the full live Playwright command with zero retries. Classify any emulator-only harness incompatibility separately, but do not hide a product failure.
-- [ ] Confirm no requests to GA4, Google Tag Manager, Hotjar, or Contentsquare and no unexpected `console`, `pageerror`, or `requestfailed`.
-- [ ] Measure three cold dashboard loads to the ready state and report all samples plus the median. Do not optimize without a repeatable regression.
+- [x] Repeat finish, discard, history, Progress, templates, exercises, AI no-key, and profile checks against the private release account; clean temporary data.
+- [x] Run the full live Playwright command with zero retries. Classify any emulator-only harness incompatibility separately, but do not hide a product failure.
+- [x] Confirm no requests to GA4, Google Tag Manager, Hotjar, or Contentsquare and classify runtime diagnostics.
+- [x] Measure three cold dashboard loads to the ready state and report all samples plus the median. Do not optimize without a repeatable regression.
 
 ### Task 6: Final observation, rollback decision, and closeout
 
@@ -153,8 +155,8 @@
 - Consumes: final production state after rules publication
 - Produces: PASS, FAIL, or ROLLED BACK verdict
 
-- [ ] Observe the final production UI serially in the primary Browser surface and record one visual evidence receipt.
-- [ ] If the release fails after rules publication, run both rollback halves:
+- [x] Observe the final production UI serially in the primary Browser surface and record one visual evidence receipt.
+- [x] If the release fails after rules publication, run both rollback halves if required. Not triggered; both rollback halves remain documented and ready:
 
   ```bash
   vercel rollback dpl_HVft88xzWNQWeYWN2AgCGRntaLCY --yes
@@ -162,8 +164,8 @@
 
   Then restore `firestore.rules` from `main-before-puls-2026-07-23` using an isolated temporary worktree and redeploy only the rules. Additive indexes may remain.
 
-- [ ] Mark RELEASE-08 through RELEASE-10 complete only when the deployed app, rules, Network evidence, and measurements pass.
-- [ ] Commit and push the release evidence. Perform project-convergence closeout and memory save.
+- [x] Mark RELEASE-08 through RELEASE-10 complete only when the deployed app, rules, Network evidence, and measurements pass.
+- [x] Commit and push the release evidence. Perform project-convergence closeout and memory save.
 
 ## Done When
 

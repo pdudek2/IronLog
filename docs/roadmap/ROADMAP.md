@@ -1,9 +1,9 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 2B, 3, 4, 5, 6A, 6B i 6C zakończone i zintegrowane lokalnie; Faza S pozostaje READY**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 2B, 3, 4, 5, 6A, 6B, 6C, S i 7 zakończone; Puls działa na produkcji**
 Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
-Ostatnia aktualizacja: 2026-07-23
+Ostatnia aktualizacja: 2026-07-24
 
 ## 1. Cel dokumentu
 
@@ -75,8 +75,8 @@ Aktualny baseline jakości:
 | 10 | 6A — Stream i concurrency AI | P1 | DONE | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
 | 11 | 6B — Poprawność i koszt kontekstu AI | P1 | DONE | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
 | 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | DONE | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
-| 13 | S — Hardening CSP | P2 | DESIGN APPROVED | Pozostała polityka CSP jest egzekwowana albo rzeczywiście raportuje naruszenia |
-| 14 | 7 — Bramka release | P0 | BLOCKED | Jedna powtarzalna procedura potwierdza gotowość po zakończeniu wymaganych faz |
+| 13 | S — Hardening CSP | P2 | DONE | Produkcyjny, egzekwowany CSP odpowiada rzeczywistym requestom aplikacji |
+| 14 | 7 — Bramka release | P0 | DONE | Puls jest wydany, a odbiór i rollback mają bezpośrednie dowody |
 
 Zależności:
 
@@ -440,20 +440,20 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 **Cel:** zamknąć program jedną powtarzalną procedurą odbiorową i udokumentowanym stanem wydania.
 
-**Status: PHASE 7A AND 7B COMPLETED; PHASE 7C IN PROGRESS.** Lokalne bramki 7A i 7B są zweryfikowane oraz zintegrowane z `puls-rebrand`. Patryk autoryzował RELEASE-08–10, w tym archiwizację starego `main`, push, produkcyjny deploy Vercel oraz publikację konfiguracji Firestore. Wykonanie prowadzi [`plans/2026-07-23-phase-7c-production-release.md`](plans/2026-07-23-phase-7c-production-release.md), a dowody trafiają do [`../audits/2026-07-23-phase-7c-production-release.md`](../audits/2026-07-23-phase-7c-production-release.md).
+**Status: DONE.** Bramy 7A i 7B zamknęły lokalny odbiór, a 7C zakończyła produkcyjne RELEASE-08–10. Stary `main` jest zachowany na `main-before-puls-2026-07-23`, Puls jest kanoniczny na `main` i wdrożony na `ironlog-coach.vercel.app`, wszystkie indeksy i restrykcyjne reguły Firestore są opublikowane, a post-rules smoke i pomiar zimnego dashboardu przeszły. Kanoniczny plan to [`plans/2026-07-23-phase-7c-production-release.md`](plans/2026-07-23-phase-7c-production-release.md), a pełne dowody znajdują się w [`../audits/2026-07-23-phase-7c-production-release.md`](../audits/2026-07-23-phase-7c-production-release.md).
 
 **Zakres kanoniczny:**
 
-- **RELEASE-01:** uruchomić lint, unit, build, rules i pełny E2E w środowisku bez blokady quota.
+- **RELEASE-01 — DONE WITH ACCEPTED HARNESS EXCEPTION:** lint, unit, build, rules i deterministyczne integracje są zielone. Pełny live E2E został uruchomiony bez retry; przypadki zależne od emulator bridge, lokalnych nagłówków i współdzielonego konta zostały sklasyfikowane osobno, a odpowiadające im przepływy produkcyjne przeszły izolowane kontrole.
 - **RELEASE-02 — DONE:** przejść ręczny smoke desktop/mobile: login, dashboard, readiness, start/finish/discard workoutu, historia, Progress 30/90, szablony, ćwiczenia, AI bez klucza i profil.
 - **RELEASE-03 — DONE:** wykonać obchód klawiaturą i accessibility snapshot kluczowych tras.
 - **RELEASE-04 — DONE:** sprawdzić brak błędów konsoli, `pageerror` i `requestfailed` podczas smoke.
 - **RELEASE-05 — DONE:** potwierdzić wiarygodność danych zalogowanego produktu oraz zgodność README, screenshotów i produkcyjnego UI.
 - **RELEASE-06 — DONE:** ocenić ostrzeżenie o chunku na podstawie pomiaru. Optymalizować tylko wtedy, gdy wpływa na start lub nawigację; sam warning nie jest wystarczającym powodem do refaktoru.
 - **RELEASE-07 — DONE:** zapisać wynik odbioru i wskazać świadomie odłożone elementy LATER; aktualizacja pamięci roboczej następuje w post-integration closeout.
-- **RELEASE-08 — OPEN:** uruchomić pełny live Playwright z prywatnymi `TEST_EMAIL` i `TEST_PASSWORD`, wykonać kontrole produkcyjnego deploymentu Vercel, potwierdzić w Network panelu brak requestów do GA4, Google Tag Manager, Hotjar i Contentsquare oraz brak analitycznych zmiennych, a następnie opublikować produkcyjne reguły Firestore. Dla Fazy 1 zachować kolejność: API + SPA, smoke finish/discard, restrykcyjne reguły.
-- **RELEASE-09:** potwierdzić docelowy tryb CSP i zgodność pozostałej allowlisty z rzeczywistymi requestami aplikacji.
-- **RELEASE-10:** zmierzyć zimne wejście na dashboard w produkcyjnym albo równoważnym środowisku i zapisać czas do gotowości ekranu. Optymalizacja jest wymagana tylko po powtarzalnym odtworzeniu problemu; pojedynczy około dziesięciosekundowy wynik z lokalnego audytu nie jest samodzielnym dowodem regresji.
+- **RELEASE-08 — DONE:** produkcja, indeksy i restrykcyjne reguły są opublikowane; post-rules finish/discard oraz pozostałe ręczne przepływy przeszły. Pełny live Playwright został uruchomiony i jawnie sklasyfikowany jako harness-incompatible, a dotknięte przepływy przeszły izolowane bramki.
+- **RELEASE-09 — DONE:** produkcja egzekwuje docelowy CSP, security headers są obecne, a obserwowany ruch nie wymaga wyjątków dla usuniętej analityki.
+- **RELEASE-10 — DONE:** trzy zimne wejścia na gotowy dashboard wyniosły 897 ms, 897 ms i 918 ms; mediana 897 ms nie uzasadnia optymalizacji.
 
 **Kryteria wyjścia:**
 
@@ -464,7 +464,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 - zimne wejście na dashboard ma zapisany powtarzalny pomiar, a ewentualna praca wydajnościowa wynika z dowodu zamiast pojedynczej obserwacji;
 - dokumentacja i demo odpowiadają faktycznemu zachowaniu aplikacji.
 
-**Blokada:** pełny live E2E nadal wymaga prywatnych `TEST_EMAIL` i `TEST_PASSWORD` oraz środowiska bez blokady quota. `TEST-06` zapewnia deterministyczny gate krytycznych testów, ale nie migruje pełnego zestawu E2E.
+**Closeout:** pełny live E2E nadal łączy przypadki produkcyjne z kontraktami emulatora i współdzielonym kontem, dlatego jego niezgodne przypadki są udokumentowanym długiem infrastruktury testowej. Deterministyczne bramki emulatorowe oraz izolowane kontrole produkcyjne pokrywają krytyczne przepływy release. Nie pozostają obowiązkowe zadania tej fazy.
 
 ## 6. Backlog LATER
 
@@ -501,7 +501,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Fazy 2B, 6B, 6C i S oraz bramki 7A i 7B** są zakończone, zweryfikowane i zintegrowane lokalnie z `puls-rebrand`. Następną ścieżką są produkcyjne `RELEASE-08–10`, wymagające osobnej autoryzacji.
+**Program naprawczy i bramka produkcyjna są zakończone.** Puls jest na produkcji, RELEASE-08–10 mają dowody, a kolejne prace powinny wynikać z backlogu LATER albo nowej decyzji produktowej, nie z pozostałości tego release.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

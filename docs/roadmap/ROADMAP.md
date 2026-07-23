@@ -440,7 +440,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 **Cel:** zamknąć program jedną powtarzalną procedurą odbiorową i udokumentowanym stanem wydania.
 
-**Status: PHASE 7A AND 7B COMPLETED — VERIFIED — INTEGRATED LOCALLY.** Lokalna bramka automatyczna 7A została zintegrowana z `puls-rebrand` przez fast-forward do `b285cd2`, a 7B przez fast-forward do `49d7ccc`. W 7B przeszły ręczny desktop/mobile smoke, dostępność, diagnostyka runtime, profesjonalne README, poprawka konwersji lbs oraz read-only walkthrough zalogowanej produkcji. Post-integration gate ponownie potwierdził czysty lint, build 879 modułów i 471/471 testów jednostkowych; branch i worktree 7B usunięto. Produkcja nadal działa na starszym niebieskim `main`, więc zgodność Puls zostanie potwierdzona dopiero po osobno autoryzowanym wdrożeniu. Dowody: [`../audits/2026-07-23-phase-7a-local-release-gate.md`](../audits/2026-07-23-phase-7a-local-release-gate.md) oraz [`../audits/2026-07-23-phase-7b-manual-release-acceptance.md`](../audits/2026-07-23-phase-7b-manual-release-acceptance.md). `RELEASE-08–10` pozostają otwarte.
+**Status: PHASE 7A AND 7B COMPLETED; PHASE 7C IN PROGRESS.** Lokalne bramki 7A i 7B są zweryfikowane oraz zintegrowane z `puls-rebrand`. Patryk autoryzował RELEASE-08–10, w tym archiwizację starego `main`, push, produkcyjny deploy Vercel oraz publikację konfiguracji Firestore. Wykonanie prowadzi [`plans/2026-07-23-phase-7c-production-release.md`](plans/2026-07-23-phase-7c-production-release.md), a dowody trafiają do [`../audits/2026-07-23-phase-7c-production-release.md`](../audits/2026-07-23-phase-7c-production-release.md).
 
 **Zakres kanoniczny:**
 

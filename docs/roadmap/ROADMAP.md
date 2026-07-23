@@ -75,7 +75,7 @@ Aktualny baseline jakości:
 | 10 | 6A — Stream i concurrency AI | P1 | DONE | Reset i błędy streamu nie dopisują spóźnionych lub częściowych odpowiedzi |
 | 11 | 6B — Poprawność i koszt kontekstu AI | P1 | DONE | Częściowa awaria danych nie fabrykuje pustego obrazu użytkownika |
 | 12 | 6C — Walidacja planów i obsługa konfiguracji AI | P2 | DONE | Plan respektuje brief, a konfiguracja i błędy modeli prowadzą użytkownika do właściwego działania |
-| 13 | S — Hardening CSP | P2 | READY | Pozostała polityka CSP jest egzekwowana albo rzeczywiście raportuje naruszenia |
+| 13 | S — Hardening CSP | P2 | DESIGN APPROVED | Pozostała polityka CSP jest egzekwowana albo rzeczywiście raportuje naruszenia |
 | 14 | 7 — Bramka release | P0 | BLOCKED | Jedna powtarzalna procedura potwierdza gotowość po zakończeniu wymaganych faz |
 
 Zależności:
@@ -417,6 +417,8 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 **Zależności:** A11Y-05 dla dostępnego feedbacku błędów.
 
 ### Faza S — Hardening CSP
+
+**Status: DESIGN APPROVED.** Docelowym kontraktem jest egzekwowany CSP w `vercel.json`, bez nowego endpointu raportów. Allowlista zostaje ograniczona do rzeczywistych zależności Firebase i Google Fonts, a lokalny test wymusza politykę na publicznej i chronionej trasie. Spec znajduje się w [`specs/2026-07-23-phase-s-csp-hardening-design.md`](specs/2026-07-23-phase-s-csp-hardening-design.md).
 
 **Cel:** rozwiązać niezależny problem pozornej polityki Report-Only bez blokowania prostego usunięcia analityki.
 

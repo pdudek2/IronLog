@@ -440,6 +440,8 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 **Cel:** zamknąć program jedną powtarzalną procedurą odbiorową i udokumentowanym stanem wydania.
 
+**Status: PHASE 7A COMPLETED — VERIFIED — AWAITING INTEGRATION.** Lokalna bramka automatyczna obejmuje unit, lint, build, Firestore Rules, integrację workoutu oraz pełny Playwright desktop+mobile na emulatorach i egzekwowanym CSP. Manualny odbiór 7B oraz `RELEASE-08–10` pozostają otwarte. Dowody: [`../audits/2026-07-23-phase-7a-local-release-gate.md`](../audits/2026-07-23-phase-7a-local-release-gate.md).
+
 **Zakres kanoniczny:**
 
 - **RELEASE-01:** uruchomić lint, unit, build, rules i pełny E2E w środowisku bez blokady quota.

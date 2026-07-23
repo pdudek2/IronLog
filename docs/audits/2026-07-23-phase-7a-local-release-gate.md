@@ -1,6 +1,6 @@
 # Phase 7A — Local release gate
 
-**Status:** IN PROGRESS
+**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
 
 **Data:** 2026-07-23
 
@@ -24,12 +24,12 @@
 
 | Gate | Wynik | Liczba | Uwagi |
 | --- | --- | ---: | --- |
-| Unit | PASS | 59 plików, 468 testów | `npm run test:unit` |
+| Unit | PASS | 59 plików, 469 testów | `npm run test:unit`; finalny przebieg po dodaniu kontraktu diagnostyk |
 | Lint | PASS | 0 błędów | `npm run lint` |
 | Build | PASS | 878 modułów | `npm run build`; bez ostrzeżeń |
 | Firestore Rules | PASS | 1 plik, 16 testów | `npm run test:rules`; `demo-ironlog` |
 | Workout integration | PASS | 2 pliki, 20 testów | `npm run test:integration:workout`; emulator Firestore |
-| Full Playwright desktop+mobile | PENDING | 215 listed | emulatory + preview + CSP |
+| Full Playwright desktop+mobile | PASS | 188 passed, 27 skipped, 0 failed | 215 testów; emulatory + preview + CSP; 0 retry; 7,5 min |
 
 ## Znaleziska i poprawki
 
@@ -53,6 +53,10 @@ Po przywróceniu bridge'a scenariusze poprawnie dochodziły do odrzucenia zapisu
 
 Pełny przebieg ujawnił mobilny race w composerze AI Coach. Fokus textarea chował dolną nawigację, ale pointer down na „Wyślij” przenosił fokus na przycisk, przez co nawigacja wracała w trakcie gestu i zasłaniała submit. Composer zachowuje teraz fokus textarea dla pointer click; wysłanie klawiaturą i dostępnościowy submit formularza pozostają bez zmian.
 
+Przebieg poprzedzający finalny gate zakończył się wynikiem 177 passed, 27 skipped i 11 failed. Sześć powtarzalnych awarii należało do jednego race'u mobilnego czatu opisanego wyżej. Pozostałe pięć dotyczyło chwilowo niedostępnych Google Fonts, timeoutów nawigacji, przerwanego kanału emulatora oraz jednorazowego przesunięcia geometrii o 1,47 px; wszystkie odpowiadające scenariusze przeszły bez zmiany kodu w izolowanych reprodukcjach. Finalny pełny przebieg potwierdził je ponownie w macierzy.
+
+Finalny gate objął 215 pozycji: 188 przeszło, a 27 zostało jawnie pominiętych. Z tego 25 skipów wynikało z deklarowanych kontraktów `desktop-only`/`mobile-only`, a 2 z braku wierszy treningu wymaganych przez test usuwania z dashboardu. Nie wykonano retry i finalny przebieg nie utworzył artefaktów failure. Zwykły `npm run build` nie zgłosił ostrzeżeń; build preview z flagą emulatora zgłosił ogólne ostrzeżenie o chunku ponad 500 kB. Produkcyjny build bez bridge'a emulatorowego pozostaje poniżej progu, więc zgodnie z `RELEASE-06` nie wykonano optymalizacji bez pomiaru.
+
 ## Pozostałe obowiązki
 
 - 7B: manualny smoke, klawiatura, accessibility snapshot i zgodność demo/dokumentacji;
@@ -62,4 +66,4 @@ Pełny przebieg ujawnił mobilny race w composerze AI Coach. Fokus textarea chow
 
 ## Wniosek
 
-PENDING
+PASS — lokalna automatyczna bramka 7A jest zielona. Nie stanowi dowodu gotowości produkcyjnej; 7B oraz RELEASE-08–10 pozostają otwarte.

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** PLANNED — AWAITING EXECUTION
+**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
 
 **Goal:** Wykonać pełną lokalną bramkę automatyczną wydania na emulatorach, naprawić wyłącznie potwierdzone regresje i zapisać audytowalny wynik bez udawania gotowości produkcyjnej.
 
@@ -31,7 +31,7 @@
 - Consumes: skrypty z `package.json`, `playwright.config.ts`, `firebase.json`
 - Produces: macierz gate’ów i jawny podział `7A local` / `7B manual` / `7C production`
 
-- [ ] **Step 1: Potwierdzić stan wejściowy**
+- [x] **Step 1: Potwierdzić stan wejściowy**
 
 Run:
 
@@ -47,7 +47,7 @@ Expected:
 - jedyny stan należący do użytkownika w głównym checkoutcie to `docs/audits/2026-07-14-senior-design-review.md`;
 - baza wykonania wskazuje aktualny `puls-rebrand`.
 
-- [ ] **Step 2: Potwierdzić listę pełnego Playwright**
+- [x] **Step 2: Potwierdzić listę pełnego Playwright**
 
 Run:
 
@@ -60,7 +60,7 @@ npx playwright test --list --project=desktop --project=mobile
 
 Expected: `Total: 215 tests in 23 files`. Jeżeli liczba zmieniła się przez uzgodnioną zmianę kodu przed wykonaniem, zapisać rzeczywisty wynik i listę plików zamiast przywracać starą liczbę.
 
-- [ ] **Step 3: Utworzyć raport z zamkniętym szablonem**
+- [x] **Step 3: Utworzyć raport z zamkniętym szablonem**
 
 Utworzyć:
 
@@ -111,7 +111,7 @@ Brak wpisów przed wykonaniem gate'ów.
 PENDING
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/audits/2026-07-23-phase-7a-local-release-gate.md
@@ -128,7 +128,7 @@ git commit -m "docs: start phase 7a local release gate"
 - Consumes: istniejące skrypty `test:unit`, `lint`, `build`, `test:rules`, `test:integration:workout`
 - Produces: pięć świeżych wyników z kodami wyjścia i licznikami
 
-- [ ] **Step 1: Uruchomić unit**
+- [x] **Step 1: Uruchomić unit**
 
 Run:
 
@@ -138,7 +138,7 @@ npm run test:unit
 
 Expected: 59 plików i 468 testów PASS. Zapisać rzeczywisty licznik, jeżeli uzgodniona poprawka doda test.
 
-- [ ] **Step 2: Uruchomić lint**
+- [x] **Step 2: Uruchomić lint**
 
 Run:
 
@@ -148,7 +148,7 @@ npm run lint
 
 Expected: exit `0`, bez błędów ESLint.
 
-- [ ] **Step 3: Uruchomić build**
+- [x] **Step 3: Uruchomić build**
 
 Run:
 
@@ -158,7 +158,7 @@ npm run build
 
 Expected: exit `0`; zapisać liczbę transformowanych modułów i każde ostrzeżenie. Sam rozmiar chunku nie jest powodem do optymalizacji bez pomiaru zgodnie z `RELEASE-06`.
 
-- [ ] **Step 4: Uruchomić Firestore Rules**
+- [x] **Step 4: Uruchomić Firestore Rules**
 
 Run:
 
@@ -168,7 +168,7 @@ npm run test:rules
 
 Expected: wszystkie testy `tests/rules/firestore.rules.test.ts` PASS na emulatorze `demo-ironlog`.
 
-- [ ] **Step 5: Uruchomić integrację workoutu**
+- [x] **Step 5: Uruchomić integrację workoutu**
 
 Run:
 
@@ -178,7 +178,7 @@ npm run test:integration:workout
 
 Expected: wszystkie testy integracyjne materializacji workoutu PASS na emulatorze Firestore.
 
-- [ ] **Step 6: Obsłużyć wyłącznie potwierdzone błędy**
+- [x] **Step 6: Obsłużyć wyłącznie potwierdzone błędy**
 
 Jeżeli którykolwiek gate nie przejdzie:
 
@@ -191,7 +191,7 @@ Jeżeli którykolwiek gate nie przejdzie:
 
 Nie dodawać retry, timeoutu ani wyjątku tylko po to, by ukryć nieustaloną przyczynę.
 
-- [ ] **Step 7: Uzupełnić macierz i commit**
+- [x] **Step 7: Uzupełnić macierz i commit**
 
 W raporcie zastąpić `PENDING` wynikami, licznikami i krótkimi uwagami dla pięciu gate’ów.
 
@@ -210,7 +210,7 @@ git commit -m "docs: record phase 7a core gates"
 - Consumes: 215 przypadków z 23 plików, projekty `desktop` i `mobile`
 - Produces: jeden wynik pełnego lokalnego E2E bez retry, produkcyjnego quota i sekretów
 
-- [ ] **Step 1: Uruchomić pełny suite**
+- [x] **Step 1: Uruchomić pełny suite**
 
 Run:
 
@@ -233,7 +233,7 @@ Expected:
 - brak prawdziwych requestów do Anthropic i produkcyjnego Firebase;
 - CSP jest obecny na odpowiedziach dokumentów.
 
-- [ ] **Step 2: Zweryfikować wynik zamiast ufać samemu exit code**
+- [x] **Step 2: Zweryfikować wynik zamiast ufać samemu exit code**
 
 W outputcie i raporcie zapisać:
 
@@ -245,7 +245,7 @@ W outputcie i raporcie zapisać:
 
 Jeżeli wynik zawiera failure, zastosować dokładnie procedurę z Task 2 Step 6 i nie oznaczać 7A jako ukończonej.
 
-- [ ] **Step 3: Uzupełnić raport i commit**
+- [x] **Step 3: Uzupełnić raport i commit**
 
 W wierszu `Full Playwright desktop+mobile` zapisać wynik i liczniki. W sekcji `Wniosek` ustawić:
 
@@ -269,7 +269,7 @@ git commit -m "docs: record phase 7a full e2e gate"
 - Consumes: komplet świeżych wyników z Task 2–3
 - Produces: status `7A DONE`, zachowane obowiązki 7B i `RELEASE-08–10`
 
-- [ ] **Step 1: Wykonać focused review**
+- [x] **Step 1: Wykonać focused review**
 
 Sprawdzić:
 
@@ -280,7 +280,7 @@ Sprawdzić:
 - raport nie nazywa lokalnego wyniku produkcyjną gotowością;
 - nie zamknięto 7B ani `RELEASE-08–10`.
 
-- [ ] **Step 2: Uruchomić końcowy diff check**
+- [x] **Step 2: Uruchomić końcowy diff check**
 
 Run:
 
@@ -291,7 +291,7 @@ git status --short
 
 Expected: diff check PASS; brak nieoczekiwanych plików. Raport użytkownika `docs/audits/2026-07-14-senior-design-review.md` pozostaje nietknięty.
 
-- [ ] **Step 3: Zaktualizować lifecycle**
+- [x] **Step 3: Zaktualizować lifecycle**
 
 W planie ustawić:
 
@@ -305,7 +305,7 @@ W roadmapie pod `### Faza 7 — Bramka release` dodać:
 **Status: PHASE 7A COMPLETED — VERIFIED — AWAITING INTEGRATION.** Lokalna bramka automatyczna obejmuje unit, lint, build, Firestore Rules, integrację workoutu oraz pełny Playwright desktop+mobile na emulatorach i egzekwowanym CSP. Manualny odbiór 7B oraz `RELEASE-08–10` pozostają otwarte. Dowody: [`../audits/2026-07-23-phase-7a-local-release-gate.md`](../audits/2026-07-23-phase-7a-local-release-gate.md).
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/roadmap/ROADMAP.md docs/roadmap/plans/2026-07-23-phase-7a-local-release-gate.md docs/audits/2026-07-23-phase-7a-local-release-gate.md

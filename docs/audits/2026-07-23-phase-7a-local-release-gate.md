@@ -25,15 +25,15 @@
 | Gate | Wynik | Liczba | Uwagi |
 | --- | --- | ---: | --- |
 | Unit | PASS | 59 plików, 468 testów | `npm run test:unit` |
-| Lint | PENDING | — | `npm run lint` |
-| Build | PENDING | — | `npm run build` |
-| Firestore Rules | PENDING | — | `npm run test:rules` |
-| Workout integration | PENDING | — | `npm run test:integration:workout` |
+| Lint | PASS | 0 błędów | `npm run lint` |
+| Build | PASS | 878 modułów | `npm run build`; bez ostrzeżeń |
+| Firestore Rules | PASS | 1 plik, 16 testów | `npm run test:rules`; `demo-ironlog` |
+| Workout integration | PASS | 2 pliki, 20 testów | `npm run test:integration:workout`; emulator Firestore |
 | Full Playwright desktop+mobile | PENDING | 215 listed | emulatory + preview + CSP |
 
 ## Znaleziska i poprawki
 
-Brak wpisów przed wykonaniem pozostałych gate'ów.
+Core gate'y nie ujawniły błędów wymagających poprawki. Pełny Playwright pozostaje do wykonania.
 
 ## Pozostałe obowiązki
 

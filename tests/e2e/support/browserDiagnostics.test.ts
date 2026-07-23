@@ -54,6 +54,17 @@ describe('browser diagnostics classification', () => {
     expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'https://example.com/src/app.ts', true)).toBe(true)
   })
 
+  it('ignores aborted local hashed production chunks only during intentional navigation or teardown', () => {
+    const productionChunkUrl = 'http://127.0.0.1:5174/assets/ActionFeedback-C_Vf7yLp.js'
+
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', productionChunkUrl)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', productionChunkUrl, false)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', productionChunkUrl, true)).toBe(false)
+    expect(isBlockingRequestFailure('script', 'net::ERR_FAILED', productionChunkUrl, true)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'http://127.0.0.1:5174/assets/app.js', true)).toBe(true)
+    expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'https://example.com/assets/app-abcdefgh.js', true)).toBe(true)
+  })
+
   it('ignores only aborted fonts.gstatic.com font requests during intentional navigation or teardown', () => {
     const googleFontUrl = 'https://fonts.gstatic.com/s/urbanist/v17/L0x5DF02iFML4hGCyMqlbSnbfM3k.woff2'
 
@@ -397,6 +408,13 @@ describe('browser diagnostics controller', () => {
       message: 'net::ERR_FAILED',
       method: 'POST',
       url: 'http://localhost:5174/api/finalize-workout',
+      blocking: true,
+    })).toBe(true)
+    expect(isExpectedWorkoutLifecycleAckLossDiagnostic({
+      kind: 'requestfailed',
+      message: 'net::ERR_FAILED',
+      method: 'POST',
+      url: 'http://127.0.0.1:5174/api/discard-session',
       blocking: true,
     })).toBe(true)
     expect(isExpectedWorkoutLifecycleAckLossDiagnostic({

@@ -6,7 +6,10 @@ function hasEndpoint(entry: BrowserDiagnostic, pathname: string): boolean {
   if (!entry.url) return false
   try {
     const source = new URL(entry.url)
-    return source.origin === 'http://localhost:5174' && source.pathname === pathname
+    return (
+      source.origin === 'http://localhost:5174'
+      || source.origin === 'http://127.0.0.1:5174'
+    ) && source.pathname === pathname
   } catch {
     return false
   }

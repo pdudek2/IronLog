@@ -45,6 +45,8 @@ Następny przebieg wykazał, że test prefetchu Progress rozpoznawał wyłączni
 
 Scenariusz celowego offline przy uruchamianiu szablonu wywołał transportowy fallback Firestore do `google.com/images/cleardot.gif`. Minimalny `img-src 'self' data:` poprawnie zablokował beacon, ale matcher oczekiwanych diagnostyk znał tylko wariant `ERR_INTERNET_DISCONNECTED`, nie wariant `csp`. Matcher zawężono do dokładnego URL-a beacona i dokładnego komunikatu tej dyrektywy; polityka CSP nie została poluzowana.
 
+Grupa testów guard i lost-ack ujawniła dwa dalsze założenia trybu deweloperskiego. Kolektor diagnostyk rozpoznawał przerywane podczas intencjonalnej nawigacji moduły `/src`, ale nie lokalne hashowane chunki produkcyjne `/assets/*-<hash>.js`; wyjątek rozszerzono wyłącznie na takie chunki, wyłącznie dla `ERR_ABORTED` w oknie nawigacji/teardown. Matcher kontrolowanej utraty odpowiedzi API akceptował tylko `localhost:5174`; dodano równoważny lokalny origin preview `127.0.0.1:5174`. Inne originy, niehashowane zasoby i błędy inne niż oczekiwane pozostają blokujące.
+
 ## Pozostałe obowiązki
 
 - 7B: manualny smoke, klawiatura, accessibility snapshot i zgodność demo/dokumentacji;

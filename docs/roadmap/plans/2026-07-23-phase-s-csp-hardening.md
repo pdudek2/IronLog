@@ -4,7 +4,7 @@
 
 **Goal:** Zastąpić pozorny CSP Report-Only egzekwowaną, minimalną polityką i powtarzalnym smoke publicznej oraz chronionej trasy.
 
-**Architecture:** `vercel.json` pozostaje jedynym produkcyjnym źródłem prawdy. Jeden test Playwright odczytuje ten nagłówek, sprawdza kontrakt statyczny, a podczas lokalnego smoke wstrzykuje politykę do odpowiedzi dokumentu z jawnymi wyjątkami dla emulatorów Firebase i WebSocketu HMR serwera Vite.
+**Architecture:** `vercel.json` pozostaje jedynym produkcyjnym źródłem prawdy. Jeden test Playwright odczytuje ten nagłówek i sprawdza kontrakt statyczny. Warunkowy tryb `vite preview` odczytuje tę samą wartość, dodaje wyłącznie lokalne wyjątki emulatorów Firebase i emituje nagłówek dla smoke na produkcyjnym bundlu.
 
 **Tech Stack:** Vercel headers, Content Security Policy, Playwright, Firebase Auth/Firestore emulators, TypeScript.
 
@@ -105,7 +105,7 @@ test('production config enforces the minimal CSP contract', () => {
 W `package.json` dodać:
 
 ```json
-"test:e2e:csp": "E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/csp.spec.ts --project=desktop --retries=0\""
+"test:e2e:csp": "E2E_BACKEND=emulator E2E_CSP=true TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/csp.spec.ts --project=desktop --retries=0\""
 ```
 
 - [ ] **Step 2: Uruchomić test i potwierdzić RED**
@@ -150,11 +150,15 @@ git commit -m "fix: enforce minimal content security policy"
 
 **Files:**
 - Modify/Test: `tests/e2e/csp.spec.ts`
+- Modify: `playwright.config.ts`
+- Modify: `package.json`
+- Modify: `vite.config.ts`
 
 **Interfaces:**
 - Consumes: produkcyjna wartość `Content-Security-Policy`
-- Produces: `withLocalEmulators(policy: string): string`
+- Produces: `localCspHeader(): string` w warunkowej konfiguracji preview
 - Produces: runtime gate dla `/login` i `/dashboard`
+- Produces: tryb `E2E_CSP=true`, który uruchamia zbudowany bundle przez `vite preview`
 
 - [ ] **Step 1: Dodać obserwację naruszeń i originów**
 
@@ -168,7 +172,7 @@ import { expectAppReady } from './support/appReady'
 Dodać pod `parsePolicy`:
 
 ```ts
-const APP_ORIGIN = 'http://localhost:5174'
+const APP_ORIGIN = 'http://127.0.0.1:5174'
 const LOCAL_ALLOWED_ORIGINS = new Set([
   APP_ORIGIN,
   'http://127.0.0.1:8080',
@@ -177,22 +181,7 @@ const LOCAL_ALLOWED_ORIGINS = new Set([
   'https://fonts.gstatic.com',
 ])
 
-function enforcedPolicy(): string {
-  const header = cspHeaders().find(({ key }) => key === 'Content-Security-Policy')
-  if (!header) throw new Error('Missing enforced Content-Security-Policy header.')
-  return header.value
-}
-
-function withLocalEmulators(policy: string): string {
-  const localPolicy = policy.replace(
-    /connect-src ([^;]+);/,
-    'connect-src $1 http://127.0.0.1:8080 http://127.0.0.1:9099 ws://localhost:5174;',
-  )
-  if (localPolicy === policy) throw new Error('Missing connect-src directive.')
-  return localPolicy
-}
-
-async function installLocalCsp(context: BrowserContext): Promise<void> {
+async function installCspObservation(context: BrowserContext): Promise<void> {
   await context.addInitScript(() => {
     const state = window as typeof window & { __ironlogCspViolations?: string[] }
     state.__ironlogCspViolations = []
@@ -200,25 +189,6 @@ async function installLocalCsp(context: BrowserContext): Promise<void> {
       state.__ironlogCspViolations?.push(
         `${event.effectiveDirective}: ${event.blockedURI}`,
       )
-    })
-  })
-
-  const policy = withLocalEmulators(enforcedPolicy())
-  await context.route(`${APP_ORIGIN}/**`, async (route) => {
-    if (route.request().resourceType() !== 'document') {
-      await route.continue()
-      return
-    }
-
-    const response = await route.fetch()
-    const headers = response.headers()
-    delete headers['content-security-policy-report-only']
-    await route.fulfill({
-      response,
-      headers: {
-        ...headers,
-        'content-security-policy': policy,
-      },
     })
   })
 }
@@ -246,14 +216,24 @@ async function expectCleanCsp(page: Page, origins: Set<string>): Promise<void> {
 }
 ```
 
+Każdy runtime test ma dodatkowo sprawdzić odpowiedź dokumentu: nagłówek `Content-Security-Policy` jest obecny, a `Content-Security-Policy-Report-Only` nie występuje.
+
 - [ ] **Step 2: Dodać runtime test publicznej trasy**
+
+W `playwright.config.ts` dodać tryb `E2E_CSP=true`, który zamiast dev-serwera uruchamia:
+
+```ts
+'npm run build && npm run preview -- --host 127.0.0.1 --port 5174'
+```
+
+Build i preview muszą otrzymać istniejące `emulatorWebEnv`, aby bundle łączył się wyłącznie z emulatorami. Preview działa na `127.0.0.1`, tak jak emulatory. `vite.config.ts` w tym trybie odczytuje produkcyjny CSP z `vercel.json`, dopisuje tylko originy emulatorów do `connect-src` i emituje nagłówek bez pośrednictwa `route.fulfill()`.
 
 ```ts
 test.describe('public route CSP', () => {
   test.use({ storageState: { cookies: [], origins: [] } })
 
   test('login loads under the enforced policy', async ({ context, page }) => {
-    await installLocalCsp(context)
+    await installCspObservation(context)
     const origins = observeOrigins(page)
 
     await page.goto('/login')
@@ -268,7 +248,7 @@ test.describe('public route CSP', () => {
 
 ```ts
 test('dashboard loads under the enforced policy', async ({ context, page }) => {
-  await installLocalCsp(context)
+  await installCspObservation(context)
   const origins = observeOrigins(page)
 
   await page.goto('/dashboard')

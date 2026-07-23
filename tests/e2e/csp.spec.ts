@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs'
+import type { BrowserContext, Page, Response } from '@playwright/test'
 import { test, expect } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 interface VercelHeader {
   key: string
@@ -34,6 +36,64 @@ function parsePolicy(policy: string): Map<string, string[]> {
         return [name, values] as const
       }),
   )
+}
+
+const APP_ORIGIN = 'http://127.0.0.1:5174'
+const LOCAL_ALLOWED_ORIGINS = new Set([
+  APP_ORIGIN,
+  'http://127.0.0.1:8080',
+  'http://127.0.0.1:9099',
+  'https://fonts.googleapis.com',
+  'https://fonts.gstatic.com',
+])
+
+async function installCspObservation(context: BrowserContext): Promise<void> {
+  await context.addInitScript(() => {
+    const state = window as typeof window & {
+      __ironlogCspViolations?: string[]
+    }
+    state.__ironlogCspViolations = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      state.__ironlogCspViolations?.push(
+        `${event.effectiveDirective}: ${event.blockedURI}`,
+      )
+    })
+  })
+}
+
+function observeOrigins(page: Page): Set<string> {
+  const origins = new Set<string>()
+  page.on('request', (request) => {
+    const url = new URL(request.url())
+    if (url.protocol === 'http:' || url.protocol === 'https:') {
+      origins.add(url.origin)
+    }
+  })
+  return origins
+}
+
+async function expectCleanCsp(
+  page: Page,
+  origins: Set<string>,
+): Promise<void> {
+  const violations = await page.evaluate(
+    () =>
+      (
+        window as typeof window & {
+          __ironlogCspViolations?: string[]
+        }
+      ).__ironlogCspViolations ?? [],
+  )
+  expect(violations).toEqual([])
+  expect(
+    [...origins].filter((origin) => !LOCAL_ALLOWED_ORIGINS.has(origin)),
+  ).toEqual([])
+}
+
+function expectEnforcedResponse(response: Response | null): void {
+  const headers = response?.headers() ?? {}
+  expect(headers['content-security-policy']).toContain("default-src 'self'")
+  expect(headers['content-security-policy-report-only']).toBeUndefined()
 }
 
 test('production config enforces the minimal CSP contract', () => {
@@ -71,4 +131,30 @@ test('production config enforces the minimal CSP contract', () => {
   expect(policy).not.toMatch(
     /localhost|127\.0\.0\.1|firebaseio|google-analytics|googletagmanager|hotjar|contentsquare/i,
   )
+})
+
+test.describe('public route CSP', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  test('login loads under the enforced policy', async ({ context, page }) => {
+    await installCspObservation(context)
+    const origins = observeOrigins(page)
+
+    const response = await page.goto('/login')
+    expectEnforcedResponse(response)
+    await expectAppReady(page, '/login')
+
+    await expectCleanCsp(page, origins)
+  })
+})
+
+test('dashboard loads under the enforced policy', async ({ context, page }) => {
+  await installCspObservation(context)
+  const origins = observeOrigins(page)
+
+  const response = await page.goto('/dashboard')
+  expectEnforcedResponse(response)
+  await expectAppReady(page, '/dashboard')
+
+  await expectCleanCsp(page, origins)
 })

@@ -2,12 +2,15 @@ import { defineConfig, devices } from '@playwright/test'
 import { config } from 'dotenv'
 
 const emulatorMode = process.env.E2E_BACKEND === 'emulator'
+const cspMode = process.env.E2E_CSP === 'true'
 const storageStatePath = emulatorMode
   ? 'tests/e2e/.auth/emulator-user.json'
   : 'tests/e2e/.auth/user.json'
-const webServerUrl = emulatorMode
-  ? 'http://localhost:5174'
-  : 'http://localhost:5173'
+const webServerUrl = cspMode
+  ? 'http://127.0.0.1:5174'
+  : emulatorMode
+    ? 'http://localhost:5174'
+    : 'http://localhost:5173'
 
 if (!emulatorMode) {
   config({ path: '.env.test' })
@@ -74,7 +77,11 @@ export default defineConfig({
       env: emulatorMode ? emulatorWebEnv : undefined,
     },
     {
-      command: emulatorMode ? 'npm run dev -- --port 5174' : 'npm run dev',
+      command: cspMode
+        ? 'npm run build && npm run preview -- --host 127.0.0.1 --port 5174'
+        : emulatorMode
+          ? 'npm run dev -- --port 5174'
+          : 'npm run dev',
       url: webServerUrl,
       reuseExistingServer: !emulatorMode && !process.env.CI,
       timeout: 30_000,

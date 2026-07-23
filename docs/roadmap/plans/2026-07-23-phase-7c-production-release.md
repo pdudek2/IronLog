@@ -32,10 +32,10 @@
 - Consumes: integrated `puls-rebrand` at `cbdada6`
 - Produces: immutable release baseline and recovery contract
 
-- [ ] Confirm `origin/main` and local `main` both equal the expected archive SHA.
-- [ ] Confirm the archive branch does not already exist remotely.
-- [ ] Record the current production deployment ID, URL, aliases, and Ready status without copying environment values.
-- [ ] Commit the plan, baseline report, and roadmap status before external mutation.
+- [x] Confirm `origin/main` and local `main` both equal the expected archive SHA.
+- [x] Confirm the archive branch does not already exist remotely.
+- [x] Record the current production deployment ID, URL, aliases, and Ready status without copying environment values.
+- [x] Commit the plan, baseline report, and roadmap status before external mutation.
 
 ### Task 2: Run production preflight
 
@@ -46,7 +46,7 @@
 - Consumes: the exact candidate commit produced by Task 1
 - Produces: green local and configuration gates
 
-- [ ] Run:
+- [x] Run:
 
   ```bash
   npm run lint
@@ -57,15 +57,15 @@
   git diff --check
   ```
 
-- [ ] Run a Firebase dry run for indexes and rules:
+- [x] Run a Firebase dry run for indexes and rules:
 
   ```bash
   firebase deploy --only firestore:indexes,firestore:rules \
     --project ironlog-ede05 --dry-run
   ```
 
-- [ ] Confirm `.env.test` contains non-empty `TEST_EMAIL` and `TEST_PASSWORD` without printing them.
-- [ ] Stop before external mutation if any gate fails.
+- [x] Confirm `.env.test` contains non-empty `TEST_EMAIL` and `TEST_PASSWORD` without printing them.
+- [x] Stop before external mutation if any gate fails.
 
 ### Task 3: Archive main and publish prerequisites
 

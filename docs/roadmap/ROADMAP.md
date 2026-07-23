@@ -440,7 +440,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 **Cel:** zamknąć program jedną powtarzalną procedurą odbiorową i udokumentowanym stanem wydania.
 
-**Status: PHASE 7A COMPLETED; PHASE 7B COMPLETED — VERIFIED — AWAITING INTEGRATION.** Lokalna bramka automatyczna 7A została zintegrowana z `puls-rebrand` przez fast-forward do `b285cd2`. W 7B przeszły ręczny desktop/mobile smoke, dostępność, diagnostyka runtime, profesjonalne README, poprawka konwersji lbs oraz read-only walkthrough zalogowanej produkcji. Produkcja zawiera wiarygodne dane i nie ma pozostawionej aktywnej sesji, ale nadal działa na starszym niebieskim `main`; zgodność Puls zostanie potwierdzona dopiero po osobno autoryzowanym wdrożeniu. Dowody: [`../audits/2026-07-23-phase-7a-local-release-gate.md`](../audits/2026-07-23-phase-7a-local-release-gate.md) oraz [`../audits/2026-07-23-phase-7b-manual-release-acceptance.md`](../audits/2026-07-23-phase-7b-manual-release-acceptance.md). `RELEASE-08–10` pozostają otwarte.
+**Status: PHASE 7A AND 7B COMPLETED — VERIFIED — INTEGRATED LOCALLY.** Lokalna bramka automatyczna 7A została zintegrowana z `puls-rebrand` przez fast-forward do `b285cd2`, a 7B przez fast-forward do `49d7ccc`. W 7B przeszły ręczny desktop/mobile smoke, dostępność, diagnostyka runtime, profesjonalne README, poprawka konwersji lbs oraz read-only walkthrough zalogowanej produkcji. Post-integration gate ponownie potwierdził czysty lint, build 879 modułów i 471/471 testów jednostkowych; branch i worktree 7B usunięto. Produkcja nadal działa na starszym niebieskim `main`, więc zgodność Puls zostanie potwierdzona dopiero po osobno autoryzowanym wdrożeniu. Dowody: [`../audits/2026-07-23-phase-7a-local-release-gate.md`](../audits/2026-07-23-phase-7a-local-release-gate.md) oraz [`../audits/2026-07-23-phase-7b-manual-release-acceptance.md`](../audits/2026-07-23-phase-7b-manual-release-acceptance.md). `RELEASE-08–10` pozostają otwarte.
 
 **Zakres kanoniczny:**
 
@@ -501,7 +501,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Fazy 2B, 6B, 6C i S oraz bramka 7A** są zakończone, zweryfikowane i zintegrowane lokalnie z `puls-rebrand`. Faza 7B jest zweryfikowana i oczekuje na lokalną integrację; po niej następną ścieżką są produkcyjne `RELEASE-08–10`, wymagające osobnej autoryzacji.
+**Fazy 2B, 6B, 6C i S oraz bramki 7A i 7B** są zakończone, zweryfikowane i zintegrowane lokalnie z `puls-rebrand`. Następną ścieżką są produkcyjne `RELEASE-08–10`, wymagające osobnej autoryzacji.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

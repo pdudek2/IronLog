@@ -39,11 +39,11 @@ Jeden test `tests/e2e/csp.spec.ts` ma:
 1. odczytać produkcyjny nagłówek z `vercel.json`;
 2. potwierdzić tryb enforcement, wymagane dyrektywy, brak localhosta i brak originów usuniętej analityki;
 3. wstrzyknąć tę politykę do odpowiedzi dokumentu podczas izolowanego Playwright;
-4. tylko w lokalnym wariancie dopisać originy emulatorów Auth i Firestore do `connect-src`;
+4. tylko w lokalnym wariancie dopisać originy emulatorów Auth i Firestore oraz WebSocket HMR serwera Vite do `connect-src`;
 5. przejść publiczną trasę logowania oraz chroniony dashboard;
 6. odrzucić naruszenia CSP, zablokowane wymagane zasoby i nieoczekiwane zewnętrzne originy.
 
-Lokalne wyjątki emulatorów nie mogą trafić do `vercel.json`. Smoke nie zastępuje produkcyjnej obserwacji Network — ta pozostaje `RELEASE-09`.
+Lokalne wyjątki emulatorów i serwera developerskiego nie mogą trafić do `vercel.json`. Smoke nie zastępuje produkcyjnej obserwacji Network — ta pozostaje `RELEASE-09`.
 
 ## 4. Zakres i kompatybilność
 

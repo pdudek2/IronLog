@@ -1,9 +1,9 @@
 # IronLog — kanoniczna roadmapa po audytach
 
 Status dokumentu: **kanoniczny backlog programu naprawczego**
-Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 3, 4, 5, 6A i 6B zakończone i zintegrowane lokalnie; Faza 2B pozostaje niezależnie READY**
+Stan przeglądu: **APPROVED — fazy A, 0, R, 1, 2, 2B, 3, 4, 5, 6A, 6B i 6C zakończone i zintegrowane lokalnie; Faza S pozostaje READY**
 Źródła: audyt techniczny, pierwszy audyt UI, Senior Design Review z 2026-07-14 oraz uzupełniający pełny audyt runtime z 2026-07-20
-Ostatnia aktualizacja: 2026-07-22
+Ostatnia aktualizacja: 2026-07-23
 
 ## 1. Cel dokumentu
 
@@ -51,8 +51,8 @@ Aktualny baseline jakości:
 
 - lint przechodzi,
 - build przechodzi z istniejącym ostrzeżeniem o rozmiarze chunku,
-- 261 testów jednostkowych oraz testów wsparcia przechodzi,
-- 1 plik i 10 testów reguł Firestore przechodzi,
+- 468 testów jednostkowych oraz testów wsparcia przechodzi,
+- 1 plik i 16 testów reguł Firestore przechodzi,
 - ukierunkowana integracja zamknięcia i projekcji workoutu przechodzi: 2 pliki i 20 testów,
 - isolated Auth+Firestore emulator przechodzi: 13 testów Playwright na świeżych emulatorach,
 - ukierunkowana regresja cyklu treningu przechodzi: 9 testów Playwright bez retry,
@@ -68,7 +68,7 @@ Aktualny baseline jakości:
 | 3 | R — Ukierunkowany przegląd cyklu życia treningu | P0 | DONE | `WORKOUT-01–06` mają dowody i jednoznaczne statusy |
 | 4 | 1 — Integralność cyklu życia treningu | P0 | DONE | `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06` naprawione w `1cb59af–4fe1ec5` |
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | DONE | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
-| 6 | 2B — Integralność własnych ćwiczeń | P2 | IN PROGRESS | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
+| 6 | 2B — Integralność własnych ćwiczeń | P2 | DONE | Równoległe utworzenie i zmiana nazwy nie produkują duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | DONE | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
 | 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DONE | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
@@ -230,7 +230,7 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 
 ### Faza 2B — Integralność własnych ćwiczeń
 
-**Status: IN PROGRESS.** Zatwierdzony kontrakt zachowuje wszystkie istniejące `exerciseId` i dodaje transakcyjne claimy nazw dla create, rename i delete. Spec oraz plan znajdują się w [`specs/2026-07-23-phase-2b-user-exercise-uniqueness-design.md`](specs/2026-07-23-phase-2b-user-exercise-uniqueness-design.md) i [`plans/2026-07-23-phase-2b-user-exercise-uniqueness.md`](plans/2026-07-23-phase-2b-user-exercise-uniqueness.md).
+**Status: DONE — zweryfikowane i zintegrowane lokalnie.** Kontrakt zachowuje wszystkie istniejące `exerciseId` i dodaje transakcyjne claimy nazw dla create, rename i delete. Emulator potwierdza wyścigi create/rename, przejęcie legacy dokumentu, zwolnienie claimu oraz odrzucenie prób samodzielnego usunięcia lub przepięcia claimu. Pełna bramka po integracji: 468 unitów, 16 testów reguł, lint i build — PASS. Lokalna obserwacja w przeglądarce na emulatorach potwierdziła, że drugi zapis `Concurrent Curl` pozostawia formularz otwarty, zachowuje wartość pola i pokazuje alert duplikatu. Spec oraz ukończony plan znajdują się w [`specs/2026-07-23-phase-2b-user-exercise-uniqueness-design.md`](specs/2026-07-23-phase-2b-user-exercise-uniqueness-design.md) i [`plans/2026-07-23-phase-2b-user-exercise-uniqueness.md`](plans/2026-07-23-phase-2b-user-exercise-uniqueness.md).
 
 **Cel:** zamknąć niezależne od UI ryzyko utworzenia dwóch własnych ćwiczeń o tej samej tożsamości przez równoległe klienty.
 
@@ -282,7 +282,7 @@ Status `DONE` opisuje zakończoną i zweryfikowaną implementację. Final re-rev
 
 **Status: DONE.** Zakres `MOBILE-01–06` wdrożono i zweryfikowano unitami, lintem, buildem oraz izolowanym gate'em Playwright (53 passed, 22 oczekiwane skipy). Headed review potwierdził brak overflow przy 320/375/390 px i tekście 150%, stały dock nad polem przy wysokości 500 px, czytelny siedmioelementowy `BottomNav` oraz przejście rest timera `full → compact → full` bez zasłaniania inputu. Projekt i dowody pozostają w [`specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md`](specs/2026-07-14-phase-4-mobile-ergonomics-template-editor-design.md) oraz [`plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md`](plans/2026-07-14-phase-4-mobile-ergonomics-template-editor.md).
 
-Post-integration closeout zakończono po finalnym re-review bez znalezisk Critical, Important ani Minor. Feature branch został zmergowany lokalnie do `puls-rebrand` na `96155ef` i usunięty razem z worktree; push, deploy i czynności `RELEASE-08` nie zostały wykonane. Następnym zależnym etapem pozostaje Faza 5, a niezależna Faza 2B nadal ma status `READY`.
+Post-integration closeout zakończono po finalnym re-review bez znalezisk Critical, Important ani Minor. Feature branch został zmergowany lokalnie do `puls-rebrand` na `96155ef` i usunięty razem z worktree; push, deploy i czynności `RELEASE-08` nie zostały wykonane. Następnym zależnym etapem pozostaje Faza 5; niezależna Faza 2B została później zakończona.
 
 **Zakres kanoniczny:**
 
@@ -496,7 +496,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Fazy 6B i 6C** są zakończone, zweryfikowane i zintegrowane lokalnie z `puls-rebrand`. Niezależna Faza 2B pozostaje `READY`, Faza S pozostaje bez zmian, a `RELEASE-08` jest nadal otwarte.
+**Fazy 2B, 6B i 6C** są zakończone, zweryfikowane i zintegrowane lokalnie z `puls-rebrand`. Następnym zakresem implementacyjnym jest Faza S, a `RELEASE-08` pozostaje otwartą bramką produkcyjną.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

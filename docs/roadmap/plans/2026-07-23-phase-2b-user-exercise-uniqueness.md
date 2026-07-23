@@ -4,6 +4,8 @@
 
 **Goal:** Zapewnić atomową unikalność nazw własnych ćwiczeń bez zmiany istniejących `exerciseId`.
 
+**Status:** COMPLETED — VERIFIED — INTEGRATED LOCALLY
+
 **Architecture:** `userExerciseNames/{uid}_{sha256(name)}` jest lekkim claimem nazwy. Serwis klienta zapisuje claim i `userExercises` w jednej transakcji, a reguły wymagają zgodności obu dokumentów przez `getAfter`; legacy dokumenty są przejmowane przy pierwszej zmianie nazwy bez migracji ID.
 
 **Tech Stack:** React 19, TypeScript, Firebase Web SDK, Firestore transactions, Firestore Rules emulator, Vitest.
@@ -30,7 +32,7 @@
 - Produces: dokument claimu `{ userId, exerciseId, name }`
 - Produces: pole `nameClaimId` na nowych `userExercises`
 
-- [ ] **Step 1: Dodać failing test bezpośredniego create bez claimu**
+- [x] **Step 1: Dodać failing test bezpośredniego create bez claimu**
 
 W `tests/rules/firestore.rules.test.ts` zmienić test `userExercises rules`, aby:
 
@@ -42,7 +44,7 @@ await assertFails(setDoc(
 ))
 ```
 
-- [ ] **Step 2: Dodać failing test równoległego create**
+- [x] **Step 2: Dodać failing test równoległego create**
 
 Mockować moduł produkcyjnego `db`, a do serwisu przekazać emulatorowy `Firestore`:
 
@@ -70,7 +72,7 @@ const stored = await getDocs(query(
 expect(stored.size).toBe(1)
 ```
 
-- [ ] **Step 3: Uruchomić rules test i potwierdzić RED**
+- [x] **Step 3: Uruchomić rules test i potwierdzić RED**
 
 Run:
 
@@ -80,7 +82,7 @@ npm run test:rules
 
 Expected: direct create bez claimu nadal przechodzi albo równoległe create zapisuje dwa dokumenty.
 
-- [ ] **Step 4: Zaimplementować minimalny claim i transakcyjny create**
+- [x] **Step 4: Zaimplementować minimalny claim i transakcyjny create**
 
 W `src/lib/userExercisesService.ts`:
 
@@ -152,7 +154,7 @@ export async function createUserExercise(
 }
 ```
 
-- [ ] **Step 5: Egzekwować claim w regułach**
+- [x] **Step 5: Egzekwować claim w regułach**
 
 Rozszerzyć `isUserExercise` o opcjonalne `nameClaimId`, dodać `isUserExerciseNameClaim`, `hasNameClaim` i `hasMatchingNameClaim`, a następnie:
 
@@ -192,7 +194,7 @@ match /userExerciseNames/{claimId} {
 }
 ```
 
-- [ ] **Step 6: Uruchomić rules test i potwierdzić GREEN**
+- [x] **Step 6: Uruchomić rules test i potwierdzić GREEN**
 
 Run:
 
@@ -202,7 +204,7 @@ npm run test:rules
 
 Expected: jeden z dwóch create przechodzi, drugi zwraca komunikat duplikatu, direct create bez claimu jest odrzucony.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/lib/userExercisesService.ts firestore.rules tests/rules/firestore.rules.test.ts
@@ -221,7 +223,7 @@ git commit -m "fix: make user exercise creation atomic"
 - Produces: `updateUserExercise(id, input, database?)`
 - Produces: `deleteUserExercise(id, database?)`
 
-- [ ] **Step 1: Dodać failing test równoległego rename**
+- [x] **Step 1: Dodać failing test równoległego rename**
 
 Utworzyć dwa ćwiczenia przez serwis, a następnie:
 
@@ -236,7 +238,7 @@ expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
 
 Query `userId + name` musi zwrócić dokładnie jeden dokument.
 
-- [ ] **Step 2: Dodać failing test legacy adoption**
+- [x] **Step 2: Dodać failing test legacy adoption**
 
 Zasiać przez `withSecurityRulesDisabled` dokument `legacy-id` bez `nameClaimId`, wykonać `updateUserExercise('legacy-id', renamed, db)` i sprawdzić:
 
@@ -246,7 +248,7 @@ expect(stored.data()).toMatchObject({ name: renamed.name })
 expect(stored.data()?.nameClaimId).toMatch(/^alice_[0-9a-f]{64}$/)
 ```
 
-- [ ] **Step 3: Dodać failing test delete → recreate**
+- [x] **Step 3: Dodać failing test delete → recreate**
 
 ```ts
 const created = await createUserExercise('alice', input, db)
@@ -254,13 +256,13 @@ await deleteUserExercise(created.id, db)
 await expect(createUserExercise('alice', input, db)).resolves.toMatchObject({ name: input.name })
 ```
 
-- [ ] **Step 4: Uruchomić rules test i potwierdzić RED**
+- [x] **Step 4: Uruchomić rules test i potwierdzić RED**
 
 Run `npm run test:rules`.
 
 Expected: rename nadal używa nieatomowego query → `updateDoc`, a delete zostawia claim.
 
-- [ ] **Step 5: Zaimplementować update w jednej transakcji**
+- [x] **Step 5: Zaimplementować update w jednej transakcji**
 
 `updateUserExercise` ma zachować wstępne query legacy, obliczyć nowy claim, a w transakcji:
 
@@ -294,15 +296,15 @@ transaction.update(exerciseRef, {
 
 Wszystkie odczyty transakcji muszą wystąpić przed pierwszym zapisem.
 
-- [ ] **Step 6: Zaimplementować delete claimu i ćwiczenia w jednej transakcji**
+- [x] **Step 6: Zaimplementować delete claimu i ćwiczenia w jednej transakcji**
 
 `deleteUserExercise(id, database = db)` odczytuje ćwiczenie, opcjonalnie claim, usuwa claim tylko gdy wskazuje ten sam `exerciseId`, a następnie usuwa ćwiczenie.
 
-- [ ] **Step 7: Czyścić claimy przy resetowaniu demo**
+- [x] **Step 7: Czyścić claimy przy resetowaniu demo**
 
 Dodać `userExerciseNames` do listy kolekcji kasowanych przez `resetDemo`.
 
-- [ ] **Step 8: Uruchomić rules test i potwierdzić GREEN**
+- [x] **Step 8: Uruchomić rules test i potwierdzić GREEN**
 
 Run:
 
@@ -312,7 +314,7 @@ npm run test:rules
 
 Expected: concurrency create/rename, legacy adoption i delete/recreate przechodzą.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add src/lib/userExercisesService.ts tests/rules/firestore.rules.test.ts scripts/seed-demo.ts
@@ -331,11 +333,11 @@ git commit -m "fix: keep user exercise name claims consistent"
 - Consumes: niezmieniony komunikat `Ćwiczenie o nazwie "…" już istnieje.`
 - Produces: dowód, że formularz pozostaje otwarty i pokazuje błąd
 
-- [ ] **Step 1: Dodać targeted UI regression**
+- [x] **Step 1: Dodać targeted UI regression**
 
 W `ExercisesPageDataState.test.tsx` ustawić `createUserExercise.mockRejectedValueOnce(new Error('Ćwiczenie o nazwie "Concurrent Curl" już istnieje.'))`, wysłać formularz i sprawdzić `role="alert"` oraz nadal widoczne pole nazwy.
 
-- [ ] **Step 2: Uruchomić targeted unit**
+- [x] **Step 2: Uruchomić targeted unit**
 
 Run:
 
@@ -345,7 +347,7 @@ npm run test:unit -- src/pages/__tests__/ExercisesPageDataState.test.tsx
 
 Expected: PASS bez zmiany produkcyjnego UI, ponieważ formularz już renderuje komunikat serwisu.
 
-- [ ] **Step 3: Uruchomić pełne gate’y**
+- [x] **Step 3: Uruchomić pełne gate’y**
 
 Run:
 
@@ -359,7 +361,7 @@ git diff --check
 
 Expected: wszystkie testy, lint, build i diff check przechodzą.
 
-- [ ] **Step 4: Wykonać focused review**
+- [x] **Step 4: Wykonać focused review**
 
 Sprawdzić pełny diff od `6b79e53` pod kątem:
 
@@ -371,11 +373,11 @@ Sprawdzić pełny diff od `6b79e53` pod kątem:
 - niezmienionego `exerciseSource: 'user'`;
 - braku migracji i zmian historycznych referencji.
 
-- [ ] **Step 5: Zaktualizować lifecycle**
+- [x] **Step 5: Zaktualizować lifecycle**
 
 Po przejściu review oznaczyć 2B jako `DONE`, zapisać wyniki gate’ów i lokalnej obserwacji błędu duplikatu. Faza S oraz Faza 7 pozostają osobnymi obowiązkami.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/pages/__tests__/ExercisesPageDataState.test.tsx docs/roadmap
@@ -385,3 +387,14 @@ git commit -m "docs: close phase 2b verification"
 ## Execution
 
 Plan jest wykonywany inline w tej sesji przez `superpowers:executing-plans`; subagenci nie są potrzebni, ponieważ wszystkie zadania zmieniają ten sam invariant i te same pliki.
+
+## Closeout
+
+- RED/GREEN: direct create, równoległe create/rename, legacy adoption, delete/recreate oraz próby usunięcia/przepięcia claimu zostały odtworzone i zabezpieczone.
+- Commity wykonawcze: `fe6660f`, `4424871`, `86b6adb`.
+- Publiczne sygnatury serwisu pozostały bez parametru `database`; testy emulatorowe podmieniają moduł produkcyjnego `db`, więc planowany punkt wstrzykiwania nie trafił do API aplikacji.
+- Post-integration gate: 468 unitów, 16 testów reguł, lint, build i `git diff --check` — PASS.
+- Focused review pełnego diffu od `6b79e53`: bez otwartych P0/P1/P2.
+- Visual evidence: Browser na lokalnych emulatorach zwrócił otwarty dialog z wartością `Concurrent Curl` i widocznym alertem duplikatu po drugim zapisie.
+- Integracja lokalna: fast-forward do `puls-rebrand` na `86b6adb`. Push, deploy i publikacja reguł produkcyjnych nie zostały wykonane.
+- Następny zakres: Faza S; następnie Faza 7 / `RELEASE-08`.

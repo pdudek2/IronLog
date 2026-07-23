@@ -1,6 +1,6 @@
 # Faza 2B — Integralność własnych ćwiczeń
 
-**Status:** APPROVED — READY FOR IMPLEMENTATION
+**Status:** COMPLETED — VERIFIED — INTEGRATED LOCALLY
 
 **Data:** 2026-07-23
 
@@ -48,3 +48,11 @@ Nie migrujemy dokumentów `userExercises`, `templates`, `activeSessions`, `worko
 ## 6. Recovery
 
 Kod można cofnąć bez migracji istniejących ćwiczeń. Pozostałe claimy są ignorowane przez stary klient; przed ponownym wdrożeniem nowego kontraktu można je bezpiecznie odbudować albo usunąć po `userId`. Push, deploy i produkcyjna publikacja reguł wymagają osobnej zgody.
+
+## 7. Dowody zamknięcia
+
+- Implementacja: `fe6660f`, `4424871`; regresja UI: `86b6adb`.
+- Post-integration gate: 59 plików / 468 testów unit PASS; 1 plik / 16 testów rules PASS; lint PASS; build PASS.
+- Focused review od `6b79e53`: brak otwartych znalezisk P0/P1/P2; `exerciseId` i `exerciseSource: 'user'` pozostają bez zmian.
+- Browser na lokalnym Auth+Firestore emulatorze zwrócił końcowy dialog z zachowanym polem `Concurrent Curl` i alertem `Ćwiczenie o nazwie "Concurrent Curl" już istnieje.`.
+- Integracja: fast-forward do `puls-rebrand` na `86b6adb`; bez pushu, deployu ani publikacji reguł produkcyjnych.

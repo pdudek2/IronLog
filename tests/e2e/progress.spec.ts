@@ -1,6 +1,13 @@
 import { test, expect, type Locator, type Page } from './fixtures'
+import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
+import {
+  cleanupProgressEmulatorState,
+  closeProgressEmulator,
+  seedProgressEmulatorState,
+} from './support/progressEmulator'
 
 const progressHeading = (page: Page) => page.getByRole('heading', { name: 'Postępy.' })
+const emulatorMode = process.env.E2E_BACKEND === 'emulator'
 
 async function useHistoricalSessionClock(page: Page): Promise<void> {
   await page.addInitScript(`
@@ -37,6 +44,18 @@ async function expectNoHorizontalOverflow(locator: Locator, viewportWidth: numbe
 }
 
 test.describe('Progress analytics', () => {
+  test.beforeEach(async ({ cleanup }) => {
+    if (!emulatorMode) return
+
+    cleanup.add('remove Phase 7 progress state', cleanupProgressEmulatorState)
+    await cleanupProgressEmulatorState()
+    await seedProgressEmulatorState()
+  })
+
+  test.afterAll(async () => {
+    if (emulatorMode) await closeProgressEmulator()
+  })
+
   test('loads a stable analytics board with all-time records', async ({ page }) => {
     await gotoProgressReady(page)
 
@@ -45,7 +64,10 @@ test.describe('Progress analytics', () => {
     await page.screenshot({ path: 'test-results/progress-loaded.png', fullPage: true })
   })
 
-  test('switches ranges locally while offline without remounting the board', async ({ page }) => {
+  test('switches ranges locally while offline without remounting the board', async ({
+    page,
+    expectedBrowserDiagnostics,
+  }) => {
     await gotoProgressReady(page)
 
     const progressPage = page.getByTestId('progress-page')
@@ -57,26 +79,33 @@ test.describe('Progress analytics', () => {
 
     expect(boardHandle).not.toBeNull()
 
-    await page.context().setOffline(true)
-    try {
-      await button30.click()
-      await expect(button30).toHaveAttribute('aria-pressed', 'true')
-      await expect(progressHeading(page)).toBeVisible()
-      await expect(board).toBeVisible()
-      await expect(progressPage).toHaveAttribute('aria-busy', 'false')
-      await expect(fullPageError).toHaveCount(0)
-      expect(await boardHandle!.evaluate((node) => node.isConnected)).toBe(true)
+    await expectedBrowserDiagnostics.during(
+      'intentional offline progress range switch',
+      isExpectedFirestoreOfflineDiagnostic,
+      async () => {
+        await page.context().setOffline(true)
+        try {
+          await button30.click()
+          await expect(button30).toHaveAttribute('aria-pressed', 'true')
+          await expect(progressHeading(page)).toBeVisible()
+          await expect(board).toBeVisible()
+          await expect(progressPage).toHaveAttribute('aria-busy', 'false')
+          await expect(fullPageError).toHaveCount(0)
+          expect(await boardHandle!.evaluate((node) => node.isConnected)).toBe(true)
 
-      await button90.click()
-      await expect(button90).toHaveAttribute('aria-pressed', 'true')
-      await expect(progressHeading(page)).toBeVisible()
-      await expect(board).toBeVisible()
-      await expect(progressPage).toHaveAttribute('aria-busy', 'false')
-      await expect(fullPageError).toHaveCount(0)
-      expect(await boardHandle!.evaluate((node) => node.isConnected)).toBe(true)
-    } finally {
-      await page.context().setOffline(false)
-    }
+          await button90.click()
+          await expect(button90).toHaveAttribute('aria-pressed', 'true')
+          await expect(progressHeading(page)).toBeVisible()
+          await expect(board).toBeVisible()
+          await expect(progressPage).toHaveAttribute('aria-busy', 'false')
+          await expect(fullPageError).toHaveCount(0)
+          expect(await boardHandle!.evaluate((node) => node.isConnected)).toBe(true)
+        } finally {
+          await page.context().setOffline(false)
+          await page.waitForTimeout(1_000)
+        }
+      },
+    )
   })
 
   test('keeps records readable and exposes any rendered heatmap summary without hover', async ({ page }) => {

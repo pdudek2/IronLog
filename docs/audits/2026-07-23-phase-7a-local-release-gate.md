@@ -39,6 +39,8 @@ Pierwsze wywołanie pełnego gate'u zatrzymało się przed uruchomieniem testów
 
 Pierwszy właściwy przebieg pełnego gate'u ujawnił nieaktualny selektor w teście diagnostycznym widoku ćwiczenia. Strona poprawnie wyrenderowała 36 ćwiczeń globalnych jako natywne elementy `<button>`, natomiast test szukał wyłącznie literalnego atrybutu `[role="button"]`. Selektor zmieniono na dostępnościowy `getByRole('button', { name: /^Otwórz ćwiczenie / })`, nadal ograniczony do sekcji „Katalog globalny”; kod produktu pozostał bez zmian.
 
+Kolejny przebieg zatrzymał się na testach Progress. Testy zakładały dane istniejące wcześniej w koncie, czego świeży emulator celowo nie zapewniał, a scenariusz celowego odłączenia sieci nie oznaczał oczekiwanych błędów transportu Firestore w centralnym kolektorze diagnostyk. Dodano izolowany seed i cleanup wyłącznie dla emulatora oraz wykorzystano istniejący kontrakt oczekiwanych diagnostyk offline. Dane produkcyjne i kod aplikacji pozostały bez zmian.
+
 ## Pozostałe obowiązki
 
 - 7B: manualny smoke, klawiatura, accessibility snapshot i zgodność demo/dokumentacji;

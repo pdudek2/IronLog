@@ -2,7 +2,7 @@
 
 IronLog records strength workouts and tracks progress over time. An active workout stores sets, reps, weight, and rest time. Once finished, its data appears in the training history, progress charts, and personal records.
 
-[Open IronLog](https://ironlog-coach.vercel.app)
+[Open IronLog](https://ironlog-coach.vercel.app/login)
 
 ![IronLog on desktop](docs/screenshots/app/desktop-showcase.png)
 

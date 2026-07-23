@@ -24,6 +24,7 @@ import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { isActiveSessionStale } from '../lib/sessionDuration'
+import { kgToDisplayWeight } from '../lib/weightUnits'
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
@@ -994,7 +995,7 @@ export default function WorkoutPage() {
                 </div>
                 <div className="workout-micro-card">
                   <p className="stat-meta">Najcięższy set</p>
-                  <p className="mt-2 text-xl font-semibold text-white tabular-nums">{strongestSet ? `${strongestSet} ${units}` : '—'}</p>
+                  <p className="mt-2 text-xl font-semibold text-white tabular-nums">{strongestSet ? `${kgToDisplayWeight(strongestSet, units)} ${units}` : '—'}</p>
                 </div>
               </div>
 
@@ -1079,7 +1080,7 @@ export default function WorkoutPage() {
                         <strong>{focusExercise ? focusExercise.name : 'Dodaj ćwiczenie'}</strong>
                         <small>
                           {focusSet
-                            ? `Seria ${focusSetIndex + 1} · ${focusSet.weight || '—'} ${units} × ${focusSet.reps || '—'}`
+                            ? `Seria ${focusSetIndex + 1} · ${focusSet.weight ? kgToDisplayWeight(parseWeight(focusSet.weight), units) : '—'} ${units} × ${focusSet.reps || '—'}`
                             : 'Sesja bez wpisanych serii'}
                         </small>
                       </div>
@@ -1088,7 +1089,7 @@ export default function WorkoutPage() {
                         <strong>{lastCompletedSet ? lastCompletedSet.exerciseName : '—'}</strong>
                         <small>
                           {lastCompletedSet
-                            ? `${lastCompletedSet.weight || '—'} ${units} × ${lastCompletedSet.reps || '—'}`
+                            ? `${lastCompletedSet.weight ? kgToDisplayWeight(parseWeight(lastCompletedSet.weight), units) : '—'} ${units} × ${lastCompletedSet.reps || '—'}`
                             : 'Jeszcze bez zapisanej serii'}
                         </small>
                       </div>

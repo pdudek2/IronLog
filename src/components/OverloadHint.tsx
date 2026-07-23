@@ -1,9 +1,12 @@
 import { motion } from 'framer-motion'
 import { TrendingDown, TrendingUp, Minus, X } from 'lucide-react'
 import type { OverloadSuggestion } from '../lib/overloadService'
+import type { Units } from '../lib/userProfile'
+import { kgToDisplayWeight } from '../lib/weightUnits'
 
 interface Props {
   suggestion: OverloadSuggestion
+  units: Units
   onApply: (weight: number) => void
   onDismiss: () => void
 }
@@ -14,7 +17,7 @@ const REASON_LABEL: Record<string, string> = {
   maintain:    'Utrzymaj ciężar',
 }
 
-export default function OverloadHint({ suggestion, onApply, onDismiss }: Props) {
+export default function OverloadHint({ suggestion, units, onApply, onDismiss }: Props) {
   const { suggestedWeight, delta, reason } = suggestion
 
   const Icon =
@@ -28,8 +31,8 @@ export default function OverloadHint({ suggestion, onApply, onDismiss }: Props) 
     'flat'
 
   const deltaLabel =
-    delta > 0 ? `+${delta} kg` :
-    delta < 0 ? `${delta} kg` :
+    delta > 0 ? `+${kgToDisplayWeight(delta, units)} ${units}` :
+    delta < 0 ? `${kgToDisplayWeight(delta, units)} ${units}` :
     '±0'
 
   return (
@@ -49,7 +52,7 @@ export default function OverloadHint({ suggestion, onApply, onDismiss }: Props) 
           <span>
             {REASON_LABEL[reason]} <small>{deltaLabel}</small>
           </span>
-          <strong className="tabular-nums">{suggestedWeight} kg</strong>
+          <strong className="tabular-nums">{kgToDisplayWeight(suggestedWeight, units)} {units}</strong>
         </div>
       </div>
 

@@ -4,6 +4,13 @@ import { Check, Plus, Trash2, X } from 'lucide-react'
 import OverloadHint from '../OverloadHint'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../../store/workoutStore'
 import type { OverloadSuggestion } from '../../lib/overloadService'
+import type { Units } from '../../lib/userProfile'
+import {
+  displayWeightDeltaToKg,
+  displayWeightStringToKg,
+  kgStringToDisplayWeight,
+  kgToDisplayWeight,
+} from '../../lib/weightUnits'
 
 type SetField = 'weight' | 'reps'
 
@@ -19,7 +26,7 @@ interface WorkoutExerciseLedgerItemProps {
   hintKey: string
   isFocusedExercise: boolean
   suggestion: OverloadSuggestion | null
-  units: string
+  units: Units
   onAddSet: (exerciseIndex: number, button: HTMLButtonElement) => void
   onAdjustSet: (exerciseIndex: number, setIndex: number, field: SetField, delta: number) => void
   onApplySuggestion: (exerciseIndex: number, hintKey: string, weight: number) => void
@@ -140,13 +147,14 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         </div>
         <div>
           <span>Top set</span>
-          <strong className="tabular-nums">{bestSet ? `${bestSet} ${units}` : '—'}</strong>
+          <strong className="tabular-nums">{bestSet ? `${kgToDisplayWeight(bestSet, units)} ${units}` : '—'}</strong>
         </div>
       </div>
 
       {suggestion && !hintDismissed && (
         <OverloadHint
           suggestion={suggestion}
+          units={units}
           onApply={(weight) => onApplySuggestion(exerciseIndex, hintKey, weight)}
           onDismiss={() => onDismissSuggestion(hintKey)}
         />
@@ -194,8 +202,13 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   type="number"
                   inputMode="decimal"
                   placeholder="0"
-                  value={set.weight}
-                  onChange={(event) => onUpdateSet(exerciseIndex, setIndex, 'weight', event.target.value)}
+                  value={kgStringToDisplayWeight(set.weight, units)}
+                  onChange={(event) => onUpdateSet(
+                    exerciseIndex,
+                    setIndex,
+                    'weight',
+                    displayWeightStringToKg(event.target.value, units),
+                  )}
                   aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, ${units}`}
                   className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                 />
@@ -224,15 +237,20 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
               {showMobileSteppers && (
                 <div className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5">
                   {[
-                    { label: '−2.5 kg', delta: -2.5, field: 'weight' as const },
-                    { label: '+2.5 kg', delta: +2.5, field: 'weight' as const },
+                    { label: `−2.5 ${units}`, delta: -2.5, field: 'weight' as const },
+                    { label: `+2.5 ${units}`, delta: 2.5, field: 'weight' as const },
                     { label: '−1 rep', delta: -1, field: 'reps' as const },
                     { label: '+1 rep', delta: +1, field: 'reps' as const },
                   ].map(({ label, delta, field }) => (
                     <button
                       key={label}
                       type="button"
-                      onClick={() => onAdjustSet(exerciseIndex, setIndex, field, delta)}
+                      onClick={() => onAdjustSet(
+                        exerciseIndex,
+                        setIndex,
+                        field,
+                        field === 'weight' ? displayWeightDeltaToKg(delta, units) : delta,
+                      )}
                       className="set-stepper-btn"
                       aria-label={`Dostosuj ${field === 'weight' ? 'wagę' : 'powtórzenia'} o ${delta}`}
                     >

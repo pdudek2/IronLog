@@ -1,9 +1,11 @@
 # Phase 7B — Manual Release Acceptance
 
-> Status: IN PROGRESS
+> Status: COMPLETE
 > Parent: Phase 7 — Release Readiness
 > Scope: RELEASE-02 through RELEASE-07
 > Remaining after this path: RELEASE-08 through RELEASE-10
+
+Outcome: local desktop/mobile acceptance, accessibility, runtime diagnostics, README corrections, and the lbs regression fix are complete. An authenticated production account was inspected read-only without retaining credentials or personal screenshots. Production is credible but still runs the older blue `main` build; the expected mismatch with the undeployed Puls candidate is recorded for the next production release path.
 
 ## Goal
 
@@ -97,6 +99,9 @@ Use local emulators and a production-mode Vite preview so that CSP and built ass
 2. Start the local API in a separate persistent terminal session:
 
    ```bash
+   FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 \
+   FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
+   GCLOUD_PROJECT=demo-ironlog \
    E2E_BACKEND=emulator \
    VITE_FIREBASE_API_KEY=demo-api-key \
    VITE_FIREBASE_AUTH_DOMAIN=demo-ironlog.firebaseapp.com \
@@ -239,6 +244,8 @@ After stopping the manual runtime, generate fresh structural accessibility evide
 
 ```bash
 E2E_BACKEND=emulator \
+TEST_EMAIL=e2e@ironlog.local \
+TEST_PASSWORD=ironlog-e2e \
 VITE_FIREBASE_API_KEY=demo-api-key \
 VITE_FIREBASE_AUTH_DOMAIN=demo-ironlog.firebaseapp.com \
 VITE_FIREBASE_PROJECT_ID=demo-ironlog \
@@ -269,7 +276,7 @@ Use the same Browser as the only interactive observation surface. Open the publi
    - omit demo credentials, repository links, local setup, tests, architecture, deployment, and contribution-oriented content;
    - keep the product link, privacy boundary, and representative screenshots;
    - apply `humanizer` and `my-humanizer`, then perform a final anti-AI language pass.
-2. Sign in with the public demo credentials documented in `README.md`.
+2. Sign in with the existing release-acceptance account. Do not publish its credentials in `README.md`, the report, logs, or screenshots.
 3. Inspect, without modifying data:
    - dashboard;
    - history and a workout detail;
@@ -323,7 +330,7 @@ RELEASE-06 is satisfied by measurement, not by automatic optimization:
    ```bash
    npm run lint
    npm run build
-   npm run test:run
+   npm run test:unit
    git diff --check
    ```
 

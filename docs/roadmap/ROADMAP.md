@@ -440,17 +440,17 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 **Cel:** zamknąć program jedną powtarzalną procedurą odbiorową i udokumentowanym stanem wydania.
 
-**Status: PHASE 7A COMPLETED — VERIFIED — INTEGRATED LOCALLY.** Lokalna bramka automatyczna obejmuje unit, lint, build, Firestore Rules, integrację workoutu oraz pełny Playwright desktop+mobile na emulatorach i egzekwowanym CSP. Została zintegrowana z `puls-rebrand` przez fast-forward do `b285cd2`; branch i worktree wykonawcze usunięto. Następnym etapem jest manualny odbiór 7B, a `RELEASE-08–10` pozostają otwarte. Dowody: [`../audits/2026-07-23-phase-7a-local-release-gate.md`](../audits/2026-07-23-phase-7a-local-release-gate.md).
+**Status: PHASE 7A COMPLETED; PHASE 7B COMPLETED — VERIFIED — AWAITING INTEGRATION.** Lokalna bramka automatyczna 7A została zintegrowana z `puls-rebrand` przez fast-forward do `b285cd2`. W 7B przeszły ręczny desktop/mobile smoke, dostępność, diagnostyka runtime, profesjonalne README, poprawka konwersji lbs oraz read-only walkthrough zalogowanej produkcji. Produkcja zawiera wiarygodne dane i nie ma pozostawionej aktywnej sesji, ale nadal działa na starszym niebieskim `main`; zgodność Puls zostanie potwierdzona dopiero po osobno autoryzowanym wdrożeniu. Dowody: [`../audits/2026-07-23-phase-7a-local-release-gate.md`](../audits/2026-07-23-phase-7a-local-release-gate.md) oraz [`../audits/2026-07-23-phase-7b-manual-release-acceptance.md`](../audits/2026-07-23-phase-7b-manual-release-acceptance.md). `RELEASE-08–10` pozostają otwarte.
 
 **Zakres kanoniczny:**
 
 - **RELEASE-01:** uruchomić lint, unit, build, rules i pełny E2E w środowisku bez blokady quota.
-- **RELEASE-02:** przejść ręczny smoke desktop/mobile: login, dashboard, readiness, start/finish/discard workoutu, historia, Progress 30/90, szablony, ćwiczenia, AI bez klucza i profil.
-- **RELEASE-03:** wykonać obchód klawiaturą i accessibility snapshot kluczowych tras.
-- **RELEASE-04:** sprawdzić brak błędów konsoli, `pageerror` i `requestfailed` podczas smoke.
-- **RELEASE-05:** potwierdzić wiarygodność danych konta demo oraz zgodność README, screenshotów i produkcyjnego UI.
-- **RELEASE-06:** ocenić ostrzeżenie o chunku na podstawie pomiaru. Optymalizować tylko wtedy, gdy wpływa na start lub nawigację; sam warning nie jest wystarczającym powodem do refaktoru.
-- **RELEASE-07:** zapisać wynik odbioru w `WORKING_CONTEXT.md` i wskazać świadomie odłożone elementy LATER.
+- **RELEASE-02 — DONE:** przejść ręczny smoke desktop/mobile: login, dashboard, readiness, start/finish/discard workoutu, historia, Progress 30/90, szablony, ćwiczenia, AI bez klucza i profil.
+- **RELEASE-03 — DONE:** wykonać obchód klawiaturą i accessibility snapshot kluczowych tras.
+- **RELEASE-04 — DONE:** sprawdzić brak błędów konsoli, `pageerror` i `requestfailed` podczas smoke.
+- **RELEASE-05 — DONE:** potwierdzić wiarygodność danych zalogowanego produktu oraz zgodność README, screenshotów i produkcyjnego UI.
+- **RELEASE-06 — DONE:** ocenić ostrzeżenie o chunku na podstawie pomiaru. Optymalizować tylko wtedy, gdy wpływa na start lub nawigację; sam warning nie jest wystarczającym powodem do refaktoru.
+- **RELEASE-07 — DONE:** zapisać wynik odbioru i wskazać świadomie odłożone elementy LATER; aktualizacja pamięci roboczej następuje w post-integration closeout.
 - **RELEASE-08 — OPEN:** uruchomić pełny live Playwright z prywatnymi `TEST_EMAIL` i `TEST_PASSWORD`, wykonać kontrole produkcyjnego deploymentu Vercel, potwierdzić w Network panelu brak requestów do GA4, Google Tag Manager, Hotjar i Contentsquare oraz brak analitycznych zmiennych, a następnie opublikować produkcyjne reguły Firestore. Dla Fazy 1 zachować kolejność: API + SPA, smoke finish/discard, restrykcyjne reguły.
 - **RELEASE-09:** potwierdzić docelowy tryb CSP i zgodność pozostałej allowlisty z rzeczywistymi requestami aplikacji.
 - **RELEASE-10:** zmierzyć zimne wejście na dashboard w produkcyjnym albo równoważnym środowisku i zapisać czas do gotowości ekranu. Optymalizacja jest wymagana tylko po powtarzalnym odtworzeniu problemu; pojedynczy około dziesięciosekundowy wynik z lokalnego audytu nie jest samodzielnym dowodem regresji.
@@ -480,6 +480,7 @@ Poniższe elementy nie powinny blokować odbioru, o ile wszystkie wymagane fazy 
 - **LATER-08:** scentralizować `CATEGORY_COLORS` i neutralny fallback w jednym kontrakcie design systemu; usunąć pozostałość starego motywu `#808CB3`. Jest to porządek systemowy, a nie warunek odbioru bieżących przepływów.
 - **LATER-09:** wykonać selektywny przegląd mikrotekstu na rzeczywistych ekranach. Podnosić rozmiar istotnych metadanych, a pozostawić mniejsze etykiety dekoracyjne i zwarte nagłówki tabel; nie stosować globalnego mechanicznego bumpu.
 - **LATER-10:** po zamknięciu roadmapy zdecydować, czy rozwijać sygnaturę EKG, dualizm wysiłek/recovery oraz relację nazwy „IronLog” z identyfikacją „Puls”. Jest to osobny moduł brandingowy, nie naprawa produktu ani blokada release.
+- **LATER-11:** ładować profil przed renderem tras zależnych od jednostek, aby zimne wejście lub reload `/workout/new` od razu respektowały lbs. Obecny fallback jest jawnie opisany jako kg i po poprawce granicy zapisu nie zmienia błędnie danych, więc nie blokuje release.
 
 Decyzje odpowiadające dawnym punktom `AI-02` i `AI-03` są zamknięte na poziomie obecnego scope: nie wdrażamy teraz dziennego budżetu ani trwałej historii czatu. Jeżeli wrócą jako wymaganie produktowe, otrzymają nowe plany w ramach `LATER-01` i `LATER-02`.
 
@@ -500,7 +501,7 @@ Każda faza rozwijana do implementacji powinna dostać osobny dokument według p
 
 ## 8. Rekomendowana kolejność rozpoczęcia
 
-**Fazy 2B, 6B i 6C** są zakończone, zweryfikowane i zintegrowane lokalnie z `puls-rebrand`. Następnym zakresem implementacyjnym jest Faza S, a `RELEASE-08` pozostaje otwartą bramką produkcyjną.
+**Fazy 2B, 6B, 6C i S oraz bramka 7A** są zakończone, zweryfikowane i zintegrowane lokalnie z `puls-rebrand`. Faza 7B jest zweryfikowana i oczekuje na lokalną integrację; po niej następną ścieżką są produkcyjne `RELEASE-08–10`, wymagające osobnej autoryzacji.
 
 Faza R jest zakończona, a jej raport zawiera historyczny baseline i dowody remediacji Fazy 1; `WORKOUT-04` pozostaje poza zakresem implementacji jako `already_protected`.
 

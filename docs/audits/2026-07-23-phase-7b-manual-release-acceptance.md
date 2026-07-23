@@ -44,7 +44,7 @@ Zmiany produkcyjne, deploy, push, publikacja reguł i pomiary RELEASE-08–10 po
 
 ## README
 
-README przepisano po angielsku jako dokumentację produktu i repozytorium. Usunięto opis projektu zaliczeniowego, archiwum zaliczenia, tabelę wszystkich tras oraz wewnętrzne uwagi o brakujących elementach produktu. Funkcje, architekturę, prywatność klucza Claude, uruchomienie i testy sprawdzono względem aktualnego kodu oraz skryptów w `package.json`.
+README przepisano po angielsku jako opis zamkniętego produktu. Usunięto opis projektu zaliczeniowego, konto demonstracyjne, link do repozytorium, instrukcje lokalnego uruchomienia, testy, architekturę i deploy. Zostały funkcje produktu, prywatność klucza Claude, link do aplikacji i reprezentatywne screeny.
 
 Tekst przeszedł redakcję według `humanizer` i `my-humanizer`. Finalny pass usunął promocyjne sformułowania, sztuczne wprowadzenia, zbędne objaśnienia i wewnętrzny język raportowy.
 

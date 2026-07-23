@@ -265,7 +265,9 @@ Use the same Browser as the only interactive observation surface. Open the publi
 1. Rewrite `README.md` as professional product and developer documentation:
    - remove every reference to a university assignment or assignment archive;
    - describe only capabilities confirmed in the current code;
-   - keep setup, tests, privacy boundaries, architecture, demo access, and screenshots useful to an external reader;
+   - present IronLog as a closed-source product rather than an open-source project;
+   - omit demo credentials, repository links, local setup, tests, architecture, deployment, and contribution-oriented content;
+   - keep the product link, privacy boundary, and representative screenshots;
    - apply `humanizer` and `my-humanizer`, then perform a final anti-AI language pass.
 2. Sign in with the public demo credentials documented in `README.md`.
 3. Inspect, without modifying data:

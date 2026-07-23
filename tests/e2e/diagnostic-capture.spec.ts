@@ -71,7 +71,11 @@ for (const vp of VIEWPORTS) {
     await page.goto('/exercises')
     await expectAppReady(page, '/exercises')
     // Click the first global exercise card
-    const card = page.locator('section').filter({ hasText: 'Katalog globalny' }).locator('[role="button"]').first()
+    const card = page
+      .locator('section')
+      .filter({ hasText: 'Katalog globalny' })
+      .getByRole('button', { name: /^Otwórz ćwiczenie / })
+      .first()
     await expect(card).toBeVisible()
     await card.click()
     await expect(page).toHaveURL(/\/exercises\/global\/[^/]+$/)

@@ -33,7 +33,11 @@
 
 ## Znaleziska i poprawki
 
-Core gate'y nie ujawniły błędów wymagających poprawki. Pełny Playwright pozostaje do wykonania.
+Core gate'y nie ujawniły błędów wymagających poprawki.
+
+Pierwsze wywołanie pełnego gate'u zatrzymało się przed uruchomieniem testów z kodem `127`: bezpośredni shell Firebase nie miał `node_modules/.bin` w `PATH`, więc komenda `playwright` nie istniała. Istniejący repozytoryjny wzorzec dla bezpośrednich wywołań używa `npx playwright`; plan skorygowano bez zmiany aplikacji, konfiguracji ani testów.
+
+Pierwszy właściwy przebieg pełnego gate'u ujawnił nieaktualny selektor w teście diagnostycznym widoku ćwiczenia. Strona poprawnie wyrenderowała 36 ćwiczeń globalnych jako natywne elementy `<button>`, natomiast test szukał wyłącznie literalnego atrybutu `[role="button"]`. Selektor zmieniono na dostępnościowy `getByRole('button', { name: /^Otwórz ćwiczenie / })`, nadal ograniczony do sekcji „Katalog globalny”; kod produktu pozostał bez zmian.
 
 ## Pozostałe obowiązki
 

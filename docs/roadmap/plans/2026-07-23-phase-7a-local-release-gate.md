@@ -222,7 +222,7 @@ TEST_PASSWORD=ironlog-e2e \
 firebase emulators:exec \
   --only auth,firestore \
   --project demo-ironlog \
-  "playwright test --project=desktop --project=mobile --retries=0"
+  "npx playwright test --project=desktop --project=mobile --retries=0"
 ```
 
 Expected:

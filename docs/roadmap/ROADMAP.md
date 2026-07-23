@@ -418,7 +418,7 @@ Wszystkie trzy punkty zamknięto w implementacji Fazy 4. Dowody i docelowe kontr
 
 ### Faza S — Hardening CSP
 
-**Status: DESIGN APPROVED.** Docelowym kontraktem jest egzekwowany CSP w `vercel.json`, bez nowego endpointu raportów. Allowlista zostaje ograniczona do rzeczywistych zależności Firebase i Google Fonts, a lokalny test wymusza politykę na publicznej i chronionej trasie. Spec znajduje się w [`specs/2026-07-23-phase-s-csp-hardening-design.md`](specs/2026-07-23-phase-s-csp-hardening-design.md).
+**Status: COMPLETED — VERIFIED — AWAITING INTEGRATION.** `vercel.json` emituje egzekwowany, minimalny CSP bez wyjątków dla usuniętej analityki, `firebaseio.com`, szerokiego `img-src https:` ani `'unsafe-inline'` w `script-src`. Izolowany gate buduje produkcyjny bundle i sprawdza kontrakt statyczny, publiczne `/login` oraz chronione `/dashboard` z emulatorami Auth i Firestore; końcowy wynik to 4/4 Playwright, 468/468 unitów, czysty lint, build 878 modułów i czysty diff check. Push, deploy i produkcyjna obserwacja Network nie zostały wykonane, dlatego `RELEASE-09` pozostaje otwarte. Spec i plan znajdują się w [`specs/2026-07-23-phase-s-csp-hardening-design.md`](specs/2026-07-23-phase-s-csp-hardening-design.md) oraz [`plans/2026-07-23-phase-s-csp-hardening.md`](plans/2026-07-23-phase-s-csp-hardening.md).
 
 **Cel:** rozwiązać niezależny problem pozornej polityki Report-Only bez blokowania prostego usunięcia analityki.
 

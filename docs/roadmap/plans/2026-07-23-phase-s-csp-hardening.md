@@ -2,6 +2,8 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
+
 **Goal:** Zastąpić pozorny CSP Report-Only egzekwowaną, minimalną polityką i powtarzalnym smoke publicznej oraz chronionej trasy.
 
 **Architecture:** `vercel.json` pozostaje jedynym produkcyjnym źródłem prawdy. Jeden test Playwright odczytuje ten nagłówek i sprawdza kontrakt statyczny. Warunkowy tryb `vite preview` odczytuje tę samą wartość, dodaje wyłącznie lokalne wyjątki emulatorów Firebase i emituje nagłówek dla smoke na produkcyjnym bundlu.
@@ -30,7 +32,7 @@
 - Produces: pojedynczy nagłówek `Content-Security-Policy`
 - Produces: skrypt `npm run test:e2e:csp`
 
-- [ ] **Step 1: Dodać failing test produkcyjnego kontraktu**
+- [x] **Step 1: Dodać failing test produkcyjnego kontraktu**
 
 Utworzyć `tests/e2e/csp.spec.ts`:
 
@@ -108,7 +110,7 @@ W `package.json` dodać:
 "test:e2e:csp": "E2E_BACKEND=emulator E2E_CSP=true TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog \"playwright test tests/e2e/csp.spec.ts --project=desktop --retries=0\""
 ```
 
-- [ ] **Step 2: Uruchomić test i potwierdzić RED**
+- [x] **Step 2: Uruchomić test i potwierdzić RED**
 
 Run:
 
@@ -118,7 +120,7 @@ npm run test:e2e:csp
 
 Expected: FAIL, ponieważ jedyny nagłówek nadal nazywa się `Content-Security-Policy-Report-Only`.
 
-- [ ] **Step 3: Zastąpić nagłówek minimalną polityką**
+- [x] **Step 3: Zastąpić nagłówek minimalną polityką**
 
 W `vercel.json` ustawić:
 
@@ -129,7 +131,7 @@ W `vercel.json` ustawić:
 }
 ```
 
-- [ ] **Step 4: Uruchomić test i potwierdzić GREEN**
+- [x] **Step 4: Uruchomić test i potwierdzić GREEN**
 
 Run:
 
@@ -139,7 +141,7 @@ npm run test:e2e:csp
 
 Expected: setup emulatora i test kontraktu przechodzą.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add vercel.json package.json tests/e2e/csp.spec.ts
@@ -160,7 +162,7 @@ git commit -m "fix: enforce minimal content security policy"
 - Produces: runtime gate dla `/login` i `/dashboard`
 - Produces: tryb `E2E_CSP=true`, który uruchamia zbudowany bundle przez `vite preview`
 
-- [ ] **Step 1: Dodać obserwację naruszeń i originów**
+- [x] **Step 1: Dodać obserwację naruszeń i originów**
 
 Rozszerzyć importy:
 
@@ -218,7 +220,7 @@ async function expectCleanCsp(page: Page, origins: Set<string>): Promise<void> {
 
 Każdy runtime test ma dodatkowo sprawdzić odpowiedź dokumentu: nagłówek `Content-Security-Policy` jest obecny, a `Content-Security-Policy-Report-Only` nie występuje.
 
-- [ ] **Step 2: Dodać runtime test publicznej trasy**
+- [x] **Step 2: Dodać runtime test publicznej trasy**
 
 W `playwright.config.ts` dodać tryb `E2E_CSP=true`, który zamiast dev-serwera uruchamia:
 
@@ -244,7 +246,7 @@ test.describe('public route CSP', () => {
 })
 ```
 
-- [ ] **Step 3: Dodać runtime test chronionej trasy**
+- [x] **Step 3: Dodać runtime test chronionej trasy**
 
 ```ts
 test('dashboard loads under the enforced policy', async ({ context, page }) => {
@@ -258,7 +260,7 @@ test('dashboard loads under the enforced policy', async ({ context, page }) => {
 })
 ```
 
-- [ ] **Step 4: Uruchomić smoke i poprawić wyłącznie potwierdzone braki**
+- [x] **Step 4: Uruchomić smoke i poprawić wyłącznie potwierdzone braki**
 
 Run:
 
@@ -266,9 +268,9 @@ Run:
 npm run test:e2e:csp
 ```
 
-Expected: 3 tests PASS. Jeżeli test zwróci konkretną wymaganą usługę zablokowaną przez CSP, dodać tylko jej najwęższy origin do odpowiedniej dyrektywy i do oczekiwania kontraktu. Nie dodawać wildcardu bez obserwowanego requestu.
+Expected: 3 testy CSP oraz setup emulatora, łącznie 4 PASS. Jeżeli test zwróci konkretną wymaganą usługę zablokowaną przez CSP, dodać tylko jej najwęższy origin do odpowiedniej dyrektywy i do oczekiwania kontraktu. Nie dodawać wildcardu bez obserwowanego requestu.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add tests/e2e/csp.spec.ts vercel.json
@@ -286,7 +288,7 @@ git commit -m "test: cover csp on public and protected routes"
 - Consumes: egzekwowany nagłówek i runtime smoke z Task 1–2
 - Produces: stan `COMPLETED — VERIFIED — AWAITING INTEGRATION`
 
-- [ ] **Step 1: Uruchomić pełne gate’y**
+- [x] **Step 1: Uruchomić pełne gate’y**
 
 Run:
 
@@ -300,7 +302,7 @@ git diff --check
 
 Expected: CSP smoke, pełne unity, lint, build i diff check przechodzą.
 
-- [ ] **Step 2: Wykonać focused review pełnego diffu**
+- [x] **Step 2: Wykonać focused review pełnego diffu**
 
 Sprawdzić diff od commitu bazowego pod kątem:
 
@@ -311,11 +313,11 @@ Sprawdzić diff od commitu bazowego pod kątem:
 - fałszywego uznania lokalnego smoke za produkcyjne `RELEASE-09`;
 - bezpiecznego rollbacku nagłówka bez zmian danych.
 
-- [ ] **Step 3: Zaktualizować lifecycle**
+- [x] **Step 3: Zaktualizować lifecycle**
 
 W specu i planie ustawić `COMPLETED — VERIFIED — AWAITING INTEGRATION`. W roadmapie ustawić Fazę S jako `DONE` dopiero po lokalnej integracji; przed nią opisać zielone gate’y i oczekiwanie na integrację. Zachować `RELEASE-09` jako osobny obowiązek produkcyjny.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docs/roadmap/ROADMAP.md docs/roadmap/specs/2026-07-23-phase-s-csp-hardening-design.md docs/roadmap/plans/2026-07-23-phase-s-csp-hardening.md

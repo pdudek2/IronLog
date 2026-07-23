@@ -206,6 +206,28 @@ describe('ExercisesPage user library states', () => {
     expect(name).not.toHaveAttribute('aria-describedby')
   })
 
+  it('keeps the create form open and announces a duplicate-name conflict', async () => {
+    mocks.getUserExercises.mockResolvedValueOnce([])
+    mocks.createUserExercise.mockRejectedValueOnce(
+      new Error('Ćwiczenie o nazwie "Concurrent Curl" już istnieje.'),
+    )
+    render(<ExercisesPage />)
+
+    await waitFor(() => expect(
+      screen.getByRole('button', { name: 'Dodaj własne' }),
+    ).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
+    const dialog = screen.getByRole('dialog', { name: 'Dodaj własne ćwiczenie' })
+    const name = within(dialog).getByRole('textbox', { name: 'Nazwa *' })
+    fireEvent.change(name, { target: { value: 'Concurrent Curl' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Dodaj ćwiczenie' }))
+
+    expect(await within(dialog).findByRole('alert'))
+      .toHaveTextContent('Ćwiczenie o nazwie "Concurrent Curl" już istnieje.')
+    expect(within(dialog).getByRole('textbox', { name: 'Nazwa *' }))
+      .toHaveValue('Concurrent Curl')
+  })
+
   it('exposes the selected category in the exercise picker', () => {
     render(<ExercisePicker onSelect={vi.fn()} onClose={vi.fn()} />)
 

@@ -323,8 +323,30 @@ service cloud.firestore {
              && isFinishedExercises(data.exercises);
     }
 
+    function hasNameClaim(data) {
+      return data.keys().hasAll(['nameClaimId'])
+             && isNonEmptyString(data.nameClaimId, 200);
+    }
+
+    function hasMatchingNameClaim(exerciseId, data) {
+      return hasNameClaim(data)
+             && existsAfter(/databases/$(database)/documents/userExerciseNames/$(data.nameClaimId))
+             && getAfter(/databases/$(database)/documents/userExerciseNames/$(data.nameClaimId)).data.userId == currentUid()
+             && getAfter(/databases/$(database)/documents/userExerciseNames/$(data.nameClaimId)).data.exerciseId == exerciseId
+             && getAfter(/databases/$(database)/documents/userExerciseNames/$(data.nameClaimId)).data.name == data.name;
+    }
+
+    function isUserExerciseNameClaim(claimId, data) {
+      return data.keys().hasOnly(['userId', 'exerciseId', 'name'])
+             && data.keys().hasAll(['userId', 'exerciseId', 'name'])
+             && data.userId == currentUid()
+             && claimId.matches('^' + currentUid() + '_[0-9a-f]{64}$')
+             && isNonEmptyString(data.exerciseId, 160)
+             && isNonEmptyString(data.name, 120);
+    }
+
     function isUserExercise(data) {
-      return data.keys().hasOnly(['userId', 'name', 'category', 'equipment', 'muscles'])
+      return data.keys().hasOnly(['userId', 'name', 'category', 'equipment', 'muscles', 'nameClaimId'])
              && data.keys().hasAll(['userId', 'name', 'category', 'equipment', 'muscles'])
              && data.userId == currentUid()
              && isNonEmptyString(data.name, 120)
@@ -425,11 +447,24 @@ service cloud.firestore {
 
     match /userExercises/{id} {
       allow create: if ownsNewDoc()
-                    && isUserExercise(request.resource.data);
+                    && isUserExercise(request.resource.data)
+                    && hasMatchingNameClaim(id, request.resource.data);
       allow read: if ownsDoc();
       allow update: if ownsDoc()
                     && keepsOwner()
                     && isUserExercise(request.resource.data);
+      allow delete: if ownsDoc();
+    }
+
+    match /userExerciseNames/{claimId} {
+      allow read: if signedIn()
+                  && claimId.matches('^' + currentUid() + '_[0-9a-f]{64}$');
+      allow create, update: if ownsNewDoc()
+                            && isUserExerciseNameClaim(claimId, request.resource.data)
+                            && existsAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId))
+                            && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.userId == currentUid()
+                            && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.nameClaimId == claimId
+                            && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.name == request.resource.data.name;
       allow delete: if ownsDoc();
     }
 

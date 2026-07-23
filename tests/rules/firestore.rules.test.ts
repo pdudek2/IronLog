@@ -6,8 +6,9 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { doc, getDoc, setDoc } from 'firebase/firestore'
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
+import { collection, doc, getDoc, getDocs, query, setDoc, where, type Firestore } from 'firebase/firestore'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { UserExerciseInput } from '../../src/lib/userExercisesService'
 
 const PROJECT_ID = 'demo-ironlog-rules'
 
@@ -60,14 +61,47 @@ describe('templates rules', () => {
 })
 
 describe('userExercises rules', () => {
-  it('allows valid custom exercises and rejects invalid taxonomy values', async () => {
+  it('requires an atomic name claim and rejects invalid taxonomy values', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
 
-    await assertSucceeds(setDoc(doc(db, 'userExercises', 'custom-valid'), validUserExercise('alice')))
+    await assertFails(setDoc(doc(db, 'userExercises', 'custom-without-claim'), validUserExercise('alice')))
+    await assertFails(setDoc(doc(db, 'userExercises', 'custom-with-fake-claim'), {
+      ...validUserExercise('alice'),
+      nameClaimId: `alice_${'0'.repeat(64)}`,
+    }))
     await assertFails(setDoc(doc(db, 'userExercises', 'custom-invalid'), {
       ...validUserExercise('alice'),
       category: 'everything',
     }))
+  })
+
+  it('creates at most one exercise when two clients submit the same name', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const { createUserExercise } = await loadUserExerciseService(db)
+    const input: UserExerciseInput = {
+      name: 'Concurrent Curl',
+      category: 'arms',
+      equipment: 'dumbbell',
+      muscles: ['biceps'],
+    }
+
+    const results = await Promise.allSettled([
+      createUserExercise('alice', input),
+      createUserExercise('alice', input),
+    ])
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
+    expect(results.find((result) => result.status === 'rejected')).toMatchObject({
+      reason: { message: 'Ćwiczenie o nazwie "Concurrent Curl" już istnieje.' },
+    })
+
+    const stored = await getDocs(query(
+      collection(db, 'userExercises'),
+      where('userId', '==', 'alice'),
+      where('name', '==', input.name),
+    ))
+    expect(stored.size).toBe(1)
   })
 })
 
@@ -250,6 +284,12 @@ async function seedClosedSession(sessionId: string) {
   await testEnv.withSecurityRulesDisabled(async (context) => {
     await setDoc(doc(context.firestore(), 'closedSessions', sessionId), closedSession(sessionId))
   })
+}
+
+async function loadUserExerciseService(database: Firestore) {
+  vi.resetModules()
+  vi.doMock('../../src/lib/firebase', () => ({ db: database }))
+  return import('../../src/lib/userExercisesService')
 }
 
 function validActiveExercise() {

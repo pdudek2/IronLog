@@ -460,6 +460,7 @@ async function resetDemo(userId: string): Promise<void> {
     'exerciseSessions',
     'records',
     'userExercises',
+    'userExerciseNames',
     'templates',
     'readiness',
     'chatMessages',

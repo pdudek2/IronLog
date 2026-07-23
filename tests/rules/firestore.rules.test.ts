@@ -6,7 +6,18 @@ import {
   initializeTestEnvironment,
   type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import { collection, doc, getDoc, getDocs, query, setDoc, where, type Firestore } from 'firebase/firestore'
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  runTransaction,
+  setDoc,
+  where,
+  type Firestore,
+} from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { UserExerciseInput } from '../../src/lib/userExercisesService'
 
@@ -102,6 +113,132 @@ describe('userExercises rules', () => {
       where('name', '==', input.name),
     ))
     expect(stored.size).toBe(1)
+  })
+
+  it('allows at most one exercise to claim a name during concurrent renames', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const { createUserExercise, updateUserExercise } = await loadUserExerciseService(db)
+    const first = await createUserExercise('alice', {
+      name: 'First Curl',
+      category: 'arms',
+      equipment: 'dumbbell',
+      muscles: ['biceps'],
+    })
+    const second = await createUserExercise('alice', {
+      name: 'Second Curl',
+      category: 'arms',
+      equipment: 'dumbbell',
+      muscles: ['biceps'],
+    })
+    const renamed: UserExerciseInput = {
+      name: 'Shared Curl',
+      category: 'arms',
+      equipment: 'dumbbell',
+      muscles: ['biceps'],
+    }
+
+    const results = await Promise.allSettled([
+      updateUserExercise(first.id, renamed),
+      updateUserExercise(second.id, renamed),
+    ])
+
+    expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
+    expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
+    const stored = await getDocs(query(
+      collection(db, 'userExercises'),
+      where('userId', '==', 'alice'),
+      where('name', '==', renamed.name),
+    ))
+    expect(stored.size).toBe(1)
+  })
+
+  it('adopts a legacy exercise without changing its document id', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(
+        doc(context.firestore(), 'userExercises', 'legacy-id'),
+        validUserExercise('alice'),
+      )
+    })
+    const { updateUserExercise } = await loadUserExerciseService(db)
+
+    await updateUserExercise('legacy-id', {
+      name: 'Renamed Legacy Lift',
+      category: 'back',
+      equipment: 'barbell',
+      muscles: ['back'],
+    })
+
+    const stored = await getDoc(doc(db, 'userExercises', 'legacy-id'))
+    expect(stored.exists()).toBe(true)
+    expect(stored.data()).toMatchObject({
+      name: 'Renamed Legacy Lift',
+      nameClaimId: expect.stringMatching(/^alice_[0-9a-f]{64}$/),
+    })
+  })
+
+  it('releases the name claim when an exercise is deleted', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const { createUserExercise, deleteUserExercise } = await loadUserExerciseService(db)
+    const input: UserExerciseInput = {
+      name: 'Reusable Curl',
+      category: 'arms',
+      equipment: 'dumbbell',
+      muscles: ['biceps'],
+    }
+
+    const created = await createUserExercise('alice', input)
+    await deleteUserExercise(created.id)
+
+    await expect(createUserExercise('alice', input)).resolves.toMatchObject({
+      name: input.name,
+    })
+  })
+
+  it('rejects deleting a name claim while its exercise still uses it', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const { createUserExercise } = await loadUserExerciseService(db)
+    const created = await createUserExercise('alice', {
+      name: 'Protected Curl',
+      category: 'arms',
+      equipment: 'dumbbell',
+      muscles: ['biceps'],
+    })
+    const stored = await getDoc(doc(db, 'userExercises', created.id))
+    const claimId = stored.data()?.nameClaimId as string
+
+    await assertFails(deleteDoc(doc(db, 'userExerciseNames', claimId)))
+  })
+
+  it('rejects atomically repointing an existing name claim to another exercise', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const { createUserExercise } = await loadUserExerciseService(db)
+    const first = await createUserExercise('alice', {
+      name: 'Claimed Curl',
+      category: 'arms',
+      equipment: 'dumbbell',
+      muscles: ['biceps'],
+    })
+    const second = await createUserExercise('alice', {
+      name: 'Other Curl',
+      category: 'arms',
+      equipment: 'dumbbell',
+      muscles: ['biceps'],
+    })
+    const firstStored = await getDoc(doc(db, 'userExercises', first.id))
+    const firstClaimId = firstStored.data()?.nameClaimId as string
+
+    await assertFails(runTransaction(db, async (transaction) => {
+      transaction.update(doc(db, 'userExercises', second.id), {
+        name: first.name,
+        nameClaimId: firstClaimId,
+      })
+      transaction.set(doc(db, 'userExerciseNames', firstClaimId), {
+        userId: 'alice',
+        exerciseId: second.id,
+        name: first.name,
+      })
+    }))
   })
 })
 

@@ -1,4 +1,4 @@
-import { collection, deleteDoc, doc, getDoc, getDocs, limit, query, runTransaction, updateDoc, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, limit, query, runTransaction, where } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Category, Equipment, Exercise, MuscleGroup } from '../data/exercises'
 
@@ -7,6 +7,11 @@ export interface UserExerciseInput {
   category: Category
   equipment: Equipment
   muscles: MuscleGroup[]
+}
+
+interface StoredUserExercise {
+  userId?: unknown
+  nameClaimId?: unknown
 }
 
 async function buildNameClaimId(uid: string, name: string): Promise<string> {
@@ -107,14 +112,65 @@ export async function updateUserExercise(
     }
   }
 
-  await updateDoc(ref, {
-    name: trimmedName,
-    category: input.category,
-    equipment: input.equipment,
-    muscles: input.muscles,
+  const nextClaimId = await buildNameClaimId(userId, trimmedName)
+  const nextClaimRef = doc(db, 'userExerciseNames', nextClaimId)
+
+  await runTransaction(db, async (transaction) => {
+    const stored = await transaction.get(ref)
+    if (!stored.exists()) {
+      throw new Error('Nie znaleziono ćwiczenia do aktualizacji.')
+    }
+
+    const storedData = stored.data() as StoredUserExercise
+    const storedUserId = typeof storedData.userId === 'string' ? storedData.userId : ''
+    const previousClaimId = typeof storedData.nameClaimId === 'string' ? storedData.nameClaimId : ''
+    const nextClaim = await transaction.get(nextClaimRef)
+    const previousClaimRef = previousClaimId && previousClaimId !== nextClaimId
+      ? doc(db, 'userExerciseNames', previousClaimId)
+      : null
+    const previousClaim = previousClaimRef
+      ? await transaction.get(previousClaimRef)
+      : null
+
+    if (nextClaim.exists() && nextClaim.data().exerciseId !== id) {
+      throw duplicateNameError(trimmedName)
+    }
+
+    if (!nextClaim.exists()) {
+      transaction.set(nextClaimRef, {
+        userId: storedUserId,
+        exerciseId: id,
+        name: trimmedName,
+      })
+    }
+    if (previousClaim?.exists() && previousClaim.data().exerciseId === id) {
+      transaction.delete(previousClaim.ref)
+    }
+    transaction.update(ref, {
+      name: trimmedName,
+      category: input.category,
+      equipment: input.equipment,
+      muscles: input.muscles,
+      nameClaimId: nextClaimId,
+    })
   })
 }
 
 export async function deleteUserExercise(id: string): Promise<void> {
-  await deleteDoc(doc(db, 'userExercises', id))
+  const exerciseRef = doc(db, 'userExercises', id)
+
+  await runTransaction(db, async (transaction) => {
+    const stored = await transaction.get(exerciseRef)
+    if (!stored.exists()) return
+
+    const storedData = stored.data() as StoredUserExercise
+    const nameClaimId = typeof storedData.nameClaimId === 'string' ? storedData.nameClaimId : ''
+    const claimRef = nameClaimId ? doc(db, 'userExerciseNames', nameClaimId) : null
+    const claim = claimRef ? await transaction.get(claimRef) : null
+
+    if (claim?.exists() && claim.data().exerciseId === id) {
+      transaction.delete(claim.ref)
+    }
+    transaction.delete(exerciseRef)
+  })
 }

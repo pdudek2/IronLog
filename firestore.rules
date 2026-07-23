@@ -452,20 +452,37 @@ service cloud.firestore {
       allow read: if ownsDoc();
       allow update: if ownsDoc()
                     && keepsOwner()
-                    && isUserExercise(request.resource.data);
-      allow delete: if ownsDoc();
+                    && isUserExercise(request.resource.data)
+                    && (
+                      hasMatchingNameClaim(id, request.resource.data)
+                      || (
+                        !hasNameClaim(resource.data)
+                        && !hasNameClaim(request.resource.data)
+                        && request.resource.data.name == resource.data.name
+                      )
+                    );
+      allow delete: if ownsDoc()
+                    && (
+                      !hasNameClaim(resource.data)
+                      || !existsAfter(/databases/$(database)/documents/userExerciseNames/$(resource.data.nameClaimId))
+                    );
     }
 
     match /userExerciseNames/{claimId} {
       allow read: if signedIn()
                   && claimId.matches('^' + currentUid() + '_[0-9a-f]{64}$');
-      allow create, update: if ownsNewDoc()
-                            && isUserExerciseNameClaim(claimId, request.resource.data)
-                            && existsAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId))
-                            && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.userId == currentUid()
-                            && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.nameClaimId == claimId
-                            && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.name == request.resource.data.name;
-      allow delete: if ownsDoc();
+      allow create: if ownsNewDoc()
+                    && isUserExerciseNameClaim(claimId, request.resource.data)
+                    && existsAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId))
+                    && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.userId == currentUid()
+                    && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.nameClaimId == claimId
+                    && getAfter(/databases/$(database)/documents/userExercises/$(request.resource.data.exerciseId)).data.name == request.resource.data.name;
+      allow update: if false;
+      allow delete: if ownsDoc()
+                    && (
+                      !existsAfter(/databases/$(database)/documents/userExercises/$(resource.data.exerciseId))
+                      || getAfter(/databases/$(database)/documents/userExercises/$(resource.data.exerciseId)).data.nameClaimId != claimId
+                    );
     }
 
     match /templates/{id} {

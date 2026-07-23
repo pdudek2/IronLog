@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
+**Status:** COMPLETED — VERIFIED — INTEGRATED LOCALLY
 
 **Goal:** Wykonać pełną lokalną bramkę automatyczną wydania na emulatorach, naprawić wyłącznie potwierdzone regresje i zapisać audytowalny wynik bez udawania gotowości produkcyjnej.
 
@@ -315,3 +315,7 @@ git commit -m "docs: close phase 7a local release gate"
 ## Execution
 
 Plan jest przeznaczony do wykonania inline. Większość pracy to sekwencyjna obserwacja jednego współdzielonego środowiska emulatorów, więc podział między agentów nie skróci krytycznej ścieżki i utrudni przypisanie awarii do konkretnego gate’u.
+
+## Closeout
+
+Faza 7A została zweryfikowana, zintegrowana lokalnie z `puls-rebrand` przez fast-forward do `b285cd2`, a własny branch i worktree usunięto. Następnym dzieckiem Fazy 7 jest manualny odbiór 7B; `RELEASE-08–10` pozostają otwarte i wymagają osobnego zakresu oraz — dla operacji produkcyjnych — osobnej zgody.

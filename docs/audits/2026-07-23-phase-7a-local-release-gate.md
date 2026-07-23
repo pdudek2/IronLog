@@ -1,6 +1,6 @@
 # Phase 7A — Local release gate
 
-**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
+**Status:** COMPLETED — VERIFIED — INTEGRATED LOCALLY
 
 **Data:** 2026-07-23
 
@@ -67,3 +67,7 @@ Finalny gate objął 215 pozycji: 188 przeszło, a 27 zostało jawnie pominięty
 ## Wniosek
 
 PASS — lokalna automatyczna bramka 7A jest zielona. Nie stanowi dowodu gotowości produkcyjnej; 7B oraz RELEASE-08–10 pozostają otwarte.
+
+## Integracja lokalna
+
+Branch `phase-7a-local-release-gate` został zintegrowany z `puls-rebrand` przez fast-forward do `b285cd2`. Po integracji ponownie przeszły: unit 469/469, lint, build 878 modułów bez ostrzeżeń, Firestore Rules 16/16 oraz workout integration 20/20. Pełny Playwright 188/188 aktywnych testów wykorzystuje świeży wynik z tego samego drzewa kodu; późniejszy commit `b285cd2` zmienił wyłącznie dokumentację lifecycle. Własny worktree i branch wykonawczy usunięto; push, deploy i operacje produkcyjne nie zostały wykonane.

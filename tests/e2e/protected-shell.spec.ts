@@ -1,5 +1,11 @@
 import { expect, test } from './fixtures'
 
+function isProgressPageModule(url: string): boolean {
+  const pathname = new URL(url).pathname
+  return pathname === '/src/pages/ProgressPage.tsx'
+    || /^\/assets\/ProgressPage-[A-Za-z0-9_-]+\.js$/.test(pathname)
+}
+
 test.describe('Protected application shell', () => {
   test('routes authenticated and anonymous root visits through the private boundary', async ({
     page,
@@ -45,7 +51,7 @@ test.describe('Protected application shell', () => {
 
     const progressRequests: string[] = []
     page.on('request', (request) => {
-      if (request.url().includes('/src/pages/ProgressPage.tsx')) {
+      if (isProgressPageModule(request.url())) {
         progressRequests.push(request.url())
       }
     })

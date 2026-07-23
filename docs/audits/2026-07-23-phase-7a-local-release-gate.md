@@ -41,6 +41,8 @@ Pierwszy właściwy przebieg pełnego gate'u ujawnił nieaktualny selektor w te�
 
 Kolejny przebieg zatrzymał się na testach Progress. Testy zakładały dane istniejące wcześniej w koncie, czego świeży emulator celowo nie zapewniał, a scenariusz celowego odłączenia sieci nie oznaczał oczekiwanych błędów transportu Firestore w centralnym kolektorze diagnostyk. Dodano izolowany seed i cleanup wyłącznie dla emulatora oraz wykorzystano istniejący kontrakt oczekiwanych diagnostyk offline. Dane produkcyjne i kod aplikacji pozostały bez zmian.
 
+Następny przebieg wykazał, że test prefetchu Progress rozpoznawał wyłącznie ścieżkę modułu serwera deweloperskiego (`/src/pages/ProgressPage.tsx`). Gate CSP korzysta z produkcyjnego preview, gdzie ten sam moduł jest chunkiem `/assets/ProgressPage-<hash>.js`. Matcher rozszerzono o produkcyjną nazwę chunka bez osłabienia kontraktu „brak requestu przed intencją, request po hover”.
+
 ## Pozostałe obowiązki
 
 - 7B: manualny smoke, klawiatura, accessibility snapshot i zgodność demo/dokumentacji;

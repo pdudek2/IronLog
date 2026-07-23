@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** COMPLETED — VERIFIED — AWAITING INTEGRATION
+**Status:** COMPLETED — VERIFIED — INTEGRATED LOCALLY
 
 **Goal:** Zastąpić pozorny CSP Report-Only egzekwowaną, minimalną polityką i powtarzalnym smoke publicznej oraz chronionej trasy.
 

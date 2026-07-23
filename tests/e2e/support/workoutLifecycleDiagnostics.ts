@@ -34,5 +34,5 @@ export function isExpectedWorkoutLifecycleAckLossDiagnostic(entry: BrowserDiagno
 export function isExpectedWorkoutLifecycleTombstoneDiagnostic(entry: BrowserDiagnostic): boolean {
   if (entry.kind !== 'console') return false
   return entry.message.startsWith('[active session save error] FirebaseError: PERMISSION_DENIED:')
-    && /false for '(?:create|update)' @ L478/.test(entry.message)
+    && /false for '(?:create|update)' @ L\d+/.test(entry.message)
 }

@@ -8,6 +8,12 @@ import { initAuthListener } from './lib/auth'
 
 initAuthListener()
 
+if (import.meta.env.VITE_FIREBASE_USE_EMULATORS === 'true') {
+  void import('./lib/emulatorTestBridge').then(({ installEmulatorTestBridge }) => {
+    installEmulatorTestBridge()
+  })
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <MotionConfig reducedMotion="user">

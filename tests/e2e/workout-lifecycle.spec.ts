@@ -8,6 +8,11 @@ import {
 import { expectAppReady } from './support/appReady'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
 import {
+  readCachedActiveSessionWrite,
+  readLocalActiveSessionRecovery,
+  setFirestoreNetworkEnabled,
+} from './support/firestoreBrowserBridge'
+import {
   cleanupWorkoutLifecycleState,
   closeWorkoutLifecycleEmulator,
   commitPendingLifecycleFinalization,
@@ -30,46 +35,6 @@ import {
 import { MAX_ACTIVE_SESSION_AGE_MS } from '../../src/lib/sessionDuration'
 
 const RESPONSE_TIMEOUT_MS = 20_000
-
-async function readCachedActiveSessionWrite(page: Page) {
-  return page.evaluate(async () => {
-    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
-    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
-      readCachedActiveSessionWrite(): Promise<{
-        exists: boolean
-        hasPendingWrites: boolean
-        sessionId: string | null
-        exerciseNames: string[]
-        reps: string | null
-      }>
-    }
-    return diagnostics.readCachedActiveSessionWrite()
-  })
-}
-
-async function readLocalActiveSessionRecovery(page: Page) {
-  return page.evaluate(async () => {
-    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
-    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
-      readLocalActiveSessionRecovery(): {
-        sessionId: string | null
-        exerciseNames: string[]
-        reps: string | null
-      }
-    }
-    return diagnostics.readLocalActiveSessionRecovery()
-  })
-}
-
-async function setFirestoreNetworkEnabled(page: Page, enabled: boolean): Promise<void> {
-  await page.evaluate(async (nextEnabled) => {
-    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
-    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
-      setFirestoreNetworkEnabled(enabled: boolean): Promise<void>
-    }
-    await diagnostics.setFirestoreNetworkEnabled(nextEnabled)
-  }, enabled)
-}
 
 async function expectQueuedActiveSessionEdit(
   page: Page,

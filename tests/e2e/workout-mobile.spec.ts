@@ -1,6 +1,10 @@
 import { test, expect, type Locator, type Page } from './fixtures'
 import { discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
+import {
+  readCachedActiveSessionWrite,
+  readLocalActiveSessionRecovery,
+} from './support/firestoreBrowserBridge'
 
 type WorkoutTerminalState = 'stale-session' | 'active-session' | 'empty-session' | 'ready-workout'
 
@@ -139,36 +143,6 @@ async function restoreVisualViewportHeight(page: Page): Promise<void> {
     Reflect.deleteProperty(viewport, 'height')
     window.dispatchEvent(new Event('resize'))
     viewport.dispatchEvent(new Event('resize'))
-  })
-}
-
-async function readCachedActiveSessionWrite(page: Page) {
-  return page.evaluate(async () => {
-    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
-    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
-      readCachedActiveSessionWrite(): Promise<{
-        exists: boolean
-        hasPendingWrites: boolean
-        sessionId: string | null
-        exerciseNames: string[]
-        reps: string | null
-      }>
-    }
-    return diagnostics.readCachedActiveSessionWrite()
-  })
-}
-
-async function readLocalActiveSessionRecovery(page: Page) {
-  return page.evaluate(async () => {
-    const moduleUrl = '/tests/e2e/support/browserFirestoreMetadata.ts'
-    const diagnostics = await import(/* @vite-ignore */ moduleUrl) as {
-      readLocalActiveSessionRecovery(): {
-        sessionId: string | null
-        exerciseNames: string[]
-        reps: string | null
-      }
-    }
-    return diagnostics.readLocalActiveSessionRecovery()
   })
 }
 

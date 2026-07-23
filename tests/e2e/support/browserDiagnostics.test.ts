@@ -427,7 +427,7 @@ describe('browser diagnostics controller', () => {
   })
 
   it('matches only the active-session tombstone rule rejection', () => {
-    const ruleFailure = "[active session save error] FirebaseError: PERMISSION_DENIED: false for 'create' @ L478"
+    const ruleFailure = "[active session save error] FirebaseError: PERMISSION_DENIED: evaluation error at L509:24 for 'create' @ L509, false for 'create' @ L530"
     expect(isExpectedWorkoutLifecycleTombstoneDiagnostic({
       kind: 'console',
       message: ruleFailure,
@@ -435,7 +435,17 @@ describe('browser diagnostics controller', () => {
     })).toBe(true)
     expect(isExpectedWorkoutLifecycleTombstoneDiagnostic({
       kind: 'console',
-      message: '[profile save error] FirebaseError: PERMISSION_DENIED: missing permissions',
+      message: "[active session save error] FirebaseError: PERMISSION_DENIED: false for 'update' @ L514",
+      blocking: true,
+    })).toBe(true)
+    expect(isExpectedWorkoutLifecycleTombstoneDiagnostic({
+      kind: 'console',
+      message: '[active session save error] FirebaseError: PERMISSION_DENIED: missing permissions',
+      blocking: true,
+    })).toBe(false)
+    expect(isExpectedWorkoutLifecycleTombstoneDiagnostic({
+      kind: 'console',
+      message: "[profile save error] FirebaseError: PERMISSION_DENIED: false for 'create' @ L530",
       blocking: true,
     })).toBe(false)
   })

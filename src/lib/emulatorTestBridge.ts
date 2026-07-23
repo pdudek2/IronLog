@@ -1,5 +1,5 @@
 import { disableNetwork, doc, enableNetwork, getDocFromCache } from 'firebase/firestore'
-import { auth, db } from '../../../src/lib/firebase'
+import { auth, db } from './firebase'
 
 export interface CachedActiveSessionWrite {
   exists: boolean
@@ -15,7 +15,19 @@ export interface LocalActiveSessionRecovery {
   reps: string | null
 }
 
-export function readLocalActiveSessionRecovery(): LocalActiveSessionRecovery {
+export interface EmulatorTestBridge {
+  readCachedActiveSessionWrite(): Promise<CachedActiveSessionWrite>
+  readLocalActiveSessionRecovery(): LocalActiveSessionRecovery
+  setFirestoreNetworkEnabled(enabled: boolean): Promise<void>
+}
+
+declare global {
+  interface Window {
+    __ironlogEmulatorTestBridge?: EmulatorTestBridge
+  }
+}
+
+function readLocalActiveSessionRecovery(): LocalActiveSessionRecovery {
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Authenticated Firebase user is required to inspect active-session recovery.')
   const raw = window.localStorage.getItem(`ironlog-active-session-backup:${uid}`)
@@ -25,6 +37,7 @@ export function readLocalActiveSessionRecovery(): LocalActiveSessionRecovery {
   const firstExercise = exercises[0] as { sets?: unknown } | undefined
   const sets = Array.isArray(firstExercise?.sets) ? firstExercise.sets : []
   const firstSet = sets[0] as { reps?: unknown } | undefined
+
   return {
     sessionId: typeof parsed.session?.sessionId === 'string' ? parsed.session.sessionId : null,
     exerciseNames: exercises.flatMap((exercise) => {
@@ -35,7 +48,7 @@ export function readLocalActiveSessionRecovery(): LocalActiveSessionRecovery {
   }
 }
 
-export async function readCachedActiveSessionWrite(): Promise<CachedActiveSessionWrite> {
+async function readCachedActiveSessionWrite(): Promise<CachedActiveSessionWrite> {
   const uid = auth.currentUser?.uid
   if (!uid) throw new Error('Authenticated Firebase user is required to inspect active-session cache metadata.')
 
@@ -58,6 +71,14 @@ export async function readCachedActiveSessionWrite(): Promise<CachedActiveSessio
   }
 }
 
-export async function setFirestoreNetworkEnabled(enabled: boolean): Promise<void> {
+async function setFirestoreNetworkEnabled(enabled: boolean): Promise<void> {
   await (enabled ? enableNetwork(db) : disableNetwork(db))
+}
+
+export function installEmulatorTestBridge(): void {
+  window.__ironlogEmulatorTestBridge = {
+    readCachedActiveSessionWrite,
+    readLocalActiveSessionRecovery,
+    setFirestoreNetworkEnabled,
+  }
 }

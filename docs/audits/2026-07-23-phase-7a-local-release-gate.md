@@ -47,6 +47,10 @@ Scenariusz celowego offline przy uruchamianiu szablonu wywołał transportowy fa
 
 Grupa testów guard i lost-ack ujawniła dwa dalsze założenia trybu deweloperskiego. Kolektor diagnostyk rozpoznawał przerywane podczas intencjonalnej nawigacji moduły `/src`, ale nie lokalne hashowane chunki produkcyjne `/assets/*-<hash>.js`; wyjątek rozszerzono wyłącznie na takie chunki, wyłącznie dla `ERR_ABORTED` w oknie nawigacji/teardown. Matcher kontrolowanej utraty odpowiedzi API akceptował tylko `localhost:5174`; dodano równoważny lokalny origin preview `127.0.0.1:5174`. Inne originy, niehashowane zasoby i błędy inne niż oczekiwane pozostają blokujące.
 
+Dwa scenariusze ochrony sesji offline importowały pomocniczy moduł TypeScript bezpośrednio spod `/tests/...`. Vite dev transformował tę ścieżkę, ale produkcyjny preview poprawnie serwował tylko `dist` i zwracał 404. Inspekcję cache, recovery i przełączanie sieci przepięto na mały bridge ładowany wyłącznie, gdy `VITE_FIREBASE_USE_EMULATORS=true`; wspólne wywołania wykorzystują go także w testach mobile. Zwykły build bez flagi emulatora usuwa warunek na etapie bundlowania.
+
+Po przywróceniu bridge'a scenariusze poprawnie dochodziły do odrzucenia zapisu przez tombstone, lecz matcher oczekiwanej diagnostyki był związany ze starym numerem linii `L478` w `firestore.rules`. Zmieniono go na semantyczny kontrakt: dokładny prefiks błędu zapisu aktywnej sesji, `PERMISSION_DENIED` oraz odmowa `create` albo `update` z dowolnym numerem linii. Inne odmowy uprawnień nadal pozostają blokujące.
+
 ## Pozostałe obowiązki
 
 - 7B: manualny smoke, klawiatura, accessibility snapshot i zgodność demo/dokumentacji;

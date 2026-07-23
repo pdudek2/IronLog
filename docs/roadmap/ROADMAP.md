@@ -68,7 +68,7 @@ Aktualny baseline jakości:
 | 3 | R — Ukierunkowany przegląd cyklu życia treningu | P0 | DONE | `WORKOUT-01–06` mają dowody i jednoznaczne statusy |
 | 4 | 1 — Integralność cyklu życia treningu | P0 | DONE | `WORKOUT-01`, `WORKOUT-02`, `WORKOUT-03`, `WORKOUT-05` i `WORKOUT-06` naprawione w `1cb59af–4fe1ec5` |
 | 5 | 2 — Uczciwe stany danych i błędów | P0 | DONE | Błąd odczytu nigdy nie wygląda jak prawidłowy pusty stan |
-| 6 | 2B — Integralność własnych ćwiczeń | P2 | READY | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
+| 6 | 2B — Integralność własnych ćwiczeń | P2 | IN PROGRESS | Równoległe utworzenie ćwiczenia nie produkuje duplikatów |
 | 7 | 3 — Krytyczna dostępność i nawigacja | P1 | DONE | Główne przepływy są nazwane, fokusowalne i poprawnie komunikują stan |
 | 8 | 4 — Ergonomia mobile i edytor planów | P1 | DONE | Sterowanie dotykowe spełnia minimalne wymiary, a duży plan można wygodnie edytować i zapisać |
 | 9 | 5 — Feedback, copy i integralność interfejsu | P1 | DONE | Akcje i routing komunikują prawdę, kontrast jest dostępny, a capture screenshotów nie udaje regresji wizualnej |
@@ -229,6 +229,8 @@ Faza R potwierdziła dokładnie pięć punktów. Tylko one są autoryzowanym zak
 **Poza zakresem:** wtórni konsumenci własnych ćwiczeń w selektorach treningu i edytora planu, historii oraz widokach szczegółowych. Nie udają oni obecnie pełnego pustego ekranu, a ich rozszerzenie zwiększyłoby Fazę 2 o kilka niezależnych przepływów. Zostają zapisani jako `LATER-07`.
 
 ### Faza 2B — Integralność własnych ćwiczeń
+
+**Status: IN PROGRESS.** Zatwierdzony kontrakt zachowuje wszystkie istniejące `exerciseId` i dodaje transakcyjne claimy nazw dla create, rename i delete. Spec oraz plan znajdują się w [`specs/2026-07-23-phase-2b-user-exercise-uniqueness-design.md`](specs/2026-07-23-phase-2b-user-exercise-uniqueness-design.md) i [`plans/2026-07-23-phase-2b-user-exercise-uniqueness.md`](plans/2026-07-23-phase-2b-user-exercise-uniqueness.md).
 
 **Cel:** zamknąć niezależne od UI ryzyko utworzenia dwóch własnych ćwiczeń o tej samej tożsamości przez równoległe klienty.
 

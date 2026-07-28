@@ -230,7 +230,39 @@ test.describe('Active workout shell reduction', () => {
     await goToFreshWorkout(page)
     await addExercise(page, 'Squat')
 
+    const exerciseCard = page.locator('.workout-exercise-card').first()
+    const exerciseIndicatorLayout = await exerciseCard.evaluate((card) => {
+      const cardBox = card.getBoundingClientRect()
+      const headerBox = card.querySelector<HTMLElement>('.workout-exercise-head')?.getBoundingClientRect()
+      return {
+        sideIndicator: window.getComputedStyle(card, '::before').content,
+        headerInset: headerBox ? headerBox.left - cardBox.left : undefined,
+      }
+    })
+    expect(exerciseIndicatorLayout.sideIndicator).toBe('none')
+    expect(exerciseIndicatorLayout.headerInset).toBeLessThanOrEqual(1)
+    await expect(exerciseCard.locator('.workout-exercise-meta span')).toBeVisible()
+
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
+    await expect(page.locator('.workout-section-head')).not.toBeVisible()
+    await expect(page.locator('.workout-mobile-lifecycle-bar')).toHaveCSS(
+      'background-color',
+      'rgb(11, 10, 12)',
+    )
+    const readyLayout = await page.evaluate(() => {
+      const ledger = document.querySelector<HTMLElement>('.workout-exercise-ledger')
+      const sessionGrid = document.querySelector<HTMLElement>('.workout-session-grid')
+      return {
+        ledgerHeight: ledger?.getBoundingClientRect().height,
+        maxScroll: document.documentElement.scrollHeight - window.innerHeight,
+        sessionGridBottomPadding: sessionGrid
+          ? Number.parseFloat(window.getComputedStyle(sessionGrid).paddingBottom)
+          : undefined,
+      }
+    })
+    expect(readyLayout.ledgerHeight).toBeLessThanOrEqual(52)
+    expect(readyLayout.maxScroll).toBeLessThanOrEqual(1)
+    expect(readyLayout.sessionGridBottomPadding).toBeLessThanOrEqual(1)
 
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
@@ -259,12 +291,27 @@ test.describe('Active workout shell reduction', () => {
       return {
         viewportHeight: window.innerHeight,
         navigation: navigationBox && { top: navigationBox.top, bottom: navigationBox.bottom },
-        restTimer: restTimerBox && { top: restTimerBox.top, bottom: restTimerBox.bottom },
+        restTimer: restTimerBox && {
+          top: restTimerBox.top,
+          bottom: restTimerBox.bottom,
+          height: restTimerBox.height,
+          surfacePadding: restTimer
+            ? Number.parseFloat(window.getComputedStyle(restTimer.firstElementChild as HTMLElement).padding)
+            : undefined,
+        },
       }
     })
     expect(fixedUiGeometry.navigation?.top).toBeGreaterThanOrEqual(0)
     expect(fixedUiGeometry.navigation?.bottom).toBeLessThanOrEqual(fixedUiGeometry.viewportHeight)
     expect(fixedUiGeometry.restTimer?.bottom).toBeLessThanOrEqual(fixedUiGeometry.navigation!.top)
+    expect(fixedUiGeometry.restTimer?.height).toBeLessThanOrEqual(84)
+    expect(fixedUiGeometry.restTimer?.surfacePadding).toBe(0)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await addExercise(page, 'Bench Press')
+    await addExercise(page, 'Deadlift')
+    const lastWeightInput = page.locator('.workout-exercise-card').last().locator('input').first()
+    await lastWeightInput.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+    await expectFullyInViewport(page, lastWeightInput, 'Dense-session last weight input')
 
   })
 

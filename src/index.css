@@ -5989,15 +5989,6 @@ a {
   box-shadow: none;
 }
 
-.workout-exercise-card::before {
-  content: "";
-  position: absolute;
-  inset: 1rem auto 1rem 0;
-  width: 0.18rem;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(180deg, var(--exercise-accent), color-mix(in srgb, var(--exercise-accent) 16%, transparent));
-}
-
 .workout-exercise-card::after {
   content: "";
   position: absolute;
@@ -6023,7 +6014,7 @@ a {
 }
 
 .workout-exercise-head {
-  padding-left: 0.65rem;
+  padding-left: 0;
 }
 
 .workout-exercise-ledger {
@@ -6153,6 +6144,100 @@ a {
   .overload-hint-dismiss {
     width: 1.65rem;
     height: 1.65rem;
+  }
+}
+
+@media (max-width: 1023px) {
+  .workout-section-head {
+    display: none;
+  }
+
+  .workout-mobile-lifecycle-bar {
+    background: var(--puls-black-deep) !important;
+  }
+
+  .workout-session-grid {
+    padding-bottom: 0;
+  }
+
+  .workout-focus-shell:has(.workout-mobile-action-bar) .workout-session-grid {
+    padding-bottom: 6rem;
+  }
+
+  .workout-focus-shell:has(.workout-mobile-action-bar[data-variant="compact"]) .workout-session-grid {
+    padding-bottom: 0;
+  }
+
+  .workout-mobile-label-row {
+    overflow: hidden;
+    margin: 0 0 0.75rem;
+  }
+
+  .workout-label-chips {
+    padding-right: 2rem;
+    scroll-snap-type: x proximity;
+    mask-image: linear-gradient(90deg, #000 0, #000 calc(100% - 2rem), transparent);
+  }
+
+  .workout-label-chips > button {
+    scroll-snap-align: start;
+  }
+
+  .workout-exercise-stack {
+    padding: 0.2rem 0.75rem;
+  }
+
+  .workout-exercise-card {
+    padding-block: 0.75rem;
+  }
+
+  .workout-exercise-card::after {
+    display: none;
+  }
+
+  .workout-exercise-head {
+    margin-bottom: 0.65rem !important;
+  }
+
+  .workout-exercise-ledger {
+    margin-bottom: 0.55rem;
+    padding-block: 0.45rem;
+  }
+
+  .workout-exercise-ledger div {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: center;
+    gap: 0.3rem;
+    padding-inline: 0.35rem;
+  }
+
+  .workout-exercise-ledger span {
+    font-size: 0.75rem;
+  }
+
+  .workout-exercise-ledger strong {
+    margin-top: 0;
+    font-size: 0.8rem;
+  }
+
+  .workout-set-header {
+    margin-top: 0.5rem;
+  }
+
+  .workout-mobile-inline-add {
+    border: 1px solid var(--border) !important;
+    background: var(--surface-2) !important;
+    color: var(--text-strong) !important;
+    box-shadow: none;
+  }
+
+  .workout-mobile-action-bar > .surface-panel {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
   }
 }
 

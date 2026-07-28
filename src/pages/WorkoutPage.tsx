@@ -78,7 +78,7 @@ interface LabelChipsProps {
 
 function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) {
   return (
-    <div className={`flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
+    <div className={`workout-label-chips flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
       {WORKOUT_LABELS.map((label) => {
         const isActive = activeLabel === label
         return (
@@ -1306,7 +1306,6 @@ export default function WorkoutPage() {
         <div
           className="workout-mobile-action-bar fixed left-0 right-0 flex justify-center px-4 lg:hidden"
           data-variant={mobileRestVariant}
-          style={{ paddingBottom: mobileRestVariant === 'full' ? '1rem' : undefined }}
         >
           <div className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] p-3">
             <AnimatePresence initial={false}>

@@ -226,7 +226,7 @@ test.describe('Active workout shell reduction', () => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
-    await page.setViewportSize({ width: 390, height: 844 })
+    await page.setViewportSize({ width: 430, height: 932 })
     await goToFreshWorkout(page)
     await addExercise(page, 'Squat')
 
@@ -237,6 +237,34 @@ test.describe('Active workout shell reduction', () => {
     await page.getByRole('button', { name: 'Oznacz serię 1' }).click()
 
     await expect(page.locator('.rest-timer-bar')).toHaveCount(1)
+    expect(await page.evaluate(() => (
+      document.documentElement.scrollWidth - document.documentElement.clientWidth
+    ))).toBe(0)
+
+    await page.mouse.wheel(0, 600)
+    await page.evaluate(() => {
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    })
+    const navigation = page.getByRole('navigation', { name: 'Nawigacja dolna' })
+    await expect(navigation).toBeVisible()
+    await expect(navigation).not.toHaveAttribute('aria-hidden', 'true')
+    await expect.poll(() => navigation.evaluate((element) => (
+      element.getBoundingClientRect().bottom <= window.innerHeight
+    ))).toBe(true)
+    const fixedUiGeometry = await page.evaluate(() => {
+      const navigation = document.querySelector<HTMLElement>('nav.bottom-nav')
+      const restTimer = document.querySelector<HTMLElement>('.workout-mobile-action-bar')
+      const navigationBox = navigation?.getBoundingClientRect()
+      const restTimerBox = restTimer?.getBoundingClientRect()
+      return {
+        viewportHeight: window.innerHeight,
+        navigation: navigationBox && { top: navigationBox.top, bottom: navigationBox.bottom },
+        restTimer: restTimerBox && { top: restTimerBox.top, bottom: restTimerBox.bottom },
+      }
+    })
+    expect(fixedUiGeometry.navigation?.top).toBeGreaterThanOrEqual(0)
+    expect(fixedUiGeometry.navigation?.bottom).toBeLessThanOrEqual(fixedUiGeometry.viewportHeight)
+    expect(fixedUiGeometry.restTimer?.bottom).toBeLessThanOrEqual(fixedUiGeometry.navigation!.top)
 
   })
 

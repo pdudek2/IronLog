@@ -1,4 +1,3 @@
-import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Dumbbell, History, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
@@ -45,92 +44,18 @@ function NavBtn({ icon, label, active, onClick, preloadTo }: NavBtnProps) {
 export default function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
-  const [hidden, setHidden] = useState(false)
   const { inputFocused } = useMobileInteraction()
   const active = useWorkoutStore((state) => state.active)
-  const navRef = useRef<HTMLElement>(null)
-  const movingFocusFromNavRef = useRef(false)
-  const lastScrollYRef = useRef(0)
-  const hiddenRef = useRef(false)
 
   const path = location.pathname
   const workoutActive = path.startsWith('/workout/new')
   const hasActiveWork = hasActiveSessionWork(active)
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
-  useEffect(() => {
-    hiddenRef.current = hidden
-  }, [hidden])
-
-  useEffect(() => {
-    let rafId = 0
-    let pending = false
-
-    const evaluate = () => {
-      pending = false
-      const currentY = window.scrollY
-      const delta = currentY - lastScrollYRef.current
-
-      if (currentY < 24) {
-        if (hiddenRef.current) setHidden(false)
-      } else if (delta > 10 && !hiddenRef.current) {
-        setHidden(true)
-      } else if (delta < -10 && hiddenRef.current) {
-        setHidden(false)
-      }
-
-      lastScrollYRef.current = currentY
-    }
-
-    const onScroll = () => {
-      if (pending) return
-      pending = true
-      rafId = window.requestAnimationFrame(evaluate)
-    }
-
-    lastScrollYRef.current = window.scrollY
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', onScroll)
-      window.cancelAnimationFrame(rafId)
-    }
-  }, [])
-
-  useEffect(() => {
-    const onFocusIn = (event: FocusEvent) => {
-      const target = event.target
-      if (!(target instanceof HTMLElement)) return
-      if (target.matches('main.page-shell')) {
-        lastScrollYRef.current = window.scrollY
-        if (!movingFocusFromNavRef.current) setHidden(false)
-      }
-    }
-
-    window.addEventListener('focusin', onFocusIn)
-    return () => {
-      window.removeEventListener('focusin', onFocusIn)
-    }
-  }, [])
-
-  const navHidden = hidden || inputFocused
-
-  useEffect(() => {
-    if (!navHidden) return
-
-    const activeElement = document.activeElement
-    if (!(activeElement instanceof HTMLElement) || !navRef.current?.contains(activeElement)) return
-
-    const main = document.querySelector<HTMLElement>('main.page-shell')
-    if (!main) return
-
-    movingFocusFromNavRef.current = true
-    main.focus({ preventScroll: true })
-    movingFocusFromNavRef.current = false
-  }, [navHidden])
+  const navHidden = inputFocused
 
   return (
     <nav
-      ref={navRef}
       aria-label="Nawigacja dolna"
       aria-hidden={navHidden ? true : undefined}
       inert={navHidden}

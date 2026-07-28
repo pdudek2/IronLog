@@ -150,85 +150,11 @@ service cloud.firestore {
              && isFinishedExerciseAt(value, 19);
     }
 
-    function isActiveSet(value) {
-      return value is map
-             && value.keys().hasOnly(['weight', 'reps', 'done'])
-             && value.keys().hasAll(['weight', 'reps', 'done'])
-             && value.weight is string
-             && value.weight.size() <= 16
-             && value.weight.matches('^[0-9.]*$')
-             && value.reps is string
-             && value.reps.size() <= 8
-             && value.reps.matches('^[0-9]*$')
-             && value.done is bool;
-    }
-
-    function isActiveExercise(value) {
-      return value is map
-             && value.keys().hasOnly(['exerciseId', 'exerciseSource', 'name', 'sets'])
-             && value.keys().hasAll(['exerciseId', 'exerciseSource', 'name', 'sets'])
-             && isDocumentId(value.exerciseId)
-             && isExerciseSource(value.exerciseSource)
-             && isNonEmptyString(value.name, 120)
-             && isActiveSets(value.sets);
-    }
-
-    function isActiveSetAt(sets, index) {
-      return sets.size() <= index || isActiveSet(sets[index]);
-    }
-
-    function isActiveSets(value) {
-      return value is list
-             && value.size() <= 20
-             && isActiveSetAt(value, 0)
-             && isActiveSetAt(value, 1)
-             && isActiveSetAt(value, 2)
-             && isActiveSetAt(value, 3)
-             && isActiveSetAt(value, 4)
-             && isActiveSetAt(value, 5)
-             && isActiveSetAt(value, 6)
-             && isActiveSetAt(value, 7)
-             && isActiveSetAt(value, 8)
-             && isActiveSetAt(value, 9)
-             && isActiveSetAt(value, 10)
-             && isActiveSetAt(value, 11)
-             && isActiveSetAt(value, 12)
-             && isActiveSetAt(value, 13)
-             && isActiveSetAt(value, 14)
-             && isActiveSetAt(value, 15)
-             && isActiveSetAt(value, 16)
-             && isActiveSetAt(value, 17)
-             && isActiveSetAt(value, 18)
-             && isActiveSetAt(value, 19);
-    }
-
-    function isActiveExerciseAt(exercises, index) {
-      return exercises.size() <= index || isActiveExercise(exercises[index]);
-    }
-
     function isActiveExercises(value) {
+      // Active sessions are owner-only drafts. Their finalized payload is
+      // validated by the server before it becomes workout history.
       return value is list
-             && value.size() <= 20
-             && isActiveExerciseAt(value, 0)
-             && isActiveExerciseAt(value, 1)
-             && isActiveExerciseAt(value, 2)
-             && isActiveExerciseAt(value, 3)
-             && isActiveExerciseAt(value, 4)
-             && isActiveExerciseAt(value, 5)
-             && isActiveExerciseAt(value, 6)
-             && isActiveExerciseAt(value, 7)
-             && isActiveExerciseAt(value, 8)
-             && isActiveExerciseAt(value, 9)
-             && isActiveExerciseAt(value, 10)
-             && isActiveExerciseAt(value, 11)
-             && isActiveExerciseAt(value, 12)
-             && isActiveExerciseAt(value, 13)
-             && isActiveExerciseAt(value, 14)
-             && isActiveExerciseAt(value, 15)
-             && isActiveExerciseAt(value, 16)
-             && isActiveExerciseAt(value, 17)
-             && isActiveExerciseAt(value, 18)
-             && isActiveExerciseAt(value, 19);
+             && value.size() <= 20;
     }
 
     function isTemplateExercise(value) {
@@ -387,7 +313,6 @@ service cloud.firestore {
 
     function isActiveSession(uid, data) {
       return data.keys().hasOnly(['userId', 'sessionId', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
-             && data.keys().hasAll(['userId', 'sessionId', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
              && currentUid() == uid
              && data.userId == currentUid()
              && isDocumentId(data.sessionId)

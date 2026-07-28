@@ -156,4 +156,23 @@ describe('shared accessibility contracts', () => {
     expect(workoutActions).toHaveLength(2)
     expect(workoutActions[0]).toHaveTextContent('Wznów trening')
   })
+
+  it('keeps primary mobile navigation available while the page scrolls', async () => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <MobileInteractionProvider>
+          <BottomNav />
+        </MobileInteractionProvider>
+      </MemoryRouter>,
+    )
+
+    const nav = screen.getByRole('navigation', { name: 'Nawigacja dolna' })
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 600 })
+    fireEvent.scroll(window)
+
+    await waitFor(() => {
+      expect(nav).not.toHaveAttribute('aria-hidden', 'true')
+      expect(nav).not.toHaveAttribute('inert')
+    })
+  })
 })

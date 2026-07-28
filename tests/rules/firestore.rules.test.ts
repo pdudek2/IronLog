@@ -266,6 +266,32 @@ describe('activeSessions rules', () => {
     }))
   })
 
+  it('allows a realistic multi-exercise template session', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const exercises = [
+      ['squat', 'Squat', 4],
+      ['leg-press', 'Leg Press', 3],
+      ['leg-curl', 'Leg Curl', 3],
+      ['custom-machine', 'Machine abduction', 3],
+    ].map(([exerciseId, name, setCount]) => ({
+      exerciseId,
+      exerciseSource: exerciseId === 'custom-machine' ? 'user' : 'global',
+      name,
+      sets: Array.from({ length: Number(setCount) }, () => ({
+        weight: '77.5',
+        reps: '8',
+        done: false,
+      })),
+    }))
+
+    await assertSucceeds(setDoc(doc(db, 'activeSessions', 'alice'), {
+      ...validActiveSession('alice'),
+      templateId: 'template-lower',
+      label: 'Dzień 1',
+      exercises,
+    }))
+  })
+
   it('rejects active sessions without a sessionId', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
     const sessionWithoutId = structuredClone(validActiveSession('alice'))

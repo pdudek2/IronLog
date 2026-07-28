@@ -98,25 +98,12 @@ test('mobile workout actions adapt between inline content and the fixed viewport
   ))
 
   await page.mouse.wheel(0, 24)
-  await expect(navigation).toHaveAttribute('aria-hidden', 'true')
+  await expect(navigation).not.toHaveAttribute('aria-hidden', 'true')
   await expect.poll(() => actionClearanceDeltaFromCssTarget(actions)).toBeLessThanOrEqual(1)
-  const hiddenNavGeometry = await actions.evaluate((element) => {
-    const probe = document.createElement('div')
-    probe.style.position = 'fixed'
-    probe.style.paddingBottom = 'env(safe-area-inset-bottom, 0px)'
-    document.body.append(probe)
-    const safeArea = Number.parseFloat(window.getComputedStyle(probe).paddingBottom) || 0
-    probe.remove()
-
-    return {
-      clearance: window.innerHeight - element.getBoundingClientRect().bottom,
-      computedBottom: Number.parseFloat(window.getComputedStyle(element).bottom) || 0,
-      safeArea,
-    }
-  })
-  expect(visibleNavClearance).toBeGreaterThan(hiddenNavGeometry.clearance + 80)
-  expect(Math.abs(hiddenNavGeometry.clearance - hiddenNavGeometry.safeArea)).toBeLessThanOrEqual(1)
-  expect(Math.abs(hiddenNavGeometry.computedBottom - hiddenNavGeometry.safeArea)).toBeLessThanOrEqual(1)
+  const persistentNavClearance = await actions.evaluate((element) => (
+    window.innerHeight - element.getBoundingClientRect().bottom
+  ))
+  expect(Math.abs(visibleNavClearance - persistentNavClearance)).toBeLessThanOrEqual(1)
   expect(await countVisibleFocusableButtons(allButtons, 'Edytuj')).toBe(1)
   expect(await countVisibleFocusableButtons(allButtons, 'Usuń trening')).toBe(1)
 
@@ -129,7 +116,7 @@ test('mobile workout actions adapt between inline content and the fixed viewport
   await page.mouse.wheel(0, finalDistancePastTop)
   await expect(actions).toHaveAttribute('data-placement', 'fixed')
   await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-  await expect(navigation).toHaveAttribute('aria-hidden', 'true')
+  await expect(navigation).not.toHaveAttribute('aria-hidden', 'true')
 
   await expect.poll(async () => {
     const [contentBox, actionsBox] = await Promise.all([

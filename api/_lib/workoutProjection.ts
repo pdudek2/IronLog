@@ -1,5 +1,20 @@
 import { adminDb } from './firebaseAdmin.js'
-import type { Firestore } from 'firebase-admin/firestore'
+import type {
+  DocumentReference,
+  Firestore,
+  Transaction,
+} from 'firebase-admin/firestore'
+import { ApiError } from './errors.js'
+import {
+  INITIAL_PROJECTION_REVISION,
+  normalizeProjectionExerciseKeys,
+  parseProjectionFence,
+  projectionStateConflict,
+  projectionSuperseded,
+  workoutDeleted,
+  type ProjectionExerciseKey,
+  type ProjectionFence,
+} from './workoutProjectionFence.js'
 import {
   buildExerciseSessionDocumentId,
   normalizeWorkoutExercises,
@@ -83,6 +98,7 @@ export interface MaterializationReviewCheckpoints {
 
 export interface MaterializationReviewOptions {
   db?: Firestore
+  expectedRevision?: number
   checkpoints?: MaterializationReviewCheckpoints
 }
 
@@ -94,25 +110,183 @@ export async function materializeWorkoutForUser(
   const database = options.db ?? adminDb
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
   const workoutRef = database.collection('workouts').doc(workoutDocumentId)
-  const workoutSnap = await workoutRef.get()
-
-  if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
-
-  const workout = parseStoredWorkout(workoutSnap.data())
-  assertOwnership(userId, workout.userId)
-  assertFinishedWorkout(workout)
+  const tombstoneRef = database.collection('closedSessions').doc(workoutDocumentId)
+  const prepared = await prepareMaterialization(
+    database,
+    workoutRef,
+    tombstoneRef,
+    userId,
+    options.expectedRevision,
+  )
 
   const existingSessions = await listExerciseSessionsForWorkout(database, workoutDocumentId)
-  const userExerciseMetadata = await loadUserExerciseMetadata(database, workout.userId, workout.exercises)
-  const nextSessions = buildExerciseSessions(workoutDocumentId, workout, userExerciseMetadata)
-  const affectedExercises = collectExerciseKeys(existingSessions, nextSessions)
+  const userExerciseMetadata = await loadUserExerciseMetadata(
+    database,
+    prepared.workout.userId,
+    prepared.workout.exercises,
+  )
+  const nextSessions = buildExerciseSessions(
+    workoutDocumentId,
+    prepared.workout,
+    userExerciseMetadata,
+  )
+  const affectedExercises = normalizeProjectionExerciseKeys(
+    prepared.fence.projectionExerciseKeys,
+    collectExerciseKeys(existingSessions),
+    collectExerciseKeys(nextSessions),
+  )
 
+  await stageProjectionKeys(
+    database,
+    tombstoneRef,
+    userId,
+    prepared.fence.projectionRevision,
+    affectedExercises,
+  )
   await options.checkpoints?.beforeExerciseSessions?.()
-  await replaceExerciseSessions(database, existingSessions, nextSessions)
+  await replaceExerciseSessions(
+    database,
+    tombstoneRef,
+    prepared.fence.projectionRevision,
+    existingSessions,
+    nextSessions,
+  )
   await options.checkpoints?.afterExerciseSessions?.()
-  await recomputeRecords(database, workout.userId, affectedExercises)
+  await recomputeRecords(
+    database,
+    prepared.workout.userId,
+    affectedExercises,
+    {
+      tombstoneRef,
+      expectedRevision: prepared.fence.projectionRevision,
+    },
+  )
   await options.checkpoints?.afterRecords?.()
-  await workoutRef.update({ materialized: true })
+  await runGuardedProjectionTransaction(
+    database,
+    tombstoneRef,
+    prepared.fence.projectionRevision,
+    'pending',
+    (transaction) => {
+      transaction.update(workoutRef, { materialized: true })
+      transaction.update(tombstoneRef, {
+        projectionState: 'ready',
+        projectionExerciseKeys: normalizeProjectionExerciseKeys(
+          collectExerciseKeys(nextSessions),
+        ),
+      })
+    },
+  )
+}
+
+async function prepareMaterialization(
+  database: Firestore,
+  workoutRef: DocumentReference,
+  tombstoneRef: DocumentReference,
+  userId: string,
+  expectedRevision?: number,
+): Promise<{ workout: StoredWorkout; fence: ProjectionFence }> {
+  return database.runTransaction(async (transaction) => {
+    const [workoutSnap, tombstoneSnap] = await transaction.getAll(workoutRef, tombstoneRef)
+
+    if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
+
+    const workout = parseStoredWorkout(workoutSnap.data())
+    assertOwnership(userId, workout.userId)
+    assertFinishedWorkout(workout)
+
+    const initialFence: ProjectionFence = {
+      projectionState: workout.materialized ? 'ready' : 'pending',
+      projectionRevision: INITIAL_PROJECTION_REVISION,
+      projectionExerciseKeys: normalizeProjectionExerciseKeys(workout.exercises),
+    }
+    let fence = initialFence
+
+    if (tombstoneSnap.exists) {
+      const tombstone = requireOwnedFinishedTombstone(
+        tombstoneSnap.data(),
+        userId,
+        workoutRef.id,
+      )
+      const storedFence = parseProjectionFence(tombstone)
+      fence = storedFence ?? initialFence
+
+      if (!storedFence) {
+        transaction.update(tombstoneRef, { ...initialFence })
+      }
+    } else {
+      transaction.create(tombstoneRef, {
+        userId,
+        sessionId: workoutRef.id,
+        outcome: 'finished',
+        workoutId: workoutRef.id,
+        closedAt: workout.finishedAt,
+        ...initialFence,
+      })
+    }
+
+    if (fence.projectionState === 'deleted') throw workoutDeleted()
+    if (expectedRevision !== undefined && fence.projectionRevision !== expectedRevision) {
+      throw projectionSuperseded()
+    }
+
+    return { workout, fence }
+  })
+}
+
+async function stageProjectionKeys(
+  database: Firestore,
+  tombstoneRef: DocumentReference,
+  userId: string,
+  expectedRevision: number,
+  projectionExerciseKeys: ProjectionExerciseKey[],
+): Promise<void> {
+  await database.runTransaction(async (transaction) => {
+    const tombstoneSnap = await transaction.get(tombstoneRef)
+    if (!tombstoneSnap.exists) throw projectionStateConflict()
+
+    const tombstone = requireOwnedFinishedTombstone(
+      tombstoneSnap.data(),
+      userId,
+      tombstoneRef.id,
+    )
+    const fence = parseProjectionFence(tombstone)
+    if (!fence) throw projectionStateConflict()
+    if (fence.projectionState === 'deleted') throw workoutDeleted()
+    if (fence.projectionRevision !== expectedRevision) throw projectionSuperseded()
+    if (fence.projectionState !== 'pending' && fence.projectionState !== 'ready') {
+      throw projectionStateConflict()
+    }
+
+    transaction.update(tombstoneRef, {
+      projectionState: 'pending',
+      projectionExerciseKeys: normalizeProjectionExerciseKeys(projectionExerciseKeys),
+    })
+  })
+}
+
+async function runGuardedProjectionTransaction<T>(
+  database: Firestore,
+  tombstoneRef: DocumentReference,
+  expectedRevision: number,
+  allowedState: 'pending' | 'deleted',
+  apply: (transaction: Transaction) => Promise<T> | T,
+): Promise<T> {
+  return database.runTransaction(async (transaction) => {
+    const tombstoneSnap = await transaction.get(tombstoneRef)
+    if (!tombstoneSnap.exists) throw projectionStateConflict()
+
+    const tombstone = requireFinishedTombstone(tombstoneSnap.data(), tombstoneRef.id)
+    const fence = parseProjectionFence(tombstone)
+    if (!fence) throw projectionStateConflict()
+    if (allowedState === 'pending' && fence.projectionState === 'deleted') {
+      throw workoutDeleted()
+    }
+    if (fence.projectionRevision !== expectedRevision) throw projectionSuperseded()
+    if (fence.projectionState !== allowedState) throw projectionStateConflict()
+
+    return apply(transaction)
+  })
 }
 
 export async function updateFinishedWorkoutForUser(
@@ -181,7 +355,9 @@ export async function deleteFinishedWorkoutForUser(userId: string, workoutId: st
 
 function assertOwnership(currentUserId: string, resourceUserId: string): void {
   if (currentUserId !== resourceUserId) {
-    throw new Error('Brak dostępu do tego treningu.')
+    throw new ApiError(403, 'Brak dostępu do tego treningu.', {
+      code: 'resource_owner_mismatch',
+    })
   }
 }
 
@@ -240,6 +416,37 @@ function asRecord(value: unknown): Record<string, unknown> {
     throw new Error('Niepoprawny payload treningu.')
   }
   return value as Record<string, unknown>
+}
+
+function requireOwnedFinishedTombstone(
+  raw: unknown,
+  userId: string,
+  workoutId: string,
+): Record<string, unknown> {
+  const tombstone = requireFinishedTombstone(raw, workoutId)
+  assertOwnership(userId, asNonEmptyString(tombstone.userId, 'userId'))
+  return tombstone
+}
+
+function requireFinishedTombstone(
+  raw: unknown,
+  workoutId: string,
+): Record<string, unknown> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    throw projectionStateConflict()
+  }
+
+  const tombstone = raw as Record<string, unknown>
+  if (
+    typeof tombstone.userId !== 'string'
+    || !tombstone.userId.trim()
+    || tombstone.sessionId !== workoutId
+    || tombstone.outcome !== 'finished'
+    || tombstone.workoutId !== workoutId
+  ) {
+    throw projectionStateConflict()
+  }
+  return tombstone
 }
 
 function asNonEmptyString(value: unknown, field: string): string {
@@ -359,39 +566,38 @@ async function listExerciseSessionsForWorkout(
 
 async function replaceExerciseSessions(
   database: Firestore,
+  tombstoneRef: DocumentReference,
+  expectedRevision: number,
   existingSessions: ExerciseSessionDoc[],
   nextSessions: ExerciseSessionDoc[]
 ): Promise<void> {
-  let batch = database.batch()
-  let writeCount = 0
   const nextIds = new Set(nextSessions.map((session) => session.id))
+  const operations: Array<(transaction: Transaction) => void> = []
 
   for (const session of nextSessions) {
-    batch.set(database.collection('exerciseSessions').doc(session.id), session)
-    writeCount += 1
-
-    if (writeCount >= MAX_BATCH_WRITES) {
-      await batch.commit()
-      batch = database.batch()
-      writeCount = 0
-    }
+    const sessionRef = database.collection('exerciseSessions').doc(session.id)
+    operations.push((transaction) => transaction.set(sessionRef, session))
   }
 
   for (const session of existingSessions) {
     if (!nextIds.has(session.id)) {
-      batch.delete(database.collection('exerciseSessions').doc(session.id))
-      writeCount += 1
-
-      if (writeCount >= MAX_BATCH_WRITES) {
-        await batch.commit()
-        batch = database.batch()
-        writeCount = 0
-      }
+      const sessionRef = database.collection('exerciseSessions').doc(session.id)
+      operations.push((transaction) => transaction.delete(sessionRef))
     }
   }
 
-  if (writeCount > 0) {
-    await batch.commit()
+  const chunkSize = MAX_BATCH_WRITES - 1
+  for (let start = 0; start < operations.length; start += chunkSize) {
+    const chunk = operations.slice(start, start + chunkSize)
+    await runGuardedProjectionTransaction(
+      database,
+      tombstoneRef,
+      expectedRevision,
+      'pending',
+      (transaction) => {
+        for (const apply of chunk) apply(transaction)
+      },
+    )
   }
 }
 
@@ -417,14 +623,27 @@ async function recomputeRecords(
   database: Firestore,
   userId: string,
   exercises: ExerciseKey[],
+  guard?: {
+    tombstoneRef: DocumentReference
+    expectedRevision: number
+  },
 ): Promise<void> {
-  await Promise.all(exercises.map((exercise) => recomputeRecordForExercise(database, userId, exercise)))
+  await Promise.all(exercises.map((exercise) => recomputeRecordForExercise(
+    database,
+    userId,
+    exercise,
+    guard,
+  )))
 }
 
 async function recomputeRecordForExercise(
   database: Firestore,
   userId: string,
   exercise: ExerciseKey,
+  guard?: {
+    tombstoneRef: DocumentReference
+    expectedRevision: number
+  },
 ): Promise<void> {
   const sessionsSnap = await database.collection('exerciseSessions')
     .where('userId', '==', userId)
@@ -435,7 +654,17 @@ async function recomputeRecordForExercise(
   const recordRef = database.collection('records').doc(buildRecordId(userId, exercise))
 
   if (sessionsSnap.empty) {
-    await recordRef.delete()
+    if (guard) {
+      await runGuardedProjectionTransaction(
+        database,
+        guard.tombstoneRef,
+        guard.expectedRevision,
+        'pending',
+        (transaction) => transaction.delete(recordRef),
+      )
+    } else {
+      await recordRef.delete()
+    }
     return
   }
 
@@ -469,7 +698,17 @@ async function recomputeRecordForExercise(
     updatedAt: Date.now(),
   }
 
-  await recordRef.set(payload)
+  if (guard) {
+    await runGuardedProjectionTransaction(
+      database,
+      guard.tombstoneRef,
+      guard.expectedRevision,
+      'pending',
+      (transaction) => transaction.set(recordRef, payload),
+    )
+  } else {
+    await recordRef.set(payload)
+  }
 }
 
 function buildRecordId(userId: string, exercise: ExerciseKey): string {

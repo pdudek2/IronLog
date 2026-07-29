@@ -54,6 +54,7 @@ afterEach(async () => {
     db.collection('workouts').get(),
     db.collection('exerciseSessions').get(),
     db.collection('records').get(),
+    db.collection('closedSessions').get(),
   ])
   expect(snapshots.every((snapshot) => snapshot.empty)).toBe(true)
 })

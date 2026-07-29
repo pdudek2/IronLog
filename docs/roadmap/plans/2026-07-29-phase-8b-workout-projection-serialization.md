@@ -21,9 +21,10 @@ Implementację dostarczyły commity:
 - `32b9055 fix: narrow projection fence revision`;
 - `1efb93d fix: serialize finished workout updates`;
 - `4ed412d fix: make workout deletion terminal`;
-- `839b769 fix: serialize shared workout records`.
+- `839b769 fix: serialize shared workout records`;
+- `ca28338 fix: converge concurrent workout materialization`.
 
-Gate'y wykonane 2026-07-29:
+Pierwotne gate'y closeoutu wykonane 2026-07-29:
 
 - targeted unit: 2 pliki, 24/24 testy;
 - `test:integration:workout`: 3 pliki, 37/37 testów;
@@ -33,16 +34,37 @@ Gate'y wykonane 2026-07-29:
 - lint, build i `git diff --check`: kod wyjścia `0`; build przetworzył 878
   modułów.
 
-Focused review: brak znalezisk P1/P2. Potwierdzono ochronę każdej mutacji
-`exerciseSessions`, `records` i `materialized`, własność i zachowanie
-`discarded`, pełną sumę kluczy po częściowym update, statusy
-`projection_superseded` i `workout_deleted`, brak zmian UI/kolekcji/indeksów/
-zależności oraz zakaz rollbacku do starego kodu po zapisaniu `deleted`.
+Finalny whole-branch review 2026-07-30 wykrył jeden błąd idempotencji
+odpowiedzi: dwie materializacje tej samej rewizji mogły zakończyć poprawną
+projekcję, ale przegrywająca operacja zwracała `projection_state_conflict`.
+Commit `ca28338` dodał deterministyczny RED/GREEN z pauzą `afterRecords` i
+atomowe uznanie stanu `ready` za sukces wyłącznie po sprawdzeniu workoutu,
+właściciela oraz `materialized: true`.
+
+Po poprawce ponowiono gate'y:
+
+- focused serialization integration: 1 plik, 18/18 testów;
+- `test:integration:workout`: 3 pliki, 38/38 testów;
+- lint, build i `git diff --check`: kod wyjścia `0`; build przetworzył 878
+  modułów.
+
+Finalny review potwierdził ochronę każdej mutacji `exerciseSessions`,
+`records` i `materialized`, własność i zachowanie `discarded`, pełną sumę
+kluczy po częściowym update, statusy `projection_superseded`,
+`projection_state_conflict` i `workout_deleted`, odpowiedzi idempotentne dla
+tej samej rewizji, brak zmian UI/kolekcji/indeksów/zależności oraz zakaz
+rollbacku do starego kodu po zapisaniu `deleted`.
 
 **Zatwierdzone odchylenie planu:** query i agregacja sesji współdzielonego
 rekordu zostały przeniesione do guarded transaction razem z zapisem albo
 usunięciem rekordu. Zmiana zamyka wyścig ujawniony w review i jest pokryta
 deterministyczną integracją.
+
+**Korekta finalnego review:** końcowa transakcja materializacji dopuszcza
+`ready` tej samej rewizji jako idempotentny sukces tylko wtedy, gdy workout
+nadal istnieje, należy do użytkownika i ma `materialized: true`. Stany
+`deleted`, superseded, niespójne i cudza własność zachowują wcześniejsze
+błędy.
 
 Lineage closeoutu: aktywna roadmapa korekcyjna → Faza 8B `DONE` → pozostałe
 Fazy 8C, 8D i 9. Roadmapa pozostaje aktywna, a spec i plan zostają zachowane

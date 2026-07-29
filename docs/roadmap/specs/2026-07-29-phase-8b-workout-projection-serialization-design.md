@@ -253,11 +253,25 @@ Faza 8B została zamknięta lokalnie 2026-07-29 po zielonych gate'ach:
 - lint, build i `git diff --check`: kod wyjścia `0`; build przetworzył 878
   modułów.
 
-Focused review nie wykrył znalezisk P1/P2. Potwierdzono wszystkie ścieżki
-zapisu `exerciseSessions`, `records` i `materialized`, ochronę właściciela i
-tombstone'a `discarded`, pełną sumę kluczy, stabilne statusy
-`projection_superseded` i `workout_deleted` oraz brak nowej kolekcji, indeksu,
-zależności i zmian UI.
+Finalny whole-branch review 2026-07-30 wykrył i zamknął błąd idempotencji
+odpowiedzi dla dwóch materializacji tej samej rewizji. Deterministyczny test
+zatrzymuje pierwszą finalizację na `afterRecords`, pozwala drugiej zakończyć
+projekcję, a następnie wymaga statusu `materialized` od obu operacji i jednej
+logicznej projekcji. Po poprawce focused integration ma 18/18 testów, pełna
+integracja workoutu 3 pliki i 38/38 testów, a lint, build oraz
+`git diff --check` kończą się kodem `0`; build przetwarza 878 modułów.
+
+Końcowa transakcja może uznać `ready` tej samej rewizji za idempotentny sukces
+wyłącznie po atomowym potwierdzeniu, że workout istnieje, należy do użytkownika
+i ma `materialized: true`. `deleted`, starsza rewizja, niespójny fence,
+brakujący lub niematerializowany workout oraz cudza własność zachowują
+dotychczasowe błędy.
+
+Finalny review potwierdził wszystkie ścieżki zapisu `exerciseSessions`,
+`records` i `materialized`, ochronę właściciela i tombstone'a `discarded`,
+pełną sumę kluczy, stabilne statusy `projection_superseded`,
+`projection_state_conflict` i `workout_deleted` oraz brak nowej kolekcji,
+indeksu, zależności i zmian UI.
 
 **Zatwierdzone odchylenie planu:** query i agregacja sesji dla współdzielonego
 rekordu zostały przeniesione do tej samej guarded transaction co zapis albo

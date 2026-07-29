@@ -2,7 +2,7 @@
 
 Status dokumentu: **APPROVED — Faza 8B zakończona; aktywne Fazy 8C, 8D i 9**
 Źródło: Agent Sanity Review z 2026-07-29
-Ostatnia aktualizacja: 2026-07-29
+Ostatnia aktualizacja: 2026-07-30
 
 Zakończony program A–7, jego dowody release oraz pełna historyczna macierz audytów znajdują się w [`archive/2026-07-29-full-roadmap-snapshot.md`](archive/2026-07-29-full-roadmap-snapshot.md). Nie należy czytać archiwum przy zwykłym planowaniu bieżących prac.
 
@@ -62,9 +62,9 @@ rozpoczynana dopiero po ich zakończeniu.
 
 ## 4. Faza 8B — Serializacja projekcji workoutu
 
-**Status: DONE.** Implementacja, focused review i gate'y są zakończone. Dowody
-oraz zatwierdzone odchylenie dotyczące transakcyjnego przeliczania współdzielonych
-rekordów znajdują się w
+**Status: DONE.** Implementacja, finalny whole-branch review, jego poprawka
+idempotentnej odpowiedzi dla równoległej materializacji tej samej rewizji oraz
+gate'y są zakończone. Dowody i zatwierdzone korekty znajdują się w
 [`specs/2026-07-29-phase-8b-workout-projection-serialization-design.md`](specs/2026-07-29-phase-8b-workout-projection-serialization-design.md)
 i
 [`plans/2026-07-29-phase-8b-workout-projection-serialization.md`](plans/2026-07-29-phase-8b-workout-projection-serialization.md).

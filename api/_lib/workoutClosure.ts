@@ -4,6 +4,11 @@ import { ApiError } from './errors.js'
 import { adminDb } from './firebaseAdmin.js'
 import { materializeWorkoutForUser } from './workoutProjection.js'
 import {
+  INITIAL_PROJECTION_REVISION,
+  parseProjectionFence,
+  projectionExerciseKeysFromWorkout,
+} from './workoutProjectionFence.js'
+import {
   validateFirestoreDocumentId,
   type FinalizeWorkoutInput,
 } from './workoutValidation.js'
@@ -14,7 +19,11 @@ export type { FinalizeWorkoutInput } from './workoutValidation.js'
 export type FinalizeWorkoutStatus = 'materialized' | 'projection_pending'
 export type ClosedSessionOutcome = 'finished' | 'discarded'
 
-type MaterializeWorkout = (userId: string, workoutId: string) => Promise<void>
+type MaterializeWorkout = (
+  userId: string,
+  workoutId: string,
+  expectedRevision?: number,
+) => Promise<void>
 
 export interface WorkoutClosureOptions {
   db?: Firestore
@@ -24,6 +33,7 @@ export interface WorkoutClosureOptions {
 
 interface ClosureTransactionResult {
   materialized: boolean
+  projectionRevision?: number
 }
 
 export async function finalizeWorkoutForUser(
@@ -61,10 +71,13 @@ export async function finalizeWorkoutForUser(
       outcome: 'finished' satisfies ClosedSessionOutcome,
       workoutId,
       closedAt: (options.now ?? Date.now)(),
+      projectionState: 'pending',
+      projectionRevision: INITIAL_PROJECTION_REVISION,
+      projectionExerciseKeys: projectionExerciseKeysFromWorkout(input.exercises),
     })
     transaction.delete(activeRef)
 
-    return { materialized: false }
+    return { materialized: false, projectionRevision: INITIAL_PROJECTION_REVISION }
   })
 
   if (transactionResult.materialized) {
@@ -72,10 +85,13 @@ export async function finalizeWorkoutForUser(
   }
 
   const materialize = options.materialize
-    ?? ((ownerId, id) => materializeWorkoutForUser(ownerId, id, { db: database }))
+    ?? ((ownerId, id, expectedRevision) => materializeWorkoutForUser(ownerId, id, {
+      db: database,
+      expectedRevision,
+    }))
 
   try {
-    await materialize(userId, workoutId)
+    await materialize(userId, workoutId, transactionResult.projectionRevision)
     return { workoutId, status: 'materialized' }
   } catch {
     return { workoutId, status: 'projection_pending' }
@@ -157,7 +173,10 @@ function validateExistingFinishedClosure(
     throw closureConflict()
   }
 
-  return { materialized: storedWorkout.materialized === true }
+  return {
+    materialized: storedWorkout.materialized === true,
+    projectionRevision: parseProjectionFence(storedTombstone)?.projectionRevision,
+  }
 }
 
 function validateExistingClosureRecord(

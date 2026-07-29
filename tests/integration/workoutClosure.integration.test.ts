@@ -136,7 +136,14 @@ describe('workout closure', () => {
       outcome: 'finished',
       workoutId: input.sessionId,
       closedAt: FINISHED_AT + 1,
+      projectionState: 'pending',
+      projectionRevision: 1,
+      projectionExerciseKeys: [{
+        exerciseSource: 'global',
+        exerciseId: 'bench-press',
+      }],
     })
+    expect(materialize).toHaveBeenCalledWith(USER_ID, input.sessionId, 1)
     expect(state.active.exists).toBe(false)
     expect(state.workouts.size).toBe(1)
   })

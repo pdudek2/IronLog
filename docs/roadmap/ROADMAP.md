@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa korekcyjna
 
-Status dokumentu: **APPROVED — projekt Fazy 8B zatwierdzony; plan wykonawczy oczekuje**
+Status dokumentu: **APPROVED — Faza 8B zaplanowana i gotowa do wykonania**
 Źródło: Agent Sanity Review z 2026-07-29
 Ostatnia aktualizacja: 2026-07-29
 
@@ -23,7 +23,7 @@ Ten plik zawiera wyłącznie aktywny zakres. Każda faza otrzymuje osobny plan p
 | Kolejność | Faza | Priorytet | Status | Rezultat |
 |---:|---|---|---|---|
 | 1 | 8A — Higiena release i wiarygodność E2E | P1 | DONE | Repo i bundle bez wrażliwych/roboczych artefaktów; E2E rozpoznaje aktualne ekrany |
-| 2 | 8B — Serializacja projekcji workoutu | P1 | DESIGN APPROVED | Usuwanie i materializacja nie mogą odtworzyć usuniętych danych |
+| 2 | 8B — Serializacja projekcji workoutu | P1 | PLANNED | Usuwanie i materializacja nie mogą odtworzyć usuniętych danych |
 | 3 | 8C — Integralność katalogu planów AI | P2 | DESIGN IN PROGRESS | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
 | 4 | 8D — Kontrakt repo i cleanup | P2 | READY | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
 | 5 | 9 — Korekcyjna bramka wydania | P1 | BLOCKED | Cały zakres ma dowody regresyjne przed merge/deployem |
@@ -34,7 +34,7 @@ Faza 8A ──┬──► Faza 8B ──┐
           └──► Faza 8D ──┘
 ```
 
-Faza 8A jest zakończona i zintegrowana. Projekt Fazy 8B jest zatwierdzony i oczekuje na szczegółowy plan wykonawczy. Fazy 8C i 8D mogą być później prowadzone niezależnie. Faza 9 zaczyna się dopiero po ich zakończeniu.
+Faza 8A jest zakończona i zintegrowana. Faza 8B ma zatwierdzony projekt oraz plan wykonawczy i jest gotowa do implementacji. Fazy 8C i 8D mogą być później prowadzone niezależnie. Faza 9 zaczyna się dopiero po ich zakończeniu.
 
 ## 3. Faza 8A — Higiena release i wiarygodność E2E
 
@@ -60,7 +60,7 @@ Faza 8A jest zakończona i zintegrowana. Projekt Fazy 8B jest zatwierdzony i ocz
 
 ## 4. Faza 8B — Serializacja projekcji workoutu
 
-**Status: DESIGN APPROVED.** Zatwierdzony kontrakt znajduje się w [`specs/2026-07-29-phase-8b-workout-projection-serialization-design.md`](specs/2026-07-29-phase-8b-workout-projection-serialization-design.md).
+**Status: PLANNED.** Zatwierdzony kontrakt znajduje się w [`specs/2026-07-29-phase-8b-workout-projection-serialization-design.md`](specs/2026-07-29-phase-8b-workout-projection-serialization-design.md), a plan wykonawczy w [`plans/2026-07-29-phase-8b-workout-projection-serialization.md`](plans/2026-07-29-phase-8b-workout-projection-serialization.md).
 
 **Cel:** równoległe usunięcie i materializacja jednego workoutu zawsze kończą się jednym autorytatywnym stanem.
 

@@ -1,6 +1,6 @@
 # Faza 8B — Serializacja projekcji workoutu
 
-**Status:** DESIGN APPROVED — oczekuje na plan wykonawczy
+**Status:** DESIGN APPROVED — plan wykonawczy gotowy
 
 **Data:** 2026-07-29
 
@@ -9,6 +9,8 @@
 **Route:** Large / Phased — zatwierdzony jest kontrakt Fazy 8B; plan obejmie wyłącznie tę fazę
 
 **Ryzyko:** Elevated — błąd może odtworzyć projekcje usuniętego treningu i zafałszować rekordy
+
+**Plan wykonawczy:** [`../plans/2026-07-29-phase-8b-workout-projection-serialization.md`](../plans/2026-07-29-phase-8b-workout-projection-serialization.md)
 
 ## 1. Problem
 

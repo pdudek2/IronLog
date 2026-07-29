@@ -49,6 +49,7 @@ function DialogHarness() {
 describe('shared accessibility contracts', () => {
   beforeEach(() => {
     useWorkoutStore.getState().clearWorkout()
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 0 })
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
       callback(0)
       return 1
@@ -157,7 +158,7 @@ describe('shared accessibility contracts', () => {
     expect(workoutActions[0]).toHaveTextContent('Wznów trening')
   })
 
-  it('keeps primary mobile navigation available while the page scrolls', async () => {
+  it('hides mobile navigation on deliberate downward scroll and restores it on upward scroll', async () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <MobileInteractionProvider>
@@ -167,9 +168,17 @@ describe('shared accessibility contracts', () => {
     )
 
     const nav = screen.getByRole('navigation', { name: 'Nawigacja dolna' })
-    Object.defineProperty(window, 'scrollY', { configurable: true, value: 600 })
-    fireEvent.scroll(window)
 
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 80 })
+    fireEvent.scroll(window)
+    await waitFor(() => expect(nav).toHaveAttribute('aria-hidden', 'true'))
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 70 })
+    fireEvent.scroll(window)
+    expect(nav).toHaveAttribute('aria-hidden', 'true')
+
+    Object.defineProperty(window, 'scrollY', { configurable: true, value: 30 })
+    fireEvent.scroll(window)
     await waitFor(() => {
       expect(nav).not.toHaveAttribute('aria-hidden', 'true')
       expect(nav).not.toHaveAttribute('inert')

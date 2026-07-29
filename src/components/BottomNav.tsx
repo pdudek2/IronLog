@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Dumbbell, History, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
@@ -7,6 +8,8 @@ import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { useWorkoutStore } from '../store/workoutStore'
 import { useMobileInteraction } from './MobileInteractionProvider'
+
+const SCROLL_DIRECTION_THRESHOLD = 24
 
 interface NavBtnProps {
   icon: ReactNode
@@ -46,16 +49,77 @@ export default function BottomNav() {
   const navigate = useNavigate()
   const { inputFocused } = useMobileInteraction()
   const active = useWorkoutStore((state) => state.active)
+  const [scrollHidden, setScrollHidden] = useState(false)
+  const navRef = useRef<HTMLElement>(null)
 
   const path = location.pathname
   const workoutActive = path.startsWith('/workout/new')
   const hasActiveWork = hasActiveSessionWork(active)
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
-  const navHidden = inputFocused
+  useEffect(() => {
+    if (inputFocused) return
+
+    let frameId = 0
+    let pending = false
+    let lastScrollY = Math.max(0, window.scrollY)
+    let directionStartY = lastScrollY
+    let direction = 0
+
+    const evaluate = () => {
+      pending = false
+      const currentScrollY = Math.max(0, window.scrollY)
+
+      if (currentScrollY < SCROLL_DIRECTION_THRESHOLD) {
+        setScrollHidden(false)
+        lastScrollY = currentScrollY
+        directionStartY = currentScrollY
+        direction = 0
+        return
+      }
+
+      const nextDirection = Math.sign(currentScrollY - lastScrollY)
+      if (nextDirection === 0) return
+
+      if (nextDirection !== direction) {
+        direction = nextDirection
+        directionStartY = lastScrollY
+      }
+
+      if (Math.abs(currentScrollY - directionStartY) >= SCROLL_DIRECTION_THRESHOLD) {
+        setScrollHidden(direction > 0)
+        directionStartY = currentScrollY
+      }
+
+      lastScrollY = currentScrollY
+    }
+
+    const onScroll = () => {
+      if (pending) return
+      pending = true
+      frameId = window.requestAnimationFrame(evaluate)
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.cancelAnimationFrame(frameId)
+    }
+  }, [inputFocused])
+
+  const navHidden = inputFocused || scrollHidden
+
+  useEffect(() => {
+    if (!navHidden) return
+
+    const activeElement = document.activeElement
+    if (!(activeElement instanceof HTMLElement) || !navRef.current?.contains(activeElement)) return
+    document.querySelector<HTMLElement>('main.page-shell')?.focus({ preventScroll: true })
+  }, [navHidden])
 
   return (
     <nav
+      ref={navRef}
       aria-label="Nawigacja dolna"
       aria-hidden={navHidden ? true : undefined}
       inert={navHidden}

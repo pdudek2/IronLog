@@ -88,8 +88,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => void handlePasswordReset()}
               disabled={loading || resetLoading}
-              className="text-xs font-semibold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ color: 'var(--accent-text)' }}
+              className="auth-password-reset text-xs font-semibold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {resetLoading ? 'Wysyłam...' : 'Nie pamiętasz hasła?'}
             </button>

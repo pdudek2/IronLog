@@ -194,8 +194,6 @@ export default function ChatPage() {
 
   const previewDay = planPreview?.days[selectedPreviewDay] ?? null
   const totalPlanExercises = planPreview?.days.reduce((sum, day) => sum + day.exercises.length, 0) ?? 0
-  const assistantReplies = messages.filter((message) => message.role === 'assistant').length
-  const promptCount = messages.filter((message) => message.role === 'user').length
   const sending = generationState.status === 'streaming'
 
   function cancelActiveGeneration(reason: ChatCancelReason, updateUi = true) {
@@ -489,29 +487,14 @@ export default function ChatPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <p className="coach-kicker">AI Coach</p>
-          <h1>Coach.</h1>
-          <p>Rozmowa, decyzje treningowe i generator planu w jednym miejscu.</p>
+          <h1>Coach</h1>
+          <p>Zapytaj o ostatnią sesję albo ułóż plan.</p>
         </motion.div>
 
         <div className="coach-header-panel" aria-label="Status AI Coacha">
           <div className="coach-status-line">
             <span data-ready={configured} />
             <strong>{configured ? 'Klucz gotowy' : 'Klucz wymagany'}</strong>
-          </div>
-          <div className="coach-header-stats">
-            <span>
-              <strong>{promptCount}</strong>
-              pyt.
-            </span>
-            <span>
-              <strong>{assistantReplies}</strong>
-              odp.
-            </span>
-            <span>
-              <strong>{activeTab === 'chat' ? 'Chat' : 'Plan'}</strong>
-              tryb
-            </span>
           </div>
         </div>
       </section>
@@ -522,12 +505,12 @@ export default function ChatPage() {
               {
                 key: 'chat' as const,
                 title: 'Rozmowa',
-                desc: 'Pytania, analiza, decyzja na dziś.',
+                desc: 'Omów ostatnią sesję albo kolejny trening.',
               },
               {
                 key: 'plan' as const,
                 title: 'Plan',
-                desc: 'Brief, podgląd, zapis szablonu.',
+                desc: 'Ułóż plan i zapisz go w aplikacji.',
               },
             ].map((tab) => {
               const active = activeTab === tab.key

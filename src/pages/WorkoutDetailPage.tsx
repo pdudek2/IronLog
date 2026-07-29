@@ -415,7 +415,7 @@ export default function WorkoutDetailPage() {
           </p>
 
           <div>
-            <h1 className="hero-editorial-name">{heroLabel}.</h1>
+            <h1 className="hero-editorial-name">{heroLabel}</h1>
           </div>
 
           <p className="hero-editorial-sub">{heroInsight}</p>

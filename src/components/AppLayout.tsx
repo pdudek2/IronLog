@@ -75,7 +75,7 @@ export default function AppLayout() {
           </div>
         </div>
       </main>
-      <BottomNav />
+      <BottomNav key={location.pathname} />
     </MobileInteractionProvider>
   )
 }

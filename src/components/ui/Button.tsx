@@ -24,6 +24,8 @@ export default function Button({
   return (
     <button
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
+      data-loading={loading || undefined}
       className={`ui-button ${variantClass[variant]} ${className}`}
       style={style}
       {...props}

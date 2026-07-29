@@ -7,7 +7,6 @@ import { getProfile, updateProfile, type PrimaryGoal, type Units } from '../lib/
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { Button, Card, Input, LoadingState } from '../components/ui'
-import { polishPlural } from '../lib/polishPlural'
 
 const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
   { value: 'strength',    label: 'Siła',           desc: 'Maksymalne ciężary, niskie powtórzenia' },
@@ -146,36 +145,9 @@ export default function ProfilePage() {
           <p className="hero-editorial-date">Ustawienia · konto</p>
 
           <div>
-            <h1 className="hero-editorial-name">Twój <br />profil.</h1>
+            <h1 className="hero-editorial-name">Twój profil</h1>
           </div>
 
-          <p className="hero-editorial-sub">
-            Cel tygodnia, jednostki i podstawowy kontekst treningu.
-          </p>
-
-          <div
-            className="mt-3 grid grid-cols-3 gap-4 border-t pt-4 sm:mt-4 sm:flex sm:flex-wrap sm:gap-x-10 sm:gap-y-5 sm:pt-6"
-            style={{ borderColor: 'var(--border)' }}
-          >
-            <div className="flex flex-col gap-1 min-w-0">
-              <span className="stat-meta">Użytkownik</span>
-              <span className="text-xl font-bold text-white leading-none sm:text-2xl">
-                {profile?.displayName ?? '—'}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1 min-w-0">
-              <span className="stat-meta">Cel tyg.</span>
-              <span className="text-xl font-bold tabular-nums text-white leading-none sm:text-2xl">
-                {weeklyGoal} <span className="text-base" style={{ color: 'var(--muted)' }}>{polishPlural(weeklyGoal, 'sesja', 'sesje', 'sesji')}</span>
-              </span>
-            </div>
-            <div className="flex flex-col gap-1 min-w-0">
-              <span className="stat-meta">Jednostki</span>
-              <span className="text-xl font-bold text-white leading-none uppercase sm:text-2xl">
-                {units}
-              </span>
-            </div>
-          </div>
         </motion.div>
       </section>
 

@@ -474,6 +474,17 @@ export default function DashboardPage() {
       : { status: 'loading' }
   const templates = templatesState.status === 'success' ? templatesState.data : []
   const recentTemplates = templates.slice(0, 3)
+  const quickTemplate = recentTemplates[0] ?? null
+  const quickTemplateRequestKey = quickTemplate
+    ? `dashboard:${quickTemplate.id}:quick`
+    : null
+  const quickTemplateLaunchOperation = quickTemplateRequestKey
+    && launchOperation?.target.requestKey === quickTemplateRequestKey
+    ? launchOperation
+    : null
+  const quickTemplateLaunchErrorId = quickTemplate
+    ? `dashboard-quick-template-launch-error-${quickTemplate.id}`
+    : undefined
 
   function handleRetryTemplates() {
     if (!user) return
@@ -591,25 +602,52 @@ export default function DashboardPage() {
             </h1>
             <p className="dashboard-home-copyline">{supportLine}</p>
 
-            <div className="dashboard-home-actions">
-              <motion.button
-                type="button"
-                onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
-                disabled={openingWorkout}
-                className="hero-editorial-cta"
-                whileTap={{ scale: 0.97 }}
-              >
-                {hasActiveWork ? <Play size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
-                {openingWorkout
-                  ? (hasActiveWork ? 'Otwieram sesję…' : 'Otwieram trening…')
-                  : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
-              </motion.button>
-            </div>
+            <div className="dashboard-home-action-stack">
+              <div className="dashboard-home-actions">
+                <motion.button
+                  type="button"
+                  onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                  disabled={openingWorkout}
+                  className="hero-editorial-cta"
+                  whileTap={{ scale: 0.97 }}
+                >
+                  {hasActiveWork ? <Play size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
+                  {openingWorkout
+                    ? (hasActiveWork ? 'Otwieram sesję…' : 'Otwieram trening…')
+                    : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
+                </motion.button>
 
-            <div className="dashboard-home-rhythm" aria-hidden="true">
-              <span />
-              <span />
-              <span />
+                {quickTemplate && quickTemplateRequestKey && (
+                  <motion.button
+                    type="button"
+                    onClick={() => { void requestTemplateLaunch(quickTemplate, 0, quickTemplateRequestKey) }}
+                    disabled={launchingTemplateId !== null}
+                    aria-busy={quickTemplateLaunchOperation?.status === 'pending' ? 'true' : undefined}
+                    aria-describedby={quickTemplateLaunchOperation?.status === 'error'
+                      ? quickTemplateLaunchErrorId
+                      : undefined}
+                    className="dashboard-quick-plan-button"
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <Play size={16} strokeWidth={2.3} />
+                    <span>
+                      <small>Szybki start z planu</small>
+                      <strong>{quickTemplate.name}</strong>
+                    </span>
+                  </motion.button>
+                )}
+              </div>
+
+              {quickTemplateLaunchOperation?.status === 'error' && quickTemplateLaunchErrorId && (
+                <ActionFeedback
+                  id={quickTemplateLaunchErrorId}
+                  status="error"
+                  message={quickTemplateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                  onRetry={() => { void retryTemplateLaunch() }}
+                  onDismiss={dismissTemplateLaunchError}
+                  className="dashboard-quick-plan-feedback"
+                />
+              )}
             </div>
           </motion.div>
 
@@ -646,7 +684,34 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="dashboard-week-board">
+                {weeklyWorkouts.length === 0 ? (
+                  <div className="dashboard-week-empty">
+                    <div className="dashboard-week-empty-summary">
+                      <div>
+                        <p className="stat-meta">Cel tygodnia</p>
+                        <p className="dashboard-week-empty-title">Zacznij pierwszy trening tygodnia</p>
+                        <p className="dashboard-week-empty-copy">
+                          {remainingWeeklySessions} {polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu.
+                        </p>
+                      </div>
+                      <strong>{weeklyDone}/{weeklyGoal}</strong>
+                    </div>
+
+                    <div className="dashboard-week-empty-days" aria-label="Dni bieżącego tygodnia">
+                      {weekDailyStats.map((day) => (
+                        <span key={day.label} data-today={day.isToday}>
+                          <strong>{day.label}</strong>
+                          <small>{day.date.getDate()}</small>
+                        </span>
+                      ))}
+                    </div>
+
+                    <p className="dashboard-week-empty-note">
+                      Statystyki pojawią się po pierwszej zapisanej sesji.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="dashboard-week-board">
                   <div className="dashboard-week-chart puls-rail">
                     <div className="dashboard-week-chart-head">
                       <div>
@@ -714,7 +779,8 @@ export default function DashboardPage() {
                       ))}
                     </div>
                   </div>
-                </div>
+                  </div>
+                )}
               </motion.div>
             </section>
 
@@ -923,8 +989,6 @@ export default function DashboardPage() {
                           aria-busy={isDeleting ? 'true' : undefined}
                           aria-describedby={workoutDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
                         >
-                          <div className="dashboard-history-accent" aria-hidden="true" />
-
                           <div className="dashboard-history-main">
                             <div className="dashboard-history-controls">
                               <button

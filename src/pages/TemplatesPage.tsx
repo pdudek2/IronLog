@@ -118,9 +118,7 @@ export default function TemplatesPage() {
     <>
       <section className="planner-header">
         <div>
-          <p className="planner-kicker">Plany</p>
-          <h1>Plany.</h1>
-          <p>Rozpiski, dni treningowe i szybki start sesji w jednym widoku.</p>
+          <h1>Plany</h1>
         </div>
 
         <div className="planner-header-actions">
@@ -182,24 +180,8 @@ export default function TemplatesPage() {
                 </div>
                 <p className="text-2xl font-semibold text-white">Nie masz jeszcze szablonów</p>
                 <p className="mt-3 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  Pierwszy szablon skróci wejście w sesję i pozwoli startować z gotową rozpiską.
+                  Zapisz plan, żeby nie układać treningu od zera.
                 </p>
-
-                <div className="mt-5 grid gap-2 sm:grid-cols-3">
-                  {[
-                    'Szybszy start dnia',
-                    'Stały układ serii',
-                    'Mniej klikania przed sesją',
-                  ].map((item) => (
-                    <div
-                      key={item}
-                      className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
-                      style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)', color: 'var(--muted)' }}
-                    >
-                      {item}
-                    </div>
-                  ))}
-                </div>
 
                 <motion.button
                   onClick={() => navigate('/templates/new')}
@@ -223,7 +205,7 @@ export default function TemplatesPage() {
                 </p>
                 <p className="text-lg font-semibold text-white">Upper / Lower · 4 dni</p>
                 <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  Szablon trzyma rytm tygodnia i przypisuje każdemu dniowi gotowy zestaw ćwiczeń.
+                  Każdy dzień ma własną listę ćwiczeń i serii.
                 </p>
                 <div className="mt-4 space-y-2">
                   {[

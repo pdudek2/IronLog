@@ -647,7 +647,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('Upper / Lower')).toBeInTheDocument()
+    expect(await screen.findAllByText('Upper / Lower')).toHaveLength(2)
     expect(screen.queryByText('Brak zapisanych szablonów')).not.toBeInTheDocument()
   })
 

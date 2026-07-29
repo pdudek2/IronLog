@@ -186,7 +186,7 @@ export default function ExerciseDetailPage() {
           </div>
 
           <div>
-            <h1 className="hero-editorial-name">{exercise?.name ?? id}.</h1>
+            <h1 className="hero-editorial-name">{exercise?.name ?? id}</h1>
           </div>
 
           {exercise?.muscles && exercise.muscles.length > 0 && (

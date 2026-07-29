@@ -202,7 +202,9 @@ export default function HistoryPage() {
         <div className="history-board-head">
           <div className="min-w-0">
             <p className="history-board-kicker">
-              Archiwum · {workouts.length} {polishPlural(workouts.length, 'trening', 'treningi', 'treningów')}
+              {loadError && workouts.length === 0
+                ? 'Archiwum'
+                : `Łącznie ${workouts.length} ${polishPlural(workouts.length, 'trening', 'treningi', 'treningów')}`}
             </p>
             <h1>Historia</h1>
             <p>
@@ -318,7 +320,7 @@ export default function HistoryPage() {
           <div className="surface-panel rounded-[var(--radius-xl)] p-10 text-center">
             <p className="text-lg font-semibold text-white">Nie udało się pobrać historii</p>
             <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              To wygląda na chwilowy problem z połączeniem albo odpowiedzią Firestore.
+              Nie udało się pobrać danych. Spróbuj ponownie.
             </p>
             <button
               type="button"
@@ -362,7 +364,6 @@ export default function HistoryPage() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(idx * 0.02, 0.2), duration: 0.25 }}
               >
-                <span className="history-workout-accent" aria-hidden="true" />
                 <div className="history-workout-main">
                   <div className="min-w-0">
                     <div className="history-workout-meta">

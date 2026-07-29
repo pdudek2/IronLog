@@ -315,6 +315,65 @@ test.describe('Active workout shell reduction', () => {
 
   })
 
+  test('mobile full rest timer keeps the final workout action above an opaque dock', async ({ page, cleanup }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
+
+    await page.setViewportSize({ width: 430, height: 932 })
+    await goToFreshWorkout(page)
+    await addExercise(page, 'Squat')
+    await addExercise(page, 'Bench Press')
+
+    const firstSetRow = page.locator('.workout-set-row').first()
+    await firstSetRow.locator('input').nth(0).fill('60')
+    await firstSetRow.locator('input').nth(1).fill('8')
+    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1' }).click()
+
+    const actionBar = page.locator('.workout-mobile-action-bar')
+    await expect(actionBar).toHaveAttribute('data-variant', 'full')
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
+    await expect.poll(() => actionBar.evaluate(
+      (element) => window.innerHeight - element.getBoundingClientRect().bottom,
+    )).toBeLessThanOrEqual(24)
+
+    const dockGeometry = await page.evaluate(() => {
+      const pageShell = document.querySelector<HTMLElement>('.page-shell')
+      const sessionGrid = document.querySelector<HTMLElement>('.workout-session-grid')
+      const finalAction = document.querySelector<HTMLElement>('.workout-mobile-inline-add')
+      const actionBar = document.querySelector<HTMLElement>('.workout-mobile-action-bar')
+      const restTimer = document.querySelector<HTMLElement>('.rest-timer-bar')
+      const navigation = document.querySelector<HTMLElement>('nav.bottom-nav')
+      const finalActionBox = finalAction?.getBoundingClientRect()
+      const actionBarBox = actionBar?.getBoundingClientRect()
+      const navigationBox = navigation?.getBoundingClientRect()
+      return {
+        actionBarBottom: actionBarBox?.bottom,
+        actionBarHeight: actionBarBox?.height,
+        finalActionBottom: finalActionBox?.bottom,
+        navigationHeight: navigationBox?.height,
+        pageShellBottomPadding: pageShell
+          ? Number.parseFloat(window.getComputedStyle(pageShell).paddingBottom)
+          : undefined,
+        restTimerBackground: restTimer
+          ? window.getComputedStyle(restTimer).backgroundColor
+          : undefined,
+        restTimerTop: actionBarBox?.top,
+        sessionGridBottomPadding: sessionGrid
+          ? Number.parseFloat(window.getComputedStyle(sessionGrid).paddingBottom)
+          : undefined,
+        viewportHeight: window.innerHeight,
+      }
+    })
+
+    expect(dockGeometry.restTimerBackground).toBe('rgb(11, 10, 12)')
+    expect(dockGeometry.viewportHeight - dockGeometry.actionBarBottom!).toBeLessThanOrEqual(24)
+    expect(dockGeometry.pageShellBottomPadding! + dockGeometry.sessionGridBottomPadding!).toBeGreaterThanOrEqual(
+      dockGeometry.actionBarHeight! + dockGeometry.navigationHeight! + 16,
+    )
+    expect(dockGeometry.finalActionBottom).toBeLessThanOrEqual(dockGeometry.restTimerTop! - 8)
+  })
+
   test('mobile workout keeps the compact shell and normal app navigation', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))

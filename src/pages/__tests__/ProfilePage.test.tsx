@@ -57,7 +57,7 @@ describe('ProfilePage analytics removal', () => {
   it('renders profile settings without analytics consent controls', () => {
     render(<ProfilePage />)
 
-    expect(screen.getByRole('heading', { name: 'Twój profil.' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Twój profil' })).toBeInTheDocument()
     expect(screen.queryByText('Akceptuję analitykę')).not.toBeInTheDocument()
     expect(screen.queryByText('Tylko niezbędne')).not.toBeInTheDocument()
     expect(screen.queryByText(/GA4|Contentsquare|Hotjar/i)).not.toBeInTheDocument()

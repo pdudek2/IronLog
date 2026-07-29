@@ -108,13 +108,13 @@ describe('WorkoutDetailPage delete action', () => {
 
     renderPage()
 
-    expect(screen.getByRole('heading', { name: 'Push day.' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     const mobileActions = screen.getByRole('group', { name: 'Akcje treningu' })
     fireEvent.click(within(mobileActions).getByRole('button', { name: 'Usuń trening' }))
     fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('Usuwanie treningu…')
-    expect(screen.getByRole('heading', { name: 'Push day.' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(mocks.deleteWorkout).toHaveBeenLastCalledWith('workout-1')
 
     firstDelete.reject(new Error('offline'))
@@ -126,7 +126,7 @@ describe('WorkoutDetailPage delete action', () => {
     expect(alert).toHaveTextContent('Nie udało się usunąć treningu.')
     expect(mobileActions).toContainElement(alert)
     expect(screen.getAllByText('Nie udało się usunąć treningu.')).toHaveLength(1)
-    expect(screen.getByRole('heading', { name: 'Push day.' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
@@ -157,7 +157,7 @@ describe('WorkoutDetailPage delete action', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zamknij' }))
 
     expect(alert).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Push day.' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
     expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
   })

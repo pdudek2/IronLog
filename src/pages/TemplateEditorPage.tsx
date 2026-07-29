@@ -309,8 +309,7 @@ export default function TemplateEditorPage() {
       <section className="planner-header template-editor-header">
         <div>
           <p className="planner-kicker">Edytor planu</p>
-          <h1>{isEdit ? 'Plan.' : 'Nowy plan.'}</h1>
-          <p>Ułóż dni, ćwiczenia i domyślne serie tak, żeby start treningu był jednym kliknięciem.</p>
+          <h1>{isEdit ? 'Plan' : 'Nowy plan'}</h1>
         </div>
 
         <div className="planner-header-actions">

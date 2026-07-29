@@ -99,17 +99,19 @@ export const test = base.extend<IronLogFixtures>({
     }
     expect.soft(closeFailures, closeFailures.join('\n')).toEqual([])
   },
-  cleanup: async ({ page }, fixtureUse) => {
+  cleanup: async ({ page, diagnosticsController }, fixtureUse) => {
     const actions: CleanupAction[] = []
     await fixtureUse({ add: (name, action) => actions.push({ name, run: action }) })
 
-    const failures = await runCleanupActions(actions.map((action) => ({
-      ...action,
-      run: () => base.step(`cleanup: ${action.name}`, action.run),
-    })))
+    const failures = await diagnosticsController.runInIntentionalTeardown(
+      page.context(),
+      () => runCleanupActions(actions.map((action) => ({
+        ...action,
+        run: () => base.step(`cleanup: ${action.name}`, action.run),
+      }))),
+    )
 
     expect.soft(failures, failures.join('\n')).toEqual([])
-    void page
   },
 })
 

@@ -377,7 +377,6 @@ export default function ProgressPage() {
   const topMuscle = muscleData[0]
   const topMuscleName = topMuscle ? (MUSCLE_PL[topMuscle.muscle] ?? topMuscle.muscle) : 'Brak'
   const topRecord = records[0]
-  const rangeLabel = `ostatnie ${rangeDays} dni`
   const comparisonItems = [
     { label: 'Sesje', value: periodComparison.currentSessions, delta: periodComparison.sessionsDelta },
     { label: 'Wolumen', value: formatVolume(periodComparison.currentVolume), delta: periodComparison.volumeDelta },
@@ -418,8 +417,7 @@ export default function ProgressPage() {
             transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
           >
             <div>
-              <p className="progress-board-kicker">Postępy · {rangeLabel}</p>
-              <h1>Postępy.</h1>
+              <h1>Postępy</h1>
               <p>
                 {!hasSessionSnapshot
                   ? 'Dane treningowe są chwilowo niedostępne.'

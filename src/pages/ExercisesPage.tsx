@@ -579,9 +579,7 @@ export default function ExercisesPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <p className="planner-kicker">Ćwiczenia</p>
-          <h1>Biblioteka.</h1>
-          <p>Wyszukaj ruch, sprawdź sprzęt i otwórz szczegóły bez przekopywania listy.</p>
+          <h1>Biblioteka</h1>
         </motion.div>
 
         <div className="planner-header-actions">
@@ -600,7 +598,7 @@ export default function ExercisesPage() {
             </span>
             <span data-active={hasActiveFilters}>
               <strong><NumberFlow value={visibleCount} /></strong>
-              wyniki
+              widoczne
             </span>
           </div>
 

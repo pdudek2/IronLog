@@ -111,6 +111,18 @@ export interface WorkoutMutationReviewOptions {
   ) => Promise<void>
 }
 
+export interface DeletionReviewCheckpoints {
+  afterDeleteClaim?(): void | Promise<void>
+  afterDeleteSessions?(): void | Promise<void>
+  beforeDeleteRecords?(): void | Promise<void>
+}
+
+export interface DeleteWorkoutReviewOptions {
+  db?: Firestore
+  now?: () => number
+  checkpoints?: DeletionReviewCheckpoints
+}
+
 export async function materializeWorkoutForUser(
   userId: string,
   workoutId: string,
@@ -168,6 +180,7 @@ export async function materializeWorkoutForUser(
     {
       tombstoneRef,
       expectedRevision: prepared.fence.projectionRevision,
+      allowedState: 'pending',
     },
   )
   await options.checkpoints?.afterRecords?.()
@@ -198,6 +211,16 @@ async function prepareMaterialization(
   return database.runTransaction(async (transaction) => {
     const [workoutSnap, tombstoneSnap] = await transaction.getAll(workoutRef, tombstoneRef)
 
+    if (tombstoneSnap.exists) {
+      const tombstone = requireOwnedFinishedTombstone(
+        tombstoneSnap.data(),
+        userId,
+        workoutRef.id,
+      )
+      const storedFence = parseProjectionFence(tombstone)
+      if (storedFence?.projectionState === 'deleted') throw workoutDeleted()
+    }
+
     if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
 
     const workout = parseStoredWorkout(workoutSnap.data())
@@ -212,17 +235,9 @@ async function prepareMaterialization(
     let fence = initialFence
 
     if (tombstoneSnap.exists) {
-      const tombstone = requireOwnedFinishedTombstone(
-        tombstoneSnap.data(),
-        userId,
-        workoutRef.id,
-      )
-      const storedFence = parseProjectionFence(tombstone)
+      const storedFence = parseProjectionFence(tombstoneSnap.data())
       fence = storedFence ?? initialFence
-
-      if (!storedFence) {
-        transaction.update(tombstoneRef, { ...initialFence })
-      }
+      if (!storedFence) transaction.update(tombstoneRef, { ...initialFence })
     } else {
       transaction.create(tombstoneRef, {
         userId,
@@ -234,7 +249,6 @@ async function prepareMaterialization(
       })
     }
 
-    if (fence.projectionState === 'deleted') throw workoutDeleted()
     if (expectedRevision !== undefined && fence.projectionRevision !== expectedRevision) {
       throw projectionSuperseded()
     }
@@ -279,7 +293,7 @@ async function runGuardedProjectionTransaction<T>(
   tombstoneRef: DocumentReference,
   expectedRevision: number,
   allowedState: 'pending' | 'deleted',
-  apply: (transaction: Transaction) => Promise<T> | T,
+  apply: (transaction: Transaction, fence: ProjectionFence) => Promise<T> | T,
 ): Promise<T> {
   return database.runTransaction(async (transaction) => {
     const tombstoneSnap = await transaction.get(tombstoneRef)
@@ -294,7 +308,7 @@ async function runGuardedProjectionTransaction<T>(
     if (fence.projectionRevision !== expectedRevision) throw projectionSuperseded()
     if (fence.projectionState !== allowedState) throw projectionStateConflict()
 
-    return apply(transaction)
+    return apply(transaction, fence)
   })
 }
 
@@ -379,42 +393,97 @@ export async function updateFinishedWorkoutForUser(
   }
 }
 
-export async function deleteFinishedWorkoutForUser(userId: string, workoutId: string): Promise<void> {
+export async function deleteFinishedWorkoutForUser(
+  userId: string,
+  workoutId: string,
+  options: DeleteWorkoutReviewOptions = {},
+): Promise<void> {
+  const database = options.db ?? adminDb
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
-  const workoutRef = adminDb.collection('workouts').doc(workoutDocumentId)
-  const workoutSnap = await workoutRef.get()
+  const workoutRef = database.collection('workouts').doc(workoutDocumentId)
+  const tombstoneRef = database.collection('closedSessions').doc(workoutDocumentId)
+  const claim = await database.runTransaction(async (transaction) => {
+    const [workoutSnap, tombstoneSnap] = await transaction.getAll(workoutRef, tombstoneRef)
+    let storedFence: ProjectionFence | null = null
 
-  if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
-
-  const workout = parseStoredWorkoutMetadata(workoutSnap.data())
-  assertOwnership(userId, workout.userId)
-  assertFinishedWorkout(workout)
-
-  const existingSessions = await listExerciseSessionsForWorkout(adminDb, workoutDocumentId)
-  const affectedExercises = collectExerciseKeys(existingSessions)
-
-  let batch = adminDb.batch()
-  let writeCount = 0
-
-  batch.delete(workoutRef)
-  writeCount += 1
-
-  for (const session of existingSessions) {
-    batch.delete(adminDb.collection('exerciseSessions').doc(session.id))
-    writeCount += 1
-
-    if (writeCount >= MAX_BATCH_WRITES) {
-      await batch.commit()
-      batch = adminDb.batch()
-      writeCount = 0
+    if (tombstoneSnap.exists) {
+      const tombstone = requireOwnedDeletionTombstone(
+        tombstoneSnap.data(),
+        userId,
+        workoutDocumentId,
+      )
+      storedFence = parseProjectionFence(tombstone)
     }
-  }
 
-  if (writeCount > 0) {
-    await batch.commit()
-  }
+    let workout: StoredWorkout | undefined
+    if (workoutSnap.exists) {
+      workout = parseStoredWorkout(workoutSnap.data())
+      assertOwnership(userId, workout.userId)
+      assertFinishedWorkout(workout)
+    }
 
-  await recomputeRecords(adminDb, workout.userId, affectedExercises)
+    if (storedFence?.projectionState === 'deleted') {
+      return {
+        projectionRevision: storedFence.projectionRevision,
+        projectionExerciseKeys: storedFence.projectionExerciseKeys,
+      }
+    }
+    if (!workout) throw new Error('Trening nie istnieje.')
+
+    const initialFence: ProjectionFence = {
+      projectionState: workout.materialized ? 'ready' : 'pending',
+      projectionRevision: INITIAL_PROJECTION_REVISION,
+      projectionExerciseKeys: normalizeProjectionExerciseKeys(workout.exercises),
+    }
+    const fence = storedFence ?? initialFence
+    const deletedFence = {
+      projectionState: 'deleted' as const,
+      projectionRevision: fence.projectionRevision + 1,
+      projectionExerciseKeys: normalizeProjectionExerciseKeys(
+        fence.projectionExerciseKeys,
+        workout.exercises,
+      ),
+      deletedAt: (options.now ?? Date.now)(),
+    }
+
+    if (tombstoneSnap.exists) {
+      transaction.update(tombstoneRef, deletedFence)
+    } else {
+      transaction.create(tombstoneRef, {
+        userId,
+        sessionId: workoutDocumentId,
+        outcome: 'finished',
+        workoutId: workoutDocumentId,
+        closedAt: workout.finishedAt,
+        ...deletedFence,
+      })
+    }
+    transaction.delete(workoutRef)
+
+    return deletedFence
+  })
+
+  await options.checkpoints?.afterDeleteClaim?.()
+  const existingSessions = await listExerciseSessionsForWorkout(database, workoutDocumentId)
+  const affectedExercises = await stageDeletedProjectionKeys(
+    database,
+    tombstoneRef,
+    claim.projectionRevision,
+    collectExerciseKeys(existingSessions),
+  )
+  await deleteExerciseSessions(
+    database,
+    tombstoneRef,
+    claim.projectionRevision,
+    existingSessions,
+  )
+  await options.checkpoints?.afterDeleteSessions?.()
+  await options.checkpoints?.beforeDeleteRecords?.()
+  await recomputeRecords(database, userId, affectedExercises, {
+    tombstoneRef,
+    expectedRevision: claim.projectionRevision,
+    allowedState: 'deleted',
+  })
 }
 
 function assertOwnership(currentUserId: string, resourceUserId: string): void {
@@ -448,18 +517,6 @@ function parseStoredWorkout(raw: unknown): StoredWorkout {
   }
 }
 
-function parseStoredWorkoutMetadata(raw: unknown): StoredWorkoutMetadata {
-  const record = asRecord(raw)
-
-  return {
-    userId: asNonEmptyString(record.userId, 'userId'),
-    startedAt: asNumber(record.startedAt, 'startedAt'),
-    finishedAt: asNumber(record.finishedAt, 'finishedAt'),
-    label: sanitizeStoredLabel(record.label),
-    materialized: record.materialized === true,
-  }
-}
-
 function parseWorkoutUpdate(raw: unknown): Pick<StoredWorkout, 'label' | 'exercises'> {
   const record = asRecord(raw)
 
@@ -467,12 +524,6 @@ function parseWorkoutUpdate(raw: unknown): Pick<StoredWorkout, 'label' | 'exerci
     label: validateWorkoutLabel(record.label),
     exercises: normalizeWorkoutExercises(record.exercises),
   }
-}
-
-function sanitizeStoredLabel(value: unknown): string | null {
-  if (typeof value !== 'string') return null
-  const trimmed = value.trim()
-  return trimmed ? trimmed : null
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -489,6 +540,27 @@ function requireOwnedFinishedTombstone(
 ): Record<string, unknown> {
   const tombstone = requireFinishedTombstone(raw, workoutId)
   assertOwnership(userId, asNonEmptyString(tombstone.userId, 'userId'))
+  return tombstone
+}
+
+function requireOwnedDeletionTombstone(
+  raw: unknown,
+  userId: string,
+  workoutId: string,
+): Record<string, unknown> {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    throw closureConflict()
+  }
+
+  const tombstone = raw as Record<string, unknown>
+  assertOwnership(userId, asNonEmptyString(tombstone.userId, 'userId'))
+  if (
+    tombstone.sessionId !== workoutId
+    || tombstone.outcome !== 'finished'
+    || tombstone.workoutId !== workoutId
+  ) {
+    throw closureConflict()
+  }
   return tombstone
 }
 
@@ -511,6 +583,12 @@ function requireFinishedTombstone(
     throw projectionStateConflict()
   }
   return tombstone
+}
+
+function closureConflict(): ApiError {
+  return new ApiError(409, 'Sesja ma już inny wynik zamknięcia.', {
+    code: 'closure_conflict',
+  })
 }
 
 function asNonEmptyString(value: unknown, field: string): string {
@@ -665,6 +743,51 @@ async function replaceExerciseSessions(
   }
 }
 
+async function stageDeletedProjectionKeys(
+  database: Firestore,
+  tombstoneRef: DocumentReference,
+  expectedRevision: number,
+  remainingSessionKeys: ExerciseKey[],
+): Promise<ProjectionExerciseKey[]> {
+  return runGuardedProjectionTransaction(
+    database,
+    tombstoneRef,
+    expectedRevision,
+    'deleted',
+    (transaction, fence) => {
+      const projectionExerciseKeys = normalizeProjectionExerciseKeys(
+        fence.projectionExerciseKeys,
+        remainingSessionKeys,
+      )
+      transaction.update(tombstoneRef, { projectionExerciseKeys })
+      return projectionExerciseKeys
+    },
+  )
+}
+
+async function deleteExerciseSessions(
+  database: Firestore,
+  tombstoneRef: DocumentReference,
+  expectedRevision: number,
+  sessions: ExerciseSessionDoc[],
+): Promise<void> {
+  const chunkSize = MAX_BATCH_WRITES - 1
+  for (let start = 0; start < sessions.length; start += chunkSize) {
+    const chunk = sessions.slice(start, start + chunkSize)
+    await runGuardedProjectionTransaction(
+      database,
+      tombstoneRef,
+      expectedRevision,
+      'deleted',
+      (transaction) => {
+        for (const session of chunk) {
+          transaction.delete(database.collection('exerciseSessions').doc(session.id))
+        }
+      },
+    )
+  }
+}
+
 function collectExerciseKeys(...groups: Array<Array<Pick<ExerciseSessionDoc, 'exerciseId' | 'exerciseSource'>>>): ExerciseKey[] {
   const map = new Map<string, ExerciseKey>()
 
@@ -690,6 +813,7 @@ async function recomputeRecords(
   guard?: {
     tombstoneRef: DocumentReference
     expectedRevision: number
+    allowedState: 'pending' | 'deleted'
   },
 ): Promise<void> {
   await Promise.all(exercises.map((exercise) => recomputeRecordForExercise(
@@ -707,6 +831,7 @@ async function recomputeRecordForExercise(
   guard?: {
     tombstoneRef: DocumentReference
     expectedRevision: number
+    allowedState: 'pending' | 'deleted'
   },
 ): Promise<void> {
   const sessionsSnap = await database.collection('exerciseSessions')
@@ -723,7 +848,7 @@ async function recomputeRecordForExercise(
         database,
         guard.tombstoneRef,
         guard.expectedRevision,
-        'pending',
+        guard.allowedState,
         (transaction) => transaction.delete(recordRef),
       )
     } else {
@@ -767,7 +892,7 @@ async function recomputeRecordForExercise(
       database,
       guard.tombstoneRef,
       guard.expectedRevision,
-      'pending',
+      guard.allowedState,
       (transaction) => transaction.set(recordRef, payload),
     )
   } else {

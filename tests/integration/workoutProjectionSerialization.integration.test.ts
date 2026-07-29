@@ -12,9 +12,11 @@ vi.mock('../../api/_lib/firebaseAdmin.js', async () => {
 })
 
 import {
+  deleteFinishedWorkoutForUser,
   materializeWorkoutForUser,
   updateFinishedWorkoutForUser,
 } from '../../api/_lib/workoutProjection'
+import { ReviewFault } from '../review/support/faultOutcomes'
 
 const USER_ID = 'phase-r-user'
 const STARTED_AT = 1_780_000_000_000
@@ -27,6 +29,30 @@ const benchPressExercise = {
   name: 'Bench Press',
   sets: [{ weight: 80, reps: 5 }],
 }
+const customCurlExercise = {
+  exerciseId: 'custom-curl',
+  exerciseSource: 'user',
+  name: 'Custom Curl',
+  sets: [{ weight: 20, reps: 8 }],
+}
+
+const deletionCheckpointCases = [
+  {
+    checkpoint: 'afterDeleteClaim',
+    outcome: 'failed_after_delete_claim',
+    expectedSessionCount: 1,
+  },
+  {
+    checkpoint: 'afterDeleteSessions',
+    outcome: 'failed_after_delete_sessions',
+    expectedSessionCount: 0,
+  },
+  {
+    checkpoint: 'beforeDeleteRecords',
+    outcome: 'failed_before_delete_records',
+    expectedSessionCount: 0,
+  },
+] as const
 
 function deferred() {
   let resolve!: () => void
@@ -129,6 +155,51 @@ async function seedDeletedFence(workoutId: string) {
     }],
     deletedAt: FINISHED_AT + 1,
   })
+}
+
+async function seedMaterializedWorkoutWithRecord(workoutId: string) {
+  await seedReadyWorkout(workoutId)
+  await materializeWorkoutForUser(USER_ID, workoutId, {
+    db,
+    expectedRevision: 1,
+  })
+}
+
+async function readDeletionState(workoutId: string) {
+  const [workout, tombstone, exerciseSessions, records] = await Promise.all([
+    db.collection('workouts').doc(workoutId).get(),
+    db.collection('closedSessions').doc(workoutId).get(),
+    db.collection('exerciseSessions').where('workoutId', '==', workoutId).get(),
+    db.collection('records').where('userId', '==', USER_ID).get(),
+  ])
+
+  return {
+    workout: workout.exists ? workout.data() : undefined,
+    tombstone: tombstone.exists ? tombstone.data() : undefined,
+    exerciseSessions: exerciseSessions.docs
+      .map((document) => ({ id: document.id, ...document.data() }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+    records: records.docs
+      .map((document) => ({ id: document.id, ...document.data() }))
+      .sort((left, right) => left.id.localeCompare(right.id)),
+  }
+}
+
+function deletionEvidence(state: Awaited<ReturnType<typeof readDeletionState>>) {
+  const tombstone = state.tombstone ? { ...state.tombstone } : undefined
+  if (tombstone) delete tombstone.deletedAt
+  const records = state.records.map((record) => {
+    const stableRecord = { ...record }
+    delete stableRecord.updatedAt
+    return stableRecord
+  })
+
+  return {
+    workout: state.workout,
+    tombstone,
+    exerciseSessions: state.exerciseSessions,
+    records,
+  }
 }
 
 describe('workout projection serialization', () => {
@@ -337,5 +408,275 @@ describe('workout projection serialization', () => {
         exerciseId: 'custom-curl',
       }],
     })
+  })
+
+  it.each([
+    'beforeExerciseSessions',
+    'afterExerciseSessions',
+  ] as const)('keeps delete terminal when an older materialization resumes after %s', async (
+    checkpoint,
+  ) => {
+    const workoutId = `serialization-delete-wins-${checkpoint}`
+    await seedWorkoutWithFence(workoutId, {
+      projectionState: 'pending',
+      projectionRevision: 1,
+    })
+    const paused = deferred()
+    const release = deferred()
+
+    const materializing = materializeWorkoutForUser(USER_ID, workoutId, {
+      db,
+      expectedRevision: 1,
+      checkpoints: {
+        [checkpoint]: async () => {
+          paused.resolve()
+          await release.promise
+        },
+      },
+    })
+
+    await paused.promise
+    await deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+      db,
+      now: () => 999,
+    })
+    release.resolve()
+
+    await expect(materializing).rejects.toMatchObject({
+      status: 409,
+      code: 'workout_deleted',
+    })
+    const state = await readDeletionState(workoutId)
+    expect(state.workout).toBeUndefined()
+    expect(state.exerciseSessions).toEqual([])
+    expect(state.records).toEqual([])
+    expect(state.tombstone).toMatchObject({
+      projectionState: 'deleted',
+      projectionRevision: 2,
+      deletedAt: 999,
+    })
+  })
+
+  it('rejects materialization from an update committed before delete', async () => {
+    const workoutId = 'serialization-update-before-delete'
+    await seedMaterializedWorkoutWithRecord(workoutId)
+    const updateCommitted = deferred()
+    const releaseUpdate = deferred()
+
+    const updating = updateFinishedWorkoutForUser(USER_ID, workoutId, {
+      label: 'Deleted update',
+      exercises: [customCurlExercise],
+    }, {
+      db,
+      materialize: async (ownerId, id, expectedRevision) => {
+        updateCommitted.resolve()
+        await releaseUpdate.promise
+        await materializeWorkoutForUser(ownerId, id, {
+          db,
+          expectedRevision,
+        })
+      },
+    })
+
+    await updateCommitted.promise
+    await deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+      db,
+      now: () => 999,
+    })
+    releaseUpdate.resolve()
+
+    await expect(updating).rejects.toMatchObject({
+      status: 409,
+      code: 'workout_deleted',
+    })
+    const state = await readDeletionState(workoutId)
+    expect(state.workout).toBeUndefined()
+    expect(state.exerciseSessions).toEqual([])
+    expect(state.records).toEqual([])
+    expect(state.tombstone).toMatchObject({
+      projectionState: 'deleted',
+      projectionRevision: 3,
+      projectionExerciseKeys: [
+        { exerciseSource: 'global', exerciseId: 'bench-press' },
+        { exerciseSource: 'user', exerciseId: 'custom-curl' },
+      ],
+    })
+  })
+
+  for (const checkpointCase of deletionCheckpointCases) {
+    it(`converges idempotently after ${checkpointCase.checkpoint}`, async () => {
+      const workoutId = `serialization-delete-retry-${checkpointCase.checkpoint}`
+      await seedMaterializedWorkoutWithRecord(workoutId)
+
+      await expect(deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+        db,
+        now: () => 999,
+        checkpoints: {
+          [checkpointCase.checkpoint]: () => {
+            throw new ReviewFault(checkpointCase.outcome)
+          },
+        },
+      })).rejects.toEqual(new ReviewFault(checkpointCase.outcome))
+
+      const failed = await readDeletionState(workoutId)
+      expect(failed.workout).toBeUndefined()
+      expect(failed.tombstone).toMatchObject({
+        projectionState: 'deleted',
+        projectionRevision: 2,
+        projectionExerciseKeys: [{
+          exerciseSource: 'global',
+          exerciseId: 'bench-press',
+        }],
+        deletedAt: 999,
+      })
+      expect(failed.exerciseSessions).toHaveLength(checkpointCase.expectedSessionCount)
+      expect(failed.records).toHaveLength(1)
+
+      await deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+        db,
+        now: () => 1_000,
+      })
+      const recovered = await readDeletionState(workoutId)
+      expect(recovered.workout).toBeUndefined()
+      expect(recovered.exerciseSessions).toEqual([])
+      expect(recovered.records).toEqual([])
+      expect(recovered.tombstone).toMatchObject({
+        projectionState: 'deleted',
+        projectionRevision: 2,
+        deletedAt: 999,
+      })
+
+      await deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+        db,
+        now: () => 1_001,
+      })
+      const idempotentRetry = await readDeletionState(workoutId)
+      expect(idempotentRetry.tombstone?.deletedAt).toBe(999)
+      expect(deletionEvidence(idempotentRetry)).toEqual(deletionEvidence(recovered))
+    })
+  }
+
+  it('cleans records for the union of fenced and remaining session keys', async () => {
+    const workoutId = 'serialization-delete-key-union'
+    await seedWorkoutWithFence(workoutId, {
+      projectionState: 'pending',
+      projectionRevision: 1,
+    })
+    await db.collection('closedSessions').doc(workoutId).update({
+      projectionExerciseKeys: [
+        { exerciseSource: 'global', exerciseId: 'bench-press' },
+        { exerciseSource: 'user', exerciseId: 'custom-curl' },
+      ],
+    })
+    await db.collection('exerciseSessions').doc(`${workoutId}_custom-curl`).set({
+      id: `${workoutId}_custom-curl`,
+      userId: USER_ID,
+      workoutId,
+      startedAt: STARTED_AT,
+      finishedAt: FINISHED_AT,
+      label: 'Serialized',
+      exerciseId: 'custom-curl',
+      exerciseSource: 'user',
+      exerciseName: 'Custom Curl',
+      orderIndex: 0,
+      totalSets: 1,
+      totalReps: 8,
+      totalVolume: 160,
+      bestSetWeight: 20,
+      bestSetReps: 8,
+      category: null,
+      equipment: null,
+      muscleGroups: [],
+      sets: [{ weight: 20, reps: 8 }],
+    })
+    await Promise.all([
+      db.collection('records').doc(`${USER_ID}_global_bench-press`).set({
+        userId: USER_ID,
+        exerciseSource: 'global',
+        exerciseId: 'bench-press',
+      }),
+      db.collection('records').doc(`${USER_ID}_user_custom-curl`).set({
+        userId: USER_ID,
+        exerciseSource: 'user',
+        exerciseId: 'custom-curl',
+      }),
+    ])
+
+    await deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+      db,
+      now: () => 999,
+    })
+
+    const state = await readDeletionState(workoutId)
+    expect(state.exerciseSessions).toEqual([])
+    expect(state.records).toEqual([])
+    expect(state.tombstone).toMatchObject({
+      projectionState: 'deleted',
+      projectionRevision: 2,
+      projectionExerciseKeys: [
+        { exerciseSource: 'global', exerciseId: 'bench-press' },
+        { exerciseSource: 'user', exerciseId: 'custom-curl' },
+      ],
+    })
+  })
+
+  it.each([
+    'workout',
+    'tombstone',
+  ] as const)('preserves resources when the %s belongs to another user', async (resource) => {
+    const workoutId = `serialization-delete-foreign-${resource}`
+    await seedReadyWorkout(workoutId)
+    if (resource === 'workout') {
+      await db.collection('closedSessions').doc(workoutId).delete()
+      await db.collection('workouts').doc(workoutId).update({ userId: 'different-user' })
+    } else {
+      await db.collection('closedSessions').doc(workoutId).update({
+        userId: 'different-user',
+      })
+    }
+    const before = await Promise.all([
+      db.collection('workouts').doc(workoutId).get(),
+      db.collection('closedSessions').doc(workoutId).get(),
+    ])
+
+    await expect(deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+      db,
+      now: () => 999,
+    })).rejects.toMatchObject({
+      status: 403,
+      code: 'resource_owner_mismatch',
+    })
+
+    const after = await Promise.all([
+      db.collection('workouts').doc(workoutId).get(),
+      db.collection('closedSessions').doc(workoutId).get(),
+    ])
+    expect(after.map((snapshot) => snapshot.data()))
+      .toEqual(before.map((snapshot) => snapshot.data()))
+  })
+
+  it('preserves closure_conflict for a discarded tombstone', async () => {
+    const workoutId = 'serialization-delete-discarded'
+    await db.collection('closedSessions').doc(workoutId).set({
+      userId: USER_ID,
+      sessionId: workoutId,
+      outcome: 'discarded',
+      workoutId: null,
+      closedAt: FINISHED_AT,
+    })
+
+    await expect(deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+      db,
+      now: () => 999,
+    })).rejects.toMatchObject({
+      status: 409,
+      code: 'closure_conflict',
+    })
+    expect((await db.collection('closedSessions').doc(workoutId).get()).data())
+      .toMatchObject({
+        userId: USER_ID,
+        outcome: 'discarded',
+        workoutId: null,
+      })
   })
 })

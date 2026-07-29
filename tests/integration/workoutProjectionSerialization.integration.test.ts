@@ -1,3 +1,4 @@
+import type { Firestore } from 'firebase-admin/firestore'
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
@@ -618,6 +619,53 @@ describe('workout projection serialization', () => {
         { exerciseSource: 'user', exerciseId: 'custom-curl' },
       ],
     })
+  })
+
+  it('does not recreate a shared record from another workout deleted during recomputation', async () => {
+    const firstWorkoutId = 'serialization-delete-shared-first'
+    const secondWorkoutId = 'serialization-delete-shared-second'
+    await seedMaterializedWorkoutWithRecord(firstWorkoutId)
+    await seedMaterializedWorkoutWithRecord(secondWorkoutId)
+    const beforeFirstRecordTransaction = deferred()
+    const releaseFirstRecordTransaction = deferred()
+    let transactionCount = 0
+    const delayedDb = new Proxy(db, {
+      get(target, property, receiver) {
+        if (property !== 'runTransaction') return Reflect.get(target, property, receiver)
+        return async (...args: Parameters<Firestore['runTransaction']>) => {
+          transactionCount += 1
+          if (transactionCount === 4) {
+            beforeFirstRecordTransaction.resolve()
+            await releaseFirstRecordTransaction.promise
+          }
+          return target.runTransaction(...args)
+        }
+      },
+    }) as Firestore
+
+    const deletingFirst = deleteFinishedWorkoutForUser(USER_ID, firstWorkoutId, {
+      db: delayedDb,
+      now: () => 999,
+    })
+    await beforeFirstRecordTransaction.promise
+    try {
+      await deleteFinishedWorkoutForUser(USER_ID, secondWorkoutId, {
+        db,
+        now: () => 1_000,
+      })
+    } finally {
+      releaseFirstRecordTransaction.resolve()
+    }
+    await deletingFirst
+
+    expect((await db.collection('exerciseSessions')
+      .where('userId', '==', USER_ID)
+      .where('exerciseId', '==', 'bench-press')
+      .where('exerciseSource', '==', 'global')
+      .get()).empty).toBe(true)
+    expect((await db.collection('records')
+      .doc(`${USER_ID}_global_bench-press`)
+      .get()).exists).toBe(false)
   })
 
   it.each([

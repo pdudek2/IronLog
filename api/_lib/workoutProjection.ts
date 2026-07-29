@@ -810,7 +810,7 @@ async function recomputeRecords(
   database: Firestore,
   userId: string,
   exercises: ExerciseKey[],
-  guard?: {
+  guard: {
     tombstoneRef: DocumentReference
     expectedRevision: number
     allowedState: 'pending' | 'deleted'
@@ -828,76 +828,60 @@ async function recomputeRecordForExercise(
   database: Firestore,
   userId: string,
   exercise: ExerciseKey,
-  guard?: {
+  guard: {
     tombstoneRef: DocumentReference
     expectedRevision: number
     allowedState: 'pending' | 'deleted'
   },
 ): Promise<void> {
-  const sessionsSnap = await database.collection('exerciseSessions')
+  const sessionsQuery = database.collection('exerciseSessions')
     .where('userId', '==', userId)
     .where('exerciseId', '==', exercise.exerciseId)
     .where('exerciseSource', '==', exercise.exerciseSource)
-    .get()
-
   const recordRef = database.collection('records').doc(buildRecordId(userId, exercise))
 
-  if (sessionsSnap.empty) {
-    if (guard) {
-      await runGuardedProjectionTransaction(
-        database,
-        guard.tombstoneRef,
-        guard.expectedRevision,
-        guard.allowedState,
-        (transaction) => transaction.delete(recordRef),
-      )
-    } else {
-      await recordRef.delete()
+  await runGuardedProjectionTransaction(
+    database,
+    guard.tombstoneRef,
+    guard.expectedRevision,
+    guard.allowedState,
+    async (transaction) => {
+      const sessionsSnap = await transaction.get(sessionsQuery)
+      if (sessionsSnap.empty) {
+        transaction.delete(recordRef)
+        return
+      }
+
+      const sessions = sessionsSnap.docs.map((doc) => doc.data() as ExerciseSessionDoc)
+      let best = sessions[0]
+      let bestVolume = sessions[0].totalVolume
+      let lastPerformedAt = sessions[0].finishedAt
+
+      for (const session of sessions.slice(1)) {
+        if (comparePerformance(
+          { weight: session.bestSetWeight, reps: session.bestSetReps },
+          { weight: best.bestSetWeight, reps: best.bestSetReps }
+        ) > 0) {
+          best = session
+        }
+        if (session.totalVolume > bestVolume) bestVolume = session.totalVolume
+        if (session.finishedAt > lastPerformedAt) lastPerformedAt = session.finishedAt
+      }
+
+      transaction.set(recordRef, {
+        userId,
+        exerciseId: exercise.exerciseId,
+        exerciseSource: exercise.exerciseSource,
+        exerciseName: best.exerciseName,
+        maxWeight: best.bestSetWeight,
+        maxReps: best.bestSetReps,
+        totalSessions: sessions.length,
+        bestVolume,
+        lastPerformedAt,
+        updatedAt: Date.now(),
+      } satisfies RecordDoc)
     }
-    return
-  }
-
-  const sessions = sessionsSnap.docs.map((doc) => doc.data() as ExerciseSessionDoc)
-
-  let best = sessions[0]
-  let bestVolume = sessions[0].totalVolume
-  let lastPerformedAt = sessions[0].finishedAt
-
-  for (const session of sessions.slice(1)) {
-    if (comparePerformance(
-      { weight: session.bestSetWeight, reps: session.bestSetReps },
-      { weight: best.bestSetWeight, reps: best.bestSetReps }
-    ) > 0) {
-      best = session
-    }
-    if (session.totalVolume > bestVolume) bestVolume = session.totalVolume
-    if (session.finishedAt > lastPerformedAt) lastPerformedAt = session.finishedAt
-  }
-
-  const payload: RecordDoc = {
-    userId,
-    exerciseId: exercise.exerciseId,
-    exerciseSource: exercise.exerciseSource,
-    exerciseName: best.exerciseName,
-    maxWeight: best.bestSetWeight,
-    maxReps: best.bestSetReps,
-    totalSessions: sessions.length,
-    bestVolume,
-    lastPerformedAt,
-    updatedAt: Date.now(),
-  }
-
-  if (guard) {
-    await runGuardedProjectionTransaction(
-      database,
-      guard.tombstoneRef,
-      guard.expectedRevision,
-      guard.allowedState,
-      (transaction) => transaction.set(recordRef, payload),
-    )
-  } else {
-    await recordRef.set(payload)
-  }
+  )
 }
 
 function buildRecordId(userId: string, exercise: ExerciseKey): string {

@@ -29,6 +29,7 @@ session-*.md
 test-results/
 playwright-report/
 .playwright/
+.playwright-cli/
 tests/e2e/.auth/
 .env.test
 

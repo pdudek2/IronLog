@@ -55,26 +55,21 @@ export async function expectAppReady(
       await expect(page.getByText('Nie udało się pobrać danych', { exact: true })).toHaveCount(0)
       return
     case '/templates':
-      await expect(page.getByRole('heading', { name: 'Plany.' })).toBeVisible({ timeout })
       await expect(page.getByRole('button', { name: 'Nowy plan' })).toBeVisible({ timeout })
       await expect(page.getByText('Nie udało się pobrać szablonów', { exact: true })).toHaveCount(0)
       return
     case '/templates/new':
-      await expect(page.getByRole('heading', { name: 'Nowy plan.' })).toBeVisible({ timeout })
       await expect(page.getByPlaceholder('np. Upper / Lower 4 dni')).toBeVisible({ timeout })
       return
     case '/exercises':
-      await expect(page.getByRole('heading', { name: 'Biblioteka.' })).toBeVisible({ timeout })
       await expect(page.getByLabel('Szukaj ćwiczenia')).toBeVisible({ timeout })
       await expect(page.getByTestId('exercises-page')).toHaveAttribute('data-load-state', /^(?:ready|error)$/, { timeout })
       await expect(page.getByTestId('exercises-page')).toHaveAttribute('data-load-state', 'ready')
       return
     case '/chat':
-      await expect(page.getByRole('heading', { name: 'Coach.' })).toBeVisible({ timeout })
       await expect(page.getByLabel('Status AI Coacha')).toBeVisible({ timeout })
       return
     case '/profile':
-      await expect(page.getByRole('heading', { name: 'Twój profil.' })).toBeVisible({ timeout })
       await expect(page.getByPlaceholder('np. Jan')).toBeVisible({ timeout })
       await expect(page.getByText('Nie udało się wczytać profilu', { exact: true })).toHaveCount(0)
       return

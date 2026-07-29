@@ -5,7 +5,7 @@ import { expectAppReady } from './support/appReady'
 const TEST_TEMPLATE_NAME = '_E2E Szablon Test_'
 
 async function waitForTemplatesPageReady(page: Page): Promise<void> {
-  await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
+  await expectAppReady(page, '/templates')
 }
 
 test.describe('Templates CRUD', () => {

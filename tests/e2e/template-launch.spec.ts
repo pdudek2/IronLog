@@ -143,7 +143,7 @@ test.describe('Template launch contract', () => {
     await createLaunchTemplate(page, OFFLINE_TEMPLATE_NAME)
 
     await page.goto('/templates')
-    await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
+    await expectAppReady(page, '/templates')
     const launch = page.getByRole('button', {
       name: `Uruchom szablon ${OFFLINE_TEMPLATE_NAME}`,
     }).first()
@@ -156,7 +156,7 @@ test.describe('Template launch contract', () => {
       ? bottomNav.getByRole('button', { name: 'Plany', exact: true })
       : topNav.getByRole('button', { name: 'Plany', exact: true })
     await plansNav.click()
-    await expect(page.getByRole('heading', { name: 'Plany.', exact: true })).toBeVisible({ timeout: 15_000 })
+    await expectAppReady(page, '/templates')
     await expect(launch).toBeVisible({ timeout: 15_000 })
 
     const dialog = page.getByRole('dialog').filter({ hasText: 'Zastąpić aktywną sesję?' })

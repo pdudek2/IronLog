@@ -6,7 +6,7 @@ import {
   seedProgressEmulatorState,
 } from './support/progressEmulator'
 
-const progressHeading = (page: Page) => page.getByRole('heading', { name: 'Postępy.' })
+const progressHeading = (page: Page) => page.getByRole('heading', { name: 'Postępy' })
 const emulatorMode = process.env.E2E_BACKEND === 'emulator'
 
 async function useHistoricalSessionClock(page: Page): Promise<void> {

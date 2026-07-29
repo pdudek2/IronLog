@@ -55,6 +55,7 @@ export function parseProjectionFence(raw: unknown): ProjectionFence | null {
   const { projectionState, projectionRevision, projectionExerciseKeys } = raw
   if (
     !isProjectionState(projectionState)
+    || typeof projectionRevision !== 'number'
     || !Number.isInteger(projectionRevision)
     || projectionRevision <= 0
     || !Array.isArray(projectionExerciseKeys)

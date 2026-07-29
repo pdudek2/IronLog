@@ -4,13 +4,49 @@
 
 **Goal:** Zagwarantować, że terminalne usunięcie workoutu wygrywa z każdym spóźnionym update'em lub retry materializacji, a rekordy zawsze wynikają z istniejących workoutów.
 
-**Status:** PLANNED — READY FOR EXECUTION
+**Status:** COMPLETED — zweryfikowany lokalny closeout
 
 **Architecture:** Istniejący `closedSessions/{workoutId}` staje się trwałym version fence'em z rewizją, stanem projekcji i pełnym zbiorem dotkniętych ćwiczeń. Każdy zapis projekcji jest transakcyjnie chroniony odczytem fence'a; delete atomowo ustawia terminalny stan `deleted`, po czym wykonuje idempotentny cleanup.
 
 **Tech Stack:** TypeScript 5.9, Vercel Node Functions, Firebase Admin SDK 13, Cloud Firestore transactions, Vitest 4, Firebase Emulator Suite.
 
 **Approved design:** `docs/roadmap/specs/2026-07-29-phase-8b-workout-projection-serialization-design.md`
+
+## Closeout evidence
+
+Implementację dostarczyły commity:
+
+- `a932c40 feat: add workout projection fence`;
+- `b0e4162 fix: fence workout materialization revisions`;
+- `32b9055 fix: narrow projection fence revision`;
+- `1efb93d fix: serialize finished workout updates`;
+- `4ed412d fix: make workout deletion terminal`;
+- `839b769 fix: serialize shared workout records`.
+
+Gate'y wykonane 2026-07-29:
+
+- targeted unit: 2 pliki, 24/24 testy;
+- `test:integration:workout`: 3 pliki, 37/37 testów;
+- `test:rules`: 1 plik, 17/17 testów;
+- `test:e2e:workout`: 9/9 testów Playwright bez retry;
+- `test:unit`: 61 plików, 475/475 testów;
+- lint, build i `git diff --check`: kod wyjścia `0`; build przetworzył 878
+  modułów.
+
+Focused review: brak znalezisk P1/P2. Potwierdzono ochronę każdej mutacji
+`exerciseSessions`, `records` i `materialized`, własność i zachowanie
+`discarded`, pełną sumę kluczy po częściowym update, statusy
+`projection_superseded` i `workout_deleted`, brak zmian UI/kolekcji/indeksów/
+zależności oraz zakaz rollbacku do starego kodu po zapisaniu `deleted`.
+
+**Zatwierdzone odchylenie planu:** query i agregacja sesji współdzielonego
+rekordu zostały przeniesione do guarded transaction razem z zapisem albo
+usunięciem rekordu. Zmiana zamyka wyścig ujawniony w review i jest pokryta
+deterministyczną integracją.
+
+Lineage closeoutu: aktywna roadmapa korekcyjna → Faza 8B `DONE` → pozostałe
+Fazy 8C, 8D i 9. Roadmapa pozostaje aktywna, a spec i plan zostają zachowane
+jako dowód. Push i deploy nadal wymagają osobnej zgody.
 
 ## Global Constraints
 
@@ -67,7 +103,7 @@
 - Produces: `projectionSuperseded()`, `workoutDeleted()` oraz `projectionStateConflict()`
 - Changes: injected `MaterializeWorkout` otrzymuje `expectedRevision?: number`
 
-- [ ] **Step 1: Dodać failing unit test modelu fence'a**
+- [x] **Step 1: Dodać failing unit test modelu fence'a**
 
 Utworzyć `api/_lib/__tests__/workoutProjectionFence.test.ts`:
 
@@ -133,7 +169,7 @@ describe('workout projection fence', () => {
 })
 ```
 
-- [ ] **Step 2: Uruchomić unit test i potwierdzić RED**
+- [x] **Step 2: Uruchomić unit test i potwierdzić RED**
 
 Run:
 
@@ -143,7 +179,7 @@ npx vitest run api/_lib/__tests__/workoutProjectionFence.test.ts
 
 Expected: FAIL, ponieważ `workoutProjectionFence.ts` nie istnieje.
 
-- [ ] **Step 3: Zaimplementować czysty model fence'a**
+- [x] **Step 3: Zaimplementować czysty model fence'a**
 
 W `api/_lib/workoutProjectionFence.ts` zdefiniować:
 
@@ -212,7 +248,7 @@ Implementacja parsera:
   `${exerciseSource}:${exerciseId}`;
 - zachowuje `deletedAt` tylko jako skończoną liczbę nieujemną.
 
-- [ ] **Step 4: Rozszerzyć failing integration finalizacji**
+- [x] **Step 4: Rozszerzyć failing integration finalizacji**
 
 W teście `atomically finishes the active session with deterministic documents`
 w `tests/integration/workoutClosure.integration.test.ts` oczekiwać:
@@ -244,7 +280,7 @@ firebase emulators:exec --only firestore --project demo-ironlog \
 
 Expected: FAIL na brakujących polach i trzecim argumencie mocka.
 
-- [ ] **Step 5: Zapisać fence w transakcji finalizacji**
+- [x] **Step 5: Zapisać fence w transakcji finalizacji**
 
 W `api/_lib/workoutClosure.ts`:
 
@@ -280,7 +316,7 @@ materializeWorkoutForUser(ownerId, id, {
 Retry legacy tombstone'a bez fence'a przekazuje `undefined`; inicjalizacja
 legacy należy do Task 2.
 
-- [ ] **Step 6: Uruchomić targeted testy**
+- [x] **Step 6: Uruchomić targeted testy**
 
 Run:
 
@@ -293,7 +329,7 @@ firebase emulators:exec --only firestore --project demo-ironlog \
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add \
@@ -319,7 +355,7 @@ git commit -m "feat: add workout projection fence"
 - Produces: prywatne `prepareMaterialization`, `stageProjectionKeys`
 - Produces: prywatne `runGuardedProjectionTransaction`
 
-- [ ] **Step 1: Dodać bazowy harness integracyjny**
+- [x] **Step 1: Dodać bazowy harness integracyjny**
 
 Utworzyć `tests/integration/workoutProjectionSerialization.integration.test.ts`
 z tym samym mockiem `firebaseAdmin.js` i cleanupem emulatora co
@@ -354,7 +390,7 @@ await db.collection('workouts').doc(workoutId).set({
 })
 ```
 
-- [ ] **Step 2: Dodać failing test legacy inicjalizacji**
+- [x] **Step 2: Dodać failing test legacy inicjalizacji**
 
 ```ts
 it('initializes a missing legacy fence before projection writes', async () => {
@@ -380,7 +416,7 @@ it('initializes a missing legacy fence before projection writes', async () => {
 })
 ```
 
-- [ ] **Step 3: Dodać failing test starej rewizji**
+- [x] **Step 3: Dodać failing test starej rewizji**
 
 ```ts
 it('rejects a paused materialization after the fence revision changes', async () => {
@@ -418,7 +454,7 @@ it('rejects a paused materialization after the fence revision changes', async ()
 })
 ```
 
-- [ ] **Step 4: Uruchomić integrację i potwierdzić RED**
+- [x] **Step 4: Uruchomić integrację i potwierdzić RED**
 
 Run:
 
@@ -430,7 +466,7 @@ firebase emulators:exec --only firestore --project demo-ironlog \
 
 Expected: FAIL — brak legacy fence'a i brak kontroli `expectedRevision`.
 
-- [ ] **Step 5: Przygotować spójny fence przed materializacją**
+- [x] **Step 5: Przygotować spójny fence przed materializacją**
 
 W `api/_lib/workoutProjection.ts` rozszerzyć opcje:
 
@@ -454,7 +490,7 @@ export interface MaterializationReviewOptions {
 
 Legacy `closedAt` ustawić na `workout.finishedAt`.
 
-- [ ] **Step 6: Zapisać pełny affected-key set przed sesjami**
+- [x] **Step 6: Zapisać pełny affected-key set przed sesjami**
 
 Po pobraniu istniejących sesji i zbudowaniu docelowych sesji policzyć:
 
@@ -470,7 +506,7 @@ const affectedExercises = normalizeProjectionExerciseKeys(
 `pending | ready`, ustawić `pending` i zapisać pełną sumę. Dopiero po jego
 sukcesie wywołać checkpoint `beforeExerciseSessions`.
 
-- [ ] **Step 7: Chronić zapisy sesji i rekordów**
+- [x] **Step 7: Chronić zapisy sesji i rekordów**
 
 Dodać prywatny helper:
 
@@ -494,7 +530,7 @@ i `allowedState`, a dopiero potem wykonuje `apply`.
 - końcowa guarded transaction ustawia workout `materialized: true`, fence
   `ready` i redukuje klucze do bieżących ćwiczeń.
 
-- [ ] **Step 8: Uruchomić nowe i istniejące integracje**
+- [x] **Step 8: Uruchomić nowe i istniejące integracje**
 
 Run:
 
@@ -509,7 +545,7 @@ firebase emulators:exec --only firestore --project demo-ironlog \
 Expected: PASS, w tym wszystkie istniejące checkpointy częściowej
 materializacji i idempotentny retry.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add \
@@ -532,7 +568,7 @@ git commit -m "fix: fence workout materialization revisions"
 - Produces: `WorkoutMutationReviewOptions`
 - Changes: `updateFinishedWorkoutForUser(userId, workoutId, input, options?)`
 
-- [ ] **Step 1: Dodać failing test rewizji update**
+- [x] **Step 1: Dodać failing test rewizji update**
 
 ```ts
 it('increments the revision and preserves old and new exercise keys', async () => {
@@ -567,7 +603,7 @@ it('increments the revision and preserves old and new exercise keys', async () =
 })
 ```
 
-- [ ] **Step 2: Dodać failing test update po delete**
+- [x] **Step 2: Dodać failing test update po delete**
 
 ```ts
 it('rejects an update after the fence is deleted', async () => {
@@ -584,7 +620,7 @@ it('rejects an update after the fence is deleted', async () => {
 })
 ```
 
-- [ ] **Step 3: Uruchomić testy i potwierdzić RED**
+- [x] **Step 3: Uruchomić testy i potwierdzić RED**
 
 Run:
 
@@ -597,7 +633,7 @@ firebase emulators:exec --only firestore --project demo-ironlog \
 Expected: FAIL — update nadal zapisuje workout poza transakcją i nie obsługuje
 `db` ani injected materialize.
 
-- [ ] **Step 4: Zaimplementować transakcyjny update**
+- [x] **Step 4: Zaimplementować transakcyjny update**
 
 W `api/_lib/workoutProjection.ts` dodać:
 
@@ -630,7 +666,7 @@ export interface WorkoutMutationReviewOptions {
 Endpoint `api/update-workout.ts` pozostaje bez zmian, ponieważ opcje są
 testowym i wewnętrznym seamem.
 
-- [ ] **Step 5: Dodać konkurencyjne dwa update'y**
+- [x] **Step 5: Dodać konkurencyjne dwa update'y**
 
 Dodać test, który uruchamia dwa update'y i oczekuje rewizji `3`. Następnie
 wywołać materializację z rewizją `2` i potwierdzić:
@@ -648,7 +684,7 @@ await expect(materializeWorkoutForUser(USER_ID, workoutId, {
 Workout i projekcja po materializacji rewizji `3` muszą odpowiadać wyłącznie
 drugiemu update'owi.
 
-- [ ] **Step 6: Uruchomić targeted integrację**
+- [x] **Step 6: Uruchomić targeted integrację**
 
 Run:
 
@@ -660,7 +696,7 @@ firebase emulators:exec --only firestore --project demo-ironlog \
 
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add \
@@ -684,7 +720,7 @@ git commit -m "fix: serialize finished workout updates"
 - Produces: `DeleteWorkoutReviewOptions`
 - Changes: `deleteFinishedWorkoutForUser(userId, workoutId, options?)`
 
-- [ ] **Step 1: Rozszerzyć nazwane checkpointy**
+- [x] **Step 1: Rozszerzyć nazwane checkpointy**
 
 W `tests/review/support/faultOutcomes.ts` dodać:
 
@@ -694,7 +730,7 @@ W `tests/review/support/faultOutcomes.ts` dodać:
 | 'failed_before_delete_records'
 ```
 
-- [ ] **Step 2: Dodać failing test delete wygrywającego z materializacją**
+- [x] **Step 2: Dodać failing test delete wygrywającego z materializacją**
 
 ```ts
 it('keeps delete terminal when an older materialization resumes', async () => {
@@ -735,14 +771,14 @@ Powtórzyć ten sam przeplot z pauzą na `afterExerciseSessions`. Delete ma
 usunąć częściowo zapisaną projekcję, a wznowiona materializacja ma zostać
 odrzucona przed zapisem rekordów lub końcowym `materialized: true`.
 
-- [ ] **Step 3: Dodać failing test update rozpoczętego przed delete**
+- [x] **Step 3: Dodać failing test update rozpoczętego przed delete**
 
 Injected `materialize` w `updateFinishedWorkoutForUser` ma zatrzymać się po
 zatwierdzeniu transakcji update'u. W tym czasie wykonać delete, następnie
 wznowić rzeczywistą materializację z rewizją zwróconą przez update. Oczekiwać
 `workout_deleted` oraz braku workoutu, sesji i rekordów tej rewizji.
 
-- [ ] **Step 4: Dodać failing test retry po claimie**
+- [x] **Step 4: Dodać failing test retry po claimie**
 
 ```ts
 it('finishes cleanup on retry after delete was already claimed', async () => {
@@ -773,14 +809,14 @@ it('finishes cleanup on retry after delete was already claimed', async () => {
 })
 ```
 
-- [ ] **Step 5: Dodać failing test pełnej sumy kluczy**
+- [x] **Step 5: Dodać failing test pełnej sumy kluczy**
 
 Seed tombstone'a `pending` z kluczami `bench-press` i `custom-curl`, ale
 pozostawić w `exerciseSessions` tylko `custom-curl` oraz stary rekord
 `bench-press`. Po delete oba rekordy muszą zostać przeliczone, a stary rekord
 `bench-press` usunięty.
 
-- [ ] **Step 6: Utrwalić własność i tombstone `discarded`**
+- [x] **Step 6: Utrwalić własność i tombstone `discarded`**
 
 Dodać dwa przypadki:
 
@@ -789,7 +825,7 @@ Dodać dwa przypadki:
 - `outcome: 'discarded'` nie jest inicjalizowany jako fence workoutu i kończy
   się istniejącym `409 closure_conflict`.
 
-- [ ] **Step 7: Uruchomić integrację i potwierdzić RED**
+- [x] **Step 7: Uruchomić integrację i potwierdzić RED**
 
 Run:
 
@@ -802,7 +838,7 @@ firebase emulators:exec --only firestore --project demo-ironlog \
 Expected: FAIL — delete wymaga istniejącego workoutu i nie ustawia terminalnego
 fence'a.
 
-- [ ] **Step 8: Zaimplementować claim delete**
+- [x] **Step 8: Zaimplementować claim delete**
 
 W `api/_lib/workoutProjection.ts` dodać:
 
@@ -830,7 +866,7 @@ Pierwsza transakcja:
 - dla tombstone'a `discarded`, cudzego właściciela albo braku obu dokumentów
   zachowuje odpowiednio konflikt, `403` albo błąd nieistniejącego zasobu.
 
-- [ ] **Step 9: Zaimplementować idempotentny cleanup**
+- [x] **Step 9: Zaimplementować idempotentny cleanup**
 
 Po claimie:
 
@@ -844,7 +880,7 @@ Po claimie:
 
 `deletedAt` z pierwszego claimu nie zmienia się podczas retry.
 
-- [ ] **Step 10: Dodać pozostałe checkpointy retry**
+- [x] **Step 10: Dodać pozostałe checkpointy retry**
 
 Dodać przypadki `failed_after_delete_sessions` i
 `failed_before_delete_records`. Każdy:
@@ -853,7 +889,7 @@ Dodać przypadki `failed_after_delete_sessions` i
 - wykonuje pierwszy retry do pełnej konwergencji;
 - wykonuje drugi retry i porównuje logiczny snapshot bez zmiennych timestampów.
 
-- [ ] **Step 11: Uruchomić pełną integrację workoutu**
+- [x] **Step 11: Uruchomić pełną integrację workoutu**
 
 Run:
 
@@ -863,7 +899,7 @@ npm run test:integration:workout
 
 Expected: wszystkie pliki integracyjne PASS; brak retry runnera.
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add \
@@ -886,7 +922,7 @@ git commit -m "fix: make workout deletion terminal"
 - Consumes: wszystkie poprzednie commity i kryteria `WORKOUT-RACE-01–03`
 - Produces: zweryfikowany lokalny closeout bez pushu ani deployu
 
-- [ ] **Step 1: Uruchomić targeted unit**
+- [x] **Step 1: Uruchomić targeted unit**
 
 ```bash
 npx vitest run \
@@ -896,7 +932,7 @@ npx vitest run \
 
 Expected: PASS.
 
-- [ ] **Step 2: Uruchomić pełną integrację workoutu**
+- [x] **Step 2: Uruchomić pełną integrację workoutu**
 
 ```bash
 npm run test:integration:workout
@@ -904,7 +940,7 @@ npm run test:integration:workout
 
 Expected: PASS dla closure, projection i serialization na świeżym emulatorze.
 
-- [ ] **Step 3: Potwierdzić ochronę `closedSessions`**
+- [x] **Step 3: Potwierdzić ochronę `closedSessions`**
 
 ```bash
 npm run test:rules
@@ -913,7 +949,7 @@ npm run test:rules
 Expected: PASS, w tym istniejący test braku read/write klienta dla
 `closedSessions`.
 
-- [ ] **Step 4: Uruchomić istniejący lifecycle na Auth + Firestore Emulator**
+- [x] **Step 4: Uruchomić istniejący lifecycle na Auth + Firestore Emulator**
 
 ```bash
 npm run test:e2e:workout
@@ -922,7 +958,7 @@ npm run test:e2e:workout
 Expected: PASS bez retry. Ten gate potwierdza, że wewnętrzny fence nie zmienia
 publicznego przepływu finalizacji, retry projekcji i usuwania.
 
-- [ ] **Step 5: Uruchomić pełne statyczne gate'y**
+- [x] **Step 5: Uruchomić pełne statyczne gate'y**
 
 ```bash
 npm run test:unit
@@ -933,7 +969,7 @@ git diff --check
 
 Expected: wszystkie komendy kończą się kodem `0`.
 
-- [ ] **Step 6: Wykonać focused review zakresu**
+- [x] **Step 6: Wykonać focused review zakresu**
 
 Review obejmuje:
 
@@ -947,7 +983,7 @@ Review obejmuje:
 Każde znalezisko P1/P2 zatrzymuje closeout, otrzymuje failing test i wraca do
 właściwego tasku.
 
-- [ ] **Step 7: Zastosować bounded closeout**
+- [x] **Step 7: Zastosować bounded closeout**
 
 Przed zmianą statusów przeczytać
 `project-convergence/references/closure.md`. Następnie:
@@ -957,7 +993,7 @@ Przed zmianą statusów przeczytać
 - zachować Fazy 8C, 8D i 9 jako pozostałe zobowiązania parent roadmapy;
 - nie archiwizować roadmapy, ponieważ program kończy dopiero Faza 9.
 
-- [ ] **Step 8: Commit closeoutu**
+- [x] **Step 8: Commit closeoutu**
 
 ```bash
 git add \
@@ -967,7 +1003,7 @@ git add \
 git commit -m "docs: close phase 8b projection serialization"
 ```
 
-- [ ] **Step 9: Handoff**
+- [x] **Step 9: Handoff**
 
 Raport końcowy ma podać:
 

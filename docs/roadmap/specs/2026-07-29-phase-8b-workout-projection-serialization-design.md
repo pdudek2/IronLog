@@ -1,6 +1,6 @@
 # Faza 8B — Serializacja projekcji workoutu
 
-**Status:** DESIGN APPROVED — plan wykonawczy gotowy
+**Status:** DONE — wdrożenie lokalne i closeout zweryfikowane
 
 **Data:** 2026-07-29
 
@@ -239,3 +239,31 @@ przebudowa całego systemu rekordów oraz produkcyjny deploy.
 - retry materializacji i delete jest idempotentne;
 - legacy dane działają bez migracji;
 - wszystkie gate'y Fazy 8B przechodzą bez retry maskującego błąd.
+
+## 11. Closeout
+
+Faza 8B została zamknięta lokalnie 2026-07-29 po zielonych gate'ach:
+
+- targeted unit: 2 pliki, 24/24 testy;
+- integracja workoutu na świeżym emulatorze Firestore: 3 pliki, 37/37 testów;
+- reguły Firestore: 1 plik, 17/17 testów, w tym brak dostępu klienta do
+  `closedSessions`;
+- lifecycle na Auth + Firestore Emulator: 9/9 testów Playwright bez retry;
+- pełny unit: 61 plików, 475/475 testów;
+- lint, build i `git diff --check`: kod wyjścia `0`; build przetworzył 878
+  modułów.
+
+Focused review nie wykrył znalezisk P1/P2. Potwierdzono wszystkie ścieżki
+zapisu `exerciseSessions`, `records` i `materialized`, ochronę właściciela i
+tombstone'a `discarded`, pełną sumę kluczy, stabilne statusy
+`projection_superseded` i `workout_deleted` oraz brak nowej kolekcji, indeksu,
+zależności i zmian UI.
+
+**Zatwierdzone odchylenie planu:** query i agregacja sesji dla współdzielonego
+rekordu zostały przeniesione do tej samej guarded transaction co zapis albo
+usunięcie rekordu. Usuwa to okno, w którym równoległy delete innego workoutu
+mógł odtworzyć nieaktualny rekord.
+
+Lineage pozostaje aktywny: roadmapa korekcyjna → Faza 8B `DONE` → pozostałe
+Fazy 8C, 8D i 9. Spec i plan pozostają jako dowód; roadmapa nie jest
+archiwizowana. Push i deploy nadal wymagają osobnej zgody.

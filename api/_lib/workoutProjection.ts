@@ -102,6 +102,15 @@ export interface MaterializationReviewOptions {
   checkpoints?: MaterializationReviewCheckpoints
 }
 
+export interface WorkoutMutationReviewOptions {
+  db?: Firestore
+  materialize?: (
+    userId: string,
+    workoutId: string,
+    expectedRevision: number,
+  ) => Promise<void>
+}
+
 export async function materializeWorkoutForUser(
   userId: string,
   workoutId: string,
@@ -292,27 +301,82 @@ async function runGuardedProjectionTransaction<T>(
 export async function updateFinishedWorkoutForUser(
   userId: string,
   workoutId: string,
-  input: unknown
+  input: unknown,
+  options: WorkoutMutationReviewOptions = {},
 ): Promise<void> {
+  const database = options.db ?? adminDb
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
-  const workoutRef = adminDb.collection('workouts').doc(workoutDocumentId)
-  const workoutSnap = await workoutRef.get()
+  const workoutRef = database.collection('workouts').doc(workoutDocumentId)
+  const tombstoneRef = database.collection('closedSessions').doc(workoutDocumentId)
+  const nextRevision = await database.runTransaction(async (transaction) => {
+    const [workoutSnap, tombstoneSnap] = await transaction.getAll(workoutRef, tombstoneRef)
+    let storedFence: ProjectionFence | null = null
 
-  if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
+    if (tombstoneSnap.exists) {
+      const tombstone = requireOwnedFinishedTombstone(
+        tombstoneSnap.data(),
+        userId,
+        workoutDocumentId,
+      )
+      storedFence = parseProjectionFence(tombstone)
+      if (storedFence?.projectionState === 'deleted') throw workoutDeleted()
+    }
 
-  const existingWorkout = parseStoredWorkoutMetadata(workoutSnap.data())
-  assertOwnership(userId, existingWorkout.userId)
-  assertFinishedWorkout(existingWorkout)
+    if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
 
-  const nextWorkout = parseWorkoutUpdate(input)
+    const existingWorkout = parseStoredWorkout(workoutSnap.data())
+    assertOwnership(userId, existingWorkout.userId)
+    assertFinishedWorkout(existingWorkout)
+    const nextWorkout = parseWorkoutUpdate(input)
 
-  await workoutRef.update({
-    label: nextWorkout.label,
-    exercises: nextWorkout.exercises,
-    materialized: false,
+    const initialFence: ProjectionFence = {
+      projectionState: existingWorkout.materialized ? 'ready' : 'pending',
+      projectionRevision: INITIAL_PROJECTION_REVISION,
+      projectionExerciseKeys: normalizeProjectionExerciseKeys(existingWorkout.exercises),
+    }
+    const fence = storedFence ?? initialFence
+    const projectionRevision = fence.projectionRevision + 1
+    const projectionExerciseKeys = normalizeProjectionExerciseKeys(
+      existingWorkout.exercises,
+      fence.projectionExerciseKeys,
+      nextWorkout.exercises,
+    )
+
+    transaction.update(workoutRef, {
+      label: nextWorkout.label,
+      exercises: nextWorkout.exercises,
+      materialized: false,
+    })
+
+    const pendingFence = {
+      projectionState: 'pending' as const,
+      projectionRevision,
+      projectionExerciseKeys,
+    }
+    if (tombstoneSnap.exists) {
+      transaction.update(tombstoneRef, pendingFence)
+    } else {
+      transaction.create(tombstoneRef, {
+        userId,
+        sessionId: workoutDocumentId,
+        outcome: 'finished',
+        workoutId: workoutDocumentId,
+        closedAt: existingWorkout.finishedAt,
+        ...pendingFence,
+      })
+    }
+
+    return projectionRevision
   })
 
-  await materializeWorkoutForUser(userId, workoutDocumentId)
+  if (options.materialize) {
+    await options.materialize(userId, workoutDocumentId, nextRevision)
+  } else {
+    await materializeWorkoutForUser(userId, workoutDocumentId, {
+      db: database,
+      expectedRevision: nextRevision,
+    })
+  }
 }
 
 export async function deleteFinishedWorkoutForUser(userId: string, workoutId: string): Promise<void> {

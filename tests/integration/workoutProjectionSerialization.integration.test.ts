@@ -17,6 +17,7 @@ import {
   materializeWorkoutForUser,
   updateFinishedWorkoutForUser,
 } from '../../api/_lib/workoutProjection'
+import { finalizeWorkoutForUser } from '../../api/_lib/workoutClosure'
 import { ReviewFault } from '../review/support/faultOutcomes'
 
 const USER_ID = 'phase-r-user'
@@ -258,6 +259,87 @@ describe('workout projection serialization', () => {
     })
     expect((await db.collection('exerciseSessions')
       .where('workoutId', '==', workoutId).get()).empty).toBe(true)
+  })
+
+  it('reports concurrent materializations of the same revision as materialized', async () => {
+    const workoutId = 'serialization-concurrent-materialization'
+    const input = {
+      sessionId: workoutId,
+      templateId: null,
+      startedAt: STARTED_AT,
+      finishedAt: FINISHED_AT,
+      label: 'Serialized',
+      exercises: [benchPressExercise],
+    }
+    await db.collection('activeSessions').doc(USER_ID).set({
+      ...input,
+      userId: USER_ID,
+    })
+    const paused = deferred()
+    const release = deferred()
+
+    const firstFinalization = finalizeWorkoutForUser(USER_ID, input, {
+      db,
+      materialize: async (ownerId, id, expectedRevision) => {
+        await materializeWorkoutForUser(ownerId, id, {
+          db,
+          expectedRevision,
+          checkpoints: {
+            afterRecords: async () => {
+              paused.resolve()
+              await release.promise
+            },
+          },
+        })
+      },
+    })
+
+    await paused.promise
+    const secondFinalization = finalizeWorkoutForUser(USER_ID, input, {
+      db,
+      materialize: async (ownerId, id, expectedRevision) => {
+        await materializeWorkoutForUser(ownerId, id, {
+          db,
+          expectedRevision,
+        })
+      },
+    })
+
+    const secondResult = await secondFinalization
+    release.resolve()
+    const firstResult = await firstFinalization
+
+    expect([firstResult, secondResult]).toEqual([
+      { workoutId, status: 'materialized' },
+      { workoutId, status: 'materialized' },
+    ])
+
+    const [workout, fence, sessions, record] = await Promise.all([
+      db.collection('workouts').doc(workoutId).get(),
+      db.collection('closedSessions').doc(workoutId).get(),
+      db.collection('exerciseSessions').where('workoutId', '==', workoutId).get(),
+      db.collection('records').doc(`${USER_ID}_global_bench-press`).get(),
+    ])
+    expect(workout.data()).toMatchObject({ materialized: true })
+    expect(fence.data()).toMatchObject({
+      projectionState: 'ready',
+      projectionRevision: 1,
+      projectionExerciseKeys: [{
+        exerciseSource: 'global',
+        exerciseId: 'bench-press',
+      }],
+    })
+    expect(sessions.docs.map((document) => document.data())).toMatchObject([{
+      workoutId,
+      exerciseSource: 'global',
+      exerciseId: 'bench-press',
+    }])
+    expect(record.data()).toMatchObject({
+      totalSessions: 1,
+      maxWeight: 80,
+      maxReps: 5,
+      bestVolume: 400,
+    })
   })
 
   it('increments the revision and preserves old and new exercise keys', async () => {

@@ -184,20 +184,13 @@ export async function materializeWorkoutForUser(
     },
   )
   await options.checkpoints?.afterRecords?.()
-  await runGuardedProjectionTransaction(
+  await completeMaterialization(
     database,
+    workoutRef,
     tombstoneRef,
+    userId,
     prepared.fence.projectionRevision,
-    'pending',
-    (transaction) => {
-      transaction.update(workoutRef, { materialized: true })
-      transaction.update(tombstoneRef, {
-        projectionState: 'ready',
-        projectionExerciseKeys: normalizeProjectionExerciseKeys(
-          collectExerciseKeys(nextSessions),
-        ),
-      })
-    },
+    normalizeProjectionExerciseKeys(collectExerciseKeys(nextSessions)),
   )
 }
 
@@ -309,6 +302,49 @@ async function runGuardedProjectionTransaction<T>(
     if (fence.projectionState !== allowedState) throw projectionStateConflict()
 
     return apply(transaction, fence)
+  })
+}
+
+async function completeMaterialization(
+  database: Firestore,
+  workoutRef: DocumentReference,
+  tombstoneRef: DocumentReference,
+  userId: string,
+  expectedRevision: number,
+  projectionExerciseKeys: ProjectionExerciseKey[],
+): Promise<void> {
+  await database.runTransaction(async (transaction) => {
+    const [tombstoneSnap, workoutSnap] = await transaction.getAll(tombstoneRef, workoutRef)
+    if (!tombstoneSnap.exists) throw projectionStateConflict()
+
+    const tombstone = requireOwnedFinishedTombstone(
+      tombstoneSnap.data(),
+      userId,
+      tombstoneRef.id,
+    )
+    const fence = parseProjectionFence(tombstone)
+    if (!fence) throw projectionStateConflict()
+    if (fence.projectionState === 'deleted') throw workoutDeleted()
+    if (fence.projectionRevision !== expectedRevision) throw projectionSuperseded()
+    if (!workoutSnap.exists) throw projectionStateConflict()
+
+    const workout = asRecord(workoutSnap.data())
+    if (typeof workout.userId !== 'string' || !workout.userId.trim()) {
+      throw projectionStateConflict()
+    }
+    assertOwnership(userId, workout.userId)
+
+    if (fence.projectionState === 'ready') {
+      if (workout.materialized !== true) throw projectionStateConflict()
+      return
+    }
+    if (fence.projectionState !== 'pending') throw projectionStateConflict()
+
+    transaction.update(workoutRef, { materialized: true })
+    transaction.update(tombstoneRef, {
+      projectionState: 'ready',
+      projectionExerciseKeys,
+    })
   })
 }
 

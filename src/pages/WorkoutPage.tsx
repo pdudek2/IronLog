@@ -25,27 +25,13 @@ import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { isActiveSessionStale } from '../lib/sessionDuration'
 import { kgToDisplayWeight } from '../lib/weightUnits'
+import {
+  EXERCISE_CATEGORY_COLORS,
+  EXERCISE_CATEGORY_LABELS,
+} from '../lib/exerciseLabels'
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
-const CATEGORY_LABELS: Record<string, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  legs: 'Nogi',
-  shoulders: 'Barki',
-  arms: 'Ramiona',
-  core: 'Core',
-  cardio: 'Cardio',
-}
-const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#F0435A',
-  back: '#8FB8A0',
-  legs: '#F0A75A',
-  shoulders: '#D97B91',
-  arms: '#D9A06E',
-  core: '#B8A8B2',
-  cardio: '#A7D8BB',
-}
 const EQUIPMENT_LABELS: Record<string, string> = {
   barbell: 'Sztanga',
   dumbbell: 'Hantle',
@@ -771,12 +757,12 @@ export default function WorkoutPage() {
     : -1
   const focusSet = focusExercise && focusSetIndex >= 0 ? focusExercise.sets[focusSetIndex] : null
   const focusExerciseMeta = focusExercise ? exerciseCatalog.get(focusExercise.exerciseId) : null
-  const focusAccent = CATEGORY_COLORS[focusExerciseMeta?.category ?? ''] ?? 'var(--accent)'
+  const focusAccent = EXERCISE_CATEGORY_COLORS[focusExerciseMeta?.category ?? ''] ?? 'var(--accent)'
   const remainingSets = Math.max(totalSets - completedSets, 0)
   const showExerciseStack = active.exercises.length > 0 || keepExerciseStackMounted
   const sessionSetMarkers = active.exercises.flatMap((exercise, exerciseIndex) => {
     const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
-    const exerciseAccent = CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'
+    const exerciseAccent = EXERCISE_CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'
     return exercise.sets.map((set, setIndex) => {
       const isCurrent = exerciseIndex === focusExerciseIndex && setIndex === focusSetIndex && !set.done
       return {
@@ -1213,7 +1199,7 @@ export default function WorkoutPage() {
                     <div className="grid gap-2 sm:grid-cols-2">
                       {quickPicks.map(({ id, name, source, count }) => {
                         const meta = exerciseCatalog.get(id)
-                        const exerciseAccent = CATEGORY_COLORS[meta?.category ?? ''] ?? 'var(--accent)'
+                        const exerciseAccent = EXERCISE_CATEGORY_COLORS[meta?.category ?? ''] ?? 'var(--accent)'
                         return (
                           <motion.button
                             key={`${source}:${id}`}
@@ -1230,7 +1216,7 @@ export default function WorkoutPage() {
                                   className="flex-none text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-full"
                                   style={{ background: `${exerciseAccent}18`, color: exerciseAccent }}
                                 >
-                                  {CATEGORY_LABELS[meta.category] ?? meta.category}
+                                  {EXERCISE_CATEGORY_LABELS[meta.category] ?? meta.category}
                                 </span>
                               )}
                             </div>
@@ -1258,11 +1244,11 @@ export default function WorkoutPage() {
                       return (
                         <WorkoutExerciseLedgerItem
                           key={exerciseClientId}
-                          exerciseAccent={CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'}
+                          exerciseAccent={EXERCISE_CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'}
                           exerciseClientId={exerciseClientId}
                           exerciseIndex={exerciseIndex}
                           fallbackExercise={exerciseSnapshotByClientId.get(exerciseClientId) ?? exercise}
-                          categoryLabel={exerciseMeta?.category ? (CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
+                          categoryLabel={exerciseMeta?.category ? (EXERCISE_CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
                           equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
                           focusSetIndex={exerciseIndex === focusExerciseIndex ? focusSetIndex : -1}
                           hintDismissed={dismissedHints.has(hintKey)}

@@ -36,6 +36,10 @@ import {
 import { hasActiveSessionWork, subscribeToActiveSession } from '../lib/activeSessionService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
+import {
+  DEFAULT_EXERCISE_CATEGORY_COLOR,
+  EXERCISE_CATEGORY_COLORS,
+} from '../lib/exerciseLabels'
 import { exercises as exerciseDb } from '../data/exercises'
 import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
@@ -53,24 +57,14 @@ interface WorkoutDeleteOperation {
   status: 'pending' | 'error'
 }
 
-const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#F0435A',
-  back: '#8FB8A0',
-  legs: '#F0A75A',
-  arms: '#D9A06E',
-  shoulders: '#D97B91',
-  core: '#B8A8B2',
-  cardio: '#A7D8BB',
-}
-
 const WEEK_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
 
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
-  if (!firstExercise?.exerciseId) return '#A09AA0'
+  if (!firstExercise?.exerciseId) return DEFAULT_EXERCISE_CATEGORY_COLOR
   const category = exerciseMap.get(firstExercise.exerciseId)?.category
-  return CATEGORY_COLORS[category ?? ''] ?? '#A09AA0'
+  return EXERCISE_CATEGORY_COLORS[category ?? ''] ?? DEFAULT_EXERCISE_CATEGORY_COLOR
 }
 
 function workoutTitle(workout: WorkoutSummary): string {

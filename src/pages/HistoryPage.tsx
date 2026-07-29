@@ -11,6 +11,10 @@ import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { getUserExercises } from '../lib/userExercisesService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
+import {
+  EXERCISE_CATEGORY_COLORS,
+  EXERCISE_CATEGORY_LABELS,
+} from '../lib/exerciseLabels'
 
 type RangePreset = '30' | '90' | '365' | 'all'
 
@@ -20,26 +24,6 @@ const RANGE_PRESETS: Array<{ key: RangePreset; label: string; days: number | nul
   { key: '365', label: 'Rok', days: 365 },
   { key: 'all', label: 'Wszystko', days: null },
 ]
-
-const CATEGORY_LABELS: Record<string, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  legs: 'Nogi',
-  shoulders: 'Barki',
-  arms: 'Ramiona',
-  core: 'Core',
-  cardio: 'Cardio',
-}
-
-const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#F0435A',
-  back: '#8FB8A0',
-  legs: '#F0A75A',
-  shoulders: '#D97B91',
-  arms: '#D9A06E',
-  core: '#B8A8B2',
-  cardio: '#A7D8BB',
-}
 
 function formatCompactVolume(volume: number): string {
   if (!volume) return '0 kg'
@@ -243,18 +227,15 @@ export default function HistoryPage() {
           )}
 
           <div className="history-filter-row">
-            <div className="history-range-row">
+            <div className="history-range-row" role="group" aria-label="Zakres historii">
               {RANGE_PRESETS.map(({ key, label }) => (
                 <button
                   key={key}
                   type="button"
                   onClick={() => setRangePreset(key)}
-                  className="mobile-touch-target rounded-[var(--radius-pill)] px-3.5 py-1.5 text-xs font-semibold transition-colors"
-                  style={
-                    rangePreset === key
-                      ? { background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }
-                      : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
-                  }
+                  className="history-range-button mobile-touch-target"
+                  data-active={rangePreset === key}
+                  aria-pressed={rangePreset === key}
                 >
                   {label}
                 </button>
@@ -286,29 +267,32 @@ export default function HistoryPage() {
           </div>
 
           {availableCategories.length > 0 && (
-            <div className="history-category-filter-row">
-              <span className="text-[0.68rem] font-semibold uppercase mr-1" style={{ color: 'var(--muted-soft)' }}>
+            <div className="history-category-filter-group">
+              <span id="history-category-filter-label" className="history-category-filter-label">
                 Partie
               </span>
-              {availableCategories.map((cat) => {
-                const active = activeCategory === cat
-                const color = CATEGORY_COLORS[cat] ?? 'var(--accent)'
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setActiveCategory(active ? null : cat)}
-                    className="mobile-touch-target rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold transition-colors"
-                    style={
-                      active
-                        ? { background: `${color}22`, border: `1px solid ${color}55`, color }
-                        : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
-                    }
-                  >
-                    {CATEGORY_LABELS[cat] ?? cat}
-                  </button>
-                )
-              })}
+              <div className="history-category-filter-row" role="group" aria-labelledby="history-category-filter-label">
+                {availableCategories.map((cat) => {
+                  const active = activeCategory === cat
+                  const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      onClick={() => setActiveCategory(active ? null : cat)}
+                      className="mobile-touch-target rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold transition-colors"
+                      aria-pressed={active}
+                      style={
+                        active
+                          ? { background: `${color}22`, border: `1px solid ${color}55`, color }
+                          : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
+                      }
+                    >
+                      {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
+                    </button>
+                  )
+                })}
+              </div>
             </div>
           )}
         </div>
@@ -353,16 +337,13 @@ export default function HistoryPage() {
           </div>
         ) : (
           <div className="history-workout-list">
-            {filtered.map(({ workout, totalSets, totalVolume, categories, exerciseNames }, idx) => (
-              <motion.button
+            {filtered.map(({ workout, totalSets, totalVolume, categories, exerciseNames }) => (
+              <button
                 key={workout.id}
                 type="button"
                 onClick={() => navigate(`/workout/${workout.id}`)}
                 className="history-workout-row"
-                style={{ '--workout-accent': CATEGORY_COLORS[Array.from(categories)[0] ?? ''] ?? 'var(--accent)' } as CSSProperties}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: Math.min(idx * 0.02, 0.2), duration: 0.25 }}
+                style={{ '--workout-accent': EXERCISE_CATEGORY_COLORS[Array.from(categories)[0] ?? ''] ?? 'var(--accent)' } as CSSProperties}
               >
                 <div className="history-workout-main">
                   <div className="min-w-0">
@@ -377,14 +358,14 @@ export default function HistoryPage() {
                     {Array.from(categories).length > 0 && (
                       <div className="history-category-row" aria-label="Partie mięśniowe">
                         {Array.from(categories).slice(0, 3).map((cat) => {
-                          const color = CATEGORY_COLORS[cat] ?? 'var(--accent)'
+                          const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
                           return (
                             <span
                               key={cat}
                               className="history-category-pill"
                               style={{ '--category-accent': color } as CSSProperties}
                             >
-                              {CATEGORY_LABELS[cat] ?? cat}
+                              {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
                             </span>
                           )
                         })}
@@ -407,7 +388,7 @@ export default function HistoryPage() {
                     <strong>{formatCompactVolume(totalVolume)}</strong>
                   </div>
                 </div>
-                </motion.button>
+              </button>
             ))}
           </div>
         )}

@@ -149,7 +149,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
         >
           <button
             onClick={onClose}
-            className="flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
+            className="mobile-touch-target flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
             style={{ color: 'var(--muted)' }}
             aria-label="Zamknij formularz"
           >

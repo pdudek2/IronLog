@@ -42,6 +42,7 @@
   --success-soft: rgba(143, 184, 160, 0.13);
   --success-soft-strong: rgba(143, 184, 160, 0.24);
   --danger: var(--puls-warning);
+  --danger-foreground: #221307;
   --danger-soft: rgba(240, 167, 90, 0.12);
   --danger-soft-strong: rgba(240, 167, 90, 0.26);
   --top-nav-height: 64px;
@@ -242,7 +243,7 @@ button,
 input,
 select,
 textarea {
-  font: inherit;
+  font-family: inherit;
 }
 
 a {
@@ -956,10 +957,8 @@ a {
   overflow: hidden;
   min-height: 3rem;
   border: 0;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.03)),
-    linear-gradient(135deg, #f0435a 0%, #d83a50 48%, #b85260 100%);
-  color: var(--text-strong);
+  background: var(--primary-gradient);
+  color: var(--accent-foreground);
   box-shadow:
     0 6px 8px rgba(240, 67, 90, 0.18),
     inset 0 1px 0 rgba(255, 255, 255, 0.18);
@@ -981,13 +980,23 @@ a {
 }
 
 .auth-instrument-submit.ui-button--primary[data-loading="true"] {
-  color: var(--text-strong);
+  color: var(--accent-foreground);
   cursor: wait;
   opacity: 0.86;
 }
 
+.auth-account-link,
 .auth-password-reset {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
   color: var(--muted);
+  touch-action: manipulation;
+}
+
+.auth-account-link {
+  margin-block: -0.72rem;
+  color: var(--accent-text);
 }
 
 .auth-password-reset:hover {
@@ -2697,11 +2706,27 @@ a {
 }
 
 .history-filter-row,
+.history-category-filter-group,
 .history-category-filter-row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+
+.history-filter-row,
+.history-category-filter-group {
+  flex-wrap: wrap;
+}
+
+.history-category-filter-label {
+  flex: 0 0 auto;
+  color: var(--muted-soft);
+  font-size: 0.68rem;
+  font-weight: 680;
+}
+
+.history-category-filter-row {
+  flex-wrap: wrap;
 }
 
 .history-range-row {
@@ -2711,9 +2736,34 @@ a {
   gap: 0.5rem;
 }
 
+.history-range-button {
+  min-height: 2.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 0.4rem 0.9rem;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 680;
+  transition:
+    border-color 150ms ease,
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.history-range-button[data-active="true"] {
+  border-color: var(--accent-soft-strong);
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+
 .history-search {
   flex: 1 1 18rem;
   min-width: 15rem;
+}
+
+.history-search input {
+  min-height: 2.75rem;
 }
 
 .history-results {
@@ -3011,22 +3061,9 @@ a {
     font-size: 0.86rem;
   }
 
+  .history-board-kicker,
   .history-board-metrics {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    border-radius: var(--radius-sm);
-  }
-
-  .history-board-metrics > div {
-    min-width: 0;
-    padding: 0.58rem 0.62rem;
-  }
-
-  .history-board-metrics span {
-    font-size: 0.62rem;
-  }
-
-  .history-board-metrics strong {
-    font-size: 0.92rem;
+    display: none;
   }
 
   .history-control-panel {
@@ -3039,22 +3076,54 @@ a {
     gap: 0.55rem;
   }
 
-  .history-range-row,
+  .history-range-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: rgba(9, 8, 10, 0.2);
+  }
+
+  .history-range-button {
+    min-width: 0;
+    border: 0;
+    border-right: 1px solid rgba(244, 241, 242, 0.09);
+    border-radius: 0;
+    padding-inline: 0.25rem;
+  }
+
+  .history-range-button:last-child {
+    border-right: 0;
+  }
+
+  .history-range-button[data-active="true"] {
+    box-shadow: inset 0 -2px 0 var(--accent);
+  }
+
+  .history-category-filter-group {
+    display: grid;
+    gap: 0.35rem;
+  }
+
   .history-category-filter-row {
     flex-wrap: nowrap;
     overflow-x: auto;
-    padding-bottom: 0.05rem;
+    margin-inline: -0.82rem;
+    padding: 0 0.82rem 0.05rem;
+    scroll-padding-inline: 0.82rem;
+    scroll-snap-type: x proximity;
     scrollbar-width: none;
   }
 
-  .history-range-row::-webkit-scrollbar,
   .history-category-filter-row::-webkit-scrollbar {
     display: none;
   }
 
-  .history-range-row > *,
   .history-category-filter-row > * {
     flex: 0 0 auto;
+    scroll-snap-align: start;
   }
 
   .history-search {

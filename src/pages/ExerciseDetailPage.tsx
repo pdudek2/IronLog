@@ -10,30 +10,15 @@ import {
   type ExerciseSession,
   type ExerciseRecord,
 } from '../lib/exerciseDetailService'
-import { getEquipmentLabel, getMuscleLabel } from '../lib/exerciseLabels'
+import {
+  EXERCISE_CATEGORY_COLORS,
+  EXERCISE_CATEGORY_LABELS,
+  getEquipmentLabel,
+  getMuscleLabel,
+} from '../lib/exerciseLabels'
 import { polishPlural } from '../lib/polishPlural'
 import { useAuthStore } from '../store/authStore'
 import { Button, LoadingState } from '../components/ui'
-
-const CATEGORY_LABELS: Record<string, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  legs: 'Nogi',
-  shoulders: 'Barki',
-  arms: 'Ramiona',
-  core: 'Core',
-  cardio: 'Cardio',
-}
-
-const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#F0435A',
-  back: '#8FB8A0',
-  legs: '#F0A75A',
-  arms: '#D9A06E',
-  shoulders: '#D97B91',
-  core: '#B8A8B2',
-  cardio: '#A7D8BB',
-}
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('pl-PL', {
@@ -144,7 +129,7 @@ export default function ExerciseDetailPage() {
     )
   }
 
-  const accent = CATEGORY_COLORS[exercise?.category ?? ''] ?? 'var(--accent)'
+  const accent = EXERCISE_CATEGORY_COLORS[exercise?.category ?? ''] ?? 'var(--accent)'
   const maxVolume = sessions.length ? Math.max(...sessions.map((s) => s.totalVolume), 1) : 1
 
   const totalVolumeAll = sessions.reduce((sum, s) => sum + s.totalVolume, 0)
@@ -164,7 +149,7 @@ export default function ExerciseDetailPage() {
                 className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase"
                 style={{ background: `${accent}1e`, color: accent, border: `1px solid ${accent}30` }}
               >
-                {CATEGORY_LABELS[exercise.category] ?? exercise.category}
+                {EXERCISE_CATEGORY_LABELS[exercise.category] ?? exercise.category}
               </span>
             )}
             {exercise?.equipment && (

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type * as React from 'react'
 import { Link } from 'react-router-dom'
-import { loginUser, resetPassword } from '../lib/auth'
+import { getAuthErrorMessage, loginUser, resetPassword } from '../lib/auth'
 import AuthShell from '../components/AuthShell'
 import { Button, Input } from '../components/ui'
 
@@ -21,8 +21,8 @@ export default function LoginPage() {
     try {
       await loginUser(email, password)
       // onAuthStateChanged zaktualizuje store → PublicRoute przekieruje
-    } catch {
-      setError('Nieprawidłowy email lub hasło')
+    } catch (err) {
+      setError(getAuthErrorMessage(err, 'login'))
       setLoading(false)
     }
   }
@@ -60,7 +60,7 @@ export default function LoginPage() {
       subtitle={(
         <>
           Nie masz konta?{' '}
-          <Link to="/register" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent-text)' }}>
+          <Link to="/register" className="auth-account-link transition-opacity hover:opacity-80">
             Utwórz konto
           </Link>
         </>
@@ -82,17 +82,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <div className="flex items-center justify-between gap-3">
-            <label htmlFor="login-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
-            <button
-              type="button"
-              onClick={() => void handlePasswordReset()}
-              disabled={loading || resetLoading}
-              className="auth-password-reset text-xs font-semibold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {resetLoading ? 'Wysyłam...' : 'Nie pamiętasz hasła?'}
-            </button>
-          </div>
+          <label htmlFor="login-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
           <Input
             id="login-password"
             name="password"
@@ -103,6 +93,14 @@ export default function LoginPage() {
             autoComplete="current-password"
             required
           />
+          <button
+            type="button"
+            onClick={() => void handlePasswordReset()}
+            disabled={loading || resetLoading}
+            className="auth-password-reset -my-1 self-end px-1 text-xs font-semibold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {resetLoading ? 'Wysyłam...' : 'Nie pamiętasz hasła?'}
+          </button>
         </div>
 
         {error && <p id="login-form-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}

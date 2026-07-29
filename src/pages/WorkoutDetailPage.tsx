@@ -29,31 +29,17 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { ActionFeedback } from '../components/ActionFeedback'
 import { WorkoutDetailMobileActions } from '../components/WorkoutDetailMobileActions'
 import { LoadingState } from '../components/ui'
-import { getEquipmentLabel } from '../lib/exerciseLabels'
+import {
+  DEFAULT_EXERCISE_CATEGORY_COLOR,
+  EXERCISE_CATEGORY_COLORS,
+  EXERCISE_CATEGORY_LABELS,
+  getEquipmentLabel,
+} from '../lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { getCategoryWorkloadInsight } from '../lib/workoutCopy'
 
-const CATEGORY_COLORS: Record<string, string> = {
-  chest: '#F0435A',
-  back: '#8FB8A0',
-  legs: '#F0A75A',
-  arms: '#D9A06E',
-  shoulders: '#D97B91',
-  core: '#B8A8B2',
-  cardio: '#A7D8BB',
-}
-
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
-const CATEGORY_LABELS: Record<string, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  legs: 'Nogi',
-  shoulders: 'Barki',
-  arms: 'Ramiona',
-  core: 'Core',
-  cardio: 'Cardio',
-}
 
 interface WorkoutDeleteOperation {
   workoutId: string
@@ -61,8 +47,9 @@ interface WorkoutDeleteOperation {
 }
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
-  if (!firstExercise?.exerciseId) return '#A09AA0'
-  return CATEGORY_COLORS[exerciseMap.get(firstExercise.exerciseId)?.category ?? ''] ?? '#A09AA0'
+  if (!firstExercise?.exerciseId) return DEFAULT_EXERCISE_CATEGORY_COLOR
+  return EXERCISE_CATEGORY_COLORS[exerciseMap.get(firstExercise.exerciseId)?.category ?? '']
+    ?? DEFAULT_EXERCISE_CATEGORY_COLOR
 }
 
 function formatDate(ts: number): string {
@@ -388,9 +375,9 @@ export default function WorkoutDetailPage() {
   )
 
   const heroLabel = displayedWorkout.label
-    ?? (topFocus ? (CATEGORY_LABELS[topFocus[0]] ?? 'Trening') : 'Trening')
+    ?? (topFocus ? (EXERCISE_CATEGORY_LABELS[topFocus[0]] ?? 'Trening') : 'Trening')
   const heroInsight = topFocus
-    ? getCategoryWorkloadInsight(topFocus[0], CATEGORY_LABELS[topFocus[0]] ?? topFocus[0])
+    ? getCategoryWorkloadInsight(topFocus[0], EXERCISE_CATEGORY_LABELS[topFocus[0]] ?? topFocus[0])
     : 'Pierwsza pełna sesja pokaże dominujący fokus treningu.'
 
   return (
@@ -584,7 +571,8 @@ export default function WorkoutDetailPage() {
             <div className="workout-exercise-list">
               {displayedWorkout.exercises.map((exercise, exerciseIndex) => {
                 const exerciseData = exerciseCatalog.get(exercise.exerciseId ?? '') ?? exerciseMap.get(exercise.exerciseId ?? '')
-                const exerciseColor = CATEGORY_COLORS[exerciseData?.category ?? ''] ?? '#808CB3'
+                const exerciseColor = EXERCISE_CATEGORY_COLORS[exerciseData?.category ?? '']
+                  ?? DEFAULT_EXERCISE_CATEGORY_COLOR
                 const exerciseVolume = exercise.sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
                 const topExerciseSet = exercise.sets.reduce((top, set) => Math.max(top, set.weight), 0)
                 const exerciseReps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
@@ -614,7 +602,7 @@ export default function WorkoutDetailPage() {
                               className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
                               style={{ background: `${exerciseColor}18`, color: exerciseColor }}
                             >
-                              {CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category}
+                              {EXERCISE_CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category}
                             </span>
                           )}
                         </div>
@@ -709,7 +697,7 @@ export default function WorkoutDetailPage() {
                             exercise.sets.length > 1 ? (
                               <button
                                 onClick={() => handleRemoveSet(exerciseIndex, setIndex)}
-                                className="flex h-7 w-7 items-center justify-center rounded-md text-xs text-center transition-opacity hover:opacity-70"
+                                className="mobile-touch-target flex h-7 w-7 items-center justify-center rounded-md text-xs text-center transition-opacity hover:opacity-70"
                                 style={{ color: 'var(--muted)' }}
                                 aria-label={`Usuń serię ${setIndex + 1}`}
                               >

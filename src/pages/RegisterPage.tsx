@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type * as React from 'react'
 import { Link } from 'react-router-dom'
-import { registerUser } from '../lib/auth'
+import { getAuthErrorMessage, registerUser } from '../lib/auth'
 import AuthShell from '../components/AuthShell'
 import { Button, Input } from '../components/ui'
 
@@ -18,8 +18,8 @@ export default function RegisterPage() {
     try {
       await registerUser(email, password)
       // onAuthStateChanged zaktualizuje store → PublicRoute przekieruje
-    } catch {
-      setError('Rejestracja nie powiodła się. Sprawdź dane.')
+    } catch (err) {
+      setError(getAuthErrorMessage(err, 'register'))
       setLoading(false)
     }
   }
@@ -30,7 +30,7 @@ export default function RegisterPage() {
       subtitle={(
         <>
           Masz konto?{' '}
-          <Link to="/login" className="transition-opacity hover:opacity-80" style={{ color: 'var(--accent-text)' }}>
+          <Link to="/login" className="auth-account-link transition-opacity hover:opacity-80">
             Zaloguj się
           </Link>
         </>

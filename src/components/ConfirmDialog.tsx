@@ -84,7 +84,7 @@ export default function ConfirmDialog({
             <button
               ref={cancelButtonRef}
               onClick={onCancel}
-              className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
+              className="min-h-11 flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
               style={{
                 background: 'var(--surface-muted)',
                 border: '1px solid var(--border)',
@@ -97,10 +97,10 @@ export default function ConfirmDialog({
               type="button"
               onClick={onConfirm}
               disabled={confirmDisabled}
-              className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55"
+              className="min-h-11 flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55"
               style={{
                 background: danger ? 'var(--danger)' : 'var(--primary-gradient)',
-                color: danger ? '#fff' : 'var(--accent-foreground)',
+                color: danger ? 'var(--danger-foreground)' : 'var(--accent-foreground)',
               }}
               whileTap={confirmDisabled ? undefined : { scale: 0.95 }}
             >

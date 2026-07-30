@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import NumberFlow from '@number-flow/react'
 import { ChevronRight, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { LoadingState } from '../components/ui'
@@ -171,132 +169,103 @@ export default function HistoryPage() {
     [filtered],
   )
 
-  const activeFiltersCount = (activeCategory ? 1 : 0) + (searchText.trim() ? 1 : 0) + (rangePreset !== '90' ? 1 : 0)
-
   if (loading && workouts.length === 0) return <LoadingState message="Ładowanie historii..." />
 
   return (
     <div className="history-page">
-      <motion.section
-        className="history-board puls-panel"
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-      >
-        <div className="history-board-head">
-          <div className="min-w-0">
-            <p className="history-board-kicker">
-              {loadError && workouts.length === 0
-                ? 'Archiwum'
-                : `Łącznie ${workouts.length} ${polishPlural(workouts.length, 'trening', 'treningi', 'treningów')}`}
-            </p>
-            <h1>Historia</h1>
-            <p>
-              {loadError && workouts.length === 0
-                ? 'Nie udało się pobrać historii treningów.'
-                : filtered.length === 0
-                ? 'Brak treningów w wybranym zakresie.'
-                : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} · ${formatCompactVolume(totalVolumeInRange)}${historyTruncated ? ' · ostatnie 2000' : ''}`}
-            </p>
+      <header className="history-page-header">
+        <h1>Historia</h1>
+        <p>
+          {loadError && workouts.length === 0
+            ? 'Nie udało się pobrać historii treningów.'
+            : filtered.length === 0
+            ? searchText.trim() || activeCategory
+              ? 'Brak treningów pasujących do filtrów.'
+              : 'Brak treningów w wybranym zakresie.'
+            : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} · ${formatCompactVolume(totalVolumeInRange)}${historyTruncated ? ' · ostatnie 2000' : ''}`}
+        </p>
+      </header>
+
+      <section className="history-control-panel" aria-label="Filtry historii">
+        {historyTruncated && (
+          <div
+            className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
+            style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)', color: 'var(--muted)' }}
+          >
+            Historia została ograniczona do ostatnich 2000 treningów, żeby utrzymać płynność widoku.
+          </div>
+        )}
+
+        <div className="history-filter-row">
+          <div className="history-range-row" role="group" aria-label="Zakres historii">
+            {RANGE_PRESETS.map(({ key, label }) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setRangePreset(key)}
+                className="history-range-button mobile-touch-target"
+                data-active={rangePreset === key}
+                aria-pressed={rangePreset === key}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
-          <div className="history-board-metrics puls-ledger" aria-label="Podsumowanie historii">
-            <div>
-              <span>Wyniki</span>
-              <strong><NumberFlow value={filtered.length} /></strong>
-            </div>
-            <div>
-              <span>Objętość</span>
-              <strong><NumberFlow value={Math.round(totalVolumeInRange)} locales="pl-PL" format={{ useGrouping: true }} /> kg</strong>
-            </div>
-            <div>
-              <span>Filtry</span>
-              <strong><NumberFlow value={activeFiltersCount} /></strong>
-            </div>
+          <div className="history-search relative">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted-soft)' }} />
+            <input
+              type="search"
+              aria-label="Szukaj w historii treningów"
+              placeholder="Szukaj treningu lub ćwiczenia..."
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              className="w-full rounded-[var(--radius-pill)] pl-9 pr-9 py-1.5 text-xs font-medium outline-none"
+              style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)' }}
+            />
+            {searchText && (
+              <button
+                type="button"
+                onClick={() => setSearchText('')}
+                className="puls-icon-button mobile-touch-target absolute right-2 top-1/2 -translate-y-1/2 p-1"
+                aria-label="Wyczyść wyszukiwanie"
+              >
+                <X size={12} style={{ color: 'var(--muted)' }} />
+              </button>
+            )}
           </div>
         </div>
 
-        <div className="history-control-panel">
-          {historyTruncated && (
-            <div
-              className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
-              style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)', color: 'var(--muted)' }}
-            >
-              Historia została ograniczona do ostatnich 2000 treningów, żeby utrzymać płynność widoku.
-            </div>
-          )}
-
-          <div className="history-filter-row">
-            <div className="history-range-row" role="group" aria-label="Zakres historii">
-              {RANGE_PRESETS.map(({ key, label }) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setRangePreset(key)}
-                  className="history-range-button mobile-touch-target"
-                  data-active={rangePreset === key}
-                  aria-pressed={rangePreset === key}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div className="history-search relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted-soft)' }} />
-              <input
-                type="search"
-                aria-label="Szukaj w historii treningów"
-                placeholder="Szukaj ćwiczenia lub etykiety..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="w-full rounded-[var(--radius-pill)] pl-9 pr-9 py-1.5 text-xs font-medium outline-none"
-                style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)' }}
-              />
-              {searchText && (
-                <button
-                  type="button"
-                  onClick={() => setSearchText('')}
-                  className="puls-icon-button mobile-touch-target absolute right-2 top-1/2 -translate-y-1/2 p-1"
-                  aria-label="Wyczyść wyszukiwanie"
-                >
-                  <X size={12} style={{ color: 'var(--muted)' }} />
-                </button>
-              )}
+        {availableCategories.length > 0 && (
+          <div className="history-category-filter-group">
+            <span id="history-category-filter-label" className="history-category-filter-label">
+              Partie
+            </span>
+            <div className="history-category-filter-row" role="group" aria-labelledby="history-category-filter-label">
+              {availableCategories.map((cat) => {
+                const active = activeCategory === cat
+                const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setActiveCategory(active ? null : cat)}
+                    className="mobile-touch-target rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold transition-colors"
+                    aria-pressed={active}
+                    style={
+                      active
+                        ? { background: `${color}22`, border: `1px solid ${color}55`, color }
+                        : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
+                    }
+                  >
+                    {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
+                  </button>
+                )
+              })}
             </div>
           </div>
-
-          {availableCategories.length > 0 && (
-            <div className="history-category-filter-group">
-              <span id="history-category-filter-label" className="history-category-filter-label">
-                Partie
-              </span>
-              <div className="history-category-filter-row" role="group" aria-labelledby="history-category-filter-label">
-                {availableCategories.map((cat) => {
-                  const active = activeCategory === cat
-                  const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      onClick={() => setActiveCategory(active ? null : cat)}
-                      className="mobile-touch-target rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold transition-colors"
-                      aria-pressed={active}
-                      style={
-                        active
-                          ? { background: `${color}22`, border: `1px solid ${color}55`, color }
-                          : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
-                      }
-                    >
-                      {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-      </motion.section>
+        )}
+      </section>
 
       <div className="history-results">
         {/* Workout list */}
@@ -316,7 +285,7 @@ export default function HistoryPage() {
             </button>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="surface-panel rounded-[var(--radius-xl)] p-10 text-center">
+          <div className="history-empty-state">
             <p className="text-sm" style={{ color: 'var(--muted)' }}>
               Nic nie pasuje do obecnych filtrów. Spróbuj zwiększyć zakres lub wyczyścić filtry.
             </p>
@@ -328,7 +297,7 @@ export default function HistoryPage() {
                   setSearchText('')
                   setActiveCategory(null)
                 }}
-                className="mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
+                className="mobile-touch-target mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
                 style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
               >
                 Wyczyść filtry

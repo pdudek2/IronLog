@@ -2613,96 +2613,38 @@ a {
 /* ── History + workout detail: Puls records ───────────────────────── */
 .history-page {
   display: grid;
-  gap: 0.9rem;
+  gap: 1rem;
   padding-top: 0.9rem;
 }
 
-.history-board {
-  --rail-accent: var(--accent);
-  display: grid;
-  gap: 0.95rem;
-  padding: clamp(0.95rem, 1.8vw, 1.25rem);
-  border-radius: var(--radius-sm);
-  background:
-    linear-gradient(112deg, rgba(240, 67, 90, 0.09), transparent 34%),
-    linear-gradient(180deg, rgba(33, 31, 35, 0.82), rgba(15, 14, 16, 0.92));
-}
-
-.history-board::before {
-  opacity: 0.38;
-}
-
-.history-board-head {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(23rem, 0.58fr);
-  gap: 1.25rem;
-  align-items: end;
+.history-page-header {
   border-bottom: 1px solid rgba(244, 241, 242, 0.09);
-  padding-bottom: 0.95rem;
+  padding: clamp(0.85rem, 2.2vw, 1.2rem) 0 1.1rem;
 }
 
-.history-board-kicker {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+.history-page-header h1 {
   margin: 0;
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 780;
-  line-height: 1.35;
-  text-transform: uppercase;
-}
-
-.history-board h1 {
-  margin: 0.35rem 0 0;
   color: var(--text-strong);
   font-family: var(--font-display);
-  font-size: clamp(2.35rem, 4.2vw, 3.65rem);
+  font-size: clamp(2.65rem, 5vw, 4.15rem);
   font-weight: 760;
   letter-spacing: 0;
   line-height: 0.98;
 }
 
-.history-board-head p:not(.history-board-kicker) {
-  max-width: 34rem;
-  margin: 0.55rem 0 0;
+.history-page-header p {
+  max-width: 39rem;
+  margin: 0.65rem 0 0;
   color: rgba(244, 241, 242, 0.74);
   font-size: 0.95rem;
-  line-height: 1.45;
-}
-
-.history-board-metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  overflow: hidden;
-  border: 1px solid rgba(244, 241, 242, 0.1);
-  border-radius: var(--radius-sm);
-  background: rgba(9, 8, 10, 0.22);
-}
-
-.history-board-metrics > div {
-  padding: 0.82rem 0.9rem;
-}
-
-.history-board-metrics span {
-  display: block;
-  color: var(--muted);
-  font-size: 0.68rem;
-  font-weight: 720;
-}
-
-.history-board-metrics strong {
-  display: block;
-  margin-top: 0.25rem;
-  color: var(--text-strong);
-  font-size: clamp(1rem, 1.8vw, 1.35rem);
-  font-weight: 780;
-  line-height: 1.15;
-  font-variant-numeric: tabular-nums;
+  line-height: 1.5;
 }
 
 .history-control-panel {
   display: grid;
   gap: 0.72rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(244, 241, 242, 0.09);
 }
 
 .history-filter-row,
@@ -2730,16 +2672,19 @@ a {
 }
 
 .history-range-row {
-  display: flex;
+  display: inline-grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   flex: 0 0 auto;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(9, 8, 10, 0.2);
 }
 
 .history-range-button {
   min-height: 2.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-pill);
+  border: 0;
+  border-right: 1px solid rgba(244, 241, 242, 0.09);
   padding: 0.4rem 0.9rem;
   background: transparent;
   color: var(--muted);
@@ -2751,10 +2696,14 @@ a {
     color 150ms ease;
 }
 
+.history-range-button:last-child {
+  border-right: 0;
+}
+
 .history-range-button[data-active="true"] {
-  border-color: var(--accent-soft-strong);
   background: var(--accent-soft);
   color: var(--accent-text);
+  box-shadow: inset 0 -2px 0 var(--accent);
 }
 
 .history-search {
@@ -2769,6 +2718,13 @@ a {
 .history-results {
   display: grid;
   gap: 0;
+}
+
+.history-empty-state {
+  padding: 2.5rem 1rem;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
 }
 
 .history-workout-list {
@@ -3014,10 +2970,6 @@ a {
 }
 
 @media (max-width: 900px) {
-  .history-board-head {
-    grid-template-columns: 1fr;
-  }
-
   .history-workout-row {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -3042,32 +2994,22 @@ a {
     gap: 0.75rem;
   }
 
-  .history-board {
-    gap: 0.75rem;
-    padding: 0.82rem;
+  .history-page-header {
+    padding: 0.45rem 0 0.9rem;
   }
 
-  .history-board h1 {
-    font-size: 2.08rem;
+  .history-page-header h1 {
+    font-size: 2.65rem;
   }
 
-  .history-board-head {
-    gap: 0.75rem;
-    padding-bottom: 0.75rem;
-  }
-
-  .history-board-head p:not(.history-board-kicker) {
+  .history-page-header p {
     margin-top: 0.35rem;
-    font-size: 0.86rem;
-  }
-
-  .history-board-kicker,
-  .history-board-metrics {
-    display: none;
+    font-size: 0.9rem;
   }
 
   .history-control-panel {
     gap: 0.58rem;
+    padding-bottom: 0.85rem;
   }
 
   .history-filter-row {
@@ -3077,29 +3019,12 @@ a {
   }
 
   .history-range-row {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: rgba(9, 8, 10, 0.2);
+    width: 100%;
   }
 
   .history-range-button {
     min-width: 0;
-    border: 0;
-    border-right: 1px solid rgba(244, 241, 242, 0.09);
-    border-radius: 0;
     padding-inline: 0.25rem;
-  }
-
-  .history-range-button:last-child {
-    border-right: 0;
-  }
-
-  .history-range-button[data-active="true"] {
-    box-shadow: inset 0 -2px 0 var(--accent);
   }
 
   .history-category-filter-group {
@@ -3110,9 +3035,9 @@ a {
   .history-category-filter-row {
     flex-wrap: nowrap;
     overflow-x: auto;
-    margin-inline: -0.82rem;
-    padding: 0 0.82rem 0.05rem;
-    scroll-padding-inline: 0.82rem;
+    margin-inline: -1rem;
+    padding: 0 1rem 0.05rem;
+    scroll-padding-inline: 1rem;
     scroll-snap-type: x proximity;
     scrollbar-width: none;
   }
@@ -3150,6 +3075,10 @@ a {
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     white-space: normal;
+  }
+
+  .history-workout-meta span:nth-child(2) {
+    display: none;
   }
 
   .workout-detail-stat-ledger,
@@ -7884,7 +7813,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   border-bottom: 1px solid rgba(244, 241, 242, 0.11);
 }
 
-.history-board-kicker,
 .progress-board-kicker,
 .planner-kicker,
 .coach-kicker,
@@ -7898,7 +7826,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   text-transform: none;
 }
 
-.history-board h1,
+.history-page-header h1,
 .progress-board h1,
 .planner-header h1,
 .exercise-library-header-copy h1,
@@ -7914,7 +7842,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   overflow-wrap: anywhere;
 }
 
-.history-board-head p:not(.history-board-kicker),
+.history-page-header p,
 .progress-board-head p:not(.progress-board-kicker),
 .planner-header p:not(.planner-kicker),
 .exercise-library-header-copy p:not(.planner-kicker),
@@ -7927,7 +7855,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   line-height: 1.5;
 }
 
-.history-board,
 .progress-panel,
 .exercise-command-panel,
 .coach-header-panel,
@@ -7937,7 +7864,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     linear-gradient(180deg, rgba(33, 31, 35, 0.82), rgba(18, 17, 20, 0.94));
 }
 
-.history-board-metrics,
 .planner-mini-stats {
   background: rgba(9, 8, 10, 0.24);
 }
@@ -7969,7 +7895,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     padding-top: 1rem;
   }
 
-  .history-board h1,
+  .history-page-header h1,
   .progress-board h1,
   .planner-header h1,
   .exercise-library-header-copy h1,
@@ -7978,7 +7904,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     font-size: 2.65rem;
   }
 
-  .history-board::before,
   .progress-panel::after {
     display: none;
   }
@@ -7987,7 +7912,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     width: 100%;
   }
 
-  .history-board-head p:not(.history-board-kicker),
+  .history-page-header p,
   .progress-board-head p:not(.progress-board-kicker),
   .planner-header p:not(.planner-kicker),
   .exercise-library-header-copy p:not(.planner-kicker),

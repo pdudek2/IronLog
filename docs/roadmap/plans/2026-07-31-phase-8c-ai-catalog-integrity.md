@@ -4,7 +4,15 @@
 
 **Goal:** Nie dopuścić, aby generator planu przypisał ćwiczenie na podstawie niejednoznacznej nazwy albo wygenerował plan z katalogu, który po cichu utracił ćwiczenia użytkownika.
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** COMPLETED
+
+## Closeout evidence
+
+- Commity implementacyjne: `6fd63dd` (`fix: fail incomplete ai exercise catalogs`), `034a025` (`fix: reject ambiguous ai exercise names`), `b41eac6` (`test: cover ai plan catalog retry`) i `65cacbc` (`test: target visible ai plan retry`).
+- Dotknięte testy: `npx vitest run api/__tests__/aiChatContextIntegration.test.ts src/lib/__tests__/chatService.test.ts src/pages/__tests__/ChatPageAccessibility.test.tsx` — PASS, 3 pliki i 35/35 testów, bez retry.
+- Pełne gate'y: `npm run lint` — PASS; `npm run test:unit` — PASS, 63 pliki i 484/484 testów; `npm run build` — PASS; `git diff --check` — PASS.
+- Focused review: PASS. Wszystkie błędy odczytu kompletnego katalogu są normalizowane do `503 ai_catalog_unavailable` przed wywołaniem Anthropic; pusty poprawnie odczytany `userExercises` pozostaje sukcesem; dokładny klucz wygrywa przed nazwą; kolizje nazw nie mapują się niezależnie od kolejności katalogu; klient zachowuje komunikat i kod oraz pozwala ponowić bez resetu formularza.
+- Zakres zmian w commitach potwierdza brak zmian promptu, schematu danych, UI produkcyjnego, reguł, indeksów i zależności. Zatwierdzone odchylenia od planu: brak.
 
 **Architecture:** Serwer buduje jeden kompletny katalog `global + user` przed wywołaniem Anthropic. Awaria dowolnego źródła zatrzymuje generowanie stabilnym błędem `503 ai_catalog_unavailable`. Normalizacja najpierw rozstrzyga dokładne `exerciseSource + exerciseId`, a fallback po nazwie dopuszcza wyłącznie nazwę występującą raz w całym połączonym katalogu. Istniejący klient pokazuje treść błędu i pozwala ponowić tę samą operację.
 
@@ -390,7 +398,7 @@ git commit -m "test: cover ai plan catalog retry"
 - Modify: `docs/roadmap/ROADMAP.md`
 - Modify: `docs/roadmap/plans/2026-07-31-phase-8c-ai-catalog-integrity.md`
 
-- [ ] **Step 1: Uruchomić dotknięte testy**
+- [x] **Step 1: Uruchomić dotknięte testy**
 
 ```bash
 npx vitest run api/__tests__/aiChatContextIntegration.test.ts src/lib/__tests__/chatService.test.ts src/pages/__tests__/ChatPageAccessibility.test.tsx
@@ -398,7 +406,7 @@ npx vitest run api/__tests__/aiChatContextIntegration.test.ts src/lib/__tests__/
 
 Expected: PASS bez retry.
 
-- [ ] **Step 2: Uruchomić pełne gate'y repo**
+- [x] **Step 2: Uruchomić pełne gate'y repo**
 
 ```bash
 npm run lint
@@ -409,7 +417,7 @@ git diff --check
 
 Expected: wszystkie komendy kończą się kodem `0`.
 
-- [ ] **Step 3: Wykonać focused review**
+- [x] **Step 3: Wykonać focused review**
 
 Sprawdzić ręcznie:
 
@@ -423,7 +431,7 @@ Sprawdzić ręcznie:
 - użytkownik może ponowić generowanie bez resetowania formularza;
 - brak zmian promptu, schematu danych, UI, reguł, indeksów i zależności.
 
-- [ ] **Step 4: Zapisać dowody**
+- [x] **Step 4: Zapisać dowody**
 
 W sekcji `Status` tego planu ustawić `COMPLETED`, dopisać:
 
@@ -433,7 +441,7 @@ W sekcji `Status` tego planu ustawić `COMPLETED`, dopisać:
 - wynik focused review;
 - każde zatwierdzone odchylenie od planu.
 
-- [ ] **Step 5: Zamknąć Fazę 8C w roadmapie**
+- [x] **Step 5: Zamknąć Fazę 8C w roadmapie**
 
 W `docs/roadmap/ROADMAP.md`:
 
@@ -442,7 +450,7 @@ W `docs/roadmap/ROADMAP.md`:
 - zachować Fazę 8D jako `READY`;
 - pozostawić Fazę 9 `BLOCKED` wyłącznie przez 8D.
 
-- [ ] **Step 6: Commit closeoutu**
+- [x] **Step 6: Commit closeoutu**
 
 ```bash
 git add docs/roadmap/ROADMAP.md docs/roadmap/plans/2026-07-31-phase-8c-ai-catalog-integrity.md

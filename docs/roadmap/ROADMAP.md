@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa korekcyjna
 
-Status dokumentu: **APPROVED — Faza 8C zaplanowana; aktywne Fazy 8C, 8D i 9**
+Status dokumentu: **APPROVED — Faza 8C zamknięta; aktywne Fazy 8D i 9**
 Źródło: Agent Sanity Review z 2026-07-29
 Ostatnia aktualizacja: 2026-07-31
 
@@ -25,7 +25,7 @@ Ten plik zawiera wyłącznie aktywny zakres. Każda faza otrzymuje osobny plan p
 |---:|---|---|---|---|
 | 1 | 8A — Higiena release i wiarygodność E2E | P1 | DONE | Repo i bundle bez wrażliwych/roboczych artefaktów; E2E rozpoznaje aktualne ekrany |
 | 2 | 8B — Serializacja projekcji workoutu | P1 | DONE | Usuwanie i materializacja nie mogą odtworzyć usuniętych danych |
-| 3 | 8C — Integralność katalogu planów AI | P2 | PLANNED | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
+| 3 | 8C — Integralność katalogu planów AI | P2 | DONE | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
 | 4 | 8D — Kontrakt repo i cleanup | P2 | READY | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
 | 5 | 9 — Korekcyjna bramka wydania | P1 | BLOCKED | Cały zakres ma dowody regresyjne przed merge/deployem |
 
@@ -35,9 +35,8 @@ Faza 8A ──┬──► Faza 8B ──┐
           └──► Faza 8D ──┘
 ```
 
-Fazy 8A i 8B są zakończone i zintegrowane. Pozostałe zobowiązania aktywnej
-roadmapy to Fazy 8C i 8D, które mogą być prowadzone niezależnie, oraz Faza 9
-rozpoczynana dopiero po ich zakończeniu.
+Fazy 8A, 8B i 8C są zakończone i zintegrowane. Pozostałym zobowiązaniem
+aktywnej roadmapy jest Faza 8D; Faza 9 rozpoczyna się dopiero po jej zakończeniu.
 
 ## 3. Faza 8A — Higiena release i wiarygodność E2E
 
@@ -89,7 +88,7 @@ i
 
 ## 5. Faza 8C — Integralność katalogu planów AI
 
-**Status: PLANNED.** Zatwierdzony plan:
+**Status: DONE.** Implementacja i gate'y są zakończone. Dowody:
 [`plans/2026-07-31-phase-8c-ai-catalog-integrity.md`](plans/2026-07-31-phase-8c-ai-catalog-integrity.md).
 
 **Cel:** walidacja planu nie może po cichu przypisać ćwiczenia do złego źródła ani przedstawić niepełnego katalogu jako kompletnego.
@@ -132,7 +131,7 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 
 ## 7. Faza 9 — Korekcyjna bramka wydania
 
-**Status: BLOCKED przez Fazy 8C–8D.**
+**Status: BLOCKED przez Fazę 8D.**
 
 **Zakres:**
 

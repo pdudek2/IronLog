@@ -287,4 +287,107 @@ describe('AI context response metadata', () => {
       notes: '',
     })).toThrow('Generator nie zwrócił żadnego poprawnego dnia treningowego.')
   })
+
+  it('rejects ambiguous name fallbacks regardless of catalog order', () => {
+    const collidingCatalog = [
+      {
+        id: 'bench-press',
+        name: 'Bench Press',
+        source: 'global' as const,
+        equipment: 'barbell',
+        category: 'chest',
+        muscles: ['chest'],
+      },
+      {
+        id: 'custom-bench',
+        name: 'Bench Press',
+        source: 'user' as const,
+        equipment: 'barbell',
+        category: 'chest',
+        muscles: ['chest'],
+      },
+    ]
+    const planWithMissingId = {
+      name: 'Plan',
+      days: [{
+        name: 'Dzień A',
+        exercises: [{
+          exerciseId: 'missing-bench',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: 4,
+          targetReps: 5,
+          targetWeight: 80,
+        }],
+      }],
+    }
+    const request = {
+      goal: 'siła',
+      daysPerWeek: 1,
+      experience: 'intermediate',
+      equipment: [],
+      focus: '',
+      notes: '',
+    }
+
+    for (const catalog of [collidingCatalog, [...collidingCatalog].reverse()]) {
+      expect(() => normalizeGeneratedPlan(planWithMissingId, catalog, request))
+        .toThrow('Generator nie zwrócił żadnego poprawnego dnia treningowego.')
+    }
+  })
+
+  it('uses the only matching name when a generated exercise ID is missing', () => {
+    const plan = normalizeGeneratedPlan({
+      name: 'Plan',
+      days: [{
+        exercises: [{
+          exerciseId: 'missing-bench',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+        }],
+      }],
+    }, [
+      { id: 'custom-bench', name: 'Bench Press', source: 'user', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
+    ], {
+      goal: 'siła',
+      daysPerWeek: 1,
+      experience: 'intermediate',
+      equipment: [],
+      focus: '',
+      notes: '',
+    })
+
+    expect(plan.days[0]?.exercises[0]).toMatchObject({
+      exerciseId: 'custom-bench',
+      exerciseSource: 'user',
+    })
+  })
+
+  it('prefers an exact source and ID key over a matching name from another source', () => {
+    const plan = normalizeGeneratedPlan({
+      name: 'Plan',
+      days: [{
+        exercises: [{
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+        }],
+      }],
+    }, [
+      { id: 'custom-bench', name: 'Bench Press', source: 'user', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
+      { id: 'bench-press', name: 'Bench Press', source: 'global', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
+    ], {
+      goal: 'siła',
+      daysPerWeek: 1,
+      experience: 'intermediate',
+      equipment: [],
+      focus: '',
+      notes: '',
+    })
+
+    expect(plan.days[0]?.exercises[0]).toMatchObject({
+      exerciseId: 'bench-press',
+      exerciseSource: 'global',
+    })
+  })
 })

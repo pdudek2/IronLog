@@ -350,7 +350,17 @@ export function normalizeGeneratedPlan(
 ): GeneratedPlan {
   const record = asRecord(raw)
   const catalogByKey = new Map(catalog.map((exercise) => [`${exercise.source}:${exercise.id}`, exercise]))
-  const catalogByName = new Map(catalog.map((exercise) => [normalizeExerciseName(exercise.name), exercise]))
+  const catalogByName = new Map<string, AvailableExercise | null>()
+
+  for (const exercise of catalog) {
+    const normalizedName = normalizeExerciseName(exercise.name)
+    if (!normalizedName) continue
+
+    catalogByName.set(
+      normalizedName,
+      catalogByName.has(normalizedName) ? null : exercise,
+    )
+  }
   const allowedEquipment = new Set(request.equipment)
 
   const daysRaw = Array.isArray(record.days) ? record.days : []
@@ -368,7 +378,9 @@ export function normalizeGeneratedPlan(
       const requestedName = typeof exerciseRecord.name === 'string' ? exerciseRecord.name.trim() : ''
 
       const matchedExercise = catalogByKey.get(`${requestedSource}:${requestedId}`)
-        ?? (requestedName ? catalogByName.get(normalizeExerciseName(requestedName)) : undefined)
+        ?? (requestedName
+          ? catalogByName.get(normalizeExerciseName(requestedName)) ?? undefined
+          : undefined)
 
       if (!matchedExercise) return []
       if (allowedEquipment.size > 0 && !allowedEquipment.has(matchedExercise.equipment)) return []

@@ -130,9 +130,10 @@ describe('ChatPage accessibility', () => {
     }))
     expect(goal).not.toHaveAttribute('aria-invalid')
     expect(goal).not.toHaveAttribute('aria-describedby')
-    expect(generatePlan).toBeEnabled()
+    const retryGeneratePlan = screen.getByRole('button', { name: 'Generuj plan' })
+    expect(retryGeneratePlan).toBeEnabled()
 
-    fireEvent.click(generatePlan)
+    fireEvent.click(retryGeneratePlan)
 
     expect(await screen.findByRole('heading', { name: 'Plan po ponowieniu' })).toBeVisible()
     expect(mocks.generateTrainingPlan).toHaveBeenCalledTimes(2)

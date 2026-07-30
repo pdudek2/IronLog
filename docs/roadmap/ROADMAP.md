@@ -1,8 +1,8 @@
 # IronLog — aktywna roadmapa korekcyjna
 
-Status dokumentu: **APPROVED — Faza 8B zakończona; aktywne Fazy 8C, 8D i 9**
+Status dokumentu: **APPROVED — Faza 8C zaplanowana; aktywne Fazy 8C, 8D i 9**
 Źródło: Agent Sanity Review z 2026-07-29
-Ostatnia aktualizacja: 2026-07-30
+Ostatnia aktualizacja: 2026-07-31
 
 Zakończony program A–7, jego dowody release oraz pełna historyczna macierz audytów znajdują się w [`archive/2026-07-29-full-roadmap-snapshot.md`](archive/2026-07-29-full-roadmap-snapshot.md). Nie należy czytać archiwum przy zwykłym planowaniu bieżących prac.
 
@@ -14,6 +14,7 @@ Ten plik zawiera wyłącznie aktywny zakres. Każda faza otrzymuje osobny plan p
 - Naprawa i jej test regresyjny należą do tej samej fazy.
 - **READY** oznacza gotowość do napisania szczegółowego planu.
 - **DESIGN IN PROGRESS** oznacza, że przed implementacją trzeba zatwierdzić kontrakt.
+- **PLANNED** oznacza zatwierdzony kontrakt i gotowy plan implementacji.
 - **INTEGRATION PENDING** oznacza, że implementacja i gate'y są zakończone, ale zmiana nie została jeszcze zapisana w historii projektu.
 - **BLOCKED** oznacza zależność od wcześniejszych faz.
 - Po zamknięciu Fazy 9 cały dokument trafia do `archive/`; kolejny program zaczyna się od nowego, krótkiego `ROADMAP.md`.
@@ -24,7 +25,7 @@ Ten plik zawiera wyłącznie aktywny zakres. Każda faza otrzymuje osobny plan p
 |---:|---|---|---|---|
 | 1 | 8A — Higiena release i wiarygodność E2E | P1 | DONE | Repo i bundle bez wrażliwych/roboczych artefaktów; E2E rozpoznaje aktualne ekrany |
 | 2 | 8B — Serializacja projekcji workoutu | P1 | DONE | Usuwanie i materializacja nie mogą odtworzyć usuniętych danych |
-| 3 | 8C — Integralność katalogu planów AI | P2 | DESIGN IN PROGRESS | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
+| 3 | 8C — Integralność katalogu planów AI | P2 | PLANNED | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
 | 4 | 8D — Kontrakt repo i cleanup | P2 | READY | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
 | 5 | 9 — Korekcyjna bramka wydania | P1 | BLOCKED | Cały zakres ma dowody regresyjne przed merge/deployem |
 
@@ -88,7 +89,8 @@ i
 
 ## 5. Faza 8C — Integralność katalogu planów AI
 
-**Status: DESIGN IN PROGRESS.**
+**Status: PLANNED.** Zatwierdzony plan:
+[`plans/2026-07-31-phase-8c-ai-catalog-integrity.md`](plans/2026-07-31-phase-8c-ai-catalog-integrity.md).
 
 **Cel:** walidacja planu nie może po cichu przypisać ćwiczenia do złego źródła ani przedstawić niepełnego katalogu jako kompletnego.
 
@@ -105,7 +107,9 @@ i
 - użytkownik widzi prawdziwy stan błędu i może ponowić operację;
 - testy obejmują kolizję global/user i awarię Firestore.
 
-**Decyzja przed implementacją:** wybrać retryable failure całej generacji albo jawny tryb ograniczony do katalogu globalnego.
+**Zatwierdzona decyzja:** awaria pobrania kompletnego katalogu zatrzymuje całą
+generację stabilnym, retryable błędem. Nie dodajemy trybu ograniczonego do
+katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 
 ## 6. Faza 8D — Kontrakt repo i cleanup
 

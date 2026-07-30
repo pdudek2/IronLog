@@ -66,7 +66,7 @@
 - Modify: `api/ai-chat.ts`
 - Modify/Test: `src/lib/__tests__/chatService.test.ts`
 
-- [ ] **Step 1: Uzupełnić mock Firestore o kontrolowany odczyt `userExercises`**
+- [x] **Step 1: Uzupełnić mock Firestore o kontrolowany odczyt `userExercises`**
 
 W `api/__tests__/aiChatContextIntegration.test.ts` dodać do hoisted mocks:
 
@@ -97,7 +97,7 @@ mocks.getUserExercises.mockResolvedValue({ docs: [] })
 
 To usuwa dotychczasową zależność testów sukcesu od cichego fallbacku.
 
-- [ ] **Step 2: Dodać failing test awarii katalogu**
+- [x] **Step 2: Dodać failing test awarii katalogu**
 
 W tym samym pliku dodać test plan mode:
 
@@ -127,7 +127,7 @@ it('returns a retryable catalog error without calling Anthropic', async () => {
 })
 ```
 
-- [ ] **Step 3: Uruchomić test i potwierdzić RED**
+- [x] **Step 3: Uruchomić test i potwierdzić RED**
 
 Run:
 
@@ -137,7 +137,7 @@ npx vitest run api/__tests__/aiChatContextIntegration.test.ts
 
 Expected: nowy test FAIL, ponieważ endpoint nadal przechodzi do Anthropic z katalogiem global-only.
 
-- [ ] **Step 4: Zastąpić cichy fallback stabilnym błędem**
+- [x] **Step 4: Zastąpić cichy fallback stabilnym błędem**
 
 W `api/ai-chat.ts`:
 
@@ -161,7 +161,7 @@ throw new ApiError(
 
 Nie łapać tego błędu ponownie lokalnie. Istniejący `sendApiError` ma zwrócić status, komunikat i kod.
 
-- [ ] **Step 5: Potwierdzić GREEN i brak regresji plan mode**
+- [x] **Step 5: Potwierdzić GREEN i brak regresji plan mode**
 
 Run:
 
@@ -171,7 +171,7 @@ npx vitest run api/__tests__/aiChatContextIntegration.test.ts
 
 Expected: PASS; testy sukcesu korzystają z `{ docs: [] }`, a test awarii zwraca `503` bez requestu do Anthropic.
 
-- [ ] **Step 6: Dodać test kontraktu klienta**
+- [x] **Step 6: Dodać test kontraktu klienta**
 
 W `src/lib/__tests__/chatService.test.ts` zaimportować `AiApiError` i dodać:
 
@@ -205,7 +205,7 @@ it('preserves the retryable catalog error contract', async () => {
 })
 ```
 
-- [ ] **Step 7: Uruchomić oba kontrakty**
+- [x] **Step 7: Uruchomić oba kontrakty**
 
 Run:
 
@@ -215,7 +215,7 @@ npx vitest run api/__tests__/aiChatContextIntegration.test.ts src/lib/__tests__/
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add api/ai-chat.ts api/__tests__/aiChatContextIntegration.test.ts src/lib/__tests__/chatService.test.ts
@@ -231,7 +231,7 @@ git commit -m "fix: fail incomplete ai exercise catalogs"
 - Modify/Test: `api/__tests__/aiChatContextIntegration.test.ts`
 - Modify: `api/ai-chat.ts`
 
-- [ ] **Step 1: Dodać failing test kolizji niezależny od kolejności**
+- [x] **Step 1: Dodać failing test kolizji niezależny od kolejności**
 
 W `api/__tests__/aiChatContextIntegration.test.ts` przygotować plan z brakującym ID i nazwą `Bench Press`, a następnie uruchomić `normalizeGeneratedPlan` dwa razy: raz z kolejnością `[global, user]`, raz `[user, global]`.
 
@@ -266,7 +266,7 @@ toThrow('Generator nie zwrócił żadnego poprawnego dnia treningowego.')
 
 Plan ma zawierać tylko kolizyjne ćwiczenie, dzięki czemu odrzucenie fallbacku daje jednoznaczny wynik.
 
-- [ ] **Step 2: Dodać testy brakującego ID i dokładnego klucza**
+- [x] **Step 2: Dodać testy brakującego ID i dokładnego klucza**
 
 Dodać dwa kontrakty:
 
@@ -275,7 +275,7 @@ Dodać dwa kontrakty:
 
 Użyć `daysPerWeek: 1` i pustego filtra sprzętu, aby testował wyłącznie rozstrzyganie katalogu.
 
-- [ ] **Step 3: Uruchomić testy i potwierdzić RED**
+- [x] **Step 3: Uruchomić testy i potwierdzić RED**
 
 Run:
 
@@ -285,7 +285,7 @@ npx vitest run api/__tests__/aiChatContextIntegration.test.ts
 
 Expected: test kolizji FAIL, ponieważ bieżący `Map` wybiera ostatni wpis zależnie od kolejności.
 
-- [ ] **Step 4: Zbudować indeks wyłącznie unikalnych nazw**
+- [x] **Step 4: Zbudować indeks wyłącznie unikalnych nazw**
 
 W `normalizeGeneratedPlan` w `api/ai-chat.ts` zachować istniejący `catalogByKey`, a `catalogByName` zbudować iteracyjnie:
 
@@ -314,7 +314,7 @@ const matchedExercise = catalogByKey.get(`${requestedSource}:${requestedId}`)
 
 `null` oznacza trwałą kolizję nazwy; trzeci duplikat nie może ponownie uczynić jej unikalną.
 
-- [ ] **Step 5: Potwierdzić GREEN**
+- [x] **Step 5: Potwierdzić GREEN**
 
 Run:
 
@@ -324,7 +324,7 @@ npx vitest run api/__tests__/aiChatContextIntegration.test.ts
 
 Expected: PASS dla obu kolejności, unikalnego fallbacku i dokładnego klucza.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/ai-chat.ts api/__tests__/aiChatContextIntegration.test.ts
@@ -339,7 +339,7 @@ git commit -m "fix: reject ambiguous ai exercise names"
 
 - Modify/Test: `src/pages/__tests__/ChatPageAccessibility.test.tsx`
 
-- [ ] **Step 1: Rozszerzyć test błędu generowania o udane ponowienie**
+- [x] **Step 1: Rozszerzyć test błędu generowania o udane ponowienie**
 
 Zastąpić ogólny jednorazowy błąd sekwencją:
 
@@ -372,7 +372,7 @@ expect(mocks.generateTrainingPlan).toHaveBeenCalledTimes(2)
 expect(screen.queryByRole('alert')).not.toBeInTheDocument()
 ```
 
-- [ ] **Step 2: Uruchomić test komponentu**
+- [x] **Step 2: Uruchomić test komponentu**
 
 Run:
 
@@ -382,7 +382,7 @@ npx vitest run src/pages/__tests__/ChatPageAccessibility.test.tsx
 
 Expected: PASS bez zmian w `ChatPage.tsx`. Jeśli test ujawni realny błąd, najpierw udokumentować go w tym planie, a dopiero potem dodać minimalną poprawkę klienta.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add src/pages/__tests__/ChatPageAccessibility.test.tsx

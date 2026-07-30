@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa korekcyjna
 
-Status dokumentu: **APPROVED — Faza 8C zamknięta; aktywne Fazy 8D i 9**
+Status dokumentu: **APPROVED — Faza 8C DONE; Faza 8D READY; Faza 9 BLOCKED**
 Źródło: Agent Sanity Review z 2026-07-29
 Ostatnia aktualizacja: 2026-07-31
 

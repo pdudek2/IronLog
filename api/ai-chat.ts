@@ -2,6 +2,7 @@ import { adminDb } from './_lib/firebaseAdmin.js'
 import { requireUserId } from './_lib/auth.js'
 import { loadAiUserContext } from './_lib/aiContextLoader.js'
 import { anthropicApiError, anthropicNetworkError } from './_lib/anthropicErrors.js'
+import { ApiError } from './_lib/errors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
 import { RateLimitError, assertRateLimit } from './_lib/rateLimit.js'
 import {
@@ -140,43 +141,11 @@ function normalizePlanRequest(raw: AiChatBody['planRequest']) {
 }
 
 async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]> {
-  const userExercisesSnap = await adminDb.collection('userExercises').where('userId', '==', uid).get()
-  const globalExercises = await loadGlobalExercises()
-
-  const fromGlobal = globalExercises.map((exercise) => ({
-    id: exercise.id,
-    name: exercise.name,
-    source: 'global' as const,
-    equipment: exercise.equipment,
-    category: exercise.category,
-    muscles: exercise.muscles,
-  }))
-
-  const fromUser = userExercisesSnap.docs.flatMap((docSnap) => {
-    const data = docSnap.data()
-    const name = typeof data.name === 'string' ? data.name.trim() : ''
-    if (!name) return []
-
-    return [{
-      id: docSnap.id,
-      name,
-      source: 'user' as const,
-      equipment: typeof data.equipment === 'string' ? data.equipment : 'bodyweight',
-      category: typeof data.category === 'string' ? data.category : 'core',
-      muscles: Array.isArray(data.muscles) ? data.muscles.flatMap((muscle) => typeof muscle === 'string' ? [muscle] : []) : [],
-    }]
-  })
-
-  return [...fromGlobal, ...fromUser]
-}
-
-async function fetchAvailableExercisesSafe(uid: string): Promise<AvailableExercise[]> {
   try {
-    return await fetchAvailableExercises(uid)
-  } catch (error) {
-    console.error('[ai-chat exercise catalog error]', error)
-    const globalExercises = await loadGlobalExercises().catch(() => [])
-    return globalExercises.map((exercise) => ({
+    const userExercisesSnap = await adminDb.collection('userExercises').where('userId', '==', uid).get()
+    const globalExercises = await loadGlobalExercises()
+
+    const fromGlobal = globalExercises.map((exercise) => ({
       id: exercise.id,
       name: exercise.name,
       source: 'global' as const,
@@ -184,6 +153,33 @@ async function fetchAvailableExercisesSafe(uid: string): Promise<AvailableExerci
       category: exercise.category,
       muscles: exercise.muscles,
     }))
+
+    const fromUser = userExercisesSnap.docs.flatMap((docSnap) => {
+      const data = docSnap.data()
+      const name = typeof data.name === 'string' ? data.name.trim() : ''
+      if (!name) return []
+
+      return [{
+        id: docSnap.id,
+        name,
+        source: 'user' as const,
+        equipment: typeof data.equipment === 'string' ? data.equipment : 'bodyweight',
+        category: typeof data.category === 'string' ? data.category : 'core',
+        muscles: Array.isArray(data.muscles) ? data.muscles.flatMap((muscle) => typeof muscle === 'string' ? [muscle] : []) : [],
+      }]
+    })
+
+    return [...fromGlobal, ...fromUser]
+  } catch (error) {
+    console.error('[ai-chat exercise catalog error]', error)
+    throw new ApiError(
+      503,
+      'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      {
+        code: 'ai_catalog_unavailable',
+        cause: error,
+      },
+    )
   }
 }
 
@@ -602,7 +598,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
     if (mode === 'plan') {
       const request = normalizePlanRequest(body.planRequest)
-      const catalog = await fetchAvailableExercisesSafe(userId)
+      const catalog = await fetchAvailableExercises(userId)
       const plan = await generatePlan(apiKey, model, context, request, catalog)
       sendJson(res, 200, { plan })
       return

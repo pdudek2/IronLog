@@ -7,7 +7,7 @@ const { auth } = vi.hoisted(() => ({
 vi.mock('../firebase', () => ({ auth, db: {} }))
 vi.mock('../aiKeyStorage', () => ({ getClaudeModel: () => 'claude-test' }))
 
-import { generateTrainingPlan, streamChatReply } from '../chatService'
+import { AiApiError, generateTrainingPlan, streamChatReply } from '../chatService'
 
 const encoder = new TextEncoder()
 
@@ -144,6 +144,34 @@ describe('streamChatReply', () => {
 })
 
 describe('generateTrainingPlan', () => {
+  it('preserves the retryable catalog error contract', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: 'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      code: 'ai_catalog_unavailable',
+    }), {
+      status: 503,
+      headers: { 'Content-Type': 'application/json' },
+    })))
+
+    const result = generateTrainingPlan({
+      apiKey: 'sk-ant-test-key-longer-than-twenty-characters',
+      request: {
+        goal: 'Siła',
+        daysPerWeek: 3,
+        experience: 'intermediate',
+        equipment: [],
+        focus: '',
+        notes: '',
+      },
+    })
+
+    await expect(result).rejects.toBeInstanceOf(AiApiError)
+    await expect(result).rejects.toMatchObject({
+      message: 'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      code: 'ai_catalog_unavailable',
+    })
+  })
+
   it('returns plan data with the same parsed context metadata', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       plan: { name: 'Plan', summary: 'Opis', days: [] },

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   loadAiUserContext: vi.fn(),
   requireUserId: vi.fn().mockResolvedValue('user-1'),
   assertRateLimit: vi.fn().mockResolvedValue(undefined),
+  getUserExercises: vi.fn(),
 }))
 
 vi.mock('../_lib/aiContextLoader.js', () => ({
@@ -16,7 +17,15 @@ vi.mock('../_lib/rateLimit.js', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../_lib/rateLimit.js')>()
   return { ...actual, assertRateLimit: mocks.assertRateLimit }
 })
-vi.mock('../_lib/firebaseAdmin.js', () => ({ adminDb: {} }))
+vi.mock('../_lib/firebaseAdmin.js', () => ({
+  adminDb: {
+    collection: () => ({
+      where: () => ({
+        get: mocks.getUserExercises,
+      }),
+    }),
+  },
+}))
 
 import { AVAILABLE_AI_CONTEXT_SOURCES, buildAiUserContext } from '../../server/aiContext.js'
 import handler, { normalizeGeneratedPlan, serializeAiContextHeader } from '../ai-chat.js'
@@ -104,8 +113,10 @@ beforeEach(() => {
   mocks.loadAiUserContext.mockReset()
   mocks.requireUserId.mockReset()
   mocks.assertRateLimit.mockReset()
+  mocks.getUserExercises.mockReset()
   mocks.requireUserId.mockResolvedValue('user-1')
   mocks.assertRateLimit.mockResolvedValue(undefined)
+  mocks.getUserExercises.mockResolvedValue({ docs: [] })
 })
 
 afterEach(() => {
@@ -173,6 +184,30 @@ describe('AI context response metadata', () => {
 
     expect(captured.header('X-IronLog-AI-Context')).toBe('limited;unavailable=readiness')
     expect(captured.text()).toBe('{"type":"chunk","text":"Gotowe"}\n{"type":"done"}\n')
+  })
+
+  it('returns a retryable catalog error without calling Anthropic', async () => {
+    mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
+      sources: AVAILABLE_AI_CONTEXT_SOURCES,
+      profile: null,
+      readinessEntries: [],
+      workouts: [],
+      records: [],
+    }))
+    mocks.getUserExercises.mockRejectedValueOnce(new Error('firestore unavailable'))
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    const captured = createHandlerDoubles(validPlanBody)
+    await handler(captured.req, captured.res)
+
+    expect(captured.status()).toBe(503)
+    expect(captured.json()).toEqual({
+      error: 'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      code: 'ai_catalog_unavailable',
+    })
+    expect(fetchMock).not.toHaveBeenCalled()
   })
 
   it.each([

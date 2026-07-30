@@ -100,22 +100,43 @@ describe('ChatPage accessibility', () => {
     expect(goal).toHaveAccessibleDescription('Podaj cel planu, zanim uruchomisz generator.')
   })
 
-  it('announces a generation failure without marking the valid goal field as invalid', async () => {
-    mocks.generateTrainingPlan.mockRejectedValueOnce(new Error('Nie udało się wygenerować planu testowego.'))
+  it('announces a catalog generation failure and lets the user retry', async () => {
+    mocks.generateTrainingPlan
+      .mockRejectedValueOnce(new Error(
+        'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      ))
+      .mockResolvedValueOnce({
+        plan: {
+          name: 'Plan po ponowieniu',
+          summary: 'Gotowy plan',
+          days: [{ name: 'Dzień 1', exercises: [] }],
+        },
+        context: { status: 'full', unavailableSources: [] },
+      })
     render(<ChatPage />)
 
     await openModelSelect()
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
     const goal = screen.getByRole('textbox', { name: 'Cel planu' })
     fireEvent.change(goal, { target: { value: 'Budowa siły' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Generuj plan' }))
+    const generatePlan = screen.getByRole('button', { name: 'Generuj plan' })
+    fireEvent.click(generatePlan)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się wygenerować planu testowego.')
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+    )
     expect(mocks.generateTrainingPlan).toHaveBeenCalledWith(expect.objectContaining({
       request: expect.objectContaining({ goal: 'Budowa siły' }),
     }))
     expect(goal).not.toHaveAttribute('aria-invalid')
     expect(goal).not.toHaveAttribute('aria-describedby')
+    expect(generatePlan).toBeEnabled()
+
+    fireEvent.click(generatePlan)
+
+    expect(await screen.findByRole('heading', { name: 'Plan po ponowieniu' })).toBeVisible()
+    expect(mocks.generateTrainingPlan).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('exposes the selected generated-plan day without relying on color', async () => {

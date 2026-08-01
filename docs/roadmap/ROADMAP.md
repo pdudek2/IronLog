@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa korekcyjna
 
-Status dokumentu: **APPROVED — Faza 8C DONE; Faza 8D READY; Faza 9 BLOCKED**
+Status dokumentu: **APPROVED — Faza 8D PLANNED; Faza 9 BLOCKED**
 Źródło: Agent Sanity Review z 2026-07-29
 Ostatnia aktualizacja: 2026-07-31
 
@@ -26,7 +26,7 @@ Ten plik zawiera wyłącznie aktywny zakres. Każda faza otrzymuje osobny plan p
 | 1 | 8A — Higiena release i wiarygodność E2E | P1 | DONE | Repo i bundle bez wrażliwych/roboczych artefaktów; E2E rozpoznaje aktualne ekrany |
 | 2 | 8B — Serializacja projekcji workoutu | P1 | DONE | Usuwanie i materializacja nie mogą odtworzyć usuniętych danych |
 | 3 | 8C — Integralność katalogu planów AI | P2 | DONE | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
-| 4 | 8D — Kontrakt repo i cleanup | P2 | READY | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
+| 4 | 8D — Kontrakt repo i cleanup | P2 | PLANNED | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
 | 5 | 9 — Korekcyjna bramka wydania | P1 | BLOCKED | Cały zakres ma dowody regresyjne przed merge/deployem |
 
 ```text
@@ -112,7 +112,8 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 
 ## 6. Faza 8D — Kontrakt repo i cleanup
 
-**Status: READY.**
+**Status: PLANNED.** Zatwierdzony plan:
+[`plans/2026-08-01-phase-8d-repo-contract-cleanup.md`](plans/2026-08-01-phase-8d-repo-contract-cleanup.md).
 
 **Cel:** usunąć rozjazd między instrukcjami repo a aktualnym produktem oraz potwierdzony martwy scaffolding.
 

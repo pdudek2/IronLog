@@ -1,8 +1,8 @@
 # IronLog — aktywna roadmapa korekcyjna
 
-Status dokumentu: **APPROVED — Faza 8D PLANNED; Faza 9 BLOCKED**
+Status dokumentu: **Faza 8D DONE; Faza 9 READY**
 Źródło: Agent Sanity Review z 2026-07-29
-Ostatnia aktualizacja: 2026-07-31
+Ostatnia aktualizacja: 2026-08-02
 
 Zakończony program A–7, jego dowody release oraz pełna historyczna macierz audytów znajdują się w [`archive/2026-07-29-full-roadmap-snapshot.md`](archive/2026-07-29-full-roadmap-snapshot.md). Nie należy czytać archiwum przy zwykłym planowaniu bieżących prac.
 
@@ -26,8 +26,8 @@ Ten plik zawiera wyłącznie aktywny zakres. Każda faza otrzymuje osobny plan p
 | 1 | 8A — Higiena release i wiarygodność E2E | P1 | DONE | Repo i bundle bez wrażliwych/roboczych artefaktów; E2E rozpoznaje aktualne ekrany |
 | 2 | 8B — Serializacja projekcji workoutu | P1 | DONE | Usuwanie i materializacja nie mogą odtworzyć usuniętych danych |
 | 3 | 8C — Integralność katalogu planów AI | P2 | DONE | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
-| 4 | 8D — Kontrakt repo i cleanup | P2 | PLANNED | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
-| 5 | 9 — Korekcyjna bramka wydania | P1 | BLOCKED | Cały zakres ma dowody regresyjne przed merge/deployem |
+| 4 | 8D — Kontrakt repo i cleanup | P2 | DONE | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
+| 5 | 9 — Korekcyjna bramka wydania | P1 | READY | Cały zakres ma dowody regresyjne przed merge/deployem |
 
 ```text
 Faza 8A ──┬──► Faza 8B ──┐
@@ -35,8 +35,8 @@ Faza 8A ──┬──► Faza 8B ──┐
           └──► Faza 8D ──┘
 ```
 
-Fazy 8A, 8B i 8C są zakończone i zintegrowane. Pozostałym zobowiązaniem
-aktywnej roadmapy jest Faza 8D; Faza 9 rozpoczyna się dopiero po jej zakończeniu.
+Fazy 8A–8D są zakończone i zintegrowane. Faza 9 jest gotowa do
+szczegółowego planowania korekcyjnej bramki wydania.
 
 ## 3. Faza 8A — Higiena release i wiarygodność E2E
 
@@ -112,7 +112,7 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 
 ## 6. Faza 8D — Kontrakt repo i cleanup
 
-**Status: PLANNED.** Zatwierdzony plan:
+**Status: DONE.** Implementacja, focused review i gate'y są zakończone. Plan i dowody:
 [`plans/2026-08-01-phase-8d-repo-contract-cleanup.md`](plans/2026-08-01-phase-8d-repo-contract-cleanup.md).
 
 **Cel:** usunąć rozjazd między instrukcjami repo a aktualnym produktem oraz potwierdzony martwy scaffolding.
@@ -132,7 +132,7 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 
 ## 7. Faza 9 — Korekcyjna bramka wydania
 
-**Status: BLOCKED przez Fazę 8D.**
+**Status: READY.** Faza 8D jest zakończona; można przygotować szczegółowy plan bramki.
 
 **Zakres:**
 

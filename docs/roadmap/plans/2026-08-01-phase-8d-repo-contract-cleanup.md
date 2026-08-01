@@ -4,7 +4,7 @@
 
 **Goal:** Uzgodnić lokalne instrukcje agenta z aktualnym produktem Puls i usunąć dwa potwierdzone, nieużywane assety startowe Vite bez zmiany działania aplikacji.
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** COMPLETED
 
 **Architecture:** Lokalny `AGENTS.md` pozostaje kontraktem dla agentów w worktree i jest korygowany na podstawie bieżącego CSS, fontów, reguł Firestore oraz serwerowego lifecycle workoutu. Plik jest celowo ignorowany i nie trafia do historii Git. Cleanup ogranicza się do dwóch śledzonych plików SVG, dla których repo-wide `rg` nie znajduje żadnego konsumenta. Nie powstaje nowa warstwa dokumentacji ani mechanizm kompatybilności.
 
@@ -55,7 +55,7 @@
 
 - Local-only (celowo ignorowany; nigdy nie stage'ować ani commitować): `AGENTS.md`
 
-- [ ] **Step 1: Zapisać dowód rozjazdu lokalnego kontraktu**
+- [x] **Step 1: Zapisać dowód rozjazdu lokalnego kontraktu**
 
 Run:
 
@@ -71,7 +71,7 @@ Expected:
 - pierwsza komenda pokazuje historyczne informacje w `AGENTS.md`;
 - pozostałe komendy pokazują aktualny Puls, fonty, endpoint finalizacji i brak zapisu klienta do `workouts`.
 
-- [ ] **Step 2: Zastąpić opis projektu**
+- [x] **Step 2: Zastąpić opis projektu**
 
 W `AGENTS.md` zastąpić sekcję `## Projekt`:
 
@@ -84,7 +84,7 @@ to **Puls**. Priorytet: wiarygodny lifecycle treningu, spójne dane i ukończeni
 przepływów end-to-end bez over-engineeringu.
 ```
 
-- [ ] **Step 3: Zastąpić historyczny opis design systemu**
+- [x] **Step 3: Zastąpić historyczny opis design systemu**
 
 W `AGENTS.md` zastąpić całą sekcję `## Design system` poniższą treścią:
 
@@ -112,7 +112,7 @@ znajdują się w `src/index.css`:
   od `lg:`.
 ```
 
-- [ ] **Step 4: Poprawić kontrakt danych workoutu**
+- [x] **Step 4: Poprawić kontrakt danych workoutu**
 
 W sekcji `## Architektura danych` zastąpić bullet `workouts` i dodać brakujący
 fence lifecycle:
@@ -128,7 +128,7 @@ W `## Konwencje kodu` dodać:
 - Zakończenie i odrzucenie sesji przechodzi przez `/api/finalize-workout` i `/api/discard-session` za pośrednictwem `src/lib/workoutClosureService.ts`; klient nie tworzy dokumentu `workouts` bezpośrednio
 ```
 
-- [ ] **Step 5: Potwierdzić usunięcie starych twierdzeń**
+- [x] **Step 5: Potwierdzić usunięcie starych twierdzeń**
 
 Run:
 
@@ -141,7 +141,7 @@ rg -n "Puls|Archivo|Instrument Sans|closedSessions|finalize-workout" AGENTS.md
 
 Expected: pierwsze `rg` nie znajduje dopasowań; drugie potwierdza nowy kontrakt.
 
-- [ ] **Step 6: Potwierdzić lokalny status**
+- [x] **Step 6: Potwierdzić lokalny status**
 
 ```bash
 git check-ignore -v AGENTS.md
@@ -159,7 +159,7 @@ Expected: pierwsza komenda potwierdza regułę ignorowania, a druga nie zwraca �
 - Delete: `src/assets/react.svg`
 - Delete: `src/assets/vite.svg`
 
-- [ ] **Step 1: Potwierdzić ownership i brak referencji**
+- [x] **Step 1: Potwierdzić ownership i brak referencji**
 
 Run:
 
@@ -172,7 +172,7 @@ fi
 
 Expected: oba assety są śledzone, a repo nie zawiera żadnego ich konsumenta.
 
-- [ ] **Step 2: Usunąć wyłącznie dwa martwe assety**
+- [x] **Step 2: Usunąć wyłącznie dwa martwe assety**
 
 Usunąć:
 
@@ -183,7 +183,7 @@ src/assets/vite.svg
 
 Nie usuwać `src/assets/hero.png` ani żadnego pliku z `public/`.
 
-- [ ] **Step 3: Potwierdzić zakres diffu**
+- [x] **Step 3: Potwierdzić zakres diffu**
 
 Run:
 
@@ -198,7 +198,7 @@ D	src/assets/react.svg
 D	src/assets/vite.svg
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/assets/react.svg src/assets/vite.svg
@@ -214,7 +214,7 @@ git commit -m "chore: remove unused Vite assets"
 - Modify: `docs/roadmap/ROADMAP.md`
 - Modify: `docs/roadmap/plans/2026-08-01-phase-8d-repo-contract-cleanup.md`
 
-- [ ] **Step 1: Uruchomić kontrakty lokalne**
+- [x] **Step 1: Uruchomić kontrakty lokalne**
 
 ```bash
 if rg -n "projekt zaliczeniowy|electric blue|Syne|Urbanist|klient tworzy" AGENTS.md; then
@@ -230,7 +230,7 @@ rg -n "Puls|Archivo|Instrument Sans|closedSessions|finalize-workout" AGENTS.md
 
 Expected: lokalny `AGENTS.md` jest ignorowany i nieśledzony; brak starych twierdzeń i referencji do assetów; nowy kontrakt jest obecny.
 
-- [ ] **Step 2: Uruchomić gate'y techniczne**
+- [x] **Step 2: Uruchomić gate'y techniczne**
 
 ```bash
 npm run lint
@@ -242,7 +242,7 @@ Expected: wszystkie komendy kończą się kodem `0`; build przetwarza produkcyjn
 
 Nie uruchamiać pełnego `test:unit`: faza nie zmienia kodu wykonywalnego ani testów, a lint + TypeScript/build są właściwą powierzchnią regresji.
 
-- [ ] **Step 3: Wykonać focused review**
+- [x] **Step 3: Wykonać focused review**
 
 Potwierdzić:
 
@@ -252,7 +252,7 @@ Potwierdzić:
 - nie zmieniono runtime, UI, reguł, indeksów, zależności ani innych assetów;
 - lokalne nieśledzone pliki użytkownika pozostały nietknięte.
 
-- [ ] **Step 4: Zapisać dowody i zamknąć roadmapę**
+- [x] **Step 4: Zapisać dowody i zamknąć roadmapę**
 
 W tym planie ustawić status `COMPLETED`, oznaczyć wykonane checkboxy i dopisać
 commity oraz dokładne wyniki gate'ów i focused review.
@@ -264,7 +264,7 @@ W `docs/roadmap/ROADMAP.md`:
 - zmienić status dokumentu na `Faza 8D DONE; Faza 9 READY`;
 - zachować 8A–8C jako `DONE`.
 
-- [ ] **Step 5: Commit closeoutu**
+- [x] **Step 5: Commit closeoutu**
 
 ```bash
 git add docs/roadmap/ROADMAP.md docs/roadmap/plans/2026-08-01-phase-8d-repo-contract-cleanup.md
@@ -272,3 +272,36 @@ git commit -m "docs: close repository contract cleanup"
 ```
 
 Nie wykonywać pushu ani deployu bez osobnej zgody.
+
+---
+
+## Dowody wykonania
+
+### Commity
+
+- `b379f21773c376c8781fc48087421694e94f7a07` — korekta skanu referencji, aby dokumentacja i artefakty SDD nie były traktowane jako konsumenci runtime;
+- `ec1730c9fd684790fca7225c72f14dff8fc0b039` — utrzymanie `AGENTS.md` jako lokalnego, ignorowanego kontraktu; plik nie trafił do historii Git;
+- `a81f9cf4619918eab18b6c2a70adfd695617885a` — usunięcie wyłącznie `src/assets/react.svg` i `src/assets/vite.svg`.
+
+### Gate'y lokalnego kontraktu — 2026-08-02
+
+- skan `projekt zaliczeniowy|electric blue|Syne|Urbanist|klient tworzy` — exit `0`, bez dopasowań;
+- `git check-ignore -v AGENTS.md` — exit `0`, reguła `.gitignore:44:AGENTS.md`;
+- `test -z "$(git ls-files AGENTS.md)"` — exit `0`, plik nieśledzony;
+- skan `react\.svg|vite\.svg` z wykluczeniami planu — exit `0`, bez dopasowań;
+- skan aktualnego kontraktu — exit `0`, potwierdził `Puls`, `Archivo`, `Instrument Sans`, `closedSessions` i `finalize-workout`.
+
+### Gate'y techniczne — 2026-08-02
+
+- `npm run lint` — exit `0`, bez błędów;
+- `npm run build` — exit `0`; TypeScript przeszedł, Vite 8.1.2 przetworzył 878 modułów i zbudował frontend produkcyjny;
+- `git diff --check` — exit `0`, bez błędów whitespace;
+- pełny `npm run test:unit` celowo pominięto zgodnie z planem; baseline przed implementacją: 63 pliki i 484 testy zaliczone.
+
+### Focused review
+
+- fakty zmienione w lokalnym `AGENTS.md` potwierdzają tokeny i powierzchnie Puls w `src/index.css`, fonty w `index.html`, blokada zapisu klienta w `firestore.rules` oraz endpointy i serwerowe transakcje w `src/lib/workoutClosureService.ts` i `api/_lib/workoutClosure.ts`;
+- skan nie znalazł historycznego motywu, a `src/lib/workoutService.ts` finalizuje trening przez endpoint i używa referencji do `workouts` po stronie klienta wyłącznie do odczytu;
+- commit `a81f9cf4619918eab18b6c2a70adfd695617885a` usuwa dokładnie dwa SVG bez konsumentów; `src/assets/hero.png` i `public/` pozostały;
+- nie zmieniono runtime, UI, CSS, reguł, indeksów, zależności ani innych assetów;
+- `AGENTS.md` i pozostałe lokalne pliki użytkownika pozostały poza stagingiem; build odświeżył wyłącznie ignorowany `dist/`.

@@ -160,7 +160,7 @@ Run:
 
 ```bash
 git ls-files --error-unmatch src/assets/react.svg src/assets/vite.svg
-if rg -n "react\.svg|vite\.svg" --glob '!node_modules/**' --glob '!.git/**' --glob '!.worktrees/**' .; then
+if rg -n "react\.svg|vite\.svg" --glob '!node_modules/**' --glob '!.git/**' --glob '!.worktrees/**' --glob '!docs/**' --glob '!.superpowers/**' .; then
   exit 1
 fi
 ```
@@ -215,7 +215,7 @@ git commit -m "chore: remove unused Vite assets"
 if rg -n "projekt zaliczeniowy|electric blue|Syne|Urbanist|klient tworzy" AGENTS.md; then
   exit 1
 fi
-if rg -n "react\.svg|vite\.svg" --glob '!node_modules/**' --glob '!.git/**' --glob '!.worktrees/**' .; then
+if rg -n "react\.svg|vite\.svg" --glob '!node_modules/**' --glob '!.git/**' --glob '!.worktrees/**' --glob '!docs/**' --glob '!.superpowers/**' .; then
   exit 1
 fi
 rg -n "Puls|Archivo|Instrument Sans|closedSessions|finalize-workout" AGENTS.md

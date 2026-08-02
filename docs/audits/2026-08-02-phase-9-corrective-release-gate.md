@@ -40,7 +40,7 @@ Program korekcyjny 8A–9 → Faza 9 → brak dalszych faz po pozytywnym closeou
 | Firestore Rules | PASS | `npm run test:rules`; `1` file / `17` tests on `demo-ironlog` |
 | Workout integration | PASS | `npm run test:integration:workout`; `3` files / `38` tests on fresh emulator |
 | Failure injection | PASS | workout `2` files / `35` tests; AI `3` files / `35` tests; named contracts recorded below |
-| Full E2E | PASS | emulator + CSP + desktop/mobile + zero retry; `189` passed, `28` skipped, `0` failed, `7.1m` |
+| Full E2E | PASS | emulator + CSP + desktop/mobile + zero retry; `189` passed, `28` skipped, `0` failed, `7.2m` |
 | Direct observation | PENDING | local production preview |
 | Hygiene | PENDING | Git, auth state, public i dist |
 | Final review / rollback | PENDING | independent review + release decision |
@@ -131,9 +131,10 @@ review remain pending for subsequent tasks.
 
 ## Task 4 — Full E2E and fix rounds
 
-The first full run was intentionally stopped on failure. Subsequent changes were
-limited to the proven test, snapshot, cleanup, geometry and diagnostics paths;
-no production code, dependency, deployment or external data was changed.
+The first full run was intentionally stopped on failure. Round 1 included the
+scoped `MobileInteractionProvider` product focus fix; subsequent changes were
+limited to the proven test, snapshot, cleanup, geometry and diagnostics paths.
+No dependency, deployment, publication or external data was changed.
 
 ### Initial run
 
@@ -192,7 +193,7 @@ Commit: `71210e2`.
   separation delta and an aborted emulator Firestore Write channel during
   persistence reload.
 
-### Fix round 4/5 and final result
+### Fix round 4/5
 
 Commit: `4b08552 test: preserve navigation diagnostics through reload`.
 
@@ -222,6 +223,36 @@ attachments in the ignored `test-results/` directory are expected artifacts,
 not failures. No blocking console, pageerror or requestfailed diagnostics were
 reported; expected emulator/offline diagnostics remained covered by the
 existing predicates.
+
+### Fix round 5/5 and final result
+
+Commit: `6ad09ea test: scope navigation diagnostics to page`.
+
+- Added a cross-page browser-diagnostics regression: page A navigation now
+  marks only page A's active requests intentional, while context-wide active
+  requests remain available for intentional teardown. Page B's active Firestore
+  request therefore remains blocking when page A navigates.
+- TDD result: focused RED was `19` passed / `1` failed; focused GREEN was
+  `20` passed / `0` failed.
+- Focused emulator+CSP workout-persistence result: `3` passed, `0` failed,
+  `28.4s`.
+
+The exact full command above was then run once with `--retries=0` on one worker:
+
+```text
+exit 0
+189 passed
+28 skipped
+0 failed
+7.2m
+```
+
+The clean final run produced no failure screenshots, videos, traces or
+error-context files. Existing diagnostic-capture and accessibility attachments
+in the ignored `test-results/` directory are expected artifacts, not failures.
+No blocking console, pageerror or requestfailed diagnostics were reported;
+expected emulator/offline diagnostics remained covered by the existing
+predicates.
 
 Task 4 full E2E is complete. Direct observation, hygiene and final
 review/rollback remain pending for the subsequent release-gate tasks.

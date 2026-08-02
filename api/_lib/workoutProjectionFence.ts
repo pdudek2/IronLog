@@ -50,7 +50,7 @@ export function parseProjectionFence(raw: unknown): ProjectionFence | null {
   if (!isRecord(raw)) throw projectionStateConflict()
 
   const fields = ['projectionState', 'projectionRevision', 'projectionExerciseKeys', 'deletedAt']
-  if (!fields.some((field) => Object.hasOwn(raw, field))) return null
+  if (!fields.some((field) => Object.prototype.hasOwnProperty.call(raw, field))) return null
 
   const { projectionState, projectionRevision, projectionExerciseKeys } = raw
   if (

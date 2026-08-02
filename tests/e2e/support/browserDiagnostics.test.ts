@@ -79,6 +79,62 @@ describe('browser diagnostics classification', () => {
 })
 
 describe('browser diagnostics controller', () => {
+  it('retains navigation intent for active Firestore channels without masking later requests', () => {
+    const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    const frame = {}
+    context.pages = () => [page as unknown as Page]
+    page.url = () => 'http://localhost:5174/workout/new'
+    page.mainFrame = () => frame as ReturnType<Page['mainFrame']>
+
+    const makeWriteRequest = () => ({
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+      frame: () => frame,
+      isNavigationRequest: () => false,
+      method: () => 'GET',
+      resourceType: () => 'xhr',
+      url: () => 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+    } as Request)
+    const documentNavigation = {
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+      frame: () => frame,
+      isNavigationRequest: () => true,
+      method: () => 'GET',
+      resourceType: () => 'document',
+      url: () => 'http://localhost:5174/dashboard',
+    } as Request
+
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(context as unknown as BrowserContext)
+
+    const oldWriteRequest = makeWriteRequest()
+    page.emit('request', oldWriteRequest)
+    page.emit('request', documentNavigation)
+    page.emit('requestfinished', documentNavigation)
+    page.emit('requestfailed', oldWriteRequest)
+
+    const newWriteRequest = makeWriteRequest()
+    page.emit('request', newWriteRequest)
+    page.emit('requestfailed', newWriteRequest)
+
+    expect(controller.entries).toEqual([
+      {
+        kind: 'requestfailed',
+        message: 'net::ERR_ABORTED',
+        method: 'GET',
+        url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+        blocking: false,
+      },
+      {
+        kind: 'requestfailed',
+        message: 'net::ERR_ABORTED',
+        method: 'GET',
+        url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+        blocking: true,
+      },
+    ])
+  })
+
   it('retains intentional teardown context for a Firestore channel that fails after the scope ends', async () => {
     const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
     const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>

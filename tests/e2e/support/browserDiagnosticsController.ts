@@ -55,15 +55,18 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
 
       let documentNavigationInProgress = false
       const onRequest = (request: Request) => {
-        contextActiveRequests.add(request)
-        if (
+        const isMainFrameDocumentNavigation =
           request.resourceType() === 'document'
           && request.isNavigationRequest()
           && request.frame() === page.mainFrame()
-        ) {
+        if (isMainFrameDocumentNavigation) {
+          contextActiveRequests.forEach((activeRequest) => {
+            intentionalNavigationRequests.add(activeRequest)
+          })
           documentNavigationInProgress = true
         }
-        if ((teardownDepthByContext.get(context) ?? 0) > 0) {
+        contextActiveRequests.add(request)
+        if (documentNavigationInProgress || (teardownDepthByContext.get(context) ?? 0) > 0) {
           intentionalNavigationRequests.add(request)
         }
       }

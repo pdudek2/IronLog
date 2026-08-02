@@ -50,11 +50,12 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await page.setViewportSize({ width: 320, height: 500 })
     await input.scrollIntoViewIfNeeded()
 
-    const inputBox = await input.boundingBox()
-    const dockBox = await page.getByTestId('template-save-dock').boundingBox()
-    expect(inputBox).not.toBeNull()
-    expect(dockBox).not.toBeNull()
-    expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(dockBox!.y)
+    await expect.poll(async () => {
+      const inputBox = await input.boundingBox()
+      const dockBox = await page.getByTestId('template-save-dock').boundingBox()
+      if (!inputBox || !dockBox) return Number.POSITIVE_INFINITY
+      return inputBox.y + inputBox.height - dockBox.y
+    }).toBeLessThanOrEqual(0)
   })
 
   test('dirty template editor guards BottomNav and browser back', async ({ page }, testInfo) => {

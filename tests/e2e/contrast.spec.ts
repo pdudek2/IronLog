@@ -1,5 +1,10 @@
 import { expect, test, type Locator, type Page } from './fixtures'
 import { expectAppReady } from './support/appReady'
+import {
+  cleanupWorkoutLifecycleState,
+  closeWorkoutLifecycleEmulator,
+  seedLifecycleWorkout,
+} from './support/workoutLifecycleEmulator'
 
 interface Rgba {
   r: number
@@ -107,6 +112,23 @@ async function readPrimaryState(cta: Locator) {
 }
 
 test.describe('Contrast contracts', () => {
+  test.beforeEach(async () => {
+    await cleanupWorkoutLifecycleState()
+    await seedLifecycleWorkout({
+      sessionId: 'phase-1-contrast-week',
+      materialized: true,
+      label: 'Phase 1 contrast week',
+    })
+  })
+
+  test.afterEach(async () => {
+    await cleanupWorkoutLifecycleState()
+  })
+
+  test.afterAll(async () => {
+    await closeWorkoutLifecycleEmulator()
+  })
+
   test('computed helper text and enabled primary CTA stay above 4.5:1', async ({ page }) => {
     await page.goto('/dashboard')
     await expectAppReady(page, '/dashboard')

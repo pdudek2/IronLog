@@ -33,12 +33,12 @@ Program korekcyjny 8A–9 → Faza 9 → brak dalszych faz po pozytywnym closeou
 
 | Gate | Status | Dowód |
 | --- | --- | --- |
-| Lint | PENDING | `npm run lint` |
-| Unit | PENDING | `npm run test:unit` |
-| Vite build | PENDING | `npm run build` |
-| Vercel production build | PENDING | `vercel build --prod --yes` |
-| Firestore Rules | PENDING | `npm run test:rules` |
-| Workout integration | PENDING | `npm run test:integration:workout` |
+| Lint | PASS | `npm run lint`; exit `0` after fix |
+| Unit | PASS | `npm run test:unit`; `63` files / `484` tests before fix; focused fence `1` / `3` after fix |
+| Vite build | PASS | `npm run build`; exit `0`, `878` modules after fix |
+| Vercel production build | PASS | `vercel build --prod --yes`; exit `0`, no `TS2550`/`Object.hasOwn` diagnostic after fix |
+| Firestore Rules | PASS | `npm run test:rules`; `1` file / `17` tests on `demo-ironlog` |
+| Workout integration | PASS | `npm run test:integration:workout`; `3` files / `38` tests on fresh emulator |
 | Failure injection | PENDING | workout + AI focused gates |
 | Full E2E | PENDING | emulator + CSP + desktop/mobile + zero retry |
 | Direct observation | PENDING | local production preview |
@@ -47,4 +47,28 @@ Program korekcyjny 8A–9 → Faza 9 → brak dalszych faz po pozytywnym closeou
 
 ## Znaleziska
 
-Brak przed wykonaniem gate'ów.
+Pierwszy przebieg zatrzymał się na `vercel build --prod --yes`: Vercel zwrócił
+exit `0`, ale wypisał diagnostykę `TS2550` dla `Object.hasOwn` w
+`api/_lib/workoutProjectionFence.ts:53`. Pozostałe pierwsze gate'y (lint, unit,
+Vite build) przeszły. Diagnostyka była regresją kompatybilności kompilacji
+funkcji serwerowej, nie blokadą uwierzytelnienia.
+
+Root cause: builder `@vercel/node` odczytuje root `tsconfig.json` dla każdego
+entrypointu `api/*.ts`; ten plik zawiera tylko references i nie przekazuje
+opcji `tsconfig.node.json`. Vercel ustawia więc domyślny target/lib ES2021,
+podczas gdy `Object.hasOwn` wymaga biblioteki ES2022. W repo znaleziono jedno
+wywołanie `Object.hasOwn`; pozostałe sprawdzenia własności używają istniejących
+wzorców `in` albo bezpośrednich odczytów pól.
+
+Minimalna poprawka w osobnym commicie `26007abcd01131b2e4f36c741d21a88f7d08c8e6`
+zastąpiła wywołanie wzorcem `Object.prototype.hasOwnProperty.call`, zachowując
+semantykę własnej właściwości i zgodność z ES2021. Po poprawce przeszły: lint,
+focused fence, Vite build i Vercel production build bez diagnostyki `TS2550` ani
+`Object.hasOwn`.
+
+Rules i workout integration przeszły na świeżych emulatorach. Dry-run produkcyjnej
+konfiguracji Firestore zakończył się sukcesem; zachowano znane ostrzeżenie o
+nieużywanej funkcji `isWorkoutCreate` (`firestore.rules:239:14`). Deploy,
+publikacja reguł/indeksów i push nie były wykonywane. Failure injection, pełne
+E2E, obserwacja bezpośrednia, hygiene i final review pozostają zakresami
+kolejnych tasków.

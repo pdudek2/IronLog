@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa korekcyjna
 
-Status dokumentu: **Faza 8D DONE; Faza 9 READY**
+Status dokumentu: **Faza 8D DONE; Faza 9 PLANNED**
 Źródło: Agent Sanity Review z 2026-07-29
 Ostatnia aktualizacja: 2026-08-02
 
@@ -27,7 +27,7 @@ Ten plik zawiera wyłącznie aktywny zakres. Każda faza otrzymuje osobny plan p
 | 2 | 8B — Serializacja projekcji workoutu | P1 | DONE | Usuwanie i materializacja nie mogą odtworzyć usuniętych danych |
 | 3 | 8C — Integralność katalogu planów AI | P2 | DONE | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
 | 4 | 8D — Kontrakt repo i cleanup | P2 | DONE | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
-| 5 | 9 — Korekcyjna bramka wydania | P1 | READY | Cały zakres ma dowody regresyjne przed merge/deployem |
+| 5 | 9 — Korekcyjna bramka wydania | P1 | PLANNED | Cały zakres ma dowody regresyjne przed merge/deployem |
 
 ```text
 Faza 8A ──┬──► Faza 8B ──┐
@@ -35,8 +35,8 @@ Faza 8A ──┬──► Faza 8B ──┐
           └──► Faza 8D ──┘
 ```
 
-Fazy 8A–8D są zakończone i zintegrowane. Faza 9 jest gotowa do
-szczegółowego planowania korekcyjnej bramki wydania.
+Fazy 8A–8D są zakończone i zintegrowane. Faza 9 ma zatwierdzony zakres oraz
+szczegółowy plan korekcyjnej bramki wydania.
 
 ## 3. Faza 8A — Higiena release i wiarygodność E2E
 
@@ -132,7 +132,8 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 
 ## 7. Faza 9 — Korekcyjna bramka wydania
 
-**Status: READY.** Faza 8D jest zakończona; można przygotować szczegółowy plan bramki.
+**Status: PLANNED.** Faza 8D jest zakończona. Plan wykonania:
+[`plans/2026-08-02-phase-9-corrective-release-gate.md`](plans/2026-08-02-phase-9-corrective-release-gate.md).
 
 **Zakres:**
 

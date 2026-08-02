@@ -4,7 +4,7 @@
 
 **Goal:** Zweryfikować cały zakres korekcyjny 8A–8D na jednym kandydacie wydania i dostarczyć audytowalne dowody przed jakimkolwiek pushem, mergem lub deployem.
 
-**Status:** READY FOR IMPLEMENTATION
+**Status:** VERIFIED — INTEGRATION PENDING
 
 **Architecture:** Faza używa wyłącznie istniejących runnerów: Vitest, Firebase Emulator Suite, Playwright, Vite i Vercel CLI. Gate'y działają sekwencyjnie na jednym izolowanym worktree; każdy failure zatrzymuje dalszą ścieżkę, a potwierdzona regresja otrzymuje najmniejszy test i osobny commit. Wyniki trafiają do jednego raportu, natomiast zewnętrzna integracja i deploy pozostają osobnym punktem zgody.
 
@@ -63,7 +63,7 @@
 - Consumes: zintegrowane Fazy 8A–8D oraz aktualny commit startowy worktree.
 - Produces: nieruchomy SHA kandydata, wersje narzędzi, lista E2E i macierz gate'ów.
 
-- [ ] **Step 1: Potwierdzić lineage i czystość wykonawczego worktree**
+- [x] **Step 1: Potwierdzić lineage i czystość wykonawczego worktree**
 
 Run:
 
@@ -80,7 +80,7 @@ Expected:
 - nie zawiera zmian ani nieśledzonych plików użytkownika;
 - roadmapa pokazuje 8A–8D jako `DONE`, a Fazę 9 jako `PLANNED`.
 
-- [ ] **Step 2: Zapisać wersje środowiska**
+- [x] **Step 2: Zapisać wersje środowiska**
 
 Run:
 
@@ -94,7 +94,7 @@ npx playwright --version
 
 Expected: wszystkie komendy kończą się kodem `0`; raport zapisuje dokładne wersje bez wartości środowiskowych.
 
-- [ ] **Step 3: Potwierdzić powierzchnię pełnego E2E**
+- [x] **Step 3: Potwierdzić powierzchnię pełnego E2E**
 
 Run:
 
@@ -107,7 +107,7 @@ npx playwright test --list --project=desktop --project=mobile
 
 Expected: `Total: 217 tests in 23 files`. Jeśli zatwierdzona poprawka przed wykonaniem planu zmieni listę, zapisać rzeczywisty licznik i różnicę zamiast przywracać historyczną wartość.
 
-- [ ] **Step 4: Wykonać tani preflight `Object.hasOwn`**
+- [x] **Step 4: Wykonać tani preflight `Object.hasOwn`**
 
 Run:
 
@@ -118,7 +118,7 @@ npx vitest run api/_lib/__tests__/workoutProjectionFence.test.ts
 
 Expected: natywny runtime i focused contract fence'a przechodzą. Ten krok nie zastępuje Vercel build z Task 2.
 
-- [ ] **Step 5: Utworzyć raport wejściowy**
+- [x] **Step 5: Utworzyć raport wejściowy**
 
 Raport ma zawierać:
 
@@ -162,7 +162,7 @@ Brak przed wykonaniem gate'ów.
 
 Wstawić rzeczywisty SHA i nazwy zamiast znaczników opisowych.
 
-- [ ] **Step 6: Ustawić Fazę 9 na `IN PROGRESS` i commit**
+- [x] **Step 6: Ustawić Fazę 9 na `IN PROGRESS` i commit**
 
 W roadmapie zmienić wyłącznie status Fazy 9 z `PLANNED` na `IN PROGRESS` i podlinkować raport.
 
@@ -185,7 +185,7 @@ git commit -m "docs: start phase 9 release gate"
 - Consumes: nieruchomy kandydat z Task 1 i istniejące skrypty repo.
 - Produces: świeże wyniki lint, unit, Vite/Vercel build, rules i workout integration.
 
-- [ ] **Step 1: Uruchomić lint i unit**
+- [x] **Step 1: Uruchomić lint i unit**
 
 ```bash
 npm run lint
@@ -194,7 +194,7 @@ npm run test:unit
 
 Expected: ESLint exit `0`; Vitest minimum 63 pliki i 484 testy PASS. Zapisać rzeczywiste liczniki.
 
-- [ ] **Step 2: Uruchomić produkcyjne buildy**
+- [x] **Step 2: Uruchomić produkcyjne buildy**
 
 ```bash
 npm run build
@@ -210,7 +210,7 @@ Expected:
 
 Jeżeli Vercel CLI nie jest uwierzytelnione albo nie może pobrać ustawień projektu, zatrzymać gate jako `PENDING` i poprosić użytkownika o dostęp. Nie zastępować tego wyniku samym Vite buildem.
 
-- [ ] **Step 3: Uruchomić Firestore Rules**
+- [x] **Step 3: Uruchomić Firestore Rules**
 
 ```bash
 npm run test:rules
@@ -218,7 +218,7 @@ npm run test:rules
 
 Expected: wszystkie testy w `tests/rules/firestore.rules.test.ts` PASS na projekcie `demo-ironlog`; ostatni potwierdzony baseline to 1 plik i 17 testów.
 
-- [ ] **Step 4: Uruchomić integracje workoutu**
+- [x] **Step 4: Uruchomić integracje workoutu**
 
 ```bash
 npm run test:integration:workout
@@ -226,7 +226,7 @@ npm run test:integration:workout
 
 Expected: wszystkie trzy pliki integracyjne PASS na świeżym emulatorze Firestore; ostatni potwierdzony baseline to 38 testów.
 
-- [ ] **Step 5: Sprawdzić produkcyjną konfigurację Firestore bez publikacji**
+- [x] **Step 5: Sprawdzić produkcyjną konfigurację Firestore bez publikacji**
 
 ```bash
 firebase deploy \
@@ -237,7 +237,7 @@ firebase deploy \
 
 Expected: reguły i indeksy są przyjęte przez dry run; żadna konfiguracja nie zostaje opublikowana.
 
-- [ ] **Step 6: Obsłużyć failure bez maskowania**
+- [x] **Step 6: Obsłużyć failure bez maskowania**
 
 Jeżeli dowolny krok Task 2 nie przejdzie:
 
@@ -250,7 +250,7 @@ Jeżeli dowolny krok Task 2 nie przejdzie:
 
 Nie dodawać retry, timeoutu, skipu ani fallbacku bez potwierdzonej przyczyny.
 
-- [ ] **Step 7: Uzupełnić raport i commit**
+- [x] **Step 7: Uzupełnić raport i commit**
 
 Wpisać wyniki, liczniki, ostrzeżenia i ewentualne commity naprawcze do macierzy.
 
@@ -273,7 +273,7 @@ git commit -m "docs: record phase 9 core gates"
 - Consumes: serializację 8B, integralność katalogu 8C i świeże emulatory.
 - Produces: jawny dowód dla race/fault workoutu oraz awarii kompletności katalogu AI.
 
-- [ ] **Step 1: Uruchomić failure injection workoutu**
+- [x] **Step 1: Uruchomić failure injection workoutu**
 
 ```bash
 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 \
@@ -288,7 +288,7 @@ firebase emulators:exec \
 
 Expected: PASS dla utraconego acknowledgement, równoległego finish, failure materializacji, checkpointów delete oraz przeplotów update/materialize/delete.
 
-- [ ] **Step 2: Uruchomić failure injection katalogu AI**
+- [x] **Step 2: Uruchomić failure injection katalogu AI**
 
 ```bash
 npx vitest run \
@@ -303,11 +303,11 @@ Expected: minimum 3 pliki i 35 testów PASS, w tym:
 - kolizja nazw global/user nie zależy od kolejności;
 - klient zachowuje komunikat i pozwala ponowić generację tym samym przyciskiem.
 
-- [ ] **Step 3: Udokumentować nazwane scenariusze**
+- [x] **Step 3: Udokumentować nazwane scenariusze**
 
 W raporcie zapisać nie tylko exit code, ale również nazwy scenariuszy z dwóch poprzednich kroków. Brak któregoś kontraktu zatrzymuje Fazę 9 nawet wtedy, gdy pozostałe testy są zielone.
 
-- [ ] **Step 4: Commit dowodów**
+- [x] **Step 4: Commit dowodów**
 
 ```bash
 git add docs/audits/2026-08-02-phase-9-corrective-release-gate.md
@@ -328,7 +328,7 @@ git commit -m "docs: record phase 9 failure gates"
 - Consumes: 217 pozycji w 23 plikach, Auth + Firestore emulators, lokalny API i produkcyjny preview z CSP.
 - Produces: jeden pełny wynik desktop + mobile bez retry i bez produkcyjnych sekretów.
 
-- [ ] **Step 1: Usunąć wyłącznie odtwarzalny emulator auth state**
+- [x] **Step 1: Usunąć wyłącznie odtwarzalny emulator auth state**
 
 ```bash
 git check-ignore -v tests/e2e/.auth/emulator-user.json
@@ -337,7 +337,7 @@ rm -f tests/e2e/.auth/emulator-user.json
 
 Expected: ścieżka jest ignorowana; setup utworzy nowy stan logowania na świeżych emulatorach. Nie usuwać `tests/e2e/.auth/user.json`.
 
-- [ ] **Step 2: Uruchomić pełny suite**
+- [x] **Step 2: Uruchomić pełny suite**
 
 ```bash
 E2E_BACKEND=emulator \
@@ -359,7 +359,7 @@ Expected:
 - nie ma requestów do produkcyjnego Firebase ani Anthropic;
 - dokumenty są serwowane z egzekwowanym CSP.
 
-- [ ] **Step 3: Zweryfikować wynik poza samym exit code**
+- [x] **Step 3: Zweryfikować wynik poza samym exit code**
 
 Zapisać w raporcie:
 
@@ -371,7 +371,7 @@ Zapisać w raporcie:
 
 Failure uruchamia procedurę z Task 2 Step 6. Nie klasyfikować awarii jako flaky bez izolowanej reprodukcji.
 
-- [ ] **Step 4: Commit wyniku E2E**
+- [x] **Step 4: Commit wyniku E2E**
 
 ```bash
 git add docs/audits/2026-08-02-phase-9-corrective-release-gate.md
@@ -391,11 +391,11 @@ git commit -m "docs: record phase 9 full e2e"
 - Consumes: ten sam kandydat, lokalny produkcyjny preview i konto emulatora.
 - Produces: bezpośrednią obserwację najważniejszych przepływów na jednej powierzchni przeglądarkowej.
 
-- [ ] **Step 1: Załadować kontrakt obserwacji**
+- [x] **Step 1: Załadować kontrakt obserwacji**
 
 Przed uruchomieniem środowiska przeczytać `project-convergence/references/visual-observation.md`, wybrać jedną podstawową powierzchnię Browser i stosować jej kontrakt `Observed`/`Pending`. Nie używać równolegle Playwrighta jako drugiej powierzchni obserwacyjnej.
 
-- [ ] **Step 2: Uruchomić emulatory**
+- [x] **Step 2: Uruchomić emulatory**
 
 W trwałej sesji terminala:
 
@@ -403,7 +403,7 @@ W trwałej sesji terminala:
 firebase emulators:start --only auth,firestore --project demo-ironlog
 ```
 
-- [ ] **Step 3: Uruchomić lokalny API z pełnym kontraktem emulatora**
+- [x] **Step 3: Uruchomić lokalny API z pełnym kontraktem emulatora**
 
 W drugiej trwałej sesji:
 
@@ -422,7 +422,7 @@ VITE_FIREBASE_USE_EMULATORS=true \
 npm run dev:api
 ```
 
-- [ ] **Step 4: Zbudować i uruchomić preview z CSP**
+- [x] **Step 4: Zbudować i uruchomić preview z CSP**
 
 ```bash
 E2E_BACKEND=emulator \
@@ -448,13 +448,13 @@ VITE_FIREBASE_USE_EMULATORS=true \
 npm run preview -- --host 127.0.0.1 --port 5174
 ```
 
-- [ ] **Step 5: Utworzyć lokalne konto bez drukowania tokenu**
+- [x] **Step 5: Utworzyć lokalne konto bez drukowania tokenu**
 
 ```bash
 node -e 'const response = await fetch("http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-api-key", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: "e2e@ironlog.local", password: "ironlog-e2e", returnSecureToken: true }) }); const body = await response.json(); if (!response.ok && body.error?.message !== "EMAIL_EXISTS") throw new Error(body.error?.message ?? "Auth emulator bootstrap failed");'
 ```
 
-- [ ] **Step 6: Obserwować desktop `1440 × 900`**
+- [x] **Step 6: Obserwować desktop `1440 × 900`**
 
 Na `http://127.0.0.1:5174` przejść serialnie:
 
@@ -470,11 +470,11 @@ Na `http://127.0.0.1:5174` przejść serialnie:
 
 Każdy przepływ musi osiągnąć stan gotowy bez nieoczekiwanych błędów konsoli, strony i requestów.
 
-- [ ] **Step 7: Obserwować mobile `390 × 844`**
+- [x] **Step 7: Obserwować mobile `390 × 844`**
 
 Powtórzyć reprezentatywne stany loginu, dashboardu, planów, aktywnego workoutu z timerem, historii, Progress i AI. Potwierdzić dolną nawigację, brak poziomego overflow, dostępność głównej akcji oraz brak nakładania timerów i docków.
 
-- [ ] **Step 8: Zapisać dowód i zatrzymać procesy**
+- [x] **Step 8: Zapisać dowód i zatrzymać procesy**
 
 W raporcie zapisać dowód zgodnie z kontraktem obserwacji, diagnostykę runtime i cleanup danych emulatora. Następnie zatrzymać preview, API oraz emulatory i potwierdzić zwolnienie portów `5174`, `3000`, `9099` i `8080`.
 
@@ -498,7 +498,7 @@ git commit -m "docs: record phase 9 direct smoke"
 - Consumes: komplet świeżych wyników Task 1–5.
 - Produces: `PASS`, `FAIL` albo `VERIFIED — INTEGRATION PENDING`, gotowy rollback i decyzję użytkownika o integracji.
 
-- [ ] **Step 1: Sprawdzić tracking wrażliwych i roboczych ścieżek**
+- [x] **Step 1: Sprawdzić tracking wrażliwych i roboczych ścieżek**
 
 Run:
 
@@ -515,7 +515,7 @@ git check-ignore -v dist/index.html
 
 Expected: żadna ścieżka nie jest śledzona, a każda hipotetyczna ścieżka runtime jest ignorowana. Nie wyświetlać zawartości auth state ani plików `.env*`.
 
-- [ ] **Step 2: Sprawdzić public i produkcyjny build**
+- [x] **Step 2: Sprawdzić public i produkcyjny build**
 
 ```bash
 find public -maxdepth 1 -type f -print | sort
@@ -530,7 +530,7 @@ test ! -e src/assets/vite.svg
 
 Expected: `public/` zawiera wyłącznie zatwierdzone assety, a build nie zawiera roboczego preview ani martwego scaffoldingu.
 
-- [ ] **Step 3: Uruchomić końcowe kontrole repo**
+- [x] **Step 3: Uruchomić końcowe kontrole repo**
 
 ```bash
 git diff --check
@@ -540,7 +540,7 @@ git log --oneline --decorate -12
 
 Expected: brak błędów whitespace i brak nieoczekiwanych plików. Ignorowane artefakty testów/buildów nie są stage'owane.
 
-- [ ] **Step 4: Wykonać independent whole-branch review**
+- [x] **Step 4: Wykonać independent whole-branch review**
 
 Reviewer ma porównać gałąź wykonawczą z bazowym SHA Task 1 i sprawdzić:
 
@@ -553,7 +553,7 @@ Reviewer ma porównać gałąź wykonawczą z bazowym SHA Task 1 i sprawdzić:
 
 Critical i Important muszą zostać naprawione i ponownie zreviewowane przed dalszym krokiem.
 
-- [ ] **Step 5: Zapisać rollback i decyzję rolloutową**
+- [x] **Step 5: Zapisać rollback i decyzję rolloutową**
 
 W raporcie zapisać:
 
@@ -565,7 +565,7 @@ W raporcie zapisać:
 
 Nie uruchamiać żadnej komendy rollback podczas zielonego gate'u.
 
-- [ ] **Step 6: Zamknąć lokalną bramkę**
+- [x] **Step 6: Zamknąć lokalną bramkę**
 
 Jeżeli wszystkie gate'y i review są zielone:
 
@@ -582,9 +582,14 @@ git add \
 git commit -m "docs: close phase 9 local release gate"
 ```
 
-- [ ] **Step 7: Zatrzymać się na jawnej zgodzie**
+- [x] **Step 7: Zatrzymać się na jawnej zgodzie**
 
 Użyć `superpowers:finishing-a-development-branch` i przedstawić wybór integracji. Push `main`, produkcyjny deploy Vercela oraz publikacja Firestore wymagają oddzielnej jawnej zgody. Bez niej zachować branch/worktree oraz status `INTEGRATION PENDING`.
+
+Closeout state: execution stops here for separate user approval. No push,
+merge, production deploy, Firestore Rules/index publication or rollback is
+authorized or performed; keep the branch/worktree and `INTEGRATION PENDING`
+status.
 
 ---
 

@@ -1,6 +1,6 @@
 # Phase 9 — Corrective release gate
 
-**Status:** IN PROGRESS
+**Status:** PASS — AWAITING RELEASE DECISION
 
 **Data:** 2026-08-02
 
@@ -11,6 +11,8 @@ Program korekcyjny 8A–9 → Faza 9 → brak dalszych faz po pozytywnym closeou
 ## Kandydat
 
 - commit bazowy: `9260f78d5bb26c19aefd41d49d49773d03ad472c`
+- commit kandydata release gate (Task 6): `53151eb09f906cb4786e15894f92451baec8d20e`
+- `origin/main` przy zamknięciu lokalnej bramki: `b7567128660ff53edcc8be5d1bbab862dddf84bc`
 - branch i worktree: `corrective-release-gate` — `/Users/patryk/Desktop/IronLog/.worktrees/corrective-release-gate`
 - backend testów: Auth + Firestore emulators, `demo-ironlog`;
 - Playwright retry: `0`.
@@ -42,8 +44,8 @@ Program korekcyjny 8A–9 → Faza 9 → brak dalszych faz po pozytywnym closeou
 | Failure injection | PASS | workout `2` files / `35` tests; AI `3` files / `35` tests; named contracts recorded below |
 | Full E2E | PASS | emulator + CSP + desktop/mobile + zero retry; `189` passed, `28` skipped, `0` failed, `7.2m` |
 | Direct observation | PASS | local CSP production preview; Codex In-app Browser, desktop `1440 × 900` and mobile `390 × 844` |
-| Hygiene | PENDING | Git, auth state, public i dist |
-| Final review / rollback | PENDING | independent review + release decision |
+| Hygiene | PASS | Task 6 Steps 1–3: tracking, ignore proofs, `public/`, `dist/`, diff/status/log |
+| Final review / rollback | PASS | independent whole-branch review, rollback target and explicit integration boundary |
 
 ## Znaleziska
 
@@ -321,3 +323,57 @@ shutdown signals and no emulator export was kept. Post-cleanup listener checks
 confirmed ports `5174`, `3000`, `9099` and `8080` are free.
 
 No product issue or product change was found during direct observation.
+
+## Task 6 — Higiena, final review i decyzja release
+
+**Status:** PASS — AWAITING RELEASE DECISION
+
+### Steps 1–3 — hygiene evidence
+
+- Tracking assertion exited `0`; none of `tests/e2e/.auth`, `.playwright-cli`,
+  `test-results`, `playwright-report`, `output`, `.impeccable`, `.vercel` or
+  `dist` is tracked.
+- All seven requested hypothetical runtime paths resolved to `.gitignore`
+  rules with exit `0`. No auth state or `.env*` contents were read or printed.
+- `public/` contains only `favicon.svg` and `icons.svg`; preview/variant files
+  are absent from `public/` and `dist/`; `src/assets/hero.png` exists and
+  scaffold assets `react.svg`/`vite.svg` are absent. Every assertion exited `0`.
+- `git diff --check` exited `0`; `git status --short --branch` is clean on
+  `corrective-release-gate`; the final 12-commit log was recorded in the
+  ignored Task 6 preparation report.
+- Existing ignored gate artifacts (`dist/`, `.vercel/`, `playwright-report/`,
+  `test-results/`, `firestore-debug.log`) were not cleaned by instruction and
+  are not staged or tracked.
+
+### Step 4 — independent whole-branch review
+
+The independent review compared the execution branch with the Task 1 base and
+was **APPROVED**. It found no Critical or Important findings. Reviewer spot
+checks passed (`3` files / `26` tests). The one Minor finding was stale plan
+state (`READY FOR IMPLEMENTATION` with unchecked steps); this closeout updates
+the plan status and all task checkboxes so the plan, roadmap and audit converge.
+
+### Step 5 — rollback and rollout boundary
+
+- Exact candidate SHA: `53151eb09f906cb4786e15894f92451baec8d20e`
+- Exact `origin/main` SHA: `b7567128660ff53edcc8be5d1bbab862dddf84bc`
+- Read-only `vercel inspect ironlog-coach.vercel.app` resolved the current
+  production deployment URL:
+  `https://iron-5m4u417r6-pdudek2s-projects.vercel.app`
+- Deployment ID: `dpl_6pW39kJHCwYWueSQL34iP6Htqwf4`
+- Exact rollback command, derived but **not executed**:
+  `vercel rollback dpl_6pW39kJHCwYWueSQL34iP6Htqwf4`
+- No new Firestore rules or indexes were published in this local phase, so data
+  rollback is not required. If a later release includes rules, rollback must
+  restore `firestore.rules` from the previous approved SHA and publish only
+  after separate explicit approval.
+
+### Steps 6–7 — local closeout and explicit integration decision
+
+The local gate is closed as `PASS — AWAITING RELEASE DECISION`. The plan is
+`VERIFIED — INTEGRATION PENDING`; Phase 9 in the roadmap is
+`INTEGRATION PENDING`, and the roadmap is not archived before integration
+closeout. Execution stops here for separate user approval: no push, merge,
+production deploy, Firestore rules/index publication or rollback was authorized
+or performed. The local closeout commit is the only new external-facing action
+in this phase.

@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa korekcyjna
 
-Status dokumentu: **Faza 8D DONE; Faza 9 IN PROGRESS**
+Status dokumentu: **Faza 8D DONE; Faza 9 INTEGRATION PENDING**
 Źródło: Agent Sanity Review z 2026-07-29
 Ostatnia aktualizacja: 2026-08-02
 
@@ -27,7 +27,7 @@ Ten plik zawiera wyłącznie aktywny zakres. Każda faza otrzymuje osobny plan p
 | 2 | 8B — Serializacja projekcji workoutu | P1 | DONE | Usuwanie i materializacja nie mogą odtworzyć usuniętych danych |
 | 3 | 8C — Integralność katalogu planów AI | P2 | DONE | Plan nie mapuje ćwiczeń po niejednoznacznej nazwie i jawnie obsługuje niepełny katalog |
 | 4 | 8D — Kontrakt repo i cleanup | P2 | DONE | Instrukcje odpowiadają aplikacji, a martwy scaffolding znika |
-| 5 | 9 — Korekcyjna bramka wydania | P1 | IN PROGRESS | Cały zakres ma dowody regresyjne przed merge/deployem |
+| 5 | 9 — Korekcyjna bramka wydania | P1 | INTEGRATION PENDING | Cały zakres ma dowody regresyjne; integracja oczekuje na jawną zgodę |
 
 ```text
 Faza 8A ──┬──► Faza 8B ──┐
@@ -132,7 +132,8 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 
 ## 7. Faza 9 — Korekcyjna bramka wydania
 
-**Status: IN PROGRESS.** Faza 8D jest zakończona. Raport wejściowy:
+**Status: INTEGRATION PENDING.** Faza 8D jest zakończona, a lokalna bramka
+została zamknięta jako `PASS — AWAITING RELEASE DECISION`. Raport:
 [`audits/2026-08-02-phase-9-corrective-release-gate.md`](../audits/2026-08-02-phase-9-corrective-release-gate.md).
 Plan wykonania:
 [`plans/2026-08-02-phase-9-corrective-release-gate.md`](plans/2026-08-02-phase-9-corrective-release-gate.md).
@@ -152,6 +153,11 @@ Plan wykonania:
 - bramki są zielone bez ukrywania błędów przez retry;
 - smoke obejmuje login, dashboard, plany, aktywną sesję, historię, postępy i AI;
 - roadmapa oraz plany faz wskazują ten sam stan.
+
+Lokalna integracja jest wstrzymana do osobnej, jawnej decyzji użytkownika.
+Push, merge, deploy Vercela, publikacja Firestore Rules/indeksów i rollback nie
+zostały wykonane; roadmapa pozostaje aktywna i nie jest archiwizowana przed
+faktycznym closeoutem integracji.
 
 ## 8. Traceability ASR-2
 

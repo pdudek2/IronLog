@@ -41,7 +41,7 @@ Program korekcyjny 8A–9 → Faza 9 → brak dalszych faz po pozytywnym closeou
 | Workout integration | PASS | `npm run test:integration:workout`; `3` files / `38` tests on fresh emulator |
 | Failure injection | PASS | workout `2` files / `35` tests; AI `3` files / `35` tests; named contracts recorded below |
 | Full E2E | PASS | emulator + CSP + desktop/mobile + zero retry; `189` passed, `28` skipped, `0` failed, `7.2m` |
-| Direct observation | PENDING | local production preview |
+| Direct observation | PASS | local CSP production preview; Codex In-app Browser, desktop `1440 × 900` and mobile `390 × 844` |
 | Hygiene | PENDING | Git, auth state, public i dist |
 | Final review / rollback | PENDING | independent review + release decision |
 
@@ -254,5 +254,70 @@ No blocking console, pageerror or requestfailed diagnostics were reported;
 expected emulator/offline diagnostics remained covered by the existing
 predicates.
 
-Task 4 full E2E is complete. Direct observation, hygiene and final
-review/rollback remain pending for the subsequent release-gate tasks.
+Task 4 full E2E is complete. Hygiene and final review/rollback remain pending
+for the subsequent release-gate tasks.
+
+## Task 5 — Direct observation
+
+**Status:** PASS
+
+**Observation contract:** `Observed` — surface: Codex In-app Browser. The
+Browser tab completed its observation run and was finalized; the viewport was
+reset afterwards. No Playwright or second observation surface was used for
+this task.
+
+### Setup
+
+- Preview: local production Vite preview at `http://127.0.0.1:5174` with
+  `E2E_BACKEND=emulator` and `E2E_CSP=true`.
+- API: local `npm run dev:api` on port `3000` with the Auth and Firestore
+  emulator contract.
+- Emulators: Auth `127.0.0.1:9099`, Firestore `127.0.0.1:8080`, project
+  `demo-ironlog`.
+- Account: `e2e@ironlog.local` bootstrapped in the Auth emulator without
+  printing a token.
+- Exact CSP build: `npm run build` exited `0` before the preview was started.
+
+### Desktop `1440 × 900`
+
+The Browser observed the serial flow through login and onboarding, dashboard
+and readiness, plan creation/save/start, one completed session and a second
+discarded session, history and workout detail, Progress `30`/`90` toggles,
+exercise library, AI Coach without a key, profile, and logout. The observed
+states included:
+
+- dashboard showed Patryk and readiness after login/onboarding;
+- the saved workout showed `Trening zapisany!`; the discarded session returned
+  to dashboard after confirmation;
+- history/detail returned `Full Body`, `480kg`, `1 set`, and a `60kg` top set;
+- Progress toggles exposed the expected `aria-pressed` states and charts;
+- exercise library returned the global catalog (`36` exercises);
+- AI Coach showed `Klucz wymagany` and kept chat disabled without a key;
+- profile showed Patryk and logout returned `/login`.
+
+### Mobile `390 × 844`
+
+The Browser observed representative login, dashboard, plans, active workout,
+history, Progress, and AI states. The mobile evidence confirmed the Puls
+bottom navigation, visible readiness and plan states, active-workout lifecycle
+bar and timer dock, and AI `Klucz wymagany` state. Geometry checks returned
+`innerWidth = 390`, `scrollWidth = 375` (no horizontal overflow), the full
+rest action bar at `669.23–749.61`, and bottom navigation at `762.41–844`
+(`12.8px` separation). Main actions remained available and timers/docks did
+not overlap.
+
+### Runtime diagnostics and cleanup
+
+Every Browser step's `tab.dev.logs({levels: ['error']})` payload was `[]`.
+This is the direct console-error evidence. Absence of request and page-error
+failures is additionally backed by Task 4's final full E2E result (`189`
+passed, `28` explicit skips, `0` failed, zero blocking diagnostics); no
+separate Browser network listener was used for this receipt.
+
+The account, workout, plan and readiness data were emulator-only under
+`demo-ironlog`; no production Firebase, Anthropic, deployment or publication
+was touched. Preview, API and emulator sessions were stopped with clean
+shutdown signals and no emulator export was kept. Post-cleanup listener checks
+confirmed ports `5174`, `3000`, `9099` and `8080` are free.
+
+No product issue or product change was found during direct observation.

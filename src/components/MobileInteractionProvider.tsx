@@ -49,7 +49,9 @@ export default function MobileInteractionProvider({ children }: PropsWithChildre
 
   useEffect(() => {
     const updateGeometry = () => setState((current) => readState(current.inputFocused))
-    const onFocusIn = (event: FocusEvent) => setState(readState(isEditable(event.target)))
+    const onFocusIn = (event: FocusEvent) => {
+      if (isEditable(event.target)) setState(readState(true))
+    }
     const onFocusOut = () => window.setTimeout(() => setState(readState()), 0)
     const viewport = window.visualViewport
 

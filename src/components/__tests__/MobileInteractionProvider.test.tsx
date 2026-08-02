@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import MobileInteractionProvider, { useMobileInteraction } from '../MobileInteractionProvider'
 
 function Probe() {
@@ -7,6 +7,7 @@ function Probe() {
   return (
     <>
       <input aria-label="Ciężar" />
+      <button type="submit">Zapisz</button>
       <output data-testid="state">
         {JSON.stringify(state)}
       </output>
@@ -38,6 +39,31 @@ describe('MobileInteractionProvider', () => {
     expect(screen.getByTestId('state')).toHaveTextContent('"viewportBottomInset":344')
     expect(screen.getByTestId('state')).toHaveTextContent('"compactFixedUi":true')
     expect(document.documentElement.style.getPropertyValue('--mobile-viewport-bottom-inset')).toBe('344px')
+  })
+
+  it('keeps input focus through a submit click before deferred focusout clears it', () => {
+    vi.useFakeTimers()
+    try {
+      render(<MobileInteractionProvider><Probe /></MobileInteractionProvider>)
+      const input = screen.getByRole('textbox', { name: 'Ciężar' })
+      const submit = screen.getByRole('button', { name: 'Zapisz' })
+      Object.defineProperty(submit, 'isContentEditable', { configurable: true, value: false })
+
+      act(() => {
+        input.focus()
+        fireEvent.focusOut(input)
+        submit.focus()
+        fireEvent.focusIn(submit)
+        fireEvent.click(submit)
+      })
+
+      expect(screen.getByTestId('state')).toHaveTextContent('"inputFocused":true')
+
+      act(() => vi.runAllTimers())
+      expect(screen.getByTestId('state')).toHaveTextContent('"inputFocused":false')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('falls back to window geometry without visualViewport', () => {

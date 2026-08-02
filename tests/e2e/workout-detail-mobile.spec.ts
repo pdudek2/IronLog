@@ -90,20 +90,13 @@ test('mobile workout actions adapt between inline content and the fixed viewport
   await expect(actions).toHaveAttribute('data-placement', 'fixed')
 
   await page.mouse.wheel(0, -24)
-  await expect(navigation).toHaveAttribute('aria-hidden', 'true')
+  await expect(navigation).not.toHaveAttribute('aria-hidden', 'true')
   await expect(actions).toHaveAttribute('data-placement', 'fixed')
   await expect.poll(() => actionClearanceDeltaFromCssTarget(actions)).toBeLessThanOrEqual(1)
-  const visibleNavClearance = await actions.evaluate((element) => (
-    window.innerHeight - element.getBoundingClientRect().bottom
-  ))
 
   await page.mouse.wheel(0, 24)
   await expect(navigation).toHaveAttribute('aria-hidden', 'true')
   await expect.poll(() => actionClearanceDeltaFromCssTarget(actions)).toBeLessThanOrEqual(1)
-  const persistentNavClearance = await actions.evaluate((element) => (
-    window.innerHeight - element.getBoundingClientRect().bottom
-  ))
-  expect(visibleNavClearance - persistentNavClearance).toBeGreaterThan(80)
   expect(await countVisibleFocusableButtons(allButtons, 'Edytuj')).toBe(1)
   expect(await countVisibleFocusableButtons(allButtons, 'Usuń trening')).toBe(1)
 

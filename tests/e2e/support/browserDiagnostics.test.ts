@@ -135,6 +135,52 @@ describe('browser diagnostics controller', () => {
     ])
   })
 
+  it('does not apply page A navigation intent to an active page B request', () => {
+    const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
+    const pageA = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    const pageB = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>
+    const frameA = {}
+    const frameB = {}
+    context.pages = () => [pageA as unknown as Page, pageB as unknown as Page]
+    pageA.url = () => 'http://localhost:5174/dashboard'
+    pageB.url = () => 'http://localhost:5174/workout/new'
+    pageA.mainFrame = () => frameA as ReturnType<Page['mainFrame']>
+    pageB.mainFrame = () => frameB as ReturnType<Page['mainFrame']>
+
+    const pageBRequest = {
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+      frame: () => frameB,
+      isNavigationRequest: () => false,
+      method: () => 'GET',
+      resourceType: () => 'xhr',
+      url: () => 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+    } as Request
+    const pageANavigation = {
+      failure: () => ({ errorText: 'net::ERR_ABORTED' }),
+      frame: () => frameA,
+      isNavigationRequest: () => true,
+      method: () => 'GET',
+      resourceType: () => 'document',
+      url: () => 'http://localhost:5174/workout/new',
+    } as Request
+
+    const controller = createBrowserDiagnosticsController()
+    controller.observeContext(context as unknown as BrowserContext)
+
+    pageB.emit('request', pageBRequest)
+    pageA.emit('request', pageANavigation)
+    pageA.emit('requestfinished', pageANavigation)
+    pageB.emit('requestfailed', pageBRequest)
+
+    expect(controller.entries).toEqual([{
+      kind: 'requestfailed',
+      message: 'net::ERR_ABORTED',
+      method: 'GET',
+      url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8',
+      blocking: true,
+    }])
+  })
+
   it('retains intentional teardown context for a Firestore channel that fails after the scope ends', async () => {
     const context = new EventEmitter() as EventEmitter & { pages(): Page[] }
     const page = new EventEmitter() as EventEmitter & Pick<Page, 'url' | 'mainFrame'>

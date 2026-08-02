@@ -54,23 +54,26 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       if (pageCleanups.has(page)) return
 
       let documentNavigationInProgress = false
+      const pageActiveRequests = new Set<Request>()
       const onRequest = (request: Request) => {
         const isMainFrameDocumentNavigation =
           request.resourceType() === 'document'
           && request.isNavigationRequest()
           && request.frame() === page.mainFrame()
         if (isMainFrameDocumentNavigation) {
-          contextActiveRequests.forEach((activeRequest) => {
+          pageActiveRequests.forEach((activeRequest) => {
             intentionalNavigationRequests.add(activeRequest)
           })
           documentNavigationInProgress = true
         }
+        pageActiveRequests.add(request)
         contextActiveRequests.add(request)
         if (documentNavigationInProgress || (teardownDepthByContext.get(context) ?? 0) > 0) {
           intentionalNavigationRequests.add(request)
         }
       }
       const onRequestSettled = (request: Request) => {
+        pageActiveRequests.delete(request)
         contextActiveRequests.delete(request)
         if (
           request.resourceType() === 'document'
@@ -130,6 +133,8 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
         page.off('pageerror', onPageError)
         page.off('console', onConsole)
         page.off('requestfailed', onRequestFailed)
+        pageActiveRequests.forEach((request) => contextActiveRequests.delete(request))
+        pageActiveRequests.clear()
       })
     }
 

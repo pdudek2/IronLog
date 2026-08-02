@@ -39,7 +39,7 @@ Program korekcyjny 8A–9 → Faza 9 → brak dalszych faz po pozytywnym closeou
 | Vercel production build | PASS | `vercel build --prod --yes`; exit `0`, no `TS2550`/`Object.hasOwn` diagnostic after fix |
 | Firestore Rules | PASS | `npm run test:rules`; `1` file / `17` tests on `demo-ironlog` |
 | Workout integration | PASS | `npm run test:integration:workout`; `3` files / `38` tests on fresh emulator |
-| Failure injection | PENDING | workout + AI focused gates |
+| Failure injection | PASS | workout `2` files / `35` tests; AI `3` files / `35` tests; named contracts recorded below |
 | Full E2E | PENDING | emulator + CSP + desktop/mobile + zero retry |
 | Direct observation | PENDING | local production preview |
 | Hygiene | PENDING | Git, auth state, public i dist |
@@ -69,6 +69,62 @@ focused fence, Vite build i Vercel production build bez diagnostyki `TS2550` ani
 Rules i workout integration przeszły na świeżych emulatorach. Dry-run produkcyjnej
 konfiguracji Firestore zakończył się sukcesem; zachowano znane ostrzeżenie o
 nieużywanej funkcji `isWorkoutCreate` (`firestore.rules:239:14`). Deploy,
-publikacja reguł/indeksów i push nie były wykonywane. Failure injection, pełne
-E2E, obserwacja bezpośrednia, hygiene i final review pozostają zakresami
-kolejnych tasków.
+publikacja reguł/indeksów i push nie były wykonywane.
+
+## Failure injection — Task 3
+
+### Workout
+
+Command:
+
+```bash
+FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 firebase emulators:exec \
+  --only firestore \
+  --project demo-ironlog \
+  "npx vitest run \
+    --config vitest.workout-integration.config.ts \
+    tests/integration/workoutClosure.integration.test.ts \
+    tests/integration/workoutProjectionSerialization.integration.test.ts"
+```
+
+Result: exit `0`; `2` test files passed, `35` tests passed on a fresh Firestore
+emulator. The passing run covered these named failure/race contracts:
+
+- `survives a lost transaction acknowledgement and retry`;
+- `converges two concurrent finishes to one logical workout`;
+- `keeps the committed closure when materialization fails and converges on retry`;
+- `converges idempotently after afterDeleteClaim`;
+- `converges idempotently after afterDeleteSessions`;
+- `converges idempotently after beforeDeleteRecords`;
+- `serializes overlapping updates and materializes only the latest revision`;
+- `rejects materialization from an update committed before delete`;
+- `keeps delete terminal when an older materialization resumes after beforeExerciseSessions`;
+- `keeps delete terminal when an older materialization resumes after afterExerciseSessions`.
+
+### AI catalog
+
+Command:
+
+```bash
+npx vitest run \
+  api/__tests__/aiChatContextIntegration.test.ts \
+  src/lib/__tests__/chatService.test.ts \
+  src/pages/__tests__/ChatPageAccessibility.test.tsx
+```
+
+Result: exit `0`; `3` test files passed, `35` tests passed. The passing run
+confirmed these named contracts:
+
+- `returns a retryable catalog error without calling Anthropic`: a
+  `userExercises` failure returns HTTP `503`, code `ai_catalog_unavailable`,
+  and Anthropic is not called;
+- `rejects ambiguous name fallbacks regardless of catalog order`: a global/user
+  `Bench Press` collision has the same rejection for both catalog orders;
+- `announces a catalog generation failure and lets the user retry`: the error
+  message remains visible, the same `Generuj plan` button is enabled, and the
+  second click completes generation;
+- `preserves the retryable catalog error contract`: the client retains the
+  server message, status contract, and `ai_catalog_unavailable` code.
+
+Failure injection is complete. Full E2E, direct observation, hygiene and final
+review remain pending for subsequent tasks.

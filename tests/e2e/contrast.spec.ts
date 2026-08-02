@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from './fixtures'
 import { expectAppReady } from './support/appReady'
 import {
-  cleanupWorkoutLifecycleState,
   closeWorkoutLifecycleEmulator,
+  deleteLifecycleWorkout,
   seedLifecycleWorkout,
 } from './support/workoutLifecycleEmulator'
 
@@ -112,17 +112,18 @@ async function readPrimaryState(cta: Locator) {
 }
 
 test.describe('Contrast contracts', () => {
-  test.beforeEach(async () => {
-    await cleanupWorkoutLifecycleState()
+  test.beforeEach(async ({}, testInfo) => {
+    const sessionId = `phase-1-contrast-week-${testInfo.project.name}`
+    await deleteLifecycleWorkout(sessionId)
     await seedLifecycleWorkout({
-      sessionId: 'phase-1-contrast-week',
+      sessionId,
       materialized: true,
       label: 'Phase 1 contrast week',
     })
   })
 
-  test.afterEach(async () => {
-    await cleanupWorkoutLifecycleState()
+  test.afterEach(async ({}, testInfo) => {
+    await deleteLifecycleWorkout(`phase-1-contrast-week-${testInfo.project.name}`)
   })
 
   test.afterAll(async () => {

@@ -67,7 +67,7 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
   expect(box!.x + box!.width, `${label} right edge`).toBeLessThanOrEqual(viewport!.width)
 
   const lifecycleBar = page.locator('.workout-mobile-lifecycle-bar')
-  const restSurface = page.locator('.workout-mobile-action-bar')
+  const actionBar = page.locator('.workout-mobile-action-bar[data-variant]')
   let visibleTop = 0
   let visibleBottom = viewport!.height
 
@@ -77,10 +77,17 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
     visibleTop = Math.max(visibleTop, Math.ceil(lifecycleBox!.y + lifecycleBox!.height))
   }
 
-  if (await restSurface.isVisible().catch(() => false)) {
-    const restSurfaceBox = await restSurface.boundingBox()
-    expect(restSurfaceBox, 'Rest surface should have a bounding box when visible').not.toBeNull()
-    visibleBottom = Math.min(visibleBottom, Math.floor(restSurfaceBox!.y))
+  if (await actionBar.isVisible().catch(() => false)) {
+    const actionBarBox = await actionBar.boundingBox()
+    expect(actionBarBox, 'Action bar should have a bounding box when visible').not.toBeNull()
+    const variant = await actionBar.getAttribute('data-variant')
+    if (variant === 'compact') {
+      visibleTop = Math.max(visibleTop, Math.ceil(actionBarBox!.y + actionBarBox!.height))
+    } else if (variant === 'full') {
+      visibleBottom = Math.min(visibleBottom, Math.floor(actionBarBox!.y))
+    } else {
+      throw new Error(`Unexpected workout action bar variant: ${variant}`)
+    }
   }
 
   expect(box!.y, `${label} top edge`).toBeGreaterThanOrEqual(visibleTop)

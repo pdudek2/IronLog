@@ -137,6 +137,11 @@ export async function seedLifecycleWorkout(options: SeedWorkoutOptions): Promise
   await database().doc(`workouts/${options.sessionId}`).set(workoutDocument(uid, options))
 }
 
+export async function deleteLifecycleWorkout(sessionId: string): Promise<void> {
+  assertPhase1Id(sessionId, 'Workout')
+  await database().doc(`workouts/${sessionId}`).delete()
+}
+
 export async function commitPendingLifecycleFinalization(options: SeedWorkoutOptions): Promise<void> {
   const uid = await getLifecycleUid()
   const db = database()

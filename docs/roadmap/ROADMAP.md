@@ -133,7 +133,7 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 ## 7. Faza 9 — Korekcyjna bramka wydania
 
 **Status: IN PROGRESS.** Faza 8D jest zakończona. Raport wejściowy:
-[`audits/2026-08-02-phase-9-corrective-release-gate.md`](audits/2026-08-02-phase-9-corrective-release-gate.md).
+[`audits/2026-08-02-phase-9-corrective-release-gate.md`](../audits/2026-08-02-phase-9-corrective-release-gate.md).
 Plan wykonania:
 [`plans/2026-08-02-phase-9-corrective-release-gate.md`](plans/2026-08-02-phase-9-corrective-release-gate.md).
 

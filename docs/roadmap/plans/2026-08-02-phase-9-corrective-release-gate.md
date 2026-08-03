@@ -4,7 +4,7 @@
 
 **Goal:** Zweryfikować cały zakres korekcyjny 8A–8D na jednym kandydacie wydania i dostarczyć audytowalne dowody przed jakimkolwiek pushem, mergem lub deployem.
 
-**Status:** VERIFIED — INTEGRATION PENDING
+**Status:** COMPLETED — RELEASED 2026-08-03
 
 **Architecture:** Faza używa wyłącznie istniejących runnerów: Vitest, Firebase Emulator Suite, Playwright, Vite i Vercel CLI. Gate'y działają sekwencyjnie na jednym izolowanym worktree; każdy failure zatrzymuje dalszą ścieżkę, a potwierdzona regresja otrzymuje najmniejszy test i osobny commit. Wyniki trafiają do jednego raportu, natomiast zewnętrzna integracja i deploy pozostają osobnym punktem zgody.
 
@@ -617,3 +617,19 @@ Plan jest przeznaczony do wykonania inline przez `superpowers:executing-plans`. 
 - final review nie ma Critical ani Important;
 - rollback i granica produkcyjnej zgody są zapisane;
 - roadmapa, plan i raport wskazują ten sam stan.
+
+## Integration closeout — 2026-08-03
+
+- `main@8dfac48` został wypchnięty do `origin/main`.
+- Vercel wdrożył produkcję jako `dpl_CCr1QQFhTLZzmPYvggutJpqSzW1j` i przypisał
+  alias `https://ironlog-coach.vercel.app`.
+- Produkcyjny smoke w Codex In-app Browser przeszedł na `1440 × 900` oraz
+  `390 × 844`: ekran logowania był widoczny, mobilny dokument nie miał
+  poziomego overflow, a `/dashboard` bez sesji przekierował do `/login`.
+- Konsola nie zwróciła błędów w żadnym z obserwowanych stanów.
+- Firestore Rules i indeksy nie miały diffu względem poprzedniego
+  `origin/main`, więc nie zostały opublikowane.
+- Poprzedni deployment pozostaje punktem rollbacku:
+  `vercel rollback dpl_6pW39kJHCwYWueSQL34iP6Htqwf4`.
+
+Plan jest zakończony; program 8A–9 nie ma pozostałych obowiązków.

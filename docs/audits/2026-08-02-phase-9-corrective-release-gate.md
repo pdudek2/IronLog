@@ -1,6 +1,6 @@
 # Phase 9 — Corrective release gate
 
-**Status:** PASS — AWAITING RELEASE DECISION
+**Status:** PASS — RELEASED 2026-08-03
 
 **Data:** 2026-08-02
 
@@ -377,3 +377,37 @@ closeout. Execution stops here for separate user approval: no push, merge,
 production deploy, Firestore rules/index publication or rollback was authorized
 or performed. The local closeout commit is the only new external-facing action
 in this phase.
+
+## Production release closeout — 2026-08-03
+
+The user approved the release after the local gate and merge.
+
+- Git integration: `main@8dfac48ed3246ff23f97adf974d4d134ff9b8c58`
+  was pushed to `origin/main`.
+- Production deployment: `dpl_CCr1QQFhTLZzmPYvggutJpqSzW1j`, URL
+  `https://iron-fz62m5je1-pdudek2s-projects.vercel.app`, aliased to
+  `https://ironlog-coach.vercel.app`; final `vercel inspect` reported `Ready`.
+- Firestore publication: not performed because `firestore.rules` and
+  `firestore.indexes.json` had no diff against the pre-release `origin/main`.
+- Recovery decision: restore the previous production deployment with
+  `vercel rollback dpl_6pW39kJHCwYWueSQL34iP6Htqwf4` if the release must be
+  reverted. No data rollback is required.
+
+### Post-deploy observation
+
+Codex In-app Browser observed the production alias after deployment.
+
+- Desktop `1440 × 900`: the IronLog login shell rendered with the Puls hero,
+  login form and complete viewport; `scrollWidth = 1425`, `innerWidth = 1440`.
+- Mobile `390 × 844`: the same shell rendered without horizontal overflow;
+  `scrollWidth = 375`, `innerWidth = 390`.
+- Direct navigation to `/dashboard` without a session redirected to `/login`.
+- Browser console errors were `[]` for desktop, mobile and route-guard checks.
+
+Authenticated product flows were not repeated against production because the
+observation surface had no active production session. They remain covered by
+the immediately preceding full emulator E2E and direct authenticated local
+smoke recorded in this report. No production account or data was mutated.
+
+Phase 9 and the corrective program 8A–9 are complete. The roadmap is archived;
+there are no remaining obligations from this program.

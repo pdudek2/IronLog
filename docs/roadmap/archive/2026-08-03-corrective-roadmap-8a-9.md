@@ -40,7 +40,7 @@ szczegółowy plan korekcyjnej bramki wydania.
 
 ## 3. Faza 8A — Higiena release i wiarygodność E2E
 
-**Status: DONE.** Implementacja, gate'y i integracja są zakończone. Plan i dowody: [`plans/2026-07-29-phase-8a-release-hygiene-e2e-reliability.md`](../plans/2026-07-29-phase-8a-release-hygiene-e2e-reliability.md).
+**Status: DONE.** Implementacja, gate'y i integracja są zakończone. Zakres i dowody są zachowane w tym archiwum; szczegółowa historia wykonania pozostaje w Git.
 
 **Cel:** usunąć artefakty, które nie powinny trafić do repo ani produkcyjnego bundle'a, i przywrócić E2E jako wiarygodny sygnał po zmianach copy.
 
@@ -64,10 +64,8 @@ szczegółowy plan korekcyjnej bramki wydania.
 
 **Status: DONE.** Implementacja, finalny whole-branch review, jego poprawka
 idempotentnej odpowiedzi dla równoległej materializacji tej samej rewizji oraz
-gate'y są zakończone. Dowody i zatwierdzone korekty znajdują się w
-[`specs/2026-07-29-phase-8b-workout-projection-serialization-design.md`](../specs/2026-07-29-phase-8b-workout-projection-serialization-design.md)
-i
-[`plans/2026-07-29-phase-8b-workout-projection-serialization.md`](../plans/2026-07-29-phase-8b-workout-projection-serialization.md).
+gate'y są zakończone. Zatwierdzony kontrakt i szczegółowa historia wykonania
+pozostają w Git.
 
 **Cel:** równoległe usunięcie i materializacja jednego workoutu zawsze kończą się jednym autorytatywnym stanem.
 
@@ -88,8 +86,8 @@ i
 
 ## 5. Faza 8C — Integralność katalogu planów AI
 
-**Status: DONE.** Implementacja i gate'y są zakończone. Dowody:
-[`plans/2026-07-31-phase-8c-ai-catalog-integrity.md`](../plans/2026-07-31-phase-8c-ai-catalog-integrity.md).
+**Status: DONE.** Implementacja i gate'y są zakończone. Zakres i wynik są
+zachowane w tym archiwum; szczegółowa historia wykonania pozostaje w Git.
 
 **Cel:** walidacja planu nie może po cichu przypisać ćwiczenia do złego źródła ani przedstawić niepełnego katalogu jako kompletnego.
 
@@ -112,8 +110,8 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 
 ## 6. Faza 8D — Kontrakt repo i cleanup
 
-**Status: DONE.** Implementacja, focused review i gate'y są zakończone. Plan i dowody:
-[`plans/2026-08-01-phase-8d-repo-contract-cleanup.md`](../plans/2026-08-01-phase-8d-repo-contract-cleanup.md).
+**Status: DONE.** Implementacja, focused review i gate'y są zakończone. Zakres
+i wynik są zachowane w tym archiwum; szczegółowa historia wykonania pozostaje w Git.
 
 **Cel:** usunąć rozjazd między instrukcjami repo a aktualnym produktem oraz potwierdzony martwy scaffolding.
 
@@ -135,8 +133,7 @@ katalogu globalnego. Istniejący przycisk `Generuj plan` służy do ponowienia.
 **Status: DONE.** Faza 8D jest zakończona, bramka przeszła, a kandydat został
 zintegrowany i wydany na produkcję. Raport:
 [`audits/2026-08-02-phase-9-corrective-release-gate.md`](../../audits/2026-08-02-phase-9-corrective-release-gate.md).
-Plan wykonania:
-[`plans/2026-08-02-phase-9-corrective-release-gate.md`](../plans/2026-08-02-phase-9-corrective-release-gate.md).
+Szczegółowa historia wykonania pozostaje w Git.
 
 **Zakres:**
 

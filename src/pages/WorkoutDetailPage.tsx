@@ -103,6 +103,17 @@ function parseSetDraftValue(field: 'weight' | 'reps', value: string): number {
   return Math.max(0, parsedValue)
 }
 
+function getWorkoutEditError(exercises: WorkoutSummary['exercises']): string | null {
+  if (exercises.length === 0) return 'Trening musi zawierać co najmniej jedno ćwiczenie.'
+  if (exercises.some((exercise) => exercise.sets.length === 0)) {
+    return 'Każde ćwiczenie musi zawierać co najmniej jedną serię.'
+  }
+  if (exercises.some((exercise) => exercise.sets.some((set) => set.reps <= 0))) {
+    return 'Każda seria musi zawierać co najmniej jedno powtórzenie.'
+  }
+  return null
+}
+
 export default function WorkoutDetailPage() {
   const { id } = useParams<{ id: string }>()
   const location = useLocation()
@@ -213,6 +224,11 @@ export default function WorkoutDetailPage() {
 
   async function handleSave() {
     if (!workout || saving) return
+    const validationError = getWorkoutEditError(editedExercises)
+    if (validationError) {
+      toast.error(validationError)
+      return
+    }
     const nextLabel = editedLabel || null
     const nextExercises = cloneExercises(editedExercises)
 

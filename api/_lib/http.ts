@@ -29,7 +29,7 @@ export function sendJson(res: ApiResponse, status: number, body: unknown): void 
 export function sendApiError(
   res: ApiResponse,
   error: unknown,
-  { fallbackMessage, fallbackStatus = 400 }: SendApiErrorOptions,
+  { fallbackMessage, fallbackStatus = 500 }: SendApiErrorOptions,
 ): void {
   if (isApiError(error)) {
     sendJson(res, error.status, error.code

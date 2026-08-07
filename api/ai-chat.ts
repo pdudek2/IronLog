@@ -134,7 +134,7 @@ function normalizePlanRequest(raw: AiChatBody['planRequest']) {
     : []
 
   if (goal.length < 2) {
-    throw new Error('Podaj cel planu, żeby wygenerować szablon.')
+    throw new ApiError(400, 'Podaj cel planu, żeby wygenerować szablon.')
   }
 
   return { goal, daysPerWeek, experience, focus, notes, equipment }

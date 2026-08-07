@@ -214,7 +214,7 @@ async function prepareMaterialization(
       if (storedFence?.projectionState === 'deleted') throw workoutDeleted()
     }
 
-    if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
+    if (!workoutSnap.exists) throw workoutNotFound()
 
     const workout = parseStoredWorkout(workoutSnap.data())
     assertOwnership(userId, workout.userId)
@@ -372,7 +372,7 @@ export async function updateFinishedWorkoutForUser(
       if (storedFence?.projectionState === 'deleted') throw workoutDeleted()
     }
 
-    if (!workoutSnap.exists) throw new Error('Trening nie istnieje.')
+    if (!workoutSnap.exists) throw workoutNotFound()
 
     const existingWorkout = parseStoredWorkout(workoutSnap.data())
     assertOwnership(userId, existingWorkout.userId)
@@ -464,7 +464,7 @@ export async function deleteFinishedWorkoutForUser(
         projectionExerciseKeys: storedFence.projectionExerciseKeys,
       }
     }
-    if (!workout) throw new Error('Trening nie istnieje.')
+    if (!workout) throw workoutNotFound()
 
     const initialFence: ProjectionFence = {
       projectionState: workout.materialized ? 'ready' : 'pending',
@@ -624,6 +624,12 @@ function requireFinishedTombstone(
 function closureConflict(): ApiError {
   return new ApiError(409, 'Sesja ma już inny wynik zamknięcia.', {
     code: 'closure_conflict',
+  })
+}
+
+function workoutNotFound(): ApiError {
+  return new ApiError(404, 'Trening nie istnieje.', {
+    code: 'workout_not_found',
   })
 }
 

@@ -77,4 +77,15 @@ describe('sendApiError', () => {
 
     expect(captured.body()).toEqual({ error: 'Niepoprawny request.' })
   })
+
+  it('treats an unknown failure as a server error by default', () => {
+    const captured = captureResponse()
+
+    sendApiError(captured.res, new Error('Firestore unavailable'), {
+      fallbackMessage: 'Operacja nie powiodła się.',
+    })
+
+    expect(captured.res.statusCode).toBe(500)
+    expect(captured.body()).toEqual({ error: 'Operacja nie powiodła się.' })
+  })
 })

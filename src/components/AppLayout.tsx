@@ -4,6 +4,8 @@ import { motion } from 'framer-motion'
 import BottomNav from './BottomNav'
 import MobileInteractionProvider from './MobileInteractionProvider'
 import TopNav from './TopNav'
+import { usePassiveActiveSessionSync } from '../hooks/usePassiveActiveSessionSync'
+import { useAuthStore } from '../store/authStore'
 
 export type AppSection =
   | 'dashboard'
@@ -52,6 +54,8 @@ export default function AppLayout() {
   const mainRef = useRef<HTMLElement>(null)
   const section = sectionFromPath(location.pathname)
   const workoutFocusShell = isWorkoutFocusShell(location.pathname)
+  const uid = useAuthStore((state) => state.user?.uid)
+  usePassiveActiveSessionSync(uid, !workoutFocusShell && section !== 'dashboard')
 
   useEffect(() => {
     const focusFrame = window.requestAnimationFrame(() => {

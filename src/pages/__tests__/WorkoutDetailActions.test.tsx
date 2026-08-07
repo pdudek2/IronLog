@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   deleteWorkout: vi.fn(),
   updateWorkout: vi.fn(),
   getUserExercises: vi.fn(),
+  toastError: vi.fn(),
 }))
 
 vi.mock('../../store/authStore', () => ({
@@ -48,7 +49,7 @@ vi.mock('../../lib/userExercisesService', () => ({
 vi.mock('../../components/ExercisePicker', () => ({ default: () => null }))
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: mocks.toastError },
 }))
 
 vi.mock('framer-motion', () => ({
@@ -97,6 +98,7 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.updateWorkout.mockReset()
     mocks.getUserExercises.mockReset()
     mocks.getUserExercises.mockResolvedValue([])
+    mocks.toastError.mockReset()
   })
 
   it('keeps the workout visible after failure and retries the exact deletion before navigating', async () => {
@@ -160,5 +162,20 @@ describe('WorkoutDetailPage delete action', () => {
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
     expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not save a set after its repetitions are cleared', () => {
+    renderPage()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj' })[0])
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Powtórzenia, Wyciskanie, seria 1' }), {
+      target: { value: '' },
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
+
+    expect(mocks.updateWorkout).not.toHaveBeenCalled()
+    expect(mocks.toastError).toHaveBeenCalledWith(
+      'Każda seria musi zawierać co najmniej jedno powtórzenie.',
+    )
   })
 })

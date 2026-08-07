@@ -167,7 +167,7 @@ describe('Dashboard workout projection status', () => {
     useWorkoutStore.getState().clearWorkout()
   })
 
-  it('hydrates cold dashboard remote work so the hero and shell agree to resume', async () => {
+  it('keeps the dashboard shell aligned when remote work appears and disappears', async () => {
     mocks.getRecentWorkouts.mockResolvedValue([])
 
     render(
@@ -201,6 +201,16 @@ describe('Dashboard workout projection status', () => {
       expect(screen.getAllByRole('button', { name: 'Wznów trening' })).toHaveLength(4)
     })
     expect(useWorkoutStore.getState().active?.sessionId).toBe('remote-session')
+
+    mocks.activeSessionHasWork = false
+    act(() => {
+      mocks.activeSessionListener?.({ session: null })
+    })
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })).toHaveLength(4)
+    })
+    expect(useWorkoutStore.getState().active).toBeNull()
   })
 
   it('hands off a new workout route once after its preload settles', async () => {

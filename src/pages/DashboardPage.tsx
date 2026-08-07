@@ -27,13 +27,14 @@ import {
   type WorkoutTemplate,
 } from '../lib/templateService'
 import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
+import { usePassiveActiveSessionSync } from '../hooks/usePassiveActiveSessionSync'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { getProfile } from '../lib/userProfile'
 import {
   getRecentWorkouts, deleteWorkout, retryWorkoutMaterialization, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
-import { hasActiveSessionWork, subscribeToActiveSession } from '../lib/activeSessionService'
+import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
 import {
@@ -44,7 +45,7 @@ import { exercises as exerciseDb } from '../data/exercises'
 import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
-import { useWorkoutStore, type ActiveWorkout } from '../store/workoutStore'
+import { useWorkoutStore } from '../store/workoutStore'
 import type { DataState } from '../types/dataState'
 
 interface TemplatesResource {
@@ -149,9 +150,9 @@ function fadeUp(delay: number) {
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
+  usePassiveActiveSessionSync(user?.uid)
   const { profile, loading, setProfile, setLoading } = useProfileStore()
   const active = useWorkoutStore((state) => state.active)
-  const hydrateActiveWorkout = useWorkoutStore((state) => state.hydrateFromDoc)
   const navigate = useNavigate()
   const {
     pendingLaunch,
@@ -178,7 +179,6 @@ export default function DashboardPage() {
   })
   const [dashboardError, setDashboardError] = useState(false)
   const [dashboardLoadAttempt, setDashboardLoadAttempt] = useState(0)
-  const [remoteActiveSession, setRemoteActiveSession] = useState<ActiveWorkout | null>(null)
   const [projectionRetryStates, setProjectionRetryStates] = useState<Record<string, ProjectionRetryState>>({})
   const workoutsRef = useRef<WorkoutSummary[]>([])
   const snapshotRequestRef = useRef(0)
@@ -356,21 +356,7 @@ export default function DashboardPage() {
     }
   }, [loadTemplates, user])
 
-  useEffect(() => {
-    if (!user) return
-    return subscribeToActiveSession(user.uid, ({ session }) => {
-      setRemoteActiveSession(session)
-      if (session && hasActiveSessionWork(session) && !hasActiveSessionWork(useWorkoutStore.getState().active)) {
-        hydrateActiveWorkout(session)
-      }
-    })
-  }, [hydrateActiveWorkout, user])
-
-  const effectiveActive = useMemo(
-    () => (hasActiveSessionWork(active) ? active : remoteActiveSession),
-    [active, remoteActiveSession],
-  )
-  const hasActiveWork = useMemo(() => hasActiveSessionWork(effectiveActive), [effectiveActive])
+  const hasActiveWork = useMemo(() => hasActiveSessionWork(active), [active])
 
   function handleDelete(id: string) {
     if (deleteOperation) return
@@ -526,8 +512,8 @@ export default function DashboardPage() {
   const activeDays = weekDailyStats.filter((day) => day.workouts > 0).length
   const peakDay = [...weekDailyStats].sort((a, b) => b.volume - a.volume)[0]
   const latestWorkout = recentWorkouts[0] ?? null
-  const activeExerciseCount = effectiveActive?.exercises.length ?? 0
-  const activeLabel = effectiveActive?.label?.trim()
+  const activeExerciseCount = active?.exercises.length ?? 0
+  const activeLabel = active?.label?.trim()
   const supportLine = hasActiveWork
     ? [
         `Aktywna sesja${activeLabel ? `: ${activeLabel}` : ''}`,

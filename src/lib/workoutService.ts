@@ -141,7 +141,7 @@ export async function updateWorkout(
   await callAuthedApi('/api/update-workout', {
     workoutId: id,
     label: data.label ?? null,
-    exercises: sanitizeWorkoutExercises(data.exercises ?? []),
+    exercises: data.exercises ?? [],
   })
 }
 

@@ -112,18 +112,15 @@ async function readPrimaryState(cta: Locator) {
 }
 
 test.describe('Contrast contracts', () => {
-  test.beforeEach(async ({}, testInfo) => {
+  test.beforeEach(async ({ cleanup }, testInfo) => {
     const sessionId = `phase-1-contrast-week-${testInfo.project.name}`
+    cleanup.add('remove contrast workout fixture', () => deleteLifecycleWorkout(sessionId))
     await deleteLifecycleWorkout(sessionId)
     await seedLifecycleWorkout({
       sessionId,
       materialized: true,
       label: 'Phase 1 contrast week',
     })
-  })
-
-  test.afterEach(async ({}, testInfo) => {
-    await deleteLifecycleWorkout(`phase-1-contrast-week-${testInfo.project.name}`)
   })
 
   test.afterAll(async () => {

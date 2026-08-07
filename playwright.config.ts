@@ -30,6 +30,11 @@ const emulatorWebEnv = {
 export default defineConfig({
   testDir: './tests/e2e',
   testMatch: '**/*.spec.ts',
+  testIgnore: emulatorMode ? [] : [
+    '**/contrast.spec.ts',
+    '**/workout-detail-mobile.spec.ts',
+    '**/workout-lifecycle.spec.ts',
+  ],
   fullyParallel: false,
   retries: 1,
   workers: 1,

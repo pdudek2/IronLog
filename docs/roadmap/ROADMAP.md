@@ -133,13 +133,25 @@ Closeout lokalny 2026-08-08:
   1440×900, bez poziomego overflow; sprawdzono również filter-empty i jego
   czyszczenie bez zmiany zakresu.
 
-### 3. Uproszczenie hierarchii — **następny**
+### 3. Uproszczenie hierarchii — **zakończony**
 
 Scalić empty state i preview w planach, skrócić konfigurację Coacha do jednego
 przepływu oraz usunąć pozostałą panelizację potwierdzoną bezpośrednią
 obserwacją. Nie ujednolicać ekranów na siłę.
 
-### 4. Czytelność i closeout — **na końcu**
+Closeout lokalny 2026-08-08:
+
+- pusty stan Planów ma jedno CTA, bez fikcyjnych statystyk i z przykładowym
+  układem w tej samej powierzchni; stan z zapisanym planem zachował szybki
+  start oraz edycję;
+- konfiguracja Coacha jest jednym krótkim przepływem, a boczna kolumna planu
+  pokazuje jeden bieżący kontekst zamiast dwóch powtórzonych paneli;
+- 28/28 testów celowanych, lint, build i `git diff --check` przeszły;
+- bezpośrednio zaobserwowano Plany w stanie pustym i z danymi oraz Coach w
+  trybach rozmowy i planu na 390×844 i 1440×900, bez poziomego overflow;
+  nie używano ani nie symulowano prawdziwego sekretu Claude.
+
+### 4. Czytelność i closeout — **w toku**
 
 Podnieść istotne metadane poniżej 12px tylko w potwierdzonych miejscach,
 wykonać seryjny przegląd desktop/mobile, zamknąć pozostałe obowiązki i

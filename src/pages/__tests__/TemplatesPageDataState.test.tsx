@@ -68,13 +68,14 @@ describe('TemplatesPage data states', () => {
     render(<TemplatesPage />)
 
     expect(await screen.findByText('Nie udało się pobrać szablonów')).toBeInTheDocument()
-    expect(screen.queryByText('Nie masz jeszcze szablonów')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Utwórz pierwszy szablon' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Nie masz jeszcze planu')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Utwórz pierwszy plan' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
 
-    expect(await screen.findByText('Nie masz jeszcze szablonów')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Utwórz pierwszy szablon' })).toBeInTheDocument()
+    expect(await screen.findByText('Nie masz jeszcze planu')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Utwórz pierwszy plan' })).toBeInTheDocument()
+    expect(screen.getByText('Upper / Lower · 4 dni')).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
   })
 })

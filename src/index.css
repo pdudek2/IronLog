@@ -4314,6 +4314,112 @@ a {
     inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
+.planner-empty-state {
+  display: grid;
+  gap: 0;
+  margin-top: 1rem;
+  overflow: hidden;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background:
+    linear-gradient(110deg, rgba(240, 67, 90, 0.07), transparent 34%),
+    rgba(18, 17, 20, 0.62);
+}
+
+.planner-empty-copy,
+.planner-empty-example {
+  padding: clamp(1.1rem, 3vw, 1.65rem);
+}
+
+.planner-empty-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.9rem;
+}
+
+.planner-empty-icon {
+  display: inline-flex;
+  width: 2.7rem;
+  height: 2.7rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--accent-soft-strong);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.planner-empty-copy h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2.2vw, 1.8rem);
+  font-weight: 760;
+  line-height: 1.08;
+}
+
+.planner-empty-copy p {
+  max-width: 36rem;
+  margin: 0.65rem 0 0;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.planner-empty-example {
+  border-top: 1px solid var(--border);
+}
+
+.planner-empty-example > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+}
+
+.planner-empty-example > div span {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 760;
+}
+
+.planner-empty-example > div strong {
+  color: var(--text-strong);
+  font-size: 0.95rem;
+}
+
+.planner-empty-example ol {
+  display: grid;
+  gap: 0;
+  margin: 0.8rem 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(244, 241, 242, 0.09);
+}
+
+.planner-empty-example li {
+  display: grid;
+  grid-template-columns: minmax(4.5rem, 0.28fr) minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.68rem 0;
+  border-bottom: 1px solid rgba(244, 241, 242, 0.075);
+}
+
+.planner-empty-example li strong {
+  color: var(--text-strong);
+  font-size: 0.78rem;
+}
+
+.planner-empty-example li span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .planner-template-row {
   padding: 0;
   background: transparent;
@@ -4672,6 +4778,20 @@ a {
 
   .planner-header-actions {
     justify-content: flex-end;
+  }
+
+  .planner-empty-state {
+    grid-template-columns: minmax(18rem, 0.72fr) minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .planner-empty-copy {
+    align-items: center;
+  }
+
+  .planner-empty-example {
+    border-top: 0;
+    border-left: 1px solid var(--border);
   }
 
   .planner-template-main {
@@ -6327,12 +6447,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 
 .coach-header-panel {
   align-self: end;
-  border: 1px solid var(--border);
-  background:
-    linear-gradient(145deg, rgba(240, 67, 90, 0.1), transparent 44%),
-    rgba(18, 17, 20, 0.76);
-  padding: 1rem;
-  box-shadow: var(--shadow-soft);
+  padding: 0;
 }
 
 .coach-status-line {
@@ -6342,6 +6457,101 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   color: var(--text-strong);
   font-size: 0.9rem;
   font-weight: 750;
+}
+
+.ai-key-panel {
+  border-radius: var(--radius-sm) !important;
+}
+
+.ai-key-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ai-key-panel-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.ai-key-panel-actions > span {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.035);
+  padding: 0.38rem 0.62rem;
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 760;
+  white-space: nowrap;
+}
+
+.ai-key-panel-actions > span[data-state="ready"] {
+  border-color: rgba(143, 184, 160, 0.2);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.ai-key-panel-actions > span[data-state="error"] {
+  border-color: var(--danger-soft-strong);
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.ai-key-panel-actions > span[data-state="warning"] {
+  border-color: rgba(240, 167, 90, 0.22);
+  background: rgba(240, 167, 90, 0.08);
+  color: var(--warning);
+}
+
+.ai-key-flow {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.ai-key-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 0.5rem;
+}
+
+.ai-key-local-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.ai-key-local-note svg {
+  flex: none;
+  color: var(--success);
+}
+
+.ai-key-model {
+  display: grid;
+  grid-template-columns: auto minmax(12rem, 1fr);
+  align-items: center;
+  gap: 0.65rem 1rem;
+  border-top: 1px solid var(--border);
+  padding-top: 0.8rem;
+}
+
+.ai-key-model select {
+  min-width: 0;
+}
+
+.ai-key-model-error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.76rem;
+  line-height: 1.45;
 }
 
 .coach-status-line span {
@@ -6850,11 +7060,8 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   }
 
   .coach-header-panel {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.75rem 0.85rem;
+    display: block;
+    padding: 0;
   }
 
   .coach-mode-button {
@@ -6945,7 +7152,40 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 
   .coach-header-panel {
     display: block;
-    padding: 0.7rem 0.75rem;
+    padding: 0;
+  }
+
+  .ai-key-panel-head {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .ai-key-panel-actions {
+    justify-content: space-between;
+  }
+
+  .ai-key-entry {
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+  }
+
+  .ai-key-entry > div:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .ai-key-entry > button {
+    white-space: nowrap;
+  }
+
+  .ai-key-entry > button:nth-of-type(2) {
+    width: 100%;
+  }
+
+  .ai-key-model {
+    grid-template-columns: 1fr;
+  }
+
+  .ai-key-model-error {
+    grid-column: auto;
   }
 
   .coach-status-line {
@@ -7930,7 +8170,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .progress-panel,
 .exercise-command-panel,
-.coach-header-panel,
 .profile-form-panel {
   border-radius: var(--radius-sm);
   background:

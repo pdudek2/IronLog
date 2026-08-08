@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react'
-import { Eye, EyeOff, KeyRound, ShieldCheck, Trash2 } from 'lucide-react'
+import { Eye, EyeOff, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button, Card, Input } from './ui'
 import {
   clearClaudeApiKey,
@@ -173,66 +173,54 @@ export default function AiKeyPanel({
   }
 
   return (
-    <Card>
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
+    <Card className="ai-key-panel">
+      <div className="ai-key-panel-head">
+        <div className="min-w-0">
           <p className="eyebrow" style={{ color: 'var(--accent)' }}>
             Konfiguracja
           </p>
-          <h2 className="mt-3 text-2xl font-bold text-white">
+          <h2 className="mt-2 text-xl font-bold text-white">
             Claude API key
           </h2>
-          <p className="mt-3 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Klucz zapisujesz tylko na tym urządzeniu. W każdej chwili możesz go podmienić albo usunąć.
+          <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+            Klucz zostaje w tej przeglądarce. Odblokowuje rozmowę i generator planu.
           </p>
         </div>
 
-        <div
-          className="hidden rounded-[var(--radius-md)] px-3 py-2 text-xs font-semibold sm:inline-flex"
-          style={{
-            background: keyVerified
-              ? 'var(--success-soft)'
-              : keyRejected && hasSavedKey
-                ? 'var(--danger-soft)'
-                : 'rgba(255,255,255,0.04)',
-            border: `1px solid ${
-              keyVerified
-                ? 'rgba(143,184,160,0.18)'
-                : keyRejected && hasSavedKey
-                  ? 'var(--danger-soft-strong)'
-                  : 'var(--border)'
-            }`,
-            color: keyVerified
-              ? 'var(--success)'
-              : keyRejected && hasSavedKey
-                ? 'var(--danger)'
-                : 'var(--muted)',
-          }}
-        >
-          {!hasSavedKey
-            ? 'Brak klucza'
-            : loadingModels
-              ? 'Weryfikacja...'
-              : keyRejected
-                ? 'Nieprawidłowy klucz'
+        <div className="ai-key-panel-actions">
+          <span
+            data-state={
+              keyRejected && hasSavedKey
+                ? 'error'
                 : modelsError.message
-                  ? 'Lista modeli niedostępna'
-                : 'Klucz gotowy'}
+                  ? 'warning'
+                  : keyVerified
+                    ? 'ready'
+                    : 'empty'
+            }
+          >
+            {!hasSavedKey
+              ? 'Brak klucza'
+              : loadingModels
+                ? 'Weryfikacja…'
+                : keyRejected
+                  ? 'Klucz odrzucony'
+                  : modelsError.message
+                    ? 'Modele niedostępne'
+                    : 'Klucz gotowy'}
+          </span>
+          {onCollapse && hasSavedKey && (
+            <Button type="button" variant="ghost" onClick={onCollapse}>
+              Zwiń
+            </Button>
+          )}
         </div>
       </div>
 
-      {onCollapse && hasSavedKey && (
-        <div className="mb-5 flex justify-end">
-          <Button type="button" variant="ghost" onClick={onCollapse}>
-            Zwiń konfigurację
-          </Button>
-        </div>
-      )}
-
-      <div className="grid gap-3">
-        <div className="flex flex-col gap-2">
+      <div className="ai-key-flow">
+        <div className="grid gap-2">
           <label htmlFor={keyInputId} className="stat-meta">Twój klucz</label>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="ai-key-entry">
             <Input
               id={keyInputId}
               type={showKey ? 'text' : 'password'}
@@ -249,92 +237,41 @@ export default function AiKeyPanel({
               className="w-full"
             />
 
-            <div className="flex gap-2 sm:flex-none">
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowKey((current) => !current)}
-                aria-label={showKey ? 'Ukryj klucz' : 'Pokaż klucz'}
-                className="flex-1 sm:flex-none"
-              >
-                {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
-              </Button>
-
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowKey((current) => !current)}
+              aria-label={showKey ? 'Ukryj klucz' : 'Pokaż klucz'}
+            >
+              {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+            </Button>
+            <Button type="button" onClick={handleSave}>
+              {saved ? 'Zapisano klucz' : hasSavedKey ? 'Zaktualizuj klucz' : 'Zapisz klucz'}
+            </Button>
+            {(hasSavedKey || draft.length > 0) && (
               <Button
                 type="button"
                 variant="ghost"
                 onClick={handleClear}
-                disabled={!hasSavedKey && draft.length === 0}
                 aria-label="Usuń lokalnie zapisany klucz"
-                className="flex-1 sm:flex-none"
               >
                 <Trash2 size={15} />
               </Button>
-            </div>
+            )}
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.9fr)]">
-          <div
-            className="rounded-[var(--radius-lg)] border p-4"
-            style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
-          >
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={16} style={{ color: 'var(--success)' }} />
-              <p className="text-sm font-semibold text-white">Jak to działa</p>
-            </div>
-            <div className="mt-3 space-y-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              <p>Klucz zostaje tylko na tym urządzeniu.</p>
-              <p>Na innym urządzeniu dodasz go osobno.</p>
-              <p>IronLog używa go tylko do odpowiedzi i generowania planu.</p>
-            </div>
-          </div>
+        <p className="ai-key-local-note">
+          <ShieldCheck size={14} aria-hidden="true" />
+          IronLog nie wysyła klucza poza żądania do Claude.
+        </p>
 
-          <div
-            className="rounded-[var(--radius-lg)] border p-4"
-            style={{
-              background: hasSavedKey ? 'var(--accent-soft)' : 'rgba(255,255,255,0.025)',
-              borderColor: hasSavedKey ? 'var(--accent-soft-strong)' : 'var(--border)',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <KeyRound size={16} style={{ color: hasSavedKey ? 'var(--accent)' : 'var(--muted)' }} />
-              <p className="text-sm font-semibold text-white">Status lokalny</p>
-            </div>
-            <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              {hasSavedKey
-                ? `Zapisany klucz: ${savedPreview}`
-                : 'Na tym urządzeniu nie zapisano jeszcze klucza Claude API.'}
-            </p>
-            <Button
-              type="button"
-              onClick={handleSave}
-              className="mt-4 w-full"
-              style={saved
-                ? {
-                    background: 'var(--success-gradient)',
-                    color: 'var(--success-foreground)',
-                    boxShadow: '0 14px 32px rgba(143,184,160,0.2)',
-                  }
-                : undefined}
-            >
-              {saved ? 'Zapisano klucz' : hasSavedKey ? 'Zaktualizuj klucz' : 'Zapisz klucz'}
-            </Button>
-          </div>
-        </div>
-
-        <div
-          className="rounded-[var(--radius-lg)] border p-4"
-          style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
-        >
-          <div className="flex items-center justify-between gap-3">
-            <div>
+        {hasSavedKey && (
+          <div className="ai-key-model">
+            <div className="min-w-0">
               <label htmlFor={modelSelectId} className="text-sm font-semibold text-white">
                 Model Claude
               </label>
-              <p className="mt-1 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                Wybrany model obsługuje czat i generator planu.
-              </p>
             </div>
 
             {loadingModels && (
@@ -342,9 +279,6 @@ export default function AiKeyPanel({
                 Ładowanie...
               </span>
             )}
-          </div>
-
-          <div className="mt-4">
             <select
               id={modelSelectId}
               value={selectedModel}
@@ -364,7 +298,7 @@ export default function AiKeyPanel({
             >
               {models.length === 0 ? (
                 <option value="">
-                  {hasSavedKey ? 'Brak dostępnych modeli' : 'Dodaj najpierw klucz'}
+                  Brak dostępnych modeli
                 </option>
               ) : (
                 models.map((model) => (
@@ -374,20 +308,14 @@ export default function AiKeyPanel({
                 ))
               )}
             </select>
-          </div>
-
-          {selectedModel && (
-            <p className="mt-3 text-xs leading-5" style={{ color: 'var(--muted)' }}>
-              Wybrany model: {selectedModel}
-            </p>
-          )}
 
           {modelsError.message && (
-            <p id={modelsErrorId} role="alert" className="mt-3 text-xs leading-5" style={{ color: 'var(--danger)' }}>
+            <p id={modelsErrorId} role="alert" className="ai-key-model-error">
               {modelsError.message}
             </p>
           )}
-        </div>
+          </div>
+        )}
       </div>
     </Card>
   )

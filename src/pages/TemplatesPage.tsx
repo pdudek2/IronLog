@@ -122,20 +122,22 @@ export default function TemplatesPage() {
         </div>
 
         <div className="planner-header-actions">
-          <div className="planner-mini-stats" aria-label="Podsumowanie planów">
-            <span>
-              <strong>{plannerStats.templates}</strong>
-              plany
-            </span>
-            <span>
-              <strong>{plannerStats.days}</strong>
-              dni
-            </span>
-            <span>
-              <strong>{plannerStats.exercises}</strong>
-              ćw.
-            </span>
-          </div>
+          {templates.length > 0 && (
+            <div className="planner-mini-stats" aria-label="Podsumowanie planów">
+              <span>
+                <strong>{plannerStats.templates}</strong>
+                plany
+              </span>
+              <span>
+                <strong>{plannerStats.days}</strong>
+                dni
+              </span>
+              <span>
+                <strong>{plannerStats.exercises}</strong>
+                ćw.
+              </span>
+            </div>
+          )}
 
           <motion.button
             type="button"
@@ -144,7 +146,7 @@ export default function TemplatesPage() {
             whileTap={{ scale: 0.97 }}
           >
             <Plus size={16} />
-            Nowy plan
+            {!error && templates.length === 0 ? 'Utwórz pierwszy plan' : 'Nowy plan'}
           </motion.button>
         </div>
       </section>
@@ -165,66 +167,43 @@ export default function TemplatesPage() {
             </Button>
           </motion.div>
         ) : templates.length === 0 ? (
-          <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-6 sm:p-8"
+          <motion.section
+            className="planner-empty-state"
             initial={false}
             animate={{ opacity: 1 }}
           >
-            <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(18rem,0.85fr)] lg:items-center">
-              <div className="text-center lg:text-left">
-                <div
-                  className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[var(--radius-lg)] lg:mx-0"
-                  style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
-                >
-                  <CalendarDays size={24} />
-                </div>
-                <p className="text-2xl font-semibold text-white">Nie masz jeszcze szablonów</p>
-                <p className="mt-3 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  Zapisz plan, żeby nie układać treningu od zera.
+            <div className="planner-empty-copy">
+              <span className="planner-empty-icon" aria-hidden="true">
+                <CalendarDays size={20} />
+              </span>
+              <div>
+                <h2>Nie masz jeszcze planu</h2>
+                <p>
+                  Plan zapisuje dni, ćwiczenia i serie. Potem uruchamiasz wybrany dzień jednym kliknięciem.
                 </p>
-
-                <motion.button
-                  onClick={() => navigate('/templates/new')}
-                  className="mt-6 rounded-[var(--radius-lg)] px-5 py-3 text-sm font-semibold"
-                  style={{
-                    background: 'var(--primary-gradient)',
-                    color: 'var(--accent-foreground)',
-                  }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  Utwórz pierwszy szablon
-                </motion.button>
-              </div>
-
-              <div
-                className="rounded-[var(--radius-xl)] border p-4"
-                style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
-              >
-                <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>
-                  Przykład
-                </p>
-                <p className="text-lg font-semibold text-white">Upper / Lower · 4 dni</p>
-                <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  Każdy dzień ma własną listę ćwiczeń i serii.
-                </p>
-                <div className="mt-4 space-y-2">
-                  {[
-                    'Upper A · Bench Press · Row · OHP',
-                    'Lower A · Squat · RDL · Leg Press',
-                    'Upper B · Incline · Pull-up · Lateral Raise',
-                  ].map((day) => (
-                    <div
-                      key={day}
-                      className="rounded-[var(--radius-lg)] border px-3 py-2.5 text-sm"
-                      style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border)', color: 'var(--text)' }}
-                    >
-                      {day}
-                    </div>
-                  ))}
-                </div>
               </div>
             </div>
-          </motion.div>
+
+            <div className="planner-empty-example">
+              <div>
+                <span>Przykładowy układ</span>
+                <strong>Upper / Lower · 4 dni</strong>
+              </div>
+              <ol>
+                {[
+                  ['Upper A', 'Bench Press · Row · OHP'],
+                  ['Lower A', 'Squat · RDL · Leg Press'],
+                  ['Upper B', 'Incline · Pull-up · Lateral Raise'],
+                  ['Lower B', 'Deadlift · Split Squat · Leg Curl'],
+                ].map(([day, exercises]) => (
+                  <li key={day}>
+                    <strong>{day}</strong>
+                    <span>{exercises}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          </motion.section>
         ) : (
           <div className="template-board planner-template-board">
             {templates.map((template, index) => {

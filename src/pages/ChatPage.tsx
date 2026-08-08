@@ -1020,28 +1020,7 @@ export default function ChatPage() {
             )}
 
             {activeTab === 'chat' ? (
-              showConfigPanel || !configured ? (
-                <section className="coach-context-panel surface-panel">
-                  <div className="coach-context-head">
-                    <ShieldCheck size={16} style={{ color: 'var(--success)' }} />
-                    <p>Prywatność</p>
-                  </div>
-                  <div className="coach-context-list">
-                    <div>
-                      <span>Klucz</span>
-                      <strong>lokalnie</strong>
-                    </div>
-                    <div>
-                      <span>Konto</span>
-                      <strong>osobno na każdym urządzeniu</strong>
-                    </div>
-                    <div>
-                      <span>Kontekst</span>
-                      <strong>historia, gotowość, rekordy</strong>
-                    </div>
-                  </div>
-                </section>
-              ) : (
+              configured && (
                 <section className="coach-context-panel surface-panel">
                   <div className="coach-context-head">
                     <span>
@@ -1066,58 +1045,25 @@ export default function ChatPage() {
                 </section>
               )
             ) : (
-              <>
-                <section className="coach-context-panel surface-panel">
-                  <div className="coach-context-head">
-                    <Sparkles size={16} />
-                    <p>Brief</p>
-                  </div>
-                  <div className="coach-context-list">
-                    {[
-                      ['Cel', 'siła, masa, powrót, rytm'],
-                      ['Ograniczenia', 'czas, sprzęt, ćwiczenia'],
-                      ['Fokus', 'partia, lift, technika'],
-                    ].map(([label, value]) => (
-                      <div
-                        key={label}
-                      >
-                        <span>{label}</span>
-                        <strong>{value}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-
-                <section className="coach-context-panel surface-panel">
-                  <div className="coach-context-head">
-                    <Bot size={16} />
-                    <p>Status planu</p>
-                  </div>
-                  <div className="coach-context-list">
-                    {[
-                      {
-                        label: 'Tryb',
-                        value: planPreview ? 'Podgląd' : 'Brief',
-                      },
-                      {
-                        label: 'Dni',
-                        value: String(planPreview?.days.length ?? planDays),
-                      },
-                      {
-                        label: 'Ćwiczenia',
-                        value: String(totalPlanExercises || 0),
-                      },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                      >
-                        <span>{item.label}</span>
-                        <strong>{item.value}</strong>
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              </>
+              <section className="coach-context-panel surface-panel">
+                <div className="coach-context-head">
+                  <Sparkles size={16} />
+                  <p>Kontekst planu</p>
+                </div>
+                <div className="coach-context-list">
+                  {[
+                    { label: 'Cel', value: planGoal.trim() || 'jeszcze nie podany' },
+                    { label: 'Dni', value: String(planPreview?.days.length ?? planDays) },
+                    { label: 'Sprzęt', value: `${planEquipment.length} wybranych` },
+                    { label: 'Status', value: planPreview ? 'podgląd gotowy' : 'brief' },
+                  ].map((item) => (
+                    <div key={item.label}>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                  ))}
+                </div>
+              </section>
             )}
           </div>
         </div>

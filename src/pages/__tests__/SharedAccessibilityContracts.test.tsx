@@ -158,6 +158,20 @@ describe('shared accessibility contracts', () => {
     expect(workoutActions[0]).toHaveTextContent('Wznów trening')
   })
 
+  it('gives workout detail actions exclusive ownership of the mobile bottom area', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/workout/completed-session']}>
+        <MobileInteractionProvider>
+          <BottomNav />
+        </MobileInteractionProvider>
+      </MemoryRouter>,
+    )
+
+    const nav = container.querySelector('nav[aria-label="Nawigacja dolna"]')
+    expect(nav).toHaveAttribute('aria-hidden', 'true')
+    expect(nav).toHaveAttribute('inert')
+  })
+
   it('hides mobile navigation on deliberate downward scroll and restores it on upward scroll', async () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>

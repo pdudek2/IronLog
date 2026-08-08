@@ -3,9 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft,
-  BarChart3,
   Clock3,
-  Layers3,
   Target,
   Trash2,
   TrendingUp,
@@ -316,7 +314,6 @@ export default function WorkoutDetailPage() {
   const topSetWeight = displayedWorkout.exercises.reduce((top, exercise) => (
     Math.max(top, ...exercise.sets.map((set) => set.weight), 0)
   ), 0)
-  const averageSetVolume = totalSets ? Math.round(volume / totalSets) : 0
   const focusEntries = Object.entries(displayedWorkout.exercises.reduce<Record<string, number>>((acc, exercise) => {
     const category = exercise.exerciseId ? exerciseCatalog.get(exercise.exerciseId)?.category : null
     if (!category) return acc
@@ -429,7 +426,6 @@ export default function WorkoutDetailPage() {
           <aside className="desktop-sticky space-y-4 hidden lg:block">
             <motion.div
               className="workout-detail-side-panel puls-panel overflow-hidden"
-              style={{ borderLeft: `4px solid ${accent}` }}
               initial={false}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.2 }}
@@ -470,7 +466,6 @@ export default function WorkoutDetailPage() {
                     { label: 'Czas', value: formatDuration(displayedWorkout.startedAt, displayedWorkout.finishedAt) },
                     { label: 'Serie', value: String(totalSets) },
                     { label: 'Ćwiczenia', value: String(totalExercises) },
-                    { label: 'Objętość', value: volume > 0 ? formatCompactVolume(volume) : '—' },
                   ].map((stat) => (
                     <div key={stat.label}>
                       <p className="text-lg font-bold text-white">{stat.value}</p>
@@ -480,39 +475,10 @@ export default function WorkoutDetailPage() {
                     </div>
                   ))}
                 </div>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="workout-detail-side-panel puls-panel p-5 hidden lg:block"
-              initial={false}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.18 }}
-            >
-              <div className="workout-detail-mini-ledger puls-ledger mb-4">
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="stat-meta">Powt.</span>
-                    <Layers3 size={14} style={{ color: accent }} />
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-white tabular-nums">{totalReps}</p>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="stat-meta">Top set</span>
-                    <TrendingUp size={14} style={{ color: accent }} />
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-white tabular-nums">{topSetWeight ? `${topSetWeight} kg` : '—'}</p>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="stat-meta">Śr. seria</span>
-                    <BarChart3 size={14} style={{ color: accent }} />
-                  </div>
-                  <p className="mt-2 text-lg font-semibold text-white tabular-nums">{averageSetVolume ? formatCompactVolume(averageSetVolume) : '—'}</p>
+                <div className="mt-4">
+                  {actionButtons}
                 </div>
               </div>
-              {actionButtons}
             </motion.div>
           </aside>
 

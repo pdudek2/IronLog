@@ -2907,7 +2907,7 @@ a {
 }
 
 .workout-detail-stat-ledger {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .workout-detail-mini-ledger,
@@ -4825,9 +4825,26 @@ a {
 /* ── Exercise library direction ────────────────── */
 .exercise-library-header {
   display: grid;
+  grid-template-areas:
+    "copy"
+    "command"
+    "actions";
   gap: 1rem;
   padding: clamp(0.85rem, 2.2vw, 1.35rem) 0 clamp(1rem, 2.4vw, 1.5rem);
   border-bottom: 1px solid rgba(244, 241, 242, 0.11);
+}
+
+.exercise-library-header-copy {
+  grid-area: copy;
+}
+
+.exercise-library-header > .exercise-command-panel {
+  grid-area: command;
+  margin-top: 0;
+}
+
+.exercise-library-header > .planner-header-actions {
+  grid-area: actions;
 }
 
 .exercise-library-header-copy h1 {
@@ -4914,6 +4931,10 @@ a {
 .exercise-filter-board {
   display: grid;
   gap: 0.75rem;
+}
+
+.exercise-filter-toggle {
+  display: none;
 }
 
 .exercise-filter-group {
@@ -5133,6 +5154,9 @@ a {
 
 @media (min-width: 760px) {
   .exercise-library-header {
+    grid-template-areas:
+      "copy actions"
+      "command command";
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: start;
   }
@@ -5164,6 +5188,55 @@ a {
 
   .exercise-command-panel {
     padding: 0.75rem;
+  }
+
+  .exercise-filter-toggle {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.55rem;
+    border: 1px solid rgba(244, 241, 242, 0.12);
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.035);
+    color: var(--text-strong);
+    padding: 0 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 760;
+  }
+
+  .exercise-filter-toggle strong {
+    margin-left: auto;
+    color: var(--accent-text);
+    font-size: 0.7rem;
+  }
+
+  .exercise-filter-toggle svg:last-child {
+    margin-left: auto;
+    color: var(--muted);
+    transition: transform 160ms ease;
+  }
+
+  .exercise-filter-toggle strong + svg:last-child {
+    margin-left: 0;
+  }
+
+  .exercise-filter-toggle[aria-expanded="true"] svg:last-child {
+    transform: rotate(90deg);
+  }
+
+  .exercise-filter-board[data-expanded="false"] {
+    display: none;
+  }
+
+  .exercise-chip-row {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 0.15rem;
+    scrollbar-width: none;
+  }
+
+  .exercise-chip-row::-webkit-scrollbar {
+    display: none;
   }
 
   .exercise-search-box {

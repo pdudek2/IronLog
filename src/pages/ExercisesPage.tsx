@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { ChevronRight, Pencil, Plus, Search, Trash2, X } from 'lucide-react'
+import { ChevronRight, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import NumberFlow from '@number-flow/react'
 import { useAuthStore } from '../store/authStore'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
@@ -398,6 +398,7 @@ export default function ExercisesPage() {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
   const [equipment, setEquipment] = useState<Equipment | 'all'>('all')
+  const [filtersExpanded, setFiltersExpanded] = useState(false)
   const [userExercisesResource, setUserExercisesResource] = useState<UserExercisesResource>({
     uid: user?.uid ?? null,
     state: { status: 'loading' },
@@ -481,6 +482,7 @@ export default function ExercisesPage() {
   const filteredGlobal = exercises.filter(matchesFilters)
   const visibleCount = filteredUser.length + filteredGlobal.length
   const hasActiveFilters = query.trim().length > 0 || category !== 'all' || equipment !== 'all'
+  const activeFilterCount = Number(category !== 'all') + Number(equipment !== 'all')
   const clearFilters = () => {
     setQuery('')
     setCategory('all')
@@ -582,6 +584,53 @@ export default function ExercisesPage() {
           <h1>Biblioteka</h1>
         </motion.div>
 
+        <div className="exercise-command-panel">
+          <div className="exercise-search-box">
+            <Search size={16} aria-hidden="true" />
+            <input
+              type="text"
+              aria-label="Szukaj ćwiczenia"
+              placeholder="Szukaj po nazwie ćwiczenia..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            {hasActiveFilters && (
+              <button type="button" onClick={clearFilters} aria-label="Wyczyść filtry">
+                <X size={15} />
+                Wyczyść
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="exercise-filter-toggle"
+            aria-expanded={filtersExpanded}
+            aria-controls="exercise-filter-board"
+            onClick={() => setFiltersExpanded((expanded) => !expanded)}
+          >
+            <SlidersHorizontal size={16} aria-hidden="true" />
+            <span>Filtry</span>
+            {activeFilterCount > 0 && <strong>Aktywne: {activeFilterCount}</strong>}
+            <ChevronRight size={16} aria-hidden="true" />
+          </button>
+
+          <div
+            id="exercise-filter-board"
+            className="exercise-filter-board"
+            data-expanded={filtersExpanded}
+          >
+            <div className="exercise-filter-group">
+              <span>Partia</span>
+              <ChipRow label="Partia" options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
+            </div>
+            <div className="exercise-filter-group">
+              <span>Sprzęt</span>
+              <ChipRow label="Sprzęt" options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
+            </div>
+          </div>
+        </div>
+
         <div className="planner-header-actions">
           <div className="planner-mini-stats exercise-library-stats" aria-label="Podsumowanie biblioteki ćwiczeń">
             <span>
@@ -613,36 +662,6 @@ export default function ExercisesPage() {
             <Plus size={16} strokeWidth={2.5} />
             Dodaj własne
           </motion.button>
-        </div>
-      </section>
-
-      <section className="exercise-command-panel">
-        <div className="exercise-search-box">
-          <Search size={16} aria-hidden="true" />
-          <input
-            type="text"
-            aria-label="Szukaj ćwiczenia"
-            placeholder="Szukaj po nazwie ćwiczenia..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          {hasActiveFilters && (
-            <button type="button" onClick={clearFilters} aria-label="Wyczyść filtry">
-              <X size={15} />
-              Wyczyść
-            </button>
-          )}
-        </div>
-
-        <div className="exercise-filter-board">
-          <div className="exercise-filter-group">
-            <span>Partia</span>
-            <ChipRow label="Partia" options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
-          </div>
-          <div className="exercise-filter-group">
-            <span>Sprzęt</span>
-            <ChipRow label="Sprzęt" options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
-          </div>
         </div>
       </section>
 

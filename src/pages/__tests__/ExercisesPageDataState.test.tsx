@@ -142,6 +142,11 @@ describe('ExercisesPage user library states', () => {
     mocks.getUserExercises.mockResolvedValueOnce([])
     render(<ExercisesPage />)
 
+    const filterToggle = screen.getByRole('button', { name: 'Filtry' })
+    expect(filterToggle).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(filterToggle)
+    expect(filterToggle).toHaveAttribute('aria-expanded', 'true')
+
     const muscleGroup = await screen.findByRole('group', { name: 'Partia' })
     const equipmentGroup = screen.getByRole('group', { name: 'Sprzęt' })
     const allMuscles = within(muscleGroup).getByRole('button', { name: 'Wszystkie' })

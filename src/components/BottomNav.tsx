@@ -54,11 +54,12 @@ export default function BottomNav() {
 
   const path = location.pathname
   const workoutActive = path.startsWith('/workout/new')
+  const workoutDetail = path.startsWith('/workout/') && !workoutActive
   const hasActiveWork = hasActiveSessionWork(active)
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
   useEffect(() => {
-    if (inputFocused) return
+    if (inputFocused || workoutDetail) return
 
     let frameId = 0
     let pending = false
@@ -105,9 +106,9 @@ export default function BottomNav() {
       window.removeEventListener('scroll', onScroll)
       window.cancelAnimationFrame(frameId)
     }
-  }, [inputFocused])
+  }, [inputFocused, workoutDetail])
 
-  const navHidden = inputFocused || scrollHidden
+  const navHidden = workoutDetail || inputFocused || scrollHidden
 
   useEffect(() => {
     if (!navHidden) return

@@ -31,6 +31,7 @@ import { polishPlural } from '../lib/polishPlural'
 const RANGE_OPTIONS = [
   { label: '30 dni', days: 30 },
   { label: '90 dni', days: 90 },
+  { label: 'Rok', days: 365 },
 ]
 
 const MUSCLE_COLORS: Record<string, string> = {
@@ -313,7 +314,7 @@ export default function ProgressPage() {
   }, [sessions, rangeDays, fetchedAt])
 
   const weeklyData = useMemo(
-    () => aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : 13, fetchedAt),
+    () => aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : rangeDays === 90 ? 13 : 53, fetchedAt),
     [currentSessions, rangeDays, fetchedAt],
   )
 
@@ -442,7 +443,7 @@ export default function ProgressPage() {
             </div>
           </motion.div>
 
-          {hasSessionSnapshot && (
+          {hasSessionSnapshot && !showRangeEmpty && (
             <>
           <div className="progress-summary-grid">
             <div className="progress-volume-tile">
@@ -524,7 +525,7 @@ export default function ProgressPage() {
                   <p>Objętość</p>
                   <h2>Wolumen tygodniowy</h2>
                 </div>
-                <span>{rangeDays === 30 ? '5 tyg.' : '13 tyg.'}</span>
+                <span>{rangeDays === 30 ? '5 tyg.' : rangeDays === 90 ? '13 tyg.' : '53 tyg.'}</span>
               </div>
               <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
                 <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
@@ -541,7 +542,7 @@ export default function ProgressPage() {
                       tick={{ fill: 'var(--muted)', fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
-                      interval={rangeDays === 90 ? 1 : 0}
+                      interval={rangeDays === 30 ? 0 : rangeDays === 90 ? 1 : 7}
                     />
                     <YAxis
                       tickFormatter={(v) => formatVolume(Number(v))}
@@ -745,10 +746,15 @@ export default function ProgressPage() {
 
         {showRangeEmpty && (
           <div className="progress-panel progress-empty-state" role="status">
-            <p className="text-base font-semibold text-white">Brak treningów w wybranym zakresie.</p>
+            <p className="text-base font-semibold text-white">W tym zakresie nie ma treningów</p>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-              Wybierz dłuższy zakres albo zapisz kolejny trening.
+              Wcześniejsze sesje i rekordy nadal są zapisane.
             </p>
+            {rangeDays < 365 && (
+              <Button type="button" className="mt-4" onClick={() => handleRangeChange(365)}>
+                Pokaż rok
+              </Button>
+            )}
           </div>
         )}
 

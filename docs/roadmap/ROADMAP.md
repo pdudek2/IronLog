@@ -114,14 +114,26 @@ Closeout lokalny 2026-08-07:
 - child jest zweryfikowany i zamknięty; rodzic pozostaje aktywny, a pakiety
   2–4 są nadal obowiązujące.
 
-### 2. Wiarygodne stany zakresu — **następny**
+### 2. Wiarygodne stany zakresu — **zakończony**
 
 `ProgressPage` i `HistoryPage`: osobny wariant range-empty, bez zerowych KPI i
 ujemnych porównań; jedno CTA do dłuższego zakresu oraz jawne oznaczenie danych
 all-time. Bez zmian zapytań Firestore, chyba że wykonanie ujawni sprzeczne
 dane źródłowe.
 
-### 3. Uproszczenie hierarchii — **później**
+Closeout lokalny 2026-08-08:
+
+- Postępy nie renderują zerowych KPI ani porównania, gdy wybrany zakres jest
+  pusty; zakres roczny jest dostępny bez ponownego pobierania danych;
+- Historia rozróżnia pusty zakres, brak wyników filtrów i całkowicie pustą
+  historię; `Pokaż wszystko` odsłania zapisane sesje jednym działaniem;
+- rekordy w Postępach pozostają jawnie opisane jako dane od początku;
+- 12/12 testów celowanych, lint i build przeszły;
+- bezpośrednio zaobserwowano range-empty oraz powrót do danych na 390×844 i
+  1440×900, bez poziomego overflow; sprawdzono również filter-empty i jego
+  czyszczenie bez zmiany zakresu.
+
+### 3. Uproszczenie hierarchii — **następny**
 
 Scalić empty state i preview w planach, skrócić konfigurację Coacha do jednego
 przepływu oraz usunąć pozostałą panelizację potwierdzoną bezpośrednią

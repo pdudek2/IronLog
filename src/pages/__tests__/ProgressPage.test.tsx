@@ -239,7 +239,7 @@ describe('ProgressPage', () => {
     expect(consoleError).toHaveBeenNthCalledWith(2, '[ProgressPage] records load failed', recordsError)
   })
 
-  it('shows range-empty analytics while retaining records od początku', async () => {
+  it('replaces empty-range metrics with one longer-range action and retains all-time records', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [session('older', 60)],
       records: [record('record-1')],
@@ -251,7 +251,12 @@ describe('ProgressPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '30 dni' }))
 
     const emptyStatus = screen.getByRole('status')
-    expect(emptyStatus).toHaveTextContent('Brak treningów w wybranym zakresie.')
+    expect(emptyStatus).toHaveTextContent('W tym zakresie nie ma treningów')
+    expect(screen.queryByText('0 sesji w zakresie')).not.toBeInTheDocument()
+    fireEvent.click(within(emptyStatus).getByRole('button', { name: 'Pokaż rok' }))
+
+    expect(screen.getByRole('button', { name: 'Rok' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Rekordy od początku' })).toBeInTheDocument()
     expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
   })

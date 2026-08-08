@@ -168,6 +168,9 @@ export default function HistoryPage() {
     () => filtered.reduce((sum, { totalVolume }) => sum + totalVolume, 0),
     [filtered],
   )
+  const hasActiveFilters = Boolean(searchText.trim() || activeCategory)
+  const showRangeEmpty = workouts.length > 0 && filtered.length === 0 && !hasActiveFilters
+  const showFilterEmpty = filtered.length === 0 && hasActiveFilters
 
   if (loading && workouts.length === 0) return <LoadingState message="Ładowanie historii..." />
 
@@ -178,10 +181,12 @@ export default function HistoryPage() {
         <p>
           {loadError && workouts.length === 0
             ? 'Nie udało się pobrać historii treningów.'
+            : showFilterEmpty
+            ? 'Brak treningów pasujących do filtrów.'
+            : showRangeEmpty
+            ? 'W tym zakresie nie ma treningów.'
             : filtered.length === 0
-            ? searchText.trim() || activeCategory
-              ? 'Brak treningów pasujących do filtrów.'
-              : 'Brak treningów w wybranym zakresie.'
+            ? 'Nie masz jeszcze zapisanych treningów.'
             : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} · ${formatCompactVolume(totalVolumeInRange)}${historyTruncated ? ' · ostatnie 2000' : ''}`}
         </p>
       </header>
@@ -284,25 +289,45 @@ export default function HistoryPage() {
               Spróbuj ponownie
             </button>
           </div>
+        ) : showRangeEmpty ? (
+          <div className="history-empty-state">
+            <p className="text-base font-semibold text-white">W tym zakresie nie ma treningów</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
+              Wcześniejsze sesje nadal są w historii.
+            </p>
+            <button
+              type="button"
+              onClick={() => setRangePreset('all')}
+              className="mobile-touch-target mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
+              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+            >
+              Pokaż wszystko
+            </button>
+          </div>
+        ) : showFilterEmpty ? (
+          <div className="history-empty-state">
+            <p className="text-base font-semibold text-white">Brak wyników</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
+              Żaden trening nie pasuje do wyszukiwania i wybranych partii.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchText('')
+                setActiveCategory(null)
+              }}
+              className="mobile-touch-target mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
+              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+            >
+              Wyczyść filtry
+            </button>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="history-empty-state">
-            <p className="text-sm" style={{ color: 'var(--muted)' }}>
-              Nic nie pasuje do obecnych filtrów. Spróbuj zwiększyć zakres lub wyczyścić filtry.
+            <p className="text-base font-semibold text-white">Historia jest jeszcze pusta</p>
+            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
+              Pierwszy ukończony trening pojawi się tutaj.
             </p>
-            {(activeCategory || searchText || rangePreset !== '90') && (
-              <button
-                type="button"
-                onClick={() => {
-                  setRangePreset('90')
-                  setSearchText('')
-                  setActiveCategory(null)
-                }}
-                className="mobile-touch-target mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
-                style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
-              >
-                Wyczyść filtry
-              </button>
-            )}
           </div>
         ) : (
           <div className="history-workout-list">

@@ -7849,7 +7849,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .bottom-nav-button > span:first-of-type {
-    font-size: 0.5rem;
+    font-size: 0.625rem;
     letter-spacing: -0.02em;
   }
 
@@ -7857,6 +7857,42 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     margin-inline: 0;
     min-width: 2.75rem;
     min-height: 2.75rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .dashboard-home-date,
+  .dashboard-range-chip small,
+  .dashboard-week-empty-summary .stat-meta,
+  .history-category-filter-label,
+  .history-workout-meta,
+  .progress-volume-tile span,
+  .progress-signal-row span,
+  .progress-signal-row small,
+  .progress-comparison-item span,
+  .progress-comparison-item small,
+  .progress-panel-head p,
+  .progress-panel-head > span,
+  .progress-records-head p,
+  .progress-records-head > span,
+  .planner-day-chip small,
+  .exercise-library-row-main span,
+  .exercise-library-row-main small,
+  .ai-key-panel .stat-meta,
+  .ai-key-panel-actions > span,
+  .coach-panel-head p,
+  .coach-plan-preview-head > div > p:first-child,
+  .coach-message > p:first-child {
+    font-size: 0.75rem;
+  }
+
+  .history-category-pill,
+  .exercise-library-muscles span {
+    font-size: 0.7rem;
+  }
+
+  .bottom-nav-button > span:first-of-type {
+    font-size: 0.625rem;
   }
 }
 

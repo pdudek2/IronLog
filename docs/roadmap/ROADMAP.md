@@ -1,7 +1,7 @@
 # IronLog — aktywna roadmapa
 
-Status dokumentu: **AKTYWNY PROGRAM — konwergencja wizualna Puls**
-Ostatnia aktualizacja: 2026-08-07
+Status dokumentu: **PROGRAM ZAKOŃCZONY — konwergencja wizualna Puls**
+Ostatnia aktualizacja: 2026-08-08
 
 ## Routing
 
@@ -151,18 +151,32 @@ Closeout lokalny 2026-08-08:
   trybach rozmowy i planu na 390×844 i 1440×900, bez poziomego overflow;
   nie używano ani nie symulowano prawdziwego sekretu Claude.
 
-### 4. Czytelność i closeout — **w toku**
+### 4. Czytelność i closeout — **zakończony**
 
 Podnieść istotne metadane poniżej 12px tylko w potwierdzonych miejscach,
 wykonać seryjny przegląd desktop/mobile, zamknąć pozostałe obowiązki i
 zarchiwizować ten program. Bounce kropek pisania pozostaje poza zakresem,
 dopóki nie wykaże realnego problemu wydajności lub czytelności.
 
+Closeout lokalny 2026-08-08:
+
+- bezpośredni audyt siedmiu głównych tras przy 390×844 potwierdził, które
+  metadane informacyjne miały mniej niż 12px; podniesiono tylko etykiety
+  nawigacji, danych treningowych, planów, biblioteki i Coacha, pozostawiając
+  drobne elementy dekoracyjne oraz zwarte nagłówki bez mechanicznego bumpu;
+- po korekcie główne metadane mają 12px, zwarte tagi 11.2px, a etykiety
+  siedmioelementowej dolnej nawigacji 10px zamiast 8px;
+- na 390×844 oraz 1440×900 wszystkie sprawdzone trasy zachowały szerokość
+  viewportu; bezpośrednia obserwacja Postępów, Historii, Biblioteki i Startu
+  nie ujawniła kolizji ani błędów konsoli;
+- 64/64 pliki testowe i 492/492 testy przeszły; lint, build oraz
+  `git diff --check` również przeszły.
+
 ## Linia zakresu
 
 **Audyt wizualny 2026-08-07 → mobilna hierarchia zadań → wiarygodne stany
 zakresu, uproszczenie hierarchii, czytelność i closeout.**
 
-Zamknięcie pierwszego pakietu nie zamyka całego programu. Po każdej bramce
-roadmapa ma wskazywać następny aktualny pakiet; po pełnym closeoucie wraca do
-stanu `BRAK AKTYWNEGO PROGRAMU`.
+Wszystkie cztery pakiety oraz program nadrzędny są zamknięte. Nie pozostają
+obowiązki do przeniesienia; aktywna roadmapa może zostać usunięta po commicie,
+ponieważ jej treść i dowody pozostają w historii Git.

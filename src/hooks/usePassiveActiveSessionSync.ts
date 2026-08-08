@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 
 import { subscribeToActiveSession } from '../lib/activeSessionService'
+import { clearActiveSessionBackup } from '../lib/activeSessionBackup'
 import {
   decideRemoteSessionSync,
   isAuthoritativeActiveSessionSnapshot,
@@ -23,7 +24,10 @@ export function usePassiveActiveSessionSync(uid: string | undefined, enabled = t
       })
 
       if (decision === 'accept_remote' && session) hydrateFromDoc(session)
-      if (decision === 'clear_local') clearWorkout()
+      if (decision === 'clear_local') {
+        clearActiveSessionBackup(uid)
+        clearWorkout()
+      }
     })
   }, [clearWorkout, enabled, hydrateFromDoc, uid])
 }

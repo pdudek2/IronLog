@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import BottomNav from '../../components/BottomNav'
 import MobileInteractionProvider from '../../components/MobileInteractionProvider'
 import TopNav from '../../components/TopNav'
+import { readActiveSessionBackup, writeActiveSessionBackup } from '../../lib/activeSessionBackup'
 import type { WorkoutSummary } from '../../lib/workoutService'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useWorkoutStore, type ActiveWorkout } from '../../store/workoutStore'
@@ -163,6 +164,7 @@ describe('Dashboard workout projection status', () => {
     mocks.activeSessionHasWork = false
     mocks.activeSessionListener = null
     mocks.user = { uid: 'user-1' }
+    localStorage.clear()
     useDashboardStore.getState().clearSnapshot()
     useWorkoutStore.getState().clearWorkout()
   })
@@ -211,6 +213,28 @@ describe('Dashboard workout projection status', () => {
       expect(screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })).toHaveLength(4)
     })
     expect(useWorkoutStore.getState().active).toBeNull()
+  })
+
+  it('removes the local backup when the authoritative remote session disappears', async () => {
+    const session: ActiveWorkout = {
+      sessionId: 'remote-session',
+      startedAt: Date.now(),
+      label: 'Push',
+      exercises: [],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    useWorkoutStore.getState().hydrateFromDoc(session)
+    writeActiveSessionBackup('user-1', session)
+
+    render(<DashboardPage />)
+
+    act(() => {
+      mocks.activeSessionListener?.({ session: null })
+    })
+
+    await waitFor(() => {
+      expect(readActiveSessionBackup('user-1')).toBeNull()
+    })
   })
 
   it('hands off a new workout route once after its preload settles', async () => {

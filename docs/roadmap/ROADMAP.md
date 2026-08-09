@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa niezawodności danych
 
-**Status:** ACTIVE — PROFILE-01 INTEGRATION PENDING
+**Status:** ACTIVE — CATALOG-01 READY FOR PLANNING
 
 **Utworzono:** 2026-08-09
 
@@ -16,34 +16,22 @@ każdego kroku powstaje osobny plan dopiero przed implementacją.
 
 | Kolejność | ID | Status | Rezultat |
 |---:|---|---|---|
-| 1 | PROFILE-01 | INTEGRATION PENDING | Chronione trasy znają profil i jednostki przed renderem UI zależnego od kg/lbs |
-| 2 | CATALOG-01 | BLOCKED BY PROFILE-01 | Awaria własnych ćwiczeń jest jawnym stanem częściowym, a katalog globalny pozostaje dostępny |
-| 3 | RELEASE-01 | BLOCKED | Oba przepływy mają świeże dowody i mogą zostać bezpiecznie wydane |
+| 1 | PROFILE-01 | DONE | Chronione trasy znają profil i jednostki przed renderem UI zależnego od kg/lbs |
+| 2 | CATALOG-01 | READY | Awaria własnych ćwiczeń jest jawnym stanem częściowym, a katalog globalny pozostaje dostępny |
+| 3 | RELEASE-01 | BLOCKED BY CATALOG-01 | Oba przepływy mają świeże dowody i mogą zostać bezpiecznie wydane |
 
-## PROFILE-01 — profil przed trasami zależnymi od jednostek
+## PROFILE-01 — DONE
 
-**Plan:** [`plans/2026-08-09-profile-readiness.md`](plans/2026-08-09-profile-readiness.md)
-
-**Problem:** profil jest obecnie ładowany dopiero przez wybrane strony. Zimne
-wejście lub reload `/workout/new` może więc uruchomić ekran z domyślnym `kg`,
-mimo że użytkownik ma zapisane `lbs`.
-
-**Docelowy kontrakt:**
-
-- po ustaleniu użytkownika aplikacja rozstrzyga stan profilu przed renderem
-  chronionych ekranów zależnych od jego ustawień;
-- zapisane `lbs` obowiązuje również przy zimnym wejściu i reloadzie;
-- brak profilu prowadzi do onboardingu, a błąd odczytu nie udaje braku profilu
-  ani poprawnego `kg`;
-- zmiana konta i wylogowanie nie mogą pozostawić profilu poprzedniego użytkownika;
-- nie migrujemy danych i nie dokładamy cache'a poza istniejącym store Zustand.
-
-**Minimalna weryfikacja:**
-
-- test regresyjny zimnego wejścia z profilem `lbs`;
-- negatywny przypadek błędu odczytu profilu;
-- lint, test ukierunkowany i build;
-- bezpośrednia obserwacja reloadu trasy treningu dla konta z `lbs`.
+- implementacja i lokalny gate: `2e52f9c`, `a66a830`;
+- 66 plików i 498 testów przeszło, podobnie lint oraz produkcyjny build;
+- lokalnie zaobserwowano cold reload `/workout/new` dla profilu `lbs`: najpierw
+  stan ładowania profilu, potem wyłącznie jednostki `lbs`, bez błędów konsoli;
+- deployment `dpl_2LNXCcWn7iZK1fQsKgMHbeY28XLT` osiągnął `Ready` i został
+  przypisany do `https://ironlog-coach.vercel.app`;
+- publiczny ekran logowania produkcji działa bez błędów konsoli; uwierzytelniona
+  obserwacja produkcyjna pozostaje `Pending`, ponieważ bezpieczna sesja konta nie
+  była dostępna — nie zastąpiono jej dowodem lokalnym;
+- rollback: przywrócić poprzedni deployment Vercel.
 
 ## CATALOG-01 — uczciwy stan własnego katalogu
 
@@ -89,5 +77,5 @@ tablicy, toastu albo wpisu w konsoli. Użytkownik może przez to uznać, że jeg
 
 ## Następny krok
 
-Po osobnej zgodzie wypchnąć `PROFILE-01`, wdrożyć produkcję i wykonać closeout.
-`CATALOG-01` pozostaje zablokowany do tego momentu.
+Przygotować osobny plan `CATALOG-01`; implementacja zaczyna się dopiero po jego
+zatwierdzeniu.

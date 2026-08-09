@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa niezawodności danych
 
-**Status:** ACTIVE — READY FOR FIRST STEP PLANNING
+**Status:** ACTIVE — PROFILE-01 INTEGRATION PENDING
 
 **Utworzono:** 2026-08-09
 
@@ -16,7 +16,7 @@ każdego kroku powstaje osobny plan dopiero przed implementacją.
 
 | Kolejność | ID | Status | Rezultat |
 |---:|---|---|---|
-| 1 | PROFILE-01 | PLANNED | Chronione trasy znają profil i jednostki przed renderem UI zależnego od kg/lbs |
+| 1 | PROFILE-01 | INTEGRATION PENDING | Chronione trasy znają profil i jednostki przed renderem UI zależnego od kg/lbs |
 | 2 | CATALOG-01 | BLOCKED BY PROFILE-01 | Awaria własnych ćwiczeń jest jawnym stanem częściowym, a katalog globalny pozostaje dostępny |
 | 3 | RELEASE-01 | BLOCKED | Oba przepływy mają świeże dowody i mogą zostać bezpiecznie wydane |
 
@@ -89,4 +89,5 @@ tablicy, toastu albo wpisu w konsoli. Użytkownik może przez to uznać, że jeg
 
 ## Następny krok
 
-Zatwierdzić plan `PROFILE-01` i dopiero wtedy rozpocząć implementację.
+Po osobnej zgodzie wypchnąć `PROFILE-01`, wdrożyć produkcję i wykonać closeout.
+`CATALOG-01` pozostaje zablokowany do tego momentu.

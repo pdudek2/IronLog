@@ -33,6 +33,9 @@
 - `src/pages/DashboardPage.tsx` — remove page-owned profile bootstrap and retain dashboard-data loading only.
 - `src/pages/ProfilePage.tsx` — remove duplicate profile loading UI; write profile updates through the authoritative store.
 - `src/pages/OnboardingPage.tsx` — publish the newly created profile into the account-bound store.
+- `src/pages/WorkoutPage.tsx` — render session-volume summaries in the resolved profile units.
+- `src/components/workout/WorkoutExerciseLedgerItem.tsx` — render exercise and set volume in the resolved profile units.
+- `src/components/__tests__/WorkoutExerciseLedgerItem.test.tsx` — preserve the existing pounds boundary and cover volume display.
 - `src/pages/__tests__/DashboardProjectionStatus.test.tsx` — align the profile-store mock with the final interface.
 - `src/pages/__tests__/ProfilePage.test.tsx` — align the profile-store and profile-service mocks with the final interface.
 - `docs/roadmap/ROADMAP.md` — record local gate state and the next lifecycle step after verification.
@@ -93,7 +96,7 @@ The route structure must keep authentication and profile readiness separate:
 - Produces: exported `ProfileRouteOutlet` for the focused router contract test.
 - Preserves: `profile: UserProfile | null` for existing consumers such as `WorkoutPage`.
 
-- [ ] **Step 1: Write the failing profile-store tests**
+- [x] **Step 1: Write the failing profile-store tests**
 
 Create `src/store/profileStore.test.ts` with three contracts: an `lbs` profile becomes ready, a read failure becomes retryable error state, and an older account request cannot overwrite a newer one.
 
@@ -174,7 +177,7 @@ describe('profileStore readiness', () => {
 })
 ```
 
-- [ ] **Step 2: Run the store test and confirm RED**
+- [x] **Step 2: Run the store test and confirm RED**
 
 Run:
 
@@ -184,7 +187,7 @@ npx vitest run src/store/profileStore.test.ts
 
 Expected: FAIL because `loadProfile`, `profileUid`, and `status` do not exist yet.
 
-- [ ] **Step 3: Implement the minimum account-bound profile resource**
+- [x] **Step 3: Implement the minimum account-bound profile resource**
 
 Replace the current `loading`/`setLoading` store contract in `src/store/profileStore.ts`. Use one module-local request version to invalidate stale reads; do not add AbortController or a cache.
 
@@ -233,7 +236,7 @@ export const useProfileStore = create<ProfileState>((set, get) => ({
 }))
 ```
 
-- [ ] **Step 4: Run the store test and confirm GREEN**
+- [x] **Step 4: Run the store test and confirm GREEN**
 
 Run:
 
@@ -243,7 +246,7 @@ npx vitest run src/store/profileStore.test.ts
 
 Expected: `1` file and `3` tests PASS.
 
-- [ ] **Step 5: Write the failing route-gate tests**
+- [x] **Step 5: Write the failing route-gate tests**
 
 Create `src/router/__tests__/ProfileRouteOutlet.test.tsx`. Use the real Zustand stores, mock only `getProfile`, and render `ProfileRouteOutlet` with a memory router. Cover these observable contracts:
 
@@ -339,7 +342,7 @@ it('routes an authenticated account without a profile to onboarding', async () =
 })
 ```
 
-- [ ] **Step 6: Run the route test and confirm RED**
+- [x] **Step 6: Run the route test and confirm RED**
 
 Run:
 
@@ -349,7 +352,7 @@ npx vitest run src/router/__tests__/ProfileRouteOutlet.test.tsx
 
 Expected: FAIL because `ProfileRouteOutlet` does not exist and protected children currently render after auth alone.
 
-- [ ] **Step 7: Reset profile state on every account transition**
+- [x] **Step 7: Reset profile state on every account transition**
 
 In `src/lib/auth.ts`, keep the existing UID comparison and reset profile alongside workout/dashboard state. Remove the `if (!user)` block and the obsolete `setLoading` calls.
 
@@ -361,7 +364,7 @@ if (previousUid !== nextUid) {
 }
 ```
 
-- [ ] **Step 8: Add the profile route gate using existing UI**
+- [x] **Step 8: Add the profile route gate using existing UI**
 
 Export `ProfileRouteOutlet` from `src/router/index.tsx`. It must initiate a read only when `profileUid !== user.uid`, show `LoadingState` while unresolved, reuse `ActionFeedback` for retry, distinguish `missing` from `error`, and redirect a completed profile away from onboarding.
 
@@ -407,7 +410,7 @@ export function ProfileRouteOutlet() {
 
 Import `ActionFeedback` and `useProfileStore`, then apply the nested route structure from **Final interfaces**. Do not place `/logout` inside `ProfileRouteOutlet`.
 
-- [ ] **Step 9: Remove duplicate page-owned profile bootstrap**
+- [x] **Step 9: Remove duplicate page-owned profile bootstrap**
 
 Make these minimal consumer changes:
 
@@ -442,7 +445,7 @@ setProfile(user.uid, profile)
 
 - Update the two existing page-test mocks to expose only the final store fields they consume. Remove obsolete `getProfile`, `loading`, and `setLoading` mocks.
 
-- [ ] **Step 10: Run the focused regression set**
+- [x] **Step 10: Run the focused regression set**
 
 Run:
 
@@ -457,7 +460,7 @@ npx vitest run \
 
 Expected: all listed files PASS. `WorkoutStaleSessionFeedback` protects the existing direct `WorkoutPage` test harness that deliberately supplies `profile: null`.
 
-- [ ] **Step 11: Run static gates**
+- [x] **Step 11: Run static gates**
 
 Run:
 
@@ -469,7 +472,7 @@ git diff --check
 
 Expected: all commands exit `0`. Confirm `rg -n "getProfile|setLoading" src/pages/DashboardPage.tsx src/pages/ProfilePage.tsx` returns no matches.
 
-- [ ] **Step 12: Review the whole implementation diff**
+- [x] **Step 12: Review the whole implementation diff**
 
 Check these failure boundaries directly in the diff:
 
@@ -480,7 +483,7 @@ Check these failure boundaries directly in the diff:
 - onboarding and profile updates write through with the current UID;
 - no second provider, cache, or compatibility adapter was introduced.
 
-- [ ] **Step 13: Commit the implementation**
+- [x] **Step 13: Commit the implementation**
 
 ```bash
 git add \
@@ -511,7 +514,7 @@ git commit -m "fix profile readiness before protected routes"
 - Consumes: the committed `PROFILE-01` implementation and passing focused/static gates from Task 1.
 - Produces: an evidence-backed `INTEGRATION PENDING` state; it does not push or deploy.
 
-- [ ] **Step 1: Read the visual-observation contract before runtime validation**
+- [x] **Step 1: Read the visual-observation contract before runtime validation**
 
 Read:
 
@@ -521,7 +524,7 @@ cat /Users/patryk/.codex/skills/project-convergence/references/visual-observatio
 
 Use exactly one primary observation surface selected by that contract.
 
-- [ ] **Step 2: Observe a cold `lbs` route directly**
+- [x] **Step 2: Observe a cold `lbs` route directly**
 
 Run the local app with the existing emulator workflow. Using one emulator account whose profile has `units: 'lbs'`:
 
@@ -533,7 +536,7 @@ Run the local app with the existing emulator workflow. Using one emulator accoun
 
 Record the result as `Observed` with the surface and viewport. If direct observation cannot run, record the gate as pending; do not substitute a screenshot or test result.
 
-- [ ] **Step 3: Record failure-path and recovery evidence**
+- [x] **Step 3: Record failure-path and recovery evidence**
 
 In the plan's execution notes, record:
 
@@ -544,7 +547,7 @@ In the plan's execution notes, record:
 - rollout decision: no migration and no Firestore rules/index publication;
 - recovery decision: revert the implementation commit before release, or roll back the resulting Vercel deployment after release.
 
-- [ ] **Step 4: Move the roadmap to integration pending**
+- [x] **Step 4: Move the roadmap to integration pending**
 
 Only when every local gate above passes:
 
@@ -553,7 +556,7 @@ Only when every local gate above passes:
 - append a short execution-evidence section to this plan with exact commands and results;
 - do not mark `PROFILE-01` done and do not delete this plan yet.
 
-- [ ] **Step 5: Commit the local gate evidence**
+- [x] **Step 5: Commit the local gate evidence**
 
 ```bash
 git add docs/roadmap/ROADMAP.md docs/roadmap/plans/2026-08-09-profile-readiness.md
@@ -561,6 +564,38 @@ git commit -m "docs: record profile readiness gate"
 ```
 
 Stop for explicit user approval before push or production deployment.
+
+---
+
+## Execution evidence — 2026-08-09
+
+- Implementation commit: `2e52f9c fix profile readiness before protected routes`.
+- RED: the new store and router contract run failed as expected because the old
+  store did not expose `loadProfile`/`resetProfile` or account-bound readiness.
+- Focused GREEN:
+  `/Users/patryk/.local/bin/node node_modules/vitest/vitest.mjs run src/store/profileStore.test.ts src/router/__tests__/ProfileRouteOutlet.test.tsx src/pages/__tests__/ProfilePage.test.tsx src/pages/__tests__/DashboardProjectionStatus.test.tsx src/pages/__tests__/WorkoutStaleSessionFeedback.test.tsx`
+  — 5 files, 30 tests passed.
+- Unit GREEN:
+  `/Users/patryk/.local/bin/node node_modules/vitest/vitest.mjs run` — 66 files,
+  498 tests passed. The explicit Node 22 runtime avoids the broken experimental
+  `localStorage` global exposed by the machine's Node 25 installation.
+- Static GREEN:
+  `/Users/patryk/.local/bin/node node_modules/eslint/bin/eslint.js .`,
+  `/Users/patryk/.local/bin/node node_modules/typescript/bin/tsc -b && /Users/patryk/.local/bin/node node_modules/vite/bin/vite.js build`
+  (879 modules), and `git diff --check` all exited `0`.
+- Failure-path evidence: `keeps a failed profile read distinct from a missing
+  profile`, `shows a retryable error instead of onboarding or implicit kg`, and
+  `ignores a stale response after the authenticated account changes` passed.
+- **Observed — Codex in-app browser, 1280×720, local Auth/Firestore emulators:**
+  cold reload of `http://127.0.0.1:5174/workout/new` first returned only
+  `Wczytywanie profilu...`; the completed protected render exposed
+  `Ciężar, Squat, seria 1, lbs`, contained `lbs`, contained no `kg`, and returned
+  an empty console-error list. The first observation exposed hard-coded `kg` in
+  volume summaries; those call sites were corrected before the successful rerun
+  and covered by the existing ledger unit test.
+- Rollout: no data migration and no Firestore rules or index publication.
+- Recovery: revert `2e52f9c` before release, or roll back the resulting Vercel
+  deployment after release.
 
 ---
 

@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { LoadingState } from '../components/ui'
+import { ActionFeedback } from '../components/ActionFeedback'
 import { useAuthStore } from '../store/authStore'
+import { useUserExercises } from '../hooks/useUserExercises'
 import { getWorkoutHistory, calcVolume, type WorkoutSummary } from '../lib/workoutService'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
-import { getUserExercises } from '../lib/userExercisesService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
 import {
@@ -87,7 +88,11 @@ export default function HistoryPage() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [rangeAnchorMs, setRangeAnchorMs] = useState(() => Date.now())
-  const [userExercises, setUserExercises] = useState<Exercise[]>([])
+  const {
+    state: userExercisesState,
+    exercises: userExercises,
+    retry: retryUserExercises,
+  } = useUserExercises(user?.uid ?? null)
   const [historyTruncated, setHistoryTruncated] = useState(false)
 
   const loadHistory = useCallback(async () => {
@@ -97,14 +102,10 @@ export default function HistoryPage() {
     setLoadError(false)
 
     try {
-      const [history, nextUserExercises] = await Promise.all([
-        getWorkoutHistory(user.uid),
-        getUserExercises(user.uid).catch(() => []),
-      ])
+      const history = await getWorkoutHistory(user.uid)
 
       setWorkouts(history.workouts)
       setHistoryTruncated(history.truncated)
-      setUserExercises(nextUserExercises)
       setRangeAnchorMs(Date.now())
     } catch (err) {
       console.error('[HistoryPage] load failed', err)
@@ -199,6 +200,14 @@ export default function HistoryPage() {
           >
             Historia została ograniczona do ostatnich 2000 treningów, żeby utrzymać płynność widoku.
           </div>
+        )}
+
+        {userExercisesState.status === 'error' && (
+          <ActionFeedback
+            status="error"
+            message="Nie udało się wczytać Twoich ćwiczeń. Historia nadal jest dostępna, ale część kategorii może być niepełna."
+            onRetry={retryUserExercises}
+          />
         )}
 
         <div className="history-filter-row">

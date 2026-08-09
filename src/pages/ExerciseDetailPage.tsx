@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { BarChart3, Layers3, Target } from 'lucide-react'
-import { exercises as globalExercises, type Exercise } from '../data/exercises'
-import { getUserExercises } from '../lib/userExercisesService'
+import { exercises as globalExercises } from '../data/exercises'
 import {
   getExerciseSessions,
   getExerciseRecord,
@@ -18,6 +17,8 @@ import {
 } from '../lib/exerciseLabels'
 import { polishPlural } from '../lib/polishPlural'
 import { useAuthStore } from '../store/authStore'
+import { useUserExercises } from '../hooks/useUserExercises'
+import { ActionFeedback } from '../components/ActionFeedback'
 import { Button, LoadingState } from '../components/ui'
 
 function formatDate(ts: number): string {
@@ -44,8 +45,10 @@ export default function ExerciseDetailPage() {
     () => (id ? globalExercises.find((ex) => ex.id === id) ?? null : null),
     [id],
   )
+  const userCatalog = useUserExercises(
+    source === 'user' ? user?.uid ?? null : null,
+  )
 
-  const [userExercise, setUserExercise] = useState<Exercise | null>(null)
   const [sessions, setSessions] = useState<ExerciseSession[]>([])
   const [record, setRecord] = useState<ExerciseRecord | null>(null)
   const [loading, setLoading] = useState(true)
@@ -62,13 +65,6 @@ export default function ExerciseDetailPage() {
 
     async function loadExerciseDetail() {
       try {
-        if (source === 'user') {
-          const list = await getUserExercises(currentUser.uid)
-          if (!cancelled) {
-            setUserExercise(list.find((ex) => ex.id === exerciseId) ?? null)
-          }
-        }
-
         const exSource: 'global' | 'user' = source === 'user' ? 'user' : 'global'
         const [sess, rec] = await Promise.all([
           getExerciseSessions(currentUser.uid, exerciseId, exSource),
@@ -101,6 +97,9 @@ export default function ExerciseDetailPage() {
     }
   }, [user, id, source, loadAttempt])
 
+  const userExercise = source === 'user' && userCatalog.state.status === 'success'
+    ? userCatalog.exercises.find((exercise) => exercise.id === id) ?? null
+    : null
   const exercise = source === 'user' ? userExercise : globalExercise
 
   if (loading) return <LoadingState message="Ładowanie ćwiczenia..." />
@@ -143,6 +142,14 @@ export default function ExerciseDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
+          {source === 'user' && userCatalog.state.status === 'error' && (
+            <ActionFeedback
+              status="error"
+              message="Nie udało się wczytać nazwy i kategorii tego ćwiczenia. Historia i rekordy nadal są dostępne."
+              onRetry={userCatalog.retry}
+            />
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             {exercise?.category && (
               <span

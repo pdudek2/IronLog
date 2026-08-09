@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa niezawodności danych
 
-**Status:** ACTIVE — CATALOG-01 PLANNED, AWAITING APPROVAL
+**Status:** ACTIVE — CATALOG-01 INTEGRATION PENDING
 
 **Utworzono:** 2026-08-09
 
@@ -17,7 +17,7 @@ każdego kroku powstaje osobny plan dopiero przed implementacją.
 | Kolejność | ID | Status | Rezultat |
 |---:|---|---|---|
 | 1 | PROFILE-01 | DONE | Chronione trasy znają profil i jednostki przed renderem UI zależnego od kg/lbs |
-| 2 | CATALOG-01 | PLANNED | Awaria własnych ćwiczeń jest jawnym stanem częściowym, a katalog globalny pozostaje dostępny |
+| 2 | CATALOG-01 | INTEGRATION PENDING | Awaria własnych ćwiczeń jest jawnym stanem częściowym, a katalog globalny pozostaje dostępny |
 | 3 | RELEASE-01 | BLOCKED BY CATALOG-01 | Oba przepływy mają świeże dowody i mogą zostać bezpiecznie wydane |
 
 ## PROFILE-01 — DONE
@@ -59,6 +59,25 @@ tablicy, toastu albo wpisu w konsoli. Użytkownik może przez to uznać, że jeg
 - bezpośrednia obserwacja jednego selektora i jednego widoku odczytowego przy
   wymuszonej awarii własnego katalogu.
 
+**Dowody integracyjne:**
+
+- implementacja: `af9c9e2`, `baeab11`, `c7686c2`;
+- 7 ukierunkowanych plików i 33 testy przeszły; pełny zestaw to 68 plików i
+  502 testy, a lint oraz produkcyjny build również przeszły;
+- przegląd wywołań potwierdził, że produkcyjnie `getUserExercises` jest wołane
+  wyłącznie przez `useUserExercises`; nie pozostał fallback `catch(() => [])`
+  ani stare przekazywanie samej tablicy do selektora;
+- bezpośrednia obserwacja wymuszonego błędu pozostaje `Pending`: Browser potrafił
+  selektywnie przechwycić wyłącznie zapytania `userExercises`, jednak Firestore
+  WebChannel po wymuszonej odpowiedzi utrzymywał odczyt w ponawianym stanie
+  `loading` zamiast zwrócić błąd do `getDocs`. W tym stanie globalny katalog był
+  renderowany jako aktywne przyciski, ale nie uznano tego za dowód końcowego UI
+  `error/retry`;
+- nie dodano produkcyjnego przełącznika awarii ani test bridge'a. Pusta sesja
+  utworzona do obserwacji została odrzucona i nie zapisała treningu;
+- rollback: odwrócić trzy commity implementacyjne w kolejności `c7686c2`,
+  `baeab11`, `af9c9e2`; brak zmian danych, reguł i indeksów.
+
 ## RELEASE-01 — integracja i closeout
 
 - uruchomić tylko bramki dotkniętych przepływów oraz produkcyjny build;
@@ -79,5 +98,5 @@ tablicy, toastu albo wpisu w konsoli. Użytkownik może przez to uznać, że jeg
 
 ## Następny krok
 
-Zatwierdzić plan `CATALOG-01`; implementacja zaczyna się dopiero po jego
-zatwierdzeniu.
+Zatwierdzić push i wdrożenie produkcyjne. Bezpośredni forced-error gate pozostaje
+jawnie `Pending`; nie zastępować go testem ani obserwacją stanu `loading`.

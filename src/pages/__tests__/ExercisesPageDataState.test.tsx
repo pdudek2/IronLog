@@ -97,7 +97,7 @@ describe('ExercisesPage user library states', () => {
     expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeDisabled()
     expect(screen.getByText('Przysiad')).toBeInTheDocument()
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
-    expect(mocks.toastError).toHaveBeenCalledWith('Nie udało się wczytać Twoich ćwiczeń.')
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
   it('does not show an error toast when a request rejects after unmount', async () => {

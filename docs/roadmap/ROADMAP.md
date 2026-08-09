@@ -16,11 +16,13 @@ każdego kroku powstaje osobny plan dopiero przed implementacją.
 
 | Kolejność | ID | Status | Rezultat |
 |---:|---|---|---|
-| 1 | PROFILE-01 | READY | Chronione trasy znają profil i jednostki przed renderem UI zależnego od kg/lbs |
+| 1 | PROFILE-01 | PLANNED | Chronione trasy znają profil i jednostki przed renderem UI zależnego od kg/lbs |
 | 2 | CATALOG-01 | BLOCKED BY PROFILE-01 | Awaria własnych ćwiczeń jest jawnym stanem częściowym, a katalog globalny pozostaje dostępny |
 | 3 | RELEASE-01 | BLOCKED | Oba przepływy mają świeże dowody i mogą zostać bezpiecznie wydane |
 
 ## PROFILE-01 — profil przed trasami zależnymi od jednostek
+
+**Plan:** [`plans/2026-08-09-profile-readiness.md`](plans/2026-08-09-profile-readiness.md)
 
 **Problem:** profil jest obecnie ładowany dopiero przez wybrane strony. Zimne
 wejście lub reload `/workout/new` może więc uruchomić ekran z domyślnym `kg`,
@@ -87,5 +89,4 @@ tablicy, toastu albo wpisu w konsoli. Użytkownik może przez to uznać, że jeg
 
 ## Następny krok
 
-Przygotować plan wyłącznie dla `PROFILE-01`, zatwierdzić go i dopiero wtedy
-rozpocząć implementację.
+Zatwierdzić plan `PROFILE-01` i dopiero wtedy rozpocząć implementację.

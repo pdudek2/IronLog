@@ -29,7 +29,6 @@ import {
 import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { usePassiveActiveSessionSync } from '../hooks/usePassiveActiveSessionSync'
 import { preloadRouteByPath } from '../router/pageLoaders'
-import { getProfile } from '../lib/userProfile'
 import {
   getRecentWorkouts, deleteWorkout, retryWorkoutMaterialization, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
@@ -151,7 +150,7 @@ function fadeUp(delay: number) {
 export default function DashboardPage() {
   const { user } = useAuthStore()
   usePassiveActiveSessionSync(user?.uid)
-  const { profile, loading, setProfile, setLoading } = useProfileStore()
+  const { profile } = useProfileStore()
   const active = useWorkoutStore((state) => state.active)
   const navigate = useNavigate()
   const {
@@ -315,26 +314,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return
-    if (profile) {
-      void Promise.resolve()
-        .then(() => fetchData(user.uid))
-        .catch(handleDashboardFetchError)
-      return
-    }
     void Promise.resolve()
-      .then(() => {
-        setLoading(true)
-        return getProfile(user.uid)
-      })
-      .then((nextProfile) => {
-        if (!nextProfile) navigate('/onboarding', { replace: true })
-        else setProfile(nextProfile)
-      })
-      .catch(() => {
-        setLoading(false)
-        toast.error('Nie udało się wczytać profilu. Sprawdź połączenie.')
-      })
-  }, [dashboardLoadAttempt, user, profile, navigate, setLoading, setProfile, fetchData, handleDashboardFetchError])
+      .then(() => fetchData(user.uid))
+      .catch(handleDashboardFetchError)
+  }, [dashboardLoadAttempt, user, fetchData, handleDashboardFetchError])
 
   useEffect(() => {
     function handleOnline() {
@@ -439,7 +422,7 @@ export default function DashboardPage() {
     )
   }
 
-  if (loading || (!dashboardReady && !!user && !!profile)) {
+  if (!dashboardReady && !!user) {
     return <LoadingState message="Ładowanie dashboardu..." />
   }
 

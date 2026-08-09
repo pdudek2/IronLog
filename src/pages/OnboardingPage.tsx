@@ -47,7 +47,7 @@ export default function OnboardingPage() {
     }
     try {
       await saveProfile(user.uid, profile)
-      setProfile(profile)
+      setProfile(user.uid, profile)
       navigate('/dashboard')
     } catch {
       const message = 'Nie udało się zapisać profilu. Spróbuj ponownie.'

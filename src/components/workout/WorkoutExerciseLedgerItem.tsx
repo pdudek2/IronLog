@@ -51,11 +51,12 @@ function calcSetVolume(set: Pick<WorkoutSet, 'weight' | 'reps'>): number {
   return parseWeight(set.weight) * parseReps(set.reps)
 }
 
-function formatCompactVolume(volume: number): string {
-  if (!volume) return '0 kg'
-  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k kg`
-  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k kg`
-  return `${Math.round(volume).toLocaleString('pl-PL')} kg`
+function formatCompactVolume(volumeKg: number, units: Units): string {
+  const volume = kgToDisplayWeight(volumeKg, units)
+  if (!volume) return `0 ${units}`
+  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k ${units}`
+  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k ${units}`
+  return `${Math.round(volume).toLocaleString('pl-PL')} ${units}`
 }
 
 function selectExerciseByIdentity(state: ReturnType<typeof useWorkoutStore.getState>, exerciseIndex: number, exerciseClientId: string): WorkoutExercise | null {
@@ -143,7 +144,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         </div>
         <div>
           <span>Objętość</span>
-          <strong className="tabular-nums">{formatCompactVolume(exerciseVolume)}</strong>
+          <strong className="tabular-nums">{formatCompactVolume(exerciseVolume, units)}</strong>
         </div>
         <div>
           <span>Top set</span>
@@ -222,7 +223,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                 />
                 <span className="workout-set-vol tabular-nums" aria-label={`Objętość serii ${setIndex + 1}`}>
-                  {setVolume > 0 ? formatCompactVolume(setVolume) : '—'}
+                  {setVolume > 0 ? formatCompactVolume(setVolume, units) : '—'}
                 </span>
                 <button
                   type="button"

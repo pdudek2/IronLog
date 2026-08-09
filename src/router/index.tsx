@@ -9,6 +9,8 @@ import {
   useLocation,
 } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
+import { useProfileStore } from '../store/profileStore'
+import { ActionFeedback } from '../components/ActionFeedback'
 import { LoadingState } from '../components/ui'
 import AppLayout from '../components/AppLayout'
 import {
@@ -62,6 +64,44 @@ function PrivateRouteOutlet() {
   return <Outlet />
 }
 
+export function ProfileRouteOutlet() {
+  const { user } = useAuthStore()
+  const location = useLocation()
+  const { profileUid, status, loadProfile } = useProfileStore()
+
+  useEffect(() => {
+    if (user && profileUid !== user.uid) void loadProfile(user.uid)
+  }, [loadProfile, profileUid, user])
+
+  if (!user || profileUid !== user.uid || status === 'loading') {
+    return <LoadingState message="Wczytywanie profilu..." />
+  }
+
+  if (status === 'error') {
+    return (
+      <div className="page-shell flex items-center justify-center">
+        <div className="page-container max-w-lg">
+          <ActionFeedback
+            status="error"
+            message="Nie udało się wczytać profilu. Sprawdź połączenie i spróbuj ponownie."
+            onRetry={() => { void loadProfile(user.uid) }}
+          />
+        </div>
+      </div>
+    )
+  }
+
+  if (status === 'missing') {
+    return location.pathname === '/onboarding'
+      ? <Outlet />
+      : <Navigate to="/onboarding" replace />
+  }
+
+  return location.pathname === '/onboarding'
+    ? <Navigate to="/dashboard" replace />
+    : <Outlet />
+}
+
 function PublicRouteOutlet() {
   const { user, loading } = useAuthStore()
   if (loading) return <LoadingState message="Sprawdzanie sesji..." />
@@ -108,22 +148,24 @@ const router = createBrowserRouter(createRoutesFromElements(
       <Route path="/register" element={<RegisterPage />} />
     </Route>
     <Route element={<PrivateRouteOutlet />}>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/onboarding" element={<OnboardingPage />} />
       <Route path="/logout" element={<LogoutRoute />} />
-      <Route element={<AppLayout />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/history" element={<HistoryPage />} />
-        <Route path="/progress" element={<ProgressPage />} />
-        <Route path="/templates" element={<TemplatesPage />} />
-        <Route path="/templates/new" element={<TemplateEditorPage />} />
-        <Route path="/templates/:id/edit" element={<TemplateEditorPage />} />
-        <Route path="/exercises" element={<ExercisesPage />} />
-        <Route path="/exercises/:source/:id" element={<ExerciseDetailPage />} />
-        <Route path="/chat" element={<ChatPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/workout/new" element={<WorkoutPage />} />
-        <Route path="/workout/:id" element={<WorkoutDetailPage />} />
+      <Route element={<ProfileRouteOutlet />}>
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route element={<AppLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/progress" element={<ProgressPage />} />
+          <Route path="/templates" element={<TemplatesPage />} />
+          <Route path="/templates/new" element={<TemplateEditorPage />} />
+          <Route path="/templates/:id/edit" element={<TemplateEditorPage />} />
+          <Route path="/exercises" element={<ExercisesPage />} />
+          <Route path="/exercises/:source/:id" element={<ExerciseDetailPage />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/workout/new" element={<WorkoutPage />} />
+          <Route path="/workout/:id" element={<WorkoutDetailPage />} />
+        </Route>
       </Route>
     </Route>
     <Route path="*" element={<NotFoundPage />} />

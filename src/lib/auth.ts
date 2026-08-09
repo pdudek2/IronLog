@@ -71,12 +71,7 @@ export function initAuthListener() {
     if (previousUid !== nextUid) {
       useWorkoutStore.getState().clearWorkout()
       useDashboardStore.getState().clearSnapshot()
-    }
-
-    if (!user) {
-      // czyścimy profile przy wylogowaniu / zmianie konta
-      useProfileStore.getState().setProfile(null)
-      useProfileStore.getState().setLoading(true)
+      useProfileStore.getState().resetProfile()
     }
 
     previousUid = nextUid

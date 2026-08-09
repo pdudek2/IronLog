@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import type * as React from 'react'
-import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import { getProfile, updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
+import { updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
-import { Button, Card, Input, LoadingState } from '../components/ui'
+import { Button, Card, Input } from '../components/ui'
 
 const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
   { value: 'strength',    label: 'Siła',           desc: 'Maksymalne ciężary, niskie powtórzenia' },
@@ -18,7 +17,6 @@ const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
 export default function ProfilePage() {
   const { user } = useAuthStore()
   const { profile, setProfile } = useProfileStore()
-  const navigate = useNavigate()
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '')
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal>(profile?.primaryGoal ?? 'hypertrophy')
@@ -27,58 +25,6 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [bootstrapping, setBootstrapping] = useState(() => Boolean(user && !profile))
-  const [profileLoadError, setProfileLoadError] = useState(false)
-  const [loadAttempt, setLoadAttempt] = useState(0)
-
-  useEffect(() => {
-    let cancelled = false
-
-    if (!user) {
-      setBootstrapping(false)
-      setProfileLoadError(false)
-      return
-    }
-
-    if (profile) {
-      setBootstrapping(false)
-      setProfileLoadError(false)
-      return
-    }
-
-    const currentUser = user
-
-    async function loadProfile() {
-      setBootstrapping(true)
-      setProfileLoadError(false)
-
-      try {
-        const nextProfile = await getProfile(currentUser.uid)
-
-        if (cancelled) return
-
-        if (!nextProfile) {
-          navigate('/onboarding', { replace: true })
-          return
-        }
-
-        setProfile(nextProfile)
-      } catch (err) {
-        if (cancelled) return
-        console.error('[ProfilePage] getProfile failed', err)
-        setProfileLoadError(true)
-        toast.error('Nie udało się wczytać profilu. Spróbuj ponownie.')
-      } finally {
-        if (!cancelled) setBootstrapping(false)
-      }
-    }
-
-    void loadProfile()
-
-    return () => {
-      cancelled = true
-    }
-  }, [loadAttempt, navigate, profile, setProfile, user])
 
   useEffect(() => {
     if (!profile) return
@@ -97,7 +43,7 @@ export default function ProfilePage() {
     const updated = { displayName: displayName.trim(), primaryGoal, weeklyGoal, units }
     try {
       await updateProfile(user.uid, updated)
-      setProfile({ ...profile, ...updated })
+      setProfile(user.uid, { ...profile, ...updated })
       setSaved(true)
       toast.success('Profil zapisany')
       setTimeout(() => setSaved(false), 2000)
@@ -106,31 +52,6 @@ export default function ProfilePage() {
     } finally {
       setSaving(false)
     }
-  }
-
-  if (bootstrapping && !profile) {
-    return <LoadingState message="Ładowanie profilu..." />
-  }
-
-  if (profileLoadError && !profile) {
-    return (
-      <div className="mx-auto" style={{ maxWidth: '36rem' }}>
-        <Card>
-          <div className="flex flex-col gap-4 text-center">
-            <div>
-              <p className="text-lg font-semibold text-white">Nie udało się wczytać profilu</p>
-              <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                Spróbuj ponownie za chwilę. Gdy połączenie wróci, formularz załaduje Twoje dane.
-              </p>
-            </div>
-
-            <Button type="button" onClick={() => setLoadAttempt((value) => value + 1)} className="mx-auto min-w-[12rem]">
-              Spróbuj ponownie
-            </Button>
-          </div>
-        </Card>
-      </div>
-    )
   }
 
   return (

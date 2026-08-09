@@ -1,16 +1,42 @@
 import { create } from 'zustand'
-import type { UserProfile } from '../lib/userProfile'
+import { getProfile, type UserProfile } from '../lib/userProfile'
+
+export type ProfileStatus = 'loading' | 'ready' | 'missing' | 'error'
 
 interface ProfileState {
+  profileUid: string | null
   profile: UserProfile | null
-  loading: boolean
-  setProfile: (profile: UserProfile | null) => void
-  setLoading: (loading: boolean) => void
+  status: ProfileStatus
+  loadProfile: (uid: string) => Promise<void>
+  setProfile: (uid: string, profile: UserProfile) => void
+  resetProfile: () => void
 }
 
-export const useProfileStore = create<ProfileState>((set) => ({
+let profileRequestVersion = 0
+
+export const useProfileStore = create<ProfileState>((set, get) => ({
+  profileUid: null,
   profile: null,
-  loading: true,
-  setProfile: (profile) => set({ profile, loading: false }),
-  setLoading: (loading) => set({ loading }),
+  status: 'loading',
+  loadProfile: async (uid) => {
+    const requestVersion = ++profileRequestVersion
+    set({ profileUid: uid, profile: null, status: 'loading' })
+
+    try {
+      const profile = await getProfile(uid)
+      if (requestVersion !== profileRequestVersion || get().profileUid !== uid) return
+      set({ profile, status: profile ? 'ready' : 'missing' })
+    } catch {
+      if (requestVersion !== profileRequestVersion || get().profileUid !== uid) return
+      set({ profile: null, status: 'error' })
+    }
+  },
+  setProfile: (uid, profile) => {
+    profileRequestVersion += 1
+    set({ profileUid: uid, profile, status: 'ready' })
+  },
+  resetProfile: () => {
+    profileRequestVersion += 1
+    set({ profileUid: null, profile: null, status: 'loading' })
+  },
 }))

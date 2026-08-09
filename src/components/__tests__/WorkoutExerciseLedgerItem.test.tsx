@@ -60,6 +60,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     })
 
     expect(weightInput).toHaveValue(132.3)
+    expect(screen.getByText('1.1k lbs')).toBeInTheDocument()
 
     fireEvent.change(weightInput, { target: { value: '100' } })
 

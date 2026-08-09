@@ -20,8 +20,6 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
   user: { uid: 'user-1' },
   profile: { displayName: 'Patryk', weeklyGoal: 3 },
-  setProfile: vi.fn(),
-  setLoading: vi.fn(),
   navigate: vi.fn(),
   preloadRouteByPath: vi.fn(),
   activeSessionHasWork: false,
@@ -35,9 +33,6 @@ vi.mock('../../store/authStore', () => ({
 vi.mock('../../store/profileStore', () => ({
   useProfileStore: () => ({
     profile: mocks.profile,
-    loading: false,
-    setProfile: mocks.setProfile,
-    setLoading: mocks.setLoading,
   }),
 }))
 
@@ -52,10 +47,6 @@ vi.mock('../../lib/workoutService', () => ({
 
 vi.mock('../../lib/templateService', () => ({
   getTemplates: mocks.getTemplates,
-}))
-
-vi.mock('../../lib/userProfile', () => ({
-  getProfile: vi.fn(),
 }))
 
 vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({

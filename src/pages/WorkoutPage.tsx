@@ -25,6 +25,7 @@ import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { isActiveSessionStale } from '../lib/sessionDuration'
 import { kgToDisplayWeight } from '../lib/weightUnits'
+import type { Units } from '../lib/userProfile'
 import {
   EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
@@ -276,11 +277,12 @@ function calcSetVolume(set: Pick<WorkoutSet, 'weight' | 'reps'>): number {
   return parseWeight(set.weight) * parseReps(set.reps)
 }
 
-function formatCompactVolume(volume: number): string {
-  if (!volume) return '0 kg'
-  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k kg`
-  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k kg`
-  return `${Math.round(volume).toLocaleString('pl-PL')} kg`
+function formatCompactVolume(volumeKg: number, units: Units): string {
+  const volume = kgToDisplayWeight(volumeKg, units)
+  if (!volume) return `0 ${units}`
+  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k ${units}`
+  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k ${units}`
+  return `${Math.round(volume).toLocaleString('pl-PL')} ${units}`
 }
 
 function getExerciseClientId(exercise: WorkoutExercise, exerciseIndex: number): string {
@@ -977,7 +979,7 @@ export default function WorkoutPage() {
                 </div>
                 <div className="workout-micro-card">
                   <p className="stat-meta">Objętość</p>
-                  <p className="mt-2 text-xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume)}</p>
+                  <p className="mt-2 text-xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume, units)}</p>
                 </div>
                 <div className="workout-micro-card">
                   <p className="stat-meta">Najcięższy set</p>
@@ -1109,7 +1111,7 @@ export default function WorkoutPage() {
                     </div>
                     <div className="session-instrument-foot">
                       <span><b>{completedSets}/{totalSets || 0}</b> serii</span>
-                      <span><b>{formatCompactVolume(totalVolume)}</b></span>
+                      <span><b>{formatCompactVolume(totalVolume, units)}</b></span>
                       <span><b>{remainingSets}</b> otwarte</span>
                     </div>
                   </div>
@@ -1123,7 +1125,7 @@ export default function WorkoutPage() {
                     </div>
                     <div>
                       <span>Objętość</span>
-                      <strong className="tabular-nums">{formatCompactVolume(totalVolume)}</strong>
+                      <strong className="tabular-nums">{formatCompactVolume(totalVolume, units)}</strong>
                       <Flame size={14} aria-hidden="true" />
                     </div>
                     <div>

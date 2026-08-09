@@ -24,7 +24,6 @@ vi.mock('../../store/profileStore', () => ({
 }))
 
 vi.mock('../../lib/userProfile', () => ({
-  getProfile: vi.fn(),
   updateProfile: vi.fn(),
 }))
 

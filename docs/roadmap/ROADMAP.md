@@ -1,6 +1,6 @@
 # IronLog — aktywna roadmapa niezawodności danych
 
-**Status:** ACTIVE — CATALOG-01 READY FOR PLANNING
+**Status:** ACTIVE — CATALOG-01 PLANNED, AWAITING APPROVAL
 
 **Utworzono:** 2026-08-09
 
@@ -17,7 +17,7 @@ każdego kroku powstaje osobny plan dopiero przed implementacją.
 | Kolejność | ID | Status | Rezultat |
 |---:|---|---|---|
 | 1 | PROFILE-01 | DONE | Chronione trasy znają profil i jednostki przed renderem UI zależnego od kg/lbs |
-| 2 | CATALOG-01 | READY | Awaria własnych ćwiczeń jest jawnym stanem częściowym, a katalog globalny pozostaje dostępny |
+| 2 | CATALOG-01 | PLANNED | Awaria własnych ćwiczeń jest jawnym stanem częściowym, a katalog globalny pozostaje dostępny |
 | 3 | RELEASE-01 | BLOCKED BY CATALOG-01 | Oba przepływy mają świeże dowody i mogą zostać bezpiecznie wydane |
 
 ## PROFILE-01 — DONE
@@ -34,6 +34,8 @@ każdego kroku powstaje osobny plan dopiero przed implementacją.
 - rollback: przywrócić poprzedni deployment Vercel.
 
 ## CATALOG-01 — uczciwy stan własnego katalogu
+
+**Plan:** [`plans/2026-08-09-user-exercise-catalog-state.md`](plans/2026-08-09-user-exercise-catalog-state.md)
 
 **Problem:** część konsumentów redukuje błąd `getUserExercises` do pustej
 tablicy, toastu albo wpisu w konsoli. Użytkownik może przez to uznać, że jego
@@ -61,7 +63,7 @@ tablicy, toastu albo wpisu w konsoli. Użytkownik może przez to uznać, że jeg
 
 - uruchomić tylko bramki dotkniętych przepływów oraz produkcyjny build;
 - sprawdzić cały diff pod kątem fałszywych empty states i utraty ustawień konta;
-- zapisać rollback dla zmiany bootstrapa profilu;
+- zapisać rollback dla obu zmian danych po stronie klienta;
 - push i produkcja wymagają osobnej zgody;
 - po udanym wdrożeniu przenieść ten dokument do `docs/roadmap/archive/` i usunąć
   szczegółowe, zakończone plany.
@@ -77,5 +79,5 @@ tablicy, toastu albo wpisu w konsoli. Użytkownik może przez to uznać, że jeg
 
 ## Następny krok
 
-Przygotować osobny plan `CATALOG-01`; implementacja zaczyna się dopiero po jego
+Zatwierdzić plan `CATALOG-01`; implementacja zaczyna się dopiero po jego
 zatwierdzeniu.

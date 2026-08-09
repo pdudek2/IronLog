@@ -17,9 +17,8 @@ import {
   type WorkoutSummary,
 } from '../lib/workoutService'
 import { exercises as exerciseDb } from '../data/exercises'
-import { getUserExercises } from '../lib/userExercisesService'
 import { useAuthStore } from '../store/authStore'
-import type { Exercise } from '../data/exercises'
+import { useUserExercises } from '../hooks/useUserExercises'
 import type { ExerciseSource } from '../store/workoutStore'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
@@ -119,7 +118,11 @@ export default function WorkoutDetailPage() {
   const { user } = useAuthStore()
   const previewWorkout = readWorkoutPreview(location.state, id)
   const [workout, setWorkout] = useState<WorkoutSummary | null>(() => previewWorkout)
-  const [userExercises, setUserExercises] = useState<Exercise[]>([])
+  const {
+    state: userExercisesState,
+    exercises: userExercises,
+    retry: retryUserExercises,
+  } = useUserExercises(user?.uid ?? null)
   const [loading, setLoading] = useState(() => previewWorkout === null)
   const [deleteOperation, setDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
@@ -151,13 +154,6 @@ export default function WorkoutDetailPage() {
       cancelled = true
     }
   }, [id, previewWorkout])
-
-  useEffect(() => {
-    if (!user) return
-    getUserExercises(user.uid)
-      .then(setUserExercises)
-      .catch(() => console.error('[WorkoutDetail] getUserExercises failed'))
-  }, [user])
 
   function handleStartEditing() {
     if (!workout) return
@@ -753,7 +749,8 @@ export default function WorkoutDetailPage() {
         <ExercisePicker
           onSelect={handleAddExercise}
           onClose={() => setShowPicker(false)}
-          userExercises={userExercises}
+          userExercisesState={userExercisesState}
+          onRetryUserExercises={retryUserExercises}
         />
       )}
 

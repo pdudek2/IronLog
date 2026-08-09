@@ -10,9 +10,9 @@ import { getRecentWorkouts } from '../lib/workoutService'
 import { discardWorkoutLifecycle, finishWorkoutLifecycle } from '../lib/workoutLifecycle'
 import { WorkoutClosureError } from '../lib/workoutClosureService'
 import type { WorkoutClosureIntent } from '../lib/workoutClosureIntent'
-import { getUserExercises } from '../lib/userExercisesService'
 import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
+import { useUserExercises } from '../hooks/useUserExercises'
 import { ActiveSessionSyncStatus } from '../components/workout/ActiveSessionSyncStatus'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
@@ -20,7 +20,7 @@ import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
 import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
-import { exercises as exerciseDb, type Exercise } from '../data/exercises'
+import { exercises as exerciseDb } from '../data/exercises'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { isActiveSessionStale } from '../lib/sessionDuration'
@@ -326,7 +326,11 @@ export default function WorkoutPage() {
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [pendingExerciseRemovalIndex, setPendingExerciseRemovalIndex] = useState<number | null>(null)
-  const [userExercises, setUserExercises] = useState<Exercise[]>([])
+  const {
+    state: userExercisesState,
+    exercises: userExercises,
+    retry: retryUserExercises,
+  } = useUserExercises(user?.uid ?? null)
   const [suggestions, setSuggestions] = useState<Record<string, OverloadSuggestion | null>>({})
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
   const fetchedKeys = useRef(new Set<string>())
@@ -447,14 +451,6 @@ export default function WorkoutPage() {
       if (last.bestSetReps > 0) state.updateSet(idx, 0, 'reps', String(last.bestSetReps))
     } catch { /* silent */ }
   }
-
-  // Load user's custom exercises for the picker
-  useEffect(() => {
-    if (!user) return
-    getUserExercises(user.uid)
-      .then(setUserExercises)
-      .catch(() => toast.error('Nie udało się wczytać Twoich ćwiczeń.'))
-  }, [user])
 
   function fetchSuggestion(exerciseId: string, source: string, uid: string) {
     const key = `${source}:${exerciseId}`
@@ -1315,7 +1311,8 @@ export default function WorkoutPage() {
             void handlePickExercise(id, name, source)
           }}
           onClose={() => setShowPicker(false)}
-          userExercises={userExercises}
+          userExercisesState={userExercisesState}
+          onRetryUserExercises={retryUserExercises}
         />
       )}
 

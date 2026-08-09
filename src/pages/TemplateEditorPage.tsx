@@ -8,9 +8,9 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateSaveDock, { type TemplateSaveState } from '../components/TemplateSaveDock'
 import { LoadingState } from '../components/ui'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
+import { useUserExercises } from '../hooks/useUserExercises'
 import { useAuthStore } from '../store/authStore'
 import type { ExerciseSource } from '../store/workoutStore'
-import { getUserExercises } from '../lib/userExercisesService'
 import {
   clearTemplateDraft,
   readTemplateDraft,
@@ -23,7 +23,6 @@ import {
   type TemplateExercise,
   type WorkoutTemplate,
 } from '../lib/templateService'
-import type { Exercise } from '../data/exercises'
 
 type DraftDay = TemplateDay & { _id: string }
 
@@ -98,18 +97,14 @@ export default function TemplateEditorPage() {
       : [emptyDay(0)]
   ))
   const [pickerDayIndex, setPickerDayIndex] = useState<number | null>(null)
-  const [userExercises, setUserExercises] = useState<Exercise[]>([])
+  const {
+    state: userExercisesState,
+    retry: retryUserExercises,
+  } = useUserExercises(user?.uid ?? null)
   const [savedSnapshot, setSavedSnapshot] = useState(() => serializeDraftState(
     '',
     defaultSerializableDays(),
   ))
-
-  useEffect(() => {
-    if (!user) return
-    getUserExercises(user.uid)
-      .then(setUserExercises)
-      .catch(() => toast.error('Nie udało się wczytać Twoich ćwiczeń.'))
-  }, [user])
 
   useEffect(() => {
     if (!isEdit || !id) return
@@ -584,7 +579,8 @@ export default function TemplateEditorPage() {
 
       {pickerDayIndex !== null && (
         <ExercisePicker
-          userExercises={userExercises}
+          userExercisesState={userExercisesState}
+          onRetryUserExercises={retryUserExercises}
           onClose={() => setPickerDayIndex(null)}
           onSelect={(exerciseId, exerciseName, source) => addExerciseToDay(pickerDayIndex, exerciseId, exerciseName, source)}
         />

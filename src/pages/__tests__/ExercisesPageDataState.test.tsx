@@ -22,7 +22,13 @@ vi.mock('../../store/authStore', () => {
 })
 
 vi.mock('../../data/exercises', () => ({
-  searchExercises: vi.fn(() => []),
+  searchExercises: vi.fn(() => [{
+    id: 'squat',
+    name: 'Przysiad',
+    category: 'legs',
+    equipment: 'barbell',
+    muscles: ['quads'],
+  }]),
   exercises: [{
     id: 'squat',
     name: 'Przysiad',
@@ -234,7 +240,14 @@ describe('ExercisesPage user library states', () => {
   })
 
   it('exposes the selected category in the exercise picker', () => {
-    render(<ExercisePicker onSelect={vi.fn()} onClose={vi.fn()} />)
+    render(
+      <ExercisePicker
+        onSelect={vi.fn()}
+        onClose={vi.fn()}
+        userExercisesState={{ status: 'success', data: [] }}
+        onRetryUserExercises={vi.fn()}
+      />,
+    )
 
     const categoryGroup = screen.getByRole('group', { name: 'Kategoria ćwiczenia' })
     const allCategories = within(categoryGroup).getByRole('button', { name: 'Wszystkie' })
@@ -246,6 +259,29 @@ describe('ExercisesPage user library states', () => {
     fireEvent.click(chest)
     expect(chest).toHaveAttribute('aria-pressed', 'true')
     expect(allCategories).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  it('keeps global picker results usable when the user catalog fails', () => {
+    const onSelect = vi.fn()
+    const onRetry = vi.fn()
+
+    render(
+      <ExercisePicker
+        onSelect={onSelect}
+        onClose={vi.fn()}
+        userExercisesState={{ status: 'error', error: new Error('offline') }}
+        onRetryUserExercises={onRetry}
+      />,
+    )
+
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Nie udało się wczytać Twoich ćwiczeń. Katalog globalny nadal jest dostępny.',
+    )
+    fireEvent.click(screen.getByRole('button', { name: /^Przysiad/ }))
+    expect(onSelect).toHaveBeenCalledWith('squat', 'Przysiad', 'global')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(onRetry).toHaveBeenCalledOnce()
   })
 
   it('does not apply a late create result to a different user resource', async () => {

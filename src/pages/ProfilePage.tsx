@@ -5,7 +5,7 @@ import { motion } from 'framer-motion'
 import { updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
-import { Button, Card, Input } from '../components/ui'
+import { Button, Input } from '../components/ui'
 
 const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
   { value: 'strength',    label: 'Siła',           desc: 'Maksymalne ciężary, niskie powtórzenia' },
@@ -73,7 +73,7 @@ export default function ProfilePage() {
       </section>
 
       <div className="profile-settings-shell mx-auto" style={{ maxWidth: '42rem' }}>
-        <Card padding="sm" className="profile-form-panel sm:p-6">
+        <section className="profile-form-panel" aria-label="Ustawienia profilu">
           <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
 
             <div className="flex flex-col gap-1">
@@ -92,19 +92,14 @@ export default function ProfilePage() {
 
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Główny cel</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="profile-choice-grid">
                 {GOALS.map((g) => (
                   <button
                     key={g.value}
                     type="button"
                     onClick={() => { setPrimaryGoal(g.value); setSaved(false) }}
                     aria-pressed={primaryGoal === g.value}
-                    className="rounded-[var(--radius-md)] p-3 text-left transition-all sm:p-4"
-                    style={{
-                      background: primaryGoal === g.value ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${primaryGoal === g.value ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-                      color: primaryGoal === g.value ? 'var(--text-strong)' : 'var(--text)',
-                    }}
+                    className="profile-choice"
                   >
                     <div className="text-sm font-semibold">{g.label}</div>
                     <div className="mt-1 text-xs leading-5" style={{ color: primaryGoal === g.value ? 'var(--muted)' : 'var(--muted)' }}>
@@ -136,19 +131,14 @@ export default function ProfilePage() {
 
             <div className="flex flex-col gap-2">
               <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Jednostki</label>
-              <div className="flex gap-2">
+              <div className="profile-unit-grid">
                 {(['kg', 'lbs'] as Units[]).map((u) => (
                   <button
                     key={u}
                     type="button"
                     onClick={() => { setUnits(u); setSaved(false) }}
                     aria-pressed={units === u}
-                    className="flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold transition-all sm:py-3"
-                    style={{
-                      background: units === u ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
-                      border: `1px solid ${units === u ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-                      color: units === u ? 'var(--text-strong)' : 'var(--text)',
-                    }}
+                    className="profile-unit-choice"
                   >
                     {u}
                   </button>
@@ -174,7 +164,7 @@ export default function ProfilePage() {
             </Button>
 
           </form>
-        </Card>
+        </section>
       </div>
     </>
   )

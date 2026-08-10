@@ -5,7 +5,7 @@ test('empty templates page', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/templates')
   await expectAppReady(page, '/templates')
-  await expect(page.getByText('Nie masz jeszcze szablonów')).toBeVisible()
+  await expect(page.getByText('Nie masz jeszcze planu')).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
   if (testInfo.project.name === 'desktop') {
     await page.addStyleTag({

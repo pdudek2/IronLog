@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useState } from 'react'
 import { Eye, EyeOff, ShieldCheck, Trash2 } from 'lucide-react'
-import { Button, Card, Input } from './ui'
+import { Button, Input } from './ui'
 import {
   clearClaudeApiKey,
   clearClaudeModel,
@@ -133,7 +133,7 @@ export default function AiKeyPanel({
 
   if (collapsed) {
     return (
-      <Card padding="sm">
+      <section className="ai-key-panel ai-key-panel--collapsed">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -168,12 +168,12 @@ export default function AiKeyPanel({
             </Button>
           </div>
         </div>
-      </Card>
+      </section>
     )
   }
 
   return (
-    <Card className="ai-key-panel">
+    <section className="ai-key-panel">
       <div className="ai-key-panel-head">
         <div className="min-w-0">
           <p className="eyebrow" style={{ color: 'var(--accent)' }}>
@@ -317,6 +317,6 @@ export default function AiKeyPanel({
           </div>
         )}
       </div>
-    </Card>
+    </section>
   )
 }

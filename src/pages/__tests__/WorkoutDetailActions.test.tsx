@@ -111,7 +111,8 @@ describe('WorkoutDetailPage delete action', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
-    const mobileActions = screen.getByRole('group', { name: 'Akcje treningu' })
+    const mobileActions = document.querySelector<HTMLElement>('.workout-detail-mobile-actions')
+    if (!mobileActions) throw new Error('Expected mobile workout actions.')
     fireEvent.click(within(mobileActions).getByRole('button', { name: 'Usuń trening' }))
     fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
@@ -167,7 +168,7 @@ describe('WorkoutDetailPage delete action', () => {
   it('does not save a set after its repetitions are cleared', () => {
     renderPage()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Powtórzenia, Wyciskanie, seria 1' }), {
       target: { value: '' },
     })
@@ -177,5 +178,13 @@ describe('WorkoutDetailPage delete action', () => {
     expect(mocks.toastError).toHaveBeenCalledWith(
       'Każda seria musi zawierać co najmniej jedno powtórzenie.',
     )
+  })
+
+  it('keeps a custom workout label selected when editing starts', () => {
+    renderPage()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
+
+    expect(screen.getByRole('combobox', { name: 'Rodzaj treningu' })).toHaveValue('Push day')
   })
 })

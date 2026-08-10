@@ -104,7 +104,7 @@ function SessionQuickLinks({ onNavigate, variant = 'mobile', className = '' }: S
           Szybki podgląd
         </p>
       )}
-      <div className={isDesktop ? 'grid grid-cols-2 gap-2' : 'no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1'}>
+      <div className={isDesktop ? 'session-quick-links-desktop grid grid-cols-2' : 'no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1'}>
         {SESSION_QUICK_LINKS.map(({ label, to, icon: Icon }) => (
           <motion.button
             key={to}
@@ -995,7 +995,7 @@ export default function WorkoutPage() {
               </div>
 
               <div className="mt-5">
-                <div className="mb-3 rounded-[var(--radius-lg)] border p-3" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
+                <div className="workout-session-status mb-3 p-3">
                   <div className="flex items-center justify-between gap-3">
                     <span className="stat-meta">Stan sesji</span>
                     <Target size={14} style={{ color: 'var(--accent)' }} />

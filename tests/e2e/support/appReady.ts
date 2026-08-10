@@ -55,7 +55,11 @@ export async function expectAppReady(
       await expect(page.getByText('Nie udało się pobrać danych', { exact: true })).toHaveCount(0)
       return
     case '/templates':
-      await expect(page.getByRole('button', { name: 'Nowy plan' })).toBeVisible({ timeout })
+      await expect(
+        page.getByRole('button', { name: 'Nowy plan' })
+          .or(page.getByRole('button', { name: 'Utwórz pierwszy plan' }))
+          .first(),
+      ).toBeVisible({ timeout })
       await expect(page.getByText('Nie udało się pobrać szablonów', { exact: true })).toHaveCount(0)
       return
     case '/templates/new':

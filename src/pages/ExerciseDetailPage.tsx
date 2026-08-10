@@ -167,7 +167,7 @@ export default function ExerciseDetailPage() {
   const totalVolumeAll = sessions.reduce((sum, s) => sum + s.totalVolume, 0)
 
   return (
-    <>
+    <div className="exercise-detail-page">
       <section className="hero-editorial">
         <motion.div
           className="flex flex-col gap-5"
@@ -183,28 +183,21 @@ export default function ExerciseDetailPage() {
             />
           )}
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="exercise-detail-taxonomy">
             {exercise?.category && (
               <span
-                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase"
-                style={{ background: `${accent}1e`, color: accent, border: `1px solid ${accent}30` }}
+                style={{ color: accent }}
               >
                 {EXERCISE_CATEGORY_LABELS[exercise.category] ?? exercise.category}
               </span>
             )}
             {exercise?.equipment && (
-              <span
-                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase"
-                style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-              >
+              <span>
                 {getEquipmentLabel(exercise.equipment)}
               </span>
             )}
             {exerciseSource === 'user' && (
-              <span
-                className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase"
-                style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-soft-strong)' }}
-              >
+              <span style={{ color: 'var(--accent)' }}>
                 moje
               </span>
             )}
@@ -215,13 +208,9 @@ export default function ExerciseDetailPage() {
           </div>
 
           {exercise?.muscles && exercise.muscles.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="exercise-detail-muscles">
               {exercise.muscles.map((m) => (
-                <span
-                  key={m}
-                  className="text-[11px] px-2 py-0.5 rounded-full"
-                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                >
+                <span key={m}>
                   {getMuscleLabel(m)}
                 </span>
               ))}
@@ -285,12 +274,9 @@ export default function ExerciseDetailPage() {
 
           {/* Volume trend */}
           {sessions.length > 0 && (
-            <div className="surface-panel rounded-[var(--radius-xl)] p-5">
+            <section className="exercise-detail-panel exercise-detail-trend">
               <div className="mb-4 flex items-center justify-between gap-4">
-                <div>
-                  <p className="eyebrow">Historia</p>
-                  <h2 className="section-title mt-2">Wolumen na sesję</h2>
-                </div>
+                <h2 className="section-title">Wolumen na sesję</h2>
                 <BarChart3 size={18} style={{ color: 'var(--muted)' }} />
               </div>
               <div className="flex items-end gap-1.5 h-20">
@@ -315,24 +301,21 @@ export default function ExerciseDetailPage() {
                   )
                 })}
               </div>
-            </div>
+            </section>
           )}
 
           {/* Recent sessions */}
-          <div className="surface-panel rounded-[var(--radius-xl)] p-5">
+          <section className="exercise-detail-panel exercise-detail-history">
             <div className="mb-4 flex items-center justify-between gap-4">
-              <div>
-                <p className="eyebrow">Historia sesji</p>
-                <h2 className="section-title mt-2">Ostatnie treningi</h2>
-              </div>
+              <h2 className="section-title">Ostatnie treningi</h2>
               <Layers3 size={18} style={{ color: 'var(--muted)' }} />
             </div>
 
             {sessions.length === 0 ? (
-              <div className="rounded-[var(--radius-lg)] border px-5 py-5" style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}>
+              <div className="exercise-detail-empty px-1 py-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)]" style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
+                    <div className="mb-3" style={{ color: 'var(--muted)' }}>
                       <Target size={18} />
                     </div>
                     <p className="text-sm font-semibold text-white">Brak historii</p>
@@ -340,26 +323,14 @@ export default function ExerciseDetailPage() {
                       Brak zapisanych serii dla tego ćwiczenia.
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {['Sesje', 'Top set', 'Wolumen'].map((item) => (
-                      <span
-                        key={item}
-                        className="rounded-full px-3 py-1.5 text-[11px] font-medium"
-                        style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)', color: 'var(--muted)' }}
-                      >
-                        {item}
-                      </span>
-                    ))}
-                  </div>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="exercise-detail-session-list">
                 {sessions.map((session) => (
                   <motion.div
                     key={session.id}
-                    className="rounded-[var(--radius-lg)] border p-4"
-                    style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
+                    className="exercise-detail-session-row"
                     initial={false}
                     animate={{ opacity: 1 }}
                   >
@@ -375,16 +346,16 @@ export default function ExerciseDetailPage() {
                         <p className="mt-0.5 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>wolumen</p>
                       </div>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                    <div className="exercise-detail-session-metrics">
+                      <div>
                         <p className="text-xs font-semibold text-white tabular-nums">{session.totalSets}</p>
                         <p className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--muted)' }}>serie</p>
                       </div>
-                      <div className="rounded-lg p-2 text-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
+                      <div>
                         <p className="text-xs font-semibold text-white tabular-nums">{session.totalReps}</p>
                         <p className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--muted)' }}>powt.</p>
                       </div>
-                      <div className="rounded-lg p-2 text-center" style={{ background: `${accent}14` }}>
+                      <div>
                         <p className="text-xs font-semibold tabular-nums" style={{ color: accent }}>
                           {session.bestSetWeight ? `${session.bestSetWeight} kg` : '—'}
                         </p>
@@ -393,13 +364,13 @@ export default function ExerciseDetailPage() {
                     </div>
 
                     {session.sets.length > 0 && (
-                      <div className="mt-3 pt-3 border-t" style={{ borderColor: 'var(--border)' }}>
-                        <div className="flex flex-wrap gap-1.5">
+                      <div className="exercise-detail-set-list">
+                        <span className="stat-meta">Serie</span>
+                        <div>
                           {session.sets.map((set, i) => (
                             <span
                               key={i}
-                              className="text-[11px] px-2 py-0.5 rounded-full tabular-nums"
-                              style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text)', border: '1px solid var(--border)' }}
+                              className="text-[11px] tabular-nums"
                             >
                               {set.weight}×{set.reps}
                             </span>
@@ -411,9 +382,9 @@ export default function ExerciseDetailPage() {
                 ))}
               </div>
             )}
-          </div>
+          </section>
 
       </div>
-    </>
+    </div>
   )
 }

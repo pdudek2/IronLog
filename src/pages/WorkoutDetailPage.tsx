@@ -3,10 +3,6 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft,
-  Clock3,
-  Target,
-  Trash2,
-  TrendingUp,
   X,
 } from 'lucide-react'
 import {
@@ -33,7 +29,6 @@ import {
   getEquipmentLabel,
 } from '../lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
-import { getCategoryWorkloadInsight } from '../lib/workoutCopy'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
@@ -41,12 +36,6 @@ const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]
 interface WorkoutDeleteOperation {
   workoutId: string
   status: 'pending' | 'error'
-}
-function workoutAccent(workout: WorkoutSummary): string {
-  const firstExercise = workout.exercises[0]
-  if (!firstExercise?.exerciseId) return DEFAULT_EXERCISE_CATEGORY_COLOR
-  return EXERCISE_CATEGORY_COLORS[exerciseMap.get(firstExercise.exerciseId)?.category ?? '']
-    ?? DEFAULT_EXERCISE_CATEGORY_COLOR
 }
 
 function formatDate(ts: number): string {
@@ -300,15 +289,10 @@ export default function WorkoutDetailPage() {
     ? { ...workout, label: editedLabel || null, exercises: editedExercises }
     : workout
   const exerciseCatalog = new Map([...exerciseDb, ...userExercises].map((exercise) => [exercise.id, exercise]))
-  const accent = workoutAccent(displayedWorkout)
   const volume = calcVolume(displayedWorkout)
   const totalSets = displayedWorkout.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
-  const totalExercises = displayedWorkout.exercises.length
   const totalReps = displayedWorkout.exercises.reduce((sum, exercise) => (
     sum + exercise.sets.reduce((innerSum, set) => innerSum + set.reps, 0)
-  ), 0)
-  const topSetWeight = displayedWorkout.exercises.reduce((top, exercise) => (
-    Math.max(top, ...exercise.sets.map((set) => set.weight), 0)
   ), 0)
   const focusEntries = Object.entries(displayedWorkout.exercises.reduce<Record<string, number>>((acc, exercise) => {
     const category = exercise.exerciseId ? exerciseCatalog.get(exercise.exerciseId)?.category : null
@@ -317,22 +301,16 @@ export default function WorkoutDetailPage() {
     return acc
   }, {})).sort((a, b) => b[1] - a[1])
   const topFocus = focusEntries[0]
-  const mobileReadGrid = 'grid-cols-[1.5rem_minmax(0,1fr)_minmax(0,1fr)] lg:grid-cols-[1.5rem_1fr_1fr_1fr]'
   const mobileEditGrid = 'grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] lg:grid-cols-[1.5rem_1fr_1fr_1fr_1.25rem]'
   const isDeleting = deleteOperation?.status === 'pending'
   const deleteFeedbackId = `workout-detail-delete-feedback-${workout.id}`
 
   const actionButtons = isEditing ? (
-    <div className="flex gap-3">
+    <div className="workout-detail-session-actions">
       <motion.button
         onClick={handleCancelEditing}
         disabled={saving}
-        className="flex-1 py-3 rounded-2xl text-sm font-semibold disabled:opacity-40"
-        style={{
-          background: 'var(--card)',
-          border: '1px solid var(--border)',
-          color: 'white',
-        }}
+        className="workout-detail-action workout-detail-action-secondary disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
       >
         Anuluj
@@ -340,411 +318,295 @@ export default function WorkoutDetailPage() {
       <motion.button
         onClick={handleSave}
         disabled={saving}
-        className="flex-1 py-3 rounded-2xl text-sm font-semibold disabled:opacity-40"
-        style={{
-          background: 'var(--primary-gradient)',
-          border: '1px solid var(--accent)',
-          color: 'var(--accent-foreground)',
-        }}
+        className="workout-detail-action workout-detail-action-primary disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
       >
         {saving ? 'Zapisywanie...' : 'Zapisz'}
       </motion.button>
     </div>
   ) : (
-    <div className="flex gap-3">
+    <div className="workout-detail-session-actions">
       <motion.button
         onClick={handleStartEditing}
-        className="flex-1 py-3 rounded-2xl text-sm font-semibold"
-        style={{
-          background: 'var(--card)',
-          border: '1px solid var(--border)',
-          color: 'white',
-        }}
+        className="workout-detail-action workout-detail-action-secondary"
         whileTap={{ scale: 0.97 }}
       >
-        Edytuj
+        Edytuj trening
       </motion.button>
       <motion.button
         onClick={handleDelete}
         disabled={isDeleting}
         aria-describedby={deleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
-        className="flex-1 py-3 rounded-2xl text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40"
-        style={{
-          background: 'var(--danger-soft)',
-          border: '1px solid var(--danger-soft-strong)',
-          color: 'var(--danger)',
-        }}
+        aria-label="Usuń trening"
+        className="workout-detail-action workout-detail-action-delete disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
       >
-        <Trash2 size={15} />
-        {isDeleting ? 'Usuwanie...' : 'Usuń trening'}
+        {isDeleting ? 'Usuwanie…' : 'Usuń'}
       </motion.button>
     </div>
   )
 
   const heroLabel = displayedWorkout.label
     ?? (topFocus ? (EXERCISE_CATEGORY_LABELS[topFocus[0]] ?? 'Trening') : 'Trening')
-  const heroInsight = topFocus
-    ? getCategoryWorkloadInsight(topFocus[0], EXERCISE_CATEGORY_LABELS[topFocus[0]] ?? topFocus[0])
-    : 'Pierwsza pełna sesja pokaże dominujący fokus treningu.'
-
   return (
     <>
-      <motion.button
-        onClick={handleBack}
-        className="workout-detail-back puls-link-button mb-4 px-3 py-2 text-xs font-semibold"
-        style={{ color: 'var(--text)', border: '1px solid var(--border)' }}
-        initial={false}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.18 }}
-        whileTap={{ scale: 0.97 }}
-      >
-        <ArrowLeft size={14} />
-        Wróć
-      </motion.button>
+      <div className="workout-detail-page workout-detail-content">
+        <motion.button
+          onClick={handleBack}
+          className="workout-detail-back"
+          initial={false}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.18 }}
+          whileTap={{ scale: 0.97 }}
+        >
+          <ArrowLeft size={16} aria-hidden="true" />
+          Historia
+        </motion.button>
 
-      <section className="hero-editorial">
-        <div className="flex flex-col gap-5">
-          <p className="hero-editorial-date">
-            Trening · {formatDate(displayedWorkout.startedAt)}
-          </p>
-
-          <div>
-            <h1 className="hero-editorial-name">{heroLabel}</h1>
+        <header className="workout-detail-session-head">
+          <div className="min-w-0">
+            <p className="workout-detail-session-kicker">
+              {formatDate(displayedWorkout.startedAt)}
+            </p>
+            <h1>{heroLabel}</h1>
           </div>
+          <div className="workout-detail-desktop-actions" role="group" aria-label="Akcje treningu">
+            {actionButtons}
+          </div>
+        </header>
 
-          <p className="hero-editorial-sub">{heroInsight}</p>
-        </div>
-      </section>
+        <WorkoutDetailMobileActions>
+          <motion.div
+            className={`workout-detail-mobile-action-panel${deleteOperation ? ' has-feedback' : ''}`}
+            initial={false}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18 }}
+          >
+            {deleteOperation && (
+              <ActionFeedback
+                id={deleteFeedbackId}
+                status={deleteOperation.status}
+                message={deleteOperation.status === 'pending'
+                  ? 'Usuwanie treningu…'
+                  : 'Nie udało się usunąć treningu.'}
+                onRetry={deleteOperation.status === 'error' ? retryWorkoutDelete : undefined}
+                onDismiss={deleteOperation.status === 'error'
+                  ? () => setDeleteOperation(null)
+                  : undefined}
+                className="workout-detail-delete-feedback"
+              />
+            )}
+            <div className={deleteOperation ? 'workout-detail-mobile-action-controls mt-3' : 'workout-detail-mobile-action-controls'}>
+              {actionButtons}
+            </div>
+          </motion.div>
+        </WorkoutDetailMobileActions>
 
-        <div className="desktop-app-grid">
-          <aside className="desktop-sticky space-y-4 hidden lg:block">
-            <motion.div
-              className="workout-detail-side-panel puls-panel overflow-hidden"
-              initial={false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.2 }}
+        <dl className="workout-summary-panel workout-detail-session-facts" aria-label="Podsumowanie treningu">
+          <div>
+            <dt>Czas</dt>
+            <dd>{formatDuration(displayedWorkout.startedAt, displayedWorkout.finishedAt)}</dd>
+          </div>
+          <div>
+            <dt>Serie</dt>
+            <dd>{totalSets}</dd>
+          </div>
+          <div>
+            <dt>Powtórzenia</dt>
+            <dd>{totalReps}</dd>
+          </div>
+          <div>
+            <dt>Objętość</dt>
+            <dd>{formatCompactVolume(volume)}</dd>
+          </div>
+        </dl>
+
+        {isEditing && (
+          <section className="workout-detail-label-editor">
+            <label htmlFor="workout-detail-label">Rodzaj treningu</label>
+            <select
+              id="workout-detail-label"
+              value={editedLabel}
+              onChange={(event) => setEditedLabel(event.target.value)}
             >
-              <div className="p-5">
-                {isEditing && (
-                  <div className="mb-4">
-                    <p className="text-[10px] uppercase mb-3" style={{ color: accent }}>
-                      Rodzaj treningu
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
-                      {WORKOUT_LABELS.map((label) => {
-                        const isActive = editedLabel === label
-                        return (
-                          <motion.button
-                            key={label}
-                            onClick={() => setEditedLabel(isActive ? '' : label)}
-                            className="rounded-xl px-2 py-2 text-[11px] font-semibold leading-tight"
-                            style={{
-                              background: isActive ? 'var(--accent-soft)' : 'var(--input-bg)',
-                              color: isActive ? 'var(--text-strong)' : 'white',
-                              border: isActive ? '1px solid var(--accent-soft-strong)' : '1px solid var(--border)',
-                            }}
-                            whileTap={{ scale: 0.97 }}
-                          >
-                            {label}
-                          </motion.button>
-                        )
-                      })}
-                    </div>
-                  </div>
-                )}
+              <option value="">Bez etykiety</option>
+              {editedLabel && !WORKOUT_LABELS.some((label) => label === editedLabel) && (
+                <option value={editedLabel}>{editedLabel}</option>
+              )}
+              {WORKOUT_LABELS.map((label) => (
+                <option key={label} value={label}>{label}</option>
+              ))}
+            </select>
+          </section>
+        )}
 
-                <p className="eyebrow mb-3" style={{ color: accent }}>Statystyki sesji</p>
+        <div className="workout-exercise-list">
+          {displayedWorkout.exercises.map((exercise, exerciseIndex) => {
+            const exerciseData = exerciseCatalog.get(exercise.exerciseId ?? '') ?? exerciseMap.get(exercise.exerciseId ?? '')
+            const exerciseColor = EXERCISE_CATEGORY_COLORS[exerciseData?.category ?? '']
+              ?? DEFAULT_EXERCISE_CATEGORY_COLOR
+            const categoryLabel = exerciseData?.category
+              ? (EXERCISE_CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category)
+              : null
+            const equipmentLabel = exerciseData?.equipment
+              ? getEquipmentLabel(exerciseData.equipment).toLocaleLowerCase('pl-PL')
+              : null
+            const exerciseVolume = exercise.sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
+            const topExerciseSet = exercise.sets.reduce((top, set) => Math.max(top, set.weight), 0)
+            const exerciseReps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
+            const exerciseHeadingId = `workout-exercise-${exerciseIndex}`
 
-                <div className="workout-detail-stat-ledger puls-ledger">
-                  {[
-                    { label: 'Czas', value: formatDuration(displayedWorkout.startedAt, displayedWorkout.finishedAt) },
-                    { label: 'Serie', value: String(totalSets) },
-                    { label: 'Ćwiczenia', value: String(totalExercises) },
-                  ].map((stat) => (
-                    <div key={stat.label}>
-                      <p className="text-lg font-bold text-white">{stat.value}</p>
-                      <p className="text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
-                        {stat.label}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4">
-                  {actionButtons}
-                </div>
-              </div>
-            </motion.div>
-          </aside>
-
-          <div className="workout-detail-content min-w-0">
-            <motion.section
-              className="workout-summary-panel puls-panel mb-5 p-4 sm:p-5"
-              initial={false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18 }}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="eyebrow">Podsumowanie sesji</p>
-                  <h3 className="section-title mt-2">Rozpiska sesji</h3>
-                  <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Ćwiczenia, serie i obciążenia z tego treningu.
-                  </p>
-                </div>
-                <div className="workout-summary-ledger puls-ledger w-full xl:w-[32rem]">
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="stat-meta">Objętość</span>
-                      <Target size={14} style={{ color: accent }} />
-                    </div>
-                    <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{formatCompactVolume(volume)}</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="stat-meta">Top set</span>
-                      <TrendingUp size={14} style={{ color: accent }} />
-                    </div>
-                    <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{topSetWeight ? `${topSetWeight} kg` : '—'}</p>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="stat-meta">Powt.</span>
-                      <Clock3 size={14} style={{ color: accent }} />
-                    </div>
-                    <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{totalReps}</p>
-                  </div>
-                </div>
-              </div>
-            </motion.section>
-
-            <WorkoutDetailMobileActions>
-              <motion.div
-                className={`workout-detail-mobile-action-panel surface-panel rounded-[1.75rem] p-3${deleteOperation ? ' has-feedback' : ''}`}
+            return (
+              <motion.section
+                key={`${exercise.exerciseSource ?? 'global'}-${exercise.exerciseId ?? exercise.name}-${exerciseIndex}`}
+                className="workout-exercise-panel"
+                style={{ '--exercise-accent': exerciseColor } as CSSProperties}
+                aria-labelledby={exerciseHeadingId}
                 initial={false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.18 }}
               >
-                {deleteOperation && (
-                  <ActionFeedback
-                    id={deleteFeedbackId}
-                    status={deleteOperation.status}
-                    message={deleteOperation.status === 'pending'
-                      ? 'Usuwanie treningu…'
-                      : 'Nie udało się usunąć treningu.'}
-                    onRetry={deleteOperation.status === 'error' ? retryWorkoutDelete : undefined}
-                    onDismiss={deleteOperation.status === 'error'
-                      ? () => setDeleteOperation(null)
-                      : undefined}
-                    className="workout-detail-delete-feedback"
-                  />
-                )}
-                <div className={deleteOperation ? 'workout-detail-mobile-action-controls mt-3' : 'workout-detail-mobile-action-controls'}>
-                  {actionButtons}
-                </div>
-              </motion.div>
-            </WorkoutDetailMobileActions>
-
-            <div className="workout-exercise-list">
-              {displayedWorkout.exercises.map((exercise, exerciseIndex) => {
-                const exerciseData = exerciseCatalog.get(exercise.exerciseId ?? '') ?? exerciseMap.get(exercise.exerciseId ?? '')
-                const exerciseColor = EXERCISE_CATEGORY_COLORS[exerciseData?.category ?? '']
-                  ?? DEFAULT_EXERCISE_CATEGORY_COLOR
-                const exerciseVolume = exercise.sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
-                const topExerciseSet = exercise.sets.reduce((top, set) => Math.max(top, set.weight), 0)
-                const exerciseReps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
-
-                return (
-                  <motion.div
-                    key={exerciseIndex}
-                    className="workout-exercise-panel"
-                    style={{ '--exercise-accent': exerciseColor } as CSSProperties}
-                    initial={false}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.18 }}
-                  >
-                    <div className="workout-exercise-header">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {exerciseData?.equipment && (
-                            <span
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                              style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                            >
-                              {getEquipmentLabel(exerciseData.equipment)}
-                            </span>
-                          )}
-                          {exerciseData?.category && (
-                            <span
-                              className="text-[10px] font-semibold px-2 py-0.5 rounded-full"
-                              style={{ background: `${exerciseColor}18`, color: exerciseColor }}
-                            >
-                              {EXERCISE_CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category}
-                            </span>
-                          )}
-                        </div>
-                        <p className="mt-3 text-base font-semibold text-white">{exercise.name}</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {isEditing && (
-                          <button
-                            onClick={() => handleRemoveExercise(exerciseIndex)}
-                            className="text-xs transition-opacity hover:opacity-70"
-                            style={{ color: 'var(--muted)' }}
-                          >
-                            Usuń
-                          </button>
-                        )}
-                      </div>
+                <header className="workout-exercise-header">
+                  <div className="workout-exercise-title-row">
+                    <h2 id={exerciseHeadingId}>{exercise.name}</h2>
+                    <div className="workout-exercise-tools">
+                      <span
+                        className="workout-exercise-sequence"
+                        aria-label={`Ćwiczenie ${exerciseIndex + 1} z ${displayedWorkout.exercises.length}`}
+                      >
+                        {exerciseIndex + 1} / {displayedWorkout.exercises.length}
+                      </span>
+                      {isEditing && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExercise(exerciseIndex)}
+                          className="workout-exercise-remove mobile-touch-target"
+                          aria-label={`Usuń ćwiczenie ${exercise.name}`}
+                        >
+                          Usuń
+                        </button>
+                      )}
                     </div>
+                  </div>
 
-                    <div className="workout-exercise-body">
-                      <div className="workout-exercise-metrics puls-ledger">
-                        <div>
-                          <p className="stat-meta">Serie</p>
-                          <p className="mt-2 text-lg font-semibold text-white tabular-nums">{exercise.sets.length}</p>
-                        </div>
-                        <div>
-                          <p className="stat-meta">Objętość</p>
-                          <p className="mt-2 text-lg font-semibold text-white tabular-nums">{formatCompactVolume(exerciseVolume)}</p>
-                        </div>
-                        <div>
-                          <p className="stat-meta">Top set</p>
-                          <p className="mt-2 text-lg font-semibold text-white tabular-nums">{topExerciseSet ? `${topExerciseSet} kg` : '—'}</p>
-                        </div>
-                      </div>
+                  {(categoryLabel || equipmentLabel) && (
+                    <p className="workout-exercise-taxonomy">
+                      {categoryLabel && <strong>{categoryLabel}</strong>}
+                      {categoryLabel && equipmentLabel && <span aria-hidden="true"> · </span>}
+                      {equipmentLabel}
+                    </p>
+                  )}
 
-                      <div className={`workout-set-head grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 mb-1`}>
-                        {[...['#', 'kg', 'Powt.', 'Vol.'], ...(isEditing ? [''] : [])].map((heading, index) => (
-                          <span key={`${heading}-${index}`} className="text-[10px] uppercase text-center" style={{ color: 'var(--muted)' }}>
-                            {heading === 'Vol.' ? <span className="hidden lg:inline">{heading}</span> : heading || <span aria-hidden="true">{index === 4 ? ' ' : heading}</span>}
-                          </span>
+                  <p className="workout-exercise-totals">
+                    {exercise.sets.length} {exercise.sets.length === 1 ? 'seria' : 'serie'}
+                    <span>{exerciseReps} powt.</span>
+                    <span>top {topExerciseSet ? `${topExerciseSet} kg` : '—'}</span>
+                    <span>{Math.round(exerciseVolume).toLocaleString('pl-PL')} kg obj.</span>
+                  </p>
+                </header>
+
+                <div className="workout-exercise-body">
+                  {!isEditing ? (
+                    <table className="workout-detail-set-table" aria-label={`Serie: ${exercise.name}`}>
+                      <thead>
+                        <tr>
+                          <th scope="col">Seria</th>
+                          <th scope="col">Ciężar kg</th>
+                          <th scope="col">Powt.</th>
+                          <th scope="col">Obj. kg</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {exercise.sets.map((set, setIndex) => (
+                          <tr key={setIndex}>
+                            <td className="workout-detail-set-index">{setIndex + 1}</td>
+                            <td>{set.weight}</td>
+                            <td>{set.reps}</td>
+                            <td>{(set.weight * set.reps).toLocaleString('pl-PL')}</td>
+                          </tr>
                         ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="workout-detail-set-editor">
+                      <div className={`workout-detail-set-editor-head grid ${mobileEditGrid} gap-1.5`}>
+                        <span>#</span>
+                        <span>kg</span>
+                        <span>Powt.</span>
+                        <span className="hidden lg:block">Vol.</span>
+                        <span aria-hidden="true" />
                       </div>
 
                       {exercise.sets.map((set, setIndex) => (
                         <div
                           key={setIndex}
-                          className={`workout-set-row grid ${isEditing ? mobileEditGrid : mobileReadGrid} gap-1.5 text-center items-center`}
-                          style={{ borderTop: '1px solid var(--border)' }}
+                          className={`workout-detail-set-editor-row grid ${mobileEditGrid} gap-1.5`}
                         >
-                          <span
-                            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-xs font-bold"
-                            style={{ color: 'var(--success)' }}
-                          >
-                            {setIndex + 1}
-                          </span>
-                          {isEditing ? (
-                            <>
-                              <input
-                                type="number"
-                                inputMode="decimal"
-                                step="any"
-                                min="0"
-                                value={set.weight === 0 ? '' : set.weight}
-                                onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'weight', e.target.value)}
-                                placeholder="0"
-                                aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, kg`}
-                                className="w-full min-w-0 rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
-                                style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
-                              />
-                              <input
-                                type="number"
-                                inputMode="numeric"
-                                step="1"
-                                min="0"
-                                value={set.reps === 0 ? '' : set.reps}
-                                onChange={(e) => handleSetChange(exerciseIndex, setIndex, 'reps', e.target.value)}
-                                placeholder="0"
-                                aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
-                                className="w-full min-w-0 rounded-lg px-2 py-2 text-center text-sm text-white outline-none"
-                                style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
-                              />
-                            </>
-                          ) : (
-                            <>
-                              <span className="text-xs text-white">{set.weight}</span>
-                              <span className="text-xs text-white">{set.reps}</span>
-                            </>
-                          )}
-                          <span className="hidden text-xs lg:block" style={{ color: 'var(--muted)' }}>
+                          <span className="workout-detail-set-index">{setIndex + 1}</span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="any"
+                            min="0"
+                            value={set.weight === 0 ? '' : set.weight}
+                            onChange={(event) => handleSetChange(exerciseIndex, setIndex, 'weight', event.target.value)}
+                            placeholder="0"
+                            aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, kg`}
+                          />
+                          <input
+                            type="number"
+                            inputMode="numeric"
+                            step="1"
+                            min="0"
+                            value={set.reps === 0 ? '' : set.reps}
+                            onChange={(event) => handleSetChange(exerciseIndex, setIndex, 'reps', event.target.value)}
+                            placeholder="0"
+                            aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
+                          />
+                          <span className="hidden lg:block">
                             {(set.weight * set.reps).toLocaleString('pl-PL')}
                           </span>
-                          {isEditing && (
-                            exercise.sets.length > 1 ? (
-                              <button
-                                onClick={() => handleRemoveSet(exerciseIndex, setIndex)}
-                                className="mobile-touch-target flex h-7 w-7 items-center justify-center rounded-md text-xs text-center transition-opacity hover:opacity-70"
-                                style={{ color: 'var(--muted)' }}
-                                aria-label={`Usuń serię ${setIndex + 1}`}
-                              >
-                                <X size={14} />
-                              </button>
-                            ) : (
-                              <span aria-hidden="true" />
-                            )
+                          {exercise.sets.length > 1 ? (
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSet(exerciseIndex, setIndex)}
+                              className="workout-detail-remove-set mobile-touch-target"
+                              aria-label={`Usuń serię ${setIndex + 1}`}
+                            >
+                              <X size={14} aria-hidden="true" />
+                            </button>
+                          ) : (
+                            <span aria-hidden="true" />
                           )}
                         </div>
                       ))}
 
-                      <div className="mt-1 space-y-1 lg:hidden">
-                        {exercise.sets.map((set, setIndex) => (
-                          <div
-                            key={`mobile-volume-${setIndex}`}
-                            className="flex justify-end text-[11px]"
-                            style={{ color: 'var(--muted)' }}
-                          >
-                            Seria {setIndex + 1}: {(set.weight * set.reps).toLocaleString('pl-PL')} kg
-                          </div>
-                        ))}
-                      </div>
-
-                      {!isEditing && (
-                        <div className="mt-3 flex items-center justify-between gap-3 rounded-[var(--radius-lg)] border px-3 py-2 text-sm" style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}>
-                          <span style={{ color: 'var(--muted)' }}>Powtórzenia łącznie</span>
-                          <span className="font-semibold text-white tabular-nums">{exerciseReps}</span>
-                        </div>
-                      )}
-
-                      {isEditing && (
-                        <button
-                          onClick={() => handleAddSet(exerciseIndex)}
-                          className="mt-2 w-full py-1.5 rounded-lg text-xs transition-opacity hover:opacity-70"
-                          style={{
-                            background: 'var(--input-bg)',
-                            color: 'var(--muted)',
-                            border: '1px solid var(--border)',
-                          }}
-                        >
-                          + Seria
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleAddSet(exerciseIndex)}
+                        className="workout-detail-add-set"
+                      >
+                        + Seria
+                      </button>
                     </div>
-                  </motion.div>
-                )
-              })}
-            </div>
-
-            {isEditing && (
-              <div className="mt-4">
-                <motion.button
-                  onClick={() => setShowPicker(true)}
-                  className="w-full py-3 rounded-2xl text-sm font-semibold"
-                  style={{
-                    background: 'var(--input-bg)',
-                    color: 'var(--muted)',
-                    border: '1px solid var(--border)',
-                  }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  + Dodaj ćwiczenie
-                </motion.button>
-              </div>
-            )}
-
-          </div>
+                  )}
+                </div>
+              </motion.section>
+            )
+          })}
         </div>
+
+        {isEditing && (
+          <motion.button
+            type="button"
+            onClick={() => setShowPicker(true)}
+            className="workout-detail-add-exercise"
+            whileTap={{ scale: 0.97 }}
+          >
+            + Dodaj ćwiczenie
+          </motion.button>
+        )}
+      </div>
       {showPicker && (
         <ExercisePicker
           onSelect={handleAddExercise}

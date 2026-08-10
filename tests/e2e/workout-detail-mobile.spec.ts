@@ -44,6 +44,12 @@ test.beforeEach(async () => {
     sessionId: WORKOUT_ID,
     materialized: true,
     label: 'Phase 1 mobile detail actions',
+    exercises: [
+      { exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets: [{ weight: 70, reps: 8 }, { weight: 70, reps: 8 }, { weight: 70, reps: 7 }] },
+      { exerciseId: 'barbell-row', exerciseSource: 'global', name: 'Barbell Row', sets: [{ weight: 65, reps: 8 }, { weight: 65, reps: 8 }, { weight: 65, reps: 7 }] },
+      { exerciseId: 'incline-bench', exerciseSource: 'global', name: 'Incline Bench Press', sets: [{ weight: 50, reps: 10 }, { weight: 50, reps: 9 }] },
+      { exerciseId: 'tricep-pushdown', exerciseSource: 'global', name: 'Tricep Pushdown', sets: [{ weight: 35, reps: 12 }, { weight: 35, reps: 11 }] },
+    ],
   })
 })
 
@@ -69,17 +75,17 @@ test('mobile workout actions adapt between inline content and the fixed viewport
   const allButtons = page.locator('button')
 
   await expect(actions).toHaveAttribute('data-placement', 'inline')
-  await expect(navigation).not.toHaveAttribute('aria-hidden', 'true')
+  await expect(navigation).toHaveAttribute('aria-hidden', 'true')
   await expect.poll(async () => {
     const [summaryBox, actionsBox] = await Promise.all([
       summary.boundingBox(),
       actions.boundingBox(),
     ])
     if (!summaryBox || !actionsBox) return false
-    return summaryBox.y + summaryBox.height <= actionsBox.y
+    return actionsBox.y + actionsBox.height <= summaryBox.y
   }).toBe(true)
-  expect(await countVisibleFocusableButtons(allButtons, 'Edytuj')).toBe(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Usuń trening')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Edytuj trening')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Usuń')).toBe(1)
 
   await anchor.scrollIntoViewIfNeeded()
   await expect(actions).toHaveAttribute('data-placement', 'inline')
@@ -90,15 +96,15 @@ test('mobile workout actions adapt between inline content and the fixed viewport
   await expect(actions).toHaveAttribute('data-placement', 'fixed')
 
   await page.mouse.wheel(0, -24)
-  await expect(navigation).not.toHaveAttribute('aria-hidden', 'true')
+  await expect(navigation).toHaveAttribute('aria-hidden', 'true')
   await expect(actions).toHaveAttribute('data-placement', 'fixed')
   await expect.poll(() => actionClearanceDeltaFromCssTarget(actions)).toBeLessThanOrEqual(1)
 
   await page.mouse.wheel(0, 24)
   await expect(navigation).toHaveAttribute('aria-hidden', 'true')
   await expect.poll(() => actionClearanceDeltaFromCssTarget(actions)).toBeLessThanOrEqual(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Edytuj')).toBe(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Usuń trening')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Edytuj trening')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Usuń')).toBe(1)
 
   await anchor.scrollIntoViewIfNeeded()
   await expect(actions).toHaveAttribute('data-placement', 'inline')

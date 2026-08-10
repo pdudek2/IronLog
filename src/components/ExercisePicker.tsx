@@ -65,12 +65,12 @@ export default function ExercisePicker({
   return (
     <div
       className="fixed inset-0 z-50 px-0 py-0 sm:px-6 sm:py-6"
-      style={{ background: 'rgba(6, 10, 18, 0.74)', backdropFilter: 'blur(10px)' }}
+      style={{ background: 'rgba(11, 10, 12, 0.86)', backdropFilter: 'blur(6px)' }}
       onClick={onClose}
     >
       <div
         ref={dialogRef}
-        className="surface-panel flex h-[100dvh] w-full flex-col overflow-hidden rounded-t-[var(--radius-xl)] sm:mx-auto sm:h-[min(42rem,calc(100dvh-3rem))] sm:max-w-3xl sm:rounded-[var(--radius-xl)]"
+        className="exercise-picker-dialog surface-panel flex h-[100dvh] w-full flex-col overflow-hidden sm:mx-auto sm:h-[min(42rem,calc(100dvh-3rem))] sm:max-w-3xl sm:rounded-[var(--radius-xl)]"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -158,16 +158,13 @@ export default function ExercisePicker({
               Brak wyników
             </p>
           ) : results.length > 0 ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="exercise-picker-results">
               {results.map((ex) => (
                 <button
                   key={`${ex.source}-${ex.id}`}
                   onClick={() => onSelect(ex.id, ex.name, ex.source)}
-                  className="w-full rounded-[1.25rem] px-4 py-4 text-left transition-transform hover:-translate-y-0.5"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.03)',
-                    border: `1px solid ${ex.source === 'user' ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-                  }}
+                  className="exercise-picker-result w-full px-4 py-3 text-left"
+                  data-source={ex.source}
                 >
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-white">{ex.name}</p>

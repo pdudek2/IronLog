@@ -47,6 +47,12 @@ interface SeedWorkoutOptions {
   materialized: boolean
   label?: string
   startedAt?: number
+  exercises?: Array<{
+    exerciseId: string
+    exerciseSource: 'global'
+    name: string
+    sets: Array<{ weight: number; reps: number }>
+  }>
 }
 
 function assertPhase1Id(value: string, resource: string): void {
@@ -106,7 +112,18 @@ function activeSessionDocument(
 
 function workoutDocument(
   uid: string,
-  { sessionId, materialized, label = 'Phase 1 completed workout', startedAt = Date.now() - 5 * 60_000 }: SeedWorkoutOptions,
+  {
+    sessionId,
+    materialized,
+    label = 'Phase 1 completed workout',
+    startedAt = Date.now() - 5 * 60_000,
+    exercises = [{
+      exerciseId: 'phase-1-bench-press',
+      exerciseSource: 'global',
+      name: 'Phase 1 Bench Press',
+      sets: [{ weight: 80, reps: 5 }],
+    }],
+  }: SeedWorkoutOptions,
 ) {
   assertPhase1Id(sessionId, 'Workout')
   if (!label.startsWith('Phase 1')) throw new Error('Workout labels must begin with Phase 1.')
@@ -118,12 +135,7 @@ function workoutDocument(
     templateId: null,
     label,
     materialized,
-    exercises: [{
-      exerciseId: 'phase-1-bench-press',
-      exerciseSource: 'global' as const,
-      name: 'Phase 1 Bench Press',
-      sets: [{ weight: 80, reps: 5 }],
-    }],
+    exercises,
   }
 }
 

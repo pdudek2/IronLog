@@ -390,7 +390,7 @@ export default function TemplateEditorPage() {
                   )}
                 </div>
 
-                <div className="space-y-3">
+                <div className="template-exercise-list">
                   {day.exercises.map((exercise, exerciseIndex) => (
                     <div
                       key={`${dayIndex}-${exercise.exerciseSource}-${exercise.exerciseId}`}

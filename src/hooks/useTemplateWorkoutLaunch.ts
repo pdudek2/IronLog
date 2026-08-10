@@ -6,13 +6,17 @@ import {
   TemplateLaunchConflictError,
 } from '../lib/activeSessionService'
 import { createPersistedTemplateWorkout } from '../lib/templateLaunchService'
-import type { WorkoutTemplate } from '../lib/templateService'
+import type {
+  TemplateExerciseOverrideMap,
+  WorkoutTemplate,
+} from '../lib/templateService'
 import { useWorkoutStore } from '../store/workoutStore'
 
 export interface TemplateLaunchTarget {
   template: WorkoutTemplate
   dayIndex: number
   requestKey: string
+  overrides?: TemplateExerciseOverrideMap
 }
 
 export interface TemplateLaunchOperation {
@@ -30,6 +34,7 @@ export interface TemplateWorkoutLaunch {
     template: WorkoutTemplate,
     dayIndex: number,
     requestKey: string,
+    overrides?: TemplateExerciseOverrideMap,
   ) => Promise<void>
   confirmTemplateLaunch: () => Promise<void>
   cancelTemplateLaunch: () => void
@@ -89,12 +94,20 @@ export function useTemplateWorkoutLaunch(
     })
 
     try {
-      const workout = await createPersistedTemplateWorkout(
-        uid,
-        target.template,
-        target.dayIndex,
-        replaceExisting,
-      )
+      const workout = target.overrides
+        ? await createPersistedTemplateWorkout(
+            uid,
+            target.template,
+            target.dayIndex,
+            replaceExisting,
+            target.overrides,
+          )
+        : await createPersistedTemplateWorkout(
+            uid,
+            target.template,
+            target.dayIndex,
+            replaceExisting,
+          )
       if (!isCurrentLaunch(generation)) return
       setLaunchOperation(null)
       hydrateFromDoc(workout)
@@ -125,9 +138,12 @@ export function useTemplateWorkoutLaunch(
     template: WorkoutTemplate,
     dayIndex: number,
     requestKey: string,
+    overrides?: TemplateExerciseOverrideMap,
   ) => {
     if (!uid || launchLockRef.current) return
-    const target = { template, dayIndex, requestKey }
+    const target: TemplateLaunchTarget = overrides
+      ? { template, dayIndex, requestKey, overrides }
+      : { template, dayIndex, requestKey }
     if (hasActiveSessionWork(active)) {
       setLaunchOperation(null)
       setPendingLaunch(target)

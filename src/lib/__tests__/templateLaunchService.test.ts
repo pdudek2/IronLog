@@ -96,6 +96,36 @@ describe('createPersistedTemplateWorkout', () => {
     expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, true)
   })
 
+  it('persists the recommended set count and weight', async () => {
+    vi.mocked(getExerciseSessions).mockResolvedValue([{
+      id: 'session-1',
+      workoutId: 'workout-1',
+      startedAt: 10,
+      label: 'Lower',
+      totalSets: 3,
+      totalReps: 15,
+      totalVolume: 1_500,
+      bestSetWeight: 100,
+      bestSetReps: 5,
+      sets: [{ weight: 100, reps: 5 }],
+    }])
+    const overrides = new Map([['global:squat', { sets: 2, weight: 102.5 }]])
+
+    const workout = await createPersistedTemplateWorkout(
+      'user-1',
+      templateWithTargets(),
+      0,
+      false,
+      overrides,
+    )
+
+    expect(workout.exercises[0].sets).toEqual([
+      { weight: '102.5', reps: '5', done: false },
+      { weight: '102.5', reps: '5', done: false },
+    ])
+    expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, false)
+  })
+
   it('rejects without returning a workout when persistence fails', async () => {
     vi.mocked(persistTemplateLaunchSession).mockRejectedValue(new Error('write failed'))
 

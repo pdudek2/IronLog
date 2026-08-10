@@ -83,4 +83,28 @@ describe('buildActiveWorkoutFromTemplate', () => {
       { weight: '100', reps: '5', done: false },
     ])
   })
+
+  it('applies a recommendation over history without replacing unchanged fields', () => {
+    const workout = buildActiveWorkoutFromTemplate(
+      template(),
+      0,
+      new Map([
+        [templateExerciseKey('incline-bench-press', 'global'), {
+          bestSetWeight: 42.5,
+          bestSetReps: 6,
+        }],
+      ]),
+      new Map([
+        [templateExerciseKey('incline-bench-press', 'global'), {
+          sets: 2,
+          weight: 45,
+        }],
+      ]),
+    )
+
+    expect(workout.exercises[0].sets).toEqual([
+      { weight: '45', reps: '6', done: false },
+      { weight: '45', reps: '6', done: false },
+    ])
+  })
 })

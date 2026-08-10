@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
+import NextSessionCard from '../components/NextSessionCard'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
 import { ActionFeedback } from '../components/ActionFeedback'
@@ -26,6 +27,7 @@ import {
   getTemplates,
   type WorkoutTemplate,
 } from '../lib/templateService'
+import type { ReadinessEntry } from '../lib/readinessService'
 import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { usePassiveActiveSessionSync } from '../hooks/usePassiveActiveSessionSync'
 import { preloadRouteByPath } from '../router/pageLoaders'
@@ -55,6 +57,11 @@ interface TemplatesResource {
 interface WorkoutDeleteOperation {
   workoutId: string
   status: 'pending' | 'error'
+}
+
+interface ReadinessResource {
+  uid: string | null
+  state: DataState<ReadinessEntry | null>
 }
 
 const WEEK_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
@@ -173,6 +180,10 @@ export default function DashboardPage() {
   const [openingWorkout, setOpeningWorkout] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [templatesResource, setTemplatesResource] = useState<TemplatesResource>({
+    uid: user?.uid ?? null,
+    state: { status: 'loading' },
+  })
+  const [readinessResource, setReadinessResource] = useState<ReadinessResource>({
     uid: user?.uid ?? null,
     state: { status: 'loading' },
   })
@@ -340,6 +351,9 @@ export default function DashboardPage() {
   }, [loadTemplates, user])
 
   const hasActiveWork = useMemo(() => hasActiveSessionWork(active), [active])
+  const handleReadinessStateChange = useCallback((state: DataState<ReadinessEntry | null>) => {
+    setReadinessResource({ uid: user?.uid ?? null, state })
+  }, [user?.uid])
 
   function handleDelete(id: string) {
     if (deleteOperation) return
@@ -448,6 +462,15 @@ export default function DashboardPage() {
   const quickTemplateLaunchErrorId = quickTemplate
     ? `dashboard-quick-template-launch-error-${quickTemplate.id}`
     : undefined
+  const readinessState: DataState<ReadinessEntry | null> =
+    readinessResource.uid === user?.uid
+      ? readinessResource.state
+      : { status: 'loading' }
+  const quickTemplateHasExercises = Boolean(quickTemplate?.days[0]?.exercises.length)
+  const showTodayRecommendation = !hasActiveWork
+    && quickTemplateHasExercises
+    && readinessState.status === 'success'
+    && readinessState.data !== null
 
   function handleRetryTemplates() {
     if (!user) return
@@ -549,7 +572,7 @@ export default function DashboardPage() {
 
   return (
     <>
-        <section className="dashboard-home">
+        <section className={`dashboard-home${showTodayRecommendation ? ' dashboard-home--today' : ''}`}>
           <motion.div
             className="dashboard-home-copy"
             initial={{ opacity: 0, y: 6 }}
@@ -601,7 +624,9 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {quickTemplateLaunchOperation?.status === 'error' && quickTemplateLaunchErrorId && (
+              {!showTodayRecommendation
+                && quickTemplateLaunchOperation?.status === 'error'
+                && quickTemplateLaunchErrorId && (
                 <ActionFeedback
                   id={quickTemplateLaunchErrorId}
                   status="error"
@@ -620,7 +645,48 @@ export default function DashboardPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.08, duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
           >
-            <ReadinessWidget />
+            <ReadinessWidget
+              onStateChange={handleReadinessStateChange}
+              renderSaved={(entry) => (
+                !hasActiveWork && quickTemplate && quickTemplateHasExercises && quickTemplateRequestKey
+                  ? (
+                      <NextSessionCard
+                        template={quickTemplate}
+                        dayIndex={0}
+                        readiness={entry}
+                        workouts={workouts}
+                        units={profile?.units ?? 'kg'}
+                        launching={launchingTemplateId === quickTemplate.id}
+                        describedBy={quickTemplateLaunchOperation?.status === 'error'
+                          ? quickTemplateLaunchErrorId
+                          : undefined}
+                        onStart={(overrides) => {
+                          void requestTemplateLaunch(
+                            quickTemplate,
+                            0,
+                            quickTemplateRequestKey,
+                            overrides,
+                          )
+                        }}
+                        onEdit={() => navigate(`/templates/${quickTemplate.id}/edit`)}
+                      />
+                    )
+                  : null
+              )}
+            />
+
+            {showTodayRecommendation
+              && quickTemplateLaunchOperation?.status === 'error'
+              && quickTemplateLaunchErrorId && (
+              <ActionFeedback
+                id={quickTemplateLaunchErrorId}
+                status="error"
+                message={quickTemplateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                onRetry={() => { void retryTemplateLaunch() }}
+                onDismiss={dismissTemplateLaunchError}
+                className="dashboard-quick-plan-feedback"
+              />
+            )}
           </motion.aside>
         </section>
 

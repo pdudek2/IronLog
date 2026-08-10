@@ -159,6 +159,44 @@ describe('ReadinessWidget data states', () => {
     expect(mocks.getReadiness).toHaveBeenCalledTimes(1)
   })
 
+  it('reports the current saved entry after load and after a new save', async () => {
+    const onStateChange = vi.fn()
+    mocks.getReadiness.mockResolvedValueOnce(entry('2026-07-12', 4))
+
+    const view = render(<ReadinessWidget onStateChange={onStateChange} />)
+
+    expect(await screen.findByText('2026-07-12')).toBeInTheDocument()
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: 'success',
+      data: entry('2026-07-12', 4),
+    })
+
+    view.unmount()
+    mocks.getReadiness.mockResolvedValueOnce(null)
+    render(<ReadinessWidget onStateChange={onStateChange} />)
+    expect(await screen.findByText('readiness-prompt')).toBeInTheDocument()
+
+    act(() => mocks.onSaved?.(entry('2026-07-12', 5)))
+    expect(onStateChange).toHaveBeenLastCalledWith({
+      status: 'success',
+      data: entry('2026-07-12', 5),
+    })
+  })
+
+  it('can replace the expanded saved state without replacing its data lifecycle', async () => {
+    mocks.getReadiness.mockResolvedValueOnce(entry('2026-07-12', 4))
+
+    render(
+      <ReadinessWidget
+        renderSaved={(saved) => <div>compact-{saved.date}</div>}
+      />,
+    )
+
+    expect(await screen.findByText('compact-2026-07-12')).toBeInTheDocument()
+    expect(screen.queryByText('dzisiejszy wynik')).not.toBeInTheDocument()
+    expect(mocks.getReadiness).toHaveBeenCalledTimes(1)
+  })
+
   it('ignores a late save from the previous user', async () => {
     mocks.getReadiness
       .mockResolvedValueOnce(null)

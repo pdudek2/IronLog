@@ -5,6 +5,7 @@ import {
   buildActiveWorkoutFromTemplate,
   templateExerciseKey,
   type TemplateExerciseHistoryMap,
+  type TemplateExerciseOverrideMap,
   type WorkoutTemplate,
 } from './templateService'
 
@@ -48,9 +49,10 @@ export async function createPersistedTemplateWorkout(
   template: WorkoutTemplate,
   dayIndex: number,
   replaceExisting: boolean,
+  overrides?: TemplateExerciseOverrideMap,
 ): Promise<ActiveWorkout> {
   const history = await loadTemplateExerciseHistory(uid, template, dayIndex)
-  const workout = buildActiveWorkoutFromTemplate(template, dayIndex, history)
+  const workout = buildActiveWorkoutFromTemplate(template, dayIndex, history, overrides)
   await persistTemplateLaunchSession(uid, workout, replaceExisting)
   return workout
 }

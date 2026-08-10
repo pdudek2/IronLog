@@ -1,4 +1,5 @@
 import { expect, type Page } from '@playwright/test'
+import type { TemplateInput } from '../../../src/lib/templateService'
 
 const exercises = [
   ['bench-press', 'Bench Press'],
@@ -24,10 +25,10 @@ export const LARGE_TEMPLATE_DRAFT = {
   })),
 }
 
-export async function openLargeTemplateDraft(page: Page): Promise<void> {
+export async function openTemplateDraft(page: Page, draft: TemplateInput): Promise<void> {
   await page.goto('/templates')
-  await page.evaluate((draft) => {
-    sessionStorage.setItem('ironlog:template-draft', JSON.stringify(draft))
+  await page.evaluate((templateDraft) => {
+    sessionStorage.setItem('ironlog:template-draft', JSON.stringify(templateDraft))
 
     const currentState = history.state as { idx?: number } | null
     history.pushState({
@@ -36,6 +37,10 @@ export async function openLargeTemplateDraft(page: Page): Promise<void> {
       idx: (currentState?.idx ?? 0) + 1,
     }, '', '/templates/new?draft=ai')
     window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }))
-  }, LARGE_TEMPLATE_DRAFT)
-  await expect(page.getByRole('textbox', { name: 'Nazwa' })).toHaveValue('Upper / Lower 4×')
+  }, draft)
+  await expect(page.getByRole('textbox', { name: 'Nazwa' })).toHaveValue(draft.name)
+}
+
+export async function openLargeTemplateDraft(page: Page): Promise<void> {
+  await openTemplateDraft(page, LARGE_TEMPLATE_DRAFT)
 }

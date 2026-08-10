@@ -14,8 +14,41 @@ export interface OverloadSuggestion {
 
 const THREE_WEEKS_MS = 21 * 24 * 60 * 60 * 1000
 
+export interface OverloadHistoryEntry {
+  bestSetWeight: number
+  finishedAt: number
+}
+
 function roundToHalf(value: number): number {
   return Math.max(0, Math.round(value * 2) / 2)
+}
+
+export function buildOverloadSuggestion(
+  history: OverloadHistoryEntry[],
+  now = Date.now(),
+): OverloadSuggestion | null {
+  if (history.length < 3) return null
+
+  const latest = history[0]
+  if (!latest || latest.bestSetWeight <= 0) return null
+
+  if (now - latest.finishedAt > THREE_WEEKS_MS) {
+    return {
+      suggestedWeight: roundToHalf(latest.bestSetWeight - 2.5),
+      delta: -2.5,
+      reason: 'deload_gap',
+      lastWeight: latest.bestSetWeight,
+      basedOnSessions: history.length,
+    }
+  }
+
+  return {
+    suggestedWeight: roundToHalf(latest.bestSetWeight + 2.5),
+    delta: 2.5,
+    reason: 'progressive',
+    lastWeight: latest.bestSetWeight,
+    basedOnSessions: history.length,
+  }
 }
 
 export async function suggestNextSession(
@@ -36,31 +69,11 @@ export async function suggestNextSession(
 
   if (!snap || snap.empty) return null
 
-  const sessions = snap.docs.map((d) => d.data())
-  if (sessions.length < 3) return null
-
-  const lastWeight = typeof sessions[0].bestSetWeight === 'number' ? sessions[0].bestSetWeight : 0
-  const lastFinishedAt = typeof sessions[0].finishedAt === 'number' ? sessions[0].finishedAt : 0
-
-  if (lastWeight === 0) return null
-
-  // Przerwa > 3 tygodnie → deload
-  if (Date.now() - lastFinishedAt > THREE_WEEKS_MS) {
+  return buildOverloadSuggestion(snap.docs.map((document) => {
+    const data = document.data()
     return {
-      suggestedWeight: roundToHalf(lastWeight - 2.5),
-      delta: -2.5,
-      reason: 'deload_gap',
-      lastWeight,
-      basedOnSessions: sessions.length,
+      bestSetWeight: typeof data.bestSetWeight === 'number' ? data.bestSetWeight : 0,
+      finishedAt: typeof data.finishedAt === 'number' ? data.finishedAt : 0,
     }
-  }
-
-  // 3 udane sesje pod rząd → progresja
-  return {
-    suggestedWeight: roundToHalf(lastWeight + 2.5),
-    delta: 2.5,
-    reason: 'progressive',
-    lastWeight,
-    basedOnSessions: sessions.length,
-  }
+  }))
 }

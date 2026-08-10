@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '../store/authStore'
 import {
@@ -16,11 +16,19 @@ interface ReadinessResource {
   state: DataState<ReadinessEntry | null>
 }
 
+interface ReadinessWidgetProps {
+  onStateChange?: (state: DataState<ReadinessEntry | null>) => void
+  renderSaved?: (entry: ReadinessEntry) => ReactNode
+}
+
 function resourceKey(uid: string, date: string): string {
   return `${uid}:${date}`
 }
 
-export default function ReadinessWidget() {
+export default function ReadinessWidget({
+  onStateChange,
+  renderSaved,
+}: ReadinessWidgetProps) {
   const { user } = useAuthStore()
   const initialDate = todayKey()
   const [resource, setResource] = useState<ReadinessResource>({
@@ -41,17 +49,21 @@ export default function ReadinessWidget() {
     getReadiness(uid, date)
       .then((data) => {
         if (!mountedRef.current || requestId !== requestIdRef.current) return
-        setResource({ key, state: { status: 'success', data } })
+        const state = { status: 'success', data } as const
+        setResource({ key, state })
+        onStateChange?.(state)
       })
       .catch((error: unknown) => {
         if (!mountedRef.current || requestId !== requestIdRef.current) return
         console.error('[ReadinessWidget] load failed', error)
-        setResource({ key, state: { status: 'error', error } })
+        const state = { status: 'error', error } as const
+        setResource({ key, state })
+        onStateChange?.(state)
       })
       .finally(() => {
         if (requestId === requestIdRef.current) inFlightKeyRef.current = ''
       })
-  }, [])
+  }, [onStateChange])
 
   useEffect(() => {
     if (!user) return
@@ -73,7 +85,9 @@ export default function ReadinessWidget() {
       const key = resourceKey(user.uid, date)
       if (requestedKeyRef.current === key) return
       requestedKeyRef.current = key
-      setResource({ key, state: { status: 'loading' } })
+      const state = { status: 'loading' } as const
+      setResource({ key, state })
+      onStateChange?.(state)
       loadReadiness(user.uid, date)
     }
 
@@ -82,7 +96,7 @@ export default function ReadinessWidget() {
       mountedRef.current = false
       document.removeEventListener('visibilitychange', onVisibilityChange)
     }
-  }, [loadReadiness, user])
+  }, [loadReadiness, onStateChange, user])
 
   const date = todayKey()
   const key = user ? resourceKey(user.uid, date) : ''
@@ -95,7 +109,9 @@ export default function ReadinessWidget() {
     const retryDate = todayKey()
     const retryKey = resourceKey(user.uid, retryDate)
     requestedKeyRef.current = retryKey
-    setResource({ key: retryKey, state: { status: 'loading' } })
+    const state = { status: 'loading' } as const
+    setResource({ key: retryKey, state })
+    onStateChange?.(state)
     loadReadiness(user.uid, retryDate)
   }
 
@@ -103,10 +119,12 @@ export default function ReadinessWidget() {
     if (saved.userId !== useAuthStore.getState().user?.uid) return
     const savedKey = resourceKey(saved.userId, saved.date)
     requestedKeyRef.current = savedKey
+    const state = { status: 'success', data: saved } as const
     setResource({
       key: savedKey,
-      state: { status: 'success', data: saved },
+      state,
     })
+    onStateChange?.(state)
   }
 
   if (state.status === 'loading') {
@@ -148,6 +166,11 @@ export default function ReadinessWidget() {
   }
 
   const entry = state.data
+  const customSavedState = renderSaved?.(entry)
+  if (customSavedState !== undefined && customSavedState !== null) {
+    return customSavedState
+  }
+
   const { score, color, label } = computeReadinessScore(entry)
 
   return (

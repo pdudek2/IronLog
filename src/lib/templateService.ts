@@ -48,6 +48,14 @@ export interface TemplateExerciseHistory {
 
 export type TemplateExerciseHistoryMap = Map<string, TemplateExerciseHistory>
 
+export interface TemplateExerciseOverride {
+  sets?: number
+  weight?: number
+  reps?: number
+}
+
+export type TemplateExerciseOverrideMap = ReadonlyMap<string, TemplateExerciseOverride>
+
 export function templateExerciseKey(exerciseId: string, source: ExerciseSource): string {
   return `${source}:${exerciseId}`
 }
@@ -105,6 +113,7 @@ export function buildActiveWorkoutFromTemplate(
   template: WorkoutTemplate,
   dayIndex = 0,
   historyByExercise: TemplateExerciseHistoryMap = new Map(),
+  overridesByExercise: TemplateExerciseOverrideMap = new Map(),
 ): ActiveWorkout {
   const day = template.days[dayIndex] ?? template.days[0]
   const label = day?.name?.trim()
@@ -117,19 +126,22 @@ export function buildActiveWorkoutFromTemplate(
     templateId: template.id,
     label,
     exercises: (day?.exercises ?? []).map((exercise) => {
-      const history = historyByExercise.get(templateExerciseKey(exercise.exerciseId, exercise.exerciseSource))
-      const weight = history && history.bestSetWeight > 0
-        ? String(history.bestSetWeight)
-        : exercise.targetWeight > 0 ? String(exercise.targetWeight) : ''
-      const reps = history && history.bestSetReps > 0
-        ? String(history.bestSetReps)
-        : exercise.targetReps > 0 ? String(exercise.targetReps) : ''
+      const key = templateExerciseKey(exercise.exerciseId, exercise.exerciseSource)
+      const history = historyByExercise.get(key)
+      const override = overridesByExercise.get(key)
+      const weightValue = override?.weight
+        ?? (history && history.bestSetWeight > 0 ? history.bestSetWeight : exercise.targetWeight)
+      const repsValue = override?.reps
+        ?? (history && history.bestSetReps > 0 ? history.bestSetReps : exercise.targetReps)
+      const weight = weightValue > 0 ? String(weightValue) : ''
+      const reps = repsValue > 0 ? String(repsValue) : ''
+      const setCount = Math.max(1, Math.round(override?.sets ?? exercise.sets))
 
       return {
         exerciseId: exercise.exerciseId,
         exerciseSource: exercise.exerciseSource,
         name: exercise.name,
-        sets: Array.from({ length: Math.max(1, exercise.sets) }, () => ({
+        sets: Array.from({ length: setCount }, () => ({
           weight,
           reps,
           done: false,

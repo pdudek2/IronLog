@@ -165,6 +165,35 @@ describe('useTemplateWorkoutLaunch', () => {
     )
   })
 
+  it('keeps recommendation overrides when retrying a failed launch', async () => {
+    const overrides = new Map([['global:squat', { sets: 2, weight: 102.5 }]])
+    mocks.createPersistedTemplateWorkout
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce(workout)
+    const { result } = renderHook(() => useTemplateWorkoutLaunch('user-1'), { wrapper })
+
+    await act(async () => {
+      await result.current.requestTemplateLaunch(
+        template,
+        0,
+        'dashboard:template-a:quick',
+        overrides,
+      )
+    })
+    await act(async () => {
+      await result.current.retryTemplateLaunch()
+    })
+
+    expect(mocks.createPersistedTemplateWorkout).toHaveBeenNthCalledWith(
+      2,
+      'user-1',
+      template,
+      0,
+      false,
+      overrides,
+    )
+  })
+
   it('opens the conflict dialog without calling the service when local work exists', async () => {
     mocks.active = { ...workout, exercises: [{
       exerciseId: 'bench',

@@ -22,6 +22,16 @@ const mocks = vi.hoisted(() => ({
   profile: { displayName: 'Patryk', weeklyGoal: 3 },
   navigate: vi.fn(),
   preloadRouteByPath: vi.fn(),
+  requestTemplateLaunch: vi.fn(),
+  reportedReadinessEntry: null as object | null,
+  readinessEntry: null as null | {
+    userId: string
+    date: string
+    sleep: number
+    mood: number
+    soreness: number
+    createdAt: number
+  },
   activeSessionHasWork: false,
   activeSessionListener: null as null | ((snapshot: { session: ActiveWorkout | null }) => void),
 }))
@@ -47,6 +57,7 @@ vi.mock('../../lib/workoutService', () => ({
 
 vi.mock('../../lib/templateService', () => ({
   getTemplates: mocks.getTemplates,
+  templateExerciseKey: (exerciseId: string, source: string) => `${source}:${exerciseId}`,
 }))
 
 vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
@@ -54,7 +65,7 @@ vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
     pendingLaunch: null,
     launchOperation: null,
     launchingTemplateId: null,
-    requestTemplateLaunch: vi.fn(),
+    requestTemplateLaunch: mocks.requestTemplateLaunch,
     confirmTemplateLaunch: vi.fn(),
     cancelTemplateLaunch: vi.fn(),
     retryTemplateLaunch: vi.fn(),
@@ -79,9 +90,31 @@ vi.mock('../../router/pageLoaders', () => ({
   preloadRouteByPath: mocks.preloadRouteByPath,
 }))
 
-vi.mock('../../components/ReadinessWidget', () => ({
-  default: () => <div data-testid="readiness-widget" />,
-}))
+vi.mock('../../components/ReadinessWidget', async () => {
+  const { useEffect } = await vi.importActual<typeof import('react')>('react')
+  function MockReadinessWidget({
+    onStateChange,
+    renderSaved,
+  }: {
+    onStateChange?: (state: unknown) => void
+    renderSaved?: (entry: NonNullable<typeof mocks.readinessEntry>) => ReactNode
+  }) {
+    const entry = mocks.readinessEntry
+    useEffect(() => {
+      if (entry && mocks.reportedReadinessEntry !== entry) {
+        mocks.reportedReadinessEntry = entry
+        onStateChange?.({ status: 'success', data: entry })
+      }
+    }, [entry, onStateChange])
+    return entry
+      ? renderSaved?.(entry) ?? <div data-testid="readiness-widget" />
+      : <div data-testid="readiness-widget" />
+  }
+
+  return {
+    default: MockReadinessWidget,
+  }
+})
 
 vi.mock('../../components/ConfirmDialog', () => ({
   default: ({ onConfirm }: { onConfirm: () => void }) => (
@@ -152,6 +185,9 @@ describe('Dashboard workout projection status', () => {
     mocks.navigate.mockReset()
     mocks.preloadRouteByPath.mockReset()
     mocks.preloadRouteByPath.mockResolvedValue(undefined)
+    mocks.requestTemplateLaunch.mockReset()
+    mocks.reportedReadinessEntry = null
+    mocks.readinessEntry = null
     mocks.activeSessionHasWork = false
     mocks.activeSessionListener = null
     mocks.user = { uid: 'user-1' }
@@ -674,6 +710,63 @@ describe('Dashboard workout projection status', () => {
 
     expect(await screen.findAllByText('Upper / Lower')).toHaveLength(2)
     expect(screen.queryByText('Brak zapisanych szablonów')).not.toBeInTheDocument()
+  })
+
+  it('starts the compact recommendation before offering template editing', async () => {
+    const template = {
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Upper / Lower',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [{
+        name: 'Upper A',
+        exercises: [
+          { exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 4, targetReps: 8, targetWeight: 70 },
+          { exerciseId: 'row', exerciseSource: 'global' as const, name: 'Barbell Row', sets: 4, targetReps: 8, targetWeight: 65 },
+          { exerciseId: 'ohp', exerciseSource: 'global' as const, name: 'Overhead Press', sets: 3, targetReps: 10, targetWeight: 40 },
+          { exerciseId: 'pulldown', exerciseSource: 'global' as const, name: 'Lat Pulldown', sets: 3, targetReps: 12, targetWeight: 50 },
+        ],
+      }],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValue([template])
+    mocks.readinessEntry = {
+      userId: 'user-1',
+      date: '2026-08-10',
+      sleep: 3,
+      mood: 3,
+      soreness: 3,
+      createdAt: 1,
+    }
+
+    render(<DashboardPage />)
+
+    await screen.findByRole('region', { name: 'Dzisiejszy trening' })
+    await waitFor(() => {
+      expect(screen.getByRole('region', { name: 'Dzisiejszy trening' }).closest('.dashboard-home'))
+        .toHaveClass('dashboard-home--today')
+    })
+    const recommendation = screen.getByRole('region', { name: 'Dzisiejszy trening' })
+    const startRecommendation = within(recommendation).getByRole('button', { name: 'Rozpocznij' })
+    expect(startRecommendation).toBeEnabled()
+    fireEvent.click(startRecommendation)
+
+    expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
+      template,
+      0,
+      'dashboard:template-1:quick',
+      expect.any(Map),
+    )
+
+    const dialog = screen.getByRole('dialog', { hidden: true })
+    const [start, edit] = within(dialog).getAllByRole('button', { hidden: true }).slice(-2)
+    expect(start).toHaveTextContent('Rozpocznij')
+    expect(edit).toHaveTextContent('Edytuj')
+    expect(start.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
+    fireEvent.click(edit)
+    expect(mocks.navigate).toHaveBeenCalledWith('/templates/template-1/edit')
   })
 
   it('ignores a template failure that arrives after unmount, including its side effects', async () => {

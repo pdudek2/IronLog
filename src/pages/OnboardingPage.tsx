@@ -62,7 +62,7 @@ export default function OnboardingPage() {
       title="Skonfiguruj profil"
       subtitle="Zajmie to tylko chwilę."
     >
-      <form onSubmit={handleSubmit} className="flex flex-col gap-6" aria-describedby={submitError ? 'onboarding-submit-error' : undefined}>
+      <form onSubmit={handleSubmit} className="onboarding-form flex flex-col gap-4" aria-describedby={submitError ? 'onboarding-submit-error' : undefined}>
 
         {/* Display name */}
         <div className="flex flex-col gap-1">
@@ -93,10 +93,10 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={() => setPrimaryGoal(g.value)}
                 aria-pressed={primaryGoal === g.value}
-                className="rounded-[var(--radius-md)] p-4 text-left transition-all"
+                className="rounded-[var(--radius-md)] p-3 text-left transition-all"
                 style={{
-                  background: primaryGoal === g.value ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${primaryGoal === g.value ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
+                  background: primaryGoal === g.value ? 'var(--live-bg)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${primaryGoal === g.value ? 'var(--live-border)' : 'var(--border)'}`,
                   color: primaryGoal === g.value ? 'var(--text-strong)' : 'var(--text)',
                 }}
               >
@@ -140,8 +140,8 @@ export default function OnboardingPage() {
                 aria-pressed={units === u}
                 className="flex-1 rounded-[var(--radius-md)] py-3 text-sm font-semibold transition-all"
                 style={{
-                  background: units === u ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${units === u ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
+                  background: units === u ? 'var(--live-bg)' : 'rgba(255,255,255,0.03)',
+                  border: `1px solid ${units === u ? 'var(--live-border)' : 'var(--border)'}`,
                   color: units === u ? 'var(--text-strong)' : 'var(--text)',
                 }}
               >
@@ -153,7 +153,7 @@ export default function OnboardingPage() {
 
         {submitError && <p id="onboarding-submit-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{submitError}</p>}
 
-        <Button type="submit" loading={loading} className="mt-2 w-full">
+        <Button type="submit" loading={loading} className="w-full">
           Zaczynajmy
         </Button>
       </form>

@@ -1123,6 +1123,21 @@ a {
   }
 }
 
+@media (max-width: 639px) {
+  .auth-instrument-main:has(.onboarding-form) {
+    padding-top: 0.75rem;
+  }
+
+  .auth-instrument-main:has(.onboarding-form) .auth-instrument-form-wrap {
+    margin-top: 1rem;
+    padding-top: 1rem;
+  }
+
+  .auth-instrument-main:has(.onboarding-form) .auth-instrument-form-heading {
+    margin-bottom: 1rem;
+  }
+}
+
 @media (min-width: 640px) {
   .auth-signal {
     top: 30rem;
@@ -1207,6 +1222,12 @@ a {
     max-width: 31rem;
     margin: 0;
     padding-top: 1.5rem;
+  }
+
+  .auth-instrument-main:has(.onboarding-form) .auth-instrument-form-wrap {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
   }
 
   .auth-instrument-form-heading {
@@ -1361,6 +1382,7 @@ a {
   font-size: 0.85rem;
   font-weight: 500;
   letter-spacing: 0;
+  white-space: nowrap;
   transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
 }
 
@@ -1409,8 +1431,15 @@ a {
   color: var(--accent-foreground);
   font-size: 0.85rem;
   font-weight: 700;
+  white-space: nowrap;
   box-shadow: 0 10px 24px rgba(240, 67, 90, 0.2);
   transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+@media (min-width: 1024px) and (max-width: 1151px) {
+  .top-nav-brand > span:not(.top-nav-brand-mark) {
+    display: none;
+  }
 }
 
 @media (min-width: 640px) {

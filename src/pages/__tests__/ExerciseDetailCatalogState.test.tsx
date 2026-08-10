@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   getExerciseSessions: vi.fn(),
   getExerciseRecord: vi.fn(),
   navigate: vi.fn(),
+  params: { source: 'user', id: 'custom-row' } as { source: string; id: string },
 }))
 
 vi.mock('../../store/authStore', () => ({
@@ -27,7 +28,7 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return {
     ...actual,
-    useParams: () => ({ source: 'user', id: 'custom-row' }),
+    useParams: () => mocks.params,
     useNavigate: () => mocks.navigate,
   }
 })
@@ -48,6 +49,8 @@ beforeEach(() => {
   mocks.getExerciseSessions.mockReset()
   mocks.getExerciseRecord.mockReset()
   mocks.navigate.mockReset()
+  mocks.params.source = 'user'
+  mocks.params.id = 'custom-row'
   vi.spyOn(console, 'error').mockImplementation(() => undefined)
 })
 
@@ -87,7 +90,7 @@ it('keeps sessions and records visible while user exercise metadata is retryable
 
   render(<ExerciseDetailPage />)
 
-  expect(await screen.findByRole('heading', { name: 'custom-row' })).toBeInTheDocument()
+  expect(await screen.findByRole('heading', { name: 'Wiosłowanie własne' })).toBeInTheDocument()
   expect(screen.getByText('Dzień siły')).toBeInTheDocument()
   expect(screen.getByText('Rekord')).toBeInTheDocument()
   expect(screen.getByRole('alert')).toHaveTextContent(
@@ -96,4 +99,50 @@ it('keeps sessions and records visible while user exercise metadata is retryable
 
   fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
   expect(await screen.findByRole('heading', { name: 'Wiosłowanie własne' })).toBeInTheDocument()
+})
+
+it('shows a not-found state for an unknown global exercise without loading history', async () => {
+  mocks.params.source = 'global'
+  mocks.params.id = 'does-not-exist'
+
+  render(<ExerciseDetailPage />)
+
+  expect(await screen.findByRole('heading', { name: 'Ćwiczenie nie istnieje' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Rozpocznij trening' })).not.toBeInTheDocument()
+  expect(mocks.getExerciseSessions).not.toHaveBeenCalled()
+  expect(mocks.getExerciseRecord).not.toHaveBeenCalled()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Wróć do biblioteki' }))
+  expect(mocks.navigate).toHaveBeenCalledWith('/exercises')
+})
+
+it('keeps deleted user exercises readable when materialized history remains', async () => {
+  mocks.getUserExercises.mockResolvedValue([])
+  mocks.getExerciseSessions.mockResolvedValue([{
+    id: 'session-1',
+    workoutId: 'workout-1',
+    startedAt: Date.now() - 86_400_000,
+    label: 'Dzień siły',
+    totalSets: 3,
+    totalReps: 24,
+    totalVolume: 1_800,
+    bestSetWeight: 80,
+    bestSetReps: 8,
+    sets: [{ weight: 80, reps: 8 }],
+  }])
+  mocks.getExerciseRecord.mockResolvedValue({
+    exerciseId: 'custom-row',
+    exerciseName: 'Archiwalne wiosłowanie',
+    maxWeight: 95,
+    maxReps: 10,
+    totalSessions: 4,
+    bestVolume: 2_100,
+    lastPerformedAt: Date.now() - 86_400_000,
+  })
+
+  render(<ExerciseDetailPage />)
+
+  expect(await screen.findByRole('heading', { name: 'Archiwalne wiosłowanie' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Ćwiczenie nie istnieje' })).not.toBeInTheDocument()
+  expect(screen.getByText('Dzień siły')).toBeInTheDocument()
 })

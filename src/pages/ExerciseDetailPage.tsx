@@ -40,13 +40,16 @@ export default function ExerciseDetailPage() {
   const { source, id } = useParams<{ source: string; id: string }>()
   const { user } = useAuthStore()
   const navigate = useNavigate()
+  const exerciseSource = source === 'global' || source === 'user' ? source : null
 
   const globalExercise = useMemo(
-    () => (id ? globalExercises.find((ex) => ex.id === id) ?? null : null),
-    [id],
+    () => (exerciseSource === 'global' && id
+      ? globalExercises.find((ex) => ex.id === id) ?? null
+      : null),
+    [exerciseSource, id],
   )
   const userCatalog = useUserExercises(
-    source === 'user' ? user?.uid ?? null : null,
+    exerciseSource === 'user' ? user?.uid ?? null : null,
   )
 
   const [sessions, setSessions] = useState<ExerciseSession[]>([])
@@ -56,19 +59,20 @@ export default function ExerciseDetailPage() {
   const [loadAttempt, setLoadAttempt] = useState(0)
 
   useEffect(() => {
-    if (!user || !id) return
+    if (!user || !id || !exerciseSource) return
+    if (exerciseSource === 'global' && !globalExercise) return
 
     const currentUser = user
     const exerciseId = id
+    const currentSource = exerciseSource
 
     let cancelled = false
 
     async function loadExerciseDetail() {
       try {
-        const exSource: 'global' | 'user' = source === 'user' ? 'user' : 'global'
         const [sess, rec] = await Promise.all([
-          getExerciseSessions(currentUser.uid, exerciseId, exSource),
-          getExerciseRecord(currentUser.uid, exerciseId, exSource),
+          getExerciseSessions(currentUser.uid, exerciseId, currentSource),
+          getExerciseRecord(currentUser.uid, exerciseId, currentSource),
         ])
 
         if (!cancelled) {
@@ -95,16 +99,28 @@ export default function ExerciseDetailPage() {
     return () => {
       cancelled = true
     }
-  }, [user, id, source, loadAttempt])
+  }, [user, id, exerciseSource, globalExercise, loadAttempt])
 
-  const userExercise = source === 'user' && userCatalog.state.status === 'success'
+  const userExercise = exerciseSource === 'user' && userCatalog.state.status === 'success'
     ? userCatalog.exercises.find((exercise) => exercise.id === id) ?? null
     : null
-  const exercise = source === 'user' ? userExercise : globalExercise
+  const exercise = exerciseSource === 'user' ? userExercise : globalExercise
+  const hasHistory = sessions.length > 0 || record !== null
+  const invalidRoute = !id || !exerciseSource
+  const globalMetadataMissing = exerciseSource === 'global' && !globalExercise
+  const skipHistoryLoad = invalidRoute || globalMetadataMissing
+  const userCatalogLoading = exerciseSource === 'user' && userCatalog.state.status === 'loading'
+  const metadataConfirmedMissing = globalMetadataMissing || (
+    exerciseSource === 'user'
+    && userCatalog.state.status === 'success'
+    && !userExercise
+  )
 
-  if (loading) return <LoadingState message="Ładowanie ćwiczenia..." />
+  if ((!skipHistoryLoad && loading) || userCatalogLoading) {
+    return <LoadingState message="Ładowanie ćwiczenia..." />
+  }
 
-  if (loadError) {
+  if (!skipHistoryLoad && loadError) {
     return (
       <div className="mx-auto max-w-lg">
         <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center">
@@ -128,6 +144,23 @@ export default function ExerciseDetailPage() {
     )
   }
 
+  if (invalidRoute || (metadataConfirmedMissing && !hasHistory)) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center sm:p-8">
+          <p className="eyebrow">Biblioteka ćwiczeń</p>
+          <h1 className="section-title mt-2">Ćwiczenie nie istnieje</h1>
+          <p className="mx-auto mt-3 max-w-sm text-sm leading-6" style={{ color: 'var(--muted)' }}>
+            Ten link jest nieaktualny albo ćwiczenie zostało usunięte.
+          </p>
+          <Button type="button" className="mt-5 min-w-[12rem]" onClick={() => navigate('/exercises')}>
+            Wróć do biblioteki
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   const accent = EXERCISE_CATEGORY_COLORS[exercise?.category ?? ''] ?? 'var(--accent)'
   const maxVolume = sessions.length ? Math.max(...sessions.map((s) => s.totalVolume), 1) : 1
 
@@ -142,7 +175,7 @@ export default function ExerciseDetailPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          {source === 'user' && userCatalog.state.status === 'error' && (
+          {exerciseSource === 'user' && userCatalog.state.status === 'error' && (
             <ActionFeedback
               status="error"
               message="Nie udało się wczytać nazwy i kategorii tego ćwiczenia. Historia i rekordy nadal są dostępne."
@@ -167,7 +200,7 @@ export default function ExerciseDetailPage() {
                 {getEquipmentLabel(exercise.equipment)}
               </span>
             )}
-            {source === 'user' && (
+            {exerciseSource === 'user' && (
               <span
                 className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase"
                 style={{ background: 'var(--accent-soft)', color: 'var(--accent)', border: '1px solid var(--accent-soft-strong)' }}
@@ -178,7 +211,7 @@ export default function ExerciseDetailPage() {
           </div>
 
           <div>
-            <h1 className="hero-editorial-name">{exercise?.name ?? id}</h1>
+            <h1 className="hero-editorial-name">{exercise?.name ?? record?.exerciseName ?? id}</h1>
           </div>
 
           {exercise?.muscles && exercise.muscles.length > 0 && (

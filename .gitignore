@@ -36,8 +36,7 @@ tests/e2e/.auth/
 # Mockup screenshots (regenerate with `npm run mockups`)
 mockups/
 deliverables/
-docs/superpowers
-docs/*.md
+docs/
 CLAUDE.md
 
 # Per-developer AI agent instructions

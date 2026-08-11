@@ -66,6 +66,33 @@ test.describe('Chat UI', () => {
     await page.screenshot({ path: 'test-results/chat-disabled-input.png' })
   })
 
+  test('no-key chat uses the available width without stacking cards', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'desktop geometry contract')
+    await page.goto('/chat')
+    await expectAppReady(page, '/chat')
+
+    const grid = page.locator('.coach-workspace-grid')
+    const main = page.locator('.coach-main-flow')
+    const keyPanel = page.locator('.ai-key-panel')
+    const chatPanel = page.locator('.coach-chat-panel')
+
+    await expect(grid).toHaveAttribute('data-has-rail', 'false')
+    const widths = await Promise.all([grid, main].map((locator) => locator.evaluate((element) => element.getBoundingClientRect().width)))
+    expect(widths[1]).toBeGreaterThanOrEqual(widths[0] - 2)
+
+    for (const panel of [keyPanel, chatPanel]) {
+      const style = await panel.evaluate((element) => {
+        const computed = getComputedStyle(element)
+        return {
+          borderLeft: computed.borderLeftWidth,
+          borderRight: computed.borderRightWidth,
+          radius: computed.borderTopLeftRadius,
+        }
+      })
+      expect(style).toEqual({ borderLeft: '0px', borderRight: '0px', radius: '0px' })
+    }
+  })
+
   test('can switch between conversation and plan workspaces', async ({ page }) => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')

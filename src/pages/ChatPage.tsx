@@ -528,7 +528,10 @@ export default function ChatPage() {
             })}
         </section>
 
-        <div className="coach-workspace-grid">
+        <div
+          className="coach-workspace-grid"
+          data-has-rail={configured || activeTab === 'plan'}
+        >
           <div className="coach-main-flow">
             {!configured && (
               <AiKeyPanel

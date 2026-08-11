@@ -9482,11 +9482,24 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   background: color-mix(in srgb, var(--accent) 11%, var(--surface-2));
 }
 
-.ai-key-panel {
-  border: 0;
-  border-radius: var(--radius-sm) !important;
-  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+.coach-workspace-grid[data-has-rail="false"] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.coach-workspace-grid[data-has-rail="false"] .coach-rail {
+  display: none;
+}
+
+.ai-key-panel,
+.coach-chat-panel {
+  border-inline: 0;
+  border-radius: 0 !important;
   box-shadow: none;
+}
+
+.ai-key-panel {
+  border-block: 1px solid var(--border-strong);
+  background: color-mix(in srgb, var(--surface-2) 46%, transparent);
   padding: clamp(0.9rem, 2vw, 1.1rem);
 }
 
@@ -9507,11 +9520,8 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 .coach-chat-panel {
-  border: 0;
-  border-radius: var(--radius-sm) !important;
-  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
-  box-shadow: none;
-  padding: clamp(1rem, 2.5vw, 1.35rem);
+  background: transparent;
+  padding: clamp(1rem, 2.5vw, 1.35rem) 0;
 }
 
 .coach-plan-panel,
@@ -9550,6 +9560,11 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   border: 0;
   border-radius: calc(var(--radius-sm) - 2px);
   background: color-mix(in srgb, var(--surface-3) 74%, transparent);
+  min-height: 2.75rem;
+}
+
+.coach-reset-button {
+  min-height: 2.75rem;
 }
 
 .coach-prompt-button:hover:not(:disabled) {

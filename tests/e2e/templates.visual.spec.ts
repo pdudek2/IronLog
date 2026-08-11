@@ -43,3 +43,30 @@ test('empty templates page', async ({ page }, testInfo) => {
     fullPage: true,
   })
 })
+
+test('new template editor empty state', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/templates/new')
+  await expectAppReady(page, '/templates/new')
+  await expect(page.getByRole('heading', { name: 'Nowy plan' })).toBeVisible()
+  await page.evaluate(() => document.fonts.ready)
+  if (testInfo.project.name === 'desktop') {
+    await page.addStyleTag({
+      content: `
+        html {
+          scrollbar-gutter: auto !important;
+          scrollbar-width: none !important;
+        }
+
+        html::-webkit-scrollbar {
+          display: none !important;
+        }
+      `,
+    })
+  }
+
+  await expect(page).toHaveScreenshot('template-editor-empty.png', {
+    animations: 'disabled',
+    fullPage: true,
+  })
+})

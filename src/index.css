@@ -5486,10 +5486,10 @@ a {
 
 .template-day-empty {
   border: 0;
-  border-radius: var(--radius-md);
-  background: var(--surface-muted);
+  border-radius: 0;
+  background: transparent;
+  padding: 0.75rem 0 0.25rem;
   color: var(--muted);
-  padding: 1rem;
   font-size: 0.82rem;
 }
 
@@ -5726,10 +5726,6 @@ a {
 
   .template-day-editor-head {
     margin-bottom: 0.7rem;
-  }
-
-  .template-day-empty {
-    padding: 0.9rem;
   }
 
   .planner-mini-stats {

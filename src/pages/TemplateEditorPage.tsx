@@ -462,9 +462,7 @@ export default function TemplateEditorPage() {
                   ))}
 
                   {day.exercises.length === 0 && (
-                    <div
-                      className="template-day-empty"
-                    >
+                    <div className="template-day-empty">
                       Ten dzień jest pusty. Dodaj ćwiczenia, żeby móc uruchamiać gotową sesję.
                     </div>
                   )}

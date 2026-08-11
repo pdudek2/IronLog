@@ -17,6 +17,21 @@ test.describe('Templates CRUD', () => {
     await expectAppReady(page, '/templates/new')
     await page.evaluate(() => document.fonts.ready)
     await expect(page.getByText('Nowy plan · jeszcze niezapisany', { exact: true })).toHaveCount(1)
+    const emptyDay = page.locator('.template-day-empty')
+    await expect(emptyDay).toBeVisible()
+    const emptyStyle = await emptyDay.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return {
+        background: style.backgroundColor,
+        border: style.borderTopWidth,
+        radius: style.borderTopLeftRadius,
+      }
+    })
+    expect(emptyStyle).toEqual({
+      background: 'rgba(0, 0, 0, 0)',
+      border: '0px',
+      radius: '0px',
+    })
     const createSave = page.locator('button[type="submit"]:visible').filter({ hasText: 'Zapisz szablon' })
     await expect(createSave).toHaveCount(1)
     await expect(createSave).toBeDisabled()

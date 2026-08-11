@@ -384,8 +384,8 @@ export default function ProgressPage() {
     { label: 'Śr. / sesję', value: formatVolume(periodComparison.currentAvgVolume), delta: periodComparison.avgVolumeDelta },
   ]
   const recordAccentKeys = Object.keys(MUSCLE_COLORS)
-  const featuredRecords = records.slice(0, 3)
-  const remainingRecords = records.slice(3)
+  const featuredRecords = records.slice(0, 1)
+  const remainingRecords = records.slice(1)
   const issues: string[] = []
   if (freshnessUncertain) {
     issues.push('Nie udało się potwierdzić świeżości danych. Ostatnie treningi mogą być jeszcze niewidoczne.')
@@ -746,12 +746,14 @@ export default function ProgressPage() {
 
         {showRangeEmpty && (
           <div className="progress-panel progress-empty-state" role="status">
-            <p className="text-base font-semibold text-white">W tym zakresie nie ma treningów</p>
-            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-              Wcześniejsze sesje i rekordy nadal są zapisane.
-            </p>
+            <div className="progress-empty-copy">
+              <p className="text-base font-semibold text-white">W tym zakresie nie ma treningów</p>
+              <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
+                Wcześniejsze sesje i rekordy nadal są zapisane.
+              </p>
+            </div>
             {rangeDays < 365 && (
-              <Button type="button" className="mt-4" onClick={() => handleRangeChange(365)}>
+              <Button type="button" onClick={() => handleRangeChange(365)}>
                 Pokaż rok
               </Button>
             )}
@@ -773,7 +775,7 @@ export default function ProgressPage() {
               <span>{records.length}</span>
             </div>
 
-            <div className="progress-record-showcase" aria-label="Trzy najlepsze rekordy">
+            <div className="progress-record-showcase" aria-label="Najlepszy rekord">
               {featuredRecords.map((rec, index) => (
                 <article
                   key={rec.id}
@@ -829,10 +831,12 @@ export default function ProgressPage() {
 
         {showEmptyState && (
           <div className="progress-panel progress-empty-state">
-            <p className="text-lg font-semibold text-white">Brak danych</p>
-            <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-              Ukończ kilka treningów, żeby zobaczyć wykresy i rekordy.
-            </p>
+            <div className="progress-empty-copy">
+              <p className="text-lg font-semibold text-white">Brak danych</p>
+              <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
+                Ukończ kilka treningów, żeby zobaczyć wykresy i rekordy.
+              </p>
+            </div>
           </div>
         )}
         </>

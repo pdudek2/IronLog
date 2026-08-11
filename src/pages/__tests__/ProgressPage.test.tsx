@@ -218,6 +218,23 @@ describe('ProgressPage', () => {
     expect(consoleError).toHaveBeenCalledWith('[ProgressPage] sessions load failed', sessionsError)
   })
 
+  it('keeps one featured record and renders the rest as ledger rows', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      records: [
+        record('record-1'),
+        record('record-2', { exerciseName: 'Przysiad' }),
+        record('record-3', { exerciseName: 'Martwy ciąg' }),
+      ],
+    }))
+
+    render(<ProgressPage />)
+
+    const featured = await screen.findByLabelText('Najlepszy rekord')
+    const ledger = screen.getByLabelText('Pozostałe rekordy')
+    expect(featured.querySelectorAll('.progress-record-feature')).toHaveLength(1)
+    expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(2)
+  })
+
   it('shows the hard error only when both datasets fail with no previous snapshot', async () => {
     const sessionsError = new Error('sessions unavailable')
     const recordsError = new Error('records unavailable')

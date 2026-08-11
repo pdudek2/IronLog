@@ -9298,17 +9298,17 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 /* Exercise library and detail */
 .exercise-command-panel {
   border: 0;
-  border-radius: var(--radius-md);
-  background: var(--bg-elevated);
+  border-radius: 0;
+  background: transparent;
   box-shadow: none;
-  padding: 0.55rem;
+  padding: 0;
 }
 
 .exercise-search-box {
   min-height: 2.75rem;
   border: 0;
   border-radius: var(--radius-md);
-  background: var(--input-bg);
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
 }
 
 .exercise-search-box:focus-within {
@@ -9318,6 +9318,19 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 .exercise-search-box button {
   border: 0;
   background: transparent;
+}
+
+.exercise-filter-board {
+  border: 0;
+  border-bottom: 1px solid var(--border-strong);
+  background: transparent;
+  padding-inline: 0;
+}
+
+.exercise-library-create-action {
+  border: 0;
+  background: transparent;
+  padding-inline: 0;
 }
 
 .exercise-library-header {
@@ -10042,7 +10055,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .exercise-command-panel {
-    padding: 0.55rem;
+    padding: 0;
   }
 
   .exercise-filter-toggle {

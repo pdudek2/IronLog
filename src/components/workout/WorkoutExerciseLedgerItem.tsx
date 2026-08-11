@@ -236,7 +236,11 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                 </button>
               </div>
               {showMobileSteppers && (
-                <div className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5">
+                <div
+                  className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5"
+                  role="group"
+                  aria-label={`Szybka korekta serii ${setIndex + 1}`}
+                >
                   {[
                     { label: `−2.5 ${units}`, delta: -2.5, field: 'weight' as const },
                     { label: `+2.5 ${units}`, delta: 2.5, field: 'weight' as const },

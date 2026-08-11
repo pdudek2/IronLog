@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useWorkoutStore } from '../../store/workoutStore'
@@ -100,5 +100,32 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       name: 'Ciężar, Bench Press, seria 1, kg',
     })).toHaveValue(82.25)
     expect(screen.getByText('82.25 kg')).toBeInTheDocument()
+  })
+
+  it('groups quick adjustments for the focused set and preserves callback values', () => {
+    render(
+      <WorkoutExerciseLedgerItem
+        exerciseAccent="#f0435a"
+        exerciseClientId="exercise-1"
+        exerciseIndex={0}
+        fallbackExercise={null}
+        focusSetIndex={0}
+        hintDismissed
+        hintKey="global:bench-press"
+        isFocusedExercise
+        suggestion={null}
+        units="kg"
+        {...callbacks}
+      />,
+    )
+
+    const adjustments = screen.getByRole('group', {
+      name: 'Szybka korekta serii 1',
+    })
+    fireEvent.click(within(adjustments).getByRole('button', { name: /o 2.5/ }))
+    fireEvent.click(within(adjustments).getByRole('button', { name: /o 1/ }))
+
+    expect(callbacks.onAdjustSet).toHaveBeenNthCalledWith(1, 0, 0, 'weight', 2.5)
+    expect(callbacks.onAdjustSet).toHaveBeenNthCalledWith(2, 0, 0, 'reps', 1)
   })
 })

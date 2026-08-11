@@ -467,6 +467,33 @@ test.describe('Active workout shell reduction', () => {
       await expectMinHitArea(visibleStepperButtons.nth(index), label)
     }
 
+    const flatSetContract = await page.locator('.workout-set-row').first().evaluate((row) => {
+      const input = row.querySelector<HTMLInputElement>('.workout-set-input')
+      const stepperRow = row.querySelector<HTMLElement>('.set-stepper-row')
+      const stepper = row.querySelector<HTMLElement>('.set-stepper-btn')
+      if (!input || !stepperRow || !stepper) throw new Error('Expected active set controls')
+
+      const inputStyle = window.getComputedStyle(input)
+      const rowStyle = window.getComputedStyle(stepperRow)
+      const stepperStyle = window.getComputedStyle(stepper)
+
+      return {
+        inputBackground: inputStyle.backgroundColor,
+        inputRadius: inputStyle.borderTopLeftRadius,
+        rowTopBorder: rowStyle.borderTopWidth,
+        stepperBackground: stepperStyle.backgroundColor,
+        stepperRadius: stepperStyle.borderTopLeftRadius,
+      }
+    })
+
+    expect(flatSetContract).toEqual({
+      inputBackground: 'rgba(0, 0, 0, 0)',
+      inputRadius: '0px',
+      rowTopBorder: '1px',
+      stepperBackground: 'rgba(0, 0, 0, 0)',
+      stepperRadius: '0px',
+    })
+
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
     await doneButton.click()

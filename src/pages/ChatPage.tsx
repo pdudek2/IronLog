@@ -489,14 +489,11 @@ export default function ChatPage() {
         >
           <h1>Coach</h1>
           <p>Zapytaj o ostatnią sesję albo ułóż plan.</p>
-        </motion.div>
-
-        <div className="coach-header-panel" aria-label="Status AI Coacha">
-          <div className="coach-status-line">
+          <div className="coach-status-line" aria-label="Status AI Coacha">
             <span data-ready={configured} />
             <strong>{configured ? 'Klucz gotowy' : 'Klucz wymagany'}</strong>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       <div className="ai-workspace coach-workspace">
@@ -543,7 +540,7 @@ export default function ChatPage() {
 
             {activeTab === 'chat' ? (
               <>
-                <section className="coach-chat-panel surface-panel">
+                <section className="coach-chat-panel">
                   <div className="coach-panel-head">
                     <div>
                       <p>Rozmowa</p>
@@ -716,21 +713,14 @@ export default function ChatPage() {
               </>
             ) : (
               <>
-                <section className="coach-plan-panel surface-panel">
+                <section className="coach-plan-panel">
                   <div className="coach-panel-head">
                     <div>
                       <p>Generator planu</p>
                       <h2>Brief treningowy</h2>
                     </div>
 
-                    <div
-                      className="coach-plan-state"
-                      style={{
-                        background: planPreview ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
-                        borderColor: planPreview ? 'var(--accent-soft-strong)' : 'var(--border)',
-                        color: planPreview ? 'var(--accent)' : 'var(--muted)',
-                      }}
-                    >
+                    <div className="coach-plan-state" data-ready={Boolean(planPreview)}>
                       {planPreview ? 'Podgląd gotowy' : 'Brief'}
                     </div>
                   </div>
@@ -864,7 +854,7 @@ export default function ChatPage() {
                 </section>
 
                 {planPreview && (
-                  <section className="coach-plan-preview surface-panel">
+                  <section className="coach-plan-preview">
                     <div className="coach-plan-preview-head">
                       <div>
                         <p>Podgląd planu</p>
@@ -923,10 +913,7 @@ export default function ChatPage() {
                     </div>
 
                     {previewDay && (
-                      <div
-                        className="coach-preview-day"
-                        style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)' }}
-                      >
+                      <div className="coach-preview-day">
                         <div className="flex items-center justify-between gap-3 border-b px-4 py-4" style={{ borderColor: 'var(--border)' }}>
                           <div>
                             <p className="text-sm font-semibold text-white">{previewDay.name}</p>
@@ -934,10 +921,7 @@ export default function ChatPage() {
                               {previewDay.exercises.length} ćwiczeń w tej jednostce
                             </p>
                           </div>
-                          <div
-                            className="rounded-[var(--radius-pill)] border px-3 py-1.5 text-xs font-semibold"
-                            style={{ background: 'rgba(255,255,255,0.03)', borderColor: 'var(--border)', color: 'var(--muted)' }}
-                          >
+                          <div className="coach-preview-sequence">
                             Dzień {selectedPreviewDay + 1}
                           </div>
                         </div>
@@ -949,12 +933,11 @@ export default function ChatPage() {
                             <p className="stat-meta text-right">Start</p>
                           </div>
 
-                          <div className="space-y-2">
+                          <div>
                             {previewDay.exercises.map((exercise) => (
                               <div
                                 key={`${previewDay.name}:${exercise.exerciseSource}:${exercise.exerciseId}`}
-                                className="grid grid-cols-[minmax(0,1.4fr)_6rem_7rem] gap-3 rounded-[var(--radius-md)] border px-3 py-3 text-sm"
-                                style={{ background: 'rgba(255,255,255,0.02)', borderColor: 'var(--border)' }}
+                                className="coach-preview-exercise grid grid-cols-[minmax(0,1.4fr)_6rem_7rem] gap-3 px-1 py-3 text-sm"
                               >
                                 <div className="min-w-0">
                                   <p className="truncate font-semibold text-white">{exercise.name}</p>
@@ -1021,7 +1004,7 @@ export default function ChatPage() {
 
             {activeTab === 'chat' ? (
               configured && (
-                <section className="coach-context-panel surface-panel">
+                <section className="coach-context-panel">
                   <div className="coach-context-head">
                     <span>
                       <ShieldCheck size={16} />
@@ -1045,7 +1028,7 @@ export default function ChatPage() {
                 </section>
               )
             ) : (
-              <section className="coach-context-panel surface-panel">
+              <section className="coach-context-panel">
                 <div className="coach-context-head">
                   <Sparkles size={16} />
                   <p>Kontekst planu</p>

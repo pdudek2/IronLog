@@ -9462,30 +9462,47 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 /* AI Coach */
-.ai-key-panel,
-.coach-chat-panel,
-.coach-plan-panel,
-.coach-plan-preview,
-.coach-context-panel {
-  border: 0;
-  border-top: 1px solid var(--border-strong);
-  border-radius: 0 !important;
-  background: transparent;
-  box-shadow: none;
-  padding: clamp(1rem, 2vw, 1.3rem) 0;
-}
-
 .coach-header {
+  display: block;
+  max-width: 42rem;
+  margin-bottom: 0.85rem;
   border-bottom: 0;
+  padding-bottom: 0.6rem;
 }
 
-.coach-mode-switch,
-.coach-thread {
-  border-bottom: 0;
+.coach-header h1 {
+  font-size: clamp(2.65rem, 5vw, 3.65rem);
 }
 
-.ai-key-panel--collapsed {
-  border-bottom: 1px solid var(--border);
+.coach-header .coach-status-line {
+  margin-top: 0.65rem;
+}
+
+.coach-workspace {
+  gap: 0.85rem;
+}
+
+.coach-mode-switch {
+  overflow: hidden;
+  border-color: var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 76%, transparent);
+}
+
+.coach-mode-button[data-active="true"] {
+  background: color-mix(in srgb, var(--accent) 11%, var(--surface-2));
+}
+
+.ai-key-panel {
+  border: 0;
+  border-radius: var(--radius-sm) !important;
+  background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+  box-shadow: none;
+  padding: clamp(0.9rem, 2vw, 1.1rem);
+}
+
+.ai-key-panel-description {
+  max-width: 36rem;
 }
 
 .ai-key-panel-actions > span,
@@ -9496,10 +9513,41 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   padding-inline: 0;
 }
 
+.coach-plan-state[data-ready="true"] {
+  color: var(--accent);
+}
+
+.coach-chat-panel {
+  border: 0;
+  border-radius: var(--radius-sm) !important;
+  background: color-mix(in srgb, var(--surface-1) 82%, transparent);
+  box-shadow: none;
+  padding: clamp(1rem, 2.5vw, 1.35rem);
+}
+
+.coach-plan-panel,
+.coach-plan-preview,
+.coach-context-panel {
+  border: 0;
+  border-top: 1px solid var(--border-strong);
+  border-radius: 0 !important;
+  background: transparent;
+  box-shadow: none;
+  padding: clamp(1.05rem, 2.5vw, 1.45rem) 0;
+}
+
 .coach-thread {
-  border-inline: 0;
+  height: min(34rem, calc(100dvh - 19rem));
+  min-height: 22rem;
+  border: 0;
   border-radius: 0;
   background: transparent;
+  padding: 0;
+}
+
+.coach-thread--empty {
+  height: auto;
+  min-height: 15rem;
 }
 
 .coach-empty-icon {
@@ -9509,11 +9557,132 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   background: transparent;
 }
 
-.coach-preview-stat,
-.coach-preview-day {
-  border-inline: 0;
+.coach-prompt-button {
+  border: 0;
+  border-radius: calc(var(--radius-sm) - 2px);
+  background: color-mix(in srgb, var(--surface-3) 74%, transparent);
+}
+
+.coach-prompt-button:hover:not(:disabled) {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface-3));
+}
+
+.coach-preview-stats {
+  gap: 0;
+  border-block: 1px solid var(--border);
+}
+
+.coach-preview-stat {
+  border: 0;
   border-radius: 0;
   background: transparent;
+  padding: 0.75rem 0.9rem;
+}
+
+.coach-preview-stat + .coach-preview-stat {
+  border-left: 1px solid var(--border);
+}
+
+.coach-preview-day {
+  margin-top: 1rem;
+  border: 0;
+  border-block: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.coach-preview-sequence {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.coach-preview-exercise {
+  border-bottom: 1px solid var(--border);
+}
+
+.coach-preview-exercise:last-child {
+  border-bottom: 0;
+}
+
+.coach-rail .ai-key-panel {
+  border-radius: 0 !important;
+  background: transparent;
+  padding-inline: 0;
+}
+
+.coach-rail .ai-key-panel--collapsed {
+  border-bottom: 1px solid var(--border);
+}
+
+@media (min-width: 1024px) {
+  .coach-header {
+    grid-template-columns: none;
+  }
+
+  .coach-context-panel,
+  .coach-rail .ai-key-panel {
+    border-top: 0;
+    border-left: 1px solid var(--border);
+    padding: 0 0 0 1.25rem;
+  }
+
+  .coach-rail .ai-key-panel--collapsed {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 639px) {
+  .coach-header {
+    margin-bottom: 0.55rem;
+    padding-bottom: 0.35rem;
+  }
+
+  .coach-header h1 {
+    font-size: 2.65rem;
+  }
+
+  .ai-key-panel-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0.55rem;
+  }
+
+  .ai-key-panel-actions {
+    justify-content: end;
+  }
+
+  .ai-key-panel-description {
+    display: none;
+  }
+
+  .ai-key-entry {
+    grid-template-columns: 2.75rem minmax(0, 1fr) 2.75rem;
+  }
+
+  .ai-key-entry > button:nth-of-type(2) {
+    width: auto;
+  }
+
+  .coach-chat-panel {
+    padding: 0.9rem;
+  }
+
+  .coach-thread {
+    height: 19rem;
+  }
+
+  .coach-thread--empty {
+    height: auto;
+    min-height: 0;
+  }
+
+  .coach-preview-day > div,
+  .coach-preview-day > div + div {
+    padding-inline: 0;
+  }
 }
 
 /* Profile */

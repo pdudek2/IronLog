@@ -182,7 +182,7 @@ export default function AiKeyPanel({
           <h2 className="mt-2 text-xl font-bold text-white">
             Claude API key
           </h2>
-          <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+          <p className="ai-key-panel-description mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
             Klucz zostaje w tej przeglądarce. Odblokowuje rozmowę i generator planu.
           </p>
         </div>
@@ -248,22 +248,21 @@ export default function AiKeyPanel({
             <Button type="button" onClick={handleSave}>
               {saved ? 'Zapisano klucz' : hasSavedKey ? 'Zaktualizuj klucz' : 'Zapisz klucz'}
             </Button>
-            {(hasSavedKey || draft.length > 0) && (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={handleClear}
-                aria-label="Usuń lokalnie zapisany klucz"
-              >
-                <Trash2 size={15} />
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={handleClear}
+              disabled={!hasSavedKey && draft.length === 0}
+              aria-label="Usuń lokalnie zapisany klucz"
+            >
+              <Trash2 size={15} />
+            </Button>
           </div>
         </div>
 
         <p className="ai-key-local-note">
           <ShieldCheck size={14} aria-hidden="true" />
-          IronLog nie wysyła klucza poza żądania do Claude.
+          Klucz zostaje tylko na tym urządzeniu.
         </p>
 
         {hasSavedKey && (

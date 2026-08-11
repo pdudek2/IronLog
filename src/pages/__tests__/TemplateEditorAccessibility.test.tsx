@@ -116,8 +116,7 @@ describe('TemplateEditorPage accessibility', () => {
 
     expect(await screen.findByText('Nowy plan · jeszcze niezapisany')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeDisabled()
-    expect(within(screen.getByLabelText('Podsumowanie edytowanego planu'))
-      .getByText('niezapisany')).toBeInTheDocument()
+    expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1dni')
   })
 
   it('labels the plan and day names and gives delete action full context', async () => {
@@ -274,8 +273,7 @@ describe('TemplateEditorPage accessibility', () => {
     expect(form).not.toBeNull()
     expect(screen.getByText('Wszystkie zmiany zapisane')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Zapisano' })).toBeDisabled()
-    expect(within(screen.getByLabelText('Podsumowanie edytowanego planu'))
-      .getByText('zapisany')).toBeInTheDocument()
+    expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1ćw.')
 
     await act(async () => {
       fireEvent.submit(form!)

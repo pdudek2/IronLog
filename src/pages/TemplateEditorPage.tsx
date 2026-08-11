@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -302,12 +302,18 @@ export default function TemplateEditorPage() {
   return (
     <>
       <section className="planner-header template-editor-header">
-        <div>
-          <p className="planner-kicker">Edytor planu</p>
-          <h1>{isEdit ? 'Plan' : 'Nowy plan'}</h1>
-        </div>
+        <button
+          type="button"
+          onClick={handleBackToTemplates}
+          className="template-editor-back"
+          aria-label="Wróć"
+        >
+          <ChevronLeft size={16} aria-hidden="true" />
+          Plany
+        </button>
 
-        <div className="planner-header-actions">
+        <div className="template-editor-heading">
+          <h1>{isEdit ? 'Edytuj plan' : 'Nowy plan'}</h1>
           <div className="planner-mini-stats" aria-label="Podsumowanie edytowanego planu">
             <span>
               <strong>{days.length}</strong>
@@ -317,27 +323,7 @@ export default function TemplateEditorPage() {
               <strong>{totalExercises}</strong>
               ćw.
             </span>
-            <span data-active={saveState === 'dirty' || saveState === 'error'}>
-              <strong>{saveState === 'persisted-clean' ? '✓' : '•'}</strong>
-              {saveState === 'new-pristine'
-                ? 'niezapisany'
-                : saveState === 'dirty'
-                  ? 'zmiany'
-                  : saveState === 'saving'
-                    ? 'zapis'
-                    : saveState === 'error'
-                      ? 'błąd'
-                      : 'zapisany'}
-            </span>
           </div>
-
-          <button
-            type="button"
-            onClick={handleBackToTemplates}
-            className="planner-secondary-action"
-          >
-            Wróć
-          </button>
         </div>
       </section>
 
@@ -352,8 +338,7 @@ export default function TemplateEditorPage() {
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="np. Upper / Lower 4 dni"
-                className="w-full rounded-[var(--radius-lg)] px-4 py-3 text-sm outline-none text-white"
-                style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
+                className="template-text-input w-full px-4 py-3 text-sm outline-none text-white"
               />
             </section>
 
@@ -373,8 +358,7 @@ export default function TemplateEditorPage() {
                       type="text"
                       value={day.name}
                       onChange={(event) => updateDay(dayIndex, { ...day, name: event.target.value })}
-                      className="mt-3 w-full rounded-[var(--radius-lg)] px-4 py-3 text-sm outline-none text-white"
-                      style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
+                      className="template-text-input mt-2 w-full px-4 py-3 text-sm outline-none text-white"
                     />
                   </div>
 
@@ -382,7 +366,7 @@ export default function TemplateEditorPage() {
                     <button
                       type="button"
                       onClick={() => removeDay(dayIndex)}
-                      className="planner-secondary-action planner-secondary-action--danger"
+                      className="template-day-remove"
                     >
                       <Trash2 size={13} />
                       Usuń dzień
@@ -391,6 +375,14 @@ export default function TemplateEditorPage() {
                 </div>
 
                 <div className="template-exercise-list">
+                  {day.exercises.length > 0 && (
+                    <div className="template-exercise-columns" aria-hidden="true">
+                      <span>Ćwiczenie</span>
+                      <span>Serie</span>
+                      <span>Powt.</span>
+                      <span>Ciężar</span>
+                    </div>
+                  )}
                   {day.exercises.map((exercise, exerciseIndex) => (
                     <div
                       key={`${dayIndex}-${exercise.exerciseSource}-${exercise.exerciseId}`}
@@ -398,18 +390,11 @@ export default function TemplateEditorPage() {
                     >
                       <div className="template-exercise-row-head">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-semibold text-white">{exercise.name}</p>
-                            <span
-                              className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                              style={{
-                                background: exercise.exerciseSource === 'user' ? 'var(--accent-soft)' : 'rgba(255,255,255,0.05)',
-                                border: `1px solid ${exercise.exerciseSource === 'user' ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-                                color: exercise.exerciseSource === 'user' ? 'var(--accent)' : 'var(--muted)',
-                              }}
-                            >
-                              {exercise.exerciseSource === 'user' ? 'moje' : 'global'}
-                            </span>
+                          <div className="template-exercise-identity">
+                            <p>{exercise.name}</p>
+                            {exercise.exerciseSource === 'user' && (
+                              <span className="template-exercise-source">moje</span>
+                            )}
                           </div>
                         </div>
 
@@ -424,10 +409,11 @@ export default function TemplateEditorPage() {
                       </div>
 
                       <div className="template-exercise-inputs">
-                        <label className="flex flex-col gap-2">
-                          <span className="stat-meta">Serie</span>
+                        <label>
+                          <span className="template-input-label">Serie — {exercise.name}</span>
                           <input
                             type="number"
+                            aria-label={`Serie — ${exercise.name}`}
                             inputMode="numeric"
                             min={1}
                             value={exercise.sets === 0 ? '' : exercise.sets}
@@ -435,15 +421,15 @@ export default function TemplateEditorPage() {
                               ...current,
                               sets: toPositiveInt(event.target.value, 1),
                             }))}
-                            className="rounded-[var(--radius-md)] px-3 py-2.5 text-sm text-white outline-none"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
+                            className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />
                         </label>
 
-                        <label className="flex flex-col gap-2">
-                          <span className="stat-meta">Powt. docelowe</span>
+                        <label>
+                          <span className="template-input-label">Powtórzenia docelowe — {exercise.name}</span>
                           <input
                             type="number"
+                            aria-label={`Powtórzenia docelowe — ${exercise.name}`}
                             inputMode="numeric"
                             min={0}
                             value={exercise.targetReps === 0 ? '' : exercise.targetReps}
@@ -451,15 +437,15 @@ export default function TemplateEditorPage() {
                               ...current,
                               targetReps: toPositiveInt(event.target.value, 0),
                             }))}
-                            className="rounded-[var(--radius-md)] px-3 py-2.5 text-sm text-white outline-none"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
+                            className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />
                         </label>
 
-                        <label className="flex flex-col gap-2">
-                          <span className="stat-meta">Ciężar startowy</span>
+                        <label>
+                          <span className="template-input-label">Ciężar startowy — {exercise.name}</span>
                           <input
                             type="number"
+                            aria-label={`Ciężar startowy — ${exercise.name}`}
                             inputMode="decimal"
                             min={0}
                             step="0.5"
@@ -468,8 +454,7 @@ export default function TemplateEditorPage() {
                               ...current,
                               targetWeight: toPositiveFloat(event.target.value, 0),
                             }))}
-                            className="rounded-[var(--radius-md)] px-3 py-2.5 text-sm text-white outline-none"
-                            style={{ background: 'var(--input-bg)', border: '1px solid var(--border)' }}
+                            className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />
                         </label>
                       </div>
@@ -489,7 +474,7 @@ export default function TemplateEditorPage() {
                   <motion.button
                     type="button"
                     onClick={() => setPickerDayIndex(dayIndex)}
-                    className="planner-secondary-action"
+                    className="planner-secondary-action template-day-add-exercise"
                     whileTap={{ scale: 0.97 }}
                   >
                     <Plus size={15} />
@@ -517,7 +502,6 @@ export default function TemplateEditorPage() {
 
               <div className="template-editor-summary-note">
                 <p>{(template?.name ?? name.trim()) || 'Nowy plan'}</p>
-                <span>Każdy dzień zapisuje ćwiczenia z domyślnymi seriami, powtórzeniami i ciężarem startowym.</span>
               </div>
             </div>
 

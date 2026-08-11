@@ -4770,8 +4770,8 @@ a {
 
 .planner-empty-example {
   border-top: 1px solid var(--border);
-  background: var(--surface-muted);
-  border-radius: var(--radius-md);
+  background: transparent;
+  border-radius: 0;
 }
 
 .planner-status {
@@ -5020,87 +5020,193 @@ a {
 
 .template-editor-form {
   display: grid;
-  gap: 1rem;
-  margin-top: 1rem;
+  gap: 0;
+  margin-top: 0;
   padding-bottom: calc(1rem + env(safe-area-inset-bottom));
+}
+
+.template-editor-header {
+  display: block;
+}
+
+.template-editor-back {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.35rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  padding: 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 740;
+}
+
+.template-editor-back:hover {
+  color: var(--text-strong);
+}
+
+.template-editor-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  margin-top: 0.25rem;
+}
+
+.planner-header.template-editor-header h1 {
+  font-size: clamp(2.2rem, 8vw, 2.75rem);
 }
 
 .template-editor-layout {
   display: grid;
-  gap: 1rem;
+  gap: clamp(1.25rem, 3vw, 2rem);
 }
 
 .template-editor-main {
   display: grid;
-  gap: 1rem;
+  gap: 0;
   min-width: 0;
 }
 
-.template-name-panel,
-.template-day-editor,
-.template-editor-summary {
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background:
-    linear-gradient(135deg, rgba(240, 67, 90, 0.055), transparent 34%),
-    linear-gradient(180deg, rgba(33, 31, 35, 0.72), rgba(18, 17, 20, 0.94));
-  box-shadow:
-    var(--shadow-soft),
-    inset 0 1px 0 rgba(255, 255, 255, 0.035);
-}
-
 .template-name-panel {
-  padding: 1rem;
+  padding: 1.25rem 0 1.5rem;
 }
 
-.template-name-panel input,
-.template-day-editor input,
-.template-exercise-inputs input {
-  border-radius: var(--radius-sm) !important;
+.template-text-input,
+.template-number-input {
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+}
+
+.template-text-input:focus-visible,
+.template-number-input:focus-visible {
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .template-day-editor {
-  padding: 1rem;
+  border: 0;
+  border-top: 1px solid var(--border-strong);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 1.4rem 0 1.55rem;
 }
 
 .template-day-editor-head {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
-  justify-content: space-between;
   gap: 0.85rem;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.template-day-editor-head > div {
+  max-width: 34rem;
+}
+
+.template-day-remove {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.4rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  padding: 0 0.55rem;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 740;
+}
+
+.template-day-remove:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .template-exercise-list {
   display: grid;
   border-top: 1px solid rgba(244, 241, 242, 0.1);
-  border-bottom: 1px solid rgba(244, 241, 242, 0.1);
+}
+
+.template-exercise-columns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.45rem;
+  padding: 0.55rem 0 0.2rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 720;
+}
+
+.template-exercise-columns span:first-child {
+  display: none;
 }
 
 .template-exercise-row {
   display: grid;
-  gap: 0.85rem;
+  gap: 0.65rem;
   border-bottom: 1px solid rgba(244, 241, 242, 0.1);
   background: transparent;
-  padding: 0.95rem 0;
-}
-
-.template-exercise-row:last-child {
-  border-bottom: 0;
+  padding: 0.8rem 0;
 }
 
 .template-exercise-row-head {
   display: flex;
-  align-items: start;
+  align-items: center;
   justify-content: space-between;
   gap: 0.8rem;
+}
+
+.template-exercise-row .planner-icon-action--danger {
+  color: var(--muted);
+}
+
+.template-exercise-row .planner-icon-action--danger:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.template-exercise-identity {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.template-exercise-identity p {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 0.9rem;
+  font-weight: 740;
+}
+
+.template-exercise-source {
+  color: var(--muted);
+  font-size: 0.68rem;
+  font-weight: 690;
+}
+
+.template-exercise-source::before {
+  content: "·";
+  margin-right: 0.35rem;
+  color: var(--muted-soft);
+}
+
+.template-exercise-source[data-source='user'] {
+  color: var(--accent-text);
 }
 
 .template-exercise-inputs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.65rem;
+  gap: 0.45rem;
 }
 
 .template-exercise-inputs label,
@@ -5109,10 +5215,29 @@ a {
   width: 100%;
 }
 
+.template-exercise-inputs label {
+  position: relative;
+}
+
+.template-input-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.template-number-input {
+  min-height: 2.75rem;
+  font-family: var(--font-mono);
+}
+
 .template-day-empty {
-  border: 1px dashed rgba(244, 241, 242, 0.14);
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.018);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
   color: var(--muted);
   padding: 1rem;
   font-size: 0.82rem;
@@ -5122,7 +5247,20 @@ a {
   display: flex;
   flex-wrap: wrap;
   gap: 0.65rem;
-  margin-top: 0.85rem;
+  margin-top: 0.55rem;
+}
+
+.template-day-add-exercise {
+  border: 0;
+  background: transparent;
+  padding-inline: 0.25rem;
+  color: var(--muted);
+}
+
+.template-day-add-exercise:hover {
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-strong);
 }
 
 .template-editor-side {
@@ -5132,22 +5270,25 @@ a {
 }
 
 .template-editor-summary {
-  padding: 1rem;
+  border-block: 1px solid var(--border-strong);
+  border-inline: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 1rem 0;
 }
 
 .template-editor-summary-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0;
-  overflow: hidden;
   margin-top: 0.85rem;
-  border-top: 1px solid rgba(244, 241, 242, 0.1);
-  border-bottom: 1px solid rgba(244, 241, 242, 0.1);
+  background: var(--surface-muted);
 }
 
 .template-editor-summary-grid div {
   padding: 0.8rem;
-  border-right: 1px solid rgba(244, 241, 242, 0.08);
+  border-right: 1px solid var(--border);
 }
 
 .template-editor-summary-grid div:last-child {
@@ -5172,8 +5313,7 @@ a {
 
 .template-editor-summary-note {
   margin-top: 0.85rem;
-  border-top: 1px solid rgba(244, 241, 242, 0.1);
-  padding: 0.85rem 0 0;
+  padding: 0;
 }
 
 .template-editor-summary-note p {
@@ -5182,17 +5322,21 @@ a {
   font-weight: 760;
 }
 
-.template-editor-summary-note span {
-  display: block;
-  margin-top: 0.4rem;
-  color: var(--muted);
-  font-size: 0.78rem;
-  line-height: 1.45;
-}
-
 .template-editor-add-day,
 .template-editor-bottom-actions .planner-primary-action {
   width: 100%;
+}
+
+.template-editor-add-day,
+.template-editor-mobile-add-day {
+  border: 0;
+  background: var(--surface-muted);
+}
+
+.template-editor-add-day:hover,
+.template-editor-mobile-add-day:hover {
+  border-color: transparent;
+  background: rgba(255, 255, 255, 0.055);
 }
 
 .template-editor-bottom-actions {
@@ -5227,6 +5371,10 @@ a {
     align-items: start;
   }
 
+  .template-editor-header {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .planner-header-actions {
     justify-content: flex-end;
   }
@@ -5257,6 +5405,27 @@ a {
 
   .template-exercise-inputs {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .template-exercise-row {
+    grid-template-columns: minmax(11rem, 0.6fr) minmax(0, 1fr);
+    align-items: end;
+    gap: 1rem;
+  }
+
+  .template-exercise-row-head {
+    min-height: 2.75rem;
+  }
+
+  .template-exercise-columns {
+    grid-template-columns: minmax(11rem, 0.6fr) repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+    padding-left: 0;
+  }
+
+  .template-exercise-columns span:first-child {
+    display: block;
+    margin-right: 0.55rem;
   }
 
   .template-editor-bottom-actions {
@@ -5290,16 +5459,19 @@ a {
   }
 
   .template-editor-header {
-    padding-top: 2.15rem;
+    padding-top: 1rem;
   }
 
   .template-editor-form {
-    margin-top: 0.75rem;
+    margin-top: 0;
   }
 
-  .template-name-panel,
+  .template-name-panel {
+    padding: 1.1rem 0 1.3rem;
+  }
+
   .template-day-editor {
-    padding: 0.85rem;
+    padding: 1.2rem 0 1.35rem;
   }
 
   .template-day-editor-head {
@@ -5307,11 +5479,15 @@ a {
   }
 
   .template-day-empty {
-    padding: 0.85rem;
+    padding: 0.9rem;
   }
 
   .planner-mini-stats {
     width: 100%;
+  }
+
+  .template-editor-heading .planner-mini-stats {
+    width: auto;
   }
 
   .planner-primary-action {
@@ -5329,7 +5505,7 @@ a {
 
 @media (max-width: 1023px) {
   .template-editor-form {
-    padding-bottom: calc(12rem + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
   }
 
   .template-editor-desktop-save {
@@ -5370,9 +5546,9 @@ a {
     align-items: center;
     gap: 0.75rem;
     padding: 0.65rem;
-    border: 1px solid rgba(244, 241, 242, 0.12);
-    border-radius: var(--radius-sm);
-    background: rgba(18, 17, 20, 0.98);
+    border: 0;
+    border-radius: var(--radius-lg);
+    background: var(--bg-elevated);
     box-shadow: 0 -12px 36px rgba(0, 0, 0, 0.42);
   }
 
@@ -8890,31 +9066,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .planner-day-chip:hover {
   background: var(--surface-muted);
-}
-
-.template-name-panel,
-.template-day-editor {
-  border: 0;
-  border-top: 1px solid var(--border-strong);
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  padding: 1.2rem 0;
-}
-
-.template-editor-summary {
-  border-block: 1px solid var(--border-strong);
-  border-inline: 0;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  padding-inline: 0;
-}
-
-.template-day-empty {
-  border-inline: 0;
-  border-radius: 0;
-  background: transparent;
 }
 
 /* Exercise library and detail */

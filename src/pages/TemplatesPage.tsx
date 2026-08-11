@@ -14,6 +14,7 @@ import {
   getTemplates,
   type WorkoutTemplate,
 } from '../lib/templateService'
+import { polishPlural } from '../lib/polishPlural'
 
 interface TemplateDeleteOperation {
   target: WorkoutTemplate
@@ -126,11 +127,13 @@ export default function TemplatesPage() {
             <div className="planner-mini-stats" aria-label="Podsumowanie planów">
               <span>
                 <strong>{plannerStats.templates}</strong>
-                plany
+                {' '}
+                {polishPlural(plannerStats.templates, 'plan', 'plany', 'planów')}
               </span>
               <span>
                 <strong>{plannerStats.days}</strong>
-                dni
+                {' '}
+                {polishPlural(plannerStats.days, 'dzień', 'dni', 'dni')}
               </span>
               <span>
                 <strong>{plannerStats.exercises}</strong>

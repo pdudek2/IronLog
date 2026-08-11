@@ -6400,7 +6400,7 @@ a {
 }
 
 .workout-mobile-action-bar {
-  bottom: calc(5.9rem + env(safe-area-inset-bottom, 0px));
+  bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
   z-index: 45;
   transition: bottom 220ms ease;
 }
@@ -6438,6 +6438,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 
 .workout-control-panel {
   padding: 1.1rem;
+}
+
+.workout-control-panel .rest-timer-bar {
+  margin-bottom: 0.75rem;
 }
 
 .workout-time-card {
@@ -6780,8 +6784,9 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 .overload-hint-apply {
   min-height: 1.85rem;
   padding: 0 0.7rem;
-  border: 1px solid color-mix(in srgb, var(--hint-accent) 28%, transparent);
-  background: color-mix(in srgb, var(--hint-accent) 8%, transparent);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--hint-accent);
   font-size: 0.72rem;
   font-weight: 800;
@@ -6802,6 +6807,12 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 .overload-hint-apply:active,
 .overload-hint-dismiss:active {
   transform: scale(0.96);
+}
+
+.overload-hint-apply:focus-visible,
+.overload-hint-dismiss:focus-visible {
+  outline: 2px solid var(--hint-accent);
+  outline-offset: 2px;
 }
 
 .workout-add-set {
@@ -6945,7 +6956,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 }
 
 .session-instrument-node span,
-.workout-session-totals span,
 .workout-exercise-ledger span {
   color: var(--muted);
   font-size: 0.68rem;
@@ -7010,57 +7020,22 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   opacity: 0.45;
 }
 
-.session-instrument-foot,
-.workout-session-totals {
+.session-instrument-foot {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
-.session-instrument-foot span,
-.workout-session-totals div {
+.session-instrument-foot span {
   min-width: 0;
   color: var(--muted);
   font-size: 0.72rem;
   line-height: 1.3;
 }
 
-.session-instrument-foot b,
-.workout-session-totals strong {
+.session-instrument-foot b {
   color: var(--text-strong);
   font-weight: 760;
-}
-
-.workout-session-totals {
-  border-left: 1px solid rgba(244, 241, 242, 0.1);
-  padding-left: 1rem;
-}
-
-.workout-session-totals div {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.2rem 0.5rem;
-  border-bottom: 1px solid rgba(244, 241, 242, 0.08);
-  padding: 0 0 0.7rem;
-}
-
-.workout-session-totals div:last-child {
-  border-bottom: 0;
-  padding-bottom: 0;
-}
-
-.workout-session-totals strong {
-  grid-column: 1;
-  font-size: 1.45rem;
-  line-height: 1;
-}
-
-.workout-session-totals svg {
-  grid-row: 1 / span 2;
-  grid-column: 2;
-  color: var(--accent);
-  align-self: center;
 }
 
 .workout-exercise-card {
@@ -7156,8 +7131,13 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   }
 
   .overload-hint {
-    gap: 0.45rem;
-    padding-block: 0.48rem;
+    min-height: 3.25rem;
+    gap: 0.25rem;
+    margin-block: 0.35rem 0.5rem;
+    padding: 0.25rem 0.3rem 0.25rem 0.75rem;
+    border: 0;
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--hint-accent) 8%, var(--bg-elevated));
   }
 
   .workout-exercise-stack {
@@ -7186,14 +7166,18 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   }
 
   .overload-hint-apply {
-    min-height: 1.7rem;
-    padding-inline: 0.55rem;
-    font-size: 0.68rem;
+    min-height: 2.75rem;
+    min-width: 3.5rem;
+    padding-inline: 0.6rem;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    font-size: 0.7rem;
   }
 
   .overload-hint-dismiss {
-    width: 1.65rem;
-    height: 1.65rem;
+    width: 2.75rem;
+    height: 2.75rem;
   }
 }
 
@@ -8375,34 +8359,30 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 /* ── Rest timer bar (inline in bottom sticky) ───── */
 .rest-timer-bar {
   position: relative;
-  border-radius: var(--radius-lg);
-  background-color: var(--puls-black-deep);
-  background-image: linear-gradient(180deg, rgba(240, 67, 90, 0.12) 0%, rgba(240, 67, 90, 0.045) 100%);
-  border: 1px solid var(--live-border);
-  box-shadow: inset 0 1px 0 rgba(240, 67, 90, 0.14);
+  border: 0;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+  box-shadow: none;
   overflow: hidden;
 }
 
 .rest-timer-bar[data-finished="true"] {
-  border-color: rgba(143, 184, 160, 0.42);
-  background-image: linear-gradient(180deg, rgba(143, 184, 160, 0.14) 0%, rgba(143, 184, 160, 0.05) 100%);
-  box-shadow: inset 0 1px 0 rgba(143, 184, 160, 0.18);
-  animation: rest-timer-pulse 1.4s ease-in-out infinite;
+  background: color-mix(in srgb, var(--success) 10%, var(--bg-elevated));
 }
 
 .rest-timer-progress {
   position: absolute;
-  top: 0;
+  bottom: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.04);
+  height: 2px;
+  background: transparent;
   overflow: hidden;
 }
 
 .rest-timer-progress-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-text) 100%);
+  background: var(--accent-text);
   transition: width 250ms linear;
 }
 
@@ -8412,9 +8392,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 
 .rest-timer-content {
   display: flex;
+  min-height: 3.5rem;
   align-items: center;
   gap: 0.55rem;
-  padding: 0.7rem 0.85rem;
+  padding: 0.35rem 0.45rem 0.45rem 0.75rem;
   color: var(--text);
 }
 
@@ -8442,9 +8423,9 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   min-height: 2.75rem;
   min-width: 2.75rem;
   padding: 0.35rem 0.7rem;
-  border-radius: var(--radius-pill);
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid var(--border);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
   color: var(--text-strong);
   font-size: 0.78rem;
   font-weight: 700;
@@ -8461,12 +8442,18 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 
 .rest-timer-action:active {
   transform: scale(0.95);
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-@keyframes rest-timer-pulse {
-  0%, 100% { box-shadow: 0 24px 56px rgba(0,0,0,0.7), 0 0 0 1px rgba(143,184,160,0.16), inset 0 1px 0 rgba(143,184,160,0.2); }
-  50% { box-shadow: 0 24px 56px rgba(0,0,0,0.7), 0 0 0 2px rgba(143,184,160,0.32), inset 0 1px 0 rgba(143,184,160,0.28); }
+.rest-timer-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .rest-timer-action:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
 }
 
 /* ── Set stepper buttons ────────────────────────── */
@@ -9888,11 +9875,12 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   outline-offset: 2px;
 }
 
-.workout-focus-shell .workout-set-toggle:hover,
-.workout-focus-shell .workout-set-remove:hover,
-.workout-focus-shell .workout-add-set:hover {
-  border-radius: var(--radius-sm);
-  background: rgba(255, 255, 255, 0.04) !important;
+@media (hover: hover) and (pointer: fine) {
+  .workout-focus-shell .workout-set-remove:hover,
+  .workout-focus-shell .workout-add-set:hover {
+    border-radius: var(--radius-sm);
+    background: rgba(255, 255, 255, 0.04) !important;
+  }
 }
 
 .workout-focus-shell .workout-add-set {

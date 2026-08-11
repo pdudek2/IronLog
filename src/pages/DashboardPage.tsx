@@ -906,7 +906,7 @@ export default function DashboardPage() {
                 <button
                   type="button"
                   onClick={() => navigate('/history')}
-                  className="puls-link-button px-3 py-2 text-sm font-medium whitespace-nowrap"
+                  className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
                 >
                   Zobacz wszystkie
                   <ChevronRight size={15} strokeWidth={2.3} />

@@ -233,7 +233,9 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   whileTap={{ scale: 0.9 }}
                   animate={set.done ? { scale: [1, 1.08, 1] } : { scale: 1 }}
                   transition={{ duration: 0.25 }}
-                  aria-label={set.done ? `Odznacz serię ${setIndex + 1}` : `Oznacz serię ${setIndex + 1}`}
+                  aria-label={set.done
+                    ? `Odznacz serię ${setIndex + 1} ćwiczenia ${exercise.name}`
+                    : `Oznacz serię ${setIndex + 1} ćwiczenia ${exercise.name}`}
                 >
                   {set.done ? <Check size={16} /> : setIndex + 1}
                 </motion.button>

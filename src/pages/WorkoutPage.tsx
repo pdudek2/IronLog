@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Check, Dumbbell, Flame, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
+import { Dumbbell, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -201,9 +201,9 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
   return (
     <motion.div
       key="rest-timer-bar"
-      initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-      animate={{ opacity: 1, height: 'auto', marginBottom: variant === 'full' ? 12 : 0 }}
-      exit={{ opacity: 0, height: 0, marginBottom: 0 }}
+      initial={{ opacity: 0, height: 0 }}
+      animate={{ opacity: 1, height: 'auto' }}
+      exit={{ opacity: 0, height: 0 }}
       transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
       className="rest-timer-bar"
       data-finished={restRemainingMs === 0}
@@ -1130,25 +1130,6 @@ export default function WorkoutPage() {
                       <span><b>{completedSets}/{totalSets || 0}</b> serii</span>
                       <span><b>{formatCompactVolume(totalVolume, units)}</b></span>
                       <span><b>{remainingSets}</b> otwarte</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="hidden w-full xl:block xl:w-[24rem]">
-                  <div className="workout-session-totals">
-                    <div>
-                      <span>Serie</span>
-                      <strong className="tabular-nums">{completedSets}/{totalSets || 0}</strong>
-                      <Check size={14} aria-hidden="true" />
-                    </div>
-                    <div>
-                      <span>Objętość</span>
-                      <strong className="tabular-nums">{formatCompactVolume(totalVolume, units)}</strong>
-                      <Flame size={14} aria-hidden="true" />
-                    </div>
-                    <div>
-                      <span>Ćwiczenia</span>
-                      <strong className="tabular-nums">{totalExercises}</strong>
-                      <Layers3 size={14} aria-hidden="true" />
                     </div>
                   </div>
                 </div>

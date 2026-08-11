@@ -78,4 +78,20 @@ describe('TemplatesPage data states', () => {
     expect(screen.getByText('Upper / Lower · 4 dni')).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
   })
+
+  it('uses correct singular forms in the plan summary', async () => {
+    mocks.getTemplates.mockResolvedValue([{
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Plan testowy',
+      createdAt: 1,
+      updatedAt: 1,
+      days: [{ name: 'Dzień 1', exercises: [] }],
+    }])
+
+    render(<TemplatesPage />)
+
+    expect(await screen.findByLabelText('Podsumowanie planów')).toHaveTextContent('1 plan')
+    expect(screen.getByLabelText('Podsumowanie planów')).toHaveTextContent('1 dzień')
+  })
 })

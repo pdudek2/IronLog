@@ -275,7 +275,7 @@ test.describe('Active workout shell reduction', () => {
 
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
-    await page.getByRole('button', { name: 'Oznacz serię 1' }).click()
+    await page.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' }).click()
 
     await expect(page.locator('.rest-timer-bar')).toHaveCount(1)
     expect(await page.evaluate(() => (
@@ -342,7 +342,7 @@ test.describe('Active workout shell reduction', () => {
     await addExercise(page, 'Squat')
 
     const firstSetRow = page.locator('.workout-set-row').first()
-    const doneButton = page.getByRole('button', { name: 'Oznacz serię 1' })
+    const doneButton = page.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' })
     await firstSetRow.locator('input').nth(0).fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
     await doneButton.click()
@@ -371,6 +371,14 @@ test.describe('Active workout shell reduction', () => {
         pageShellBottomPadding: pageShell
           ? Number.parseFloat(window.getComputedStyle(pageShell).paddingBottom)
           : undefined,
+        expectedRestTimerBackground: (() => {
+          const probe = document.createElement('div')
+          probe.style.background = 'color-mix(in srgb, var(--accent) 8%, var(--bg-elevated))'
+          document.body.append(probe)
+          const background = window.getComputedStyle(probe).backgroundColor
+          probe.remove()
+          return background
+        })(),
         restTimerBackground: restTimer
           ? window.getComputedStyle(restTimer).backgroundColor
           : undefined,
@@ -382,7 +390,7 @@ test.describe('Active workout shell reduction', () => {
       }
     })
 
-    expect(dockGeometry.restTimerBackground).toBe('rgb(11, 10, 12)')
+    expect(dockGeometry.restTimerBackground).toBe(dockGeometry.expectedRestTimerBackground)
     expect(dockGeometry.pageShellBottomPadding! + dockGeometry.sessionGridBottomPadding!).toBeGreaterThanOrEqual(
       dockGeometry.actionBarHeight! + dockGeometry.navigationHeight! + 16,
     )
@@ -454,7 +462,7 @@ test.describe('Active workout shell reduction', () => {
 
     await addExercise(page, 'Squat')
 
-    const doneButton = page.getByRole('button', { name: 'Oznacz serię 1' })
+    const doneButton = page.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' })
     const removeSetButton = page.getByRole('button', { name: 'Usuń serię 1' })
     const actionBar = page.locator('.workout-mobile-action-bar')
 
@@ -511,7 +519,7 @@ test.describe('Active workout shell reduction', () => {
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
     await doneButton.click()
-    await expect(page.getByRole('button', { name: 'Odznacz serię 1' })).toHaveCSS('color', 'rgb(143, 184, 160)')
+    await expect(page.getByRole('button', { name: 'Odznacz serię 1 ćwiczenia Squat' })).toHaveCSS('color', 'rgb(143, 184, 160)')
 
     const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar .tabular-nums').innerText()
     const addRestButton = actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })
@@ -559,7 +567,7 @@ test.describe('Active workout shell reduction', () => {
     const weightInput = firstSetRow.locator('input').nth(0)
     await weightInput.fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
-    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1' }).click()
+    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' }).click()
 
     const actionBar = page.locator('.workout-mobile-action-bar')
     const skipRestButton = actionBar.getByRole('button', { name: 'Pomiń przerwę' })
@@ -638,7 +646,7 @@ test.describe('Active workout shell reduction', () => {
     const firstSetRow = page.locator('.workout-set-row').first()
     await firstSetRow.locator('input').nth(0).fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
-    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1' }).click()
+    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' }).click()
 
     const restTimerBar = page.locator('.rest-timer-bar')
     await expect(restTimerBar).toHaveCount(1)

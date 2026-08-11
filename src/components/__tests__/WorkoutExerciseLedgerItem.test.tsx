@@ -64,6 +64,9 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
 
     expect(weightInput).toHaveValue(132.3)
     expect(screen.getByText('1.1k lbs')).toBeInTheDocument()
+    expect(screen.getByRole('button', {
+      name: 'Oznacz serię 1 ćwiczenia Bench Press',
+    })).toBeInTheDocument()
 
     fireEvent.change(weightInput, { target: { value: '100' } })
 

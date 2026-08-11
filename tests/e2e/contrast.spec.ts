@@ -182,8 +182,10 @@ test.describe('Contrast contracts', () => {
     expect(contrastRatio(mutedSoft, surface2), '--muted-soft on --surface-2').toBeGreaterThanOrEqual(4.5)
 
     const actualSurfaceStops = gradientColors(helperStyles.surfaceBackgroundImage)
-    expect(actualSurfaceStops.length, `painted helper surface ${helperStyles.surfaceClassName}`).toBeGreaterThan(0)
-    for (const stop of actualSurfaceStops) {
+    const actualSurfaceColors = actualSurfaceStops.length > 0
+      ? actualSurfaceStops
+      : [parseColor(helperStyles.surfaceBackgroundColor)]
+    for (const stop of actualSurfaceColors) {
       const paintedStop = stop.a < 1 ? composite(stop, pageBackground) : stop
       expect(
         contrastRatio(parseColor(helperStyles.color), paintedStop),

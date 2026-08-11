@@ -35,11 +35,6 @@ function NavBtn({ icon, label, active, onClick, preloadTo }: NavBtnProps) {
     >
       {icon}
       <span className="text-[9px] font-semibold">{label}</span>
-      <span
-        className="h-1 w-5 rounded-full transition-opacity"
-        style={{ background: 'var(--accent-text)', opacity: active ? 1 : 0 }}
-        aria-hidden="true"
-      />
     </motion.button>
   )
 }
@@ -124,16 +119,16 @@ export default function BottomNav() {
       aria-label="Nawigacja dolna"
       aria-hidden={navHidden ? true : undefined}
       inert={navHidden}
-      className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 lg:hidden"
+      className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex justify-center lg:hidden"
       style={{
-        paddingBottom: 'max(0.85rem, env(safe-area-inset-bottom, 0px))',
+        paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
         transform: navHidden ? 'translateY(calc(100% + env(safe-area-inset-bottom, 0px) + 1rem))' : 'translateY(0)',
         opacity: navHidden ? 0 : 1,
         pointerEvents: navHidden ? 'none' : 'auto',
         transition: 'transform 220ms ease, opacity 180ms ease',
       }}
     >
-      <div className="bottom-nav-panel flex w-full max-w-sm items-center gap-1 rounded-[var(--radius-xl)] px-3 py-2.5">
+      <div className="bottom-nav-panel flex w-full items-center gap-1">
         <NavBtn
           icon={<LayoutDashboard size={20} />}
           label="Start"
@@ -175,7 +170,6 @@ export default function BottomNav() {
           style={{
             background: 'var(--primary-gradient)',
             color: 'var(--accent-foreground)',
-            boxShadow: '0 12px 28px rgba(240,67,90,0.22)',
           }}
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}

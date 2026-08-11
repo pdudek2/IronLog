@@ -1,6 +1,5 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
 import BottomNav from './BottomNav'
 import MobileInteractionProvider from './MobileInteractionProvider'
 import TopNav from './TopNav'
@@ -38,13 +37,9 @@ function isWorkoutFocusShell(path: string): boolean {
 function PageFallback() {
   return (
     <div className="flex min-h-[50dvh] items-center justify-center">
-      <motion.div
-        aria-hidden="true"
-        className="h-10 w-10 rounded-[var(--radius-md)]"
-        style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)' }}
-        animate={{ rotate: 360 }}
-        transition={{ repeat: Infinity, ease: 'linear', duration: 1.4 }}
-      />
+      <div className="puls-loader" aria-hidden="true">
+        <span>IL</span>
+      </div>
     </div>
   )
 }

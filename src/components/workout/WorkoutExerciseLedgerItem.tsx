@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion } from 'framer-motion'
-import { Check, Plus, Trash2, X } from 'lucide-react'
+import { Check, ChevronDown, Plus, Trash2, X } from 'lucide-react'
 import OverloadHint from '../OverloadHint'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../../store/workoutStore'
 import type { OverloadSuggestion } from '../../lib/overloadService'
@@ -24,6 +24,8 @@ interface WorkoutExerciseLedgerItemProps {
   focusSetIndex: number
   hintDismissed: boolean
   hintKey: string
+  isCollapsible: boolean
+  isExpanded: boolean
   isFocusedExercise: boolean
   suggestion: OverloadSuggestion | null
   units: Units
@@ -31,6 +33,7 @@ interface WorkoutExerciseLedgerItemProps {
   onAdjustSet: (exerciseIndex: number, setIndex: number, field: SetField, delta: number) => void
   onApplySuggestion: (exerciseIndex: number, hintKey: string, weight: number) => void
   onDismissSuggestion: (hintKey: string) => void
+  onExpandExercise: (exerciseClientId: string) => void
   onRemoveExercise: (exerciseIndex: number) => void
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void
   onToggleSet: (exerciseIndex: number, setIndex: number) => void
@@ -75,6 +78,8 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   focusSetIndex,
   hintDismissed,
   hintKey,
+  isCollapsible,
+  isExpanded,
   isFocusedExercise,
   suggestion,
   units,
@@ -82,6 +87,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   onAdjustSet,
   onApplySuggestion,
   onDismissSuggestion,
+  onExpandExercise,
   onRemoveExercise,
   onRemoveSet,
   onToggleSet,
@@ -104,14 +110,44 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
     <motion.div
       className="workout-exercise-card"
       data-active={isFocusedExercise}
+      data-expanded={isExpanded}
       style={{ '--exercise-accent': exerciseAccent } as React.CSSProperties}
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
     >
-      <div className="workout-exercise-head mb-4 flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
+      <div className="workout-exercise-head mb-4 flex items-start justify-between gap-2">
+        {isCollapsible ? (
+          <button
+            type="button"
+            className="workout-exercise-toggle"
+            onClick={() => onExpandExercise(exerciseClientId)}
+            aria-expanded={isExpanded}
+            aria-controls={`workout-exercise-body-${exerciseIndex}`}
+            aria-label={`${isExpanded ? 'Zwiń' : 'Rozwiń'} ćwiczenie ${exercise.name}`}
+          >
+            <span className="min-w-0 text-left">
+              {(categoryLabel || equipmentLabel) && (
+                <span className="workout-exercise-meta block">
+                  {categoryLabel && (
+                    <span style={{ color: exerciseAccent }}>
+                      {categoryLabel}
+                    </span>
+                  )}
+                  {categoryLabel && equipmentLabel && ' · '}
+                  {equipmentLabel}
+                </span>
+              )}
+              <span className="workout-exercise-name mt-1.5 block text-lg font-semibold text-white">{exercise.name}</span>
+              <span className="workout-exercise-compact-summary tabular-nums">
+                {exerciseCompleted}/{exercise.sets.length} serii · {formatCompactVolume(exerciseVolume, units)}
+              </span>
+            </span>
+            <ChevronDown className="workout-exercise-chevron" size={18} aria-hidden="true" />
+          </button>
+        ) : (
+          <div className="min-w-0">
           {(categoryLabel || equipmentLabel) && (
             <p className="workout-exercise-meta">
               {categoryLabel && (
@@ -124,7 +160,8 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
             </p>
           )}
           <p className="mt-1.5 text-lg font-semibold text-white">{exercise.name}</p>
-        </div>
+          </div>
+        )}
         <button
           type="button"
           onClick={() => onRemoveExercise(exerciseIndex)}
@@ -137,6 +174,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         </button>
       </div>
 
+      <div id={`workout-exercise-body-${exerciseIndex}`} className="workout-exercise-body">
       <div className="workout-exercise-ledger" aria-label={`Podsumowanie ćwiczenia ${exercise.name}`}>
         <div>
           <span>Postęp</span>
@@ -173,7 +211,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         {exercise.sets.map((set, setIndex) => {
           const setVolume = calcSetVolume(set)
           const showMobileSteppers = !set.done
-            && isFocusedExercise
+            && isExpanded
             && setIndex === focusSetIndex
 
           return (
@@ -279,6 +317,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
           Dodaj serię
         </span>
       </button>
+      </div>
     </motion.div>
   )
 })

@@ -315,10 +315,19 @@ test.describe('Active workout shell reduction', () => {
     expect(fixedUiGeometry.restTimer?.surfacePadding).toBe(0)
     await page.setViewportSize({ width: 390, height: 844 })
     await addExercise(page, 'Bench Press')
-    await addExercise(page, 'Deadlift')
-    const lastWeightInput = page.locator('.workout-exercise-card').last().locator('input').first()
-    await lastWeightInput.evaluate((element) => element.scrollIntoView({ block: 'center' }))
-    await expectFullyInViewport(page, lastWeightInput, 'Dense-session last weight input')
+    const exerciseCards = page.locator('.workout-exercise-card')
+    await expect(exerciseCards).toHaveCount(2)
+    await expect(page.locator('.workout-exercise-toggle[aria-expanded="true"]')).toHaveCount(1)
+    await expect(exerciseCards.first().locator('.workout-exercise-body')).not.toBeVisible()
+    await expect(page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Rozwiń ćwiczenie Squat' }).click()
+    await expect(page.getByRole('button', { name: 'Zwiń ćwiczenie Squat' })).toHaveAttribute('aria-expanded', 'true')
+    await expect(exerciseCards.nth(1).locator('.workout-exercise-body')).not.toBeVisible()
+
+    const activeWeightInput = exerciseCards.first().locator('input').first()
+    await activeWeightInput.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+    await expectFullyInViewport(page, activeWeightInput, 'Expanded exercise weight input')
 
   })
 

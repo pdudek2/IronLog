@@ -324,6 +324,7 @@ export default function WorkoutPage() {
   const [showPicker, setShowPicker] = useState(false)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
+  const [manualExpandedExerciseClientId, setManualExpandedExerciseClientId] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [pendingExerciseRemovalIndex, setPendingExerciseRemovalIndex] = useState<number | null>(null)
@@ -363,6 +364,9 @@ export default function WorkoutPage() {
     const { active: currentActive, toggleSetDone } = useWorkoutStore.getState()
     const currentSet = currentActive?.exercises[exerciseIndex]?.sets[setIndex]
     const wasNotDone = currentSet && !currentSet.done
+    const completesExercise = wasNotDone && currentActive?.exercises[exerciseIndex]?.sets.every(
+      (set, index) => index === setIndex || set.done,
+    )
     if (wasNotDone && parseReps(currentSet.reps) <= 0) {
       toast.error('Wpisz liczbę powtórzeń, zanim oznaczysz serię jako wykonaną.')
       return
@@ -370,6 +374,7 @@ export default function WorkoutPage() {
     toggleSetDone(exerciseIndex, setIndex)
     if (wasNotDone) {
       setRest({ startedAt: Date.now(), totalSec: 90 })
+      if (completesExercise) setManualExpandedExerciseClientId(null)
       if ('vibrate' in navigator) navigator.vibrate(12)
     } else {
       setRest(null)
@@ -434,6 +439,12 @@ export default function WorkoutPage() {
 
   const handlePickExercise = async (id: string, name: string, source: 'global' | 'user') => {
     addExercise(id, name, source)
+    const nextActive = useWorkoutStore.getState().active
+    const addedExerciseIndex = (nextActive?.exercises.length ?? 0) - 1
+    const addedExercise = nextActive?.exercises[addedExerciseIndex]
+    if (addedExercise) {
+      setManualExpandedExerciseClientId(getExerciseClientId(addedExercise, addedExerciseIndex))
+    }
     if (!user) return
     fetchSuggestion(id, source, user.uid)
     try {
@@ -748,6 +759,15 @@ export default function WorkoutPage() {
     return active.exercises.length > 0 ? active.exercises.length - 1 : -1
   })()
   const focusExercise = focusExerciseIndex >= 0 ? active.exercises[focusExerciseIndex] : null
+  const defaultExpandedExerciseClientId = focusExercise
+    ? getExerciseClientId(focusExercise, focusExerciseIndex)
+    : null
+  const manualExpandedExerciseExists = manualExpandedExerciseClientId === '' || active.exercises.some(
+    (exercise, exerciseIndex) => getExerciseClientId(exercise, exerciseIndex) === manualExpandedExerciseClientId,
+  )
+  const expandedExerciseClientId = manualExpandedExerciseExists
+    ? manualExpandedExerciseClientId || null
+    : defaultExpandedExerciseClientId
   const openSetIndex = focusExercise?.sets.findIndex((set) => !set.done) ?? -1
   const focusSetIndex = focusExercise
     ? openSetIndex >= 0
@@ -1239,6 +1259,11 @@ export default function WorkoutPage() {
                       const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
                       const exerciseClientId = getExerciseClientId(exercise, exerciseIndex)
                       const hintKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
+                      const exerciseOpenSetIndex = exercise.sets.findIndex((set) => !set.done)
+                      const exerciseFocusSetIndex = exerciseOpenSetIndex >= 0
+                        ? exerciseOpenSetIndex
+                        : Math.max(exercise.sets.length - 1, 0)
+                      const isExpanded = isDesktop || exerciseClientId === expandedExerciseClientId
 
                       return (
                         <WorkoutExerciseLedgerItem
@@ -1249,9 +1274,11 @@ export default function WorkoutPage() {
                           fallbackExercise={exerciseSnapshotByClientId.get(exerciseClientId) ?? exercise}
                           categoryLabel={exerciseMeta?.category ? (EXERCISE_CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
                           equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
-                          focusSetIndex={exerciseIndex === focusExerciseIndex ? focusSetIndex : -1}
+                          focusSetIndex={exerciseFocusSetIndex}
                           hintDismissed={dismissedHints.has(hintKey)}
                           hintKey={hintKey}
+                          isCollapsible={!isDesktop}
+                          isExpanded={isExpanded}
                           isFocusedExercise={exerciseIndex === focusExerciseIndex}
                           suggestion={suggestions[hintKey] ?? null}
                           units={units}
@@ -1259,6 +1286,9 @@ export default function WorkoutPage() {
                           onAdjustSet={handleAdjustSet}
                           onApplySuggestion={handleApplySuggestion}
                           onDismissSuggestion={handleDismissSuggestion}
+                          onExpandExercise={(clientId) => setManualExpandedExerciseClientId(
+                            clientId === expandedExerciseClientId ? '' : clientId,
+                          )}
                           onRemoveExercise={handleRemoveExercise}
                           onRemoveSet={handleRemoveSet}
                           onToggleSet={handleToggleSet}

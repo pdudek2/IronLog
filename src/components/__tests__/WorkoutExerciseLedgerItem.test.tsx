@@ -9,6 +9,7 @@ const callbacks = {
   onAdjustSet: vi.fn(),
   onApplySuggestion: vi.fn(),
   onDismissSuggestion: vi.fn(),
+  onExpandExercise: vi.fn(),
   onRemoveExercise: vi.fn(),
   onRemoveSet: vi.fn(),
   onToggleSet: vi.fn(),
@@ -48,6 +49,8 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         focusSetIndex={0}
         hintDismissed
         hintKey="global:bench-press"
+        isCollapsible
+        isExpanded
         isFocusedExercise
         suggestion={null}
         units="lbs"
@@ -89,6 +92,8 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         focusSetIndex={0}
         hintDismissed
         hintKey="global:bench-press"
+        isCollapsible
+        isExpanded
         isFocusedExercise
         suggestion={null}
         units="kg"
@@ -112,6 +117,8 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         focusSetIndex={0}
         hintDismissed
         hintKey="global:bench-press"
+        isCollapsible
+        isExpanded
         isFocusedExercise
         suggestion={null}
         units="kg"
@@ -127,5 +134,33 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
 
     expect(callbacks.onAdjustSet).toHaveBeenNthCalledWith(1, 0, 0, 'weight', 2.5)
     expect(callbacks.onAdjustSet).toHaveBeenNthCalledWith(2, 0, 0, 'reps', 1)
+  })
+
+  it('lets a compact exercise request expansion without hiding its identity', () => {
+    render(
+      <WorkoutExerciseLedgerItem
+        exerciseAccent="#f0435a"
+        exerciseClientId="exercise-1"
+        exerciseIndex={0}
+        fallbackExercise={null}
+        focusSetIndex={0}
+        hintDismissed
+        hintKey="global:bench-press"
+        isCollapsible
+        isExpanded={false}
+        isFocusedExercise={false}
+        suggestion={null}
+        units="kg"
+        {...callbacks}
+      />,
+    )
+
+    const expandButton = screen.getByRole('button', { name: 'Rozwiń ćwiczenie Bench Press' })
+    expect(expandButton).toHaveAttribute('aria-expanded', 'false')
+
+    fireEvent.click(expandButton)
+
+    expect(callbacks.onExpandExercise).toHaveBeenCalledWith('exercise-1')
+    expect(screen.getByText('Bench Press')).toBeInTheDocument()
   })
 })

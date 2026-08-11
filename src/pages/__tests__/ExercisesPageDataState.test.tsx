@@ -142,6 +142,12 @@ describe('ExercisesPage user library states', () => {
     expect(await screen.findByText('Brak własnych ćwiczeń')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dodaj pierwsze' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeEnabled()
+    expect(screen.queryByLabelText('Podsumowanie biblioteki ćwiczeń')).not.toBeInTheDocument()
+
+    const globalHeading = screen.getByRole('heading', { name: 'Katalog globalny' })
+    const globalSection = globalHeading.closest('section')
+    expect(globalSection).not.toBeNull()
+    expect(within(globalSection as HTMLElement).getByText('1')).toBeInTheDocument()
   })
 
   it('exposes filter state and exactly one open action per exercise', async () => {

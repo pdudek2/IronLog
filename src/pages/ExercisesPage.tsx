@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { ChevronRight, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
-import NumberFlow from '@number-flow/react'
 import { useAuthStore } from '../store/authStore'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
 import {
@@ -424,7 +423,6 @@ export default function ExercisesPage() {
 
   const filteredUser = userExercises.filter(matchesFilters)
   const filteredGlobal = exercises.filter(matchesFilters)
-  const visibleCount = filteredUser.length + filteredGlobal.length
   const hasActiveFilters = query.trim().length > 0 || category !== 'all' || equipment !== 'all'
   const activeFilterCount = Number(category !== 'all') + Number(equipment !== 'all')
   const clearFilters = () => {
@@ -553,25 +551,6 @@ export default function ExercisesPage() {
         </div>
 
         <div className="planner-header-actions">
-          <div className="planner-mini-stats exercise-library-stats" aria-label="Podsumowanie biblioteki ćwiczeń">
-            <span>
-              <strong><NumberFlow value={exercises.length} /></strong>
-              katalog
-            </span>
-            <span>
-              <strong>
-                {userExercisesState.status === 'success'
-                  ? <NumberFlow value={userExercises.length} />
-                  : '—'}
-              </strong>
-              moje
-            </span>
-            <span data-active={hasActiveFilters}>
-              <strong><NumberFlow value={visibleCount} /></strong>
-              widoczne
-            </span>
-          </div>
-
           <motion.button
             type="button"
             onClick={openCreateForm}

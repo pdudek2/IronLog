@@ -8537,7 +8537,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 /* ── Set stepper buttons ────────────────────────── */
 .set-stepper-row {
   gap: 0 !important;
-  border-block: 1px solid var(--border);
+  overflow: hidden;
+  border: 0;
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--exercise-accent, var(--accent)) 8%, var(--bg-elevated));
 }
 
 .set-stepper-btn {
@@ -8547,7 +8550,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   min-height: 2.75rem;
   padding: 0.45rem 0.35rem;
   border: 0;
-  border-right: 1px solid var(--border);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -8561,17 +8563,15 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   user-select: none;
 }
 
-.set-stepper-btn:last-child {
-  border-right: 0;
-}
-
 .set-stepper-btn:active {
   background: var(--accent-soft);
   transform: scale(0.96);
 }
 
-.set-stepper-btn:hover {
-  background: var(--accent-soft);
+@media (hover: hover) and (pointer: fine) {
+  .set-stepper-btn:hover {
+    background: var(--accent-soft);
+  }
 }
 
 .set-stepper-btn:focus-visible {
@@ -9700,6 +9700,11 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   border-bottom-color: transparent;
 }
 
+.workout-focus-shell .workout-set-input:focus {
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--exercise-accent, var(--accent)) 7%, transparent);
+}
+
 .workout-focus-shell .workout-set-input:focus-visible {
   border-bottom-color: var(--exercise-accent, var(--accent));
 }
@@ -9734,8 +9739,25 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .workout-focus-shell .workout-set-toggle:focus-visible,
 .workout-focus-shell .workout-set-remove:focus-visible {
+  border-radius: var(--radius-sm);
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.workout-focus-shell .workout-set-toggle:hover,
+.workout-focus-shell .workout-set-remove:hover,
+.workout-focus-shell .workout-add-set:hover {
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.workout-focus-shell .workout-add-set {
+  border-top: 0;
+}
+
+.workout-focus-shell .workout-add-set:active {
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .workout-focus-shell .workout-side-metrics {
@@ -9763,6 +9785,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 .workout-exercise-toggle:focus-visible {
+  border-radius: var(--radius-sm);
   outline: 0;
   background: color-mix(in srgb, var(--exercise-accent) 7%, transparent);
   box-shadow: inset 3px 0 0 var(--exercise-accent);

@@ -225,6 +225,7 @@ async function addExercise(page: Page, search: string): Promise<void> {
   await result.click()
   await expect(picker).not.toBeVisible({ timeout: 5_000 })
   await expect(page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })).toHaveCount(0, { timeout: 5_000 })
+  await expect(page.locator('.exercise-picker-overlay')).toHaveCount(0, { timeout: 5_000 })
 }
 
 test.describe('Active workout shell reduction', () => {
@@ -334,20 +335,20 @@ test.describe('Active workout shell reduction', () => {
 
   test('mobile full rest timer keeps the final workout action above an opaque dock', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
-    test.skip(true, 'stale contract after the flat full-width BottomNav rollout; viewport audit covers current rest-timer layout')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
     await page.setViewportSize({ width: 430, height: 932 })
     await goToFreshWorkout(page)
     await addExercise(page, 'Squat')
-    await addExercise(page, 'Bench Press')
 
     const firstSetRow = page.locator('.workout-set-row').first()
+    const doneButton = page.getByRole('button', { name: 'Oznacz serię 1' })
     await firstSetRow.locator('input').nth(0).fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
-    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1' }).click()
+    await doneButton.click()
 
     const actionBar = page.locator('.workout-mobile-action-bar')
+    await expect(actionBar).toBeVisible({ timeout: 10_000 })
     await expect(actionBar).toHaveAttribute('data-variant', 'full')
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await expect(page.locator('nav.bottom-nav')).not.toHaveAttribute('aria-hidden', 'true')

@@ -2,11 +2,13 @@ import type { BrowserDiagnostic } from './browserDiagnostics'
 
 const FIRESTORE_CHANNEL_URL = /^https?:\/\/(?:127\.0\.0\.1:8080|firestore\.googleapis\.com)\/google\.firestore\.v1\.Firestore\/(?:Listen|Write)\/channel\?/
 const FIRESTORE_BATCH_GET_URL = /^https?:\/\/(?:127\.0\.0\.1:8080|firestore\.googleapis\.com)\/v1\/projects\/[^/]+\/databases\/\(default\)\/documents:batchGet\?/
+const FIRESTORE_CONNECTIVITY_PROBE_URL = /^https:\/\/www\.google\.com\/images\/cleardot\.gif\?/
 
 function hasFirestoreRequestUrl(entry: BrowserDiagnostic): boolean {
   return Boolean(entry.url) && (
     FIRESTORE_CHANNEL_URL.test(entry.url!)
     || FIRESTORE_BATCH_GET_URL.test(entry.url!)
+    || FIRESTORE_CONNECTIVITY_PROBE_URL.test(entry.url!)
   )
 }
 

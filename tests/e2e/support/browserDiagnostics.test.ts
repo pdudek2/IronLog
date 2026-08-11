@@ -552,7 +552,7 @@ describe('browser diagnostics controller', () => {
     })).toBe(false)
   })
 
-  it('matches offline resource console errors only for Firestore request URLs', () => {
+  it('matches offline resource errors only for Firestore requests and its connectivity probe', () => {
     const message = 'Failed to load resource: net::ERR_INTERNET_DISCONNECTED'
     expect(isExpectedFirestoreOfflineDiagnostic({
       kind: 'console',
@@ -569,7 +569,26 @@ describe('browser diagnostics controller', () => {
     expect(isExpectedFirestoreOfflineDiagnostic({
       kind: 'console',
       message,
+      url: 'https://www.google.com/images/cleardot.gif?zx=offline-check',
+      blocking: true,
+    })).toBe(true)
+    expect(isExpectedFirestoreOfflineDiagnostic({
+      kind: 'requestfailed',
+      message: 'net::ERR_INTERNET_DISCONNECTED',
+      method: 'GET',
+      url: 'https://www.google.com/images/cleardot.gif?zx=offline-check',
+      blocking: true,
+    })).toBe(true)
+    expect(isExpectedFirestoreOfflineDiagnostic({
+      kind: 'console',
+      message,
       url: 'http://localhost:5174/assets/unrelated.js',
+      blocking: true,
+    })).toBe(false)
+    expect(isExpectedFirestoreOfflineDiagnostic({
+      kind: 'console',
+      message,
+      url: 'https://www.google.com/unrelated',
       blocking: true,
     })).toBe(false)
     expect(isExpectedFirestoreOfflineDiagnostic({

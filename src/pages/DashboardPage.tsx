@@ -2,16 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  BarChart3,
-  CalendarDays,
   ChevronRight,
-  Clock3,
   Play,
   Plus,
-  Sparkles,
-  Target,
   Trash2,
-  TrendingUp,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
@@ -418,8 +412,8 @@ export default function DashboardPage() {
 
   if (dashboardError && !dashboardReady) {
     return (
-      <div className="mx-auto max-w-lg">
-        <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center">
+      <div className="dashboard-load-state" role="alert">
+        <div>
           <p className="text-lg font-semibold text-white">Nie udało się wczytać dashboardu</p>
           <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
             Dane treningów nie dotarły. Sprawdź połączenie i spróbuj ponownie.
@@ -528,11 +522,6 @@ export default function DashboardPage() {
     : latestWorkout
       ? `Ostatni trening: ${latestWorkout.label ?? workoutTitle(latestWorkout)} • ${formatDate(latestWorkout.startedAt)} • ${formatDuration(latestWorkout.startedAt, latestWorkout.finishedAt)}`
       : 'Brak zapisanych treningów.'
-  const comparisonCopy = weeklySessionsDelta === 0
-    ? 'Sesje bez zmian względem poprzedniego tygodnia.'
-    : weeklySessionsDelta > 0
-      ? `${weeklySessionsDelta} ${polishPlural(weeklySessionsDelta, 'sesja', 'sesje', 'sesji')} więcej niż tydzień temu.`
-      : `${Math.abs(weeklySessionsDelta)} ${polishPlural(Math.abs(weeklySessionsDelta), 'sesja', 'sesje', 'sesji')} mniej niż tydzień temu.`
   const weeklySummaryRows = [
     {
       label: 'Cel tygodnia',
@@ -540,7 +529,6 @@ export default function DashboardPage() {
       copy: weeklyDone >= weeklyGoal
         ? 'Cel zamknięty.'
         : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu w tym tygodniu.`,
-      icon: Target,
     },
     {
       label: 'Rytm',
@@ -548,30 +536,21 @@ export default function DashboardPage() {
       copy: weeklySessionsDelta >= 0
         ? `${weeklySessionsDelta === 0 ? 'Tak samo' : `+${weeklySessionsDelta}`} względem poprzedniego tygodnia`
         : `${weeklySessionsDelta} względem poprzedniego tygodnia`,
-      icon: CalendarDays,
     },
     {
       label: 'Mocny dzień',
       value: peakDay?.volume ? `${peakDay.label}` : 'Brak',
       copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume)} • ${peakDay.sets} serii` : 'Brak treningów w tym tygodniu',
-      icon: TrendingUp,
     },
     {
       label: 'Średnia sesja',
       value: avgMinutes ? `${avgMinutes} min` : '—',
       copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession)} na trening` : 'Brak średniej w tym tygodniu',
-      icon: Clock3,
-    },
-    {
-      label: 'Porównanie',
-      value: weeklyVolumeDelta === null ? 'Brak' : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}%`,
-      copy: weeklyVolumeDelta === null ? 'Za mało danych na trend.' : comparisonCopy,
-      icon: BarChart3,
     },
   ]
 
   return (
-    <>
+    <div className="dashboard-page">
         <section className={`dashboard-home${showTodayRecommendation ? ' dashboard-home--today' : ''}`}>
           <motion.div
             className="dashboard-home-copy"
@@ -696,12 +675,11 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12, duration: 0.25 }}
         >
-            <section className="dashboard-overview-grid puls-panel">
+            <section className="dashboard-overview-grid">
               <motion.div className="dashboard-week-panel" {...fadeUp(0.09)}>
                 <div className="dashboard-panel-head">
                   <div>
-                    <p className="eyebrow">Tydzień</p>
-                    <h2 className="section-title mt-2">Ten tydzień</h2>
+                    <h2 className="section-title">Ten tydzień</h2>
                   </div>
                   <div className="dashboard-range-chip">
                     <span>{formatWeekRange(weekDates)}</span>
@@ -741,7 +719,7 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="dashboard-week-board">
-                  <div className="dashboard-week-chart puls-rail">
+                  <div className="dashboard-week-chart">
                     <div className="dashboard-week-chart-head">
                       <div>
                         <p className="stat-meta">Wolumen tygodnia</p>
@@ -776,9 +754,6 @@ export default function DashboardPage() {
 
                   <div className="dashboard-week-side">
                     <div className="dashboard-week-cta">
-                      <p>{weeklyDone >= weeklyGoal
-                        ? 'Cel tygodnia zrobiony'
-                        : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu`}</p>
                       <button
                         type="button"
                         onClick={() => navigate('/progress')}
@@ -790,7 +765,7 @@ export default function DashboardPage() {
                     </div>
 
                     <div className="dashboard-signal-list">
-                      {weeklySummaryRows.map(({ label, value, copy, icon: Icon }, index) => (
+                      {weeklySummaryRows.map(({ label, value, copy }, index) => (
                         <motion.div
                           key={label}
                           className="dashboard-signal-row"
@@ -798,7 +773,6 @@ export default function DashboardPage() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: 0.06 + index * 0.04, duration: 0.2 }}
                         >
-                          <Icon size={15} style={{ color: 'var(--accent)' }} />
                           <div>
                             <span>{label}</span>
                             <strong>{value}</strong>
@@ -813,19 +787,14 @@ export default function DashboardPage() {
               </motion.div>
             </section>
 
-            <section className="dashboard-plan-strip puls-rail">
-              <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+            <section className="dashboard-plan-strip">
+              <div className="dashboard-section-head">
                 <div>
-                  <p className="eyebrow">Moje plany</p>
-                    <h2 className="section-title mt-2">Plany</h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Ostatnio używane.
-                  </p>
+                  <h2 className="section-title">Plany</h2>
                 </div>
                 <motion.button
                   onClick={() => navigate('/templates')}
-                  className="rounded-[var(--radius-md)] px-4 py-2.5 text-sm font-semibold"
-                  style={{ background: 'var(--surface-muted)', border: '1px solid var(--border)', color: 'var(--text-strong)' }}
+                  className="dashboard-section-action"
                   whileTap={{ scale: 0.97 }}
                 >
                   Otwórz plany
@@ -833,17 +802,11 @@ export default function DashboardPage() {
               </div>
 
               {templatesState.status === 'loading' ? (
-                <div
-                  className="rounded-[var(--radius-lg)] px-5 py-8 text-center"
-                  style={{ background: 'var(--surface-muted)' }}
-                >
+                <div className="dashboard-inline-state">
                   <p className="text-sm font-semibold text-white">Ładowanie planów...</p>
                 </div>
               ) : templatesState.status === 'error' ? (
-                <div
-                  className="rounded-[var(--radius-lg)] border border-dashed px-5 py-8 text-center"
-                  style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}
-                >
+                <div className="dashboard-inline-state" role="alert">
                   <p className="text-sm font-semibold text-white">Nie udało się wczytać planów</p>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                     Sprawdź połączenie i spróbuj ponownie.
@@ -853,25 +816,21 @@ export default function DashboardPage() {
                   </Button>
                 </div>
               ) : recentTemplates.length === 0 ? (
-                <div
-                  className="rounded-[var(--radius-lg)] border border-dashed px-5 py-8 text-center"
-                  style={{ borderColor: 'var(--border)', background: 'var(--surface-muted)' }}
-                >
+                <div className="dashboard-inline-state">
                   <p className="text-sm font-semibold text-white">Brak zapisanych szablonów</p>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                     Nie masz jeszcze zapisanych szablonów.
                   </p>
                   <motion.button
                     onClick={() => navigate('/templates/new')}
-                    className="mt-5 rounded-[var(--radius-md)] px-4 py-2.5 text-sm font-semibold"
-                    style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+                    className="dashboard-inline-primary"
                     whileTap={{ scale: 0.97 }}
                   >
                     Utwórz pierwszy plan
                   </motion.button>
                 </div>
               ) : (
-                <div className="dashboard-template-row puls-ledger">
+                <div className="dashboard-template-row">
                   {recentTemplates.map((template) => {
                     const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
                     const requestKey = `dashboard:${template.id}:primary`
@@ -910,7 +869,7 @@ export default function DashboardPage() {
                               <Play size={15} style={{ color: 'var(--accent)' }} />
                             )}
                           </div>
-                          <div className="mt-4 flex flex-wrap gap-2">
+                          <div className="dashboard-template-days">
                             {template.days.slice(0, 3).map((day, index) => (
                               <span
                                 key={`${template.id}-${index}`}
@@ -939,13 +898,10 @@ export default function DashboardPage() {
             </section>
         </motion.div>
 
-        <section className="dashboard-history-section mt-5">
-          <div className="mb-4 flex items-end justify-between gap-4">
+        <section className="dashboard-history-section">
+          <div className="dashboard-section-head">
                 <div>
-                  <p className="eyebrow">
-                    Historia
-                  </p>
-                  <h2 className="section-title mt-2">Ostatnie treningi</h2>
+                  <h2 className="section-title">Ostatnie treningi</h2>
                 </div>
                 <button
                   type="button"
@@ -961,16 +917,10 @@ export default function DashboardPage() {
                 {recentWorkouts.length === 0 ? (
                   <motion.div
                     key="empty"
-                    className="surface-panel rounded-[var(--radius-xl)] p-10 text-center flex flex-col items-center gap-4"
+                    className="dashboard-inline-state"
                     initial={false}
                     animate={{ opacity: 1 }}
                   >
-                    <div
-                      className="w-16 h-16 rounded-[var(--radius-lg)] flex items-center justify-center"
-                      style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
-                    >
-                      <Sparkles size={24} />
-                    </div>
                     <div>
                       <p className="font-semibold text-white mb-1">Brak treningów</p>
                       <p className="text-sm" style={{ color: 'var(--muted)' }}>
@@ -981,8 +931,7 @@ export default function DashboardPage() {
                       type="button"
                       onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
                       disabled={openingWorkout}
-                      className="mt-2 rounded-[var(--radius-md)] px-6 py-2.5 text-sm font-semibold"
-                      style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+                      className="dashboard-inline-primary"
                       whileTap={{ scale: 0.96 }}
                     >
                       {openingWorkout
@@ -1041,10 +990,6 @@ export default function DashboardPage() {
                                     <span className="text-xs" style={{ color: 'var(--muted)' }}>
                                       {formatDate(workout.startedAt)}
                                     </span>
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>·</span>
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                                      {formatDuration(workout.startedAt, workout.finishedAt)}
-                                    </span>
                                   </div>
                                 </div>
                               </button>
@@ -1055,8 +1000,6 @@ export default function DashboardPage() {
                                 style={{
                                   color: 'var(--danger)',
                                   opacity: 0.72,
-                                  background: 'var(--danger-soft)',
-                                  border: '1px solid rgba(240,167,90,0.18)',
                                 }}
                                 whileHover={{ opacity: 1 }}
                                 whileTap={{ scale: 0.85 }}
@@ -1090,28 +1033,23 @@ export default function DashboardPage() {
                               />
                             )}
 
-                            <div className="mt-4 flex flex-wrap gap-2">
+                            <div className="dashboard-history-exercises">
                               {workout.exercises.slice(0, 3).map((exercise) => (
                                 <span
                                   key={`${workout.id}-${exercise.exerciseId ?? exercise.name}`}
-                                  className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                                  style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--text)', border: '1px solid var(--border)' }}
                                 >
                                   {exercise.name}
                                 </span>
                               ))}
                               {workout.exercises.length > 3 && (
-                                <span
-                                  className="rounded-full px-2.5 py-1 text-[11px] font-medium"
-                                  style={{ background: 'rgba(255,255,255,0.03)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                                >
+                                <span>
                                   +{workout.exercises.length - 3}
                                 </span>
                               )}
                             </div>
                           </div>
 
-                          <div className="dashboard-history-metrics puls-ledger">
+                          <div className="dashboard-history-metrics">
                             <div>
                               <span>Objętość</span>
                               <strong>{formatCompactVolume(volume)}</strong>
@@ -1148,6 +1086,6 @@ export default function DashboardPage() {
         onConfirm={() => { void confirmTemplateLaunch() }}
         onCancel={cancelTemplateLaunch}
       />
-    </>
+    </div>
   )
 }

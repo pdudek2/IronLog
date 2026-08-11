@@ -139,7 +139,8 @@ export default function ReadinessWidget({
   if (state.status === 'error') {
     return (
       <motion.div
-        className="readiness-card"
+        className="readiness-card readiness-card--error"
+        role="alert"
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.2 }}

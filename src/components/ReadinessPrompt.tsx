@@ -88,11 +88,7 @@ export default function ReadinessPrompt({ onSaved }: Props) {
       <motion.button
         onClick={handleSave}
         disabled={saving}
-        className="mt-3 w-full rounded-[var(--radius-lg)] py-2.5 text-sm font-semibold disabled:opacity-50"
-        style={{
-          background: 'var(--primary-gradient)',
-          color: 'var(--accent-foreground)',
-        }}
+        className="readiness-save"
         whileTap={{ scale: 0.98 }}
       >
         {saving ? 'Zapisuję...' : 'Zapisz wynik'}

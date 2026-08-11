@@ -9692,58 +9692,65 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .profile-form-panel {
   border: 0;
-  border-top: 1px solid var(--border-strong);
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   clip-path: none;
-  padding: clamp(1.25rem, 3vw, 2rem) 0 0;
+  padding: clamp(1rem, 2.5vw, 1.6rem) 0 0;
 }
 
-.profile-choice-grid,
-.profile-unit-grid {
+.profile-choice-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  border-block: 1px solid var(--border);
+  gap: 0.55rem;
 }
 
 .profile-choice,
 .profile-unit-choice {
   min-width: 0;
   border: 0;
-  border-radius: 0;
-  background: transparent;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
   color: var(--text);
   text-align: left;
+  transition: background-color 160ms ease, color 160ms ease;
 }
 
 .profile-choice {
-  min-height: 5.2rem;
+  min-height: 5rem;
   padding: 0.9rem;
-  border-bottom: 1px solid var(--border);
 }
 
-.profile-choice:nth-child(odd),
-.profile-unit-choice:first-child {
-  border-right: 1px solid var(--border);
-}
-
-.profile-choice:nth-last-child(-n + 2) {
-  border-bottom: 0;
+.profile-unit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
 }
 
 .profile-unit-choice {
   min-height: 3rem;
+  border-radius: 0;
+  background: transparent;
   padding: 0.75rem 1rem;
   font-size: 0.9rem;
   font-weight: 700;
   text-align: center;
 }
 
+.profile-unit-choice + .profile-unit-choice {
+  border-left: 1px solid var(--border);
+}
+
 .profile-choice[aria-pressed="true"],
 .profile-unit-choice[aria-pressed="true"] {
-  background: var(--accent-soft);
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
   color: var(--text-strong);
+}
+
+.profile-choice[aria-pressed="true"] {
   box-shadow: inset 3px 0 0 var(--accent);
 }
 

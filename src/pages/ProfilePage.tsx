@@ -155,9 +155,6 @@ export default function ProfilePage() {
                   ? 'var(--success-gradient)'
                   : 'var(--primary-gradient)',
                 color: saved ? 'var(--success-foreground)' : 'var(--accent-foreground)',
-                boxShadow: saved
-                  ? '0 14px 32px rgba(143,184,160,0.2)'
-                  : '0 14px 32px rgba(240,67,90,0.22)',
               }}
             >
               {saved ? 'Zapisano ✓' : 'Zapisz zmiany'}

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { CalendarDays, ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
@@ -154,7 +154,8 @@ export default function TemplatesPage() {
       <AnimatePresence mode="popLayout">
         {error ? (
           <motion.div
-            className="surface-panel rounded-[var(--radius-xl)] p-10 text-center"
+            className="planner-status"
+            role="alert"
             initial={false}
             animate={{ opacity: 1 }}
           >
@@ -173,9 +174,6 @@ export default function TemplatesPage() {
             animate={{ opacity: 1 }}
           >
             <div className="planner-empty-copy">
-              <span className="planner-empty-icon" aria-hidden="true">
-                <CalendarDays size={20} />
-              </span>
               <div>
                 <h2>Nie masz jeszcze planu</h2>
                 <p>
@@ -239,7 +237,6 @@ export default function TemplatesPage() {
                 >
                   <div className="planner-template-main">
                     <div className="planner-template-title">
-                      <span>Plan</span>
                       <h2>
                         {template.name}
                       </h2>
@@ -311,6 +308,15 @@ export default function TemplatesPage() {
                       >
                         <Trash2 size={14} />
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedTemplateId((current) => current === template.id ? null : template.id)}
+                        className="planner-secondary-action planner-structure-toggle"
+                        aria-expanded={expanded}
+                      >
+                        {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        {expanded ? 'Zwiń' : 'Struktura'}
+                      </button>
                     </div>
                   </div>
 
@@ -341,17 +347,6 @@ export default function TemplatesPage() {
                       />
                     </div>
                   )}
-
-                  <div className="planner-template-footer">
-                    <button
-                      type="button"
-                      onClick={() => setExpandedTemplateId((current) => current === template.id ? null : template.id)}
-                      className="planner-secondary-action"
-                    >
-                      {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      {expanded ? 'Zwiń strukturę' : 'Pokaż strukturę'}
-                    </button>
-                  </div>
 
                   <AnimatePresence initial={false}>
                     {expanded && (

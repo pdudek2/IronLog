@@ -2625,10 +2625,8 @@ a {
   color: var(--muted-soft);
 }
 
-.exercise-detail-session-list,
-.exercise-detail-empty {
+.exercise-detail-session-list {
   border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
 }
 
 .exercise-detail-session-row {
@@ -2641,21 +2639,30 @@ a {
 }
 
 .exercise-detail-session-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.55rem;
   margin-top: 0.85rem;
-  border-top: 1px solid rgba(244, 241, 242, 0.08);
-  border-bottom: 1px solid rgba(244, 241, 242, 0.08);
+  color: var(--muted);
+  font-size: 0.7rem;
 }
 
-.exercise-detail-session-metrics > div {
-  padding: 0.65rem 0.5rem;
-  border-right: 1px solid rgba(244, 241, 242, 0.08);
-  text-align: center;
+.exercise-detail-session-metrics > span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.25rem;
 }
 
-.exercise-detail-session-metrics > div:last-child {
-  border-right: 0;
+.exercise-detail-session-metrics > span + span::before {
+  content: "·";
+  margin-right: 0.2rem;
+  color: var(--muted-soft);
+}
+
+.exercise-detail-session-metrics strong {
+  color: var(--text-strong);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
 }
 
 .exercise-detail-set-list {

@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { BarChart3, Layers3, Target } from 'lucide-react'
 import { exercises as globalExercises } from '../data/exercises'
 import {
   getExerciseSessions,
@@ -275,9 +274,8 @@ export default function ExerciseDetailPage() {
           {/* Volume trend */}
           {sessions.length > 0 && (
             <section className="exercise-detail-panel exercise-detail-trend">
-              <div className="mb-4 flex items-center justify-between gap-4">
+              <div className="mb-4">
                 <h2 className="section-title">Wolumen na sesję</h2>
-                <BarChart3 size={18} style={{ color: 'var(--muted)' }} />
               </div>
               <div className="flex items-end gap-1.5 h-20">
                 {sessions.slice().reverse().map((session) => {
@@ -305,27 +303,12 @@ export default function ExerciseDetailPage() {
           )}
 
           {/* Recent sessions */}
-          <section className="exercise-detail-panel exercise-detail-history">
-            <div className="mb-4 flex items-center justify-between gap-4">
-              <h2 className="section-title">Ostatnie treningi</h2>
-              <Layers3 size={18} style={{ color: 'var(--muted)' }} />
-            </div>
-
-            {sessions.length === 0 ? (
-              <div className="exercise-detail-empty px-1 py-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="mb-3" style={{ color: 'var(--muted)' }}>
-                      <Target size={18} />
-                    </div>
-                    <p className="text-sm font-semibold text-white">Brak historii</p>
-                    <p className="mt-2 max-w-xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      Brak zapisanych serii dla tego ćwiczenia.
-                    </p>
-                  </div>
-                </div>
+          {sessions.length > 0 && (
+            <section className="exercise-detail-panel exercise-detail-history">
+              <div className="mb-4">
+                <h2 className="section-title">Ostatnie treningi</h2>
               </div>
-            ) : (
+
               <div className="exercise-detail-session-list">
                 {sessions.map((session) => (
                   <motion.div
@@ -347,20 +330,13 @@ export default function ExerciseDetailPage() {
                       </div>
                     </div>
                     <div className="exercise-detail-session-metrics">
-                      <div>
-                        <p className="text-xs font-semibold text-white tabular-nums">{session.totalSets}</p>
-                        <p className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--muted)' }}>serie</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-white tabular-nums">{session.totalReps}</p>
-                        <p className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--muted)' }}>powt.</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold tabular-nums" style={{ color: accent }}>
+                      <span><strong>{session.totalSets}</strong> serie</span>
+                      <span><strong>{session.totalReps}</strong> powt.</span>
+                      <span>
+                        top <strong style={{ color: accent }}>
                           {session.bestSetWeight ? `${session.bestSetWeight} kg` : '—'}
-                        </p>
-                        <p className="text-[10px] uppercase mt-0.5" style={{ color: 'var(--muted)' }}>top set</p>
-                      </div>
+                        </strong>
+                      </span>
                     </div>
 
                     {session.sets.length > 0 && (
@@ -381,8 +357,8 @@ export default function ExerciseDetailPage() {
                   </motion.div>
                 ))}
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
       </div>
     </div>

@@ -263,6 +263,31 @@ a {
   outline: none;
 }
 
+.not-found-page {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: 2rem 1rem;
+}
+
+.not-found-content {
+  width: min(100%, 32rem);
+  text-align: center;
+}
+
+.not-found-content h1 {
+  margin-top: 0.5rem;
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: clamp(2.25rem, 9vw, 4rem);
+}
+
+.not-found-content > p:not(.eyebrow) {
+  margin: 0.8rem auto 1.4rem;
+  max-width: 28rem;
+  color: var(--muted);
+}
+
 @media (min-width: 1024px) {
   .page-shell {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
@@ -1574,6 +1599,8 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 0.625rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
   font-weight: 700;
   letter-spacing: 0;
   color: var(--text-strong);
@@ -8489,11 +8516,21 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 .readiness-slider {
   -webkit-appearance: none;
   appearance: none;
+  height: 2.75rem;
+  margin-block: -1.15rem;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+.readiness-slider::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 3px;
   background: rgba(255, 255, 255, 0.08);
-  outline: none;
-  cursor: pointer;
+}
+.readiness-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
 }
 .readiness-slider::-webkit-slider-thumb {
   -webkit-appearance: none;

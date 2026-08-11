@@ -103,6 +103,23 @@ test.describe('Phase 3 navigation accessibility', () => {
   })
 })
 
+test('primary mobile controls expose at least 44px hit areas', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'mobile-only hit-area contract')
+  await page.goto('/dashboard')
+  await expectAppReady(page, '/dashboard')
+
+  const controls = [
+    page.getByRole('button', { name: 'IronLog — strona główna' }),
+    page.getByRole('slider', { name: 'Gotowość: Sen' }),
+  ]
+
+  for (const control of controls) {
+    const box = await control.boundingBox()
+    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+  }
+})
+
 test.describe('Phase 3 targeted Axe smoke', () => {
   for (const route of AXE_ROUTES) {
     test(`${route} has no Phase 3 Axe violations`, async ({ page }) => {

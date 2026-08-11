@@ -194,10 +194,7 @@ export default function HistoryPage() {
 
       <section className="history-control-panel" aria-label="Filtry historii">
         {historyTruncated && (
-          <div
-            className="rounded-[var(--radius-lg)] border px-4 py-3 text-sm"
-            style={{ background: 'rgba(255,255,255,0.025)', borderColor: 'var(--border)', color: 'var(--muted)' }}
-          >
+          <div className="history-limit-notice">
             Historia została ograniczona do ostatnich 2000 treningów, żeby utrzymać płynność widoku.
           </div>
         )}
@@ -234,8 +231,7 @@ export default function HistoryPage() {
               placeholder="Szukaj treningu lub ćwiczenia..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              className="w-full rounded-[var(--radius-pill)] pl-9 pr-9 py-1.5 text-xs font-medium outline-none"
-              style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text)' }}
+              className="history-search-input w-full pl-9 pr-9 py-1.5 text-xs font-medium outline-none"
             />
             {searchText && (
               <button
@@ -264,13 +260,10 @@ export default function HistoryPage() {
                     key={cat}
                     type="button"
                     onClick={() => setActiveCategory(active ? null : cat)}
-                    className="mobile-touch-target rounded-[var(--radius-pill)] px-3 py-1 text-xs font-semibold transition-colors"
+                    className="history-category-filter-button mobile-touch-target px-3 py-1 text-xs font-semibold"
+                    data-active={active}
                     aria-pressed={active}
-                    style={
-                      active
-                        ? { background: `${color}22`, border: `1px solid ${color}55`, color }
-                        : { background: 'transparent', border: '1px solid var(--border)', color: 'var(--muted)' }
-                    }
+                    style={{ '--history-filter-accent': color } as CSSProperties}
                   >
                     {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
                   </button>
@@ -284,7 +277,7 @@ export default function HistoryPage() {
       <div className="history-results">
         {/* Workout list */}
         {loadError && workouts.length === 0 ? (
-          <div className="surface-panel rounded-[var(--radius-xl)] p-10 text-center">
+          <div className="history-empty-state">
             <p className="text-lg font-semibold text-white">Nie udało się pobrać historii</p>
             <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
               Nie udało się pobrać danych. Spróbuj ponownie.
@@ -292,8 +285,7 @@ export default function HistoryPage() {
             <button
               type="button"
               onClick={() => void loadHistory()}
-              className="mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
-              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+              className="history-state-action mobile-touch-target mt-4"
             >
               Spróbuj ponownie
             </button>
@@ -307,8 +299,7 @@ export default function HistoryPage() {
             <button
               type="button"
               onClick={() => setRangePreset('all')}
-              className="mobile-touch-target mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
-              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+              className="history-state-action mobile-touch-target mt-4"
             >
               Pokaż wszystko
             </button>
@@ -325,8 +316,7 @@ export default function HistoryPage() {
                 setSearchText('')
                 setActiveCategory(null)
               }}
-              className="mobile-touch-target mt-4 rounded-[var(--radius-pill)] px-4 py-2 text-xs font-semibold"
-              style={{ background: 'var(--accent-soft)', border: '1px solid var(--accent-soft-strong)', color: 'var(--accent)' }}
+              className="history-state-action mobile-touch-target mt-4"
             >
               Wyczyść filtry
             </button>

@@ -101,4 +101,16 @@ describe('HistoryPage range state', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
+
+  it('renders a failed history load as a flat retryable result state', async () => {
+    mocks.getWorkoutHistory.mockRejectedValueOnce(new Error('offline'))
+
+    const { container } = render(<HistoryPage />)
+
+    const retry = await screen.findByRole('button', { name: 'Spróbuj ponownie' })
+    const results = container.querySelector('.history-results')
+
+    expect(results).toContainElement(retry)
+    expect(results?.querySelector('.surface-panel')).toBeNull()
+  })
 })

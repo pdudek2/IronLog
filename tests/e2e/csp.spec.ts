@@ -43,6 +43,7 @@ const LOCAL_ALLOWED_ORIGINS = new Set([
   APP_ORIGIN,
   'http://127.0.0.1:8080',
   'http://127.0.0.1:9099',
+  'https://www.google.com',
   'https://fonts.googleapis.com',
   'https://fonts.gstatic.com',
 ])
@@ -110,7 +111,11 @@ test('production config enforces the minimal CSP contract', () => {
     "'self'",
     'https://*.googleapis.com',
   ])
-  expect(directives.get('img-src')).toEqual(["'self'", 'data:'])
+  expect(directives.get('img-src')).toEqual([
+    "'self'",
+    'data:',
+    'https://www.google.com',
+  ])
   expect(directives.get('style-src')).toEqual([
     "'self'",
     "'unsafe-inline'",

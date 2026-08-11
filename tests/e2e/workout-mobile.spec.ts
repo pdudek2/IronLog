@@ -655,7 +655,26 @@ test.describe('Active workout shell reduction', () => {
 
     await expect(removeExerciseButton).toHaveCount(1)
     await expect(removeExerciseButton).toHaveCount(0)
-    await expect(page.locator('.workout-empty-card')).toBeVisible()
+    const emptyState = page.locator('.workout-empty-state')
+    await expect(emptyState).toBeVisible()
+    await expect(page.locator('.workout-empty-rhythm')).toHaveCount(0)
+
+    const emptyStyle = await emptyState.evaluate((element) => {
+      const style = getComputedStyle(element)
+      return {
+        background: style.backgroundColor,
+        borderLeft: style.borderLeftWidth,
+        borderRight: style.borderRightWidth,
+        radius: style.borderTopLeftRadius,
+      }
+    })
+
+    expect(emptyStyle).toEqual({
+      background: 'rgba(0, 0, 0, 0)',
+      borderLeft: '0px',
+      borderRight: '0px',
+      radius: '0px',
+    })
 
   })
 })

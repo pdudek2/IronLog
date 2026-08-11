@@ -6400,7 +6400,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 
 .workout-control-panel,
 .workout-session-hero,
-.workout-empty-card,
 .workout-exercise-stack,
 .workout-exercise-card {
   border: 1px solid var(--border);
@@ -6551,10 +6550,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
-}
-
-.workout-empty-card {
-  padding: 1.25rem;
 }
 
 .workout-exercise-stack {
@@ -6807,7 +6802,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 
 @media (min-width: 640px) {
   .workout-session-hero,
-  .workout-empty-card,
   .workout-exercise-stack {
     padding: 1.25rem;
   }
@@ -6865,7 +6859,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
     scroll-margin-bottom: calc(var(--mobile-viewport-bottom-inset, 0px) + 1rem);
   }
 
-  .workout-empty-card,
   .workout-exercise-stack {
     scroll-margin-bottom: max(7.5rem, calc(6.5rem + env(safe-area-inset-bottom, 0px)));
   }
@@ -6874,7 +6867,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 /* ── Active workout refinement: live cockpit, calmer form rows ─────── */
 .workout-control-panel,
 .workout-session-hero,
-.workout-empty-card,
 .workout-exercise-stack,
 .workout-exercise-card {
   border-radius: var(--radius-sm);
@@ -7123,40 +7115,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 .workout-mobile-label-row {
   margin: -0.1rem 0 1rem;
 }
-
-
-.workout-empty-card {
-  background:
-    linear-gradient(135deg, rgba(240, 67, 90, 0.105), transparent 42%),
-    linear-gradient(180deg, rgba(33, 31, 35, 0.72) 0%, rgba(18, 16, 18, 0.92) 100%);
-}
-
-.workout-empty-rhythm {
-  display: flex;
-  min-height: 12rem;
-  align-items: end;
-  gap: 0.55rem;
-  border-top: 1px solid var(--border);
-  padding: 2rem 0.25rem 0.25rem;
-}
-
-.workout-empty-rhythm span {
-  flex: 1;
-  min-width: 0.5rem;
-  border: 1px solid rgba(240, 67, 90, 0.2);
-  border-radius: var(--radius-pill) var(--radius-pill) 0 0;
-  background:
-    linear-gradient(180deg, rgba(240, 67, 90, 0.42), rgba(240, 67, 90, 0.04)),
-    rgba(255, 255, 255, 0.025);
-}
-
-.workout-empty-rhythm span:nth-child(1) { height: 22%; }
-.workout-empty-rhythm span:nth-child(2) { height: 34%; }
-.workout-empty-rhythm span:nth-child(3) { height: 58%; }
-.workout-empty-rhythm span:nth-child(4) { height: 46%; }
-.workout-empty-rhythm span:nth-child(5) { height: 74%; }
-.workout-empty-rhythm span:nth-child(6) { height: 38%; }
-.workout-empty-rhythm span:nth-child(7) { height: 62%; }
 
 @media (max-width: 520px) {
   .session-instrument-head,
@@ -9775,7 +9733,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 /* Active workout */
 .workout-focus-shell .workout-control-panel,
 .workout-focus-shell .workout-session-hero,
-.workout-focus-shell .workout-empty-card,
 .workout-focus-shell .workout-exercise-stack,
 .workout-focus-shell .workout-exercise-card {
   border-radius: 0;
@@ -9892,9 +9849,36 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   background: transparent;
 }
 
-.workout-focus-shell .workout-empty-card {
-  border-block: 1px solid var(--border);
-  padding-inline: 0;
+.workout-focus-shell .workout-empty-state {
+  border-block: 1px solid var(--border-strong);
+  padding: clamp(1.4rem, 4vw, 2rem) 0;
+}
+
+.workout-focus-shell .workout-empty-state h3 {
+  margin-top: 0.45rem;
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+.workout-focus-shell .workout-empty-state > p:not(.eyebrow) {
+  margin-top: 0.65rem;
+  max-width: 38rem;
+  color: var(--muted);
+}
+
+.workout-focus-shell .workout-empty-state .workout-primary-action {
+  margin-top: 1.1rem;
+  width: min(100%, 20rem);
+}
+
+.workout-focus-shell .workout-quick-pick {
+  min-height: 3.25rem;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  padding: 0.8rem 0.95rem;
+  text-align: left;
 }
 
 .workout-exercise-toggle {

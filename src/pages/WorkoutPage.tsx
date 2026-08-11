@@ -1178,40 +1178,21 @@ export default function WorkoutPage() {
           <div className="flex flex-col gap-4">
             {active.exercises.length === 0 && !keepExerciseStackMounted && (
               <>
-                <div
-                  className="workout-empty-card"
-                  style={{ borderColor: 'rgba(240,67,90,0.14)' }}
-                >
-                  <div className="grid gap-5 lg:grid-cols-[minmax(0,1.05fr)_minmax(16rem,0.95fr)] lg:items-start">
-                    <div>
-                      <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>Start sesji</p>
-                      <h3 className="text-2xl font-semibold text-white">Dodaj pierwszy ruch</h3>
-                      <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                        Wybierz ćwiczenie, wpisz pierwszą serię i prowadź sesję z jednego widoku.
-                      </p>
-                      <motion.button
-                        type="button"
-                        onClick={() => setShowPicker(true)}
-                        className="workout-primary-action mt-5 max-w-xs"
-                        style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-                        whileTap={{ scale: 0.97 }}
-                      >
-                        <Plus size={16} strokeWidth={2.4} />
-                        Dodaj ćwiczenie
-                      </motion.button>
-                    </div>
-
-                    <div className="workout-empty-rhythm" aria-hidden="true">
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                      <span />
-                    </div>
-                  </div>
-                </div>
+                <section className="workout-empty-state" aria-labelledby="workout-empty-title">
+                  <p className="eyebrow" style={{ color: 'var(--accent)' }}>Start sesji</p>
+                  <h3 id="workout-empty-title">Dodaj pierwszy ruch</h3>
+                  <p>Wybierz ćwiczenie, wpisz pierwszą serię i prowadź sesję z jednego widoku.</p>
+                  <motion.button
+                    type="button"
+                    onClick={() => setShowPicker(true)}
+                    className="workout-primary-action"
+                    style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <Plus size={16} strokeWidth={2.4} />
+                    Dodaj ćwiczenie
+                  </motion.button>
+                </section>
                 {quickPicks.length > 0 && (
                   <div>
                     <p className="eyebrow mb-3" style={{ color: 'var(--muted)' }}>Szybki start</p>
@@ -1224,8 +1205,7 @@ export default function WorkoutPage() {
                             key={`${source}:${id}`}
                             type="button"
                             onClick={() => handlePickExercise(id, name, source)}
-                            className="rounded-[var(--radius-lg)] border p-3.5 text-left transition-all hover:-translate-y-0.5"
-                            style={{ borderColor: 'var(--border)', background: 'rgba(255,255,255,0.02)' }}
+                            className="workout-quick-pick"
                             whileTap={{ scale: 0.98 }}
                           >
                             <div className="flex items-center justify-between gap-2 mb-1.5">

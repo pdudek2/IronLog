@@ -9692,6 +9692,28 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   box-shadow: none;
 }
 
+.workout-focus-shell .workout-set-row[data-done] .workout-set-toggle {
+  color: var(--success) !important;
+}
+
+.workout-focus-shell .workout-label-chips {
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.workout-focus-shell .workout-label-chips > button {
+  border: 0 !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 0;
+  background: transparent !important;
+  padding-inline: 0.75rem;
+}
+
+.workout-focus-shell .workout-label-chips > button[aria-pressed="true"] {
+  border-bottom-color: var(--accent) !important;
+  color: var(--accent-text) !important;
+}
+
 .workout-focus-shell .workout-set-toggle:focus-visible,
 .workout-focus-shell .workout-set-remove:focus-visible {
   outline: 2px solid var(--accent);

@@ -494,9 +494,16 @@ test.describe('Active workout shell reduction', () => {
       stepperRadius: '0px',
     })
 
+    await page.locator('.workout-label-chips > button').first().click()
+    const activeLabel = page.locator('.workout-label-chips > button[aria-pressed="true"]')
+    await expect(activeLabel).toHaveCount(1)
+    await expect(activeLabel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
+    await expect(activeLabel).toHaveCSS('border-radius', '0px')
+
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
     await doneButton.click()
+    await expect(page.getByRole('button', { name: 'Odznacz serię 1' })).toHaveCSS('color', 'rgb(143, 184, 160)')
 
     const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar .tabular-nums').innerText()
     const addRestButton = actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })

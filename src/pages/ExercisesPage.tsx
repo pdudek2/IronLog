@@ -281,8 +281,9 @@ interface CardProps {
 }
 
 function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardProps) {
-  const visibleMuscles = exercise.muscles.slice(0, 4)
-  const hiddenMuscleCount = Math.max(exercise.muscles.length - visibleMuscles.length, 0)
+  const labeledMuscles = exercise.muscles.filter((muscle) => Boolean(MUSCLE_LABELS[muscle]))
+  const visibleMuscles = labeledMuscles.slice(0, 4)
+  const hiddenMuscleCount = Math.max(labeledMuscles.length - visibleMuscles.length, 0)
 
   return (
     <article className="exercise-library-row" data-user={isUser}>
@@ -292,42 +293,46 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
         className="exercise-library-row-main"
         aria-label={`Otwórz ćwiczenie ${exercise.name}`}
       >
-        <span>{isUser ? 'Moje' : CATEGORY_LABELS[exercise.category]}</span>
+        <span>{CATEGORY_LABELS[exercise.category]}</span>
         <strong>{exercise.name}</strong>
         <small>{EQUIPMENT_LABELS[exercise.equipment]}</small>
       </button>
 
-      <div className="exercise-library-muscles" aria-label={`Partie mięśniowe: ${exercise.muscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
-        {visibleMuscles.map((muscle) => (
-          <span key={muscle}>{MUSCLE_LABELS[muscle]}</span>
-        ))}
-        {hiddenMuscleCount > 0 && <span>+{hiddenMuscleCount}</span>}
-      </div>
-
-      {isUser && (
-        <div className="exercise-library-actions">
-          <button
-            type="button"
-            onClick={onEdit}
-            className="planner-icon-action"
-            aria-label={`Edytuj ćwiczenie ${exercise.name}`}
-          >
-            <Pencil size={12} />
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="planner-icon-action planner-icon-action--danger"
-            aria-label={`Usuń ćwiczenie ${exercise.name}`}
-          >
-            <Trash2 size={12} />
-          </button>
+      {visibleMuscles.length > 0 && (
+        <div className="exercise-library-muscles" aria-label={`Partie mięśniowe: ${labeledMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
+          {visibleMuscles.map((muscle) => (
+            <span key={muscle}>{MUSCLE_LABELS[muscle]}</span>
+          ))}
+          {hiddenMuscleCount > 0 && <span>+{hiddenMuscleCount}</span>}
         </div>
       )}
 
-      <span className="exercise-library-open" aria-hidden="true">
-        <ChevronRight size={16} />
-      </span>
+      <div className="exercise-library-row-controls">
+        {isUser && (
+          <div className="exercise-library-actions">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="planner-icon-action"
+              aria-label={`Edytuj ćwiczenie ${exercise.name}`}
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="planner-icon-action planner-icon-action--danger"
+              aria-label={`Usuń ćwiczenie ${exercise.name}`}
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        )}
+
+        <span className="exercise-library-open" aria-hidden="true">
+          <ChevronRight size={16} />
+        </span>
+      </div>
     </article>
   )
 }
@@ -548,20 +553,20 @@ export default function ExercisesPage() {
               <ChipRow label="Sprzęt" options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
             </div>
           </div>
-        </div>
 
-        <div className="planner-header-actions">
-          <motion.button
-            type="button"
-            onClick={openCreateForm}
-            disabled={userExercisesState.status !== 'success'}
-            aria-describedby={userExercisesState.status === 'error' ? 'user-exercises-load-error' : undefined}
-            className="planner-primary-action"
-            whileTap={{ scale: 0.97 }}
-          >
-            <Plus size={16} strokeWidth={2.5} />
-            Dodaj własne
-          </motion.button>
+          <div className="exercise-library-create-action">
+            <motion.button
+              type="button"
+              onClick={openCreateForm}
+              disabled={userExercisesState.status !== 'success'}
+              aria-describedby={userExercisesState.status === 'error' ? 'user-exercises-load-error' : undefined}
+              className="planner-primary-action"
+              whileTap={{ scale: 0.97 }}
+            >
+              <Plus size={16} strokeWidth={2.5} />
+              Dodaj własne
+            </motion.button>
+          </div>
         </div>
       </section>
 

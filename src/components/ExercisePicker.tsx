@@ -1,5 +1,5 @@
 import { useId, useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Search, X } from 'lucide-react'
 import { searchExercises, type Category, type Exercise } from '../data/exercises'
 import type { ExerciseSource } from '../store/workoutStore'
 import { useDialogA11y } from '../hooks/useDialogA11y'
@@ -64,54 +64,50 @@ export default function ExercisePicker({
 
   return (
     <div
-      className="fixed inset-0 z-50 px-0 py-0 sm:px-6 sm:py-6"
-      style={{ background: 'rgba(11, 10, 12, 0.86)', backdropFilter: 'blur(6px)' }}
+      className="exercise-picker-overlay fixed inset-0 z-50 px-0 py-0 sm:px-6 sm:py-6"
       onClick={onClose}
     >
       <div
         ref={dialogRef}
-        className="exercise-picker-dialog surface-panel flex h-[100dvh] w-full flex-col overflow-hidden sm:mx-auto sm:h-[min(42rem,calc(100dvh-3rem))] sm:max-w-3xl sm:rounded-[var(--radius-xl)]"
+        className="exercise-picker-dialog flex h-[100dvh] w-full flex-col overflow-hidden sm:mx-auto sm:h-[min(44rem,calc(100dvh-3rem))] sm:max-w-3xl"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        {/* Header */}
-        <div
-          className="flex items-center gap-3 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top,0px))] sm:px-5 sm:pt-4"
-          style={{ borderBottom: '1px solid var(--border)' }}
-        >
-          <button
-            onClick={onClose}
-            className="mobile-touch-target flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
-            style={{ color: 'var(--muted)' }}
-            aria-label="Zamknij wybór ćwiczenia"
-          >
-            <X size={16} />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p id={titleId} className="mb-1 text-sm font-semibold text-white">
-              Wybierz ćwiczenie
-            </p>
-          <input
-            ref={searchInputRef}
-            autoFocus
-            type="text"
-            placeholder="Szukaj ćwiczenia..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            aria-label="Szukaj ćwiczenia"
-            className="flex-1 bg-transparent text-sm text-white outline-none"
-            style={{ color: 'var(--text)' }}
-          />
+        <div className="exercise-picker-head">
+          <div className="exercise-picker-title-row">
+            <div>
+              <p id={titleId}>Wybierz ćwiczenie</p>
+              <span>{results.length} wyników</span>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="exercise-picker-close mobile-touch-target"
+              aria-label="Zamknij wybór ćwiczenia"
+            >
+              <X size={17} />
+            </button>
           </div>
+
+          <label className="exercise-picker-search">
+            <Search size={16} aria-hidden="true" />
+            <input
+              ref={searchInputRef}
+              autoFocus
+              type="text"
+              placeholder="Szukaj ćwiczenia..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              aria-label="Szukaj ćwiczenia"
+            />
+          </label>
         </div>
 
-        {/* Category filter */}
         <div
-          className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3 sm:px-5"
-          style={{ borderBottom: '1px solid var(--border)' }}
+          className="exercise-picker-categories no-scrollbar"
           role="group"
           aria-label="Kategoria ćwiczenia"
         >
@@ -121,21 +117,15 @@ export default function ExercisePicker({
               type="button"
               onClick={() => setCategory(c.value)}
               aria-pressed={category === c.value}
-              className="mobile-touch-target px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all"
-              style={{
-                background: category === c.value ? 'var(--accent-soft)' : 'var(--card)',
-                color: category === c.value ? 'var(--text-strong)' : 'var(--muted)',
-                border: `1px solid ${category === c.value ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-              }}
+              className="exercise-picker-category mobile-touch-target"
             >
               {c.label}
             </button>
           ))}
         </div>
 
-        {/* Results */}
         <div
-          className="flex-1 overflow-y-auto px-2 py-2 sm:px-3"
+          className="exercise-picker-scroll flex-1 overflow-y-auto"
           style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
         >
           {userExercisesState.status === 'loading' && (
@@ -154,30 +144,28 @@ export default function ExercisePicker({
             />
           )}
           {userExercisesState.status === 'success' && results.length === 0 ? (
-            <p className="px-4 py-10 text-sm text-center" style={{ color: 'var(--muted)' }}>
-              Brak wyników
-            </p>
+            <div className="exercise-picker-empty">
+              <strong>Brak wyników</strong>
+              <p>Zmień wyszukiwanie albo wybierz inną kategorię.</p>
+            </div>
           ) : results.length > 0 ? (
             <div className="exercise-picker-results">
               {results.map((ex) => (
                 <button
                   key={`${ex.source}-${ex.id}`}
                   onClick={() => onSelect(ex.id, ex.name, ex.source)}
-                  className="exercise-picker-result w-full px-4 py-3 text-left"
+                  className="exercise-picker-result w-full text-left"
                   data-source={ex.source}
                 >
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-white">{ex.name}</p>
+                  <div className="exercise-picker-result-main">
+                    <p>{ex.name}</p>
                     {ex.source === 'user' && (
-                      <span
-                        className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
-                        style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
-                      >
+                      <span>
                         moje
                       </span>
                     )}
                   </div>
-                  <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
+                  <p className="exercise-picker-result-meta">
                     {formatExerciseMeta(ex.equipment, ex.muscles)}
                   </p>
                 </button>

@@ -287,8 +287,152 @@ a {
     inset 0 1px 0 rgba(255, 255, 255, 0.035);
 }
 
+.exercise-picker-overlay {
+  background: rgba(11, 10, 12, 0.8);
+  backdrop-filter: blur(10px);
+}
+
 .exercise-picker-dialog {
   border-radius: 0;
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.exercise-picker-head {
+  display: grid;
+  gap: 0.75rem;
+  padding: max(0.8rem, env(safe-area-inset-top, 0px)) 1rem 0.85rem;
+}
+
+.exercise-picker-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.exercise-picker-title-row > div {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.65rem;
+}
+
+.exercise-picker-title-row p {
+  margin: 0;
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 760;
+}
+
+.exercise-picker-title-row span,
+.exercise-picker-result-meta {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.exercise-picker-close {
+  display: inline-flex;
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+}
+
+.exercise-picker-close:hover,
+.exercise-picker-close:focus-visible {
+  background: var(--surface-muted);
+  color: var(--text-strong);
+}
+
+.exercise-picker-search {
+  display: flex;
+  min-height: 2.75rem;
+  align-items: center;
+  gap: 0.6rem;
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+  padding: 0 0.75rem;
+}
+
+.exercise-picker-search:focus-within {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.exercise-picker-search svg {
+  flex: none;
+  color: var(--muted);
+}
+
+.exercise-picker-search input {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font-size: 0.9rem;
+  outline: none;
+  box-shadow: none;
+}
+
+.exercise-picker-search input:focus {
+  border: 0;
+  outline: none;
+  box-shadow: none !important;
+}
+
+.exercise-picker-categories {
+  display: flex;
+  flex: none;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  padding: 0 1rem;
+  scrollbar-width: none;
+}
+
+.exercise-picker-categories::-webkit-scrollbar {
+  display: none;
+}
+
+.exercise-picker-category {
+  position: relative;
+  flex: none;
+  min-height: 2.75rem;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  padding: 0 0.65rem;
+  font-size: 0.74rem;
+  font-weight: 720;
+}
+
+.exercise-picker-category::after {
+  content: "";
+  position: absolute;
+  right: 0.65rem;
+  bottom: -1px;
+  left: 0.65rem;
+  height: 2px;
+  background: transparent;
+}
+
+.exercise-picker-category[aria-pressed="true"] {
+  color: var(--text-strong);
+}
+
+.exercise-picker-category[aria-pressed="true"]::after {
+  background: var(--accent);
+}
+
+.exercise-picker-scroll {
+  padding: 0 1rem;
 }
 
 .exercise-picker-results {
@@ -296,22 +440,48 @@ a {
 }
 
 .exercise-picker-result {
-  position: relative;
-  min-height: 4rem;
+  display: grid;
+  min-height: 3.65rem;
+  gap: 0.28rem;
   border: 0;
   border-bottom: 1px solid var(--border);
   background: transparent;
   color: var(--text);
+  padding: 0.72rem 0;
   transition: background-color 140ms ease;
 }
 
-.exercise-picker-result[data-source="user"] {
-  box-shadow: inset 2px 0 0 var(--accent);
+.exercise-picker-result-main {
+  display: flex;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.55rem;
+}
+
+.exercise-picker-result-main p,
+.exercise-picker-result-meta {
+  margin: 0;
+}
+
+.exercise-picker-result-main p {
+  overflow: hidden;
+  color: var(--text-strong);
+  font-weight: 720;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.exercise-picker-result-main span {
+  flex: none;
+  color: var(--accent-text);
+  font-size: 0.66rem;
+  font-weight: 760;
 }
 
 .exercise-picker-result:hover,
 .exercise-picker-result:focus-visible {
-  background: rgba(255, 255, 255, 0.045);
+  background: var(--surface-muted);
 }
 
 .exercise-picker-result:focus-visible {
@@ -319,13 +489,44 @@ a {
   outline-offset: -2px;
 }
 
+.exercise-picker-empty {
+  display: grid;
+  place-content: center;
+  min-height: 13rem;
+  gap: 0.35rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.exercise-picker-empty strong {
+  color: var(--text-strong);
+}
+
+.exercise-picker-empty p {
+  margin: 0;
+  font-size: 0.82rem;
+}
+
 @media (min-width: 640px) {
-  .exercise-picker-results {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .exercise-picker-dialog {
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-panel);
   }
 
-  .exercise-picker-result:nth-child(odd) {
-    border-right: 1px solid var(--border);
+  .exercise-picker-head {
+    padding: 1rem 1.25rem 0.9rem;
+  }
+
+  .exercise-picker-categories,
+  .exercise-picker-scroll {
+    padding-inline: 1.25rem;
+  }
+
+  .exercise-picker-result {
+    grid-template-columns: minmax(13rem, 0.72fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 1.25rem;
   }
 }
 
@@ -5570,8 +5771,7 @@ a {
   display: grid;
   grid-template-areas:
     "copy"
-    "command"
-    "actions";
+    "command";
   gap: 1rem;
   padding: clamp(0.85rem, 2.2vw, 1.35rem) 0 clamp(1rem, 2.4vw, 1.5rem);
   border-bottom: 1px solid rgba(244, 241, 242, 0.11);
@@ -5584,10 +5784,6 @@ a {
 .exercise-library-header > .exercise-command-panel {
   grid-area: command;
   margin-top: 0;
-}
-
-.exercise-library-header > .planner-header-actions {
-  grid-area: actions;
 }
 
 .exercise-library-header-copy h1 {
@@ -5610,7 +5806,7 @@ a {
 
 .exercise-command-panel {
   display: grid;
-  gap: 0.9rem;
+  gap: 0.55rem;
   margin-top: 1rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -5670,6 +5866,11 @@ a {
 .exercise-filter-board {
   display: grid;
   gap: 0.75rem;
+}
+
+.exercise-library-create-action {
+  display: flex;
+  justify-content: flex-start;
 }
 
 .exercise-filter-toggle {
@@ -5780,11 +5981,10 @@ a {
 .exercise-library-row {
   display: grid;
   grid-template-areas:
-    "main open"
-    "muscles muscles"
-    "actions actions";
+    "main controls"
+    "muscles controls";
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.75rem;
+  gap: 0.35rem 0.65rem;
   align-items: center;
   border-top: 1px solid rgba(244, 241, 242, 0.075);
   padding: 0.9rem 1rem;
@@ -5856,13 +6056,18 @@ a {
 }
 
 .exercise-library-actions {
-  grid-area: actions;
   display: flex;
-  gap: 0.45rem;
+  gap: 0.15rem;
+}
+
+.exercise-library-row-controls {
+  grid-area: controls;
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
 }
 
 .exercise-library-open {
-  grid-area: open;
   display: inline-flex;
   width: 2.1rem;
   height: 2.1rem;
@@ -5894,25 +6099,30 @@ a {
 @media (min-width: 760px) {
   .exercise-library-header {
     grid-template-areas:
-      "copy actions"
-      "command command";
-    grid-template-columns: minmax(0, 1fr) auto;
+      "copy"
+      "command";
     align-items: start;
   }
 
+  .exercise-command-panel {
+    grid-template-columns: minmax(16rem, 1fr) auto;
+    align-items: center;
+  }
+
   .exercise-filter-board {
+    grid-column: 1 / -1;
     grid-template-columns: minmax(0, 0.75fr) minmax(0, 1fr);
   }
 
-  .exercise-library-row {
-    grid-template-areas: "main muscles actions open";
-    grid-template-columns: minmax(14rem, 0.65fr) minmax(0, 1fr) auto auto;
-    gap: 1rem;
+  .exercise-library-create-action {
+    grid-column: 2;
+    grid-row: 1;
   }
 
-  .exercise-library-row:not([data-user="true"]) {
-    grid-template-areas: "main muscles open";
+  .exercise-library-row {
+    grid-template-areas: "main muscles controls";
     grid-template-columns: minmax(14rem, 0.65fr) minmax(0, 1fr) auto;
+    gap: 1rem;
   }
 
   .exercise-library-actions {
@@ -9077,11 +9287,26 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 /* Exercise library and detail */
 .exercise-command-panel {
   border: 0;
-  border-bottom: 1px solid var(--border);
-  border-radius: 0;
-  background: transparent;
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
   box-shadow: none;
-  padding-inline: 0;
+  padding: 0.55rem;
+}
+
+.exercise-search-box {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
+}
+
+.exercise-search-box:focus-within {
+  box-shadow: 0 0 0 2px var(--focus-ring);
+}
+
+.exercise-search-box button {
+  border: 0;
+  background: transparent;
 }
 
 .exercise-library-header {
@@ -9100,6 +9325,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 .exercise-section-head,
 .exercise-library-row {
   padding-inline: 0;
+}
+
+.exercise-library-row {
+  padding-block: 0.8rem;
 }
 
 .exercise-section-head > span {
@@ -9163,6 +9392,11 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.exercise-library-open {
+  width: 2.75rem;
+  height: 2.75rem;
 }
 
 .exercise-detail-page {
@@ -9595,15 +9829,18 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .exercise-command-panel {
-    padding: 0.75rem 0;
+    padding: 0.55rem;
   }
 
   .exercise-filter-toggle {
     border: 0;
-    border-top: 1px solid var(--border);
     border-radius: 0;
     background: transparent;
-    padding-inline: 0;
+    padding-inline: 0.2rem;
+  }
+
+  .exercise-library-create-action .planner-primary-action {
+    width: 100%;
   }
 
   .progress-record-feature {

@@ -17,7 +17,7 @@ test.describe('Critical application contract', () => {
   test('template editor opens from the loaded templates screen', async ({ page }) => {
     await page.goto('/templates')
     await expectAppReady(page, '/templates')
-    await page.getByRole('button', { name: 'Nowy plan' }).click()
+    await page.getByRole('button', { name: /^(Nowy plan|Utwórz pierwszy plan)$/ }).click()
     await expectAppReady(page, '/templates/new')
   })
 

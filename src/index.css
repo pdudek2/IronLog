@@ -1367,6 +1367,16 @@ a {
 }
 
 @media (max-width: 639px) {
+  .auth-instrument-shell:has(.onboarding-form) .auth-signal {
+    top: 50rem;
+    opacity: 0.12;
+  }
+
+  .onboarding-form .profile-choice {
+    min-height: 4.5rem;
+    padding: 0.75rem;
+  }
+
   .auth-instrument-main:has(.onboarding-form) {
     padding-top: 0.75rem;
   }
@@ -1379,6 +1389,14 @@ a {
   .auth-instrument-main:has(.onboarding-form) .auth-instrument-form-heading {
     margin-bottom: 1rem;
   }
+}
+
+.auth-instrument-shell:has(.onboarding-form) .auth-signal {
+  opacity: 0.12;
+}
+
+.auth-instrument-shell:has(.onboarding-form):has(.auth-instrument-form-wrap:focus-within) .auth-signal {
+  opacity: 0.18;
 }
 
 @media (min-width: 640px) {

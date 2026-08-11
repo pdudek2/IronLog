@@ -86,19 +86,14 @@ export default function OnboardingPage() {
           <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
             Główny cel
           </label>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="profile-choice-grid">
             {GOALS.map((g) => (
               <button
                 key={g.value}
                 type="button"
                 onClick={() => setPrimaryGoal(g.value)}
                 aria-pressed={primaryGoal === g.value}
-                className="rounded-[var(--radius-md)] p-3 text-left transition-all"
-                style={{
-                  background: primaryGoal === g.value ? 'var(--live-bg)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${primaryGoal === g.value ? 'var(--live-border)' : 'var(--border)'}`,
-                  color: primaryGoal === g.value ? 'var(--text-strong)' : 'var(--text)',
-                }}
+                className="profile-choice"
               >
                 <div className="text-sm font-semibold">{g.label}</div>
                 <div className="mt-1 text-xs leading-5" style={{ color: 'var(--muted)' }}>{g.desc}</div>
@@ -131,19 +126,14 @@ export default function OnboardingPage() {
         {/* Units */}
         <div className="flex flex-col gap-2">
           <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Jednostki</label>
-          <div className="flex gap-2">
+          <div className="profile-unit-grid">
             {(['kg', 'lbs'] as Units[]).map((u) => (
               <button
                 key={u}
                 type="button"
                 onClick={() => setUnits(u)}
                 aria-pressed={units === u}
-                className="flex-1 rounded-[var(--radius-md)] py-3 text-sm font-semibold transition-all"
-                style={{
-                  background: units === u ? 'var(--live-bg)' : 'rgba(255,255,255,0.03)',
-                  border: `1px solid ${units === u ? 'var(--live-border)' : 'var(--border)'}`,
-                  color: units === u ? 'var(--text-strong)' : 'var(--text)',
-                }}
+                className="profile-unit-choice"
               >
                 {u}
               </button>

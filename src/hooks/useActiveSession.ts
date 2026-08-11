@@ -46,6 +46,7 @@ export type StaleSessionOperationResult =
 
 const COMPLETED_STALE_SESSION_OPERATION = { status: 'completed' } as const
 const IGNORED_STALE_SESSION_OPERATION = { status: 'ignored' } as const
+const ACTIVE_SESSION_READY_TIMEOUT_MS = 8_000
 
 function serializeActiveWorkout(value: unknown): string {
   return JSON.stringify(value ?? null)
@@ -218,6 +219,15 @@ export function useActiveSession(uid: string | null) {
   useEffect(() => {
     activeRef.current = useWorkoutStore.getState().active
   }, [])
+
+  useEffect(() => {
+    if (!uid || ready) return
+    const timeout = window.setTimeout(() => {
+      setActiveSessionSyncStatus('failed')
+      setReady(true)
+    }, ACTIVE_SESSION_READY_TIMEOUT_MS)
+    return () => window.clearTimeout(timeout)
+  }, [ready, uid])
 
   useEffect(() => {
     const sessionWriteGeneration = sessionWriteGenerationRef.current + 1

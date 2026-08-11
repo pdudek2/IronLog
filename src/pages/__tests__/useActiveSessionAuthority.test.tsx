@@ -1,5 +1,5 @@
 import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ActiveWorkout } from '../../store/workoutStore'
 
@@ -69,6 +69,24 @@ describe('useActiveSession snapshot authority', () => {
     listener.current = null
     saveActiveSession.mockReset().mockResolvedValue(undefined)
     discardStaleSessionLifecycle.mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  it('stops waiting when server authority never arrives', async () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    expect(result.current.ready).toBe(false)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8_000)
+    })
+
+    expect(result.current.ready).toBe(true)
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
   })
 
   it.each([

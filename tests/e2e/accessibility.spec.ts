@@ -120,6 +120,23 @@ test('primary mobile controls expose at least 44px hit areas', async ({ page }, 
   }
 })
 
+test('desktop top navigation actions expose at least 44px hit areas', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only hit-area contract')
+  await page.goto('/dashboard')
+  await expectAppReady(page, '/dashboard')
+
+  const controls = [
+    ...await page.getByRole('navigation', { name: 'Nawigacja główna' }).getByRole('button').all(),
+    page.getByRole('button', { name: /^(?:Rozpocznij nowy trening|Wznów trening)$/ }),
+  ]
+
+  for (const control of controls) {
+    await expect(control).toBeVisible()
+    const box = await control.boundingBox()
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+  }
+})
+
 test.describe('Phase 3 targeted Axe smoke', () => {
   for (const route of AXE_ROUTES) {
     test(`${route} has no Phase 3 Axe violations`, async ({ page }) => {

@@ -1658,6 +1658,7 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 0.45rem;
+  min-height: 2.75rem;
   padding: 0.45rem 0.875rem;
   border: 1px solid transparent;
   border-radius: var(--radius-lg);
@@ -1708,6 +1709,7 @@ a {
   display: none;
   align-items: center;
   gap: 0.4rem;
+  min-height: 2.75rem;
   padding: 0.5rem 0.95rem;
   border-radius: var(--radius-pill);
   background: var(--primary-gradient);

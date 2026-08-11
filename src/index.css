@@ -8928,7 +8928,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .progress-board-head {
   padding-bottom: 1.1rem;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 0;
 }
 
 /* History */
@@ -8964,6 +8964,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 /* Progress */
 .progress-summary-grid {
+  border-bottom: 0;
   border-color: var(--border-strong);
   background: var(--bg-elevated);
 }
@@ -9037,10 +9038,15 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .planner-template-board {
   overflow: visible;
+  border-top: 0;
   border-inline: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
+}
+
+.dashboard-template-launch-item:last-child .dashboard-template-tile {
+  border-bottom: 0;
 }
 
 .template-card::before,
@@ -9076,6 +9082,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   background: transparent;
   box-shadow: none;
   padding-inline: 0;
+}
+
+.exercise-library-header {
+  border-bottom: 0;
 }
 
 .exercise-library-section {
@@ -9194,6 +9204,15 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   background: transparent;
   box-shadow: none;
   padding: clamp(1rem, 2vw, 1.3rem) 0;
+}
+
+.coach-header {
+  border-bottom: 0;
+}
+
+.coach-mode-switch,
+.coach-thread {
+  border-bottom: 0;
 }
 
 .ai-key-panel--collapsed {

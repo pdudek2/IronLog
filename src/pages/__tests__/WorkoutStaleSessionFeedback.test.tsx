@@ -6,8 +6,18 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WorkoutPage from '../WorkoutPage'
 
 const mocks = vi.hoisted(() => ({
+  active: null as null | {
+    sessionId: string
+    startedAt: number
+    templateId: null
+    label: string
+    exercises: []
+  },
+  closureState: 'idle',
   continueStaleSession: vi.fn(),
   discardStaleSession: vi.fn(),
+  reloadCurrentSession: vi.fn(),
+  staleSession: { ageLabel: '2 dni' } as { ageLabel: string } | null,
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
 }))
@@ -17,7 +27,7 @@ vi.mock('../../hooks/useActiveSession', () => ({
     activeSessionSyncStatus: 'idle',
     beginClosure: vi.fn(),
     closureIntent: null,
-    closureState: 'idle',
+    closureState: mocks.closureState,
     confirmClosure: vi.fn(),
     continueStaleSession: mocks.continueStaleSession,
     discardStaleSession: mocks.discardStaleSession,
@@ -25,9 +35,9 @@ vi.mock('../../hooks/useActiveSession', () => ({
     markClosureUnconfirmed: vi.fn(),
     ready: true,
     reloadAuthentication: vi.fn(),
-    reloadCurrentSession: vi.fn(),
+    reloadCurrentSession: mocks.reloadCurrentSession,
     retryActiveSessionSync: vi.fn(),
-    staleSession: { ageLabel: '2 dni' },
+    staleSession: mocks.staleSession,
   }),
 }))
 
@@ -42,12 +52,12 @@ vi.mock('../../store/profileStore', () => ({
 vi.mock('../../store/workoutStore', () => {
   const useWorkoutStore = Object.assign(
     () => ({
-      active: null,
+      active: mocks.active,
       addExercise: vi.fn(),
       setLabel: vi.fn(),
       startWorkout: vi.fn(),
     }),
-    { getState: () => ({ active: null }) },
+    { getState: () => ({ active: mocks.active }) },
   )
   return { useWorkoutStore }
 })
@@ -107,8 +117,12 @@ function renderStaleSessionPage() {
 
 describe('WorkoutPage stale-session feedback', () => {
   beforeEach(() => {
+    mocks.active = null
+    mocks.closureState = 'idle'
     mocks.continueStaleSession.mockReset()
     mocks.discardStaleSession.mockReset()
+    mocks.reloadCurrentSession.mockReset()
+    mocks.staleSession = { ageLabel: '2 dni' }
     mocks.toastError.mockReset()
     mocks.toastSuccess.mockReset()
   })
@@ -173,5 +187,22 @@ describe('WorkoutPage stale-session feedback', () => {
       'Stara sesja odrzucona. Zaczynamy od nowa.',
     ))
     expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('lets an unconfirmed closure reload the authoritative server state', () => {
+    mocks.active = {
+      sessionId: 'session-1',
+      startedAt: Date.now(),
+      templateId: null,
+      label: 'Push',
+      exercises: [],
+    }
+    mocks.closureState = 'closure_unconfirmed'
+    mocks.staleSession = null
+    renderStaleSessionPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wczytaj aktualny stan' }))
+
+    expect(mocks.reloadCurrentSession).toHaveBeenCalledOnce()
   })
 })

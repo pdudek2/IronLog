@@ -819,14 +819,24 @@ export default function WorkoutPage() {
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
             Dane treningu są zachowane. Edycja pozostaje zablokowana, dopóki serwer nie potwierdzi wyniku.
           </p>
-          <button
-            type="button"
-            onClick={() => { void retryClosure() }}
-            className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
-            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-          >
-            Spróbuj ponownie
-          </button>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => { void retryClosure() }}
+              className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+              style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+            >
+              Spróbuj ponownie
+            </button>
+            <button
+              type="button"
+              onClick={reloadCurrentSession}
+              className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+              style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
+            >
+              Wczytaj aktualny stan
+            </button>
+          </div>
         </div>
       )}
 

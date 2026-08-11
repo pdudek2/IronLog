@@ -45,6 +45,7 @@ describe('workout closure service', () => {
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     auth.currentUser = null
     vi.unstubAllGlobals()
   })
@@ -80,6 +81,24 @@ describe('workout closure service', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response(200, { status: 'discarded' })))
 
     await expect(discardWorkoutSession('session-1')).resolves.toEqual({ status: 'discarded' })
+  })
+
+  it('aborts a hanging closure request after 15 seconds', async () => {
+    vi.useFakeTimers()
+    let signal: AbortSignal | undefined
+    vi.stubGlobal('fetch', vi.fn((_path: string, init?: RequestInit) => {
+      signal = init?.signal ?? undefined
+      return new Promise<Response>((_resolve, reject) => {
+        signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+      })
+    }))
+
+    const request = discardWorkoutSession('session-1').catch((error: unknown) => error)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(signal).toBeInstanceOf(AbortSignal)
+
+    await vi.advanceTimersByTimeAsync(15_000)
+    await expect(request).resolves.toMatchObject({ kind: 'ambiguous' })
   })
 
   it.each([

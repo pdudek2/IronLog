@@ -3,6 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { resolveFirebaseAdminRuntime } from '../firebaseAdminConfig'
 
 describe('resolveFirebaseAdminRuntime', () => {
+  it('uses REST transport outside the local emulators', () => {
+    expect(resolveFirebaseAdminRuntime({
+      FIREBASE_PROJECT_ID: 'production-project',
+    })).toMatchObject({ preferRest: true })
+  })
+
   it('prefers the Firebase CLI project and ignores configured credentials in emulator runtime', () => {
     expect(resolveFirebaseAdminRuntime({
       FIREBASE_PROJECT_ID: 'production-project',
@@ -12,6 +18,7 @@ describe('resolveFirebaseAdminRuntime', () => {
       GCLOUD_PROJECT: 'demo-ironlog',
     })).toEqual({
       projectId: 'demo-ironlog',
+      preferRest: false,
       useConfiguredCredential: false,
     })
   })
@@ -23,6 +30,7 @@ describe('resolveFirebaseAdminRuntime', () => {
       GCLOUD_PROJECT: 'demo-ironlog',
     })).toEqual({
       projectId: 'demo-ironlog',
+      preferRest: false,
       useConfiguredCredential: false,
     })
   })
@@ -34,6 +42,7 @@ describe('resolveFirebaseAdminRuntime', () => {
       GCLOUD_PROJECT: '',
     })).toEqual({
       projectId: 'production-project',
+      preferRest: false,
       useConfiguredCredential: false,
     })
   })
@@ -45,6 +54,7 @@ describe('resolveFirebaseAdminRuntime', () => {
       FIREBASE_PRIVATE_KEY: 'private-key',
     })).toEqual({
       projectId: 'production-project',
+      preferRest: true,
       useConfiguredCredential: true,
     })
   })

@@ -5,6 +5,8 @@ import { buildFinishedWorkoutPayload } from './workoutService'
 export type WorkoutClosureErrorKind = 'ambiguous' | 'definitive'
 export type FinalizeWorkoutStatus = 'materialized' | 'projection_pending'
 
+const CLOSURE_REQUEST_TIMEOUT_MS = 15_000
+
 export interface FinalizeWorkoutResult {
   workoutId: string
   status: FinalizeWorkoutStatus
@@ -61,7 +63,10 @@ async function callClosureEndpoint(path: string, body: unknown): Promise<unknown
   }
 
   const idToken = await user.getIdToken()
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), CLOSURE_REQUEST_TIMEOUT_MS)
   let response: Response
+  let payload: unknown
   try {
     response = await fetch(path, {
       method: 'POST',
@@ -70,14 +75,17 @@ async function callClosureEndpoint(path: string, body: unknown): Promise<unknown
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+      signal: controller.signal,
     })
+    payload = await response.json().catch(() => null) as unknown
   } catch (cause) {
     throw new WorkoutClosureError('ambiguous', 'Nie udało się potwierdzić zamknięcia sesji.', {
       cause,
     })
+  } finally {
+    clearTimeout(timeout)
   }
 
-  const payload = await response.json().catch(() => null) as unknown
   if (response.ok) {
     if (payload === null) throw ambiguousResponse(response.status)
     return payload

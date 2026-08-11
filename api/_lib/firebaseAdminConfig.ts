@@ -10,6 +10,7 @@ type FirebaseAdminEnvironment = Partial<Record<
 
 export interface FirebaseAdminRuntime {
   projectId: string | undefined
+  preferRest: boolean
   useConfiguredCredential: boolean
 }
 
@@ -24,6 +25,7 @@ export function resolveFirebaseAdminRuntime(
     projectId: usesEmulator
       ? env.GCLOUD_PROJECT || env.FIREBASE_PROJECT_ID
       : env.FIREBASE_PROJECT_ID,
+    preferRest: !usesEmulator,
     useConfiguredCredential: !usesEmulator,
   }
 }

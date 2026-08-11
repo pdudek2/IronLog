@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import WorkoutPage from '../WorkoutPage'
 
 const mocks = vi.hoisted(() => ({
+  activeSessionSyncStatus: 'idle',
   active: null as null | {
     sessionId: string
     startedAt: number
@@ -16,6 +17,8 @@ const mocks = vi.hoisted(() => ({
   closureState: 'idle',
   continueStaleSession: vi.fn(),
   discardStaleSession: vi.fn(),
+  ready: true,
+  reloadAuthentication: vi.fn(),
   reloadCurrentSession: vi.fn(),
   staleSession: { ageLabel: '2 dni' } as { ageLabel: string } | null,
   toastError: vi.fn(),
@@ -24,7 +27,7 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('../../hooks/useActiveSession', () => ({
   useActiveSession: () => ({
-    activeSessionSyncStatus: 'idle',
+    activeSessionSyncStatus: mocks.activeSessionSyncStatus,
     beginClosure: vi.fn(),
     closureIntent: null,
     closureState: mocks.closureState,
@@ -33,8 +36,8 @@ vi.mock('../../hooks/useActiveSession', () => ({
     discardStaleSession: mocks.discardStaleSession,
     markClosureError: vi.fn(),
     markClosureUnconfirmed: vi.fn(),
-    ready: true,
-    reloadAuthentication: vi.fn(),
+    ready: mocks.ready,
+    reloadAuthentication: mocks.reloadAuthentication,
     reloadCurrentSession: mocks.reloadCurrentSession,
     retryActiveSessionSync: vi.fn(),
     staleSession: mocks.staleSession,
@@ -117,14 +120,30 @@ function renderStaleSessionPage() {
 
 describe('WorkoutPage stale-session feedback', () => {
   beforeEach(() => {
+    mocks.activeSessionSyncStatus = 'idle'
     mocks.active = null
     mocks.closureState = 'idle'
     mocks.continueStaleSession.mockReset()
     mocks.discardStaleSession.mockReset()
+    mocks.ready = true
+    mocks.reloadAuthentication.mockReset()
     mocks.reloadCurrentSession.mockReset()
     mocks.staleSession = { ageLabel: '2 dni' }
     mocks.toastError.mockReset()
     mocks.toastSuccess.mockReset()
+  })
+
+  it('offers a safe retry instead of unlocking an unconfirmed session', () => {
+    mocks.activeSessionSyncStatus = 'failed'
+    mocks.ready = false
+    mocks.staleSession = null
+    renderStaleSessionPage()
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Nie udało się wczytać aktualnej sesji.')
+    expect(screen.queryByText('Przygotowuję trening...')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+
+    expect(mocks.reloadAuthentication).toHaveBeenCalledOnce()
   })
 
   it('does not show feedback for an ignored continuation', async () => {
@@ -189,7 +208,7 @@ describe('WorkoutPage stale-session feedback', () => {
     expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
-  it('lets an unconfirmed closure reload the authoritative server state', () => {
+  it('does not expose manual server-state repair for an unconfirmed closure', () => {
     mocks.active = {
       sessionId: 'session-1',
       startedAt: Date.now(),
@@ -201,8 +220,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.staleSession = null
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Wczytaj aktualny stan' }))
-
-    expect(mocks.reloadCurrentSession).toHaveBeenCalledOnce()
+    expect(screen.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Wczytaj aktualny stan' })).not.toBeInTheDocument()
   })
 })

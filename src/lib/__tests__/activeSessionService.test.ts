@@ -4,12 +4,13 @@ vi.mock('../firebase', () => ({ db: {} }))
 vi.mock('firebase/firestore', () => ({
   deleteDoc: vi.fn(),
   doc: vi.fn(),
+  getDocFromServer: vi.fn(),
   onSnapshot: vi.fn(),
   runTransaction: vi.fn(),
   setDoc: vi.fn(),
 }))
 
-import { doc, runTransaction, setDoc } from 'firebase/firestore'
+import { doc, getDocFromServer, runTransaction, setDoc } from 'firebase/firestore'
 import {
   hasActiveSessionWork,
   persistTemplateLaunchSession,
@@ -133,6 +134,63 @@ describe('persistTemplateLaunchSession', () => {
       persistTemplateLaunchSession('user-1', workout, false),
     ).rejects.toBe(offlineError)
     expect(transactionSet).not.toHaveBeenCalled()
+  })
+})
+
+describe('claimActiveSession', () => {
+  it('creates the candidate only when no server session exists', async () => {
+    const service = await import('../activeSessionService') as unknown as {
+      claimActiveSession: (uid: string, candidate: ActiveWorkout) => Promise<ActiveWorkout>
+    }
+    expect(service.claimActiveSession).toBeTypeOf('function')
+    transactionGet.mockResolvedValue(sessionSnapshot())
+
+    await expect(service.claimActiveSession('user-1', workout)).resolves.toBe(workout)
+
+    expect(transactionSet).toHaveBeenCalledOnce()
+  })
+
+  it('returns the server session instead of overwriting it', async () => {
+    const service = await import('../activeSessionService') as unknown as {
+      claimActiveSession: (uid: string, candidate: ActiveWorkout) => Promise<ActiveWorkout>
+    }
+    expect(service.claimActiveSession).toBeTypeOf('function')
+    transactionGet.mockResolvedValue(sessionSnapshot({
+      sessionId: 'server-session',
+      startedAt: 456,
+      templateId: null,
+      label: 'Pull',
+      exercises: [],
+    }))
+
+    await expect(service.claimActiveSession('user-1', workout)).resolves.toMatchObject({
+      sessionId: 'server-session',
+      startedAt: 456,
+      label: 'Pull',
+    })
+    expect(transactionSet).not.toHaveBeenCalled()
+  })
+})
+
+describe('loadActiveSessionFromServer', () => {
+  it('bypasses the local cache and returns the authoritative session', async () => {
+    const service = await import('../activeSessionService') as unknown as {
+      loadActiveSessionFromServer: (uid: string) => Promise<ActiveWorkout | null>
+    }
+    expect(service.loadActiveSessionFromServer).toBeTypeOf('function')
+    vi.mocked(getDocFromServer).mockResolvedValue(sessionSnapshot({
+      sessionId: 'server-session',
+      startedAt: 456,
+      templateId: null,
+      label: 'Pull',
+      exercises: [],
+    }) as never)
+
+    await expect(service.loadActiveSessionFromServer('user-1')).resolves.toMatchObject({
+      sessionId: 'server-session',
+      label: 'Pull',
+    })
+    expect(getDocFromServer).toHaveBeenCalledWith(sessionRef)
   })
 })
 

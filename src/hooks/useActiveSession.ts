@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
-import { useWorkoutStore, type ActiveWorkout } from '../store/workoutStore'
-import { saveActiveSession, subscribeToActiveSession } from '../lib/activeSessionService'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { stripWorkoutClientIds, useWorkoutStore, type ActiveWorkout } from '../store/workoutStore'
+import {
+  claimActiveSession,
+  loadActiveSessionFromServer,
+  saveActiveSession,
+  subscribeToActiveSession,
+} from '../lib/activeSessionService'
 import {
   clearActiveSessionBackup,
   readActiveSessionBackup,
@@ -48,8 +53,8 @@ const COMPLETED_STALE_SESSION_OPERATION = { status: 'completed' } as const
 const IGNORED_STALE_SESSION_OPERATION = { status: 'ignored' } as const
 const ACTIVE_SESSION_READY_TIMEOUT_MS = 8_000
 
-function serializeActiveWorkout(value: unknown): string {
-  return JSON.stringify(value ?? null)
+function serializeActiveWorkout(value: ActiveWorkout | null): string {
+  return JSON.stringify(value ? stripWorkoutClientIds(value) : null)
 }
 
 interface SessionWriteContext {
@@ -96,6 +101,7 @@ export function useActiveSession(uid: string | null) {
   const confirmedClosureRef = useRef(false)
   const confirmedClosedSessionIdsRef = useRef<Set<string>>(new Set())
   const sessionWriteGenerationRef = useRef(0)
+  const startingSessionRef = useRef(false)
   const [ready, setReady] = useState(uid === null)
   const [staleSession, setStaleSession] = useState<{ ageLabel: string } | null>(null)
   const [closureIntent, setClosureIntent] = useState<WorkoutClosureIntent | null>(null)
@@ -195,9 +201,13 @@ export function useActiveSession(uid: string | null) {
     setClosureState('session_mismatch')
   }
 
-  function markClosureError(error: WorkoutClosureError) {
+  async function markClosureError(error: WorkoutClosureError): Promise<void> {
     cancelPendingPersistence()
-    setClosureState(classifyClosureFailure(error))
+    const failure = classifyClosureFailure(error)
+    setClosureState(failure)
+    if (failure === 'session_mismatch' || failure === 'closure_conflict') {
+      await reloadCurrentSession()
+    }
   }
 
   function reloadAuthentication() {
@@ -205,16 +215,88 @@ export function useActiveSession(uid: string | null) {
     window.location.reload()
   }
 
-  function reloadCurrentSession() {
+  async function reloadCurrentSession(): Promise<void> {
+    if (!uid) return
     cancelPendingPersistence()
-    if (uid) {
+    const generation = sessionWriteGenerationRef.current
+    setActiveSessionSyncStatus('retrying')
+    setReady(false)
+    try {
+      const authoritativeSession = await loadActiveSessionFromServer(uid)
+      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return
       clearWorkoutClosureIntent(uid)
       clearActiveSessionBackup(uid)
+      setPendingIntent(null)
+      setClosureState('idle')
+      confirmedClosureRef.current = false
+      staleSessionRef.current = null
+      setStaleSession(null)
+      remoteSessionRef.current = authoritativeSession
+      hadRemoteSessionRef.current = authoritativeSession !== null
+      hasUnsyncedLocalChangesRef.current = false
+      applyingRemoteRef.current = true
+      activeRef.current = authoritativeSession
+      if (authoritativeSession) {
+        useWorkoutStore.getState().hydrateFromDoc(authoritativeSession)
+        writeActiveSessionBackup(uid, authoritativeSession)
+      } else {
+        useWorkoutStore.getState().clearWorkout()
+      }
+      setActiveSessionSyncStatus('idle')
+      setReady(true)
+    } catch (error) {
+      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return
+      setActiveSessionSyncStatus('failed')
+      setReady(true)
+      console.error('[active session reload error]', error)
     }
-    setPendingIntent(null)
-    setClosureState('idle')
-    window.location.reload()
   }
+
+  const startNewSession = useCallback(async (): Promise<void> => {
+    if (!uid || closureIntentRef.current || startingSessionRef.current) return
+    if (useWorkoutStore.getState().active) {
+      setReady(true)
+      return
+    }
+
+    startingSessionRef.current = true
+    const generation = sessionWriteGenerationRef.current
+    applyingRemoteRef.current = true
+    useWorkoutStore.getState().startWorkout()
+    const candidate = useWorkoutStore.getState().active
+    activeRef.current = candidate
+    if (!candidate) {
+      startingSessionRef.current = false
+      return
+    }
+
+    setReady(false)
+    setActiveSessionSyncStatus('retrying')
+    try {
+      const claimed = await claimActiveSession(uid, candidate)
+      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return
+      remoteSessionRef.current = claimed
+      hadRemoteSessionRef.current = true
+      hasUnsyncedLocalChangesRef.current = false
+      applyingRemoteRef.current = true
+      activeRef.current = claimed
+      useWorkoutStore.getState().hydrateFromDoc(claimed)
+      writeActiveSessionBackup(uid, claimed)
+      setActiveSessionSyncStatus('idle')
+      setReady(true)
+    } catch (error) {
+      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return
+      applyingRemoteRef.current = true
+      activeRef.current = null
+      useWorkoutStore.getState().clearWorkout()
+      clearActiveSessionBackup(uid)
+      setActiveSessionSyncStatus('failed')
+      setReady(true)
+      console.error('[active session claim error]', error)
+    } finally {
+      startingSessionRef.current = false
+    }
+  }, [uid])
 
   useEffect(() => {
     activeRef.current = useWorkoutStore.getState().active
@@ -224,7 +306,6 @@ export function useActiveSession(uid: string | null) {
     if (!uid || ready) return
     const timeout = window.setTimeout(() => {
       setActiveSessionSyncStatus('failed')
-      setReady(true)
     }, ACTIVE_SESSION_READY_TIMEOUT_MS)
     return () => window.clearTimeout(timeout)
   }, [ready, uid])
@@ -261,7 +342,7 @@ export function useActiveSession(uid: string | null) {
     remoteSessionRef.current = null
     confirmedClosureRef.current = false
 
-    const { hydrateFromDoc, clearWorkout, startWorkout } = useWorkoutStore.getState()
+    const { hydrateFromDoc, clearWorkout } = useWorkoutStore.getState()
     if (intentAtMount) {
       applyingRemoteRef.current = true
       hasUnsyncedLocalChangesRef.current = false
@@ -325,7 +406,7 @@ export function useActiveSession(uid: string | null) {
           authoritative,
         })
         if (!authoritative) {
-          if (current || closureIntentRef.current) setReady(true)
+          if (!startingSessionRef.current && (current || closureIntentRef.current)) setReady(true)
           return
         }
 
@@ -345,7 +426,11 @@ export function useActiveSession(uid: string | null) {
           hasUnsyncedLocalChangesRef.current = false
           activeRef.current = session
           hydrateFromDoc(session)
-          if (closureIntentRef.current) setClosureState('session_mismatch')
+          if (closureIntentRef.current) {
+            clearWorkoutClosureIntent(currentUid)
+            setPendingIntent(null)
+            setClosureState('idle')
+          }
         } else if (session) {
           hadRemoteSessionRef.current = true
           const matchingIntent = closureIntentRef.current?.session.sessionId === session.sessionId
@@ -413,13 +498,8 @@ export function useActiveSession(uid: string | null) {
             hydrateFromDoc(backup)
             persistSession(backup)
           } else if (!closureIntentRef.current) {
-            startWorkout()
-            const createdSession = useWorkoutStore.getState().active
-            activeRef.current = createdSession
-            if (createdSession) {
-              writeActiveSessionBackup(currentUid, createdSession)
-              persistSession(createdSession)
-            }
+            void startNewSession()
+            return
           }
         } else if (current && !closureIntentRef.current) {
           writeActiveSessionBackup(currentUid, current)
@@ -439,6 +519,7 @@ export function useActiveSession(uid: string | null) {
       },
       (error) => {
         console.error('[activeSession subscribe error]', error)
+        setActiveSessionSyncStatus('failed')
         if (closureIntentRef.current) {
           setReady(true)
           return
@@ -448,11 +529,6 @@ export function useActiveSession(uid: string | null) {
         if (!current && backup) {
           activeRef.current = backup
           hydrateFromDoc(backup)
-        } else if (!current && !backup) {
-          startWorkout()
-          const createdSession = useWorkoutStore.getState().active
-          activeRef.current = createdSession
-          if (createdSession) writeActiveSessionBackup(currentUid, createdSession)
         }
         setReady(true)
       },
@@ -507,7 +583,7 @@ export function useActiveSession(uid: string | null) {
         sessionWriteGenerationRef.current += 1
       }
     }
-  }, [uid])
+  }, [startNewSession, uid])
 
   async function continueStaleSession(): Promise<StaleSessionOperationResult> {
     if (!uid || !staleSessionRef.current || closureIntentRef.current) {
@@ -620,7 +696,7 @@ export function useActiveSession(uid: string | null) {
         sessionWriteGeneration,
         sessionWriteGenerationRef.current,
       )) return IGNORED_STALE_SESSION_OPERATION
-      if (error instanceof WorkoutClosureError) markClosureError(error)
+      if (error instanceof WorkoutClosureError) await markClosureError(error)
       else markClosureUnconfirmed()
       throw error
     }
@@ -671,6 +747,7 @@ export function useActiveSession(uid: string | null) {
     reloadCurrentSession,
     reloadAuthentication,
     retryActiveSessionSync,
+    startNewSession,
     staleSession,
   }
 }

@@ -10,10 +10,14 @@ type SnapshotListener = (snapshot: {
 }) => void
 
 const listener = vi.hoisted(() => ({ current: null as SnapshotListener | null }))
+const claimActiveSession = vi.hoisted(() => vi.fn(async (_uid: string, candidate: ActiveWorkout) => candidate))
+const loadActiveSessionFromServer = vi.hoisted(() => vi.fn<() => Promise<ActiveWorkout | null>>())
 const saveActiveSession = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const discardStaleSessionLifecycle = vi.hoisted(() => vi.fn())
 
 vi.mock('../../lib/activeSessionService', () => ({
+  claimActiveSession,
+  loadActiveSessionFromServer,
   saveActiveSession,
   subscribeToActiveSession: vi.fn((_uid: string, onChange: SnapshotListener) => {
     listener.current = onChange
@@ -30,6 +34,7 @@ vi.mock('../../lib/workoutLifecycle', () => ({
 }))
 
 import { useActiveSession } from '../../hooks/useActiveSession'
+import { readWorkoutClosureIntent, writeWorkoutClosureIntent } from '../../lib/workoutClosureIntent'
 import { useWorkoutStore } from '../../store/workoutStore'
 
 const remoteSession: ActiveWorkout = {
@@ -67,6 +72,8 @@ describe('useActiveSession snapshot authority', () => {
     })
     useWorkoutStore.getState().clearWorkout()
     listener.current = null
+    claimActiveSession.mockReset().mockImplementation(async (_uid: string, candidate: ActiveWorkout) => candidate)
+    loadActiveSessionFromServer.mockReset().mockResolvedValue(null)
     saveActiveSession.mockReset().mockResolvedValue(undefined)
     discardStaleSessionLifecycle.mockReset()
   })
@@ -75,7 +82,7 @@ describe('useActiveSession snapshot authority', () => {
     vi.useRealTimers()
   })
 
-  it('stops waiting when server authority never arrives', async () => {
+  it('reports failure without unlocking an unconfirmed empty session', async () => {
     vi.useFakeTimers()
     const { result } = renderHook(() => useActiveSession('user-1'))
 
@@ -85,8 +92,60 @@ describe('useActiveSession snapshot authority', () => {
       await vi.advanceTimersByTimeAsync(8_000)
     })
 
-    expect(result.current.ready).toBe(true)
+    expect(result.current.ready).toBe(false)
     expect(result.current.activeSessionSyncStatus).toBe('failed')
+  })
+
+  it('accepts a newer server edit after its local write is acknowledged', async () => {
+    vi.useFakeTimers()
+    const initialSession: ActiveWorkout = {
+      ...remoteSession,
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: '80', reps: '5', done: false }],
+      }],
+    }
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => listener.current?.({
+      session: initialSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '6'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
+    expect(saveActiveSession).toHaveBeenCalledTimes(1)
+
+    act(() => listener.current?.({
+      session: {
+        ...initialSession,
+        exercises: [{
+          ...initialSession.exercises[0],
+          sets: [{ weight: '80', reps: '6', done: false }],
+        }],
+      },
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    act(() => listener.current?.({
+      session: {
+        ...initialSession,
+        exercises: [{
+          ...initialSession.exercises[0],
+          sets: [{ weight: '80', reps: '7', done: false }],
+        }],
+      },
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    expect(result.current.ready).toBe(true)
+    expect(useWorkoutStore.getState().active?.exercises[0].sets[0].reps).toBe('7')
+    expect(saveActiveSession).toHaveBeenCalledTimes(1)
   })
 
   it.each([
@@ -113,6 +172,92 @@ describe('useActiveSession snapshot authority', () => {
     }))
     expect(result.current.ready).toBe(true)
     expect(useWorkoutStore.getState().active?.sessionId).toBe('server-session')
+  })
+
+  it('converges a simultaneous empty start to the session claimed on the server', async () => {
+    const claim = createDeferred<ActiveWorkout>()
+    claimActiveSession.mockReturnValueOnce(claim.promise)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => listener.current?.({
+      session: null,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    expect(claimActiveSession).toHaveBeenCalledOnce()
+    expect(result.current.ready).toBe(false)
+    const candidate = claimActiveSession.mock.calls[0][1]
+    act(() => listener.current?.({
+      session: candidate,
+      fromCache: false,
+      hasPendingWrites: true,
+    }))
+    expect(result.current.ready).toBe(false)
+
+    await act(async () => {
+      claim.resolve(remoteSession)
+      await claim.promise
+    })
+
+    expect(result.current.ready).toBe(true)
+    expect(useWorkoutStore.getState().active?.sessionId).toBe('server-session')
+  })
+
+  it('reloads the authoritative session directly instead of trusting the local cache', async () => {
+    const staleLocalSession = { ...remoteSession, sessionId: 'stale-local-session' }
+    const authoritativeSession = { ...remoteSession, sessionId: 'authoritative-session' }
+    useWorkoutStore.getState().hydrateFromDoc(staleLocalSession)
+    loadActiveSessionFromServer.mockResolvedValueOnce(authoritativeSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    await act(async () => {
+      await result.current.reloadCurrentSession()
+    })
+
+    expect(loadActiveSessionFromServer).toHaveBeenCalledWith('user-1')
+    expect(result.current.ready).toBe(true)
+    expect(useWorkoutStore.getState().active?.sessionId).toBe('authoritative-session')
+  })
+
+  it('automatically reconciles a server session mismatch', async () => {
+    const staleLocalSession = { ...remoteSession, sessionId: 'stale-local-session' }
+    const authoritativeSession = { ...remoteSession, sessionId: 'authoritative-session' }
+    useWorkoutStore.getState().hydrateFromDoc(staleLocalSession)
+    loadActiveSessionFromServer.mockResolvedValueOnce(authoritativeSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    await act(async () => {
+      await result.current.markClosureError(Object.assign(new Error('mismatch'), {
+        kind: 'definitive',
+        code: 'session_mismatch',
+        status: 409,
+      }) as never)
+    })
+
+    expect(loadActiveSessionFromServer).toHaveBeenCalledWith('user-1')
+    expect(result.current.closureState).toBe('idle')
+    expect(useWorkoutStore.getState().active?.sessionId).toBe('authoritative-session')
+  })
+
+  it('automatically clears a stale closure intent when another device has an active session', () => {
+    writeWorkoutClosureIntent('user-1', {
+      action: 'discard',
+      session: { ...remoteSession, sessionId: 'closed-on-this-device' },
+      createdAt: Date.now(),
+    })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    const authoritativeSession = { ...remoteSession, sessionId: 'active-on-another-device' }
+
+    act(() => listener.current?.({
+      session: authoritativeSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    expect(result.current.closureState).toBe('idle')
+    expect(readWorkoutClosureIntent('user-1')).toBeNull()
+    expect(useWorkoutStore.getState().active?.sessionId).toBe('active-on-another-device')
   })
 
   it('does not resurrect the first session after a later replacement is also confirmed closed', async () => {

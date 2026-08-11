@@ -1,4 +1,4 @@
-import { deleteDoc, doc, onSnapshot, runTransaction, setDoc, type Unsubscribe } from 'firebase/firestore'
+import { deleteDoc, doc, getDocFromServer, onSnapshot, runTransaction, setDoc, type Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
 import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
 import { normalizeSessionId } from './sessionIdentity'
@@ -39,6 +39,21 @@ export function subscribeToActiveSession(
 
 export async function saveActiveSession(uid: string, workout: ActiveWorkout): Promise<void> {
   await setDoc(activeSessionRef(uid), activeSessionDocument(uid, workout))
+}
+
+export async function claimActiveSession(uid: string, candidate: ActiveWorkout): Promise<ActiveWorkout> {
+  const ref = activeSessionRef(uid)
+  return runTransaction(db, async (transaction) => {
+    const snapshot = await transaction.get(ref)
+    if (snapshot.exists()) return parseSessionDoc(uid, snapshot.data())
+    transaction.set(ref, activeSessionDocument(uid, candidate))
+    return candidate
+  })
+}
+
+export async function loadActiveSessionFromServer(uid: string): Promise<ActiveWorkout | null> {
+  const snapshot = await getDocFromServer(activeSessionRef(uid))
+  return snapshot.exists() ? parseSessionDoc(uid, snapshot.data()) : null
 }
 
 export async function persistTemplateLaunchSession(

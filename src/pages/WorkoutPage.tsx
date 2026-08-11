@@ -14,6 +14,7 @@ import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { ActiveSessionSyncStatus } from '../components/workout/ActiveSessionSyncStatus'
+import { ActionFeedback } from '../components/ActionFeedback'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
 import ExercisePicker from '../components/ExercisePicker'
@@ -295,7 +296,6 @@ export default function WorkoutPage() {
   const { profile } = useProfileStore()
   const {
     active,
-    startWorkout,
     setLabel,
     addExercise,
   } = useWorkoutStore()
@@ -319,6 +319,7 @@ export default function WorkoutPage() {
     reloadAuthentication,
     reloadCurrentSession,
     retryActiveSessionSync,
+    startNewSession,
     staleSession,
   } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
@@ -485,8 +486,8 @@ export default function WorkoutPage() {
   const saving = closureState === 'submitting'
   const closureLocked = closureState !== 'idle'
 
-  function handleClosureError(error: unknown) {
-    if (error instanceof WorkoutClosureError) markClosureError(error)
+  async function handleClosureError(error: unknown): Promise<void> {
+    if (error instanceof WorkoutClosureError) await markClosureError(error)
     else markClosureUnconfirmed()
   }
 
@@ -509,7 +510,7 @@ export default function WorkoutPage() {
         : 'Trening zapisany. Statystyki oczekują na synchronizację.')
     } catch (error) {
       console.error('[finish workout closure error]', error)
-      handleClosureError(error)
+      await handleClosureError(error)
     }
   }
 
@@ -589,7 +590,7 @@ export default function WorkoutPage() {
       navigate('/dashboard', { replace: true })
     } catch (error) {
       console.error('[discard workout closure error]', error)
-      handleClosureError(error)
+      await handleClosureError(error)
     }
   }
 
@@ -655,11 +656,22 @@ export default function WorkoutPage() {
       navigate('/dashboard', { replace: true })
     } catch (error) {
       console.error('[retry discard closure error]', error)
-      handleClosureError(error)
+      await handleClosureError(error)
     }
   }
 
   if (!ready) {
+    if (activeSessionSyncStatus === 'failed') {
+      return (
+        <div className="mx-auto max-w-lg">
+          <ActionFeedback
+            status="error"
+            message="Nie udało się wczytać aktualnej sesji. Sprawdź połączenie i spróbuj ponownie."
+            onRetry={reloadAuthentication}
+          />
+        </div>
+      )
+    }
     return <LoadingState message="Przygotowuję trening..." />
   }
 
@@ -708,7 +720,7 @@ export default function WorkoutPage() {
             Poprzednia sesja mogła zostać zakończona albo usunięta na innym urządzeniu.
           </p>
           <motion.button
-            onClick={startWorkout}
+            onClick={() => { void startNewSession() }}
             className="rounded-2xl px-6 py-3 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
             whileTap={{ scale: 0.97 }}
@@ -828,14 +840,6 @@ export default function WorkoutPage() {
             >
               Spróbuj ponownie
             </button>
-            <button
-              type="button"
-              onClick={reloadCurrentSession}
-              className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
-              style={{ border: '1px solid var(--border)', color: 'var(--text)' }}
-            >
-              Wczytaj aktualny stan
-            </button>
           </div>
         </div>
       )}
@@ -844,15 +848,15 @@ export default function WorkoutPage() {
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">Ta sesja nie jest już aktywna na serwerze.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Wczytaj aktualny stan, aby nie nadpisać treningu otwartego na innym urządzeniu.
+            Nie udało się automatycznie uzgodnić sesji otwartej na innym urządzeniu.
           </p>
           <button
             type="button"
-            onClick={reloadCurrentSession}
+            onClick={() => { void reloadCurrentSession() }}
             className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           >
-            Wczytaj aktualny stan
+            Spróbuj ponownie
           </button>
         </div>
       )}
@@ -861,15 +865,15 @@ export default function WorkoutPage() {
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">Serwer odrzucił zamknięcie tej sesji.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Sesja nie jest już aktywna albo została wcześniej zamknięta w inny sposób. Wczytaj aktualny stan przed kolejną akcją.
+            Sesja została wcześniej zamknięta w inny sposób, a automatyczne uzgodnienie stanu nie powiodło się.
           </p>
           <button
             type="button"
-            onClick={reloadCurrentSession}
+            onClick={() => { void reloadCurrentSession() }}
             className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           >
-            Wczytaj aktualny stan
+            Spróbuj ponownie
           </button>
         </div>
       )}
@@ -895,15 +899,15 @@ export default function WorkoutPage() {
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">Nie można zamknąć tej sesji.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Serwer definitywnie odrzucił operację. Wczytaj aktualny stan, aby bezpiecznie kontynuować.
+            Serwer definitywnie odrzucił operację. Spróbuj ponownie po sprawdzeniu połączenia.
           </p>
           <button
             type="button"
-            onClick={reloadCurrentSession}
+            onClick={() => { void retryClosure() }}
             className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           >
-            Wczytaj aktualny stan
+            Spróbuj ponownie
           </button>
         </div>
       )}

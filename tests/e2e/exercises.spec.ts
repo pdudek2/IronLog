@@ -27,6 +27,38 @@ test.describe('Exercises CRUD', () => {
     await expect(page.getByText(TEST_EXERCISE_NAME, { exact: false })).toBeVisible({ timeout: 8_000 })
     await page.screenshot({ path: 'test-results/exercises-created.png' })
 
+    const flatLibraryContract = await page.evaluate(() => {
+      const activeFilter = document.querySelector<HTMLElement>('.exercise-filter-chip[data-active="true"]')
+      const openAffordance = document.querySelector<HTMLElement>('.exercise-library-open')
+      const editAction = document.querySelector<HTMLElement>('.exercise-library-actions .planner-icon-action')
+      if (!activeFilter || !openAffordance || !editAction) {
+        throw new Error('Expected loaded library controls')
+      }
+
+      const filterStyle = window.getComputedStyle(activeFilter)
+      const openStyle = window.getComputedStyle(openAffordance)
+      const editStyle = window.getComputedStyle(editAction)
+      return {
+        filterRadius: filterStyle.borderTopLeftRadius,
+        filterBackground: filterStyle.backgroundColor,
+        filterBottomBorder: filterStyle.borderBottomWidth,
+        openBorder: openStyle.borderTopWidth,
+        openBackground: openStyle.backgroundColor,
+        editBorder: editStyle.borderTopWidth,
+        editBackground: editStyle.backgroundColor,
+      }
+    })
+
+    expect(flatLibraryContract).toEqual({
+      filterRadius: '0px',
+      filterBackground: 'rgba(0, 0, 0, 0)',
+      filterBottomBorder: '2px',
+      openBorder: '0px',
+      openBackground: 'rgba(0, 0, 0, 0)',
+      editBorder: '0px',
+      editBackground: 'rgba(0, 0, 0, 0)',
+    })
+
     await addBtn.click()
     await expect(nameInput).toBeVisible({ timeout: 5_000 })
     await nameInput.fill(TEST_EXERCISE_NAME)

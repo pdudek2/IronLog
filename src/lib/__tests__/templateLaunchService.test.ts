@@ -54,7 +54,7 @@ function templateWithTargets(): WorkoutTemplate {
 describe('createPersistedTemplateWorkout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(saveActiveSession).mockResolvedValue()
+    vi.mocked(saveActiveSession).mockResolvedValue({ sessionRevision: 'session-revision' })
     vi.mocked(persistTemplateLaunchSession).mockResolvedValue()
     vi.mocked(getExerciseSessions).mockResolvedValue([])
   })

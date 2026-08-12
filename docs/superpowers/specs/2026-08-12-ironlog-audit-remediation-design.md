@@ -1,6 +1,6 @@
 # IronLog Audit Remediation Design
 
-**Status:** Compatibility implementation, deterministic gates, and UI cleanup are live in production as of 2026-08-12. Strict revision enforcement remains open until the compatibility window is closed.
+**Status:** Complete. Compatibility rollout, strict revision enforcement, deterministic gates, and UI cleanup are live and production-verified as of 2026-08-12.
 
 ## Purpose
 
@@ -127,11 +127,11 @@ Stream B may be merged before Stream A if desired, but Stream A remains the rele
 
 ## Closeout State
 
-- Completed in production: Stream A compatibility implementation, Stream B, and Stream C.
-- Verified locally: lint, 550 unit tests, production build, 18 Firestore rules tests, 42 workout integration tests, and the a11y, isolated, workout, CSP, and visual E2E gates.
-- Verified in production: deployment `dpl_DfdnSCNU3sbeHPZr5xFMjQTgsoZj`; the authenticated SPA sent only `sessionId` and `sessionRevision`, finalization returned `200` with `materialized`, the canonical `3 kg × 3` set remained visible after reload, and cleanup returned `200`.
-- Next stage: close the compatibility window, then execute Task 9 from the canonical workout-closure plan.
-- Parent remains open until strict revision enforcement is complete or explicitly deferred by a release decision.
+- Completed in production: both Stream A rollout phases, Stream B, and Stream C.
+- Verified locally for the strict cutover: lint, 552 unit tests, production build, 18 Firestore rules tests, 41 workout integration tests, and 9 workout lifecycle E2E tests.
+- Verified in production: Phase B deployment `dpl_3A53sBbLwXd8AxCeoCNbYs7BFvFW`; an authenticated finalize request sent only `sessionId` and `sessionRevision`, returned `200` with `materialized`, the canonical `3 kg × 3` set remained visible after reload, and cleanup returned `200`.
+- Strict rejection verified in production: a missing-revision finalize probe returned `400` with `Brak pola sessionRevision.` before closure logic; browser console and Vercel error logs were clean.
+- Parent audit remediation and canonical workout closure are closed.
 
 ## Out of Scope
 

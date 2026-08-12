@@ -1,6 +1,6 @@
 # Canonical Workout Closure Implementation Plan
 
-**Status:** Phase A is live and production-verified as of 2026-08-12. Task 9's deployment prerequisite is satisfied; enforcement remains pending until the compatibility window is explicitly closed.
+**Status:** Complete. Phase A and Phase B strict revision enforcement are live and production-verified as of 2026-08-12.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -1098,3 +1098,5 @@ Expected: all commands exit 0.
 git add api/finalize-workout.ts api/_lib/workoutValidation.ts firestore.rules api/_lib/__tests__/workoutValidation.test.ts api/__tests__/workoutClosureHandlers.test.ts tests/rules/firestore.rules.test.ts tests/integration/workoutClosure.integration.test.ts
 git commit -m "fix: require active session revision fences"
 ```
+
+**Production closeout:** Commit `886fed5` was deployed as Vercel deployment `dpl_3A53sBbLwXd8AxCeoCNbYs7BFvFW`, and strict Firestore rules were released to `ironlog-ede05`. An authenticated production workout finalized with exactly `{ sessionId, sessionRevision }`, returned `200` with `materialized`, persisted the canonical `3 kg × 3` set after reload, and was removed with `200`. A separate missing-revision probe returned `400` with `Brak pola sessionRevision.`. Production console and Vercel error logs were clean.

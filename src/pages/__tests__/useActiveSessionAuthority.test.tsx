@@ -278,6 +278,42 @@ describe('useActiveSession snapshot authority', () => {
     expect(useWorkoutStore.getState().active?.sessionId).toBe('authoritative-session')
   })
 
+  it('unlocks local recovery and exposes a working sync retry when conflict reload fails', async () => {
+    const reloadError = new Error('offline during reload')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const staleLocalSession = { ...remoteSession, sessionId: 'stale-local-session' }
+    useWorkoutStore.getState().hydrateFromDoc(staleLocalSession)
+    loadActiveSessionFromServer.mockRejectedValueOnce(reloadError)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => { result.current.beginClosure('finish', staleLocalSession) })
+
+    let failure: Awaited<ReturnType<typeof result.current.markClosureError>>
+    await act(async () => {
+      failure = await result.current.markClosureError(Object.assign(new Error('changed'), {
+        kind: 'definitive',
+        code: 'active_session_changed',
+        status: 409,
+      }) as never)
+    })
+
+    expect(failure!).toBeNull()
+    expect(result.current.ready).toBe(true)
+    expect(result.current.closureIntent).toBeNull()
+    expect(readWorkoutClosureIntent('user-1')).toBeNull()
+    expect(result.current.closureState).toBe('idle')
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(useWorkoutStore.getState().active).toEqual(staleLocalSession)
+    expect(consoleError).toHaveBeenCalledWith('[active session reload error]', reloadError)
+
+    await act(async () => {
+      await result.current.retryActiveSessionSync()
+    })
+
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', staleLocalSession)
+    expect(result.current.activeSessionSyncStatus).toBe('idle')
+    consoleError.mockRestore()
+  })
+
   it('automatically clears a stale closure intent when another device has an active session', () => {
     writeWorkoutClosureIntent('user-1', {
       action: 'discard',

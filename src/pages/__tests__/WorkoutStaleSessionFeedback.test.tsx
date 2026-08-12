@@ -288,6 +288,40 @@ describe('WorkoutPage stale-session feedback', () => {
     expect(mocks.markClosureUnconfirmed).not.toHaveBeenCalled()
   })
 
+  it('does not claim reconciliation when the authoritative conflict reload fails', async () => {
+    const session: ActiveWorkout = {
+      sessionId: 'session-changed',
+      startedAt: Date.now(),
+      templateId: null,
+      label: 'Push',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: '80', reps: '5', done: true }],
+      }],
+    }
+    const conflict = new WorkoutClosureError('definitive', 'changed', {
+      code: 'active_session_changed',
+      status: 409,
+    })
+    mocks.active = session
+    mocks.staleSession = null
+    mocks.beginClosure.mockReturnValue({ action: 'finish', session, createdAt: Date.now() })
+    mocks.prepareFinishClosure.mockResolvedValue({ status: 'ready', sessionRevision: 'stale-revision' })
+    mocks.finalizeWorkout.mockRejectedValue(conflict)
+    mocks.markClosureError.mockResolvedValue(null)
+    renderStaleSessionPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+
+    await waitFor(() => expect(mocks.markClosureError).toHaveBeenCalledWith(conflict))
+    expect(mocks.toastError).not.toHaveBeenCalledWith(
+      'Sesja zmieniła się na innym urządzeniu. Sprawdź dane i zakończ ją ponownie.',
+    )
+    expect(mocks.markClosureUnconfirmed).not.toHaveBeenCalled()
+  })
+
   it('discards an empty session instead of sending a finalize request', async () => {
     const emptySession: ActiveWorkout = {
       sessionId: 'session-empty',
@@ -314,6 +348,7 @@ describe('WorkoutPage stale-session feedback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Odrzuć sesję' }))
 
     await waitFor(() => expect(mocks.discardWorkoutLifecycle).toHaveBeenCalledOnce())
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     expect(mocks.beginClosure).toHaveBeenCalledWith('discard', emptySession)
     expect(mocks.prepareFinishClosure).not.toHaveBeenCalled()
     expect(mocks.finalizeWorkout).not.toHaveBeenCalled()

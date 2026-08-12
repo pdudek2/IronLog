@@ -254,7 +254,7 @@ export function useActiveSession(uid: string | null) {
     setClosureState('session_mismatch')
   }
 
-  async function markClosureError(error: WorkoutClosureError): Promise<ClosureFailureState> {
+  async function markClosureError(error: WorkoutClosureError): Promise<ClosureFailureState | null> {
     cancelPendingPersistence()
     const failure = classifyClosureFailure(error)
     setClosureState(failure)
@@ -263,7 +263,13 @@ export function useActiveSession(uid: string | null) {
       || failure === 'closure_conflict'
       || failure === 'active_session_changed'
     ) {
-      await reloadCurrentSession()
+      const reloaded = await reloadCurrentSession()
+      if (!reloaded && failure === 'active_session_changed') {
+        if (uid) clearWorkoutClosureIntent(uid)
+        setPendingIntent(null)
+        setClosureState('idle')
+        return null
+      }
     }
     return failure
   }
@@ -273,15 +279,15 @@ export function useActiveSession(uid: string | null) {
     window.location.reload()
   }
 
-  async function reloadCurrentSession(): Promise<void> {
-    if (!uid) return
+  async function reloadCurrentSession(): Promise<boolean> {
+    if (!uid) return false
     cancelPendingPersistence()
     const generation = sessionWriteGenerationRef.current
     setActiveSessionSyncStatus('retrying')
     setReady(false)
     try {
       const authoritativeSession = await loadActiveSessionFromServer(uid)
-      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return
+      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return false
       clearWorkoutClosureIntent(uid)
       clearActiveSessionBackup(uid)
       setPendingIntent(null)
@@ -301,11 +307,13 @@ export function useActiveSession(uid: string | null) {
       }
       setActiveSessionSyncStatus('idle')
       setReady(true)
+      return true
     } catch (error) {
-      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return
+      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return false
       setActiveSessionSyncStatus('failed')
       setReady(true)
       console.error('[active session reload error]', error)
+      return false
     }
   }
 

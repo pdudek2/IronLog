@@ -1,6 +1,6 @@
 # IronLog Audit Remediation Design
 
-**Status:** Approved on 2026-08-12
+**Status:** Compatibility implementation, deterministic gates, and UI cleanup completed and integrated locally on `main` on 2026-08-12. Production rollout and strict revision enforcement remain open.
 
 ## Purpose
 
@@ -124,6 +124,13 @@ No new visual-regression framework or CI system is introduced.
 4. Stream A enforcement deployment after the compatibility release is confirmed live.
 
 Stream B may be merged before Stream A if desired, but Stream A remains the release priority because it protects permanent workout history.
+
+## Closeout State
+
+- Completed locally: Stream A compatibility implementation, Stream B, and Stream C.
+- Verified locally: lint, 550 unit tests, production build, 18 Firestore rules tests, 42 workout integration tests, and the a11y, isolated, workout, CSP, and visual E2E gates.
+- Next stage: push and deploy the compatibility release, verify the deployed SPA/API contract with a real authenticated closure, then execute Task 9 from the canonical workout-closure plan.
+- Parent remains open until production verification and strict revision enforcement are complete or explicitly deferred by a release decision.
 
 ## Out of Scope
 

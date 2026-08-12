@@ -1,5 +1,7 @@
 # UI Polish and Cleanup Implementation Plan
 
+**Status:** Completed, verified, and integrated locally on `main` on 2026-08-12.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Correct the two verified Polish-content defects and remove the confirmed dead application entry file without changing Puls layout or behavior.

@@ -97,6 +97,7 @@ function activeSessionDocument(
   return {
     userId: uid,
     sessionId,
+    sessionRevision: crypto.randomUUID(),
     startedAt,
     templateId: null,
     label,

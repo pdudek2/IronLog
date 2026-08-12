@@ -266,6 +266,16 @@ describe('activeSessions rules', () => {
     }))
   })
 
+  it('allows optional safe session revisions during the compatibility rollout', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const activeRef = doc(db, 'activeSessions', 'alice')
+    const validActive = validActiveSession('alice')
+
+    await assertSucceeds(setDoc(activeRef, { ...validActive, sessionRevision: 'revision-1' }))
+    await assertSucceeds(setDoc(activeRef, validActive))
+    await assertFails(setDoc(activeRef, { ...validActive, sessionRevision: 'unsafe/revision' }))
+  })
+
   it('allows a realistic multi-exercise template session', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
     const exercises = [

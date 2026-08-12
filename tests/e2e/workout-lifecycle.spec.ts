@@ -102,7 +102,17 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     await expect(page.getByText('Trening zapisany!', { exact: true })).toBeVisible()
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)
-    expect(await readLifecycleWorkout(sessionId)).toMatchObject({ sessionId, materialized: true })
+    expect(await readLifecycleWorkout(sessionId)).toMatchObject({
+      sessionId,
+      materialized: true,
+      label: 'Phase 1 normal finish',
+      exercises: [{
+        exerciseId: 'phase-1-bench-press',
+        exerciseSource: 'global',
+        name: 'Phase 1 Bench Press',
+        sets: [{ weight: 80, reps: 5 }],
+      }],
+    })
     expect(await readLifecycleClosedSession(sessionId)).toMatchObject({
       sessionId,
       outcome: 'finished',

@@ -9,6 +9,7 @@ export type RemoteSessionSyncDecision =
   | 'retain_closure_snapshot'
 
 export type ClosureFailureState =
+  | 'active_session_changed'
   | 'auth_required'
   | 'closure_conflict'
   | 'closure_failed'
@@ -100,6 +101,7 @@ export function classifyClosureFailure({
   status?: number
 }): ClosureFailureState {
   if (kind === 'ambiguous') return 'closure_unconfirmed'
+  if (code === 'active_session_changed') return 'active_session_changed'
   if (code === 'session_mismatch') return 'session_mismatch'
   if (code === 'closure_conflict' || code === 'session_not_active') return 'closure_conflict'
   if (

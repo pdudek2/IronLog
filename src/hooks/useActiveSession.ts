@@ -31,6 +31,7 @@ import {
   isAuthoritativeActiveSessionSnapshot,
   shouldPersistActiveSession,
   shouldResolveActiveSessionSyncFailure,
+  type ClosureFailureState,
 } from '../lib/activeSessionSyncPolicy'
 import { WorkoutClosureError } from '../lib/workoutClosureService'
 import type { ActiveSessionSyncStatusValue } from '../components/workout/ActiveSessionSyncStatus'
@@ -38,11 +39,7 @@ import type { ActiveSessionSyncStatusValue } from '../components/workout/ActiveS
 export type ClosureUiState =
   | 'idle'
   | 'submitting'
-  | 'closure_unconfirmed'
-  | 'session_mismatch'
-  | 'closure_conflict'
-  | 'auth_required'
-  | 'closure_failed'
+  | ClosureFailureState
 
 export type StaleSessionOperationResult =
   | { status: 'completed' }
@@ -257,13 +254,18 @@ export function useActiveSession(uid: string | null) {
     setClosureState('session_mismatch')
   }
 
-  async function markClosureError(error: WorkoutClosureError): Promise<void> {
+  async function markClosureError(error: WorkoutClosureError): Promise<ClosureFailureState> {
     cancelPendingPersistence()
     const failure = classifyClosureFailure(error)
     setClosureState(failure)
-    if (failure === 'session_mismatch' || failure === 'closure_conflict') {
+    if (
+      failure === 'session_mismatch'
+      || failure === 'closure_conflict'
+      || failure === 'active_session_changed'
+    ) {
       await reloadCurrentSession()
     }
+    return failure
   }
 
   function reloadAuthentication() {

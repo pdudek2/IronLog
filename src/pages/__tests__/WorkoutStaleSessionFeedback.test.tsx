@@ -3,20 +3,22 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import type { ActiveWorkout } from '../../store/workoutStore'
 import WorkoutPage from '../WorkoutPage'
+import { WorkoutClosureError } from '../../lib/workoutClosureService'
 
 const mocks = vi.hoisted(() => ({
   activeSessionSyncStatus: 'idle',
-  active: null as null | {
-    sessionId: string
-    startedAt: number
-    templateId: null
-    label: string
-    exercises: []
-  },
+  active: null as ActiveWorkout | null,
+  beginClosure: vi.fn(),
   closureState: 'idle',
   continueStaleSession: vi.fn(),
+  discardWorkoutLifecycle: vi.fn(),
   discardStaleSession: vi.fn(),
+  finalizeWorkout: vi.fn(),
+  markClosureError: vi.fn(),
+  markClosureUnconfirmed: vi.fn(),
+  prepareFinishClosure: vi.fn(),
   ready: true,
   reloadAuthentication: vi.fn(),
   reloadCurrentSession: vi.fn(),
@@ -28,21 +30,46 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../../hooks/useActiveSession', () => ({
   useActiveSession: () => ({
     activeSessionSyncStatus: mocks.activeSessionSyncStatus,
-    beginClosure: vi.fn(),
+    beginClosure: mocks.beginClosure,
     closureIntent: null,
     closureState: mocks.closureState,
     confirmClosure: vi.fn(),
     continueStaleSession: mocks.continueStaleSession,
     discardStaleSession: mocks.discardStaleSession,
-    markClosureError: vi.fn(),
-    markClosureUnconfirmed: vi.fn(),
-    prepareFinishClosure: vi.fn(),
+    markClosureError: mocks.markClosureError,
+    markClosureUnconfirmed: mocks.markClosureUnconfirmed,
+    prepareFinishClosure: mocks.prepareFinishClosure,
     ready: mocks.ready,
     reloadAuthentication: mocks.reloadAuthentication,
     reloadCurrentSession: mocks.reloadCurrentSession,
     retryActiveSessionSync: vi.fn(),
     staleSession: mocks.staleSession,
   }),
+}))
+
+vi.mock('../../lib/workoutLifecycle', () => ({
+  discardWorkoutLifecycle: mocks.discardWorkoutLifecycle,
+  finishWorkoutLifecycle: ({ request }: { request: () => Promise<unknown> }) => request(),
+}))
+
+vi.mock('../../lib/workoutClosureService', () => ({
+  finalizeWorkout: mocks.finalizeWorkout,
+  WorkoutClosureError: class WorkoutClosureError extends Error {
+    readonly kind: 'ambiguous' | 'definitive'
+    readonly status?: number
+    readonly code?: string
+
+    constructor(
+      kind: 'ambiguous' | 'definitive',
+      message: string,
+      options: { status?: number; code?: string } = {},
+    ) {
+      super(message)
+      this.kind = kind
+      this.status = options.status
+      this.code = options.code
+    }
+  },
 }))
 
 vi.mock('../../store/authStore', () => ({
@@ -79,7 +106,7 @@ vi.mock('../../lib/exerciseDetailService', () => ({
 }))
 
 vi.mock('../../lib/overloadService', () => ({
-  suggestNextSession: vi.fn(),
+  suggestNextSession: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('../../hooks/useMediaQuery', () => ({ useMediaQuery: () => false }))
@@ -123,9 +150,15 @@ describe('WorkoutPage stale-session feedback', () => {
   beforeEach(() => {
     mocks.activeSessionSyncStatus = 'idle'
     mocks.active = null
+    mocks.beginClosure.mockReset()
     mocks.closureState = 'idle'
     mocks.continueStaleSession.mockReset()
+    mocks.discardWorkoutLifecycle.mockReset()
     mocks.discardStaleSession.mockReset()
+    mocks.finalizeWorkout.mockReset()
+    mocks.markClosureError.mockReset()
+    mocks.markClosureUnconfirmed.mockReset()
+    mocks.prepareFinishClosure.mockReset()
     mocks.ready = true
     mocks.reloadAuthentication.mockReset()
     mocks.reloadCurrentSession.mockReset()
@@ -219,5 +252,70 @@ describe('WorkoutPage stale-session feedback', () => {
 
     expect(screen.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Wczytaj aktualny stan' })).not.toBeInTheDocument()
+  })
+
+  it('shows precise feedback after reloading a session changed on another device', async () => {
+    const session: ActiveWorkout = {
+      sessionId: 'session-changed',
+      startedAt: Date.now(),
+      templateId: null,
+      label: 'Push',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: '80', reps: '5', done: true }],
+      }],
+    }
+    const conflict = new WorkoutClosureError('definitive', 'changed', {
+      code: 'active_session_changed',
+      status: 409,
+    })
+    mocks.active = session
+    mocks.staleSession = null
+    mocks.beginClosure.mockReturnValue({ action: 'finish', session, createdAt: Date.now() })
+    mocks.prepareFinishClosure.mockResolvedValue({ status: 'ready', sessionRevision: 'stale-revision' })
+    mocks.finalizeWorkout.mockRejectedValue(conflict)
+    mocks.markClosureError.mockResolvedValue('active_session_changed')
+    renderStaleSessionPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
+      'Sesja zmieniła się na innym urządzeniu. Sprawdź dane i zakończ ją ponownie.',
+    ))
+    expect(mocks.markClosureError).toHaveBeenCalledWith(conflict)
+    expect(mocks.markClosureUnconfirmed).not.toHaveBeenCalled()
+  })
+
+  it('discards an empty session instead of sending a finalize request', async () => {
+    const emptySession: ActiveWorkout = {
+      sessionId: 'session-empty',
+      startedAt: Date.now(),
+      templateId: null,
+      label: 'Push',
+      exercises: [],
+    }
+    mocks.active = emptySession
+    mocks.staleSession = null
+    mocks.beginClosure.mockImplementation((action: 'finish' | 'discard') => ({
+      action,
+      session: emptySession,
+      createdAt: Date.now(),
+    }))
+    mocks.discardWorkoutLifecycle.mockResolvedValue({ status: 'discarded' })
+    renderStaleSessionPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('Zakończyć bez zapisu?')
+    expect(screen.getByRole('dialog')).toHaveTextContent(
+      'Nie zaznaczono żadnej serii jako wykonanej. Sesja zostanie odrzucona bez zapisywania treningu.',
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Odrzuć sesję' }))
+
+    await waitFor(() => expect(mocks.discardWorkoutLifecycle).toHaveBeenCalledOnce())
+    expect(mocks.beginClosure).toHaveBeenCalledWith('discard', emptySession)
+    expect(mocks.prepareFinishClosure).not.toHaveBeenCalled()
+    expect(mocks.finalizeWorkout).not.toHaveBeenCalled()
   })
 })

@@ -253,6 +253,31 @@ describe('useActiveSession snapshot authority', () => {
     expect(useWorkoutStore.getState().active?.sessionId).toBe('authoritative-session')
   })
 
+  it('reloads the authoritative session and clears a stale closure after a revision conflict', async () => {
+    const staleLocalSession = { ...remoteSession, sessionId: 'stale-local-session' }
+    const authoritativeSession = { ...remoteSession, sessionId: 'authoritative-session' }
+    useWorkoutStore.getState().hydrateFromDoc(staleLocalSession)
+    loadActiveSessionFromServer.mockResolvedValueOnce(authoritativeSession)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => { result.current.beginClosure('finish', staleLocalSession) })
+
+    let failure: Awaited<ReturnType<typeof result.current.markClosureError>>
+    await act(async () => {
+      failure = await result.current.markClosureError(Object.assign(new Error('changed'), {
+        kind: 'definitive',
+        code: 'active_session_changed',
+        status: 409,
+      }) as never)
+    })
+
+    expect(failure!).toBe('active_session_changed')
+    expect(loadActiveSessionFromServer).toHaveBeenCalledWith('user-1')
+    expect(readWorkoutClosureIntent('user-1')).toBeNull()
+    expect(result.current.closureIntent).toBeNull()
+    expect(result.current.closureState).toBe('idle')
+    expect(useWorkoutStore.getState().active?.sessionId).toBe('authoritative-session')
+  })
+
   it('automatically clears a stale closure intent when another device has an active session', () => {
     writeWorkoutClosureIntent('user-1', {
       action: 'discard',

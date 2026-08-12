@@ -497,8 +497,14 @@ export default function WorkoutPage() {
   const closureLocked = closureState !== 'idle'
 
   async function handleClosureError(error: unknown): Promise<void> {
-    if (error instanceof WorkoutClosureError) await markClosureError(error)
-    else markClosureUnconfirmed()
+    if (!(error instanceof WorkoutClosureError)) {
+      markClosureUnconfirmed()
+      return
+    }
+    const failure = await markClosureError(error)
+    if (failure === 'active_session_changed') {
+      toast.error('Sesja zmieniła się na innym urządzeniu. Sprawdź dane i zakończ ją ponownie.')
+    }
   }
 
   async function submitFinish(intent: WorkoutClosureIntent) {
@@ -1355,9 +1361,15 @@ export default function WorkoutPage() {
 
       {confirmFinishEmpty && (
         <ConfirmDialog
-          message="Nie zaznaczono żadnych serii jako wykonanych. Zakończyć i zapisać trening?"
-          confirmLabel="Zapisz"
-          onConfirm={() => { setConfirmFinishEmpty(false); void doFinish() }}
+          title="Zakończyć bez zapisu?"
+          message="Nie zaznaczono żadnej serii jako wykonanej. Sesja zostanie odrzucona bez zapisywania treningu."
+          confirmLabel="Odrzuć sesję"
+          cancelLabel="Wróć"
+          danger
+          onConfirm={() => {
+            setConfirmFinishEmpty(false)
+            void handleConfirmDiscard()
+          }}
           onCancel={() => setConfirmFinishEmpty(false)}
         />
       )}

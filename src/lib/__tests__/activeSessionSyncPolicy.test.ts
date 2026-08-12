@@ -143,6 +143,11 @@ describe('active session sync policy', () => {
   it('maps definitive conflicts separately from ambiguous closure retries', () => {
     expect(classifyClosureFailure({
       kind: 'definitive',
+      status: 409,
+      code: 'active_session_changed',
+    })).toBe('active_session_changed')
+    expect(classifyClosureFailure({
+      kind: 'definitive',
       code: 'closure_conflict',
       status: 409,
     })).toBe('closure_conflict')

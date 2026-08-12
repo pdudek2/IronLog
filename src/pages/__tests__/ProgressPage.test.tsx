@@ -400,7 +400,7 @@ describe('ProgressPage', () => {
   it('uses source-aware strength keys and exposes a visible heatmap summary', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [
-        session('global-1', 3),
+        session('global-1', 3, { finishedAt: new Date(2026, 6, 7, 12).getTime() }),
         session('user-1', 2, { exerciseSource: 'user' }),
         session('global-2', 1),
       ],
@@ -419,6 +419,7 @@ describe('ProgressPage', () => {
     expect(screen.getByRole('img', {
       name: /Największy dzień: 7 lip, 1\.0k kg\./i,
     })).toBeInTheDocument()
+    expect(screen.getByTitle('7 lip: 1.0k kg')).toBeInTheDocument()
     expect(screen.queryByText(/najmocniejszy dzień 2026-/i)).not.toBeInTheDocument()
   })
 

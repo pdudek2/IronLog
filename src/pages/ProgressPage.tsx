@@ -84,6 +84,11 @@ function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
 }
 
+function formatHeatmapDate(date: string): string {
+  const timestamp = Date.parse(`${date}T12:00:00`)
+  return Number.isFinite(timestamp) ? formatDate(timestamp) : date
+}
+
 function summarizeWeeklyVolume(data: WeeklyPoint[]): string {
   if (data.length === 0) return 'Wolumen treningowy: brak danych w wybranym zakresie.'
 
@@ -135,7 +140,7 @@ function summarizeActivityHeatmap(data: HeatmapDay[]): string {
   if (!first) return 'Kalendarz treningów: brak aktywnych dni w wybranym zakresie.'
   const peak = activeDays.reduce((top, cell) => cell.volume > top.volume ? cell : top, first)
 
-  return `Kalendarz treningów z ostatnich 12 tygodni. Aktywne dni: ${activeDays.length}. Największy dzień: ${peak.date}, ${formatVolume(peak.volume)}.`
+  return `Kalendarz treningów z ostatnich 12 tygodni. Aktywne dni: ${activeDays.length}. Największy dzień: ${formatHeatmapDate(peak.date)}, ${formatVolume(peak.volume)}.`
 }
 
 interface DarkTooltipProps {
@@ -349,7 +354,7 @@ export default function ProgressPage() {
     )
     if (!peak) return ''
 
-    return `${activeDays.length} ${polishPlural(activeDays.length, 'aktywny dzień', 'aktywne dni', 'aktywnych dni')} · najmocniejszy dzień ${peak.date} · ${formatVolume(peak.volume)}`
+    return `${activeDays.length} ${polishPlural(activeDays.length, 'aktywny dzień', 'aktywne dni', 'aktywnych dni')} · najmocniejszy dzień ${formatHeatmapDate(peak.date)} · ${formatVolume(peak.volume)}`
   }, [heatmapData])
 
   const totalVolume = useMemo(
@@ -721,7 +726,11 @@ export default function ProgressPage() {
                         return (
                           <i
                             key={weekIdx}
-                            title={cell?.date && cell.volume > 0 ? `${cell.date}: ${formatVolume(cell.volume)}` : cell?.date ?? ''}
+                            title={cell?.date && cell.volume > 0
+                              ? `${formatHeatmapDate(cell.date)}: ${formatVolume(cell.volume)}`
+                              : cell?.date
+                                ? formatHeatmapDate(cell.date)
+                                : ''}
                             style={{ background: HEATMAP_COLORS[cell?.level ?? 0] }}
                           />
                         )

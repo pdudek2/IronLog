@@ -145,14 +145,17 @@ function deferred<T>() {
 
 describe('ProgressPage', () => {
   let consoleError: ReturnType<typeof vi.spyOn>
+  let dateNow: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
+    dateNow = vi.spyOn(Date, 'now').mockReturnValue(NOW)
     mockLoadProgressData.mockReset()
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
   })
 
   afterEach(() => {
     consoleError.mockRestore()
+    dateNow.mockRestore()
   })
 
   it('keeps the board mounted when switching from 90 to 30 days and does not call the loader again', async () => {
@@ -410,7 +413,13 @@ describe('ProgressPage', () => {
       'global:bench',
       'user:bench',
     ])
-    expect(screen.getByText(/3 aktywne dni · najmocniejszy dzień/i)).toBeInTheDocument()
+    expect(await screen.findByText(
+      /3 aktywne dni · najmocniejszy dzień 7 lip · 1\.0k kg/i,
+    )).toBeInTheDocument()
+    expect(screen.getByRole('img', {
+      name: /Największy dzień: 7 lip, 1\.0k kg\./i,
+    })).toBeInTheDocument()
+    expect(screen.queryByText(/najmocniejszy dzień 2026-/i)).not.toBeInTheDocument()
   })
 
   it('uses singular and paucal forms in the muscle balance accessible summary', async () => {

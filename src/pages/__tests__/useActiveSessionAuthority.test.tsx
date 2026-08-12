@@ -34,7 +34,11 @@ vi.mock('../../lib/workoutLifecycle', () => ({
 }))
 
 import { useActiveSession } from '../../hooks/useActiveSession'
-import { readWorkoutClosureIntent, writeWorkoutClosureIntent } from '../../lib/workoutClosureIntent'
+import {
+  readWorkoutClosureIntent,
+  writeWorkoutClosureIntent,
+  type WorkoutClosureIntent,
+} from '../../lib/workoutClosureIntent'
 import { useWorkoutStore } from '../../store/workoutStore'
 
 const remoteSession: ActiveWorkout = {
@@ -267,6 +271,44 @@ describe('useActiveSession snapshot authority', () => {
     expect(result.current.closureState).toBe('idle')
     expect(readWorkoutClosureIntent('user-1')).toBeNull()
     expect(useWorkoutStore.getState().active?.sessionId).toBe('active-on-another-device')
+  })
+
+  it('persists the frozen closure snapshot and returns its revision', async () => {
+    saveActiveSession.mockResolvedValueOnce({ sessionRevision: 'revision-finish' })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => useWorkoutStore.getState().hydrateFromDoc(remoteSession))
+    let intent: WorkoutClosureIntent | null = null
+    act(() => { intent = result.current.beginClosure('finish', remoteSession) })
+
+    let outcome!: Awaited<ReturnType<typeof result.current.prepareFinishClosure>>
+    await act(async () => {
+      outcome = await result.current.prepareFinishClosure(intent!)
+    })
+    expect(outcome).toEqual({
+      status: 'ready',
+      sessionRevision: 'revision-finish',
+    })
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', intent!.session)
+  })
+
+  it('unlocks an unsent finish and exposes sync retry when snapshot persistence fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    saveActiveSession.mockRejectedValueOnce(new Error('offline'))
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => useWorkoutStore.getState().hydrateFromDoc(remoteSession))
+    let intent: WorkoutClosureIntent | null = null
+    act(() => { intent = result.current.beginClosure('finish', remoteSession) })
+
+    let outcome!: Awaited<ReturnType<typeof result.current.prepareFinishClosure>>
+    await act(async () => {
+      outcome = await result.current.prepareFinishClosure(intent!)
+    })
+    expect(outcome).toEqual({ status: 'failed' })
+    expect(result.current.closureState).toBe('idle')
+    expect(result.current.closureIntent).toBeNull()
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(remoteSession.sessionId)
+    consoleError.mockRestore()
   })
 
   it('does not resurrect the first session after a later replacement is also confirmed closed', async () => {
@@ -600,8 +642,9 @@ describe('useActiveSession snapshot authority', () => {
     expect(outcome!).toEqual({ status: 'completed' })
   })
 
-  it('still rejects a current stale-session continuation failure', async () => {
+  it('keeps a locally refreshed stale session available for sync retry when persistence fails', async () => {
     const currentError = new Error('current continuation failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     saveActiveSession.mockRejectedValueOnce(currentError)
     const { result } = renderHook(() => useActiveSession('user-1'))
     act(() => listener.current?.({
@@ -611,8 +654,12 @@ describe('useActiveSession snapshot authority', () => {
     }))
 
     await act(async () => {
-      await expect(result.current.continueStaleSession()).rejects.toBe(currentError)
+      await expect(result.current.continueStaleSession()).resolves.toEqual({ status: 'sync_failed' })
     })
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(staleRemoteSession.sessionId)
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledWith('[continue stale session persistence error]', currentError)
+    consoleError.mockRestore()
   })
 
   it('returns ignored for a late continuation success after confirmed closure', async () => {

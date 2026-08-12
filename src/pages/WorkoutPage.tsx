@@ -8,7 +8,7 @@ import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { getRecentWorkouts } from '../lib/workoutService'
 import { discardWorkoutLifecycle, finishWorkoutLifecycle } from '../lib/workoutLifecycle'
-import { WorkoutClosureError } from '../lib/workoutClosureService'
+import { finalizeWorkout, WorkoutClosureError } from '../lib/workoutClosureService'
 import type { WorkoutClosureIntent } from '../lib/workoutClosureIntent'
 import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
@@ -318,6 +318,7 @@ export default function WorkoutPage() {
     discardStaleSession,
     markClosureError,
     markClosureUnconfirmed,
+    prepareFinishClosure,
     ready,
     reloadAuthentication,
     reloadCurrentSession,
@@ -503,10 +504,14 @@ export default function WorkoutPage() {
   async function submitFinish(intent: WorkoutClosureIntent) {
     if (!user) return
     try {
+      const prepared = await prepareFinishClosure(intent)
+      if (prepared.status === 'failed') return
+
       const result = await finishWorkoutLifecycle({
         uid: user.uid,
         session: intent.session,
         now: () => intent.createdAt,
+        request: () => finalizeWorkout(intent.session.sessionId, prepared.sessionRevision),
         clearConfirmed: confirmClosure,
       })
       if (result.status === 'closure_unconfirmed') {
@@ -609,6 +614,10 @@ export default function WorkoutPage() {
     try {
       const result = await continueStaleSession()
       if (result.status === 'ignored') return
+      if (result.status === 'sync_failed') {
+        toast.error('Sesja została przywrócona lokalnie. Ponów synchronizację.')
+        return
+      }
       toast.success('Wróciłem do zapisanej sesji z odświeżonym timerem.')
     } catch (error) {
       console.error('[continue stale session error]', error)

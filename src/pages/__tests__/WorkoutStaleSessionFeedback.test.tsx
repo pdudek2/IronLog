@@ -36,6 +36,7 @@ vi.mock('../../hooks/useActiveSession', () => ({
     discardStaleSession: mocks.discardStaleSession,
     markClosureError: vi.fn(),
     markClosureUnconfirmed: vi.fn(),
+    prepareFinishClosure: vi.fn(),
     ready: mocks.ready,
     reloadAuthentication: mocks.reloadAuthentication,
     reloadCurrentSession: mocks.reloadCurrentSession,
@@ -169,20 +170,16 @@ describe('WorkoutPage stale-session feedback', () => {
     expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
-  it('shows an error for a real current continuation failure', async () => {
-    const currentError = new Error('current continuation failed')
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
-    mocks.continueStaleSession.mockRejectedValue(currentError)
+  it('shows sync retry feedback when the refreshed stale session cannot be persisted', async () => {
+    mocks.continueStaleSession.mockResolvedValue({ status: 'sync_failed' })
     renderStaleSessionPage()
 
     fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }))
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
-      'Nie udało się przywrócić sesji. Spróbuj ponownie.',
+      'Sesja została przywrócona lokalnie. Ponów synchronizację.',
     ))
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
-    expect(consoleError).toHaveBeenCalledWith('[continue stale session error]', currentError)
-    consoleError.mockRestore()
   })
 
   it('does not show feedback for an ignored discard', async () => {

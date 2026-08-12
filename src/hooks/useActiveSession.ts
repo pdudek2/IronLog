@@ -47,9 +47,15 @@ export type ClosureUiState =
 export type StaleSessionOperationResult =
   | { status: 'completed' }
   | { status: 'ignored' }
+  | { status: 'sync_failed' }
+
+export type PrepareFinishClosureResult =
+  | { status: 'ready'; sessionRevision: string }
+  | { status: 'failed' }
 
 const COMPLETED_STALE_SESSION_OPERATION = { status: 'completed' } as const
 const IGNORED_STALE_SESSION_OPERATION = { status: 'ignored' } as const
+const FAILED_STALE_SESSION_SYNC_OPERATION = { status: 'sync_failed' } as const
 const ACTIVE_SESSION_READY_TIMEOUT_MS = 8_000
 
 function serializeActiveWorkout(value: ActiveWorkout | null): string {
@@ -190,6 +196,31 @@ export function useActiveSession(uid: string | null) {
   function markClosureUnconfirmed() {
     cancelPendingPersistence()
     setClosureState('closure_unconfirmed')
+  }
+
+  async function prepareFinishClosure(
+    intent: WorkoutClosureIntent,
+  ): Promise<PrepareFinishClosureResult> {
+    if (!uid || closureIntentRef.current !== intent || intent.action !== 'finish') {
+      return { status: 'failed' }
+    }
+
+    setActiveSessionSyncStatus('retrying')
+    try {
+      const saved = await saveActiveSession(uid, intent.session)
+      if (closureIntentRef.current !== intent) return { status: 'failed' }
+      hasUnsyncedLocalChangesRef.current = false
+      setActiveSessionSyncStatus('idle')
+      return { status: 'ready', sessionRevision: saved.sessionRevision }
+    } catch (error) {
+      if (closureIntentRef.current !== intent) return { status: 'failed' }
+      clearWorkoutClosureIntent(uid)
+      setPendingIntent(null)
+      setClosureState('idle')
+      setActiveSessionSyncStatus('failed')
+      console.error('[prepare workout closure error]', error)
+      return { status: 'failed' }
+    }
   }
 
   function markSessionMismatch() {
@@ -584,7 +615,10 @@ export function useActiveSession(uid: string | null) {
         sessionWriteGenerationRef.current,
         confirmedClosedSessionIdsRef.current,
       )) return IGNORED_STALE_SESSION_OPERATION
-      throw error
+      hasUnsyncedLocalChangesRef.current = true
+      setActiveSessionSyncStatus('failed')
+      console.error('[continue stale session persistence error]', error)
+      return FAILED_STALE_SESSION_SYNC_OPERATION
     }
     if (!isSessionWriteCurrent(
       write,
@@ -718,6 +752,7 @@ export function useActiveSession(uid: string | null) {
     markClosureUnconfirmed,
     markClosureError,
     markSessionMismatch,
+    prepareFinishClosure,
     ready,
     reloadCurrentSession,
     reloadAuthentication,

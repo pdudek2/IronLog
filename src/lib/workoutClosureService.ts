@@ -1,6 +1,4 @@
-import type { ActiveWorkout } from '../store/workoutStore'
 import { auth } from './firebase'
-import { buildFinishedWorkoutPayload } from './workoutService'
 
 export type WorkoutClosureErrorKind = 'ambiguous' | 'definitive'
 export type FinalizeWorkoutStatus = 'materialized' | 'projection_pending'
@@ -36,15 +34,19 @@ export class WorkoutClosureError extends Error {
   }
 }
 
-export async function finalizeWorkout(session: ActiveWorkout): Promise<FinalizeWorkoutResult> {
-  const result = await callClosureEndpoint('/api/finalize-workout', buildFinishedWorkoutPayload(session))
+export async function finalizeWorkout(
+  sessionId: string,
+  sessionRevision: string,
+): Promise<FinalizeWorkoutResult> {
+  const result = await callClosureEndpoint('/api/finalize-workout', {
+    sessionId,
+    sessionRevision,
+  })
   if (
     !isRecord(result)
-    || result.workoutId !== session.sessionId
+    || result.workoutId !== sessionId
     || (result.status !== 'materialized' && result.status !== 'projection_pending')
-  ) {
-    throw ambiguousResponse()
-  }
+  ) throw ambiguousResponse()
   return { workoutId: result.workoutId, status: result.status }
 }
 

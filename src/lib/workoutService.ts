@@ -12,9 +12,8 @@ import {
   startAfter,
   where,
 } from 'firebase/firestore'
-import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
+import type { ExerciseSource } from '../store/workoutStore'
 import { auth, db } from './firebase'
-import { getCappedWorkoutFinishedAt } from './sessionDuration'
 
 interface WorkoutSetSummary {
   weight: number
@@ -26,15 +25,6 @@ export interface WorkoutExerciseSummary {
   exerciseSource?: ExerciseSource
   name: string
   sets: WorkoutSetSummary[]
-}
-
-export interface FinishedWorkoutPayload {
-  sessionId: string
-  templateId: string | null
-  startedAt: number
-  finishedAt: number
-  label: string | null
-  exercises: WorkoutExerciseSummary[]
 }
 
 export interface WorkoutSummary {
@@ -60,12 +50,6 @@ export interface WorkoutHistoryResult {
 export interface MaterializationRetryResult {
   attempted: number
   failed: number
-}
-
-export async function saveWorkout(_uid: string, workout: ActiveWorkout): Promise<SaveWorkoutResult> {
-  const { finalizeWorkout } = await import('./workoutClosureService')
-  const result = await finalizeWorkout(workout)
-  return { id: result.workoutId, materialized: result.status === 'materialized' }
 }
 
 export async function getRecentWorkouts(uid: string, count = 20): Promise<WorkoutSummary[]> {
@@ -197,28 +181,6 @@ export function calcVolume(workout: WorkoutSummary): number {
     (total, exercise) => total + exercise.sets.reduce((sum, set) => sum + set.weight * set.reps, 0),
     0
   )
-}
-
-export function buildFinishedWorkoutPayload(workout: ActiveWorkout): FinishedWorkoutPayload {
-  const persistableWorkout = stripWorkoutClientIds(workout)
-  return {
-    sessionId: persistableWorkout.sessionId,
-    templateId: persistableWorkout.templateId ?? null,
-    startedAt: persistableWorkout.startedAt,
-    finishedAt: getCappedWorkoutFinishedAt(persistableWorkout.startedAt),
-    label: persistableWorkout.label?.trim() ? persistableWorkout.label : null,
-    exercises: persistableWorkout.exercises.map((exercise) => ({
-      exerciseId: exercise.exerciseId,
-      exerciseSource: exercise.exerciseSource,
-      name: exercise.name,
-      sets: exercise.sets
-        .filter((set) => set.done && set.reps !== '')
-        .map((set) => ({
-          weight: parseFloat(set.weight) || 0,
-          reps: parseInt(set.reps, 10) || 0,
-        })),
-    })).filter((exercise) => exercise.sets.length > 0),
-  }
 }
 
 function normalizeWorkoutSummary(id: string, raw: unknown): WorkoutSummary {

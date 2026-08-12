@@ -6,7 +6,6 @@ import {
 } from './workoutClosureIntent'
 import {
   discardWorkoutSession,
-  finalizeWorkout,
   WorkoutClosureError,
   type DiscardWorkoutResult,
   type FinalizeWorkoutResult,
@@ -28,7 +27,9 @@ interface ClosureDependencies<T> {
   clearConfirmed(): void | Promise<void>
 }
 
-type FinishWorkoutDependencies = ClosureDependencies<FinalizeWorkoutResult>
+interface FinishWorkoutDependencies extends ClosureDependencies<FinalizeWorkoutResult> {
+  request(): Promise<FinalizeWorkoutResult>
+}
 type DiscardWorkoutDependencies = ClosureDependencies<DiscardWorkoutResult>
 
 interface DiscardStaleSessionDependencies extends DiscardWorkoutDependencies {
@@ -74,11 +75,7 @@ export async function finishWorkoutLifecycle(
     return { workout, ...await confirmLegacyCleanup(dependencies.clearSession) }
   }
 
-  return runClosure(
-    'finish',
-    dependencies,
-    dependencies.request ?? (() => finalizeWorkout(dependencies.session)),
-  )
+  return runClosure('finish', dependencies, dependencies.request)
 }
 
 export function discardWorkoutLifecycle(

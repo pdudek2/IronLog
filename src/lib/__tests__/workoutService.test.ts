@@ -11,26 +11,11 @@ vi.mock('../firebase', () => ({ db: {}, auth }))
 vi.mock('firebase/firestore', () => ({}))
 
 import {
-  buildFinishedWorkoutPayload,
   calcStreak,
   retryPendingMaterializations,
   retryWorkoutMaterialization,
 } from '../workoutService'
 import type { WorkoutSummary } from '../workoutService'
-import type { ActiveWorkout } from '../../store/workoutStore'
-
-const workout: ActiveWorkout = {
-  sessionId: 'session-1',
-  startedAt: 1_790_000_000_000,
-  templateId: null,
-  label: 'Phase R workout',
-  exercises: [{
-    exerciseId: 'bench-press',
-    exerciseSource: 'global',
-    name: 'Bench Press',
-    sets: [{ weight: '80', reps: '5', done: true }],
-  }],
-}
 
 /** Returns a WorkoutSummary with startedAt set to N days ago (relative to now) */
 function workoutDaysAgo(daysAgo: number): WorkoutSummary {
@@ -166,25 +151,5 @@ describe('retryWorkoutMaterialization', () => {
 
     await expect(retryWorkoutMaterialization('workout-42'))
       .rejects.toThrow('Projection unavailable')
-  })
-})
-
-describe('buildFinishedWorkoutPayload', () => {
-  it('builds the endpoint payload without client-owned administrative fields', () => {
-    const payload = buildFinishedWorkoutPayload(workout)
-
-    expect(payload).toMatchObject({
-      sessionId: 'session-1',
-      templateId: null,
-      startedAt: workout.startedAt,
-      label: 'Phase R workout',
-      exercises: [{
-        exerciseId: 'bench-press',
-        exerciseSource: 'global',
-        sets: [{ weight: 80, reps: 5 }],
-      }],
-    })
-    expect(payload).not.toHaveProperty('userId')
-    expect(payload).not.toHaveProperty('materialized')
   })
 })

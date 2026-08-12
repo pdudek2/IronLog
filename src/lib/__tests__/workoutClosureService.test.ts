@@ -1,5 +1,4 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ActiveWorkout } from '../../store/workoutStore'
 
 const { auth } = vi.hoisted(() => ({
   auth: { currentUser: null as { getIdToken: () => Promise<string> } | null },
@@ -13,23 +12,6 @@ import {
   finalizeWorkout,
   WorkoutClosureError,
 } from '../workoutClosureService'
-
-const session: ActiveWorkout = {
-  sessionId: 'session-1',
-  startedAt: 1_790_000_000_000,
-  templateId: null,
-  label: ' Push ',
-  exercises: [{
-    exerciseId: 'bench-press',
-    exerciseSource: 'global',
-    name: 'Bench Press',
-    sets: [
-      { weight: '82.5', reps: '5', done: true },
-      { weight: '90', reps: '', done: true },
-      { weight: '100', reps: '3', done: false },
-    ],
-  }],
-}
 
 function response(status: number, body: unknown, readable = true): Response {
   return {
@@ -54,7 +36,7 @@ describe('workout closure service', () => {
     const fetchMock = vi.fn().mockResolvedValue(response(200, { workoutId: 'session-1', status }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(finalizeWorkout(session)).resolves.toEqual({ workoutId: 'session-1', status })
+    await expect(finalizeWorkout('session-1', 'revision-1')).resolves.toEqual({ workoutId: 'session-1', status })
     expect(fetchMock).toHaveBeenCalledWith('/api/finalize-workout', expect.objectContaining({
       method: 'POST',
       headers: {
@@ -64,16 +46,7 @@ describe('workout closure service', () => {
     }))
     expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
       sessionId: 'session-1',
-      templateId: null,
-      startedAt: session.startedAt,
-      finishedAt: expect.any(Number),
-      label: ' Push ',
-      exercises: [{
-        exerciseId: 'bench-press',
-        exerciseSource: 'global',
-        name: 'Bench Press',
-        sets: [{ weight: 82.5, reps: 5 }],
-      }],
+      sessionRevision: 'revision-1',
     })
   })
 
@@ -108,7 +81,7 @@ describe('workout closure service', () => {
   ])('classifies %s as ambiguous', async (_case, fetchResult) => {
     vi.stubGlobal('fetch', vi.fn(fetchResult))
 
-    const error = await finalizeWorkout(session).catch((caught) => caught)
+    const error = await finalizeWorkout('session-1', 'revision-1').catch((caught) => caught)
     expect(error).toBeInstanceOf(WorkoutClosureError)
     expect(error).toMatchObject({ kind: 'ambiguous' })
   })
@@ -122,21 +95,23 @@ describe('workout closure service', () => {
       code,
     })))
 
-    const error = await finalizeWorkout(session).catch((caught) => caught)
+    const error = await finalizeWorkout('session-1', 'revision-1').catch((caught) => caught)
     expect(error).toBeInstanceOf(WorkoutClosureError)
     expect(error).toMatchObject({ kind: 'definitive', status, code })
   })
 
-  it('retries with the identical sessionId', async () => {
+  it('retries with the identical closure identity', async () => {
     const fetchMock = vi.fn()
       .mockRejectedValueOnce(new Error('ack lost'))
       .mockResolvedValueOnce(response(200, { workoutId: 'session-1', status: 'materialized' }))
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(finalizeWorkout(session)).rejects.toMatchObject({ kind: 'ambiguous' })
-    await expect(finalizeWorkout(session)).resolves.toEqual({ workoutId: 'session-1', status: 'materialized' })
+    await expect(finalizeWorkout('session-1', 'revision-1')).rejects.toMatchObject({ kind: 'ambiguous' })
+    await expect(finalizeWorkout('session-1', 'revision-1')).resolves.toEqual({ workoutId: 'session-1', status: 'materialized' })
 
-    expect(fetchMock.mock.calls.map((call) => JSON.parse(call[1].body).sessionId))
-      .toEqual(['session-1', 'session-1'])
+    expect(fetchMock.mock.calls.map((call) => JSON.parse(call[1].body))).toEqual([
+      { sessionId: 'session-1', sessionRevision: 'revision-1' },
+      { sessionId: 'session-1', sessionRevision: 'revision-1' },
+    ])
   })
 })

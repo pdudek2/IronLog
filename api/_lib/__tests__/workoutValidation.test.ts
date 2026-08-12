@@ -4,8 +4,9 @@ import {
   MAX_SETS_PER_EXERCISE,
   MAX_WORKOUT_EXERCISES,
   buildExerciseSessionDocumentId,
+  buildFinishedWorkoutFromActiveSession,
   normalizeWorkoutExercises,
-  parseFinalizeWorkoutInput,
+  parseFinalizeWorkoutRequest,
   validateFirestoreDocumentId,
   validateWorkoutLabel,
 } from '../workoutValidation.js'
@@ -20,13 +21,32 @@ const validExercise = {
   ],
 }
 
-const validFinalizeBody = {
+const legacyFinalizeBody = {
   sessionId: 'session-1',
-  templateId: null,
-  startedAt: 1_790_000_000_000,
-  finishedAt: 1_790_003_600_000,
-  label: ' Push ',
+  sessionRevision: '00000000-0000-4000-8000-000000000001',
+  templateId: 'attacker-template',
+  startedAt: 1,
+  finishedAt: 2,
+  label: 'Client value must be ignored',
   exercises: [validExercise],
+}
+
+const activeDraft = {
+  userId: 'user-1',
+  sessionId: 'session-1',
+  sessionRevision: '00000000-0000-4000-8000-000000000001',
+  startedAt: 1_790_000_000_000,
+  templateId: null,
+  label: ' Push ',
+  exercises: [{
+    exerciseId: 'bench-press',
+    exerciseSource: 'global',
+    name: 'Bench Press',
+    sets: [
+      { weight: '80.5', reps: '5', done: true },
+      { weight: '90', reps: '3', done: false },
+    ],
+  }],
 }
 
 describe('normalizeWorkoutExercises', () => {
@@ -105,9 +125,30 @@ describe('buildExerciseSessionDocumentId', () => {
   })
 })
 
-describe('parseFinalizeWorkoutInput', () => {
-  it('normalizes a valid finalize body', () => {
-    expect(parseFinalizeWorkoutInput(validFinalizeBody)).toEqual({
+describe('parseFinalizeWorkoutRequest', () => {
+  it('returns only the closure identity from a compatibility request', () => {
+    expect(parseFinalizeWorkoutRequest(legacyFinalizeBody)).toEqual({
+      sessionId: 'session-1',
+      sessionRevision: '00000000-0000-4000-8000-000000000001',
+    })
+  })
+
+  it('accepts an unfenced legacy request only in compatibility mode', () => {
+    expect(parseFinalizeWorkoutRequest({ ...legacyFinalizeBody, sessionRevision: undefined }))
+      .toEqual({ sessionId: 'session-1' })
+    expect(() => parseFinalizeWorkoutRequest({ sessionId: 'session-1' }, { requireRevision: true }))
+      .toThrow('Brak pola sessionRevision.')
+  })
+
+  it.each(['userId', 'materialized', 'closedAt'])('rejects request-supplied %s', (field) => {
+    expect(() => parseFinalizeWorkoutRequest({ ...legacyFinalizeBody, [field]: field === 'materialized' ? true : 'value' }))
+      .toThrow(`Nieoczekiwane pole ${field}.`)
+  })
+})
+
+describe('buildFinishedWorkoutFromActiveSession', () => {
+  it('builds history only from completed active-session sets', () => {
+    expect(buildFinishedWorkoutFromActiveSession(activeDraft, 1_790_003_600_000)).toEqual({
       sessionId: 'session-1',
       templateId: null,
       startedAt: 1_790_000_000_000,
@@ -117,28 +158,21 @@ describe('parseFinalizeWorkoutInput', () => {
         exerciseId: 'bench-press',
         exerciseSource: 'global',
         name: 'Bench Press',
-        sets: [
-          { weight: 80.5, reps: 5 },
-          { weight: 75, reps: 8 },
-        ],
+        sets: [{ weight: 80.5, reps: 5 }],
       }],
     })
   })
 
-  it.each([
-    [{ ...validFinalizeBody, sessionId: undefined }, 'Brak pola sessionId.'],
-    [{ ...validFinalizeBody, sessionId: 'unsafe/session' }, 'Niepoprawne pole sessionId.'],
-    [{ ...validFinalizeBody, exercises: [{ ...validExercise, exerciseSource: 'shared' }] }, 'Niepoprawne źródło ćwiczenia.'],
-    [{ ...validFinalizeBody, exercises: [{ ...validExercise, sets: [{ weight: -1, reps: 5 }] }] }, 'Niepoprawny ciężar w serii.'],
-    [{ ...validFinalizeBody, label: 'x'.repeat(121) }, 'Nazwa treningu jest za długa.'],
-    [{ ...validFinalizeBody, finishedAt: validFinalizeBody.startedAt - 1 }, 'Czas zakończenia nie może poprzedzać rozpoczęcia.'],
-    [{ ...validFinalizeBody, finishedAt: validFinalizeBody.startedAt + 12 * 60 * 60 * 1000 + 1 }, 'Czas treningu przekracza dozwolony limit.'],
-  ])('rejects invalid finalize input', (body, message) => {
-    expect(() => parseFinalizeWorkoutInput(body)).toThrow(message)
-  })
+  it('rejects a draft without any completed set', () => {
+    const empty = {
+      ...activeDraft,
+      exercises: activeDraft.exercises.map((exercise) => ({
+        ...exercise,
+        sets: exercise.sets.map((set) => ({ ...set, done: false })),
+      })),
+    }
 
-  it.each(['userId', 'materialized', 'closedAt'])('rejects request-supplied %s', (field) => {
-    expect(() => parseFinalizeWorkoutInput({ ...validFinalizeBody, [field]: field === 'materialized' ? true : 'value' }))
-      .toThrow(`Nieoczekiwane pole ${field}.`)
+    expect(() => buildFinishedWorkoutFromActiveSession(empty, 1_790_003_600_000))
+      .toThrow('Trening musi zawierać co najmniej jedno ćwiczenie.')
   })
 })

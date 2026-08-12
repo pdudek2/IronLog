@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
 
 import { ApiError } from './errors.js'
-import { MAX_ACTIVE_SESSION_AGE_MS } from '../../src/lib/sessionDuration.js'
 
 export type ExerciseSource = 'global' | 'user'
 
@@ -40,8 +39,9 @@ export const MAX_SET_WEIGHT_KG = 2_000
 export const MAX_SET_REPS = 1_000
 
 const EXERCISE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/
-const FINALIZE_FIELDS = new Set([
+const COMPATIBILITY_FINALIZE_FIELDS = new Set([
   'sessionId',
+  'sessionRevision',
   'templateId',
   'startedAt',
   'finishedAt',
@@ -49,33 +49,57 @@ const FINALIZE_FIELDS = new Set([
   'exercises',
 ])
 
-export function parseFinalizeWorkoutInput(raw: unknown): FinalizeWorkoutInput {
+export interface FinalizeWorkoutRequest {
+  sessionId: string
+  sessionRevision?: string
+}
+
+interface ParseFinalizeWorkoutRequestOptions {
+  requireRevision?: boolean
+}
+
+export function parseFinalizeWorkoutRequest(
+  raw: unknown,
+  options: ParseFinalizeWorkoutRequestOptions = {},
+): FinalizeWorkoutRequest {
   const record = asRecord(raw, 'Niepoprawny payload treningu.')
   for (const field of Object.keys(record)) {
-    if (!FINALIZE_FIELDS.has(field)) throw badRequest(`Nieoczekiwane pole ${field}.`)
+    if (!COMPATIBILITY_FINALIZE_FIELDS.has(field)) throw badRequest(`Nieoczekiwane pole ${field}.`)
   }
 
   const sessionId = validateFirestoreDocumentId(record.sessionId, 'sessionId')
-  const templateId = record.templateId === undefined || record.templateId === null
-    ? null
-    : validateFirestoreDocumentId(record.templateId, 'templateId')
-  const startedAt = normalizeTimestamp(record.startedAt, 'startedAt')
-  const finishedAt = normalizeTimestamp(record.finishedAt, 'finishedAt')
-
-  if (finishedAt < startedAt) {
-    throw badRequest('Czas zakończenia nie może poprzedzać rozpoczęcia.')
-  }
-  if (finishedAt - startedAt > MAX_ACTIVE_SESSION_AGE_MS) {
-    throw badRequest('Czas treningu przekracza dozwolony limit.')
+  if (record.sessionRevision === undefined || record.sessionRevision === null) {
+    if (options.requireRevision) throw badRequest('Brak pola sessionRevision.')
+    return { sessionId }
   }
 
   return {
     sessionId,
-    templateId,
+    sessionRevision: validateFirestoreDocumentId(record.sessionRevision, 'sessionRevision'),
+  }
+}
+
+export function buildFinishedWorkoutFromActiveSession(
+  raw: unknown,
+  finishedAt: number,
+): FinalizeWorkoutInput {
+  const record = asRecord(raw, 'Niepoprawna aktywna sesja.')
+  const startedAt = normalizeTimestamp(record.startedAt, 'startedAt')
+  const normalizedFinishedAt = normalizeTimestamp(finishedAt, 'finishedAt')
+  if (normalizedFinishedAt < startedAt) {
+    throw badRequest('Czas zakończenia nie może poprzedzać rozpoczęcia.')
+  }
+  const exercises = normalizeActiveWorkoutExercises(record.exercises)
+
+  return {
+    sessionId: validateFirestoreDocumentId(record.sessionId, 'sessionId'),
+    templateId: record.templateId === undefined || record.templateId === null
+      ? null
+      : validateFirestoreDocumentId(record.templateId, 'templateId'),
     startedAt,
-    finishedAt,
+    finishedAt: normalizedFinishedAt,
     label: validateWorkoutLabel(record.label),
-    exercises: normalizeWorkoutExercises(record.exercises),
+    exercises,
   }
 }
 
@@ -94,6 +118,31 @@ export function normalizeWorkoutExercises(
   }
 
   return raw.map((exercise) => normalizeWorkoutExercise(exercise))
+}
+
+function normalizeActiveWorkoutExercises(raw: unknown): ValidatedWorkoutExercise[] {
+  if (!Array.isArray(raw)) throw badRequest('Ćwiczenia treningu muszą być tablicą.')
+
+  const completed = raw.map((exercise) => {
+    const record = asRecord(exercise, 'Niepoprawne ćwiczenie w treningu.')
+    const sets = Array.isArray(record.sets)
+      ? record.sets.flatMap((set) => {
+        const setRecord = asRecord(set, 'Niepoprawna seria w treningu.')
+        return setRecord.done === true
+          ? [{ weight: setRecord.weight, reps: setRecord.reps }]
+          : []
+      })
+      : []
+
+    return {
+      exerciseId: record.exerciseId,
+      exerciseSource: record.exerciseSource,
+      name: record.name,
+      sets,
+    }
+  }).filter((exercise) => exercise.sets.length > 0)
+
+  return normalizeWorkoutExercises(completed)
 }
 
 export function validateWorkoutLabel(value: unknown): string | null {

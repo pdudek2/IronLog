@@ -140,6 +140,17 @@ describe('parseFinalizeWorkoutRequest', () => {
       .toThrow('Brak pola sessionRevision.')
   })
 
+  it('requires a revision and rejects legacy fields in strict mode', () => {
+    expect(() => parseFinalizeWorkoutRequest({ sessionId: 'session-1' }, { requireRevision: true }))
+      .toThrow('Brak pola sessionRevision.')
+    expect(() => parseFinalizeWorkoutRequest({
+      sessionId: 'session-1',
+      sessionRevision: 'revision-1',
+      exercises: [],
+    }, { requireRevision: true, allowLegacyFields: false }))
+      .toThrow('Nieoczekiwane pole exercises.')
+  })
+
   it.each(['userId', 'materialized', 'closedAt'])('rejects request-supplied %s', (field) => {
     expect(() => parseFinalizeWorkoutRequest({ ...legacyFinalizeBody, [field]: field === 'materialized' ? true : 'value' }))
       .toThrow(`Nieoczekiwane pole ${field}.`)

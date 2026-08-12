@@ -94,6 +94,22 @@ describe('workout closure handlers', () => {
 
     expect(captured.status()).toBe(200)
     expect(captured.body()).toEqual({ workoutId: 'session-1', status: 'materialized' })
+    expect(mocks.parseFinalizeWorkoutRequest).toHaveBeenCalledWith(
+      { sessionId: 'session-1', label: 'ignored' },
+      { requireRevision: true, allowLegacyFields: false },
+    )
     expect(mocks.finalizeWorkoutForUser).toHaveBeenCalledWith('user-1', parsed)
+  })
+
+  it('rejects a finalize request without a revision', async () => {
+    mocks.parseFinalizeWorkoutRequest.mockImplementationOnce(() => {
+      throw new ApiError(400, 'Brak pola sessionRevision.')
+    })
+    const captured = captureResponse()
+
+    await finalizeHandler(request({ sessionId: 'session-1' }), captured.res)
+
+    expect(captured.status()).toBe(400)
+    expect(captured.body()).toEqual({ error: 'Brak pola sessionRevision.' })
   })
 })

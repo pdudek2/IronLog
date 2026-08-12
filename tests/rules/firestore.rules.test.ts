@@ -266,13 +266,16 @@ describe('activeSessions rules', () => {
     }))
   })
 
-  it('allows optional safe session revisions during the compatibility rollout', async () => {
+  it('requires safe session revisions', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
     const activeRef = doc(db, 'activeSessions', 'alice')
     const validActive = validActiveSession('alice')
 
-    await assertSucceeds(setDoc(activeRef, { ...validActive, sessionRevision: 'revision-1' }))
     await assertSucceeds(setDoc(activeRef, validActive))
+    const withoutRevision = structuredClone(validActive)
+    Reflect.deleteProperty(withoutRevision, 'sessionRevision')
+
+    await assertFails(setDoc(activeRef, withoutRevision))
     await assertFails(setDoc(activeRef, { ...validActive, sessionRevision: 'unsafe/revision' }))
   })
 
@@ -435,6 +438,7 @@ function validActiveSession(userId: string, sessionId = 'session-1') {
   return {
     userId,
     sessionId,
+    sessionRevision: 'revision-1',
     startedAt: 1_790_000_000_000,
     templateId: null,
     label: 'Push',

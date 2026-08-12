@@ -312,11 +312,12 @@ service cloud.firestore {
     }
 
     function isActiveSession(uid, data) {
-      return data.keys().hasOnly(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
+      return data.keys().hasAll(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
+             && data.keys().hasOnly(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
              && currentUid() == uid
              && data.userId == currentUid()
              && isDocumentId(data.sessionId)
-             && (!data.keys().hasAny(['sessionRevision']) || isDocumentId(data.sessionRevision))
+             && isDocumentId(data.sessionRevision)
              && !exists(/databases/$(database)/documents/closedSessions/$(data.sessionId))
              && isMillis(data.startedAt)
              && isMillis(data.updatedAt)

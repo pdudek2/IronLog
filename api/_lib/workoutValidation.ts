@@ -48,6 +48,7 @@ const COMPATIBILITY_FINALIZE_FIELDS = new Set([
   'label',
   'exercises',
 ])
+const STRICT_FINALIZE_FIELDS = new Set(['sessionId', 'sessionRevision'])
 
 export interface FinalizeWorkoutRequest {
   sessionId: string
@@ -56,6 +57,7 @@ export interface FinalizeWorkoutRequest {
 
 interface ParseFinalizeWorkoutRequestOptions {
   requireRevision?: boolean
+  allowLegacyFields?: boolean
 }
 
 export function parseFinalizeWorkoutRequest(
@@ -63,8 +65,11 @@ export function parseFinalizeWorkoutRequest(
   options: ParseFinalizeWorkoutRequestOptions = {},
 ): FinalizeWorkoutRequest {
   const record = asRecord(raw, 'Niepoprawny payload treningu.')
+  const allowedFields = options.allowLegacyFields === false
+    ? STRICT_FINALIZE_FIELDS
+    : COMPATIBILITY_FINALIZE_FIELDS
   for (const field of Object.keys(record)) {
-    if (!COMPATIBILITY_FINALIZE_FIELDS.has(field)) throw badRequest(`Nieoczekiwane pole ${field}.`)
+    if (!allowedFields.has(field)) throw badRequest(`Nieoczekiwane pole ${field}.`)
   }
 
   const sessionId = validateFirestoreDocumentId(record.sessionId, 'sessionId')

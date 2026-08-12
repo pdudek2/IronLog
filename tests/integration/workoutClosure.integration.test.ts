@@ -156,14 +156,6 @@ describe('workout closure', () => {
     expect(materialize).not.toHaveBeenCalled()
   })
 
-  it('keeps compatibility requests canonical without a revision', async () => {
-    await seedActive()
-    await expect(finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId }, {
-      db,
-      now: () => FINISHED_AT,
-    })).resolves.toMatchObject({ workoutId: input.sessionId })
-  })
-
   it('finishes a legacy active session using its deterministic derived ID', async () => {
     const legacySessionId = deriveLegacySessionId(USER_ID, STARTED_AT)
     await seedLegacyActive()

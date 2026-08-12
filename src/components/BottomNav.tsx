@@ -163,7 +163,10 @@ export default function BottomNav() {
 
         <motion.button
           type="button"
-          onClick={() => go('/workout/new')}
+          onClick={() => {
+            if (hasActiveWork) go('/workout/new')
+            else navigateWithAppTransition(navigate, '/workout/new', { state: { startNew: true } })
+          }}
           onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
           onFocus={() => { void preloadRouteByPath('/workout/new') }}
           className="bottom-nav-primary-action mobile-touch-target flex h-11 w-11 flex-none items-center justify-center rounded-[var(--radius-lg)]"

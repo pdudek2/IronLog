@@ -397,6 +397,10 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
               exerciseNames: [],
               reps: null,
             })
+            await clientB.page.reload()
+            await expectAppReady(clientB.page, '/workout/new', 25_000)
+            await expect(clientB.page.getByText('Nie ma aktywnej sesji', { exact: true })).toBeVisible()
+            await expect.poll(() => readLifecycleActiveSession()).toBeNull()
             await clientB.context.close()
             await clientA.context.close()
           },

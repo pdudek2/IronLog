@@ -1,6 +1,6 @@
 import { createElement, useState, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BottomNav from '../../components/BottomNav'
 import ConfirmDialog from '../../components/ConfirmDialog'
@@ -44,6 +44,12 @@ function DialogHarness() {
       )}
     </>
   )
+}
+
+function WorkoutStartIntentProbe() {
+  const location = useLocation()
+  const state = location.state as { startNew?: unknown } | null
+  return <output data-testid="workout-start-intent">{state?.startNew === true ? 'start' : 'idle'}</output>
 }
 
 describe('shared accessibility contracts', () => {
@@ -132,6 +138,23 @@ describe('shared accessibility contracts', () => {
     const workoutActions = screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })
     expect(workoutActions).toHaveLength(2)
     expect(workoutActions[0]).toHaveTextContent('Nowy trening')
+  })
+
+  it.each([0, 1])('marks shell workout action %i as an explicit start', (actionIndex) => {
+    render(
+      <MemoryRouter initialEntries={['/dashboard']}>
+        <MobileInteractionProvider>
+          <TopNav />
+          <BottomNav />
+          <WorkoutStartIntentProbe />
+        </MobileInteractionProvider>
+      </MemoryRouter>,
+    )
+
+    const workoutActions = screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })
+    fireEvent.click(workoutActions[actionIndex])
+
+    expect(screen.getByTestId('workout-start-intent')).toHaveTextContent('start')
   })
 
   it('labels shell workout entry actions when the workout store contains active work', () => {

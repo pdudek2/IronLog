@@ -279,12 +279,16 @@ describe('Dashboard workout projection status', () => {
       .forEach((button) => expect(button).toBeDisabled())
     expect(mocks.preloadRouteByPath).toHaveBeenCalledTimes(1)
     expect(mocks.preloadRouteByPath).toHaveBeenCalledWith('/workout/new')
-    expect(mocks.navigate).not.toHaveBeenCalledWith('/workout/new')
+    expect(mocks.navigate).not.toHaveBeenCalledWith('/workout/new', {
+      state: { startNew: true },
+    })
 
     await act(async () => preload.resolve())
 
     expect(mocks.navigate).toHaveBeenCalledTimes(1)
-    expect(mocks.navigate).toHaveBeenCalledWith('/workout/new')
+    expect(mocks.navigate).toHaveBeenCalledWith('/workout/new', {
+      state: { startNew: true },
+    })
   })
 
   it('hands off an active workout route and clears pending state when preload fails', async () => {

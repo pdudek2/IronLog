@@ -146,3 +146,22 @@ it('keeps deleted user exercises readable when materialized history remains', as
   expect(screen.queryByRole('heading', { name: 'Ćwiczenie nie istnieje' })).not.toBeInTheDocument()
   expect(screen.getByText('Dzień siły')).toBeInTheDocument()
 })
+
+it('marks workout launch from exercise detail as an explicit start', async () => {
+  mocks.getUserExercises.mockResolvedValue([{
+    id: 'custom-row',
+    name: 'Wiosłowanie własne',
+    category: 'back',
+    equipment: 'cable',
+    muscles: ['back'],
+  }])
+  mocks.getExerciseSessions.mockResolvedValue([])
+  mocks.getExerciseRecord.mockResolvedValue(null)
+
+  render(<ExerciseDetailPage />)
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Rozpocznij trening' }))
+  expect(mocks.navigate).toHaveBeenCalledWith('/workout/new', {
+    state: { startNew: true },
+  })
+})

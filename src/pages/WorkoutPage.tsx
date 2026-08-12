@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Dumbbell, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -300,6 +300,9 @@ export default function WorkoutPage() {
     addExercise,
   } = useWorkoutStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  const routeState = location.state as { startNew?: unknown } | null
+  const shouldStartFromRoute = routeState?.startNew === true
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const { compactFixedUi, visualViewportHeight } = useMobileInteraction()
   const mobileRestVariant = compactFixedUi ? 'compact' : 'full'
@@ -340,6 +343,12 @@ export default function WorkoutPage() {
 
   // Rest timer state
   const [rest, setRest] = useState<RestTimerState | null>(null)
+
+  useEffect(() => {
+    if (!ready || !shouldStartFromRoute) return
+    navigate(location.pathname, { replace: true, state: null })
+    if (!active) void startNewSession()
+  }, [active, location.pathname, navigate, ready, shouldStartFromRoute, startNewSession])
 
   useEffect(() => {
     if (isDesktop || !compactFixedUi || rest === null) return

@@ -100,7 +100,10 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           <motion.button
             type="button"
             className="top-nav-cta"
-            onClick={() => go('/workout/new')}
+            onClick={() => {
+              if (hasActiveWork) go('/workout/new')
+              else navigateWithAppTransition(navigate, '/workout/new', { state: { startNew: true } })
+            }}
             onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
             onFocus={() => { void preloadRouteByPath('/workout/new') }}
             whileTap={{ scale: 0.97 }}

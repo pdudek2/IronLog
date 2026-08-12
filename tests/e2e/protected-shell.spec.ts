@@ -1,4 +1,5 @@
 import { expect, test } from './fixtures'
+import { expectAppReady } from './support/appReady'
 
 function isProgressPageModule(url: string): boolean {
   const pathname = new URL(url).pathname
@@ -84,12 +85,13 @@ test.describe('Protected application shell', () => {
     const routes = [
       { path: '/exercises', ready: '.exercise-library-content' },
       { path: '/templates/new', ready: '.template-editor-main' },
-      { path: '/workout/new', ready: '.workout-focus-shell' },
+      { path: '/workout/new', ready: null },
     ]
 
     for (const route of routes) {
       await page.goto(route.path)
-      await expect(page.locator(route.ready)).toBeVisible({ timeout: 25_000 })
+      if (route.ready) await expect(page.locator(route.ready)).toBeVisible({ timeout: 25_000 })
+      else await expectAppReady(page, '/workout/new', 25_000)
       await expect(page.getByRole('main')).toHaveCount(1)
     }
   })

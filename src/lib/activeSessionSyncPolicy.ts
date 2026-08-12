@@ -34,16 +34,6 @@ export function shouldPersistActiveSession(
   return closureIntent?.session.sessionId !== session.sessionId
 }
 
-export function shouldAutoStartEmptySession({
-  currentSession,
-  confirmedClosure,
-}: {
-  currentSession: ActiveWorkout | null
-  confirmedClosure: boolean
-}): boolean {
-  return currentSession === null && !confirmedClosure
-}
-
 export function decideRemoteSessionSync({
   localSession,
   remoteSession,
@@ -71,7 +61,7 @@ export function decideRemoteSessionSync({
     return remoteSession.sessionId === localSession?.sessionId ? 'keep_local' : 'accept_remote'
   }
   if (closureIntent) return 'retain_closure_snapshot'
-  return localSession ? 'clear_local' : 'keep_local'
+  return 'clear_local'
 }
 
 export function shouldResolveActiveSessionSyncFailure({

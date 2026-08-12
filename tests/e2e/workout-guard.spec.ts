@@ -30,9 +30,9 @@ function workoutExerciseEntry(page: Page, exerciseName: string) {
  *   - Confirm button (inside dialog): "Odrzuć trening"
  *   - Cancel button (inside dialog): "Wróć"
  *
- * Important: useActiveSession auto-starts a new empty session when no backup/Firestore doc
- * exists on fresh navigation. "Rozpocznij nową sesję" never appears after discard.
- * After discard, verify the OLD session data (exercises) are gone instead.
+ * Important: fresh navigation without an active document remains idle until the user
+ * explicitly starts a session. This prevents reloads on another device from recreating
+ * a workout that was already closed.
  *
  * Important: ExercisePicker has role="dialog" and may linger in DOM during exit animation.
  * Always scope dialog queries with filter({ hasText }) to target the specific dialog.

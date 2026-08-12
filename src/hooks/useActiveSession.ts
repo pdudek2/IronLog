@@ -29,7 +29,6 @@ import {
   decideConfirmedClosure,
   decideRemoteSessionSync,
   isAuthoritativeActiveSessionSnapshot,
-  shouldAutoStartEmptySession,
   shouldPersistActiveSession,
   shouldResolveActiveSessionSyncFailure,
 } from '../lib/activeSessionSyncPolicy'
@@ -98,7 +97,6 @@ export function useActiveSession(uid: string | null) {
   const applyingRemoteRef = useRef(false)
   const hadRemoteSessionRef = useRef(false)
   const hasUnsyncedLocalChangesRef = useRef(false)
-  const confirmedClosureRef = useRef(false)
   const confirmedClosedSessionIdsRef = useRef<Set<string>>(new Set())
   const sessionWriteGenerationRef = useRef(0)
   const startingSessionRef = useRef(false)
@@ -154,7 +152,6 @@ export function useActiveSession(uid: string | null) {
       }
       return
     }
-    confirmedClosureRef.current = true
     confirmedClosedSessionIdsRef.current.add(confirmedSessionId)
     staleSessionRef.current = null
     setStaleSession(null)
@@ -169,7 +166,6 @@ export function useActiveSession(uid: string | null) {
     session = activeRef.current,
   ): WorkoutClosureIntent | null {
     if (!uid || !session) return null
-    confirmedClosureRef.current = false
     cancelPendingPersistence()
     const existing = closureIntentRef.current
     const intent = existing
@@ -228,7 +224,6 @@ export function useActiveSession(uid: string | null) {
       clearActiveSessionBackup(uid)
       setPendingIntent(null)
       setClosureState('idle')
-      confirmedClosureRef.current = false
       staleSessionRef.current = null
       setStaleSession(null)
       remoteSessionRef.current = authoritativeSession
@@ -340,7 +335,6 @@ export function useActiveSession(uid: string | null) {
     setStaleSession(null)
     hadRemoteSessionRef.current = false
     remoteSessionRef.current = null
-    confirmedClosureRef.current = false
 
     const { hydrateFromDoc, clearWorkout } = useWorkoutStore.getState()
     if (intentAtMount) {
@@ -473,33 +467,14 @@ export function useActiveSession(uid: string | null) {
           }
         } else if (decision === 'clear_local') {
           hadRemoteSessionRef.current = false
+          hasUnsyncedLocalChangesRef.current = false
           staleSessionRef.current = null
           setStaleSession(null)
           clearActiveSessionBackup(currentUid)
           if (current) {
             applyingRemoteRef.current = true
-            hasUnsyncedLocalChangesRef.current = false
             activeRef.current = null
             clearWorkout()
-          }
-        } else if (shouldAutoStartEmptySession({
-          currentSession: current,
-          confirmedClosure: confirmedClosureRef.current,
-        })) {
-          const backup = readActiveSessionBackup(currentUid)
-          if (backup) {
-            if (isActiveSessionStale(backup)) {
-              staleSessionRef.current = backup
-              setStaleSession({ ageLabel: getStaleSessionAgeLabel(backup.startedAt) })
-              setReady(true)
-              return
-            }
-            activeRef.current = backup
-            hydrateFromDoc(backup)
-            persistSession(backup)
-          } else if (!closureIntentRef.current) {
-            void startNewSession()
-            return
           }
         } else if (current && !closureIntentRef.current) {
           writeActiveSessionBackup(currentUid, current)
@@ -583,7 +558,7 @@ export function useActiveSession(uid: string | null) {
         sessionWriteGenerationRef.current += 1
       }
     }
-  }, [startNewSession, uid])
+  }, [uid])
 
   async function continueStaleSession(): Promise<StaleSessionOperationResult> {
     if (!uid || !staleSessionRef.current || closureIntentRef.current) {

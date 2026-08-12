@@ -360,7 +360,8 @@ export default function DashboardPage() {
     try {
       await preloadRouteByPath('/workout/new')
     } finally {
-      navigate('/workout/new')
+      if (hasActiveWork) navigate('/workout/new')
+      else navigate('/workout/new', { state: { startNew: true } })
       setOpeningWorkout(false)
     }
   }

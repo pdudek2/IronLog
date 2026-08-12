@@ -9,7 +9,6 @@ import {
   isAuthoritativeActiveSessionSnapshot,
   shouldResolveActiveSessionSyncFailure,
   shouldPersistActiveSession,
-  shouldAutoStartEmptySession,
 } from '../activeSessionSyncPolicy'
 
 const session = (sessionId: string): ActiveWorkout => ({
@@ -56,6 +55,15 @@ describe('active session sync policy', () => {
   it('accepts remote deletion when there is no pending closure intent', () => {
     expect(decideRemoteSessionSync({
       localSession: session('session-1'),
+      remoteSession: null,
+      closureIntent: null,
+      authoritative: true,
+    })).toBe('clear_local')
+  })
+
+  it('keeps authoritative absence closed when the local session is already empty', () => {
+    expect(decideRemoteSessionSync({
+      localSession: null,
       remoteSession: null,
       closureIntent: null,
       authoritative: true,
@@ -154,21 +162,6 @@ describe('active session sync policy', () => {
   it('permits stale replacement only after confirmed discard', () => {
     expect(canCreateStaleReplacement({ status: 'discarded' })).toBe(true)
     expect(canCreateStaleReplacement({ status: 'closure_unconfirmed' })).toBe(false)
-  })
-
-  it('suppresses empty auto-start after this hook instance confirms closure', () => {
-    expect(shouldAutoStartEmptySession({
-      currentSession: null,
-      confirmedClosure: true,
-    })).toBe(false)
-    expect(shouldAutoStartEmptySession({
-      currentSession: null,
-      confirmedClosure: false,
-    })).toBe(true)
-    expect(shouldAutoStartEmptySession({
-      currentSession: { sessionId: 'session-A' } as ActiveWorkout,
-      confirmedClosure: false,
-    })).toBe(false)
   })
 
   it('does not replace confirmed stale session A when session B won the race', () => {

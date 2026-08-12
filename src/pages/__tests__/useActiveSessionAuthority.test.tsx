@@ -174,7 +174,7 @@ describe('useActiveSession snapshot authority', () => {
     expect(useWorkoutStore.getState().active?.sessionId).toBe('server-session')
   })
 
-  it('converges a simultaneous empty start to the session claimed on the server', async () => {
+  it('keeps authoritative absence idle until the user explicitly starts a session', async () => {
     const claim = createDeferred<ActiveWorkout>()
     claimActiveSession.mockReturnValueOnce(claim.promise)
     const { result } = renderHook(() => useActiveSession('user-1'))
@@ -184,6 +184,15 @@ describe('useActiveSession snapshot authority', () => {
       fromCache: false,
       hasPendingWrites: false,
     }))
+
+    expect(result.current.ready).toBe(true)
+    expect(useWorkoutStore.getState().active).toBeNull()
+    expect(claimActiveSession).not.toHaveBeenCalled()
+
+    let startPromise!: Promise<void>
+    act(() => {
+      startPromise = result.current.startNewSession()
+    })
 
     expect(claimActiveSession).toHaveBeenCalledOnce()
     expect(result.current.ready).toBe(false)
@@ -197,7 +206,7 @@ describe('useActiveSession snapshot authority', () => {
 
     await act(async () => {
       claim.resolve(remoteSession)
-      await claim.promise
+      await startPromise
     })
 
     expect(result.current.ready).toBe(true)

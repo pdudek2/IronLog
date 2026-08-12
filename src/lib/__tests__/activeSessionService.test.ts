@@ -12,6 +12,7 @@ vi.mock('firebase/firestore', () => ({
 
 import { doc, getDocFromServer, runTransaction, setDoc } from 'firebase/firestore'
 import {
+  claimActiveSession,
   hasActiveSessionWork,
   persistTemplateLaunchSession,
   saveActiveSession,
@@ -86,9 +87,10 @@ describe('hasActiveSessionWork', () => {
 describe('persistTemplateLaunchSession', () => {
   it('writes the existing active-session document shape when remote work is blank', async () => {
     transactionGet.mockResolvedValue(sessionSnapshot({ label: '   ', exercises: [] }))
-    const expectedDocument = {
+    const expectedDocument = expect.objectContaining({
       userId: 'user-1',
       sessionId: 'session-1',
+      sessionRevision: expect.any(String),
       startedAt: 123,
       templateId: 'template-1',
       label: 'Push A',
@@ -99,7 +101,7 @@ describe('persistTemplateLaunchSession', () => {
         sets: [{ weight: '80', reps: '8', done: false }],
       }],
       updatedAt: 999,
-    }
+    })
 
     await persistTemplateLaunchSession('user-1', workout, false)
     await saveActiveSession('user-1', workout)
@@ -137,24 +139,41 @@ describe('persistTemplateLaunchSession', () => {
   })
 })
 
+describe('saveActiveSession', () => {
+  it('writes and returns a fresh revision for every save', async () => {
+    vi.spyOn(crypto, 'randomUUID')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
+      .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
+
+    await expect(saveActiveSession('user-1', workout)).resolves.toEqual({
+      sessionRevision: '00000000-0000-4000-8000-000000000001',
+    })
+    await expect(saveActiveSession('user-1', workout)).resolves.toEqual({
+      sessionRevision: '00000000-0000-4000-8000-000000000002',
+    })
+
+    expect(vi.mocked(setDoc).mock.calls.map(([, document]) => (
+      document as { sessionRevision: string }
+    ).sessionRevision)).toEqual([
+      '00000000-0000-4000-8000-000000000001',
+      '00000000-0000-4000-8000-000000000002',
+    ])
+  })
+})
+
 describe('claimActiveSession', () => {
   it('creates the candidate only when no server session exists', async () => {
-    const service = await import('../activeSessionService') as unknown as {
-      claimActiveSession: (uid: string, candidate: ActiveWorkout) => Promise<ActiveWorkout>
-    }
-    expect(service.claimActiveSession).toBeTypeOf('function')
     transactionGet.mockResolvedValue(sessionSnapshot())
 
-    await expect(service.claimActiveSession('user-1', workout)).resolves.toBe(workout)
+    await expect(claimActiveSession('user-1', workout)).resolves.toBe(workout)
 
     expect(transactionSet).toHaveBeenCalledOnce()
+    expect(transactionSet).toHaveBeenCalledWith(sessionRef, expect.objectContaining({
+      sessionRevision: expect.any(String),
+    }))
   })
 
   it('returns the server session instead of overwriting it', async () => {
-    const service = await import('../activeSessionService') as unknown as {
-      claimActiveSession: (uid: string, candidate: ActiveWorkout) => Promise<ActiveWorkout>
-    }
-    expect(service.claimActiveSession).toBeTypeOf('function')
     transactionGet.mockResolvedValue(sessionSnapshot({
       sessionId: 'server-session',
       startedAt: 456,
@@ -163,7 +182,7 @@ describe('claimActiveSession', () => {
       exercises: [],
     }))
 
-    await expect(service.claimActiveSession('user-1', workout)).resolves.toMatchObject({
+    await expect(claimActiveSession('user-1', workout)).resolves.toMatchObject({
       sessionId: 'server-session',
       startedAt: 456,
       label: 'Pull',

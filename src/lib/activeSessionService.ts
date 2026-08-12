@@ -9,6 +9,10 @@ interface ActiveSessionSnapshot {
   hasPendingWrites: boolean
 }
 
+export interface SavedActiveSession {
+  sessionRevision: string
+}
+
 export class TemplateLaunchConflictError extends Error {
   constructor() {
     super('An active workout already contains work.')
@@ -37,8 +41,13 @@ export function subscribeToActiveSession(
   )
 }
 
-export async function saveActiveSession(uid: string, workout: ActiveWorkout): Promise<void> {
-  await setDoc(activeSessionRef(uid), activeSessionDocument(uid, workout))
+export async function saveActiveSession(
+  uid: string,
+  workout: ActiveWorkout,
+): Promise<SavedActiveSession> {
+  const sessionRevision = crypto.randomUUID()
+  await setDoc(activeSessionRef(uid), activeSessionDocument(uid, workout, sessionRevision))
+  return { sessionRevision }
 }
 
 export async function claimActiveSession(uid: string, candidate: ActiveWorkout): Promise<ActiveWorkout> {
@@ -73,11 +82,16 @@ export async function persistTemplateLaunchSession(
   })
 }
 
-function activeSessionDocument(uid: string, workout: ActiveWorkout) {
+function activeSessionDocument(
+  uid: string,
+  workout: ActiveWorkout,
+  sessionRevision = crypto.randomUUID(),
+) {
   const persistableWorkout = stripWorkoutClientIds(workout)
   return {
     userId: uid,
     sessionId: persistableWorkout.sessionId,
+    sessionRevision,
     startedAt: persistableWorkout.startedAt,
     templateId: typeof persistableWorkout.templateId === 'string' ? persistableWorkout.templateId : null,
     label: persistableWorkout.label?.trim() || null,

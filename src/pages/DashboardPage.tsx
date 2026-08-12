@@ -541,7 +541,7 @@ export default function DashboardPage() {
     {
       label: 'Mocny dzień',
       value: peakDay?.volume ? `${peakDay.label}` : 'Brak',
-      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume)} • ${peakDay.sets} serii` : 'Brak treningów w tym tygodniu',
+      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume)} • ${peakDay.sets} ${polishPlural(peakDay.sets, 'seria', 'serie', 'serii')}` : 'Brak treningów w tym tygodniu',
     },
     {
       label: 'Średnia sesja',

@@ -196,6 +196,21 @@ describe('Dashboard workout projection status', () => {
     useWorkoutStore.getState().clearWorkout()
   })
 
+  it('uses Polish set-count forms in the peak-day summary', async () => {
+    const now = Date.now()
+    mocks.getRecentWorkouts.mockResolvedValue([{
+      ...pendingWorkout,
+      startedAt: now - 60_000,
+      finishedAt: now,
+      materialized: true,
+    }])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('400 kg • 1 seria')).toBeInTheDocument()
+    expect(screen.queryByText('400 kg • 1 serii')).not.toBeInTheDocument()
+  })
+
   it('keeps the dashboard shell aligned when remote work appears and disappears', async () => {
     mocks.getRecentWorkouts.mockResolvedValue([])
 

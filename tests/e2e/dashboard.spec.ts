@@ -2,6 +2,10 @@ import { test, expect, type Page } from './fixtures'
 import { deleteTemplateByName, discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
 import { openTemplateDraft } from './support/templateDraft'
+import {
+  deleteLifecycleWorkout,
+  seedLifecycleWorkout,
+} from './support/workoutLifecycleEmulator'
 
 const NEXT_SESSION_TEMPLATE_NAME = '_E2E Dashboard Next Session_'
 
@@ -20,26 +24,34 @@ test.describe('Dashboard regressions', () => {
     await expect(page.locator('.dashboard-overview-grid:visible')).toHaveCount(1)
   })
 
-  test('delete action on recent workout stays on dashboard when activated with Enter', async ({ page }) => {
+  test('delete action on recent workout stays on dashboard when activated with Enter', async ({
+    page,
+    cleanup,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'desktop deterministic keyboard contract')
+    const sessionId = 'phase-1-dashboard-keyboard-delete'
+    cleanup.add('remove dashboard keyboard workout', () => deleteLifecycleWorkout(sessionId))
+    await deleteLifecycleWorkout(sessionId)
+    await seedLifecycleWorkout({
+      sessionId,
+      materialized: true,
+      label: 'Phase 1 dashboard keyboard delete',
+    })
     await openDashboard(page)
 
-    const recentWorkouts = page.locator('.dashboard-history-row')
-    const workoutCount = await recentWorkouts.count()
-    test.skip(workoutCount === 0, 'No workout rows available for the authenticated test account')
-
-    const deleteButton = page.locator('.dashboard-history-row button[aria-label*="Usuń trening"]').first()
+    const deleteButton = page.getByRole('button', {
+      name: /Usuń trening Phase 1 dashboard keyboard delete/,
+    })
     await expect(deleteButton).toBeVisible()
     await deleteButton.focus()
     await expect(deleteButton).toBeFocused()
-
     await page.keyboard.press('Enter')
 
     const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Usunąć ten trening?' })
-    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
+    await expect(confirmDialog).toBeVisible()
     await expect(page).toHaveURL('/dashboard')
-
     await confirmDialog.getByRole('button', { name: 'Anuluj', exact: true }).click()
-    await expect(confirmDialog).not.toBeVisible({ timeout: 5_000 })
+    await expect(confirmDialog).not.toBeVisible()
   })
 
   test('opens the compact next-session plan with Start before Edit on mobile', async ({ page, cleanup }, testInfo) => {

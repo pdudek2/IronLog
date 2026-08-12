@@ -662,6 +662,49 @@ describe('useActiveSession snapshot authority', () => {
     consoleError.mockRestore()
   })
 
+  it('ignores a stale continuation failure superseded by a newer same-session retry', async () => {
+    const continuationWrite = createDeferred<void>()
+    const retryWrite = createDeferred<void>()
+    const staleError = new Error('superseded continuation failed')
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    saveActiveSession
+      .mockImplementationOnce(() => continuationWrite.promise)
+      .mockImplementationOnce(() => retryWrite.promise)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    let continuationOperation!: ReturnType<typeof result.current.continueStaleSession>
+    act(() => {
+      continuationOperation = result.current.continueStaleSession()
+    })
+    let retryOperation!: ReturnType<typeof result.current.retryActiveSessionSync>
+    act(() => {
+      retryOperation = result.current.retryActiveSessionSync()
+    })
+
+    await act(async () => {
+      retryWrite.resolve()
+      await retryOperation
+    })
+    expect(result.current.activeSessionSyncStatus).toBe('idle')
+
+    let outcome!: Awaited<typeof continuationOperation>
+    await act(async () => {
+      continuationWrite.reject(staleError)
+      outcome = await continuationOperation
+    })
+
+    expect(outcome).toEqual({ status: 'ignored' })
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(staleRemoteSession.sessionId)
+    expect(result.current.activeSessionSyncStatus).toBe('idle')
+    expect(consoleError).not.toHaveBeenCalled()
+    consoleError.mockRestore()
+  })
+
   it('returns ignored for a late continuation success after confirmed closure', async () => {
     const continuationWrite = createDeferred<void>()
     saveActiveSession.mockImplementationOnce(() => continuationWrite.promise)

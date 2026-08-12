@@ -4,7 +4,6 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vites
 import {
   discardSessionForUser,
   finalizeWorkoutForUser,
-  type FinalizeWorkoutInput,
 } from '../../api/_lib/workoutClosure'
 import { deriveLegacySessionId } from '../../src/lib/sessionIdentity'
 import {
@@ -19,7 +18,7 @@ const STARTED_AT = 1_790_000_000_000
 const FINISHED_AT = STARTED_AT + 3_600_000
 const db = getReviewAdminDatabase()
 
-const input: FinalizeWorkoutInput = {
+const input = {
   sessionId: 'session-1',
   templateId: null,
   startedAt: STARTED_AT,
@@ -49,10 +48,20 @@ async function seedActive(sessionId = input.sessionId, userId = USER_ID) {
   await db.collection('activeSessions').doc(userId).set({
     userId,
     sessionId,
+    sessionRevision: 'revision-1',
     startedAt: STARTED_AT,
     templateId: null,
     label: input.label,
-    exercises: input.exercises,
+    updatedAt: STARTED_AT + 1_000,
+    exercises: [{
+      exerciseId: 'bench-press',
+      exerciseSource: 'global',
+      name: 'Bench Press',
+      sets: [
+        { weight: '80', reps: '5', done: true },
+        { weight: '90', reps: '3', done: false },
+      ],
+    }],
   })
 }
 
@@ -62,7 +71,13 @@ async function seedLegacyActive(userId = USER_ID) {
     startedAt: STARTED_AT,
     templateId: null,
     label: input.label,
-    exercises: input.exercises,
+    updatedAt: STARTED_AT + 1_000,
+    exercises: [{
+      exerciseId: 'bench-press',
+      exerciseSource: 'global',
+      name: 'Bench Press',
+      sets: [{ weight: '80', reps: '5', done: true }],
+    }],
   })
 }
 
@@ -77,6 +92,53 @@ async function readClosure(sessionId = input.sessionId) {
 }
 
 describe('workout closure', () => {
+  it('persists canonical active-session contents instead of request contents', async () => {
+    await seedActive()
+    const materialize = vi.fn().mockImplementation(async (_uid, workoutId: string) => {
+      await db.collection('workouts').doc(workoutId).update({ materialized: true })
+    })
+
+    await finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, { db, now: () => FINISHED_AT, materialize })
+
+    const state = await readClosure()
+    expect(state.workout.data()).toMatchObject({
+      label: 'Push',
+      finishedAt: FINISHED_AT,
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: 80, reps: 5 }],
+      }],
+    })
+  })
+
+  it('performs no writes when the active revision changed', async () => {
+    await seedActive()
+
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-stale',
+    }, { db, now: () => FINISHED_AT }))
+      .rejects.toMatchObject({ status: 409, code: 'active_session_changed' })
+
+    const state = await readClosure()
+    expect(state.active.exists).toBe(true)
+    expect(state.workout.exists).toBe(false)
+    expect(state.tombstone.exists).toBe(false)
+  })
+
+  it('keeps compatibility requests canonical without a revision', async () => {
+    await seedActive()
+    await expect(finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId }, {
+      db,
+      now: () => FINISHED_AT,
+    })).resolves.toMatchObject({ workoutId: input.sessionId })
+  })
+
   it('finishes a legacy active session using its deterministic derived ID', async () => {
     const legacySessionId = deriveLegacySessionId(USER_ID, STARTED_AT)
     await seedLegacyActive()
@@ -85,7 +147,6 @@ describe('workout closure', () => {
     })
 
     await expect(finalizeWorkoutForUser(USER_ID, {
-      ...input,
       sessionId: legacySessionId,
     }, {
       db,
@@ -118,15 +179,19 @@ describe('workout closure', () => {
       await db.collection('workouts').doc(workoutId).update({ materialized: true })
     })
 
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, {
       db,
-      now: () => FINISHED_AT + 1,
+      now: () => FINISHED_AT,
       materialize,
     })).resolves.toEqual({ workoutId: input.sessionId, status: 'materialized' })
 
     const state = await readClosure()
     expect(state.workout.data()).toEqual({
       ...input,
+      finishedAt: FINISHED_AT,
       userId: USER_ID,
       materialized: true,
     })
@@ -135,7 +200,7 @@ describe('workout closure', () => {
       sessionId: input.sessionId,
       outcome: 'finished',
       workoutId: input.sessionId,
-      closedAt: FINISHED_AT + 1,
+      closedAt: FINISHED_AT,
       projectionState: 'pending',
       projectionRevision: 1,
       projectionExerciseKeys: [{
@@ -153,9 +218,12 @@ describe('workout closure', () => {
     const materialize = vi.fn().mockImplementation(async (_userId, workoutId: string) => {
       await db.collection('workouts').doc(workoutId).update({ materialized: true })
     })
-    await finalizeWorkoutForUser(USER_ID, input, { db, now: () => FINISHED_AT + 1, materialize })
+    await finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, { db, now: () => FINISHED_AT, materialize })
 
-    const changedRetry = { ...input, label: 'Changed retry payload' }
+    const changedRetry = { sessionId: input.sessionId, sessionRevision: 'revision-stale' }
     await expect(finalizeWorkoutForUser(USER_ID, changedRetry, {
       db,
       now: () => FINISHED_AT + 2,
@@ -164,7 +232,7 @@ describe('workout closure', () => {
 
     const state = await readClosure()
     expect(state.workout.data()?.label).toBe('Push')
-    expect(state.tombstone.data()?.closedAt).toBe(FINISHED_AT + 1)
+    expect(state.tombstone.data()?.closedAt).toBe(FINISHED_AT)
     expect(state.workouts.size).toBe(1)
     expect(materialize).toHaveBeenCalledOnce()
   })
@@ -176,8 +244,14 @@ describe('workout closure', () => {
     })
 
     const results = await Promise.all([
-      finalizeWorkoutForUser(USER_ID, input, { db, now: () => FINISHED_AT + 1, materialize }),
-      finalizeWorkoutForUser(USER_ID, input, { db, now: () => FINISHED_AT + 1, materialize }),
+      finalizeWorkoutForUser(USER_ID, {
+        sessionId: input.sessionId,
+        sessionRevision: 'revision-1',
+      }, { db, now: () => FINISHED_AT, materialize }),
+      finalizeWorkoutForUser(USER_ID, {
+        sessionId: input.sessionId,
+        sessionRevision: 'revision-1',
+      }, { db, now: () => FINISHED_AT, materialize }),
     ])
 
     expect(results).toEqual([
@@ -205,13 +279,19 @@ describe('workout closure', () => {
     }) as Firestore
     const materialize = vi.fn().mockResolvedValue(undefined)
 
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, {
       db: lostAckDb,
       now: () => FINISHED_AT + 1,
       materialize,
     })).rejects.toThrow('lost acknowledgement')
 
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, {
       db,
       now: () => FINISHED_AT + 2,
       materialize,
@@ -223,7 +303,10 @@ describe('workout closure', () => {
     await seedActive()
     const failingMaterialize = vi.fn().mockRejectedValue(new Error('projection failed'))
 
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, {
       db,
       now: () => FINISHED_AT + 1,
       materialize: failingMaterialize,
@@ -237,7 +320,10 @@ describe('workout closure', () => {
     const succeedingMaterialize = vi.fn().mockImplementation(async (_userId, workoutId: string) => {
       await db.collection('workouts').doc(workoutId).update({ materialized: true })
     })
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, {
       db,
       now: () => FINISHED_AT + 2,
       materialize: succeedingMaterialize,
@@ -306,7 +392,10 @@ describe('workout closure', () => {
   it('reports session_mismatch without deleting a newer active session', async () => {
     await seedActive('session-newer')
 
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, {
       db,
       now: () => FINISHED_AT + 1,
       materialize: vi.fn(),
@@ -321,7 +410,10 @@ describe('workout closure', () => {
 
   it('never converts a finished tombstone to discarded or a discarded tombstone to finished', async () => {
     await seedActive()
-    await finalizeWorkoutForUser(USER_ID, input, {
+    await finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, {
       db,
       now: () => FINISHED_AT + 1,
       materialize: vi.fn().mockResolvedValue(undefined),
@@ -335,7 +427,10 @@ describe('workout closure', () => {
     await clearReviewAdminDatabase()
     await seedActive()
     await discardSessionForUser(USER_ID, input.sessionId, { db, now: () => FINISHED_AT + 3 })
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, {
       db,
       now: () => FINISHED_AT + 4,
       materialize: vi.fn(),
@@ -350,7 +445,7 @@ describe('workout closure', () => {
       materialized: false,
     })
 
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId }, {
       db,
       materialize: vi.fn(),
     })).rejects.toMatchObject({ status: 403, code: 'resource_owner_mismatch' })
@@ -365,7 +460,7 @@ describe('workout closure', () => {
       closedAt: FINISHED_AT,
     })
 
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId }, {
       db,
       materialize: vi.fn(),
     })).rejects.toMatchObject({ status: 403, code: 'resource_owner_mismatch' })
@@ -387,7 +482,7 @@ describe('workout closure', () => {
       }),
     ])
 
-    await expect(finalizeWorkoutForUser(USER_ID, input, {
+    await expect(finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId }, {
       db,
       materialize: vi.fn(),
     })).rejects.toMatchObject({ status: 403, code: 'resource_owner_mismatch' })

@@ -9,12 +9,14 @@ import {
   projectionExerciseKeysFromWorkout,
 } from './workoutProjectionFence.js'
 import {
+  buildFinishedWorkoutFromActiveSession,
   validateFirestoreDocumentId,
-  type FinalizeWorkoutInput,
+  type FinalizeWorkoutRequest,
 } from './workoutValidation.js'
 import { deriveLegacySessionId } from '../../src/lib/sessionIdentity.js'
+import { getCappedWorkoutFinishedAt } from '../../src/lib/sessionDuration.js'
 
-export type { FinalizeWorkoutInput } from './workoutValidation.js'
+export type { FinalizeWorkoutRequest } from './workoutValidation.js'
 
 export type FinalizeWorkoutStatus = 'materialized' | 'projection_pending'
 export type ClosedSessionOutcome = 'finished' | 'discarded'
@@ -38,11 +40,12 @@ interface ClosureTransactionResult {
 
 export async function finalizeWorkoutForUser(
   userId: string,
-  input: FinalizeWorkoutInput,
+  input: FinalizeWorkoutRequest,
   options: WorkoutClosureOptions = {},
 ): Promise<{ workoutId: string; status: FinalizeWorkoutStatus }> {
   const database = options.db ?? adminDb
   const workoutId = validateFirestoreDocumentId(input.sessionId, 'sessionId')
+  const closedAt = (options.now ?? Date.now)()
   const workoutRef = database.collection('workouts').doc(workoutId)
   const tombstoneRef = database.collection('closedSessions').doc(workoutId)
   const activeRef = database.collection('activeSessions').doc(userId)
@@ -58,10 +61,15 @@ export async function finalizeWorkoutForUser(
       return validateExistingFinishedClosure(userId, workoutId, workout, tombstone)
     }
 
-    requireMatchingActiveSession(userId, workoutId, active)
+    const activeData = requireMatchingActiveSession(userId, workoutId, active)
+    requireActiveSessionRevision(activeData, input.sessionRevision)
+    const canonicalWorkout = buildFinishedWorkoutFromActiveSession(
+      activeData,
+      getCappedWorkoutFinishedAt(activeData.startedAt, closedAt),
+    )
 
     transaction.create(workoutRef, {
-      ...input,
+      ...canonicalWorkout,
       userId,
       materialized: false,
     })
@@ -70,10 +78,10 @@ export async function finalizeWorkoutForUser(
       sessionId: workoutId,
       outcome: 'finished' satisfies ClosedSessionOutcome,
       workoutId,
-      closedAt: (options.now ?? Date.now)(),
+      closedAt,
       projectionState: 'pending',
       projectionRevision: INITIAL_PROJECTION_REVISION,
-      projectionExerciseKeys: projectionExerciseKeysFromWorkout(input.exercises),
+      projectionExerciseKeys: projectionExerciseKeysFromWorkout(canonicalWorkout.exercises),
     })
     transaction.delete(activeRef)
 
@@ -196,7 +204,7 @@ function requireMatchingActiveSession(
   userId: string,
   sessionId: string,
   active: DocumentSnapshot,
-): void {
+): DocumentData {
   if (!active.exists) throw sessionMismatch()
   const stored = requireOwnedRecord(active, userId, 'active session')
   const storedSessionId = typeof stored.sessionId === 'string' && stored.sessionId.trim()
@@ -205,6 +213,19 @@ function requireMatchingActiveSession(
       ? deriveLegacySessionId(userId, stored.startedAt)
       : undefined
   if (storedSessionId !== sessionId) throw sessionMismatch()
+  return { ...stored, sessionId: storedSessionId }
+}
+
+function requireActiveSessionRevision(
+  active: DocumentData,
+  expectedRevision: string | undefined,
+): void {
+  if (expectedRevision === undefined) return
+  if (active.sessionRevision !== expectedRevision) {
+    throw new ApiError(409, 'Aktywna sesja zmieniła się na innym urządzeniu.', {
+      code: 'active_session_changed',
+    })
+  }
 }
 
 function requireOwnedRecord(

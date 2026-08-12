@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
   requireUserId: vi.fn(),
   finalizeWorkoutForUser: vi.fn(),
   discardSessionForUser: vi.fn(),
-  parseFinalizeWorkoutInput: vi.fn((body: unknown) => body),
+  parseFinalizeWorkoutRequest: vi.fn((body: unknown) => body),
 }))
 
 vi.mock('../_lib/auth.js', () => ({ requireUserId: mocks.requireUserId }))
@@ -17,7 +17,7 @@ vi.mock('../_lib/workoutClosure.js', () => ({
   discardSessionForUser: mocks.discardSessionForUser,
 }))
 vi.mock('../_lib/workoutValidation.js', () => ({
-  parseFinalizeWorkoutInput: mocks.parseFinalizeWorkoutInput,
+  parseFinalizeWorkoutRequest: mocks.parseFinalizeWorkoutRequest,
 }))
 
 import discardHandler from '../discard-session.js'
@@ -79,5 +79,21 @@ describe('workout closure handlers', () => {
 
     expect(captured.status()).toBe(409)
     expect(captured.body()).toEqual({ error: 'Konflikt.', code: 'session_mismatch' })
+  })
+
+  it('finalizes the parsed canonical request', async () => {
+    const parsed = { sessionId: 'session-1', sessionRevision: 'revision-1' }
+    mocks.parseFinalizeWorkoutRequest.mockReturnValue(parsed)
+    mocks.finalizeWorkoutForUser.mockResolvedValue({
+      workoutId: 'session-1',
+      status: 'materialized',
+    })
+    const captured = captureResponse()
+
+    await finalizeHandler(request({ sessionId: 'session-1', label: 'ignored' }), captured.res)
+
+    expect(captured.status()).toBe(200)
+    expect(captured.body()).toEqual({ workoutId: 'session-1', status: 'materialized' })
+    expect(mocks.finalizeWorkoutForUser).toHaveBeenCalledWith('user-1', parsed)
   })
 })

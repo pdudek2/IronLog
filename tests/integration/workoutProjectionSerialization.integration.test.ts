@@ -274,11 +274,15 @@ describe('workout projection serialization', () => {
     await db.collection('activeSessions').doc(USER_ID).set({
       ...input,
       userId: USER_ID,
+      exercises: [{
+        ...benchPressExercise,
+        sets: [{ weight: 80, reps: 5, done: true }],
+      }],
     })
     const paused = deferred()
     const release = deferred()
 
-    const firstFinalization = finalizeWorkoutForUser(USER_ID, input, {
+    const firstFinalization = finalizeWorkoutForUser(USER_ID, { sessionId: workoutId }, {
       db,
       materialize: async (ownerId, id, expectedRevision) => {
         await materializeWorkoutForUser(ownerId, id, {
@@ -295,7 +299,7 @@ describe('workout projection serialization', () => {
     })
 
     await paused.promise
-    const secondFinalization = finalizeWorkoutForUser(USER_ID, input, {
+    const secondFinalization = finalizeWorkoutForUser(USER_ID, { sessionId: workoutId }, {
       db,
       materialize: async (ownerId, id, expectedRevision) => {
         await materializeWorkoutForUser(ownerId, id, {

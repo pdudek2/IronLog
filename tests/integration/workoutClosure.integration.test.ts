@@ -131,6 +131,31 @@ describe('workout closure', () => {
     expect(state.tombstone.exists).toBe(false)
   })
 
+  it('performs no writes when a canonical completed set is malformed', async () => {
+    await seedActive()
+    await db.collection('activeSessions').doc(USER_ID).update({
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: 'not-a-weight', reps: '5', done: true }],
+      }],
+    })
+    const materialize = vi.fn()
+
+    await expect(finalizeWorkoutForUser(USER_ID, {
+      sessionId: input.sessionId,
+      sessionRevision: 'revision-1',
+    }, { db, now: () => FINISHED_AT, materialize }))
+      .rejects.toMatchObject({ status: 400, message: 'Niepoprawny ciężar w serii.' })
+
+    const state = await readClosure()
+    expect(state.active.exists).toBe(true)
+    expect(state.workout.exists).toBe(false)
+    expect(state.tombstone.exists).toBe(false)
+    expect(materialize).not.toHaveBeenCalled()
+  })
+
   it('keeps compatibility requests canonical without a revision', async () => {
     await seedActive()
     await expect(finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId }, {

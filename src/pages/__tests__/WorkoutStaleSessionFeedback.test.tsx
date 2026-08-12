@@ -364,6 +364,58 @@ describe('WorkoutPage stale-session feedback', () => {
     expect(mocks.markClosureUnconfirmed).not.toHaveBeenCalled()
   })
 
+  it('offers only authoritative reload while a revision conflict remains unresolved', () => {
+    mocks.active = {
+      sessionId: 'session-changed',
+      startedAt: Date.now(),
+      templateId: null,
+      label: 'Stale local session',
+      exercises: [],
+    }
+    mocks.activeSessionSyncStatus = 'failed'
+    mocks.closureState = 'active_session_changed'
+    mocks.staleSession = null
+    renderStaleSessionPage()
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Sesja zmieniła się na innym urządzeniu.')
+    expect(screen.queryByRole('button', { name: 'Ponów synchronizację' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Wczytaj aktualną sesję' }))
+
+    expect(mocks.reloadCurrentSession).toHaveBeenCalledOnce()
+    expect(mocks.prepareFinishClosure).not.toHaveBeenCalled()
+    expect(mocks.finalizeWorkout).not.toHaveBeenCalled()
+  })
+
+  it('does not finalize when finish preparation was superseded', async () => {
+    const session: ActiveWorkout = {
+      sessionId: 'session-superseded',
+      startedAt: Date.now(),
+      templateId: null,
+      label: 'Push',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: '80', reps: '5', done: true }],
+      }],
+    }
+    const intent: WorkoutClosureIntent = {
+      action: 'finish',
+      session,
+      createdAt: Date.now(),
+    }
+    mocks.active = session
+    mocks.staleSession = null
+    mocks.beginClosure.mockReturnValue(intent)
+    mocks.prepareFinishClosure.mockResolvedValue({ status: 'failed' })
+    renderStaleSessionPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+
+    await waitFor(() => expect(mocks.prepareFinishClosure).toHaveBeenCalledWith(intent))
+    expect(mocks.finalizeWorkout).not.toHaveBeenCalled()
+  })
+
   it('discards an empty session instead of sending a finalize request', async () => {
     const emptySession: ActiveWorkout = {
       sessionId: 'session-empty',

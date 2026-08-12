@@ -848,10 +848,28 @@ export default function WorkoutPage() {
       role="region"
       aria-label={`Aktywna sesja: ${activeLabel}`}
     >
-      <ActiveSessionSyncStatus
-        status={activeSessionSyncStatus}
-        onRetry={() => { void retryActiveSessionSync() }}
-      />
+      {closureState !== 'active_session_changed' && (
+        <ActiveSessionSyncStatus
+          status={activeSessionSyncStatus}
+          onRetry={() => { void retryActiveSessionSync() }}
+        />
+      )}
+      {closureState === 'active_session_changed' && (
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+          <p className="text-sm font-semibold text-white">Sesja zmieniła się na innym urządzeniu.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
+            Nie udało się wczytać aktualnych danych. Edycja pozostaje zablokowana do czasu uzgodnienia sesji z serwerem.
+          </p>
+          <button
+            type="button"
+            onClick={() => { void reloadCurrentSession() }}
+            className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
+            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+          >
+            Wczytaj aktualną sesję
+          </button>
+        </div>
+      )}
       {closureState === 'closure_unconfirmed' && (
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">Nie udało się potwierdzić zamknięcia sesji.</p>

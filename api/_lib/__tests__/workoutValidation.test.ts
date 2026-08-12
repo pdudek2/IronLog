@@ -175,4 +175,17 @@ describe('buildFinishedWorkoutFromActiveSession', () => {
     expect(() => buildFinishedWorkoutFromActiveSession(empty, 1_790_003_600_000))
       .toThrow('Trening musi zawierać co najmniej jedno ćwiczenie.')
   })
+
+  it('rejects a malformed completed set in the canonical active draft', () => {
+    const malformed = {
+      ...activeDraft,
+      exercises: [{
+        ...activeDraft.exercises[0],
+        sets: [{ weight: 'not-a-weight', reps: '5', done: true }],
+      }],
+    }
+
+    expect(() => buildFinishedWorkoutFromActiveSession(malformed, 1_790_003_600_000))
+      .toThrow('Niepoprawny ciężar w serii.')
+  })
 })

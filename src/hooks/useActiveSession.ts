@@ -268,9 +268,6 @@ export function useActiveSession(uid: string | null) {
     ) {
       const reloaded = await reloadCurrentSession()
       if (!reloaded && failure === 'active_session_changed') {
-        if (uid) clearWorkoutClosureIntent(uid)
-        setPendingIntent(null)
-        setClosureState('idle')
         return null
       }
     }

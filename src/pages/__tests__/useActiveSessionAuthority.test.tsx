@@ -278,14 +278,23 @@ describe('useActiveSession snapshot authority', () => {
     expect(useWorkoutStore.getState().active?.sessionId).toBe('authoritative-session')
   })
 
-  it('unlocks local recovery and exposes a working sync retry when conflict reload fails', async () => {
-    const reloadError = new Error('offline during reload')
+  it('keeps a revision conflict locked through reload failures until authority is restored', async () => {
+    const firstReloadError = new Error('offline during conflict reload')
+    const retryReloadError = new Error('offline during conflict retry')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     const staleLocalSession = { ...remoteSession, sessionId: 'stale-local-session' }
+    const authoritativeSession = {
+      ...staleLocalSession,
+      label: 'Authoritative session',
+    }
     useWorkoutStore.getState().hydrateFromDoc(staleLocalSession)
-    loadActiveSessionFromServer.mockRejectedValueOnce(reloadError)
+    loadActiveSessionFromServer
+      .mockRejectedValueOnce(firstReloadError)
+      .mockRejectedValueOnce(retryReloadError)
+      .mockResolvedValueOnce(authoritativeSession)
     const { result } = renderHook(() => useActiveSession('user-1'))
-    act(() => { result.current.beginClosure('finish', staleLocalSession) })
+    let intent: WorkoutClosureIntent | null = null
+    act(() => { intent = result.current.beginClosure('finish', staleLocalSession) })
 
     let failure: Awaited<ReturnType<typeof result.current.markClosureError>>
     await act(async () => {
@@ -298,19 +307,32 @@ describe('useActiveSession snapshot authority', () => {
 
     expect(failure!).toBeNull()
     expect(result.current.ready).toBe(true)
+    expect(result.current.closureIntent).toEqual(intent)
+    expect(readWorkoutClosureIntent('user-1')).toEqual(intent)
+    expect(result.current.closureState).toBe('active_session_changed')
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(useWorkoutStore.getState().active).toEqual(staleLocalSession)
+    expect(consoleError).toHaveBeenCalledWith('[active session reload error]', firstReloadError)
+
+    await act(async () => {
+      await result.current.reloadCurrentSession()
+    })
+    expect(result.current.closureIntent).toEqual(intent)
+    expect(result.current.closureState).toBe('active_session_changed')
+    expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(useWorkoutStore.getState().active).toEqual(staleLocalSession)
+    expect(consoleError).toHaveBeenCalledWith('[active session reload error]', retryReloadError)
+
+    await act(async () => {
+      await result.current.reloadCurrentSession()
+    })
+
     expect(result.current.closureIntent).toBeNull()
     expect(readWorkoutClosureIntent('user-1')).toBeNull()
     expect(result.current.closureState).toBe('idle')
-    expect(result.current.activeSessionSyncStatus).toBe('failed')
-    expect(useWorkoutStore.getState().active).toEqual(staleLocalSession)
-    expect(consoleError).toHaveBeenCalledWith('[active session reload error]', reloadError)
-
-    await act(async () => {
-      await result.current.retryActiveSessionSync()
-    })
-
-    expect(saveActiveSession).toHaveBeenCalledWith('user-1', staleLocalSession)
     expect(result.current.activeSessionSyncStatus).toBe('idle')
+    expect(useWorkoutStore.getState().active).toEqual(authoritativeSession)
+    expect(saveActiveSession).not.toHaveBeenCalled()
     consoleError.mockRestore()
   })
 
@@ -378,6 +400,31 @@ describe('useActiveSession snapshot authority', () => {
     expect(result.current.activeSessionSyncStatus).toBe('failed')
     expect(useWorkoutStore.getState().active?.sessionId).toBe(remoteSession.sessionId)
     consoleError.mockRestore()
+  })
+
+  it('ignores a finish preparation completed after a newer closure supersedes it', async () => {
+    const preparation = createDeferred<{ sessionRevision: string }>()
+    saveActiveSession.mockReturnValueOnce(preparation.promise)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => useWorkoutStore.getState().hydrateFromDoc(remoteSession))
+    let finishIntent: WorkoutClosureIntent | null = null
+    act(() => { finishIntent = result.current.beginClosure('finish', remoteSession) })
+
+    let preparePromise!: ReturnType<typeof result.current.prepareFinishClosure>
+    act(() => { preparePromise = result.current.prepareFinishClosure(finishIntent!) })
+
+    let newerIntent: WorkoutClosureIntent | null = null
+    act(() => { newerIntent = result.current.beginClosure('discard', remoteSession) })
+    let outcome!: Awaited<typeof preparePromise>
+    await act(async () => {
+      preparation.resolve({ sessionRevision: 'superseded-revision' })
+      outcome = await preparePromise
+    })
+
+    expect(outcome).toEqual({ status: 'failed' })
+    expect(result.current.closureIntent).toEqual(newerIntent)
+    expect(readWorkoutClosureIntent('user-1')).toEqual(newerIntent)
+    expect(result.current.closureState).toBe('submitting')
   })
 
   it('does not resurrect the first session after a later replacement is also confirmed closed', async () => {

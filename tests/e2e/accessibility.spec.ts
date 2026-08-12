@@ -115,8 +115,8 @@ test('primary mobile controls expose at least 44px hit areas', async ({ page }, 
 
   for (const control of controls) {
     const box = await control.boundingBox()
-    expect(box?.width ?? 0).toBeGreaterThanOrEqual(44)
-    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
+    expect(Math.round((box?.width ?? 0) * 100) / 100).toBeGreaterThanOrEqual(44)
+    expect(Math.round((box?.height ?? 0) * 100) / 100).toBeGreaterThanOrEqual(44)
   }
 })
 

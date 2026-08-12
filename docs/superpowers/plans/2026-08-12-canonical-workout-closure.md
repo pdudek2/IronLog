@@ -1,6 +1,6 @@
 # Canonical Workout Closure Implementation Plan
 
-**Status:** Phase A completed and integrated locally on `main` on 2026-08-12. Task 9 remains pending until the compatibility API and SPA are confirmed live in production.
+**Status:** Phase A is live and production-verified as of 2026-08-12. Task 9's deployment prerequisite is satisfied; enforcement remains pending until the compatibility window is explicitly closed.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 

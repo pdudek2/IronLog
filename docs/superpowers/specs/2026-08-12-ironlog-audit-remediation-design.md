@@ -1,6 +1,6 @@
 # IronLog Audit Remediation Design
 
-**Status:** Compatibility implementation, deterministic gates, and UI cleanup completed and integrated locally on `main` on 2026-08-12. Production rollout and strict revision enforcement remain open.
+**Status:** Compatibility implementation, deterministic gates, and UI cleanup are live in production as of 2026-08-12. Strict revision enforcement remains open until the compatibility window is closed.
 
 ## Purpose
 
@@ -127,10 +127,11 @@ Stream B may be merged before Stream A if desired, but Stream A remains the rele
 
 ## Closeout State
 
-- Completed locally: Stream A compatibility implementation, Stream B, and Stream C.
+- Completed in production: Stream A compatibility implementation, Stream B, and Stream C.
 - Verified locally: lint, 550 unit tests, production build, 18 Firestore rules tests, 42 workout integration tests, and the a11y, isolated, workout, CSP, and visual E2E gates.
-- Next stage: push and deploy the compatibility release, verify the deployed SPA/API contract with a real authenticated closure, then execute Task 9 from the canonical workout-closure plan.
-- Parent remains open until production verification and strict revision enforcement are complete or explicitly deferred by a release decision.
+- Verified in production: deployment `dpl_DfdnSCNU3sbeHPZr5xFMjQTgsoZj`; the authenticated SPA sent only `sessionId` and `sessionRevision`, finalization returned `200` with `materialized`, the canonical `3 kg × 3` set remained visible after reload, and cleanup returned `200`.
+- Next stage: close the compatibility window, then execute Task 9 from the canonical workout-closure plan.
+- Parent remains open until strict revision enforcement is complete or explicitly deferred by a release decision.
 
 ## Out of Scope
 

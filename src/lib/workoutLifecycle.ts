@@ -28,6 +28,7 @@ interface ClosureDependencies<T> {
 }
 
 interface FinishWorkoutDependencies extends ClosureDependencies<FinalizeWorkoutResult> {
+  sessionRevision: string
   request(): Promise<FinalizeWorkoutResult>
 }
 type DiscardWorkoutDependencies = ClosureDependencies<DiscardWorkoutResult>
@@ -75,7 +76,7 @@ export async function finishWorkoutLifecycle(
     return { workout, ...await confirmLegacyCleanup(dependencies.clearSession) }
   }
 
-  return runClosure('finish', dependencies, dependencies.request)
+  return runClosure('finish', dependencies, dependencies.request, dependencies.sessionRevision)
 }
 
 export function discardWorkoutLifecycle(
@@ -136,12 +137,20 @@ async function runClosure<T>(
   action: WorkoutClosureIntent['action'],
   dependencies: ClosureDependencies<T>,
   request: () => Promise<T>,
+  sessionRevision?: string,
 ): Promise<T | ClosureUnconfirmedResult> {
-  const intent: WorkoutClosureIntent = {
-    action,
-    session: dependencies.session,
-    createdAt: (dependencies.now ?? Date.now)(),
-  }
+  const intent: WorkoutClosureIntent = action === 'finish'
+    ? {
+        action,
+        session: dependencies.session,
+        createdAt: (dependencies.now ?? Date.now)(),
+        sessionRevision,
+      }
+    : {
+        action,
+        session: dependencies.session,
+        createdAt: (dependencies.now ?? Date.now)(),
+      }
   writeWorkoutClosureIntent(dependencies.uid, intent, dependencies.storage)
 
   let result: T

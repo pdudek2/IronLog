@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { ActiveWorkout } from '../../store/workoutStore'
 import { WorkoutClosureError } from '../workoutClosureService'
+import { readWorkoutClosureIntent } from '../workoutClosureIntent'
 import {
   discardStaleSessionLifecycle,
   discardWorkoutLifecycle,
@@ -38,8 +39,19 @@ describe('finishWorkoutLifecycle', () => {
     const result = await finishWorkoutLifecycle({
       uid: 'user-1',
       session,
+      sessionRevision: 'revision-finish',
       storage,
-      request: vi.fn(async () => { order.push('request'); return { workoutId: 'session-1', status: 'materialized' as const } }),
+      request: vi.fn(async () => {
+        expect(readWorkoutClosureIntent('user-1', storage)).toEqual({
+          action: 'finish',
+          session,
+          createdAt: 100,
+          sessionRevision: 'revision-finish',
+        })
+        order.push('request')
+        return { workoutId: 'session-1', status: 'materialized' as const }
+      }),
+      now: () => 100,
       clearConfirmed: vi.fn(async () => { order.push('confirmed-clear') }),
     })
 
@@ -56,7 +68,9 @@ describe('finishWorkoutLifecycle', () => {
     const result = await finishWorkoutLifecycle({
       uid: 'user-1',
       session,
+      sessionRevision: 'revision-finish',
       storage,
+      now: () => 100,
       request: vi.fn(async () => {
         order.push('request-fails')
         throw new WorkoutClosureError('ambiguous', 'No acknowledgement')
@@ -68,6 +82,12 @@ describe('finishWorkoutLifecycle', () => {
     expect(order).toEqual(['request-fails'])
     expect(clearConfirmed).not.toHaveBeenCalled()
     expect(storage.length).toBe(1)
+    expect(readWorkoutClosureIntent('user-1', storage)).toEqual({
+      action: 'finish',
+      session,
+      createdAt: 100,
+      sessionRevision: 'revision-finish',
+    })
   })
 })
 

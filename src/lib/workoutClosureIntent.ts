@@ -1,7 +1,7 @@
 import type { ActiveWorkout } from '../store/workoutStore'
 
 export type WorkoutClosureIntent =
-  | { action: 'finish'; session: ActiveWorkout; createdAt: number }
+  | { action: 'finish'; session: ActiveWorkout; createdAt: number; sessionRevision?: string }
   | { action: 'discard'; session: ActiveWorkout; createdAt: number }
 
 interface StoredWorkoutClosureIntent {
@@ -58,6 +58,10 @@ function getLocalStorage(): Storage {
 function isWorkoutClosureIntent(value: unknown): value is WorkoutClosureIntent {
   if (!isRecord(value)) return false
   if (value.action !== 'finish' && value.action !== 'discard') return false
+  if (value.action === 'finish') {
+    if (value.sessionRevision !== undefined
+      && (typeof value.sessionRevision !== 'string' || !value.sessionRevision)) return false
+  } else if ('sessionRevision' in value) return false
   return typeof value.createdAt === 'number'
     && Number.isFinite(value.createdAt)
     && isActiveWorkout(value.session)

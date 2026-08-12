@@ -48,6 +48,20 @@ describe('workout closure intent', () => {
     expect(readWorkoutClosureIntent('user-1', storage)).toEqual(intent(action))
   })
 
+  it('round-trips a prepared finish revision for reload recovery', () => {
+    const storage = new MemoryStorage()
+    const preparedIntent: WorkoutClosureIntent = {
+      action: 'finish',
+      session,
+      createdAt: 100,
+      sessionRevision: 'revision-finish',
+    }
+
+    writeWorkoutClosureIntent('user-1', preparedIntent, storage)
+
+    expect(readWorkoutClosureIntent('user-1', storage)).toEqual(preparedIntent)
+  })
+
   it('keeps intents isolated by UID', () => {
     const storage = new MemoryStorage()
     writeWorkoutClosureIntent('user-1', intent('finish', 100), storage)
@@ -62,6 +76,10 @@ describe('workout closure intent', () => {
     ['malformed JSON', '{'],
     ['wrong UID', JSON.stringify({ uid: 'user-2', intent: intent('finish') })],
     ['invalid action', JSON.stringify({ uid: 'user-1', intent: { ...intent('finish'), action: 'archive' } })],
+    ['invalid finish revision', JSON.stringify({
+      uid: 'user-1',
+      intent: { ...intent('finish'), sessionRevision: 42 },
+    })],
     ['missing session', JSON.stringify({ uid: 'user-1', intent: { action: 'finish', createdAt: 100 } })],
     ['numeric label', JSON.stringify({
       uid: 'user-1',

@@ -227,6 +227,9 @@ export function useActiveSession(uid: string | null) {
           confirmedClosedSessionIdsRef.current,
         )
       ) return { status: 'failed' }
+      const preparedIntent = { ...intent, sessionRevision: saved.sessionRevision }
+      writeWorkoutClosureIntent(uid, preparedIntent)
+      setPendingIntent(preparedIntent)
       hasUnsyncedLocalChangesRef.current = false
       setActiveSessionSyncStatus('idle')
       return { status: 'ready', sessionRevision: saved.sessionRevision }

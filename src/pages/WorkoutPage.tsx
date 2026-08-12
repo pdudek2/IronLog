@@ -508,14 +508,17 @@ export default function WorkoutPage() {
   }
 
   async function submitFinish(intent: WorkoutClosureIntent) {
-    if (!user) return
+    if (!user || intent.action !== 'finish') return
     try {
-      const prepared = await prepareFinishClosure(intent)
+      const prepared = intent.sessionRevision
+        ? { status: 'ready', sessionRevision: intent.sessionRevision } as const
+        : await prepareFinishClosure(intent)
       if (prepared.status === 'failed') return
 
       const result = await finishWorkoutLifecycle({
         uid: user.uid,
         session: intent.session,
+        sessionRevision: prepared.sessionRevision,
         now: () => intent.createdAt,
         request: () => finalizeWorkout(intent.session.sessionId, prepared.sessionRevision),
         clearConfirmed: confirmClosure,

@@ -4,6 +4,7 @@ import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ActiveWorkout } from '../../store/workoutStore'
+import type { WorkoutClosureIntent } from '../../lib/workoutClosureIntent'
 import WorkoutPage from '../WorkoutPage'
 import { WorkoutClosureError } from '../../lib/workoutClosureService'
 
@@ -11,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   activeSessionSyncStatus: 'idle',
   active: null as ActiveWorkout | null,
   beginClosure: vi.fn(),
+  closureIntent: null as WorkoutClosureIntent | null,
   closureState: 'idle',
   continueStaleSession: vi.fn(),
   discardWorkoutLifecycle: vi.fn(),
@@ -31,7 +33,7 @@ vi.mock('../../hooks/useActiveSession', () => ({
   useActiveSession: () => ({
     activeSessionSyncStatus: mocks.activeSessionSyncStatus,
     beginClosure: mocks.beginClosure,
-    closureIntent: null,
+    closureIntent: mocks.closureIntent,
     closureState: mocks.closureState,
     confirmClosure: vi.fn(),
     continueStaleSession: mocks.continueStaleSession,
@@ -151,6 +153,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.activeSessionSyncStatus = 'idle'
     mocks.active = null
     mocks.beginClosure.mockReset()
+    mocks.closureIntent = null
     mocks.closureState = 'idle'
     mocks.continueStaleSession.mockReset()
     mocks.discardWorkoutLifecycle.mockReset()
@@ -252,6 +255,45 @@ describe('WorkoutPage stale-session feedback', () => {
 
     expect(screen.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Wczytaj aktualny stan' })).not.toBeInTheDocument()
+  })
+
+  it('retries an ambiguous finish with the persisted revision without preparing again', async () => {
+    const session: ActiveWorkout = {
+      sessionId: 'session-recovery',
+      startedAt: Date.now(),
+      templateId: null,
+      label: 'Push',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: '80', reps: '5', done: true }],
+      }],
+    }
+    const preparedIntent: WorkoutClosureIntent = {
+      action: 'finish',
+      session,
+      createdAt: 1_797_000_000_000,
+      sessionRevision: 'revision-recovery',
+    }
+    mocks.active = session
+    mocks.closureIntent = preparedIntent
+    mocks.closureState = 'closure_unconfirmed'
+    mocks.staleSession = null
+    mocks.beginClosure.mockReturnValue(preparedIntent)
+    mocks.finalizeWorkout.mockResolvedValue({
+      workoutId: session.sessionId,
+      status: 'materialized',
+    })
+    renderStaleSessionPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+
+    await waitFor(() => expect(mocks.finalizeWorkout).toHaveBeenCalledWith(
+      'session-recovery',
+      'revision-recovery',
+    ))
+    expect(mocks.prepareFinishClosure).not.toHaveBeenCalled()
   })
 
   it('shows precise feedback after reloading a session changed on another device', async () => {

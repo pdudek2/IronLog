@@ -350,6 +350,14 @@ describe('useActiveSession snapshot authority', () => {
       sessionRevision: 'revision-finish',
     })
     expect(saveActiveSession).toHaveBeenCalledWith('user-1', intent!.session)
+    expect(result.current.closureIntent).toEqual({
+      ...intent!,
+      sessionRevision: 'revision-finish',
+    })
+    expect(readWorkoutClosureIntent('user-1')).toEqual({
+      ...intent!,
+      sessionRevision: 'revision-finish',
+    })
   })
 
   it('unlocks an unsent finish and exposes sync retry when snapshot persistence fails', async () => {

@@ -36,7 +36,7 @@ export default defineConfig({
     '**/workout-lifecycle.spec.ts',
   ],
   fullyParallel: false,
-  retries: 1,
+  retries: emulatorMode ? 0 : 1,
   workers: 1,
   reporter: [['html', { open: 'never' }], ['list']],
 

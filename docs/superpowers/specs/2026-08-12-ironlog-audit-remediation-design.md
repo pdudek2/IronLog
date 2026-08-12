@@ -132,6 +132,7 @@ Stream B may be merged before Stream A if desired, but Stream A remains the rele
 - Verified in production: Phase B deployment `dpl_3A53sBbLwXd8AxCeoCNbYs7BFvFW`; an authenticated finalize request sent only `sessionId` and `sessionRevision`, returned `200` with `materialized`, the canonical `3 kg × 3` set remained visible after reload, and cleanup returned `200`.
 - Strict rejection verified in production: a missing-revision finalize probe returned `400` with `Brak pola sessionRevision.` before closure logic; browser console and Vercel error logs were clean.
 - Parent audit remediation and canonical workout closure are closed.
+- Next stage: return to product-backlog selection; no audit-remediation obligation remains.
 
 ## Out of Scope
 
@@ -139,4 +140,4 @@ Stream B may be merged before Stream A if desired, but Stream A remains the rele
 - Adding conflict merging between active clients.
 - Reworking the Puls visual system or navigation.
 - Adding dependencies, a new state manager, or a new test framework.
-- Live Anthropic, production Vercel, or production Firebase verification; those remain release checks after implementation.
+- Additional live Anthropic verification; no AI path changed. Production Vercel and Firebase release checks are recorded in the closeout above.

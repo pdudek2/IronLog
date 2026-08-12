@@ -211,6 +211,27 @@ describe('Dashboard workout projection status', () => {
     expect(screen.queryByText('400 kg • 1 serii')).not.toBeInTheDocument()
   })
 
+  it('uses the Polish paucal set-count form in the peak-day summary', async () => {
+    const now = Date.now()
+    mocks.getRecentWorkouts.mockResolvedValue([{
+      ...pendingWorkout,
+      startedAt: now - 60_000,
+      finishedAt: now,
+      materialized: true,
+      exercises: [{
+        ...pendingWorkout.exercises[0],
+        sets: [
+          ...pendingWorkout.exercises[0].sets,
+          { weight: 80, reps: 5 },
+        ],
+      }],
+    }])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('400 kg • 2 serie')).toBeInTheDocument()
+  })
+
   it('keeps the dashboard shell aligned when remote work appears and disappears', async () => {
     mocks.getRecentWorkouts.mockResolvedValue([])
 

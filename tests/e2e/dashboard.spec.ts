@@ -8,6 +8,7 @@ import {
 } from './support/workoutLifecycleEmulator'
 
 const NEXT_SESSION_TEMPLATE_NAME = '_E2E Dashboard Next Session_'
+const emulatorMode = process.env.E2E_BACKEND === 'emulator'
 
 async function openDashboard(page: Page) {
   await page.goto('/dashboard')
@@ -28,6 +29,7 @@ test.describe('Dashboard regressions', () => {
     page,
     cleanup,
   }, testInfo) => {
+    test.skip(!emulatorMode, 'emulator-only deterministic fixture')
     test.skip(testInfo.project.name !== 'desktop', 'desktop deterministic keyboard contract')
     const sessionId = 'phase-1-dashboard-keyboard-delete'
     cleanup.add('remove dashboard keyboard workout', () => deleteLifecycleWorkout(sessionId))

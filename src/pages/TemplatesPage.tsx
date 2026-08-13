@@ -57,16 +57,27 @@ export default function TemplatesPage() {
 
   useEffect(() => {
     if (!user) return
+    let cancelled = false
+
     getTemplates(user.uid)
       .then((nextTemplates) => {
+        if (cancelled) return
         setTemplates(nextTemplates)
         setError(false)
       })
       .catch(() => {
+        if (cancelled) return
         toast.error('Nie udało się pobrać szablonów.')
         setError(true)
       })
-      .finally(() => setLoading(false))
+
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
   }, [loadAttempt, user])
 
   function handleRetryLoad() {

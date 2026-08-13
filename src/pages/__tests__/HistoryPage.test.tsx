@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import HistoryPage from '../HistoryPage'
@@ -7,10 +7,12 @@ const mocks = vi.hoisted(() => ({
   getWorkoutHistory: vi.fn(),
   getUserExercises: vi.fn(),
   navigate: vi.fn(),
+  toastError: vi.fn(),
+  user: { uid: 'user-1' },
 }))
 
 vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: { uid: 'user-1' } }),
+  useAuthStore: () => ({ user: mocks.user }),
 }))
 
 vi.mock('../../lib/workoutService', async () => {
@@ -32,14 +34,26 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('sonner', () => ({
-  toast: { error: vi.fn() },
+  toast: { error: mocks.toastError },
 }))
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+  return { promise, resolve, reject }
+}
 
 describe('HistoryPage range state', () => {
   beforeEach(() => {
     mocks.getWorkoutHistory.mockReset()
     mocks.getUserExercises.mockReset()
     mocks.navigate.mockReset()
+    mocks.toastError.mockReset()
+    mocks.user = { uid: 'user-1' }
     mocks.getUserExercises.mockResolvedValue([])
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
   })
@@ -112,5 +126,46 @@ describe('HistoryPage range state', () => {
 
     expect(results).toContainElement(retry)
     expect(results?.querySelector('.surface-panel')).toBeNull()
+  })
+
+  it('ignores a history failure that arrives after unmount', async () => {
+    const request = deferred<never>()
+    mocks.getWorkoutHistory.mockReturnValueOnce(request.promise)
+    const { unmount } = render(<HistoryPage />)
+
+    unmount()
+    await act(async () => request.reject(new Error('late history failure')))
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('keeps newer history visible when an older request rejects later', async () => {
+    const olderRequest = deferred<never>()
+    const newerHistory = {
+      workouts: [{
+        id: 'newer-workout',
+        startedAt: Date.now() - 86_400_000,
+        finishedAt: Date.now() - 86_400_000 + 3_600_000,
+        materialized: true,
+        label: 'Nowsza sesja',
+        exercises: [{ name: 'Przysiad', sets: [{ weight: 80, reps: 5 }] }],
+      }],
+      truncated: false,
+    }
+    mocks.getWorkoutHistory
+      .mockReturnValueOnce(olderRequest.promise)
+      .mockResolvedValueOnce(newerHistory)
+
+    const { rerender } = render(<HistoryPage />)
+    await waitFor(() => expect(mocks.getWorkoutHistory).toHaveBeenCalledTimes(1))
+
+    mocks.user = { uid: 'user-2' }
+    rerender(<HistoryPage />)
+
+    expect(await screen.findByText('Nowsza sesja')).toBeInTheDocument()
+    await act(async () => olderRequest.reject(new Error('obsolete history failure')))
+
+    expect(screen.getByText('Nowsza sesja')).toBeInTheDocument()
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 })

@@ -1,11 +1,12 @@
 import { createElement, type ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TemplatesPage from '../TemplatesPage'
 
 const mocks = vi.hoisted(() => ({
   getTemplates: vi.fn(),
   navigate: vi.fn(),
+  toastError: vi.fn(),
   user: { uid: 'user-1' },
 }))
 
@@ -35,7 +36,7 @@ vi.mock('react-router-dom', async () => {
   return { ...actual, useNavigate: () => mocks.navigate }
 })
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: vi.fn() },
+  toast: { success: vi.fn(), error: mocks.toastError },
 }))
 vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
@@ -54,10 +55,21 @@ vi.mock('framer-motion', () => ({
   }),
 }))
 
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((promiseResolve, promiseReject) => {
+    resolve = promiseResolve
+    reject = promiseReject
+  })
+  return { promise, resolve, reject }
+}
+
 describe('TemplatesPage data states', () => {
   beforeEach(() => {
     mocks.getTemplates.mockReset()
     mocks.navigate.mockReset()
+    mocks.toastError.mockReset()
   })
 
   it('keeps error ahead of empty state and reaches empty only after retry succeeds', async () => {
@@ -93,5 +105,16 @@ describe('TemplatesPage data states', () => {
 
     expect(await screen.findByLabelText('Podsumowanie planów')).toHaveTextContent('1 plan')
     expect(screen.getByLabelText('Podsumowanie planów')).toHaveTextContent('1 dzień')
+  })
+
+  it('ignores a templates failure that arrives after unmount', async () => {
+    const request = deferred<never>()
+    mocks.getTemplates.mockReturnValueOnce(request.promise)
+    const { unmount } = render(<TemplatesPage />)
+
+    unmount()
+    await act(async () => request.reject(new Error('late templates failure')))
+
+    expect(mocks.toastError).not.toHaveBeenCalled()
   })
 })

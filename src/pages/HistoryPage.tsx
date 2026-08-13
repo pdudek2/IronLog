@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -94,8 +94,20 @@ export default function HistoryPage() {
     retry: retryUserExercises,
   } = useUserExercises(user?.uid ?? null)
   const [historyTruncated, setHistoryTruncated] = useState(false)
+  const historyMountedRef = useRef(false)
+  const historyRequestRef = useRef(0)
+
+  useEffect(() => {
+    historyMountedRef.current = true
+
+    return () => {
+      historyMountedRef.current = false
+      historyRequestRef.current += 1
+    }
+  }, [])
 
   const loadHistory = useCallback(async () => {
+    const requestId = ++historyRequestRef.current
     if (!user) return
 
     setLoading(true)
@@ -103,17 +115,21 @@ export default function HistoryPage() {
 
     try {
       const history = await getWorkoutHistory(user.uid)
+      if (!historyMountedRef.current || requestId !== historyRequestRef.current) return
 
       setWorkouts(history.workouts)
       setHistoryTruncated(history.truncated)
       setRangeAnchorMs(Date.now())
     } catch (err) {
+      if (!historyMountedRef.current || requestId !== historyRequestRef.current) return
       console.error('[HistoryPage] load failed', err)
       setLoadError(true)
       setHistoryTruncated(false)
       toast.error('Nie udało się pobrać historii treningów.')
     } finally {
-      setLoading(false)
+      if (historyMountedRef.current && requestId === historyRequestRef.current) {
+        setLoading(false)
+      }
     }
   }, [user])
 

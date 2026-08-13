@@ -12,6 +12,11 @@ import {
   calcVolume,
   type WorkoutSummary,
 } from '../lib/workoutService'
+import {
+  clearWorkoutDeleteRecovery,
+  readWorkoutDeleteRecovery,
+  writeWorkoutDeleteRecovery,
+} from '../lib/workoutDeleteRecovery'
 import { exercises as exerciseDb } from '../data/exercises'
 import { useAuthStore } from '../store/authStore'
 import { useUserExercises } from '../hooks/useUserExercises'
@@ -113,13 +118,21 @@ export default function WorkoutDetailPage() {
     retry: retryUserExercises,
   } = useUserExercises(user?.uid ?? null)
   const [loading, setLoading] = useState(() => previewWorkout === null)
-  const [deleteOperation, setDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
+  const [transientDeleteOperation, setTransientDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [editedLabel, setEditedLabel] = useState('')
   const [editedExercises, setEditedExercises] = useState<WorkoutSummary['exercises']>([])
+  const persistedDeleteRecovery = user?.uid ? readWorkoutDeleteRecovery(user.uid) : null
+  const persistedDeleteWorkoutId = persistedDeleteRecovery?.workoutId
+  const deleteOperation = transientDeleteOperation
+    ?? (
+      persistedDeleteWorkoutId && persistedDeleteWorkoutId === id
+        ? { workoutId: persistedDeleteWorkoutId, status: 'cleanup_pending' as const }
+        : null
+    )
 
   useEffect(() => {
     if (!id) return
@@ -238,17 +251,20 @@ export default function WorkoutDetailPage() {
   async function runWorkoutDelete(workoutId: string) {
     const retryingCommittedDelete = deleteOperation?.workoutId === workoutId
       && deleteOperation.status === 'cleanup_pending'
-    setDeleteOperation({ workoutId, status: 'pending' })
+    setTransientDeleteOperation({ workoutId, status: 'pending' })
     try {
       const result = await deleteWorkout(workoutId)
       if (result.status === 'cleanup_pending') {
-        setDeleteOperation({ workoutId, status: 'cleanup_pending' })
+        if (user?.uid) writeWorkoutDeleteRecovery(user.uid, { workoutId })
+        setTransientDeleteOperation({ workoutId, status: 'cleanup_pending' })
         return
       }
+      if (user?.uid) clearWorkoutDeleteRecovery(user.uid)
+      setTransientDeleteOperation(null)
       navigate('/history', { replace: true })
       toast.success('Trening usunięty')
     } catch {
-      setDeleteOperation((current) => (
+      setTransientDeleteOperation((current) => (
         current?.workoutId === workoutId
           ? { workoutId, status: retryingCommittedDelete ? 'cleanup_pending' : 'error' }
           : current
@@ -283,6 +299,24 @@ export default function WorkoutDetailPage() {
   if (loading) return <LoadingState message="Ładowanie treningu..." />
 
   if (!workout) {
+    if (deleteOperation?.workoutId === id && deleteOperation?.status === 'cleanup_pending') {
+      return (
+        <div className="flex items-center justify-center">
+          <div className="puls-panel rounded-[var(--radius-sm)] p-8 text-center">
+            <ActionFeedback
+              status="error"
+              message="Trening usunięty. Nie udało się odświeżyć statystyk."
+              onRetry={retryWorkoutDelete}
+              className="workout-detail-delete-feedback"
+            />
+            <button onClick={handleBack} className="mt-4" style={{ color: 'var(--accent)' }}>
+              Wróć
+            </button>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <div className="flex items-center justify-center">
         <div className="puls-panel rounded-[var(--radius-sm)] p-8 text-center">
@@ -409,7 +443,7 @@ export default function WorkoutDetailPage() {
                   ? retryWorkoutDelete
                   : undefined}
                 onDismiss={deleteOperation.status === 'error'
-                  ? () => setDeleteOperation(null)
+                  ? () => setTransientDeleteOperation(null)
                   : undefined}
                 className="workout-detail-delete-feedback"
               />

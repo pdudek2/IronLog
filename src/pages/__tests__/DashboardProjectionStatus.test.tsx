@@ -503,6 +503,65 @@ describe('Dashboard workout projection status', () => {
     expect(screen.getByText('Pull day')).toBeInTheDocument()
   })
 
+  it('restores committed delete recovery after reload when the workout row is gone', async () => {
+    const firstDelete = deferred<{ status: 'cleanup_pending' }>()
+    const repeatedCleanupPending = deferred<{ status: 'cleanup_pending' }>()
+    const retryDelete = deferred<{ status: 'deleted' }>()
+    mocks.getRecentWorkouts
+      .mockResolvedValueOnce([pendingWorkout])
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([])
+    mocks.retryWorkoutMaterialization.mockRejectedValue(new Error('projection unavailable'))
+    mocks.deleteWorkout
+      .mockReturnValueOnce(firstDelete.promise)
+      .mockReturnValueOnce(repeatedCleanupPending.promise)
+      .mockReturnValueOnce(retryDelete.promise)
+
+    const firstRender = render(<DashboardPage />)
+
+    await screen.findByText('Push day')
+    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+
+    firstDelete.resolve({ status: 'cleanup_pending' })
+    await act(async () => {
+      await firstDelete.promise
+    })
+
+    firstRender.unmount()
+    render(<DashboardPage />)
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
+    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Spróbuj ponownie' }))
+    await waitFor(() => {
+      expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
+    })
+
+    repeatedCleanupPending.resolve({ status: 'cleanup_pending' })
+    await act(async () => {
+      await repeatedCleanupPending.promise
+    })
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
+    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Spróbuj ponownie' }))
+    await waitFor(() => {
+      expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(3, 'workout-pending')
+    })
+
+    retryDelete.resolve({ status: 'deleted' })
+    await act(async () => {
+      await retryDelete.promise
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    })
+  })
+
   it('keeps the pending delete owner when another workout delete is attempted', async () => {
     const workoutA = { ...pendingWorkout, materialized: true }
     const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }

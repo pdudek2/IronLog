@@ -29,6 +29,11 @@ import {
   getRecentWorkouts, deleteWorkout, retryWorkoutMaterialization, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
+import {
+  clearWorkoutDeleteRecovery,
+  readWorkoutDeleteRecovery,
+  writeWorkoutDeleteRecovery,
+} from '../lib/workoutDeleteRecovery'
 import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
@@ -170,7 +175,7 @@ export default function DashboardPage() {
     ready: dashboardReady,
     setSnapshot,
   } = useDashboardStore()
-  const [deleteOperation, setDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
+  const [transientDeleteOperation, setTransientDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [openingWorkout, setOpeningWorkout] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
   const [templatesResource, setTemplatesResource] = useState<TemplatesResource>({
@@ -191,6 +196,13 @@ export default function DashboardPage() {
   const templatesRequestRef = useRef(0)
   const requestedTemplatesUserRef = useRef<string | null>(null)
   const inFlightTemplatesUserRef = useRef<string | null>(null)
+  const persistedDeleteRecovery = user?.uid ? readWorkoutDeleteRecovery(user.uid) : null
+  const deleteOperation = transientDeleteOperation
+    ?? (
+      persistedDeleteRecovery
+        ? { workoutId: persistedDeleteRecovery.workoutId, status: 'cleanup_pending' as const }
+        : null
+    )
 
   const loadTemplates = useCallback((uid: string) => {
     if (inFlightTemplatesUserRef.current === uid) return
@@ -388,19 +400,21 @@ export default function DashboardPage() {
   async function runWorkoutDelete(workoutId: string) {
     const retryingCommittedDelete = deleteOperation?.workoutId === workoutId
       && deleteOperation.status === 'cleanup_pending'
-    setDeleteOperation({ workoutId, status: 'pending' })
+    setTransientDeleteOperation({ workoutId, status: 'pending' })
     try {
       const result = await deleteWorkout(workoutId)
       if (result.status === 'cleanup_pending') {
-        setDeleteOperation({ workoutId, status: 'cleanup_pending' })
+        if (user?.uid) writeWorkoutDeleteRecovery(user.uid, { workoutId })
+        setTransientDeleteOperation({ workoutId, status: 'cleanup_pending' })
         return
       }
+      if (user?.uid) clearWorkoutDeleteRecovery(user.uid)
       setDashboardSnapshot(workoutsRef.current.filter((workout) => workout.id !== workoutId))
-      setDeleteOperation(null)
+      setTransientDeleteOperation(null)
       if (user) void fetchData(user.uid).catch(handleDashboardFetchError)
       toast.success('Trening usunięty')
     } catch {
-      setDeleteOperation({ workoutId, status: retryingCommittedDelete ? 'cleanup_pending' : 'error' })
+      setTransientDeleteOperation({ workoutId, status: retryingCommittedDelete ? 'cleanup_pending' : 'error' })
       toast.error('Nie udało się usunąć treningu.')
     }
   }
@@ -446,6 +460,11 @@ export default function DashboardPage() {
   const weekDates = getWeekDates()
   const today = new Date()
   const recentWorkouts = workouts.slice(0, 4)
+  const hasDeleteRecoveryRow = deleteOperation?.status === 'cleanup_pending'
+    && recentWorkouts.some((workout) => workout.id === deleteOperation.workoutId)
+  const orphanedDeleteOperation = deleteOperation?.status === 'cleanup_pending' && !hasDeleteRecoveryRow
+    ? deleteOperation
+    : null
   const templatesState: DataState<WorkoutTemplate[]> =
     templatesResource.uid === user?.uid
       ? templatesResource.state
@@ -907,21 +926,30 @@ export default function DashboardPage() {
 
         <section className="dashboard-history-section">
           <div className="dashboard-section-head">
-                <div>
-                  <h2 className="section-title">Ostatnie treningi</h2>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => navigate('/history')}
-                  className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
-                >
-                  Zobacz wszystkie
-                  <ChevronRight size={15} strokeWidth={2.3} />
-                </button>
-              </div>
+            <div>
+              <h2 className="section-title">Ostatnie treningi</h2>
+            </div>
+            <button
+              type="button"
+              onClick={() => navigate('/history')}
+              className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
+            >
+              Zobacz wszystkie
+              <ChevronRight size={15} strokeWidth={2.3} />
+            </button>
+          </div>
 
-              <AnimatePresence mode="popLayout">
-                {recentWorkouts.length === 0 ? (
+          {orphanedDeleteOperation && (
+            <ActionFeedback
+              status="error"
+              message="Trening usunięty. Nie udało się odświeżyć statystyk."
+              onRetry={retryWorkoutDelete}
+              className="dashboard-workout-delete-feedback mb-4"
+            />
+          )}
+
+          <AnimatePresence mode="popLayout">
+            {recentWorkouts.length === 0 ? (
                   <motion.div
                     key="empty"
                     className="dashboard-inline-state"
@@ -946,9 +974,9 @@ export default function DashboardPage() {
                         : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
                     </motion.button>
                   </motion.div>
-                ) : (
-                  <div className="dashboard-history-list">
-                    {recentWorkouts.map((workout) => {
+            ) : (
+              <div className="dashboard-history-list">
+                {recentWorkouts.map((workout) => {
                       const accent = workoutAccent(workout)
                       const volume = calcVolume(workout)
                       const totalSets = workout.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
@@ -1040,7 +1068,7 @@ export default function DashboardPage() {
                                   ? retryWorkoutDelete
                                   : undefined}
                                 onDismiss={workoutDeleteOperation.status === 'error'
-                                  ? () => setDeleteOperation(null)
+                                  ? () => setTransientDeleteOperation(null)
                                   : undefined}
                                 className="dashboard-workout-delete-feedback"
                               />
@@ -1085,10 +1113,10 @@ export default function DashboardPage() {
                           </div>
                         </motion.div>
                       )
-                    })}
-                  </div>
-                )}
-              </AnimatePresence>
+                })}
+              </div>
+            )}
+          </AnimatePresence>
         </section>
 
       {confirmDelete && (

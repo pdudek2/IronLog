@@ -80,9 +80,11 @@ function deferred<T>() {
   return { promise, resolve, reject }
 }
 
-function renderPage() {
+function renderPage(initialEntries: Array<string | { pathname: string; state?: unknown }> = [
+  { pathname: '/workout/workout-1', state: { workoutPreview: workout } },
+]) {
   return render(
-    <MemoryRouter initialEntries={[{ pathname: '/workout/workout-1', state: { workoutPreview: workout } }]}>
+    <MemoryRouter initialEntries={initialEntries}>
       <Routes>
         <Route path="/workout/:id" element={<WorkoutDetailPage />} />
         <Route path="/history" element={<p>Historia treningów</p>} />
@@ -101,6 +103,7 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.getUserExercises.mockResolvedValue([])
     mocks.toastSuccess.mockReset()
     mocks.toastError.mockReset()
+    localStorage.clear()
   })
 
   it('keeps the workout visible after failure and retries the exact deletion before navigating', async () => {
@@ -170,6 +173,95 @@ describe('WorkoutDetailPage delete action', () => {
     })
 
     await waitFor(() => expect(screen.getByText('Historia treningów')).toBeInTheDocument())
+  })
+
+  it('restores cleanup retry after reload when the workout document is already gone', async () => {
+    const firstDelete = deferred<{ status: 'cleanup_pending' }>()
+    const retryDelete = deferred<{ status: 'deleted' }>()
+    mocks.deleteWorkout
+      .mockReturnValueOnce(firstDelete.promise)
+      .mockReturnValueOnce(retryDelete.promise)
+
+    const firstRender = renderPage()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+
+    firstDelete.resolve({ status: 'cleanup_pending' })
+    await act(async () => {
+      await firstDelete.promise
+    })
+
+    expect(await screen.findByText('Trening usunięty. Nie udało się odświeżyć statystyk.')).toBeInTheDocument()
+
+    firstRender.unmount()
+    mocks.getWorkout.mockResolvedValueOnce(null)
+    renderPage(['/workout/workout-1'])
+
+    expect(await screen.findByText('Trening usunięty. Nie udało się odświeżyć statystyk.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
+
+    retryDelete.resolve({ status: 'deleted' })
+    await act(async () => {
+      await retryDelete.promise
+    })
+
+    await waitFor(() => expect(screen.getByText('Historia treningów')).toBeInTheDocument())
+  })
+
+  it('keeps committed cleanup recovery available after reload when the retry request fails', async () => {
+    const firstDelete = deferred<{ status: 'cleanup_pending' }>()
+    const failedRetry = deferred<{ status: 'deleted' }>()
+    mocks.deleteWorkout
+      .mockReturnValueOnce(firstDelete.promise)
+      .mockReturnValueOnce(failedRetry.promise)
+
+    const firstRender = renderPage()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+
+    firstDelete.resolve({ status: 'cleanup_pending' })
+    await act(async () => {
+      await firstDelete.promise
+    })
+
+    firstRender.unmount()
+    mocks.getWorkout.mockResolvedValueOnce(null)
+    renderPage(['/workout/workout-1'])
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
+
+    failedRetry.reject(new Error('offline'))
+    await act(async () => {
+      await failedRetry.promise.catch(() => undefined)
+    })
+
+    expect(screen.getByText('Trening usunięty. Nie udało się odświeżyć statystyk.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Spróbuj ponownie' })).toBeInTheDocument()
+  })
+
+  it('does not restore committed cleanup recovery after an ordinary delete failure', async () => {
+    mocks.deleteWorkout.mockRejectedValueOnce(new Error('offline'))
+
+    const firstRender = renderPage()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+
+    await act(async () => {
+      await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
+    })
+
+    firstRender.unmount()
+    mocks.getWorkout.mockResolvedValueOnce(null)
+    renderPage(['/workout/workout-1'])
+
+    expect(await screen.findByText('Trening nie istnieje.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
   })
 
   it('dismisses deletion feedback without navigating or mutating the workout', async () => {

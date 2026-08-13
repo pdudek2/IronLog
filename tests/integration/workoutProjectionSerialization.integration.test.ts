@@ -440,6 +440,19 @@ describe('workout projection serialization', () => {
     })
   })
 
+  it.each([
+    ['update', () => updateFinishedWorkoutForUser(USER_ID, 'serialization-missing-update', {
+      label: 'Missing',
+      exercises: [benchPressExercise],
+    }, { db })],
+    ['delete', () => deleteFinishedWorkoutForUser(USER_ID, 'serialization-missing-delete', { db })],
+  ] as const)('rejects a missing workout mutation from %s with workout_not_found', async (_operation, mutate) => {
+    await expect(mutate()).rejects.toMatchObject({
+      status: 404,
+      code: 'workout_not_found',
+    })
+  })
+
   it('serializes overlapping updates and materializes only the latest revision', async () => {
     const workoutId = 'serialization-concurrent-updates'
     await seedReadyWorkout(workoutId)

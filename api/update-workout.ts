@@ -23,12 +23,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    await updateFinishedWorkoutForUser(userId, body.workoutId, {
+    const result = await updateFinishedWorkoutForUser(userId, body.workoutId, {
       label: body.label,
       exercises: body.exercises,
     })
 
-    sendJson(res, 200, { ok: true })
+    sendJson(res, 200, result)
   } catch (error) {
     sendApiError(res, error, { fallbackMessage: 'Nie udało się zaktualizować treningu.' })
   }

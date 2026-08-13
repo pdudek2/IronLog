@@ -52,6 +52,14 @@ export interface MaterializationRetryResult {
   failed: number
 }
 
+export interface WorkoutUpdateResult {
+  status: 'materialized' | 'projection_pending'
+}
+
+export interface WorkoutDeleteResult {
+  status: 'deleted' | 'cleanup_pending'
+}
+
 export async function getRecentWorkouts(uid: string, count = 20): Promise<WorkoutSummary[]> {
   const q = query(
     collection(db, 'workouts'),
@@ -121,16 +129,20 @@ export async function getWorkout(id: string): Promise<WorkoutSummary | null> {
 export async function updateWorkout(
   id: string,
   data: Partial<Pick<WorkoutSummary, 'label' | 'exercises'>>
-): Promise<void> {
-  await callAuthedApi('/api/update-workout', {
+): Promise<WorkoutUpdateResult> {
+  const result = await callAuthedApi<unknown>('/api/update-workout', {
     workoutId: id,
     label: data.label ?? null,
     exercises: data.exercises ?? [],
   })
+  if (!isWorkoutUpdateResult(result)) throw new Error('Nieprawidłowa odpowiedź serwera.')
+  return result
 }
 
-export async function deleteWorkout(id: string): Promise<void> {
-  await callAuthedApi('/api/delete-workout', { workoutId: id })
+export async function deleteWorkout(id: string): Promise<WorkoutDeleteResult> {
+  const result = await callAuthedApi<unknown>('/api/delete-workout', { workoutId: id })
+  if (!isWorkoutDeleteResult(result)) throw new Error('Nieprawidłowa odpowiedź serwera.')
+  return result
 }
 
 export async function retryPendingMaterializations(
@@ -253,14 +265,14 @@ function toFiniteNumber(value: unknown): number {
 }
 
 export async function materializeWorkout(workoutId: string): Promise<void> {
-  await callAuthedApi('/api/materialize-workout', { workoutId })
+  await callAuthedApi<{ ok: true }>('/api/materialize-workout', { workoutId })
 }
 
 export async function retryWorkoutMaterialization(workoutId: string): Promise<void> {
   await materializeWorkout(workoutId)
 }
 
-async function callAuthedApi(path: string, body: unknown): Promise<void> {
+async function callAuthedApi<T>(path: string, body: unknown): Promise<T> {
   const user = auth.currentUser
   if (!user) throw new Error('Brak aktywnej sesji użytkownika.')
 
@@ -274,8 +286,25 @@ async function callAuthedApi(path: string, body: unknown): Promise<void> {
     body: JSON.stringify(body),
   })
 
-  if (response.ok) return
+  const payload = await response.json().catch(() => null) as T | { error?: string } | null
+  if (!response.ok) {
+    const errorPayload = payload as { error?: string } | null
+    throw new Error(errorPayload?.error ?? 'Operacja serwerowa nie powiodła się.')
+  }
+  if (!payload) throw new Error('Nieprawidłowa odpowiedź serwera.')
+  return payload as T
+}
 
-  const payload = await response.json().catch(() => null) as { error?: string } | null
-  throw new Error(payload?.error ?? 'Operacja serwerowa nie powiodła się.')
+function isWorkoutUpdateResult(value: unknown): value is WorkoutUpdateResult {
+  return isRecord(value)
+    && (value.status === 'materialized' || value.status === 'projection_pending')
+}
+
+function isWorkoutDeleteResult(value: unknown): value is WorkoutDeleteResult {
+  return isRecord(value)
+    && (value.status === 'deleted' || value.status === 'cleanup_pending')
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }

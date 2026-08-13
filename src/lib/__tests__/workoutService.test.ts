@@ -12,8 +12,10 @@ vi.mock('firebase/firestore', () => ({}))
 
 import {
   calcStreak,
+  deleteWorkout,
   retryPendingMaterializations,
   retryWorkoutMaterialization,
+  updateWorkout,
 } from '../workoutService'
 import type { WorkoutSummary } from '../workoutService'
 
@@ -103,7 +105,10 @@ describe('retryPendingMaterializations', () => {
 
   it('counts attempted and failed pending materializations', async () => {
     vi.stubGlobal('fetch', vi.fn()
-      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: vi.fn().mockResolvedValue({ ok: true }),
+      })
       .mockResolvedValueOnce({
         ok: false,
         json: vi.fn().mockResolvedValue({ error: 'Materialization failed' }),
@@ -133,7 +138,10 @@ describe('retryWorkoutMaterialization', () => {
   })
 
   it('retries only the requested workout and resolves on success', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true })
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ ok: true }),
+    })
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(retryWorkoutMaterialization('workout-42')).resolves.toBeUndefined()
@@ -151,5 +159,48 @@ describe('retryWorkoutMaterialization', () => {
 
     await expect(retryWorkoutMaterialization('workout-42'))
       .rejects.toThrow('Projection unavailable')
+  })
+})
+
+describe('workout mutation results', () => {
+  beforeEach(() => {
+    auth.currentUser = {
+      getIdToken: vi.fn().mockResolvedValue('token'),
+    }
+  })
+
+  afterEach(() => {
+    auth.currentUser = null
+    vi.unstubAllGlobals()
+  })
+
+  it.each([
+    ['updateWorkout', updateWorkout, '/api/update-workout', { status: 'projection_pending' }],
+    ['deleteWorkout', deleteWorkout, '/api/delete-workout', { status: 'cleanup_pending' }],
+  ] as const)('returns the validated %s result', async (_name, operation, path, payload) => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue(payload),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = operation === updateWorkout
+      ? await updateWorkout('workout-1', { label: 'Updated', exercises: [] })
+      : await deleteWorkout('workout-1')
+
+    expect(result).toEqual(payload)
+    expect(fetchMock).toHaveBeenCalledWith(path, expect.objectContaining({ method: 'POST' }))
+  })
+
+  it.each([
+    ['updateWorkout', () => updateWorkout('workout-1', { label: 'Updated', exercises: [] })],
+    ['deleteWorkout', () => deleteWorkout('workout-1')],
+  ] as const)('rejects a malformed successful %s response', async (_name, operation) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ status: 'unknown' }),
+    }))
+
+    await expect(operation()).rejects.toThrow('Nieprawidłowa odpowiedź serwera.')
   })
 })

@@ -4,7 +4,7 @@ import type {
   Firestore,
   Transaction,
 } from 'firebase-admin/firestore'
-import { ApiError } from './errors.js'
+import { ApiError, isApiError } from './errors.js'
 import {
   INITIAL_PROJECTION_REVISION,
   normalizeProjectionExerciseKeys,
@@ -121,6 +121,17 @@ export interface DeleteWorkoutReviewOptions {
   db?: Firestore
   now?: () => number
   checkpoints?: DeletionReviewCheckpoints
+}
+
+export type UpdateWorkoutStatus = 'materialized' | 'projection_pending'
+export type DeleteWorkoutStatus = 'deleted' | 'cleanup_pending'
+
+export interface UpdateWorkoutResult {
+  status: UpdateWorkoutStatus
+}
+
+export interface DeleteWorkoutResult {
+  status: DeleteWorkoutStatus
 }
 
 export async function materializeWorkoutForUser(
@@ -353,7 +364,7 @@ export async function updateFinishedWorkoutForUser(
   workoutId: string,
   input: unknown,
   options: WorkoutMutationReviewOptions = {},
-): Promise<void> {
+): Promise<UpdateWorkoutResult> {
   const database = options.db ?? adminDb
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
   const workoutRef = database.collection('workouts').doc(workoutDocumentId)
@@ -419,13 +430,19 @@ export async function updateFinishedWorkoutForUser(
     return projectionRevision
   })
 
-  if (options.materialize) {
-    await options.materialize(userId, workoutDocumentId, nextRevision)
-  } else {
-    await materializeWorkoutForUser(userId, workoutDocumentId, {
-      db: database,
-      expectedRevision: nextRevision,
-    })
+  try {
+    if (options.materialize) {
+      await options.materialize(userId, workoutDocumentId, nextRevision)
+    } else {
+      await materializeWorkoutForUser(userId, workoutDocumentId, {
+        db: database,
+        expectedRevision: nextRevision,
+      })
+    }
+    return { status: 'materialized' }
+  } catch (error) {
+    if (isApiError(error)) throw error
+    return { status: 'projection_pending' }
   }
 }
 
@@ -433,7 +450,7 @@ export async function deleteFinishedWorkoutForUser(
   userId: string,
   workoutId: string,
   options: DeleteWorkoutReviewOptions = {},
-): Promise<void> {
+): Promise<DeleteWorkoutResult> {
   const database = options.db ?? adminDb
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
   const workoutRef = database.collection('workouts').doc(workoutDocumentId)
@@ -499,27 +516,32 @@ export async function deleteFinishedWorkoutForUser(
     return deletedFence
   })
 
-  await options.checkpoints?.afterDeleteClaim?.()
-  const existingSessions = await listExerciseSessionsForWorkout(database, workoutDocumentId)
-  const affectedExercises = await stageDeletedProjectionKeys(
-    database,
-    tombstoneRef,
-    claim.projectionRevision,
-    collectExerciseKeys(existingSessions),
-  )
-  await deleteExerciseSessions(
-    database,
-    tombstoneRef,
-    claim.projectionRevision,
-    existingSessions,
-  )
-  await options.checkpoints?.afterDeleteSessions?.()
-  await options.checkpoints?.beforeDeleteRecords?.()
-  await recomputeRecords(database, userId, affectedExercises, {
-    tombstoneRef,
-    expectedRevision: claim.projectionRevision,
-    allowedState: 'deleted',
-  })
+  try {
+    await options.checkpoints?.afterDeleteClaim?.()
+    const existingSessions = await listExerciseSessionsForWorkout(database, workoutDocumentId)
+    const affectedExercises = await stageDeletedProjectionKeys(
+      database,
+      tombstoneRef,
+      claim.projectionRevision,
+      collectExerciseKeys(existingSessions),
+    )
+    await deleteExerciseSessions(
+      database,
+      tombstoneRef,
+      claim.projectionRevision,
+      existingSessions,
+    )
+    await options.checkpoints?.afterDeleteSessions?.()
+    await options.checkpoints?.beforeDeleteRecords?.()
+    await recomputeRecords(database, userId, affectedExercises, {
+      tombstoneRef,
+      expectedRevision: claim.projectionRevision,
+      allowedState: 'deleted',
+    })
+    return { status: 'deleted' }
+  } catch {
+    return { status: 'cleanup_pending' }
+  }
 }
 
 function assertOwnership(currentUserId: string, resourceUserId: string): void {

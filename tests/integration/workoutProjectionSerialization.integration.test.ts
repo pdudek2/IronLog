@@ -17,6 +17,7 @@ import {
   materializeWorkoutForUser,
   updateFinishedWorkoutForUser,
 } from '../../api/_lib/workoutProjection'
+import { projectionSuperseded } from '../../api/_lib/workoutProjectionFence'
 import { finalizeWorkoutForUser } from '../../api/_lib/workoutClosure'
 import { ReviewFault } from '../review/support/faultOutcomes'
 
@@ -351,7 +352,7 @@ describe('workout projection serialization', () => {
     await seedReadyWorkout(workoutId)
     const materialize = vi.fn().mockResolvedValue(undefined)
 
-    await updateFinishedWorkoutForUser(USER_ID, workoutId, {
+    await expect(updateFinishedWorkoutForUser(USER_ID, workoutId, {
       label: 'Updated',
       exercises: [{
         exerciseId: 'custom-curl',
@@ -359,7 +360,7 @@ describe('workout projection serialization', () => {
         name: 'Custom Curl',
         sets: [{ weight: 20, reps: 8 }],
       }],
-    }, { db, materialize })
+    }, { db, materialize })).resolves.toEqual({ status: 'materialized' })
 
     const tombstone = await db.collection('closedSessions').doc(workoutId).get()
     expect(tombstone.data()).toMatchObject({
@@ -371,6 +372,47 @@ describe('workout projection serialization', () => {
       ],
     })
     expect(materialize).toHaveBeenCalledWith(USER_ID, workoutId, 2)
+  })
+
+  it('reports projection_pending after the canonical update commits but materialization fails', async () => {
+    const workoutId = 'serialization-update-pending'
+    await seedReadyWorkout(workoutId)
+
+    await expect(updateFinishedWorkoutForUser(USER_ID, workoutId, {
+      label: 'Committed update',
+      exercises: [customCurlExercise],
+    }, {
+      db,
+      materialize: vi.fn().mockRejectedValue(new Error('temporary Firestore failure')),
+    })).resolves.toEqual({ status: 'projection_pending' })
+
+    const [workout, tombstone] = await Promise.all([
+      db.collection('workouts').doc(workoutId).get(),
+      db.collection('closedSessions').doc(workoutId).get(),
+    ])
+    expect(workout.data()).toMatchObject({
+      label: 'Committed update',
+      exercises: [customCurlExercise],
+      materialized: false,
+    })
+    expect(tombstone.data()).toMatchObject({
+      projectionState: 'pending',
+      projectionRevision: 2,
+    })
+  })
+
+  it('does not hide a typed post-commit projection conflict', async () => {
+    const workoutId = 'serialization-update-conflict'
+    await seedReadyWorkout(workoutId)
+    const conflict = projectionSuperseded()
+
+    await expect(updateFinishedWorkoutForUser(USER_ID, workoutId, {
+      label: 'Conflicted update',
+      exercises: [customCurlExercise],
+    }, {
+      db,
+      materialize: vi.fn().mockRejectedValue(conflict),
+    })).rejects.toBe(conflict)
   })
 
   it('rejects an update after the fence is deleted', async () => {
@@ -603,7 +645,7 @@ describe('workout projection serialization', () => {
             throw new ReviewFault(checkpointCase.outcome)
           },
         },
-      })).rejects.toEqual(new ReviewFault(checkpointCase.outcome))
+      })).resolves.toEqual({ status: 'cleanup_pending' })
 
       const failed = await readDeletionState(workoutId)
       expect(failed.workout).toBeUndefined()
@@ -619,10 +661,10 @@ describe('workout projection serialization', () => {
       expect(failed.exerciseSessions).toHaveLength(checkpointCase.expectedSessionCount)
       expect(failed.records).toHaveLength(1)
 
-      await deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+      await expect(deleteFinishedWorkoutForUser(USER_ID, workoutId, {
         db,
         now: () => 1_000,
-      })
+      })).resolves.toEqual({ status: 'deleted' })
       const recovered = await readDeletionState(workoutId)
       expect(recovered.workout).toBeUndefined()
       expect(recovered.exerciseSessions).toEqual([])
@@ -633,10 +675,10 @@ describe('workout projection serialization', () => {
         deletedAt: 999,
       })
 
-      await deleteFinishedWorkoutForUser(USER_ID, workoutId, {
+      await expect(deleteFinishedWorkoutForUser(USER_ID, workoutId, {
         db,
         now: () => 1_001,
-      })
+      })).resolves.toEqual({ status: 'deleted' })
       const idempotentRetry = await readDeletionState(workoutId)
       expect(idempotentRetry.tombstone?.deletedAt).toBe(999)
       expect(deletionEvidence(idempotentRetry)).toEqual(deletionEvidence(recovered))

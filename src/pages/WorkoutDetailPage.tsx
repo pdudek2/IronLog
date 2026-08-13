@@ -236,6 +236,8 @@ export default function WorkoutDetailPage() {
   }
 
   async function runWorkoutDelete(workoutId: string) {
+    const retryingCommittedDelete = deleteOperation?.workoutId === workoutId
+      && deleteOperation.status === 'cleanup_pending'
     setDeleteOperation({ workoutId, status: 'pending' })
     try {
       const result = await deleteWorkout(workoutId)
@@ -248,7 +250,7 @@ export default function WorkoutDetailPage() {
     } catch {
       setDeleteOperation((current) => (
         current?.workoutId === workoutId
-          ? { workoutId, status: 'error' }
+          ? { workoutId, status: retryingCommittedDelete ? 'cleanup_pending' : 'error' }
           : current
       ))
       toast.error('Nie udało się usunąć treningu.')

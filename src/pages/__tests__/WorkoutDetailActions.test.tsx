@@ -105,9 +105,11 @@ describe('WorkoutDetailPage delete action', () => {
 
   it('keeps the workout visible after failure and retries the exact deletion before navigating', async () => {
     const firstDelete = deferred<{ status: 'cleanup_pending' }>()
+    const failedCleanupRetry = deferred<{ status: 'deleted' }>()
     const retryDelete = deferred<{ status: 'deleted' }>()
     mocks.deleteWorkout
       .mockReturnValueOnce(firstDelete.promise)
+      .mockReturnValueOnce(failedCleanupRetry.promise)
       .mockReturnValueOnce(retryDelete.promise)
 
     renderPage()
@@ -143,6 +145,24 @@ describe('WorkoutDetailPage delete action', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Usuwanie treningu…')
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
+
+    failedCleanupRetry.reject(new Error('offline'))
+    await act(async () => {
+      await failedCleanupRetry.promise.catch(() => undefined)
+    })
+
+    const retryAlert = screen.getByRole('alert')
+    expect(retryAlert).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
+    expect(screen.queryByRole('button', { name: 'Zamknij' })).not.toBeInTheDocument()
+    screen.getAllByRole('button', { name: 'Edytuj trening' }).forEach((button) => {
+      expect(button).toBeDisabled()
+    })
+    screen.getAllByRole('button', { name: 'Usuń trening' }).forEach((button) => {
+      expect(button).toBeDisabled()
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(3, 'workout-1')
 
     retryDelete.resolve({ status: 'deleted' })
     await act(async () => {

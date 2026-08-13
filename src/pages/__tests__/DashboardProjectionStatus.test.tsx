@@ -423,6 +423,7 @@ describe('Dashboard workout projection status', () => {
   it('keeps a cleanup-pending deletion attached to its workout until retry succeeds', async () => {
     const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
     const firstDelete = deferred<{ status: 'cleanup_pending' }>()
+    const failedCleanupRetry = deferred<{ status: 'deleted' }>()
     const retryDelete = deferred<{ status: 'deleted' }>()
     mocks.getRecentWorkouts
       .mockResolvedValueOnce([pendingWorkout, workoutB])
@@ -430,6 +431,7 @@ describe('Dashboard workout projection status', () => {
     mocks.retryWorkoutMaterialization.mockRejectedValue(new Error('projection unavailable'))
     mocks.deleteWorkout
       .mockReturnValueOnce(firstDelete.promise)
+      .mockReturnValueOnce(failedCleanupRetry.promise)
       .mockReturnValueOnce(retryDelete.promise)
 
     render(<DashboardPage />)
@@ -470,6 +472,27 @@ describe('Dashboard workout projection status', () => {
     expect(retryingPushRow).not.toBeNull()
     expect(within(retryingPushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
+
+    failedCleanupRetry.reject(new Error('offline'))
+    await act(async () => {
+      await failedCleanupRetry.promise.catch(() => undefined)
+    })
+
+    const failedRetryPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
+    expect(failedRetryPushRow).not.toBeNull()
+    const retryAlert = within(failedRetryPushRow as HTMLElement).getByRole('alert')
+    expect(retryAlert).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
+    expect(within(failedRetryPushRow as HTMLElement).queryByRole('button', { name: 'Zamknij' }))
+      .not.toBeInTheDocument()
+    expect(within(failedRetryPushRow as HTMLElement).getByRole('button', { name: /Otwórz trening Push day/ }))
+      .toBeDisabled()
+    expect(within(failedRetryPushRow as HTMLElement).getByRole('button', { name: /Usuń trening Push day/ }))
+      .toBeDisabled()
+    expect(within(failedRetryPushRow as HTMLElement).queryByText('Statystyki oczekują na synchronizację.'))
+      .not.toBeInTheDocument()
+
+    fireEvent.click(within(retryAlert).getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(3, 'workout-pending')
 
     retryDelete.resolve({ status: 'deleted' })
     await act(async () => {

@@ -50,7 +50,7 @@ interface TemplatesResource {
 
 interface WorkoutDeleteOperation {
   workoutId: string
-  status: 'pending' | 'error'
+  status: 'pending' | 'cleanup_pending' | 'error'
 }
 
 interface ReadinessResource {
@@ -388,7 +388,11 @@ export default function DashboardPage() {
   async function runWorkoutDelete(workoutId: string) {
     setDeleteOperation({ workoutId, status: 'pending' })
     try {
-      await deleteWorkout(workoutId)
+      const result = await deleteWorkout(workoutId)
+      if (result.status === 'cleanup_pending') {
+        setDeleteOperation({ workoutId, status: 'cleanup_pending' })
+        return
+      }
       setDashboardSnapshot(workoutsRef.current.filter((workout) => workout.id !== workoutId))
       setDeleteOperation(null)
       if (user) void fetchData(user.uid).catch(handleDashboardFetchError)
@@ -407,7 +411,7 @@ export default function DashboardPage() {
   }
 
   function retryWorkoutDelete() {
-    if (!deleteOperation || deleteOperation.status !== 'error') return
+    if (!deleteOperation || (deleteOperation.status !== 'error' && deleteOperation.status !== 'cleanup_pending')) return
     void runWorkoutDelete(deleteOperation.workoutId)
   }
 
@@ -951,6 +955,7 @@ export default function DashboardPage() {
                         ? deleteOperation
                         : null
                       const isDeleting = workoutDeleteOperation?.status === 'pending'
+                      const isWorkoutUnavailable = isDeleting || workoutDeleteOperation?.status === 'cleanup_pending'
                       const deleteFeedbackId = `dashboard-workout-delete-feedback-${workout.id}`
 
                       return (
@@ -966,7 +971,10 @@ export default function DashboardPage() {
                           transition={{ duration: 0.22 }}
                           whileHover={{ y: -2 }}
                           aria-busy={isDeleting ? 'true' : undefined}
-                          aria-describedby={workoutDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
+                          aria-describedby={workoutDeleteOperation?.status === 'error'
+                            || workoutDeleteOperation?.status === 'cleanup_pending'
+                            ? deleteFeedbackId
+                            : undefined}
                         >
                           <div className="dashboard-history-main">
                             <div className="dashboard-history-controls">
@@ -974,6 +982,7 @@ export default function DashboardPage() {
                                 type="button"
                                 onClick={() => openWorkout(workout)}
                                 className="dashboard-history-open"
+                                disabled={isWorkoutUnavailable}
                                 aria-label={`Otwórz trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
                               >
                                 <div className="min-w-0">
@@ -1005,7 +1014,10 @@ export default function DashboardPage() {
                                 whileHover={{ opacity: 1 }}
                                 whileTap={{ scale: 0.85 }}
                                 disabled={deleteOperation !== null}
-                                aria-describedby={workoutDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
+                                aria-describedby={workoutDeleteOperation?.status === 'error'
+                                  || workoutDeleteOperation?.status === 'cleanup_pending'
+                                  ? deleteFeedbackId
+                                  : undefined}
                                 aria-label={`Usuń trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
                               >
                                 <Trash2 size={13} />
@@ -1015,11 +1027,16 @@ export default function DashboardPage() {
                             {workoutDeleteOperation && (
                               <ActionFeedback
                                 id={deleteFeedbackId}
-                                status={workoutDeleteOperation.status}
+                                status={workoutDeleteOperation.status === 'pending' ? 'pending' : 'error'}
                                 message={workoutDeleteOperation.status === 'pending'
                                   ? 'Usuwanie treningu…'
-                                  : 'Nie udało się usunąć treningu.'}
-                                onRetry={workoutDeleteOperation.status === 'error' ? retryWorkoutDelete : undefined}
+                                  : workoutDeleteOperation.status === 'cleanup_pending'
+                                    ? 'Trening usunięty. Nie udało się odświeżyć statystyk.'
+                                    : 'Nie udało się usunąć treningu.'}
+                                onRetry={workoutDeleteOperation.status === 'error'
+                                  || workoutDeleteOperation.status === 'cleanup_pending'
+                                  ? retryWorkoutDelete
+                                  : undefined}
                                 onDismiss={workoutDeleteOperation.status === 'error'
                                   ? () => setDeleteOperation(null)
                                   : undefined}
@@ -1027,7 +1044,7 @@ export default function DashboardPage() {
                               />
                             )}
 
-                            {!workout.materialized && (
+                            {!workout.materialized && !isWorkoutUnavailable && (
                               <WorkoutProjectionStatus
                                 state={projectionRetryStates[workout.id] ?? 'idle'}
                                 onRetry={() => void handleProjectionRetry(workout.id)}

@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => ({
   deleteWorkout: vi.fn(),
   updateWorkout: vi.fn(),
   getUserExercises: vi.fn(),
+  toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }))
 
@@ -49,7 +50,7 @@ vi.mock('../../lib/userExercisesService', () => ({
 vi.mock('../../components/ExercisePicker', () => ({ default: () => null }))
 
 vi.mock('sonner', () => ({
-  toast: { success: vi.fn(), error: mocks.toastError },
+  toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }))
 
 vi.mock('framer-motion', () => ({
@@ -98,12 +99,13 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.updateWorkout.mockReset()
     mocks.getUserExercises.mockReset()
     mocks.getUserExercises.mockResolvedValue([])
+    mocks.toastSuccess.mockReset()
     mocks.toastError.mockReset()
   })
 
   it('keeps the workout visible after failure and retries the exact deletion before navigating', async () => {
-    const firstDelete = deferred<void>()
-    const retryDelete = deferred<void>()
+    const firstDelete = deferred<{ status: 'cleanup_pending' }>()
+    const retryDelete = deferred<{ status: 'deleted' }>()
     mocks.deleteWorkout
       .mockReturnValueOnce(firstDelete.promise)
       .mockReturnValueOnce(retryDelete.promise)
@@ -120,24 +122,29 @@ describe('WorkoutDetailPage delete action', () => {
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(mocks.deleteWorkout).toHaveBeenLastCalledWith('workout-1')
 
-    firstDelete.reject(new Error('offline'))
+    firstDelete.resolve({ status: 'cleanup_pending' })
     await act(async () => {
-      await firstDelete.promise.catch(() => undefined)
+      await firstDelete.promise
     })
 
     const alert = screen.getByRole('alert')
-    expect(alert).toHaveTextContent('Nie udało się usunąć treningu.')
+    expect(alert).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
     expect(mobileActions).toContainElement(alert)
-    expect(screen.getAllByText('Nie udało się usunąć treningu.')).toHaveLength(1)
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
+    screen.getAllByRole('button', { name: 'Edytuj trening' }).forEach((button) => {
+      expect(button).toBeDisabled()
+    })
+    screen.getAllByRole('button', { name: 'Usuń trening' }).forEach((button) => {
+      expect(button).toBeDisabled()
+    })
 
     fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('Usuwanie treningu…')
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
 
-    retryDelete.resolve()
+    retryDelete.resolve({ status: 'deleted' })
     await act(async () => {
       await retryDelete.promise
     })
@@ -178,6 +185,22 @@ describe('WorkoutDetailPage delete action', () => {
     expect(mocks.toastError).toHaveBeenCalledWith(
       'Każda seria musi zawierać co najmniej jedno powtórzenie.',
     )
+  })
+
+  it('accepts a committed update whose projection is pending', async () => {
+    mocks.updateWorkout.mockResolvedValue({ status: 'projection_pending' })
+    renderPage()
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
+    fireEvent.change(screen.getByLabelText('Rodzaj treningu'), {
+      target: { value: 'Pull' },
+    })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
+
+    expect(await screen.findByRole('heading', { name: 'Pull' })).toBeInTheDocument()
+    expect(screen.queryByText(/Błąd zapisu/)).not.toBeInTheDocument()
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Trening zapisany. Statystyki zostaną zsynchronizowane.')
   })
 
   it('keeps a custom workout label selected when editing starts', () => {

@@ -404,7 +404,7 @@ describe('Dashboard workout projection status', () => {
       .mockReturnValueOnce(staleRetryRefresh.promise)
       .mockResolvedValueOnce([])
     mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
-    mocks.deleteWorkout.mockResolvedValue(undefined)
+    mocks.deleteWorkout.mockResolvedValue({ status: 'deleted' })
 
     render(<DashboardPage />)
 
@@ -420,14 +420,14 @@ describe('Dashboard workout projection status', () => {
     expect(screen.queryByText('Push day')).not.toBeInTheDocument()
   })
 
-  it('keeps a failed deletion attached to its workout until retry succeeds', async () => {
+  it('keeps a cleanup-pending deletion attached to its workout until retry succeeds', async () => {
     const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
-    const firstDelete = deferred<void>()
-    const retryDelete = deferred<void>()
+    const firstDelete = deferred<{ status: 'cleanup_pending' }>()
+    const retryDelete = deferred<{ status: 'deleted' }>()
     mocks.getRecentWorkouts
-      .mockResolvedValueOnce([{ ...pendingWorkout, materialized: true }, workoutB])
+      .mockResolvedValueOnce([pendingWorkout, workoutB])
       .mockResolvedValueOnce([workoutB])
-    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
+    mocks.retryWorkoutMaterialization.mockRejectedValue(new Error('projection unavailable'))
     mocks.deleteWorkout
       .mockReturnValueOnce(firstDelete.promise)
       .mockReturnValueOnce(retryDelete.promise)
@@ -442,21 +442,27 @@ describe('Dashboard workout projection status', () => {
     const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
     expect(pushRow).not.toBeNull()
     expect(pullRow).not.toBeNull()
-    expect(within(pushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
+    expect(within(pushRow as HTMLElement).getByText('Usuwanie treningu…')).toBeInTheDocument()
     expect(within(pullRow as HTMLElement).getByRole('button', { name: /Otwórz trening Pull day/ }))
       .toBeEnabled()
     expect(mocks.deleteWorkout).toHaveBeenLastCalledWith('workout-pending')
 
-    firstDelete.reject(new Error('offline'))
+    firstDelete.resolve({ status: 'cleanup_pending' })
     await act(async () => {
-      await firstDelete.promise.catch(() => undefined)
+      await firstDelete.promise
     })
 
     const failedPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(failedPushRow).not.toBeNull()
     const alert = await within(failedPushRow as HTMLElement).findByRole('alert')
-    expect(alert).toHaveTextContent('Nie udało się usunąć treningu.')
+    expect(alert).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
     expect(screen.getByText('Push day')).toBeInTheDocument()
+    expect(within(failedPushRow as HTMLElement).getByRole('button', { name: /Otwórz trening Push day/ }))
+      .toBeDisabled()
+    expect(within(failedPushRow as HTMLElement).getByRole('button', { name: /Usuń trening Push day/ }))
+      .toBeDisabled()
+    expect(within(failedPushRow as HTMLElement).queryByText('Statystyki oczekują na synchronizację.'))
+      .not.toBeInTheDocument()
 
     fireEvent.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))
 
@@ -465,7 +471,7 @@ describe('Dashboard workout projection status', () => {
     expect(within(retryingPushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
 
-    retryDelete.resolve()
+    retryDelete.resolve({ status: 'deleted' })
     await act(async () => {
       await retryDelete.promise
     })
@@ -477,7 +483,7 @@ describe('Dashboard workout projection status', () => {
   it('keeps the pending delete owner when another workout delete is attempted', async () => {
     const workoutA = { ...pendingWorkout, materialized: true }
     const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
-    const firstDelete = deferred<void>()
+    const firstDelete = deferred<{ status: 'deleted' }>()
     mocks.getRecentWorkouts
       .mockResolvedValueOnce([workoutA, workoutB])
       .mockResolvedValueOnce([workoutB])
@@ -485,7 +491,7 @@ describe('Dashboard workout projection status', () => {
     mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
     mocks.deleteWorkout
       .mockReturnValueOnce(firstDelete.promise)
-      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce({ status: 'deleted' })
 
     render(<DashboardPage />)
 
@@ -511,7 +517,7 @@ describe('Dashboard workout projection status', () => {
     expect(within(pushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
     expect(within(pullRow as HTMLElement).queryByRole('status')).not.toBeInTheDocument()
 
-    firstDelete.resolve()
+    firstDelete.resolve({ status: 'deleted' })
     await act(async () => {
       await firstDelete.promise
     })
@@ -688,7 +694,7 @@ describe('Dashboard workout projection status', () => {
       .mockResolvedValueOnce(undefined)
       .mockReturnValueOnce(retryWorkoutA.promise)
       .mockResolvedValueOnce(undefined)
-    mocks.deleteWorkout.mockResolvedValue(undefined)
+    mocks.deleteWorkout.mockResolvedValue({ status: 'deleted' })
 
     render(<DashboardPage />)
 

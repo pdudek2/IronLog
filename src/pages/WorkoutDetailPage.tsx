@@ -35,7 +35,7 @@ const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]
 
 interface WorkoutDeleteOperation {
   workoutId: string
-  status: 'pending' | 'error'
+  status: 'pending' | 'cleanup_pending' | 'error'
 }
 
 function formatDate(ts: number): string {
@@ -217,12 +217,15 @@ export default function WorkoutDetailPage() {
 
     setSaving(true)
     try {
-      await updateWorkout(workout.id, { label: nextLabel, exercises: nextExercises })
+      const result = await updateWorkout(workout.id, { label: nextLabel, exercises: nextExercises })
       setWorkout({ ...workout, label: nextLabel, exercises: nextExercises })
       setEditedLabel(nextLabel ?? '')
       setEditedExercises(cloneExercises(nextExercises))
       setShowPicker(false)
       setIsEditing(false)
+      if (result.status === 'projection_pending') {
+        toast.success('Trening zapisany. Statystyki zostaną zsynchronizowane.')
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('[updateWorkout error]', err)
@@ -235,7 +238,11 @@ export default function WorkoutDetailPage() {
   async function runWorkoutDelete(workoutId: string) {
     setDeleteOperation({ workoutId, status: 'pending' })
     try {
-      await deleteWorkout(workoutId)
+      const result = await deleteWorkout(workoutId)
+      if (result.status === 'cleanup_pending') {
+        setDeleteOperation({ workoutId, status: 'cleanup_pending' })
+        return
+      }
       navigate('/history', { replace: true })
       toast.success('Trening usunięty')
     } catch {
@@ -254,11 +261,12 @@ export default function WorkoutDetailPage() {
   }
 
   function retryWorkoutDelete() {
-    if (!deleteOperation || deleteOperation.status !== 'error') return
+    if (!deleteOperation || (deleteOperation.status !== 'error' && deleteOperation.status !== 'cleanup_pending')) return
     void runWorkoutDelete(deleteOperation.workoutId)
   }
 
   function handleDelete() {
+    if (deleteOperation?.status === 'pending' || deleteOperation?.status === 'cleanup_pending') return
     setConfirmDeleteOpen(true)
   }
 
@@ -303,6 +311,7 @@ export default function WorkoutDetailPage() {
   const topFocus = focusEntries[0]
   const mobileEditGrid = 'grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,1fr)_1.75rem] lg:grid-cols-[1.5rem_1fr_1fr_1fr_1.25rem]'
   const isDeleting = deleteOperation?.status === 'pending'
+  const isWorkoutUnavailable = isDeleting || deleteOperation?.status === 'cleanup_pending'
   const deleteFeedbackId = `workout-detail-delete-feedback-${workout.id}`
 
   const actionButtons = isEditing ? (
@@ -328,6 +337,7 @@ export default function WorkoutDetailPage() {
     <div className="workout-detail-session-actions">
       <motion.button
         onClick={handleStartEditing}
+        disabled={isWorkoutUnavailable}
         className="workout-detail-action workout-detail-action-secondary"
         whileTap={{ scale: 0.97 }}
       >
@@ -335,8 +345,10 @@ export default function WorkoutDetailPage() {
       </motion.button>
       <motion.button
         onClick={handleDelete}
-        disabled={isDeleting}
-        aria-describedby={deleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
+        disabled={isWorkoutUnavailable}
+        aria-describedby={deleteOperation?.status === 'error' || deleteOperation?.status === 'cleanup_pending'
+          ? deleteFeedbackId
+          : undefined}
         aria-label="Usuń trening"
         className="workout-detail-action workout-detail-action-delete disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
@@ -385,11 +397,15 @@ export default function WorkoutDetailPage() {
             {deleteOperation && (
               <ActionFeedback
                 id={deleteFeedbackId}
-                status={deleteOperation.status}
+                status={deleteOperation.status === 'pending' ? 'pending' : 'error'}
                 message={deleteOperation.status === 'pending'
                   ? 'Usuwanie treningu…'
-                  : 'Nie udało się usunąć treningu.'}
-                onRetry={deleteOperation.status === 'error' ? retryWorkoutDelete : undefined}
+                  : deleteOperation.status === 'cleanup_pending'
+                    ? 'Trening usunięty. Nie udało się odświeżyć statystyk.'
+                    : 'Nie udało się usunąć treningu.'}
+                onRetry={deleteOperation.status === 'error' || deleteOperation.status === 'cleanup_pending'
+                  ? retryWorkoutDelete
+                  : undefined}
                 onDismiss={deleteOperation.status === 'error'
                   ? () => setDeleteOperation(null)
                   : undefined}

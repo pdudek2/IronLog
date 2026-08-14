@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Dumbbell, History, Layers3, LayoutDashboard, Plus, Sparkles, Target, Timer, TrendingUp, X } from 'lucide-react'
+import { Plus, Target, Timer, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -22,8 +22,6 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { LoadingState } from '../components/ui'
 import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
 import { exercises as exerciseDb } from '../data/exercises'
-import { navigateWithAppTransition } from '../lib/viewTransitions'
-import { preloadRouteByPath } from '../router/pageLoaders'
 import { isActiveSessionStale } from '../lib/sessionDuration'
 import { kgToDisplayWeight } from '../lib/weightUnits'
 import type { Units } from '../lib/userProfile'
@@ -42,19 +40,6 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   bodyweight: 'BW',
   kettlebell: 'KB',
 }
-
-const SESSION_QUICK_LINKS: Array<{
-  label: string
-  to: string
-  icon: typeof LayoutDashboard
-}> = [
-  { label: 'Start', to: '/dashboard', icon: LayoutDashboard },
-  { label: 'Historia', to: '/history', icon: History },
-  { label: 'Postępy', to: '/progress', icon: TrendingUp },
-  { label: 'Plany', to: '/templates', icon: Layers3 },
-  { label: 'Ćwiczenia', to: '/exercises', icon: Dumbbell },
-  { label: 'AI', to: '/chat', icon: Sparkles },
-]
 
 type RestTimerState = { startedAt: number; totalSec: number }
 
@@ -86,47 +71,6 @@ function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) 
           </motion.button>
         )
       })}
-    </div>
-  )
-}
-
-interface SessionQuickLinksProps {
-  onNavigate: (to: string) => void
-  variant?: 'mobile' | 'desktop'
-  className?: string
-}
-
-function SessionQuickLinks({ onNavigate, variant = 'mobile', className = '' }: SessionQuickLinksProps) {
-  const isDesktop = variant === 'desktop'
-
-  return (
-    <div className={className}>
-      {isDesktop && (
-        <p className="mb-3 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
-          Szybki podgląd
-        </p>
-      )}
-      <div className={isDesktop ? 'session-quick-links-desktop grid grid-cols-2' : 'no-scrollbar -mx-1 flex gap-2 overflow-x-auto px-1 pb-1'}>
-        {SESSION_QUICK_LINKS.map(({ label, to, icon: Icon }) => (
-          <motion.button
-            key={to}
-            type="button"
-            onClick={() => onNavigate(to)}
-            onPointerEnter={() => { void preloadRouteByPath(to) }}
-            onFocus={() => { void preloadRouteByPath(to) }}
-            className={
-              isDesktop
-                ? 'session-quick-link flex min-h-11 items-center gap-2 rounded-[var(--radius-lg)] border px-3 text-left text-xs font-semibold transition-colors'
-                : 'session-quick-link flex h-11 flex-none items-center gap-2 rounded-[var(--radius-lg)] border px-3 text-xs font-semibold transition-colors'
-            }
-            whileTap={{ scale: 0.94 }}
-            aria-label={`Przejdź do: ${label}`}
-          >
-            <Icon size={15} strokeWidth={2.2} style={{ color: 'var(--accent)' }} />
-            <span className="whitespace-nowrap">{label}</span>
-          </motion.button>
-        ))}
-      </div>
     </div>
   )
 }
@@ -306,7 +250,6 @@ export default function WorkoutPage() {
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const { compactFixedUi, visualViewportHeight } = useMobileInteraction()
   const mobileRestVariant = compactFixedUi ? 'compact' : 'full'
-  const goQuick = (to: string) => navigateWithAppTransition(navigate, to)
 
   const {
     activeSessionSyncStatus,
@@ -1037,12 +980,6 @@ export default function WorkoutPage() {
                   <RestTimerBar rest={rest} onAddTime={handleAddRestTime} onSkip={handleSkipRest} />
                 )}
               </AnimatePresence>
-
-              <SessionQuickLinks
-                variant="desktop"
-                className="mb-5"
-                onNavigate={goQuick}
-              />
 
               <div className="workout-side-metrics">
                 <div className="workout-micro-card">

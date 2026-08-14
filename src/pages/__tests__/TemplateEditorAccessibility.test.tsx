@@ -271,8 +271,8 @@ describe('TemplateEditorPage accessibility', () => {
     const form = name.closest('form')
     expect(name).toHaveValue('Plan zapisany')
     expect(form).not.toBeNull()
-    expect(screen.getByText('Wszystkie zmiany zapisane')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Zapisano' })).toBeDisabled()
+    expect(screen.queryByTestId('template-save-dock')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Zapisano w formularzu' })).toBeDisabled()
     expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1ćw.')
 
     await act(async () => {

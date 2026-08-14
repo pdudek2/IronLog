@@ -57,11 +57,10 @@ describe('TemplateSaveDock', () => {
     expect(onDismissError).toHaveBeenCalledOnce()
   })
 
-  it('marks a loaded unchanged template as persisted and disables submit', () => {
+  it('removes the fixed dock for a loaded unchanged template', () => {
     render(<TemplateSaveDock state="persisted-clean" isEdit canSubmit />)
 
-    expect(screen.getByTestId('template-save-dock')).toHaveAttribute('data-state', 'persisted-clean')
-    expect(screen.getByRole('status')).toHaveTextContent('Wszystkie zmiany zapisane')
-    expect(screen.getByRole('button', { name: 'Zapisano' })).toBeDisabled()
+    expect(screen.queryByTestId('template-save-dock')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Zapisano' })).not.toBeInTheDocument()
   })
 })

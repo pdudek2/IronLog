@@ -644,6 +644,31 @@ test.describe('Active workout shell reduction', () => {
     await addExercise(page, 'Squat')
 
     const firstSetRow = page.locator('.workout-set-row').first()
+    await expect(page.getByText('Szybki podgląd', { exact: true })).toHaveCount(0)
+
+    const fieldContract = await firstSetRow.locator('.workout-set-input').evaluateAll((inputs) => (
+      inputs.map((input) => {
+        const box = input.getBoundingClientRect()
+        const style = getComputedStyle(input)
+        return {
+          width: box.width,
+          background: style.backgroundColor,
+          border: style.borderTopWidth,
+          borderColor: style.borderTopColor,
+          radius: style.borderTopLeftRadius,
+        }
+      })
+    ))
+
+    expect(fieldContract).toHaveLength(2)
+    for (const field of fieldContract) {
+      expect(field.width).toBeLessThanOrEqual(144)
+      expect(field.background).not.toBe('rgba(0, 0, 0, 0)')
+      expect(field.border).toBe('1px')
+      expect(field.borderColor).not.toBe('rgba(0, 0, 0, 0)')
+      expect(field.radius).not.toBe('0px')
+    }
+
     await firstSetRow.locator('input').nth(0).fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
     await firstSetRow.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' }).click()

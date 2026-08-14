@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useWorkoutStore } from '../../store/workoutStore'
@@ -165,5 +165,51 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
 
     expect(callbacks.onExpandExercise).toHaveBeenCalledWith('exercise-1')
     expect(screen.getByText('Bench Press')).toBeInTheDocument()
+  })
+
+  it('hides an overload suggestion after every set is completed', () => {
+    const suggestion = {
+      suggestedWeight: 57.5,
+      delta: -2.5,
+      reason: 'deload_gap' as const,
+      lastWeight: 60,
+      basedOnSessions: 3,
+    }
+
+    render(
+      <WorkoutExerciseLedgerItem
+        exerciseAccent="#f0435a"
+        exerciseClientId="exercise-1"
+        exerciseIndex={0}
+        fallbackExercise={null}
+        focusSetIndex={0}
+        hintDismissed={false}
+        hintKey="global:bench-press"
+        isCollapsible
+        isExpanded
+        isFocusedExercise
+        suggestion={suggestion}
+        units="kg"
+        {...callbacks}
+      />,
+    )
+
+    expect(screen.getByText(/Deload — długa przerwa/)).toBeInTheDocument()
+
+    const active = useWorkoutStore.getState().active
+    if (!active) throw new Error('Expected an active workout fixture.')
+    act(() => {
+      useWorkoutStore.setState({
+        active: {
+          ...active,
+          exercises: active.exercises.map((exercise) => ({
+            ...exercise,
+            sets: exercise.sets.map((set) => ({ ...set, done: true })),
+          })),
+        },
+      })
+    })
+
+    expect(screen.queryByText(/Deload — długa przerwa/)).not.toBeInTheDocument()
   })
 })

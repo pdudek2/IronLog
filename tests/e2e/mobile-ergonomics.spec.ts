@@ -156,6 +156,10 @@ test.describe('Phase 4 mobile ergonomics', () => {
     if (await staleSession.isVisible().catch(() => false)) {
       await staleSession.click()
     }
+    const startSession = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
+    if (await startSession.isVisible().catch(() => false)) {
+      await startSession.click()
+    }
     await expectMinHitArea(page.getByRole('button', { name: 'Push', exact: true }), 'workout type')
   })
 })

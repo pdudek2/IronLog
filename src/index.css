@@ -10028,6 +10028,18 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 @media (min-width: 1024px) {
+  .workout-focus-shell .workout-set-header,
+  .workout-focus-shell .workout-set-grid {
+    grid-template-columns: 2.75rem minmax(7rem, 9rem) minmax(7rem, 9rem) 4.5rem 2.75rem;
+    justify-content: center;
+  }
+
+  .workout-focus-shell .workout-set-input {
+    border: 1px solid color-mix(in srgb, var(--exercise-accent, var(--accent)) 24%, var(--border));
+    border-radius: var(--radius-sm);
+    background: color-mix(in srgb, var(--surface-2) 72%, transparent);
+  }
+
   .dashboard-home-panel {
     border-left: 1px solid var(--border);
     padding-left: clamp(1.5rem, 3vw, 2.5rem);

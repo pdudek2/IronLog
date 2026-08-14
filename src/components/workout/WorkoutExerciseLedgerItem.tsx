@@ -102,6 +102,8 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
     set.done ? sum + calcSetVolume(set) : sum
   ), 0)
   const exerciseCompleted = exercise.sets.filter((set) => set.done && parseReps(set.reps) > 0).length
+  const exerciseComplete = exercise.sets.length > 0
+    && exerciseCompleted === exercise.sets.length
   const bestSet = exercise.sets.reduce((top, set) => (
     set.done ? Math.max(top, parseWeight(set.weight)) : top
   ), 0)
@@ -190,7 +192,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         </div>
       </div>
 
-      {suggestion && !hintDismissed && (
+      {suggestion && !hintDismissed && !exerciseComplete && (
         <OverloadHint
           suggestion={suggestion}
           units={units}

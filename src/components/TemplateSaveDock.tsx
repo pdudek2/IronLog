@@ -1,4 +1,4 @@
-import { Check, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { ActionFeedback } from './ActionFeedback'
 
 export type TemplateSaveState =
@@ -32,16 +32,15 @@ export default function TemplateSaveDock({
   onRetry,
   onDismissError,
 }: TemplateSaveDockProps) {
+  if (state === 'persisted-clean') return null
+
   const saving = state === 'saving'
-  const persisted = state === 'persisted-clean'
   const hasError = state === 'error'
   const label = saving
     ? 'Zapisuję…'
-    : persisted
-      ? 'Zapisano'
-      : isEdit
-        ? 'Zapisz zmiany'
-        : 'Zapisz szablon'
+    : isEdit
+      ? 'Zapisz zmiany'
+      : 'Zapisz szablon'
 
   return (
     <div className="template-save-dock" data-state={state} data-testid="template-save-dock">
@@ -62,10 +61,10 @@ export default function TemplateSaveDock({
         )}
         <button
           type="submit"
-          disabled={!canSubmit || saving || persisted || hasError}
+          disabled={!canSubmit || saving || hasError}
           className="planner-primary-action mobile-touch-target disabled:opacity-60"
         >
-          {persisted ? <Check size={15} aria-hidden="true" /> : <Pencil size={15} aria-hidden="true" />}
+          <Pencil size={15} aria-hidden="true" />
           {label}
         </button>
       </div>

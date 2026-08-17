@@ -431,7 +431,7 @@ Expected: PASS; wartość jest odczytywalna bez hovera, a `title` może pozosta�
 - Consumes: maksymalnie 10 `ExerciseSession[]` posortowanych malejąco przez serwis.
 - Produces: `chronologicalSessions`, jawne `latestVolume`/`maxVolume`, accessible summary i węższe słupki o celowej szerokości.
 
-- [ ] **Step 1: Dodać regresję wartości bez hovera i kolejności**
+- [x] **Step 1: Dodać regresję wartości bez hovera i kolejności**
 
 W `ExerciseDetailCatalogState.test.tsx` ustawić trzy sesje o wolumenie 900, 1200 i 1000 kg, a następnie oczekiwać:
 
@@ -450,7 +450,7 @@ expect(bars.map((bar) => bar.getAttribute('aria-label'))).toEqual([
 ])
 ```
 
-- [ ] **Step 2: Uruchomić test i potwierdzić porażkę**
+- [x] **Step 2: Uruchomić test i potwierdzić porażkę**
 
 Run:
 
@@ -460,7 +460,7 @@ NODE_OPTIONS=--no-experimental-webstorage npx vitest run src/pages/__tests__/Exe
 
 Expected: FAIL, bo wartości są dostępne wyłącznie przez `title`, a słupki nie mają semantycznego opisu.
 
-- [ ] **Step 3: Wyliczyć jawne metryki i uporządkować dane**
+- [x] **Step 3: Wyliczyć jawne metryki i uporządkować dane**
 
 W `ExerciseDetailPage` zastąpić wielokrotne `slice().reverse()` jedną wartością:
 
@@ -479,7 +479,7 @@ Nad słupkami dodać płaski summary:
 </div>
 ```
 
-- [ ] **Step 4: Zastąpić rozciągnięte słupki celową geometrią**
+- [x] **Step 4: Zastąpić rozciągnięte słupki celową geometrią**
 
 Użyć klas zamiast `flex-1`:
 
@@ -507,7 +507,7 @@ Użyć klas zamiast `flex-1`:
 
 CSS: wysokość wykresu minimum 9rem, `grid-template-columns: repeat(auto-fit, minmax(1.25rem, 2rem))`, kontrolowana przerwa, etykiety minimum 12 px i brak zależności od `.group`/hover.
 
-- [ ] **Step 5: Uruchomić test detalu**
+- [x] **Step 5: Uruchomić test detalu**
 
 Run: komenda ze Step 2.
 

@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from 'react'
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatPage from '../ChatPage'
 
@@ -111,6 +111,22 @@ describe('ChatPage accessibility', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Skonfiguruj klucz' }))
     expect(screen.getByLabelText('Twój klucz', { selector: 'input' })).toBeVisible()
+  })
+
+  it('keeps the configured side-rail details open after a successful key update', async () => {
+    render(<ChatPage />)
+
+    await openModelSelect()
+    const key = screen.getByLabelText('Twój klucz', { selector: 'input' })
+    fireEvent.change(key, {
+      target: { value: 'sk-ant-updated-test-key-longer-than-twenty-characters' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Zaktualizuj klucz' }))
+
+    await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2))
+
+    expect(screen.getByLabelText('Twój klucz', { selector: 'input' })).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'Model Claude' })).toBeVisible()
   })
 
   it('labels the model, exposes mode state, and links goal validation', async () => {

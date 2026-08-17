@@ -472,9 +472,16 @@ export default function ChatPage() {
     navigate('/templates/new?draft=ai')
   }
 
-  const handleConfiguredChange = useCallback((nextConfigured: boolean) => {
+  const handleGateConfiguredChange = useCallback((nextConfigured: boolean) => {
     setConfigured(nextConfigured)
     setShowConfigPanel(false)
+  }, [])
+
+  const handleRailConfiguredChange = useCallback((nextConfigured: boolean) => {
+    setConfigured(nextConfigured)
+    if (!nextConfigured) {
+      setShowConfigPanel(false)
+    }
   }, [])
 
   return (
@@ -550,7 +557,7 @@ export default function ChatPage() {
 
                 {showConfigPanel && (
                   <AiKeyPanel
-                    onConfiguredChange={handleConfiguredChange}
+                    onConfiguredChange={handleGateConfiguredChange}
                     onExpand={() => setShowConfigPanel(true)}
                     onCollapse={() => setShowConfigPanel(false)}
                   />
@@ -1017,7 +1024,7 @@ export default function ChatPage() {
           <div className="ai-side-rail coach-rail">
             {configured && (
               <AiKeyPanel
-                onConfiguredChange={handleConfiguredChange}
+                onConfiguredChange={handleRailConfiguredChange}
                 collapsed={!showConfigPanel}
                 onExpand={() => setShowConfigPanel(true)}
                 onCollapse={() => setShowConfigPanel(false)}

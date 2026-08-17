@@ -388,7 +388,7 @@ Po ostatniej zmianie obejrzeć w jednym świeżym runtime:
 
 Receipt `Observed` wymaga ukończonych wywołań primary surface; w przeciwnym razie zapisać `Pending` z konkretną przyczyną.
 
-- [ ] **Step 4: Zamknąć tylko etap 2 po integracji**
+- [x] **Step 4: Zamknąć tylko etap 2 po integracji**
 
 Etapy 3–5 oraz decyzje B-02, M-05, M-07 i M-14 pozostają otwarte. Następny etap to etap 3, ale wymaga decyzji o modelu wykresu progresji.
 
@@ -407,4 +407,5 @@ Etapy 3–5 oraz decyzje B-02, M-05, M-07 i M-14 pozostają otwarte. Następny e
 - Pełne gate’y: ESLint — PASS; Vitest — 73 pliki, 585 testów — PASS; build produkcyjny — PASS; `git diff --check` — PASS.
 - Targetowane E2E: kontrakty mobile, template i progress przeszły funkcjonalnie na desktop/mobile. Zbiorczy przebieg miał dwa błędy infrastrukturalne: przerwany kanał emulatora Firestore przy teardown oraz jednorazowy 404 zewnętrznego fontu; font przeszedł przy osobnym powtórzeniu, a asercja rekordów przechodzi przed błędem teardown. Nie maskowano ich zmianą produktu.
 - Visual evidence: Observed — surface: Codex In-app Browser; proof: ukończone zdarzenia `Oglądam rekordy w świeżym runtime`, `Oglądam finalny edytor planu`, `Oglądam mobilny edytor planu` i `Sprawdzam wyszukiwarkę historii` zwróciły finalne screenshoty oraz stany: 0 badge’y `PR`, brak poziomego overflow, desktop header stats ukryte/summary widoczne, mobile header stats widoczne/summary ukryte, action footer wewnątrz `.template-editor-main` i jedna widoczna kontrolka clear. Konsola audytowanych ścieżek: 0 warningów/errorów.
-- Lineage po implementacji: `roadmapa → etap 1 zintegrowany → etap 2 gotowy do integracji → etapy 3–5 oraz decyzje B-02, M-05, M-07, M-14 otwarte`.
+- Integracja: fast-forward do `main` w `4a9aa74`; na zintegrowanym drzewie ESLint, 585 testów unit i build produkcyjny — PASS.
+- Lineage po closeoucie: `roadmapa → etapy 1–2 zintegrowane → etapy 3–5 oraz decyzje B-02, M-05, M-07, M-14 otwarte`.

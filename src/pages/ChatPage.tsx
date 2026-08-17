@@ -186,6 +186,7 @@ export default function ChatPage() {
   const [planError, setPlanError] = useState<PlanErrorState | null>(null)
   const planGoalId = useId()
   const planErrorId = useId()
+  const keyPanelId = useId()
   const [generatingPlan, setGeneratingPlan] = useState(false)
   const [savingPlan, setSavingPlan] = useState(false)
   const [selectedPreviewDay, setSelectedPreviewDay] = useState(0)
@@ -474,11 +475,17 @@ export default function ChatPage() {
 
   const handleGateConfiguredChange = useCallback((nextConfigured: boolean) => {
     setConfigured(nextConfigured)
-    setShowConfigPanel(false)
+    if (nextConfigured) {
+      setError('')
+      setShowConfigPanel(false)
+      return
+    }
+    setShowConfigPanel(hasClaudeApiKey())
   }, [])
 
   const handleRailConfiguredChange = useCallback((nextConfigured: boolean) => {
     setConfigured(nextConfigured)
+    if (nextConfigured) setError('')
     if (!nextConfigured) {
       setShowConfigPanel(false)
     }
@@ -549,7 +556,12 @@ export default function ChatPage() {
                     Historia rozmowy pozostaje widoczna, ale akcje AI wymagają lokalnego klucza Claude.
                   </p>
                   <div className="mt-4">
-                    <Button type="button" onClick={() => setShowConfigPanel((current) => !current)}>
+                    <Button
+                      type="button"
+                      aria-expanded={showConfigPanel}
+                      aria-controls={keyPanelId}
+                      onClick={() => setShowConfigPanel((current) => !current)}
+                    >
                       Skonfiguruj klucz
                     </Button>
                   </div>
@@ -557,6 +569,7 @@ export default function ChatPage() {
 
                 {showConfigPanel && (
                   <AiKeyPanel
+                    id={keyPanelId}
                     onConfiguredChange={handleGateConfiguredChange}
                     onExpand={() => setShowConfigPanel(true)}
                     onCollapse={() => setShowConfigPanel(false)}
@@ -597,8 +610,12 @@ export default function ChatPage() {
                           <div className="coach-empty-icon">
                             <Bot size={24} />
                           </div>
-                          <p>Zacznij od pytania</p>
-                          <span>Tydzień, kolejny trening, readiness albo plateau.</span>
+                          <p>{configured ? 'Zacznij od pytania' : 'Brak historii rozmowy'}</p>
+                          <span>
+                            {configured
+                              ? 'Tydzień, kolejny trening, readiness albo plateau.'
+                              : 'Skonfiguruj klucz, aby zadać pierwsze pytanie.'}
+                          </span>
                         </div>
 
                         {configured && (

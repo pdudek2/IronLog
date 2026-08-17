@@ -12,6 +12,7 @@ import {
 import { AiApiError, fetchAvailableClaudeModels, type ClaudeModelOption } from '../lib/chatService'
 
 interface AiKeyPanelProps {
+  id?: string
   onConfiguredChange?: (configured: boolean) => void
   collapsed?: boolean
   onExpand?: () => void
@@ -31,6 +32,7 @@ function getAiErrorCode(error: unknown): string | undefined {
 }
 
 export default function AiKeyPanel({
+  id,
   onConfiguredChange,
   collapsed = false,
   onExpand,
@@ -133,7 +135,7 @@ export default function AiKeyPanel({
 
   if (collapsed) {
     return (
-      <section className="ai-key-panel ai-key-panel--collapsed">
+      <section id={id} className="ai-key-panel ai-key-panel--collapsed">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
@@ -173,7 +175,7 @@ export default function AiKeyPanel({
   }
 
   return (
-    <section className="ai-key-panel">
+    <section id={id} className="ai-key-panel">
       <div className="ai-key-panel-head">
         <div className="min-w-0">
           <p className="eyebrow" style={{ color: 'var(--accent)' }}>

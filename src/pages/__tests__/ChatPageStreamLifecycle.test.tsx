@@ -267,7 +267,15 @@ describe('ChatPage stream lifecycle', () => {
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
 
     fireEvent.click(screen.getByRole('button', { name: 'Skonfiguruj klucz' }))
-    expect(screen.getByLabelText('Twój klucz', { selector: 'input' })).toBeVisible()
+    const key = screen.getByLabelText('Twój klucz', { selector: 'input' })
+    expect(key).toBeVisible()
+    fireEvent.change(key, {
+      target: { value: 'sk-ant-restored-test-key-longer-than-twenty-characters' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz klucz' }))
+
+    await waitFor(() => expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Klucz gotowy'))
+    expect(screen.queryByText('Dodaj Claude API key, żeby uruchomić AI Coach.')).not.toBeInTheDocument()
   })
 
   it('clears failed-generation feedback when a new send finds no API key', async () => {

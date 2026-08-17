@@ -200,9 +200,9 @@ test.describe('Chat UI', () => {
 
     const markdown = page.locator('.coach-message[data-role="assistant"] .chat-markdown').first()
     await expect(markdown).toContainText('Plan na dziś')
-    await expect(page.locator('.chat-markdown li').first()).toBeVisible()
-    await expect(page.locator('.chat-markdown ul').first()).toHaveCSS('list-style-type', 'disc')
-    await expect(page.locator('.chat-markdown ol').first()).toHaveCSS('list-style-type', 'decimal')
+    await expect(markdown.locator('li').first()).toBeVisible()
+    await expect(markdown.locator('ul').first()).toHaveCSS('list-style-type', 'disc')
+    await expect(markdown.locator('ol').first()).toHaveCSS('list-style-type', 'decimal')
   })
 
   test('can switch between conversation and plan workspaces', async ({ page }) => {

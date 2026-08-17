@@ -90,8 +90,20 @@ describe('ChatPage accessibility', () => {
     render(<ChatPage />)
 
     expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
-    expect(screen.getByRole('button', { name: 'Skonfiguruj klucz' })).toBeVisible()
+    const configure = screen.getByRole('button', { name: 'Skonfiguruj klucz' })
+    expect(configure).toBeVisible()
+    expect(configure).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+    expect(screen.getByText('Brak historii rozmowy')).toBeVisible()
+    expect(screen.queryByText('Zacznij od pytania')).not.toBeInTheDocument()
+
+    fireEvent.click(configure)
+    expect(configure).toHaveAttribute('aria-expanded', 'true')
+    const controlledPanel = configure.getAttribute('aria-controls')
+    expect(controlledPanel).toBeTruthy()
+    expect(document.getElementById(controlledPanel!)).toBeVisible()
+    fireEvent.click(configure)
+    expect(configure).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
 
@@ -254,20 +266,35 @@ describe('ChatPage accessibility', () => {
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
   })
 
-  it('returns to the compact read-only state when Claude rejects the API key', async () => {
+  it('keeps rejected key details open so the key can be corrected', async () => {
     const error = Object.assign(
       new Error('Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.'),
       { code: 'invalid-key' },
     )
-    mocks.fetchAvailableClaudeModels.mockRejectedValue(error)
+    mocks.fetchAvailableClaudeModels
+      .mockRejectedValueOnce(error)
+      .mockRejectedValueOnce(error)
+      .mockResolvedValue([{ id: 'claude-test', label: 'Claude Test' }])
     render(<ChatPage />)
 
-    expect(await screen.findByRole('button', { name: 'Skonfiguruj klucz' })).toBeVisible()
+    const configure = await screen.findByRole('button', { name: 'Skonfiguruj klucz' })
     expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
-    expect(screen.queryByLabelText('Twój klucz', { selector: 'input' })).not.toBeInTheDocument()
-    expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+
+    fireEvent.click(configure)
+    await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2))
+    const key = screen.getByLabelText('Twój klucz', { selector: 'input' })
+    expect(key).toBeVisible()
+    expect(screen.getByRole('alert')).toHaveTextContent('Claude API odrzuciło klucz.')
+
+    fireEvent.change(key, {
+      target: { value: 'sk-ant-corrected-test-key-longer-than-twenty-characters' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Zaktualizuj klucz' }))
+
+    await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(3))
+    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Klucz gotowy')
+    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
   })
 
   it('keeps the API key name stable while announcing its field error', async () => {

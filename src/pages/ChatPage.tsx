@@ -165,7 +165,7 @@ export default function ChatPage() {
   const isDemoUser = user?.email === DEMO_EMAIL
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
   const [configured, setConfigured] = useState(() => hasClaudeApiKey())
-  const [showConfigPanel, setShowConfigPanel] = useState(() => !hasClaudeApiKey())
+  const [showConfigPanel, setShowConfigPanel] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>(() => (isDemoUser ? DEMO_CHAT_MESSAGES : []))
   const demoSeededRef = useRef(isDemoUser)
   const [input, setInput] = useState('')
@@ -242,12 +242,6 @@ export default function ChatPage() {
     if (!chatContainer || !shouldStickToBottomRef.current) return
     chatContainer.scrollTop = chatContainer.scrollHeight
   }, [messages, streamText])
-
-  useEffect(() => {
-    if (!configured) {
-      setShowConfigPanel(true)
-    }
-  }, [configured])
 
   useEffect(() => () => {
     const active = activeGenerationRef.current
@@ -478,6 +472,11 @@ export default function ChatPage() {
     navigate('/templates/new?draft=ai')
   }
 
+  function handleGateConfiguredChange(nextConfigured: boolean) {
+    setConfigured(nextConfigured)
+    setShowConfigPanel(false)
+  }
+
   return (
     <>
       <section className="coach-header">
@@ -491,7 +490,7 @@ export default function ChatPage() {
           <p>Zapytaj o ostatnią sesję albo ułóż plan.</p>
           <div className="coach-status-line" aria-label="Status AI Coacha">
             <span data-ready={configured} />
-            <strong>{configured ? 'Klucz gotowy' : 'Klucz wymagany'}</strong>
+            <strong>{configured ? 'Klucz gotowy' : 'Tryb tylko do odczytu'}</strong>
           </div>
         </motion.div>
       </section>
@@ -534,11 +533,29 @@ export default function ChatPage() {
         >
           <div className="coach-main-flow">
             {!configured && (
-              <AiKeyPanel
-                onConfiguredChange={setConfigured}
-                onExpand={() => setShowConfigPanel(true)}
-                onCollapse={() => setShowConfigPanel(false)}
-              />
+              <>
+                <section className="coach-key-gate">
+                  <p className="eyebrow" style={{ color: 'var(--accent)' }}>
+                    Tryb tylko do odczytu
+                  </p>
+                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                    Historia rozmowy pozostaje widoczna, ale akcje AI wymagają lokalnego klucza Claude.
+                  </p>
+                  <div className="mt-4">
+                    <Button type="button" onClick={() => setShowConfigPanel((current) => !current)}>
+                      Skonfiguruj klucz
+                    </Button>
+                  </div>
+                </section>
+
+                {showConfigPanel && (
+                  <AiKeyPanel
+                    onConfiguredChange={handleGateConfiguredChange}
+                    onExpand={() => setShowConfigPanel(true)}
+                    onCollapse={() => setShowConfigPanel(false)}
+                  />
+                )}
+              </>
             )}
 
             {activeTab === 'chat' ? (
@@ -577,21 +594,23 @@ export default function ChatPage() {
                           <span>Tydzień, kolejny trening, readiness albo plateau.</span>
                         </div>
 
-                        <div className="coach-empty-prompts">
-                          {STARTER_PROMPTS.map((prompt) => (
-                            <button
-                              key={prompt}
-                              type="button"
-                              onClick={() => void handleSend(prompt)}
-                              disabled={!configured || sending}
-                              className="coach-prompt-button"
-                              aria-label={prompt}
-                            >
-                              <span className="coach-prompt-full">{prompt}</span>
-                              <span className="coach-prompt-short">{STARTER_PROMPT_LABELS[prompt] ?? prompt}</span>
-                            </button>
-                          ))}
-                        </div>
+                        {configured && (
+                          <div className="coach-empty-prompts">
+                            {STARTER_PROMPTS.map((prompt) => (
+                              <button
+                                key={prompt}
+                                type="button"
+                                onClick={() => void handleSend(prompt)}
+                                disabled={sending}
+                                className="coach-prompt-button"
+                                aria-label={prompt}
+                              >
+                                <span className="coach-prompt-full">{prompt}</span>
+                                <span className="coach-prompt-short">{STARTER_PROMPT_LABELS[prompt] ?? prompt}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div

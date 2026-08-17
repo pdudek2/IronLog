@@ -246,15 +246,28 @@ describe('ChatPage stream lifecycle', () => {
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
   })
 
-  it('puts API key configuration before the blocked chat when no key is saved', () => {
-    mocks.apiKey = ''
+  it('returns to the compact read-only state when the API key disappears', async () => {
     render(<ChatPage />)
+    await sendPrompt('Czy progresuję?')
 
-    const keyInput = screen.getByLabelText('Twój klucz', { selector: 'input' })
-    const chat = screen.getByLabelText('Rozmowa z AI Coachem')
+    fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
+    mocks.apiKey = ''
+    fireEvent.click(screen.getByRole('button', { name: /Rozmowa/ }))
+    expect(screen.getByRole('status')).toHaveTextContent('Generowanie przerwane')
 
-    expect(keyInput.compareDocumentPosition(chat) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Ponów odpowiedź AI' }))
+
+    expect(screen.getByLabelText('Rozmowa z AI Coachem')).toBeVisible()
+    expect(within(screen.getByRole('log')).getByText('Czy progresuję?')).toBeVisible()
+    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Przeanalizuj mój ostatni tydzień treningowy.' }))
+      .not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Twój klucz', { selector: 'input' })).not.toBeInTheDocument()
+    expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skonfiguruj klucz' }))
+    expect(screen.getByLabelText('Twój klucz', { selector: 'input' })).toBeVisible()
   })
 
   it('clears failed-generation feedback when a new send finds no API key', async () => {

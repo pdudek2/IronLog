@@ -8,18 +8,24 @@ const mocks = vi.hoisted(() => ({
   generateTrainingPlan: vi.fn(),
   streamChatReply: vi.fn(),
   navigate: vi.fn(),
+  apiKey: 'sk-ant-test-key-longer-than-twenty-characters',
 }))
 
 vi.mock('../../store/authStore', () => ({
   useAuthStore: () => ({ user: { uid: 'user-1', email: 'user@example.com' } }),
 }))
 vi.mock('../../lib/aiKeyStorage', () => ({
-  clearClaudeApiKey: vi.fn(),
+  clearClaudeApiKey: () => {
+    mocks.apiKey = ''
+  },
   clearClaudeModel: vi.fn(),
-  getClaudeApiKey: () => 'sk-ant-test-key-longer-than-twenty-characters',
+  getClaudeApiKey: () => mocks.apiKey,
   getClaudeModel: () => 'claude-test',
-  hasClaudeApiKey: () => true,
-  setClaudeApiKey: (value: string) => value.trim(),
+  hasClaudeApiKey: () => Boolean(mocks.apiKey),
+  setClaudeApiKey: (value: string) => {
+    mocks.apiKey = value.trim()
+    return mocks.apiKey
+  },
   setClaudeModel: (value: string) => value.trim(),
 }))
 vi.mock('../../lib/chatService', () => ({
@@ -69,6 +75,7 @@ async function openModelSelect() {
 
 describe('ChatPage accessibility', () => {
   beforeEach(() => {
+    mocks.apiKey = 'sk-ant-test-key-longer-than-twenty-characters'
     mocks.fetchAvailableClaudeModels.mockReset()
     mocks.fetchAvailableClaudeModels.mockResolvedValue([
       { id: 'claude-test', label: 'Claude Test' },
@@ -76,6 +83,20 @@ describe('ChatPage accessibility', () => {
     mocks.generateTrainingPlan.mockReset()
     mocks.streamChatReply.mockReset()
     mocks.navigate.mockReset()
+  })
+
+  it('keeps plan inspection available while chat stays read-only without a key', () => {
+    mocks.apiKey = ''
+    render(<ChatPage />)
+
+    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
+    expect(screen.getByRole('button', { name: 'Skonfiguruj klucz' })).toBeVisible()
+    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+
+    fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
+
+    expect(screen.getByRole('heading', { name: 'Brief treningowy' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Generuj plan' })).toBeDisabled()
   })
 
   it('labels the model, exposes mode state, and links goal validation', async () => {
@@ -203,7 +224,7 @@ describe('ChatPage accessibility', () => {
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
   })
 
-  it('marks the model selector invalid when Claude rejects the API key', async () => {
+  it('returns to the compact read-only state when Claude rejects the API key', async () => {
     const error = Object.assign(
       new Error('Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.'),
       { code: 'invalid-key' },
@@ -211,17 +232,11 @@ describe('ChatPage accessibility', () => {
     mocks.fetchAvailableClaudeModels.mockRejectedValue(error)
     render(<ChatPage />)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Claude API odrzuciło klucz.')
-    await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: 'Model Claude' })).toHaveAttribute('aria-invalid', 'true')
-    })
-    await waitFor(() => {
-      expect(screen.getByRole('combobox', { name: 'Model Claude' }))
-        .toHaveAccessibleDescription('Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.')
-    })
-    await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2))
-    await new Promise((resolve) => window.setTimeout(resolve, 0))
-    expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2)
+    expect(await screen.findByRole('button', { name: 'Skonfiguruj klucz' })).toBeVisible()
+    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
+    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+    expect(screen.queryByLabelText('Twój klucz', { selector: 'input' })).not.toBeInTheDocument()
+    expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
   })
 

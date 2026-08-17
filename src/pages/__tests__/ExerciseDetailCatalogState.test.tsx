@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import ExerciseDetailPage from '../ExerciseDetailPage'
 
@@ -136,6 +136,68 @@ it('labels the capped session slice separately from the all-time session count',
   expect(await screen.findByText(/10 ostatnich sesji/)).toBeInTheDocument()
   expect(screen.queryByText(/sesji w historii/)).not.toBeInTheDocument()
   expect(screen.getByText('Sesje').parentElement).toHaveTextContent('14')
+})
+
+it('shows volume metrics and chronological bar labels without hover', async () => {
+  mocks.getUserExercises.mockResolvedValue([{
+    id: 'custom-row',
+    name: 'Wiosłowanie własne',
+    category: 'back',
+    equipment: 'cable',
+    muscles: ['back'],
+  }])
+  mocks.getExerciseSessions.mockResolvedValue([
+    {
+      id: 'session-latest',
+      workoutId: 'workout-latest',
+      startedAt: Date.UTC(2026, 7, 15),
+      label: null,
+      totalSets: 3,
+      totalReps: 12,
+      totalVolume: 900,
+      bestSetWeight: 75,
+      bestSetReps: 4,
+      sets: [{ weight: 75, reps: 4 }],
+    },
+    {
+      id: 'session-middle',
+      workoutId: 'workout-middle',
+      startedAt: Date.UTC(2026, 7, 10),
+      label: null,
+      totalSets: 3,
+      totalReps: 12,
+      totalVolume: 1_200,
+      bestSetWeight: 100,
+      bestSetReps: 4,
+      sets: [{ weight: 100, reps: 4 }],
+    },
+    {
+      id: 'session-oldest',
+      workoutId: 'workout-oldest',
+      startedAt: Date.UTC(2026, 7, 5),
+      label: null,
+      totalSets: 3,
+      totalReps: 12,
+      totalVolume: 1_000,
+      bestSetWeight: 85,
+      bestSetReps: 4,
+      sets: [{ weight: 85, reps: 4 }],
+    },
+  ])
+  mocks.getExerciseRecord.mockResolvedValue(null)
+
+  render(<ExerciseDetailPage />)
+
+  expect(await screen.findByRole('heading', { name: 'Wolumen na sesję' })).toBeInTheDocument()
+  expect(within(screen.getByText('Ostatnio').parentElement!).getByText('900 kg')).toBeInTheDocument()
+  expect(within(screen.getByText('Maksimum').parentElement!).getByText('1.2k kg')).toBeInTheDocument()
+
+  const bars = screen.getAllByTestId('exercise-volume-bar')
+  expect(bars.map((bar) => bar.getAttribute('aria-label'))).toEqual([
+    expect.stringContaining('1.0k kg'),
+    expect.stringContaining('1.2k kg'),
+    expect.stringContaining('900 kg'),
+  ])
 })
 
 it('shows a not-found state for an unknown global exercise without loading history', async () => {

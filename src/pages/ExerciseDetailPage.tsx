@@ -100,6 +100,12 @@ export default function ExerciseDetailPage() {
     }
   }, [user, id, exerciseSource, globalExercise, loadAttempt])
 
+  const chronologicalSessions = useMemo(() => [...sessions].reverse(), [sessions])
+  const latestVolume = sessions[0]?.totalVolume ?? 0
+  const maxVolume = sessions.length
+    ? Math.max(...sessions.map((session) => session.totalVolume), 1)
+    : 1
+
   const userExercise = exerciseSource === 'user' && userCatalog.state.status === 'success'
     ? userCatalog.exercises.find((exercise) => exercise.id === id) ?? null
     : null
@@ -161,7 +167,6 @@ export default function ExerciseDetailPage() {
   }
 
   const accent = EXERCISE_CATEGORY_COLORS[exercise?.category ?? ''] ?? 'var(--accent)'
-  const maxVolume = sessions.length ? Math.max(...sessions.map((s) => s.totalVolume), 1) : 1
 
   const totalVolumeAll = sessions.reduce((sum, s) => sum + s.totalVolume, 0)
 
@@ -277,27 +282,36 @@ export default function ExerciseDetailPage() {
               <div className="mb-4">
                 <h2 className="section-title">Wolumen na sesję</h2>
               </div>
-              <div className="flex items-end gap-1.5 h-20">
-                {sessions.slice().reverse().map((session) => {
-                  const heightPct = maxVolume > 0 ? (session.totalVolume / maxVolume) * 100 : 0
-                  return (
-                    <div key={session.id} className="flex-1 flex flex-col items-center gap-1 group">
-                      <div className="relative w-full flex items-end" style={{ height: '4rem' }}>
-                        <motion.div
-                          className="w-full rounded-t-sm"
-                          style={{ background: accent, opacity: 0.7 }}
-                          initial={{ height: 0 }}
-                          animate={{ height: `${Math.max(heightPct, 4)}%` }}
-                          transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
-                          title={`${formatDate(session.startedAt)}: ${formatVolume(session.totalVolume)}`}
-                        />
-                      </div>
-                      <p className="text-[9px] uppercase" style={{ color: 'var(--muted-soft)' }}>
-                        {new Date(session.startedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'numeric' })}
-                      </p>
+              <div className="exercise-detail-volume-summary">
+                <p><span>Ostatnio</span><strong>{formatVolume(latestVolume)}</strong></p>
+                <p><span>Maksimum</span><strong>{formatVolume(maxVolume)}</strong></p>
+              </div>
+              <div
+                className="exercise-detail-volume-chart"
+                role="img"
+                aria-label={`Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio ${formatVolume(latestVolume)}. Maksimum ${formatVolume(maxVolume)}.`}
+              >
+                {chronologicalSessions.map((session) => (
+                  <div key={session.id} className="exercise-detail-volume-column">
+                    <div className="exercise-detail-volume-track">
+                      <motion.div
+                        data-testid="exercise-volume-bar"
+                        aria-label={`${formatDate(session.startedAt)}: ${formatVolume(session.totalVolume)}`}
+                        className="exercise-detail-volume-bar"
+                        style={{
+                          background: accent,
+                          height: `${Math.max((session.totalVolume / maxVolume) * 100, 4)}%`,
+                        }}
+                        initial={{ scaleY: 0 }}
+                        animate={{ scaleY: 1 }}
+                        transition={{ duration: 0.5, ease: 'easeOut', delay: 0.1 }}
+                      />
                     </div>
-                  )
-                })}
+                    <span>
+                      {new Date(session.startedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'numeric' })}
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
           )}

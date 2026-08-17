@@ -8,6 +8,9 @@ import { installMockAiRuntime, type MockAiAttempt } from './support/mockAiStream
  */
 
 const QUESTION = 'Czy progresuję?'
+const LONG_ASSISTANT_RESPONSE = Array.from({ length: 18 }, (_, index) => (
+  `## Blok ${index + 1}\n\n${'To jest dłuższy akapit o decyzjach treningowych, regeneracji i progresji. '.repeat(6)}`
+)).join('\n\n')
 
 async function openChatWithMock(page: Page, attempts: MockAiAttempt[]) {
   await installMockAiRuntime(page, attempts)
@@ -40,8 +43,13 @@ test.describe('Chat UI', () => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
 
-    // Key panel should show "Brak klucza" badge when no key is configured
-    // (assuming test account has no saved key — localStorage is fresh per storageState)
+    const keyGate = page.locator('.coach-key-gate')
+    await expect(keyGate).toBeVisible({ timeout: 5_000 })
+    await expect(keyGate.getByText('Tryb tylko do odczytu', { exact: true })).toBeVisible()
+    await expect(page.locator('.ai-key-panel')).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Skonfiguruj klucz' }).click()
+
     await expect(page.getByPlaceholder('Wklej Claude API key')).toBeVisible({ timeout: 5_000 })
     await expect(page.getByText('Klucz zostaje tylko na tym urządzeniu.', { exact: true }))
       .toBeVisible({ timeout: 5_000 })
@@ -66,31 +74,68 @@ test.describe('Chat UI', () => {
     await page.screenshot({ path: 'test-results/chat-disabled-input.png' })
   })
 
-  test('no-key chat uses the available width without stacking cards', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop', 'desktop geometry contract')
+  test('no-key chat uses the available width without stacking cards', async ({ page }) => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
 
-    const grid = page.locator('.coach-workspace-grid')
+    const gate = page.locator('.coach-key-gate')
     const main = page.locator('.coach-main-flow')
-    const keyPanel = page.locator('.ai-key-panel')
     const chatPanel = page.locator('.coach-chat-panel')
 
-    await expect(grid).toHaveAttribute('data-has-rail', 'false')
-    const widths = await Promise.all([grid, main].map((locator) => locator.evaluate((element) => element.getBoundingClientRect().width)))
-    expect(widths[1]).toBeGreaterThanOrEqual(widths[0] - 2)
+    await expect(page.locator('.coach-workspace-grid')).toHaveAttribute('data-has-rail', 'false')
+    await expect(page.locator('.ai-key-panel')).toHaveCount(0)
 
-    for (const panel of [keyPanel, chatPanel]) {
-      const style = await panel.evaluate((element) => {
-        const computed = getComputedStyle(element)
-        return {
-          borderLeft: computed.borderLeftWidth,
-          borderRight: computed.borderRightWidth,
-          radius: computed.borderTopLeftRadius,
-        }
-      })
-      expect(style).toEqual({ borderLeft: '0px', borderRight: '0px', radius: '0px' })
-    }
+    const [mainBox, gateBox, chatBox] = await Promise.all([main, gate, chatPanel].map((locator) => locator.boundingBox()))
+    expect(mainBox).not.toBeNull()
+    expect(gateBox).not.toBeNull()
+    expect(chatBox).not.toBeNull()
+
+    const gateCenter = (gateBox!.x + gateBox!.width) / 2
+    const chatCenter = (chatBox!.x + chatBox!.width) / 2
+
+    expect(Math.abs(gateCenter - chatCenter)).toBeLessThanOrEqual(1)
+    expect(gateBox!.x).toBeGreaterThanOrEqual(mainBox!.x - 1)
+    expect(chatBox!.x).toBeGreaterThanOrEqual(mainBox!.x - 1)
+    expect(gateBox!.x + gateBox!.width).toBeLessThanOrEqual(mainBox!.x + mainBox!.width + 1)
+    expect(chatBox!.x + chatBox!.width).toBeLessThanOrEqual(mainBox!.x + mainBox!.width + 1)
+
+    const overflow = await page.evaluate(() => ({
+      scrollWidth: document.documentElement.scrollWidth,
+      clientWidth: document.documentElement.clientWidth,
+    }))
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
+  })
+
+  test('configured geometry keeps the composer visible at load', async ({ page }) => {
+    await openChatWithMock(page, [{
+      frames: [
+        { delayMs: 20, frame: { type: 'chunk', text: LONG_ASSISTANT_RESPONSE } },
+        { delayMs: 20, frame: { type: 'done' } },
+      ],
+    }])
+
+    await sendQuestion(page)
+    await expect(page.locator('.coach-message[data-role="assistant"] .chat-markdown').first()).toContainText('Blok 1')
+
+    const composer = page.locator('.coach-composer')
+    await expect(composer).toBeInViewport()
+    expect(await page.evaluate(() => window.scrollY)).toBe(0)
+
+    const measure = await page.locator('.coach-message[data-role="assistant"] .chat-markdown')
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().width)
+    expect(measure).toBeLessThanOrEqual(760)
+
+    const thread = page.locator('.coach-thread-scroll')
+    const composerBoxBeforeScroll = await composer.boundingBox()
+    await thread.evaluate((element) => {
+      element.scrollTop = element.scrollHeight
+    })
+    await expect.poll(() => thread.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+    const composerBoxAfterScroll = await composer.boundingBox()
+    expect(composerBoxBeforeScroll).not.toBeNull()
+    expect(composerBoxAfterScroll).not.toBeNull()
+    expect(Math.abs(composerBoxAfterScroll!.y - composerBoxBeforeScroll!.y)).toBeLessThanOrEqual(1)
   })
 
   test('can switch between conversation and plan workspaces', async ({ page }) => {

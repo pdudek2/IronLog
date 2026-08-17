@@ -9607,18 +9607,25 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 /* AI Coach */
 .coach-header {
   display: block;
-  max-width: 42rem;
-  margin-bottom: 0.85rem;
+  max-width: 46rem;
+  margin: 0 auto 0.55rem;
   border-bottom: 0;
-  padding-bottom: 0.6rem;
+  padding-top: clamp(0.7rem, 2vw, 1.35rem);
+  padding-bottom: 0.35rem;
 }
 
 .coach-header h1 {
-  font-size: clamp(2.65rem, 5vw, 3.65rem);
+  font-size: clamp(2.4rem, 4vw, 3.2rem);
+}
+
+.coach-header-copy > p:last-child {
+  max-width: 32rem;
+  margin-top: 0.5rem;
+  font-size: 0.94rem;
 }
 
 .coach-header .coach-status-line {
-  margin-top: 0.65rem;
+  margin-top: 0.5rem;
 }
 
 .coach-workspace {
@@ -9644,11 +9651,39 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   display: none;
 }
 
+.coach-key-gate,
+.coach-chat-panel {
+  width: min(100%, 46rem);
+  margin-inline: auto;
+}
+
 .ai-key-panel,
 .coach-chat-panel {
   border-inline: 0;
   border-radius: 0 !important;
   box-shadow: none;
+}
+
+.coach-key-gate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.6rem 1rem;
+  align-items: center;
+  border-block: 1px solid var(--border-strong);
+  padding: 0.9rem 0;
+}
+
+.coach-key-gate .eyebrow,
+.coach-key-gate p {
+  margin: 0;
+}
+
+.coach-key-gate > div {
+  margin-top: 0 !important;
+}
+
+.coach-key-gate button {
+  min-height: 2.75rem;
 }
 
 .ai-key-panel {
@@ -9674,8 +9709,21 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 .coach-chat-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: stretch;
+  height: max(24rem, calc(100dvh - 19rem));
   background: transparent;
-  padding: clamp(1rem, 2.5vw, 1.35rem) 0;
+  padding: clamp(0.95rem, 2.5vw, 1.2rem) 0;
+}
+
+.coach-chat-panel > .coach-panel-head,
+.coach-chat-panel > .coach-thread,
+.coach-chat-panel > .coach-generation-feedback,
+.coach-chat-panel > [role="alert"],
+.coach-chat-panel > .coach-composer {
+  width: min(100%, 46rem);
+  margin-inline: auto;
 }
 
 .coach-plan-panel,
@@ -9690,8 +9738,9 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 .coach-thread {
-  height: min(34rem, calc(100dvh - 19rem));
-  min-height: 22rem;
+  display: grid;
+  height: auto;
+  min-height: 0;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -9701,6 +9750,20 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 .coach-thread--empty {
   height: auto;
   min-height: 15rem;
+}
+
+.coach-thread-scroll {
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.coach-message-list {
+  width: min(100%, 46rem);
+  margin-inline: auto;
+}
+
+.coach-message {
+  max-width: 100%;
 }
 
 .coach-empty-icon {
@@ -9794,12 +9857,22 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 @media (max-width: 639px) {
   .coach-header {
-    margin-bottom: 0.55rem;
+    margin-bottom: 0.5rem;
     padding-bottom: 0.35rem;
   }
 
   .coach-header h1 {
-    font-size: 2.65rem;
+    font-size: 2.5rem;
+  }
+
+  .coach-header-copy > p:last-child {
+    margin-top: 0.45rem;
+    font-size: 0.88rem;
+  }
+
+  .coach-key-gate {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0.8rem 0;
   }
 
   .ai-key-panel-head {
@@ -9825,11 +9898,12 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .coach-chat-panel {
-    padding: 0.9rem;
+    height: max(21rem, calc(100dvh - 12.5rem - 5.75rem - env(safe-area-inset-bottom, 0px)));
+    padding: 0.8rem 0;
   }
 
   .coach-thread {
-    height: 19rem;
+    height: auto;
   }
 
   .coach-thread--empty {

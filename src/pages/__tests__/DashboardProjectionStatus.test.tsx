@@ -196,6 +196,29 @@ describe('Dashboard workout projection status', () => {
     useWorkoutStore.getState().clearWorkout()
   })
 
+  it('scopes the empty week copy to a first workout when the account has no history', async () => {
+    mocks.getRecentWorkouts.mockResolvedValue([])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).toBeInTheDocument()
+  })
+
+  it('does not present a returning user as a first-run account when the week is empty', async () => {
+    const now = Date.now()
+    mocks.getRecentWorkouts.mockResolvedValue([{
+      ...pendingWorkout,
+      startedAt: now - 120 * 86_400_000,
+      finishedAt: now - 120 * 86_400_000 + 3_600_000,
+      materialized: true,
+    }])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('Brak zapisanych treningów w tym tygodniu.')).toBeInTheDocument()
+    expect(screen.queryByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).not.toBeInTheDocument()
+  })
+
   it('uses Polish set-count forms in the peak-day summary', async () => {
     const now = Date.now()
     mocks.getRecentWorkouts.mockResolvedValue([{

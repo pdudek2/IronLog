@@ -241,6 +241,11 @@ textarea {
   font-family: inherit;
 }
 
+button:not(:disabled),
+[role='button']:not([aria-disabled='true']) {
+  cursor: pointer;
+}
+
 a {
   color: inherit;
 }
@@ -2944,6 +2949,11 @@ a {
   box-shadow: 0 0 0 2px var(--focus-ring) !important;
 }
 
+.history-search-input::-webkit-search-cancel-button {
+  appearance: none;
+  -webkit-appearance: none;
+}
+
 .history-category-filter-button {
   --history-filter-accent: var(--accent);
   min-height: 2.75rem;
@@ -4349,21 +4359,6 @@ a {
   min-width: 0;
 }
 
-.progress-record-rank {
-  display: inline-flex !important;
-  align-items: center;
-  justify-content: center;
-  width: 1.6rem;
-  height: 1.05rem;
-  border: 1px solid color-mix(in srgb, var(--record-accent) 32%, transparent);
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, var(--record-accent) 10%, transparent);
-  color: color-mix(in srgb, var(--record-accent) 72%, var(--muted)) !important;
-  font-family: var(--font-mono);
-  font-size: 0.52rem !important;
-  font-weight: 780 !important;
-}
-
 .progress-record-feature strong {
   overflow: hidden;
   color: var(--text-strong);
@@ -4426,7 +4421,7 @@ a {
 .progress-record-ledger-head,
 .progress-record-ledger-row {
   display: grid;
-  grid-template-columns: 1.9rem minmax(0, 1fr) minmax(5.8rem, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(5.8rem, auto);
   align-items: center;
   gap: 0.75rem;
 }
@@ -4443,7 +4438,7 @@ a {
 }
 
 .progress-record-ledger-head span:first-child {
-  grid-column: 2;
+  grid-column: 1;
 }
 
 .progress-record-ledger-head span:last-child {
@@ -4646,7 +4641,7 @@ a {
   }
 
   .progress-record-ledger-row {
-    grid-template-columns: 1.75rem minmax(0, 1fr) minmax(5.4rem, auto);
+    grid-template-columns: minmax(0, 1fr) minmax(5.4rem, auto);
     gap: 0.55rem;
     min-height: 4.6rem;
   }
@@ -5725,6 +5720,10 @@ a {
 
   .template-editor-side {
     display: flex;
+  }
+
+  .template-editor-heading .planner-mini-stats {
+    display: none;
   }
 
   .template-editor-mobile-add-day {
@@ -9261,15 +9260,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   border-radius: 0;
   background: transparent;
   padding-inline: 0;
-}
-
-.progress-record-rank {
-  width: auto;
-  height: auto;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  font-size: 0.68rem !important;
 }
 
 /* Plans and plan editor */

@@ -5,35 +5,42 @@ import { getAuthErrorMessage, loginUser, resetPassword } from '../lib/auth'
 import AuthShell from '../components/AuthShell'
 import { Button, Input } from '../components/ui'
 
+type LoginField = 'email' | 'password'
+
+interface LoginError {
+  field: LoginField
+  message: string
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const [error, setError] = useState<LoginError | null>(null)
   const [resetNotice, setResetNotice] = useState('')
   const [loading, setLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError('')
+    setError(null)
     setResetNotice('')
     setLoading(true)
     try {
       await loginUser(email, password)
       // onAuthStateChanged zaktualizuje store → PublicRoute przekieruje
     } catch (err) {
-      setError(getAuthErrorMessage(err, 'login'))
+      setError({ field: 'password', message: getAuthErrorMessage(err, 'login') })
       setLoading(false)
     }
   }
 
   async function handlePasswordReset() {
     const normalizedEmail = email.trim()
-    setError('')
+    setError(null)
     setResetNotice('')
 
     if (!normalizedEmail) {
-      setError('Wpisz email, a wyślemy link do resetu hasła.')
+      setError({ field: 'email', message: 'Wpisz email, a wyślemy link do resetu hasła.' })
       return
     }
 
@@ -43,16 +50,13 @@ export default function LoginPage() {
       setResetNotice('Jeśli konto istnieje, wysłaliśmy link do resetu hasła.')
     } catch (err) {
       console.error('[password reset error]', err)
-      setError('Nie udało się wysłać linku. Sprawdź email i spróbuj ponownie.')
+      setError({ field: 'email', message: 'Nie udało się wysłać linku. Sprawdź email i spróbuj ponownie.' })
     } finally {
       setResetLoading(false)
     }
   }
 
-  const describedBy = [
-    error ? 'login-form-error' : '',
-    resetNotice ? 'login-reset-notice' : '',
-  ].filter(Boolean).join(' ') || undefined
+  const describedBy = resetNotice ? 'login-reset-notice' : undefined
 
   return (
     <AuthShell
@@ -75,7 +79,11 @@ export default function LoginPage() {
             type="email"
             placeholder="email@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              if (error?.field === 'email') setError(null)
+            }}
+            error={error?.field === 'email' ? error.message : undefined}
             autoComplete="email"
             required
           />
@@ -89,7 +97,11 @@ export default function LoginPage() {
             type="password"
             placeholder="••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              if (error?.field === 'password') setError(null)
+            }}
+            error={error?.field === 'password' ? error.message : undefined}
             autoComplete="current-password"
             required
           />
@@ -103,7 +115,6 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {error && <p id="login-form-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
         {resetNotice && <p id="login-reset-notice" role="status" className="text-sm" style={{ color: 'var(--success)' }}>{resetNotice}</p>}
 
         <Button type="submit" loading={loading} disabled={resetLoading} className="auth-instrument-submit mt-2 w-full">

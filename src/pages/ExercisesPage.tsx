@@ -232,7 +232,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
                     type="button"
                     onClick={() => toggleMuscle(m)}
                     aria-pressed={active}
-                    className="mobile-touch-target px-3 py-1.5 rounded-full text-xs font-medium transition-all"
+                    className="mobile-touch-target px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
                     style={{
                       background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
                       color: active ? 'var(--text-strong)' : 'var(--muted)',

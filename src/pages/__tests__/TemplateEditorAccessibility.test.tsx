@@ -116,7 +116,10 @@ describe('TemplateEditorPage accessibility', () => {
 
     expect(await screen.findByText('Nowy plan · jeszcze niezapisany')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeDisabled()
-    expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1dni')
+    expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1dzień')
+    expect(document.querySelector('.template-editor-main')).toContainElement(
+      screen.getByRole('button', { name: 'Zapisz szablon w formularzu' }),
+    )
   })
 
   it('labels the plan and day names and gives delete action full context', async () => {

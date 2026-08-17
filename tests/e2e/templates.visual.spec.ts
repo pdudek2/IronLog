@@ -50,7 +50,12 @@ test('new template editor empty state', async ({ page }, testInfo) => {
   await expectAppReady(page, '/templates/new')
   await expect(page.getByRole('heading', { name: 'Nowy plan' })).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
+  const headerStats = page.locator('.template-editor-heading .planner-mini-stats')
+  const summary = page.locator('.template-editor-summary')
+  await expect(page.locator('.template-editor-main .template-editor-bottom-actions')).toHaveCount(1)
   if (testInfo.project.name === 'desktop') {
+    await expect(headerStats).toBeHidden()
+    await expect(summary).toBeVisible()
     await page.addStyleTag({
       content: `
         html {
@@ -63,6 +68,10 @@ test('new template editor empty state', async ({ page }, testInfo) => {
         }
       `,
     })
+  } else {
+    await expect(headerStats).toBeVisible()
+    await expect(headerStats).toContainText('1dzień')
+    await expect(summary).toBeHidden()
   }
 
   await expect(page).toHaveScreenshot('template-editor-empty.png', {

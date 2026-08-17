@@ -125,16 +125,32 @@ test.describe('Phase 4 mobile ergonomics', () => {
     )
 
     await page.getByRole('button', { name: 'Dodaj własne' }).click()
+    const muscleButton = page.getByRole('group', { name: 'Partie mięśniowe' })
+      .getByRole('button', { name: 'Klatka', exact: true })
     await expectMinHitArea(
-      page.getByRole('group', { name: 'Partie mięśniowe' }).getByRole('button', { name: 'Klatka', exact: true }),
+      muscleButton,
       'exercise form muscle',
     )
+    expect(await muscleButton.evaluate((element) => getComputedStyle(element).cursor)).toBe('pointer')
+    expect(await muscleButton.evaluate((element) => getComputedStyle(element).transitionProperty)).not.toContain('all')
     await page.getByRole('button', { name: 'Zamknij formularz' }).click()
 
     await page.goto('/history')
     await expectAppReady(page, '/history')
     await expectMinHitArea(page.getByRole('button', { name: 'Wszystko', exact: true }), 'history range')
-    await page.getByLabel('Szukaj w historii treningów').fill('bench')
+    const historySearch = page.getByLabel('Szukaj w historii treningów')
+    await historySearch.fill('bench')
+    expect(await page.evaluate(() => Array.from(document.styleSheets).some((sheet) => {
+      try {
+        return Array.from(sheet.cssRules).some((rule) => (
+          rule instanceof CSSStyleRule
+          && rule.selectorText === '.history-search-input::-webkit-search-cancel-button'
+          && (rule.style.appearance === 'none' || rule.style.getPropertyValue('-webkit-appearance') === 'none')
+        ))
+      } catch {
+        return false
+      }
+    }))).toBe(true)
     await expectMinHitArea(page.getByRole('button', { name: 'Wyczyść wyszukiwanie' }), 'history clear search')
 
     await page.goto('/progress')

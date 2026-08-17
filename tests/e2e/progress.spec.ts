@@ -121,6 +121,7 @@ test.describe('Progress analytics', () => {
 
     const rows = records.locator('.progress-record-feature, .progress-record-ledger-row')
     expect(await rows.count()).toBeGreaterThan(0)
+    await expect(records.getByText('PR', { exact: true })).toHaveCount(0)
     for (let index = 0; index < await rows.count(); index += 1) {
       await expectNoHorizontalOverflow(rows.nth(index), viewport!.width)
     }

@@ -218,7 +218,7 @@ export default function ExerciseDetailPage() {
 
           <p className="hero-editorial-sub">
             {sessions.length > 0
-              ? `${sessions.length} ${polishPlural(sessions.length, 'sesja', 'sesje', 'sesji')} w historii · ${formatVolume(totalVolumeAll)} łącznej objętości`
+              ? `${sessions.length} ${polishPlural(sessions.length, 'ostatnia sesja', 'ostatnie sesje', 'ostatnich sesji')} · ${formatVolume(totalVolumeAll)} w tych sesjach`
               : 'Brak historii. Dodaj to ćwiczenie do sesji, żeby zacząć śledzić progres.'}
           </p>
 

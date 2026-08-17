@@ -23,6 +23,7 @@ import {
   type TemplateExercise,
   type WorkoutTemplate,
 } from '../lib/templateService'
+import { polishPlural } from '../lib/polishPlural'
 
 type DraftDay = TemplateDay & { _id: string }
 
@@ -317,7 +318,7 @@ export default function TemplateEditorPage() {
           <div className="planner-mini-stats" aria-label="Podsumowanie edytowanego planu">
             <span>
               <strong>{days.length}</strong>
-              dni
+              {polishPlural(days.length, 'dzień', 'dni', 'dni')}
             </span>
             <span>
               <strong>{totalExercises}</strong>
@@ -482,6 +483,41 @@ export default function TemplateEditorPage() {
                 </section>
               )
             })}
+
+            <div className="template-editor-bottom-actions">
+              <motion.button
+                type="button"
+                onClick={addDay}
+                className="planner-secondary-action template-editor-mobile-add-day mobile-touch-target"
+                whileTap={{ scale: 0.97 }}
+              >
+                <Plus size={15} />
+                Dodaj dzień
+              </motion.button>
+
+              <motion.button
+                type="submit"
+                disabled={!canSubmit || saveState === 'saving' || saveState === 'error' || saveState === 'persisted-clean'}
+                aria-label={saveState === 'saving'
+                  ? 'Zapisuję… w formularzu'
+                  : saveState === 'persisted-clean'
+                    ? 'Zapisano w formularzu'
+                    : isEdit
+                      ? 'Zapisz zmiany w formularzu'
+                      : 'Zapisz szablon w formularzu'}
+                className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
+                whileTap={{ scale: 0.97 }}
+              >
+                <Pencil size={15} />
+                {saveState === 'saving'
+                  ? 'Zapisuję…'
+                  : saveState === 'persisted-clean'
+                    ? 'Zapisano'
+                    : isEdit
+                      ? 'Zapisz zmiany'
+                      : 'Zapisz szablon'}
+              </motion.button>
+            </div>
           </div>
 
           <aside className="desktop-sticky hidden xl:block template-editor-side">
@@ -515,40 +551,6 @@ export default function TemplateEditorPage() {
           </aside>
         </div>
 
-        <div className="template-editor-bottom-actions">
-          <motion.button
-            type="button"
-            onClick={addDay}
-            className="planner-secondary-action template-editor-mobile-add-day mobile-touch-target"
-            whileTap={{ scale: 0.97 }}
-          >
-            <Plus size={15} />
-            Dodaj dzień
-          </motion.button>
-
-          <motion.button
-            type="submit"
-            disabled={!canSubmit || saveState === 'saving' || saveState === 'error' || saveState === 'persisted-clean'}
-            aria-label={saveState === 'saving'
-              ? 'Zapisuję… w formularzu'
-              : saveState === 'persisted-clean'
-                ? 'Zapisano w formularzu'
-                : isEdit
-                  ? 'Zapisz zmiany w formularzu'
-                  : 'Zapisz szablon w formularzu'}
-            className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
-            whileTap={{ scale: 0.97 }}
-          >
-            <Pencil size={15} />
-            {saveState === 'saving'
-              ? 'Zapisuję…'
-              : saveState === 'persisted-clean'
-                ? 'Zapisano'
-                : isEdit
-                  ? 'Zapisz zmiany'
-                  : 'Zapisz szablon'}
-          </motion.button>
-        </div>
         <TemplateSaveDock
           state={saveState}
           isEdit={isEdit}

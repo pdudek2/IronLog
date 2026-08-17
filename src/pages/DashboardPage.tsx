@@ -740,7 +740,9 @@ export default function DashboardPage() {
                     </div>
 
                     <p className="dashboard-week-empty-note">
-                      Statystyki pojawią się po pierwszej zapisanej sesji.
+                      {workouts.length === 0
+                        ? 'Statystyki tygodnia pojawią się po pierwszym treningu.'
+                        : 'Brak zapisanych treningów w tym tygodniu.'}
                     </p>
                   </div>
                 ) : (

@@ -236,6 +236,7 @@ describe('ProgressPage', () => {
     const ledger = screen.getByLabelText('Pozostałe rekordy')
     expect(featured.querySelectorAll('.progress-record-feature')).toHaveLength(1)
     expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(2)
+    expect(screen.queryByText('PR', { exact: true })).not.toBeInTheDocument()
   })
 
   it('shows the hard error only when both datasets fail with no previous snapshot', async () => {

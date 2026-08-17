@@ -101,6 +101,43 @@ it('keeps sessions and records visible while user exercise metadata is retryable
   expect(await screen.findByRole('heading', { name: 'Wiosłowanie własne' })).toBeInTheDocument()
 })
 
+it('labels the capped session slice separately from the all-time session count', async () => {
+  mocks.getUserExercises.mockResolvedValue([{
+    id: 'custom-row',
+    name: 'Wiosłowanie własne',
+    category: 'back',
+    equipment: 'cable',
+    muscles: ['back'],
+  }])
+  mocks.getExerciseSessions.mockResolvedValue(Array.from({ length: 10 }, (_, index) => ({
+    id: `session-${index}`,
+    workoutId: `workout-${index}`,
+    startedAt: Date.now() - (index + 1) * 86_400_000,
+    label: null,
+    totalSets: 3,
+    totalReps: 24,
+    totalVolume: 1_000,
+    bestSetWeight: 80,
+    bestSetReps: 8,
+    sets: [{ weight: 80, reps: 8 }],
+  })))
+  mocks.getExerciseRecord.mockResolvedValue({
+    exerciseId: 'custom-row',
+    exerciseName: 'Wiosłowanie własne',
+    maxWeight: 95,
+    maxReps: 10,
+    totalSessions: 14,
+    bestVolume: 2_100,
+    lastPerformedAt: Date.now() - 86_400_000,
+  })
+
+  render(<ExerciseDetailPage />)
+
+  expect(await screen.findByText(/10 ostatnich sesji/)).toBeInTheDocument()
+  expect(screen.queryByText(/sesji w historii/)).not.toBeInTheDocument()
+  expect(screen.getByText('Sesje').parentElement).toHaveTextContent('14')
+})
+
 it('shows a not-found state for an unknown global exercise without loading history', async () => {
   mocks.params.source = 'global'
   mocks.params.id = 'does-not-exist'

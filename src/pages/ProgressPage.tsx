@@ -793,7 +793,6 @@ export default function ProgressPage() {
                   style={{ '--record-accent': MUSCLE_COLORS[recordAccentKeys[index % recordAccentKeys.length] ?? 'chest'] } as CSSProperties}
                 >
                   <div className="progress-record-feature-top">
-                    <span className="progress-record-rank">PR</span>
                     <span>{formatDate(rec.lastPerformedAt)}</span>
                   </div>
 
@@ -822,7 +821,6 @@ export default function ProgressPage() {
                     className="progress-record-ledger-row"
                     style={{ '--record-accent': MUSCLE_COLORS[recordAccentKeys[(index + featuredRecords.length) % recordAccentKeys.length] ?? 'chest'] } as CSSProperties}
                   >
-                    <span className="progress-record-rank">PR</span>
                     <div className="progress-record-ledger-main">
                       <strong>{rec.exerciseName}</strong>
                       <small>

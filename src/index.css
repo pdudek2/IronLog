@@ -9924,7 +9924,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .coach-chat-panel {
-    height: max(21rem, calc(100dvh - 12.5rem - 5.75rem - env(safe-area-inset-bottom, 0px)));
+    height: max(21rem, calc(100dvh - 20rem - env(safe-area-inset-bottom, 0px)));
     padding: 0.8rem 0;
   }
 

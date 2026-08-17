@@ -138,6 +138,14 @@ test.describe('Chat UI', () => {
     await expect(composer).toBeInViewport()
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
 
+    if (testInfo.project.name === 'mobile') {
+      const sendBox = await page.getByRole('button', { name: 'Wyślij' }).boundingBox()
+      const bottomNavBox = await page.getByRole('navigation', { name: 'Nawigacja dolna' }).boundingBox()
+      expect(sendBox).not.toBeNull()
+      expect(bottomNavBox).not.toBeNull()
+      expect(sendBox!.y + sendBox!.height).toBeLessThanOrEqual(bottomNavBox!.y + 1)
+    }
+
     const measure = await page.locator('.coach-message[data-role="assistant"] .chat-markdown')
       .first()
       .evaluate((element) => element.getBoundingClientRect().width)

@@ -432,6 +432,7 @@ describe('ProgressPage', () => {
     expect(selector).toHaveValue('global:bench')
     expect(screen.getAllByTestId('strength-line')).toHaveLength(1)
     expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'global:bench')
+    expect(screen.getByRole('img', { name: /Progresja ciężaru dla 1 ćwiczenia\./ })).toBeInTheDocument()
     expect(screen.getByText('Ostatnio 80 kg')).toBeInTheDocument()
     expect(screen.getByText('+10 kg względem pierwszego w zakresie')).toBeInTheDocument()
 
@@ -440,6 +441,59 @@ describe('ProgressPage', () => {
     expect(screen.getAllByTestId('strength-line')).toHaveLength(1)
     expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'user:row')
     expect(screen.getByText('Ostatnio 60 kg')).toBeInTheDocument()
+  })
+
+  it('disambiguates only colliding strength names by source in the selector and insight', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      sessions: [
+        session('global-1', 4, { bestSetWeight: 70 }),
+        session('global-2', 3, { bestSetWeight: 75 }),
+        session('global-3', 2, { bestSetWeight: 80 }),
+        session('global-4', 2, { bestSetWeight: 78 }),
+        session('user-1', 4, { exerciseSource: 'user', bestSetWeight: 50 }),
+        session('user-2', 3, { exerciseSource: 'user', bestSetWeight: 55 }),
+        session('user-3', 1, { exerciseSource: 'user', bestSetWeight: 60 }),
+        session('row-1', 1, {
+          exerciseId: 'row',
+          exerciseName: 'Wiosłowanie',
+          bestSetWeight: 50,
+        }),
+      ],
+    }))
+
+    render(<ProgressPage />)
+
+    const selector = await screen.findByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+    expect(within(selector).getByRole('option', { name: 'Wyciskanie sztangi · globalne' })).toBeInTheDocument()
+    expect(within(selector).getByRole('option', { name: 'Wyciskanie sztangi · moje' })).toBeInTheDocument()
+    expect(within(selector).getByRole('option', { name: 'Wiosłowanie' })).toBeInTheDocument()
+    expect(within(selector).queryByRole('option', { name: /Wiosłowanie ·/ })).not.toBeInTheDocument()
+
+    fireEvent.change(selector, { target: { value: 'user:bench' } })
+
+    const insight = screen.getByLabelText('Trend wybranego ćwiczenia')
+    expect(within(insight).getByText('Wyciskanie sztangi · moje')).toBeInTheDocument()
+    expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'user:bench')
+  })
+
+  it('keeps the strength panel mounted when completed sessions have no positive weight', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      sessions: [
+        session('zero-1', 2, { bestSetWeight: 0 }),
+        session('zero-2', 1, { bestSetWeight: 0 }),
+      ],
+    }))
+
+    render(<ProgressPage />)
+
+    const heading = await screen.findByRole('heading', { name: 'Progresja ciężaru' })
+    const panel = heading.closest('section')
+    expect(panel).not.toBeNull()
+    expect(within(panel!).getByText(
+      'Brak zapisanych ciężarów większych od 0 kg w tym zakresie. Uzupełnij ciężar w serii, aby zobaczyć progresję.',
+    )).toBeInTheDocument()
+    expect(within(panel!).queryByRole('combobox', { name: 'Ćwiczenie na wykresie' })).not.toBeInTheDocument()
+    expect(screen.queryByTestId('strength-line')).not.toBeInTheDocument()
   })
 
   it('falls back to the most frequent valid series and evaluates readiness per exercise', async () => {

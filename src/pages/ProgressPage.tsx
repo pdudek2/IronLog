@@ -118,7 +118,8 @@ function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSer
     return `${exerciseName}: ostatnio ${latest} kg, max ${top} kg`
   })
 
-  return `Progresja ciężaru dla ${series.length} ćwiczeń. ${summaries.join('; ')}.`
+  const exerciseCount = series.length === 1 ? '1 ćwiczenia' : `${series.length} ćwiczeń`
+  return `Progresja ciężaru dla ${exerciseCount}. ${summaries.join('; ')}.`
 }
 
 function summarizeMuscleBalance(data: MuscleBalancePoint[]): string {
@@ -336,6 +337,10 @@ export default function ProgressPage() {
     () => aggregateStrengthProgression(currentSessions),
     [currentSessions],
   )
+  const strengthNameCounts = new Map<string, number>()
+  for (const { exerciseName } of strengthData.series) {
+    strengthNameCounts.set(exerciseName, (strengthNameCounts.get(exerciseName) ?? 0) + 1)
+  }
   const effectiveStrengthKey = strengthData.series.some(({ key }) => key === selectedStrengthKey)
     ? selectedStrengthKey
     : strengthData.series[0]?.key ?? null
@@ -558,7 +563,12 @@ export default function ProgressPage() {
           {selectedStrengthSeries && selectedStrengthPoints.length >= 3 && (
             <section className="progress-strength-insight" aria-label="Trend wybranego ćwiczenia">
               <div>
-                <span>{selectedStrengthSeries.exerciseName}</span>
+                <span>
+                  {selectedStrengthSeries.exerciseName}
+                  {(strengthNameCounts.get(selectedStrengthSeries.exerciseName) ?? 0) > 1
+                    ? ` · ${selectedStrengthSeries.key.startsWith('user:') ? 'moje' : 'globalne'}`
+                    : ''}
+                </span>
                 <strong>Ostatnio {latestStrength} kg</strong>
               </div>
               <p>
@@ -626,15 +636,15 @@ export default function ProgressPage() {
               </div>
             </motion.section>
 
-            {selectedStrengthSeries && (
-              <section
-                className={`progress-panel ${selectedStrengthPoints.length < 3 ? 'progress-panel--compact' : 'progress-panel--wide'}`}
-              >
-                <div className="progress-panel-head progress-panel-head--strength">
-                  <div>
-                    <p>Siła</p>
-                    <h2>Progresja ciężaru</h2>
-                  </div>
+            <section
+              className={`progress-panel ${!selectedStrengthSeries || selectedStrengthPoints.length < 3 ? 'progress-panel--compact' : 'progress-panel--wide'}`}
+            >
+              <div className="progress-panel-head progress-panel-head--strength">
+                <div>
+                  <p>Siła</p>
+                  <h2>Progresja ciężaru</h2>
+                </div>
+                {selectedStrengthSeries && (
                   <label className="progress-strength-picker">
                     <span>Ćwiczenie</span>
                     <select
@@ -643,58 +653,67 @@ export default function ProgressPage() {
                       onChange={(event) => setSelectedStrengthKey(event.target.value)}
                     >
                       {strengthData.series.map((series) => (
-                        <option key={series.key} value={series.key}>{series.exerciseName}</option>
+                        <option key={series.key} value={series.key}>
+                          {series.exerciseName}
+                          {(strengthNameCounts.get(series.exerciseName) ?? 0) > 1
+                            ? ` · ${series.key.startsWith('user:') ? 'moje' : 'globalne'}`
+                            : ''}
+                        </option>
                       ))}
                     </select>
                   </label>
-                </div>
-                {selectedStrengthPoints.length < 3 ? (
-                  <>
-                    <p className="progress-muted-copy">
-                      Potrzebujesz jeszcze {missingStrengthSessions} dni z zapisanym ciężarem do wykresu.
-                    </p>
-                    <div className="progress-session-markers" aria-label={`${selectedStrengthPoints.length} z 3 dni do wykresu`}>
-                      {Array.from({ length: 3 }).map((_, index) => (
-                        <span key={index} data-active={index < selectedStrengthPoints.length} />
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="progress-chart-frame progress-chart-frame--strength" role="img" aria-label={strengthProgressionLabel}>
-                    <ResponsiveContainer width="100%" aspect={2.05} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
-                      <LineChart data={selectedStrengthPoints} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
-                        <XAxis
-                          dataKey="date"
-                          tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          interval="preserveStartEnd"
-                        />
-                        <YAxis
-                          tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                          axisLine={false}
-                          tickLine={false}
-                          unit=" kg"
-                          width={56}
-                        />
-                        <Tooltip content={<DarkTooltip />} />
-                        {selectedStrengthSeries && (
-                          <Line
-                            type="monotone"
-                            dataKey={selectedStrengthSeries.key}
-                            name={selectedStrengthSeries.exerciseName}
-                            stroke="var(--accent)"
-                            strokeWidth={2.35}
-                            dot={{ r: 3, fill: 'var(--accent)', strokeWidth: 0 }}
-                          />
-                        )}
-                      </LineChart>
-                    </ResponsiveContainer>
-                  </div>
                 )}
-              </section>
-            )}
+              </div>
+              {!selectedStrengthSeries ? (
+                <p className="progress-muted-copy">
+                  Brak zapisanych ciężarów większych od 0 kg w tym zakresie. Uzupełnij ciężar w serii, aby zobaczyć progresję.
+                </p>
+              ) : selectedStrengthPoints.length < 3 ? (
+                <>
+                  <p className="progress-muted-copy">
+                    Potrzebujesz jeszcze {missingStrengthSessions} dni z zapisanym ciężarem do wykresu.
+                  </p>
+                  <div className="progress-session-markers" aria-label={`${selectedStrengthPoints.length} z 3 dni do wykresu`}>
+                    {Array.from({ length: 3 }).map((_, index) => (
+                      <span key={index} data-active={index < selectedStrengthPoints.length} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="progress-chart-frame progress-chart-frame--strength" role="img" aria-label={strengthProgressionLabel}>
+                  <ResponsiveContainer width="100%" aspect={2.05} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
+                    <LineChart data={selectedStrengthPoints} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
+                      <XAxis
+                        dataKey="date"
+                        tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                        axisLine={false}
+                        tickLine={false}
+                        interval="preserveStartEnd"
+                      />
+                      <YAxis
+                        tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                        axisLine={false}
+                        tickLine={false}
+                        unit=" kg"
+                        width={56}
+                      />
+                      <Tooltip content={<DarkTooltip />} />
+                      {selectedStrengthSeries && (
+                        <Line
+                          type="monotone"
+                          dataKey={selectedStrengthSeries.key}
+                          name={selectedStrengthSeries.exerciseName}
+                          stroke="var(--accent)"
+                          strokeWidth={2.35}
+                          dot={{ r: 3, fill: 'var(--accent)', strokeWidth: 0 }}
+                        />
+                      )}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </section>
 
             {muscleData.length > 0 && (
               <motion.section

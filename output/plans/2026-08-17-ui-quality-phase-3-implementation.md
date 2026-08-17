@@ -135,7 +135,7 @@ Expected: PASS; istniejący test rozdzielenia global/user nadal przechodzi.
 - Consumes: uporządkowane `strengthData.series` z Task 1 oraz `StrengthPoint[]`.
 - Produces: lokalny `selectedStrengthKey`, wyliczony `effectiveStrengthKey`, `selectedStrengthSeries`, `selectedStrengthPoints` i jeden `<Line>`; widoczny insight opisuje ostatni, maksymalny i zmianę względem pierwszego top setu w zakresie.
 
-- [ ] **Step 1: Dodać regresję wyboru jednej source-aware serii**
+- [x] **Step 1: Dodać regresję wyboru jednej source-aware serii**
 
 Zastąpić test oczekujący dwóch linii w `ProgressPage.test.tsx` kontraktem:
 
@@ -178,7 +178,7 @@ it('renders one strength series and switches it with a source-aware selector', a
 })
 ```
 
-- [ ] **Step 2: Dodać regresję fallbacku i krótkiej serii**
+- [x] **Step 2: Dodać regresję fallbacku i krótkiej serii**
 
 W tym samym pliku dodać:
 
@@ -208,7 +208,7 @@ it('falls back to the most frequent valid series and evaluates readiness per exe
 })
 ```
 
-- [ ] **Step 3: Uruchomić test strony i potwierdzić porażkę**
+- [x] **Step 3: Uruchomić test strony i potwierdzić porażkę**
 
 Run:
 
@@ -218,7 +218,7 @@ NODE_OPTIONS=--no-experimental-webstorage npx vitest run src/pages/__tests__/Pro
 
 Expected: FAIL, bo wykres renderuje wiele linii, nie ma selektora i ocenia próg trzech dni wspólnie dla wszystkich ćwiczeń.
 
-- [ ] **Step 4: Dodać minimalny lokalny wybór i derivations**
+- [x] **Step 4: Dodać minimalny lokalny wybór i derivations**
 
 W `ProgressPage` dodać tylko stan użytkownika:
 
@@ -248,7 +248,7 @@ const missingStrengthSessions = Math.max(0, 3 - selectedStrengthPoints.length)
 
 Nie zapisywać wyboru do Zustand/localStorage; wybór jest lokalny dla bieżącej analizy.
 
-- [ ] **Step 5: Zastąpić wiele linii jednym selektorem i jednym `<Line>`**
+- [x] **Step 5: Zastąpić wiele linii jednym selektorem i jednym `<Line>`**
 
 W nagłówku panelu dodać natywny select:
 
@@ -284,7 +284,7 @@ Warunek krótkiej serii oprzeć na `selectedStrengthPoints.length`. `LineChart` 
 
 Usunąć `.progress-legend`; selektor jest jedynym identyfikatorem serii.
 
-- [ ] **Step 6: Dodać jawny insight przed gęstą analityką**
+- [x] **Step 6: Dodać jawny insight przed gęstą analityką**
 
 Przed `.progress-analysis-grid` wyrenderować dla kompletnej wybranej serii:
 
@@ -309,7 +309,7 @@ Przed `.progress-analysis-grid` wyrenderować dla kompletnej wybranej serii:
 
 W CSS utrzymać płaską powierzchnię, minimum 12 px dla etykiet i ustawić `select` na minimum `2.75rem` wysokości. Insight ma być widoczny przed wykresami na mobile i nie może dublować wielkiego hero.
 
-- [ ] **Step 7: Uruchomić test strony**
+- [x] **Step 7: Uruchomić test strony**
 
 Run: komenda ze Step 3.
 
@@ -606,7 +606,7 @@ Expected: wszystkie PASS. Znany teardown `Firestore Listen net::ERR_ABORTED` rap
 
 Wynik Task 5: targetowane unit `38/38` PASS; pełne unit `590/590`, lint i build PASS. Kontrakty E2E produktu przeszły na desktop/mobile, a po ich zakończeniu jeden istniejący test desktop został oznaczony jako failed wyłącznie przez znany teardown `Firestore Listen net::ERR_ABORTED`; aplikacji ani warstwy diagnostycznej nie wyciszano. `git diff --check` jest czysty.
 
-- [ ] **Step 7: Wykonać bezpośrednią obserwację serialną**
+- [x] **Step 7: Wykonać bezpośrednią obserwację serialną**
 
 Po ostatniej zmianie obejrzeć w jednym świeżym runtime:
 
@@ -624,8 +624,8 @@ Zaktualizować parent roadmap i ten receipt. Etapy 4–5 oraz decyzje B-02, M-07
 
 ### Receipt Task 5
 
-- **Stan:** `DONE_WITH_CONCERNS` — implementacja, kontrakty, gate’y i serialna obserwacja struktury/interakcji są wykonane; zamknięcie Step 7–8 czeka na niezależny odczyt obrazu przez kontroler i integrację.
-- **Visual evidence:** Pending — surface: Playwright CLI, sesja `ui-quality-phase-3`; blocker: finalne screenshoty zostały zapisane po ostatniej zmianie kodu, ale zgodnie z kontraktem kontroler musi wykonać osobne `view_image`, zanim receipt może otrzymać status pixel-level `Observed`.
+- **Stan:** `READY_FOR_INTEGRATION` — implementacja, kontrakty, gate’y, serialna obserwacja i niezależny odczyt obrazu są ukończone; Step 8 pozostaje otwarty wyłącznie do wyboru i wykonania integracji po final review.
+- **Visual evidence:** Observed — surface: Playwright CLI, sesja `ui-quality-phase-3`; image proof: osobne ukończone wywołanie `view_image` odczytało siedem finalnych screenshotów zapisanych po ostatniej zmianie i zwróciło widoczne stany: jedną wybraną linię i insight na Progress desktop/mobile, miesiące i jawny detail heatmapy, widoczne `Ostatnio`/`Maksimum` oraz węższe słupki detalu, a także celowe short/empty states.
 - **Obserwacja struktury/interakcji:** domyślny Bench miał jedną linię; wybór Squat zwrócił `Ostatnio 110 kg`; heatmapa po wyborze dnia zwróciła `9 sie · 1.0k kg`; przy 320/393 px insight był przed wykresem, oba selecty miały 44 px, liczba linii wynosiła 1, a poziomy overflow był niedodatni. Detal miał jawne `1.2k kg`/`1.4k kg`, semantyczny `role=list`, wysokość 144 px i zero overflow wykresu na 393/1440 px. Krótka seria pokazała `1 z 3 dni do wykresu` bez osi, a pusty zakres celowy status.
 - **Finalne screenshoty:** `output/playwright/ui-quality-phase-3/progress-desktop-1440.png`, `progress-mobile-320.png`, `progress-mobile-393.png`, `exercise-detail-desktop-1440.png`, `exercise-detail-mobile-393.png`, `progress-short-series-1440.png`, `progress-empty-range-1440.png`.
 - **Scope po Task 5:** etapy 4–5 i decyzje B-02, M-07, M-14 pozostają otwarte. Etap 4 należy rozbić na Coach, Historia/listy i shell/404.

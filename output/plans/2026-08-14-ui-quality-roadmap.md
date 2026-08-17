@@ -5,7 +5,7 @@
 **Źródła:** audyt Codex `ui-quality-gate` + `app-screen-refiner`, audyt Claude oraz wzajemna weryfikacja findings
 **Tryb realizacji:** osobne, małe release slices; bez jednego mega-PR
 
-**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Implementacja etapu 3 i kontrakty runtime są gotowe w osobnym worktree; [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md) pozostaje otwarty do niezależnego odczytu finalnych screenshotów i integracji. Etapy 4–5 oraz decyzje B-02, M-07 i M-14 pozostają otwarte.
+**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Implementacja etapu 3, kontrakty runtime i bezpośrednia obserwacja są ukończone na `ui-quality-phase-3`; [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md) ma status `READY_FOR_INTEGRATION`, a wpis integracyjny pozostaje otwarty do wyboru po final review. Etapy 4–5 oraz decyzje B-02, M-07 i M-14 pozostają otwarte.
 
 Materiały źródłowe:
 

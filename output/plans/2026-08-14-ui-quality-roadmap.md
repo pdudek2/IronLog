@@ -5,7 +5,7 @@
 **Źródła:** audyt Codex `ui-quality-gate` + `app-screen-refiner`, audyt Claude oraz wzajemna weryfikacja findings
 **Tryb realizacji:** osobne, małe release slices; bez jednego mega-PR
 
-**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md).
+**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Decyzja wejściowa etapu 3 zatwierdzona 2026-08-17; [plan implementacji etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md) jest gotowy.
 
 Materiały źródłowe:
 
@@ -110,7 +110,7 @@ Ten etap może być realizowany równolegle z etapem 1, ale nie zastępuje jego 
 
 **Priorytet:** P1
 **Rozmiar:** L
-**Warunek wejścia:** decyzja o modelu wykresu progresji siłowej.
+**Warunek wejścia:** spełniony 2026-08-17 — jedno wybrane ćwiczenie naraz, domyślnie najczęściej wykonywane, bez normalizacji.
 
 ### Rekomendowany wariant minimalny
 

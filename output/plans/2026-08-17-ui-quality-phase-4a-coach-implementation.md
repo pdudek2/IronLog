@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:executing-plans` or `superpowers:subagent-driven-development` to execute this plan task by task. Keep the checkboxes current.
 
-**Status:** READY
+**Status:** READY_FOR_INTEGRATION
 
 **Goal:** Zamienić Coacha w zwartą powierzchnię roboczą, która jednoznacznie odróżnia tryb tylko do odczytu od trybu aktywnego, utrzymuje composer w zasięgu po konfiguracji i poprawnie pokazuje listy Markdown.
 
@@ -54,7 +54,7 @@
 - The full `AiKeyPanel` is absent until the action is used, then its existing `Twój klucz` input appears.
 - Removing/rejecting a key returns to the same compact state without clearing messages.
 
-- [ ] **Step 1: Replace the old no-key ordering test with the product contract**
+- [x] **Step 1: Replace the old no-key ordering test with the product contract**
 
 In `src/pages/__tests__/ChatPageStreamLifecycle.test.tsx`, replace `puts API key configuration before the blocked chat when no key is saved` with a test that starts a conversation, removes `mocks.apiKey`, triggers the existing retry path, and asserts:
 
@@ -75,7 +75,7 @@ Keep the existing assertion that no second `streamChatReply` call occurs after t
 
 In `src/pages/__tests__/ChatPageAccessibility.test.tsx`, make `mocks.apiKey` mutable as in the lifecycle suite and add a no-key test asserting the status line reads `Tryb tylko do odczytu`, the configuration trigger has an accessible name, and `Plan` can be inspected while `Generuj plan` remains disabled.
 
-- [ ] **Step 2: Run the focused tests and confirm RED**
+- [x] **Step 2: Run the focused tests and confirm RED**
 
 Run:
 
@@ -87,7 +87,7 @@ NODE_OPTIONS=--no-experimental-webstorage npx vitest run \
 
 Expected: FAIL because the full `AiKeyPanel` is currently mounted immediately and starter prompts remain as disabled controls.
 
-- [ ] **Step 3: Implement the state with existing pieces only**
+- [x] **Step 3: Implement the state with existing pieces only**
 
 In `src/pages/ChatPage.tsx`:
 
@@ -104,13 +104,13 @@ In `src/pages/ChatPage.tsx`:
 
 Use local JSX and existing `Button`; do not extract `CoachKeyGate` for this single use.
 
-- [ ] **Step 4: Re-run focused tests and confirm GREEN**
+- [x] **Step 4: Re-run focused tests and confirm GREEN**
 
 Run the command from Step 2.
 
 Expected: both files PASS and no React act/console warnings.
 
-- [ ] **Step 5: Commit the state contract**
+- [x] **Step 5: Commit the state contract**
 
 ```bash
 git add src/pages/ChatPage.tsx \
@@ -133,7 +133,7 @@ git commit -m "fix: clarify coach read only state"
 - Long responses stay within a centered reading measure; the thread can scroll independently without moving the composer.
 - No-key configuration expands in the same main column without recreating stacked decorative cards.
 
-- [ ] **Step 1: Add geometry assertions to the existing E2E file**
+- [x] **Step 1: Add geometry assertions to the existing E2E file**
 
 In `tests/e2e/chat.spec.ts`:
 
@@ -157,7 +157,7 @@ expect(measure).toBeLessThanOrEqual(760)
 
 Seed/use the existing demo Markdown or send a response through `installMockAiRuntime`; do not call Anthropic.
 
-- [ ] **Step 2: Run the new E2E contract and confirm RED**
+- [x] **Step 2: Run the new E2E contract and confirm RED**
 
 Run:
 
@@ -169,7 +169,7 @@ npx playwright test tests/e2e/chat.spec.ts \
 
 Expected: FAIL on the old immediate key panel and at least one composer/measure assertion.
 
-- [ ] **Step 3: Make the smallest local CSS change**
+- [x] **Step 3: Make the smallest local CSS change**
 
 In the final `/* AI Coach */` layer of `src/index.css`:
 
@@ -183,7 +183,7 @@ In the final `/* AI Coach */` layer of `src/index.css`:
 
 Do not edit global `.page-title`, navigation geometry or unrelated workbench pages in this slice.
 
-- [ ] **Step 4: Re-run E2E geometry and focused unit tests**
+- [x] **Step 4: Re-run E2E geometry and focused unit tests**
 
 Run:
 
@@ -199,7 +199,7 @@ NODE_OPTIONS=--no-experimental-webstorage npx vitest run \
 
 Expected: PASS at both Playwright breakpoints and in both unit files.
 
-- [ ] **Step 5: Commit the geometry**
+- [x] **Step 5: Commit the geometry**
 
 ```bash
 git add src/index.css tests/e2e/chat.spec.ts
@@ -217,7 +217,7 @@ git commit -m "fix: tighten coach workbench layout"
 
 **Contract:** semantic list markup already produced by `ChatMarkdown` remains unchanged; CSS restores visible bullets/numbers after the global reset.
 
-- [ ] **Step 1: Add a focused semantic and escaping test**
+- [x] **Step 1: Add a focused semantic and escaping test**
 
 Create `src/components/__tests__/ChatMarkdown.test.tsx`:
 
@@ -240,7 +240,7 @@ describe('ChatMarkdown', () => {
 })
 ```
 
-- [ ] **Step 2: Confirm the semantic test is already GREEN**
+- [x] **Step 2: Confirm the semantic test is already GREEN**
 
 Run:
 
@@ -250,7 +250,27 @@ NODE_OPTIONS=--no-experimental-webstorage npx vitest run src/components/__tests_
 
 Expected: PASS. This proves the renderer is not the root cause and should remain unchanged.
 
-- [ ] **Step 3: Restore list markers locally**
+- [x] **Step 3: Add a browser-level computed-style assertion and confirm RED**
+
+In the configured E2E flow in `tests/e2e/chat.spec.ts`, use the existing demo list or a mocked reply containing both list kinds and assert:
+
+```ts
+await expect(page.locator('.chat-markdown li').first()).toBeVisible()
+await expect(page.locator('.chat-markdown ul').first()).toHaveCSS('list-style-type', 'disc')
+await expect(page.locator('.chat-markdown ol').first()).toHaveCSS('list-style-type', 'decimal')
+```
+
+Do not use screenshot pixels as the only list-marker assertion.
+
+Run:
+
+```bash
+npx playwright test tests/e2e/chat.spec.ts --project=desktop --project=mobile --retries=0 --grep "Markdown lists"
+```
+
+Expected: FAIL because the current global reset leaves both list kinds without visible markers.
+
+- [x] **Step 4: Restore list markers locally**
 
 In `src/index.css`, extend the existing `.chat-markdown ul, .chat-markdown ol` block:
 
@@ -273,19 +293,7 @@ In `src/index.css`, extend the existing `.chat-markdown ul, .chat-markdown ol` b
 
 Do not change `ChatMarkdown.tsx` unless the semantic test exposes a real parser defect.
 
-- [ ] **Step 4: Add a browser-level computed-style assertion**
-
-In the configured E2E flow in `tests/e2e/chat.spec.ts`, use the existing demo list or a mocked reply containing both list kinds and assert:
-
-```ts
-await expect(page.locator('.chat-markdown li').first()).toBeVisible()
-await expect(page.locator('.chat-markdown ul').first()).toHaveCSS('list-style-type', 'disc')
-await expect(page.locator('.chat-markdown ol').first()).toHaveCSS('list-style-type', 'decimal')
-```
-
-Do not use screenshot pixels as the only list-marker assertion.
-
-- [ ] **Step 5: Run focused checks and commit**
+- [x] **Step 5: Run focused checks and commit**
 
 ```bash
 NODE_OPTIONS=--no-experimental-webstorage npx vitest run src/components/__tests__/ChatMarkdown.test.tsx
@@ -306,7 +314,7 @@ git commit -m "fix: restore coach markdown list markers"
 - Create: `output/playwright/ui-quality-phase-4a-coach/coach-configured-mobile.png`
 - Create: `output/playwright/ui-quality-phase-4a-coach/coach-configured-desktop.png`
 
-- [ ] **Step 1: Run target checks**
+- [x] **Step 1: Run target checks**
 
 ```bash
 NODE_OPTIONS=--no-experimental-webstorage npx vitest run \
@@ -320,7 +328,7 @@ npx playwright test tests/e2e/chat.spec.ts \
 
 Expected: all assertions PASS. A runner-only teardown diagnostic may be qualified only after every product assertion completed and the same teardown signature is reproduced; do not suppress app errors.
 
-- [ ] **Step 2: Observe the actual product serially in a fresh runtime**
+- [x] **Step 2: Observe the actual product serially in a fresh runtime**
 
 Use one named Playwright CLI session and inspect `/chat` in this order:
 
@@ -333,7 +341,7 @@ Use one named Playwright CLI session and inspect `/chat` in this order:
 
 Save screenshots to `output/playwright/ui-quality-phase-4a-coach/`, then inspect each saved file separately with the image viewer before marking the visual receipt `Observed`.
 
-- [ ] **Step 3: Run full repository gates**
+- [x] **Step 3: Run full repository gates**
 
 ```bash
 npm run lint
@@ -344,7 +352,7 @@ git diff --check
 
 Expected: all PASS. Preserve unrelated untracked `output/` artifacts.
 
-- [ ] **Step 4: Self-review the scoped diff**
+- [x] **Step 4: Self-review the scoped diff**
 
 Review `git diff "$(git merge-base main HEAD)"...HEAD` for:
 
@@ -357,26 +365,37 @@ Review `git diff "$(git merge-base main HEAD)"...HEAD` for:
 
 Fix any Critical/Important finding, rerun its focused gate, then rerun the full gates.
 
-- [ ] **Step 5: Close the slice and preserve parent lineage**
+- [x] **Step 5: Close the slice and preserve parent lineage**
 
 Update this plan with:
 
-- `Status: DONE`;
-- commit range and integration commit;
+- `Status: READY_FOR_INTEGRATION`;
+- branch commit range; leave the integration commit explicitly pending;
 - target/full gate counts;
 - visual receipt `Observed` with screenshot paths;
 - any qualified diagnostic and exact reason;
 - remaining parent scope: `Historia/listy`, `shell/404`, etap 5, B-02, M-07, M-14.
 
-Update the parent roadmap execution line to mark slice 4A Coach integrated and name `Etap 4B — Historia/listy` as next. Do not mark all of etap 4 complete.
+Update the parent roadmap execution line to mark slice 4A Coach verified on its branch and pending integration. Name `Etap 4B — Historia/listy` as next after integration, but do not mark 4A or all of etap 4 integrated yet. Post-merge closeout owns `DONE` and the integration commit.
 
 ```bash
 git add output/plans/2026-08-17-ui-quality-phase-4a-coach-implementation.md \
   output/plans/2026-08-14-ui-quality-roadmap.md
-git commit -m "docs: close coach workbench slice"
+git commit -m "docs: prepare coach workbench integration"
 ```
 
 No push without explicit authority.
+
+## Integration receipt
+
+- **Branch:** `ui-quality-phase-4a-coach`; base `c16a764`; verified implementation range `82fc289..7b594bd`; integration commit pending.
+- **Target gates:** 3 Vitest files / 24 tests PASS; full `chat.spec.ts` on emulator-backed desktop and mobile / 31 tests PASS.
+- **Repository gates:** ESLint PASS; 74 Vitest files / 596 tests PASS; production build PASS; `git diff --check` PASS.
+- **Runtime:** `Observed` serially in one named Playwright CLI session at 393×852 and 1440×900. No-key chat has one compact read-only gate, no starter actions and a disabled composer; an existing conversation survives key removal. Configured chat keeps the composer above the mobile navigation at `scrollY === 0`, constrains the desktop response to 699 px, scrolls the thread independently, exposes semantic `disc` and `decimal` list markers, and keeps Plan generation operable. Keyboard traversal reached the mode switch, configuration trigger/input, composer and enabled send action. Console: 0 errors, 0 warnings.
+- **Visual evidence:** `output/playwright/ui-quality-phase-4a-coach/coach-no-key-mobile.png`, `output/playwright/ui-quality-phase-4a-coach/coach-configured-mobile.png`, `output/playwright/ui-quality-phase-4a-coach/coach-configured-desktop.png`; each file was inspected separately.
+- **Runtime gap closed:** the fresh 393×852 observation found the fixed bottom navigation covering 27 px of `Wyślij`; commit `7b594bd` adds the browser regression and keeps the action fully above the navigation.
+- **Diagnostics:** no product diagnostic was qualified. The full E2E run completed cleanly; runner output only contained existing Node/FORCE_COLOR warnings.
+- **Remaining parent scope:** `Etap 4B — Historia/listy`, `Etap 4C — shell/404`, etap 5, B-02, M-07 and M-14.
 
 ## Definition of done
 

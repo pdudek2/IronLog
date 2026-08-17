@@ -235,6 +235,7 @@ export default function ProgressPage() {
   const [recordsLoadedOnce, setRecordsLoadedOnce] = useState(false)
   const [freshnessUncertain, setFreshnessUncertain] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
+  const [selectedStrengthKey, setSelectedStrengthKey] = useState<string | null>(null)
 
   function handleRangeChange(days: number) {
     if (days === rangeDays) return
@@ -331,18 +332,33 @@ export default function ProgressPage() {
   )
 
   const strengthData = useMemo(
-    () => aggregateStrengthProgression(currentSessions, 5),
+    () => aggregateStrengthProgression(currentSessions),
     [currentSessions],
   )
+  const effectiveStrengthKey = strengthData.series.some(({ key }) => key === selectedStrengthKey)
+    ? selectedStrengthKey
+    : strengthData.series[0]?.key ?? null
+  const selectedStrengthSeries = strengthData.series.find(({ key }) => key === effectiveStrengthKey) ?? null
+  const selectedStrengthPoints = effectiveStrengthKey
+    ? strengthData.data.filter((point) => Number(point[effectiveStrengthKey] ?? 0) > 0)
+    : []
+  const selectedStrengthValues = effectiveStrengthKey
+    ? selectedStrengthPoints.map((point) => Number(point[effectiveStrengthKey] ?? 0))
+    : []
+  const firstStrength = selectedStrengthValues[0] ?? 0
+  const latestStrength = selectedStrengthValues.at(-1) ?? 0
+  const maxStrength = selectedStrengthValues.length ? Math.max(...selectedStrengthValues) : 0
+  const strengthDelta = latestStrength - firstStrength
+  const missingStrengthSessions = Math.max(0, 3 - selectedStrengthPoints.length)
 
   const heatmapData = useMemo(
     () => aggregateActivityHeatmap(currentSessions, 12, fetchedAt),
     [currentSessions, fetchedAt],
   )
   const weeklyVolumeLabel = useMemo(() => summarizeWeeklyVolume(weeklyData), [weeklyData])
-  const strengthProgressionLabel = useMemo(
-    () => summarizeStrengthProgression(strengthData.data, strengthData.series),
-    [strengthData.data, strengthData.series],
+  const strengthProgressionLabel = summarizeStrengthProgression(
+    selectedStrengthPoints,
+    selectedStrengthSeries ? [selectedStrengthSeries] : [],
   )
   const muscleBalanceLabel = useMemo(() => summarizeMuscleBalance(muscleData), [muscleData])
   const activityHeatmapLabel = useMemo(() => summarizeActivityHeatmap(heatmapData), [heatmapData])
@@ -369,7 +385,6 @@ export default function ProgressPage() {
   const uniqueExerciseCount = new Set(
     currentSessions.map((s) => `${s.exerciseSource}:${s.exerciseId}`),
   ).size
-  const missingStrengthSessions = Math.max(0, 3 - strengthData.data.length)
   const hasUsableData = snapshot !== null
   const hasSessionSnapshot = fetchedAt > 0
   const hasStoredData = sessions.length > 0 || records.length > 0
@@ -518,6 +533,25 @@ export default function ProgressPage() {
         )}
 
         {hasSessionSnapshot && currentSessions.length > 0 && (
+          <>
+          {selectedStrengthSeries && selectedStrengthPoints.length >= 3 && (
+            <section className="progress-strength-insight" aria-label="Trend wybranego ćwiczenia">
+              <div>
+                <span>{selectedStrengthSeries.exerciseName}</span>
+                <strong>Ostatnio {latestStrength} kg</strong>
+              </div>
+              <p>
+                <span>
+                  {strengthDelta > 0
+                    ? `+${strengthDelta} kg względem pierwszego w zakresie`
+                    : strengthDelta < 0
+                      ? `${strengthDelta} kg względem pierwszego w zakresie`
+                      : 'Bez zmiany względem pierwszego w zakresie'}
+                </span>
+                {' · '}maks. {maxStrength} kg
+              </p>
+            </section>
+          )}
           <div className="progress-analysis-grid">
             <motion.section
               className="progress-panel progress-panel--wide"
@@ -571,40 +605,43 @@ export default function ProgressPage() {
               </div>
             </motion.section>
 
-            {strengthData.data.length > 0 && (
-              strengthData.data.length < 3 ? (
-                <section className="progress-panel progress-panel--compact">
-                  <div className="progress-panel-head">
-                    <div>
-                      <p>Siła</p>
-                      <h2>Progresja ciężaru</h2>
+            {selectedStrengthSeries && (
+              <section
+                className={`progress-panel ${selectedStrengthPoints.length < 3 ? 'progress-panel--compact' : 'progress-panel--wide'}`}
+              >
+                <div className="progress-panel-head progress-panel-head--strength">
+                  <div>
+                    <p>Siła</p>
+                    <h2>Progresja ciężaru</h2>
+                  </div>
+                  <label className="progress-strength-picker">
+                    <span>Ćwiczenie</span>
+                    <select
+                      aria-label="Ćwiczenie na wykresie"
+                      value={effectiveStrengthKey ?? ''}
+                      onChange={(event) => setSelectedStrengthKey(event.target.value)}
+                    >
+                      {strengthData.series.map((series) => (
+                        <option key={series.key} value={series.key}>{series.exerciseName}</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+                {selectedStrengthPoints.length < 3 ? (
+                  <>
+                    <p className="progress-muted-copy">
+                      Potrzebujesz jeszcze {missingStrengthSessions} dni z zapisanym ciężarem do wykresu.
+                    </p>
+                    <div className="progress-session-markers" aria-label={`${selectedStrengthPoints.length} z 3 dni do wykresu`}>
+                      {Array.from({ length: 3 }).map((_, index) => (
+                        <span key={index} data-active={index < selectedStrengthPoints.length} />
+                      ))}
                     </div>
-                  </div>
-                  <p className="progress-muted-copy">
-                    Potrzebujesz jeszcze {missingStrengthSessions} dni z zapisanym ciężarem do wykresu.
-                  </p>
-                  <div className="progress-session-markers" aria-label={`${strengthData.data.length} z 3 dni do wykresu`}>
-                    {Array.from({ length: 3 }).map((_, index) => (
-                      <span key={index} data-active={index < strengthData.data.length} />
-                    ))}
-                  </div>
-                </section>
-              ) : (
-                <motion.section
-                  className="progress-panel progress-panel--wide"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.08, duration: 0.2 }}
-                >
-                  <div className="progress-panel-head">
-                    <div>
-                      <p>Siła</p>
-                      <h2>Progresja ciężaru</h2>
-                    </div>
-                  </div>
+                  </>
+                ) : (
                   <div className="progress-chart-frame progress-chart-frame--strength" role="img" aria-label={strengthProgressionLabel}>
                     <ResponsiveContainer width="100%" aspect={2.05} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
-                      <LineChart data={strengthData.data} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
+                      <LineChart data={selectedStrengthPoints} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
                         <XAxis
                           dataKey="date"
@@ -621,31 +658,21 @@ export default function ProgressPage() {
                           width={56}
                         />
                         <Tooltip content={<DarkTooltip />} />
-                        {strengthData.series.map((s) => (
+                        {selectedStrengthSeries && (
                           <Line
-                            key={s.key}
                             type="monotone"
-                            dataKey={s.key}
-                            name={s.exerciseName}
-                            stroke={s.color}
+                            dataKey={selectedStrengthSeries.key}
+                            name={selectedStrengthSeries.exerciseName}
+                            stroke="var(--accent)"
                             strokeWidth={2.35}
-                            dot={{ r: 3, fill: s.color, strokeWidth: 0 }}
-                            connectNulls
+                            dot={{ r: 3, fill: 'var(--accent)', strokeWidth: 0 }}
                           />
-                        ))}
+                        )}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
-                  <div className="progress-legend">
-                    {strengthData.series.map((s) => (
-                      <div key={s.key}>
-                        <span style={{ background: s.color }} />
-                        <small>{s.exerciseName}</small>
-                      </div>
-                    ))}
-                  </div>
-                </motion.section>
-              )
+                )}
+              </section>
             )}
 
             {muscleData.length > 0 && (
@@ -751,6 +778,7 @@ export default function ProgressPage() {
               </motion.section>
             )}
           </div>
+          </>
         )}
 
         {showRangeEmpty && (

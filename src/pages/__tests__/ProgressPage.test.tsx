@@ -398,7 +398,75 @@ describe('ProgressPage', () => {
     ]))
   })
 
-  it('uses source-aware strength keys and exposes a visible heatmap summary', async () => {
+  it('renders one strength series and switches it with a source-aware selector', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      sessions: [
+        session('global-1', 4, { bestSetWeight: 70 }),
+        session('global-2', 3, { bestSetWeight: 75 }),
+        session('global-3', 2, { bestSetWeight: 80 }),
+        session('global-4', 2, { bestSetWeight: 78 }),
+        session('user-0', 5, {
+          exerciseSource: 'user',
+          exerciseId: 'row',
+          exerciseName: 'Wiosłowanie własne',
+          bestSetWeight: 50,
+        }),
+        session('user-1', 3, {
+          exerciseSource: 'user',
+          exerciseId: 'row',
+          exerciseName: 'Wiosłowanie własne',
+          bestSetWeight: 55,
+        }),
+        session('user-2', 1, {
+          exerciseSource: 'user',
+          exerciseId: 'row',
+          exerciseName: 'Wiosłowanie własne',
+          bestSetWeight: 60,
+        }),
+      ],
+    }))
+
+    render(<ProgressPage />)
+
+    const selector = await screen.findByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+    expect(selector).toHaveValue('global:bench')
+    expect(screen.getAllByTestId('strength-line')).toHaveLength(1)
+    expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'global:bench')
+    expect(screen.getByText('Ostatnio 80 kg')).toBeInTheDocument()
+    expect(screen.getByText('+10 kg względem pierwszego w zakresie')).toBeInTheDocument()
+
+    fireEvent.change(selector, { target: { value: 'user:row' } })
+
+    expect(screen.getAllByTestId('strength-line')).toHaveLength(1)
+    expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'user:row')
+    expect(screen.getByText('Ostatnio 60 kg')).toBeInTheDocument()
+  })
+
+  it('falls back to the most frequent valid series and evaluates readiness per exercise', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      sessions: [
+        session('bench-1', 3),
+        session('bench-2', 2),
+        session('bench-3', 1),
+        session('row-1', 45, {
+          exerciseId: 'row',
+          exerciseName: 'Wiosłowanie',
+          bestSetWeight: 50,
+        }),
+      ],
+    }))
+
+    render(<ProgressPage />)
+    const selector = await screen.findByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+    fireEvent.change(selector, { target: { value: 'global:row' } })
+
+    expect(screen.getByText('Potrzebujesz jeszcze 2 dni z zapisanym ciężarem do wykresu.')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: '30 dni' }))
+    expect(selector).toHaveValue('global:bench')
+  })
+
+  it('exposes a visible heatmap summary', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [
         session('global-1', 3, { finishedAt: new Date(2026, 6, 7, 12).getTime() }),
@@ -409,11 +477,6 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    const lines = await screen.findAllByTestId('strength-line')
-    expect(lines.map((line) => line.getAttribute('data-data-key'))).toEqual([
-      'global:bench',
-      'user:bench',
-    ])
     expect(await screen.findByText(
       /3 aktywne dni · najmocniejszy dzień 7 lip · 1\.0k kg/i,
     )).toBeInTheDocument()

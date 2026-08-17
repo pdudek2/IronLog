@@ -4204,6 +4204,64 @@ a {
   white-space: nowrap;
 }
 
+.progress-strength-picker {
+  display: grid;
+  gap: 0.3rem;
+  width: min(12rem, 52%);
+}
+
+.progress-strength-picker > span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 730;
+}
+
+.progress-strength-picker select {
+  width: 100%;
+  min-height: 2.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  background: var(--bg-elevated);
+  color: var(--text-strong);
+  padding: 0 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.progress-strength-insight {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem;
+  border-block: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.progress-strength-insight div {
+  display: grid;
+  gap: 0.28rem;
+}
+
+.progress-strength-insight span,
+.progress-strength-insight p {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.progress-strength-insight strong {
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  line-height: 1;
+}
+
+.progress-strength-insight p {
+  margin: 0;
+  line-height: 1.45;
+  text-align: right;
+}
+
 .progress-chart-frame {
   width: 100%;
   min-height: 0;
@@ -4236,35 +4294,6 @@ a {
 .progress-session-markers span[data-active="true"] {
   background: var(--accent);
   box-shadow: 0 0 18px rgba(240, 67, 90, 0.28);
-}
-
-.progress-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.55rem 0.8rem;
-  margin-top: 0.9rem;
-}
-
-.progress-legend div {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.42rem;
-  max-width: 100%;
-}
-
-.progress-legend span {
-  width: 0.55rem;
-  height: 0.55rem;
-  flex: none;
-  border-radius: var(--radius-pill);
-}
-
-.progress-legend small {
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 0.72rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .progress-heatmap {
@@ -4572,20 +4601,6 @@ a {
   }
 }
 
-@media (max-width: 759px) {
-  .progress-legend div {
-    align-items: flex-start;
-    min-width: 0;
-  }
-
-  .progress-legend small {
-    overflow: visible;
-    overflow-wrap: anywhere;
-    text-overflow: clip;
-    white-space: normal;
-  }
-}
-
 @media (max-width: 520px) {
   .progress-page {
     gap: 0.75rem;
@@ -4604,6 +4619,20 @@ a {
   .progress-empty-state {
     display: grid;
     justify-items: start;
+  }
+
+  .progress-panel-head--strength,
+  .progress-strength-insight {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .progress-strength-picker {
+    width: 100%;
+  }
+
+  .progress-strength-insight p {
+    text-align: left;
   }
 
   .progress-chart-frame--volume,

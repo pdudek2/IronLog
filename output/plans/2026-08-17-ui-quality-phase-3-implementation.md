@@ -48,7 +48,7 @@
 - Consumes: `ProgressSessionLite[]`, source-aware key `${exerciseSource}:${exerciseId}` i `bestSetWeight > 0`.
 - Produces: `aggregateStrengthProgression(sessions, limit?)` zwracające wszystkie serie przy braku limitu, posortowane po częstotliwości, nazwie i kluczu; `data` zachowuje obecny `StrengthPoint[]`.
 
-- [ ] **Step 1: Dodać regresję kompletności i deterministycznego defaultu**
+- [x] **Step 1: Dodać regresję kompletności i deterministycznego defaultu**
 
 W `src/lib/__tests__/progressService.test.ts` dodać:
 
@@ -85,7 +85,7 @@ it('keeps the optional series limit for bounded callers', () => {
 })
 ```
 
-- [ ] **Step 2: Uruchomić test i potwierdzić porażkę**
+- [x] **Step 2: Uruchomić test i potwierdzić porażkę**
 
 Run:
 
@@ -95,7 +95,7 @@ NODE_OPTIONS=--no-experimental-webstorage npx vitest run src/lib/__tests__/progr
 
 Expected: pierwszy test FAIL, bo obecny default ucina katalog do pięciu i nie rozstrzyga remisów jawnie.
 
-- [ ] **Step 3: Uczynić limit opcjonalnym i ustabilizować ranking**
+- [x] **Step 3: Uczynić limit opcjonalnym i ustabilizować ranking**
 
 W `src/lib/progressService.ts` zmienić sygnaturę oraz ranking bez nowego helpera:
 
@@ -118,7 +118,7 @@ export function aggregateStrengthProgression(
 
 W dalszej części funkcji zastąpić lokalne `topExercises` przez `selectedExercises`; nie zmieniać kształtu punktów ani source-aware kluczy.
 
-- [ ] **Step 4: Uruchomić test serwisu**
+- [x] **Step 4: Uruchomić test serwisu**
 
 Run: komenda ze Step 2.
 

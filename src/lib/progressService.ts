@@ -339,9 +339,9 @@ const SERIES_COLORS = ['#f0435a', '#8fb8a0', '#f0a75a', '#d97b91', '#b8a8b2']
 
 export function aggregateStrengthProgression(
   sessions: ProgressSessionLite[],
-  topN = 5,
+  limit?: number,
 ): { data: StrengthPoint[]; series: StrengthSeries[] } {
-  // Znajdź top N najczęściej trenowanych ćwiczeń
+  // Znajdź najczęściej trenowane ćwiczenia
   const exerciseCounts = new Map<string, { count: number; name: string }>()
   for (const s of sessions) {
     if (s.bestSetWeight <= 0) continue
@@ -354,13 +354,18 @@ export function aggregateStrengthProgression(
     }
   }
 
-  const topExercises = [...exerciseCounts.entries()]
-    .sort((a, b) => b[1].count - a[1].count)
-    .slice(0, topN)
+  const rankedExercises = [...exerciseCounts.entries()]
+    .sort((a, b) => b[1].count - a[1].count
+      || a[1].name.localeCompare(b[1].name, 'pl')
+      || a[0].localeCompare(b[0]))
 
-  if (topExercises.length === 0) return { data: [], series: [] }
+  const selectedExercises = limit === undefined
+    ? rankedExercises
+    : rankedExercises.slice(0, limit)
 
-  const topKeys = new Set(topExercises.map(([key]) => key))
+  if (selectedExercises.length === 0) return { data: [], series: [] }
+
+  const topKeys = new Set(selectedExercises.map(([key]) => key))
 
   // Zgrupuj bestSetWeight per dzień per ćwiczenie
   const dayMap = new Map<string, { timestamp: number; weights: Map<string, number> }>()
@@ -398,7 +403,7 @@ export function aggregateStrengthProgression(
       return point
     })
 
-  const series: StrengthSeries[] = topExercises.map(([key, meta], i) => ({
+  const series: StrengthSeries[] = selectedExercises.map(([key, meta], i) => ({
     key,
     exerciseName: meta.name,
     color: SERIES_COLORS[i % SERIES_COLORS.length],

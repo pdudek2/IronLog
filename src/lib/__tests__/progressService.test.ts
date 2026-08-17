@@ -204,6 +204,37 @@ describe('snapshot anchors', () => {
 // ─── aggregateStrengthProgression ───────────────────────────────────────────
 
 describe('aggregateStrengthProgression', () => {
+  it('returns every weighted exercise ordered by frequency with source-aware keys', () => {
+    const result = aggregateStrengthProgression([
+      session({ daysAgo: 6, exerciseId: 'bench', exerciseName: 'Bench Press' }),
+      session({ daysAgo: 5, exerciseId: 'bench', exerciseName: 'Bench Press' }),
+      session({ daysAgo: 4, exerciseId: 'squat', exerciseName: 'Squat' }),
+      session({ daysAgo: 3, exerciseId: 'row', exerciseName: 'Row' }),
+      session({ daysAgo: 2, exerciseId: 'curl', exerciseName: 'Curl' }),
+      session({ daysAgo: 1, exerciseId: 'deadlift', exerciseName: 'Deadlift' }),
+      session({ daysAgo: 0, exerciseSource: 'user', exerciseId: 'bench', exerciseName: 'Bench Press' }),
+    ])
+
+    expect(result.series.map(({ key }) => key)).toEqual([
+      'global:bench',
+      'user:bench',
+      'global:curl',
+      'global:deadlift',
+      'global:row',
+      'global:squat',
+    ])
+  })
+
+  it('keeps the optional series limit for bounded callers', () => {
+    const result = aggregateStrengthProgression([
+      session({ daysAgo: 3, exerciseId: 'bench', exerciseName: 'Bench Press' }),
+      session({ daysAgo: 2, exerciseId: 'row', exerciseName: 'Row' }),
+      session({ daysAgo: 1, exerciseId: 'squat', exerciseName: 'Squat' }),
+    ], 2)
+
+    expect(result.series).toHaveLength(2)
+  })
+
   it('keeps global and user exercises with the same name in separate strength series', () => {
     const result = aggregateStrengthProgression([
       session({ daysAgo: 2, exerciseSource: 'global', exerciseId: 'bench', exerciseName: 'Bench Press', bestSetWeight: 80 }),

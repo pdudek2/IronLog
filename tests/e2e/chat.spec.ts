@@ -11,6 +11,8 @@ const QUESTION = 'Czy progresuję?'
 const LONG_ASSISTANT_RESPONSE = Array.from({ length: 18 }, (_, index) => (
   `## Blok ${index + 1}\n\n${'To jest dłuższy akapit o decyzjach treningowych, regeneracji i progresji. '.repeat(6)}`
 )).join('\n\n')
+const DESKTOP_GEOMETRY_VIEWPORT = { width: 1440, height: 900 }
+const MOBILE_GEOMETRY_VIEWPORT = { width: 393, height: 852 }
 
 async function openChatWithMock(page: Page, attempts: MockAiAttempt[]) {
   await installMockAiRuntime(page, attempts)
@@ -28,6 +30,10 @@ async function expectAbortCount(page: Page, count: number) {
   await expect.poll(() => page.evaluate(() => (
     window as typeof window & { __ironlogMockAiAbortCount?: number }
   ).__ironlogMockAiAbortCount ?? 0)).toBe(count)
+}
+
+async function setGeometryViewport(page: Page, projectName: string) {
+  await page.setViewportSize(projectName === 'mobile' ? MOBILE_GEOMETRY_VIEWPORT : DESKTOP_GEOMETRY_VIEWPORT)
 }
 
 test.describe('Chat UI', () => {
@@ -74,7 +80,8 @@ test.describe('Chat UI', () => {
     await page.screenshot({ path: 'test-results/chat-disabled-input.png' })
   })
 
-  test('no-key chat uses the available width without stacking cards', async ({ page }) => {
+  test('no-key chat uses the available width without stacking cards', async ({ page }, testInfo) => {
+    await setGeometryViewport(page, testInfo.project.name)
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
 
@@ -106,7 +113,8 @@ test.describe('Chat UI', () => {
     expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
   })
 
-  test('configured geometry keeps the composer visible at load', async ({ page }) => {
+  test('configured geometry keeps the composer visible at load', async ({ page }, testInfo) => {
+    await setGeometryViewport(page, testInfo.project.name)
     await openChatWithMock(page, [{
       frames: [
         { delayMs: 20, frame: { type: 'chunk', text: LONG_ASSISTANT_RESPONSE } },
@@ -136,6 +144,22 @@ test.describe('Chat UI', () => {
     expect(composerBoxBeforeScroll).not.toBeNull()
     expect(composerBoxAfterScroll).not.toBeNull()
     expect(Math.abs(composerBoxAfterScroll!.y - composerBoxBeforeScroll!.y)).toBeLessThanOrEqual(1)
+  })
+
+  test('configured geometry keeps the composer visible after a failure state', async ({ page }, testInfo) => {
+    await setGeometryViewport(page, testInfo.project.name)
+    await openChatWithMock(page, [{
+      kind: 'error',
+      status: 503,
+      message: 'Nie udało się załadować kontekstu. Spróbuj ponownie.',
+    }])
+
+    await sendQuestion(page)
+    await expect(page.getByRole('alert')).toContainText('Nie udało się załadować kontekstu.')
+
+    const composer = page.locator('.coach-composer')
+    await expect(composer).toBeInViewport()
+    expect(await page.evaluate(() => window.scrollY)).toBe(0)
   })
 
   test('can switch between conversation and plan workspaces', async ({ page }) => {

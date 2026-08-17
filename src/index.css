@@ -9710,9 +9710,9 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .coach-chat-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
   align-content: stretch;
-  height: max(24rem, calc(100dvh - 19rem));
+  height: max(24rem, calc(100dvh - 19.2rem));
   background: transparent;
   padding: clamp(0.95rem, 2.5vw, 1.2rem) 0;
 }
@@ -9724,6 +9724,23 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 .coach-chat-panel > .coach-composer {
   width: min(100%, 46rem);
   margin-inline: auto;
+}
+
+.coach-chat-panel > .coach-panel-head {
+  grid-row: 1;
+}
+
+.coach-chat-panel > .coach-thread {
+  grid-row: 2;
+}
+
+.coach-chat-panel > .coach-generation-feedback,
+.coach-chat-panel > [role="alert"] {
+  grid-row: 3;
+}
+
+.coach-chat-panel > .coach-composer {
+  grid-row: 4;
 }
 
 .coach-plan-panel,

@@ -196,7 +196,7 @@ describe('ProgressPage', () => {
     render(<ProgressPage />)
 
     expect(await screen.findByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Nie udało się odświeżyć rekordów od początku.')
+    expect(screen.getByText('Nie udało się odświeżyć rekordów od początku.').closest('[role="status"]')).toBeInTheDocument()
     const recordsMetric = screen.getByText('Rekordy').parentElement
     expect(recordsMetric).not.toBeNull()
     expect(within(recordsMetric!).getByText('—')).toBeInTheDocument()
@@ -294,8 +294,8 @@ describe('ProgressPage', () => {
     render(<ProgressPage />)
 
     const notice = await waitFor(() => {
-      const settledNotice = screen.getByRole('status')
-      expect(settledNotice).toHaveTextContent('Ostatnie treningi mogą być jeszcze niewidoczne.')
+      const settledNotice = screen.getByText(/Ostatnie treningi mogą być jeszcze niewidoczne/).closest('[role="status"]')
+      expect(settledNotice).toBeInTheDocument()
       return settledNotice
     })
     expect(notice).toHaveTextContent('Analizy treningowe obejmują najnowsze 5000 wpisów.')
@@ -345,7 +345,7 @@ describe('ProgressPage', () => {
     expect(refreshedRecordsSection).not.toBeNull()
     expect(within(refreshedRecordsSection!).getByText('Przysiad')).toBeInTheDocument()
     expect(within(refreshedRecordsSection!).queryByText('Wyciskanie sztangi')).not.toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Nie udało się odświeżyć danych treningowych.')
+    expect(screen.getByText('Nie udało się odświeżyć danych treningowych.').closest('[role="status"]')).toBeInTheDocument()
   })
 
   it('keeps the previous session fetchedAt anchor when a retry refreshes only records', async () => {
@@ -485,6 +485,13 @@ describe('ProgressPage', () => {
     })).toBeInTheDocument()
     expect(screen.getByTitle('7 lip: 1.0k kg')).toBeInTheDocument()
     expect(screen.queryByText(/najmocniejszy dzień 2026-/i)).not.toBeInTheDocument()
+
+    const dayPicker = screen.getByRole('combobox', { name: 'Sprawdź dzień w kalendarzu' })
+    expect(dayPicker).toHaveClass('progress-heatmap-picker')
+    expect(screen.getByLabelText('Miesiące kalendarza')).not.toBeEmptyDOMElement()
+
+    fireEvent.change(dayPicker, { target: { value: '2026-07-07' } })
+    expect(screen.getByRole('status')).toHaveTextContent('7 lip · 1.0k kg')
   })
 
   it('uses singular and paucal forms in the muscle balance accessible summary', async () => {

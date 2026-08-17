@@ -4304,6 +4304,20 @@ a {
   min-width: 0;
 }
 
+.progress-heatmap-months {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.22rem;
+  margin: 0 0 0.4rem 1.62rem;
+}
+
+.progress-heatmap-months span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
 .progress-heatmap-row {
   display: grid;
   grid-template-columns: 1.4rem repeat(12, minmax(0, 1fr));
@@ -4337,6 +4351,43 @@ a {
   color: var(--muted);
   font-size: 0.72rem;
   line-height: 1.4;
+}
+
+.progress-heatmap-inspector {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.8rem;
+}
+
+.progress-heatmap-inspector label {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.progress-heatmap-inspector label > span,
+.progress-heatmap-inspector p {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.progress-heatmap-picker {
+  min-height: 2.75rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xs);
+  background: var(--bg-elevated);
+  color: var(--text-strong);
+  padding: 0 0.7rem;
+  font: inherit;
+  font-size: 0.82rem;
+}
+
+.progress-heatmap-inspector p {
+  margin: 0 0 0.75rem;
+  line-height: 1.4;
+  text-align: right;
 }
 
 .progress-heatmap-scale span {

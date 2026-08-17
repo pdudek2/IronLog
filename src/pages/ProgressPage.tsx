@@ -236,6 +236,7 @@ export default function ProgressPage() {
   const [freshnessUncertain, setFreshnessUncertain] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [selectedStrengthKey, setSelectedStrengthKey] = useState<string | null>(null)
+  const [selectedHeatmapDate, setSelectedHeatmapDate] = useState<string | null>(null)
 
   function handleRangeChange(days: number) {
     if (days === rangeDays) return
@@ -355,6 +356,26 @@ export default function ProgressPage() {
     () => aggregateActivityHeatmap(currentSessions, 12, fetchedAt),
     [currentSessions, fetchedAt],
   )
+  const activeHeatmapDays = useMemo(
+    () => heatmapData.filter((cell) => cell.date && cell.volume > 0).sort((a, b) => b.date.localeCompare(a.date)),
+    [heatmapData],
+  )
+  const effectiveHeatmapDate = activeHeatmapDays.some(({ date }) => date === selectedHeatmapDate)
+    ? selectedHeatmapDate
+    : activeHeatmapDays[0]?.date ?? null
+  const selectedHeatmapDay = activeHeatmapDays.find(({ date }) => date === effectiveHeatmapDate) ?? null
+  const heatmapMonthLabels = Array.from({ length: 12 }, (_, weekIndex) => {
+    const monday = heatmapData.find((cell) => cell.weekIndex === weekIndex && cell.dayOfWeek === 0 && cell.date)
+    if (!monday) return ''
+    const month = new Date(`${monday.date}T12:00:00`).toLocaleDateString('pl-PL', { month: 'short' })
+    const previous = weekIndex > 0
+      ? heatmapData.find((cell) => cell.weekIndex === weekIndex - 1 && cell.dayOfWeek === 0 && cell.date)
+      : null
+    const previousMonth = previous
+      ? new Date(`${previous.date}T12:00:00`).toLocaleDateString('pl-PL', { month: 'short' })
+      : ''
+    return weekIndex === 0 || month !== previousMonth ? month : ''
+  })
   const weeklyVolumeLabel = useMemo(() => summarizeWeeklyVolume(weeklyData), [weeklyData])
   const strengthProgressionLabel = summarizeStrengthProgression(
     selectedStrengthPoints,
@@ -744,6 +765,11 @@ export default function ProgressPage() {
                     <h2>Kalendarz</h2>
                   </div>
                 </div>
+                <div className="progress-heatmap-months" aria-label="Miesiące kalendarza">
+                  {heatmapMonthLabels.map((month, weekIndex) => (
+                    <span key={weekIndex}>{month}</span>
+                  ))}
+                </div>
                 <div className="progress-heatmap" role="img" aria-label={activityHeatmapLabel}>
                   {DAY_LABELS.map((day, dayIdx) => (
                     <div key={day} className="progress-heatmap-row">
@@ -767,6 +793,30 @@ export default function ProgressPage() {
                 </div>
                 {activityHeatmapSummary && (
                   <p className="progress-heatmap-summary">{activityHeatmapSummary}</p>
+                )}
+                {activeHeatmapDays.length > 0 && (
+                  <div className="progress-heatmap-inspector">
+                    <label>
+                      <span>Sprawdź dzień</span>
+                      <select
+                        className="progress-heatmap-picker"
+                        aria-label="Sprawdź dzień w kalendarzu"
+                        value={effectiveHeatmapDate ?? ''}
+                        onChange={(event) => setSelectedHeatmapDate(event.target.value)}
+                      >
+                        {activeHeatmapDays.map((day) => (
+                          <option key={day.date} value={day.date}>
+                            {formatHeatmapDate(day.date)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {selectedHeatmapDay && (
+                      <p role="status">
+                        {formatHeatmapDate(selectedHeatmapDay.date)} · {formatVolume(selectedHeatmapDay.volume)}
+                      </p>
+                    )}
+                  </div>
                 )}
                 <div className="progress-heatmap-scale">
                   <span>Mniej</span>

@@ -326,7 +326,7 @@ Expected: PASS; dokładnie jedna linia, poprawny source-aware wybór i jawny sho
 - Consumes: istniejące `HeatmapDay[]` z datą, `weekIndex`, `volume` i `level`.
 - Produces: `heatmapMonthLabels`, uporządkowane `activeHeatmapDays`, lokalny `selectedHeatmapDate`, natywny selektor aktywnego dnia i jawny detail; grid pozostaje nieinteraktywną reprezentacją.
 
-- [ ] **Step 1: Dodać test znaczników miesięcy i dotykowego odczytu**
+- [x] **Step 1: Dodać test znaczników miesięcy i dotykowego odczytu**
 
 Do testu heatmapy w `ProgressPage.test.tsx` dodać:
 
@@ -341,7 +341,7 @@ expect(screen.getByRole('status')).toHaveTextContent('7 lip · 1.0k kg')
 
 Jeśli min-height jest wyłącznie w CSS, zamiast inline style sprawdzić klasę `.progress-heatmap-picker` w unit, a geometrię 44 px zostawić E2E.
 
-- [ ] **Step 2: Uruchomić test i potwierdzić porażkę**
+- [x] **Step 2: Uruchomić test i potwierdzić porażkę**
 
 Run:
 
@@ -351,7 +351,7 @@ NODE_OPTIONS=--no-experimental-webstorage npx vitest run src/pages/__tests__/Pro
 
 Expected: FAIL, bo daty istnieją tylko w `title`, a heatmapa nie pokazuje miesięcy ani selektora.
 
-- [ ] **Step 3: Wyliczyć miesiące i aktywne dni bez nowego modułu**
+- [x] **Step 3: Wyliczyć miesiące i aktywne dni bez nowego modułu**
 
 W `ProgressPage` dodać:
 
@@ -381,7 +381,7 @@ const heatmapMonthLabels = Array.from({ length: 12 }, (_, weekIndex) => {
 
 Nie dodawać klikanych mikroskopijnych komórek; jeden natywny select zapewnia prawidłowy cel dotykowy bez poziomego scrolla 84 przycisków.
 
-- [ ] **Step 4: Dodać widoczne znaczniki i detail**
+- [x] **Step 4: Dodać widoczne znaczniki i detail**
 
 Nad gridem dodać `.progress-heatmap-months` z `aria-label="Miesiące kalendarza"` i 12 kolumnami zgodnymi z tygodniami. Pod summary dodać:
 
@@ -414,7 +414,7 @@ Nad gridem dodać `.progress-heatmap-months` z `aria-label="Miesiące kalendarza
 
 CSS: minimum 44 px dla selecta, 12 px dla istotnych etykiet, brak nowej karty; grid i inspector pozostają częścią jednego panelu.
 
-- [ ] **Step 5: Uruchomić test heatmapy**
+- [x] **Step 5: Uruchomić test heatmapy**
 
 Run: komenda ze Step 2.
 

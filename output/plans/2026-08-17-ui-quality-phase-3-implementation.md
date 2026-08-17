@@ -618,13 +618,13 @@ Po ostatniej zmianie obejrzeć w jednym świeżym runtime:
 
 Przed wyborem surface przeczytać `project-convergence/references/visual-observation.md`. Receipt `Observed` wymaga ukończonego wywołania primary surface z finalnym screenshotem/stem; inaczej zapisać `Pending` z konkretnym blockerem.
 
-- [ ] **Step 8: Zamknąć wyłącznie etap 3 po integracji**
+- [x] **Step 8: Zamknąć wyłącznie etap 3 po integracji**
 
 Zaktualizować parent roadmap i ten receipt. Etapy 4–5 oraz decyzje B-02, M-07 i M-14 pozostają otwarte; następny etap 4 należy rozbić na osobne release slices Coach, Historia/listy oraz shell/404.
 
 ### Receipt Task 5
 
-- **Stan:** `READY_FOR_INTEGRATION` — implementacja, kontrakty, gate’y, serialna obserwacja i niezależny odczyt obrazu są ukończone; Step 8 pozostaje otwarty wyłącznie do wyboru i wykonania integracji po final review.
+- **Stan:** `DONE` — implementacja, kontrakty, gate’y, serialna obserwacja i niezależny odczyt obrazu są ukończone; etap 3 został zintegrowany lokalnie do `main` przez fast-forward do `abc72f3`.
 - **Visual evidence:** Observed — surface: Playwright CLI, sesja `ui-quality-phase-3`; image proof: osobne ukończone wywołanie `view_image` odczytało siedem finalnych screenshotów zapisanych po ostatniej zmianie i zwróciło widoczne stany: jedną wybraną linię i insight na Progress desktop/mobile, miesiące i jawny detail heatmapy, widoczne `Ostatnio`/`Maksimum` oraz węższe słupki detalu, a także celowe short/empty states.
 - **Obserwacja struktury/interakcji:** domyślny Bench miał jedną linię; wybór Squat zwrócił `Ostatnio 110 kg`; heatmapa po wyborze dnia zwróciła `9 sie · 1.0k kg`; przy 320/393 px insight był przed wykresem, oba selecty miały 44 px, liczba linii wynosiła 1, a poziomy overflow był niedodatni. Detal miał jawne `1.2k kg`/`1.4k kg`, semantyczny `role=list`, wysokość 144 px i zero overflow wykresu na 393/1440 px. Krótka seria pokazała `1 z 3 dni do wykresu` bez osi, a pusty zakres celowy status.
 - **Fix Round 1:** automatyczny emulator E2E osobno wymusza krótką serię i pusty zakres; kontrakty wymagają braku osi oraz fałszywego insightu w obu stanach.

@@ -99,6 +99,20 @@ describe('ChatPage accessibility', () => {
     expect(screen.getByRole('button', { name: 'Generuj plan' })).toBeDisabled()
   })
 
+  it('returns to the compact read-only gate after clearing the expanded side-rail key', async () => {
+    render(<ChatPage />)
+
+    await openModelSelect()
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń lokalnie zapisany klucz' }))
+
+    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
+    expect(screen.getByRole('button', { name: 'Skonfiguruj klucz' })).toBeVisible()
+    expect(screen.queryByLabelText('Twój klucz', { selector: 'input' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Skonfiguruj klucz' }))
+    expect(screen.getByLabelText('Twój klucz', { selector: 'input' })).toBeVisible()
+  })
+
   it('labels the model, exposes mode state, and links goal validation', async () => {
     render(<ChatPage />)
 

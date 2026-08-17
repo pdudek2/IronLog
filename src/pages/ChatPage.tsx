@@ -243,6 +243,12 @@ export default function ChatPage() {
     chatContainer.scrollTop = chatContainer.scrollHeight
   }, [messages, streamText])
 
+  useEffect(() => {
+    if (!configured) {
+      setShowConfigPanel(false)
+    }
+  }, [configured])
+
   useEffect(() => () => {
     const active = activeGenerationRef.current
     activeGenerationRef.current = null

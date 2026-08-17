@@ -9,10 +9,13 @@ import {
 const progressHeading = (page: Page) => page.getByRole('heading', { name: 'Postępy' })
 const emulatorMode = process.env.E2E_BACKEND === 'emulator'
 
-async function useHistoricalSessionClock(page: Page): Promise<void> {
+async function useHistoricalSessionClock(
+  page: Page,
+  fixedNowIso = '2026-04-07T12:00:00.000Z',
+): Promise<void> {
   await page.addInitScript(`
     const NativeDate = Date
-    const fixedNow = new NativeDate('2026-04-07T12:00:00.000Z').valueOf()
+    const fixedNow = new NativeDate('${fixedNowIso}').valueOf()
 
     class FixedDate extends NativeDate {
       constructor(...args) {
@@ -146,6 +149,31 @@ test.describe('Progress analytics', () => {
     await picker.selectOption({ label: 'Phase 7 Squat' })
     await expect(page.locator('.recharts-line')).toHaveCount(1)
     await expect(page.getByLabel('Trend wybranego ćwiczenia')).toContainText('Ostatnio 110 kg')
+  })
+
+  test('shows a deliberate short-series state without an empty axis or false trend', async ({ page }) => {
+    await useHistoricalSessionClock(page)
+    await gotoProgressReady(page)
+
+    await page.getByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+      .selectOption({ label: 'Phase 7 Short Series' })
+
+    const strengthPanel = page.locator('.progress-panel').filter({
+      has: page.getByRole('heading', { name: 'Progresja ciężaru' }),
+    })
+    await expect(strengthPanel.getByText('Potrzebujesz jeszcze 2 dni z zapisanym ciężarem do wykresu.')).toBeVisible()
+    await expect(strengthPanel.getByLabel('1 z 3 dni do wykresu')).toBeVisible()
+    await expect(strengthPanel.locator('.recharts-line')).toHaveCount(0)
+    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toHaveCount(0)
+  })
+
+  test('shows a deliberate empty-range state without analytics or a false trend', async ({ page }) => {
+    await useHistoricalSessionClock(page, '2026-08-17T12:00:00.000Z')
+    await gotoProgressReady(page)
+
+    await expect(page.getByRole('status').filter({ hasText: 'W tym zakresie nie ma treningów' })).toBeVisible()
+    await expect(page.locator('.progress-analysis-grid')).toHaveCount(0)
+    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toHaveCount(0)
   })
 
   test('mobile content exposes the strength selector and heatmap inspector without overflow', async ({ page }) => {

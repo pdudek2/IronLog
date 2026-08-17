@@ -68,6 +68,19 @@ export async function seedProgressEmulatorState(): Promise<void> {
     })
   })
 
+  batch.set(database.doc(`exerciseSessions/${PREFIX}short-session`), {
+    userId: uid,
+    workoutId: `${PREFIX}short-workout`,
+    exerciseId: `${PREFIX}short`,
+    exerciseSource: 'global',
+    finishedAt: SESSION_DATES[0],
+    totalVolume: 350,
+    totalSets: 1,
+    bestSetWeight: 70,
+    exerciseName: 'Phase 7 Short Series',
+    muscleGroups: ['back'],
+  })
+
   batch.set(database.doc(`records/${uid}_global_${PREFIX}bench`), {
     userId: uid,
     exerciseId: `${PREFIX}bench`,
@@ -89,6 +102,7 @@ export async function cleanupProgressEmulatorState(): Promise<void> {
   const references = [
     ...SESSION_DATES.map((_, index) => database.doc(`exerciseSessions/${PREFIX}session-${index + 1}`)),
     ...SESSION_DATES.map((_, index) => database.doc(`exerciseSessions/${PREFIX}squat-session-${index + 1}`)),
+    database.doc(`exerciseSessions/${PREFIX}short-session`),
     database.doc(`records/${uid}_global_${PREFIX}bench`),
   ]
   await Promise.all(references.map((reference) => reference.delete()))

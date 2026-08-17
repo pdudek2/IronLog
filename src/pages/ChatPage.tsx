@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type * as React from 'react'
 import { Bot, LoaderCircle, RotateCcw, Send, ShieldCheck, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -243,12 +243,6 @@ export default function ChatPage() {
     chatContainer.scrollTop = chatContainer.scrollHeight
   }, [messages, streamText])
 
-  useEffect(() => {
-    if (!configured) {
-      setShowConfigPanel(false)
-    }
-  }, [configured])
-
   useEffect(() => () => {
     const active = activeGenerationRef.current
     activeGenerationRef.current = null
@@ -478,10 +472,10 @@ export default function ChatPage() {
     navigate('/templates/new?draft=ai')
   }
 
-  function handleGateConfiguredChange(nextConfigured: boolean) {
+  const handleConfiguredChange = useCallback((nextConfigured: boolean) => {
     setConfigured(nextConfigured)
     setShowConfigPanel(false)
-  }
+  }, [])
 
   return (
     <>
@@ -556,7 +550,7 @@ export default function ChatPage() {
 
                 {showConfigPanel && (
                   <AiKeyPanel
-                    onConfiguredChange={handleGateConfiguredChange}
+                    onConfiguredChange={handleConfiguredChange}
                     onExpand={() => setShowConfigPanel(true)}
                     onCollapse={() => setShowConfigPanel(false)}
                   />
@@ -1023,7 +1017,7 @@ export default function ChatPage() {
           <div className="ai-side-rail coach-rail">
             {configured && (
               <AiKeyPanel
-                onConfiguredChange={setConfigured}
+                onConfiguredChange={handleConfiguredChange}
                 collapsed={!showConfigPanel}
                 onExpand={() => setShowConfigPanel(true)}
                 onCollapse={() => setShowConfigPanel(false)}

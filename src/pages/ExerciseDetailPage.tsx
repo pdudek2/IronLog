@@ -288,15 +288,19 @@ export default function ExerciseDetailPage() {
               </div>
               <div
                 className="exercise-detail-volume-chart"
-                role="img"
+                role="list"
                 aria-label={`Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio ${formatVolume(latestVolume)}. Maksimum ${formatVolume(maxVolume)}.`}
               >
                 {chronologicalSessions.map((session) => (
-                  <div key={session.id} className="exercise-detail-volume-column">
+                  <div
+                    key={session.id}
+                    className="exercise-detail-volume-column"
+                    role="listitem"
+                    aria-label={`${formatDate(session.startedAt)}: ${formatVolume(session.totalVolume)}`}
+                  >
                     <div className="exercise-detail-volume-track">
                       <motion.div
-                        data-testid="exercise-volume-bar"
-                        aria-label={`${formatDate(session.startedAt)}: ${formatVolume(session.totalVolume)}`}
+                        aria-hidden="true"
                         className="exercise-detail-volume-bar"
                         style={{
                           background: accent,

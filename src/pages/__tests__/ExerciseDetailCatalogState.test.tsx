@@ -192,12 +192,14 @@ it('shows volume metrics and chronological bar labels without hover', async () =
   expect(within(screen.getByText('Ostatnio').parentElement!).getByText('900 kg')).toBeInTheDocument()
   expect(within(screen.getByText('Maksimum').parentElement!).getByText('1.2k kg')).toBeInTheDocument()
 
-  const bars = screen.getAllByTestId('exercise-volume-bar')
-  expect(bars.map((bar) => bar.getAttribute('aria-label'))).toEqual([
-    expect.stringContaining('1.0k kg'),
-    expect.stringContaining('1.2k kg'),
-    expect.stringContaining('900 kg'),
-  ])
+  const chart = screen.getByRole('list', {
+    name: 'Wolumen ostatnich 3 sesji. Ostatnio 900 kg. Maksimum 1.2k kg.',
+  })
+  const sessions = within(chart).getAllByRole('listitem')
+  expect(sessions).toHaveLength(3)
+  expect(sessions[0]).toHaveAccessibleName(/1\.0k kg/)
+  expect(sessions[1]).toHaveAccessibleName(/1\.2k kg/)
+  expect(sessions[2]).toHaveAccessibleName(/900 kg/)
 })
 
 it('shows a not-found state for an unknown global exercise without loading history', async () => {

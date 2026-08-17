@@ -526,11 +526,11 @@ Expected: PASS; visible latest/max oraz chronologiczne słupki.
 - Consumes: Tasks 1–4 i emulator Auth/Firestore.
 - Produces: realne przełączenie dwóch serii, geometryczne gate’y mobile, touch inspector heatmapy, jawne wartości detalu oraz kwalifikowany visual receipt.
 
-- [ ] **Step 1: Rozszerzyć seed o drugie ćwiczenie**
+- [x] **Step 1: Rozszerzyć seed o drugie ćwiczenie**
 
 W `progressEmulator.ts` dodać trzy sesje `Phase 7 Squat` z source-aware id `${PREFIX}squat`, wagami 100/105/110 kg i oddzielnymi `workoutId`. Dodać ich referencje do `cleanupProgressEmulatorState`; nie tworzyć dodatkowego rekordu, jeśli test go nie potrzebuje.
 
-- [ ] **Step 2: Dodać E2E pojedynczej linii i selektora**
+- [x] **Step 2: Dodać E2E pojedynczej linii i selektora**
 
 W `progress.spec.ts` dodać:
 
@@ -550,7 +550,7 @@ test('shows one selected strength exercise and switches it without comparing sca
 })
 ```
 
-- [ ] **Step 3: Rozszerzyć mobile E2E o insight i heatmapę**
+- [x] **Step 3: Rozszerzyć mobile E2E o insight i heatmapę**
 
 W istniejącym mobile teście sprawdzić:
 
@@ -568,11 +568,11 @@ await expect(page.locator('.progress-heatmap-inspector [role="status"]')).not.to
 
 Zastąpić stary kontrakt legendy kontraktem selektora; legenda po Task 2 nie istnieje.
 
-- [ ] **Step 4: Dodać runtime contract detalu ćwiczenia**
+- [x] **Step 4: Dodać runtime contract detalu ćwiczenia**
 
 Na desktop i mobile sprawdzić, że summary `Ostatnio`/`Maksimum` jest widoczne, `.exercise-detail-volume-chart` nie ma poziomego overflow, a wysokość wykresu wynosi co najmniej 144 px. Nie używać hovera do odczytu tych dwóch wartości.
 
-- [ ] **Step 5: Uruchomić targetowane testy**
+- [x] **Step 5: Uruchomić targetowane testy**
 
 Run:
 
@@ -591,7 +591,7 @@ firebase emulators:exec --only auth,firestore --project demo-ironlog \
 "npx playwright test tests/e2e/progress.spec.ts tests/e2e/exercise-detail.spec.ts --project=desktop --project=mobile"
 ```
 
-- [ ] **Step 6: Uruchomić pełne gate’y**
+- [x] **Step 6: Uruchomić pełne gate’y**
 
 Run:
 
@@ -603,6 +603,8 @@ git diff --check
 ```
 
 Expected: wszystkie PASS. Znany teardown `Firestore Listen net::ERR_ABORTED` raportować jako infrastrukturę tylko wtedy, gdy asercje produktu przechodzą i błąd występuje po zamknięciu strony; nie wyciszać go zmianą aplikacji.
+
+Wynik Task 5: targetowane unit `38/38` PASS; pełne unit `590/590`, lint i build PASS. Kontrakty E2E produktu przeszły na desktop/mobile, a po ich zakończeniu jeden istniejący test desktop został oznaczony jako failed wyłącznie przez znany teardown `Firestore Listen net::ERR_ABORTED`; aplikacji ani warstwy diagnostycznej nie wyciszano. `git diff --check` jest czysty.
 
 - [ ] **Step 7: Wykonać bezpośrednią obserwację serialną**
 
@@ -619,6 +621,14 @@ Przed wyborem surface przeczytać `project-convergence/references/visual-observa
 - [ ] **Step 8: Zamknąć wyłącznie etap 3 po integracji**
 
 Zaktualizować parent roadmap i ten receipt. Etapy 4–5 oraz decyzje B-02, M-07 i M-14 pozostają otwarte; następny etap 4 należy rozbić na osobne release slices Coach, Historia/listy oraz shell/404.
+
+### Receipt Task 5
+
+- **Stan:** `DONE_WITH_CONCERNS` — implementacja, kontrakty, gate’y i serialna obserwacja struktury/interakcji są wykonane; zamknięcie Step 7–8 czeka na niezależny odczyt obrazu przez kontroler i integrację.
+- **Visual evidence:** Pending — surface: Playwright CLI, sesja `ui-quality-phase-3`; blocker: finalne screenshoty zostały zapisane po ostatniej zmianie kodu, ale zgodnie z kontraktem kontroler musi wykonać osobne `view_image`, zanim receipt może otrzymać status pixel-level `Observed`.
+- **Obserwacja struktury/interakcji:** domyślny Bench miał jedną linię; wybór Squat zwrócił `Ostatnio 110 kg`; heatmapa po wyborze dnia zwróciła `9 sie · 1.0k kg`; przy 320/393 px insight był przed wykresem, oba selecty miały 44 px, liczba linii wynosiła 1, a poziomy overflow był niedodatni. Detal miał jawne `1.2k kg`/`1.4k kg`, semantyczny `role=list`, wysokość 144 px i zero overflow wykresu na 393/1440 px. Krótka seria pokazała `1 z 3 dni do wykresu` bez osi, a pusty zakres celowy status.
+- **Finalne screenshoty:** `output/playwright/ui-quality-phase-3/progress-desktop-1440.png`, `progress-mobile-320.png`, `progress-mobile-393.png`, `exercise-detail-desktop-1440.png`, `exercise-detail-mobile-393.png`, `progress-short-series-1440.png`, `progress-empty-range-1440.png`.
+- **Scope po Task 5:** etapy 4–5 i decyzje B-02, M-07, M-14 pozostają otwarte. Etap 4 należy rozbić na Coach, Historia/listy i shell/404.
 
 ## Self-review planu
 

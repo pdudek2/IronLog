@@ -134,38 +134,63 @@ test.describe('Progress analytics', () => {
     await page.screenshot({ path: 'test-results/progress-records.png', fullPage: true })
   })
 
-  test('mobile content clears the fixed navigation and keeps any strength legend readable', async ({ page }) => {
-    test.skip((page.viewportSize()?.width ?? 0) >= 1024, 'Mobile geometry is covered by the mobile project.')
-
+  test('shows one selected strength exercise and switches it without comparing scales', async ({ page }) => {
     await useHistoricalSessionClock(page)
     await gotoProgressReady(page)
 
-    const bottomNavigation = page.locator('.bottom-nav')
-    await expect(bottomNavigation).toBeVisible()
-    const bottomNavigationBox = await bottomNavigation.boundingBox()
-    expect(bottomNavigationBox).not.toBeNull()
+    const picker = page.getByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+    await expect(picker).toHaveValue(/bench/)
+    await expect(page.locator('.recharts-line')).toHaveCount(1)
+    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toContainText('Phase 7 Bench Press')
 
-    const clearNavigation = async (section: Locator) => {
-      await section.evaluate((element) => element.scrollIntoView({ block: 'center' }))
-      const sectionBox = await section.boundingBox()
-      expect(sectionBox, 'expected a visible section for mobile clearance verification').not.toBeNull()
-      expect(sectionBox!.y + sectionBox!.height).toBeLessThanOrEqual(bottomNavigationBox!.y + 1)
-    }
+    await picker.selectOption({ label: 'Phase 7 Squat' })
+    await expect(page.locator('.recharts-line')).toHaveCount(1)
+    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toContainText('Ostatnio 110 kg')
+  })
 
-    const firstChart = page.locator('.progress-chart-frame').first()
-    await expect(firstChart).toBeVisible()
-    await clearNavigation(firstChart)
+  test('mobile content exposes the strength selector and heatmap inspector without overflow', async ({ page }) => {
+    test.skip((page.viewportSize()?.width ?? 0) >= 1024, 'Mobile geometry is covered by the mobile project.')
 
-    await clearNavigation(page.locator('.progress-records'))
+    await useHistoricalSessionClock(page)
 
-    const legend = page.locator('.progress-legend')
-    if (await legend.count()) {
-      await expect(legend).toBeVisible()
-      const labels = legend.locator('small')
-      for (let index = 0; index < await labels.count(); index += 1) {
-        await expectNoHorizontalOverflow(labels.nth(index), page.viewportSize()!.width)
-        expect(await labels.nth(index).evaluate((label) => label.scrollWidth <= label.clientWidth)).toBe(true)
+    for (const width of [320, 393]) {
+      await page.setViewportSize({ width, height: 844 })
+      await gotoProgressReady(page)
+
+      const bottomNavigation = page.locator('.bottom-nav')
+      await expect(bottomNavigation).toBeVisible()
+      const bottomNavigationBox = await bottomNavigation.boundingBox()
+      expect(bottomNavigationBox).not.toBeNull()
+
+      const clearNavigation = async (section: Locator) => {
+        await section.evaluate((element) => element.scrollIntoView({ block: 'center' }))
+        const sectionBox = await section.boundingBox()
+        expect(sectionBox, 'expected a visible section for mobile clearance verification').not.toBeNull()
+        expect(sectionBox!.y + sectionBox!.height).toBeLessThanOrEqual(bottomNavigationBox!.y + 1)
       }
+
+      const insight = page.getByLabel('Trend wybranego ćwiczenia')
+      const firstChart = page.locator('.progress-chart-frame').first()
+      await expect(insight).toBeVisible()
+      await expect(firstChart).toBeVisible()
+      expect((await insight.boundingBox())!.y).toBeLessThan((await firstChart.boundingBox())!.y)
+      await expectNoHorizontalOverflow(insight, width)
+      await clearNavigation(firstChart)
+
+      const strengthPicker = page.getByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+      await expect(strengthPicker).toBeVisible()
+      expect((await strengthPicker.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      await expectNoHorizontalOverflow(strengthPicker, width)
+
+      const heatmapPicker = page.getByRole('combobox', { name: 'Sprawdź dzień w kalendarzu' })
+      await expect(heatmapPicker).toBeVisible()
+      expect((await heatmapPicker.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      await expectNoHorizontalOverflow(heatmapPicker, width)
+      await heatmapPicker.selectOption({ index: 1 })
+      await expect(page.locator('.progress-heatmap-inspector [role="status"]')).not.toBeEmpty()
+
+      await clearNavigation(page.locator('.progress-records'))
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0)
     }
 
     await page.screenshot({ path: 'test-results/progress-mobile.png', fullPage: true })

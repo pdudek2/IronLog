@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use `superpowers:executing-plans` or `superpowers:subagent-driven-development` to execute this plan task by task. Keep the checkboxes current.
 
-**Status:** READY_FOR_INTEGRATION
+**Status:** DONE
 
 **Goal:** Zamienić Coacha w zwartą powierzchnię roboczą, która jednoznacznie odróżnia tryb tylko do odczytu od trybu aktywnego, utrzymuje composer w zasięgu po konfiguracji i poprawnie pokazuje listy Markdown.
 
@@ -388,9 +388,9 @@ No push without explicit authority.
 
 ## Integration receipt
 
-- **Branch:** `ui-quality-phase-4a-coach`; verified branch range `c16a764..a554807`; integration commit pending.
+- **Integration:** branch `ui-quality-phase-4a-coach` was integrated locally into `main` by fast-forward through `f83a8c4`; verified product range `c16a764..a554807`.
 - **Target gates:** 3 Vitest files / 25 tests PASS; full `chat.spec.ts` on emulator-backed desktop and mobile / 31 tests PASS.
-- **Repository gates:** ESLint PASS; 74 Vitest files / 597 tests PASS; production build PASS; `git diff --check` PASS.
+- **Repository gates:** ESLint PASS; 74 Vitest files / 597 tests PASS; production build PASS; `git diff --check` PASS. The same lint, unit, build and 31-test emulator-backed E2E gates passed again from `main` after integration.
 - **Runtime:** `Observed` serially in one named Playwright CLI session at 393×852 and 1440×900. No-key chat has one compact read-only gate, explicit empty-history copy, no starter actions and a disabled composer; an existing conversation survives key removal. Rejected key details remain open for correction, and successful recovery removes the stale blocking alert. Configured chat keeps the composer above the mobile navigation at `scrollY === 0`, constrains the desktop response to 699 px, scrolls the thread independently, exposes semantic `disc` and `decimal` list markers, and keeps Plan generation operable. Keyboard traversal reached the mode switch, configuration trigger/input, composer and enabled send action. Console: 0 errors, 0 warnings.
 - **Visual evidence:** `output/playwright/ui-quality-phase-4a-coach/coach-no-key-mobile.png`, `output/playwright/ui-quality-phase-4a-coach/coach-configured-mobile.png`, `output/playwright/ui-quality-phase-4a-coach/coach-configured-desktop.png`; each file was inspected separately.
 - **Runtime gap closed:** the fresh 393×852 observation found the fixed bottom navigation covering 27 px of `Wyślij`; commit `7b594bd` adds the browser regression and keeps the action fully above the navigation.

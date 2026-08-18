@@ -31,6 +31,8 @@ const STARTER_PROMPT_LABELS: Record<string, string> = {
   'Czy moje readiness sugeruje dziś mocniejszą czy lżejszą sesję?': 'Readiness dziś',
 }
 
+const MISSING_PLAN_KEY_MESSAGE = 'Dodaj Claude API key, żeby odblokować generator planu.'
+
 const DEMO_EMAIL = 'demo@ironlog.app'
 
 const DEMO_CHAT_MESSAGES: ChatMessage[] = [
@@ -396,7 +398,7 @@ export default function ChatPage() {
     const apiKey = getClaudeApiKey()
     if (!apiKey) {
       setConfigured(false)
-      setPlanError({ message: 'Dodaj Claude API key, żeby odblokować generator planu.', field: null })
+      setPlanError({ message: MISSING_PLAN_KEY_MESSAGE, field: null })
       return
     }
 
@@ -477,6 +479,7 @@ export default function ChatPage() {
     setConfigured(nextConfigured)
     if (nextConfigured) {
       setError('')
+      setPlanError((current) => current?.message === MISSING_PLAN_KEY_MESSAGE ? null : current)
       setShowConfigPanel(false)
       return
     }

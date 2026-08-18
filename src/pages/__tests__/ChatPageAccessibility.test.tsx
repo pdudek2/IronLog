@@ -297,6 +297,30 @@ describe('ChatPage accessibility', () => {
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
   })
 
+  it('clears the missing-key plan alert after successful key recovery', async () => {
+    render(<ChatPage />)
+
+    await openModelSelect()
+    fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
+    mocks.apiKey = ''
+    fireEvent.click(screen.getByRole('button', { name: 'Generuj plan' }))
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Dodaj Claude API key, żeby odblokować generator planu.')
+    let key = screen.queryByLabelText('Twój klucz', { selector: 'input' })
+    if (!key) {
+      fireEvent.click(screen.getByRole('button', { name: 'Skonfiguruj klucz' }))
+      key = screen.getByLabelText('Twój klucz', { selector: 'input' })
+    }
+    fireEvent.change(key, {
+      target: { value: 'sk-ant-restored-plan-key-longer-than-twenty-characters' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz klucz' }))
+
+    await waitFor(() => expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Klucz gotowy'))
+    expect(screen.queryByText('Dodaj Claude API key, żeby odblokować generator planu.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Generuj plan' })).toBeEnabled()
+  })
+
   it('keeps the API key name stable while announcing its field error', async () => {
     render(<ChatPage />)
 

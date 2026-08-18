@@ -388,13 +388,13 @@ No push without explicit authority.
 
 ## Integration receipt
 
-- **Branch:** `ui-quality-phase-4a-coach`; verified branch range `c16a764..461cd67`; integration commit pending.
-- **Target gates:** 3 Vitest files / 24 tests PASS; full `chat.spec.ts` on emulator-backed desktop and mobile / 31 tests PASS.
-- **Repository gates:** ESLint PASS; 74 Vitest files / 596 tests PASS; production build PASS; `git diff --check` PASS.
+- **Branch:** `ui-quality-phase-4a-coach`; verified branch range `c16a764..a554807`; integration commit pending.
+- **Target gates:** 3 Vitest files / 25 tests PASS; full `chat.spec.ts` on emulator-backed desktop and mobile / 31 tests PASS.
+- **Repository gates:** ESLint PASS; 74 Vitest files / 597 tests PASS; production build PASS; `git diff --check` PASS.
 - **Runtime:** `Observed` serially in one named Playwright CLI session at 393×852 and 1440×900. No-key chat has one compact read-only gate, explicit empty-history copy, no starter actions and a disabled composer; an existing conversation survives key removal. Rejected key details remain open for correction, and successful recovery removes the stale blocking alert. Configured chat keeps the composer above the mobile navigation at `scrollY === 0`, constrains the desktop response to 699 px, scrolls the thread independently, exposes semantic `disc` and `decimal` list markers, and keeps Plan generation operable. Keyboard traversal reached the mode switch, configuration trigger/input, composer and enabled send action. Console: 0 errors, 0 warnings.
 - **Visual evidence:** `output/playwright/ui-quality-phase-4a-coach/coach-no-key-mobile.png`, `output/playwright/ui-quality-phase-4a-coach/coach-configured-mobile.png`, `output/playwright/ui-quality-phase-4a-coach/coach-configured-desktop.png`; each file was inspected separately.
 - **Runtime gap closed:** the fresh 393×852 observation found the fixed bottom navigation covering 27 px of `Wyślij`; commit `7b594bd` adds the browser regression and keeps the action fully above the navigation.
-- **Review gaps closed:** commit `461cd67` preserves rejected-key recovery, clears stale no-key alerts after successful configuration, aligns the read-only empty copy, exposes disclosure state and scopes the Markdown browser assertions to the mocked reply.
+- **Review gaps closed:** commit `461cd67` preserves rejected-key recovery, clears stale no-key alerts after successful configuration, aligns the read-only empty copy, exposes disclosure state and scopes the Markdown browser assertions to the mocked reply. Commit `a554807` also clears the equivalent stale missing-key alert in Plan mode while preserving unrelated plan errors.
 - **Diagnostics:** no product diagnostic was qualified. The full E2E run completed cleanly; runner output only contained existing Node/FORCE_COLOR warnings.
 - **Remaining parent scope:** `Etap 4B — Historia/listy`, `Etap 4C — shell/404`, etap 5, B-02, M-07 and M-14.
 

@@ -362,4 +362,34 @@ describe('TemplatesPage launch actions', () => {
     expect(within(cardFor('Plan A')).getByRole('alert')).toBe(alert)
     expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
   })
+
+  it('shows structure immediately when the library has at most two plans', async () => {
+    await renderPage()
+
+    expect(within(cardFor('Plan A')).getByText('Squat')).toBeInTheDocument()
+    expect(within(cardFor('Plan A')).queryByRole('button', { name: 'Struktura' }))
+      .not.toBeInTheDocument()
+  })
+
+  it('keeps structure collapsible when the library has more than two plans', async () => {
+    mocks.getTemplates.mockResolvedValue([
+      ...templates,
+      {
+        ...templates[1],
+        id: 'template-c',
+        name: 'Plan C',
+      },
+    ])
+    await renderPage()
+
+    const card = cardFor('Plan A')
+    expect(within(card).queryByText('Squat')).not.toBeInTheDocument()
+    fireEvent.click(within(card).getByRole('button', { name: 'Struktura' }))
+    await waitFor(() => {
+      const expandedCard = cardFor('Plan A')
+      expect(within(expandedCard).getByText('Squat')).toBeInTheDocument()
+      expect(within(expandedCard).getByRole('button', { name: 'Zwiń' }))
+        .toHaveAttribute('aria-expanded', 'true')
+    })
+  })
 })

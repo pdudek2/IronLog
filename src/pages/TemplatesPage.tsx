@@ -91,6 +91,7 @@ export default function TemplatesPage() {
     days: templates.reduce((sum, template) => sum + template.days.length, 0),
     exercises: templates.reduce((sum, template) => sum + countTemplateExercises(template), 0),
   }), [templates])
+  const shortPlanList = templates.length <= 2
 
   async function runTemplateDelete(target: WorkoutTemplate) {
     setDeleteOperation({ target, status: 'pending' })
@@ -128,7 +129,8 @@ export default function TemplatesPage() {
 
   return (
     <>
-      <section className="planner-header">
+      <div className="workbench-page">
+        <section className="planner-header">
         <div>
           <h1>Plany</h1>
         </div>
@@ -163,9 +165,9 @@ export default function TemplatesPage() {
             {!error && templates.length === 0 ? 'Utwórz pierwszy plan' : 'Nowy plan'}
           </motion.button>
         </div>
-      </section>
+        </section>
 
-      <AnimatePresence mode="popLayout">
+        <AnimatePresence mode="popLayout">
         {error ? (
           <motion.div
             className="planner-status"
@@ -221,6 +223,8 @@ export default function TemplatesPage() {
             {templates.map((template, index) => {
               const totalExercises = countTemplateExercises(template)
               const expanded = expandedTemplateId === template.id
+              const showStructure = shortPlanList || expanded
+              const structureId = `template-structure-${template.id}`
               const templateLaunchOperation = launchOperation?.target.template.id === template.id
                 ? launchOperation
                 : null
@@ -322,15 +326,18 @@ export default function TemplatesPage() {
                       >
                         <Trash2 size={14} />
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => setExpandedTemplateId((current) => current === template.id ? null : template.id)}
-                        className="planner-secondary-action planner-structure-toggle"
-                        aria-expanded={expanded}
-                      >
-                        {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        {expanded ? 'Zwiń' : 'Struktura'}
-                      </button>
+                      {!shortPlanList && (
+                        <button
+                          type="button"
+                          onClick={() => setExpandedTemplateId((current) => current === template.id ? null : template.id)}
+                          className="planner-secondary-action planner-structure-toggle"
+                          aria-expanded={expanded}
+                          aria-controls={structureId}
+                        >
+                          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                          {expanded ? 'Zwiń' : 'Struktura'}
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -363,8 +370,9 @@ export default function TemplatesPage() {
                   )}
 
                   <AnimatePresence initial={false}>
-                    {expanded && (
+                    {showStructure && (
                       <motion.div
+                        id={structureId}
                         className="planner-day-board"
                         initial={{ opacity: 0, height: 0 }}
                         animate={{ opacity: 1, height: 'auto' }}
@@ -429,7 +437,8 @@ export default function TemplatesPage() {
             })}
           </div>
         )}
-      </AnimatePresence>
+        </AnimatePresence>
+      </div>
 
       {deleteTarget && (
         <ConfirmDialog

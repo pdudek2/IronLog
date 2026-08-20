@@ -19,7 +19,7 @@ test.describe('History and list workbenches', () => {
 
   test('groups seeded history by month', async ({ page }) => {
     const now = new Date()
-    const current = now.getTime() - 86_400_000
+    const current = new Date(now.getFullYear(), now.getMonth(), 1).getTime()
     const previous = new Date(now.getFullYear(), now.getMonth() - 1, 15, 12).getTime()
 
     await seedLifecycleWorkout({

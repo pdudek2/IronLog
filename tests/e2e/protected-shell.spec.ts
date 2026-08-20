@@ -36,6 +36,28 @@ test.describe('Protected application shell', () => {
       : 'Nawigacja główna'
     await expect(page.getByRole('navigation', { name: navigationName })).toBeVisible()
     await expect(page.getByRole('link', { name: 'Wróć do panelu' })).toBeVisible()
+
+    const geometry = await page.locator('.not-found-page').evaluate((element) => {
+      const actionBox = element.querySelector('a')?.getBoundingClientRect()
+      const bottomNav = document.querySelector('[aria-label="Nawigacja dolna"]')
+        ?.getBoundingClientRect()
+      return {
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        documentWidth: document.documentElement.scrollWidth,
+        documentHeight: document.documentElement.scrollHeight,
+        actionHeight: actionBox?.height ?? 0,
+        mobileClearance: bottomNav && actionBox ? bottomNav.top - actionBox.bottom : null,
+      }
+    })
+
+    expect(geometry.documentWidth).toBe(geometry.viewportWidth)
+    expect(geometry.documentHeight).toBeLessThanOrEqual(geometry.viewportHeight + 1)
+    expect(geometry.actionHeight).toBeGreaterThanOrEqual(44)
+    if (testInfo.project.name === 'mobile') {
+      expect(geometry.mobileClearance).not.toBeNull()
+      expect(geometry.mobileClearance as number).toBeGreaterThanOrEqual(16)
+    }
   })
 
   test('routes an anonymous unknown URL through the private boundary', async ({ observedContextFactory }) => {

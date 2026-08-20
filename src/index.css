@@ -268,11 +268,15 @@ a {
   outline: none;
 }
 
+.page-shell:has(.not-found-page) {
+  min-height: calc(100dvh - var(--top-nav-height));
+}
+
 .not-found-page {
   display: grid;
-  min-height: 100dvh;
+  min-height: calc(100dvh - 14rem - env(safe-area-inset-bottom, 0px));
   place-items: center;
-  padding: 2rem 1rem;
+  padding: 2rem 0;
 }
 
 .not-found-content {
@@ -296,6 +300,10 @@ a {
 @media (min-width: 1024px) {
   .page-shell {
     padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  }
+
+  .not-found-page {
+    min-height: calc(100dvh - 7rem);
   }
 }
 

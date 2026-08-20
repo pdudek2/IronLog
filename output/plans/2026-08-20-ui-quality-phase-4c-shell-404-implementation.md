@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** READY_FOR_EXECUTION
+**Status:** READY_FOR_INTEGRATION
 
 **Goal:** Keep an authenticated user inside the IronLog application chrome on an unknown route, with one main landmark, a usable recovery action and no mobile overflow.
 
@@ -42,7 +42,7 @@
 - Consumes: `AppLayout` as the sole authenticated chrome owner and `PrivateRouteOutlet` as the anonymous redirect boundary.
 - Produces: a nested `path="*"` route whose content contains no second `<main>`.
 
-- [ ] **Step 1: Add the failing component semantic assertion**
+- [x] **Step 1: Add the failing component semantic assertion**
 
 Extend `NotFoundPage.test.tsx`:
 
@@ -60,7 +60,7 @@ it('leaves main-landmark ownership to the authenticated app shell', () => {
 })
 ```
 
-- [ ] **Step 2: Strengthen the failing protected-shell browser contract**
+- [x] **Step 2: Strengthen the failing protected-shell browser contract**
 
 Replace the existing unknown-route test in `protected-shell.spec.ts` with:
 
@@ -96,7 +96,7 @@ test('routes an anonymous unknown URL through the private boundary', async ({ ob
 })
 ```
 
-- [ ] **Step 3: Run the focused tests and confirm RED**
+- [x] **Step 3: Run the focused tests and confirm RED**
 
 ```bash
 npx vitest run src/pages/__tests__/NotFoundPage.test.tsx
@@ -105,7 +105,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e npm 
 
 Expected: the component test fails because `NotFoundPage` owns a `<main>`; the authenticated browser test fails because the unknown route has no named app navigation.
 
-- [ ] **Step 4: Move the wildcard into the authenticated layout**
+- [x] **Step 4: Move the wildcard into the authenticated layout**
 
 In `src/router/index.tsx`, add the wildcard as the final child of `AppLayout`:
 
@@ -118,7 +118,7 @@ In `src/router/index.tsx`, add the wildcard as the final child of `AppLayout`:
 
 Remove the root-level wildcard after `PrivateRouteOutlet`. Do not add another redirect or auth check.
 
-- [ ] **Step 5: Give the shell semantic ownership of the page**
+- [x] **Step 5: Give the shell semantic ownership of the page**
 
 Replace the root of `NotFoundPage` with:
 
@@ -133,13 +133,13 @@ Replace the root of `NotFoundPage` with:
 </section>
 ```
 
-- [ ] **Step 6: Run focused unit and browser tests**
+- [x] **Step 6: Run focused unit and browser tests**
 
 Run the commands from Step 3 again.
 
 Expected: component assertions pass; authenticated desktop/mobile unknown routes expose exactly one focused main and the correct navigation; anonymous unknown routes redirect to login.
 
-- [ ] **Step 7: Commit the shell contract**
+- [x] **Step 7: Commit the shell contract**
 
 ```bash
 git add src/router/index.tsx src/pages/NotFoundPage.tsx src/pages/__tests__/NotFoundPage.test.tsx tests/e2e/protected-shell.spec.ts
@@ -164,7 +164,7 @@ git commit -m "fix: keep authenticated 404 inside app shell"
 - Consumes: the shell-owned `.not-found-page` from Task 1.
 - Produces: a viewport-bounded 404 and the final Etap 4 receipt.
 
-- [ ] **Step 1: Add geometry and recovery-action assertions**
+- [x] **Step 1: Add geometry and recovery-action assertions**
 
 After the semantic assertions in the authenticated E2E test, add:
 
@@ -192,11 +192,15 @@ if (testInfo.project.name === 'mobile') {
 }
 ```
 
-- [ ] **Step 2: Constrain the nested page height locally**
+- [x] **Step 2: Constrain the nested page height locally**
 
 Update the existing `.not-found-page` rule:
 
 ```css
+.page-shell:has(.not-found-page) {
+  min-height: calc(100dvh - var(--top-nav-height));
+}
+
 .not-found-page {
   display: grid;
   min-height: calc(100dvh - 14rem - env(safe-area-inset-bottom, 0px));
@@ -213,7 +217,7 @@ Update the existing `.not-found-page` rule:
 
 Keep `.not-found-content`, typography and the existing primary action style unchanged.
 
-- [ ] **Step 3: Run the focused contract and repository gates**
+- [x] **Step 3: Run the focused contract and repository gates**
 
 ```bash
 E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e npm exec --package=firebase-tools -- firebase emulators:exec --only auth,firestore --project demo-ironlog "npx playwright test tests/e2e/protected-shell.spec.ts --project=desktop --project=mobile --retries=0"
@@ -225,7 +229,7 @@ git diff --check
 
 Expected: all pass.
 
-- [ ] **Step 4: Observe final pixels in one isolated session**
+- [x] **Step 4: Observe final pixels in one isolated session**
 
 Use the `playwright` skill and one named session, `ui-quality-phase-4c`. Observe `/definitely-missing` at 393×852 and 1440×900. Confirm one main landmark, shell navigation, centered hierarchy, 44 px recovery target, keyboard focus, zero overflow, no bottom-nav collision and zero console warnings/errors.
 
@@ -234,11 +238,11 @@ Capture and separately inspect with `view_image`:
 - `output/playwright/ui-quality-phase-4c-shell-404/not-found-mobile.png`
 - `output/playwright/ui-quality-phase-4c-shell-404/not-found-desktop.png`
 
-- [ ] **Step 5: Review the whole slice**
+- [x] **Step 5: Review the whole slice**
 
 Review `BASE..HEAD` for Critical/Important findings only. Verify route ranking, anonymous redirect behavior, one-main semantics, shell focus transfer and absence of Firestore/API changes. Fix qualified findings with a regression test and rerun affected gates.
 
-- [ ] **Step 6: Write the receipt and commit evidence**
+- [x] **Step 6: Write the receipt and commit evidence**
 
 Set this plan to `READY_FOR_INTEGRATION`, record the verified commit range, exact gate counts, pixel evidence and review result. Update the parent roadmap: 4C verified pending integration, Etap 4 ready to close, Etap 5 next; B-02, M-07 and M-14 stay open.
 
@@ -248,6 +252,18 @@ git commit -m "docs: prepare protected 404 integration"
 ```
 
 No push without explicit authority.
+
+## Execution receipt — 2026-08-20
+
+- **Branch / verified range:** `ui-quality-phase-4c-shell-404`, `12ff969..15bedee`.
+- **TDD evidence:** the component test failed on the nested `<main>`; authenticated desktop/mobile browser checks failed on missing shell focus and anonymous desktop/mobile checks failed on the missing `/login` redirect. The height contract then failed with 826/935 px documents in 720/727 px viewports and remained 64 px too tall until the parent shell accounted for `--top-nav-height`.
+- **Focused contract:** `protected-shell.spec.ts` passed 13 scenarios with 2 intentional mobile skips across desktop and mobile; the focused NotFound component suite passed 2/2.
+- **Repository gate:** lint passed; 74 unit files / 602 tests passed; TypeScript + Vite production build passed; `git diff --check` passed. Commands used the bundled Node 24 runtime.
+- **Visual evidence:** `Observed` in the isolated Playwright CLI session `ui-quality-phase-4c`. `view_image` separately read `output/playwright/ui-quality-phase-4c-shell-404/not-found-mobile.png` and `not-found-desktop.png`, returning the final mobile and desktop 404 inside the application chrome with centered hierarchy and an unobstructed recovery action.
+- **Runtime facts:** at 393×852 and 1440×900 the document exactly matched the viewport, exposed one focused `<main>` and a 44 px recovery link; mobile clearance above the bottom navigation was about 296 px. The session console reported 0 warnings and 0 errors.
+- **Focused review:** no remaining Critical or Important findings. Route ranking keeps authenticated unknown URLs in place, sends anonymous unknown URLs to `/login`, preserves shell focus transfer and introduces no Firestore, API or data-contract change.
+- **Remaining lineage:** Etap 5 plus B-02, M-07 and M-14 remain open. Etap 4 is ready to close after this verified slice is integrated.
+- **Integration:** pending explicit local integration choice; nothing was pushed.
 
 ## Definition of done
 

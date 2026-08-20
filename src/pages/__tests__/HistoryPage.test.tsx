@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import HistoryPage from '../HistoryPage'
@@ -167,5 +167,69 @@ describe('HistoryPage range state', () => {
 
     expect(screen.getByText('Nowsza sesja')).toBeInTheDocument()
     expect(mocks.toastError).not.toHaveBeenCalled()
+  })
+
+  it('groups filtered workouts by month without changing their order', async () => {
+    const now = new Date()
+    const currentMonthWorkout = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      Math.max(now.getDate() - 1, 1),
+      12,
+    ).getTime()
+    const secondCurrentMonthWorkout = currentMonthWorkout - 3_600_000
+    const previousMonthWorkout = new Date(
+      now.getFullYear(),
+      now.getMonth() - 1,
+      15,
+      12,
+    ).getTime()
+
+    mocks.getWorkoutHistory.mockResolvedValue({
+      workouts: [
+        {
+          id: 'current-a',
+          startedAt: currentMonthWorkout,
+          finishedAt: currentMonthWorkout + 3_600_000,
+          materialized: true,
+          label: 'Bieżąca A',
+          exercises: [{ name: 'Przysiad', sets: [{ weight: 80, reps: 5 }] }],
+        },
+        {
+          id: 'current-b',
+          startedAt: secondCurrentMonthWorkout,
+          finishedAt: secondCurrentMonthWorkout + 3_600_000,
+          materialized: true,
+          label: 'Bieżąca B',
+          exercises: [{ name: 'Wiosłowanie', sets: [{ weight: 60, reps: 8 }] }],
+        },
+        {
+          id: 'previous',
+          startedAt: previousMonthWorkout,
+          finishedAt: previousMonthWorkout + 3_600_000,
+          materialized: true,
+          label: 'Poprzedni miesiąc',
+          exercises: [{ name: 'Martwy ciąg', sets: [{ weight: 100, reps: 5 }] }],
+        },
+      ],
+      truncated: false,
+    })
+
+    render(<HistoryPage />)
+
+    await screen.findByText('Bieżąca A')
+    const monthHeadings = screen.getAllByRole('heading', { level: 2 })
+    const currentGroup = monthHeadings[0]?.closest('section')
+    const previousGroup = monthHeadings[1]?.closest('section')
+
+    expect(monthHeadings).toHaveLength(2)
+    expect(currentGroup).not.toBeNull()
+    expect(previousGroup).not.toBeNull()
+    expect(within(currentGroup as HTMLElement).getAllByRole('button').map((row) => row.textContent))
+      .toEqual([
+        expect.stringContaining('Bieżąca A'),
+        expect.stringContaining('Bieżąca B'),
+      ])
+    expect(within(previousGroup as HTMLElement).getByText('Poprzedni miesiąc')).toBeInTheDocument()
   })
 })

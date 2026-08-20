@@ -9198,6 +9198,17 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 /* ── Puls workspace convergence: one document, no nested cards ─────
    Inputs, dialogs and error states keep explicit boundaries. Page-level
    grouping is carried by typography, tonal bands and horizontal rules. */
+.workbench-page {
+  width: min(100%, 65rem);
+  margin-inline: auto;
+}
+
+.workbench-page .history-page-header h1,
+.workbench-page .planner-header h1,
+.workbench-page .exercise-library-header-copy h1 {
+  font-size: clamp(2.4rem, 4vw, 3.35rem);
+}
+
 .history-page,
 .progress-page {
   padding-top: clamp(1rem, 2vw, 1.35rem);
@@ -9264,6 +9275,47 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 /* History */
+.history-month-list {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.history-month-group {
+  min-width: 0;
+}
+
+.history-month-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-bottom: 0.65rem;
+}
+
+.history-month-heading h2 {
+  margin: 0;
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 760;
+}
+
+.history-month-heading span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.history-category-filter-button {
+  border-radius: 0;
+  border-bottom: 2px solid var(--border);
+}
+
+.history-category-filter-button[data-active="true"] {
+  border-bottom-color: var(--history-filter-accent);
+  background: transparent;
+}
+
 .history-workout-row {
   background: transparent;
 }

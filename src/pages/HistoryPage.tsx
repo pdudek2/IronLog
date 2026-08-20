@@ -55,6 +55,42 @@ interface DerivedWorkout {
   exerciseNames: string[]
 }
 
+interface WorkoutMonthGroup {
+  key: string
+  label: string
+  workouts: DerivedWorkout[]
+}
+
+function formatMonthLabel(timestamp: number): string {
+  const label = new Intl.DateTimeFormat('pl-PL', {
+    month: 'long',
+    year: 'numeric',
+  }).format(timestamp)
+  return label.charAt(0).toLocaleUpperCase('pl-PL') + label.slice(1)
+}
+
+function groupWorkoutsByMonth(workouts: DerivedWorkout[]): WorkoutMonthGroup[] {
+  const groups: WorkoutMonthGroup[] = []
+
+  for (const item of workouts) {
+    const date = new Date(item.workout.startedAt)
+    const key = `${date.getFullYear()}-${date.getMonth()}`
+    const current = groups.at(-1)
+
+    if (current?.key === key) {
+      current.workouts.push(item)
+    } else {
+      groups.push({
+        key,
+        label: formatMonthLabel(item.workout.startedAt),
+        workouts: [item],
+      })
+    }
+  }
+
+  return groups
+}
+
 function deriveWorkout(workout: WorkoutSummary, exerciseMap: Map<string, Exercise>): DerivedWorkout {
   const categories = new Set<string>()
   const exerciseNames: string[] = []
@@ -180,6 +216,7 @@ export default function HistoryPage() {
       return true
     })
   }, [derived, rangePreset, activeCategory, searchText, rangeAnchorMs])
+  const monthGroups = useMemo(() => groupWorkoutsByMonth(filtered), [filtered])
 
   const totalVolumeInRange = useMemo(
     () => filtered.reduce((sum, { totalVolume }) => sum + totalVolume, 0),
@@ -192,7 +229,7 @@ export default function HistoryPage() {
   if (loading && workouts.length === 0) return <LoadingState message="Ładowanie historii..." />
 
   return (
-    <div className="history-page">
+    <div className="history-page workbench-page">
       <header className="history-page-header">
         <h1>Historia</h1>
         <p>
@@ -345,60 +382,77 @@ export default function HistoryPage() {
             </p>
           </div>
         ) : (
-          <div className="history-workout-list">
-            {filtered.map(({ workout, totalSets, totalVolume, categories, exerciseNames }) => (
-              <button
-                key={workout.id}
-                type="button"
-                onClick={() => navigate(`/workout/${workout.id}`)}
-                className="history-workout-row"
-                style={{ '--workout-accent': EXERCISE_CATEGORY_COLORS[Array.from(categories)[0] ?? ''] ?? 'var(--accent)' } as CSSProperties}
-              >
-                <div className="history-workout-main">
-                  <div className="min-w-0">
-                    <div className="history-workout-meta">
-                      <span>{formatDate(workout.startedAt)}</span>
-                      <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
-                      <span className="history-inline-stat">{formatCompactVolume(totalVolume)}</span>
-                      <span className="history-inline-stat">{totalSets} serii</span>
-                    </div>
-                    <h3>{workout.label?.trim() || 'Sesja treningowa'}</h3>
-                    <p>{exerciseNames.length > 0 ? exerciseNames.join(' · ') : 'brak ćwiczeń'}</p>
-                    {Array.from(categories).length > 0 && (
-                      <div className="history-category-row" aria-label="Partie mięśniowe">
-                        {Array.from(categories).slice(0, 3).map((cat) => {
-                          const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
-                          return (
-                            <span
-                              key={cat}
-                              className="history-category-pill"
-                              style={{ '--category-accent': color } as CSSProperties}
-                            >
-                              {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    )}
+          <div className="history-month-list">
+            {monthGroups.map((group) => {
+              const headingId = `history-month-${group.key}`
+
+              return (
+                <section key={group.key} className="history-month-group" aria-labelledby={headingId}>
+                  <div className="history-month-heading">
+                    <h2 id={headingId}>{group.label}</h2>
+                    <span>
+                      {group.workouts.length}{' '}
+                      {polishPlural(group.workouts.length, 'sesja', 'sesje', 'sesji')}
+                    </span>
                   </div>
-                  <ChevronRight size={18} className="history-workout-arrow" aria-hidden="true" />
-                </div>
-                <div className="history-workout-metrics puls-ledger" aria-label="Statystyki treningu">
-                  <div>
-                    <span>Ćwiczenia</span>
-                    <strong>{workout.exercises.length}</strong>
+                  <div className="history-workout-list">
+                    {group.workouts.map(({ workout, totalSets, totalVolume, categories, exerciseNames }) => (
+                      <button
+                        key={workout.id}
+                        type="button"
+                        onClick={() => navigate(`/workout/${workout.id}`)}
+                        className="history-workout-row"
+                        style={{ '--workout-accent': EXERCISE_CATEGORY_COLORS[Array.from(categories)[0] ?? ''] ?? 'var(--accent)' } as CSSProperties}
+                      >
+                        <div className="history-workout-main">
+                          <div className="min-w-0">
+                            <div className="history-workout-meta">
+                              <span>{formatDate(workout.startedAt)}</span>
+                              <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
+                              <span className="history-inline-stat">{formatCompactVolume(totalVolume)}</span>
+                              <span className="history-inline-stat">{totalSets} serii</span>
+                            </div>
+                            <h3>{workout.label?.trim() || 'Sesja treningowa'}</h3>
+                            <p>{exerciseNames.length > 0 ? exerciseNames.join(' · ') : 'brak ćwiczeń'}</p>
+                            {Array.from(categories).length > 0 && (
+                              <div className="history-category-row" aria-label="Partie mięśniowe">
+                                {Array.from(categories).slice(0, 3).map((cat) => {
+                                  const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
+                                  return (
+                                    <span
+                                      key={cat}
+                                      className="history-category-pill"
+                                      style={{ '--category-accent': color } as CSSProperties}
+                                    >
+                                      {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
+                                    </span>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                          <ChevronRight size={18} className="history-workout-arrow" aria-hidden="true" />
+                        </div>
+                        <div className="history-workout-metrics puls-ledger" aria-label="Statystyki treningu">
+                          <div>
+                            <span>Ćwiczenia</span>
+                            <strong>{workout.exercises.length}</strong>
+                          </div>
+                          <div>
+                            <span>Serie</span>
+                            <strong>{totalSets}</strong>
+                          </div>
+                          <div>
+                            <span>Objętość</span>
+                            <strong>{formatCompactVolume(totalVolume)}</strong>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                  <div>
-                    <span>Serie</span>
-                    <strong>{totalSets}</strong>
-                  </div>
-                  <div>
-                    <span>Objętość</span>
-                    <strong>{formatCompactVolume(totalVolume)}</strong>
-                  </div>
-                </div>
-              </button>
-            ))}
+                </section>
+              )
+            })}
           </div>
         )}
       </div>

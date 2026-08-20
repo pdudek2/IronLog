@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** READY_FOR_INTEGRATION
+**Status:** DONE
 
 **Goal:** Turn History, Plans and the Exercise Library into compact Puls workbenches: History is grouped by month, short plan lists reveal their structure immediately, and all three surfaces keep readable line lengths on wide screens.
 
@@ -640,6 +640,7 @@ No push without explicit authority.
 - **Runtime facts:** both seeded month groups were visible once and in descending order; two plans exposed their exercises immediately; three plans retained the `Struktura` disclosure; desktop workbenches measured 1040 px and were centered; mobile document width equaled the 393 px viewport; the last plan retained about 70 px clearance above the fixed bottom navigation; session console reported 0 warnings and 0 errors.
 - **Focused review:** no remaining Critical or Important findings. The review caught and fixed a 22 px focusable exercise-search target (`02ca963`) and stabilized the E2E current-month fixture at month boundaries (`7a3c991`). Grouping still consumes Firestore's descending `startedAt` order, dialogs stay outside workbench wrappers, launch/CRUD ownership is unchanged, and no Firestore/API/data contract changed.
 - **Remaining lineage:** 4C shell/404, etap 5, B-02, M-07 and M-14 remain open. Pagination stays deferred pending measured need.
+- **Integration:** fast-forwarded locally into `main` at `d434558`; merged-result lint, 74 files / 601 unit tests, build and diff check passed. The feature worktree and local branch were removed. Nothing was pushed.
 
 ## Definition of done
 

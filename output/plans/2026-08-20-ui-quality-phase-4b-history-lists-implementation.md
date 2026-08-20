@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** READY_FOR_EXECUTION
+**Status:** READY_FOR_INTEGRATION
 
 **Goal:** Turn History, Plans and the Exercise Library into compact Puls workbenches: History is grouped by month, short plan lists reveal their structure immediately, and all three surfaces keep readable line lengths on wide screens.
 
@@ -42,7 +42,7 @@
 - Consumes: the existing `filtered: DerivedWorkout[]`, whose order already matches `getWorkoutHistory`.
 - Produces: `groupWorkoutsByMonth(workouts: DerivedWorkout[]): WorkoutMonthGroup[]` and the shared `.workbench-page` layout class used by Tasks 2 and 3.
 
-- [ ] **Step 1: Add the failing month-grouping test**
+- [x] **Step 1: Add the failing month-grouping test**
 
 Add `within` to the Testing Library import and append this test to `HistoryPage.test.tsx`:
 
@@ -116,7 +116,7 @@ it('groups filtered workouts by month without changing their order', async () =>
 })
 ```
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 Run:
 
@@ -126,7 +126,7 @@ npx vitest run src/pages/__tests__/HistoryPage.test.tsx
 
 Expected: FAIL because no level-2 month headings exist.
 
-- [ ] **Step 3: Add the minimal grouping derivation**
+- [x] **Step 3: Add the minimal grouping derivation**
 
 Add beside `DerivedWorkout`:
 
@@ -199,7 +199,7 @@ Add `workbench-page` to the History root. Replace the successful flat map with s
 
 Do not sort again; grouping must preserve the service order.
 
-- [ ] **Step 4: Add the shared workbench width and flat month hierarchy**
+- [x] **Step 4: Add the shared workbench width and flat month hierarchy**
 
 Add to the workspace convergence CSS block:
 
@@ -259,7 +259,7 @@ Add to the workspace convergence CSS block:
 
 Keep the existing 44 px minimum height, focus ring and range control surface.
 
-- [ ] **Step 5: Run History tests and repository style checks**
+- [x] **Step 5: Run History tests and repository style checks**
 
 Run:
 
@@ -271,7 +271,7 @@ git diff --check
 
 Expected: all PASS.
 
-- [ ] **Step 6: Commit the History deliverable**
+- [x] **Step 6: Commit the History deliverable**
 
 ```bash
 git add src/pages/HistoryPage.tsx src/pages/__tests__/HistoryPage.test.tsx src/index.css
@@ -292,7 +292,7 @@ git commit -m "feat: group workout history by month"
 - Consumes: `.workbench-page` from Task 1 and the existing `planner-day-board` rendering.
 - Produces: `shortPlanList` / `showStructure` behavior; longer lists retain `expandedTemplateId` and the current disclosure labels.
 
-- [ ] **Step 1: Add RED tests for short and long lists**
+- [x] **Step 1: Add RED tests for short and long lists**
 
 Append to `TemplatesPageActions.test.tsx`:
 
@@ -320,7 +320,7 @@ it('keeps structure collapsible when the library has more than two plans', async
 })
 ```
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 ```bash
 npx vitest run src/pages/__tests__/TemplatesPageActions.test.tsx
@@ -328,7 +328,7 @@ npx vitest run src/pages/__tests__/TemplatesPageActions.test.tsx
 
 Expected: the two-plan structure assertion fails because `Squat` is hidden.
 
-- [ ] **Step 3: Reuse the existing detail board for the short-list state**
+- [x] **Step 3: Reuse the existing detail board for the short-list state**
 
 Inside the loaded-list branch, define once:
 
@@ -375,7 +375,7 @@ Wrap the visible page content, but not its dialogs, in the shared width class:
 </>
 ```
 
-- [ ] **Step 4: Run all plan-page tests**
+- [x] **Step 4: Run all plan-page tests**
 
 ```bash
 npx vitest run src/pages/__tests__/TemplatesPageActions.test.tsx src/pages/__tests__/TemplatesPageDataState.test.tsx
@@ -384,7 +384,7 @@ git diff --check
 
 Expected: all PASS; pending/error ownership tests remain unchanged.
 
-- [ ] **Step 5: Commit the Plans deliverable**
+- [x] **Step 5: Commit the Plans deliverable**
 
 ```bash
 git add src/pages/TemplatesPage.tsx src/pages/__tests__/TemplatesPageActions.test.tsx
@@ -406,7 +406,7 @@ git commit -m "feat: reveal structure for short plan lists"
 - Consumes: `.workbench-page` from Task 1, current `expectAppReady`, and emulator helpers from `tests/e2e/support/workoutLifecycleEmulator.ts`.
 - Produces: a deterministic browser contract for month grouping, wide-screen maximum width and horizontal overflow on `/history`, `/templates` and `/exercises`.
 
-- [ ] **Step 1: Add the failing library ownership test**
+- [x] **Step 1: Add the failing library ownership test**
 
 Append to `ExercisesPageDataState.test.tsx`:
 
@@ -424,7 +424,7 @@ it('keeps the command surface and both catalogs inside one workbench width owner
 })
 ```
 
-- [ ] **Step 2: Run the focused test and confirm RED**
+- [x] **Step 2: Run the focused test and confirm RED**
 
 ```bash
 npx vitest run src/pages/__tests__/ExercisesPageDataState.test.tsx
@@ -432,7 +432,7 @@ npx vitest run src/pages/__tests__/ExercisesPageDataState.test.tsx
 
 Expected: FAIL because the page has no `.workbench-page` ancestor.
 
-- [ ] **Step 3: Apply the existing workbench owner without changing CRUD**
+- [x] **Step 3: Apply the existing workbench owner without changing CRUD**
 
 Wrap only the header and library content:
 
@@ -448,7 +448,7 @@ Wrap only the header and library content:
 
 Do not move form state, filters, navigation, destructive confirmation or service calls.
 
-- [ ] **Step 4: Add deterministic cross-route Playwright coverage**
+- [x] **Step 4: Add deterministic cross-route Playwright coverage**
 
 Create `tests/e2e/workbench-lists.spec.ts`:
 
@@ -529,7 +529,7 @@ test.describe('History and list workbenches', () => {
 })
 ```
 
-- [ ] **Step 5: Run unit and emulator-backed browser checks**
+- [x] **Step 5: Run unit and emulator-backed browser checks**
 
 ```bash
 npx vitest run src/pages/__tests__/ExercisesPageDataState.test.tsx
@@ -538,7 +538,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e npm 
 
 Expected: all PASS, no unqualified console/page/request errors.
 
-- [ ] **Step 6: Commit the Library and geometry contract**
+- [x] **Step 6: Commit the Library and geometry contract**
 
 ```bash
 git add src/pages/ExercisesPage.tsx src/pages/__tests__/ExercisesPageDataState.test.tsx tests/e2e/workbench-lists.spec.ts
@@ -563,7 +563,7 @@ git commit -m "feat: constrain list workbenches"
 - Consumes: completed Tasks 1-3 and their deterministic emulator data.
 - Produces: final branch evidence and a bounded integration receipt; it does not close 4C or the parent roadmap.
 
-- [ ] **Step 1: Run the complete targeted suite**
+- [x] **Step 1: Run the complete targeted suite**
 
 ```bash
 npx vitest run src/pages/__tests__/HistoryPage.test.tsx src/pages/__tests__/TemplatesPageActions.test.tsx src/pages/__tests__/TemplatesPageDataState.test.tsx src/pages/__tests__/ExercisesPageDataState.test.tsx
@@ -572,7 +572,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e npm 
 
 Expected: all PASS.
 
-- [ ] **Step 2: Run repository gates**
+- [x] **Step 2: Run repository gates**
 
 ```bash
 npm run lint
@@ -583,7 +583,7 @@ git diff --check
 
 Expected: all PASS.
 
-- [ ] **Step 3: Observe final pixels serially in one isolated Playwright session**
+- [x] **Step 3: Observe final pixels serially in one isolated Playwright session**
 
 Use the `playwright` skill because a deterministic clean emulator session is materially better than the signed-in user browser for seeded monthly history. Use one named session: `ui-quality-phase-4b`.
 
@@ -598,7 +598,7 @@ Observe `/history`, `/templates` and `/exercises` at 393×852 and 1440×900 afte
 
 Capture the four named screenshots after the final state. Then call `view_image` separately on each screenshot. Pixel evidence is `Observed` only if each completed `view_image` call returns image content; otherwise record `Pending` with the exact blocker.
 
-- [ ] **Step 4: Perform one focused whole-diff review**
+- [x] **Step 4: Perform one focused whole-diff review**
 
 Review `BASE..HEAD` for Critical/Important findings only. Specifically verify:
 
@@ -609,7 +609,7 @@ Review `BASE..HEAD` for Critical/Important findings only. Specifically verify:
 
 Fix qualified findings with a regression test, rerun affected gates and record the fix commit. Do not run a broad repository audit.
 
-- [ ] **Step 5: Update the canonical receipt**
+- [x] **Step 5: Update the canonical receipt**
 
 Set this plan to `READY_FOR_INTEGRATION` and record:
 
@@ -621,7 +621,7 @@ Set this plan to `READY_FOR_INTEGRATION` and record:
 
 Update the parent roadmap execution line to say 4B is verified and pending integration, with 4C next. Do not mark etap 4 or the whole roadmap complete.
 
-- [ ] **Step 6: Commit the evidence and receipt**
+- [x] **Step 6: Commit the evidence and receipt**
 
 ```bash
 git add output/plans/2026-08-20-ui-quality-phase-4b-history-lists-implementation.md output/plans/2026-08-14-ui-quality-roadmap.md output/playwright/ui-quality-phase-4b-history-lists
@@ -629,6 +629,17 @@ git commit -m "docs: prepare history workbench integration"
 ```
 
 No push without explicit authority.
+
+## Execution receipt — 2026-08-20
+
+- **Branch / verified range:** `ui-quality-phase-4b-history-lists`, `babfa9c..7a3c991`.
+- **Targeted component gate:** 4 files, 30 tests passed.
+- **Emulator browser gate:** 11/11 scenarios passed across desktop and mobile for the new workbench contract plus existing Templates and Exercises CRUD. After the visual-gate fix, Exercises passed 5/5 and the month/geometry contract passed 5/5 again.
+- **Repository gate:** lint passed; 74 unit files / 601 tests passed; TypeScript + Vite production build passed; `git diff --check` passed. Commands used bundled Node 24.19.0 to match the repository runtime types.
+- **Pixel evidence:** `Observed` in the isolated Playwright CLI session `ui-quality-phase-4b` at 393×852 and 1440×900. Each artifact was opened separately with `view_image`: `history-mobile.png`, `history-desktop.png`, `templates-mobile.png`, `exercises-desktop.png` in `output/playwright/ui-quality-phase-4b-history-lists/`.
+- **Runtime facts:** both seeded month groups were visible once and in descending order; two plans exposed their exercises immediately; three plans retained the `Struktura` disclosure; desktop workbenches measured 1040 px and were centered; mobile document width equaled the 393 px viewport; the last plan retained about 70 px clearance above the fixed bottom navigation; session console reported 0 warnings and 0 errors.
+- **Focused review:** no remaining Critical or Important findings. The review caught and fixed a 22 px focusable exercise-search target (`02ca963`) and stabilized the E2E current-month fixture at month boundaries (`7a3c991`). Grouping still consumes Firestore's descending `startedAt` order, dialogs stay outside workbench wrappers, launch/CRUD ownership is unchanged, and no Firestore/API/data contract changed.
+- **Remaining lineage:** 4C shell/404, etap 5, B-02, M-07 and M-14 remain open. Pagination stays deferred pending measured need.
 
 ## Definition of done
 

@@ -23,11 +23,30 @@ test.describe('Protected application shell', () => {
     await expect(anonymousPage).toHaveURL('/login', { timeout: 15_000 })
   })
 
-  test('keeps a genuinely unknown route on the 404 page', async ({ page }) => {
+  test('keeps an authenticated unknown route inside the app shell', async ({ page }, testInfo) => {
     await page.goto('/definitely-missing')
 
     await expect(page).toHaveURL('/definitely-missing')
     await expect(page.getByRole('heading', { name: 'Ta strona nie istnieje' })).toBeVisible()
+    await expect(page.getByRole('main')).toHaveCount(1)
+    await expect(page.getByRole('main')).toBeFocused()
+
+    const navigationName = testInfo.project.name === 'mobile'
+      ? 'Nawigacja dolna'
+      : 'Nawigacja główna'
+    await expect(page.getByRole('navigation', { name: navigationName })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Wróć do panelu' })).toBeVisible()
+  })
+
+  test('routes an anonymous unknown URL through the private boundary', async ({ observedContextFactory }) => {
+    const context = await observedContextFactory.newContext({
+      storageState: { cookies: [], origins: [] },
+    })
+    const page = await context.newPage()
+
+    await page.goto('/definitely-missing')
+    await expect(page).toHaveURL('/login', { timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'Zaloguj się' })).toBeVisible()
   })
 
   test('provides one main landmark and moves focus after route navigation', async ({ page }, testInfo) => {

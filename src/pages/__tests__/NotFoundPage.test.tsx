@@ -15,4 +15,16 @@ describe('NotFoundPage', () => {
     expect(screen.getByRole('link', { name: 'Wróć do panelu' })).toHaveAttribute('href', '/dashboard')
     expect(container.querySelector('.surface-panel')).toBeNull()
   })
+
+  it('leaves main-landmark ownership to the authenticated app shell', () => {
+    const { container } = render(
+      <MemoryRouter>
+        <NotFoundPage />
+      </MemoryRouter>,
+    )
+
+    expect(container.querySelector('main')).toBeNull()
+    expect(screen.getByRole('heading', { name: 'Ta strona nie istnieje' }))
+      .toHaveAttribute('id', 'not-found-title')
+  })
 })

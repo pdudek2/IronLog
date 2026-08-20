@@ -165,10 +165,10 @@ const router = createBrowserRouter(createRoutesFromElements(
           <Route path="/profile" element={<ProfilePage />} />
           <Route path="/workout/new" element={<WorkoutPage />} />
           <Route path="/workout/:id" element={<WorkoutDetailPage />} />
+          <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Route>
     </Route>
-    <Route path="*" element={<NotFoundPage />} />
   </Route>,
 ))
 

@@ -5990,6 +5990,7 @@ a {
 
 .exercise-search-box input {
   min-width: 0;
+  min-height: 2.75rem;
   flex: 1;
   border: 0;
   background: transparent;

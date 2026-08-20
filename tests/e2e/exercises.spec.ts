@@ -33,7 +33,8 @@ test.describe('Exercises CRUD', () => {
       const editAction = document.querySelector<HTMLElement>('.exercise-library-actions .planner-icon-action')
       const commandPanel = document.querySelector<HTMLElement>('.exercise-command-panel')
       const searchBox = document.querySelector<HTMLElement>('.exercise-search-box')
-      if (!activeFilter || !openAffordance || !editAction || !commandPanel || !searchBox) {
+      const searchInput = searchBox?.querySelector('input')
+      if (!activeFilter || !openAffordance || !editAction || !commandPanel || !searchBox || !searchInput) {
         throw new Error('Expected loaded library controls')
       }
 
@@ -42,6 +43,7 @@ test.describe('Exercises CRUD', () => {
       const editStyle = window.getComputedStyle(editAction)
       const commandStyle = window.getComputedStyle(commandPanel)
       const searchStyle = window.getComputedStyle(searchBox)
+      const searchInputStyle = window.getComputedStyle(searchInput)
       return {
         filterRadius: filterStyle.borderTopLeftRadius,
         filterBackground: filterStyle.backgroundColor,
@@ -54,6 +56,7 @@ test.describe('Exercises CRUD', () => {
         commandBackground: commandStyle.backgroundColor,
         commandRadius: commandStyle.borderTopLeftRadius,
         searchMinHeight: searchStyle.minHeight,
+        searchInputMinHeight: searchInputStyle.minHeight,
       }
     })
 
@@ -69,6 +72,7 @@ test.describe('Exercises CRUD', () => {
       commandBackground: 'rgba(0, 0, 0, 0)',
       commandRadius: '0px',
       searchMinHeight: '44px',
+      searchInputMinHeight: '44px',
     })
 
     await addBtn.click()

@@ -150,6 +150,18 @@ describe('ExercisesPage user library states', () => {
     expect(within(globalSection as HTMLElement).getByText('1')).toBeInTheDocument()
   })
 
+  it('keeps commands and both catalogs inside one workbench width owner', async () => {
+    mocks.getUserExercises.mockResolvedValueOnce([])
+
+    render(<ExercisesPage />)
+
+    const page = await screen.findByTestId('exercises-page')
+    const workbench = page.closest('.workbench-page')
+    expect(workbench).not.toBeNull()
+    expect(workbench).toContainElement(screen.getByLabelText('Szukaj ćwiczenia'))
+    expect(workbench).toContainElement(screen.getByRole('heading', { name: 'Katalog globalny' }))
+  })
+
   it('exposes filter state and exactly one open action per exercise', async () => {
     mocks.getUserExercises.mockResolvedValueOnce([])
     render(<ExercisesPage />)

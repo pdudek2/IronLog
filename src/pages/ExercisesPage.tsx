@@ -498,7 +498,8 @@ export default function ExercisesPage() {
 
   return (
     <>
-      <section className="exercise-library-header">
+      <div className="workbench-page">
+        <section className="exercise-library-header">
         <motion.div
           className="exercise-library-header-copy"
           initial={{ opacity: 0, y: 6 }}
@@ -568,17 +569,17 @@ export default function ExercisesPage() {
             </motion.button>
           </div>
         </div>
-      </section>
+        </section>
 
-      <div
-        className="exercise-library-content"
-        data-testid="exercises-page"
-        data-load-state={
-          userExercisesState.status === 'success'
-            ? 'ready'
-            : userExercisesState.status
-        }
-      >
+        <div
+          className="exercise-library-content"
+          data-testid="exercises-page"
+          data-load-state={
+            userExercisesState.status === 'success'
+              ? 'ready'
+              : userExercisesState.status
+          }
+        >
         <section className="exercise-library-section">
           <SectionHeader
             eyebrow="Własna biblioteka"
@@ -674,6 +675,7 @@ export default function ExercisesPage() {
             </div>
           )}
         </section>
+        </div>
       </div>
 
       {/* Create form modal */}

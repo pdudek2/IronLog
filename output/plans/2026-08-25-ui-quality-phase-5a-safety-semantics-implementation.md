@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** READY_FOR_INTEGRATION
+**Status:** DONE
 
 **Goal:** Prevent accidental loss of a populated workout set and make category/muscle identity colors visually distinct from Puls semantic state colors without redesigning the product.
 
@@ -198,4 +198,4 @@ No push without explicit authority.
 - **Visual evidence:** Observed — surface: Browser; completed Browser events returned final dashboard, progress and populated-set dialog states at both breakpoints. Pixel proof: `view_image` separately read `dashboard-mobile.png`, `progress-mobile.png`, `workout-set-confirm-mobile.png`, `dashboard-desktop.png`, `progress-desktop.png` and `workout-set-confirm-desktop.png`; the returned images showed neutral labeled counts, a distinct muted identity palette, quiet 44 px destructive affordances and a clear confirmation hierarchy with visible cancel focus.
 - **CSS qualification:** no additional destructive-action CSS change was warranted after runtime inspection; current controls are quiet at rest, meet the hit-area contract and become explicit inside the existing confirmation surface.
 - **Review:** whole-range review found no Critical or Important issues. No Firestore schema, lifecycle, finalize/discard API, route or dependency changed.
-- **Integration:** ready for local fast-forward; no push performed.
+- **Integration:** merged locally to `main` by fast-forward at `14fed63`; merged-result lint, unit (74 files / 602 tests), build and `git diff --check` all passed. The owned worktree and feature branch were removed; no push performed.

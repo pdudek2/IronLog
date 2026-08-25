@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** READY_FOR_EXECUTION
+**Status:** READY_FOR_INTEGRATION
 
 **Goal:** Prevent accidental loss of a populated workout set and make category/muscle identity colors visually distinct from Puls semantic state colors without redesigning the product.
 
@@ -40,7 +40,7 @@
 - Consumes: `WorkoutExercise.clientId`, `WorkoutSet.clientId`, `useWorkoutStore.removeSet` and the existing `ConfirmDialog`.
 - Produces: immediate removal for blank/incomplete sets and an identity-safe confirmation flow for populated/completed sets.
 
-- [ ] **Step 1: Add the failing browser contract**
+- [x] **Step 1: Add the failing browser contract**
 
 Add one focused scenario to `workout-mobile.spec.ts` that starts a fresh workout, adds `Squat`, and proves both branches:
 
@@ -51,7 +51,7 @@ Add one focused scenario to `workout-mobile.spec.ts` that starts a fresh workout
 
 The production mutation this test catches is routing every remove tap directly to `removeSet`, bypassing the populated-set confirmation branch.
 
-- [ ] **Step 2: Run the focused scenario and confirm RED**
+- [x] **Step 2: Run the focused scenario and confirm RED**
 
 ```bash
 E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e npm exec --package=firebase-tools -- firebase emulators:exec --only auth,firestore --project demo-ironlog "npx playwright test tests/e2e/workout-mobile.spec.ts --project=mobile --grep 'protects populated sets' --retries=0"
@@ -59,7 +59,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e npm 
 
 Expected: the populated set disappears immediately and the expected dialog is absent.
 
-- [ ] **Step 3: Add the minimum identity-safe confirmation boundary**
+- [x] **Step 3: Add the minimum identity-safe confirmation boundary**
 
 In `WorkoutPage.tsx`:
 
@@ -71,11 +71,11 @@ In `WorkoutPage.tsx`:
 
 Do not change `removeSet`, add undo, or introduce a helper unless the branch becomes unreadable inline.
 
-- [ ] **Step 4: Run the focused scenario and confirm GREEN**
+- [x] **Step 4: Run the focused scenario and confirm GREEN**
 
 Run the Step 2 command again. Expected: both immediate-empty and confirmed-populated branches pass with no console warning/error.
 
-- [ ] **Step 5: Commit the protected deletion contract**
+- [x] **Step 5: Commit the protected deletion contract**
 
 ```bash
 git add src/pages/WorkoutPage.tsx tests/e2e/workout-mobile.spec.ts
@@ -100,13 +100,13 @@ git commit -m "fix: confirm removal of populated workout sets"
 - Consumes: `EXERCISE_CATEGORY_COLORS`, local `MUSCLE_COLORS`, `polishPlural` and the existing `--workout-accent` row identity.
 - Produces: nonsemantic identity palettes plus a neutral, explicitly labeled dashboard set count.
 
-- [ ] **Step 1: Replace the literal color change detector with behavior contracts**
+- [x] **Step 1: Replace the literal color change detector with behavior contracts**
 
 In `exerciseLabels.test.ts`, remove the assertion that `chest` equals one exact hex value. Add an invariant test that category colors are unique and none equals the three semantic Puls literals `#F0435A`, `#8FB8A0`, `#F0A75A` (case-insensitive). The production mutation it catches is reusing a semantic state token as category identity.
 
 In `dashboard.spec.ts`, extend the recent-workout contract to assert the visible set badge is labeled with `seria/serie/serii`, not only `N×`.
 
-- [ ] **Step 2: Run the focused tests and confirm RED**
+- [x] **Step 2: Run the focused tests and confirm RED**
 
 ```bash
 npx vitest run src/lib/__tests__/exerciseLabels.test.ts
@@ -115,7 +115,7 @@ E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e npm 
 
 Expected: the palette invariant fails on current semantic colors and the dashboard badge lacks the explicit set label.
 
-- [ ] **Step 3: Apply the smallest identity-color change**
+- [x] **Step 3: Apply the smallest identity-color change**
 
 - update `EXERCISE_CATEGORY_COLORS` to a readable nonsemantic identity palette;
 - update the local `MUSCLE_COLORS` in `ProgressPage` to the same principle without forcing the two taxonomies into a shared abstraction;
@@ -124,11 +124,11 @@ Expected: the palette invariant fails on current semantic colors and the dashboa
 
 Start from this contrast-checked palette on `#111012`: chest `#D97B91`, back `#9BB7C8`, legs `#D6A06F`, shoulders `#A898C8`, arms `#C38B73`, core `#A7A0B5`, cardio `#76ADB1`. Adjust only if fresh runtime reveals a legibility or hierarchy problem.
 
-- [ ] **Step 4: Run focused unit and browser tests**
+- [x] **Step 4: Run focused unit and browser tests**
 
 Run the Step 2 commands again. Expected: both pass.
 
-- [ ] **Step 5: Commit semantic separation**
+- [x] **Step 5: Commit semantic separation**
 
 ```bash
 git add src/lib/exerciseLabels.ts src/lib/__tests__/exerciseLabels.test.ts src/pages/ProgressPage.tsx src/pages/DashboardPage.tsx src/index.css tests/e2e/dashboard.spec.ts
@@ -147,7 +147,7 @@ git commit -m "fix: separate identity accents from status colors"
 - Modify: `output/plans/2026-08-14-ui-quality-roadmap.md`
 - Create: `output/playwright/ui-quality-phase-5a-safety-semantics/`
 
-- [ ] **Step 1: Run focused lifecycle and repository gates**
+- [x] **Step 1: Run focused lifecycle and repository gates**
 
 ```bash
 E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e npm exec --package=firebase-tools -- firebase emulators:exec --only auth,firestore --project demo-ironlog "npx playwright test tests/e2e/workout-mobile.spec.ts tests/e2e/dashboard.spec.ts --project=mobile --project=desktop --retries=0"
@@ -157,7 +157,7 @@ npm run build
 git diff --check
 ```
 
-- [ ] **Step 2: Observe final pixels in one isolated browser session**
+- [x] **Step 2: Observe final pixels in one isolated browser session**
 
 Use the `playwright` skill with a named session. At 393×852 and 1440×900 inspect:
 
@@ -168,15 +168,15 @@ Use the `playwright` skill with a named session. At 393×852 and 1440×900 inspe
 
 Capture representative mobile and desktop screenshots in `output/playwright/ui-quality-phase-5a-safety-semantics/` and inspect each separately with `view_image`. Record viewport/document geometry and console warnings/errors.
 
-- [ ] **Step 3: Apply CSS only for a qualified destructive-hierarchy defect**
+- [x] **Step 3: Apply CSS only for a qualified destructive-hierarchy defect**
 
 If runtime shows a real inconsistency, reuse existing destructive-action rules and make the minimum local CSS adjustment: quiet neutral/warning treatment at rest, visible focus, minimum 44 px target, and clear destructive treatment inside `ConfirmDialog`. Do not add a component or hide list deletion behind hover/swipe.
 
-- [ ] **Step 4: Review the entire slice**
+- [x] **Step 4: Review the entire slice**
 
 Review `BASE..HEAD` for Critical/Important findings. Verify stable identity resolution, cancel/confirm behavior, no lifecycle/API changes, contrast and absence of semantic color reuse. Any qualified finding gets a failing regression test before the fix.
 
-- [ ] **Step 5: Write the receipt and commit evidence**
+- [x] **Step 5: Write the receipt and commit evidence**
 
 Set this plan to `READY_FOR_INTEGRATION`, record the verified commit range, exact gate counts, visual evidence and review result. Update the parent roadmap: 5A verified pending integration; 5B Profile/readability next; 5C final Product gate after 5B; B-02, M-07 and M-14 remain open.
 
@@ -186,3 +186,16 @@ git commit -m "docs: prepare semantic safety integration"
 ```
 
 No push without explicit authority.
+
+## Execution receipt — 2026-08-25
+
+- **Branch / verified implementation range:** `ui-quality-phase-5a-safety-semantics`, `ab7af86..0b3b46a`.
+- **TDD evidence:** the populated-set scenario first failed because `Usunąć serię?` did not exist and the set disappeared immediately. The palette invariant first failed on all three semantic literals; the dashboard browser contract first received `2×` instead of `2 serie`.
+- **Focused contracts:** populated/empty set browser scenario passed 2/2 including setup; exercise-label unit suite passed 3/3; labeled-set dashboard scenario passed 2/2 including setup.
+- **Targeted browser gate:** `workout-mobile.spec.ts` + `dashboard.spec.ts` across desktop/mobile passed 15 scenarios with 10 intentional breakpoint skips and no failures.
+- **Repository gates:** lint PASS; unit PASS — 74 files / 602 tests; build PASS; `git diff --check` PASS. The initial Node 25 baseline exposed a runner-only incomplete global `localStorage`; the supported local Node 22 rerun passed 602/602 without product changes.
+- **Runtime measurements:** 393×852 and 1440×900 had no horizontal overflow. Dashboard set labels rendered at 12 px in neutral `rgb(160, 154, 160)`; visible dashboard delete targets were 44×44 px at 0.72 opacity. The set-removal dialog kept the populated set mounted, exposed 44 px actions and focused `Zostaw`; inspected pages returned zero console warnings/errors. Muscle bars used `#A898C8`, `#D97B91`, `#C38B73`, `#9BB7C8`, `#76ADB1`, `#D6A06F`, `#B78568` and `#918A9D`, distinct from Puls effort/recovery/warning.
+- **Visual evidence:** Observed — surface: Browser; completed Browser events returned final dashboard, progress and populated-set dialog states at both breakpoints. Pixel proof: `view_image` separately read `dashboard-mobile.png`, `progress-mobile.png`, `workout-set-confirm-mobile.png`, `dashboard-desktop.png`, `progress-desktop.png` and `workout-set-confirm-desktop.png`; the returned images showed neutral labeled counts, a distinct muted identity palette, quiet 44 px destructive affordances and a clear confirmation hierarchy with visible cancel focus.
+- **CSS qualification:** no additional destructive-action CSS change was warranted after runtime inspection; current controls are quiet at rest, meet the hit-area contract and become explicit inside the existing confirmation surface.
+- **Review:** whole-range review found no Critical or Important issues. No Firestore schema, lifecycle, finalize/discard API, route or dependency changed.
+- **Integration:** ready for local fast-forward; no push performed.

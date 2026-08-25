@@ -1022,7 +1022,7 @@ export default function DashboardPage() {
                                     <span
                                       className="dashboard-history-set"
                                     >
-                                      {totalSets}×
+                                      {totalSets} {polishPlural(totalSets, 'seria', 'serie', 'serii')}
                                     </span>
                                   </div>
                                   <p className="mt-2 text-lg font-semibold text-white truncate">

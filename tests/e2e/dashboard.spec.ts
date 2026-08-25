@@ -25,6 +25,33 @@ test.describe('Dashboard regressions', () => {
     await expect(page.locator('.dashboard-overview-grid:visible')).toHaveCount(1)
   })
 
+  test('labels recent workout set counts instead of relying on category color', async ({ page, cleanup }) => {
+    test.skip(!emulatorMode, 'emulator-only deterministic fixture')
+    const sessionId = 'phase-1-dashboard-labeled-sets'
+    cleanup.add('remove labeled-set workout', () => deleteLifecycleWorkout(sessionId))
+    await deleteLifecycleWorkout(sessionId)
+    await seedLifecycleWorkout({
+      sessionId,
+      materialized: true,
+      label: 'Phase 1 dashboard labeled sets',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [
+          { weight: 80, reps: 5 },
+          { weight: 80, reps: 5 },
+        ],
+      }],
+    })
+    await openDashboard(page)
+
+    const workoutRow = page.locator('.dashboard-history-row').filter({
+      hasText: 'Phase 1 dashboard labeled sets',
+    })
+    await expect(workoutRow.locator('.dashboard-history-set')).toHaveText('2 serie')
+  })
+
   test('delete action on recent workout stays on dashboard when activated with Enter', async ({
     page,
     cleanup,

@@ -2145,9 +2145,9 @@ a {
 }
 
 .dashboard-history-set {
-  color: var(--workout-accent);
+  color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-weight: 800;
 }
 

@@ -35,17 +35,17 @@ const RANGE_OPTIONS = [
 ]
 
 const MUSCLE_COLORS: Record<string, string> = {
-  chest:      '#F0435A',
-  shoulders:  '#D97B91',
-  triceps:    '#E28A78',
-  back:       '#8FB8A0',
-  biceps:     '#A7D8BB',
-  forearms:   '#B8A8B2',
-  quads:      '#F0A75A',
-  hamstrings: '#D9A06E',
-  glutes:     '#C99571',
-  calves:     '#C8A56C',
-  core:       '#A09AA0',
+  chest:      '#D97B91',
+  shoulders:  '#A898C8',
+  triceps:    '#C38B73',
+  back:       '#9BB7C8',
+  biceps:     '#76ADB1',
+  forearms:   '#A7A0B5',
+  quads:      '#D6A06F',
+  hamstrings: '#C09172',
+  glutes:     '#B78568',
+  calves:     '#C3A477',
+  core:       '#918A9D',
 }
 
 const MUSCLE_PL: Record<string, string> = {

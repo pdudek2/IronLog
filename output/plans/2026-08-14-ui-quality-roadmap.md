@@ -5,7 +5,7 @@
 **Źródła:** audyt Codex `ui-quality-gate` + `app-screen-refiner`, audyt Claude oraz wzajemna weryfikacja findings
 **Tryb realizacji:** osobne, małe release slices; bez jednego mega-PR
 
-**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Etap 3 ukończony i zintegrowany lokalnie do `main` przez fast-forward do `abc72f3` — [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md). Etap 4 został rozbity na osobne release slices; [4A — Coach](./2026-08-17-ui-quality-phase-4a-coach-implementation.md) ukończono i zintegrowano lokalnie do `main` przez fast-forward do `f83a8c4`. [4B — Historia/listy](./2026-08-20-ui-quality-phase-4b-history-lists-implementation.md) ukończono i zintegrowano lokalnie do `main` przez fast-forward do `d434558`. [4C — shell/404](./2026-08-20-ui-quality-phase-4c-shell-404-implementation.md) jest zweryfikowany i oczekuje lokalnej integracji; po niej etap 4 jest gotowy do closeoutu. Następny jest etap 5, a decyzje B-02, M-07 i M-14 pozostają otwarte.
+**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Etap 3 ukończony i zintegrowany lokalnie do `main` przez fast-forward do `abc72f3` — [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md). Etap 4 został ukończony w trzech release slices: [4A — Coach](./2026-08-17-ui-quality-phase-4a-coach-implementation.md) zintegrowano lokalnie do `main` przez fast-forward do `f83a8c4`, [4B — Historia/listy](./2026-08-20-ui-quality-phase-4b-history-lists-implementation.md) do `d434558`, a [4C — shell/404](./2026-08-20-ui-quality-phase-4c-shell-404-implementation.md) do `139c0f8`. Następny jest etap 5, a decyzje B-02, M-07 i M-14 pozostają otwarte.
 
 Materiały źródłowe:
 
@@ -143,7 +143,7 @@ To jest prostsze i uczciwsze niż normalizowanie różnych ćwiczeń albo umiesz
 
 **Priorytet:** P2
 **Rozmiar:** L
-**Stan:** 4A i 4B zintegrowane; 4C zweryfikowany, oczekuje integracji. Po integracji etap gotowy do closeoutu.
+**Stan:** DONE — 4A, 4B i 4C zintegrowane lokalnie do `main`; etap zamknięty.
 **Cel:** ekrany do pracy mają być szybsze w skanowaniu niż ekrany reprezentacyjne.
 
 ### Kierunek layoutu

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** READY_FOR_INTEGRATION
+**Status:** DONE
 
 **Goal:** Keep an authenticated user inside the IronLog application chrome on an unknown route, with one main landmark, a usable recovery action and no mobile overflow.
 
@@ -262,8 +262,8 @@ No push without explicit authority.
 - **Visual evidence:** `Observed` in the isolated Playwright CLI session `ui-quality-phase-4c`. `view_image` separately read `output/playwright/ui-quality-phase-4c-shell-404/not-found-mobile.png` and `not-found-desktop.png`, returning the final mobile and desktop 404 inside the application chrome with centered hierarchy and an unobstructed recovery action.
 - **Runtime facts:** at 393×852 and 1440×900 the document exactly matched the viewport, exposed one focused `<main>` and a 44 px recovery link; mobile clearance above the bottom navigation was about 296 px. The session console reported 0 warnings and 0 errors.
 - **Focused review:** no remaining Critical or Important findings. Route ranking keeps authenticated unknown URLs in place, sends anonymous unknown URLs to `/login`, preserves shell focus transfer and introduces no Firestore, API or data-contract change.
-- **Remaining lineage:** Etap 5 plus B-02, M-07 and M-14 remain open. Etap 4 is ready to close after this verified slice is integrated.
-- **Integration:** pending explicit local integration choice; nothing was pushed.
+- **Remaining lineage:** Etap 4 is closed. Etap 5 plus B-02, M-07 and M-14 remain open.
+- **Integration:** fast-forwarded locally into `main` at `139c0f8`; merged-result lint, 74 files / 602 unit tests, build and diff check passed. The feature worktree and local branch were removed. Nothing was pushed.
 
 ## Definition of done
 

@@ -42,6 +42,7 @@ const EQUIPMENT_LABELS: Record<string, string> = {
 }
 
 type RestTimerState = { startedAt: number; totalSec: number }
+type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
 
 interface LabelChipsProps {
   activeLabel: string
@@ -276,6 +277,7 @@ export default function WorkoutPage() {
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [pendingExerciseRemovalIndex, setPendingExerciseRemovalIndex] = useState<number | null>(null)
+  const [pendingSetRemoval, setPendingSetRemoval] = useState<PendingSetRemoval | null>(null)
   const {
     state: userExercisesState,
     exercises: userExercises,
@@ -351,8 +353,37 @@ export default function WorkoutPage() {
   }, [])
 
   const handleRemoveSet = useCallback((exerciseIndex: number, setIndex: number) => {
-    useWorkoutStore.getState().removeSet(exerciseIndex, setIndex)
+    const { active: currentActive, removeSet } = useWorkoutStore.getState()
+    const exercise = currentActive?.exercises[exerciseIndex]
+    const set = exercise?.sets[setIndex]
+    if (!exercise || !set) return
+
+    const hasEnteredData = set.done || set.weight.trim() !== '' || set.reps.trim() !== ''
+    if (!hasEnteredData) {
+      removeSet(exerciseIndex, setIndex)
+      return
+    }
+
+    if (!exercise.clientId || !set.clientId) {
+      toast.error('Nie udało się przygotować bezpiecznego usunięcia serii. Odśwież widok i spróbuj ponownie.')
+      return
+    }
+    setPendingSetRemoval({ exerciseClientId: exercise.clientId, setClientId: set.clientId })
   }, [])
+
+  function handleConfirmRemoveSet() {
+    if (!pendingSetRemoval) return
+    const { active: currentActive, removeSet } = useWorkoutStore.getState()
+    const exerciseIndex = currentActive?.exercises.findIndex(
+      (exercise) => exercise.clientId === pendingSetRemoval.exerciseClientId,
+    ) ?? -1
+    const setIndex = currentActive?.exercises[exerciseIndex]?.sets.findIndex(
+      (set) => set.clientId === pendingSetRemoval.setClientId,
+    ) ?? -1
+
+    if (exerciseIndex >= 0 && setIndex >= 0) removeSet(exerciseIndex, setIndex)
+    setPendingSetRemoval(null)
+  }
 
   const handleAddSet = useCallback((exerciseIndex: number, button: HTMLButtonElement) => {
     useWorkoutStore.getState().addSet(exerciseIndex)
@@ -1341,6 +1372,17 @@ export default function WorkoutPage() {
           danger
           onConfirm={handleConfirmRemoveExercise}
           onCancel={() => setPendingExerciseRemovalIndex(null)}
+        />
+      )}
+      {pendingSetRemoval && (
+        <ConfirmDialog
+          title="Usunąć serię?"
+          message="Ta seria zawiera wpisane dane lub jest oznaczona jako wykonana."
+          confirmLabel="Usuń serię"
+          cancelLabel="Zostaw"
+          danger
+          onConfirm={handleConfirmRemoveSet}
+          onCancel={() => setPendingSetRemoval(null)}
         />
       )}
       </div>

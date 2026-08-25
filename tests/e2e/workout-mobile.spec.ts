@@ -453,6 +453,40 @@ test.describe('Active workout shell reduction', () => {
 
   })
 
+  test('mobile workout protects populated sets without slowing empty-set removal', async ({ page, cleanup }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await goToFreshWorkout(page)
+    await addExercise(page, 'Squat')
+
+    const setRows = page.locator('.workout-set-row')
+    await page.getByRole('button', { name: /Dodaj serię/i }).click()
+    await expect(setRows).toHaveCount(2)
+
+    await page.getByRole('button', { name: 'Usuń serię 2' }).click()
+    await expect(setRows).toHaveCount(1)
+    await expect(page.getByRole('dialog', { name: 'Usunąć serię?' })).toHaveCount(0)
+
+    const populatedSet = setRows.first()
+    await populatedSet.locator('input').nth(0).fill('60')
+    await populatedSet.locator('input').nth(1).fill('8')
+    await populatedSet.getByRole('button', { name: 'Usuń serię 1' }).click()
+
+    const confirmDialog = page.getByRole('dialog', { name: 'Usunąć serię?' })
+    await expect(confirmDialog).toBeVisible()
+    await expect(setRows).toHaveCount(1)
+    await confirmDialog.getByRole('button', { name: 'Zostaw' }).click()
+    await expect(confirmDialog).toHaveCount(0)
+    await expect(setRows).toHaveCount(1)
+
+    await populatedSet.getByRole('button', { name: 'Usuń serię 1' }).click()
+    await expect(confirmDialog).toBeVisible()
+    await confirmDialog.getByRole('button', { name: 'Usuń serię' }).click()
+    await expect(setRows).toHaveCount(0)
+  })
+
   test('mobile workout shows steppers only for the focused incomplete set and keeps controls tappable', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))

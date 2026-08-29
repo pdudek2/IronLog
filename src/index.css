@@ -6715,7 +6715,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   gap: 0.5rem;
   margin-bottom: 0.25rem;
   color: var(--muted);
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   font-weight: 700;
   text-align: center;
 }
@@ -6750,7 +6750,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   overflow: hidden;
   color: var(--muted);
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;

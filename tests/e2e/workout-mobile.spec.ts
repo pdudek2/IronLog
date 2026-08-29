@@ -231,6 +231,21 @@ async function addExercise(page: Page, search: string): Promise<void> {
 test.describe('Active workout shell reduction', () => {
   test.describe.configure({ timeout: 45_000 })
 
+  test('keeps active workout operational labels at 12px or larger', async ({ page, cleanup }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only typography contract')
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
+    await page.setViewportSize({ width: 320, height: 844 })
+    await goToFreshWorkout(page)
+    await addExercise(page, 'Squat')
+
+    const labels = page.locator('.workout-set-header span, .workout-set-vol')
+    expect(await labels.count()).toBeGreaterThan(0)
+    for (const label of await labels.all()) {
+      const size = await label.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))
+      expect(size).toBeGreaterThanOrEqual(12)
+    }
+  })
+
   test('mobile workout mounts a single elapsed timer and a single rest timer', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))

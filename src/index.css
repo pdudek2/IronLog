@@ -648,7 +648,7 @@ a {
 
 .eyebrow {
   color: var(--muted);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0;
   text-transform: none;
@@ -8868,7 +8868,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .bottom-nav-button > span:first-of-type {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
     letter-spacing: -0.02em;
   }
 
@@ -8911,7 +8911,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .bottom-nav-button > span:first-of-type {
-    font-size: 0.625rem;
+    font-size: 0.75rem;
   }
 }
 

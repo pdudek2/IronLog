@@ -64,6 +64,8 @@ test.describe('Progress analytics', () => {
 
     await expect(page.locator('.progress-board')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Rekordy od początku' })).toBeVisible()
+    await expect(page.locator('.progress-panel-head > div > p')).toHaveCount(0)
+    await expect(page.locator('.progress-records-head > div > p')).toHaveCount(0)
     await page.screenshot({ path: 'test-results/progress-loaded.png', fullPage: true })
   })
 

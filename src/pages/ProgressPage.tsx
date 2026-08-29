@@ -592,7 +592,6 @@ export default function ProgressPage() {
             >
               <div className="progress-panel-head">
                 <div>
-                  <p>Objętość</p>
                   <h2>Wolumen tygodniowy</h2>
                 </div>
                 <span>{rangeDays === 30 ? '5 tyg.' : rangeDays === 90 ? '13 tyg.' : '53 tyg.'}</span>
@@ -641,7 +640,6 @@ export default function ProgressPage() {
             >
               <div className="progress-panel-head progress-panel-head--strength">
                 <div>
-                  <p>Siła</p>
                   <h2>Progresja ciężaru</h2>
                 </div>
                 {selectedStrengthSeries && (
@@ -724,7 +722,6 @@ export default function ProgressPage() {
               >
                 <div className="progress-panel-head">
                   <div>
-                    <p>Balans</p>
                     <h2>Partie mięśniowe</h2>
                   </div>
                 </div>
@@ -780,7 +777,6 @@ export default function ProgressPage() {
               >
                 <div className="progress-panel-head">
                   <div>
-                    <p>Aktywność</p>
                     <h2>Kalendarz</h2>
                   </div>
                 </div>
@@ -875,7 +871,6 @@ export default function ProgressPage() {
           >
             <div className="progress-records-head">
               <div>
-                <p>Wyniki · od początku</p>
                 <h2>Rekordy od początku</h2>
               </div>
               <span>{records.length}</span>

@@ -78,8 +78,8 @@ export default function ReadinessPrompt({ onSaved }: Props) {
               style={{ touchAction: 'manipulation' }}
             />
             <div className="readiness-scale flex justify-between mt-1">
-              <span className="text-[11px]" style={{ color: 'var(--muted)' }}>{lowLabel}</span>
-              <span className="text-[11px]" style={{ color: 'var(--muted)' }}>{highLabel}</span>
+              <span className="text-xs" style={{ color: 'var(--muted)' }}>{lowLabel}</span>
+              <span className="text-xs" style={{ color: 'var(--muted)' }}>{highLabel}</span>
             </div>
           </div>
         ))}

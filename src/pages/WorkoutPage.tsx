@@ -60,7 +60,7 @@ function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) 
             key={label}
             onClick={() => onToggle(label)}
             aria-pressed={isActive}
-            className="mobile-touch-target flex-none whitespace-nowrap rounded-full px-3 py-1.5 text-[11px] font-semibold"
+            className="mobile-touch-target flex-none whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold"
             style={{
               backgroundColor: isActive ? 'var(--accent-soft)' : 'rgba(255,255,255,0.06)',
               color: isActive ? 'var(--text-strong)' : 'var(--muted)',
@@ -1032,7 +1032,7 @@ export default function WorkoutPage() {
               </div>
 
               <div>
-                <p className="mb-3 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>
+                <p className="mb-3 text-xs uppercase" style={{ color: 'var(--muted)' }}>
                   Typ sesji
                 </p>
                 <LabelChips
@@ -1220,7 +1220,7 @@ export default function WorkoutPage() {
                               <p className="text-sm font-semibold text-white truncate">{name}</p>
                               {meta?.category && (
                                 <span
-                                  className="flex-none text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-full"
+                                  className="flex-none text-xs font-semibold uppercase px-1.5 py-0.5 rounded-full"
                                   style={{ background: `${exerciseAccent}18`, color: exerciseAccent }}
                                 >
                                   {EXERCISE_CATEGORY_LABELS[meta.category] ?? meta.category}

@@ -143,7 +143,7 @@ export default function AiKeyPanel({
                 Konfiguracja
               </p>
               <span
-                className="rounded-[var(--radius-pill)] px-2.5 py-1 text-[11px] font-semibold"
+                className="rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-semibold"
                 style={{
                   background: keyVerified ? 'var(--success-soft)' : 'rgba(255,255,255,0.04)',
                   border: `1px solid ${keyVerified ? 'rgba(143,184,160,0.18)' : 'var(--border)'}`,

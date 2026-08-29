@@ -34,7 +34,7 @@ function NavBtn({ icon, label, active, onClick, preloadTo }: NavBtnProps) {
       aria-label={label}
     >
       {icon}
-      <span className="text-[9px] font-semibold">{label}</span>
+      <span className="text-xs font-semibold">{label}</span>
     </motion.button>
   )
 }

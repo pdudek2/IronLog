@@ -890,7 +890,7 @@ export default function DashboardPage() {
                               </p>
                             </div>
                             {isLaunching ? (
-                              <span className="text-[11px] font-semibold" style={{ color: 'var(--accent)' }}>
+                              <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>
                                 Uruchamiam…
                               </span>
                             ) : (

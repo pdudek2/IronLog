@@ -344,7 +344,7 @@ export default function ExerciseDetailPage() {
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-bold text-white tabular-nums">{formatVolume(session.totalVolume)}</p>
-                        <p className="mt-0.5 text-[10px] uppercase" style={{ color: 'var(--muted)' }}>wolumen</p>
+                        <p className="mt-0.5 text-xs uppercase" style={{ color: 'var(--muted)' }}>wolumen</p>
                       </div>
                     </div>
                     <div className="exercise-detail-session-metrics">
@@ -364,7 +364,7 @@ export default function ExerciseDetailPage() {
                           {session.sets.map((set, i) => (
                             <span
                               key={i}
-                              className="text-[11px] tabular-nums"
+                              className="text-xs tabular-nums"
                             >
                               {set.weight}×{set.reps}
                             </span>

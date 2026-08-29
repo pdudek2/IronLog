@@ -103,6 +103,19 @@ test.describe('Phase 3 navigation accessibility', () => {
   })
 })
 
+test('essential mobile labels render at 12px or larger', async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'mobile typography contract')
+  await page.goto('/dashboard')
+  await expectAppReady(page, '/dashboard')
+
+  const labels = page.locator('.bottom-nav-button > span')
+  expect(await labels.count()).toBeGreaterThan(0)
+  for (const label of await labels.all()) {
+    const fontSize = await label.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))
+    expect(fontSize).toBeGreaterThanOrEqual(12)
+  }
+})
+
 test('primary mobile controls expose at least 44px hit areas', async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'mobile', 'mobile-only hit-area contract')
   await page.goto('/dashboard')

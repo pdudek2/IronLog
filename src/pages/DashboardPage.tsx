@@ -785,7 +785,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => navigate('/progress')}
-                        className="puls-link-button px-0 py-0 text-sm font-semibold"
+                        className="puls-link-button mobile-touch-target px-0 py-0 text-sm font-semibold"
                       >
                         Zobacz progres
                         <ChevronRight size={15} strokeWidth={2.3} />

@@ -17,6 +17,27 @@ async function openDashboard(page: Page) {
 }
 
 test.describe('Dashboard regressions', () => {
+  test('exposes 44px dashboard streak and progress targets at 320px', async ({ page, cleanup }, testInfo) => {
+    test.skip(!emulatorMode, 'emulator-only deterministic fixture')
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only geometry contract')
+    await page.setViewportSize({ width: 320, height: 844 })
+    const sessionId = 'phase-1-5d-dashboard-hit-area'
+    cleanup.add('remove dashboard hit-area workout', () => deleteLifecycleWorkout(sessionId))
+    await deleteLifecycleWorkout(sessionId)
+    await seedLifecycleWorkout({ sessionId, materialized: true, label: 'Phase 1 5D hit area' })
+    await openDashboard(page)
+
+    for (const control of [
+      page.getByRole('button', { name: /Seria treningowa/ }),
+      page.getByRole('button', { name: 'Zobacz progres' }),
+    ]) {
+      const box = await control.boundingBox()
+      expect(box).not.toBeNull()
+      expect(box!.width).toBeGreaterThanOrEqual(44)
+      expect(box!.height).toBeGreaterThanOrEqual(44)
+    }
+  })
+
   test('renders one weekly analysis sheet without removed weekly surfaces', async ({ page }) => {
     await openDashboard(page)
 

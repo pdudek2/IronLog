@@ -84,7 +84,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           {typeof streak === 'number' && streak > 0 && (
             <motion.button
               type="button"
-              className="streak-pill"
+              className="streak-pill mobile-touch-target"
               onClick={() => go('/progress')}
               onPointerEnter={() => { void preloadRouteByPath('/progress') }}
               onFocus={() => { void preloadRouteByPath('/progress') }}

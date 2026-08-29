@@ -597,6 +597,16 @@ test.describe('Active workout shell reduction', () => {
       'Rest timer should end above the bottom navigation',
     ).toBeLessThanOrEqual(bottomNavigationBox!.y)
 
+    await expect.poll(
+      () => readCachedActiveSessionWrite(page),
+      { timeout: 20_000 },
+    ).toMatchObject({
+      exists: true,
+      hasPendingWrites: false,
+      exerciseNames: ['Squat'],
+      reps: '8',
+    })
+
   })
 
   test('mobile compact rest timer scrolls only the focused workout set input', async ({ page, cleanup }, testInfo) => {

@@ -1,6 +1,6 @@
 # UI Quality Phase 5D — Touch and Readability Closure Implementation Plan
 
-**Status:** READY_FOR_INTEGRATION
+**Status:** DONE — integrated locally into `main` through `82f2b42`
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -320,3 +320,9 @@ Browser warnings/errors: `0` on all four observations. Separate visual inspectio
 - `output/playwright/ui-quality-phase-5d-touch-readability/active-workout-320x844.png`
 
 **Verdict:** PASS for 5D. Both Material findings from 5C are closed; Etap 5 is ready to close after local integration. Product decisions B-02, M-07 and M-14 remain intentionally outside this slice.
+
+## Integration closeout
+
+- Local fast-forward: `main` `7053ff2..82f2b42`.
+- Verification on merged `main`: combined mobile target gate `21 passed`, `3 skipped`, `0 failed`; unit `602/602`; lint passed; build passed.
+- Etap 5 closed. No push or PR was performed.

@@ -5,7 +5,7 @@
 **Źródła:** audyt Codex `ui-quality-gate` + `app-screen-refiner`, audyt Claude oraz wzajemna weryfikacja findings
 **Tryb realizacji:** osobne, małe release slices; bez jednego mega-PR
 
-**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Etap 3 ukończony i zintegrowany lokalnie do `main` przez fast-forward do `abc72f3` — [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md). Etap 4 został ukończony w trzech release slices: [4A — Coach](./2026-08-17-ui-quality-phase-4a-coach-implementation.md) zintegrowano lokalnie do `main` przez fast-forward do `f83a8c4`, [4B — Historia/listy](./2026-08-20-ui-quality-phase-4b-history-lists-implementation.md) do `d434558`, a [4C — shell/404](./2026-08-20-ui-quality-phase-4c-shell-404-implementation.md) do `139c0f8`. Etap 5 jest realizowany w trzech slices: [5A — bezpieczeństwo i semantyka](./2026-08-25-ui-quality-phase-5a-safety-semantics-implementation.md) ukończono i zintegrowano lokalnie do `main` przez fast-forward do `14fed63`; [5B — Profil/czytelność](./2026-08-29-ui-quality-phase-5b-profile-readability-implementation.md) ukończono i zintegrowano lokalnie do `main` przez fast-forward do `fafcd8d`, a 5C wykona końcowy Product gate. Decyzje B-02, M-07 i M-14 pozostają otwarte.
+**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Etap 3 ukończony i zintegrowany lokalnie do `main` przez fast-forward do `abc72f3` — [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md). Etap 4 został ukończony w trzech release slices: [4A — Coach](./2026-08-17-ui-quality-phase-4a-coach-implementation.md) zintegrowano lokalnie do `main` przez fast-forward do `f83a8c4`, [4B — Historia/listy](./2026-08-20-ui-quality-phase-4b-history-lists-implementation.md) do `d434558`, a [4C — shell/404](./2026-08-20-ui-quality-phase-4c-shell-404-implementation.md) do `139c0f8`. Etap 5: [5A — bezpieczeństwo i semantyka](./2026-08-25-ui-quality-phase-5a-safety-semantics-implementation.md) i [5B — Profil/czytelność](./2026-08-29-ui-quality-phase-5b-profile-readability-implementation.md) są ukończone i zintegrowane; [5C — final Product gate](./2026-08-29-ui-quality-phase-5c-final-product-gate.md) zakończył pełny audyt wynikiem `NEEDS REFINEMENT` (0 Block, 2 Material). Następny jest mały slice 5D: domknięcie dwóch hitboxów dashboardu i operacyjnego minimum 12 px. Decyzje B-02, M-07 i M-14 pozostają otwarte.
 
 Materiały źródłowe:
 
@@ -178,7 +178,14 @@ To jest prostsze i uczciwsze niż normalizowanie różnych ćwiczeń albo umiesz
 **Priorytet:** P2
 **Rozmiar:** M
 **Cel:** usunąć pozostałe niespójności bez wygładzania charakteru Puls.
-**Stan:** ACTIVE — slices 5A i 5B ukończone oraz zintegrowane; 5C jest następny i zamknie etap.
+**Stan:** ACTIVE — 5A i 5B zintegrowane; 5C ukończony z werdyktem `NEEDS REFINEMENT`; 5D jest ostatnim wymaganym domknięciem.
+
+### Slice 5D — mobile touch/readability closure
+
+- Podnieść niewidzialny hit area dashboardowego streaka i `Zobacz progres` do co najmniej 44 px bez zwiększania wizualnego nacisku.
+- Podnieść do obliczonych 12 px wyłącznie operacyjne etykiety/wartości wskazane przez 5C w edytorze planu i aktywnym treningu.
+- Dodać minimalny kontrakt E2E dla dwóch hitboxów i computed-font floor na 320/393 px.
+- Po targetowanej obserwacji tych stanów zamknąć Etap 5; pełny Product audyt nie wymaga powtórzenia.
 
 ### Zakres
 

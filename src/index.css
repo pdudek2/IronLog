@@ -5506,6 +5506,12 @@ a {
   font-weight: 720;
 }
 
+.template-name-panel .planner-kicker,
+.template-day-editor-head .planner-kicker,
+.template-exercise-columns {
+  font-size: 0.75rem;
+}
+
 .template-exercise-columns span:first-child {
   display: none;
 }

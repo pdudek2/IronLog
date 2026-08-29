@@ -11,6 +11,23 @@ async function expectMinHitArea(locator: Locator, label: string) {
 }
 
 test.describe('Phase 4 mobile ergonomics', () => {
+  test('keeps template editor operational labels at 12px or larger', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only typography contract')
+    await page.setViewportSize({ width: 320, height: 844 })
+    await openLargeTemplateDraft(page)
+
+    const labels = page.locator([
+      '.template-name-panel .planner-kicker',
+      '.template-day-editor-head .planner-kicker',
+      '.template-exercise-columns span:visible',
+    ].join(', '))
+    expect(await labels.count()).toBeGreaterThan(0)
+    for (const label of await labels.all()) {
+      const size = await label.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))
+      expect(size).toBeGreaterThanOrEqual(12)
+    }
+  })
+
   test('preserves the 44px desktop picker close control', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'desktop-only geometry contract')
     await openLargeTemplateDraft(page)

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** READY_FOR_INTEGRATION
+**Status:** DONE
 
 **Goal:** Close the remaining confirmed Profile and essential-microtext findings without redesigning Puls or broadening the slice into an app-wide visual rewrite.
 
@@ -313,4 +313,6 @@ Representative screenshots:
 
 Whole-slice review from `a00b02e` through `724c626`: no Critical or Important findings. The implementation reuses existing controls and tokens, changes no data or component contracts, adds no dependency, and does not expand into decorative metadata or layout redesign.
 
-**Next:** integrate 5B locally after approval, then execute 5C final Product gate. B-02, M-07 and M-14 remain open product decisions.
+**Integration:** merged locally to `main` by fast-forward at `fafcd8d`; merged-result lint, unit (74 files / 602 tests), build and `git diff --check` all passed. The owned worktree and feature branch were removed; no push performed.
+
+**Next:** execute 5C final Product gate. B-02, M-07 and M-14 remain open product decisions.

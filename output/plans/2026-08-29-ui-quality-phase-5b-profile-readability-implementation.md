@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** READY_FOR_EXECUTION
+**Status:** READY_FOR_INTEGRATION
 
 **Goal:** Close the remaining confirmed Profile and essential-microtext findings without redesigning Puls or broadening the slice into an app-wide visual rewrite.
 
@@ -41,7 +41,7 @@
 - Consumes: existing `.readiness-slider`, `.profile-unit-grid`, and accessible labels `Cel tygodniowy` / `Jednostki`.
 - Produces: the same form state and submit payload; only control styling and geometry change.
 
-- [ ] **Step 1: Add a failing Profile geometry contract**
+- [x] **Step 1: Add a failing Profile geometry contract**
 
 Append a test inside `Profile hydration and save`:
 
@@ -63,17 +63,17 @@ test('reuses the authored slider and keeps the unit switch compact', async ({ pa
 })
 ```
 
-- [ ] **Step 2: Run the focused browser contract and verify failure**
+- [x] **Step 2: Run the focused browser contract and verify failure**
 
 Run:
 
 ```bash
-PATH=/Users/patryk/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog "playwright test tests/e2e/profile.spec.ts --project=desktop --project=mobile --retries=0"
+PATH=/Users/patryk/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog "npx playwright test tests/e2e/profile.spec.ts --project=desktop --project=mobile --retries=0"
 ```
 
 Expected: the new test fails because the slider lacks `readiness-slider` and the desktop unit grid is wider than 224 px.
 
-- [ ] **Step 3: Apply the smallest existing treatments**
+- [x] **Step 3: Apply the smallest existing treatments**
 
 In `ProfilePage.tsx`, replace the range class:
 
@@ -87,11 +87,11 @@ In the existing `.profile-unit-grid` rule, add:
 width: min(100%, 14rem);
 ```
 
-- [ ] **Step 4: Run the focused Profile contract**
+- [x] **Step 4: Run the focused Profile contract**
 
 Run the Step 2 command again. Expected: both projects pass; save/hydration behavior remains green.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/pages/ProfilePage.tsx src/index.css tests/e2e/profile.spec.ts
@@ -120,7 +120,7 @@ git commit -m "fix: refine profile controls"
 - Consumes: existing Tailwind `text-xs`, shared `.eyebrow`, and current Progress headings.
 - Produces: unchanged copy and interactions at a 12 px minimum for the explicit labels; Progress headings remain the accessible section names.
 
-- [ ] **Step 1: Add failing readability contracts**
+- [x] **Step 1: Add failing readability contracts**
 
 In `accessibility.spec.ts`, add a mobile-only test:
 
@@ -146,17 +146,17 @@ await expect(page.locator('.progress-panel-head > div > p')).toHaveCount(0)
 await expect(page.locator('.progress-records-head > div > p')).toHaveCount(0)
 ```
 
-- [ ] **Step 2: Run the two focused tests and verify failure**
+- [x] **Step 2: Run the two focused tests and verify failure**
 
 Run:
 
 ```bash
-PATH=/Users/patryk/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog "playwright test tests/e2e/accessibility.spec.ts tests/e2e/progress.spec.ts --project=desktop --project=mobile --retries=0"
+PATH=/Users/patryk/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog "npx playwright test tests/e2e/accessibility.spec.ts tests/e2e/progress.spec.ts --project=desktop --project=mobile --retries=0"
 ```
 
 Expected: the navigation assertion sees 9 px and the Progress kicker assertions find rendered paragraphs.
 
-- [ ] **Step 3: Raise the explicit JSX labels to Tailwind `text-xs`**
+- [x] **Step 3: Raise the explicit JSX labels to Tailwind `text-xs`**
 
 Replace every current `text-[9px]`, `text-[10px]` and `text-[11px]` occurrence under `src/` with `text-xs`. Verify the bounded source set with:
 
@@ -166,7 +166,7 @@ rg -n "text-\[(9|10|11)px\]" src
 
 Expected after the edit: no matches. This affects only the ten explicit user-facing labels already present in source; do not alter arbitrary CSS metadata rules.
 
-- [ ] **Step 4: Raise the shared semantic eyebrow floor**
+- [x] **Step 4: Raise the shared semantic eyebrow floor**
 
 In the existing `.eyebrow` rule in `src/index.css`, change:
 
@@ -174,7 +174,7 @@ In the existing `.eyebrow` rule in `src/index.css`, change:
 font-size: 0.75rem;
 ```
 
-- [ ] **Step 5: Delete the five redundant Progress kickers**
+- [x] **Step 5: Delete the five redundant Progress kickers**
 
 In `ProgressPage.tsx`, remove only the `<p>` immediately preceding each of these headings:
 
@@ -188,7 +188,7 @@ Rekordy od początku
 
 Keep every `<h2>`, range count, selector, record count and screen-reader summary unchanged. Remove a wrapping `<div>` only where it becomes a single-child wrapper and no selector or layout dependency needs it.
 
-- [ ] **Step 6: Run focused contracts and source check**
+- [x] **Step 6: Run focused contracts and source check**
 
 Run the Step 2 browser command, then:
 
@@ -198,7 +198,7 @@ rg -n "text-\[(9|10|11)px\]" src
 
 Expected: browser contracts pass and `rg` returns no matches.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/AiKeyPanel.tsx src/components/BottomNav.tsx src/components/ReadinessPrompt.tsx src/pages/DashboardPage.tsx src/pages/ExerciseDetailPage.tsx src/pages/WorkoutPage.tsx src/pages/ProgressPage.tsx src/index.css tests/e2e/accessibility.spec.ts tests/e2e/progress.spec.ts
@@ -220,7 +220,7 @@ git commit -m "fix: improve essential text readability"
 - Consumes: Tasks 1–2 and the Etap 5 acceptance criteria.
 - Produces: verified implementation commits, fresh runtime evidence and `READY_FOR_INTEGRATION` lifecycle state.
 
-- [ ] **Step 1: Run repository gates**
+- [x] **Step 1: Run repository gates**
 
 ```bash
 PATH=/Users/patryk/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin npm run lint
@@ -231,15 +231,15 @@ git diff --check
 
 Expected: all commands pass.
 
-- [ ] **Step 2: Run the combined targeted browser gate**
+- [x] **Step 2: Run the combined targeted browser gate**
 
 ```bash
-PATH=/Users/patryk/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog "playwright test tests/e2e/profile.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/progress.spec.ts --project=desktop --project=mobile --retries=0"
+PATH=/Users/patryk/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin E2E_BACKEND=emulator TEST_EMAIL=e2e@ironlog.local TEST_PASSWORD=ironlog-e2e firebase emulators:exec --only auth,firestore --project demo-ironlog "npx playwright test tests/e2e/profile.spec.ts tests/e2e/accessibility.spec.ts tests/e2e/progress.spec.ts --project=desktop --project=mobile --retries=0"
 ```
 
 Expected: all applicable scenarios pass with only intentional project skips.
 
-- [ ] **Step 3: Observe the implemented state in Browser**
+- [x] **Step 3: Observe the implemented state in Browser**
 
 Use Browser as the primary surface. Serially inspect `/profile`, `/progress`, `/dashboard`, `/workout/new`, one exercise detail route and `/chat` at 320×844, 393×852, 1024×768 and 1440×900. Confirm:
 
@@ -251,15 +251,15 @@ Use Browser as the primary surface. Serially inspect `/profile`, `/progress`, `/
 
 Save representative screenshots under `output/playwright/ui-quality-phase-5b-profile-readability/` and record Browser event completion in the receipt. A screenshot file without completed Browser observation is insufficient.
 
-- [ ] **Step 4: Review the whole slice**
+- [x] **Step 4: Review the whole slice**
 
 Review from the planning parent through `HEAD`. Reject expansion into decorative metadata, layout redesign, data changes or new dependencies. Verify that every changed class or rule has a visible runtime consumer.
 
-- [ ] **Step 5: Update lifecycle artifacts**
+- [x] **Step 5: Update lifecycle artifacts**
 
 Set this plan to `READY_FOR_INTEGRATION` and append an execution receipt containing commit range, exact test counts, gate results, Browser observation, screenshot paths and review result. Update the parent roadmap to state: 5B verified pending local integration; 5C remains next; B-02, M-07 and M-14 remain open.
 
-- [ ] **Step 6: Commit the receipt**
+- [x] **Step 6: Commit the receipt**
 
 ```bash
 git add output/plans/2026-08-29-ui-quality-phase-5b-profile-readability-implementation.md output/plans/2026-08-14-ui-quality-roadmap.md
@@ -267,3 +267,50 @@ git commit -m "docs: prepare profile readability integration"
 ```
 
 No push without explicit authority.
+
+---
+
+## Execution receipt — 2026-08-29
+
+**Commit range:** `a00b02e..724c626`
+
+- `9ef88aa` — `fix: refine profile controls`
+- `724c626` — `fix: improve essential text readability`
+
+### Verification
+
+- `npm run lint` — pass.
+- `npm run test:unit` — pass: 74 files, 602 tests.
+- `npm run build` — pass.
+- `git diff --check` — pass.
+- Profile browser contract — pass: 9 tests across desktop/mobile.
+- Accessibility browser gate — pass: 18 tests, 7 intentional project skips.
+- Focused Progress/readability contracts — pass: 4 tests, 1 intentional project skip.
+- Combined Profile/Accessibility/Progress run excluding the intentional offline scenario — 36 passed, 8 skipped, 1 failed. The failure is the pre-existing Firestore Listen `net::ERR_ABORTED` diagnostic in `loads a stable analytics board with all-time records`; the same scenario fails identically on unchanged `main`, while its product assertions pass. This is an E2E diagnostics-harness baseline issue, not a 5B regression.
+- Source floor check `rg -n "text-\[(9|10|11)px\]" src` — no matches.
+
+### Browser Product observation
+
+Completed in the Codex in-app Browser against a fresh local Auth/Firestore emulator runtime with deterministic Progress and exercise-detail data.
+
+- Observed `/profile`, `/progress`, `/dashboard`, `/workout/new`, `/exercises/user/phase-7-progress-detail` and `/chat` at 320×844, 393×852, 1024×768 and 1440×900: 24/24 route/viewport combinations had no horizontal overflow.
+- Profile at 393 px: slider height 44 px, compact unit switch width 224 px.
+- Bottom-navigation labels compute to 12 px; keyboard focus exposes a 3 px visible focus ring.
+- Progress keeps its section headings after removal of the five repeated kickers.
+- Browser warnings/errors after observation: none.
+- Viewport override was reset and the created Browser tab was closed.
+
+Representative screenshots:
+
+- `output/playwright/ui-quality-phase-5b-profile-readability/profile-393x852.jpg`
+- `output/playwright/ui-quality-phase-5b-profile-readability/progress-320x844.jpg`
+- `output/playwright/ui-quality-phase-5b-profile-readability/dashboard-1024x768.jpg`
+- `output/playwright/ui-quality-phase-5b-profile-readability/workout-393x852.jpg`
+- `output/playwright/ui-quality-phase-5b-profile-readability/exercise-detail-1440x900.jpg`
+- `output/playwright/ui-quality-phase-5b-profile-readability/chat-393x852.jpg`
+
+### Review
+
+Whole-slice review from `a00b02e` through `724c626`: no Critical or Important findings. The implementation reuses existing controls and tokens, changes no data or component contracts, adds no dependency, and does not expand into decorative metadata or layout redesign.
+
+**Next:** integrate 5B locally after approval, then execute 5C final Product gate. B-02, M-07 and M-14 remain open product decisions.

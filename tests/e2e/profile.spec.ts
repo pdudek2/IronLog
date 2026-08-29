@@ -72,4 +72,20 @@ test.describe('Profile hydration and save', () => {
     await expect(page.getByPlaceholder('np. Jan')).toBeVisible({ timeout: 5_000 })
 
   })
+
+  test('reuses the authored slider and keeps the unit switch compact', async ({ page }) => {
+    await page.goto('/profile')
+    await expectAppReady(page, '/profile')
+
+    const slider = page.getByRole('slider', { name: /Cel tygodniowy/ })
+    const unitSwitch = page.locator('.profile-unit-grid')
+
+    await expect(slider).toHaveClass(/readiness-slider/)
+    await expect(unitSwitch).toBeVisible()
+
+    const sliderBox = await slider.boundingBox()
+    const unitBox = await unitSwitch.boundingBox()
+    expect(sliderBox?.height ?? 0).toBeGreaterThanOrEqual(44)
+    expect(unitBox?.width ?? Infinity).toBeLessThanOrEqual(224)
+  })
 })

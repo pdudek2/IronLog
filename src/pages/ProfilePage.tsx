@@ -122,7 +122,7 @@ export default function ProfilePage() {
                 min={1} max={7}
                 value={weeklyGoal}
                 onChange={(e) => { setWeeklyGoal(Number(e.target.value)); setSaved(false) }}
-                className="w-full accent-[var(--accent)]"
+                className="readiness-slider w-full"
               />
               <div className="flex justify-between text-xs" style={{ color: 'var(--muted)' }}>
                 <span>1</span><span>7</span>

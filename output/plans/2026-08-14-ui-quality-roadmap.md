@@ -5,7 +5,7 @@
 **Źródła:** audyt Codex `ui-quality-gate` + `app-screen-refiner`, audyt Claude oraz wzajemna weryfikacja findings
 **Tryb realizacji:** osobne, małe release slices; bez jednego mega-PR
 
-**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Etap 3 ukończony i zintegrowany lokalnie do `main` przez fast-forward do `abc72f3` — [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md). Etap 4 został ukończony w trzech release slices: [4A — Coach](./2026-08-17-ui-quality-phase-4a-coach-implementation.md) zintegrowano lokalnie do `main` przez fast-forward do `f83a8c4`, [4B — Historia/listy](./2026-08-20-ui-quality-phase-4b-history-lists-implementation.md) do `d434558`, a [4C — shell/404](./2026-08-20-ui-quality-phase-4c-shell-404-implementation.md) do `139c0f8`. Etap 5 jest realizowany w trzech slices: [5A — bezpieczeństwo i semantyka](./2026-08-25-ui-quality-phase-5a-safety-semantics-implementation.md) ukończono i zintegrowano lokalnie do `main` przez fast-forward do `14fed63`; następny jest 5B Profil/czytelność, a 5C wykona końcowy Product gate. Decyzje B-02, M-07 i M-14 pozostają otwarte.
+**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Etap 3 ukończony i zintegrowany lokalnie do `main` przez fast-forward do `abc72f3` — [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md). Etap 4 został ukończony w trzech release slices: [4A — Coach](./2026-08-17-ui-quality-phase-4a-coach-implementation.md) zintegrowano lokalnie do `main` przez fast-forward do `f83a8c4`, [4B — Historia/listy](./2026-08-20-ui-quality-phase-4b-history-lists-implementation.md) do `d434558`, a [4C — shell/404](./2026-08-20-ui-quality-phase-4c-shell-404-implementation.md) do `139c0f8`. Etap 5 jest realizowany w trzech slices: [5A — bezpieczeństwo i semantyka](./2026-08-25-ui-quality-phase-5a-safety-semantics-implementation.md) ukończono i zintegrowano lokalnie do `main` przez fast-forward do `14fed63`; [5B — Profil/czytelność](./2026-08-29-ui-quality-phase-5b-profile-readability-implementation.md) jest zaplanowany do wykonania, a 5C wykona końcowy Product gate. Decyzje B-02, M-07 i M-14 pozostają otwarte.
 
 Materiały źródłowe:
 
@@ -178,7 +178,7 @@ To jest prostsze i uczciwsze niż normalizowanie różnych ćwiczeń albo umiesz
 **Priorytet:** P2
 **Rozmiar:** M
 **Cel:** usunąć pozostałe niespójności bez wygładzania charakteru Puls.
-**Stan:** ACTIVE — slice 5A ukończony i zintegrowany; 5B jest następny, 5C zamknie etap.
+**Stan:** ACTIVE — slice 5A ukończony i zintegrowany; 5B jest zaplanowany do wykonania, 5C zamknie etap.
 
 ### Zakres
 

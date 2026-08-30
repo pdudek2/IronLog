@@ -116,6 +116,37 @@ describe('HistoryPage range state', () => {
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 
+  it('names broad exercise buckets as categories', async () => {
+    mocks.getWorkoutHistory.mockResolvedValue({
+      workouts: [{
+        id: 'categorized-workout',
+        startedAt: Date.now() - 86_400_000,
+        finishedAt: Date.now() - 86_400_000 + 3_600_000,
+        materialized: true,
+        label: 'Plecy',
+        exercises: [{
+          exerciseId: 'custom-row',
+          exerciseSource: 'user',
+          name: 'Wiosłowanie własne',
+          sets: [{ weight: 50, reps: 8 }],
+        }],
+      }],
+      truncated: false,
+    })
+    mocks.getUserExercises.mockResolvedValue([{
+      id: 'custom-row',
+      name: 'Wiosłowanie własne',
+      category: 'back',
+      equipment: 'barbell',
+      muscles: ['back'],
+    }])
+
+    render(<HistoryPage />)
+
+    const categories = await screen.findByRole('group', { name: 'Kategorie ćwiczeń' })
+    expect(within(categories).getByRole('button', { name: 'Plecy' })).toBeInTheDocument()
+  })
+
   it('renders a failed history load as a flat retryable result state', async () => {
     mocks.getWorkoutHistory.mockRejectedValueOnce(new Error('offline'))
 

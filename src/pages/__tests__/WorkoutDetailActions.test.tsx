@@ -304,7 +304,7 @@ describe('WorkoutDetailPage delete action', () => {
     renderPage()
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
-    fireEvent.change(screen.getByLabelText('Rodzaj treningu'), {
+    fireEvent.change(screen.getByLabelText('Typ sesji'), {
       target: { value: 'Pull' },
     })
     fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
@@ -320,6 +320,6 @@ describe('WorkoutDetailPage delete action', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
 
-    expect(screen.getByRole('combobox', { name: 'Rodzaj treningu' })).toHaveValue('Push day')
+    expect(screen.getByRole('combobox', { name: 'Typ sesji' })).toHaveValue('Push day')
   })
 })

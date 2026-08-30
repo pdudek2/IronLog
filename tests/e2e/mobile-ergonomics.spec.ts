@@ -137,12 +137,12 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await expectAppReady(page, '/exercises')
     await page.getByRole('button', { name: 'Filtry' }).click()
     await expectMinHitArea(
-      page.getByRole('group', { name: 'Partia' }).getByRole('button', { name: 'Wszystkie', exact: true }),
+      page.getByRole('group', { name: 'Kategoria ćwiczenia' }).getByRole('button', { name: 'Wszystkie', exact: true }),
       'exercise category',
     )
 
     await page.getByRole('button', { name: 'Dodaj własne' }).click()
-    const muscleButton = page.getByRole('group', { name: 'Partie mięśniowe' })
+    const muscleButton = page.getByRole('group', { name: 'Grupy mięśniowe' })
       .getByRole('button', { name: 'Klatka', exact: true })
     await expectMinHitArea(
       muscleButton,

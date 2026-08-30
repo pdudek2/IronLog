@@ -193,7 +193,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
           {/* Category */}
           <div>
             <label htmlFor={categoryInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Kategoria
+              Kategoria ćwiczenia
             </label>
             <select id={categoryInputId} value={category} onChange={(e) => setCategory(e.target.value as Category)} style={selectStyle}>
               {(Object.keys(CATEGORY_LABELS) as (Category | 'all')[])
@@ -221,7 +221,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
           {/* Muscles */}
           <div>
             <p id={musclesGroupId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Partie mięśniowe
+              Grupy mięśniowe
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-labelledby={musclesGroupId}>
               {MUSCLE_OPTIONS.map((m) => {
@@ -299,7 +299,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
       </button>
 
       {visibleMuscles.length > 0 && (
-        <div className="exercise-library-muscles" aria-label={`Partie mięśniowe: ${labeledMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
+        <div className="exercise-library-muscles" aria-label={`Grupy mięśniowe: ${labeledMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
           {visibleMuscles.map((muscle) => (
             <span key={muscle}>{MUSCLE_LABELS[muscle]}</span>
           ))}
@@ -546,8 +546,8 @@ export default function ExercisesPage() {
             data-expanded={filtersExpanded}
           >
             <div className="exercise-filter-group">
-              <span>Partia</span>
-              <ChipRow label="Partia" options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
+              <span>Kategoria ćwiczenia</span>
+              <ChipRow label="Kategoria ćwiczenia" options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
             </div>
             <div className="exercise-filter-group">
               <span>Sprzęt</span>

@@ -171,7 +171,7 @@ describe('ExercisesPage user library states', () => {
     fireEvent.click(filterToggle)
     expect(filterToggle).toHaveAttribute('aria-expanded', 'true')
 
-    const muscleGroup = await screen.findByRole('group', { name: 'Partia' })
+    const muscleGroup = await screen.findByRole('group', { name: 'Kategoria ćwiczenia' })
     const equipmentGroup = screen.getByRole('group', { name: 'Sprzęt' })
     const allMuscles = within(muscleGroup).getByRole('button', { name: 'Wszystkie' })
     const chest = within(muscleGroup).getByRole('button', { name: 'Klatka' })
@@ -199,7 +199,7 @@ describe('ExercisesPage user library states', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
     const dialog = screen.getByRole('dialog', { name: 'Dodaj własne ćwiczenie' })
     const name = within(dialog).getByRole('textbox', { name: 'Nazwa *' })
-    const muscles = within(dialog).getByRole('group', { name: 'Partie mięśniowe' })
+    const muscles = within(dialog).getByRole('group', { name: 'Grupy mięśniowe' })
     const chest = within(muscles).getByRole('button', { name: 'Klatka' })
 
     expect(chest).toHaveAttribute('aria-pressed', 'false')

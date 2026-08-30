@@ -123,14 +123,14 @@ function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSer
 }
 
 function summarizeMuscleBalance(data: MuscleBalancePoint[]): string {
-  if (data.length === 0) return 'Balans partii mięśniowych: brak danych.'
+  if (data.length === 0) return 'Balans grup mięśniowych: brak danych.'
 
   const top = data[0]
-  if (!top) return 'Balans partii mięśniowych: brak danych.'
+  if (!top) return 'Balans grup mięśniowych: brak danych.'
   const total = data.reduce((sum, point) => sum + point.count, 0)
   const muscleName = MUSCLE_PL[top.muscle] ?? top.muscle
 
-  return `Balans partii mięśniowych. Najczęściej trenowana partia: ${muscleName}, ${top.count} ${polishPlural(top.count, 'wpis', 'wpisy', 'wpisów')}. Łącznie ${total} ${polishPlural(total, 'wpis', 'wpisy', 'wpisów')} w zestawieniu.`
+  return `Balans grup mięśniowych. Najczęściej trenowana grupa: ${muscleName}, ${top.count} ${polishPlural(top.count, 'wpis', 'wpisy', 'wpisów')}. Łącznie ${total} ${polishPlural(total, 'wpis', 'wpisy', 'wpisów')} w zestawieniu.`
 }
 
 function summarizeActivityHeatmap(data: HeatmapDay[]): string {
@@ -516,7 +516,7 @@ export default function ProgressPage() {
                     ? (topRecord ? topRecord.exerciseName : 'brak zapisów')
                     : 'niedostępne',
                 },
-                { label: 'Partia', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${polishPlural(topMuscle.count, 'wpis', 'wpisy', 'wpisów')}` : 'brak danych' },
+                { label: 'Grupa mięśniowa', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${polishPlural(topMuscle.count, 'wpis', 'wpisy', 'wpisów')}` : 'brak danych' },
               ].map((item) => (
                 <div key={item.label} className="progress-signal-row">
                   <span>{item.label}</span>
@@ -722,7 +722,7 @@ export default function ProgressPage() {
               >
                 <div className="progress-panel-head">
                   <div>
-                    <h2>Partie mięśniowe</h2>
+                    <h2>Grupy mięśniowe</h2>
                   </div>
                 </div>
                 <div style={{ height: muscleData.length * 34 + 16 }} role="img" aria-label={muscleBalanceLabel}>

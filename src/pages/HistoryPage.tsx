@@ -302,7 +302,7 @@ export default function HistoryPage() {
         {availableCategories.length > 0 && (
           <div className="history-category-filter-group">
             <span id="history-category-filter-label" className="history-category-filter-label">
-              Partie
+              Kategorie ćwiczeń
             </span>
             <div className="history-category-filter-row" role="group" aria-labelledby="history-category-filter-label">
               {availableCategories.map((cat) => {
@@ -415,7 +415,7 @@ export default function HistoryPage() {
                             <h3>{workout.label?.trim() || 'Sesja treningowa'}</h3>
                             <p>{exerciseNames.length > 0 ? exerciseNames.join(' · ') : 'brak ćwiczeń'}</p>
                             {Array.from(categories).length > 0 && (
-                              <div className="history-category-row" aria-label="Partie mięśniowe">
+                              <div className="history-category-row" aria-label="Kategorie ćwiczeń">
                                 {Array.from(categories).slice(0, 3).map((cat) => {
                                   const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
                                   return (

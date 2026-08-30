@@ -475,7 +475,7 @@ export default function WorkoutDetailPage() {
 
         {isEditing && (
           <section className="workout-detail-label-editor">
-            <label htmlFor="workout-detail-label">Rodzaj treningu</label>
+            <label htmlFor="workout-detail-label">Typ sesji</label>
             <select
               id="workout-detail-label"
               value={editedLabel}

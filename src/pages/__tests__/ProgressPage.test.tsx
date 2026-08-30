@@ -559,7 +559,9 @@ describe('ProgressPage', () => {
     render(<ProgressPage />)
 
     expect(await screen.findByRole('img', {
-      name: 'Balans partii mięśniowych. Najczęściej trenowana partia: Klatka, 1 wpis. Łącznie 2 wpisy w zestawieniu.',
+      name: 'Balans grup mięśniowych. Najczęściej trenowana grupa: Klatka, 1 wpis. Łącznie 2 wpisy w zestawieniu.',
     })).toBeInTheDocument()
+    expect(screen.getByText('Grupa mięśniowa')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Grupy mięśniowe' })).toBeInTheDocument()
   })
 })

@@ -27,6 +27,7 @@ interface WorkoutExerciseLedgerItemProps {
   isCollapsible: boolean
   isExpanded: boolean
   isFocusedExercise: boolean
+  previousSession?: React.ReactNode
   suggestion: OverloadSuggestion | null
   units: Units
   onAddSet: (exerciseIndex: number, button: HTMLButtonElement) => void
@@ -81,6 +82,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   isCollapsible,
   isExpanded,
   isFocusedExercise,
+  previousSession,
   suggestion,
   units,
   onAddSet,
@@ -201,6 +203,8 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         />
       )}
 
+      {previousSession}
+
       <div className="workout-set-header">
         <span>#</span>
         <span>{units}</span>
@@ -212,7 +216,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
       <div className="workout-set-list">
         {exercise.sets.map((set, setIndex) => {
           const setVolume = calcSetVolume(set)
-          const showMobileSteppers = !set.done
+          const showSetControls = !set.done
             && isExpanded
             && setIndex === focusSetIndex
 
@@ -221,6 +225,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
               key={set.clientId ?? setIndex}
               className="workout-set-row"
               data-done={set.done || undefined}
+              data-current={showSetControls || undefined}
             >
               <div className="workout-set-grid">
                 <motion.button
@@ -277,7 +282,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   <X size={15} />
                 </button>
               </div>
-              {showMobileSteppers && (
+              {showSetControls && (
                 <div
                   className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5"
                   role="group"

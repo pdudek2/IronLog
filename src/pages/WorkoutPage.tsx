@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Target, Timer, X } from 'lucide-react'
+import { Plus, Timer, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -10,7 +10,7 @@ import { getRecentWorkouts } from '../lib/workoutService'
 import { discardWorkoutLifecycle, finishWorkoutLifecycle } from '../lib/workoutLifecycle'
 import { finalizeWorkout, WorkoutClosureError } from '../lib/workoutClosureService'
 import type { WorkoutClosureIntent } from '../lib/workoutClosureIntent'
-import { getExerciseSessions } from '../lib/exerciseDetailService'
+import { getExerciseSessions, type ExerciseSession } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { ActiveSessionSyncStatus } from '../components/workout/ActiveSessionSyncStatus'
@@ -96,6 +96,75 @@ function formatSessionTimer(startedAt: number, now = Date.now()): string {
 interface ElapsedTimerProps {
   startedAt: number
   className?: string
+}
+
+type PreviousExerciseSessionState =
+  | { status: 'loading' }
+  | { status: 'loaded'; session: ExerciseSession }
+  | { status: 'empty' | 'error' }
+
+interface PreviousExerciseSessionProps {
+  exerciseId: string
+  exerciseName: string
+  exerciseSource: 'global' | 'user'
+  uid: string
+  units: Units
+  defaultOpen?: boolean
+}
+
+function PreviousExerciseSession({
+  exerciseId,
+  exerciseName,
+  exerciseSource,
+  uid,
+  units,
+  defaultOpen = false,
+}: PreviousExerciseSessionProps) {
+  const [state, setState] = useState<PreviousExerciseSessionState>({ status: 'loading' })
+
+  useEffect(() => {
+    let active = true
+    getExerciseSessions(uid, exerciseId, exerciseSource, 1)
+      .then(([session]) => {
+        if (!active) return
+        setState(session && session.sets.length > 0
+          ? { status: 'loaded', session }
+          : { status: 'empty' })
+      })
+      .catch(() => {
+        if (active) setState({ status: 'error' })
+      })
+    return () => { active = false }
+  }, [exerciseId, exerciseSource, uid])
+
+  if (state.status !== 'loaded') return null
+
+  const { session } = state
+  const date = new Date(session.startedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
+  const previousSet = session.sets[0]
+
+  return (
+    <details
+      className="workout-previous-session"
+      aria-label={`Poprzedni trening ${exerciseName}`}
+      open={defaultOpen || undefined}
+    >
+      <summary className="workout-previous-session-head">
+        <span>Poprzedni trening</span>
+        <span className="workout-previous-session-meta">
+          <strong>{date}</strong> · {kgToDisplayWeight(previousSet.weight, units)} {units} × {previousSet.reps}
+        </span>
+      </summary>
+      <ol className="workout-previous-set-list">
+        {session.sets.map((set, index) => (
+          <li key={`${set.weight}:${set.reps}:${index}`}>
+            <span className="workout-previous-set-index">{index + 1}</span>
+            <span>{kgToDisplayWeight(set.weight, units)} {units} × {set.reps}</span>
+          </li>
+        ))}
+      </ol>
+    </details>
+  )
 }
 
 function ElapsedTimer({ startedAt, className = '' }: ElapsedTimerProps) {
@@ -745,11 +814,6 @@ export default function WorkoutPage() {
       set.done ? innerSum + calcSetVolume(set) : innerSum
     ), 0)
   ), 0)
-  const totalReps = active.exercises.reduce((sum, exercise) => (
-    sum + exercise.sets.reduce((innerSum, set) => (
-      set.done ? innerSum + parseReps(set.reps) : innerSum
-    ), 0)
-  ), 0)
   const strongestSet = active.exercises.reduce((top, exercise) => {
     const next = exercise.sets.reduce((currentTop, set) => (
       set.done ? Math.max(currentTop, parseWeight(set.weight)) : currentTop
@@ -781,41 +845,7 @@ export default function WorkoutPage() {
   const expandedExerciseClientId = manualExpandedExerciseExists
     ? manualExpandedExerciseClientId || null
     : defaultExpandedExerciseClientId
-  const openSetIndex = focusExercise?.sets.findIndex((set) => !set.done) ?? -1
-  const focusSetIndex = focusExercise
-    ? openSetIndex >= 0
-      ? openSetIndex
-      : Math.max(focusExercise.sets.length - 1, 0)
-    : -1
-  const focusSet = focusExercise && focusSetIndex >= 0 ? focusExercise.sets[focusSetIndex] : null
-  const focusExerciseMeta = focusExercise ? exerciseCatalog.get(focusExercise.exerciseId) : null
-  const focusAccent = EXERCISE_CATEGORY_COLORS[focusExerciseMeta?.category ?? ''] ?? 'var(--accent)'
-  const remainingSets = Math.max(totalSets - completedSets, 0)
   const showExerciseStack = active.exercises.length > 0 || keepExerciseStackMounted
-  const sessionSetMarkers = active.exercises.flatMap((exercise, exerciseIndex) => {
-    const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
-    const exerciseAccent = EXERCISE_CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'
-    return exercise.sets.map((set, setIndex) => {
-      const isCurrent = exerciseIndex === focusExerciseIndex && setIndex === focusSetIndex && !set.done
-      return {
-        key: set.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}:${setIndex}`,
-        label: `${exercise.name}, seria ${setIndex + 1}`,
-        state: set.done ? 'done' : isCurrent ? 'current' : 'open',
-        accent: exerciseAccent,
-      }
-    })
-  })
-  const completedSetSnapshots = active.exercises.flatMap((exercise) => (
-    exercise.sets
-      .filter((set) => set.done)
-      .map((set) => ({
-        exerciseName: exercise.name,
-        weight: set.weight,
-        reps: set.reps,
-      }))
-  ))
-  const lastCompletedSet = completedSetSnapshots[completedSetSnapshots.length - 1] ?? null
-
   return (
     <div
       className="workout-focus-shell"
@@ -1038,20 +1068,11 @@ export default function WorkoutPage() {
                 <LabelChips
                   activeLabel={active.label ?? ''}
                   onToggle={(label) => setLabel(active.label === label ? '' : label)}
-                  className="flex-wrap"
+                  className="workout-label-chips--desktop"
                 />
               </div>
 
               <div className="mt-5">
-                <div className="workout-session-status mb-3 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="stat-meta">Stan sesji</span>
-                    <Target size={14} style={{ color: 'var(--accent)' }} />
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-white">
-                    {totalReps > 0 ? `${totalReps} powtórzeń zapisanych w tej sesji.` : 'Jeszcze bez zapisanych powtórzeń.'}
-                  </p>
-                </div>
                 <motion.button
                   onClick={() => setShowPicker(true)}
                   className="workout-primary-action mb-3"
@@ -1087,83 +1108,6 @@ export default function WorkoutPage() {
         )}
 
         <div className={`min-w-0 ${rest ? 'pb-36' : 'pb-20'} lg:pb-0`}>
-          {isDesktop && (
-            <motion.section
-              className="workout-session-hero mb-4 hidden lg:block"
-              style={{ '--session-accent': focusAccent } as React.CSSProperties}
-              initial={false}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.18 }}
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0 flex-1">
-                  <p className="eyebrow">Aktywna sesja</p>
-                  <h2 className="workout-session-title">{activeLabel}</h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    {sessionSignal}
-                  </p>
-                  <div
-                    className="session-instrument"
-                    aria-label={`Mapa sesji: zapisane serie ${completedSets} z ${totalSets || 0}`}
-                  >
-                    <div className="session-instrument-head">
-                      <div className="session-instrument-node">
-                        <span>Teraz</span>
-                        <strong>{focusExercise ? focusExercise.name : 'Dodaj ćwiczenie'}</strong>
-                        <small>
-                          {focusSet
-                            ? `Seria ${focusSetIndex + 1} · ${focusSet.weight ? kgToDisplayWeight(parseWeight(focusSet.weight), units) : '—'} ${units} × ${focusSet.reps || '—'}`
-                            : 'Sesja bez wpisanych serii'}
-                        </small>
-                      </div>
-                      <div className="session-instrument-node session-instrument-node--right">
-                        <span>Ostatnio</span>
-                        <strong>{lastCompletedSet ? lastCompletedSet.exerciseName : '—'}</strong>
-                        <small>
-                          {lastCompletedSet
-                            ? `${lastCompletedSet.weight ? kgToDisplayWeight(parseWeight(lastCompletedSet.weight), units) : '—'} ${units} × ${lastCompletedSet.reps || '—'}`
-                            : 'Jeszcze bez zapisanej serii'}
-                        </small>
-                      </div>
-                    </div>
-                    <div className="session-set-rail" role="list" aria-label="Kolejność serii w sesji">
-                      {sessionSetMarkers.length > 0
-                        ? sessionSetMarkers.map((marker) => (
-                          <span
-                            key={marker.key}
-                            className="session-set-marker"
-                            data-state={marker.state}
-                            role="listitem"
-                            style={{ '--marker-accent': marker.accent } as React.CSSProperties}
-                            aria-label={`${marker.label}: ${
-                              marker.state === 'done'
-                                ? 'zapisana'
-                                : marker.state === 'current'
-                                  ? 'aktualna'
-                                  : 'otwarta'
-                            }`}
-                          />
-                        ))
-                        : Array.from({ length: 7 }, (_, index) => (
-                          <span
-                            key={`empty-marker-${index}`}
-                            className="session-set-marker"
-                            data-state="empty"
-                            aria-hidden="true"
-                          />
-                        ))}
-                    </div>
-                    <div className="session-instrument-foot">
-                      <span><b>{completedSets}/{totalSets || 0}</b> serii</span>
-                      <span><b>{formatCompactVolume(totalVolume, units)}</b></span>
-                      <span><b>{remainingSets}</b> otwarte</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </motion.section>
-          )}
-
           <div className="workout-section-head">
             <div>
               <p className="eyebrow" style={{ color: 'var(--muted)' }}>
@@ -1171,9 +1115,6 @@ export default function WorkoutPage() {
               </p>
               <h2 className="mt-2 text-2xl font-bold text-white">Bieżąca rozpiska</h2>
             </div>
-            <p className="hidden text-sm lg:block" style={{ color: 'var(--muted)' }}>
-              Wpisuj sety na bieżąco i oznaczaj gotowe serie przyciskiem po lewej.
-            </p>
           </div>
 
           <div className="workout-mobile-label-row lg:hidden">
@@ -1251,7 +1192,8 @@ export default function WorkoutPage() {
                       const exerciseFocusSetIndex = exerciseOpenSetIndex >= 0
                         ? exerciseOpenSetIndex
                         : Math.max(exercise.sets.length - 1, 0)
-                      const isExpanded = isDesktop || exerciseClientId === expandedExerciseClientId
+                      const isCollapsible = active.exercises.length > 1
+                      const isExpanded = !isCollapsible || exerciseClientId === expandedExerciseClientId
 
                       return (
                         <WorkoutExerciseLedgerItem
@@ -1265,9 +1207,22 @@ export default function WorkoutPage() {
                           focusSetIndex={exerciseFocusSetIndex}
                           hintDismissed={dismissedHints.has(hintKey)}
                           hintKey={hintKey}
-                          isCollapsible={!isDesktop}
+                          isCollapsible={isCollapsible}
                           isExpanded={isExpanded}
                           isFocusedExercise={exerciseIndex === focusExerciseIndex}
+                          previousSession={exerciseIndex === focusExerciseIndex && user
+                            ? (
+                                <PreviousExerciseSession
+                                  key={`${exercise.exerciseSource}:${exercise.exerciseId}:ledger`}
+                                  exerciseId={exercise.exerciseId}
+                                  exerciseName={exercise.name}
+                                  exerciseSource={exercise.exerciseSource}
+                                  uid={user.uid}
+                                  units={units}
+                                  defaultOpen={isDesktop}
+                                />
+                              )
+                            : undefined}
                           suggestion={suggestions[hintKey] ?? null}
                           units={units}
                           onAddSet={handleAddSet}
@@ -1337,7 +1292,8 @@ export default function WorkoutPage() {
 
       {confirmDiscard && (
         <ConfirmDialog
-          message="Anulować trening? Wszystkie dane sesji zostaną utracone."
+          title="Odrzucić trening?"
+          message="Wszystkie dane tej sesji zostaną utracone."
           confirmLabel="Odrzuć trening"
           cancelLabel="Wróć"
           danger

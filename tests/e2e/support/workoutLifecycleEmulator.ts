@@ -55,6 +55,12 @@ interface SeedWorkoutOptions {
   }>
 }
 
+interface SeedExerciseSessionOptions {
+  sessionId: string
+  startedAt?: number
+  sets: Array<{ weight: number; reps: number }>
+}
+
 function assertPhase1Id(value: string, resource: string): void {
   if (!value.startsWith(PHASE_1_PREFIX)) {
     throw new Error(`${resource} IDs must begin with ${PHASE_1_PREFIX}.`)
@@ -148,6 +154,34 @@ export async function seedLifecycleActiveSession(options: SeedActiveSessionOptio
 export async function seedLifecycleWorkout(options: SeedWorkoutOptions): Promise<void> {
   const uid = await getLifecycleUid()
   await database().doc(`workouts/${options.sessionId}`).set(workoutDocument(uid, options))
+}
+
+export async function seedLifecycleExerciseSession({
+  sessionId,
+  startedAt = Date.now() - 24 * 60 * 60 * 1000,
+  sets,
+}: SeedExerciseSessionOptions): Promise<void> {
+  assertPhase1Id(sessionId, 'Exercise session')
+  const uid = await getLifecycleUid()
+  const totalReps = sets.reduce((sum, set) => sum + set.reps, 0)
+  const totalVolume = sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
+  const bestSet = sets.reduce((best, set) => set.weight > best.weight ? set : best, sets[0] ?? { weight: 0, reps: 0 })
+  await database().doc(`exerciseSessions/${sessionId}_global_phase-1-bench-press`).set({
+    userId: uid,
+    workoutId: sessionId,
+    exerciseId: 'phase-1-bench-press',
+    exerciseSource: 'global',
+    exerciseName: 'Phase 1 Bench Press',
+    startedAt,
+    finishedAt: startedAt + 5 * 60_000,
+    label: 'Phase 1 previous benchmark',
+    totalSets: sets.length,
+    totalReps,
+    totalVolume,
+    bestSetWeight: bestSet.weight,
+    bestSetReps: bestSet.reps,
+    sets,
+  })
 }
 
 export async function deleteLifecycleWorkout(sessionId: string): Promise<void> {

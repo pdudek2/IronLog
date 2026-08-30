@@ -43,7 +43,7 @@ export function useDialogA11y({
       ;(preferred ?? fallback)?.focus()
     }
 
-    const frameId = window.requestAnimationFrame(focusInitialElement)
+    focusInitialElement()
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
@@ -82,7 +82,6 @@ export function useDialogA11y({
     document.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      window.cancelAnimationFrame(frameId)
       document.removeEventListener('keydown', handleKeyDown)
       document.body.style.overflow = previousOverflow
       previousActiveElement?.focus?.()

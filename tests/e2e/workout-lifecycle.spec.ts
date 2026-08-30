@@ -23,6 +23,7 @@ import {
   readLifecycleWorkout,
   readLifecycleWorkouts,
   seedLifecycleActiveSession,
+  seedLifecycleExerciseSession,
   seedLifecycleWorkout,
   waitForLifecycleActiveSession,
   waitForSettledLifecycleActiveSession,
@@ -71,7 +72,7 @@ async function finishWorkout(page: Page): Promise<void> {
 
 async function confirmOrdinaryDiscard(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Anuluj', exact: true }).first().click()
-  const dialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
+  const dialog = page.getByRole('dialog', { name: 'Odrzucić trening?' })
   await expect(dialog).toBeVisible()
   await expect(dialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
   const confirmDiscard = dialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
@@ -86,6 +87,89 @@ function phase1Id(scenario: string): string {
 test.afterAll(closeWorkoutLifecycleEmulator)
 
 test.describe('Workout lifecycle Phase 1 regressions', () => {
+  test('mobile shows every set from the previous workout beside the active ledger', async ({
+    context,
+    cleanup,
+    observedContextFactory,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Mobile ledger contract')
+    cleanup.add('remove Phase 1 workout lifecycle state', cleanupWorkoutLifecycleState)
+    await cleanupWorkoutLifecycleState()
+    await seedLifecycleExerciseSession({
+      sessionId: phase1Id('mobile-previous-benchmark-history'),
+      startedAt: Date.UTC(2026, 7, 27, 12),
+      sets: [
+        { weight: 80, reps: 8 },
+        { weight: 80, reps: 8 },
+        { weight: 77.5, reps: 10 },
+        { weight: 75, reps: 10 },
+        { weight: 70, reps: 12 },
+      ],
+    })
+    await seedLifecycleActiveSession({
+      sessionId: phase1Id('mobile-previous-benchmark'),
+      label: 'Phase 1 mobile previous benchmark',
+    })
+
+    const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
+    const benchmark = page.locator('details.workout-previous-session')
+
+    await expect(benchmark).not.toHaveAttribute('open', '')
+    await expect(benchmark.locator('summary')).toContainText('Poprzedni trening')
+    await expect(benchmark.locator('summary')).toContainText('27 sie · 80 kg × 8')
+    await benchmark.locator('summary').click()
+    await expect(benchmark.getByRole('listitem')).toHaveCount(5)
+    await expect(benchmark.getByRole('listitem').first()).toContainText('80 kg × 8')
+    await expect(benchmark.getByRole('listitem').last()).toContainText('70 kg × 12')
+  })
+
+  test('shows every set from the previous workout for the focused exercise', async ({
+    context,
+    cleanup,
+    observedContextFactory,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'Desktop session instrument contract')
+    const sessionId = phase1Id('previous-benchmark')
+    cleanup.add('remove Phase 1 workout lifecycle state', cleanupWorkoutLifecycleState)
+    await cleanupWorkoutLifecycleState()
+    await seedLifecycleExerciseSession({
+      sessionId: phase1Id('previous-benchmark-history'),
+      sets: [
+        { weight: 77.5, reps: 8 },
+        { weight: 75, reps: 10 },
+        { weight: 70, reps: 12 },
+      ],
+    })
+    await seedLifecycleActiveSession({ sessionId, label: 'Phase 1 previous benchmark' })
+
+    const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
+    const benchmark = page.locator('details.workout-previous-session')
+    const currentWeight = page.getByLabel('Ciężar, Phase 1 Bench Press, seria 1, kg')
+
+    await expect(benchmark).toHaveAttribute('open', '')
+    await expect(benchmark.getByRole('listitem')).toHaveCount(3)
+    await expect(benchmark.getByRole('listitem').first()).toContainText('77.5 kg × 8')
+    expect(await currentWeight.evaluate((element) => element.getBoundingClientRect().bottom <= window.innerHeight)).toBe(true)
+  })
+
+  test('mobile keeps unavailable previous-workout context out of the active ledger', async ({
+    context,
+    cleanup,
+    observedContextFactory,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Mobile ledger contract')
+    cleanup.add('remove Phase 1 workout lifecycle state', cleanupWorkoutLifecycleState)
+    await cleanupWorkoutLifecycleState()
+    await seedLifecycleActiveSession({
+      sessionId: phase1Id('empty-benchmark'),
+      label: 'Phase 1 empty benchmark',
+    })
+
+    const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
+
+    await expect(page.locator('.workout-previous-session')).toHaveCount(0)
+  })
+
   test('normal finish commits one workout and remains closed after reload', async ({
     context,
     cleanup,

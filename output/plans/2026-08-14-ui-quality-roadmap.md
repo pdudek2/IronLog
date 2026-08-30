@@ -1,6 +1,6 @@
 # IronLog — roadmapa jakości UI/UX po audytach
 
-**Status:** w realizacji
+**Status:** UKOŃCZONA — wszystkie etapy zintegrowane lokalnie do `main`; closeout 2026-08-30
 **Data:** 2026-08-14
 **Źródła:** audyt Codex `ui-quality-gate` + `app-screen-refiner`, audyt Claude oraz wzajemna weryfikacja findings
 **Tryb realizacji:** osobne, małe release slices; bez jednego mega-PR
@@ -285,3 +285,21 @@ To jest prostsze i uczciwsze niż normalizowanie różnych ćwiczeń albo umiesz
 - Nie ma nowych regresji w lifecycle treningu ani zapisie danych.
 - Końcowy read-only audyt Product obejmuje wszystkie dostępne powierzchnie i istotne stany w świeżym runtime.
 - Raport końcowy zawiera porównanie przed/po, pozostały dług i jawne decyzje produktowe.
+
+## Closeout całej roadmapy
+
+- **Zakres zamknięty:** etapy 1–5 oraz slice’y 4A–4C i 5A–5D są zintegrowane lokalnie do `main`.
+- **Końcowa bramka:** 5C objął pełny Product audit na świeżym runtime; 5D zamknął jego dwa Material findings. Po integracji 5D: E2E `21 passed`, `3 skipped`, `0 failed`; unit `602/602`; lint i build przeszły.
+- **Visual evidence:** obserwacja świeżego runtime dla 5D potwierdziła hitboxy >=44 px, operacyjne minimum 12 px, overflow `0` i brak warningów/errorów przeglądarki.
+- **Workflow:** branch i worktree 5D usunięte po integracji; brak push/PR. Istniejące nieśledzone artefakty audytowe zachowane jako dane należące do użytkownika.
+- **Lineage:** `roadmapa UI quality → 5D → brak pozostałych obowiązków implementacyjnych w tej roadmapie`.
+
+## Co dalej
+
+Nie uruchamiać kolejnego szerokiego audytu UI bez nowego sygnału regresji. Następny etap to osobny, krótki **product decision pass** dla trzech zachowanych tematów:
+
+1. **M-14 — „Ostatnio”:** rekomendowany pierwszy temat. Ustalić, czy bieżący kontrakt ma pozostać i etykieta zmienia się na „Poprzednia seria”, czy produkt ma pobierać benchmark z poprzedniego treningu. Po decyzji będzie to Small/Native Direct albo osobny większy slice danych.
+2. **B-02 — „Anuluj” w top-left:** zdecydować, czy przenieść destrukcyjną akcję do menu/końca sesji. Confirmation pozostaje niezmiennikiem.
+3. **M-07 — taksonomia partii:** rozstrzygnąć wspólną publiczną hierarchię kategorii przed zmianą Historii, Postępów i treningu. Do tego czasu temat pozostaje świadomie odłożony.
+
+Każdy z tych tematów zaczyna się od decyzji produktowej, nie od implementacji. Nie są blockerami zamknięcia roadmapy jakościowej.

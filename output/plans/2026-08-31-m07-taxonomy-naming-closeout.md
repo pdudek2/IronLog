@@ -1,6 +1,6 @@
 # M-07 — publiczne nazwy taksonomii treningowej
 
-**Status:** DONE — zweryfikowane i zintegrowane lokalnie do `main` w commicie zawierającym ten receipt
+**Status:** DONE — zweryfikowane i zintegrowane do `main` w `82b17f7`
 **Parent:** [zamknięta roadmapa jakości UI/UX](./2026-08-14-ui-quality-roadmap.md), ostatnia zachowana decyzja produktowa po audycie
 
 ## Rozstrzygnięcie
@@ -32,4 +32,4 @@ Visual evidence: **Observed** — surface: Browser; proof: ukończone obserwacje
 
 `roadmapa UI quality (zamknięta) → M-14 (zamknięte) → B-02 (zamknięte) → M-07 (zamknięte) → brak pozostałych obowiązków audytowych`.
 
-Nie wykonano push/PR. Dalsza praca wraca do roadmapy produktu; nowy szeroki audyt UI wymaga nowego sygnału regresji.
+Zmiana została opublikowana razem z [finalnym closeoutem roadmapy](./2026-08-31-ui-quality-final-closeout.md) przez push `main` do `origin/main`; nie tworzono PR. Dalsza praca wraca do roadmapy produktu, a nowy szeroki audyt UI wymaga nowego sygnału regresji.

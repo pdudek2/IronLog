@@ -1,5 +1,5 @@
 import { test, expect, type Locator, type Page } from './fixtures'
-import { discardActiveSession } from './support/accountCleanup'
+import { discardActiveSession, openWorkoutDiscardDialog } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
 import {
   readCachedActiveSessionWrite,
@@ -11,7 +11,7 @@ type WorkoutTerminalState = 'stale-session' | 'active-session' | 'empty-session'
 async function getWorkoutState(page: Page): Promise<WorkoutTerminalState | null> {
   const states: Array<[WorkoutTerminalState, Locator]> = [
     ['stale-session', page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })],
-    ['active-session', page.getByRole('button', { name: 'Anuluj', exact: true }).first()],
+    ['active-session', page.getByRole('button', { name: 'Zakończ', exact: true }).first()],
     ['empty-session', page.getByRole('button', { name: 'Rozpocznij nową sesję' })],
     ['ready-workout', page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()],
   ]
@@ -165,7 +165,6 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
   const workoutState = await waitForWorkoutState(page)
 
   const staleDiscardButton = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
-  const discardButton = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
   const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
   const addExerciseButton = page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()
 
@@ -176,9 +175,7 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
   }
 
   if (workoutState === 'active-session') {
-    await discardButton.click()
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
+    const confirmDialog = await openWorkoutDiscardDialog(page)
     await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
     const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
     await expect(confirmDiscard).toBeVisible()
@@ -190,9 +187,7 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
   if (workoutState === 'empty-session') {
     await startButton.click()
     await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
-    await discardButton.click()
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
+    const confirmDialog = await openWorkoutDiscardDialog(page)
     await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
     const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
     await expect(confirmDiscard).toBeVisible()
@@ -452,6 +447,29 @@ test.describe('Active workout shell reduction', () => {
 
   })
 
+  test('mobile keeps workout discard in the overflow menu', async ({ page, cleanup }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await goToFreshWorkout(page)
+
+    const lifecycleBar = page.locator('.workout-mobile-lifecycle-bar')
+    await expect(lifecycleBar.getByRole('button', { name: 'Anuluj', exact: true })).toHaveCount(0)
+
+    const optionsButton = lifecycleBar.getByRole('button', { name: 'Więcej opcji treningu' })
+    await expect(optionsButton).toBeVisible()
+    await expectMinHitArea(optionsButton, 'Workout options')
+    await optionsButton.click()
+
+    const menu = page.getByRole('menu', { name: 'Opcje treningu' })
+    await expect(menu).toBeVisible()
+    const discardItem = menu.getByRole('menuitem', { name: 'Odrzuć trening' })
+    await expect(discardItem).toHaveCSS('color', 'rgb(240, 167, 90)')
+    await discardItem.click()
+    await expect(page.getByRole('dialog', { name: 'Odrzucić trening?' })).toBeVisible()
+  })
+
   test('mobile workout keeps the first set visible and a single add action after adding an exercise', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
@@ -698,7 +716,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
     await expect(page.locator('.top-nav')).toBeVisible()
     await expect(page.locator('aside .workout-control-panel')).toBeVisible()
-    await expect(page.locator('.workout-session-hero')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Bieżąca rozpiska' })).toBeVisible()
 
     await addExercise(page, 'Squat')
 
@@ -712,8 +730,8 @@ test.describe('Active workout shell reduction', () => {
         return {
           width: box.width,
           background: style.backgroundColor,
-          border: style.borderTopWidth,
-          borderColor: style.borderTopColor,
+          borderTop: style.borderTopWidth,
+          borderBottomColor: style.borderBottomColor,
           radius: style.borderTopLeftRadius,
         }
       })
@@ -722,10 +740,10 @@ test.describe('Active workout shell reduction', () => {
     expect(fieldContract).toHaveLength(2)
     for (const field of fieldContract) {
       expect(field.width).toBeLessThanOrEqual(144)
-      expect(field.background).not.toBe('rgba(0, 0, 0, 0)')
-      expect(field.border).toBe('1px')
-      expect(field.borderColor).not.toBe('rgba(0, 0, 0, 0)')
-      expect(field.radius).not.toBe('0px')
+      expect(field.background).toBe('rgba(0, 0, 0, 0)')
+      expect(field.borderTop).toBe('0px')
+      expect(field.borderBottomColor).toBe('rgba(0, 0, 0, 0)')
+      expect(field.radius).toBe('0px')
     }
 
     await firstSetRow.locator('input').nth(0).fill('60')

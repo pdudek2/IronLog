@@ -15,7 +15,7 @@ export type AppReadyRoute =
 
 function workoutTerminalState(page: Page): Locator {
   return page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
-    .or(page.getByRole('button', { name: 'Anuluj', exact: true }).first())
+    .or(page.getByRole('button', { name: 'Zakończ', exact: true }).first())
     .or(page.getByRole('button', { name: 'Rozpocznij nową sesję' }))
     .or(page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first())
     .first()

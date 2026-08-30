@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Plus, Timer, X } from 'lucide-react'
+import { Ellipsis, Plus, Timer, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -976,17 +976,34 @@ export default function WorkoutPage() {
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <motion.button
-            type="button"
-            onClick={handleDiscard}
-            className="flex-none rounded-xl px-3 text-xs font-semibold min-h-11"
-            style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-            whileTap={{ scale: 0.93 }}
-          >
-            Anuluj
-          </motion.button>
           <ElapsedTimer startedAt={active.startedAt} className="text-xl font-bold tabular-nums text-white flex-none" />
           <div className="flex-1 min-w-0" />
+          <button
+            type="button"
+            className="workout-mobile-options-trigger"
+            popoverTarget="workout-mobile-options"
+            aria-label="Więcej opcji treningu"
+            aria-haspopup="menu"
+          >
+            <Ellipsis size={20} aria-hidden="true" />
+          </button>
+          <div
+            id="workout-mobile-options"
+            className="workout-mobile-options-menu"
+            popover="auto"
+            role="menu"
+            aria-label="Opcje treningu"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              popoverTarget="workout-mobile-options"
+              popoverTargetAction="hide"
+              onClick={handleDiscard}
+            >
+              Odrzuć trening
+            </button>
+          </div>
           <motion.button
             type="button"
             onClick={handleFinish}

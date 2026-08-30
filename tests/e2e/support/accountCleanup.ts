@@ -1,4 +1,4 @@
-import { expect, type Page } from '../fixtures'
+import { expect, type Locator, type Page } from '../fixtures'
 import { expectAppReady } from './appReady'
 
 export async function restoreProfileName(page: Page, originalName: string): Promise<void> {
@@ -34,6 +34,22 @@ export async function deleteUserExerciseByName(page: Page, name: string): Promis
   }
 }
 
+export async function openWorkoutDiscardDialog(page: Page): Promise<Locator> {
+  const mobileOptions = page.getByRole('button', { name: 'Więcej opcji treningu' })
+  if (await mobileOptions.isVisible().catch(() => false)) {
+    await mobileOptions.click()
+    const menu = page.getByRole('menu', { name: 'Opcje treningu' })
+    await expect(menu).toBeVisible()
+    await menu.getByRole('menuitem', { name: 'Odrzuć trening' }).click()
+  } else {
+    await page.getByRole('button', { name: 'Anuluj', exact: true }).first().click()
+  }
+
+  const dialog = page.getByRole('dialog', { name: 'Odrzucić trening?' })
+  await expect(dialog).toBeVisible({ timeout: 5_000 })
+  return dialog
+}
+
 export async function discardActiveSession(page: Page): Promise<void> {
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new', 25_000)
@@ -41,14 +57,12 @@ export async function discardActiveSession(page: Page): Promise<void> {
   const stale = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
   if (await stale.isVisible().catch(() => false)) {
     await stale.click()
-    await expect(page.getByRole('button', { name: 'Anuluj', exact: true }).first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('button', { name: 'Zakończ', exact: true }).first()).toBeVisible({ timeout: 15_000 })
   }
 
-  const discard = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-  if (await discard.isVisible().catch(() => false)) {
-    await discard.click()
-    const dialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(dialog).toBeVisible({ timeout: 5_000 })
+  const activeSession = page.getByRole('button', { name: 'Zakończ', exact: true }).first()
+  if (await activeSession.isVisible().catch(() => false)) {
+    const dialog = await openWorkoutDiscardDialog(page)
     await dialog.getByRole('button', { name: 'Odrzuć trening', exact: true }).click()
     await expect(page).toHaveURL('/dashboard', { timeout: 10_000 })
   }

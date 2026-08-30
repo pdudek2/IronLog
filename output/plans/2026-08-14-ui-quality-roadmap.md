@@ -5,7 +5,7 @@
 **Źródła:** audyt Codex `ui-quality-gate` + `app-screen-refiner`, audyt Claude oraz wzajemna weryfikacja findings
 **Tryb realizacji:** osobne, małe release slices; bez jednego mega-PR
 
-**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Etap 3 ukończony i zintegrowany lokalnie do `main` przez fast-forward do `abc72f3` — [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md). Etap 4 został ukończony w trzech release slices: [4A — Coach](./2026-08-17-ui-quality-phase-4a-coach-implementation.md) zintegrowano lokalnie do `main` przez fast-forward do `f83a8c4`, [4B — Historia/listy](./2026-08-20-ui-quality-phase-4b-history-lists-implementation.md) do `d434558`, a [4C — shell/404](./2026-08-20-ui-quality-phase-4c-shell-404-implementation.md) do `139c0f8`. Etap 5 został ukończony: [5A — bezpieczeństwo i semantyka](./2026-08-25-ui-quality-phase-5a-safety-semantics-implementation.md) i [5B — Profil/czytelność](./2026-08-29-ui-quality-phase-5b-profile-readability-implementation.md) zintegrowano wcześniej, [5C — final Product gate](./2026-08-29-ui-quality-phase-5c-final-product-gate.md) wykazał 0 Block i 2 Material, a [5D — touch/readability closure](./2026-08-29-ui-quality-phase-5d-touch-readability-implementation.md) zamknął oba findings i został zintegrowany lokalnie do `main` przez fast-forward do `82f2b42`. Po closeoucie [M-14](./2026-08-30-m14-previous-workout-context-closeout.md) rozstrzygnięto na rzecz benchmarku z poprzedniego treningu. Otwarte pozostają B-02 i M-07.
+**Wykonanie:** etap 1 ukończony i zintegrowany lokalnie do `main` w `f3aba48` — [receipt etapu 1](./2026-08-14-ui-quality-phase-1-implementation.md). Etap 2 ukończony i zintegrowany lokalnie do `main` w `4a9aa74` — [receipt etapu 2](./2026-08-16-ui-quality-phase-2-implementation.md). Etap 3 ukończony i zintegrowany lokalnie do `main` przez fast-forward do `abc72f3` — [receipt etapu 3](./2026-08-17-ui-quality-phase-3-implementation.md). Etap 4 został ukończony w trzech release slices: [4A — Coach](./2026-08-17-ui-quality-phase-4a-coach-implementation.md) zintegrowano lokalnie do `main` przez fast-forward do `f83a8c4`, [4B — Historia/listy](./2026-08-20-ui-quality-phase-4b-history-lists-implementation.md) do `d434558`, a [4C — shell/404](./2026-08-20-ui-quality-phase-4c-shell-404-implementation.md) do `139c0f8`. Etap 5 został ukończony: [5A — bezpieczeństwo i semantyka](./2026-08-25-ui-quality-phase-5a-safety-semantics-implementation.md) i [5B — Profil/czytelność](./2026-08-29-ui-quality-phase-5b-profile-readability-implementation.md) zintegrowano wcześniej, [5C — final Product gate](./2026-08-29-ui-quality-phase-5c-final-product-gate.md) wykazał 0 Block i 2 Material, a [5D — touch/readability closure](./2026-08-29-ui-quality-phase-5d-touch-readability-implementation.md) zamknął oba findings i został zintegrowany lokalnie do `main` przez fast-forward do `82f2b42`. Po closeoucie [M-14](./2026-08-30-m14-previous-workout-context-closeout.md) rozstrzygnięto na rzecz benchmarku z poprzedniego treningu, a [B-02](./2026-08-30-b02-workout-discard-overflow-closeout.md) przeniósł mobilne odrzucenie sesji do menu overflow. Otwarty pozostaje M-07.
 
 Materiały źródłowe:
 
@@ -225,7 +225,7 @@ To jest prostsze i uczciwsze niż normalizowanie różnych ćwiczeń albo umiesz
 1. **Wykres progresji:** rekomendacja — jedno wybrane ćwiczenie naraz. Alternatywa to normalizacja, ale wymaga definicji metryki i większego zakresu.
 2. **Coach bez klucza:** rekomendacja — zachować historię jako read-only, ale jednoznacznie zablokować composer i sugestie. Ukrycie całej rozmowy jest prostsze, lecz odbiera wartość powracającemu użytkownikowi.
 3. **Historia:** rekomendacja — stałe grupowanie miesięczne. Paginację dodać dopiero, gdy pomiary pokażą problem wydajnościowy.
-4. **„Anuluj” w treningu:** pozostawić w top barze z confirmation albo przenieść do overflow/końca. Niezależnie od decyzji potwierdzenie pozostaje wymagane.
+4. **„Anuluj” w treningu:** DONE — na mobile destrukcyjna akcja została przeniesiona do menu overflow; desktop zachowuje „Anuluj”, a confirmation pozostaje wymagane.
 5. **Usuwanie z list:** obecne potwierdzenie chroni przed utratą danych. Przeniesienie usuwania do szczegółu lub gestu jest zmianą interakcji, nie konieczną poprawką bezpieczeństwa.
 6. **Nomenklatura `Partia`:** zdecydować, czy etykieta oznacza szeroką kategorię, czy konkretny mięsień. Do tego czasu nie scalać na siłę różnych taksonomii.
 7. **„Ostatnio” w aktywnym treningu:** powiązanie techniczne jest poprawne; zmienić nazwę dopiero po ustaleniu, czy ma znaczyć poprzednią serię bieżącej sesji, czy ostatni trening.
@@ -296,9 +296,8 @@ To jest prostsze i uczciwsze niż normalizowanie różnych ćwiczeń albo umiesz
 
 ## Co dalej
 
-Nie uruchamiać kolejnego szerokiego audytu UI bez nowego sygnału regresji. M-14 został rozstrzygnięty i wdrożony w osobnym slice. Pozostały dwa tematy wymagające decyzji produktowej:
+Nie uruchamiać kolejnego szerokiego audytu UI bez nowego sygnału regresji. M-14 i B-02 zostały rozstrzygnięte i wdrożone w osobnych slice’ach. Pozostał jeden temat wymagający decyzji produktowej:
 
-1. **B-02 — „Anuluj” w top-left:** zdecydować, czy przenieść destrukcyjną akcję do menu/końca sesji. Confirmation pozostaje niezmiennikiem.
-2. **M-07 — taksonomia partii:** rozstrzygnąć wspólną publiczną hierarchię kategorii przed zmianą Historii, Postępów i treningu. Do tego czasu temat pozostaje świadomie odłożony.
+1. **M-07 — taksonomia partii:** rozstrzygnąć wspólną publiczną hierarchię kategorii przed zmianą Historii, Postępów i treningu. Do tego czasu temat pozostaje świadomie odłożony.
 
-Oba tematy zaczynają się od decyzji produktowej, nie od implementacji. Nie są blockerami zamknięcia roadmapy jakościowej.
+Temat zaczyna się od decyzji produktowej, nie od implementacji. Nie jest blockerem zamknięcia roadmapy jakościowej.

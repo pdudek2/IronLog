@@ -6522,6 +6522,51 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
   min-height: var(--workout-mobile-lifecycle-bar-height);
 }
 
+.workout-mobile-options-trigger {
+  display: grid;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  flex: none;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--muted);
+}
+
+.workout-mobile-options-trigger:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.workout-mobile-options-menu[popover] {
+  position: fixed;
+  top: calc(max(0.75rem, env(safe-area-inset-top, 0px)) + 3.6rem);
+  right: max(1rem, env(safe-area-inset-right, 1rem));
+  bottom: auto;
+  left: auto;
+  width: max-content;
+  margin: 0;
+  padding: 0.35rem;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  box-shadow: var(--shadow-panel);
+}
+
+.workout-mobile-options-menu > button {
+  min-height: 2.75rem;
+  border-radius: calc(var(--radius-md) - 0.2rem);
+  padding: 0.65rem 0.85rem;
+  color: var(--puls-warning);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+
+.workout-mobile-options-menu > button:hover,
+.workout-mobile-options-menu > button:focus-visible {
+  background: color-mix(in srgb, var(--puls-warning) 10%, transparent);
+  outline: none;
+}
+
 .workout-control-panel,
 .workout-exercise-stack,
 .workout-exercise-card {

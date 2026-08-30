@@ -1,11 +1,11 @@
 import { test, expect, type Page } from './fixtures'
-import { discardActiveSession } from './support/accountCleanup'
+import { discardActiveSession, openWorkoutDiscardDialog } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
 
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
     page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Anuluj', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Zakończ', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
     page.getByRole('button', { name: 'Rozpocznij nową sesję' }).waitFor({ state: 'visible', timeout: 25_000 }),
     page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first().waitFor({ state: 'visible', timeout: 25_000 }),
   ])
@@ -23,10 +23,10 @@ function workoutExerciseEntry(page: Page, exerciseName: string) {
  *   - navigating AWAY from workout does NOT discard the session
  *   - session persists in Firestore (activeSessions/{uid})
  *   - returning to /workout/new restores the session
- *   - discard only happens via the explicit "Anuluj" button → "Odrzuć trening" confirm dialog flow
+ *   - discard only happens via the explicit workout options → "Odrzuć trening" confirm dialog flow
  *
  * Button naming in WorkoutPage:
- *   - Trigger button (on page): "Anuluj" (mobile top bar OR desktop sidebar)
+ *   - Trigger: mobile options menu OR desktop "Anuluj" action
  *   - Confirm button (inside dialog): "Odrzuć trening"
  *   - Cancel button (inside dialog): "Wróć"
  *
@@ -43,7 +43,7 @@ async function startFreshSession(page: Page): Promise<string> {
   await expectAppReady(page, '/workout/new', 25_000)
 
   const staleDiscardBtn = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
-  const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
+  const activeSession = page.getByRole('button', { name: 'Zakończ', exact: true }).first()
   const startBtn = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
   const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
 
@@ -52,11 +52,8 @@ async function startFreshSession(page: Page): Promise<string> {
   if (await staleDiscardBtn.isVisible()) {
     await staleDiscardBtn.click()
     await expect(addExBtn).toBeVisible({ timeout: 15_000 })
-  } else if (await discardBtn.isVisible()) {
-    await discardBtn.click()
-    // Target ConfirmDialog specifically (not ExercisePicker which also has role="dialog")
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible()
+  } else if (await activeSession.isVisible()) {
+    const confirmDialog = await openWorkoutDiscardDialog(page)
     await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
     const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
     await expect(confirmDiscard).toBeVisible()
@@ -134,15 +131,8 @@ test.describe('Workout navigation guard', () => {
     })
     await startFreshSession(page)
 
-    // Trigger discard via the "Anuluj" button
-    const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-    await expect(discardBtn).toBeVisible()
-    await discardBtn.click()
-
-    // Confirm dialog should appear
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByText('Anulować trening?')).toBeVisible()
+    const confirmDialog = await openWorkoutDiscardDialog(page)
+    await expect(page.getByText('Wszystkie dane tej sesji zostaną utracone.')).toBeVisible()
     await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
     const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
     await expect(confirmDiscard).toBeVisible()
@@ -166,13 +156,7 @@ test.describe('Workout navigation guard', () => {
     cleanup.add('discard active session', () => discardActiveSession(page))
     const exerciseName = await startFreshSession(page)
 
-    // Click "Anuluj" to trigger dialog
-    const discardBtn = page.getByRole('button', { name: 'Anuluj', exact: true }).first()
-    await discardBtn.click()
-
-    // Scope to ConfirmDialog specifically (ExercisePicker also has role="dialog" and may linger)
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Potwierdź akcję' })
-    await expect(confirmDialog).toBeVisible()
+    const confirmDialog = await openWorkoutDiscardDialog(page)
 
     await expect(confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })).toBeVisible()
     const returnButton = confirmDialog.getByRole('button', { name: 'Wróć', exact: true })

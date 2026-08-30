@@ -46,7 +46,7 @@ async function openExercisePicker(page: Page): Promise<void> {
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
     page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Anuluj', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Zakończ', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
     page.getByRole('button', { name: 'Rozpocznij nową sesję' }).waitFor({ state: 'visible', timeout: 25_000 }),
     page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
   ])

@@ -6,6 +6,7 @@ import {
   type Page,
 } from './fixtures'
 import { expectAppReady } from './support/appReady'
+import { openWorkoutDiscardDialog } from './support/accountCleanup'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
 import {
   readCachedActiveSessionWrite,
@@ -71,9 +72,7 @@ async function finishWorkout(page: Page): Promise<void> {
 }
 
 async function confirmOrdinaryDiscard(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Anuluj', exact: true }).first().click()
-  const dialog = page.getByRole('dialog', { name: 'Odrzucić trening?' })
-  await expect(dialog).toBeVisible()
+  const dialog = await openWorkoutDiscardDialog(page)
   await expect(dialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
   const confirmDiscard = dialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
   await expect(confirmDiscard).toBeVisible()

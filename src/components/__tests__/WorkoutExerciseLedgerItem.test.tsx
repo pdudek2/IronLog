@@ -4,6 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useWorkoutStore } from '../../store/workoutStore'
 import WorkoutExerciseLedgerItem from '../workout/WorkoutExerciseLedgerItem'
 
+const mocks = vi.hoisted(() => ({
+  getExerciseSessions: vi.fn(),
+}))
+
+vi.mock('../../lib/exerciseDetailService', () => ({
+  getExerciseSessions: mocks.getExerciseSessions,
+}))
+
 const callbacks = {
   onAddSet: vi.fn(),
   onAdjustSet: vi.fn(),
@@ -19,6 +27,7 @@ const callbacks = {
 describe('WorkoutExerciseLedgerItem weight units', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mocks.getExerciseSessions.mockResolvedValue([])
     useWorkoutStore.setState({
       active: {
         sessionId: 'session-1',
@@ -63,7 +72,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     })
 
     expect(weightInput).toHaveValue(132.3)
-    expect(screen.getByText('1.1k lbs')).toBeInTheDocument()
     expect(screen.getByRole('button', {
       name: 'Oznacz serię 1 ćwiczenia Bench Press',
     })).toBeInTheDocument()
@@ -71,6 +79,65 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     fireEvent.change(weightInput, { target: { value: '100' } })
 
     expect(callbacks.onUpdateSet).toHaveBeenCalledWith(0, 0, 'weight', '45.3592')
+  })
+
+  it('aligns previous results with their set rows and leaves missing history neutral', async () => {
+    const active = useWorkoutStore.getState().active
+    if (!active) throw new Error('Expected an active workout fixture.')
+    useWorkoutStore.setState({
+      active: {
+        ...active,
+        exercises: active.exercises.map((exercise) => ({
+          ...exercise,
+          sets: [
+            exercise.sets[0],
+            { clientId: 'set-2', weight: '80', reps: '8', done: false },
+            { clientId: 'set-3', weight: '', reps: '', done: false },
+          ],
+        })),
+      },
+    })
+    mocks.getExerciseSessions.mockResolvedValue([{
+      id: 'previous-session',
+      workoutId: 'previous-workout',
+      startedAt: 1,
+      label: null,
+      totalSets: 2,
+      totalReps: 20,
+      totalVolume: 0,
+      bestSetWeight: 225,
+      bestSetReps: 12,
+      sets: [
+        { weight: 225, reps: 12 },
+        { weight: 80, reps: 8 },
+      ],
+    }])
+
+    render(
+      <WorkoutExerciseLedgerItem
+        exerciseAccent="#f0435a"
+        exerciseClientId="exercise-1"
+        exerciseIndex={0}
+        fallbackExercise={null}
+        focusSetIndex={1}
+        hintDismissed
+        hintKey="global:bench-press"
+        isCollapsible
+        isExpanded
+        isFocusedExercise
+        suggestion={null}
+        units="lbs"
+        userId="user-1"
+        {...callbacks}
+      />,
+    )
+
+    expect(await screen.findByLabelText('Poprzedni wynik serii 1')).toHaveTextContent('496×12')
+    expect(screen.getByLabelText('Poprzedni wynik serii 2')).toHaveTextContent('176.4×8')
+    expect(screen.getByLabelText('Poprzedni wynik serii 3')).toHaveTextContent('—')
+    expect(screen.getByText('Poprz.')).toBeInTheDocument()
+    expect(screen.queryByText('Obj.')).not.toBeInTheDocument()
+    expect(mocks.getExerciseSessions).toHaveBeenCalledWith('user-1', 'bench-press', 'global', 1)
   })
 
   it('preserves the entered kilogram precision when no conversion is required', () => {

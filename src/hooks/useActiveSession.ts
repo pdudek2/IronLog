@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { stripWorkoutClientIds, useWorkoutStore, type ActiveWorkout } from '../store/workoutStore'
 import {
+  ActiveSessionConflictError,
   claimActiveSession,
   loadActiveSessionFromServer,
   saveActiveSession,
@@ -100,6 +101,8 @@ function isSessionWriteGenerationCurrent(
 
 export function useActiveSession(uid: string | null) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sessionSaveQueueRef = useRef<Promise<void>>(Promise.resolve())
+  const activeSessionRevisionRef = useRef<string | null>(null)
   const activeRef = useRef(useWorkoutStore.getState().active)
   const staleSessionRef = useRef<ActiveWorkout | null>(null)
   const closureIntentRef = useRef<WorkoutClosureIntent | null>(null)
@@ -116,6 +119,38 @@ export function useActiveSession(uid: string | null) {
   const [closureIntent, setClosureIntent] = useState<WorkoutClosureIntent | null>(null)
   const [closureState, setClosureState] = useState<ClosureUiState>('idle')
   const [activeSessionSyncStatus, setActiveSessionSyncStatus] = useState<ActiveSessionSyncStatusValue>('idle')
+
+  function saveSessionWithRevision(
+    currentUid: string,
+    snapshot: ActiveWorkout,
+    generation: number,
+  ) {
+    const queuedSave = sessionSaveQueueRef.current.then(async () => {
+      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) {
+        throw new Error('Active session write superseded.')
+      }
+      const saved = await saveActiveSession(currentUid, snapshot, activeSessionRevisionRef.current)
+      if (
+        isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)
+        && useWorkoutStore.getState().active?.sessionId === snapshot.sessionId
+        && !isConfirmedClosedSessionId(snapshot.sessionId, confirmedClosedSessionIdsRef.current)
+      ) {
+        activeSessionRevisionRef.current = saved.sessionRevision
+      }
+      return saved
+    })
+    sessionSaveQueueRef.current = queuedSave.then(() => undefined, () => undefined)
+    return queuedSave
+  }
+
+  function reportSessionSaveFailure(error: unknown, context: string) {
+    if (error instanceof ActiveSessionConflictError) {
+      setActiveSessionSyncStatus('conflict')
+      return
+    }
+    setActiveSessionSyncStatus('failed')
+    console.error(context, error)
+  }
 
   function cancelPendingPersistence() {
     if (!timerRef.current) return
@@ -217,7 +252,7 @@ export function useActiveSession(uid: string | null) {
       ++sessionWriteOperationRef.current,
     )
     try {
-      const saved = await saveActiveSession(uid, intent.session)
+      const saved = await saveSessionWithRevision(uid, intent.session, write.generation)
       if (
         closureIntentRef.current !== intent
         || !isSessionWriteCurrent(
@@ -246,8 +281,7 @@ export function useActiveSession(uid: string | null) {
       clearWorkoutClosureIntent(uid)
       setPendingIntent(null)
       setClosureState('idle')
-      setActiveSessionSyncStatus('failed')
-      console.error('[prepare workout closure error]', error)
+      reportSessionSaveFailure(error, '[prepare workout closure error]')
       return { status: 'failed' }
     }
   }
@@ -286,8 +320,10 @@ export function useActiveSession(uid: string | null) {
     setActiveSessionSyncStatus('retrying')
     setReady(false)
     try {
-      const authoritativeSession = await loadActiveSessionFromServer(uid)
+      const authoritative = await loadActiveSessionFromServer(uid)
       if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return false
+      const authoritativeSession = authoritative.session
+      activeSessionRevisionRef.current = authoritative.sessionRevision
       clearWorkoutClosureIntent(uid)
       clearActiveSessionBackup(uid)
       setPendingIntent(null)
@@ -340,13 +376,14 @@ export function useActiveSession(uid: string | null) {
     try {
       const claimed = await claimActiveSession(uid, candidate)
       if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return
-      remoteSessionRef.current = claimed
+      activeSessionRevisionRef.current = claimed.sessionRevision
+      remoteSessionRef.current = claimed.session
       hadRemoteSessionRef.current = true
       hasUnsyncedLocalChangesRef.current = false
       applyingRemoteRef.current = true
-      activeRef.current = claimed
-      useWorkoutStore.getState().hydrateFromDoc(claimed)
-      writeActiveSessionBackup(uid, claimed)
+      activeRef.current = claimed.session
+      useWorkoutStore.getState().hydrateFromDoc(claimed.session)
+      writeActiveSessionBackup(uid, claimed.session)
       setActiveSessionSyncStatus('idle')
       setReady(true)
     } catch (error) {
@@ -378,6 +415,8 @@ export function useActiveSession(uid: string | null) {
   useEffect(() => {
     const sessionWriteGeneration = sessionWriteGenerationRef.current + 1
     sessionWriteGenerationRef.current = sessionWriteGeneration
+    sessionSaveQueueRef.current = Promise.resolve()
+    activeSessionRevisionRef.current = null
     confirmedClosedSessionIdsRef.current = new Set()
     if (!uid) {
       setReady(true)
@@ -429,7 +468,7 @@ export function useActiveSession(uid: string | null) {
         sessionWriteGeneration,
         ++sessionWriteOperationRef.current,
       )
-      void saveActiveSession(currentUid, snapshot)
+      void saveSessionWithRevision(currentUid, snapshot, sessionWriteGeneration)
         .then(() => {
           if (!isSessionWriteCurrent(
             write,
@@ -450,14 +489,13 @@ export function useActiveSession(uid: string | null) {
             sessionWriteOperationRef.current,
             confirmedClosedSessionIdsRef.current,
           )) return
-          setActiveSessionSyncStatus('failed')
-          console.error('[active session save error]', error)
+          reportSessionSaveFailure(error, '[active session save error]')
         })
     }
 
     const unsubscribeRemote = subscribeToActiveSession(
       currentUid,
-      ({ session, fromCache, hasPendingWrites }) => {
+      ({ session, sessionRevision, fromCache, hasPendingWrites }) => {
         const authoritative = isAuthoritativeActiveSessionSnapshot({ fromCache, hasPendingWrites })
         if (authoritative && isConfirmedClosedSessionId(
           session?.sessionId,
@@ -466,10 +504,21 @@ export function useActiveSession(uid: string | null) {
           setReady(true)
           return
         }
-        if (authoritative) remoteSessionRef.current = session
+        if (authoritative) {
+          remoteSessionRef.current = session
+        }
         const current = useWorkoutStore.getState().active
         const currentSerialized = serializeActiveWorkout(current)
         const nextSerialized = serializeActiveWorkout(session)
+        const preserveLocalBaseRevision = Boolean(
+          authoritative
+          && current
+          && hasUnsyncedLocalChangesRef.current
+          && currentSerialized !== nextSerialized,
+        )
+        if (authoritative && !preserveLocalBaseRevision) {
+          activeSessionRevisionRef.current = sessionRevision ?? null
+        }
         const decision = decideRemoteSessionSync({
           localSession: current,
           remoteSession: session,
@@ -656,7 +705,11 @@ export function useActiveSession(uid: string | null) {
       ++sessionWriteOperationRef.current,
     )
     try {
-      await saveActiveSession(uid, refreshedSession)
+      await saveSessionWithRevision(
+        uid,
+        refreshedSession,
+        sessionWriteGenerationRef.current,
+      )
     } catch (error) {
       if (!isSessionWriteCurrent(
         write,
@@ -665,8 +718,7 @@ export function useActiveSession(uid: string | null) {
         confirmedClosedSessionIdsRef.current,
       )) return IGNORED_STALE_SESSION_OPERATION
       hasUnsyncedLocalChangesRef.current = true
-      setActiveSessionSyncStatus('failed')
-      console.error('[continue stale session persistence error]', error)
+      reportSessionSaveFailure(error, '[continue stale session persistence error]')
       return FAILED_STALE_SESSION_SYNC_OPERATION
     }
     if (!isSessionWriteCurrent(
@@ -732,7 +784,7 @@ export function useActiveSession(uid: string | null) {
           )
           writeActiveSessionBackup(uid, createdSession)
           try {
-            await saveActiveSession(uid, createdSession)
+            await saveSessionWithRevision(uid, createdSession, sessionWriteGeneration)
             if (!isSessionWriteCurrent(
               write,
               sessionWriteGenerationRef.current,
@@ -747,8 +799,7 @@ export function useActiveSession(uid: string | null) {
               sessionWriteOperationRef.current,
               confirmedClosedSessionIdsRef.current,
             )) return
-            setActiveSessionSyncStatus('failed')
-            console.error('[persist stale replacement error]', error)
+            reportSessionSaveFailure(error, '[persist stale replacement error]')
           }
         },
       })
@@ -784,7 +835,11 @@ export function useActiveSession(uid: string | null) {
     writeActiveSessionBackup(uid, snapshot)
     setActiveSessionSyncStatus('retrying')
     try {
-      await saveActiveSession(uid, snapshot)
+      await saveSessionWithRevision(
+        uid,
+        snapshot,
+        sessionWriteGenerationRef.current,
+      )
       if (!isSessionWriteCurrent(
         write,
         sessionWriteGenerationRef.current,
@@ -800,8 +855,7 @@ export function useActiveSession(uid: string | null) {
         sessionWriteOperationRef.current,
         confirmedClosedSessionIdsRef.current,
       )) return
-      setActiveSessionSyncStatus('failed')
-      console.error('[active session retry error]', error)
+      reportSessionSaveFailure(error, '[active session retry error]')
     }
   }
 

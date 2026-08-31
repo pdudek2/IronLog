@@ -5,17 +5,31 @@ import type { ActiveWorkout } from '../../store/workoutStore'
 
 type SnapshotListener = (snapshot: {
   session: ActiveWorkout | null
+  sessionRevision?: string | null
   fromCache: boolean
   hasPendingWrites: boolean
 }) => void
 
 const listener = vi.hoisted(() => ({ current: null as SnapshotListener | null }))
-const claimActiveSession = vi.hoisted(() => vi.fn(async (_uid: string, candidate: ActiveWorkout) => candidate))
-const loadActiveSessionFromServer = vi.hoisted(() => vi.fn<() => Promise<ActiveWorkout | null>>())
-const saveActiveSession = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const ActiveSessionConflictError = vi.hoisted(() => class ActiveSessionConflictError extends Error {
+  constructor() {
+    super('The active session changed on the server.')
+    this.name = 'ActiveSessionConflictError'
+  }
+})
+const claimActiveSession = vi.hoisted(() => vi.fn(async (_uid: string, candidate: ActiveWorkout) => ({
+  session: candidate,
+  sessionRevision: 'revision-claimed',
+})))
+const loadActiveSessionFromServer = vi.hoisted(() => vi.fn<() => Promise<{
+  session: ActiveWorkout | null
+  sessionRevision: string | null
+}>>())
+const saveActiveSession = vi.hoisted(() => vi.fn().mockResolvedValue({ sessionRevision: 'revision-saved' }))
 const discardStaleSessionLifecycle = vi.hoisted(() => vi.fn())
 
 vi.mock('../../lib/activeSessionService', () => ({
+  ActiveSessionConflictError,
   claimActiveSession,
   loadActiveSessionFromServer,
   saveActiveSession,
@@ -53,6 +67,16 @@ const staleRemoteSession: ActiveWorkout = {
   startedAt: Date.now() - (13 * 60 * 60 * 1000),
 }
 
+const editableRemoteSession: ActiveWorkout = {
+  ...remoteSession,
+  exercises: [{
+    exerciseId: 'bench-press',
+    exerciseSource: 'global',
+    name: 'Bench Press',
+    sets: [{ weight: '80', reps: '5', done: false }],
+  }],
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void
   let reject!: (reason?: unknown) => void
@@ -76,9 +100,12 @@ describe('useActiveSession snapshot authority', () => {
     })
     useWorkoutStore.getState().clearWorkout()
     listener.current = null
-    claimActiveSession.mockReset().mockImplementation(async (_uid: string, candidate: ActiveWorkout) => candidate)
-    loadActiveSessionFromServer.mockReset().mockResolvedValue(null)
-    saveActiveSession.mockReset().mockResolvedValue(undefined)
+    claimActiveSession.mockReset().mockImplementation(async (_uid: string, candidate: ActiveWorkout) => ({
+      session: candidate,
+      sessionRevision: 'revision-claimed',
+    }))
+    loadActiveSessionFromServer.mockReset().mockResolvedValue({ session: null, sessionRevision: null })
+    saveActiveSession.mockReset().mockResolvedValue({ sessionRevision: 'revision-saved' })
     discardStaleSessionLifecycle.mockReset()
   })
 
@@ -152,6 +179,105 @@ describe('useActiveSession snapshot authority', () => {
     expect(saveActiveSession).toHaveBeenCalledTimes(1)
   })
 
+  it('keeps the local edit and reports a revision conflict after a stale save is rejected', async () => {
+    vi.useFakeTimers()
+    saveActiveSession.mockRejectedValueOnce(new ActiveSessionConflictError())
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => listener.current?.({
+      session: editableRemoteSession,
+      sessionRevision: 'revision-initial',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '6'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
+
+    expect(useWorkoutStore.getState().active?.exercises[0].sets[0].reps).toBe('6')
+    expect(result.current.activeSessionSyncStatus).toBe('conflict')
+  })
+
+  it('keeps the edit base revision when a newer remote snapshot arrives before autosave', async () => {
+    vi.useFakeTimers()
+    renderHook(() => useActiveSession('user-1'))
+
+    act(() => listener.current?.({
+      session: editableRemoteSession,
+      sessionRevision: 'revision-initial',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '6'))
+    act(() => listener.current?.({
+      session: {
+        ...editableRemoteSession,
+        exercises: [{
+          ...editableRemoteSession.exercises[0],
+          sets: [{ weight: '80', reps: '7', done: false }],
+        }],
+      },
+      sessionRevision: 'revision-newer',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(saveActiveSession).toHaveBeenCalledWith(
+      'user-1',
+      expect.objectContaining({
+        exercises: [expect.objectContaining({
+          sets: [expect.objectContaining({ reps: '6' })],
+        })],
+      }),
+      'revision-initial',
+    )
+  })
+
+  it('serializes rapid saves and gives the next write the committed revision', async () => {
+    vi.useFakeTimers()
+    const firstWrite = createDeferred<{ sessionRevision: string }>()
+    saveActiveSession
+      .mockReturnValueOnce(firstWrite.promise)
+      .mockResolvedValueOnce({ sessionRevision: 'revision-third' })
+    renderHook(() => useActiveSession('user-1'))
+
+    act(() => listener.current?.({
+      session: editableRemoteSession,
+      sessionRevision: 'revision-initial',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '6'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '7'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(400)
+    })
+
+    expect(saveActiveSession).toHaveBeenCalledTimes(1)
+    await act(async () => {
+      firstWrite.resolve({ sessionRevision: 'revision-second' })
+      await firstWrite.promise
+      await Promise.resolve()
+    })
+    expect(saveActiveSession).toHaveBeenNthCalledWith(
+      2,
+      'user-1',
+      expect.objectContaining({
+        exercises: [expect.objectContaining({
+          sets: [expect.objectContaining({ reps: '7' })],
+        })],
+      }),
+      'revision-second',
+    )
+  })
+
   it.each([
     ['cached deletion', null],
     ['cached session', remoteSession],
@@ -179,7 +305,7 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('keeps authoritative absence idle until the user explicitly starts a session', async () => {
-    const claim = createDeferred<ActiveWorkout>()
+    const claim = createDeferred<{ session: ActiveWorkout; sessionRevision: string }>()
     claimActiveSession.mockReturnValueOnce(claim.promise)
     const { result } = renderHook(() => useActiveSession('user-1'))
 
@@ -209,7 +335,7 @@ describe('useActiveSession snapshot authority', () => {
     expect(result.current.ready).toBe(false)
 
     await act(async () => {
-      claim.resolve(remoteSession)
+      claim.resolve({ session: remoteSession, sessionRevision: 'revision-claimed' })
       await startPromise
     })
 
@@ -221,7 +347,10 @@ describe('useActiveSession snapshot authority', () => {
     const staleLocalSession = { ...remoteSession, sessionId: 'stale-local-session' }
     const authoritativeSession = { ...remoteSession, sessionId: 'authoritative-session' }
     useWorkoutStore.getState().hydrateFromDoc(staleLocalSession)
-    loadActiveSessionFromServer.mockResolvedValueOnce(authoritativeSession)
+    loadActiveSessionFromServer.mockResolvedValueOnce({
+      session: authoritativeSession,
+      sessionRevision: 'revision-authoritative',
+    })
     const { result } = renderHook(() => useActiveSession('user-1'))
 
     await act(async () => {
@@ -237,7 +366,10 @@ describe('useActiveSession snapshot authority', () => {
     const staleLocalSession = { ...remoteSession, sessionId: 'stale-local-session' }
     const authoritativeSession = { ...remoteSession, sessionId: 'authoritative-session' }
     useWorkoutStore.getState().hydrateFromDoc(staleLocalSession)
-    loadActiveSessionFromServer.mockResolvedValueOnce(authoritativeSession)
+    loadActiveSessionFromServer.mockResolvedValueOnce({
+      session: authoritativeSession,
+      sessionRevision: 'revision-authoritative',
+    })
     const { result } = renderHook(() => useActiveSession('user-1'))
 
     await act(async () => {
@@ -257,7 +389,10 @@ describe('useActiveSession snapshot authority', () => {
     const staleLocalSession = { ...remoteSession, sessionId: 'stale-local-session' }
     const authoritativeSession = { ...remoteSession, sessionId: 'authoritative-session' }
     useWorkoutStore.getState().hydrateFromDoc(staleLocalSession)
-    loadActiveSessionFromServer.mockResolvedValueOnce(authoritativeSession)
+    loadActiveSessionFromServer.mockResolvedValueOnce({
+      session: authoritativeSession,
+      sessionRevision: 'revision-authoritative',
+    })
     const { result } = renderHook(() => useActiveSession('user-1'))
     act(() => { result.current.beginClosure('finish', staleLocalSession) })
 
@@ -291,7 +426,10 @@ describe('useActiveSession snapshot authority', () => {
     loadActiveSessionFromServer
       .mockRejectedValueOnce(firstReloadError)
       .mockRejectedValueOnce(retryReloadError)
-      .mockResolvedValueOnce(authoritativeSession)
+      .mockResolvedValueOnce({
+        session: authoritativeSession,
+        sessionRevision: 'revision-authoritative',
+      })
     const { result } = renderHook(() => useActiveSession('user-1'))
     let intent: WorkoutClosureIntent | null = null
     act(() => { intent = result.current.beginClosure('finish', staleLocalSession) })
@@ -371,7 +509,7 @@ describe('useActiveSession snapshot authority', () => {
       status: 'ready',
       sessionRevision: 'revision-finish',
     })
-    expect(saveActiveSession).toHaveBeenCalledWith('user-1', intent!.session)
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', intent!.session, null)
     expect(result.current.closureIntent).toEqual({
       ...intent!,
       sessionRevision: 'revision-finish',
@@ -482,19 +620,22 @@ describe('useActiveSession snapshot authority', () => {
 
     expect(useWorkoutStore.getState().active?.sessionId).toBe(replacement?.sessionId)
     expect(saveActiveSession).toHaveBeenCalledTimes(1)
-    expect(saveActiveSession).toHaveBeenCalledWith('user-1', replacement)
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', replacement, null)
   })
 
   it('ignores a late failed write for the first of two confirmed closed sessions', async () => {
-    const closedWrite = createDeferred<void>()
+    const closedWrite = createDeferred<{ sessionRevision: string }>()
     const saveError = new Error('permission-denied')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     saveActiveSession.mockImplementationOnce(() => closedWrite.promise)
     useWorkoutStore.getState().hydrateFromDoc(remoteSession)
     const { result } = renderHook(() => useActiveSession('user-1'))
 
-    act(() => window.dispatchEvent(new Event('pagehide')))
-    expect(saveActiveSession).toHaveBeenCalledWith('user-1', remoteSession)
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'))
+      await Promise.resolve()
+    })
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', remoteSession, null)
 
     act(() => {
       result.current.beginClosure('discard', remoteSession)
@@ -521,8 +662,8 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('does not let a late successful first-session write hide a failure after two closures', async () => {
-    const closedWrite = createDeferred<void>()
-    const replacementWrite = createDeferred<void>()
+    const closedWrite = createDeferred<{ sessionRevision: string }>()
+    const replacementWrite = createDeferred<{ sessionRevision: string }>()
     const replacementError = new Error('replacement write failed')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     saveActiveSession
@@ -531,7 +672,10 @@ describe('useActiveSession snapshot authority', () => {
     useWorkoutStore.getState().hydrateFromDoc(remoteSession)
     const { result } = renderHook(() => useActiveSession('user-1'))
 
-    act(() => window.dispatchEvent(new Event('pagehide')))
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'))
+      await Promise.resolve()
+    })
     act(() => {
       result.current.beginClosure('discard', remoteSession)
       result.current.confirmClosure()
@@ -547,24 +691,22 @@ describe('useActiveSession snapshot authority', () => {
     })
     const replacement = useWorkoutStore.getState().active
     expect(replacement?.sessionId).not.toBe(remoteSession.sessionId)
-    expect(saveActiveSession).toHaveBeenNthCalledWith(2, 'user-1', replacement)
+    await act(async () => {
+      closedWrite.resolve({ sessionRevision: 'revision-closed' })
+      await closedWrite.promise
+      await Promise.resolve()
+    })
+    expect(saveActiveSession).toHaveBeenNthCalledWith(2, 'user-1', replacement, null)
 
     await act(async () => {
       replacementWrite.reject(replacementError)
       await replacementWrite.promise.catch(() => undefined)
       await Promise.resolve()
     })
-    expect(result.current.activeSessionSyncStatus).toBe('failed')
-    expect(consoleError).toHaveBeenCalledWith('[active session save error]', replacementError)
-
-    await act(async () => {
-      closedWrite.resolve()
-      await closedWrite.promise
-      await Promise.resolve()
-    })
 
     expect(useWorkoutStore.getState().active?.sessionId).toBe(replacement?.sessionId)
     expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledWith('[active session save error]', replacementError)
     expect(consoleError).toHaveBeenCalledTimes(1)
     consoleError.mockRestore()
   })
@@ -593,7 +735,7 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('ignores a late retry rejection after that session is confirmed closed', async () => {
-    const retryWrite = createDeferred<void>()
+    const retryWrite = createDeferred<{ sessionRevision: string }>()
     const retryError = new Error('closed retry failed')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     saveActiveSession.mockImplementationOnce(() => retryWrite.promise)
@@ -622,8 +764,8 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('does not let a late successful closed-session retry hide a replacement retry failure', async () => {
-    const closedRetry = createDeferred<void>()
-    const replacementRetry = createDeferred<void>()
+    const closedRetry = createDeferred<{ sessionRevision: string }>()
+    const replacementRetry = createDeferred<{ sessionRevision: string }>()
     const replacementError = new Error('replacement retry failed')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     saveActiveSession
@@ -647,25 +789,23 @@ describe('useActiveSession snapshot authority', () => {
       replacementRetryPromise = result.current.retryActiveSessionSync()
     })
     await act(async () => {
+      closedRetry.resolve({ sessionRevision: 'revision-closed' })
+      await closedRetryPromise
+    })
+    await act(async () => {
       replacementRetry.reject(replacementError)
       await replacementRetryPromise
-    })
-    expect(result.current.activeSessionSyncStatus).toBe('failed')
-    expect(consoleError).toHaveBeenCalledWith('[active session retry error]', replacementError)
-
-    await act(async () => {
-      closedRetry.resolve()
-      await closedRetryPromise
     })
 
     expect(useWorkoutStore.getState().active?.sessionId).toBe(replacement?.sessionId)
     expect(result.current.activeSessionSyncStatus).toBe('failed')
+    expect(consoleError).toHaveBeenCalledWith('[active session retry error]', replacementError)
     expect(consoleError).toHaveBeenCalledTimes(1)
     consoleError.mockRestore()
   })
 
   it('ignores a late write rejection from the previous user lifecycle', async () => {
-    const oldUserWrite = createDeferred<void>()
+    const oldUserWrite = createDeferred<{ sessionRevision: string }>()
     const oldUserError = new Error('old user write failed')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     saveActiveSession.mockImplementationOnce(() => oldUserWrite.promise)
@@ -675,7 +815,10 @@ describe('useActiveSession snapshot authority', () => {
       { initialProps: { uid: 'user-1' } },
     )
 
-    act(() => window.dispatchEvent(new Event('pagehide')))
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'))
+      await Promise.resolve()
+    })
     act(() => {
       result.current.beginClosure('discard', remoteSession)
       result.current.confirmClosure()
@@ -694,8 +837,8 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('does not let a late previous-user success hide a current-user write failure', async () => {
-    const oldUserWrite = createDeferred<void>()
-    const currentUserWrite = createDeferred<void>()
+    const oldUserWrite = createDeferred<{ sessionRevision: string }>()
+    const currentUserWrite = createDeferred<{ sessionRevision: string }>()
     const currentUserError = new Error('current user write failed')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     saveActiveSession
@@ -707,7 +850,10 @@ describe('useActiveSession snapshot authority', () => {
       { initialProps: { uid: 'user-1' } },
     )
 
-    act(() => window.dispatchEvent(new Event('pagehide')))
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'))
+      await Promise.resolve()
+    })
     act(() => {
       result.current.beginClosure('discard', remoteSession)
       result.current.confirmClosure()
@@ -731,7 +877,7 @@ describe('useActiveSession snapshot authority', () => {
     expect(consoleError).toHaveBeenCalledWith('[active session save error]', currentUserError)
 
     await act(async () => {
-      oldUserWrite.resolve()
+      oldUserWrite.resolve({ sessionRevision: 'revision-old-user' })
       await oldUserWrite.promise
       await Promise.resolve()
     })
@@ -779,8 +925,8 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('ignores a stale continuation failure superseded by a newer same-session retry', async () => {
-    const continuationWrite = createDeferred<void>()
-    const retryWrite = createDeferred<void>()
+    const continuationWrite = createDeferred<{ sessionRevision: string }>()
+    const retryWrite = createDeferred<{ sessionRevision: string }>()
     const staleError = new Error('superseded continuation failed')
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     saveActiveSession
@@ -802,16 +948,14 @@ describe('useActiveSession snapshot authority', () => {
       retryOperation = result.current.retryActiveSessionSync()
     })
 
-    await act(async () => {
-      retryWrite.resolve()
-      await retryOperation
-    })
-    expect(result.current.activeSessionSyncStatus).toBe('idle')
-
     let outcome!: Awaited<typeof continuationOperation>
     await act(async () => {
       continuationWrite.reject(staleError)
       outcome = await continuationOperation
+    })
+    await act(async () => {
+      retryWrite.resolve({ sessionRevision: 'revision-retry' })
+      await retryOperation
     })
 
     expect(outcome).toEqual({ status: 'ignored' })
@@ -822,7 +966,7 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('returns ignored for a late continuation success after confirmed closure', async () => {
-    const continuationWrite = createDeferred<void>()
+    const continuationWrite = createDeferred<{ sessionRevision: string }>()
     saveActiveSession.mockImplementationOnce(() => continuationWrite.promise)
     const { result } = renderHook(() => useActiveSession('user-1'))
     act(() => listener.current?.({
@@ -844,7 +988,7 @@ describe('useActiveSession snapshot authority', () => {
 
     let outcome: Awaited<typeof operation>
     await act(async () => {
-      continuationWrite.resolve()
+      continuationWrite.resolve({ sessionRevision: 'revision-continuation' })
       outcome = await operation
     })
 
@@ -853,7 +997,7 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('returns ignored instead of rejecting a continuation invalidated by uid change', async () => {
-    const continuationWrite = createDeferred<void>()
+    const continuationWrite = createDeferred<{ sessionRevision: string }>()
     saveActiveSession.mockImplementationOnce(() => continuationWrite.promise)
     const { result, rerender } = renderHook(
       ({ uid }: { uid: string }) => useActiveSession(uid),
@@ -869,6 +1013,9 @@ describe('useActiveSession snapshot authority', () => {
     act(() => {
       operation = result.current.continueStaleSession()
     })
+    await act(async () => {
+      await Promise.resolve()
+    })
     rerender({ uid: 'user-2' })
 
     let outcome: Awaited<typeof operation>
@@ -881,7 +1028,7 @@ describe('useActiveSession snapshot authority', () => {
   })
 
   it('returns ignored for a continuation completed after unmount', async () => {
-    const continuationWrite = createDeferred<void>()
+    const continuationWrite = createDeferred<{ sessionRevision: string }>()
     saveActiveSession.mockImplementationOnce(() => continuationWrite.promise)
     const { result, unmount } = renderHook(() => useActiveSession('user-1'))
     act(() => listener.current?.({
@@ -895,7 +1042,7 @@ describe('useActiveSession snapshot authority', () => {
       operation = result.current.continueStaleSession()
     })
     unmount()
-    continuationWrite.resolve()
+    continuationWrite.resolve({ sessionRevision: 'revision-continuation' })
 
     await expect(operation).resolves.toEqual({ status: 'ignored' })
   })

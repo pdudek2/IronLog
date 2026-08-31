@@ -7,11 +7,11 @@ vi.mock('firebase/firestore', () => ({
   getDocFromServer: vi.fn(),
   onSnapshot: vi.fn(),
   runTransaction: vi.fn(),
-  setDoc: vi.fn(),
 }))
 
-import { doc, getDocFromServer, runTransaction, setDoc } from 'firebase/firestore'
+import { doc, getDocFromServer, runTransaction } from 'firebase/firestore'
 import {
+  ActiveSessionConflictError,
   claimActiveSession,
   hasActiveSessionWork,
   persistTemplateLaunchSession,
@@ -20,6 +20,7 @@ import {
 } from '../activeSessionService'
 import { deriveLegacySessionId } from '../sessionIdentity'
 import type { ActiveWorkout } from '../../store/workoutStore'
+import type { LoadedActiveSession } from '../activeSessionService'
 
 const sessionRef = { path: 'activeSessions/user-1' }
 const transactionGet = vi.fn()
@@ -86,7 +87,12 @@ describe('hasActiveSessionWork', () => {
 
 describe('persistTemplateLaunchSession', () => {
   it('writes the existing active-session document shape when remote work is blank', async () => {
-    transactionGet.mockResolvedValue(sessionSnapshot({ label: '   ', exercises: [] }))
+    transactionGet.mockResolvedValue(sessionSnapshot({
+      sessionId: 'session-1',
+      sessionRevision: null,
+      label: '   ',
+      exercises: [],
+    }))
     const expectedDocument = expect.objectContaining({
       userId: 'user-1',
       sessionId: 'session-1',
@@ -104,11 +110,12 @@ describe('persistTemplateLaunchSession', () => {
     })
 
     await persistTemplateLaunchSession('user-1', workout, false)
-    await saveActiveSession('user-1', workout)
+    await saveActiveSession('user-1', workout, null)
 
-    expect(transactionGet).toHaveBeenCalledWith(sessionRef)
-    expect(transactionSet).toHaveBeenCalledWith(sessionRef, expectedDocument)
-    expect(setDoc).toHaveBeenCalledWith(sessionRef, expectedDocument)
+    expect(transactionGet).toHaveBeenCalledTimes(2)
+    expect(transactionSet).toHaveBeenCalledTimes(2)
+    expect(transactionSet).toHaveBeenNthCalledWith(1, sessionRef, expectedDocument)
+    expect(transactionSet).toHaveBeenNthCalledWith(2, sessionRef, expectedDocument)
   })
 
   it('throws a typed conflict without writing when remote work exists', async () => {
@@ -141,23 +148,44 @@ describe('persistTemplateLaunchSession', () => {
 
 describe('saveActiveSession', () => {
   it('writes and returns a fresh revision for every save', async () => {
+    transactionGet
+      .mockResolvedValueOnce(sessionSnapshot())
+      .mockResolvedValueOnce(sessionSnapshot({
+        sessionId: 'session-1',
+        sessionRevision: '00000000-0000-4000-8000-000000000001',
+      }))
     vi.spyOn(crypto, 'randomUUID')
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000001')
       .mockReturnValueOnce('00000000-0000-4000-8000-000000000002')
 
-    await expect(saveActiveSession('user-1', workout)).resolves.toEqual({
+    await expect(saveActiveSession('user-1', workout, null)).resolves.toEqual({
       sessionRevision: '00000000-0000-4000-8000-000000000001',
     })
-    await expect(saveActiveSession('user-1', workout)).resolves.toEqual({
+    await expect(saveActiveSession(
+      'user-1',
+      workout,
+      '00000000-0000-4000-8000-000000000001',
+    )).resolves.toEqual({
       sessionRevision: '00000000-0000-4000-8000-000000000002',
     })
 
-    expect(vi.mocked(setDoc).mock.calls.map(([, document]) => (
+    expect(transactionSet.mock.calls.map(([, document]) => (
       document as { sessionRevision: string }
     ).sessionRevision)).toEqual([
       '00000000-0000-4000-8000-000000000001',
       '00000000-0000-4000-8000-000000000002',
     ])
+  })
+
+  it('rejects a stale revision without writing', async () => {
+    transactionGet.mockResolvedValue(sessionSnapshot({
+      sessionId: 'session-1',
+      sessionRevision: 'revision-server',
+    }))
+
+    await expect(saveActiveSession('user-1', workout, 'revision-stale'))
+      .rejects.toBeInstanceOf(ActiveSessionConflictError)
+    expect(transactionSet).not.toHaveBeenCalled()
   })
 })
 
@@ -165,7 +193,10 @@ describe('claimActiveSession', () => {
   it('creates the candidate only when no server session exists', async () => {
     transactionGet.mockResolvedValue(sessionSnapshot())
 
-    await expect(claimActiveSession('user-1', workout)).resolves.toBe(workout)
+    await expect(claimActiveSession('user-1', workout)).resolves.toEqual({
+      session: workout,
+      sessionRevision: expect.any(String),
+    })
 
     expect(transactionSet).toHaveBeenCalledOnce()
     expect(transactionSet).toHaveBeenCalledWith(sessionRef, expect.objectContaining({
@@ -176,6 +207,7 @@ describe('claimActiveSession', () => {
   it('returns the server session instead of overwriting it', async () => {
     transactionGet.mockResolvedValue(sessionSnapshot({
       sessionId: 'server-session',
+      sessionRevision: 'revision-server',
       startedAt: 456,
       templateId: null,
       label: 'Pull',
@@ -183,9 +215,12 @@ describe('claimActiveSession', () => {
     }))
 
     await expect(claimActiveSession('user-1', workout)).resolves.toMatchObject({
-      sessionId: 'server-session',
-      startedAt: 456,
-      label: 'Pull',
+      session: {
+        sessionId: 'server-session',
+        startedAt: 456,
+        label: 'Pull',
+      },
+      sessionRevision: 'revision-server',
     })
     expect(transactionSet).not.toHaveBeenCalled()
   })
@@ -194,11 +229,12 @@ describe('claimActiveSession', () => {
 describe('loadActiveSessionFromServer', () => {
   it('bypasses the local cache and returns the authoritative session', async () => {
     const service = await import('../activeSessionService') as unknown as {
-      loadActiveSessionFromServer: (uid: string) => Promise<ActiveWorkout | null>
+      loadActiveSessionFromServer: (uid: string) => Promise<LoadedActiveSession>
     }
     expect(service.loadActiveSessionFromServer).toBeTypeOf('function')
     vi.mocked(getDocFromServer).mockResolvedValue(sessionSnapshot({
       sessionId: 'server-session',
+      sessionRevision: 'revision-server',
       startedAt: 456,
       templateId: null,
       label: 'Pull',
@@ -206,8 +242,11 @@ describe('loadActiveSessionFromServer', () => {
     }) as never)
 
     await expect(service.loadActiveSessionFromServer('user-1')).resolves.toMatchObject({
-      sessionId: 'server-session',
-      label: 'Pull',
+      session: {
+        sessionId: 'server-session',
+        label: 'Pull',
+      },
+      sessionRevision: 'revision-server',
     })
     expect(getDocFromServer).toHaveBeenCalledWith(sessionRef)
   })
@@ -241,6 +280,7 @@ describe('active session hydration', () => {
         templateId: null,
         exercises: [],
       },
+      sessionRevision: null,
       fromCache: false,
       hasPendingWrites: false,
     })

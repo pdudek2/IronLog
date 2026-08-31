@@ -46,11 +46,11 @@ vi.mock('../../store/profileStore', () => ({
   }),
 }))
 
-vi.mock('../../lib/workoutService', () => ({
+vi.mock('../../lib/workoutService', async () => ({
+  ...await vi.importActual<typeof import('../../lib/workoutService')>('../../lib/workoutService'),
   getRecentWorkouts: mocks.getRecentWorkouts,
   deleteWorkout: mocks.deleteWorkout,
   retryWorkoutMaterialization: mocks.retryWorkoutMaterialization,
-  countWeeklyWorkouts: (workouts: WorkoutSummary[]) => workouts.length,
   calcStreak: () => 1,
   calcVolume: () => 400,
 }))
@@ -220,6 +220,61 @@ describe('Dashboard workout projection status', () => {
     expect(await screen.findByText(/sesje do celu\./)).toBeInTheDocument()
     expect(screen.queryByText('Brak zapisanych treningów w tym tygodniu.')).not.toBeInTheDocument()
     expect(screen.queryByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).not.toBeInTheDocument()
+  })
+
+  it('suppresses negative weekly delta copy until the current week has its first workout', async () => {
+    const previousMonday = new Date()
+    previousMonday.setHours(12, 0, 0, 0)
+    previousMonday.setDate(previousMonday.getDate() - ((previousMonday.getDay() + 6) % 7) - 7)
+    const previousWeekWorkoutStartedAt = previousMonday.getTime()
+    mocks.getRecentWorkouts.mockResolvedValue([{
+      ...pendingWorkout,
+      startedAt: previousWeekWorkoutStartedAt,
+      finishedAt: previousWeekWorkoutStartedAt + 3_600_000,
+      materialized: true,
+    }])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('3 sesje do celu.')).toBeInTheDocument()
+    expect(screen.getByText('0/3')).toBeInTheDocument()
+    expect(screen.getByText('brak porównania')).toBeInTheDocument()
+    expect(screen.queryByText(/-100% vs poprzedni tydzień/)).not.toBeInTheDocument()
+  })
+
+  it('keeps the full local Sunday in the current week across the autumn DST change', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-10-25T12:00:00+01:00'))
+    let view: ReturnType<typeof render> | undefined
+
+    try {
+      mocks.getRecentWorkouts.mockResolvedValue([
+        {
+          ...pendingWorkout,
+          id: 'workout-saturday',
+          startedAt: new Date('2026-10-24T23:30:00+02:00').getTime(),
+          finishedAt: new Date('2026-10-25T00:30:00+02:00').getTime(),
+          materialized: true,
+        },
+        {
+          ...pendingWorkout,
+          id: 'workout-sunday',
+          startedAt: new Date('2026-10-25T23:30:00+01:00').getTime(),
+          finishedAt: new Date('2026-10-25T23:59:00+01:00').getTime(),
+          materialized: true,
+        },
+      ])
+
+      await act(async () => {
+        view = render(<DashboardPage />)
+      })
+
+      expect(screen.getByText('800 kg')).toBeInTheDocument()
+      expect(screen.getByText('2/7 dni')).toBeInTheDocument()
+    } finally {
+      view?.unmount()
+      vi.useRealTimers()
+    }
   })
 
   it('uses Polish set-count forms in the peak-day summary', async () => {

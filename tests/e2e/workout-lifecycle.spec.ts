@@ -32,27 +32,10 @@ import {
 import {
   isExpectedWorkoutLifecycleAckLossDiagnostic,
   isExpectedWorkoutLifecycleProjectionDiagnostic,
-  isExpectedWorkoutLifecycleTombstoneDiagnostic,
 } from './support/workoutLifecycleDiagnostics'
 import { MAX_ACTIVE_SESSION_AGE_MS } from '../../src/lib/sessionDuration'
 
 const RESPONSE_TIMEOUT_MS = 20_000
-
-async function expectQueuedActiveSessionEdit(
-  page: Page,
-  expected: { sessionId: string; exerciseNames: string[]; reps: string },
-): Promise<void> {
-  await expect.poll(
-    () => readCachedActiveSessionWrite(page),
-    { timeout: RESPONSE_TIMEOUT_MS },
-  ).toEqual({
-    exists: true,
-    hasPendingWrites: true,
-    sessionId: expected.sessionId,
-    exerciseNames: expected.exerciseNames,
-    reps: expected.reps,
-  })
-}
 
 async function openWorkoutClient(
   observedContextFactory: ObservedContextFactory,
@@ -111,15 +94,14 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     })
 
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
-    const benchmark = page.locator('details.workout-previous-session')
+    const addSet = page.getByRole('button', { name: 'Dodaj serię' })
+    for (let index = 0; index < 4; index += 1) await addSet.click()
 
-    await expect(benchmark).not.toHaveAttribute('open', '')
-    await expect(benchmark.locator('summary')).toContainText('Poprzedni trening')
-    await expect(benchmark.locator('summary')).toContainText('27 sie · 80 kg × 8')
-    await benchmark.locator('summary').click()
-    await expect(benchmark.getByRole('listitem')).toHaveCount(5)
-    await expect(benchmark.getByRole('listitem').first()).toContainText('80 kg × 8')
-    await expect(benchmark.getByRole('listitem').last()).toContainText('70 kg × 12')
+    const previousSets = page.locator('.workout-set-previous')
+    await expect(previousSets).toHaveCount(5)
+    await expect(previousSets.first()).toHaveText('80×8')
+    await expect(previousSets.last()).toHaveText('70×12')
+    await expect(page.locator('.workout-previous-session')).toHaveCount(0)
   })
 
   test('shows every set from the previous workout for the focused exercise', async ({
@@ -142,16 +124,18 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await seedLifecycleActiveSession({ sessionId, label: 'Phase 1 previous benchmark' })
 
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
-    const benchmark = page.locator('details.workout-previous-session')
     const currentWeight = page.getByLabel('Ciężar, Phase 1 Bench Press, seria 1, kg')
+    const addSet = page.getByRole('button', { name: 'Dodaj serię' })
+    await addSet.click()
+    await addSet.click()
 
-    await expect(benchmark).toHaveAttribute('open', '')
-    await expect(benchmark.getByRole('listitem')).toHaveCount(3)
-    await expect(benchmark.getByRole('listitem').first()).toContainText('77.5 kg × 8')
+    const previousSets = page.locator('.workout-set-previous')
+    await expect(previousSets).toHaveCount(3)
+    await expect(previousSets).toHaveText(['77.5×8', '75×10', '70×12'])
     expect(await currentWeight.evaluate((element) => element.getBoundingClientRect().bottom <= window.innerHeight)).toBe(true)
   })
 
-  test('mobile keeps unavailable previous-workout context out of the active ledger', async ({
+  test('mobile keeps unavailable previous-workout context neutral in the active ledger', async ({
     context,
     cleanup,
     observedContextFactory,
@@ -166,7 +150,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
 
-    await expect(page.locator('.workout-previous-session')).toHaveCount(0)
+    await expect(page.locator('.workout-set-previous')).toHaveText('—')
   })
 
   test('normal finish commits one workout and remains closed after reload', async ({
@@ -430,8 +414,51 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     expect(await readLifecycleRecords()).toHaveLength(1)
   })
 
-  test('offline client write cannot resurrect a session closed by another client', async ({
-    browserDiagnostics,
+  test('concurrent clients expose one explicit active-session conflict and reload the winner', async ({
+    context,
+    cleanup,
+    expectedBrowserDiagnostics,
+    observedContextFactory,
+  }) => {
+    const sessionId = phase1Id('concurrent-edit')
+    cleanup.add('remove Phase 1 workout lifecycle state', cleanupWorkoutLifecycleState)
+    await cleanupWorkoutLifecycleState()
+    await seedLifecycleActiveSession({ sessionId, label: 'Phase 1 concurrent edit' })
+    const storageState = await context.storageState()
+    const clientA = await openWorkoutClient(observedContextFactory, storageState)
+    const clientB = await openWorkoutClient(observedContextFactory, storageState)
+    const repsA = clientA.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()
+    const repsB = clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()
+    await expect(repsA).toHaveValue('5')
+    await expect(repsB).toHaveValue('5')
+
+    const conflictMessage = 'Sesja zmieniła się na innym urządzeniu.'
+    await expectedBrowserDiagnostics.during(
+      'expected active-session CAS rejection',
+      (entry) => entry.kind === 'console'
+        && entry.message.includes('400 (Bad Request)')
+        && entry.url?.includes('/documents:commit') === true,
+      async () => {
+        await Promise.all([repsA.fill('6'), repsB.fill('7')])
+        await expect.poll(async () => (
+          await clientA.page.getByText(conflictMessage, { exact: true }).count()
+          + await clientB.page.getByText(conflictMessage, { exact: true }).count()
+        ), { timeout: RESPONSE_TIMEOUT_MS }).toBe(1)
+      },
+    )
+
+    const conflictedPage = await clientA.page.getByText(conflictMessage, { exact: true }).count()
+      ? clientA.page
+      : clientB.page
+    const storedReps = (await readLifecycleActiveSession())?.exercises?.[0]?.sets?.[0]?.reps
+    expect(['6', '7']).toContain(storedReps)
+    await conflictedPage.getByRole('button', { name: 'Wczytaj nowszą wersję' }).click()
+    await expect(conflictedPage.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first())
+      .toHaveValue(storedReps)
+    await expect(conflictedPage.getByText(conflictMessage, { exact: true })).not.toBeVisible()
+  })
+
+  test('offline client edit stays local and cannot resurrect a session closed by another client', async ({
     context,
     cleanup,
     expectedBrowserDiagnostics,
@@ -448,56 +475,45 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expectedBrowserDiagnostics.during(
       'intentional Phase 1 Firestore network suspension',
       (entry) => isExpectedFirestoreOfflineDiagnostic(entry)
-        || isExpectedWorkoutLifecycleTombstoneDiagnostic(entry),
+        || (entry.kind === 'console'
+          && entry.message.includes('400 (Bad Request)')
+          && entry.url?.includes('/documents:commit') === true),
       async () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
         await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
-        await expectQueuedActiveSessionEdit(clientB.page, {
-          sessionId,
-          exerciseNames: ['Phase 1 Bench Press'],
-          reps: '6',
-        })
         await expect(clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()).toHaveValue('6')
         expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
           sessionId,
           exerciseNames: ['Phase 1 Bench Press'],
           reps: '6',
         })
-        await finishWorkout(clientA.page)
+        await commitPendingLifecycleFinalization({
+          sessionId,
+          materialized: true,
+          label: 'Phase 1 offline closed',
+        })
         expect(await readLifecycleActiveSession()).toBeNull()
-        await expectedBrowserDiagnostics.during(
-          'exact Phase 1 closed-session tombstone rejection',
-          isExpectedWorkoutLifecycleTombstoneDiagnostic,
-          async () => {
-            const previousRejections = browserDiagnostics.filter(
-              isExpectedWorkoutLifecycleTombstoneDiagnostic,
-            ).length
-            await setFirestoreNetworkEnabled(clientB.page, true)
-            await expect.poll(() => browserDiagnostics.filter(
-              isExpectedWorkoutLifecycleTombstoneDiagnostic,
-            ).length).toBeGreaterThan(previousRejections)
-            await expect(clientB.page.getByRole('heading', { name: 'Nowy trening' })).toBeVisible()
-            await expect(clientB.page.getByText('Nie udało się zsynchronizować aktywnej sesji.', { exact: true })).not.toBeVisible()
-            await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toEqual({
-              exists: false,
-              hasPendingWrites: false,
-              sessionId: null,
-              exerciseNames: [],
-              reps: null,
-            })
-            expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
-              sessionId: null,
-              exerciseNames: [],
-              reps: null,
-            })
-            await clientB.page.reload()
-            await expectAppReady(clientB.page, '/workout/new', 25_000)
-            await expect(clientB.page.getByRole('heading', { name: 'Nowy trening' })).toBeVisible()
-            await expect.poll(() => readLifecycleActiveSession()).toBeNull()
-            await clientB.context.close()
-            await clientA.context.close()
-          },
-        )
+        await setFirestoreNetworkEnabled(clientB.page, true)
+        await expect(clientB.page.getByRole('heading', { name: 'Nowy trening' })).toBeVisible()
+        await expect(clientB.page.getByText('Nie udało się zsynchronizować aktywnej sesji.', { exact: true })).not.toBeVisible()
+        await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toEqual({
+          exists: false,
+          hasPendingWrites: false,
+          sessionId: null,
+          exerciseNames: [],
+          reps: null,
+        })
+        expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
+          sessionId: null,
+          exerciseNames: [],
+          reps: null,
+        })
+        await clientB.page.reload()
+        await expectAppReady(clientB.page, '/workout/new', 25_000)
+        await expect(clientB.page.getByRole('heading', { name: 'Nowy trening' })).toBeVisible()
+        await expect.poll(() => readLifecycleActiveSession()).toBeNull()
+        await clientB.context.close()
+        await clientA.context.close()
       },
     )
     await waitForSettledLifecycleActiveSession((session) => session === null)
@@ -506,7 +522,6 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
   })
 
   test('offline old write cannot replace the newer session observed by a third client', async ({
-    browserDiagnostics,
     context,
     cleanup,
     expectedBrowserDiagnostics,
@@ -524,55 +539,44 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expectedBrowserDiagnostics.during(
       'intentional Phase 1 stale Firestore network suspension',
       (entry) => isExpectedFirestoreOfflineDiagnostic(entry)
-        || isExpectedWorkoutLifecycleTombstoneDiagnostic(entry),
+        || (entry.kind === 'console'
+          && entry.message.includes('400 (Bad Request)')
+          && entry.url?.includes('/documents:commit') === true),
       async () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
         await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
-        await expectQueuedActiveSessionEdit(clientB.page, {
-          sessionId: oldSessionId,
-          exerciseNames: ['Phase 1 Bench Press'],
-          reps: '6',
-        })
         expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
           sessionId: oldSessionId,
           exerciseNames: ['Phase 1 Bench Press'],
           reps: '6',
         })
-        await finishWorkout(clientA.page)
+        await commitPendingLifecycleFinalization({
+          sessionId: oldSessionId,
+          materialized: true,
+          label: 'Phase 1 offline old',
+        })
         await seedLifecycleActiveSession({ sessionId: newSessionId, label: 'Phase 1 offline new' })
         const clientC = await openWorkoutClient(observedContextFactory, storageState, '/dashboard')
         await expect(clientC.page.getByText('Aktywna sesja: Phase 1 offline new • 1 ćwiczenie', { exact: true })).toBeVisible({
           timeout: RESPONSE_TIMEOUT_MS,
         })
-        await expectedBrowserDiagnostics.during(
-          'exact Phase 1 stale-session tombstone rejection',
-          isExpectedWorkoutLifecycleTombstoneDiagnostic,
-          async () => {
-            const previousRejections = browserDiagnostics.filter(
-              isExpectedWorkoutLifecycleTombstoneDiagnostic,
-            ).length
-            await setFirestoreNetworkEnabled(clientB.page, true)
-            await expect.poll(() => browserDiagnostics.filter(
-              isExpectedWorkoutLifecycleTombstoneDiagnostic,
-            ).length).toBeGreaterThan(previousRejections)
-            await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toMatchObject({
-              exists: true,
-              hasPendingWrites: false,
-              sessionId: newSessionId,
-              exerciseNames: ['Phase 1 Bench Press'],
-              reps: '5',
-            })
-            expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
-              sessionId: newSessionId,
-              exerciseNames: ['Phase 1 Bench Press'],
-              reps: '5',
-            })
-            await expect(clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()).toHaveValue('5')
-            await clientC.context.close()
-            await clientB.context.close()
-            await clientA.context.close()
-          },
-        )
+        await setFirestoreNetworkEnabled(clientB.page, true)
+        await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toMatchObject({
+          exists: true,
+          hasPendingWrites: false,
+          sessionId: newSessionId,
+          exerciseNames: ['Phase 1 Bench Press'],
+          reps: '5',
+        })
+        expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
+          sessionId: newSessionId,
+          exerciseNames: ['Phase 1 Bench Press'],
+          reps: '5',
+        })
+        await expect(clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()).toHaveValue('5')
+        await clientC.context.close()
+        await clientB.context.close()
+        await clientA.context.close()
       },
     )
     await waitForSettledLifecycleActiveSession((session) => session?.sessionId === newSessionId)

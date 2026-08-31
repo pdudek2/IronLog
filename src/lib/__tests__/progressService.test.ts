@@ -199,6 +199,26 @@ describe('snapshot anchors', () => {
     expect(aggregatePeriodComparison([anchoredSession], 30, anchorMs).currentSessions).toBe(1)
     expect(aggregateActivityHeatmap([anchoredSession], 12, anchorMs).some((day) => day.volume === 1_000)).toBe(true)
   })
+
+  it('keeps unique calendar days and weeks across DST boundaries', () => {
+    const weekStarts = aggregateWeeklyVolume(
+      [],
+      4,
+      new Date('2026-04-06T12:00:00+02:00').getTime(),
+    ).map(({ weekStart }) => new Intl.DateTimeFormat('sv-SE', {
+      timeZone: 'Europe/Warsaw',
+    }).format(weekStart))
+
+    expect(weekStarts).toEqual(['2026-03-16', '2026-03-23', '2026-03-30', '2026-04-06'])
+
+    const anchorMs = new Date('2026-11-01T12:00:00+01:00').getTime()
+    const grid = aggregateActivityHeatmap([], 3, anchorMs)
+    const visibleDates = grid.map((day) => day.date).filter(Boolean)
+
+    expect(new Set(visibleDates).size).toBe(21)
+    expect(visibleDates.filter((date) => date === '2026-10-25')).toHaveLength(1)
+    expect(visibleDates).toContain('2026-11-01')
+  })
 })
 
 // ─── aggregateStrengthProgression ───────────────────────────────────────────

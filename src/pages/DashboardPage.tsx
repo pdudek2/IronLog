@@ -137,6 +137,12 @@ function isSameDay(a: Date, b: Date): boolean {
     && a.getDate() === b.getDate()
 }
 
+function addLocalDays(date: Date, days: number): Date {
+  const next = new Date(date.getTime())
+  next.setDate(next.getDate() + days)
+  return next
+}
+
 function getGreeting(): string {
   const hour = new Date().getHours()
   if (hour < 6) return 'Dobranoc'
@@ -509,8 +515,8 @@ export default function DashboardPage() {
     loadTemplates(user.uid)
   }
   const weekStart = weekDates[0]?.getTime() ?? 0
-  const weekEnd = (weekDates[6]?.getTime() ?? 0) + 86_400_000
-  const previousWeekStart = weekStart - 7 * 86_400_000
+  const weekEnd = addLocalDays(weekDates[6] ?? new Date(weekStart), 1).getTime()
+  const previousWeekStart = addLocalDays(weekDates[0] ?? new Date(weekStart), -7).getTime()
   const previousWeekEnd = weekStart
   const weeklyWorkouts = workouts.filter((workout) => workout.startedAt >= weekStart && workout.startedAt < weekEnd)
   const previousWeekWorkouts = workouts.filter((workout) => workout.startedAt >= previousWeekStart && workout.startedAt < previousWeekEnd)
@@ -524,12 +530,12 @@ export default function DashboardPage() {
     : 0
   const avgVolumePerSession = weeklyWorkouts.length ? Math.round(weeklyVolume / weeklyWorkouts.length) : 0
   const weeklySessionsDelta = weeklyDone - previousWeeklyDone
-  const weeklyVolumeDelta = previousWeeklyVolume > 0
+  const weeklyVolumeDelta = previousWeeklyVolume > 0 && weeklyWorkouts.length > 0
     ? Math.round(((weeklyVolume - previousWeeklyVolume) / previousWeeklyVolume) * 100)
     : null
   const weekDailyStats = weekDates.map((date, index) => {
     const dayStart = date.getTime()
-    const dayEnd = dayStart + 86_400_000
+    const dayEnd = addLocalDays(date, 1).getTime()
     const dayWorkouts = weeklyWorkouts.filter((workout) => workout.startedAt >= dayStart && workout.startedAt < dayEnd)
     const volume = dayWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
     const sets = dayWorkouts.reduce((sum, workout) => (

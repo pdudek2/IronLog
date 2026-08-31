@@ -267,6 +267,29 @@ describe('WorkoutPage stale-session feedback', () => {
     expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
+  it('clamps the elapsed timer when the active session starts in the future', () => {
+    const now = new Date('2026-08-31T01:12:00+02:00').getTime()
+    const nowSpy = vi.spyOn(Date, 'now').mockReturnValue(now)
+    mocks.staleSession = null
+    mocks.active = {
+      sessionId: 'session-future',
+      startedAt: now + 30 * 60_000,
+      templateId: null,
+      label: 'Push',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: '85', reps: '5', done: false }],
+      }],
+    }
+
+    renderStaleSessionPage()
+
+    expect(screen.getByTestId('elapsed-session-timer')).toHaveTextContent('00:00')
+    nowSpy.mockRestore()
+  })
+
   it('shows sync retry feedback when the refreshed stale session cannot be persisted', async () => {
     mocks.continueStaleSession.mockResolvedValue({ status: 'sync_failed' })
     renderStaleSessionPage()

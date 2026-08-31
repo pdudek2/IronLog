@@ -105,6 +105,12 @@ function getWeekMonday(date: Date): Date {
   return d
 }
 
+function addLocalDays(date: Date, days: number): Date {
+  const next = new Date(date.getTime())
+  next.setDate(next.getDate() + days)
+  return next
+}
+
 // ── Queries ──────────────────────────────────────────────────────────────────
 
 export async function getProgressSessions(
@@ -208,7 +214,7 @@ export function aggregateWeeklyVolume(
 
   // Wygeneruj puste buckety dla ostatnich `weeks` tygodni
   for (let i = weeks - 1; i >= 0; i--) {
-    const monday = getWeekMonday(new Date(now.getTime() - i * 7 * 86_400_000))
+    const monday = getWeekMonday(addLocalDays(now, -i * 7))
     const label = monday.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
     buckets.set(monday.getTime(), { weekStart: monday.getTime(), weekLabel: label, volume: 0, sessions: 0 })
   }
@@ -429,7 +435,8 @@ export function aggregateActivityHeatmap(
 ): HeatmapDay[] {
   // Wygeneruj grid: weeks tygodni × 7 dni
   const now = new Date(anchorMs)
-  const startMonday = getWeekMonday(new Date(now.getTime() - (weeks - 1) * 7 * 86_400_000))
+  const startMonday = getWeekMonday(now)
+  startMonday.setDate(startMonday.getDate() - (weeks - 1) * 7)
 
   const grid: HeatmapDay[] = []
   const volumeByDate = new Map<string, number>()
@@ -444,7 +451,7 @@ export function aggregateActivityHeatmap(
   // Wygeneruj komórki gridu
   for (let w = 0; w < weeks; w++) {
     for (let d = 0; d < 7; d++) {
-      const cellDate = new Date(startMonday.getTime() + (w * 7 + d) * 86_400_000)
+      const cellDate = addLocalDays(startMonday, w * 7 + d)
       if (cellDate > now) {
         grid.push({ date: '', dayOfWeek: d, weekIndex: w, volume: 0, level: 0 })
         continue

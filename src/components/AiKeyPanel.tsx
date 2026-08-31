@@ -155,7 +155,7 @@ export default function AiKeyPanel({
         <div className="min-w-0">
           <h2 className="text-xl font-bold text-white">Klucz Claude</h2>
           <p className="ai-key-panel-description mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Zapis lokalny w tej przeglądarce. Odblokowuje rozmowę i generator planu.
+            Klucz zapisujesz lokalnie w tej przeglądarce. Żądania AI przesyłają go przez serwer IronLog do Anthropic; IronLog nie zapisuje go w bazie.
           </p>
         </div>
 
@@ -213,7 +213,7 @@ export default function AiKeyPanel({
 
         <p className="ai-key-local-note">
           <ShieldCheck size={14} aria-hidden="true" />
-          Klucz zostaje tylko na tym urządzeniu.
+          Zapis lokalny · wysyłany przez IronLog do Anthropic tylko na czas żądania.
         </p>
 
         {hasSavedKey && (

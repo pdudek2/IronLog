@@ -438,18 +438,20 @@ export default function ProgressPage() {
   const visibleRemainingRecords = showAllRecords
     ? remainingRecords
     : remainingRecords.slice(0, DEFAULT_VISIBLE_REMAINING_RECORDS)
-  const issues: string[] = []
+  const retryableIssues: string[] = []
   if (freshnessUncertain) {
-    issues.push('Nie udało się potwierdzić świeżości danych. Ostatnie treningi mogą być jeszcze niewidoczne.')
+    retryableIssues.push('Nie udało się potwierdzić świeżości danych. Ostatnie treningi mogą być jeszcze niewidoczne.')
   }
-  if (sessionsError) issues.push('Nie udało się odświeżyć danych treningowych.')
-  if (recordsError) issues.push('Nie udało się odświeżyć rekordów od początku.')
+  if (sessionsError) retryableIssues.push('Nie udało się odświeżyć danych treningowych.')
+  if (recordsError) retryableIssues.push('Nie udało się odświeżyć rekordów od początku.')
+  const limitNotices: string[] = []
   if (snapshot?.sessionsTruncated) {
-    issues.push('Analizy treningowe obejmują najnowsze 5000 wpisów.')
+    limitNotices.push('Analizy treningowe obejmują najnowsze 5000 wpisów.')
   }
   if (snapshot?.recordsTruncated) {
-    issues.push('Lista rekordów jest ograniczona do 1000 wpisów.')
+    limitNotices.push('Lista rekordów jest ograniczona do 1000 wpisów.')
   }
+  const issues = [...retryableIssues, ...limitNotices]
 
   return (
     <div
@@ -555,12 +557,18 @@ export default function ProgressPage() {
           <div className="progress-data-notice" role={hasUsableData ? 'status' : 'alert'}>
             <AlertCircle aria-hidden="true" />
             <div>
-              <strong>{hasUsableData ? 'Dane wymagają odświeżenia' : 'Nie udało się pobrać danych'}</strong>
+              <strong>
+                {retryableIssues.length > 0
+                  ? (hasUsableData ? 'Dane wymagają odświeżenia' : 'Nie udało się pobrać danych')
+                  : 'Zakres danych został ograniczony'}
+              </strong>
               {issues.map((issue) => <p key={issue}>{issue}</p>)}
             </div>
-            <Button type="button" onClick={handleRetry} disabled={refreshing}>
-              {refreshing ? 'Odświeżanie…' : 'Spróbuj ponownie'}
-            </Button>
+            {retryableIssues.length > 0 && (
+              <Button type="button" onClick={handleRetry} disabled={refreshing}>
+                {refreshing ? 'Odświeżanie…' : 'Spróbuj ponownie'}
+              </Button>
+            )}
           </div>
         )}
 

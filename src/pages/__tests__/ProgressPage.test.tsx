@@ -342,6 +342,27 @@ describe('ProgressPage', () => {
     expect(screen.getAllByRole('button', { name: 'Spróbuj ponownie' })).toHaveLength(1)
   })
 
+  it('presents truncation as a stable limit without a retry action', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      sessions: [session('recent', 2)],
+      records: [record('record-1')],
+      sessionsTruncated: true,
+      recordsTruncated: true,
+    }))
+
+    render(<ProgressPage />)
+
+    const notice = await waitFor(() => {
+      const settledNotice = screen.getByText('Zakres danych został ograniczony').closest('[role="status"]')
+      if (!(settledNotice instanceof HTMLElement)) throw new Error('Expected a settled truncation status.')
+      return settledNotice
+    })
+    expect(notice).toHaveTextContent('Zakres danych został ograniczony')
+    expect(notice).toHaveTextContent('Analizy treningowe obejmują najnowsze 5000 wpisów.')
+    expect(notice).toHaveTextContent('Lista rekordów jest ograniczona do 1000 wpisów.')
+    expect(within(notice).queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
+  })
+
   it('retains successful previous data while retrying and merges settled partial results', async () => {
     const pendingRetry = deferred<ProgressLoadResult>()
     const sessionsError = new Error('sessions retry failed')

@@ -10,7 +10,7 @@ import { getRecentWorkouts } from '../lib/workoutService'
 import { discardWorkoutLifecycle, finishWorkoutLifecycle } from '../lib/workoutLifecycle'
 import { finalizeWorkout, WorkoutClosureError } from '../lib/workoutClosureService'
 import type { WorkoutClosureIntent } from '../lib/workoutClosureIntent'
-import { getExerciseSessions, type ExerciseSession } from '../lib/exerciseDetailService'
+import { getExerciseSessions } from '../lib/exerciseDetailService'
 import { useActiveSession } from '../hooks/useActiveSession'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { ActiveSessionSyncStatus } from '../components/workout/ActiveSessionSyncStatus'
@@ -77,7 +77,7 @@ function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) 
 }
 
 function formatDuration(startedAt: number, now = Date.now()): { h: string; m: string; s: string } {
-  const total = Math.floor((now - startedAt) / 1000)
+  const total = Math.max(0, Math.floor((now - startedAt) / 1000))
   const h = Math.floor(total / 3600)
   const m = Math.floor((total % 3600) / 60)
   const s = total % 60
@@ -96,75 +96,6 @@ function formatSessionTimer(startedAt: number, now = Date.now()): string {
 interface ElapsedTimerProps {
   startedAt: number
   className?: string
-}
-
-type PreviousExerciseSessionState =
-  | { status: 'loading' }
-  | { status: 'loaded'; session: ExerciseSession }
-  | { status: 'empty' | 'error' }
-
-interface PreviousExerciseSessionProps {
-  exerciseId: string
-  exerciseName: string
-  exerciseSource: 'global' | 'user'
-  uid: string
-  units: Units
-  defaultOpen?: boolean
-}
-
-function PreviousExerciseSession({
-  exerciseId,
-  exerciseName,
-  exerciseSource,
-  uid,
-  units,
-  defaultOpen = false,
-}: PreviousExerciseSessionProps) {
-  const [state, setState] = useState<PreviousExerciseSessionState>({ status: 'loading' })
-
-  useEffect(() => {
-    let active = true
-    getExerciseSessions(uid, exerciseId, exerciseSource, 1)
-      .then(([session]) => {
-        if (!active) return
-        setState(session && session.sets.length > 0
-          ? { status: 'loaded', session }
-          : { status: 'empty' })
-      })
-      .catch(() => {
-        if (active) setState({ status: 'error' })
-      })
-    return () => { active = false }
-  }, [exerciseId, exerciseSource, uid])
-
-  if (state.status !== 'loaded') return null
-
-  const { session } = state
-  const date = new Date(session.startedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
-  const previousSet = session.sets[0]
-
-  return (
-    <details
-      className="workout-previous-session"
-      aria-label={`Poprzedni trening ${exerciseName}`}
-      open={defaultOpen || undefined}
-    >
-      <summary className="workout-previous-session-head">
-        <span>Poprzedni trening</span>
-        <span className="workout-previous-session-meta">
-          <strong>{date}</strong> · {kgToDisplayWeight(previousSet.weight, units)} {units} × {previousSet.reps}
-        </span>
-      </summary>
-      <ol className="workout-previous-set-list">
-        {session.sets.map((set, index) => (
-          <li key={`${set.weight}:${set.reps}:${index}`}>
-            <span className="workout-previous-set-index">{index + 1}</span>
-            <span>{kgToDisplayWeight(set.weight, units)} {units} × {set.reps}</span>
-          </li>
-        ))}
-      </ol>
-    </details>
-  )
 }
 
 function ElapsedTimer({ startedAt, className = '' }: ElapsedTimerProps) {
@@ -856,6 +787,7 @@ export default function WorkoutPage() {
         <ActiveSessionSyncStatus
           status={activeSessionSyncStatus}
           onRetry={() => { void retryActiveSessionSync() }}
+          onReload={() => { void reloadCurrentSession() }}
         />
       )}
       {closureState === 'active_session_changed' && (
@@ -1218,21 +1150,9 @@ export default function WorkoutPage() {
                           isCollapsible={isCollapsible}
                           isExpanded={isExpanded}
                           isFocusedExercise={exerciseIndex === focusExerciseIndex}
-                          previousSession={exerciseIndex === focusExerciseIndex && user
-                            ? (
-                                <PreviousExerciseSession
-                                  key={`${exercise.exerciseSource}:${exercise.exerciseId}:ledger`}
-                                  exerciseId={exercise.exerciseId}
-                                  exerciseName={exercise.name}
-                                  exerciseSource={exercise.exerciseSource}
-                                  uid={user.uid}
-                                  units={units}
-                                  defaultOpen={isDesktop}
-                                />
-                              )
-                            : undefined}
                           suggestion={suggestions[hintKey] ?? null}
                           units={units}
+                          userId={user?.uid}
                           onAddSet={handleAddSet}
                           onAdjustSet={handleAdjustSet}
                           onApplySuggestion={handleApplySuggestion}

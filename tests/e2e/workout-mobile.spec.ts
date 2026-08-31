@@ -233,7 +233,7 @@ test.describe('Active workout shell reduction', () => {
     await goToFreshWorkout(page)
     await addExercise(page, 'Squat')
 
-    const labels = page.locator('.workout-set-header span, .workout-set-vol')
+    const labels = page.locator('.workout-set-header span, .workout-set-previous')
     expect(await labels.count()).toBeGreaterThan(0)
     for (const label of await labels.all()) {
       const size = await label.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))

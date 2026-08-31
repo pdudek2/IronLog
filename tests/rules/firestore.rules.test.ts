@@ -19,6 +19,7 @@ import {
   type Firestore,
 } from 'firebase/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ActiveWorkout } from '../../src/store/workoutStore'
 import type { UserExerciseInput } from '../../src/lib/userExercisesService'
 
 const PROJECT_ID = 'demo-ironlog-rules'
@@ -256,6 +257,34 @@ describe('readiness rules', () => {
 })
 
 describe('activeSessions rules', () => {
+  it('rejects a stale second client save and preserves the newer edit', async () => {
+    const clientA = testEnv.authenticatedContext('alice').firestore()
+    const clientB = testEnv.authenticatedContext('alice').firestore()
+    const activeRef = doc(clientA, 'activeSessions', 'alice')
+    const startedAt = Date.now() - 1_000
+    await assertSucceeds(setDoc(activeRef, {
+      ...validActiveSession('alice'),
+      startedAt,
+      updatedAt: startedAt,
+    }))
+    const serviceA = await loadActiveSessionService(clientA)
+    const serviceB = await loadActiveSessionService(clientB)
+
+    await expect(serviceA.saveActiveSession(
+      'alice',
+      activeWorkout('82.5', startedAt),
+      'revision-1',
+    )).resolves.toMatchObject({ sessionRevision: expect.any(String) })
+    await expect(serviceB.saveActiveSession(
+      'alice',
+      activeWorkout('80', startedAt),
+      'revision-1',
+    )).rejects.toMatchObject({ name: 'ActiveSessionConflictError' })
+
+    const stored = await assertSucceeds(getDoc(activeRef))
+    expect(stored.data()?.exercises[0].sets[0].weight).toBe('82.5')
+  })
+
   it('allows valid active sessions containing a sessionId and rejects oversized drafts', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
 
@@ -467,6 +496,27 @@ async function loadUserExerciseService(database: Firestore) {
   vi.resetModules()
   vi.doMock('../../src/lib/firebase', () => ({ db: database }))
   return import('../../src/lib/userExercisesService')
+}
+
+async function loadActiveSessionService(database: Firestore) {
+  vi.resetModules()
+  vi.doMock('../../src/lib/firebase', () => ({ db: database }))
+  return import('../../src/lib/activeSessionService')
+}
+
+function activeWorkout(weight: string, startedAt: number): ActiveWorkout {
+  return {
+    sessionId: 'session-1',
+    startedAt,
+    templateId: null,
+    label: 'Push',
+    exercises: [{
+      exerciseId: 'bench-press',
+      exerciseSource: 'global',
+      name: 'Bench Press',
+      sets: [{ weight, reps: '5', done: true }],
+    }],
+  }
 }
 
 function validActiveExercise() {

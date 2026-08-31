@@ -68,7 +68,7 @@ test.describe('Chat UI', () => {
     await expect(page.getByRole('button', { name: 'Anuluj' })).toBeVisible()
 
     await expect(page.getByPlaceholder('Wklej Claude API key')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByText('Klucz zostaje tylko na tym urządzeniu.', { exact: true }))
+    await expect(page.getByText('Zapis lokalny · wysyłany przez IronLog do Anthropic tylko na czas żądania.', { exact: true }))
       .toBeVisible({ timeout: 5_000 })
 
     await expect(page.getByRole('button', { name: 'Usuń lokalnie zapisany klucz' }))

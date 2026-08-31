@@ -4,6 +4,7 @@ import { Check, ChevronDown, Plus, Trash2, X } from 'lucide-react'
 import OverloadHint from '../OverloadHint'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../../store/workoutStore'
 import type { OverloadSuggestion } from '../../lib/overloadService'
+import { getExerciseSessions, type ExerciseSession } from '../../lib/exerciseDetailService'
 import type { Units } from '../../lib/userProfile'
 import {
   displayWeightDeltaToKg,
@@ -27,9 +28,9 @@ interface WorkoutExerciseLedgerItemProps {
   isCollapsible: boolean
   isExpanded: boolean
   isFocusedExercise: boolean
-  previousSession?: React.ReactNode
   suggestion: OverloadSuggestion | null
   units: Units
+  userId?: string
   onAddSet: (exerciseIndex: number, button: HTMLButtonElement) => void
   onAdjustSet: (exerciseIndex: number, setIndex: number, field: SetField, delta: number) => void
   onApplySuggestion: (exerciseIndex: number, hintKey: string, weight: number) => void
@@ -82,9 +83,9 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   isCollapsible,
   isExpanded,
   isFocusedExercise,
-  previousSession,
   suggestion,
   units,
+  userId,
   onAddSet,
   onAdjustSet,
   onApplySuggestion,
@@ -98,6 +99,26 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   const liveExercise = useWorkoutStore((state) => selectExerciseByIdentity(state, exerciseIndex, exerciseClientId))
   // AnimatePresence keeps exiting children mounted after the selector loses the exercise.
   const exercise = liveExercise ?? fallbackExercise
+  const historyExerciseId = exercise?.exerciseId
+  const historyExerciseSource = exercise?.exerciseSource
+  const [previousSets, setPreviousSets] = React.useState<ExerciseSession['sets']>([])
+
+  React.useEffect(() => {
+    let active = true
+    setPreviousSets([])
+    if (!userId || !isExpanded || !historyExerciseId || !historyExerciseSource) return () => { active = false }
+
+    getExerciseSessions(userId, historyExerciseId, historyExerciseSource, 1)
+      .then(([session]) => {
+        if (active) setPreviousSets(session?.sets ?? [])
+      })
+      .catch(() => {
+        if (active) setPreviousSets([])
+      })
+
+    return () => { active = false }
+  }, [historyExerciseId, historyExerciseSource, isExpanded, userId])
+
   if (!exercise) return null
 
   const exerciseVolume = exercise.sets.reduce((sum, set) => (
@@ -203,22 +224,20 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         />
       )}
 
-      {previousSession}
-
       <div className="workout-set-header">
         <span>#</span>
+        <span>Poprz.</span>
         <span>{units}</span>
         <span>Powt.</span>
-        <span>Obj.</span>
         <span />
       </div>
 
       <div className="workout-set-list">
         {exercise.sets.map((set, setIndex) => {
-          const setVolume = calcSetVolume(set)
           const showSetControls = !set.done
             && isExpanded
             && setIndex === focusSetIndex
+          const previousSet = previousSets[setIndex]
 
           return (
             <div
@@ -246,6 +265,14 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                 >
                   {set.done ? <Check size={16} /> : setIndex + 1}
                 </motion.button>
+                <span
+                  className="workout-set-previous tabular-nums"
+                  aria-label={`Poprzedni wynik serii ${setIndex + 1}`}
+                >
+                  {previousSet
+                    ? `${kgToDisplayWeight(previousSet.weight, units)}×${previousSet.reps}`
+                    : '—'}
+                </span>
                 <input
                   type="number"
                   inputMode="decimal"
@@ -269,9 +296,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
                   className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                 />
-                <span className="workout-set-vol tabular-nums" aria-label={`Objętość serii ${setIndex + 1}`}>
-                  {setVolume > 0 ? formatCompactVolume(setVolume, units) : '—'}
-                </span>
                 <button
                   type="button"
                   onClick={() => onRemoveSet(exerciseIndex, setIndex)}

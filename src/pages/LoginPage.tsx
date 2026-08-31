@@ -62,12 +62,9 @@ export default function LoginPage() {
     <AuthShell
       title="Zaloguj się"
       subtitle={(
-        <>
-          Nie masz konta?{' '}
-          <Link to="/register" className="auth-account-link transition-opacity hover:opacity-80">
-            Utwórz konto
-          </Link>
-        </>
+        <Link to="/register" className="auth-account-link transition-opacity hover:opacity-80">
+          Załóż konto
+        </Link>
       )}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-describedby={describedBy}>

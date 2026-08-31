@@ -134,14 +134,28 @@ describe('ExercisesPage user library states', () => {
     expect(mocks.getUserExercises).toHaveBeenCalledTimes(2)
   })
 
-  it('shows the first-resource CTA only after a successful empty response', async () => {
+  it('keeps the destructive action in the edit dialog instead of the compact row', async () => {
+    mocks.getUserExercises.mockResolvedValueOnce([customExercise])
+
+    render(<ExercisesPage />)
+
+    const edit = await screen.findByRole('button', { name: 'Edytuj ćwiczenie Skos hantlami' })
+    expect(screen.queryByRole('button', { name: 'Usuń ćwiczenie Skos hantlami' })).not.toBeInTheDocument()
+
+    fireEvent.click(edit)
+    const dialog = screen.getByRole('dialog', { name: 'Edytuj własne ćwiczenie' })
+    expect(within(dialog).getByRole('button', { name: 'Usuń ćwiczenie' })).toBeInTheDocument()
+  })
+
+  it('keeps one create action after a successful empty response', async () => {
     mocks.getUserExercises.mockResolvedValueOnce([])
 
     render(<ExercisesPage />)
 
-    expect(await screen.findByText('Brak własnych ćwiczeń')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dodaj pierwsze' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeEnabled()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeEnabled())
+    expect(screen.queryByText('Brak własnych ćwiczeń')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Dodaj pierwsze' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Dodaj własne' })).toHaveLength(1)
     expect(screen.queryByLabelText('Podsumowanie biblioteki ćwiczeń')).not.toBeInTheDocument()
 
     const globalHeading = screen.getByRole('heading', { name: 'Katalog globalny' })

@@ -40,59 +40,63 @@ export default function ReadinessPrompt({ onSaved }: Props) {
   }
 
   return (
-    <motion.div
+    <motion.details
       className="readiness-card readiness-card--prompt"
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <div className="mb-3 flex items-end justify-between gap-3">
+      <summary className="readiness-summary">
         <div>
-          <p className="eyebrow mb-1" style={{ color: 'var(--accent)' }}>Gotowość</p>
-          <p className="text-sm font-semibold text-white">Jak wygląda dziś forma?</p>
+          <span>Gotowość · opcjonalnie</span>
+          <strong>Dopasuj dzisiejszy trening</strong>
+          <small>Sen, nastrój i DOMS</small>
         </div>
-      </div>
+        <span className="readiness-summary-action">Oceń</span>
+      </summary>
 
-      <div className="space-y-3">
-        {FIELDS.map(({ key, label, lowLabel, highLabel }) => (
-          <div key={key}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-white">{label}</span>
-              <span
-                className="text-sm font-bold tabular-nums"
-                style={{ color: 'var(--accent)' }}
-              >
-                {values[key]}/5
-              </span>
+      <div className="readiness-prompt-body">
+        <div className="space-y-3">
+          {FIELDS.map(({ key, label, lowLabel, highLabel }) => (
+            <div key={key}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-white">{label}</span>
+                <span
+                  className="text-sm font-bold tabular-nums"
+                  style={{ color: 'var(--accent)' }}
+                >
+                  {values[key]}/5
+                </span>
+              </div>
+              <input
+                type="range"
+                aria-label={`Gotowość: ${label}`}
+                aria-valuetext={`${values[key]} z 5`}
+                min={1}
+                max={5}
+                step={1}
+                value={values[key]}
+                onChange={(e) => setValues((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
+                className="readiness-slider w-full"
+                style={{ touchAction: 'manipulation' }}
+              />
+              <div className="readiness-scale flex justify-between mt-1">
+                <span className="text-xs" style={{ color: 'var(--muted)' }}>{lowLabel}</span>
+                <span className="text-xs" style={{ color: 'var(--muted)' }}>{highLabel}</span>
+              </div>
             </div>
-            <input
-              type="range"
-              aria-label={`Gotowość: ${label}`}
-              aria-valuetext={`${values[key]} z 5`}
-              min={1}
-              max={5}
-              step={1}
-              value={values[key]}
-              onChange={(e) => setValues((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
-              className="readiness-slider w-full"
-              style={{ touchAction: 'manipulation' }}
-            />
-            <div className="readiness-scale flex justify-between mt-1">
-              <span className="text-xs" style={{ color: 'var(--muted)' }}>{lowLabel}</span>
-              <span className="text-xs" style={{ color: 'var(--muted)' }}>{highLabel}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <motion.button
-        onClick={handleSave}
-        disabled={saving}
-        className="readiness-save"
-        whileTap={{ scale: 0.98 }}
-      >
-        {saving ? 'Zapisuję...' : 'Zapisz wynik'}
-      </motion.button>
-    </motion.div>
+        <motion.button
+          onClick={handleSave}
+          disabled={saving}
+          className="readiness-save"
+          whileTap={{ scale: 0.98 }}
+        >
+          {saving ? 'Zapisuję...' : 'Zapisz wynik'}
+        </motion.button>
+      </div>
+    </motion.details>
   )
 }

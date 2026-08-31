@@ -476,7 +476,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
             await expect.poll(() => browserDiagnostics.filter(
               isExpectedWorkoutLifecycleTombstoneDiagnostic,
             ).length).toBeGreaterThan(previousRejections)
-            await expect(clientB.page.getByText('Nie ma aktywnej sesji', { exact: true })).toBeVisible()
+            await expect(clientB.page.getByRole('heading', { name: 'Nowy trening' })).toBeVisible()
             await expect(clientB.page.getByText('Nie udało się zsynchronizować aktywnej sesji.', { exact: true })).not.toBeVisible()
             await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toEqual({
               exists: false,
@@ -492,7 +492,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
             })
             await clientB.page.reload()
             await expectAppReady(clientB.page, '/workout/new', 25_000)
-            await expect(clientB.page.getByText('Nie ma aktywnej sesji', { exact: true })).toBeVisible()
+            await expect(clientB.page.getByRole('heading', { name: 'Nowy trening' })).toBeVisible()
             await expect.poll(() => readLifecycleActiveSession()).toBeNull()
             await clientB.context.close()
             await clientA.context.close()

@@ -196,15 +196,17 @@ describe('Dashboard workout projection status', () => {
     useWorkoutStore.getState().clearWorkout()
   })
 
-  it('scopes the empty week copy to a first workout when the account has no history', async () => {
+  it('keeps the empty week summary compact for a new account', async () => {
     mocks.getRecentWorkouts.mockResolvedValue([])
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).toBeInTheDocument()
+    expect(await screen.findByText(/sesje do celu\./)).toBeInTheDocument()
+    expect(screen.getByText('0/3')).toBeInTheDocument()
+    expect(screen.queryByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).not.toBeInTheDocument()
   })
 
-  it('does not present a returning user as a first-run account when the week is empty', async () => {
+  it('uses the same compact goal summary when a returning user has an empty week', async () => {
     const now = Date.now()
     mocks.getRecentWorkouts.mockResolvedValue([{
       ...pendingWorkout,
@@ -215,7 +217,8 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('Brak zapisanych treningów w tym tygodniu.')).toBeInTheDocument()
+    expect(await screen.findByText(/sesje do celu\./)).toBeInTheDocument()
+    expect(screen.queryByText('Brak zapisanych treningów w tym tygodniu.')).not.toBeInTheDocument()
     expect(screen.queryByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).not.toBeInTheDocument()
   })
 
@@ -270,7 +273,7 @@ describe('Dashboard workout projection status', () => {
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' }))
-        .toHaveLength(4)
+        .toHaveLength(3)
     })
 
     mocks.activeSessionHasWork = true
@@ -286,7 +289,7 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Wznów trening' })).toHaveLength(4)
+      expect(screen.getAllByRole('button', { name: 'Wznów trening' })).toHaveLength(3)
     })
     expect(useWorkoutStore.getState().active?.sessionId).toBe('remote-session')
 
@@ -296,7 +299,7 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })).toHaveLength(4)
+      expect(screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })).toHaveLength(3)
     })
     expect(useWorkoutStore.getState().active).toBeNull()
   })
@@ -854,13 +857,66 @@ describe('Dashboard workout projection status', () => {
       name: 'Upper / Lower',
       createdAt: 1,
       updatedAt: 2,
-      days: [{ name: 'Upper', exercises: [] }],
+      days: [{
+        name: 'Upper',
+        exercises: [{
+          exerciseId: 'bench',
+          exerciseSource: 'global' as const,
+          name: 'Bench Press',
+          sets: 4,
+          targetReps: 8,
+          targetWeight: 70,
+        }],
+      }],
     }])
 
     render(<DashboardPage />)
 
-    expect(await screen.findAllByText('Upper / Lower')).toHaveLength(2)
+    expect(await screen.findByRole('button', {
+      name: 'Rozpocznij Upper z planu Upper / Lower',
+    })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Plany' })).not.toBeInTheDocument()
     expect(screen.queryByText('Brak zapisanych szablonów')).not.toBeInTheDocument()
+  })
+
+  it('uses the first launchable day when the first saved day is empty', async () => {
+    const template = {
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Upper / Lower',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [
+        { name: 'Upper A', exercises: [] },
+        {
+          name: 'Lower A',
+          exercises: [{
+            exerciseId: 'squat',
+            exerciseSource: 'global' as const,
+            name: 'Back Squat',
+            sets: 4,
+            targetReps: 6,
+            targetWeight: 90,
+          }],
+        },
+      ],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([template])
+
+    render(<DashboardPage />)
+
+    const start = await screen.findByRole('button', {
+      name: 'Rozpocznij Lower A z planu Upper / Lower',
+    })
+    fireEvent.click(start)
+
+    expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
+      template,
+      1,
+      'dashboard:template-1:quick',
+    )
+    expect(screen.queryByRole('heading', { name: 'Plany' })).not.toBeInTheDocument()
   })
 
   it('starts the compact recommendation before offering template editing', async () => {
@@ -899,7 +955,7 @@ describe('Dashboard workout projection status', () => {
         .toHaveClass('dashboard-home--today')
     })
     const recommendation = screen.getByRole('region', { name: 'Dzisiejszy trening' })
-    const startRecommendation = within(recommendation).getByRole('button', { name: 'Rozpocznij' })
+    const startRecommendation = within(recommendation).getByRole('button', { name: 'Rozpocznij Upper A' })
     expect(startRecommendation).toBeEnabled()
     fireEvent.click(startRecommendation)
 

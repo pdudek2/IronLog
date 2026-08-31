@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type * as React from 'react'
-import { Bot, LoaderCircle, RotateCcw, Send, ShieldCheck, Sparkles } from 'lucide-react'
+import { Bot, LoaderCircle, RotateCcw, Send, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -198,6 +198,8 @@ export default function ChatPage() {
   const previewDay = planPreview?.days[selectedPreviewDay] ?? null
   const totalPlanExercises = planPreview?.days.reduce((sum, day) => sum + day.exercises.length, 0) ?? 0
   const sending = generationState.status === 'streaming'
+  const hasConversation = messages.length > 0 || streamText.length > 0
+  const experienceLabel = EXPERIENCE_OPTIONS.find((option) => option.value === planExperience)?.label ?? planExperience
 
   function cancelActiveGeneration(reason: ChatCancelReason, updateUi = true) {
     const active = activeGenerationRef.current
@@ -505,10 +507,6 @@ export default function ChatPage() {
         >
           <h1>Coach</h1>
           <p>Zapytaj o ostatnią sesję albo ułóż plan.</p>
-          <div className="coach-status-line" aria-label="Status AI Coacha">
-            <span data-ready={configured} />
-            <strong>{configured ? 'Klucz gotowy' : 'Tryb tylko do odczytu'}</strong>
-          </div>
         </motion.div>
       </section>
 
@@ -546,18 +544,18 @@ export default function ChatPage() {
 
         <div
           className="coach-workspace-grid"
-          data-has-rail={configured || activeTab === 'plan'}
+          data-has-rail={configured || Boolean(planPreview)}
         >
           <div className="coach-main-flow">
-            {!configured && (
+            {!configured && !showConfigPanel && (
               <>
                 <section className="coach-key-gate">
-                  <p className="eyebrow" style={{ color: 'var(--accent)' }}>
-                    Tryb tylko do odczytu
-                  </p>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Historia rozmowy pozostaje widoczna, ale akcje AI wymagają lokalnego klucza Claude.
-                  </p>
+                  <div>
+                    <strong>Dodaj lokalny klucz Claude</strong>
+                    <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
+                      Bez niego przejrzysz rozmowę i brief, ale nie wyślesz pytania ani nie wygenerujesz planu.
+                    </p>
+                  </div>
                   <div className="mt-4">
                     <Button
                       type="button"
@@ -569,38 +567,37 @@ export default function ChatPage() {
                     </Button>
                   </div>
                 </section>
+              </>
+            )}
 
-                {showConfigPanel && (
-                  <AiKeyPanel
-                    id={keyPanelId}
-                    onConfiguredChange={handleGateConfiguredChange}
-                    onExpand={() => setShowConfigPanel(true)}
-                    onCollapse={() => setShowConfigPanel(false)}
-                  />
-                )}
+            {!configured && showConfigPanel && (
+              <>
+                <AiKeyPanel
+                  id={keyPanelId}
+                  onConfiguredChange={handleGateConfiguredChange}
+                  onExpand={() => setShowConfigPanel(true)}
+                  onCollapse={() => setShowConfigPanel(false)}
+                />
               </>
             )}
 
             {activeTab === 'chat' ? (
               <>
                 <section className="coach-chat-panel">
-                  <div className="coach-panel-head">
-                    <div>
-                      <p>Rozmowa</p>
-                      <h2>Decyzje treningowe</h2>
+                  {hasConversation && (
+                    <div className="coach-panel-head">
+                      <div aria-hidden="true" />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={handleReset}
+                        className="coach-reset-button inline-flex items-center gap-2"
+                      >
+                        <RotateCcw size={14} />
+                        Reset
+                      </Button>
                     </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleReset}
-                      disabled={messages.length === 0 && !streamText}
-                      className="coach-reset-button inline-flex items-center gap-2"
-                    >
-                      <RotateCcw size={14} />
-                      Reset
-                    </Button>
-                  </div>
+                  )}
 
                   <div
                     className={`coach-thread ${messages.length === 0 && !streamText ? 'coach-thread--empty' : ''}`}
@@ -613,11 +610,11 @@ export default function ChatPage() {
                           <div className="coach-empty-icon">
                             <Bot size={24} />
                           </div>
-                          <p>{configured ? 'Zacznij od pytania' : 'Brak historii rozmowy'}</p>
+                          <p>{configured ? 'Zadaj pytanie albo wybierz skrót.' : 'Brak historii rozmowy'}</p>
                           <span>
                             {configured
-                              ? 'Tydzień, kolejny trening, readiness albo plateau.'
-                              : 'Skonfiguruj klucz, aby zadać pierwsze pytanie.'}
+                              ? 'Możesz zapytać o tydzień, kolejny trening, readiness albo blokadę w ćwiczeniu.'
+                              : 'Tutaj pojawi się analiza i kolejne pytania.'}
                           </span>
                         </div>
 
@@ -727,7 +724,8 @@ export default function ChatPage() {
 
                   {error && <SectionError message={error} />}
 
-                  <form onSubmit={handleSubmit} className="coach-composer">
+                  {configured && (
+                    <form onSubmit={handleSubmit} className="coach-composer">
                     <textarea
                       aria-label="Wiadomość do AI Coacha"
                       value={input}
@@ -738,7 +736,7 @@ export default function ChatPage() {
                         el.style.height = `${Math.min(el.scrollHeight, 160)}px`
                       }}
                       onKeyDown={handleComposerKeyDown}
-                      placeholder={configured ? 'Zapytaj o progres, plan albo ostatnią sesję' : 'Dodaj Claude API key, żeby odblokować czat'}
+                      placeholder="Zapytaj o progres, plan albo ostatnią sesję"
                       disabled={!configured || sending}
                       rows={2}
                       className="coach-composer-input"
@@ -757,21 +755,15 @@ export default function ChatPage() {
                         {sending ? 'Wysyłanie...' : 'Wyślij'}
                       </Button>
                     </div>
-                  </form>
+                    </form>
+                  )}
                 </section>
               </>
             ) : (
               <>
                 <section className="coach-plan-panel">
                   <div className="coach-panel-head">
-                    <div>
-                      <p>Generator planu</p>
-                      <h2>Brief treningowy</h2>
-                    </div>
-
-                    <div className="coach-plan-state" data-ready={Boolean(planPreview)}>
-                      {planPreview ? 'Podgląd gotowy' : 'Brief'}
-                    </div>
+                    <h2>Brief treningowy</h2>
                   </div>
 
                   <div className="coach-plan-form">
@@ -787,7 +779,7 @@ export default function ChatPage() {
                         }}
                         aria-invalid={planError?.field === 'goal' ? true : undefined}
                         aria-describedby={planError?.field === 'goal' ? planErrorId : undefined}
-                        placeholder="Np. upper/lower pod siłę i prostą progresję"
+                        placeholder="Np. siłowy upper/lower"
                       />
                     </label>
 
@@ -815,19 +807,14 @@ export default function ChatPage() {
 
                     <div className="coach-field">
                       <span className="stat-meta">Poziom</span>
-                      <div className="coach-chip-row" role="group" aria-label="Poziom zaawansowania">
+                      <div className="coach-choice-stack" role="group" aria-label="Poziom zaawansowania">
                         {EXPERIENCE_OPTIONS.map((option) => (
                           <button
                             key={option.value}
                             type="button"
                             aria-pressed={planExperience === option.value}
                             onClick={() => setPlanExperience(option.value)}
-                            className="mobile-touch-target rounded-[var(--radius-pill)] border px-3 py-2 text-sm font-semibold transition"
-                            style={{
-                              background: planExperience === option.value ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
-                              borderColor: planExperience === option.value ? 'var(--accent-soft-strong)' : 'var(--border)',
-                              color: planExperience === option.value ? 'var(--accent)' : 'var(--muted)',
-                            }}
+                            className="coach-choice-option mobile-touch-target"
                           >
                             {option.label}
                           </button>
@@ -866,7 +853,7 @@ export default function ChatPage() {
                         type="text"
                         value={planFocus}
                         onChange={(event) => setPlanFocus(event.target.value)}
-                        placeholder="Np. mocny bench, lepsze plecy, prosty rytm tygodnia"
+                        placeholder="Np. bench i plecy"
                       />
                     </label>
 
@@ -876,7 +863,7 @@ export default function ChatPage() {
                         value={planNotes}
                         onChange={(event) => setPlanNotes(event.target.value)}
                         rows={4}
-                        placeholder="Np. trening do 60 minut, bez martwego ciągu, nacisk na technikę"
+                        placeholder="Np. 60 min, bez martwego ciągu"
                       />
                     </label>
                   </div>
@@ -888,7 +875,7 @@ export default function ChatPage() {
                   )}
 
                   <div className="coach-plan-actions">
-                    <p>Profil, historia i katalog ćwiczeń są dołączane do briefu.</p>
+                    <p>Coach dołącza do briefu profil, historię i katalog ćwiczeń.</p>
 
                     <Button
                       type="button"
@@ -917,14 +904,7 @@ export default function ChatPage() {
                         {[
                           { label: 'Dni', value: String(planPreview.days.length) },
                           { label: 'Ćwiczenia', value: String(totalPlanExercises) },
-                          {
-                            label: 'Tryb',
-                            value: planExperience === 'beginner'
-                              ? 'Start'
-                              : planExperience === 'advanced'
-                                ? 'Pro'
-                                : 'Flow',
-                          },
+                          { label: 'Poziom', value: experienceLabel },
                         ].map((metric) => (
                           <div
                             key={metric.label}
@@ -1051,32 +1031,7 @@ export default function ChatPage() {
               />
             )}
 
-            {activeTab === 'chat' ? (
-              configured && (
-                <section className="coach-context-panel">
-                  <div className="coach-context-head">
-                    <span>
-                      <ShieldCheck size={16} />
-                    </span>
-                    <p>Kontekst</p>
-                  </div>
-                  <div className="coach-context-list">
-                    <div>
-                      <span>Źródła</span>
-                      <strong>profil, treningi, rekordy</strong>
-                    </div>
-                    <div>
-                      <span>Tryb</span>
-                      <strong>rozmowa</strong>
-                    </div>
-                    <div>
-                      <span>Klucz</span>
-                      <strong>lokalnie w przeglądarce</strong>
-                    </div>
-                  </div>
-                </section>
-              )
-            ) : (
+            {activeTab === 'plan' && planPreview && (
               <section className="coach-context-panel">
                 <div className="coach-context-head">
                   <Sparkles size={16} />
@@ -1085,9 +1040,8 @@ export default function ChatPage() {
                 <div className="coach-context-list">
                   {[
                     { label: 'Cel', value: planGoal.trim() || 'jeszcze nie podany' },
-                    { label: 'Dni', value: String(planPreview?.days.length ?? planDays) },
+                    { label: 'Rytm', value: `${planPreview?.days.length ?? planDays} dni w tygodniu` },
                     { label: 'Sprzęt', value: `${planEquipment.length} wybranych` },
-                    { label: 'Status', value: planPreview ? 'podgląd gotowy' : 'brief' },
                   ].map((item) => (
                     <div key={item.label}>
                       <span>{item.label}</span>

@@ -5,6 +5,52 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TemplateEditorPage from '../TemplateEditorPage'
 import TopNav from '../../components/TopNav'
 
+const multiDayTemplate = {
+  id: 'template-tabs',
+  userId: 'user-1',
+  name: 'Plan wielodniowy',
+  createdAt: 1,
+  updatedAt: 2,
+  days: [
+    {
+      name: 'Upper A',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: 4,
+        targetReps: 8,
+        targetWeight: 60,
+      }],
+    },
+    {
+      name: 'Lower A',
+      exercises: [
+        {
+          exerciseId: 'squat',
+          exerciseSource: 'global',
+          name: 'Squat',
+          sets: 3,
+          targetReps: 5,
+          targetWeight: 100,
+        },
+        {
+          exerciseId: 'rdl',
+          exerciseSource: 'global',
+          name: 'RDL',
+          sets: 2,
+          targetReps: 8,
+          targetWeight: 80,
+        },
+      ],
+    },
+    {
+      name: 'Full Body',
+      exercises: [],
+    },
+  ],
+}
+
 const mocks = vi.hoisted(() => ({
   createTemplate: vi.fn(),
   getTemplate: vi.fn(),
@@ -126,10 +172,108 @@ describe('TemplateEditorPage accessibility', () => {
     renderEditor()
 
     expect(await screen.findByRole('textbox', { name: 'Nazwa' })).toHaveValue('Upper / Lower')
-    expect(screen.getByRole('textbox', { name: 'Dzień 1' })).toHaveValue('Upper A')
+    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 1' })).toHaveValue('Upper A')
     expect(screen.getByRole('button', {
       name: 'Usuń ćwiczenie Bench Press z dnia Upper A',
     })).toBeInTheDocument()
+  })
+
+  it('renders related day tabs with summaries and only the selected panel', async () => {
+    mocks.getTemplate.mockResolvedValue(multiDayTemplate)
+    renderEditor('/templates/template-tabs/edit')
+
+    const tablist = await screen.findByRole('tablist', { name: 'Dni planu' })
+    const tabs = within(tablist).getAllByRole('tab')
+    expect(tabs).toHaveLength(3)
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+    expect(tabs[0]).toHaveAttribute('tabindex', '0')
+    expect(tabs[0]).toHaveTextContent('Upper A')
+    expect(tabs[0]).toHaveTextContent('1 ćw. · 4 serie')
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'false')
+    expect(tabs[1]).toHaveAttribute('tabindex', '-1')
+    expect(tabs[1]).toHaveTextContent('2 ćw. · 5 serii')
+
+    const panels = screen.getAllByRole('tabpanel')
+    expect(panels).toHaveLength(1)
+    expect(tabs[0]).toHaveAttribute('aria-controls', panels[0].id)
+    expect(panels[0]).toHaveAttribute('aria-labelledby', tabs[0].id)
+    expect(within(panels[0]).getByRole('textbox', { name: 'Nazwa dnia 1' }))
+      .toHaveValue('Upper A')
+    expect(screen.queryByRole('textbox', { name: 'Nazwa dnia 2' })).not.toBeInTheDocument()
+  })
+
+  it('switches and focuses day tabs with ArrowLeft, ArrowRight, Home and End', async () => {
+    mocks.getTemplate.mockResolvedValue(multiDayTemplate)
+    renderEditor('/templates/template-tabs/edit')
+
+    const tabs = within(await screen.findByRole('tablist', { name: 'Dni planu' }))
+      .getAllByRole('tab')
+    tabs[0].focus()
+
+    fireEvent.keyDown(tabs[0], { key: 'ArrowRight' })
+    expect(tabs[1]).toHaveFocus()
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
+    expect(tabs[0]).toHaveAttribute('tabindex', '-1')
+    expect(tabs[1]).toHaveAttribute('tabindex', '0')
+    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 2' })).toHaveValue('Lower A')
+
+    fireEvent.keyDown(tabs[1], { key: 'End' })
+    expect(tabs[2]).toHaveFocus()
+    expect(tabs[2]).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.keyDown(tabs[2], { key: 'Home' })
+    expect(tabs[0]).toHaveFocus()
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+
+    fireEvent.keyDown(tabs[0], { key: 'ArrowLeft' })
+    expect(tabs[2]).toHaveFocus()
+    expect(tabs[2]).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByText('Niezapisane zmiany')).not.toBeInTheDocument()
+  })
+
+  it('selects a newly added day', async () => {
+    renderEditor()
+
+    await screen.findByRole('tab', { name: /Upper A/ })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Dodaj dzień' })[0])
+
+    const tabs = screen.getAllByRole('tab')
+    expect(tabs).toHaveLength(2)
+    expect(tabs[0]).toHaveAttribute('aria-selected', 'false')
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 2' })).toHaveValue('Dzień 2')
+  })
+
+  it('selects the next neighbor when the selected day is removed', async () => {
+    mocks.getTemplate.mockResolvedValue(multiDayTemplate)
+    renderEditor('/templates/template-tabs/edit')
+
+    const tablist = await screen.findByRole('tablist', { name: 'Dni planu' })
+    fireEvent.click(within(tablist).getByRole('tab', { name: /Lower A/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń dzień' }))
+
+    const tabs = within(tablist).getAllByRole('tab')
+    expect(tabs).toHaveLength(2)
+    expect(tabs[1]).toHaveTextContent('Full Body')
+    expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
+    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 2' })).toHaveValue('Full Body')
+  })
+
+  it('preserves unsaved day fields while switching panels', async () => {
+    mocks.getTemplate.mockResolvedValue(multiDayTemplate)
+    renderEditor('/templates/template-tabs/edit')
+
+    const tablist = await screen.findByRole('tablist', { name: 'Dni planu' })
+    const firstDayName = screen.getByRole('textbox', { name: 'Nazwa dnia 1' })
+    fireEvent.change(firstDayName, { target: { value: 'Upper poprawiony' } })
+
+    fireEvent.click(within(tablist).getByRole('tab', { name: /Lower A/ }))
+    expect(firstDayName).not.toBeInTheDocument()
+    fireEvent.click(within(tablist).getByRole('tab', { name: /Upper poprawiony/ }))
+
+    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 1' }))
+      .toHaveValue('Upper poprawiony')
+    expect(screen.getByText('Niezapisane zmiany')).toBeInTheDocument()
   })
 
   it('treats an imported AI draft as unsaved', async () => {
@@ -275,7 +419,7 @@ describe('TemplateEditorPage accessibility', () => {
     expect(name).toHaveValue('Plan zapisany')
     expect(form).not.toBeNull()
     expect(screen.queryByTestId('template-save-dock')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Zapisano w formularzu' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Zapisano w formularzu' })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1ćw.')
 
     await act(async () => {

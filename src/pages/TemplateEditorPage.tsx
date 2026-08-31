@@ -97,6 +97,7 @@ export default function TemplateEditorPage() {
       ? initialDraft.days.map((day) => ({ ...day, _id: crypto.randomUUID() }))
       : [emptyDay(0)]
   ))
+  const [selectedDayId, setSelectedDayId] = useState(() => days[0]._id)
   const [pickerDayIndex, setPickerDayIndex] = useState<number | null>(null)
   const {
     state: userExercisesState,
@@ -128,6 +129,7 @@ export default function TemplateEditorPage() {
           : [emptyDay(0)]
 
         setDays(loadedDays)
+        setSelectedDayId(loadedDays[0]._id)
         setSavedSnapshot(serializeDraftState(nextTemplate.name, loadedDays))
       })
       .catch(() => {
@@ -160,6 +162,8 @@ export default function TemplateEditorPage() {
     () => days.reduce((sum, day) => sum + day.exercises.length, 0),
     [days],
   )
+  const selectedDayIndex = Math.max(0, days.findIndex((day) => day._id === selectedDayId))
+  const selectedDay = days[selectedDayIndex]
   const currentSnapshot = useMemo(() => serializeDraftState(name, days), [name, days])
   const hasUnsavedChanges = !loading && currentSnapshot !== savedSnapshot
   const canSubmit = name.trim().length >= 2
@@ -184,19 +188,41 @@ export default function TemplateEditorPage() {
   }
 
   function addDay() {
-    setDays((prev) => [...prev, emptyDay(prev.length)])
+    const nextDay = emptyDay(days.length)
+    setDays((prev) => [...prev, nextDay])
+    setSelectedDayId(nextDay._id)
   }
 
   function removeDay(index: number) {
-    setDays((prev) => {
-      if (prev.length === 1) return prev
-      return prev
-        .filter((_, dayIndex) => dayIndex !== index)
-        .map((day, dayIndex) => ({
-          ...day,
-          name: day.name.trim() || `Dzień ${dayIndex + 1}`,
-        }))
-    })
+    if (days.length === 1) return
+    const nextDays = days
+      .filter((_, dayIndex) => dayIndex !== index)
+      .map((day, dayIndex) => ({
+        ...day,
+        name: day.name.trim() || `Dzień ${dayIndex + 1}`,
+      }))
+
+    setDays(nextDays)
+    if (days[index]?._id === selectedDayId) {
+      setSelectedDayId(nextDays[Math.min(index, nextDays.length - 1)]._id)
+    }
+  }
+
+  function handleDayTabKeyDown(
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    dayIndex: number,
+  ) {
+    let nextIndex: number | null = null
+    if (event.key === 'ArrowRight') nextIndex = (dayIndex + 1) % days.length
+    if (event.key === 'ArrowLeft') nextIndex = (dayIndex - 1 + days.length) % days.length
+    if (event.key === 'Home') nextIndex = 0
+    if (event.key === 'End') nextIndex = days.length - 1
+    if (nextIndex === null) return
+
+    event.preventDefault()
+    const nextDay = days[nextIndex]
+    setSelectedDayId(nextDay._id)
+    document.getElementById(`template-day-tab-${nextDay._id}`)?.focus()
   }
 
   function addExerciseToDay(dayIndex: number, exerciseId: string, exerciseName: string, source: ExerciseSource) {
@@ -343,30 +369,73 @@ export default function TemplateEditorPage() {
               />
             </section>
 
-            {days.map((day, dayIndex) => {
-              const dayNameInputId = `template-day-name-${day._id}`
-              const dayDisplayName = day.name.trim() || `Dzień ${dayIndex + 1}`
+            <div
+              className="planner-template-days"
+              role="tablist"
+              aria-label="Dni planu"
+              aria-orientation="horizontal"
+            >
+              {days.map((day, dayIndex) => {
+                const dayDisplayName = day.name.trim() || `Dzień ${dayIndex + 1}`
+                const targetSets = day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)
+                const selected = day._id === selectedDayId
 
-              return (
-                <section key={day._id} className="template-day-editor">
+                return (
+                  <button
+                    key={day._id}
+                    id={`template-day-tab-${day._id}`}
+                    type="button"
+                    role="tab"
+                    aria-selected={selected}
+                    aria-controls={`template-day-panel-${day._id}`}
+                    aria-label={`Dzień ${dayIndex + 1}: ${dayDisplayName}, ${day.exercises.length} ${polishPlural(day.exercises.length, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}, ${targetSets} ${polishPlural(targetSets, 'seria docelowa', 'serie docelowe', 'serii docelowych')}`}
+                    tabIndex={selected ? 0 : -1}
+                    onClick={() => setSelectedDayId(day._id)}
+                    onKeyDown={(event) => handleDayTabKeyDown(event, dayIndex)}
+                    className="planner-day-chip"
+                  >
+                    <span>{dayDisplayName}</span>
+                    <small>
+                      {day.exercises.length} ćw. · {targetSets}{' '}
+                      {polishPlural(targetSets, 'seria', 'serie', 'serii')}
+                    </small>
+                  </button>
+                )
+              })}
+            </div>
+
+            {selectedDay && (
+              <section
+                key={selectedDay._id}
+                id={`template-day-panel-${selectedDay._id}`}
+                role="tabpanel"
+                aria-labelledby={`template-day-tab-${selectedDay._id}`}
+                className="template-day-editor"
+              >
                 <div className="template-day-editor-head">
                   <div className="min-w-0 flex-1">
-                    <label htmlFor={dayNameInputId} className="planner-kicker">
-                      Dzień {dayIndex + 1}
+                    <label
+                      htmlFor={`template-day-name-${selectedDay._id}`}
+                      className="planner-kicker"
+                    >
+                      Nazwa dnia <span className="sr-only">{selectedDayIndex + 1}</span>
                     </label>
                     <input
-                      id={dayNameInputId}
+                      id={`template-day-name-${selectedDay._id}`}
                       type="text"
-                      value={day.name}
-                      onChange={(event) => updateDay(dayIndex, { ...day, name: event.target.value })}
-                      className="template-text-input mt-2 w-full px-4 py-3 text-sm outline-none text-white"
+                      value={selectedDay.name}
+                      onChange={(event) => updateDay(selectedDayIndex, {
+                        ...selectedDay,
+                        name: event.target.value,
+                      })}
+                      className="template-text-input w-full px-4 py-3 text-sm outline-none text-white"
                     />
                   </div>
 
                   {days.length > 1 && (
                     <button
                       type="button"
-                      onClick={() => removeDay(dayIndex)}
+                      onClick={() => removeDay(selectedDayIndex)}
                       className="template-day-remove"
                     >
                       <Trash2 size={13} />
@@ -376,7 +445,7 @@ export default function TemplateEditorPage() {
                 </div>
 
                 <div className="template-exercise-list">
-                  {day.exercises.length > 0 && (
+                  {selectedDay.exercises.length > 0 && (
                     <div className="template-exercise-columns" aria-hidden="true">
                       <span>Ćwiczenie</span>
                       <span>Serie</span>
@@ -384,9 +453,9 @@ export default function TemplateEditorPage() {
                       <span>Ciężar</span>
                     </div>
                   )}
-                  {day.exercises.map((exercise, exerciseIndex) => (
+                  {selectedDay.exercises.map((exercise, exerciseIndex) => (
                     <div
-                      key={`${dayIndex}-${exercise.exerciseSource}-${exercise.exerciseId}`}
+                      key={`${selectedDay._id}-${exercise.exerciseSource}-${exercise.exerciseId}`}
                       className="template-exercise-row"
                     >
                       <div className="template-exercise-row-head">
@@ -401,8 +470,8 @@ export default function TemplateEditorPage() {
 
                         <button
                           type="button"
-                          onClick={() => removeExercise(dayIndex, exerciseIndex)}
-                          aria-label={`Usuń ćwiczenie ${exercise.name} z dnia ${dayDisplayName}`}
+                          onClick={() => removeExercise(selectedDayIndex, exerciseIndex)}
+                          aria-label={`Usuń ćwiczenie ${exercise.name} z dnia ${selectedDay.name.trim() || `Dzień ${selectedDayIndex + 1}`}`}
                           className="planner-icon-action planner-icon-action--danger"
                         >
                           <Trash2 size={13} aria-hidden="true" />
@@ -418,7 +487,7 @@ export default function TemplateEditorPage() {
                             inputMode="numeric"
                             min={1}
                             value={exercise.sets === 0 ? '' : exercise.sets}
-                            onChange={(event) => updateExercise(dayIndex, exerciseIndex, (current) => ({
+                            onChange={(event) => updateExercise(selectedDayIndex, exerciseIndex, (current) => ({
                               ...current,
                               sets: toPositiveInt(event.target.value, 1),
                             }))}
@@ -434,7 +503,7 @@ export default function TemplateEditorPage() {
                             inputMode="numeric"
                             min={0}
                             value={exercise.targetReps === 0 ? '' : exercise.targetReps}
-                            onChange={(event) => updateExercise(dayIndex, exerciseIndex, (current) => ({
+                            onChange={(event) => updateExercise(selectedDayIndex, exerciseIndex, (current) => ({
                               ...current,
                               targetReps: toPositiveInt(event.target.value, 0),
                             }))}
@@ -451,7 +520,7 @@ export default function TemplateEditorPage() {
                             min={0}
                             step="0.5"
                             value={exercise.targetWeight === 0 ? '' : exercise.targetWeight}
-                            onChange={(event) => updateExercise(dayIndex, exerciseIndex, (current) => ({
+                            onChange={(event) => updateExercise(selectedDayIndex, exerciseIndex, (current) => ({
                               ...current,
                               targetWeight: toPositiveFloat(event.target.value, 0),
                             }))}
@@ -462,7 +531,7 @@ export default function TemplateEditorPage() {
                     </div>
                   ))}
 
-                  {day.exercises.length === 0 && (
+                  {selectedDay.exercises.length === 0 && (
                     <div className="template-day-empty">
                       Ten dzień jest pusty. Dodaj ćwiczenia, żeby móc uruchamiać gotową sesję.
                     </div>
@@ -472,7 +541,7 @@ export default function TemplateEditorPage() {
                 <div className="template-day-actions">
                   <motion.button
                     type="button"
-                    onClick={() => setPickerDayIndex(dayIndex)}
+                    onClick={() => setPickerDayIndex(selectedDayIndex)}
                     className="planner-secondary-action template-day-add-exercise"
                     whileTap={{ scale: 0.97 }}
                   >
@@ -480,9 +549,8 @@ export default function TemplateEditorPage() {
                     Dodaj ćwiczenie
                   </motion.button>
                 </div>
-                </section>
-              )
-            })}
+              </section>
+            )}
 
             <div className="template-editor-bottom-actions">
               <motion.button
@@ -495,28 +563,26 @@ export default function TemplateEditorPage() {
                 Dodaj dzień
               </motion.button>
 
-              <motion.button
-                type="submit"
-                disabled={!canSubmit || saveState === 'saving' || saveState === 'error' || saveState === 'persisted-clean'}
-                aria-label={saveState === 'saving'
-                  ? 'Zapisuję… w formularzu'
-                  : saveState === 'persisted-clean'
-                    ? 'Zapisano w formularzu'
+              {saveState !== 'persisted-clean' && (
+                <motion.button
+                  type="submit"
+                  disabled={!canSubmit || saveState === 'saving' || saveState === 'error'}
+                  aria-label={saveState === 'saving'
+                    ? 'Zapisuję… w formularzu'
                     : isEdit
                       ? 'Zapisz zmiany w formularzu'
                       : 'Zapisz szablon w formularzu'}
-                className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
-                whileTap={{ scale: 0.97 }}
-              >
-                <Pencil size={15} />
-                {saveState === 'saving'
-                  ? 'Zapisuję…'
-                  : saveState === 'persisted-clean'
-                    ? 'Zapisano'
+                  className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Pencil size={15} />
+                  {saveState === 'saving'
+                    ? 'Zapisuję…'
                     : isEdit
                       ? 'Zapisz zmiany'
                       : 'Zapisz szablon'}
-              </motion.button>
+                </motion.button>
+              )}
             </div>
           </div>
 
@@ -534,9 +600,6 @@ export default function TemplateEditorPage() {
                 </div>
               </div>
 
-              <div className="template-editor-summary-note">
-                <p>{(template?.name ?? name.trim()) || 'Nowy plan'}</p>
-              </div>
             </div>
 
             <motion.button

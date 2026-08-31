@@ -243,7 +243,7 @@ describe('ChatPage stream lifecycle', () => {
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
     expect(screen.getByRole('alert')).toHaveTextContent('Dodaj Claude API key, żeby uruchomić AI Coach.')
     expect(screen.queryByRole('button', { name: 'Ponów odpowiedź AI' })).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+    expect(screen.queryByRole('textbox', { name: 'Wiadomość do AI Coacha' })).not.toBeInTheDocument()
   })
 
   it('returns to the compact read-only state when the API key disappears', async () => {
@@ -259,8 +259,8 @@ describe('ChatPage stream lifecycle', () => {
 
     expect(screen.getByLabelText('Rozmowa z AI Coachem')).toBeVisible()
     expect(within(screen.getByRole('log')).getByText('Czy progresuję?')).toBeVisible()
-    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
-    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+    expect(screen.getByText('Dodaj lokalny klucz Claude')).toBeVisible()
+    expect(screen.queryByRole('textbox', { name: 'Wiadomość do AI Coacha' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Przeanalizuj mój ostatni tydzień treningowy.' }))
       .not.toBeInTheDocument()
     expect(screen.queryByLabelText('Twój klucz', { selector: 'input' })).not.toBeInTheDocument()
@@ -274,7 +274,7 @@ describe('ChatPage stream lifecycle', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Zapisz klucz' }))
 
-    await waitFor(() => expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Klucz gotowy'))
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled())
     expect(screen.queryByText('Dodaj Claude API key, żeby uruchomić AI Coach.')).not.toBeInTheDocument()
   })
 

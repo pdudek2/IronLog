@@ -464,7 +464,7 @@ export default function WorkoutDetailPage() {
             <dd>{totalSets}</dd>
           </div>
           <div>
-            <dt>Powtórzenia</dt>
+            <dt aria-label="Powtórzenia">Powt.</dt>
             <dd>{totalReps}</dd>
           </div>
           <div>
@@ -503,8 +503,6 @@ export default function WorkoutDetailPage() {
             const equipmentLabel = exerciseData?.equipment
               ? getEquipmentLabel(exerciseData.equipment).toLocaleLowerCase('pl-PL')
               : null
-            const exerciseVolume = exercise.sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
-            const topExerciseSet = exercise.sets.reduce((top, set) => Math.max(top, set.weight), 0)
             const exerciseReps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
             const exerciseHeadingId = `workout-exercise-${exerciseIndex}`
 
@@ -552,8 +550,6 @@ export default function WorkoutDetailPage() {
                   <p className="workout-exercise-totals">
                     {exercise.sets.length} {exercise.sets.length === 1 ? 'seria' : 'serie'}
                     <span>{exerciseReps} powt.</span>
-                    <span>top {topExerciseSet ? `${topExerciseSet} kg` : '—'}</span>
-                    <span>{Math.round(exerciseVolume).toLocaleString('pl-PL')} kg obj.</span>
                   </p>
                 </header>
 

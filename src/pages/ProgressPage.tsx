@@ -73,6 +73,7 @@ const HEATMAP_COLORS = [
 const DAY_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd']
 const EMPTY_SESSIONS: ProgressSessionLite[] = []
 const EMPTY_RECORDS: RecordSummary[] = []
+const DEFAULT_VISIBLE_REMAINING_RECORDS = 5
 
 function formatVolume(kg: number): string {
   if (kg >= 1_000_000) return `${(kg / 1_000_000).toFixed(1)}M kg`
@@ -238,6 +239,7 @@ export default function ProgressPage() {
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [selectedStrengthKey, setSelectedStrengthKey] = useState<string | null>(null)
   const [selectedHeatmapDate, setSelectedHeatmapDate] = useState<string | null>(null)
+  const [showAllRecords, setShowAllRecords] = useState(false)
 
   function handleRangeChange(days: number) {
     if (days === rangeDays) return
@@ -432,6 +434,10 @@ export default function ProgressPage() {
   const recordAccentKeys = Object.keys(MUSCLE_COLORS)
   const featuredRecords = records.slice(0, 1)
   const remainingRecords = records.slice(1)
+  const hasHiddenRemainingRecords = remainingRecords.length > DEFAULT_VISIBLE_REMAINING_RECORDS
+  const visibleRemainingRecords = showAllRecords
+    ? remainingRecords
+    : remainingRecords.slice(0, DEFAULT_VISIBLE_REMAINING_RECORDS)
   const issues: string[] = []
   if (freshnessUncertain) {
     issues.push('Nie udało się potwierdzić świeżości danych. Ostatnie treningi mogą być jeszcze niewidoczne.')
@@ -465,13 +471,13 @@ export default function ProgressPage() {
           >
             <div>
               <h1>Postępy</h1>
-              <p>
-                {!hasSessionSnapshot
-                  ? 'Dane treningowe są chwilowo niedostępne.'
-                  : uniqueWorkouts > 0
-                  ? `${uniqueWorkouts} ${polishPlural(uniqueWorkouts, 'sesja', 'sesje', 'sesji')} · ${formatVolume(totalVolume)} · ${uniqueExerciseCount} ${polishPlural(uniqueExerciseCount, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}`
-                  : 'Brak treningów w wybranym zakresie.'}
-              </p>
+              {(!hasSessionSnapshot || uniqueWorkouts === 0) && (
+                <p>
+                  {!hasSessionSnapshot
+                    ? 'Dane treningowe są chwilowo niedostępne.'
+                    : 'Brak treningów w wybranym zakresie.'}
+                </p>
+              )}
             </div>
 
             <div className="progress-range-toggle" aria-label="Zakres danych">
@@ -560,29 +566,6 @@ export default function ProgressPage() {
 
         {hasSessionSnapshot && currentSessions.length > 0 && (
           <>
-          {selectedStrengthSeries && selectedStrengthPoints.length >= 3 && (
-            <section className="progress-strength-insight" aria-label="Trend wybranego ćwiczenia">
-              <div>
-                <span>
-                  {selectedStrengthSeries.exerciseName}
-                  {(strengthNameCounts.get(selectedStrengthSeries.exerciseName) ?? 0) > 1
-                    ? ` · ${selectedStrengthSeries.key.startsWith('user:') ? 'moje' : 'globalne'}`
-                    : ''}
-                </span>
-                <strong>Ostatnio {latestStrength} kg</strong>
-              </div>
-              <p>
-                <span>
-                  {strengthDelta > 0
-                    ? `+${strengthDelta} kg względem pierwszego w zakresie`
-                    : strengthDelta < 0
-                      ? `${strengthDelta} kg względem pierwszego w zakresie`
-                      : 'Bez zmiany względem pierwszego w zakresie'}
-                </span>
-                {' · '}maks. {maxStrength} kg
-              </p>
-            </section>
-          )}
           <div className="progress-analysis-grid">
             <motion.section
               className="progress-panel progress-panel--wide"
@@ -662,6 +645,23 @@ export default function ProgressPage() {
                   </label>
                 )}
               </div>
+              {selectedStrengthSeries && selectedStrengthPoints.length >= 3 && (
+                <div className="progress-strength-insight" aria-label="Trend wybranego ćwiczenia">
+                  <div>
+                    <strong>Ostatnio {latestStrength} kg</strong>
+                  </div>
+                  <p>
+                    <span>
+                      {strengthDelta > 0
+                        ? `+${strengthDelta} kg względem pierwszego w zakresie`
+                        : strengthDelta < 0
+                          ? `${strengthDelta} kg względem pierwszego w zakresie`
+                          : 'Bez zmiany względem pierwszego w zakresie'}
+                    </span>
+                    {' · '}maks. {maxStrength} kg
+                  </p>
+                </div>
+              )}
               {!selectedStrengthSeries ? (
                 <p className="progress-muted-copy">
                   Brak zapisanych ciężarów większych od 0 kg w tym zakresie. Uzupełnij ciężar w serii, aby zobaczyć progresję.
@@ -870,10 +870,7 @@ export default function ProgressPage() {
             transition={{ delay: 0.15, duration: 0.2 }}
           >
             <div className="progress-records-head">
-              <div>
-                <h2>Rekordy od początku</h2>
-              </div>
-              <span>{records.length}</span>
+              <h2>Rekordy od początku</h2>
             </div>
 
             <div className="progress-record-showcase" aria-label="Najlepszy rekord">
@@ -901,13 +898,17 @@ export default function ProgressPage() {
             </div>
 
             {remainingRecords.length > 0 && (
-              <div className="progress-record-ledger" aria-label="Pozostałe rekordy">
+              <div
+                id="progress-remaining-records"
+                className="progress-record-ledger"
+                aria-label="Pozostałe rekordy"
+              >
                 <div className="progress-record-ledger-head" aria-hidden="true">
                   <span>Pozostałe rekordy</span>
                   <span>Wynik</span>
                 </div>
 
-                {remainingRecords.map((rec, index) => (
+                {visibleRemainingRecords.map((rec, index) => (
                   <div
                     key={rec.id}
                     className="progress-record-ledger-row"
@@ -923,6 +924,19 @@ export default function ProgressPage() {
                     <span className="progress-record-ledger-result">{rec.maxWeight} kg <small>× {rec.maxReps}</small></span>
                   </div>
                 ))}
+
+                {hasHiddenRemainingRecords && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="progress-record-toggle"
+                    onClick={() => setShowAllRecords((current) => !current)}
+                    aria-expanded={showAllRecords}
+                    aria-controls="progress-remaining-records"
+                  >
+                    {showAllRecords ? 'Pokaż mniej' : `Pokaż wszystkie (${remainingRecords.length})`}
+                  </Button>
+                )}
               </div>
             )}
           </motion.section>

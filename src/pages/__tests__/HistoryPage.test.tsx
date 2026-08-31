@@ -263,4 +263,39 @@ describe('HistoryPage range state', () => {
       ])
     expect(within(previousGroup as HTMLElement).getByText('Poprzedni miesiąc')).toBeInTheDocument()
   })
+
+  it('keeps each workout row compact by truncating exercise names and removing duplicate row metadata blocks', async () => {
+    const startedAt = new Date(2026, 7, 30, 18, 0).getTime()
+
+    mocks.getWorkoutHistory.mockResolvedValue({
+      workouts: [{
+        id: 'compact-row',
+        startedAt,
+        finishedAt: startedAt + 3_600_000,
+        materialized: true,
+        label: 'Pełne ciało',
+        exercises: [
+          { name: 'Przysiad', sets: [{ weight: 100, reps: 5 }] },
+          { name: 'Wiosłowanie', sets: [{ weight: 70, reps: 8 }] },
+          { name: 'Wyciskanie', sets: [{ weight: 60, reps: 6 }] },
+          { name: 'Martwy ciąg', sets: [{ weight: 120, reps: 3 }] },
+          { name: 'Podciąganie', sets: [{ weight: 0, reps: 10 }] },
+        ],
+      }],
+      truncated: false,
+    })
+
+    render(<HistoryPage />)
+
+    const row = await screen.findByRole('button', { name: /Pełne ciało/i })
+
+    expect(within(row).getByText('Przysiad · Wiosłowanie · Wyciskanie · +2')).toBeInTheDocument()
+    expect(within(row).queryByText(/Martwy ciąg/)).not.toBeInTheDocument()
+    expect(within(row).queryByLabelText('Kategorie ćwiczeń')).not.toBeInTheDocument()
+    expect(within(row).queryByLabelText('Statystyki treningu')).not.toBeInTheDocument()
+    expect(within(row).getByText('niedz., 30')).toBeInTheDocument()
+    expect(within(row).getByText('1h 0m')).toBeInTheDocument()
+    expect(within(row).getByText('1.8k kg')).toBeInTheDocument()
+    expect(within(row).getByText('5 serii')).toBeInTheDocument()
+  })
 })

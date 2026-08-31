@@ -69,7 +69,7 @@ async function openModelSelect() {
   const current = screen.queryByRole('combobox', { name: 'Model Claude' })
   if (current) return current
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Pokaż szczegóły' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Ustawienia' }))
   return screen.findByRole('combobox', { name: 'Model Claude' })
 }
 
@@ -89,21 +89,24 @@ describe('ChatPage accessibility', () => {
     mocks.apiKey = ''
     render(<ChatPage />)
 
-    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
+    expect(screen.getByText('Dodaj lokalny klucz Claude')).toBeVisible()
     const configure = screen.getByRole('button', { name: 'Skonfiguruj klucz' })
     expect(configure).toBeVisible()
     expect(configure).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+    expect(screen.queryByRole('textbox', { name: 'Wiadomość do AI Coacha' })).not.toBeInTheDocument()
     expect(screen.getByText('Brak historii rozmowy')).toBeVisible()
     expect(screen.queryByText('Zacznij od pytania')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reset' })).not.toBeInTheDocument()
 
-    fireEvent.click(configure)
-    expect(configure).toHaveAttribute('aria-expanded', 'true')
     const controlledPanel = configure.getAttribute('aria-controls')
     expect(controlledPanel).toBeTruthy()
-    expect(document.getElementById(controlledPanel!)).toBeVisible()
     fireEvent.click(configure)
-    expect(configure).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.queryByText('Dodaj lokalny klucz Claude')).not.toBeInTheDocument()
+    expect(document.getElementById(controlledPanel!)).toBeVisible()
+    const cancel = screen.getByRole('button', { name: 'Anuluj' })
+    fireEvent.click(cancel)
+    expect(screen.getByRole('button', { name: 'Skonfiguruj klucz' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByText('Dodaj lokalny klucz Claude')).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
 
@@ -117,7 +120,7 @@ describe('ChatPage accessibility', () => {
     await openModelSelect()
     fireEvent.click(screen.getByRole('button', { name: 'Usuń lokalnie zapisany klucz' }))
 
-    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
+    expect(screen.getByText('Dodaj lokalny klucz Claude')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Skonfiguruj klucz' })).toBeVisible()
     expect(screen.queryByLabelText('Twój klucz', { selector: 'input' })).not.toBeInTheDocument()
 
@@ -139,6 +142,7 @@ describe('ChatPage accessibility', () => {
 
     expect(screen.getByLabelText('Twój klucz', { selector: 'input' })).toBeVisible()
     expect(screen.getByRole('combobox', { name: 'Model Claude' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Zwiń' })).toBeVisible()
   })
 
   it('labels the model, exposes mode state, and links goal validation', async () => {
@@ -278,8 +282,8 @@ describe('ChatPage accessibility', () => {
     render(<ChatPage />)
 
     const configure = await screen.findByRole('button', { name: 'Skonfiguruj klucz' })
-    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Tryb tylko do odczytu')
-    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeDisabled()
+    expect(screen.getByText('Dodaj lokalny klucz Claude')).toBeVisible()
+    expect(screen.queryByRole('textbox', { name: 'Wiadomość do AI Coacha' })).not.toBeInTheDocument()
 
     fireEvent.click(configure)
     await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2))
@@ -293,8 +297,8 @@ describe('ChatPage accessibility', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Zaktualizuj klucz' }))
 
     await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(3))
-    expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Klucz gotowy')
     expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
+    expect(screen.queryByText('Dodaj lokalny klucz Claude')).not.toBeInTheDocument()
   })
 
   it('clears the missing-key plan alert after successful key recovery', async () => {
@@ -316,7 +320,7 @@ describe('ChatPage accessibility', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Zapisz klucz' }))
 
-    await waitFor(() => expect(screen.getByLabelText('Status AI Coacha')).toHaveTextContent('Klucz gotowy'))
+    await waitFor(() => expect(screen.queryByText('Dodaj lokalny klucz Claude')).not.toBeInTheDocument())
     expect(screen.queryByText('Dodaj Claude API key, żeby odblokować generator planu.')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Generuj plan' })).toBeEnabled()
   })

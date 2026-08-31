@@ -59,15 +59,15 @@ export default function OnboardingPage() {
 
   return (
     <AuthShell
-      title="Skonfiguruj profil"
-      subtitle="Zajmie to tylko chwilę."
+      title="Ustaw profil"
+      subtitle="Te ustawienia możesz później zmienić w profilu."
     >
       <form onSubmit={handleSubmit} className="onboarding-form flex flex-col gap-4" aria-describedby={submitError ? 'onboarding-submit-error' : undefined}>
 
         {/* Display name */}
         <div className="flex flex-col gap-1">
           <label htmlFor="onboarding-display-name" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
-            Jak mamy się do Ciebie zwracać?
+            Imię
           </label>
           <Input
             id="onboarding-display-name"
@@ -82,10 +82,10 @@ export default function OnboardingPage() {
         </div>
 
         {/* Primary goal */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
-            Główny cel
-          </label>
+        <div className="flex flex-col gap-2" role="group" aria-labelledby="onboarding-goal-label">
+          <span id="onboarding-goal-label" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
+            Cel treningowy
+          </span>
           <div className="profile-choice-grid">
             {GOALS.map((g) => (
               <button
@@ -104,10 +104,14 @@ export default function OnboardingPage() {
 
         {/* Weekly goal */}
         <div className="flex flex-col gap-2">
-          <label htmlFor="onboarding-weekly-goal" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
-            Ile treningów tygodniowo?
-            <span className="ml-2 font-bold" style={{ color: 'var(--accent)' }}>{weeklyGoal}</span>
-          </label>
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="onboarding-weekly-goal" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
+              Treningi w tygodniu
+            </label>
+            <output htmlFor="onboarding-weekly-goal" className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+              {weeklyGoal}
+            </output>
+          </div>
           <input
             id="onboarding-weekly-goal"
             name="weeklyGoal"
@@ -116,6 +120,7 @@ export default function OnboardingPage() {
             max={7}
             value={weeklyGoal}
             onChange={(e) => setWeeklyGoal(Number(e.target.value))}
+            aria-valuetext={`${weeklyGoal} z 7`}
             className="w-full accent-[var(--accent)]"
           />
           <div className="flex justify-between text-xs" style={{ color: 'var(--muted)' }}>
@@ -124,8 +129,8 @@ export default function OnboardingPage() {
         </div>
 
         {/* Units */}
-        <div className="flex flex-col gap-2">
-          <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Jednostki</label>
+        <div className="flex flex-col gap-2" role="group" aria-labelledby="onboarding-units-label">
+          <span id="onboarding-units-label" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Jednostki</span>
           <div className="profile-unit-grid">
             {(['kg', 'lbs'] as Units[]).map((u) => (
               <button
@@ -144,7 +149,7 @@ export default function OnboardingPage() {
         {submitError && <p id="onboarding-submit-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{submitError}</p>}
 
         <Button type="submit" loading={loading} className="w-full">
-          Zaczynajmy
+          Zapisz profil
         </Button>
       </form>
     </AuthShell>

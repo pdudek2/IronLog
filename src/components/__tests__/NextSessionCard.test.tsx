@@ -63,10 +63,12 @@ describe('NextSessionCard', () => {
 
     const summary = screen.getByRole('region', { name: 'Dzisiejszy trening' })
     expect(within(summary).getByRole('heading', { name: 'Upper A' })).toBeInTheDocument()
-    expect(within(summary).getByLabelText('Gotowość umiarkowana, 50 na 100'))
-      .toHaveTextContent('50/100')
-    expect(within(summary).getByRole('button', { name: 'Podejrzyj dzisiejszy plan' }))
-      .toHaveTextContent('4 ćwiczenia')
+    expect(within(summary).getByLabelText(/Gotowość umiarkowana, 50 na 100/))
+      .toHaveTextContent('2 serie mniej')
+    expect(summary).not.toHaveTextContent('50/100')
+    expect(within(summary).getByRole('button', { name: 'Zobacz ćwiczenia w planie' }))
+      .toHaveTextContent('Zobacz ćwiczenia')
+    expect(summary).toHaveTextContent('4 ćwiczenia')
     expect(within(summary).queryByRole('button', { name: 'Edytuj' })).not.toBeInTheDocument()
 
     const dialog = screen.getByRole('dialog', { hidden: true })
@@ -76,7 +78,7 @@ describe('NextSessionCard', () => {
     expect(edit).toHaveTextContent('Edytuj')
     expect(start.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
-    fireEvent.click(within(summary).getByRole('button', { name: 'Rozpocznij' }))
+    fireEvent.click(within(summary).getByRole('button', { name: 'Rozpocznij Upper A' }))
     expect(onStart).toHaveBeenCalledTimes(1)
     expect([...onStart.mock.calls[0][0]]).toEqual([
       ['global:bench', { sets: 4, weight: 72.5, reps: 8 }],

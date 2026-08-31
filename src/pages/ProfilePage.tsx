@@ -1,17 +1,17 @@
 import { useEffect, useState } from 'react'
 import type * as React from 'react'
 import { toast } from 'sonner'
-import { motion } from 'framer-motion'
 import { updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { Button, Input } from '../components/ui'
+import { polishPlural } from '../lib/polishPlural'
 
-const GOALS: { value: PrimaryGoal; label: string; desc: string }[] = [
-  { value: 'strength',    label: 'Siła',           desc: 'Maksymalne ciężary, niskie powtórzenia' },
-  { value: 'hypertrophy', label: 'Masa mięśniowa', desc: 'Objętość i progresja' },
-  { value: 'endurance',   label: 'Wytrzymałość',   desc: 'Więcej powtórzeń, mniejsze ciężary' },
-  { value: 'weight_loss', label: 'Redukcja',        desc: 'Deficyt kaloryczny i cardio' },
+const GOALS: { value: PrimaryGoal; label: string }[] = [
+  { value: 'strength', label: 'Siła' },
+  { value: 'hypertrophy', label: 'Masa mięśniowa' },
+  { value: 'endurance', label: 'Wytrzymałość' },
+  { value: 'weight_loss', label: 'Redukcja' },
 ]
 
 export default function ProfilePage() {
@@ -24,7 +24,6 @@ export default function ProfilePage() {
   const [units, setUnits] = useState<Units>(profile?.units ?? 'kg')
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState('')
-  const [saved, setSaved] = useState(false)
 
   useEffect(() => {
     if (!profile) return
@@ -44,9 +43,7 @@ export default function ProfilePage() {
     try {
       await updateProfile(user.uid, updated)
       setProfile(user.uid, { ...profile, ...updated })
-      setSaved(true)
       toast.success('Profil zapisany')
-      setTimeout(() => setSaved(false), 2000)
     } catch {
       toast.error('Nie udało się zapisać. Spróbuj ponownie.')
     } finally {
@@ -55,114 +52,137 @@ export default function ProfilePage() {
   }
 
   return (
-    <>
-      <section className="hero-editorial">
-        <motion.div
-          className="flex flex-col gap-4 sm:gap-5"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-        >
-          <p className="hero-editorial-date">Ustawienia · konto</p>
+    <div className="workbench-page">
+      <header
+        className="pt-4 pb-5 sm:pt-6 sm:pb-6"
+        style={{ borderBottom: '1px solid var(--border)' }}
+      >
+        <h1 id="profile-title" className="page-title">Profil</h1>
+      </header>
 
-          <div>
-            <h1 className="hero-editorial-name">Twój profil</h1>
-          </div>
-
-        </motion.div>
-      </section>
-
-      <div className="profile-settings-shell mx-auto" style={{ maxWidth: '42rem' }}>
-        <section className="profile-form-panel" aria-label="Ustawienia profilu">
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5 sm:gap-6">
-
-            <div className="flex flex-col gap-1">
-              <label htmlFor="profile-display-name" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Imię</label>
+      <div className="profile-settings-shell" style={{ maxWidth: '42rem' }}>
+        <section className="profile-form-panel" aria-labelledby="profile-title">
+          <form onSubmit={handleSubmit} className="flex flex-col">
+            <div
+              className="flex flex-col gap-2 border-b py-5 sm:py-6"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <label htmlFor="profile-display-name" className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
+                Imię
+              </label>
               <Input
                 id="profile-display-name"
                 name="displayName"
                 type="text"
                 placeholder="np. Jan"
                 value={displayName}
-                onChange={(e) => { setDisplayName(e.target.value); setSaved(false) }}
+                onChange={(e) => setDisplayName(e.target.value)}
                 autoComplete="name"
                 error={nameError}
               />
             </div>
 
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Główny cel</label>
-              <div className="profile-choice-grid">
+            <fieldset
+              className="m-0 min-w-0 border-0 border-b py-5 sm:py-6"
+              style={{ borderColor: 'var(--border)' }}
+            >
+              <legend className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
+                Główny cel
+              </legend>
+              <div
+                className="grid grid-cols-2 gap-px overflow-hidden"
+                style={{
+                  border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--border)',
+                }}
+              >
                 {GOALS.map((g) => (
                   <button
                     key={g.value}
                     type="button"
-                    onClick={() => { setPrimaryGoal(g.value); setSaved(false) }}
+                    onClick={() => setPrimaryGoal(g.value)}
                     aria-pressed={primaryGoal === g.value}
-                    className="profile-choice"
+                    className="min-h-12 border-0 px-3 py-3 text-left text-sm font-semibold"
+                    style={{
+                      background: primaryGoal === g.value ? 'var(--accent-soft)' : 'var(--surface-muted)',
+                      color: primaryGoal === g.value ? 'var(--text-strong)' : 'var(--muted)',
+                      boxShadow: primaryGoal === g.value ? 'inset 3px 0 0 var(--accent)' : 'none',
+                    }}
                   >
-                    <div className="text-sm font-semibold">{g.label}</div>
-                    <div className="mt-1 text-xs leading-5" style={{ color: primaryGoal === g.value ? 'var(--muted)' : 'var(--muted)' }}>
-                      {g.desc}
-                    </div>
+                    {g.label}
                   </button>
                 ))}
               </div>
-            </div>
+            </fieldset>
 
-            <div className="flex flex-col gap-2">
-              <label htmlFor="profile-weekly-goal" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
-                Cel tygodniowy
-                <span className="ml-2 font-bold" style={{ color: 'var(--accent)' }}>{weeklyGoal}</span>
-              </label>
-              <input
-                id="profile-weekly-goal"
-                name="weeklyGoal"
-                type="range"
-                min={1} max={7}
-                value={weeklyGoal}
-                onChange={(e) => { setWeeklyGoal(Number(e.target.value)); setSaved(false) }}
-                className="readiness-slider w-full"
-              />
-              <div className="flex justify-between text-xs" style={{ color: 'var(--muted)' }}>
-                <span>1</span><span>7</span>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Jednostki</label>
-              <div className="profile-unit-grid">
-                {(['kg', 'lbs'] as Units[]).map((u) => (
-                  <button
-                    key={u}
-                    type="button"
-                    onClick={() => { setUnits(u); setSaved(false) }}
-                    aria-pressed={units === u}
-                    className="profile-unit-choice"
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <Button
-              type="submit"
-              loading={saving}
-              className="mt-2 w-full"
-              style={{
-                background: saved
-                  ? 'var(--success-gradient)'
-                  : 'var(--primary-gradient)',
-                color: saved ? 'var(--success-foreground)' : 'var(--accent-foreground)',
-              }}
+            <div
+              className="grid gap-5 border-b py-5 sm:grid-cols-[minmax(0,1fr)_14rem] sm:gap-8 sm:py-6"
+              style={{ borderColor: 'var(--border)' }}
             >
-              {saved ? 'Zapisano ✓' : 'Zapisz zmiany'}
-            </Button>
+              <div className="flex min-w-0 flex-col gap-2">
+                <div className="flex items-baseline justify-between gap-4">
+                  <label htmlFor="profile-weekly-goal" className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
+                    Treningi w tygodniu
+                  </label>
+                  <output
+                    htmlFor="profile-weekly-goal"
+                    className="text-sm font-semibold tabular-nums"
+                    style={{ color: 'var(--accent-text)' }}
+                    aria-live="polite"
+                  >
+                    {weeklyGoal} {polishPlural(weeklyGoal, 'trening', 'treningi', 'treningów')}
+                  </output>
+                </div>
+                <input
+                  id="profile-weekly-goal"
+                  name="weeklyGoal"
+                  type="range"
+                  min={1}
+                  max={7}
+                  value={weeklyGoal}
+                  aria-valuetext={`${weeklyGoal} ${polishPlural(weeklyGoal, 'trening', 'treningi', 'treningów')}`}
+                  onChange={(e) => setWeeklyGoal(Number(e.target.value))}
+                  className="readiness-slider w-full"
+                />
+                <div className="flex justify-between text-xs" style={{ color: 'var(--muted)' }} aria-hidden="true">
+                  <span>1</span><span>7</span>
+                </div>
+              </div>
 
+              <fieldset className="m-0 min-w-0 border-0 p-0">
+                <legend className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
+                  Jednostki
+                </legend>
+                <div className="profile-unit-grid">
+                  {(['kg', 'lbs'] as Units[]).map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => setUnits(u)}
+                      aria-pressed={units === u}
+                      className="profile-unit-choice"
+                    >
+                      {u}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+
+            <div className="pt-5 sm:pt-6">
+              <Button
+                type="submit"
+                disabled={saving}
+                aria-busy={saving || undefined}
+                className="w-full sm:w-auto sm:min-w-52"
+              >
+                {saving ? 'Zapisywanie…' : 'Zapisz zmiany'}
+              </Button>
+            </div>
           </form>
         </section>
       </div>
-    </>
+    </div>
   )
 }

@@ -96,6 +96,21 @@ describe('createPersistedTemplateWorkout', () => {
     expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, true)
   })
 
+  it('preserves a user exercise source through template launch', async () => {
+    const template = templateWithTargets()
+    template.days[0].exercises[0] = {
+      ...template.days[0].exercises[0],
+      exerciseId: 'custom-squat',
+      exerciseSource: 'user',
+    }
+
+    const workout = await createPersistedTemplateWorkout('user-1', template, 0, false)
+
+    expect(getExerciseSessions).toHaveBeenCalledWith('user-1', 'custom-squat', 'user', 1)
+    expect(workout.exercises[0].exerciseSource).toBe('user')
+    expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, false)
+  })
+
   it('persists the recommended set count and weight', async () => {
     vi.mocked(getExerciseSessions).mockResolvedValue([{
       id: 'session-1',

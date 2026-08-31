@@ -71,7 +71,7 @@ export async function expectAppReady(
       await expect(page.getByTestId('exercises-page')).toHaveAttribute('data-load-state', 'ready')
       return
     case '/chat':
-      await expect(page.getByLabel('Status AI Coacha')).toBeVisible({ timeout })
+      await expect(page.getByRole('heading', { name: 'Coach' })).toBeVisible({ timeout })
       return
     case '/profile':
       await expect(page.getByPlaceholder('np. Jan')).toBeVisible({ timeout })

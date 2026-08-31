@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
@@ -86,11 +86,6 @@ export default function TemplatesPage() {
     setLoadAttempt((value) => value + 1)
   }
 
-  const plannerStats = useMemo(() => ({
-    templates: templates.length,
-    days: templates.reduce((sum, template) => sum + template.days.length, 0),
-    exercises: templates.reduce((sum, template) => sum + countTemplateExercises(template), 0),
-  }), [templates])
   const shortPlanList = templates.length <= 2
 
   async function runTemplateDelete(target: WorkoutTemplate) {
@@ -139,18 +134,9 @@ export default function TemplatesPage() {
           {templates.length > 0 && (
             <div className="planner-mini-stats" aria-label="Podsumowanie planów">
               <span>
-                <strong>{plannerStats.templates}</strong>
+                <strong>{templates.length}</strong>
                 {' '}
-                {polishPlural(plannerStats.templates, 'plan', 'plany', 'planów')}
-              </span>
-              <span>
-                <strong>{plannerStats.days}</strong>
-                {' '}
-                {polishPlural(plannerStats.days, 'dzień', 'dni', 'dni')}
-              </span>
-              <span>
-                <strong>{plannerStats.exercises}</strong>
-                ćw.
+                {polishPlural(templates.length, 'plan', 'plany', 'planów')}
               </span>
             </div>
           )}
@@ -263,51 +249,7 @@ export default function TemplatesPage() {
                       </p>
                     </div>
 
-                    <div className="planner-template-days" aria-label={`Dni planu ${template.name}`}>
-                      {template.days.map((day, dayIndex) => (
-                        <button
-                          key={`${template.id}-summary-${dayIndex}`}
-                          type="button"
-                          className="planner-day-chip"
-                          data-testid={`template-day-summary-${template.id}-${dayIndex}`}
-                          aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
-                          aria-describedby={feedbackDescription}
-                          onClick={() => void requestTemplateLaunch(
-                            template,
-                            dayIndex,
-                            `templates:${template.id}:summary:${dayIndex}`,
-                          )}
-                          disabled={launchingTemplateId !== null}
-                        >
-                          {isLaunchingControl(`templates:${template.id}:summary:${dayIndex}`) ? (
-                            <span>Uruchamiam…</span>
-                          ) : (
-                            <>
-                              <span>{day.name}</span>
-                              <small>{day.exercises.length} ćw.</small>
-                            </>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-
                     <div className="planner-template-actions">
-                      <motion.button
-                        type="button"
-                        aria-label={`Uruchom szablon ${template.name}`}
-                        aria-describedby={feedbackDescription}
-                        onClick={() => void requestTemplateLaunch(
-                          template,
-                          0,
-                          `templates:${template.id}:primary`,
-                        )}
-                        disabled={launchingTemplateId !== null}
-                        className="planner-template-start"
-                        whileTap={{ scale: 0.96 }}
-                      >
-                        {!isLaunchingControl(`templates:${template.id}:primary`) && <Play size={13} />}
-                        {isLaunchingControl(`templates:${template.id}:primary`) ? 'Uruchamiam…' : 'Start'}
-                      </motion.button>
                       <button
                         type="button"
                         aria-label={`Edytuj szablon ${template.name}`}
@@ -380,40 +322,38 @@ export default function TemplatesPage() {
                         transition={{ duration: 0.18 }}
                       >
                         {template.days.map((day, dayIndex) => (
-                          <div
+                          <motion.button
                             key={`${template.id}-${dayIndex}`}
+                            type="button"
+                            data-testid={`template-day-detail-${template.id}-${dayIndex}`}
+                            aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
+                            aria-describedby={feedbackDescription}
+                            aria-busy={isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`) || undefined}
+                            onClick={() => void requestTemplateLaunch(
+                              template,
+                              dayIndex,
+                              `templates:${template.id}:detail:${dayIndex}`,
+                            )}
+                            disabled={launchingTemplateId !== null}
                             className="planner-day-row"
+                            whileTap={{ scale: 0.995 }}
                           >
-                            <div className="planner-day-row-head">
-                              <div>
-                                <p>{day.name}</p>
-                                <span>
+                            <span className="planner-day-row-head">
+                              <span>
+                                <strong className="planner-day-row-title">{day.name}</strong>
+                                <small>
                                   {day.exercises.length} {day.exercises.length === 1 ? 'ćwiczenie' : 'ćwiczeń'}
-                                </span>
-                              </div>
+                                </small>
+                              </span>
 
-                              <motion.button
-                                type="button"
-                                data-testid={`template-day-detail-${template.id}-${dayIndex}`}
-                                aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
-                                aria-describedby={feedbackDescription}
-                                onClick={() => void requestTemplateLaunch(
-                                  template,
-                                  dayIndex,
-                                  `templates:${template.id}:detail:${dayIndex}`,
-                                )}
-                                disabled={launchingTemplateId !== null}
-                                className="planner-secondary-action"
-                                whileTap={{ scale: 0.96 }}
-                              >
-                                {!isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`) && <Play size={13} />}
+                              <span className="planner-day-row-affordance" aria-hidden="true">
                                 {isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`)
                                   ? 'Uruchamiam…'
-                                  : 'Start dnia'}
-                              </motion.button>
-                            </div>
+                                  : <Play size={15} />}
+                              </span>
+                            </span>
 
-                            <div className="planner-exercise-strip">
+                            <span className="planner-exercise-strip">
                               {day.exercises.slice(0, 5).map((exercise) => (
                                 <span
                                   key={`${day.name}-${exercise.exerciseSource}-${exercise.exerciseId}`}
@@ -426,8 +366,8 @@ export default function TemplatesPage() {
                                   +{day.exercises.length - 5}
                                 </span>
                               )}
-                            </div>
-                          </div>
+                            </span>
+                          </motion.button>
                         ))}
                       </motion.div>
                     )}

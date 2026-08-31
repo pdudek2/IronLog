@@ -60,10 +60,12 @@ test.describe('Chat UI', () => {
 
     const keyGate = page.locator('.coach-key-gate')
     await expect(keyGate).toBeVisible({ timeout: 5_000 })
-    await expect(keyGate.getByText('Tryb tylko do odczytu', { exact: true })).toBeVisible()
+    await expect(keyGate.getByText('Dodaj lokalny klucz Claude', { exact: true })).toBeVisible()
     await expect(page.locator('.ai-key-panel')).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Skonfiguruj klucz' }).click()
+    await expect(keyGate).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Anuluj' })).toBeVisible()
 
     await expect(page.getByPlaceholder('Wklej Claude API key')).toBeVisible({ timeout: 5_000 })
     await expect(page.getByText('Klucz zostaje tylko na tym urządzeniu.', { exact: true }))
@@ -75,16 +77,12 @@ test.describe('Chat UI', () => {
     await page.screenshot({ path: 'test-results/chat-key-panel.png' })
   })
 
-  test('message input is disabled without API key', async ({ page }) => {
+  test('message input stays out of the read-only state without API key', async ({ page }) => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
 
-    // Input placeholder shows instruction to add key first
-    const msgInput = page.getByPlaceholder('Dodaj Claude API key, żeby odblokować czat', { exact: false })
-      .or(page.locator('textarea[disabled]'))
-      .first()
-
-    await expect(msgInput).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Dodaj lokalny klucz Claude', { exact: true })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toHaveCount(0)
 
     await page.screenshot({ path: 'test-results/chat-disabled-input.png' })
   })
@@ -209,7 +207,8 @@ test.describe('Chat UI', () => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
 
-    await expect(page.getByRole('heading', { name: 'Decyzje treningowe' })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('button', { name: 'Reset' })).toHaveCount(0)
 
     const modeSwitch = page.locator('.coach-mode-switch')
     const planBtn = modeSwitch.getByRole('button', { name: /^Plan/i })
@@ -222,7 +221,7 @@ test.describe('Chat UI', () => {
 
     const conversationBtn = modeSwitch.getByRole('button', { name: /^Rozmowa/i })
     await conversationBtn.click()
-    await expect(page.getByRole('heading', { name: 'Decyzje treningowe' })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeVisible({ timeout: 5_000 })
   })
 
   test('mock runtime rejects invalid AI request contracts without consuming an attempt', async ({ page }) => {
@@ -429,7 +428,7 @@ test.describe('Chat UI', () => {
     await page.getByRole('button', { name: 'Reset' }).click()
     await expectAbortCount(page, 1)
 
-    await expect(page.getByText('Zacznij od pytania', { exact: true })).toBeVisible()
+    await expect(page.getByText('Zacznij od konkretu', { exact: true })).toBeVisible()
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(0)
     await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toHaveCount(0)
     await page.waitForTimeout(350)

@@ -30,14 +30,14 @@ export default function LogoutPage() {
         <section className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] px-6 py-8 text-center" role="alert">
           <h1 className="text-lg font-semibold text-white">Nie udało się wylogować</h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-            Sesja nadal jest aktywna. Sprawdź połączenie i spróbuj ponownie później.
+            Sesja nadal jest aktywna. Sprawdź połączenie przed kolejną próbą.
           </p>
           <button
             type="button"
             className="planner-primary-action mt-5 w-full"
             onClick={() => navigate('/dashboard', { replace: true })}
           >
-            Wróć do aplikacji
+            Wróć do panelu
           </button>
         </section>
       </div>

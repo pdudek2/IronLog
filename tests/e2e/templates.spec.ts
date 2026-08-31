@@ -65,14 +65,19 @@ test.describe('Templates CRUD', () => {
     await editButton.click()
     await expect(page).toHaveURL(/\/templates\/.*\/edit/, { timeout: 5_000 })
     await expect(page.getByPlaceholder('np. Upper / Lower 4 dni')).toHaveValue(TEST_TEMPLATE_NAME)
-    await page.getByRole('textbox', { name: 'Dzień 1' }).fill('Dzień siłowy')
+    await page.getByRole('textbox', { name: 'Nazwa dnia 1' }).fill('Dzień siłowy')
     const saveChanges = page.locator('button[type="submit"]:visible').filter({ hasText: 'Zapisz zmiany' })
     await expect(saveChanges).toHaveCount(1)
     await saveChanges.click()
     await page.waitForURL('/templates', { timeout: 10_000 })
     await page.screenshot({ path: 'test-results/templates-edited.png' })
 
-    await page.getByRole('button', { name: `Uruchom szablon ${TEST_TEMPLATE_NAME}` }).click()
+    const dayLaunch = page.getByRole('button', {
+      name: `Uruchom dzień Dzień siłowy z szablonu ${TEST_TEMPLATE_NAME}`,
+      exact: true,
+    })
+    await expect(dayLaunch).toHaveCount(1)
+    await dayLaunch.click()
     await expect(page).toHaveURL('/workout/new', { timeout: 10_000 })
     await expect(page.getByText('Squat', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('region', { name: 'Aktywna sesja: Dzień siłowy' })).toBeVisible()

@@ -104,7 +104,7 @@ describe('TemplatesPage data states', () => {
     render(<TemplatesPage />)
 
     expect(await screen.findByLabelText('Podsumowanie planów')).toHaveTextContent('1 plan')
-    expect(screen.getByLabelText('Podsumowanie planów')).toHaveTextContent('1 dzień')
+    expect(screen.getByLabelText('Podsumowanie planów')).not.toHaveTextContent('1 dzień')
   })
 
   it('ignores a templates failure that arrives after unmount', async () => {

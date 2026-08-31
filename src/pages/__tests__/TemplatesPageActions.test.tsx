@@ -12,17 +12,30 @@ const templates: WorkoutTemplate[] = [
     name: 'Plan A',
     createdAt: 1,
     updatedAt: 2,
-    days: [{
-      name: 'Dzień A',
-      exercises: [{
-        exerciseId: 'squat',
-        exerciseSource: 'global',
-        name: 'Squat',
-        sets: 3,
-        targetReps: 5,
-        targetWeight: 100,
-      }],
-    }],
+    days: [
+      {
+        name: 'Dzień A',
+        exercises: [{
+          exerciseId: 'squat',
+          exerciseSource: 'global',
+          name: 'Squat',
+          sets: 3,
+          targetReps: 5,
+          targetWeight: 100,
+        }],
+      },
+      {
+        name: 'Dzień A2',
+        exercises: [{
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: 3,
+          targetReps: 8,
+          targetWeight: 80,
+        }],
+      },
+    ],
   },
   {
     id: 'template-b',
@@ -138,14 +151,50 @@ describe('TemplatesPage launch actions', () => {
     mocks.launchState = idleLaunchState()
   })
 
-  it('shows pending copy only on the exact primary control', async () => {
+  it('renders one complete canonical row and launch action for every day', async () => {
+    await renderPage()
+
+    const planACard = cardFor('Plan A')
+    expect(within(planACard).getAllByRole('button', {
+      name: /Uruchom dzień Dzień A2? z szablonu Plan A/,
+    })).toHaveLength(2)
+    expect(within(cardFor('Plan B')).getAllByRole('button', {
+      name: 'Uruchom dzień Dzień B z szablonu Plan B',
+    })).toHaveLength(1)
+    expect(within(planACard).queryByRole('button', { name: 'Uruchom szablon Plan A' }))
+      .not.toBeInTheDocument()
+
+    const secondDayRow = within(planACard)
+      .getByTestId('template-day-detail-template-a-1')
+      .closest('.planner-day-row')
+    expect(secondDayRow).toHaveTextContent('Dzień A2')
+    expect(secondDayRow).toHaveTextContent('1 ćwiczenie')
+    expect(secondDayRow).toHaveTextContent('Bench Press')
+  })
+
+  it('launches the selected day with its exact template, index and request key', async () => {
+    await renderPage()
+
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', {
+      name: 'Uruchom dzień Dzień A2 z szablonu Plan A',
+    }))
+
+    expect(mocks.requestTemplateLaunch).toHaveBeenCalledTimes(1)
+    expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
+      templates[0],
+      1,
+      'templates:template-a:detail:1',
+    )
+  })
+
+  it('shows pending copy only on the exact day control', async () => {
     mocks.launchState = {
       ...idleLaunchState(),
       launchOperation: {
         target: {
           template: templates[0],
           dayIndex: 0,
-          requestKey: 'templates:template-a:primary',
+          requestKey: 'templates:template-a:detail:0',
         },
         replaceExisting: false,
         status: 'pending',
@@ -157,9 +206,9 @@ describe('TemplatesPage launch actions', () => {
     await renderPage()
 
     const card = cardFor('Plan A')
-    expect(within(card).getByRole('button', { name: 'Uruchom szablon Plan A' }))
+    expect(within(card).getByTestId('template-day-detail-template-a-0'))
       .toHaveTextContent('Uruchamiam…')
-    expect(within(card).getByTestId('template-day-summary-template-a-0'))
+    expect(within(card).getByTestId('template-day-detail-template-a-1'))
       .not.toHaveTextContent('Uruchamiam…')
     expect(cardFor('Plan B')).not.toHaveTextContent('Uruchamiam…')
   })
@@ -171,7 +220,7 @@ describe('TemplatesPage launch actions', () => {
         target: {
           template: templates[0],
           dayIndex: 0,
-          requestKey: 'templates:template-a:summary:0',
+          requestKey: 'templates:template-a:detail:0',
         },
         replaceExisting: false,
         status: 'pending',
@@ -184,11 +233,11 @@ describe('TemplatesPage launch actions', () => {
 
     const card = cardFor('Plan A')
     expect(card).toHaveAttribute('aria-busy', 'true')
-    expect(within(card).getByTestId('template-day-summary-template-a-0'))
+    expect(within(card).getByTestId('template-day-detail-template-a-0'))
       .toHaveTextContent('Uruchamiam…')
-    expect(within(card).getByRole('button', { name: 'Uruchom szablon Plan A' }))
+    expect(within(card).getByTestId('template-day-detail-template-a-1'))
       .not.toHaveTextContent('Uruchamiam…')
-    within(card).getAllByRole('button', { name: /Uruchom/ }).forEach((button) => {
+    screen.getAllByRole('button', { name: /Uruchom dzień/ }).forEach((button) => {
       expect(button).toBeDisabled()
     })
   })
@@ -216,11 +265,11 @@ describe('TemplatesPage launch actions', () => {
     expect(alert).toHaveTextContent('Nie udało się uruchomić planu.')
     expect(otherCard).not.toContainElement(alert)
     expect(matchingCard).toHaveAttribute('aria-describedby', alert.id)
-    expect(within(matchingCard).getByRole('button', { name: 'Uruchom szablon Plan A' }))
+    expect(within(matchingCard).getByTestId('template-day-detail-template-a-0'))
       .toHaveAttribute('aria-describedby', alert.id)
-    expect(within(matchingCard).getByTestId('template-day-summary-template-a-0'))
+    expect(within(matchingCard).getByTestId('template-day-detail-template-a-1'))
       .toHaveAttribute('aria-describedby', alert.id)
-    expect(within(otherCard).getByRole('button', { name: 'Uruchom szablon Plan B' }))
+    expect(within(otherCard).getByTestId('template-day-detail-template-b-0'))
       .not.toHaveAttribute('aria-describedby')
 
     fireEvent.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))

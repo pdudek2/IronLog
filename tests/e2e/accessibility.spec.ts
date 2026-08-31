@@ -121,6 +121,11 @@ test('primary mobile controls expose at least 44px hit areas', async ({ page }, 
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
 
+  const readinessSummary = page.locator('summary.readiness-summary')
+  await expect(readinessSummary).toBeVisible()
+  await readinessSummary.click()
+  await expect(page.getByRole('slider', { name: 'Gotowość: Sen' })).toBeVisible()
+
   const controls = [
     page.getByRole('button', { name: 'IronLog — strona główna' }),
     page.getByRole('slider', { name: 'Gotowość: Sen' }),

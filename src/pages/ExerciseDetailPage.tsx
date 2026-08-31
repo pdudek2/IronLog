@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import { exercises as globalExercises } from '../data/exercises'
 import {
   getExerciseSessions,
@@ -105,6 +106,7 @@ export default function ExerciseDetailPage() {
   const maxVolume = sessions.length
     ? Math.max(...sessions.map((session) => session.totalVolume), 1)
     : 1
+  const latestIsMaximum = latestVolume === maxVolume
 
   const userExercise = exerciseSource === 'user' && userCatalog.state.status === 'success'
     ? userCatalog.exercises.find((exercise) => exercise.id === id) ?? null
@@ -167,8 +169,20 @@ export default function ExerciseDetailPage() {
   }
 
   const accent = EXERCISE_CATEGORY_COLORS[exercise?.category ?? ''] ?? 'var(--accent)'
-
-  const totalVolumeAll = sessions.reduce((sum, s) => sum + s.totalVolume, 0)
+  const categoryLabel = exercise?.category
+    ? EXERCISE_CATEGORY_LABELS[exercise.category] ?? exercise.category
+    : null
+  const taxonomy = Array.from(new Set([
+    categoryLabel,
+    exercise?.equipment ? getEquipmentLabel(exercise.equipment) : null,
+    exerciseSource === 'user' ? 'Własne' : null,
+  ].filter((label): label is string => Boolean(label))))
+  const muscleLabels = Array.from(new Set(
+    (exercise?.muscles ?? [])
+      .map(getMuscleLabel)
+      .filter((label) => label !== categoryLabel),
+  ))
+  const allTimeSessions = Math.max(record?.totalSessions ?? 0, sessions.length)
 
   return (
     <div className="exercise-detail-page">
@@ -187,89 +201,49 @@ export default function ExerciseDetailPage() {
             />
           )}
 
-          <div className="exercise-detail-taxonomy">
-            {exercise?.category && (
-              <span
-                style={{ color: accent }}
-              >
-                {EXERCISE_CATEGORY_LABELS[exercise.category] ?? exercise.category}
-              </span>
-            )}
-            {exercise?.equipment && (
-              <span>
-                {getEquipmentLabel(exercise.equipment)}
-              </span>
-            )}
-            {exerciseSource === 'user' && (
-              <span style={{ color: 'var(--accent)' }}>
-                moje
-              </span>
-            )}
-          </div>
+          {taxonomy.length > 0 && (
+            <div className="exercise-detail-classification">
+              <div className="exercise-detail-taxonomy">
+                {taxonomy.map((label, index) => (
+                  <span key={label} style={index === 0 ? { color: accent } : undefined}>
+                    {label}
+                  </span>
+                ))}
+              </div>
+              {muscleLabels.length > 0 && (
+                <div className="exercise-detail-muscles" aria-label={`Mięśnie: ${muscleLabels.join(', ')}`}>
+                  <span>Mięśnie</span>
+                  {muscleLabels.map((label) => <span key={label}>{label}</span>)}
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <h1 className="hero-editorial-name">{exercise?.name ?? record?.exerciseName ?? id}</h1>
           </div>
 
-          {exercise?.muscles && exercise.muscles.length > 0 && (
-            <div className="exercise-detail-muscles">
-              {exercise.muscles.map((m) => (
-                <span key={m}>
-                  {getMuscleLabel(m)}
-                </span>
-              ))}
-            </div>
-          )}
-
           <p className="hero-editorial-sub">
-            {sessions.length > 0
-              ? `${sessions.length} ${polishPlural(sessions.length, 'ostatnia sesja', 'ostatnie sesje', 'ostatnich sesji')} · ${formatVolume(totalVolumeAll)} w tych sesjach`
+            {allTimeSessions > 0
+              ? `${allTimeSessions} ${polishPlural(allTimeSessions, 'sesja', 'sesje', 'sesji')} łącznie${sessions.length > 0 && allTimeSessions > sessions.length ? ` · ${sessions.length} ostatnich poniżej` : ''}`
               : 'Brak historii. Dodaj to ćwiczenie do sesji, żeby zacząć śledzić progres.'}
           </p>
 
-          {sessions.length === 0 && (
-            <div className="mt-2">
-              <button
-                type="button"
-                className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
-                style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-                onClick={() => navigate('/workout/new', { state: { startNew: true } })}
-              >
-                Rozpocznij trening
-              </button>
-            </div>
-          )}
-
           {record && (
-            <div
-              className="mt-4 pt-6 flex flex-wrap gap-x-10 gap-y-5 border-t"
-              style={{ borderColor: 'var(--border)' }}
-            >
-              <div className="flex flex-col gap-1 min-w-[6.5rem]">
-                <span className="stat-meta">Rekord</span>
-                <span className="text-2xl font-bold tabular-nums text-white leading-none">
+            <dl className="exercise-detail-records">
+              <div>
+                <dt>Ciężar max</dt>
+                <dd>
                   {record.maxWeight} <span className="text-base" style={{ color: 'var(--muted)' }}>kg</span>
-                </span>
+                </dd>
               </div>
-              <div className="flex flex-col gap-1 min-w-[6.5rem]">
-                <span className="stat-meta">Powt. max</span>
-                <span className="text-2xl font-bold tabular-nums text-white leading-none">
+              <div>
+                <dt>Powt. max</dt>
+                <dd>
                   {record.maxReps}
-                </span>
+                </dd>
               </div>
-              <div className="flex flex-col gap-1 min-w-[6.5rem]">
-                <span className="stat-meta">Sesje</span>
-                <span className="text-2xl font-bold tabular-nums text-white leading-none">
-                  {record.totalSessions}
-                </span>
-              </div>
-              <div className="flex flex-col gap-1 min-w-[6.5rem]">
-                <span className="stat-meta">Top wolumen</span>
-                <span className="text-2xl font-bold tabular-nums text-white leading-none">
-                  {formatVolume(record.bestVolume)}
-                </span>
-              </div>
-            </div>
+            </dl>
           )}
         </motion.div>
       </section>
@@ -283,13 +257,21 @@ export default function ExerciseDetailPage() {
                 <h2 className="section-title">Wolumen na sesję</h2>
               </div>
               <div className="exercise-detail-volume-summary">
-                <p><span>Ostatnio</span><strong>{formatVolume(latestVolume)}</strong></p>
-                <p><span>Maksimum</span><strong>{formatVolume(maxVolume)}</strong></p>
+                {latestIsMaximum ? (
+                  <p><span>Ostatnio · maksimum</span><strong>{formatVolume(latestVolume)}</strong></p>
+                ) : (
+                  <>
+                    <p><span>Ostatnio</span><strong>{formatVolume(latestVolume)}</strong></p>
+                    <p><span>Maksimum</span><strong>{formatVolume(maxVolume)}</strong></p>
+                  </>
+                )}
               </div>
               <div
                 className="exercise-detail-volume-chart"
                 role="list"
-                aria-label={`Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio ${formatVolume(latestVolume)}. Maksimum ${formatVolume(maxVolume)}.`}
+                aria-label={latestIsMaximum
+                  ? `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio i maksimum ${formatVolume(latestVolume)}.`
+                  : `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio ${formatVolume(latestVolume)}. Maksimum ${formatVolume(maxVolume)}.`}
               >
                 {chronologicalSessions.map((session) => (
                   <div
@@ -329,33 +311,36 @@ export default function ExerciseDetailPage() {
 
               <div className="exercise-detail-session-list">
                 {sessions.map((session) => (
-                  <motion.div
+                  <details
                     key={session.id}
                     className="exercise-detail-session-row"
-                    initial={false}
-                    animate={{ opacity: 1 }}
                   >
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
-                        <p className="text-sm font-semibold text-white">{formatDate(session.startedAt)}</p>
-                        {session.label && (
-                          <p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>{session.label}</p>
-                        )}
+                    <summary className="exercise-detail-session-summary">
+                      <div className="exercise-detail-session-head">
+                        <div>
+                          <p className="text-sm font-semibold text-white">{formatDate(session.startedAt)}</p>
+                          {session.label && (
+                            <p className="mt-0.5 text-xs" style={{ color: 'var(--muted)' }}>{session.label}</p>
+                          )}
+                        </div>
+                        <div className="exercise-detail-session-volume">
+                          <p className="text-sm font-bold text-white tabular-nums">{formatVolume(session.totalVolume)}</p>
+                          <span className="exercise-detail-session-toggle" aria-hidden="true">
+                            Szczegóły
+                            <ChevronDown className="exercise-detail-session-chevron" size={16} />
+                          </span>
+                        </div>
                       </div>
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-white tabular-nums">{formatVolume(session.totalVolume)}</p>
-                        <p className="mt-0.5 text-xs uppercase" style={{ color: 'var(--muted)' }}>wolumen</p>
+                      <div className="exercise-detail-session-metrics">
+                        <span><strong>{session.totalSets}</strong> serie</span>
+                        <span><strong>{session.totalReps}</strong> powt.</span>
+                        <span>
+                          top <strong style={{ color: accent }}>
+                            {session.bestSetWeight ? `${session.bestSetWeight} kg` : '—'}
+                          </strong>
+                        </span>
                       </div>
-                    </div>
-                    <div className="exercise-detail-session-metrics">
-                      <span><strong>{session.totalSets}</strong> serie</span>
-                      <span><strong>{session.totalReps}</strong> powt.</span>
-                      <span>
-                        top <strong style={{ color: accent }}>
-                          {session.bestSetWeight ? `${session.bestSetWeight} kg` : '—'}
-                        </strong>
-                      </span>
-                    </div>
+                    </summary>
 
                     {session.sets.length > 0 && (
                       <div className="exercise-detail-set-list">
@@ -372,7 +357,7 @@ export default function ExerciseDetailPage() {
                         </div>
                       </div>
                     )}
-                  </motion.div>
+                  </details>
                 ))}
               </div>
             </section>

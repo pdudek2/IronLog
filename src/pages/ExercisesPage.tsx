@@ -62,6 +62,7 @@ interface CreateFormProps {
   mode: 'create' | 'edit'
   initialValue?: UserExerciseInput
   onSubmit: (input: UserExerciseInput) => Promise<void>
+  onDelete?: () => void
   onClose: () => void
 }
 
@@ -70,7 +71,7 @@ interface ExerciseFormError {
   field: 'name' | null
 }
 
-function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFormProps) {
+function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }: CreateFormProps) {
   const [name, setName] = useState(initialValue?.name ?? '')
   const [category, setCategory] = useState<Category>(initialValue?.category ?? 'chest')
   const [equipment, setEquipment] = useState<Equipment>(initialValue?.equipment ?? 'barbell')
@@ -264,6 +265,17 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onClose }: CreateFor
           >
             {saving ? 'Zapisuję...' : mode === 'edit' ? 'Zapisz zmiany' : 'Dodaj ćwiczenie'}
           </motion.button>
+
+          {onDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="exercise-form-delete mobile-touch-target"
+            >
+              <Trash2 size={15} aria-hidden="true" />
+              Usuń ćwiczenie
+            </button>
+          )}
         </form>
       </div>
     </div>
@@ -276,13 +288,15 @@ interface CardProps {
   exercise: Exercise
   isUser: boolean
   onEdit?: () => void
-  onDelete?: () => void
   onNavigate: () => void
 }
 
-function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardProps) {
-  const labeledMuscles = exercise.muscles.filter((muscle) => Boolean(MUSCLE_LABELS[muscle]))
-  const visibleMuscles = labeledMuscles.slice(0, 4)
+function ExerciseCard({ exercise, isUser, onEdit, onNavigate }: CardProps) {
+  const categoryLabel = CATEGORY_LABELS[exercise.category]
+  const labeledMuscles = exercise.muscles.filter(
+    (muscle) => Boolean(MUSCLE_LABELS[muscle]) && MUSCLE_LABELS[muscle] !== categoryLabel,
+  )
+  const visibleMuscles = labeledMuscles.slice(0, 2)
   const hiddenMuscleCount = Math.max(labeledMuscles.length - visibleMuscles.length, 0)
 
   return (
@@ -293,45 +307,35 @@ function ExerciseCard({ exercise, isUser, onEdit, onDelete, onNavigate }: CardPr
         className="exercise-library-row-main"
         aria-label={`Otwórz ćwiczenie ${exercise.name}`}
       >
-        <span>{CATEGORY_LABELS[exercise.category]}</span>
         <strong>{exercise.name}</strong>
-        <small>{EQUIPMENT_LABELS[exercise.equipment]}</small>
+        <small>{categoryLabel} · {EQUIPMENT_LABELS[exercise.equipment]}</small>
+        {visibleMuscles.length > 0 && (
+          <span className="exercise-library-muscles" aria-label={`Grupy mięśniowe: ${labeledMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
+            {visibleMuscles.map((muscle) => (
+              <span key={muscle}>{MUSCLE_LABELS[muscle]}</span>
+            ))}
+            {hiddenMuscleCount > 0 && <span>+{hiddenMuscleCount}</span>}
+          </span>
+        )}
       </button>
-
-      {visibleMuscles.length > 0 && (
-        <div className="exercise-library-muscles" aria-label={`Grupy mięśniowe: ${labeledMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
-          {visibleMuscles.map((muscle) => (
-            <span key={muscle}>{MUSCLE_LABELS[muscle]}</span>
-          ))}
-          {hiddenMuscleCount > 0 && <span>+{hiddenMuscleCount}</span>}
-        </div>
-      )}
 
       <div className="exercise-library-row-controls">
         {isUser && (
-          <div className="exercise-library-actions">
-            <button
-              type="button"
-              onClick={onEdit}
-              className="planner-icon-action"
-              aria-label={`Edytuj ćwiczenie ${exercise.name}`}
-            >
-              <Pencil size={12} />
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              className="planner-icon-action planner-icon-action--danger"
-              aria-label={`Usuń ćwiczenie ${exercise.name}`}
-            >
-              <Trash2 size={12} />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="planner-icon-action"
+            aria-label={`Edytuj ćwiczenie ${exercise.name}`}
+          >
+            <Pencil size={14} />
+          </button>
         )}
 
-        <span className="exercise-library-open" aria-hidden="true">
-          <ChevronRight size={16} />
-        </span>
+        {!isUser && (
+          <span className="exercise-library-open" aria-hidden="true">
+            <ChevronRight size={16} />
+          </span>
+        )}
       </div>
     </article>
   )
@@ -369,20 +373,15 @@ function ChipRow<T extends string>({ label, options, labels, active, onSelect }:
 // ─── Section Header ───────────────────────────────────────────────────────────
 
 function SectionHeader({
-  eyebrow,
   title,
   count,
 }: {
-  eyebrow: string
   title: string
   count: number | string
 }) {
   return (
     <div className="exercise-section-head">
-      <div>
-        <p>{eyebrow}</p>
-        <h2>{title}</h2>
-      </div>
+      <h2>{title}</h2>
       <span>{count}</span>
     </div>
   )
@@ -428,6 +427,7 @@ export default function ExercisesPage() {
 
   const filteredUser = userExercises.filter(matchesFilters)
   const filteredGlobal = exercises.filter(matchesFilters)
+  const hasNoResults = filteredUser.length === 0 && filteredGlobal.length === 0
   const hasActiveFilters = query.trim().length > 0 || category !== 'all' || equipment !== 'all'
   const activeFilterCount = Number(category !== 'all') + Number(equipment !== 'all')
   const clearFilters = () => {
@@ -515,7 +515,7 @@ export default function ExercisesPage() {
             <input
               type="text"
               aria-label="Szukaj ćwiczenia"
-              placeholder="Szukaj po nazwie ćwiczenia..."
+              placeholder="Szukaj ćwiczenia..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -536,7 +536,11 @@ export default function ExercisesPage() {
           >
             <SlidersHorizontal size={16} aria-hidden="true" />
             <span>Filtry</span>
-            {activeFilterCount > 0 && <strong>Aktywne: {activeFilterCount}</strong>}
+            {activeFilterCount > 0 && (
+              <strong aria-label={`${activeFilterCount} aktywne filtry`}>
+                {activeFilterCount}
+              </strong>
+            )}
             <ChevronRight size={16} aria-hidden="true" />
           </button>
 
@@ -561,7 +565,7 @@ export default function ExercisesPage() {
               onClick={openCreateForm}
               disabled={userExercisesState.status !== 'success'}
               aria-describedby={userExercisesState.status === 'error' ? 'user-exercises-load-error' : undefined}
-              className="planner-primary-action"
+              className="planner-secondary-action"
               whileTap={{ scale: 0.97 }}
             >
               <Plus size={16} strokeWidth={2.5} />
@@ -582,7 +586,6 @@ export default function ExercisesPage() {
         >
         <section className="exercise-library-section">
           <SectionHeader
-            eyebrow="Własna biblioteka"
             title="Moje ćwiczenia"
             count={userExercisesState.status === 'success' ? filteredUser.length : '—'}
           />
@@ -603,30 +606,11 @@ export default function ExercisesPage() {
                 Spróbuj ponownie
               </button>
             </div>
-          ) : filteredUser.length === 0 ? (
+          ) : filteredUser.length === 0 && userExercises.length > 0 ? (
             <div className="exercise-empty-state">
-              {userExercises.length === 0 ? (
-                <>
-                  <strong>Brak własnych ćwiczeń</strong>
-                  <p>Dodaj ruch, którego nie ma w katalogu globalnym.</p>
-                  <motion.button
-                    type="button"
-                    onClick={openCreateForm}
-                    className="planner-secondary-action"
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Plus size={13} strokeWidth={2.5} />
-                    Dodaj pierwsze
-                  </motion.button>
-                </>
-              ) : (
-                <>
-                  <strong>Brak wyników</strong>
-                  <p>Zmień filtr albo wyczyść wyszukiwanie.</p>
-                </>
-              )}
+              <p>Żadne z Twoich ćwiczeń nie pasuje do filtrów.</p>
             </div>
-          ) : (
+          ) : filteredUser.length > 0 ? (
             <AnimatePresence initial={false}>
               <div className="exercise-library-list">
                 {filteredUser.map((ex) => (
@@ -640,24 +624,25 @@ export default function ExercisesPage() {
                       exercise={ex}
                       isUser
                       onEdit={() => openEditForm(ex)}
-                      onDelete={() => setConfirmDeleteExercise(ex)}
                       onNavigate={() => navigate(`/exercises/user/${ex.id}`)}
                     />
                   </motion.div>
                 ))}
               </div>
             </AnimatePresence>
-          )}
+          ) : null}
         </section>
 
         <section className="exercise-library-section">
-          <SectionHeader eyebrow="Atlas startowy" title="Katalog globalny" count={filteredGlobal.length} />
+          <SectionHeader title="Katalog globalny" count={filteredGlobal.length} />
 
           {filteredGlobal.length === 0 ? (
-            <div className="exercise-empty-state">
-              <strong>Brak wyników</strong>
-              <p>Zmień filtr albo wyczyść wyszukiwanie.</p>
-            </div>
+            hasNoResults && (
+              <div className="exercise-empty-state">
+                <strong>Brak wyników</strong>
+                <p>Zmień filtry albo wpisz inną nazwę.</p>
+              </div>
+            )
           ) : (
             <div className="exercise-library-list">
               <AnimatePresence initial={false}>
@@ -679,24 +664,27 @@ export default function ExercisesPage() {
       </div>
 
       {/* Create form modal */}
-      <AnimatePresence>
-        {showForm && (
-          <CreateExerciseForm
-            mode={formExercise ? 'edit' : 'create'}
-            initialValue={formExercise ? {
-              name: formExercise.name,
-              category: formExercise.category,
-              equipment: formExercise.equipment,
-              muscles: formExercise.muscles,
-            } : undefined}
-            onSubmit={formExercise ? handleUpdate : handleCreate}
-            onClose={() => {
-              setShowForm(false)
-              setFormExercise(null)
-            }}
-          />
-        )}
-      </AnimatePresence>
+      {showForm && (
+        <CreateExerciseForm
+          mode={formExercise ? 'edit' : 'create'}
+          initialValue={formExercise ? {
+            name: formExercise.name,
+            category: formExercise.category,
+            equipment: formExercise.equipment,
+            muscles: formExercise.muscles,
+          } : undefined}
+          onSubmit={formExercise ? handleUpdate : handleCreate}
+          onDelete={formExercise ? () => {
+            setShowForm(false)
+            setConfirmDeleteExercise(formExercise)
+            setFormExercise(null)
+          } : undefined}
+          onClose={() => {
+            setShowForm(false)
+            setFormExercise(null)
+          }}
+        />
+      )}
 
       {confirmDeleteExercise && (
         <ConfirmDialog

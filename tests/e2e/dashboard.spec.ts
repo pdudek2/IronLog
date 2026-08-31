@@ -13,7 +13,7 @@ const emulatorMode = process.env.E2E_BACKEND === 'emulator'
 async function openDashboard(page: Page) {
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
-  await expect(page.getByRole('heading', { name: 'Ostatnie treningi' })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: /^(Ostatnie treningi|Historia)$/ })).toBeVisible({ timeout: 15_000 })
 }
 
 test.describe('Dashboard regressions', () => {
@@ -136,6 +136,9 @@ test.describe('Dashboard regressions', () => {
     const readinessSave = page.getByRole('button', { name: 'Zapisz wynik' })
     if (await readinessSave.isVisible().catch(() => false)) {
       await readinessSave.click()
+    } else {
+      await page.getByText('Dopasuj dzisiejszy trening', { exact: true }).click()
+      await readinessSave.click()
     }
 
     const recommendation = page.getByRole('region', { name: 'Dzisiejszy trening' })
@@ -145,7 +148,7 @@ test.describe('Dashboard regressions', () => {
       document.documentElement.scrollWidth - document.documentElement.clientWidth
     ))).toBe(0)
 
-    await recommendation.getByRole('button', { name: 'Podejrzyj dzisiejszy plan' }).click()
+    await recommendation.getByRole('button', { name: 'Zobacz ćwiczenia w planie' }).click()
     const dialog = page.getByRole('dialog', { name: 'Upper A' })
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('.dashboard-plan-popover-actions > button')).toHaveText([
@@ -156,7 +159,7 @@ test.describe('Dashboard regressions', () => {
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()
 
-    await recommendation.getByRole('button', { name: 'Podejrzyj dzisiejszy plan' }).click()
+    await recommendation.getByRole('button', { name: 'Zobacz ćwiczenia w planie' }).click()
     await dialog.getByRole('button', { name: 'Rozpocznij' }).click()
     await expect(dialog).toBeHidden()
     await expect(page).toHaveURL('/workout/new', { timeout: 15_000 })

@@ -42,11 +42,11 @@ setup('authenticate', async ({ page, request }) => {
   await page.waitForURL('/dashboard', { timeout: 20_000 })
 
   if (emulatorMode) {
-    const onboardingHeading = page.getByRole('heading', { name: 'Skonfiguruj profil' })
+    const onboardingHeading = page.getByRole('heading', { name: 'Ustaw profil' })
     await expect(page).toHaveURL('/onboarding', { timeout: 20_000 })
     await expect(onboardingHeading).toBeVisible({ timeout: 20_000 })
-    await page.getByLabel('Jak mamy się do Ciebie zwracać?').fill('IronLog E2E')
-    await page.getByRole('button', { name: 'Zaczynajmy' }).click()
+    await page.getByLabel('Imię').fill('IronLog E2E')
+    await page.getByRole('button', { name: 'Zapisz profil' }).click()
     await page.waitForURL('/dashboard', { timeout: 20_000 })
   }
 

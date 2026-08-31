@@ -145,8 +145,10 @@ test.describe('Template launch contract', () => {
     await page.goto('/templates')
     await expectAppReady(page, '/templates')
     const launch = page.getByRole('button', {
-      name: `Uruchom szablon ${OFFLINE_TEMPLATE_NAME}`,
-    }).first()
+      name: `Uruchom dzień Dzień 1 z szablonu ${OFFLINE_TEMPLATE_NAME}`,
+      exact: true,
+    })
+    await expect(launch).toHaveCount(1)
     await expect(launch).toBeVisible({ timeout: 15_000 })
 
     await startFreshSessionWithExercise(page, 'Bench Press')

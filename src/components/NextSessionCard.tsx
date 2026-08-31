@@ -95,6 +95,19 @@ export default function NextSessionCard({
   const readinessLabel = recommendation.tone === 'high'
     ? 'wysoka'
     : recommendation.tone === 'mid' ? 'umiarkowana' : 'niska'
+  const reducedSets = recommendation.exercises.reduce((sum, exercise) => (
+    sum + Math.max(0, -exercise.setsDelta)
+  ), 0)
+  const changedWeights = recommendation.exercises.filter((exercise) => exercise.weightDelta !== 0).length
+  const hasAdjustments = reducedSets > 0 || changedWeights > 0
+  const adjustmentLabel = [
+    reducedSets > 0
+      ? `${reducedSets} ${polishPlural(reducedSets, 'seria', 'serie', 'serii')} mniej`
+      : null,
+    changedWeights > 0
+      ? `${changedWeights} ${polishPlural(changedWeights, 'obciążenie', 'obciążenia', 'obciążeń')} dopasowane`
+      : null,
+  ].filter(Boolean).join(' · ') || 'Plan bez zmian'
 
   return (
     <>
@@ -107,42 +120,44 @@ export default function NextSessionCard({
 
         <header className="dashboard-today-head">
           <div>
+            <p className="dashboard-today-plan-name">Z planu · {template.name}</p>
             <h1>{recommendation.dayName}</h1>
-            <p>{template.name}</p>
-          </div>
-          <div
-            className="dashboard-today-readiness"
-            data-tone={recommendation.tone}
-            aria-label={`Gotowość ${readinessLabel}, ${recommendation.score} na 100`}
-          >
-            <strong>{recommendation.score}<span>/100</span></strong>
-            <small>{readinessLabel}</small>
+            <p>{count} {polishPlural(count, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}</p>
           </div>
         </header>
 
-        <button
-          type="button"
-          className="dashboard-today-trigger"
-          popoverTarget={popoverId}
-          aria-label="Podejrzyj dzisiejszy plan"
+        <p
+          className="dashboard-today-adjustment"
+          data-tone={recommendation.tone}
+          data-adjusted={hasAdjustments}
+          aria-label={`Gotowość ${readinessLabel}, ${recommendation.score} na 100. ${adjustmentLabel}`}
         >
-          <strong>Dzisiejszy plan</strong>
-          <span>
-            <small>{count} {polishPlural(count, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}</small>
-            <ChevronRight size={18} aria-hidden="true" />
-          </span>
-        </button>
+          <span>Gotowość {readinessLabel}</span>
+          <strong>{adjustmentLabel}</strong>
+        </p>
 
-        <button
-          type="button"
-          className="dashboard-today-start"
-          disabled={launching}
-          aria-busy={launching || undefined}
-          aria-describedby={describedBy}
-          onClick={handleStart}
-        >
-          {launching ? 'Uruchamiam…' : 'Rozpocznij'}
-        </button>
+        <div className="dashboard-today-actions">
+          <button
+            type="button"
+            className="dashboard-today-start"
+            disabled={launching}
+            aria-busy={launching || undefined}
+            aria-describedby={describedBy}
+            onClick={handleStart}
+          >
+            {launching ? 'Uruchamiam…' : `Rozpocznij ${recommendation.dayName}`}
+          </button>
+
+          <button
+            type="button"
+            className="dashboard-today-trigger"
+            popoverTarget={popoverId}
+            aria-label="Zobacz ćwiczenia w planie"
+          >
+            <span>Zobacz ćwiczenia</span>
+            <ChevronRight size={18} aria-hidden="true" />
+          </button>
+        </div>
       </section>
 
       <article

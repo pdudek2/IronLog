@@ -9,6 +9,7 @@ import WorkoutPage from '../WorkoutPage'
 import { WorkoutClosureError } from '../../lib/workoutClosureService'
 
 const mocks = vi.hoisted(() => ({
+  addExercise: vi.fn(),
   activeSessionSyncStatus: 'idle',
   active: null as ActiveWorkout | null,
   beginClosure: vi.fn(),
@@ -18,12 +19,15 @@ const mocks = vi.hoisted(() => ({
   discardWorkoutLifecycle: vi.fn(),
   discardStaleSession: vi.fn(),
   finalizeWorkout: vi.fn(),
+  getRecentWorkouts: vi.fn(),
   markClosureError: vi.fn(),
   markClosureUnconfirmed: vi.fn(),
   prepareFinishClosure: vi.fn(),
   ready: true,
   reloadAuthentication: vi.fn(),
   reloadCurrentSession: vi.fn(),
+  setLabel: vi.fn(),
+  startNewSession: vi.fn(),
   staleSession: { ageLabel: '2 dni' } as { ageLabel: string } | null,
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
@@ -45,6 +49,7 @@ vi.mock('../../hooks/useActiveSession', () => ({
     reloadAuthentication: mocks.reloadAuthentication,
     reloadCurrentSession: mocks.reloadCurrentSession,
     retryActiveSessionSync: vi.fn(),
+    startNewSession: mocks.startNewSession,
     staleSession: mocks.staleSession,
   }),
 }))
@@ -86,8 +91,8 @@ vi.mock('../../store/workoutStore', () => {
   const useWorkoutStore = Object.assign(
     () => ({
       active: mocks.active,
-      addExercise: vi.fn(),
-      setLabel: vi.fn(),
+      addExercise: mocks.addExercise,
+      setLabel: mocks.setLabel,
       startWorkout: vi.fn(),
     }),
     { getState: () => ({ active: mocks.active }) },
@@ -96,7 +101,7 @@ vi.mock('../../store/workoutStore', () => {
 })
 
 vi.mock('../../lib/workoutService', () => ({
-  getRecentWorkouts: () => new Promise(() => undefined),
+  getRecentWorkouts: mocks.getRecentWorkouts,
 }))
 
 vi.mock('../../lib/userExercisesService', () => ({
@@ -150,6 +155,7 @@ function renderStaleSessionPage() {
 
 describe('WorkoutPage stale-session feedback', () => {
   beforeEach(() => {
+    mocks.addExercise.mockReset()
     mocks.activeSessionSyncStatus = 'idle'
     mocks.active = null
     mocks.beginClosure.mockReset()
@@ -159,15 +165,70 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.discardWorkoutLifecycle.mockReset()
     mocks.discardStaleSession.mockReset()
     mocks.finalizeWorkout.mockReset()
+    mocks.getRecentWorkouts.mockReset().mockImplementation(() => new Promise(() => undefined))
     mocks.markClosureError.mockReset()
     mocks.markClosureUnconfirmed.mockReset()
     mocks.prepareFinishClosure.mockReset()
     mocks.ready = true
     mocks.reloadAuthentication.mockReset()
     mocks.reloadCurrentSession.mockReset()
+    mocks.setLabel.mockReset()
+    mocks.startNewSession.mockReset()
     mocks.staleSession = { ageLabel: '2 dni' }
     mocks.toastError.mockReset()
     mocks.toastSuccess.mockReset()
+  })
+
+  it('presents authoritative absence as a direct new-workout entry', () => {
+    mocks.staleSession = null
+    renderStaleSessionPage()
+
+    expect(screen.getByRole('heading', { name: 'Nowy trening' })).toBeInTheDocument()
+    expect(screen.queryByText('Nie ma aktywnej sesji')).not.toBeInTheDocument()
+    expect(screen.queryByText(/zakończona albo usunięta na innym urządzeniu/i)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rozpocznij nową sesję' }))
+    expect(mocks.startNewSession).toHaveBeenCalledOnce()
+  })
+
+  it('keeps recent exercises as flat source-aware add actions', async () => {
+    mocks.active = {
+      sessionId: 'session-empty',
+      startedAt: Date.now(),
+      templateId: null,
+      label: '',
+      exercises: [],
+    }
+    mocks.staleSession = null
+    mocks.getRecentWorkouts.mockResolvedValue([
+      {
+        exercises: [
+          {
+            exerciseId: 'bench-press',
+            exerciseSource: 'global',
+            name: 'Bench Press',
+            sets: [],
+          },
+          {
+            exerciseId: 'custom-row',
+            exerciseSource: 'user',
+            name: 'Wiosłowanie na wyciągu',
+            sets: [],
+          },
+        ],
+      },
+    ])
+    renderStaleSessionPage()
+
+    expect(await screen.findByRole('heading', { name: 'Ostatnio używane' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Dodaj ćwiczenie' })).toHaveLength(1)
+    expect(screen.queryByText('Szybki start')).not.toBeInTheDocument()
+    expect(screen.queryByText('Dodaj pierwszy ruch')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Wybierz ćwiczenie, wpisz pierwszą serię/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Użyte .* w ostatnich sesjach/)).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /Wiosłowanie na wyciągu/ }))
+    expect(mocks.addExercise).toHaveBeenCalledWith('custom-row', 'Wiosłowanie na wyciągu', 'user')
   })
 
   it('offers a safe retry instead of unlocking an unconfirmed session', () => {

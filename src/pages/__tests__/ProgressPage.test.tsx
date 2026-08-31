@@ -176,13 +176,13 @@ describe('ProgressPage', () => {
     })
 
     await waitFor(() => expect(initialPage).toHaveAttribute('aria-busy', 'false'))
-    expect(screen.getByText(/2 sesje ·/)).toBeInTheDocument()
+    expect(screen.getByText('2 sesje w zakresie')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '30 dni' }))
 
     expect(screen.getByTestId('progress-page')).toBe(initialPage)
     expect(initialPage).toHaveAttribute('aria-busy', 'false')
-    expect(screen.getByText(/1 sesja ·/)).toBeInTheDocument()
+    expect(screen.getByText('1 sesja w zakresie')).toBeInTheDocument()
     expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
   })
 
@@ -236,7 +236,46 @@ describe('ProgressPage', () => {
     const ledger = screen.getByLabelText('Pozostałe rekordy')
     expect(featured.querySelectorAll('.progress-record-feature')).toHaveLength(1)
     expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: /Pokaż wszystkie/i })).not.toBeInTheDocument()
     expect(screen.queryByText('PR', { exact: true })).not.toBeInTheDocument()
+  })
+
+  it('shows only five remaining records by default and toggles the full list accessibly', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      records: [
+        record('record-1', { exerciseName: 'Wyciskanie' }),
+        record('record-2', { exerciseName: 'Przysiad' }),
+        record('record-3', { exerciseName: 'Martwy ciąg' }),
+        record('record-4', { exerciseName: 'Wiosłowanie' }),
+        record('record-5', { exerciseName: 'OHP' }),
+        record('record-6', { exerciseName: 'Podciąganie' }),
+        record('record-7', { exerciseName: 'Hip thrust' }),
+      ],
+    }))
+
+    render(<ProgressPage />)
+
+    const ledger = await screen.findByLabelText('Pozostałe rekordy')
+    const toggle = screen.getByRole('button', { name: 'Pokaż wszystkie (6)' })
+
+    expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(5)
+    expect(within(ledger).queryByText('Hip thrust')).not.toBeInTheDocument()
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    expect(toggle).toHaveAttribute('aria-controls', 'progress-remaining-records')
+
+    fireEvent.click(toggle)
+
+    const expandedLedger = screen.getByLabelText('Pozostałe rekordy')
+    expect(expandedLedger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(6)
+    expect(within(expandedLedger).getByText('Hip thrust')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pokaż mniej' })).toHaveAttribute('aria-expanded', 'true')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż mniej' }))
+
+    const collapsedLedger = screen.getByLabelText('Pozostałe rekordy')
+    expect(collapsedLedger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(5)
+    expect(within(collapsedLedger).queryByText('Hip thrust')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Pokaż wszystkie (6)' })).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('shows the hard error only when both datasets fail with no previous snapshot', async () => {
@@ -376,7 +415,7 @@ describe('ProgressPage', () => {
     expect(recordsSection).not.toBeNull()
     expect(within(recordsSection!).getByText('Martwy ciąg po odświeżeniu')).toBeInTheDocument()
     expect(screen.getByRole('img', { name: /Wolumen treningowy/ })).toBeInTheDocument()
-    expect(screen.getByText(/1 sesja ·/)).toBeInTheDocument()
+    expect(screen.getByText('1 sesja w zakresie')).toBeInTheDocument()
     expect(screen.queryByText('Brak treningów w wybranym zakresie.')).not.toBeInTheDocument()
   })
 
@@ -443,7 +482,7 @@ describe('ProgressPage', () => {
     expect(screen.getByText('Ostatnio 60 kg')).toBeInTheDocument()
   })
 
-  it('disambiguates only colliding strength names by source in the selector and insight', async () => {
+  it('disambiguates colliding strength names in the selector without repeating the selection in the insight', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [
         session('global-1', 4, { bestSetWeight: 70 }),
@@ -472,7 +511,8 @@ describe('ProgressPage', () => {
     fireEvent.change(selector, { target: { value: 'user:bench' } })
 
     const insight = screen.getByLabelText('Trend wybranego ćwiczenia')
-    expect(within(insight).getByText('Wyciskanie sztangi · moje')).toBeInTheDocument()
+    expect(within(insight).queryByText('Wyciskanie sztangi · moje')).not.toBeInTheDocument()
+    expect(within(insight).getByText('Ostatnio 60 kg')).toBeInTheDocument()
     expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'user:bench')
   })
 

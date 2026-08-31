@@ -92,7 +92,7 @@ it('keeps sessions and records visible while user exercise metadata is retryable
 
   expect(await screen.findByRole('heading', { name: 'Wiosłowanie własne' })).toBeInTheDocument()
   expect(screen.getByText('Dzień siły')).toBeInTheDocument()
-  expect(screen.getByText('Rekord')).toBeInTheDocument()
+  expect(screen.getByText('Ciężar max')).toBeInTheDocument()
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Nie udało się wczytać nazwy i kategorii tego ćwiczenia. Historia i rekordy nadal są dostępne.',
   )
@@ -133,9 +133,28 @@ it('labels the capped session slice separately from the all-time session count',
 
   render(<ExerciseDetailPage />)
 
-  expect(await screen.findByText(/10 ostatnich sesji/)).toBeInTheDocument()
-  expect(screen.queryByText(/sesji w historii/)).not.toBeInTheDocument()
-  expect(screen.getByText('Sesje').parentElement).toHaveTextContent('14')
+  expect(await screen.findByText('14 sesji łącznie · 10 ostatnich poniżej')).toBeInTheDocument()
+  expect(screen.queryByText('Łącznie')).not.toBeInTheDocument()
+})
+
+it('uses the record total when recent session rows are unavailable', async () => {
+  mocks.getUserExercises.mockResolvedValue([])
+  mocks.getExerciseSessions.mockResolvedValue([])
+  mocks.getExerciseRecord.mockResolvedValue({
+    exerciseId: 'custom-row',
+    exerciseName: 'Archiwalne wiosłowanie',
+    maxWeight: 95,
+    maxReps: 10,
+    totalSessions: 4,
+    bestVolume: 2_100,
+    lastPerformedAt: Date.now() - 86_400_000,
+  })
+
+  render(<ExerciseDetailPage />)
+
+  expect(await screen.findByText('4 sesje łącznie')).toBeInTheDocument()
+  expect(screen.queryByText(/Brak historii/)).not.toBeInTheDocument()
+  expect(screen.getByText('Ciężar max')).toBeInTheDocument()
 })
 
 it('shows volume metrics and chronological bar labels without hover', async () => {
@@ -202,6 +221,36 @@ it('shows volume metrics and chronological bar labels without hover', async () =
   expect(sessions[2]).toHaveAccessibleName(/900 kg/)
 })
 
+it('collapses the latest and maximum volume when they are the same fact', async () => {
+  mocks.getUserExercises.mockResolvedValue([{
+    id: 'custom-row',
+    name: 'Wiosłowanie własne',
+    category: 'back',
+    equipment: 'cable',
+    muscles: ['back'],
+  }])
+  mocks.getExerciseSessions.mockResolvedValue([{
+    id: 'session-latest',
+    workoutId: 'workout-latest',
+    startedAt: Date.UTC(2026, 7, 15),
+    label: null,
+    totalSets: 3,
+    totalReps: 12,
+    totalVolume: 1_200,
+    bestSetWeight: 100,
+    bestSetReps: 4,
+    sets: [{ weight: 100, reps: 4 }],
+  }])
+  mocks.getExerciseRecord.mockResolvedValue(null)
+
+  render(<ExerciseDetailPage />)
+
+  expect(await screen.findByText('Ostatnio · maksimum')).toBeInTheDocument()
+  expect(screen.getByRole('list', {
+    name: 'Wolumen ostatnich 1 sesji. Ostatnio i maksimum 1.2k kg.',
+  })).toBeInTheDocument()
+})
+
 it('shows a not-found state for an unknown global exercise without loading history', async () => {
   mocks.params.source = 'global'
   mocks.params.id = 'does-not-exist'
@@ -248,7 +297,7 @@ it('keeps deleted user exercises readable when materialized history remains', as
   expect(screen.getByText('Dzień siły')).toBeInTheDocument()
 })
 
-it('marks workout launch from exercise detail as an explicit start', async () => {
+it('does not repeat the global workout start action in an empty exercise state', async () => {
   mocks.getUserExercises.mockResolvedValue([{
     id: 'custom-row',
     name: 'Wiosłowanie własne',
@@ -261,8 +310,7 @@ it('marks workout launch from exercise detail as an explicit start', async () =>
 
   render(<ExerciseDetailPage />)
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Rozpocznij trening' }))
-  expect(mocks.navigate).toHaveBeenCalledWith('/workout/new', {
-    state: { startNew: true },
-  })
+  expect(await screen.findByText(/Brak historii/)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Rozpocznij trening' })).not.toBeInTheDocument()
+  expect(mocks.navigate).not.toHaveBeenCalled()
 })

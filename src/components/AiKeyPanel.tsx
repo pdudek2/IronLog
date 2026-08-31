@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { Eye, EyeOff, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button, Input } from './ui'
 import {
@@ -17,11 +17,6 @@ interface AiKeyPanelProps {
   collapsed?: boolean
   onExpand?: () => void
   onCollapse?: () => void
-}
-
-function maskKey(key: string): string {
-  if (key.length <= 10) return key
-  return `${key.slice(0, 7)}...${key.slice(-4)}`
 }
 
 function getAiErrorCode(error: unknown): string | undefined {
@@ -53,11 +48,7 @@ export default function AiKeyPanel({
 
   const hasSavedKey = savedKey.length > 0
   const keyRejected = modelsError.code === 'invalid-key'
-  const keyVerified = hasSavedKey && !keyRejected
-
-  const savedPreview = useMemo(() => (
-    hasSavedKey ? maskKey(savedKey) : ''
-  ), [hasSavedKey, savedKey])
+  const needsAttention = !hasSavedKey || keyRejected || Boolean(modelsError.message)
 
   useEffect(() => {
     if (!savedKey) return
@@ -138,35 +129,19 @@ export default function AiKeyPanel({
       <section id={id} className="ai-key-panel ai-key-panel--collapsed">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="eyebrow" style={{ color: 'var(--accent)' }}>
-                Konfiguracja
-              </p>
-              <span
-                className="rounded-[var(--radius-pill)] px-2.5 py-1 text-xs font-semibold"
-                style={{
-                  background: keyVerified ? 'var(--success-soft)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${keyVerified ? 'rgba(143,184,160,0.18)' : 'var(--border)'}`,
-                  color: keyVerified ? 'var(--success)' : 'var(--muted)',
-                }}
-              >
-                {keyVerified ? 'Klucz gotowy' : 'Wymaga uwagi'}
-              </span>
-            </div>
-
-            <h2 className="mt-2 text-lg font-semibold text-white">
-              Claude API key
-            </h2>
+            <h2 className="text-lg font-semibold text-white">Klucz Claude</h2>
             <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
               {hasSavedKey
-                ? `Aktywny klucz ${savedPreview}${selectedModel ? ` · ${selectedModel}` : ''}`
-                : 'Dodaj lokalny klucz, żeby odblokować czat i generator planu.'}
+                ? needsAttention
+                  ? 'Wymaga sprawdzenia.'
+                  : 'Zapisany lokalnie w tej przeglądarce.'
+                : 'Nie zapisano lokalnie.'}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <Button type="button" variant="ghost" onClick={onExpand}>
-              Pokaż szczegóły
+              Ustawienia
             </Button>
           </div>
         </div>
@@ -178,42 +153,16 @@ export default function AiKeyPanel({
     <section id={id} className="ai-key-panel">
       <div className="ai-key-panel-head">
         <div className="min-w-0">
-          <p className="eyebrow" style={{ color: 'var(--accent)' }}>
-            Konfiguracja
-          </p>
-          <h2 className="mt-2 text-xl font-bold text-white">
-            Claude API key
-          </h2>
+          <h2 className="text-xl font-bold text-white">Klucz Claude</h2>
           <p className="ai-key-panel-description mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Klucz zostaje w tej przeglądarce. Odblokowuje rozmowę i generator planu.
+            Zapis lokalny w tej przeglądarce. Odblokowuje rozmowę i generator planu.
           </p>
         </div>
 
         <div className="ai-key-panel-actions">
-          <span
-            data-state={
-              keyRejected && hasSavedKey
-                ? 'error'
-                : modelsError.message
-                  ? 'warning'
-                  : keyVerified
-                    ? 'ready'
-                    : 'empty'
-            }
-          >
-            {!hasSavedKey
-              ? 'Brak klucza'
-              : loadingModels
-                ? 'Weryfikacja…'
-                : keyRejected
-                  ? 'Klucz odrzucony'
-                  : modelsError.message
-                    ? 'Modele niedostępne'
-                    : 'Klucz gotowy'}
-          </span>
-          {onCollapse && hasSavedKey && (
+          {onCollapse && (
             <Button type="button" variant="ghost" onClick={onCollapse}>
-              Zwiń
+              {hasSavedKey ? 'Zwiń' : 'Anuluj'}
             </Button>
           )}
         </div>

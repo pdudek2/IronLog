@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import LoginPage from '../LoginPage'
+import RegisterPage from '../RegisterPage'
 
 const mocks = vi.hoisted(() => ({
   getAuthErrorMessage: vi.fn(),
@@ -68,5 +69,25 @@ describe('authentication page contracts', () => {
     expect(screen.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true')
     expect(screen.getByLabelText('Hasło')).not.toHaveAttribute('aria-invalid')
     expect(screen.getAllByRole('alert')).toHaveLength(1)
+  })
+
+  it('keeps account switching as one clear secondary action', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <LoginPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Załóż konto' })).toHaveAttribute('href', '/register')
+    expect(screen.queryByText('Nie masz konta?')).not.toBeInTheDocument()
+
+    rerender(
+      <MemoryRouter>
+        <RegisterPage />
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByRole('link', { name: 'Wróć do logowania' })).toHaveAttribute('href', '/login')
+    expect(screen.queryByText('Masz konto?')).not.toBeInTheDocument()
   })
 })

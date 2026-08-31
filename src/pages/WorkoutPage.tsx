@@ -783,22 +783,22 @@ export default function WorkoutPage() {
 
   if (!active) {
     return (
-      <div style={{ maxWidth: '32rem' }}>
-        <div className="surface-panel rounded-[var(--radius-xl)] px-6 py-10 text-center">
-          <p className="mb-2 text-sm font-semibold text-white">Nie ma aktywnej sesji</p>
-          <p className="mb-6 text-sm" style={{ color: 'var(--muted)' }}>
-            Poprzednia sesja mogła zostać zakończona albo usunięta na innym urządzeniu.
-          </p>
-          <motion.button
-            onClick={() => { void startNewSession() }}
-            className="rounded-2xl px-6 py-3 text-sm font-semibold"
-            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-            whileTap={{ scale: 0.97 }}
-          >
-            Rozpocznij nową sesję
-          </motion.button>
-        </div>
-      </div>
+      <section
+        className="workout-session-entry"
+        style={{ maxWidth: '32rem' }}
+        aria-labelledby="workout-session-entry-title"
+      >
+        <h1 id="workout-session-entry-title" className="section-title">Nowy trening</h1>
+        <motion.button
+          type="button"
+          onClick={() => { void startNewSession() }}
+          className="workout-primary-action"
+          style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+          whileTap={{ scale: 0.97 }}
+        >
+          Rozpocznij nową sesję
+        </motion.button>
+      </section>
     )
   }
 
@@ -1144,10 +1144,7 @@ export default function WorkoutPage() {
           <div className="flex flex-col gap-4">
             {active.exercises.length === 0 && !keepExerciseStackMounted && (
               <>
-                <section className="workout-empty-state" aria-labelledby="workout-empty-title">
-                  <p className="eyebrow" style={{ color: 'var(--accent)' }}>Start sesji</p>
-                  <h3 id="workout-empty-title">Dodaj pierwszy ruch</h3>
-                  <p>Wybierz ćwiczenie, wpisz pierwszą serię i prowadź sesję z jednego widoku.</p>
+                <section className="workout-empty-state" aria-label="Pusta rozpiska">
                   <motion.button
                     type="button"
                     onClick={() => setShowPicker(true)}
@@ -1160,12 +1157,11 @@ export default function WorkoutPage() {
                   </motion.button>
                 </section>
                 {quickPicks.length > 0 && (
-                  <div>
-                    <p className="eyebrow mb-3" style={{ color: 'var(--muted)' }}>Szybki start</p>
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      {quickPicks.map(({ id, name, source, count }) => {
+                  <section className="workout-quick-start" aria-labelledby="workout-quick-start-title">
+                    <h3 id="workout-quick-start-title">Ostatnio używane</h3>
+                    <div className="workout-quick-pick-list">
+                      {quickPicks.map(({ id, name, source }) => {
                         const meta = exerciseCatalog.get(id)
-                        const exerciseAccent = EXERCISE_CATEGORY_COLORS[meta?.category ?? ''] ?? 'var(--accent)'
                         return (
                           <motion.button
                             key={`${source}:${id}`}
@@ -1174,25 +1170,20 @@ export default function WorkoutPage() {
                             className="workout-quick-pick"
                             whileTap={{ scale: 0.98 }}
                           >
-                            <div className="flex items-center justify-between gap-2 mb-1.5">
-                              <p className="text-sm font-semibold text-white truncate">{name}</p>
+                            <span className="workout-quick-pick-copy">
+                              <strong className="workout-quick-pick-name">{name}</strong>
                               {meta?.category && (
-                                <span
-                                  className="flex-none text-xs font-semibold uppercase px-1.5 py-0.5 rounded-full"
-                                  style={{ background: `${exerciseAccent}18`, color: exerciseAccent }}
-                                >
+                                <span className="workout-quick-pick-meta">
                                   {EXERCISE_CATEGORY_LABELS[meta.category] ?? meta.category}
                                 </span>
                               )}
-                            </div>
-                            <p className="text-xs" style={{ color: 'var(--muted)' }}>
-                              Użyte {count}× w ostatnich sesjach
-                            </p>
+                            </span>
+                            <span className="workout-quick-pick-action">Dodaj</span>
                           </motion.button>
                         )
                       })}
                     </div>
-                  </div>
+                  </section>
                 )}
               </>
             )}

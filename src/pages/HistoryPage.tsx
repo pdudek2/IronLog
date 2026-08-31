@@ -32,11 +32,9 @@ function formatCompactVolume(volume: number): string {
 }
 
 function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('pl-PL', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  })
+  const date = new Date(ts)
+  const weekdays = ['niedz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.']
+  return `${weekdays[date.getDay()]}, ${date.getDate()}`
 }
 
 function formatDuration(start: number, end: number): string {
@@ -45,6 +43,15 @@ function formatDuration(start: number, end: number): string {
   if (minutes < 1) return '< 1 min'
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
+}
+
+function formatExercisePreview(exerciseNames: string[]): string {
+  if (exerciseNames.length === 0) return 'brak ćwiczeń'
+
+  const visibleNames = exerciseNames.slice(0, 3)
+  const hiddenCount = exerciseNames.length - visibleNames.length
+
+  return `${visibleNames.join(' · ')}${hiddenCount > 0 ? ` · +${hiddenCount}` : ''}`
 }
 
 interface DerivedWorkout {
@@ -396,59 +403,33 @@ export default function HistoryPage() {
                     </span>
                   </div>
                   <div className="history-workout-list">
-                    {group.workouts.map(({ workout, totalSets, totalVolume, categories, exerciseNames }) => (
-                      <button
-                        key={workout.id}
-                        type="button"
-                        onClick={() => navigate(`/workout/${workout.id}`)}
-                        className="history-workout-row"
-                        style={{ '--workout-accent': EXERCISE_CATEGORY_COLORS[Array.from(categories)[0] ?? ''] ?? 'var(--accent)' } as CSSProperties}
-                      >
-                        <div className="history-workout-main">
-                          <div className="min-w-0">
-                            <div className="history-workout-meta">
-                              <span>{formatDate(workout.startedAt)}</span>
-                              <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
-                              <span className="history-inline-stat">{formatCompactVolume(totalVolume)}</span>
-                              <span className="history-inline-stat">{totalSets} serii</span>
-                            </div>
-                            <h3>{workout.label?.trim() || 'Sesja treningowa'}</h3>
-                            <p>{exerciseNames.length > 0 ? exerciseNames.join(' · ') : 'brak ćwiczeń'}</p>
-                            {Array.from(categories).length > 0 && (
-                              <div className="history-category-row" aria-label="Kategorie ćwiczeń">
-                                {Array.from(categories).slice(0, 3).map((cat) => {
-                                  const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
-                                  return (
-                                    <span
-                                      key={cat}
-                                      className="history-category-pill"
-                                      style={{ '--category-accent': color } as CSSProperties}
-                                    >
-                                      {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
-                                    </span>
-                                  )
-                                })}
+                    {group.workouts.map(({ workout, totalSets, totalVolume, categories, exerciseNames }) => {
+                      const accentCategory = categories.values().next().value ?? ''
+
+                      return (
+                        <button
+                          key={workout.id}
+                          type="button"
+                          onClick={() => navigate(`/workout/${workout.id}`)}
+                          className="history-workout-row"
+                          style={{ '--workout-accent': EXERCISE_CATEGORY_COLORS[accentCategory] ?? 'var(--accent)' } as CSSProperties}
+                        >
+                          <div className="history-workout-main">
+                            <div className="min-w-0">
+                              <div className="history-workout-meta">
+                                <span>{formatDate(workout.startedAt)}</span>
+                                <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
+                                <span className="history-inline-stat">{formatCompactVolume(totalVolume)}</span>
+                                <span className="history-inline-stat">{totalSets} serii</span>
                               </div>
-                            )}
+                              <h3>{workout.label?.trim() || 'Sesja treningowa'}</h3>
+                              <p>{formatExercisePreview(exerciseNames)}</p>
+                            </div>
+                            <ChevronRight size={18} className="history-workout-arrow" aria-hidden="true" />
                           </div>
-                          <ChevronRight size={18} className="history-workout-arrow" aria-hidden="true" />
-                        </div>
-                        <div className="history-workout-metrics puls-ledger" aria-label="Statystyki treningu">
-                          <div>
-                            <span>Ćwiczenia</span>
-                            <strong>{workout.exercises.length}</strong>
-                          </div>
-                          <div>
-                            <span>Serie</span>
-                            <strong>{totalSets}</strong>
-                          </div>
-                          <div>
-                            <span>Objętość</span>
-                            <strong>{formatCompactVolume(totalVolume)}</strong>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      )
+                    })}
                   </div>
                 </section>
               )

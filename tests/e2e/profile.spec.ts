@@ -77,7 +77,7 @@ test.describe('Profile hydration and save', () => {
     await page.goto('/profile')
     await expectAppReady(page, '/profile')
 
-    const slider = page.getByRole('slider', { name: /Cel tygodniowy/ })
+    const slider = page.getByRole('slider', { name: 'Treningi w tygodniu' })
     const unitSwitch = page.locator('.profile-unit-grid')
 
     await expect(slider).toHaveClass(/readiness-slider/)

@@ -28,12 +28,9 @@ export default function RegisterPage() {
     <AuthShell
       title="Załóż konto"
       subtitle={(
-        <>
-          Masz konto?{' '}
-          <Link to="/login" className="auth-account-link transition-opacity hover:opacity-80">
-            Zaloguj się
-          </Link>
-        </>
+        <Link to="/login" className="auth-account-link transition-opacity hover:opacity-80">
+          Wróć do logowania
+        </Link>
       )}
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-describedby={error ? 'register-form-error' : undefined}>

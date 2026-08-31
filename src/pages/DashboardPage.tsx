@@ -472,6 +472,12 @@ export default function DashboardPage() {
   const templates = templatesState.status === 'success' ? templatesState.data : []
   const recentTemplates = templates.slice(0, 3)
   const quickTemplate = recentTemplates[0] ?? null
+  const quickTemplateDayIndex = quickTemplate?.days.findIndex((day) => day.exercises.length > 0) ?? -1
+  const quickTemplateDay = quickTemplateDayIndex >= 0
+    ? quickTemplate?.days[quickTemplateDayIndex] ?? null
+    : null
+  const quickTemplateExerciseCount = quickTemplateDay?.exercises.length ?? 0
+  const secondaryTemplates = hasActiveWork ? recentTemplates : recentTemplates.slice(1)
   const quickTemplateRequestKey = quickTemplate
     ? `dashboard:${quickTemplate.id}:quick`
     : null
@@ -486,11 +492,15 @@ export default function DashboardPage() {
     readinessResource.uid === user?.uid
       ? readinessResource.state
       : { status: 'loading' }
-  const quickTemplateHasExercises = Boolean(quickTemplate?.days[0]?.exercises.length)
+  const quickTemplateHasExercises = Boolean(quickTemplateDay)
   const showTodayRecommendation = !hasActiveWork
     && quickTemplateHasExercises
     && readinessState.status === 'success'
     && readinessState.data !== null
+  const showPlansStrip = templatesState.status !== 'success'
+    || recentTemplates.length === 0
+    || secondaryTemplates.length > 0
+    || Boolean(quickTemplate && !quickTemplateHasExercises)
 
   function handleRetryTemplates() {
     if (!user) return
@@ -547,7 +557,7 @@ export default function DashboardPage() {
       ].filter(Boolean).join(' • ')
     : latestWorkout
       ? `Ostatni trening: ${latestWorkout.label ?? workoutTitle(latestWorkout)} • ${formatDate(latestWorkout.startedAt)} • ${formatDuration(latestWorkout.startedAt, latestWorkout.finishedAt)}`
-      : 'Brak zapisanych treningów.'
+      : null
   const weeklySummaryRows = [
     {
       label: 'Cel tygodnia',
@@ -591,41 +601,59 @@ export default function DashboardPage() {
             <h1 className="dashboard-home-title">
               {profile?.displayName ?? 'treningowcu'}
             </h1>
-            <p className="dashboard-home-copyline">{supportLine}</p>
+            {supportLine && <p className="dashboard-home-copyline">{supportLine}</p>}
 
             <div className="dashboard-home-action-stack">
               <div className="dashboard-home-actions">
-                <motion.button
-                  type="button"
-                  onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
-                  disabled={openingWorkout}
-                  className="hero-editorial-cta"
-                  whileTap={{ scale: 0.97 }}
-                >
-                  {hasActiveWork ? <Play size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
-                  {openingWorkout
-                    ? (hasActiveWork ? 'Otwieram sesję…' : 'Otwieram trening…')
-                    : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
-                </motion.button>
-
-                {quickTemplate && quickTemplateRequestKey && (
+                {!hasActiveWork && quickTemplate && quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
                   <motion.button
                     type="button"
-                    onClick={() => { void requestTemplateLaunch(quickTemplate, 0, quickTemplateRequestKey) }}
+                    onClick={() => { void requestTemplateLaunch(quickTemplate, quickTemplateDayIndex, quickTemplateRequestKey) }}
                     disabled={launchingTemplateId !== null}
                     aria-busy={quickTemplateLaunchOperation?.status === 'pending' ? 'true' : undefined}
                     aria-describedby={quickTemplateLaunchOperation?.status === 'error'
                       ? quickTemplateLaunchErrorId
                       : undefined}
-                    className="dashboard-quick-plan-button"
+                    aria-label={`Rozpocznij ${quickTemplateDay.name} z planu ${quickTemplate.name}`}
+                    className="dashboard-planned-start"
                     whileTap={{ scale: 0.97 }}
                   >
-                    <Play size={16} strokeWidth={2.3} />
-                    <span>
-                      <small>Szybki start z planu</small>
-                      <strong>{quickTemplate.name}</strong>
+                    <span className="dashboard-planned-start-copy">
+                      <small>Z planu · {quickTemplate.name}</small>
+                      <strong>{quickTemplateDay.name}</strong>
+                      <span>
+                        {quickTemplateExerciseCount} {polishPlural(quickTemplateExerciseCount, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}
+                      </span>
+                    </span>
+                    <span className="dashboard-planned-start-affordance" aria-hidden="true">
+                      Start
+                      <Play size={15} strokeWidth={2.3} />
                     </span>
                   </motion.button>
+                ) : (
+                  <motion.button
+                    type="button"
+                    onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                    disabled={openingWorkout}
+                    className="hero-editorial-cta"
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    {hasActiveWork ? <Play size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
+                    {openingWorkout
+                      ? (hasActiveWork ? 'Otwieram sesję…' : 'Otwieram trening…')
+                      : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
+                  </motion.button>
+                )}
+
+                {!hasActiveWork && quickTemplateHasExercises && (
+                  <button
+                    type="button"
+                    onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                    disabled={openingWorkout}
+                    className="dashboard-ad-hoc-action"
+                  >
+                    {openingWorkout ? 'Otwieram trening…' : 'Trening bez planu'}
+                  </button>
                 )}
               </div>
 
@@ -644,55 +672,57 @@ export default function DashboardPage() {
             </div>
           </motion.div>
 
-          <motion.aside
-            className="dashboard-home-panel"
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.08, duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
-          >
-            <ReadinessWidget
-              onStateChange={handleReadinessStateChange}
-              renderSaved={(entry) => (
-                !hasActiveWork && quickTemplate && quickTemplateHasExercises && quickTemplateRequestKey
-                  ? (
-                      <NextSessionCard
-                        template={quickTemplate}
-                        dayIndex={0}
-                        readiness={entry}
-                        workouts={workouts}
-                        units={profile?.units ?? 'kg'}
-                        launching={launchingTemplateId === quickTemplate.id}
-                        describedBy={quickTemplateLaunchOperation?.status === 'error'
-                          ? quickTemplateLaunchErrorId
-                          : undefined}
-                        onStart={(overrides) => {
-                          void requestTemplateLaunch(
-                            quickTemplate,
-                            0,
-                            quickTemplateRequestKey,
-                            overrides,
-                          )
-                        }}
-                        onEdit={() => navigate(`/templates/${quickTemplate.id}/edit`)}
-                      />
-                    )
-                  : null
-              )}
-            />
-
-            {showTodayRecommendation
-              && quickTemplateLaunchOperation?.status === 'error'
-              && quickTemplateLaunchErrorId && (
-              <ActionFeedback
-                id={quickTemplateLaunchErrorId}
-                status="error"
-                message={quickTemplateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
-                onRetry={() => { void retryTemplateLaunch() }}
-                onDismiss={dismissTemplateLaunchError}
-                className="dashboard-quick-plan-feedback"
+          {!hasActiveWork && (
+            <motion.aside
+              className="dashboard-home-panel"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.08, duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
+            >
+              <ReadinessWidget
+                onStateChange={handleReadinessStateChange}
+                renderSaved={(entry) => (
+                  quickTemplate && quickTemplateHasExercises && quickTemplateRequestKey
+                    ? (
+                        <NextSessionCard
+                          template={quickTemplate}
+                          dayIndex={quickTemplateDayIndex}
+                          readiness={entry}
+                          workouts={workouts}
+                          units={profile?.units ?? 'kg'}
+                          launching={launchingTemplateId === quickTemplate.id}
+                          describedBy={quickTemplateLaunchOperation?.status === 'error'
+                            ? quickTemplateLaunchErrorId
+                            : undefined}
+                          onStart={(overrides) => {
+                            void requestTemplateLaunch(
+                              quickTemplate,
+                              quickTemplateDayIndex,
+                              quickTemplateRequestKey,
+                              overrides,
+                            )
+                          }}
+                          onEdit={() => navigate(`/templates/${quickTemplate.id}/edit`)}
+                        />
+                      )
+                    : null
+                )}
               />
-            )}
-          </motion.aside>
+
+              {showTodayRecommendation
+                && quickTemplateLaunchOperation?.status === 'error'
+                && quickTemplateLaunchErrorId && (
+                <ActionFeedback
+                  id={quickTemplateLaunchErrorId}
+                  status="error"
+                  message={quickTemplateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                  onRetry={() => { void retryTemplateLaunch() }}
+                  onDismiss={dismissTemplateLaunchError}
+                  className="dashboard-quick-plan-feedback"
+                />
+              )}
+            </motion.aside>
+          )}
         </section>
 
         <motion.div
@@ -722,7 +752,6 @@ export default function DashboardPage() {
                     <div className="dashboard-week-empty-summary">
                       <div>
                         <p className="stat-meta">Cel tygodnia</p>
-                        <p className="dashboard-week-empty-title">Zacznij pierwszy trening tygodnia</p>
                         <p className="dashboard-week-empty-copy">
                           {remainingWeeklySessions} {polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu.
                         </p>
@@ -738,12 +767,6 @@ export default function DashboardPage() {
                         </span>
                       ))}
                     </div>
-
-                    <p className="dashboard-week-empty-note">
-                      {workouts.length === 0
-                        ? 'Statystyki tygodnia pojawią się po pierwszym treningu.'
-                        : 'Brak zapisanych treningów w tym tygodniu.'}
-                    </p>
                   </div>
                 ) : (
                   <div className="dashboard-week-board">
@@ -815,10 +838,12 @@ export default function DashboardPage() {
               </motion.div>
             </section>
 
-            <section className="dashboard-plan-strip">
+            {showPlansStrip && <section className="dashboard-plan-strip">
               <div className="dashboard-section-head">
                 <div>
-                  <h2 className="section-title">Plany</h2>
+                  <h2 className="section-title">
+                    {recentTemplates.length === 0 ? 'Plany' : hasActiveWork ? 'Plany' : 'Inne plany'}
+                  </h2>
                 </div>
                 <motion.button
                   onClick={() => navigate('/templates')}
@@ -859,7 +884,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="dashboard-template-row">
-                  {recentTemplates.map((template) => {
+                  {secondaryTemplates.map((template) => {
                     const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
                     const requestKey = `dashboard:${template.id}:primary`
                     const templateLaunchOperation = launchOperation?.target.requestKey === requestKey
@@ -923,22 +948,26 @@ export default function DashboardPage() {
                   })}
                 </div>
               )}
-            </section>
+            </section>}
         </motion.div>
 
         <section className="dashboard-history-section">
           <div className="dashboard-section-head">
             <div>
-              <h2 className="section-title">Ostatnie treningi</h2>
+              <h2 className="section-title">
+                {recentWorkouts.length > 0 ? 'Ostatnie treningi' : 'Historia'}
+              </h2>
             </div>
-            <button
-              type="button"
-              onClick={() => navigate('/history')}
-              className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
-            >
-              Zobacz wszystkie
-              <ChevronRight size={15} strokeWidth={2.3} />
-            </button>
+            {recentWorkouts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => navigate('/history')}
+                className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
+              >
+                Zobacz wszystkie
+                <ChevronRight size={15} strokeWidth={2.3} />
+              </button>
+            )}
           </div>
 
           {orphanedDeleteOperation && (
@@ -954,27 +983,13 @@ export default function DashboardPage() {
             {recentWorkouts.length === 0 ? (
                   <motion.div
                     key="empty"
-                    className="dashboard-inline-state"
+                    className="dashboard-inline-state dashboard-inline-state--compact"
                     initial={false}
                     animate={{ opacity: 1 }}
                   >
-                    <div>
-                      <p className="font-semibold text-white mb-1">Brak treningów</p>
-                      <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        Po zapisaniu sesji pojawi się tutaj historia.
-                      </p>
-                    </div>
-                    <motion.button
-                      type="button"
-                      onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
-                      disabled={openingWorkout}
-                      className="dashboard-inline-primary"
-                      whileTap={{ scale: 0.96 }}
-                    >
-                      {openingWorkout
-                        ? (hasActiveWork ? 'Otwieram sesję…' : 'Otwieram trening…')
-                        : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
-                    </motion.button>
+                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                      Pierwszy zapisany trening pojawi się tutaj.
+                    </p>
                   </motion.div>
             ) : (
               <div className="dashboard-history-list">

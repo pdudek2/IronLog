@@ -42,7 +42,7 @@ test.describe('Protected application shell', () => {
       const bottomNav = document.querySelector('[aria-label="Nawigacja dolna"]')
         ?.getBoundingClientRect()
       return {
-        viewportWidth: window.innerWidth,
+        viewportWidth: document.documentElement.getBoundingClientRect().width,
         viewportHeight: window.innerHeight,
         documentWidth: document.documentElement.scrollWidth,
         documentHeight: document.documentElement.scrollHeight,

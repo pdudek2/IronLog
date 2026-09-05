@@ -99,6 +99,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
     const trimmed = name.trim()
     if (trimmed.length < 2) {
       setError({ message: 'Nazwa musi mieć co najmniej 2 znaki.', field: 'name' })
+      nameInputRef.current?.focus()
       return
     }
     setSaving(true)
@@ -189,6 +190,11 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
                 fontSize: '0.875rem',
               }}
             />
+            {error?.field === 'name' && (
+              <p id={errorId} role="alert" className="mt-2 text-xs" style={{ color: 'var(--danger)' }}>
+                {error.message}
+              </p>
+            )}
           </div>
 
           {/* Category */}
@@ -247,7 +253,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
             </div>
           </div>
 
-          {error && (
+          {error && error.field === null && (
             <p id={errorId} role="alert" className="text-xs" style={{ color: 'var(--danger)' }}>
               {error.message}
             </p>

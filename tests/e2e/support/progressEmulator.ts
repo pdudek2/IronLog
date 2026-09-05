@@ -35,12 +35,13 @@ async function progressUid(): Promise<string> {
   return (await getAuth(progressApp()).getUserByEmail(email)).uid
 }
 
-export async function seedProgressEmulatorState(): Promise<void> {
+export async function seedProgressEmulatorState(dateOffsetMs = 0): Promise<void> {
+  const sessionDates = SESSION_DATES.map((date) => date + dateOffsetMs)
   const uid = await progressUid()
   const database = getFirestore(progressApp())
   const batch = database.batch()
 
-  SESSION_DATES.forEach((finishedAt, index) => {
+  sessionDates.forEach((finishedAt, index) => {
     batch.set(database.doc(`exerciseSessions/${PREFIX}session-${index + 1}`), {
       userId: uid,
       workoutId: `${PREFIX}workout-${index + 1}`,
@@ -73,7 +74,7 @@ export async function seedProgressEmulatorState(): Promise<void> {
     workoutId: `${PREFIX}short-workout`,
     exerciseId: `${PREFIX}short`,
     exerciseSource: 'global',
-    finishedAt: SESSION_DATES[0],
+    finishedAt: sessionDates[0],
     totalVolume: 350,
     totalSets: 1,
     bestSetWeight: 70,
@@ -89,8 +90,8 @@ export async function seedProgressEmulatorState(): Promise<void> {
     maxWeight: 90,
     maxReps: 5,
     bestVolume: 450,
-    totalSessions: SESSION_DATES.length,
-    lastPerformedAt: SESSION_DATES[0],
+    totalSessions: sessionDates.length,
+    lastPerformedAt: sessionDates[0],
   })
 
   await batch.commit()
@@ -108,10 +109,16 @@ export async function cleanupProgressEmulatorState(): Promise<void> {
   await Promise.all(references.map((reference) => reference.delete()))
 }
 
-export async function seedExerciseDetailEmulatorState(): Promise<void> {
+export async function seedExerciseDetailEmulatorState(sessionCount = 3): Promise<void> {
   const uid = await progressUid()
   const database = getFirestore(progressApp())
   const batch = database.batch()
+
+  batch.set(database.doc(`records/${uid}_user_${PROGRESS_DETAIL_EXERCISE_ID}`), {
+    userId: uid, exerciseId: PROGRESS_DETAIL_EXERCISE_ID, exerciseSource: 'user',
+    exerciseName: 'Phase 7 Volume Detail', maxWeight: 140, maxReps: 5,
+    bestVolume: 700, totalSessions: sessionCount, lastPerformedAt: SESSION_DATES[0],
+  })
 
   batch.set(database.doc(`userExercises/${PROGRESS_DETAIL_EXERCISE_ID}`), {
     userId: uid,
@@ -121,8 +128,8 @@ export async function seedExerciseDetailEmulatorState(): Promise<void> {
     muscles: ['quadriceps'],
   })
 
-  SESSION_DATES.forEach((startedAt, index) => {
-    const totalVolume = DETAIL_VOLUMES[index]
+  Array.from({ length: sessionCount }, (_, index) => SESSION_DATES[0] - index * 7 * 86400000).forEach((startedAt, index) => {
+    const totalVolume = DETAIL_VOLUMES[index % DETAIL_VOLUMES.length]
     batch.set(database.doc(`exerciseSessions/${PREFIX}detail-session-${index + 1}`), {
       userId: uid,
       workoutId: `${PREFIX}detail-workout-${index + 1}`,
@@ -147,10 +154,12 @@ export async function seedExerciseDetailEmulatorState(): Promise<void> {
 }
 
 export async function cleanupExerciseDetailEmulatorState(): Promise<void> {
+  const uid = await progressUid()
   const database = getFirestore(progressApp())
   const references = [
+    database.doc(`records/${uid}_user_${PROGRESS_DETAIL_EXERCISE_ID}`),
     database.doc(`userExercises/${PROGRESS_DETAIL_EXERCISE_ID}`),
-    ...SESSION_DATES.map((_, index) => database.doc(`exerciseSessions/${PREFIX}detail-session-${index + 1}`)),
+    ...Array.from({ length: 10 }, (_, index) => database.doc(`exerciseSessions/${PREFIX}detail-session-${index + 1}`)),
   ]
   await Promise.all(references.map((reference) => reference.delete()))
 }

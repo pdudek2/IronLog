@@ -96,7 +96,6 @@ export default function ExercisePicker({
             <Search size={16} aria-hidden="true" />
             <input
               ref={searchInputRef}
-              autoFocus
               type="text"
               placeholder="Szukaj ćwiczenia..."
               value={query}

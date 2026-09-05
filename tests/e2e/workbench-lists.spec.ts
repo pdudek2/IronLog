@@ -60,7 +60,7 @@ test.describe('History and list workbenches', () => {
           left: box.left,
           right: box.right,
           width: box.width,
-          viewport: window.innerWidth,
+          viewport: document.documentElement.getBoundingClientRect().width,
           documentWidth: document.documentElement.scrollWidth,
         }
       })

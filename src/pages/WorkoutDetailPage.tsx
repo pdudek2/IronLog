@@ -741,7 +741,8 @@ export default function WorkoutDetailPage() {
 
       {confirmDeleteOpen && (
         <ConfirmDialog
-          message="Usunąć ten trening? Tej operacji nie można cofnąć."
+          title="Usunąć trening?"
+          message={`„${heroLabel}” · ${formatDate(displayedWorkout.startedAt)}. Tej operacji nie można cofnąć.`}
           confirmLabel="Usuń"
           danger
           onConfirm={() => { setConfirmDeleteOpen(false); doDelete() }}

@@ -129,6 +129,11 @@ function EditorShell() {
   )
 }
 
+function getEditorBackButton() {
+  const heading = screen.getByRole('heading', { name: /^(Edytuj plan|Nowy plan)$/ })
+  return within(heading.closest('section')!).getByRole('button', { name: 'Plany' })
+}
+
 function renderEditor(initialEntry = '/templates/new?draft=ai') {
   const router = createMemoryRouter([
     {
@@ -197,10 +202,38 @@ describe('TemplateEditorPage accessibility', () => {
     expect(mocks.createTemplate.mock.calls[0]?.[1].days[0].exercises[0].targetWeight).toBe(expectedKg)
   })
 
+  it('names the back action Plany and emphasizes adding an exercise only for an empty day', async () => {
+    mocks.getTemplate.mockResolvedValue(multiDayTemplate)
+    renderEditor('/templates/template-tabs/edit')
+    await screen.findByRole('heading', { name: 'Edytuj plan' })
+    expect(getEditorBackButton()).toHaveAccessibleName('Plany')
+    expect(getEditorBackButton()).toHaveTextContent('Plany')
+    expect(screen.getByRole('button', { name: 'Dodaj ćwiczenie' })).toHaveClass('planner-secondary-action')
+    fireEvent.click(screen.getByRole('tab', { name: /Full Body/ }))
+    expect(screen.getByRole('button', { name: 'Dodaj ćwiczenie' })).toHaveClass('planner-primary-action')
+    expect(screen.getByRole('button', { name: 'Dodaj ćwiczenie' })).not.toHaveClass('planner-secondary-action')
+  })
+
+  it('describes the missing name beside its input after exercises exist', async () => {
+    renderEditor()
+    const name = await screen.findByRole('textbox', { name: 'Nazwa' })
+    fireEvent.change(name, { target: { value: '' } })
+    expect(name).toHaveAccessibleDescription('Dodaj nazwę planu (co najmniej 2 znaki), aby go zapisać.')
+    expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeDisabled()
+    expect(mocks.createTemplate).not.toHaveBeenCalled()
+    fireEvent.change(name, { target: { value: 'A' } })
+    expect(name).toHaveAttribute('aria-describedby', 'template-name-hint')
+    fireEvent.change(name, { target: { value: 'Plan' } })
+    expect(name).not.toHaveAttribute('aria-describedby')
+    expect(screen.queryByText('Dodaj nazwę planu (co najmniej 2 znaki), aby go zapisać.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeEnabled()
+  })
+
   it('shows a pristine create draft as not yet saved and invalid', async () => {
     renderEditor('/templates/new')
 
     expect(await screen.findByText('Nowy plan · jeszcze niezapisany')).toBeInTheDocument()
+    expect(screen.queryByText('Dodaj nazwę planu (co najmniej 2 znaki), aby go zapisać.')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeDisabled()
     expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1dzień')
     expect(document.querySelector('.template-editor-main')).toContainElement(
@@ -321,7 +354,7 @@ describe('TemplateEditorPage accessibility', () => {
 
     expect(await screen.findByText('Niezapisane zmiany')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeEnabled()
-    fireEvent.click(await screen.findByRole('button', { name: 'Wróć' }))
+    fireEvent.click(getEditorBackButton())
 
     expect(await screen.findByRole('dialog', { name: 'Opuścić edytor?' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Opuść bez zapisu' })).toBeEnabled()
@@ -351,7 +384,7 @@ describe('TemplateEditorPage accessibility', () => {
       target: { value: 'Upper / Lower zmieniony' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Zapisz szablon' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Wróć' }))
+    fireEvent.click(getEditorBackButton())
 
     const dialog = await screen.findByRole('dialog', { name: 'Zapis w toku' })
     expect(screen.getByRole('button', { name: 'Zapisuję… w formularzu' })).toBeDisabled()
@@ -396,7 +429,7 @@ describe('TemplateEditorPage accessibility', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Zapisz szablon' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się zapisać planu.')
-    fireEvent.click(screen.getByRole('button', { name: 'Wróć' }))
+    fireEvent.click(getEditorBackButton())
 
     expect(await screen.findByRole('dialog', { name: 'Opuścić edytor?' })).toBeInTheDocument()
   })

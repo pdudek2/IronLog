@@ -121,11 +121,6 @@ vi.mock('../../components/ReadinessWidget', async () => {
   }
 })
 
-vi.mock('../../components/ConfirmDialog', () => ({
-  default: ({ onConfirm }: { onConfirm: () => void }) => (
-    <button type="button" onClick={onConfirm}>Potwierdź usunięcie</button>
-  ),
-}))
 vi.mock('../../components/TemplateLaunchConfirmDialog', () => ({ default: () => null }))
 
 vi.mock('react-router-dom', async () => {
@@ -199,6 +194,25 @@ describe('Dashboard workout projection status', () => {
     localStorage.clear()
     useDashboardStore.getState().clearSnapshot()
     useWorkoutStore.getState().clearWorkout()
+  })
+
+  it.each([
+    { label: 'Push day', expectedName: 'Push day' },
+    { label: null, expectedName: 'Wyciskanie' },
+  ])('identifies the delete target $expectedName and initially focuses cancellation', async ({ label, expectedName }) => {
+    mocks.getRecentWorkouts.mockResolvedValue([{ ...pendingWorkout, materialized: true, label }])
+    render(<DashboardPage />)
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(`Usuń trening ${expectedName}`) }))
+    const dialog = screen.getByRole('dialog', { name: 'Usunąć trening?' })
+    const date = new Date(pendingWorkout.startedAt).toLocaleDateString('pl-PL', {
+      weekday: 'short', day: 'numeric', month: 'short',
+    })
+    expect(dialog).toHaveAccessibleDescription(`„${expectedName}” · ${date}. Tej operacji nie można cofnąć.`)
+    const cancel = within(dialog).getByRole('button', { name: 'Anuluj' })
+    await waitFor(() => expect(cancel).toHaveFocus())
+    fireEvent.click(cancel)
+    expect(screen.queryByRole('dialog', { name: 'Usunąć trening?' })).not.toBeInTheDocument()
+    expect(mocks.deleteWorkout).not.toHaveBeenCalled()
   })
 
   it('accepts a delayed same-account snapshot and keeps it cached on remount', async () => {
@@ -621,7 +635,7 @@ describe('Dashboard workout projection status', () => {
 
     await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2))
     fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(3))
     await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
@@ -649,7 +663,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
     const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
@@ -732,7 +746,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     firstDelete.resolve({ status: 'cleanup_pending' })
     await act(async () => {
@@ -782,7 +796,7 @@ describe('Dashboard workout projection status', () => {
     const firstRender = render(<DashboardPage />)
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
     expect(screen.getByRole('button', { name: /Usuń trening Pull day/ })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Zamknij' })).not.toBeInTheDocument()
@@ -813,7 +827,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
     expect(pullRow).not.toBeNull()
@@ -821,7 +835,7 @@ describe('Dashboard workout projection status', () => {
       name: /Usuń trening Pull day/,
     })
     fireEvent.click(pullDelete)
-    const secondConfirm = screen.queryByRole('button', { name: 'Potwierdź usunięcie' })
+    const secondConfirm = screen.queryByRole('button', { name: 'Usuń' })
     if (secondConfirm) fireEvent.click(secondConfirm)
 
     const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
@@ -847,7 +861,7 @@ describe('Dashboard workout projection status', () => {
     expect(availablePullDelete).toBeEnabled()
 
     fireEvent.click(availablePullDelete)
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     await waitFor(() => {
       expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-b')
@@ -864,7 +878,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     const row = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(row).not.toBeNull()
@@ -892,7 +906,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
 
     await act(async () => {
       await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
@@ -909,7 +923,7 @@ describe('Dashboard workout projection status', () => {
 
     expect(pullDelete).toBeDisabled()
     fireEvent.click(pullDelete)
-    expect(screen.queryByRole('button', { name: 'Potwierdź usunięcie' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Usuń' })).not.toBeInTheDocument()
     expect(within(pushRow as HTMLElement).getByRole('alert')).toBe(alert)
     expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
   })
@@ -1026,7 +1040,7 @@ describe('Dashboard workout projection status', () => {
     await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(5))
 
     fireEvent.click(screen.getByRole('button', { name: /Usuń trening Workout A/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
     await waitFor(() => expect(screen.queryByText('Workout A')).not.toBeInTheDocument())
 
     await act(async () => retryWorkoutA.reject(new Error('obsolete A failed')))

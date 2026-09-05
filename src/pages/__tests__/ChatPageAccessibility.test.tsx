@@ -160,8 +160,13 @@ describe('ChatPage accessibility', () => {
     expect(planMode).toHaveAttribute('aria-pressed', 'true')
 
     const goal = screen.getByRole('textbox', { name: 'Cel planu' })
-    fireEvent.click(screen.getByRole('button', { name: 'Generuj plan' }))
+    const generate = screen.getByRole('button', { name: 'Generuj plan' })
+    generate.focus()
+    fireEvent.click(generate)
 
+    expect(goal).toHaveFocus()
+    expect(screen.getAllByRole('alert')).toHaveLength(1)
+    expect(goal.nextElementSibling).toBe(screen.getByRole('alert'))
     expect(screen.getByRole('alert')).toHaveTextContent('Podaj cel planu, zanim uruchomisz generator.')
     expect(goal).toHaveAttribute('aria-invalid', 'true')
     expect(goal).toHaveAccessibleDescription('Podaj cel planu, zanim uruchomisz generator.')

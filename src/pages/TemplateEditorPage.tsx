@@ -170,6 +170,7 @@ export default function TemplateEditorPage() {
   const selectedDay = days[selectedDayIndex]
   const currentSnapshot = useMemo(() => serializeDraftState(name, days), [name, days])
   const hasUnsavedChanges = !loading && currentSnapshot !== savedSnapshot
+  const needsName = totalExercises > 0 && name.trim().length < 2
   const canSubmit = name.trim().length >= 2
     && days.some((day) => day.exercises.length > 0)
   const saveState: TemplateSaveState = saving
@@ -337,7 +338,6 @@ export default function TemplateEditorPage() {
           type="button"
           onClick={handleBackToTemplates}
           className="template-editor-back"
-          aria-label="Wróć"
         >
           <ChevronLeft size={16} aria-hidden="true" />
           Plany
@@ -365,12 +365,18 @@ export default function TemplateEditorPage() {
               <label htmlFor="template-name" className="planner-kicker">Nazwa</label>
               <input
                 id="template-name"
+                aria-describedby={needsName ? 'template-name-hint' : undefined}
                 type="text"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 placeholder="np. Upper / Lower 4 dni"
                 className="template-text-input w-full px-4 py-3 text-sm outline-none text-white"
               />
+              {needsName && (
+                <p id="template-name-hint" className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
+                  Dodaj nazwę planu (co najmniej 2 znaki), aby go zapisać.
+                </p>
+              )}
             </section>
 
             <div
@@ -537,7 +543,7 @@ export default function TemplateEditorPage() {
 
                   {selectedDay.exercises.length === 0 && (
                     <div className="template-day-empty">
-                      Ten dzień jest pusty. Dodaj ćwiczenia, żeby móc uruchamiać gotową sesję.
+                      Dodaj pierwsze ćwiczenie do tego dnia.
                     </div>
                   )}
                 </div>
@@ -546,7 +552,7 @@ export default function TemplateEditorPage() {
                   <motion.button
                     type="button"
                     onClick={() => setPickerDayIndex(selectedDayIndex)}
-                    className="planner-secondary-action template-day-add-exercise"
+                    className={`${selectedDay.exercises.length === 0 ? 'planner-primary-action' : 'planner-secondary-action'} template-day-add-exercise`}
                     whileTap={{ scale: 0.97 }}
                   >
                     <Plus size={15} />

@@ -186,6 +186,7 @@ export default function DashboardPage() {
   const [transientDeleteOperation, setTransientDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [openingWorkout, setOpeningWorkout] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
+  const workoutToDelete = workouts.find((workout) => workout.id === confirmDelete)
   const [templatesResource, setTemplatesResource] = useState<TemplatesResource>({
     uid: user?.uid ?? null,
     state: { status: 'loading' },
@@ -1192,9 +1193,10 @@ export default function DashboardPage() {
           </AnimatePresence>
         </section>
 
-      {confirmDelete && (
+      {workoutToDelete && (
         <ConfirmDialog
-          message="Usunąć ten trening? Tej operacji nie można cofnąć."
+          title="Usunąć trening?"
+          message={`„${workoutToDelete.label ?? workoutTitle(workoutToDelete)}” · ${formatDate(workoutToDelete.startedAt)}. Tej operacji nie można cofnąć.`}
           confirmLabel="Usuń"
           danger
           onConfirm={confirmDeleteWorkout}

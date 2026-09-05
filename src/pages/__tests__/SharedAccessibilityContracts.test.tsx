@@ -4,6 +4,7 @@ import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BottomNav from '../../components/BottomNav'
 import ConfirmDialog from '../../components/ConfirmDialog'
+import ExercisePicker from '../../components/ExercisePicker'
 import MobileInteractionProvider from '../../components/MobileInteractionProvider'
 import TopNav from '../../components/TopNav'
 import Input from '../../components/ui/Input'
@@ -40,6 +41,23 @@ function DialogHarness() {
           cancelLabel="Anuluj"
           onConfirm={() => setOpen(false)}
           onCancel={() => setOpen(false)}
+        />
+      )}
+    </>
+  )
+}
+
+function ExercisePickerHarness() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>Dodaj ćwiczenie</button>
+      {open && (
+        <ExercisePicker
+          onSelect={() => setOpen(false)}
+          onClose={() => setOpen(false)}
+          userExercisesState={{ status: 'success', data: [] }}
+          onRetryUserExercises={() => undefined}
         />
       )}
     </>
@@ -104,6 +122,17 @@ describe('shared accessibility contracts', () => {
     fireEvent.keyDown(document, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(trigger).toHaveFocus()
+  })
+
+  it('focuses shared exercise search and restores its opener after Escape', async () => {
+    render(<ExercisePickerHarness />)
+    const opener = screen.getByRole('button', { name: 'Dodaj ćwiczenie' })
+    opener.focus()
+    fireEvent.click(opener)
+    expect(screen.getByRole('textbox', { name: 'Szukaj ćwiczenia' })).toHaveFocus()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(opener).toHaveFocus()
   })
 
   it('keeps a disabled confirm action non-interactive', () => {

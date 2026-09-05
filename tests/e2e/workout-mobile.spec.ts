@@ -742,7 +742,7 @@ test.describe('Active workout shell reduction', () => {
       expect(field.width).toBeLessThanOrEqual(144)
       expect(field.background).toBe('rgba(0, 0, 0, 0)')
       expect(field.borderTop).toBe('0px')
-      expect(field.borderBottomColor).toBe('rgba(0, 0, 0, 0)')
+      expect(field.borderBottomColor).not.toBe('rgba(0, 0, 0, 0)')
       expect(field.radius).toBe('0px')
     }
 

@@ -238,7 +238,7 @@ export default function ExerciseDetailPage() {
                 </dd>
               </div>
               <div>
-                <dt>Powt. max</dt>
+                <dt>Powt. przy rekordzie</dt>
                 <dd>
                   {record.maxReps}
                 </dd>
@@ -268,6 +268,7 @@ export default function ExerciseDetailPage() {
               </div>
               <div
                 className="exercise-detail-volume-chart"
+                tabIndex={0}
                 role="list"
                 aria-label={latestIsMaximum
                   ? `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio i maksimum ${formatVolume(latestVolume)}.`

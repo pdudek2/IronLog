@@ -220,7 +220,12 @@ describe('ExercisesPage user library states', () => {
     fireEvent.click(chest)
     expect(chest).toHaveAttribute('aria-pressed', 'true')
 
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Dodaj ćwiczenie' }))
+    const submit = within(dialog).getByRole('button', { name: 'Dodaj ćwiczenie' })
+    submit.focus()
+    fireEvent.click(submit)
+    expect(name).toHaveFocus()
+    expect(within(dialog).getAllByRole('alert')).toHaveLength(1)
+    expect(name.nextElementSibling).toBe(within(dialog).getByRole('alert'))
     expect(within(dialog).getByRole('alert')).toHaveTextContent('Nazwa musi mieć co najmniej 2 znaki.')
     expect(name).toHaveAttribute('aria-invalid', 'true')
     expect(name).toHaveAccessibleDescription('Nazwa musi mieć co najmniej 2 znaki.')

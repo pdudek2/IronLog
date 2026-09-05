@@ -113,6 +113,25 @@ describe('WorkoutDetailPage delete action', () => {
     localStorage.clear()
   })
 
+  it.each([
+    { label: 'Push day', expectedName: 'Push day' },
+    { label: null, expectedName: 'Klatka' },
+  ])('identifies the delete target $expectedName and initially focuses cancellation', async ({ label, expectedName }) => {
+    mocks.getWorkout.mockResolvedValueOnce({ ...workout, label })
+    renderPage(['/workout/workout-1'])
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Usuń trening' }))[0])
+    const dialog = screen.getByRole('dialog', { name: 'Usunąć trening?' })
+    const date = new Date(workout.startedAt).toLocaleDateString('pl-PL', {
+      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    })
+    expect(dialog).toHaveAccessibleDescription(`„${expectedName}” · ${date}. Tej operacji nie można cofnąć.`)
+    const cancel = within(dialog).getByRole('button', { name: 'Anuluj' })
+    await waitFor(() => expect(cancel).toHaveFocus())
+    fireEvent.click(cancel)
+    expect(screen.queryByRole('dialog', { name: 'Usunąć trening?' })).not.toBeInTheDocument()
+    expect(mocks.deleteWorkout).not.toHaveBeenCalled()
+  })
+
   it('shows a read error instead of absence and retries successfully', async () => {
     const retryRead = deferred<WorkoutSummary>()
     mocks.getWorkout.mockRejectedValueOnce(new Error('offline')).mockReturnValueOnce(retryRead.promise)

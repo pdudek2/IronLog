@@ -148,7 +148,7 @@ async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]
       .limit(AI_USER_EXERCISE_LIMIT + 1)
       .get()
     if (userExercisesSnap.docs.length > AI_USER_EXERCISE_LIMIT) {
-      throw new ApiError(422, `Katalog przekracza ${AI_USER_EXERCISE_LIMIT} własnych ćwiczeń. Zmniejsz go przed wygenerowaniem planu.`, {
+      throw new ApiError(422, `Generator obsługuje do ${AI_USER_EXERCISE_LIMIT} własnych ćwiczeń. Przy większym katalogu utwórz plan ręcznie w Planach.`, {
         code: 'ai_catalog_too_large',
       })
     }

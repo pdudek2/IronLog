@@ -4078,13 +4078,6 @@ a {
     linear-gradient(180deg, rgba(244, 241, 242, 0.035), rgba(244, 241, 242, 0.012));
 }
 
-.progress-comparison-strip {
-  overflow: hidden;
-  border: 1px solid rgba(244, 241, 242, 0.1);
-  border-radius: var(--radius-sm);
-  background: rgba(9, 8, 10, 0.24);
-}
-
 .progress-volume-tile {
   display: grid;
   align-content: center;
@@ -4095,7 +4088,6 @@ a {
 
 .progress-volume-tile span,
 .progress-signal-row span,
-.progress-comparison-item span,
 .progress-record-row span {
   display: block;
   color: var(--muted);
@@ -4126,10 +4118,6 @@ a {
   font-size: 0.82rem;
 }
 
-.progress-comparison-strip {
-  display: grid;
-}
-
 .progress-signal-rail {
   display: contents;
 }
@@ -4143,13 +4131,11 @@ a {
   border: 0;
 }
 
-.progress-signal-row:nth-child(1),
-.progress-signal-row:nth-child(3) {
+.progress-signal-row:nth-child(odd) {
   border-left: 1px solid rgba(244, 241, 242, 0.08);
 }
 
-.progress-signal-row:nth-child(2),
-.progress-signal-row:nth-child(3) {
+.progress-signal-row:nth-child(n + 2) {
   border-top: 1px solid rgba(244, 241, 242, 0.08);
 }
 
@@ -4157,18 +4143,7 @@ a {
   min-width: 0;
 }
 
-.progress-comparison-item {
-  min-width: 0;
-  padding: 0.82rem 0.9rem;
-  border-bottom: 1px solid rgba(244, 241, 242, 0.08);
-}
-
-.progress-comparison-item:last-child {
-  border-bottom: 0;
-}
-
-.progress-signal-row strong,
-.progress-comparison-item strong {
+.progress-signal-row strong {
   display: block;
   overflow: hidden;
   color: var(--text-strong);
@@ -4179,8 +4154,7 @@ a {
   white-space: nowrap;
 }
 
-.progress-signal-row small,
-.progress-comparison-item small {
+.progress-signal-row small {
   display: block;
   margin-top: 0.28rem;
   overflow: hidden;
@@ -4191,11 +4165,11 @@ a {
   white-space: nowrap;
 }
 
-.progress-comparison-item[data-trend="up"] small {
+.progress-metric-delta[data-trend="up"] {
   color: var(--success);
 }
 
-.progress-comparison-item[data-trend="down"] small {
+.progress-metric-delta[data-trend="down"] {
   color: var(--danger);
 }
 
@@ -4667,7 +4641,7 @@ a {
   }
 
   .progress-summary-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .progress-volume-tile,
@@ -4675,27 +4649,12 @@ a {
     border-right: 1px solid rgba(244, 241, 242, 0.1);
   }
 
-  .progress-signal-row:nth-child(1),
-  .progress-signal-row:nth-child(2),
-  .progress-signal-row:nth-child(3) {
+  .progress-signal-row:nth-child(n) {
     border-left: 0;
     border-top: 0;
   }
 
-  .progress-signal-row:last-child {
-    border-right: 0;
-  }
-
-  .progress-comparison-strip {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .progress-comparison-item {
-    border-right: 1px solid rgba(244, 241, 242, 0.08);
-    border-bottom: 0;
-  }
-
-  .progress-comparison-item:last-child {
+  .progress-signal-row:nth-child(3n + 2) {
     border-right: 0;
   }
 
@@ -4831,8 +4790,7 @@ a {
     font-size: 2.35rem;
   }
 
-  .progress-signal-row,
-  .progress-comparison-item {
+  .progress-signal-row {
     padding: 0.68rem 0.72rem;
   }
 }
@@ -5725,14 +5683,14 @@ a {
   margin-top: 0.55rem;
 }
 
-.template-day-add-exercise {
+.template-day-add-exercise.planner-secondary-action {
   border: 0;
   background: transparent;
   padding-inline: 0.25rem;
   color: var(--muted);
 }
 
-.template-day-add-exercise:hover {
+.template-day-add-exercise.planner-secondary-action:hover {
   border-color: transparent;
   background: transparent;
   color: var(--text-strong);
@@ -8872,8 +8830,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   .progress-volume-tile span,
   .progress-signal-row span,
   .progress-signal-row small,
-  .progress-comparison-item span,
-  .progress-comparison-item small,
   .progress-panel-head p,
   .progress-panel-head > span,
   .progress-records-head p,
@@ -9391,16 +9347,11 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   background: color-mix(in srgb, var(--surface-2) 84%, transparent);
 }
 
-.progress-comparison-strip,
 .progress-analysis-grid {
   border-inline: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
-}
-
-.progress-comparison-strip {
-  border-block: 1px solid var(--border);
 }
 
 .progress-analysis-grid {
@@ -9712,7 +9663,11 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 .exercise-detail-volume-chart {
   display: grid;
   min-height: 9rem;
-  grid-template-columns: repeat(auto-fit, minmax(1.25rem, 2rem));
+  grid-auto-flow: column;
+  grid-auto-columns: 2rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  scrollbar-width: thin;
   align-items: end;
   gap: clamp(0.4rem, 2vw, 0.75rem);
   max-width: 32rem;
@@ -10086,6 +10041,29 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   border-bottom: 0;
 }
 
+@media (max-width: 1023px) {
+  .coach-plan-preview-head {
+    flex-direction: column;
+  }
+
+  .coach-preview-stats {
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .coach-preview-stat:last-child {
+    grid-column: 1 / -1;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .coach-preview-columns,
+  .coach-preview-exercise {
+    grid-template-columns: minmax(0, 1fr) 4.75rem 3.75rem;
+    gap: 0.5rem;
+  }
+}
+
 .coach-rail .ai-key-panel {
   border-radius: 0 !important;
   background: transparent;
@@ -10323,6 +10301,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 .workout-focus-shell .workout-set-input {
+  border-bottom-color: var(--border-strong);
+}
+
+.workout-focus-shell .workout-set-row[data-done] .workout-set-input {
   border-bottom-color: transparent;
 }
 
@@ -10335,14 +10317,19 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   border-bottom-color: var(--exercise-accent, var(--accent));
 }
 
-.workout-focus-shell .workout-set-toggle,
 .workout-focus-shell .workout-set-remove {
   border-color: transparent !important;
   background: transparent !important;
   box-shadow: none;
 }
 
+.workout-focus-shell .workout-set-toggle {
+  border-radius: var(--radius-sm);
+}
+
 .workout-focus-shell .workout-set-row[data-done] .workout-set-toggle {
+  border-color: transparent !important;
+  background: transparent !important;
   color: var(--success) !important;
 }
 
@@ -10676,7 +10663,13 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .planner-template-main {
+    grid-template-columns: minmax(0, 1fr);
     padding-block: 1rem;
+  }
+
+  .planner-template-actions {
+    justify-self: start;
+    justify-content: flex-start;
   }
 
   .exercise-command-panel {

@@ -641,6 +641,8 @@ for (const source of ['dashboard', 'detail'] as const) {
       ? page.getByRole('button', { name: /Usuń trening Phase 1 delete acknowledgement/ })
       : page.getByRole('button', { name: 'Usuń trening', exact: true })
     await remove.click()
+    await expect(page.getByRole('dialog', { name: 'Usunąć trening?' })).toContainText('Phase 1 delete acknowledgement')
+    await page.getByRole('dialog').screenshot({ path: testInfo.outputPath(`delete-${source}-confirmation.png`) })
     const failedRequest = page.waitForEvent('requestfailed', (request) => new URL(request.url()).pathname === '/api/delete-workout')
     const unknown = 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'
     await expectedBrowserDiagnostics.during('intentional delete acknowledgement loss', isExpectedWorkoutLifecycleAckLossDiagnostic, async () => {

@@ -114,7 +114,8 @@ test.describe('Phase 4 mobile ergonomics', () => {
       ['AI', /^AI$/],
     ] as const
     for (const [label, accessibleName] of navItems) {
-      const item = page.getByRole('button', { name: accessibleName })
+      const item = page.getByRole('navigation', { name: 'Nawigacja dolna' })
+        .getByRole('button', { name: accessibleName })
       await expectMinHitArea(item, `BottomNav ${label}`)
       navBoxes.push((await item.boundingBox())!)
     }

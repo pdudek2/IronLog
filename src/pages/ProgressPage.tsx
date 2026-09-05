@@ -82,6 +82,10 @@ function formatVolume(kg: number): string {
   return `${Math.round(kg)} kg`
 }
 
+function formatDelta(delta: number): string {
+  return `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}% vs poprzednio`
+}
+
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
 }
@@ -443,11 +447,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   const topMuscle = muscleData[0]
   const topMuscleName = topMuscle ? (MUSCLE_PL[topMuscle.muscle] ?? topMuscle.muscle) : 'Brak'
   const topRecord = records[0]
-  const comparisonItems = [
-    { label: 'Sesje', value: periodComparison.currentSessions, delta: periodComparison.sessionsDelta },
-    { label: 'Wolumen', value: formatVolume(periodComparison.currentVolume), delta: periodComparison.volumeDelta },
-    { label: 'Śr. / sesję', value: formatVolume(periodComparison.currentAvgVolume), delta: periodComparison.avgVolumeDelta },
-  ]
+  const hasPreviousPeriod = periodComparison.previousSessions > 0
   const recordAccentKeys = Object.keys(MUSCLE_COLORS)
   const featuredRecords = records.slice(0, 1)
   const remainingRecords = records.slice(1)
@@ -520,9 +520,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
           </motion.div>
 
           {hasSessionSnapshot && !showRangeEmpty && (
-            <>
-          <div className="progress-summary-grid">
-            <div className="progress-volume-tile">
+          <div className="progress-summary-grid" role="group" aria-label={`Podsumowanie: ${rangeDays} dni`}>
+            <div className="progress-volume-tile" role="group" aria-label="Objętość">
               <span>Objętość</span>
               <strong>
                 <NumberFlow
@@ -533,11 +532,28 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 />
                 <small> kg</small>
               </strong>
-              <p>{uniqueWorkouts} {polishPlural(uniqueWorkouts, 'sesja', 'sesje', 'sesji')} w zakresie</p>
+              <p>Ostatnie {rangeDays} dni</p>
+              {hasPreviousPeriod && (
+                <p className="progress-metric-delta" data-trend={periodComparison.volumeDelta >= 0 ? 'up' : 'down'}>
+                  {formatDelta(periodComparison.volumeDelta)}
+                </p>
+              )}
             </div>
 
             <div className="progress-signal-rail">
               {[
+                {
+                  label: 'Sesje',
+                  value: uniqueWorkouts,
+                  meta: 'w zakresie',
+                  delta: hasPreviousPeriod ? periodComparison.sessionsDelta : undefined,
+                },
+                {
+                  label: 'Śr. / sesję',
+                  value: formatVolume(periodComparison.currentAvgVolume),
+                  meta: 'w zakresie',
+                  delta: hasPreviousPeriod ? periodComparison.avgVolumeDelta : undefined,
+                },
                 { label: 'Ćwiczenia', value: uniqueExerciseCount, meta: 'w zakresie' },
                 {
                   label: 'Rekordy',
@@ -548,29 +564,22 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 },
                 { label: 'Grupa mięśniowa', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${polishPlural(topMuscle.count, 'wpis', 'wpisy', 'wpisów')}` : 'brak danych' },
               ].map((item) => (
-                <div key={item.label} className="progress-signal-row">
+                <div key={item.label} className="progress-signal-row" role="group" aria-label={item.label}>
                   <span>{item.label}</span>
                   <div>
                     <strong>{item.value}</strong>
-                    <small>{item.meta}</small>
+                    <small
+                      className={item.delta === undefined ? undefined : 'progress-metric-delta'}
+                      data-trend={item.delta === undefined ? undefined : item.delta >= 0 ? 'up' : 'down'}
+                    >
+                      {item.delta === undefined ? item.meta : formatDelta(item.delta)}
+                    </small>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          {periodComparison.previousSessions > 0 && (
-            <div className="progress-comparison-strip" aria-label={`Porównanie z poprzednim okresem: ${rangeDays} dni`}>
-              {comparisonItems.map((item) => (
-                <div key={item.label} className="progress-comparison-item" data-trend={item.delta >= 0 ? 'up' : 'down'}>
-                  <span>{item.label}</span>
-                  <strong>{item.value}</strong>
-                  <small>{item.delta >= 0 ? '+' : ''}{item.delta.toFixed(0)}% vs poprzednio</small>
-                </div>
-              ))}
-            </div>
-          )}
-            </>
           )}
         </section>
         )}

@@ -51,7 +51,9 @@ export async function openWorkoutDiscardDialog(page: Page): Promise<Locator> {
 }
 
 export async function discardActiveSession(page: Page): Promise<void> {
-  await page.goto('/workout/new')
+  if (new URL(page.url()).pathname !== '/workout/new') {
+    await page.goto('/workout/new')
+  }
   await expectAppReady(page, '/workout/new', 25_000)
 
   const stale = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })

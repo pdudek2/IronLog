@@ -97,7 +97,7 @@ test.describe('Dashboard regressions', () => {
     await expect(deleteButton).toBeFocused()
     await page.keyboard.press('Enter')
 
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'Usunąć ten trening?' })
+    const confirmDialog = page.getByRole('dialog', { name: 'Usunąć trening?' })
     await expect(confirmDialog).toBeVisible()
     await expect(page).toHaveURL('/dashboard')
     await confirmDialog.getByRole('button', { name: 'Anuluj', exact: true }).click()

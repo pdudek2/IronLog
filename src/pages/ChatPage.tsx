@@ -196,6 +196,7 @@ export default function ChatPage() {
   const [planPreview, setPlanPreview] = useState<GeneratedTrainingPlan | null>(null)
   const [planUnavailableSources, setPlanUnavailableSources] = useState<AiContextSource[]>([])
   const [planError, setPlanError] = useState<PlanErrorState | null>(null)
+  const planGoalRef = useRef<HTMLInputElement>(null)
   const planGoalId = useId()
   const planErrorId = useId()
   const keyPanelId = useId()
@@ -416,6 +417,7 @@ export default function ChatPage() {
 
     if (planGoal.trim().length < 2) {
       setPlanError({ message: 'Podaj cel planu, zanim uruchomisz generator.', field: 'goal' })
+      planGoalRef.current?.focus()
       return
     }
 
@@ -776,10 +778,11 @@ export default function ChatPage() {
                   </div>
 
                   <div className="coach-plan-form">
-                    <label htmlFor={planGoalId} className="coach-field md:col-span-2">
-                      <span className="stat-meta">Cel planu</span>
+                    <div className="coach-field md:col-span-2">
+                      <label htmlFor={planGoalId} className="stat-meta">Cel planu</label>
                       <input
                         id={planGoalId}
+                        ref={planGoalRef}
                         type="text"
                         value={planGoal}
                         onChange={(event) => {
@@ -790,7 +793,12 @@ export default function ChatPage() {
                         aria-describedby={planError?.field === 'goal' ? planErrorId : undefined}
                         placeholder="Np. siłowy upper/lower"
                       />
-                    </label>
+                      {planError?.field === 'goal' && (
+                        <p id={planErrorId} role="alert" className="text-xs" style={{ color: 'var(--danger)' }}>
+                          {planError.message}
+                        </p>
+                      )}
+                    </div>
 
                     <div className="coach-field">
                       <span className="stat-meta">Dni w tygodniu</span>
@@ -877,7 +885,7 @@ export default function ChatPage() {
                     </label>
                   </div>
 
-                  {planError && (
+                  {planError && planError.field === null && (
                     <div className="mt-4">
                       <SectionError id={planErrorId} message={planError.message} />
                     </div>
@@ -965,7 +973,7 @@ export default function ChatPage() {
                         </div>
 
                         <div className="px-4 py-3">
-                          <div className="grid grid-cols-[minmax(0,1.4fr)_6rem_7rem] gap-3 px-1 pb-2">
+                          <div className="coach-preview-columns grid grid-cols-[minmax(0,1.4fr)_6rem_7rem] gap-3 px-1 pb-2">
                             <p className="stat-meta">Ćwiczenie</p>
                             <p className="stat-meta text-right">Serie x powt.</p>
                             <p className="stat-meta text-right">Start</p>
@@ -978,7 +986,7 @@ export default function ChatPage() {
                                 className="coach-preview-exercise grid grid-cols-[minmax(0,1.4fr)_6rem_7rem] gap-3 px-1 py-3 text-sm"
                               >
                                 <div className="min-w-0">
-                                  <p className="truncate font-semibold text-white">{exercise.name}</p>
+                                  <p className="min-w-0 break-words font-semibold text-white">{exercise.name}</p>
                                   <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
                                     {exercise.exerciseSource === 'user' ? 'Moje ćwiczenie' : 'Katalog globalny'}
                                   </p>

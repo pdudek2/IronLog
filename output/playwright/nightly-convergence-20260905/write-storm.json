@@ -1,0 +1,12 @@
+{
+  "before": {
+    "source": "first trace parsed before canonical comparison fix",
+    "totalCommits": 103,
+    "maxIdenticalSnapshotWrites": 100
+  },
+  "after": {
+    "source": "second trace with canonical comparison",
+    "totalCommits": 4,
+    "maxIdenticalSnapshotWrites": 1
+  }
+}

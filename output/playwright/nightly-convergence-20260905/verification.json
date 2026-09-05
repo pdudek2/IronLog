@@ -1,0 +1,63 @@
+{
+  "baseline": "64fde7e",
+  "scope": [
+    "nightly QA",
+    "active session stability",
+    "Dashboard account isolation",
+    "mobile Progress performance",
+    "F01",
+    "F02",
+    "F03",
+    "F04",
+    "F18"
+  ],
+  "unit": {
+    "passed": 678,
+    "files": 77,
+    "command": "TZ=Europe/Warsaw npm run test:unit"
+  },
+  "lint": "passed",
+  "build": "passed",
+  "rules": {
+    "passed": 19
+  },
+  "workoutIntegration": {
+    "passed": 45
+  },
+  "fullE2E": {
+    "passed": 230,
+    "skipped": 39,
+    "failed": 0,
+    "retries": 0,
+    "duration": "8.1m",
+    "command": "npm run test:e2e",
+    "skipReason": "intentional viewport-specific cases"
+  },
+  "visualEvidence": {
+    "state": "Observed",
+    "surface": "isolated Playwright",
+    "reader": "view_image",
+    "returnedPayload": "image content delivered to model",
+    "screenshots": [
+      "progress-density-paged-1000.png",
+      "mobile-recovered-session.png",
+      "mobile-navigation-recovered.png",
+      "mobile-session-conflict.png",
+      "inline-previous-mobile.png"
+    ]
+  },
+  "performanceCaveat": "Local emulator single-run comparison, not production latency or statistical benchmark. Rejected large single-query variant retained as evidence.",
+  "productionMutation": false,
+  "csp": {
+    "passed": 4,
+    "duration": "10.8s",
+    "surface": "preview build with enforced policy"
+  },
+  "integration": {
+    "branch": "main",
+    "implementationCommit": "ee9a592",
+    "method": "fast-forward",
+    "push": false,
+    "deploy": false
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "seedMs": 11325,
+  "readyMs": 20595,
+  "initial": {
+    "domNodes": 849,
+    "recordRows": 6,
+    "scrollHeight": 3002,
+    "viewportWidth": 393,
+    "scrollWidth": 393
+  },
+  "expandMs": 248,
+  "expanded": {
+    "domNodes": 938,
+    "recordRows": 21,
+    "scrollHeight": 4174,
+    "viewportWidth": 393,
+    "scrollWidth": 393
+  }
+}

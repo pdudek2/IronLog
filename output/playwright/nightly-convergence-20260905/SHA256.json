@@ -1,0 +1,16 @@
+{
+  "density-before.json": "53220282ea2be132aa6d6ee2122e1f49ccecad4012b60754799fbb73450da72c",
+  "density-after.json": "caf11a00fd5b4c163621e6df7cda36dedc1902a41a892f0cf83643035143eaaf",
+  "density-single-query-idle.json": "dfd319a611a002dce5a3e3c8115c66f1d1dad02c2739c8032f27ce60b42c0f09",
+  "density-paged-1000.json": "2b00f78feee95ba952359dc4cdebae992d02b759bd80a317c5dbf3602f5a9790",
+  "write-storm.json": "825b0ec7ad50d68715cf6bbf9aba5e1a123c438ad1f99f0e2141e9853693ba50",
+  "verification.json": "405a715e956f5da1ea3171148913f5286d0c7eb0dae33e4bbb2a6a863a0ac2d8",
+  "progress-density-before.png": "576dcd08e74731296b5a1f122070a2aa268a63dd4e0e5b08a86358b89efcae1a",
+  "progress-density-paged-1000.png": "1fde7cf4d3c7a9520380f6cd8c822c1d7ecd39d586c5362d44c64cbd2752b5e3",
+  "mobile-recovered-session.png": "8dea1894f4c542ed91160536d34f2dc971d6ddf03d761f5215fe06c19b89c996",
+  "mobile-navigation-recovered.png": "f7d7b469ffb04da8185cf44c61e275292b77ccb1f0e9a24bb74e54a35cbade73",
+  "mobile-session-conflict.png": "3a03c1af5986a28fbf639a9be4c4be98c0ca4130206e7fa45a40b6bbed6ab82f",
+  "inline-previous-mobile.png": "968eaf9bce7254fb1a75766cc0f0a5fe6dfc651fd4e525ed6a6837ba2f31fa7b",
+  "progress-density.spec.ts": "b9b3847b1a9aded61a6874e63b8bacde27b18f9231fe1098de835e6e28a0115d",
+  "density.config.ts": "7c0b48fed7b1ac1d01fd2b6b63c2e65b0aed9f84a0df3e4853744a6b77c56b08"
+}

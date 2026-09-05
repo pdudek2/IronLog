@@ -1,0 +1,139 @@
+i  emulators: Starting emulators: auth, firestore
+i  emulators: Detected demo project ID "demo-ironlog", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
+✔  firestore: Firestore Emulator was started in standard edition.
+✔  firestore: Firestore Emulator UI websocket is running on 9150.
+i  Running script: npx playwright test tests/e2e/dashboard.spec.ts tests/e2e/protected-shell.spec.ts tests/e2e/workbench-lists.spec.ts tests/e2e/workout-mobile.spec.ts tests/e2e/mobile-ergonomics.spec.ts tests/e2e/workout-guard.spec.ts tests/e2e/workout-lifecycle.spec.ts --grep 'delete action on recent|keeps an authenticated unknown|keeps workbench routes|desktop workout keeps shell|Phase 4 mobile ergonomics|navigating away preserves|lost delete acknowledgement' --retries=0
+[WebServer] (node:63264) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:63265) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:63265) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:63288) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 33 tests using 1 worker
+
+(node:63289) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63289) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [setup] › tests/e2e/global.setup.ts:29:1 › authenticate (3.6s)
+(node:63304) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63304) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [desktop] › tests/e2e/dashboard.spec.ts:76:3 › Dashboard regressions › delete action on recent workout stays on dashboard when activated with Enter (1.9s)
+  -   3 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:14:3 › Phase 4 mobile ergonomics › keeps template editor operational labels at 12px or larger
+  ✓   4 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:31:3 › Phase 4 mobile ergonomics › preserves the 44px desktop picker close control (759ms)
+  -   5 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:45:5 › Phase 4 mobile ergonomics › keeps the save dock visible without horizontal overflow at 320px
+  -   6 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:45:5 › Phase 4 mobile ergonomics › keeps the save dock visible without horizontal overflow at 375px
+  -   7 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:45:5 › Phase 4 mobile ergonomics › keeps the save dock visible without horizontal overflow at 390px
+  -   8 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:59:3 › Phase 4 mobile ergonomics › keeps the dock and focused input separated at 150% text and reduced viewport
+  -   9 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:78:3 › Phase 4 mobile ergonomics › dirty template editor guards BottomNav and browser back
+  -  10 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:101:3 › Phase 4 mobile ergonomics › exposes 44px BottomNav, picker and template-editor targets at 320px
+  -  11 [desktop] › tests/e2e/mobile-ergonomics.spec.ts:133:3 › Phase 4 mobile ergonomics › exposes 44px route filter targets at 320px
+  ✘  12 [desktop] › tests/e2e/protected-shell.spec.ts:26:3 › Protected application shell › keeps an authenticated unknown route inside the app shell (816ms)
+(node:63348) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63348) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  13 [desktop] › tests/e2e/workbench-lists.spec.ts:46:3 › History and list workbenches › keeps workbench routes bounded without horizontal overflow (984ms)
+(node:63355) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63355) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  14 [desktop] › tests/e2e/workout-guard.spec.ts:97:3 › Workout navigation guard › navigating away preserves the session (6.2s)
+  ✓  15 [desktop] › tests/e2e/workout-lifecycle.spec.ts:623:3 › lost delete acknowledgement survives dashboard reload and retries idempotently (2.8s)
+  ✓  16 [desktop] › tests/e2e/workout-lifecycle.spec.ts:623:3 › lost delete acknowledgement survives detail reload and retries idempotently (2.6s)
+  ✓  17 [desktop] › tests/e2e/workout-mobile.spec.ts:710:3 › Active workout shell reduction › desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract (6.0s)
+(node:63390) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:63390) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  -  18 [mobile] › tests/e2e/dashboard.spec.ts:76:3 › Dashboard regressions › delete action on recent workout stays on dashboard when activated with Enter
+  ✓  19 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:14:3 › Phase 4 mobile ergonomics › keeps template editor operational labels at 12px or larger (1.0s)
+  -  20 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:31:3 › Phase 4 mobile ergonomics › preserves the 44px desktop picker close control
+  ✓  21 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:45:5 › Phase 4 mobile ergonomics › keeps the save dock visible without horizontal overflow at 320px (957ms)
+  ✓  22 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:45:5 › Phase 4 mobile ergonomics › keeps the save dock visible without horizontal overflow at 375px (986ms)
+  ✓  23 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:45:5 › Phase 4 mobile ergonomics › keeps the save dock visible without horizontal overflow at 390px (1.0s)
+  ✓  24 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:59:3 › Phase 4 mobile ergonomics › keeps the dock and focused input separated at 150% text and reduced viewport (915ms)
+  ✓  25 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:78:3 › Phase 4 mobile ergonomics › dirty template editor guards BottomNav and browser back (2.6s)
+  ✓  26 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:101:3 › Phase 4 mobile ergonomics › exposes 44px BottomNav, picker and template-editor targets at 320px (1.0s)
+  ✓  27 [mobile] › tests/e2e/mobile-ergonomics.spec.ts:133:3 › Phase 4 mobile ergonomics › exposes 44px route filter targets at 320px (4.6s)
+  ✓  28 [mobile] › tests/e2e/protected-shell.spec.ts:26:3 › Protected application shell › keeps an authenticated unknown route inside the app shell (955ms)
+  ✓  29 [mobile] › tests/e2e/workbench-lists.spec.ts:46:3 › History and list workbenches › keeps workbench routes bounded without horizontal overflow (2.0s)
+  ✓  30 [mobile] › tests/e2e/workout-guard.spec.ts:97:3 › Workout navigation guard › navigating away preserves the session (6.8s)
+  ✓  31 [mobile] › tests/e2e/workout-lifecycle.spec.ts:623:3 › lost delete acknowledgement survives dashboard reload and retries idempotently (3.1s)
+  ✓  32 [mobile] › tests/e2e/workout-lifecycle.spec.ts:623:3 › lost delete acknowledgement survives detail reload and retries idempotently (2.9s)
+  -  33 [mobile] › tests/e2e/workout-mobile.spec.ts:710:3 › Active workout shell reduction › desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract
+
+
+  1) [desktop] › tests/e2e/protected-shell.spec.ts:26:3 › Protected application shell › keeps an authenticated unknown route inside the app shell
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1280
+    Received: 1265
+
+      52 |     })
+      53 |
+    > 54 |     expect(geometry.documentWidth).toBe(geometry.viewportWidth)
+         |                                    ^
+      55 |     expect(geometry.documentHeight).toBeLessThanOrEqual(geometry.viewportHeight + 1)
+      56 |     expect(geometry.actionHeight).toBeGreaterThanOrEqual(44)
+      57 |     if (testInfo.project.name === 'mobile') {
+        at /Users/patryk/Desktop/IronLog/tests/e2e/protected-shell.spec.ts:54:36
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/protected-shell-Protected--e7e98--route-inside-the-app-shell-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/protected-shell-Protected--e7e98--route-inside-the-app-shell-desktop/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/protected-shell-Protected--e7e98--route-inside-the-app-shell-desktop/error-context.md
+
+  2) [desktop] › tests/e2e/workbench-lists.spec.ts:46:3 › History and list workbenches › keeps workbench routes bounded without horizontal overflow
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: 1440
+    Received: 1425
+
+      66 |       })
+      67 |
+    > 68 |       expect(geometry.documentWidth).toBe(geometry.viewport)
+         |                                      ^
+      69 |       if (testInfo.project.name === 'desktop') {
+      70 |         expect(geometry.width).toBeLessThanOrEqual(1040)
+      71 |         expect(Math.abs(geometry.left - (geometry.viewport - geometry.right)))
+        at /Users/patryk/Desktop/IronLog/tests/e2e/workbench-lists.spec.ts:68:38
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/workbench-lists-History-an-22207-without-horizontal-overflow-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    attachment #2: video (video/webm) ──────────────────────────────────────────────────────────────
+    test-results/workbench-lists-History-an-22207-without-horizontal-overflow-desktop/video.webm
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/workbench-lists-History-an-22207-without-horizontal-overflow-desktop/error-context.md
+
+    Error Context: test-results/workbench-lists-History-an-22207-without-horizontal-overflow-desktop/error-context.md
+
+  2 failed
+    [desktop] › tests/e2e/protected-shell.spec.ts:26:3 › Protected application shell › keeps an authenticated unknown route inside the app shell
+    [desktop] › tests/e2e/workbench-lists.spec.ts:46:3 › History and list workbenches › keeps workbench routes bounded without horizontal overflow
+  11 skipped
+  20 passed (1.0m)
+⚠  Script exited unsuccessfully (code 1)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+i  auth: Stopping Authentication Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator
+
+Error: Script "npx playwright test tests/e2e/dashboard.spec.ts tests/e2e/protected-shell.spec.ts tests/e2e/workbench-lists.spec.ts tests/e2e/workout-mobile.spec.ts tests/e2e/mobile-ergonomics.spec.ts tests/e2e/workout-guard.spec.ts tests/e2e/workout-lifecycle.spec.ts --grep 'delete action on recent|keeps an authenticated unknown|keeps workbench routes|desktop workout keeps shell|Phase 4 mobile ergonomics|navigating away preserves|lost delete acknowledgement' --retries=0" exited with code 1

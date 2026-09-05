@@ -1,0 +1,24 @@
+
+> ironlog@0.0.0 test:rules
+> firebase emulators:exec --only firestore --project demo-ironlog "vitest run --config vitest.rules.config.ts"
+
+i  emulators: Starting emulators: firestore
+i  emulators: Detected demo project ID "demo-ironlog", emulated services will use a demo configuration and attempts to access non-emulated services for this project will fail.
+i  firestore: Firestore Emulator logging to firestore-debug.log
+✔  firestore: Firestore Emulator was started in standard edition.
+✔  firestore: Firestore Emulator UI websocket is running on 9150.
+i  Running script: vitest run --config vitest.rules.config.ts
+
+ RUN  v4.1.4 /Users/patryk/Desktop/IronLog
+
+
+ Test Files  1 passed (1)
+      Tests  19 passed (19)
+   Start at  12:43:37
+   Duration  4.97s (transform 42ms, setup 0ms, import 107ms, tests 4.80s, environment 0ms)
+
+✔  Script exited successfully (code 0)
+i  emulators: Shutting down emulators.
+i  firestore: Stopping Firestore Emulator
+i  hub: Stopping emulator hub
+i  logging: Stopping Logging Emulator

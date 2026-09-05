@@ -1,0 +1,12 @@
+
+> ironlog@0.0.0 test:unit
+> vitest run
+
+
+ RUN  v4.1.4 /Users/patryk/Desktop/IronLog
+
+
+ Test Files  78 passed (78)
+      Tests  737 passed (737)
+   Start at  12:35:26
+   Duration  11.78s (transform 5.95s, setup 2.97s, import 17.44s, tests 35.17s, environment 37.45s)

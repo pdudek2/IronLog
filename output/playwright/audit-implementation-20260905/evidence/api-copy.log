@@ -1,0 +1,8 @@
+
+ RUN  v4.1.4 /Users/patryk/Desktop/IronLog
+
+
+ Test Files  1 passed (1)
+      Tests  13 passed (13)
+   Start at  12:42:23
+   Duration  191ms (transform 77ms, setup 0ms, import 93ms, tests 19ms, environment 0ms)

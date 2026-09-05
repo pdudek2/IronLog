@@ -1,0 +1,12 @@
+
+> ironlog@0.0.0 test:unit
+> vitest run src/pages/__tests__/DashboardProjectionStatus.test.tsx src/pages/__tests__/WorkoutDetailActions.test.tsx
+
+
+ RUN  v4.1.4 /Users/patryk/Desktop/IronLog
+
+
+ Test Files  2 passed (2)
+      Tests  58 passed (58)
+   Start at  12:58:44
+   Duration  2.52s (transform 325ms, setup 157ms, import 662ms, tests 1.97s, environment 1.09s)

@@ -17,8 +17,6 @@ export interface ProgressLoadResult {
   fetchedAt: number
 }
 
-const SESSION_WINDOW_MS = 180 * 86_400_000
-
 function toDatasetResult<T>(result: PromiseSettledResult<T>): ProgressDatasetResult<T> {
   return result.status === 'fulfilled'
     ? { status: 'success', value: result.value }
@@ -27,6 +25,7 @@ function toDatasetResult<T>(result: PromiseSettledResult<T>): ProgressDatasetRes
 
 export async function loadProgressData(
   uid: string,
+  rangeDays: number,
   now = Date.now(),
 ): Promise<ProgressLoadResult> {
   let freshness: ProgressLoadResult['freshness'] = 'fresh'
@@ -40,7 +39,7 @@ export async function loadProgressData(
   }
 
   const [sessionsResult, recordsResult] = await Promise.allSettled([
-    getProgressSessions(uid, now - SESSION_WINDOW_MS),
+    getProgressSessions(uid, now - 2 * rangeDays * 86_400_000),
     getRecords(uid),
   ])
 

@@ -14,6 +14,7 @@ import {
 } from 'firebase/firestore'
 import type { ExerciseSource } from '../store/workoutStore'
 import { auth, db } from './firebase'
+import { clearWorkoutDeleteRecovery, readWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from './workoutDeleteRecovery'
 
 interface WorkoutSetSummary {
   weight: number
@@ -57,7 +58,7 @@ export interface WorkoutUpdateResult {
 }
 
 export interface WorkoutDeleteResult {
-  status: 'deleted' | 'cleanup_pending'
+  status: 'deleted' | 'cleanup_pending' | 'unknown'
 }
 
 export async function getRecentWorkouts(uid: string, count = 20): Promise<WorkoutSummary[]> {
@@ -140,9 +141,33 @@ export async function updateWorkout(
 }
 
 export async function deleteWorkout(id: string): Promise<WorkoutDeleteResult> {
-  const result = await callAuthedApi<unknown>('/api/delete-workout', { workoutId: id })
-  if (!isWorkoutDeleteResult(result)) throw new Error('Nieprawidłowa odpowiedź serwera.')
-  return result
+  const user = auth.currentUser
+  if (!user) throw new Error('Brak aktywnej sesji użytkownika.')
+  const previous = readWorkoutDeleteRecovery(user.uid)
+  writeWorkoutDeleteRecovery(user.uid, previous?.workoutId === id
+    ? previous
+    : { workoutId: id, status: 'unknown' })
+
+  try {
+    const result = await callAuthedApi<unknown>('/api/delete-workout', { workoutId: id }, user)
+    if (!isWorkoutDeleteResult(result)) throw new Error('Nieprawidłowa odpowiedź serwera.')
+    if (result.status === 'deleted') {
+      clearWorkoutDeleteRecovery(user.uid, id)
+    } else if (readWorkoutDeleteRecovery(user.uid)?.workoutId === id) {
+      writeWorkoutDeleteRecovery(user.uid, { workoutId: id, status: 'cleanup_pending' })
+    }
+    return result
+  } catch (error) {
+    if (error instanceof ApiRejectedError) {
+      // A rejected retry cannot disprove an earlier request's unknown outcome.
+      if (!previous) clearWorkoutDeleteRecovery(user.uid, id)
+      throw error
+    }
+    const recovery = readWorkoutDeleteRecovery(user.uid)
+    return { status: recovery?.workoutId === id && recovery.status !== 'unknown'
+      ? 'cleanup_pending'
+      : 'unknown' }
+  }
 }
 
 export async function retryPendingMaterializations(
@@ -272,11 +297,15 @@ export async function retryWorkoutMaterialization(workoutId: string): Promise<vo
   await materializeWorkout(workoutId)
 }
 
-async function callAuthedApi<T>(path: string, body: unknown): Promise<T> {
-  const user = auth.currentUser
+class ApiRejectedError extends Error {}
+
+async function callAuthedApi<T>(path: string, body: unknown, user = auth.currentUser): Promise<T> {
   if (!user) throw new Error('Brak aktywnej sesji użytkownika.')
 
-  const idToken = await user.getIdToken()
+  const idToken = await user.getIdToken().catch((error: unknown) => {
+    throw new ApiRejectedError(error instanceof Error ? error.message : 'Nie udało się uwierzytelnić.')
+  })
+  if (auth.currentUser !== user) throw new ApiRejectedError('Konto użytkownika zmieniło się.')
   const response = await fetch(path, {
     method: 'POST',
     headers: {
@@ -289,7 +318,8 @@ async function callAuthedApi<T>(path: string, body: unknown): Promise<T> {
   const payload = await response.json().catch(() => null) as T | { error?: string } | null
   if (!response.ok) {
     const errorPayload = payload as { error?: string } | null
-    throw new Error(errorPayload?.error ?? 'Operacja serwerowa nie powiodła się.')
+    const ErrorType = response.status >= 400 && response.status < 500 ? ApiRejectedError : Error
+    throw new ErrorType(errorPayload?.error ?? 'Operacja serwerowa nie powiodła się.')
   }
   if (!payload) throw new Error('Nieprawidłowa odpowiedź serwera.')
   return payload as T

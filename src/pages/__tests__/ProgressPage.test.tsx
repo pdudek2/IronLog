@@ -148,6 +148,7 @@ describe('ProgressPage', () => {
   let dateNow: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
+    authUser.uid = 'user-1'
     dateNow = vi.spyOn(Date, 'now').mockReturnValue(NOW)
     mockLoadProgressData.mockReset()
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
@@ -184,6 +185,85 @@ describe('ProgressPage', () => {
     expect(initialPage).toHaveAttribute('aria-busy', 'false')
     expect(screen.getByText('1 sesja w zakresie')).toBeInTheDocument()
     expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
+  })
+
+  it('loads annual data older than 180 days and compares the previous year after a range switch', async () => {
+    const annual = deferred<ProgressLoadResult>()
+    mockLoadProgressData
+      .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10)], records: [record('record-1')] }))
+      .mockReturnValueOnce(annual.promise)
+    render(<ProgressPage />)
+    await screen.findByText('1 sesja w zakresie')
+    expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 90)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rok' }))
+    expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
+    expect(screen.getByTestId('progress-page')).toHaveAttribute('aria-busy', 'true')
+    expect(screen.getByText('Ładowanie postępów')).toBeInTheDocument()
+    expect(screen.queryByText('1 sesja w zakresie')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Wolumen tygodniowy' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Rekordy od początku' })).toBeInTheDocument()
+
+    await act(async () => annual.resolve(successfulLoad({
+      sessions: [session('recent', 10), session('old-current-year', 200), session('previous-year', 400)],
+      records: [record('record-1')],
+    })))
+    expect(screen.getByText('2 sesje w zakresie')).toBeInTheDocument()
+    const comparison = screen.getByLabelText('Porównanie z poprzednim okresem: 365 dni')
+    expect(within(comparison).getByText('2.0k kg')).toBeInTheDocument()
+    expect(within(comparison).getAllByText('+100% vs poprzednio')).toHaveLength(2)
+    expect(within(comparison).getByText('+0% vs poprzednio')).toBeInTheDocument()
+    expect(screen.getByTestId('progress-page')).toHaveAttribute('aria-busy', 'false')
+    fireEvent.click(screen.getByRole('button', { name: '90 dni' }))
+    expect(screen.getByText('1 sesja w zakresie')).toBeInTheDocument()
+    expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not promote a shorter snapshot after annual sessions fail and retries the selected range', async () => {
+    const annual = deferred<ProgressLoadResult>()
+    mockLoadProgressData
+      .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10)], records: [record('record-1')] }))
+      .mockReturnValueOnce(annual.promise)
+    render(<ProgressPage />)
+    await screen.findByText('1 sesja w zakresie')
+    fireEvent.click(screen.getByRole('button', { name: 'Rok' }))
+
+    await act(async () => annual.resolve({
+      ...successfulLoad({ records: [record('record-2', { exerciseName: 'Nowy rekord' })] }),
+      sessions: { status: 'error', error: new Error('annual sessions unavailable') },
+    }))
+    expect(screen.queryByText('1 sesja w zakresie')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Wolumen tygodniowy' })).not.toBeInTheDocument()
+    expect(screen.queryByText('Brak danych', { exact: true })).not.toBeInTheDocument()
+    expect(screen.getByText('Nowy rekord')).toBeInTheDocument()
+    expect(screen.getByText('Nie udało się odświeżyć danych treningowych.')).toBeInTheDocument()
+
+    mockLoadProgressData.mockResolvedValueOnce(successfulLoad({ sessions: [session('older', 200)] }))
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    await screen.findByText('1 sesja w zakresie')
+    expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
+    expect(screen.getByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
+  })
+
+  it('discards the previous account snapshot and its in-flight range result', async () => {
+    const annual = deferred<ProgressLoadResult>()
+    const nextAccount = deferred<ProgressLoadResult>()
+    mockLoadProgressData
+      .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10)], records: [record('record-1', { exerciseName: 'Account A record' })] }))
+      .mockReturnValueOnce(annual.promise)
+      .mockReturnValueOnce(nextAccount.promise)
+    const view = render(<ProgressPage />)
+    await screen.findAllByText('Account A record')
+    fireEvent.click(screen.getByRole('button', { name: 'Rok' }))
+    authUser.uid = 'user-2'
+    view.rerender(<ProgressPage />)
+    expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-2', 90)
+    expect(screen.queryByText('Account A record')).not.toBeInTheDocument()
+    await act(async () => annual.resolve(successfulLoad({ sessions: [session('stale-account', 200)], records: [record('stale-record')] })))
+    expect(screen.queryByText('1 sesja w zakresie')).not.toBeInTheDocument()
+    await act(async () => nextAccount.resolve(successfulLoad()))
+    expect(screen.getByText('Brak danych', { exact: true })).toBeInTheDocument()
+    expect(screen.queryByText('Wyciskanie sztangi')).not.toBeInTheDocument()
   })
 
   it('renders charts data and a records-unavailable notice when records fail', async () => {
@@ -392,9 +472,10 @@ describe('ProgressPage', () => {
     fireEvent.click(within(emptyStatus).getByRole('button', { name: 'Pokaż rok' }))
 
     expect(screen.getByRole('button', { name: 'Rok' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Rekordy od początku' })).toBeInTheDocument()
-    expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
+    expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
+    expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
   })
 
   it('announces truncation and uncertain freshness with one retry action', async () => {

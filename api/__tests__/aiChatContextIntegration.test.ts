@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
   requireUserId: vi.fn().mockResolvedValue('user-1'),
   assertRateLimit: vi.fn().mockResolvedValue(undefined),
   getUserExercises: vi.fn(),
+  limitUserExercises: vi.fn(),
 }))
 
 vi.mock('../_lib/aiContextLoader.js', () => ({
@@ -21,14 +22,14 @@ vi.mock('../_lib/firebaseAdmin.js', () => ({
   adminDb: {
     collection: () => ({
       where: () => ({
-        get: mocks.getUserExercises,
+        limit: mocks.limitUserExercises,
       }),
     }),
   },
 }))
 
 import { AVAILABLE_AI_CONTEXT_SOURCES, buildAiUserContext } from '../../server/aiContext.js'
-import handler, { normalizeGeneratedPlan, serializeAiContextHeader } from '../ai-chat.js'
+import handler, { AI_USER_EXERCISE_LIMIT, normalizeGeneratedPlan, serializeAiContextHeader } from '../ai-chat.js'
 import { ApiError } from '../_lib/errors.js'
 import type { ApiRequest, ApiResponse } from '../_lib/http.js'
 
@@ -114,6 +115,7 @@ beforeEach(() => {
   mocks.requireUserId.mockReset()
   mocks.assertRateLimit.mockReset()
   mocks.getUserExercises.mockReset()
+  mocks.limitUserExercises.mockReset().mockReturnValue({ get: mocks.getUserExercises })
   mocks.requireUserId.mockResolvedValue('user-1')
   mocks.assertRateLimit.mockResolvedValue(undefined)
   mocks.getUserExercises.mockResolvedValue({ docs: [] })
@@ -133,6 +135,9 @@ describe('AI context response metadata', () => {
       workouts: 'available',
       records: 'unavailable',
     })).toBe('limited;unavailable=readiness,records')
+    expect(serializeAiContextHeader({
+      ...AVAILABLE_AI_CONTEXT_SOURCES, workouts: 'limited',
+    })).toBe('limited;unavailable=workouts')
   })
 
   it('does not fetch Anthropic when context loading rejects with ai_context_unavailable', async () => {
@@ -208,6 +213,64 @@ describe('AI context response metadata', () => {
       code: 'ai_catalog_unavailable',
     })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('bounds oversized custom catalogs and rejects truncation before calling Anthropic', async () => {
+    mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
+      profile: null, readinessEntries: [], workouts: [], records: [],
+    }))
+    mocks.getUserExercises.mockResolvedValueOnce({
+      docs: Array.from({ length: AI_USER_EXERCISE_LIMIT + 1 }, (_, index) => ({
+        id: `custom-${index}`, data: () => ({ name: `Custom ${index}` }),
+      })),
+    })
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    const captured = createHandlerDoubles(validPlanBody)
+
+    await handler(captured.req, captured.res)
+
+    expect(mocks.limitUserExercises).toHaveBeenCalledExactlyOnceWith(101)
+    expect(captured.status()).toBe(422)
+    expect(captured.json()).toMatchObject({ code: 'ai_catalog_too_large', error: expect.stringContaining('100') })
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('accepts a catalog at the cap and validates returned exercises against that catalog', async () => {
+    mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
+      profile: null, readinessEntries: [], workouts: [], records: [],
+    }))
+    mocks.getUserExercises.mockResolvedValueOnce({
+      docs: Array.from({ length: AI_USER_EXERCISE_LIMIT }, (_, index) => ({
+        id: `custom-${index}`, data: () => ({ name: `Custom ${index}` }),
+      })),
+    })
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ content: [{ type: 'text', text: JSON.stringify({
+        name: 'Bounded catalog plan',
+        days: [0, 1].map((index) => ({
+          name: `Day ${index}`,
+          exercises: [
+            { exerciseId: 'custom-99', exerciseSource: 'user', name: 'Custom 99' },
+            { exerciseId: 'custom-100', exerciseSource: 'user', name: 'Missing custom 100' },
+          ],
+        })),
+      }) }] }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    const captured = createHandlerDoubles(validPlanBody)
+
+    await handler(captured.req, captured.res)
+
+    expect(mocks.limitUserExercises).toHaveBeenCalledExactlyOnceWith(101)
+    expect(captured.status()).toBe(200)
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { system: string }
+    expect(body.system).toContain('exerciseId=custom-99')
+    expect(body.system).not.toContain('exerciseId=custom-100')
+    const result = captured.json() as { plan: { days: Array<{ exercises: Array<{ exerciseId: string }> }> } }
+    expect(result.plan.days.map((day) => day.exercises.map((exercise) => exercise.exerciseId)))
+      .toEqual([['custom-99'], ['custom-99']])
   })
 
   it.each([

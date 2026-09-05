@@ -4,7 +4,7 @@ const RECENT_WORKOUT_LIMIT = 4
 
 export const AI_CONTEXT_SOURCES = ['profile', 'readiness', 'workouts', 'records'] as const
 export type AiContextSource = typeof AI_CONTEXT_SOURCES[number]
-export type AiContextSourceStatus = 'available' | 'unavailable'
+export type AiContextSourceStatus = 'available' | 'limited' | 'unavailable'
 export type AiContextSourceStatuses = Record<AiContextSource, AiContextSourceStatus>
 
 export const AVAILABLE_AI_CONTEXT_SOURCES: AiContextSourceStatuses = {
@@ -100,6 +100,7 @@ export interface AiUserContext {
 
 export interface BuildAiUserContextInput {
   now?: number
+  workoutReadLimit?: number
   sources?: AiContextSourceStatuses
   profile: AiContextProfileInput | null
   readinessEntries: AiReadinessInput[]
@@ -136,6 +137,7 @@ export function createEmptyAiUserContext(): AiUserContext {
 
 export function buildAiUserContext({
   now = Date.now(),
+  workoutReadLimit,
   sources,
   profile,
   readinessEntries,
@@ -148,6 +150,13 @@ export function buildAiUserContext({
   const sortedWorkouts = workouts
     .slice()
     .sort((a, b) => b.startedAt - a.startedAt)
+
+  if (resolvedSources.workouts === 'available'
+    && workoutReadLimit !== undefined
+    && sortedWorkouts.length >= workoutReadLimit
+    && !(sortedWorkouts[sortedWorkouts.length - 1]?.startedAt < now - MONTH_WINDOW_DAYS * DAY_MS)) {
+    resolvedSources.workouts = 'limited'
+  }
 
   const recentWorkouts = sortedWorkouts
     .slice(0, RECENT_WORKOUT_LIMIT)
@@ -222,9 +231,11 @@ export function buildChatContextSections(context: AiUserContext) {
     ? 'Rekordy: dane chwilowo niedostępne.'
     : formatRecords(context.topRecords)
 
-  const monthlyLine = context.sources.workouts === 'unavailable'
+  const monthlyLine = context.sources.workouts !== 'available'
     ? [
-        'Analiza treningów: dane chwilowo niedostępne.',
+        context.sources.workouts === 'limited'
+          ? 'Analiza 30 dni jest niepełna: limit odczytu obejmuje tylko najnowsze treningi. Nie wyliczaj sum miesięcznych ani nie wnioskuj o słabszych tygodniach z tego wycinka.'
+          : 'Analiza treningów: dane chwilowo niedostępne.',
         ...context.monthlyInsights.signals.map((signal) => `- ${signal}`),
         ...context.monthlyInsights.recommendations.map((recommendation) => `Rekomendacja: ${recommendation}`),
       ].join('\n')
@@ -341,7 +352,7 @@ function buildMonthlyInsights({
     recommendations.push('Po takim okresie wracaj przez 1-2 treningi na 80-90% normalnej objętości zamiast nadrabiać wszystko jedną sesją.')
   }
 
-  if (sources.workouts === 'unavailable') {
+  if (sources.workouts !== 'available') {
     return {
       windowDays: MONTH_WINDOW_DAYS,
       workoutCount: 0,

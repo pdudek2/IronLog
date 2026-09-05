@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from 'react'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatPage from '../ChatPage'
 
@@ -205,6 +205,22 @@ describe('ChatPage accessibility', () => {
     expect(await screen.findByRole('heading', { name: 'Plan po ponowieniu' })).toBeVisible()
     expect(mocks.generateTrainingPlan).toHaveBeenCalledTimes(2)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('retains the selected conversation workspace when a delayed plan completes', async () => {
+    let finish!: (value: unknown) => void
+    mocks.generateTrainingPlan.mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    render(<ChatPage />)
+    await openModelSelect()
+    fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
+    fireEvent.change(screen.getByRole('textbox', { name: 'Cel planu' }), { target: { value: 'Siła' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generuj plan' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Rozmowa/ }))
+    await act(async () => finish({ plan: { name: 'Opóźniony plan', summary: 'Gotowy', days: [] }, context: { status: 'full', unavailableSources: [] } }))
+    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeVisible()
+    expect(screen.queryByRole('heading', { name: 'Opóźniony plan' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
+    expect(screen.getByRole('heading', { name: 'Opóźniony plan' })).toBeVisible()
   })
 
   it('exposes the selected generated-plan day without relying on color', async () => {

@@ -23,13 +23,12 @@ vi.mock('../progressService', () => ({
 }))
 
 const NOW = new Date('2026-07-10T12:00:00Z').getTime()
-const SESSION_WINDOW_MS = 180 * 86_400_000
 const sessions = { sessions: [], truncated: false }
 const records = { records: [], truncated: false }
 
-async function loadProgressData(uid = 'user-1', now = NOW) {
+async function loadProgressData(uid = 'user-1', rangeDays = 90, now = NOW) {
   const service = await import('../progressLoadService')
-  return service.loadProgressData(uid, now)
+  return service.loadProgressData(uid, rangeDays, now)
 }
 
 beforeEach(() => {
@@ -41,11 +40,11 @@ beforeEach(() => {
 })
 
 describe('loadProgressData', () => {
-  it('loads a fixed 180-day session window', async () => {
-    const result = await loadProgressData()
+  it.each([30, 90, 365])('loads both the current and previous %s-day periods', async (rangeDays) => {
+    const result = await loadProgressData('user-1', rangeDays)
 
     expect(getRecentWorkouts).toHaveBeenCalledWith('user-1', 50)
-    expect(getProgressSessions).toHaveBeenCalledWith('user-1', NOW - SESSION_WINDOW_MS)
+    expect(getProgressSessions).toHaveBeenCalledWith('user-1', NOW - 2 * rangeDays * 86_400_000)
     expect(result).toMatchObject({
       sessions: { status: 'success', value: sessions },
       records: { status: 'success', value: records },

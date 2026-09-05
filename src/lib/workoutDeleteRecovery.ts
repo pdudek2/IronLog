@@ -1,23 +1,29 @@
 interface StoredWorkoutDeleteRecovery {
   uid: string
   workoutId: string
+  status?: 'unknown' | 'cleanup_pending'
 }
 
 export interface WorkoutDeleteRecovery {
   workoutId: string
+  status?: 'unknown' | 'cleanup_pending'
 }
 
 const STORAGE_KEY_PREFIX = 'ironlog:workout-delete-recovery:'
-// ponytail: stores one committed delete recovery per user because the UI allows one delete at a time.
+// ponytail: stores one unresolved delete per user; use a queue if parallel deletes are needed.
 
 export function writeWorkoutDeleteRecovery(
   uid: string,
   recovery: WorkoutDeleteRecovery,
   storage: Storage = getLocalStorage(),
 ): void {
+  const existing = readWorkoutDeleteRecovery(uid, storage)
+  if (existing && existing.workoutId !== recovery.workoutId) {
+    throw new Error('Najpierw ponów poprzednie usunięcie treningu.')
+  }
   storage.setItem(storageKey(uid), JSON.stringify({
     uid,
-    workoutId: recovery.workoutId,
+    ...recovery,
   } satisfies StoredWorkoutDeleteRecovery))
 }
 
@@ -31,7 +37,7 @@ export function readWorkoutDeleteRecovery(
   try {
     const stored = JSON.parse(raw) as unknown
     if (!isStoredWorkoutDeleteRecovery(stored) || stored.uid !== uid) return null
-    return { workoutId: stored.workoutId }
+    return { workoutId: stored.workoutId, ...(stored.status && { status: stored.status }) }
   } catch {
     return null
   }
@@ -39,9 +45,12 @@ export function readWorkoutDeleteRecovery(
 
 export function clearWorkoutDeleteRecovery(
   uid: string,
+  workoutId: string,
   storage: Storage = getLocalStorage(),
 ): void {
-  storage.removeItem(storageKey(uid))
+  if (readWorkoutDeleteRecovery(uid, storage)?.workoutId === workoutId) {
+    storage.removeItem(storageKey(uid))
+  }
 }
 
 function storageKey(uid: string): string {
@@ -61,6 +70,7 @@ function isStoredWorkoutDeleteRecovery(value: unknown): value is StoredWorkoutDe
     && value.uid.length > 0
     && typeof value.workoutId === 'string'
     && value.workoutId.length > 0
+    && (value.status === undefined || value.status === 'unknown' || value.status === 'cleanup_pending')
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

@@ -22,7 +22,7 @@ export function isExpectedWorkoutLifecycleProjectionDiagnostic(entry: BrowserDia
 }
 
 export function isExpectedWorkoutLifecycleAckLossDiagnostic(entry: BrowserDiagnostic): boolean {
-  if (!hasEndpoint(entry, '/api/finalize-workout') && !hasEndpoint(entry, '/api/discard-session')) {
+  if (!hasEndpoint(entry, '/api/finalize-workout') && !hasEndpoint(entry, '/api/discard-session') && !hasEndpoint(entry, '/api/delete-workout')) {
     return false
   }
   if (entry.kind === 'requestfailed') return entry.message === 'net::ERR_FAILED' && entry.method === 'POST'

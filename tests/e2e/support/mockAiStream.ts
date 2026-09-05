@@ -40,8 +40,14 @@ export interface MockAiErrorAttempt {
 
 export type MockAiAttempt = MockAiChatAttempt | MockAiPlanAttempt | MockAiErrorAttempt
 
-export function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Promise<void> {
-  return page.addInitScript((configuredAttempts: MockAiAttempt[]) => {
+export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Promise<void> {
+  if (!await page.evaluate(() => Boolean(window.__ironlogEmulatorTestBridge))) {
+    await page.goto('/')
+  }
+  await page.waitForFunction(() => Boolean(window.__ironlogEmulatorTestBridge?.readAuthenticatedUid()))
+  const uid = await page.evaluate(() => window.__ironlogEmulatorTestBridge!.readAuthenticatedUid()!)
+
+  return page.addInitScript(({ configuredAttempts, uid }: { configuredAttempts: MockAiAttempt[]; uid: string }) => {
     const runtimeWindow = window as typeof window & {
       __ironlogMockAiAbortCount: number
     }
@@ -112,7 +118,9 @@ export function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Pro
     )
 
     runtimeWindow.__ironlogMockAiAbortCount = 0
-    window.localStorage.setItem('ironlog.claudeApiKey', 'sk-ant-test-only-browser-key')
+    if (!window.localStorage.getItem(`ironlog.claudeApiKey:${uid}`)) {
+      window.localStorage.setItem(`ironlog.claudeApiKey:${uid}`, 'sk-ant-test-only-browser-key')
+    }
     window.localStorage.setItem('ironlog.claudeModel', 'claude-test')
 
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -224,5 +232,5 @@ export function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Pro
         },
       })
     }
-  }, attempts).then(() => undefined)
+  }, { configuredAttempts: attempts, uid }).then(() => undefined)
 }

@@ -10,6 +10,8 @@ import { LoadingState } from '../components/ui'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { useAuthStore } from '../store/authStore'
+import { useProfileStore } from '../store/profileStore'
+import { displayWeightStringToKg, kgToDisplayWeight } from '../lib/weightUnits'
 import type { ExerciseSource } from '../store/workoutStore'
 import {
   clearTemplateDraft,
@@ -79,6 +81,8 @@ function normalizeTemplateExercise(exercise: TemplateExercise): TemplateExercise
 
 export default function TemplateEditorPage() {
   const { user } = useAuthStore()
+  const { profile } = useProfileStore()
+  const units = profile?.units ?? 'kg'
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -450,7 +454,7 @@ export default function TemplateEditorPage() {
                       <span>Ćwiczenie</span>
                       <span>Serie</span>
                       <span>Powt.</span>
-                      <span>Ciężar</span>
+                      <span>Ciężar ({units})</span>
                     </div>
                   )}
                   {selectedDay.exercises.map((exercise, exerciseIndex) => (
@@ -512,17 +516,17 @@ export default function TemplateEditorPage() {
                         </label>
 
                         <label>
-                          <span className="template-input-label">Ciężar startowy — {exercise.name}</span>
+                          <span className="template-input-label">Ciężar startowy ({units}) — {exercise.name}</span>
                           <input
                             type="number"
-                            aria-label={`Ciężar startowy — ${exercise.name}`}
+                            aria-label={`Ciężar startowy (${units}) — ${exercise.name}`}
                             inputMode="decimal"
                             min={0}
-                            step="0.5"
-                            value={exercise.targetWeight === 0 ? '' : exercise.targetWeight}
+                            step={units === 'lbs' ? '0.1' : '0.5'}
+                            value={exercise.targetWeight === 0 ? '' : kgToDisplayWeight(exercise.targetWeight, units)}
                             onChange={(event) => updateExercise(selectedDayIndex, exerciseIndex, (current) => ({
                               ...current,
-                              targetWeight: toPositiveFloat(event.target.value, 0),
+                              targetWeight: toPositiveFloat(displayWeightStringToKg(event.target.value, units), 0),
                             }))}
                             className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />

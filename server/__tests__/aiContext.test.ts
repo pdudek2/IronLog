@@ -68,6 +68,53 @@ describe('buildAiUserContext', () => {
     expect(sections.workoutsLine).toContain('Bench Press')
   })
 
+  it('preserves recent sessions but suppresses totals and weak-week inference for a dense truncated month', () => {
+    const context = buildAiUserContext({
+      now: NOW,
+      workoutReadLimit: 31,
+      profile: { weeklyGoal: 14 },
+      readinessEntries: [readiness(0, 2, 2, 5), readiness(1, 2, 2, 5)],
+      workouts: Array.from({ length: 42 }, (_, index) => workout(index / 2, `Session ${index}`, 500)).slice(0, 31),
+      records: [],
+    })
+    const sections = buildChatContextSections(context)
+
+    expect(context.sources.workouts).toBe('limited')
+    expect(context.recentWorkouts).toHaveLength(4)
+    expect(sections.workoutsLine).toContain('Session 0')
+    expect(sections.workoutsLine).toContain('500 kg')
+    expect(sections.monthlyLine).toContain('Analiza 30 dni jest niepełna')
+    expect(sections.monthlyLine).toContain('2 dni z rzędu')
+    expect(sections.monthlyLine).not.toContain('15500')
+    expect(sections.monthlyLine).not.toContain('31 treningów /')
+    expect(sections.monthlyLine).not.toContain('Średnio')
+    expect(sections.monthlyLine).not.toContain('Wykryto słabszy tydzień')
+    expect(context.monthlyInsights.signals.join(' ')).not.toContain('Najczęściej')
+  })
+
+  it.each([
+    { ageDays: 30, expected: 'limited', count: 0 },
+    { ageDays: 30 + 1 / DAY_MS, expected: 'available', count: 30 },
+  ])('treats oldest age $ageDays days conservatively at the query limit', ({ ageDays, expected, count }) => {
+    const context = buildAiUserContext({
+      now: NOW,
+      workoutReadLimit: 31,
+      profile: null,
+      readinessEntries: [],
+      workouts: [
+        ...Array.from({ length: 30 }, (_, index) => workout(index / 2, `Session ${index}`, 500)),
+        workout(ageDays, 'Boundary', 500),
+      ],
+      records: [],
+    })
+
+    expect(context.sources.workouts).toBe(expected)
+    expect(context.monthlyInsights.workoutCount).toBe(count)
+    if (expected === 'available') {
+      expect(buildChatContextSections(context).monthlyLine).toContain('30 treningów / 15000 kg')
+    }
+  })
+
   it('detects weaker weeks and recommends a gentler return instead of catching up at once', () => {
     const context = buildAiUserContext({
       now: NOW,

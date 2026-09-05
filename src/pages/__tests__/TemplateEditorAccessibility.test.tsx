@@ -52,12 +52,17 @@ const multiDayTemplate = {
 }
 
 const mocks = vi.hoisted(() => ({
+  units: 'kg' as 'kg' | 'lbs',
   createTemplate: vi.fn(),
   getTemplate: vi.fn(),
   getUserExercises: vi.fn(),
   logoutUser: vi.fn(),
   preloadRouteByPath: vi.fn(),
   updateTemplate: vi.fn(),
+}))
+
+vi.mock('../../store/profileStore', () => ({
+  useProfileStore: () => ({ profile: { units: mocks.units } }),
 }))
 
 vi.mock('../../store/authStore', () => ({
@@ -143,6 +148,7 @@ function renderEditor(initialEntry = '/templates/new?draft=ai') {
 
 describe('TemplateEditorPage accessibility', () => {
   beforeEach(() => {
+    mocks.units = 'kg'
     mocks.createTemplate.mockReset()
     mocks.createTemplate.mockResolvedValue(undefined)
     mocks.getTemplate.mockReset()
@@ -155,6 +161,40 @@ describe('TemplateEditorPage accessibility', () => {
     mocks.preloadRouteByPath.mockResolvedValue(undefined)
     mocks.updateTemplate.mockReset()
     mocks.updateTemplate.mockResolvedValue(undefined)
+  })
+
+  it('displays 80 kg as 176.4 lbs and preserves untouched canonical weight on save', async () => {
+    mocks.units = 'lbs'
+    mocks.getTemplate.mockResolvedValue({
+      ...multiDayTemplate,
+      days: [{ ...multiDayTemplate.days[0], exercises: [{ ...multiDayTemplate.days[0].exercises[0], targetWeight: 80 }] }],
+    })
+    renderEditor('/templates/template-tabs/edit')
+    const weight = await screen.findByRole('spinbutton', { name: 'Ciężar startowy (lbs) — Bench Press' })
+    expect(weight).toHaveValue(176.4)
+    expect(weight).toBeValid()
+    expect(screen.getByText('Ciężar (lbs)')).toBeInTheDocument()
+    expect(screen.queryByText('Niezapisane zmiany')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Nazwa' }), { target: { value: 'Renamed plan' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz zmiany' }))
+    await screen.findByText('Lista planów')
+    expect(mocks.updateTemplate.mock.calls[0]?.[1].days[0].exercises[0].targetWeight).toBe(80)
+  })
+
+  it.each([
+    ['lbs', 132.3, 45.3592],
+    ['kg', 60, 100],
+  ] as const)('converts only an edited %s weight to canonical kg', async (units, displayed, expectedKg) => {
+    mocks.units = units
+    renderEditor()
+    const weight = await screen.findByRole('spinbutton', { name: `Ciężar startowy (${units}) — Bench Press` })
+    expect(weight).toHaveValue(displayed)
+    fireEvent.change(weight, { target: { value: '100' } })
+    expect(weight).toHaveValue(100)
+    expect(weight).toBeValid()
+    fireEvent.click(screen.getByRole('button', { name: 'Zapisz szablon' }))
+    await screen.findByText('Lista planów')
+    expect(mocks.createTemplate.mock.calls[0]?.[1].days[0].exercises[0].targetWeight).toBe(expectedKg)
   })
 
   it('shows a pristine create draft as not yet saved and invalid', async () => {

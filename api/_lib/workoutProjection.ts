@@ -292,13 +292,27 @@ async function stageProjectionKeys(
   })
 }
 
+function runGuardedProjectionTransaction<T>(
+  database: Firestore,
+  tombstoneRef: DocumentReference,
+  expectedRevision: number,
+  allowedState: 'deleted',
+  apply: (transaction: Transaction, fence: ProjectionFence) => Promise<T> | T,
+): Promise<T>
+function runGuardedProjectionTransaction(
+  database: Firestore,
+  tombstoneRef: DocumentReference,
+  expectedRevision: number,
+  allowedState: 'pending' | 'deleted',
+  apply: (transaction: Transaction, fence: ProjectionFence) => Promise<void> | void,
+): Promise<void>
 async function runGuardedProjectionTransaction<T>(
   database: Firestore,
   tombstoneRef: DocumentReference,
   expectedRevision: number,
   allowedState: 'pending' | 'deleted',
   apply: (transaction: Transaction, fence: ProjectionFence) => Promise<T> | T,
-): Promise<T> {
+): Promise<T | undefined> {
   return database.runTransaction(async (transaction) => {
     const tombstoneSnap = await transaction.get(tombstoneRef)
     if (!tombstoneSnap.exists) throw projectionStateConflict()
@@ -310,6 +324,9 @@ async function runGuardedProjectionTransaction<T>(
       throw workoutDeleted()
     }
     if (fence.projectionRevision !== expectedRevision) throw projectionSuperseded()
+    // Another request completed this revision; leave its projection intact.
+    // completeMaterialization still checks the canonical workout before success.
+    if (allowedState === 'pending' && fence.projectionState === 'ready') return
     if (fence.projectionState !== allowedState) throw projectionStateConflict()
 
     return apply(transaction, fence)
@@ -711,7 +728,17 @@ function buildExerciseSessions(
   workout: StoredWorkout,
   userExerciseMetadata: Map<string, ExerciseMetadata>,
 ): ExerciseSessionDoc[] {
-  return workout.exercises.map((exercise, index) => {
+  const grouped = new Map<string, WorkoutExercise & { orderIndex: number }>()
+  workout.exercises.forEach((exercise, orderIndex) => {
+    const key = `${exercise.exerciseSource}:${exercise.exerciseId}`
+    const existing = grouped.get(key)
+    if (existing) existing.sets.push(...exercise.sets)
+    else grouped.set(key, { ...exercise, orderIndex, sets: [...exercise.sets] })
+  })
+
+  // Existing per-entry projections are replaced only when that workout is rematerialized.
+  return [...grouped.values()].map((exercise) => {
+    const index = exercise.orderIndex
     let category: string | null = null
     let equipment: string | null = null
     let muscleGroups: string[] = []

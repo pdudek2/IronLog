@@ -267,6 +267,10 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       new URL(request.url()).pathname === '/api/discard-session'
     ))
 
+    const failedConsole = page.waitForEvent('console', (message) => (
+      message.text() === 'Failed to load resource: net::ERR_FAILED'
+      && new URL(message.location().url).pathname === '/api/discard-session'
+    ))
     await expectedBrowserDiagnostics.during(
       'intentional Phase 1 discard acknowledgement loss',
       isExpectedWorkoutLifecycleAckLossDiagnostic,
@@ -275,6 +279,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         await expect(page).toHaveURL(/\/workout\/new$/)
         await expect(page.getByRole('alert')).toContainText('Nie udało się potwierdzić zamknięcia sesji.')
         await failedRequest
+        await failedConsole
       },
     )
     expect(await readLifecycleActiveSession()).toBeNull()
@@ -592,3 +597,65 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     })
   })
 })
+
+
+test('exercise confirmation cannot delete a remotely rehydrated exercise', async ({ page, cleanup }, testInfo) => {
+  cleanup.add('remove exercise identity fixture', cleanupWorkoutLifecycleState)
+  await cleanupWorkoutLifecycleState()
+  const sessionId = phase1Id('exercise-removal-identity')
+  await seedLifecycleActiveSession({ sessionId })
+  await page.goto('/workout/new')
+  await expectAppReady(page, '/workout/new')
+  await page.getByRole('button', { name: 'Usuń ćwiczenie Phase 1 Bench Press' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Usunąć ćwiczenie?' })
+  await expect(dialog).toBeVisible()
+  await seedLifecycleActiveSession({ sessionId, reps: '9' })
+  await expect.poll(() => page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(['9'])
+  await dialog.getByRole('button', { name: 'Usuń ćwiczenie', exact: true }).click()
+  await expect(dialog).not.toBeVisible()
+  await expect.poll(() => page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(['9'])
+  expect((await readLifecycleActiveSession())?.exercises).toHaveLength(1)
+  await page.screenshot({ path: testInfo.outputPath('exercise-removal-identity.png'), fullPage: true })
+})
+
+
+for (const source of ['dashboard', 'detail'] as const) {
+  test(`lost delete acknowledgement survives ${source} reload and retries idempotently`, async ({ page, cleanup, expectedBrowserDiagnostics }, testInfo) => {
+    cleanup.add('remove delete recovery fixture', cleanupWorkoutLifecycleState)
+    await cleanupWorkoutLifecycleState()
+    const sessionId = phase1Id(`delete-ack-${source}`)
+    await seedLifecycleWorkout({ sessionId, materialized: true, label: 'Phase 1 delete acknowledgement' })
+    let interrupted = false
+    await page.route('**/api/delete-workout', async (route) => {
+      if (interrupted) return route.continue()
+      interrupted = true
+      const response = await route.fetch()
+      expect(response.ok()).toBe(true)
+      await route.abort('failed')
+    })
+    const routePath = source === 'dashboard' ? '/dashboard' : `/workout/${sessionId}`
+    await page.goto(routePath)
+    await expect(page).toHaveURL(routePath)
+    if (source === 'dashboard') await expectAppReady(page, '/dashboard')
+    const remove = source === 'dashboard'
+      ? page.getByRole('button', { name: /Usuń trening Phase 1 delete acknowledgement/ })
+      : page.getByRole('button', { name: 'Usuń trening', exact: true })
+    await remove.click()
+    const failedRequest = page.waitForEvent('requestfailed', (request) => new URL(request.url()).pathname === '/api/delete-workout')
+    const unknown = 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'
+    await expectedBrowserDiagnostics.during('intentional delete acknowledgement loss', isExpectedWorkoutLifecycleAckLossDiagnostic, async () => {
+      await page.getByRole('dialog').getByRole('button', { name: /Usuń/ }).click()
+      await failedRequest
+      await expect(page.getByText(unknown, { exact: true })).toBeVisible()
+    })
+    expect(await readLifecycleWorkout(sessionId)).toBeNull()
+    await page.reload()
+    await expect(page.getByText(unknown, { exact: true })).toBeVisible()
+    await page.screenshot({ path: testInfo.outputPath(`delete-${source}-recovery.png`), fullPage: true })
+    await page.getByRole('button', { name: 'Spróbuj ponownie' }).click()
+    await expect(page.getByText(unknown, { exact: true })).not.toBeVisible()
+    expect(await readLifecycleWorkout(sessionId)).toBeNull()
+    expect(await readLifecycleExerciseSessions(sessionId)).toHaveLength(0)
+    await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('ironlog:workout-delete-recovery:')))).toEqual([])
+  })
+}

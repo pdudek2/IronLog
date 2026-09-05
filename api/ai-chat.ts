@@ -22,9 +22,10 @@ export const config = {
 }
 
 export const AI_CONTEXT_HEADER = 'X-IronLog-AI-Context'
+export const AI_USER_EXERCISE_LIMIT = 100
 
 export function serializeAiContextHeader(sources: AiContextSourceStatuses): string {
-  const unavailable = AI_CONTEXT_SOURCES.filter((source) => sources[source] === 'unavailable')
+  const unavailable = AI_CONTEXT_SOURCES.filter((source) => sources[source] !== 'available')
   return unavailable.length === 0
     ? 'full'
     : `limited;unavailable=${unavailable.join(',')}`
@@ -142,7 +143,15 @@ function normalizePlanRequest(raw: AiChatBody['planRequest']) {
 
 async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]> {
   try {
-    const userExercisesSnap = await adminDb.collection('userExercises').where('userId', '==', uid).get()
+    const userExercisesSnap = await adminDb.collection('userExercises')
+      .where('userId', '==', uid)
+      .limit(AI_USER_EXERCISE_LIMIT + 1)
+      .get()
+    if (userExercisesSnap.docs.length > AI_USER_EXERCISE_LIMIT) {
+      throw new ApiError(422, `Katalog przekracza ${AI_USER_EXERCISE_LIMIT} własnych ćwiczeń. Zmniejsz go przed wygenerowaniem planu.`, {
+        code: 'ai_catalog_too_large',
+      })
+    }
     const globalExercises = await loadGlobalExercises()
 
     const fromGlobal = globalExercises.map((exercise) => ({
@@ -171,6 +180,7 @@ async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]
 
     return [...fromGlobal, ...fromUser]
   } catch (error) {
+    if (error instanceof ApiError) throw error
     console.error('[ai-chat exercise catalog error]', error)
     throw new ApiError(
       503,

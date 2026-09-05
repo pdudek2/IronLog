@@ -162,11 +162,21 @@ function ContextAvailabilityNotice({
 }
 
 export default function ChatPage() {
-  const { user } = useAuthStore()
+  const { user, loading } = useAuthStore()
+  const keyOwnerUid = !loading && !user?.isAnonymous ? user?.uid ?? null : null
   const navigate = useNavigate()
   const isDemoUser = user?.email === DEMO_EMAIL
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
-  const [configured, setConfigured] = useState(() => hasClaudeApiKey())
+  const [keyConfiguration, setKeyConfiguration] = useState(() => ({
+    uid: keyOwnerUid,
+    configured: hasClaudeApiKey(),
+  }))
+  const configured = keyOwnerUid !== null && (keyConfiguration.uid === keyOwnerUid
+    ? keyConfiguration.configured
+    : hasClaudeApiKey())
+  const setConfigured = useCallback((nextConfigured: boolean) => {
+    setKeyConfiguration({ uid: keyOwnerUid, configured: nextConfigured })
+  }, [keyOwnerUid])
   const [showConfigPanel, setShowConfigPanel] = useState(false)
   const [messages, setMessages] = useState<ChatMessage[]>(() => (isDemoUser ? DEMO_CHAT_MESSAGES : []))
   const demoSeededRef = useRef(isDemoUser)
@@ -430,7 +440,6 @@ export default function ChatPage() {
       setSelectedPreviewDay(0)
       setPlanPreview(plan)
       setPlanUnavailableSources(context.unavailableSources)
-      setActiveTab('plan')
       toast.success('Plan wygenerowany. Możesz go zapisać jako szablon.')
     } catch (nextError) {
       const message = nextError instanceof Error ? nextError.message : 'Nie udało się wygenerować planu.'
@@ -486,7 +495,7 @@ export default function ChatPage() {
       return
     }
     setShowConfigPanel(hasClaudeApiKey())
-  }, [])
+  }, [setConfigured])
 
   const handleRailConfiguredChange = useCallback((nextConfigured: boolean) => {
     setConfigured(nextConfigured)
@@ -494,7 +503,7 @@ export default function ChatPage() {
     if (!nextConfigured) {
       setShowConfigPanel(false)
     }
-  }, [])
+  }, [setConfigured])
 
   return (
     <>

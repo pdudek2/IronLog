@@ -38,6 +38,7 @@ const options = () => ({
 
 afterEach(() => {
   vi.unstubAllGlobals()
+  vi.unstubAllEnvs()
   vi.clearAllMocks()
   auth.currentUser = { getIdToken: vi.fn().mockResolvedValue('id-token') }
 })
@@ -133,7 +134,7 @@ describe('streamChatReply', () => {
     'limited;unavailable=records,readiness',
     'full;unavailable=records',
   ])('rejects invalid AI context metadata %s', async (context) => {
-    const response = ndjsonResponse('{"type":"done"}\n')
+    const response = ndjsonResponse('{"type":"chunk","text":"OK"}\n{"type":"done"}\n')
     if (context === null) response.headers.delete('X-IronLog-AI-Context')
     else response.headers.set('X-IronLog-AI-Context', context)
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
@@ -193,5 +194,42 @@ describe('generateTrainingPlan', () => {
       plan: { name: 'Plan', summary: 'Opis', days: [] },
       context: { status: 'limited', unavailableSources: ['profile'] },
     })
+  })
+})
+
+
+describe('bounded chat context and connection errors', () => {
+  it('sends only normalized recent context and leaves the visible history intact', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ndjsonResponse('{"type":"chunk","text":"OK"}\n{"type":"done"}\n'))
+    vi.stubGlobal('fetch', fetchMock)
+    const messages = Array.from({ length: 100 }, (_, index) => ({ role: 'user' as const, content: ` ${index} ${'x'.repeat(5000)} ` }))
+    const original = structuredClone(messages)
+    await streamChatReply({ ...options(), messages })
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body)
+    expect(body.messages).toHaveLength(12)
+    expect(body.messages[0].content).toBe(messages[88].content.trim().slice(0, 4000))
+    expect(body.messages.at(-1).content).toBe(messages[99].content.trim().slice(0, 4000))
+    expect(messages).toEqual(original)
+  })
+
+  it('bounds serialized UTF-8 bytes even with multibyte messages and keeps the latest question', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(ndjsonResponse('{"type":"chunk","text":"OK"}\n{"type":"done"}\n'))
+    vi.stubGlobal('fetch', fetchMock)
+    const messages = Array.from({ length: 12 }, () => ({ role: 'assistant' as const, content: '界'.repeat(4000) }))
+    const question = { role: 'user' as const, content: 'Moje aktualne pytanie' }
+    await streamChatReply({ ...options(), messages: [...messages, question] })
+    const body = fetchMock.mock.calls[0][1].body
+    expect(encoder.encode(body).byteLength).toBeLessThanOrEqual(128 * 1024)
+    expect(JSON.parse(body).messages.at(-1)).toEqual(question)
+  })
+
+  it.each([true, false])('uses an appropriate connection message with DEV=%s', async (dev) => {
+    vi.stubEnv('DEV', dev)
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    const expected = dev ? /npm run dev:api/ : /Sprawdź połączenie i spróbuj ponownie/
+    await expect(streamChatReply(options())).rejects.toThrow(expected)
+    await expect(generateTrainingPlan({ apiKey: options().apiKey, request: {
+      goal: 'Siła', daysPerWeek: 3, experience: 'intermediate', equipment: [], focus: '', notes: '',
+    } })).rejects.toThrow(expected)
   })
 })

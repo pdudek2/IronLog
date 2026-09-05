@@ -11,6 +11,8 @@ import {
 } from '../lib/aiKeyStorage'
 import { AiApiError, fetchAvailableClaudeModels, type ClaudeModelOption } from '../lib/chatService'
 
+import { useAuthStore } from '../store/authStore'
+
 interface AiKeyPanelProps {
   id?: string
   onConfiguredChange?: (configured: boolean) => void
@@ -26,7 +28,13 @@ function getAiErrorCode(error: unknown): string | undefined {
     : undefined
 }
 
-export default function AiKeyPanel({
+export default function AiKeyPanel(props: AiKeyPanelProps) {
+  const { user, loading } = useAuthStore()
+  if (loading || !user || user.isAnonymous) return null
+  return <AccountAiKeyPanel key={user.uid} {...props} />
+}
+
+function AccountAiKeyPanel({
   id,
   onConfiguredChange,
   collapsed = false,

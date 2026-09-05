@@ -10,6 +10,7 @@ import { WorkoutClosureError } from '../../lib/workoutClosureService'
 
 const mocks = vi.hoisted(() => ({
   addExercise: vi.fn(),
+  removeExercise: vi.fn(),
   activeSessionSyncStatus: 'idle',
   active: null as ActiveWorkout | null,
   beginClosure: vi.fn(),
@@ -95,7 +96,7 @@ vi.mock('../../store/workoutStore', () => {
       setLabel: mocks.setLabel,
       startWorkout: vi.fn(),
     }),
-    { getState: () => ({ active: mocks.active }) },
+    { getState: () => ({ active: mocks.active, removeExercise: mocks.removeExercise }) },
   )
   return { useWorkoutStore }
 })
@@ -122,7 +123,11 @@ vi.mock('../../components/MobileInteractionProvider', () => ({
 }))
 vi.mock('../../router/pageLoaders', () => ({ preloadRouteByPath: vi.fn() }))
 vi.mock('../../components/ExercisePicker', () => ({ default: () => null }))
-vi.mock('../../components/workout/WorkoutExerciseLedgerItem', () => ({ default: () => null }))
+vi.mock('../../components/workout/WorkoutExerciseLedgerItem', () => ({
+  default: ({ exerciseIndex, onRemoveExercise }: { exerciseIndex: number; onRemoveExercise(index: number): void }) => (
+    <button onClick={() => onRemoveExercise(exerciseIndex)}>Remove exercise {exerciseIndex}</button>
+  ),
+}))
 
 vi.mock('sonner', () => ({
   toast: { error: mocks.toastError, success: mocks.toastSuccess },
@@ -156,6 +161,7 @@ function renderStaleSessionPage() {
 describe('WorkoutPage stale-session feedback', () => {
   beforeEach(() => {
     mocks.addExercise.mockReset()
+    mocks.removeExercise.mockReset()
     mocks.activeSessionSyncStatus = 'idle'
     mocks.active = null
     mocks.beginClosure.mockReset()
@@ -531,4 +537,37 @@ describe('WorkoutPage stale-session feedback', () => {
     expect(mocks.prepareFinishClosure).not.toHaveBeenCalled()
     expect(mocks.finalizeWorkout).not.toHaveBeenCalled()
   })
+})
+
+
+describe('WorkoutPage exercise removal identity', () => {
+  it.each(['preceding removed', 'selected removed', 'session replaced', 'client IDs replaced'])(
+    'does not remove the wrong exercise when %s while confirmation is open', async (change) => {
+      mocks.staleSession = null
+      mocks.closureState = 'idle'
+      mocks.closureIntent = null
+      mocks.ready = true
+      mocks.removeExercise.mockReset()
+      mocks.getRecentWorkouts.mockReturnValue(new Promise(() => undefined))
+      const exercises = ['x', 'y', 'z'].map((clientId) => ({
+        clientId, exerciseId: clientId, exerciseSource: 'global' as const, name: clientId,
+        sets: [{ clientId: `set-${clientId}`, weight: '80', reps: '5', done: false }],
+      }))
+      mocks.active = { sessionId: 'original', startedAt: Date.now(), templateId: null, exercises }
+      renderStaleSessionPage()
+      fireEvent.click(screen.getByRole('button', { name: 'Remove exercise 1' }))
+      await screen.findByRole('dialog', { name: 'Usunąć ćwiczenie?' })
+      mocks.active = {
+        ...mocks.active!,
+        sessionId: change === 'session replaced' ? 'replacement' : 'original',
+        exercises: change === 'preceding removed' ? exercises.slice(1)
+          : change === 'selected removed' ? [exercises[0]!, exercises[2]!]
+            : change === 'client IDs replaced' ? exercises.map((exercise) => ({ ...exercise, clientId: `${exercise.clientId}-new` }))
+              : exercises,
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Usuń ćwiczenie' }))
+      if (change === 'preceding removed') expect(mocks.removeExercise).toHaveBeenCalledWith(0)
+      else expect(mocks.removeExercise).not.toHaveBeenCalled()
+    },
+  )
 })

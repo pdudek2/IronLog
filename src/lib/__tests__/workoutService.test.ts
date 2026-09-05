@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest'
 
 const { auth } = vi.hoisted(() => ({
   auth: {
-    currentUser: null as { getIdToken: () => Promise<string> } | null,
+    currentUser: null as { uid: string; getIdToken: () => Promise<string> } | null,
   },
 }))
 
@@ -17,6 +17,7 @@ import {
   retryWorkoutMaterialization,
   updateWorkout,
 } from '../workoutService'
+import { clearWorkoutDeleteRecovery, readWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from '../workoutDeleteRecovery'
 import type { WorkoutSummary } from '../workoutService'
 
 /** Returns a WorkoutSummary with startedAt set to N days ago (relative to now) */
@@ -90,6 +91,7 @@ describe('calcStreak', () => {
 describe('retryPendingMaterializations', () => {
   beforeEach(() => {
     auth.currentUser = {
+      uid: 'user-1',
       getIdToken: vi.fn().mockResolvedValue('token'),
     }
   })
@@ -128,6 +130,7 @@ describe('retryPendingMaterializations', () => {
 describe('retryWorkoutMaterialization', () => {
   beforeEach(() => {
     auth.currentUser = {
+      uid: 'user-1',
       getIdToken: vi.fn().mockResolvedValue('token'),
     }
   })
@@ -164,7 +167,14 @@ describe('retryWorkoutMaterialization', () => {
 
 describe('workout mutation results', () => {
   beforeEach(() => {
+    const values = new Map<string, string>()
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    })
     auth.currentUser = {
+      uid: 'user-1',
       getIdToken: vi.fn().mockResolvedValue('token'),
     }
   })
@@ -194,7 +204,6 @@ describe('workout mutation results', () => {
 
   it.each([
     ['updateWorkout', () => updateWorkout('workout-1', { label: 'Updated', exercises: [] })],
-    ['deleteWorkout', () => deleteWorkout('workout-1')],
   ] as const)('rejects a malformed successful %s response', async (_name, operation) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
@@ -203,4 +212,92 @@ describe('workout mutation results', () => {
 
     await expect(operation()).rejects.toThrow('Nieprawidłowa odpowiedź serwera.')
   })
+  it('persists before a request that commits then loses its response, and retries after reload', async () => {
+    let committed = false
+    const fetchMock = vi.fn().mockImplementationOnce(async () => {
+      expect(readWorkoutDeleteRecovery('user-1')).toEqual({ workoutId: 'workout-1', status: 'unknown' })
+      committed = true
+      throw new TypeError('response lost')
+    }).mockImplementationOnce(async () => {
+      expect(committed).toBe(true) // canonical workout is already gone; retry uses persisted ID only
+      return { ok: true, json: async () => ({ status: 'deleted' }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(deleteWorkout('workout-1')).resolves.toEqual({ status: 'unknown' })
+    const restored = readWorkoutDeleteRecovery('user-1')!
+    await expect(deleteWorkout('another-workout')).rejects.toThrow('Najpierw ponów')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    await expect(deleteWorkout(restored.workoutId)).resolves.toEqual({ status: 'deleted' })
+    expect(readWorkoutDeleteRecovery('user-1')).toBeNull()
+  })
+
+  it.each([
+    { ok: true, json: async () => ({ status: 'invalid' }) },
+    { ok: true, json: async () => { throw new Error('invalid JSON') } },
+    { ok: false, status: 500, json: async () => ({ error: 'server interrupted' }) },
+  ])('retains an unknown outcome for an ambiguous response', async (response) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
+    await expect(deleteWorkout('workout-1')).resolves.toEqual({ status: 'unknown' })
+    expect(readWorkoutDeleteRecovery('user-1')?.status).toBe('unknown')
+  })
+
+  it('rejects a definite rejection without claiming deletion, but keeps an earlier unknown intent', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false, status: 403, json: async () => ({ error: 'forbidden' }),
+    }))
+    await expect(deleteWorkout('workout-1')).rejects.toThrow('forbidden')
+    expect(readWorkoutDeleteRecovery('user-1')).toBeNull()
+    writeWorkoutDeleteRecovery('user-1', { workoutId: 'workout-1', status: 'unknown' })
+    await expect(deleteWorkout('workout-1')).rejects.toThrow('forbidden')
+    expect(readWorkoutDeleteRecovery('user-1')?.status).toBe('unknown')
+  })
+
+  it('keeps confirmed cleanup pending when retry loses its response', async () => {
+    writeWorkoutDeleteRecovery('user-1', { workoutId: 'workout-1', status: 'cleanup_pending' })
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+    await expect(deleteWorkout('workout-1')).resolves.toEqual({ status: 'cleanup_pending' })
+  })
+
+  it('does not send a request after the account changes while obtaining a token', async () => {
+    auth.currentUser!.getIdToken = async () => {
+      auth.currentUser = { uid: 'user-2', getIdToken: async () => 'token-b' }
+      return 'token-a'
+    }
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(deleteWorkout('workout-1')).rejects.toThrow('Konto użytkownika zmieniło się.')
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(readWorkoutDeleteRecovery('user-1')).toBeNull()
+  })
+
+  it('clears only the captured owner and workout when the response arrives after account change', async () => {
+    writeWorkoutDeleteRecovery('user-2', { workoutId: 'workout-2', status: 'unknown' })
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => {
+      auth.currentUser = { uid: 'user-2', getIdToken: async () => 'token-b' }
+      return { ok: true, json: async () => ({ status: 'deleted' }) }
+    }))
+    await expect(deleteWorkout('workout-1')).resolves.toEqual({ status: 'deleted' })
+    expect(readWorkoutDeleteRecovery('user-1')).toBeNull()
+    expect(readWorkoutDeleteRecovery('user-2')?.workoutId).toBe('workout-2')
+  })
+
+  it('does not clear a newer workout recovery when an old response arrives', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockImplementation(async () => {
+      // Another retry completed this delete and the next workout delete has started.
+      clearWorkoutDeleteRecovery('user-1', 'workout-1')
+      writeWorkoutDeleteRecovery('user-1', { workoutId: 'workout-2', status: 'unknown' })
+      return { ok: true, json: async () => ({ status: 'deleted' }) }
+    }))
+    await expect(deleteWorkout('workout-1')).resolves.toEqual({ status: 'deleted' })
+    expect(readWorkoutDeleteRecovery('user-1')?.workoutId).toBe('workout-2')
+  })
+
+  it('never sends the delete when persisting intent fails', async () => {
+    vi.stubGlobal('localStorage', { getItem: () => null, setItem: () => { throw new Error('storage full') } })
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+    await expect(deleteWorkout('workout-1')).rejects.toThrow('storage full')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
 })

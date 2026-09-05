@@ -16,6 +16,7 @@ export interface LocalActiveSessionRecovery {
 }
 
 export interface EmulatorTestBridge {
+  readAuthenticatedUid(): string | null
   readCachedActiveSessionWrite(): Promise<CachedActiveSessionWrite>
   readLocalActiveSessionRecovery(): LocalActiveSessionRecovery
   setFirestoreNetworkEnabled(enabled: boolean): Promise<void>
@@ -77,6 +78,7 @@ async function setFirestoreNetworkEnabled(enabled: boolean): Promise<void> {
 
 export function installEmulatorTestBridge(): void {
   window.__ironlogEmulatorTestBridge = {
+    readAuthenticatedUid: () => auth.currentUser?.uid ?? null,
     readCachedActiveSessionWrite,
     readLocalActiveSessionRecovery,
     setFirestoreNetworkEnabled,

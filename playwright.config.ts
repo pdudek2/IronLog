@@ -41,6 +41,9 @@ export default defineConfig({
     ...(cspMode ? [] : ['**/csp.spec.ts']),
     ...(emulatorMode ? [] : [
       '**/contrast.spec.ts',
+      // Mocked AI suites require the emulator-only authenticated UID bridge.
+      '**/ai-key-isolation.spec.ts',
+      '**/chat.spec.ts',
       '**/workout-detail-mobile.spec.ts',
       '**/workout-lifecycle.spec.ts',
       '**/session-recovery.spec.ts',

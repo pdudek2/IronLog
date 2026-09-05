@@ -48,11 +48,23 @@ describe('workout delete recovery', () => {
     expect(readWorkoutDeleteRecovery('user-1', storage)).toBeNull()
   })
 
-  it('clears recovery when requested', () => {
+  it('does not clear another workout or another account recovery', () => {
+    const storage = new MemoryStorage()
+    writeWorkoutDeleteRecovery('user-1', { workoutId: 'workout-1', status: 'unknown' }, storage)
+    writeWorkoutDeleteRecovery('user-2', { workoutId: 'workout-2' }, storage)
+    clearWorkoutDeleteRecovery('user-1', 'workout-2', storage)
+    clearWorkoutDeleteRecovery('user-2', 'workout-1', storage)
+    expect(readWorkoutDeleteRecovery('user-1', storage)?.workoutId).toBe('workout-1')
+    expect(readWorkoutDeleteRecovery('user-2', storage)?.workoutId).toBe('workout-2')
+    expect(() => writeWorkoutDeleteRecovery('user-1', { workoutId: 'workout-2' }, storage))
+      .toThrow('Najpierw ponów')
+  })
+
+  it('clears recovery when requested' , () => {
     const storage = new MemoryStorage()
     writeWorkoutDeleteRecovery('user-1', { workoutId: 'workout-1' }, storage)
 
-    clearWorkoutDeleteRecovery('user-1', storage)
+    clearWorkoutDeleteRecovery('user-1', 'workout-1', storage)
 
     expect(readWorkoutDeleteRecovery('user-1', storage)).toBeNull()
   })

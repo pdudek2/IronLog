@@ -125,6 +125,7 @@ export async function loadAiUserContext(
 
   const [profile, readiness, workouts, records] = settled
   return buildAiUserContext({
+    workoutReadLimit: AI_CONTEXT_READ_LIMITS.workouts,
     sources,
     profile: profile.status === 'fulfilled' ? profile.value : null,
     readinessEntries: readiness.status === 'fulfilled' ? readiness.value : [],

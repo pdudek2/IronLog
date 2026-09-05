@@ -228,7 +228,7 @@ describe('workout projection serialization', () => {
     })
   })
 
-  it('rejects a paused materialization after the fence revision changes', async () => {
+  it.each(['pending', 'ready'] as const)('rejects a paused materialization after the fence revision changes to %s', async (projectionState) => {
     const workoutId = 'serialization-stale'
     await seedWorkoutWithFence(workoutId, {
       projectionState: 'pending',
@@ -251,6 +251,7 @@ describe('workout projection serialization', () => {
     await paused.promise
     await db.collection('closedSessions').doc(workoutId).update({
       projectionRevision: 2,
+      projectionState,
     })
     release.resolve()
 
@@ -262,8 +263,9 @@ describe('workout projection serialization', () => {
       .where('workoutId', '==', workoutId).get()).empty).toBe(true)
   })
 
-  it('reports concurrent materializations of the same revision as materialized', async () => {
-    const workoutId = 'serialization-concurrent-materialization'
+  it.each(['beforeExerciseSessions', 'afterExerciseSessions', 'afterRecords'] as const)(
+    'reports concurrent materializations of the same revision as materialized after pausing at %s', async (checkpoint) => {
+    const workoutId = `serialization-concurrent-materialization-${checkpoint}`
     const input = {
       sessionId: workoutId,
       templateId: null,
@@ -290,7 +292,7 @@ describe('workout projection serialization', () => {
           db,
           expectedRevision,
           checkpoints: {
-            afterRecords: async () => {
+            [checkpoint]: async () => {
               paused.resolve()
               await release.promise
             },

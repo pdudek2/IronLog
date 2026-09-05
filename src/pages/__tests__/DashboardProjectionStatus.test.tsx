@@ -8,6 +8,7 @@ import BottomNav from '../../components/BottomNav'
 import MobileInteractionProvider from '../../components/MobileInteractionProvider'
 import TopNav from '../../components/TopNav'
 import { readActiveSessionBackup, writeActiveSessionBackup } from '../../lib/activeSessionBackup'
+import { clearWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from '../../lib/workoutDeleteRecovery'
 import type { WorkoutSummary } from '../../lib/workoutService'
 import { useAuthStore } from '../../store/authStore'
 import { useDashboardStore } from '../../store/dashboardStore'
@@ -46,7 +47,14 @@ vi.mock('../../store/profileStore', () => ({
 vi.mock('../../lib/workoutService', async () => ({
   ...await vi.importActual<typeof import('../../lib/workoutService')>('../../lib/workoutService'),
   getRecentWorkouts: mocks.getRecentWorkouts,
-  deleteWorkout: mocks.deleteWorkout,
+  // Persistence belongs to the service; reproduce its resolved-result contract in this UI mock.
+  deleteWorkout: async (id: string) => {
+    const uid = useAuthStore.getState().user!.uid
+    const result = await mocks.deleteWorkout(id)
+    if (result.status === 'deleted') clearWorkoutDeleteRecovery(uid, id)
+    else writeWorkoutDeleteRecovery(uid, { workoutId: id, status: result.status })
+    return result
+  },
   retryWorkoutMaterialization: mocks.retryWorkoutMaterialization,
   calcStreak: () => 1,
   calcVolume: () => 400,
@@ -763,6 +771,29 @@ describe('Dashboard workout projection status', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     })
+  })
+
+  it('restores an unknown delete after reload without its row and retries only that workout', async () => {
+    const otherWorkout = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
+    mocks.getRecentWorkouts
+      .mockResolvedValueOnce([{ ...pendingWorkout, materialized: true }, otherWorkout])
+      .mockResolvedValue([otherWorkout])
+    mocks.deleteWorkout.mockResolvedValueOnce({ status: 'unknown' }).mockResolvedValueOnce({ status: 'deleted' })
+    const firstRender = render(<DashboardPage />)
+    await screen.findByText('Push day')
+    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
+    expect(screen.getByRole('button', { name: /Usuń trening Pull day/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Zamknij' })).not.toBeInTheDocument()
+    firstRender.unmount()
+    render(<DashboardPage />)
+    await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
+    expect(screen.getByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
+    expect(screen.getByRole('button', { name: /Usuń trening Pull day/ })).toBeEnabled()
   })
 
   it('keeps the pending delete owner when another workout delete is attempted', async () => {

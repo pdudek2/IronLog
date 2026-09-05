@@ -276,7 +276,7 @@ export default function WorkoutPage() {
   const [manualExpandedExerciseClientId, setManualExpandedExerciseClientId] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
-  const [pendingExerciseRemovalIndex, setPendingExerciseRemovalIndex] = useState<number | null>(null)
+  const [pendingExerciseRemoval, setPendingExerciseRemoval] = useState<{ sessionId: string; exerciseClientId: string } | null>(null)
   const [pendingSetRemoval, setPendingSetRemoval] = useState<PendingSetRemoval | null>(null)
   const {
     state: userExercisesState,
@@ -534,7 +534,11 @@ export default function WorkoutPage() {
     if (!exercise) return
     const hasEnteredSets = exercise.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
     if (hasEnteredSets) {
-      setPendingExerciseRemovalIndex(exerciseIndex)
+      if (!exercise.clientId) {
+        toast.error('Nie udało się przygotować bezpiecznego usunięcia ćwiczenia. Odśwież widok i spróbuj ponownie.')
+        return
+      }
+      setPendingExerciseRemoval({ sessionId: currentActive.sessionId, exerciseClientId: exercise.clientId })
       return
     }
     if (currentActive.exercises.length === 1) {
@@ -544,12 +548,16 @@ export default function WorkoutPage() {
   }, [])
 
   function handleConfirmRemoveExercise() {
-    if (pendingExerciseRemovalIndex === null) return
-    if (useWorkoutStore.getState().active?.exercises.length === 1) {
-      setKeepExerciseStackMounted(true)
+    if (!pendingExerciseRemoval) return
+    const { active: currentActive, removeExercise } = useWorkoutStore.getState()
+    const index = currentActive?.sessionId === pendingExerciseRemoval.sessionId
+      ? currentActive.exercises.findIndex((exercise) => exercise.clientId === pendingExerciseRemoval.exerciseClientId)
+      : -1
+    if (index >= 0) {
+      if (currentActive?.exercises.length === 1) setKeepExerciseStackMounted(true)
+      removeExercise(index)
     }
-    useWorkoutStore.getState().removeExercise(pendingExerciseRemovalIndex)
-    setPendingExerciseRemovalIndex(null)
+    setPendingExerciseRemoval(null)
   }
 
   const handleApplySuggestion = useCallback((exerciseIndex: number, hintKey: string, weight: number) => {
@@ -1247,7 +1255,7 @@ export default function WorkoutPage() {
         />
       )}
 
-      {pendingExerciseRemovalIndex !== null && (
+      {pendingExerciseRemoval !== null && (
         <ConfirmDialog
           title="Usunąć ćwiczenie?"
           message="To usunie ćwiczenie wraz z wpisanymi seriami z aktywnej sesji."
@@ -1255,7 +1263,7 @@ export default function WorkoutPage() {
           cancelLabel="Zostaw"
           danger
           onConfirm={handleConfirmRemoveExercise}
-          onCancel={() => setPendingExerciseRemovalIndex(null)}
+          onCancel={() => setPendingExerciseRemoval(null)}
         />
       )}
       {pendingSetRemoval && (

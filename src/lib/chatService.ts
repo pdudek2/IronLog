@@ -104,6 +104,12 @@ function getChatApiUrl(): string {
   return `http://${host}:3000/api/ai-chat`
 }
 
+function aiConnectionError(chatApiUrl: string): Error {
+  return new Error(import.meta.env.DEV
+    ? `Lokalnie endpoint AI nie jest dostępny pod ${chatApiUrl}. Uruchom \`npm run dev:api\` obok \`npm run dev:web\`, albo po prostu \`npm run dev:all\`.`
+    : 'Nie udało się połączyć z AI Coachem. Sprawdź połączenie i spróbuj ponownie.')
+}
+
 async function getAuthenticatedUserToken() {
   const user = auth.currentUser
   if (!user) throw new Error('Brak aktywnej sesji użytkownika.')
@@ -121,6 +127,21 @@ export async function streamChatReply({
   let response: Response
 
   const chatApiUrl = getChatApiUrl()
+  // Match the server's recent-message contract without sending the full UI history.
+  const recentMessages = messages
+    .filter(({ content }) => content.trim())
+    .slice(-12)
+    .map(({ role, content }) => ({ role, content: content.trim().slice(0, 4000) }))
+  const requestBody = { apiKey, model: getClaudeModel() || undefined, messages: recentMessages }
+  let body = JSON.stringify(requestBody)
+  const encoder = new TextEncoder()
+  while (encoder.encode(body).byteLength > 128 * 1024 && recentMessages.length > 1) {
+    recentMessages.shift()
+    body = JSON.stringify(requestBody)
+  }
+  if (encoder.encode(body).byteLength > 128 * 1024) {
+    throw new Error('Żądanie do AI Coacha jest zbyt duże. Sprawdź klucz API i treść wiadomości.')
+  }
 
   try {
     response = await fetch(chatApiUrl, {
@@ -130,17 +151,11 @@ export async function streamChatReply({
         Authorization: `Bearer ${idToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        apiKey,
-        model: getClaudeModel() || undefined,
-        messages,
-      }),
+      body,
     })
   } catch (error) {
     if (isAbortError(error)) throw error
-    throw new Error(
-      `Lokalnie endpoint AI nie jest dostępny pod ${chatApiUrl}. Uruchom \`npm run dev:api\` obok \`npm run dev:web\`, albo po prostu \`npm run dev:all\`.`,
-    )
+    throw aiConnectionError(chatApiUrl)
   }
 
   if (!response.ok) {
@@ -201,9 +216,7 @@ export async function generateTrainingPlan({
       }),
     })
   } catch {
-    throw new Error(
-      `Lokalnie endpoint AI nie jest dostępny pod ${chatApiUrl}. Uruchom \`npm run dev:api\` obok \`npm run dev:web\`, albo po prostu \`npm run dev:all\`.`,
-    )
+    throw aiConnectionError(chatApiUrl)
   }
 
   const payload = await response.json().catch(() => null) as

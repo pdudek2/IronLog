@@ -1,10 +1,13 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { clearWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from '../../lib/workoutDeleteRecovery'
 import type { WorkoutSummary } from '../../lib/workoutService'
 import WorkoutDetailPage from '../WorkoutDetailPage'
+import { useAuthStore } from '../../store/authStore'
+import type { User } from 'firebase/auth'
 
 const workout: WorkoutSummary = {
   id: 'workout-1',
@@ -29,16 +32,19 @@ const mocks = vi.hoisted(() => ({
   toastError: vi.fn(),
 }))
 
-vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: { uid: 'user-1' } }),
-}))
-
 vi.mock('../../lib/workoutService', async () => {
   const actual = await vi.importActual<typeof import('../../lib/workoutService')>('../../lib/workoutService')
   return {
     ...actual,
     getWorkout: mocks.getWorkout,
-    deleteWorkout: mocks.deleteWorkout,
+    // Persistence belongs to the service; reproduce its resolved-result contract in this UI mock.
+    deleteWorkout: async (id: string) => {
+      const uid = useAuthStore.getState().user!.uid
+      const result = await mocks.deleteWorkout(id)
+      if (result.status === 'deleted') clearWorkoutDeleteRecovery(uid, id)
+      else writeWorkoutDeleteRecovery(uid, { workoutId: id, status: result.status })
+      return result
+    },
     updateWorkout: mocks.updateWorkout,
   }
 })
@@ -95,6 +101,7 @@ function renderPage(initialEntries: Array<string | { pathname: string; state?: u
 
 describe('WorkoutDetailPage delete action', () => {
   beforeEach(() => {
+    useAuthStore.setState({ user: { uid: 'user-1' } as User })
     mocks.getWorkout.mockReset()
     mocks.getWorkout.mockResolvedValue(workout)
     mocks.deleteWorkout.mockReset()
@@ -104,6 +111,82 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.toastSuccess.mockReset()
     mocks.toastError.mockReset()
     localStorage.clear()
+  })
+
+  it('shows a read error instead of absence and retries successfully', async () => {
+    const retryRead = deferred<WorkoutSummary>()
+    mocks.getWorkout.mockRejectedValueOnce(new Error('offline')).mockReturnValueOnce(retryRead.promise)
+    renderPage(['/workout/workout-1'])
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się wczytać treningu.')
+    expect(screen.queryByText('Trening nie istnieje.')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(screen.getByText('Ładowanie treningu...')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    await act(async () => { retryRead.resolve(workout) })
+    expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
+    expect(mocks.getWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
+  })
+
+  it('shows confirmed absence separately from a failed read', async () => {
+    mocks.getWorkout.mockResolvedValueOnce(null)
+    renderPage(['/workout/workout-1'])
+    expect(await screen.findByText('Trening nie istnieje.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
+  })
+
+  it('preserves preview on a read error and replaces it after retry', async () => {
+    mocks.getWorkout.mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ ...workout, label: 'Updated workout' })
+    renderPage()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Wyświetlam ostatnie dostępne dane.')
+    expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(await screen.findByRole('heading', { name: 'Updated workout' })).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('keeps deletion recovery available when the workout read fails', async () => {
+    writeWorkoutDeleteRecovery('user-1', { workoutId: 'workout-1', status: 'unknown' })
+    mocks.getWorkout.mockRejectedValueOnce(new Error('offline'))
+    mocks.deleteWorkout.mockResolvedValueOnce({ status: 'deleted' })
+    renderPage(['/workout/workout-1'])
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    await screen.findByText('Historia treningów')
+    expect(mocks.deleteWorkout).toHaveBeenCalledWith('workout-1')
+    expect(mocks.getWorkout).toHaveBeenCalledTimes(1)
+  })
+
+  it('ignores the old route response after navigating to another workout', async () => {
+    const oldRead = deferred<WorkoutSummary>()
+    mocks.getWorkout.mockReturnValueOnce(oldRead.promise)
+      .mockResolvedValueOnce({ ...workout, id: 'workout-2', label: 'Other workout' })
+    render(
+      <MemoryRouter initialEntries={['/workout/workout-1']}>
+        <Link to="/workout/workout-2">Next workout</Link>
+        <Routes><Route path="/workout/:id" element={<WorkoutDetailPage />} /></Routes>
+      </MemoryRouter>,
+    )
+    fireEvent.click(screen.getByRole('link', { name: 'Next workout' }))
+    await screen.findByRole('heading', { name: 'Other workout' })
+    await act(async () => { oldRead.resolve(workout) })
+    expect(screen.getByRole('heading', { name: 'Other workout' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Push day' })).not.toBeInTheDocument()
+  })
+
+  it('drops the old account preview and ignores its late read failure', async () => {
+    const oldRead = deferred<WorkoutSummary>()
+    const newRead = deferred<WorkoutSummary | null>()
+    mocks.getWorkout.mockReturnValueOnce(oldRead.promise).mockReturnValueOnce(newRead.promise)
+    renderPage()
+    await act(async () => { useAuthStore.setState({ user: { uid: 'user-2' } as User }) })
+    expect(screen.queryByRole('heading', { name: 'Push day' })).not.toBeInTheDocument()
+    expect(screen.getByText('Ładowanie treningu...')).toBeInTheDocument()
+    await act(async () => { newRead.resolve(null) })
+    await act(async () => { oldRead.reject(new Error('old account request failed')) })
+    expect(screen.getByText('Trening nie istnieje.')).toBeInTheDocument()
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
   it('keeps the workout visible after failure and retries the exact deletion before navigating', async () => {
@@ -244,7 +327,7 @@ describe('WorkoutDetailPage delete action', () => {
     expect(screen.getByRole('button', { name: 'Spróbuj ponownie' })).toBeInTheDocument()
   })
 
-  it('does not restore committed cleanup recovery after an ordinary delete failure', async () => {
+  it('does not restore recovery after a definite delete rejection', async () => {
     mocks.deleteWorkout.mockRejectedValueOnce(new Error('offline'))
 
     const firstRender = renderPage()
@@ -282,6 +365,45 @@ describe('WorkoutDetailPage delete action', () => {
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
     expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
+  })
+
+  it('restores an unknown delete after reload without claiming success when its document is gone', async () => {
+    mocks.deleteWorkout.mockResolvedValueOnce({ status: 'unknown' }).mockResolvedValueOnce({ status: 'deleted' })
+    const firstRender = renderPage()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    expect(screen.queryByRole('button', { name: 'Zamknij' })).not.toBeInTheDocument()
+    firstRender.unmount()
+    mocks.getWorkout.mockResolvedValueOnce(null)
+    renderPage(['/workout/workout-1'])
+    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    await screen.findByText('Historia treningów')
+    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
+  })
+
+  it('does not navigate or notify another account when an old delete completes', async () => {
+    const deletion = deferred<{ status: 'deleted' }>()
+    mocks.deleteWorkout.mockReturnValueOnce(deletion.promise)
+    renderPage()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    await act(async () => { useAuthStore.setState({ user: { uid: 'user-2' } as User }) })
+    await act(async () => { deletion.resolve({ status: 'deleted' }) })
+    expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+    expect(screen.queryByText('Usuwanie treningu…')).not.toBeInTheDocument()
+  })
+
+  it('blocks another deletion while a different workout has unresolved recovery', async () => {
+    writeWorkoutDeleteRecovery('user-1', { workoutId: 'other-workout', status: 'unknown' })
+    renderPage()
+    await waitFor(() => expect(mocks.getWorkout).toHaveBeenCalled())
+    screen.getAllByRole('button', { name: 'Usuń trening' }).forEach((button) => expect(button).toBeDisabled())
+    expect(screen.getByRole('button', { name: 'Przejdź do odzyskiwania na pulpicie' })).toBeInTheDocument()
+    expect(mocks.deleteWorkout).not.toHaveBeenCalled()
   })
 
   it('does not save a set after its repetitions are cleared', () => {

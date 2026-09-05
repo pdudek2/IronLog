@@ -198,6 +198,7 @@ export function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
 }
 
 interface ProgressSnapshot {
+  rangeDays: number
   sessions: ProgressSessionLite[]
   sessionsTruncated: boolean
   records: RecordSummary[]
@@ -229,7 +230,12 @@ function ProgressLoadingSkeleton() {
 
 export default function ProgressPage() {
   const { user } = useAuthStore()
+  return <ProgressContent key={user?.uid ?? 'signed-out'} userId={user?.uid} />
+}
+
+function ProgressContent({ userId }: { userId: string | undefined }) {
   const [rangeDays, setRangeDays] = useState(90)
+  const [requestedRangeDays, setRequestedRangeDays] = useState(90)
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null)
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -245,18 +251,24 @@ export default function ProgressPage() {
   function handleRangeChange(days: number) {
     if (days === rangeDays) return
     setRangeDays(days)
+    if (days > (snapshot?.rangeDays ?? 0)) {
+      setRequestedRangeDays(days)
+      setRefreshing(true)
+      setLoadAttempt((current) => current + 1)
+    }
   }
 
   function handleRetry() {
+    setRequestedRangeDays(rangeDays)
     setRefreshing(true)
     setLoadAttempt((current) => current + 1)
   }
 
   useEffect(() => {
-    if (!user) return
+    if (!userId) return
 
     let cancelled = false
-    loadProgressData(user.uid)
+    loadProgressData(userId, requestedRangeDays)
       .then((result) => {
         if (cancelled) return
 
@@ -272,6 +284,7 @@ export default function ProgressPage() {
 
           if (result.sessions.status === 'success') {
             next = {
+              rangeDays: requestedRangeDays,
               sessions: result.sessions.value.sessions,
               sessionsTruncated: result.sessions.value.truncated,
               records: next?.records ?? [],
@@ -282,6 +295,7 @@ export default function ProgressPage() {
 
           if (result.records.status === 'success') {
             next = {
+              rangeDays: next?.rangeDays ?? 0,
               sessions: next?.sessions ?? [],
               sessionsTruncated: next?.sessionsTruncated ?? false,
               records: result.records.value.records,
@@ -313,9 +327,10 @@ export default function ProgressPage() {
     return () => {
       cancelled = true
     }
-  }, [user, loadAttempt])
+  }, [userId, requestedRangeDays, loadAttempt])
 
-  const sessions = snapshot?.sessions ?? EMPTY_SESSIONS
+  const hasRangeCoverage = (snapshot?.rangeDays ?? 0) >= rangeDays
+  const sessions = hasRangeCoverage ? snapshot?.sessions ?? EMPTY_SESSIONS : EMPTY_SESSIONS
   const records = snapshot?.records ?? EMPTY_RECORDS
   const fetchedAt = snapshot?.fetchedAt ?? 0
 
@@ -415,9 +430,10 @@ export default function ProgressPage() {
     currentSessions.map((s) => `${s.exerciseSource}:${s.exerciseId}`),
   ).size
   const hasUsableData = snapshot !== null
-  const hasSessionSnapshot = fetchedAt > 0
+  const hasSessionSnapshot = hasRangeCoverage && fetchedAt > 0
   const hasStoredData = sessions.length > 0 || records.length > 0
   const showEmptyState = hasUsableData
+    && hasSessionSnapshot
     && !sessionsError
     && !recordsError
     && !hasStoredData
@@ -451,7 +467,7 @@ export default function ProgressPage() {
   if (sessionsError) retryableIssues.push('Nie udało się odświeżyć danych treningowych.')
   if (recordsError) retryableIssues.push('Nie udało się odświeżyć rekordów od początku.')
   const limitNotices: string[] = []
-  if (snapshot?.sessionsTruncated) {
+  if (hasRangeCoverage && snapshot?.sessionsTruncated) {
     limitNotices.push('Analizy treningowe obejmują najnowsze 5000 wpisów.')
   }
   if (snapshot?.recordsTruncated) {
@@ -482,7 +498,7 @@ export default function ProgressPage() {
               {(!hasSessionSnapshot || uniqueWorkouts === 0) && (
                 <p>
                   {!hasSessionSnapshot
-                    ? 'Dane treningowe są chwilowo niedostępne.'
+                    ? (refreshing ? 'Ładowanie postępów' : 'Dane treningowe są chwilowo niedostępne.')
                     : 'Brak treningów w wybranym zakresie.'}
                 </p>
               )}

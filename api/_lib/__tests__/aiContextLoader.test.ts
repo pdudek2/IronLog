@@ -46,6 +46,19 @@ describe('loadAiUserContext', () => {
     expect(AI_CONTEXT_DOCUMENT_READ_BUDGET).toBeLessThanOrEqual(70)
   })
 
+  it('passes query-limit coverage into the context without extra reads', async () => {
+    const readers = emptyReaders()
+    vi.mocked(readers.workouts).mockResolvedValue(Array.from({ length: 31 }, () => ({
+      startedAt: Date.now(), exercises: [],
+    })))
+
+    const context = await loadAiUserContext('user-1', readers)
+
+    expect(context.sources.workouts).toBe('limited')
+    for (const reader of Object.values(readers)) expect(reader).toHaveBeenCalledTimes(1)
+    expect(AI_CONTEXT_DOCUMENT_READ_BUDGET).toBe(69)
+  })
+
   it('keeps fulfilled empty sources available', async () => {
     const context = await loadAiUserContext('user-1', emptyReaders())
 

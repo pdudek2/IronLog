@@ -29,11 +29,7 @@ import {
   getRecentWorkouts, deleteWorkout, retryWorkoutMaterialization, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
-import {
-  clearWorkoutDeleteRecovery,
-  readWorkoutDeleteRecovery,
-  writeWorkoutDeleteRecovery,
-} from '../lib/workoutDeleteRecovery'
+import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
 import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
@@ -55,7 +51,8 @@ interface TemplatesResource {
 
 interface WorkoutDeleteOperation {
   workoutId: string
-  status: 'pending' | 'cleanup_pending' | 'error'
+  uid: string
+  status: 'pending' | 'cleanup_pending' | 'unknown' | 'error'
 }
 
 interface ReadinessResource {
@@ -208,11 +205,14 @@ export default function DashboardPage() {
   const templatesRequestRef = useRef(0)
   const requestedTemplatesUserRef = useRef<string | null>(null)
   const inFlightTemplatesUserRef = useRef<string | null>(null)
+  if (transientDeleteOperation && transientDeleteOperation.uid !== user?.uid) {
+    setTransientDeleteOperation(null)
+  }
   const persistedDeleteRecovery = user?.uid ? readWorkoutDeleteRecovery(user.uid) : null
-  const deleteOperation = transientDeleteOperation
+  const deleteOperation = (transientDeleteOperation?.uid === user?.uid ? transientDeleteOperation : null)
     ?? (
-      persistedDeleteRecovery
-        ? { workoutId: persistedDeleteRecovery.workoutId, status: 'cleanup_pending' as const }
+      user && persistedDeleteRecovery
+        ? { uid: user.uid, workoutId: persistedDeleteRecovery.workoutId, status: persistedDeleteRecovery.status ?? 'cleanup_pending' as const }
         : null
     )
 
@@ -448,17 +448,17 @@ export default function DashboardPage() {
     if (!user) return
     const isCurrent = captureDashboardScope(user.uid)
     if (!isCurrent()) return
-    const retryingCommittedDelete = deleteOperation?.workoutId === workoutId
-      && deleteOperation.status === 'cleanup_pending'
-    setTransientDeleteOperation({ workoutId, status: 'pending' })
+    const recoveryStatus = deleteOperation?.workoutId === workoutId
+      && (deleteOperation.status === 'cleanup_pending' || deleteOperation.status === 'unknown')
+      ? deleteOperation.status
+      : 'error'
+    setTransientDeleteOperation({ uid: user.uid, workoutId, status: 'pending' })
     try {
       const result = await deleteWorkout(workoutId)
-      if (result.status === 'cleanup_pending') {
-        if (user?.uid) writeWorkoutDeleteRecovery(user.uid, { workoutId })
-        if (isCurrent()) setTransientDeleteOperation({ workoutId, status: 'cleanup_pending' })
+      if (result.status !== 'deleted') {
+        if (isCurrent()) setTransientDeleteOperation({ uid: user.uid, workoutId, status: result.status })
         return
       }
-      if (user?.uid) clearWorkoutDeleteRecovery(user.uid)
       if (!isCurrent()) return
       setDashboardSnapshot(user.uid, workoutsRef.current.filter((workout) => workout.id !== workoutId))
       setTransientDeleteOperation(null)
@@ -466,7 +466,7 @@ export default function DashboardPage() {
       toast.success('Trening usunięty')
     } catch {
       if (!isCurrent()) return
-      setTransientDeleteOperation({ workoutId, status: retryingCommittedDelete ? 'cleanup_pending' : 'error' })
+      setTransientDeleteOperation({ uid: user.uid, workoutId, status: recoveryStatus })
       toast.error('Nie udało się usunąć treningu.')
     }
   }
@@ -479,7 +479,7 @@ export default function DashboardPage() {
   }
 
   function retryWorkoutDelete() {
-    if (!deleteOperation || (deleteOperation.status !== 'error' && deleteOperation.status !== 'cleanup_pending')) return
+    if (!deleteOperation || deleteOperation.status === 'pending') return
     void runWorkoutDelete(deleteOperation.workoutId)
   }
 
@@ -512,9 +512,8 @@ export default function DashboardPage() {
   const weekDates = getWeekDates()
   const today = new Date()
   const recentWorkouts = workouts.slice(0, 4)
-  const hasDeleteRecoveryRow = deleteOperation?.status === 'cleanup_pending'
-    && recentWorkouts.some((workout) => workout.id === deleteOperation.workoutId)
-  const orphanedDeleteOperation = deleteOperation?.status === 'cleanup_pending' && !hasDeleteRecoveryRow
+  const orphanedDeleteOperation = deleteOperation
+    && !recentWorkouts.some((workout) => workout.id === deleteOperation.workoutId)
     ? deleteOperation
     : null
   const templatesState: DataState<WorkoutTemplate[]> =
@@ -1024,9 +1023,13 @@ export default function DashboardPage() {
 
           {orphanedDeleteOperation && (
             <ActionFeedback
-              status="error"
-              message="Trening usunięty. Nie udało się odświeżyć statystyk."
-              onRetry={retryWorkoutDelete}
+              status={orphanedDeleteOperation.status === 'pending' ? 'pending' : 'error'}
+              message={orphanedDeleteOperation.status === 'pending'
+                ? 'Usuwanie treningu…'
+                : orphanedDeleteOperation.status === 'cleanup_pending'
+                  ? 'Trening usunięty. Nie udało się odświeżyć statystyk.'
+                  : 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'}
+              onRetry={orphanedDeleteOperation.status !== 'pending' ? retryWorkoutDelete : undefined}
               className="dashboard-workout-delete-feedback mb-4"
             />
           )}
@@ -1054,7 +1057,7 @@ export default function DashboardPage() {
                         ? deleteOperation
                         : null
                       const isDeleting = workoutDeleteOperation?.status === 'pending'
-                      const isWorkoutUnavailable = isDeleting || workoutDeleteOperation?.status === 'cleanup_pending'
+                      const isWorkoutUnavailable = isDeleting || (workoutDeleteOperation?.status === 'cleanup_pending' || workoutDeleteOperation?.status === 'unknown')
                       const deleteFeedbackId = `dashboard-workout-delete-feedback-${workout.id}`
 
                       return (
@@ -1071,7 +1074,7 @@ export default function DashboardPage() {
                           whileHover={{ y: -2 }}
                           aria-busy={isDeleting ? 'true' : undefined}
                           aria-describedby={workoutDeleteOperation?.status === 'error'
-                            || workoutDeleteOperation?.status === 'cleanup_pending'
+                            || (workoutDeleteOperation?.status === 'cleanup_pending' || workoutDeleteOperation?.status === 'unknown')
                             ? deleteFeedbackId
                             : undefined}
                         >
@@ -1114,7 +1117,7 @@ export default function DashboardPage() {
                                 whileTap={{ scale: 0.85 }}
                                 disabled={deleteOperation !== null}
                                 aria-describedby={workoutDeleteOperation?.status === 'error'
-                                  || workoutDeleteOperation?.status === 'cleanup_pending'
+                                  || (workoutDeleteOperation?.status === 'cleanup_pending' || workoutDeleteOperation?.status === 'unknown')
                                   ? deleteFeedbackId
                                   : undefined}
                                 aria-label={`Usuń trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
@@ -1131,9 +1134,10 @@ export default function DashboardPage() {
                                   ? 'Usuwanie treningu…'
                                   : workoutDeleteOperation.status === 'cleanup_pending'
                                     ? 'Trening usunięty. Nie udało się odświeżyć statystyk.'
-                                    : 'Nie udało się usunąć treningu.'}
-                                onRetry={workoutDeleteOperation.status === 'error'
-                                  || workoutDeleteOperation.status === 'cleanup_pending'
+                                    : workoutDeleteOperation.status === 'unknown'
+                                      ? 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'
+                                      : 'Nie udało się usunąć treningu.'}
+                                onRetry={workoutDeleteOperation.status !== 'pending'
                                   ? retryWorkoutDelete
                                   : undefined}
                                 onDismiss={workoutDeleteOperation.status === 'error'

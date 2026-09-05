@@ -4,21 +4,22 @@
 import { chromium, devices, type Browser, type BrowserContext, type Page } from '@playwright/test'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { adminAuth, adminDb } from '../api/_lib/firebaseAdmin.js'
+import { guardQaCaptureContext, resolveQaCapture } from './qaSafety.js'
 
 /**
- * Capture mockup screenshots of the app using the demo account.
+ * Capture mockups using a seeded emulator account; active sessions are preserved.
  *
  * Prereq:
- *   1. `npm run dev` działa w drugim terminalu na http://localhost:5173
- *   2. Konto demo@ironlog.app istnieje i ma zaseedowane dane (`npm run seed:demo`)
+ *   Local Auth + Firestore emulators and the emulator-configured app on port 5174.
+ *   E2E_BACKEND=emulator, both emulator hosts, TEST_EMAIL and TEST_PASSWORD are required.
+ *   Seed the account/profile/data in the emulator before running `npm run mockups`.
  *
  * Output: ./mockups/{mobile,desktop}/<screen>.png
  */
 
-const BASE_URL = process.env.MOCKUPS_URL ?? 'http://localhost:5173'
-const DEMO_EMAIL = 'demo@ironlog.app'
-const DEMO_PASSWORD = 'demo123'
+const { baseUrl: BASE_URL, email: QA_EMAIL, password: QA_PASSWORD } = resolveQaCapture(
+  process.env, process.env.MOCKUPS_URL,
+)
 
 interface Screen {
   name: string
@@ -80,10 +81,10 @@ async function captureLoginPage(page: Page, outFile: string): Promise<void> {
   await page.screenshot({ path: outFile, fullPage: false })
 }
 
-async function signInAsDemo(page: Page): Promise<void> {
+async function signInForCapture(page: Page): Promise<void> {
   await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' })
-  await page.getByPlaceholder('user@mail.pl').fill(DEMO_EMAIL)
-  await page.getByPlaceholder('••••••••').fill(DEMO_PASSWORD)
+  await page.getByLabel('Email', { exact: true }).fill(QA_EMAIL)
+  await page.getByLabel('Hasło', { exact: true }).fill(QA_PASSWORD)
   await page.getByRole('button', { name: 'Zaloguj się' }).click()
   await page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 25_000 })
   // Firebase auth token persistence async flush
@@ -169,11 +170,12 @@ async function newContext(browser: Browser, spec: ViewportSpec): Promise<Browser
     // na realny rozmiar ekranu iPhone 14 Pro (393×852 pt).
     return browser.newContext({
       ...devices['iPhone 14 Pro'],
+      serviceWorkers: 'block',
       viewport: MOBILE_VIEWPORT,
       deviceScaleFactor: 3,
     })
   }
-  return browser.newContext({ viewport: DESKTOP_VIEWPORT, deviceScaleFactor: 2 })
+  return browser.newContext({ viewport: DESKTOP_VIEWPORT, deviceScaleFactor: 2, serviceWorkers: 'block' })
 }
 
 async function captureViewport(
@@ -185,6 +187,7 @@ async function captureViewport(
   console.log(`\n📸 ${spec.name} (${dims.width}×${dims.height})`)
 
   const context = await newContext(browser, spec)
+  await guardQaCaptureContext(context, BASE_URL)
   await context.addInitScript(() => {
     // Opcja bezpieczeństwa: po załadowaniu strony disable animacji
     const style = document.createElement('style')
@@ -208,7 +211,7 @@ async function captureViewport(
   console.log(`   ✓ login`)
 
   // 2. Authenticate
-  await signInAsDemo(page)
+  await signInForCapture(page)
 
   // 3. Authed screens (standard list)
   for (const screen of AUTH_SCREENS) {
@@ -217,6 +220,7 @@ async function captureViewport(
       console.log(`   ✓ ${screen.name}`)
     } catch (err) {
       console.log(`   ✗ ${screen.name}: ${(err as Error).message}`)
+      process.exitCode = 1
     }
   }
 
@@ -226,25 +230,17 @@ async function captureViewport(
     console.log(`   ✓ exercise-detail`)
   } catch (err) {
     console.log(`   ✗ exercise-detail: ${(err as Error).message}`)
+    process.exitCode = 1
   }
   try {
     await captureTemplateEditor(page, path.join(viewportDir, 'template-editor.png'), spec.name)
     console.log(`   ✓ template-editor`)
   } catch (err) {
     console.log(`   ✗ template-editor: ${(err as Error).message}`)
+    process.exitCode = 1
   }
 
   await context.close()
-}
-
-async function resetDemoActiveSession(): Promise<void> {
-  try {
-    const userRecord = await adminAuth.getUserByEmail(DEMO_EMAIL)
-    await adminDb.collection('activeSessions').doc(userRecord.uid).delete().catch(() => {})
-    console.log(`   ✓ activeSession demo usera wyczyszczona`)
-  } catch (err) {
-    console.log(`   ⚠ nie udało się wyczyścić activeSession: ${(err as Error).message}`)
-  }
 }
 
 async function verifyDevServer(): Promise<void> {
@@ -264,10 +260,9 @@ async function verifyDevServer(): Promise<void> {
 async function main(): Promise<void> {
   console.log(`\n🎬 IronLog mockup capture`)
   console.log(`   URL: ${BASE_URL}`)
-  console.log(`   Konto: ${DEMO_EMAIL}`)
+  console.log(`   Konto: ${QA_EMAIL}`)
 
   await verifyDevServer()
-  await resetDemoActiveSession()
   const outDir = await ensureOutputDir()
 
   const browser = await chromium.launch({ headless: true })
@@ -280,7 +275,7 @@ async function main(): Promise<void> {
     await browser.close()
   }
 
-  console.log(`\n✅ Gotowe. Mockupy w ${path.relative(process.cwd(), outDir)}/`)
+  console.log(`\nCapture zakończony. Mockupy w ${path.relative(process.cwd(), outDir)}/`)
   console.log(`   Tip: owiń wybrane w ramki na shots.so lub mockuphone.com\n`)
 }
 

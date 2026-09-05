@@ -71,43 +71,78 @@ beforeEach(() => {
   })
 })
 
+function queuePages(docs: Array<{ id: string; data: () => Record<string, unknown> }>) {
+  for (let offset = 0; offset <= docs.length; offset += 1_000) {
+    snapshots.push(snapshot(docs.slice(offset, offset + 1_000)))
+  }
+}
+
 describe('progress queries', () => {
-  it('returns exactly 5000 sessions with truncated false when no 5001st document exists', async () => {
-    for (let page = 0; page < 10; page++) {
-      snapshots.push(snapshot(Array.from({ length: 500 }, (_, offset) => progressSessionDocument(page * 500 + offset + 1))))
+  it.each([0, 999, 1_000, 1_001, 5_000, 5_001])('pages %i sessions in batches of 1000 and preserves cap/order', async (count) => {
+    const docs = Array.from({ length: count }, (_, index) => progressSessionDocument(count - index))
+    queuePages(docs)
+
+    const result = await getProgressSessions('user-1', 123)
+
+    expect(result.truncated).toBe(count > 5_000)
+    expect(result.sessions).toHaveLength(Math.min(count, 5_000))
+    expect(result.sessions.map((session) => session.finishedAt)).toEqual(
+      Array.from({ length: Math.min(count, 5_000) }, (_, index) => count - index),
+    )
+    const pageCount = Math.floor(count / 1_000) + 1
+    expect(firestore.getDocs).toHaveBeenCalledTimes(pageCount)
+    for (let page = 0; page < pageCount; page++) {
+      expect(firestore.getDocs).toHaveBeenNthCalledWith(page + 1, {
+        type: 'query',
+        tokens: [
+          { type: 'collection', name: 'exerciseSessions' },
+          { type: 'where', field: 'userId', operator: '==', value: 'user-1' },
+          { type: 'where', field: 'finishedAt', operator: '>=', value: 123 },
+          { type: 'orderBy', field: 'finishedAt', direction: 'desc' },
+          ...(page > 0 ? [{ type: 'startAfter', cursor: docs[page * 1_000 - 1] }] : []),
+          { type: 'limit', count: Math.min(1_000, 5_001 - page * 1_000) },
+        ],
+      })
     }
-    snapshots.push(snapshot([]))
-
-    const result = await getProgressSessions('user-1', 0)
-
-    expect(result.truncated).toBe(false)
-    expect(result.sessions).toHaveLength(5_000)
-    expect(result.sessions[0]?.id).toBe('session-0001')
-    expect(result.sessions.at(-1)?.id).toBe('session-5000')
   })
 
-  it('reads the 5001st session and returns truncated true without exposing it', async () => {
-    for (let page = 0; page < 10; page++) {
-      snapshots.push(snapshot(Array.from({ length: 500 }, (_, offset) => progressSessionDocument(page * 500 + offset + 1))))
+  it.each([0, 999, 1_000, 1_001])('pages %i records and excludes the cap probe before sorting', async (count) => {
+    const docs = Array.from({ length: count }, (_, index) => recordDocument(
+      `record-${String(index + 1).padStart(4, '0')}`,
+      { maxWeight: index + 1 },
+    ))
+    queuePages(docs)
+
+    const result = await getRecords('user-1')
+
+    expect(result.truncated).toBe(count > 1_000)
+    expect(result.records).toHaveLength(Math.min(count, 1_000))
+    expect(result.records.some((record) => record.id === 'record-1001')).toBe(false)
+    expect(result.records.map((record) => record.maxWeight)).toEqual(
+      Array.from({ length: Math.min(count, 1_000) }, (_, index) => Math.min(count, 1_000) - index),
+    )
+    const pageCount = Math.floor(count / 1_000) + 1
+    expect(firestore.getDocs).toHaveBeenCalledTimes(pageCount)
+    for (let page = 0; page < pageCount; page++) {
+      expect(firestore.getDocs).toHaveBeenNthCalledWith(page + 1, {
+        type: 'query',
+        tokens: [
+          { type: 'collection', name: 'records' },
+          { type: 'where', field: 'userId', operator: '==', value: 'user-1' },
+          ...(page > 0 ? [{ type: 'startAfter', cursor: docs[page * 1_000 - 1] }] : []),
+          { type: 'limit', count: page === 0 ? 1_000 : 1 },
+        ],
+      })
     }
-    snapshots.push(snapshot([progressSessionDocument(5_001)]))
-
-    const result = await getProgressSessions('user-1', 0)
-
-    expect(result).toMatchObject({ truncated: true })
-    expect(result.sessions).toHaveLength(5_000)
-    expect(result.sessions.some((session) => session.id === 'session-5001')).toBe(false)
-    expect(firestore.getDocs).toHaveBeenCalledTimes(11)
   })
 
-  it('paginates records past the 500-row PAGE_SIZE and sorts the complete result deterministically', async () => {
+  it('sorts more than 500 records deterministically by weight, volume, reps, name and ID', async () => {
     const fillers = Array.from({ length: 498 }, (_, index) => recordDocument(`record-filler-${String(index).padStart(3, '0')}`))
     snapshots.push(snapshot([
       ...fillers,
       recordDocument('record-zeta', { exerciseName: 'Zeta', maxWeight: 100, maxReps: 5, bestVolume: 500 }),
-      recordDocument('record-alpha', { exerciseName: 'Alpha', maxWeight: 100, maxReps: 5, bestVolume: 500 }),
-    ]))
-    snapshots.push(snapshot([
+      recordDocument('record-alpha-2', { exerciseName: 'Alpha', maxWeight: 100, maxReps: 5, bestVolume: 500 }),
+      recordDocument('record-alpha-1', { exerciseName: 'Alpha', maxWeight: 100, maxReps: 5, bestVolume: 500 }),
       recordDocument('record-reps', { exerciseName: 'Reps', maxWeight: 100, maxReps: 10, bestVolume: 500 }),
       recordDocument('record-volume', { exerciseName: 'Volume', maxWeight: 100, maxReps: 1, bestVolume: 600 }),
       recordDocument('record-weight', { exerciseName: 'Weight', maxWeight: 120, maxReps: 1, bestVolume: 1 }),
@@ -116,26 +151,26 @@ describe('progress queries', () => {
     const result = await getRecords('user-1')
 
     expect(result.truncated).toBe(false)
-    expect(result.records).toHaveLength(503)
-    expect(result.records.slice(0, 5).map((record) => record.id)).toEqual([
+    expect(result.records).toHaveLength(504)
+    expect(result.records.slice(0, 6).map((record) => record.id)).toEqual([
       'record-weight',
       'record-volume',
       'record-reps',
-      'record-alpha',
+      'record-alpha-1',
+      'record-alpha-2',
       'record-zeta',
     ])
+    expect(firestore.getDocs).toHaveBeenCalledTimes(1)
   })
 
-  it('reads the 1001st record and returns only 1000 with truncated true', async () => {
-    snapshots.push(snapshot(Array.from({ length: 500 }, (_, index) => recordDocument(`record-${String(index + 1).padStart(4, '0')}`))))
-    snapshots.push(snapshot(Array.from({ length: 500 }, (_, index) => recordDocument(`record-${String(index + 501).padStart(4, '0')}`))))
-    snapshots.push(snapshot([recordDocument('record-1001')]))
+  it('loads both cap-sized datasets with eight total reads including probes', async () => {
+    queuePages(Array.from({ length: 5_001 }, (_, index) => progressSessionDocument(index)))
+    const sessions = await getProgressSessions('user-1', 0)
+    queuePages(Array.from({ length: 1_001 }, (_, index) => recordDocument(`record-${index}`)))
+    const records = await getRecords('user-1')
 
-    const result = await getRecords('user-1')
-
-    expect(result.truncated).toBe(true)
-    expect(result.records).toHaveLength(1_000)
-    expect(result.records.some((record) => record.id === 'record-1001')).toBe(false)
-    expect(firestore.getDocs).toHaveBeenCalledTimes(3)
+    expect(sessions).toMatchObject({ truncated: true })
+    expect(records).toMatchObject({ truncated: true })
+    expect(firestore.getDocs).toHaveBeenCalledTimes(8)
   })
 })

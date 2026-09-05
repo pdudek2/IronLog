@@ -278,6 +278,82 @@ describe('ProgressPage', () => {
     expect(screen.getByRole('button', { name: 'Pokaż wszystkie (6)' })).toHaveAttribute('aria-expanded', 'false')
   })
 
+  it('pages every remaining record in bounded groups, handles the last page and resets on collapse', async () => {
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      records: Array.from({ length: 46 }, (_, index) => record(`record-${index}`, {
+        exerciseName: `Ćwiczenie ${index}`,
+      })),
+    }))
+    render(<ProgressPage />)
+
+    await screen.findByLabelText('Pozostałe rekordy')
+    const rowNames = () => Array.from(screen.getByLabelText('Pozostałe rekordy').querySelectorAll('.progress-record-ledger-row strong'), (row) => row.textContent)
+    expect(rowNames()).toEqual(Array.from({ length: 5 }, (_, index) => `Ćwiczenie ${index + 1}`))
+    expect(screen.queryByRole('navigation', { name: 'Strony rekordów' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż wszystkie (45)' }))
+
+    const previous = () => screen.getByRole('button', { name: 'Poprzednia strona rekordów' })
+    const next = () => screen.getByRole('button', { name: 'Następna strona rekordów' })
+    expect(previous()).toBeDisabled()
+    expect(next()).toBeEnabled()
+    expect(next()).toHaveAttribute('aria-controls', 'progress-remaining-records')
+    expect(screen.getByText('Strona 1 z 3')).toHaveAttribute('aria-live', 'polite')
+    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Ćwiczenie ${index + 1}`))
+    const visited = [...rowNames()]
+    fireEvent.click(previous())
+    expect(screen.getByText('Strona 1 z 3')).toBeInTheDocument()
+
+    fireEvent.click(next())
+    expect(screen.getByText('Strona 2 z 3')).toBeInTheDocument()
+    expect(previous()).toBeEnabled()
+    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Ćwiczenie ${index + 21}`))
+    visited.push(...rowNames())
+    fireEvent.click(next())
+    expect(screen.getByText('Strona 3 z 3')).toBeInTheDocument()
+    expect(next()).toBeDisabled()
+    expect(rowNames()).toEqual(Array.from({ length: 5 }, (_, index) => `Ćwiczenie ${index + 41}`))
+    visited.push(...rowNames())
+    expect(visited).toEqual(Array.from({ length: 45 }, (_, index) => `Ćwiczenie ${index + 1}`))
+    expect(within(screen.getByLabelText('Najlepszy rekord')).getByText('Ćwiczenie 0')).toBeInTheDocument()
+    fireEvent.click(next())
+    expect(screen.getByText('Strona 3 z 3')).toBeInTheDocument()
+    fireEvent.click(previous())
+    expect(screen.getByText('Strona 2 z 3')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż mniej' }))
+    expect(rowNames()).toHaveLength(5)
+    expect(screen.queryByRole('navigation', { name: 'Strony rekordów' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Pokaż wszystkie (45)' }))
+    expect(screen.getByText('Strona 1 z 3')).toBeInTheDocument()
+    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Ćwiczenie ${index + 1}`))
+    expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
+  })
+
+  it('clamps the expanded page when refreshed records shrink', async () => {
+    mockLoadProgressData
+      .mockResolvedValueOnce(successfulLoad({
+        records: Array.from({ length: 46 }, (_, index) => record(`record-${index}`, { exerciseName: `Ćwiczenie ${index}` })),
+        freshness: 'uncertain',
+      }))
+      .mockResolvedValueOnce(successfulLoad({
+        records: Array.from({ length: 22 }, (_, index) => record(`record-${index}`, { exerciseName: `Ćwiczenie ${index}` })),
+      }))
+    render(<ProgressPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Pokaż wszystkie (45)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Następna strona rekordów' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Następna strona rekordów' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+
+    expect(await screen.findByText('Strona 2 z 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Następna strona rekordów' })).toBeDisabled()
+    const ledger = screen.getByLabelText('Pozostałe rekordy')
+    expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(1)
+    expect(within(ledger).getByText('Ćwiczenie 21')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Poprzednia strona rekordów' }))
+    expect(screen.getByText('Strona 1 z 2')).toBeInTheDocument()
+    expect(screen.getByLabelText('Pozostałe rekordy').querySelectorAll('.progress-record-ledger-row')).toHaveLength(20)
+  })
+
   it('shows the hard error only when both datasets fail with no previous snapshot', async () => {
     const sessionsError = new Error('sessions unavailable')
     const recordsError = new Error('records unavailable')

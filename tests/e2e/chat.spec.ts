@@ -204,8 +204,7 @@ test.describe('Chat UI', () => {
   })
 
   test('can switch between conversation and plan workspaces', async ({ page }) => {
-    await page.goto('/chat')
-    await expectAppReady(page, '/chat')
+    await openChatWithMock(page, [])
 
     await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeVisible({ timeout: 5_000 })
     await expect(page.getByRole('button', { name: 'Reset' })).toHaveCount(0)
@@ -428,7 +427,8 @@ test.describe('Chat UI', () => {
     await page.getByRole('button', { name: 'Reset' }).click()
     await expectAbortCount(page, 1)
 
-    await expect(page.getByText('Zacznij od konkretu', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Rozmowa z AI Coachem')
+      .getByText('Zadaj pytanie albo wybierz skrót.', { exact: true })).toBeVisible()
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(0)
     await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toHaveCount(0)
     await page.waitForTimeout(350)

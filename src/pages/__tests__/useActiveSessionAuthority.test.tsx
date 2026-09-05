@@ -54,6 +54,9 @@ import {
   type WorkoutClosureIntent,
 } from '../../lib/workoutClosureIntent'
 import { useWorkoutStore } from '../../store/workoutStore'
+import { useAuthStore } from '../../store/authStore'
+import { readActiveSessionBackupRecord, writeActiveSessionBackup } from '../../lib/activeSessionBackup'
+import type { User } from 'firebase/auth'
 
 const remoteSession: ActiveWorkout = {
   sessionId: 'server-session',
@@ -98,6 +101,7 @@ describe('useActiveSession snapshot authority', () => {
         removeItem: (key: string) => values.delete(key),
       },
     })
+    useAuthStore.getState().setUser({ uid: 'user-1' } as User)
     useWorkoutStore.getState().clearWorkout()
     listener.current = null
     claimActiveSession.mockReset().mockImplementation(async (_uid: string, candidate: ActiveWorkout) => ({
@@ -111,6 +115,184 @@ describe('useActiveSession snapshot authority', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+  })
+
+  it('restores an unsaved edit after full restart using its original base revision', async () => {
+    const local = structuredClone(editableRemoteSession)
+    local.exercises[0].sets[0].reps = '7'
+    writeActiveSessionBackup('user-1', local, { baseRevision: 'revision-initial', unsynced: true })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    await act(async () => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    expect(useWorkoutStore.getState().active?.exercises[0].sets[0].reps).toBe('7')
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', expect.objectContaining({ sessionId: local.sessionId }), 'revision-initial')
+    expect(result.current.activeSessionSyncStatus).toBe('idle')
+    expect(readActiveSessionBackupRecord('user-1')).toMatchObject({ baseRevision: 'revision-saved', unsynced: false })
+  })
+
+  it.each([null, { ...editableRemoteSession, sessionId: 'replacement-session' }])(
+    'never resurrects an unsaved backup when authority closed or replaced it: %j', async (authoritative) => {
+      writeActiveSessionBackup('user-1', editableRemoteSession, { baseRevision: 'revision-initial', unsynced: true })
+      renderHook(() => useActiveSession('user-1'))
+      await act(async () => listener.current?.({
+        session: authoritative, sessionRevision: authoritative ? 'replacement-revision' : null,
+        fromCache: false, hasPendingWrites: false,
+      }))
+      expect(useWorkoutStore.getState().active?.sessionId ?? null).toBe(authoritative?.sessionId ?? null)
+      expect(saveActiveSession).not.toHaveBeenCalled()
+    },
+  )
+
+  it('flushes an edit when navigating away before debounce', async () => {
+    vi.useFakeTimers()
+    const { unmount } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '9'))
+    unmount()
+    await act(async () => { await Promise.resolve() })
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', expect.objectContaining({
+      exercises: [expect.objectContaining({ sets: [expect.objectContaining({ reps: '9' })] })],
+    }), 'revision-initial')
+    expect(readActiveSessionBackupRecord('user-1')?.unsynced).toBe(false)
+  })
+
+  it('does not send the detached final write after the account changes', async () => {
+    const { unmount } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '9'))
+    unmount()
+    useAuthStore.getState().setUser({ uid: 'user-2' } as User)
+    await act(async () => { await Promise.resolve() })
+    expect(saveActiveSession).not.toHaveBeenCalled()
+  })
+
+  it('serializes a remount behind the pending navigation write without losing its revision', async () => {
+    const pending = createDeferred<{ sessionRevision: string }>()
+    saveActiveSession.mockImplementationOnce(() => pending.promise)
+    const first = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '9'))
+    first.unmount()
+    await act(async () => { await Promise.resolve() })
+    const second = renderHook(() => useActiveSession('user-1'))
+    await act(async () => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    await act(async () => pending.resolve({ sessionRevision: 'navigation-revision' }))
+    expect(saveActiveSession.mock.calls.map((call) => call[2])).toEqual(['revision-initial', 'navigation-revision'])
+    expect(second.result.current.activeSessionSyncStatus).toBe('idle')
+    expect(useWorkoutStore.getState().active?.exercises[0].sets[0].reps).toBe('9')
+  })
+
+  it('still reports a genuine server conflict after restart without replacing local edits', async () => {
+    const local = structuredClone(editableRemoteSession)
+    local.exercises[0].sets[0].reps = '7'
+    writeActiveSessionBackup('user-1', local, { baseRevision: 'revision-initial', unsynced: true })
+    saveActiveSession.mockRejectedValue(new ActiveSessionConflictError())
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    await act(async () => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'other-device-revision', fromCache: false, hasPendingWrites: false,
+    }))
+    expect(saveActiveSession.mock.calls[0][2]).toBe('revision-initial')
+    expect(result.current.activeSessionSyncStatus).toBe('conflict')
+    expect(useWorkoutStore.getState().active?.exercises[0].sets[0].reps).toBe('7')
+    expect(readActiveSessionBackupRecord('user-1')).toMatchObject({ baseRevision: 'revision-initial', unsynced: true })
+  })
+
+  it('restores dirty backup even when passive Dashboard sync already hydrated the older server copy', async () => {
+    const local = structuredClone(editableRemoteSession)
+    local.exercises[0].sets[0].reps = '7'
+    writeActiveSessionBackup('user-1', local, { baseRevision: 'revision-initial', unsynced: true })
+    useWorkoutStore.getState().hydrateFromDoc(editableRemoteSession)
+    renderHook(() => useActiveSession('user-1'))
+    await act(async () => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    expect(useWorkoutStore.getState().active?.exercises[0].sets[0].reps).toBe('7')
+    expect(saveActiveSession.mock.calls[0][2]).toBe('revision-initial')
+  })
+
+  it('retains unsaved reps through stale-session review and continuation after restart', async () => {
+    const remote = { ...editableRemoteSession, startedAt: staleRemoteSession.startedAt }
+    const local = structuredClone(remote)
+    local.exercises[0].sets[0].reps = '7'
+    writeActiveSessionBackup('user-1', local, { baseRevision: 'revision-initial', unsynced: true })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    await act(async () => listener.current?.({
+      session: remote, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    expect(result.current.staleSession).not.toBeNull()
+    expect(readActiveSessionBackupRecord('user-1')?.unsynced).toBe(true)
+    await act(async () => { await result.current.continueStaleSession() })
+    expect(useWorkoutStore.getState().active?.exercises[0].sets[0].reps).toBe('7')
+    expect(saveActiveSession.mock.calls[0][2]).toBe('revision-initial')
+  })
+
+  it('does not adopt a different tab backup revision while its own edit is pending', async () => {
+    vi.useFakeTimers()
+    renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '7'))
+    // localStorage is shared by tabs, but this hook did not observe/accept this edit.
+    writeActiveSessionBackup('user-1', editableRemoteSession, { baseRevision: 'other-tab-revision', unsynced: false })
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(saveActiveSession.mock.calls[0][2]).toBe('revision-initial')
+  })
+
+  it('does not let a late old-session acknowledgement rewind the replacement revision', async () => {
+    vi.useFakeTimers()
+    const pending = createDeferred<{ sessionRevision: string }>()
+    saveActiveSession.mockImplementationOnce(() => pending.promise)
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '6'))
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    act(() => {
+      result.current.beginClosure('discard', useWorkoutStore.getState().active!)
+      result.current.confirmClosure()
+      listener.current?.({
+        session: { ...editableRemoteSession, sessionId: 'replacement' },
+        sessionRevision: 'replacement-revision', fromCache: false, hasPendingWrites: false,
+      })
+    })
+    await act(async () => pending.resolve({ sessionRevision: 'late-old-revision' }))
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '8'))
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(saveActiveSession.mock.calls[1][2]).toBe('replacement-revision')
+  })
+
+  it.each(['Push', '', ' Push '])('recognizes the saved snapshot regardless of property order and normalized label %j', async (label) => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    await act(async () => { await result.current.startNewSession() })
+    act(() => useWorkoutStore.getState().setLabel(label))
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    const local = useWorkoutStore.getState().active!
+    // startWorkout inserts exercises before setLabel adds label; the server parser orders label first.
+    const authoritative: ActiveWorkout = {
+      sessionId: local.sessionId,
+      startedAt: local.startedAt,
+      templateId: local.templateId ?? null,
+      label: local.label?.trim() || undefined,
+      exercises: local.exercises,
+    }
+    await act(async () => {
+      listener.current?.({ session: authoritative, sessionRevision: 'revision-saved', fromCache: false, hasPendingWrites: false })
+      await vi.advanceTimersByTimeAsync(400)
+    })
+    expect(saveActiveSession).toHaveBeenCalledTimes(1)
+    expect(readActiveSessionBackupRecord('user-1')?.unsynced).toBe(false)
   })
 
   it('reports failure without unlocking an unconfirmed empty session', async () => {
@@ -743,8 +925,9 @@ describe('useActiveSession snapshot authority', () => {
     const { result } = renderHook(() => useActiveSession('user-1'))
 
     let retryPromise!: Promise<void>
-    act(() => {
+    await act(async () => {
       retryPromise = result.current.retryActiveSessionSync()
+      await Promise.resolve()
     })
     expect(result.current.activeSessionSyncStatus).toBe('retrying')
     act(() => {
@@ -775,8 +958,11 @@ describe('useActiveSession snapshot authority', () => {
     const { result } = renderHook(() => useActiveSession('user-1'))
 
     let closedRetryPromise!: Promise<void>
-    act(() => {
+    await act(async () => {
       closedRetryPromise = result.current.retryActiveSessionSync()
+      await Promise.resolve()
+    })
+    act(() => {
       result.current.beginClosure('discard', remoteSession)
       result.current.confirmClosure()
       useWorkoutStore.getState().startWorkout()

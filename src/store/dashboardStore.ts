@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useAuthStore } from './authStore'
 import type { WorkoutSummary } from '../lib/workoutService'
 
 interface DashboardSnapshot {
@@ -8,8 +9,9 @@ interface DashboardSnapshot {
 }
 
 interface DashboardState extends DashboardSnapshot {
+  uid: string | null
   ready: boolean
-  setSnapshot: (snapshot: DashboardSnapshot) => void
+  setSnapshot: (uid: string, snapshot: DashboardSnapshot) => boolean
   clearSnapshot: () => void
 }
 
@@ -17,9 +19,15 @@ export const useDashboardStore = create<DashboardState>((set) => ({
   workouts: [],
   weeklyDone: 0,
   streak: 0,
+  uid: null,
   ready: false,
-  setSnapshot: (snapshot) => set({ ...snapshot, ready: true }),
+  setSnapshot: (uid, snapshot) => {
+    if (useAuthStore.getState().user?.uid !== uid) return false
+    set({ ...snapshot, uid, ready: true })
+    return true
+  },
   clearSnapshot: () => set({
+    uid: null,
     workouts: [],
     weeklyDone: 0,
     streak: 0,

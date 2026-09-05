@@ -73,6 +73,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     context,
     cleanup,
     observedContextFactory,
+    viewport,
   }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'Mobile ledger contract')
     cleanup.add('remove Phase 1 workout lifecycle state', cleanupWorkoutLifecycleState)
@@ -94,6 +95,9 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     })
 
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
+    expect(page.viewportSize()).toEqual(viewport)
+    expect(page.viewportSize()!.width).toBeLessThan(1024)
+    await expect(page.getByRole('navigation', { name: 'Nawigacja dolna' })).toBeVisible()
     const addSet = page.getByRole('button', { name: 'Dodaj serię' })
     for (let index = 0; index < 4; index += 1) await addSet.click()
 
@@ -102,6 +106,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expect(previousSets.first()).toHaveText('80×8')
     await expect(previousSets.last()).toHaveText('70×12')
     await expect(page.locator('.workout-previous-session')).toHaveCount(0)
+    await page.screenshot({ path: testInfo.outputPath('inline-previous-mobile.png'), fullPage: true })
   })
 
   test('shows every set from the previous workout for the focused exercise', async ({
@@ -419,7 +424,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     cleanup,
     expectedBrowserDiagnostics,
     observedContextFactory,
-  }) => {
+  }, testInfo) => {
     const sessionId = phase1Id('concurrent-edit')
     cleanup.add('remove Phase 1 workout lifecycle state', cleanupWorkoutLifecycleState)
     await cleanupWorkoutLifecycleState()
@@ -450,6 +455,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     const conflictedPage = await clientA.page.getByText(conflictMessage, { exact: true }).count()
       ? clientA.page
       : clientB.page
+    await conflictedPage.screenshot({ path: testInfo.outputPath('session-conflict.png'), fullPage: true })
     const storedReps = (await readLifecycleActiveSession())?.exercises?.[0]?.sets?.[0]?.reps
     expect(['6', '7']).toContain(storedReps)
     await conflictedPage.getByRole('button', { name: 'Wczytaj nowszą wersję' }).click()

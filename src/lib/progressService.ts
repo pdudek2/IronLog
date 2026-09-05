@@ -55,7 +55,7 @@ function toNum(v: unknown): number {
 
 const SESSION_LIMIT = 5_000
 const RECORD_LIMIT = 1_000
-const PAGE_SIZE = 500
+const PAGE_SIZE = 1_000
 
 function normalizeProgressSession(id: string, data: DocumentData): ProgressSessionLite {
   return {

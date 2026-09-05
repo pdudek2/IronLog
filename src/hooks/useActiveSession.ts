@@ -10,6 +10,7 @@ import {
 import {
   clearActiveSessionBackup,
   readActiveSessionBackup,
+  readActiveSessionBackupRecord,
   writeActiveSessionBackup,
 } from '../lib/activeSessionBackup'
 import {
@@ -35,6 +36,7 @@ import {
   type ClosureFailureState,
 } from '../lib/activeSessionSyncPolicy'
 import { WorkoutClosureError } from '../lib/workoutClosureService'
+import { useAuthStore } from '../store/authStore'
 import type { ActiveSessionSyncStatusValue } from '../components/workout/ActiveSessionSyncStatus'
 
 export type ClosureUiState =
@@ -55,9 +57,17 @@ const COMPLETED_STALE_SESSION_OPERATION = { status: 'completed' } as const
 const IGNORED_STALE_SESSION_OPERATION = { status: 'ignored' } as const
 const FAILED_STALE_SESSION_SYNC_OPERATION = { status: 'sync_failed' } as const
 const ACTIVE_SESSION_READY_TIMEOUT_MS = 8_000
+// Navigation can mount another hook before the final write has settled.
+const sessionSaveQueues = new Map<string, { promise: Promise<void>; revision: { value: string | null } }>()
 
 function serializeActiveWorkout(value: ActiveWorkout | null): string {
-  return JSON.stringify(value ? stripWorkoutClientIds(value) : null)
+  return JSON.stringify(value ? {
+    sessionId: value.sessionId,
+    startedAt: value.startedAt,
+    templateId: value.templateId || null,
+    label: value.label?.trim() || null,
+    exercises: stripWorkoutClientIds(value).exercises,
+  } : null)
 }
 
 interface SessionWriteContext {
@@ -101,8 +111,7 @@ function isSessionWriteGenerationCurrent(
 
 export function useActiveSession(uid: string | null) {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const sessionSaveQueueRef = useRef<Promise<void>>(Promise.resolve())
-  const activeSessionRevisionRef = useRef<string | null>(null)
+  const activeSessionRevisionRef = useRef<{ value: string | null }>({ value: null })
   const activeRef = useRef(useWorkoutStore.getState().active)
   const staleSessionRef = useRef<ActiveWorkout | null>(null)
   const closureIntentRef = useRef<WorkoutClosureIntent | null>(null)
@@ -120,26 +129,56 @@ export function useActiveSession(uid: string | null) {
   const [closureState, setClosureState] = useState<ClosureUiState>('idle')
   const [activeSessionSyncStatus, setActiveSessionSyncStatus] = useState<ActiveSessionSyncStatusValue>('idle')
 
+  function writeSessionBackup(currentUid: string, snapshot: ActiveWorkout, unsynced = hasUnsyncedLocalChangesRef.current) {
+    writeActiveSessionBackup(currentUid, snapshot, {
+      baseRevision: activeSessionRevisionRef.current.value,
+      unsynced,
+    })
+  }
+
   function saveSessionWithRevision(
     currentUid: string,
     snapshot: ActiveWorkout,
     generation: number,
+    finalWrite = false,
   ) {
-    const queuedSave = sessionSaveQueueRef.current.then(async () => {
-      if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) {
+    const queueKey = `${currentUid}:${snapshot.sessionId}`
+    const revision = activeSessionRevisionRef.current
+    const queuedSave = (sessionSaveQueues.get(queueKey)?.promise ?? Promise.resolve()).then(async () => {
+      const currentGeneration = isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)
+      const backup = readActiveSessionBackupRecord(currentUid)
+      const validFinalWrite = finalWrite
+        && useAuthStore.getState().user?.uid === currentUid
+        && useWorkoutStore.getState().active?.sessionId === snapshot.sessionId
+        && backup?.session.sessionId === snapshot.sessionId
+        && !readWorkoutClosureIntent(currentUid)
+      if ((!currentGeneration && !validFinalWrite)
+        || isConfirmedClosedSessionId(snapshot.sessionId, confirmedClosedSessionIdsRef.current)) {
         throw new Error('Active session write superseded.')
       }
-      const saved = await saveActiveSession(currentUid, snapshot, activeSessionRevisionRef.current)
-      if (
-        isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)
+      const expectedRevision = revision.value
+      const saved = await saveActiveSession(currentUid, snapshot, expectedRevision)
+      const latest = readActiveSessionBackupRecord(currentUid)
+      if (latest?.session.sessionId === snapshot.sessionId && latest.baseRevision === expectedRevision
+        && serializeActiveWorkout(latest.session) === serializeActiveWorkout(useWorkoutStore.getState().active)) {
+        writeActiveSessionBackup(currentUid, latest.session, {
+          baseRevision: saved.sessionRevision,
+          unsynced: serializeActiveWorkout(latest.session) !== serializeActiveWorkout(snapshot),
+        })
+      }
+      // Advance only this runtime's lineage; another tab's backup cannot authorize a write.
+      if (revision.value === expectedRevision
         && useWorkoutStore.getState().active?.sessionId === snapshot.sessionId
-        && !isConfirmedClosedSessionId(snapshot.sessionId, confirmedClosedSessionIdsRef.current)
-      ) {
-        activeSessionRevisionRef.current = saved.sessionRevision
+        && !isConfirmedClosedSessionId(snapshot.sessionId, confirmedClosedSessionIdsRef.current)) {
+        revision.value = saved.sessionRevision
       }
       return saved
     })
-    sessionSaveQueueRef.current = queuedSave.then(() => undefined, () => undefined)
+    const settled = queuedSave.then(() => undefined, () => undefined)
+    sessionSaveQueues.set(queueKey, { promise: settled, revision })
+    void settled.then(() => {
+      if (sessionSaveQueues.get(queueKey)?.promise === settled) sessionSaveQueues.delete(queueKey)
+    })
     return queuedSave
   }
 
@@ -194,7 +233,7 @@ export function useActiveSession(uid: string | null) {
         applyingRemoteRef.current = true
         activeRef.current = authoritative
         useWorkoutStore.getState().hydrateFromDoc(authoritative)
-        if (uid) writeActiveSessionBackup(uid, authoritative)
+        if (uid) writeSessionBackup(uid, authoritative)
       }
       return
     }
@@ -228,7 +267,7 @@ export function useActiveSession(uid: string | null) {
       applyingRemoteRef.current = true
       activeRef.current = intent.session
       useWorkoutStore.getState().hydrateFromDoc(intent.session)
-      writeActiveSessionBackup(uid, intent.session)
+      writeSessionBackup(uid, intent.session)
     }
     return intent
   }
@@ -323,7 +362,7 @@ export function useActiveSession(uid: string | null) {
       const authoritative = await loadActiveSessionFromServer(uid)
       if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return false
       const authoritativeSession = authoritative.session
-      activeSessionRevisionRef.current = authoritative.sessionRevision
+      activeSessionRevisionRef.current.value = authoritative.sessionRevision
       clearWorkoutClosureIntent(uid)
       clearActiveSessionBackup(uid)
       setPendingIntent(null)
@@ -337,7 +376,7 @@ export function useActiveSession(uid: string | null) {
       activeRef.current = authoritativeSession
       if (authoritativeSession) {
         useWorkoutStore.getState().hydrateFromDoc(authoritativeSession)
-        writeActiveSessionBackup(uid, authoritativeSession)
+        writeSessionBackup(uid, authoritativeSession)
       } else {
         useWorkoutStore.getState().clearWorkout()
       }
@@ -376,14 +415,14 @@ export function useActiveSession(uid: string | null) {
     try {
       const claimed = await claimActiveSession(uid, candidate)
       if (!isSessionWriteGenerationCurrent(generation, sessionWriteGenerationRef.current)) return
-      activeSessionRevisionRef.current = claimed.sessionRevision
+      activeSessionRevisionRef.current.value = claimed.sessionRevision
       remoteSessionRef.current = claimed.session
       hadRemoteSessionRef.current = true
       hasUnsyncedLocalChangesRef.current = false
       applyingRemoteRef.current = true
       activeRef.current = claimed.session
       useWorkoutStore.getState().hydrateFromDoc(claimed.session)
-      writeActiveSessionBackup(uid, claimed.session)
+      writeSessionBackup(uid, claimed.session)
       setActiveSessionSyncStatus('idle')
       setReady(true)
     } catch (error) {
@@ -415,8 +454,7 @@ export function useActiveSession(uid: string | null) {
   useEffect(() => {
     const sessionWriteGeneration = sessionWriteGenerationRef.current + 1
     sessionWriteGenerationRef.current = sessionWriteGeneration
-    sessionSaveQueueRef.current = Promise.resolve()
-    activeSessionRevisionRef.current = null
+    activeSessionRevisionRef.current = { value: null }
     confirmedClosedSessionIdsRef.current = new Set()
     if (!uid) {
       setReady(true)
@@ -429,16 +467,16 @@ export function useActiveSession(uid: string | null) {
 
     const currentUid = uid
     const currentAtMount = useWorkoutStore.getState().active
-    const backupAtMount = readActiveSessionBackup(currentUid)
+    const backupAtMount = readActiveSessionBackupRecord(currentUid)
     const intentAtMount = readWorkoutClosureIntent(currentUid)
     closureIntentRef.current = intentAtMount
     setClosureIntent(intentAtMount)
     setClosureState(intentAtMount ? 'closure_unconfirmed' : 'idle')
-    hasUnsyncedLocalChangesRef.current = Boolean(
-      currentAtMount
-      && backupAtMount
-      && serializeActiveWorkout(currentAtMount) === serializeActiveWorkout(backupAtMount),
-    )
+    hasUnsyncedLocalChangesRef.current = Boolean(backupAtMount?.unsynced
+      && (!currentAtMount || currentAtMount.sessionId === backupAtMount.session.sessionId))
+    const mountedSessionId = currentAtMount?.sessionId ?? backupAtMount?.session.sessionId
+    activeSessionRevisionRef.current = sessionSaveQueues.get(`${currentUid}:${mountedSessionId}`)?.revision
+      ?? { value: backupAtMount?.baseRevision ?? null }
     setReady(false)
     staleSessionRef.current = null
     setStaleSession(null)
@@ -446,15 +484,19 @@ export function useActiveSession(uid: string | null) {
     remoteSessionRef.current = null
 
     const { hydrateFromDoc, clearWorkout } = useWorkoutStore.getState()
+    if (!intentAtMount && hasUnsyncedLocalChangesRef.current && backupAtMount) {
+      activeRef.current = backupAtMount.session
+      hydrateFromDoc(backupAtMount.session)
+    }
     if (intentAtMount) {
       applyingRemoteRef.current = true
       hasUnsyncedLocalChangesRef.current = false
       activeRef.current = intentAtMount.session
       hydrateFromDoc(intentAtMount.session)
-      writeActiveSessionBackup(currentUid, intentAtMount.session)
+      writeSessionBackup(currentUid, intentAtMount.session)
     }
 
-    function persistSession(snapshot: ActiveWorkout) {
+    function persistSession(snapshot: ActiveWorkout, finalWrite = false) {
       if (!isSessionWriteGenerationCurrent(
         sessionWriteGeneration,
         sessionWriteGenerationRef.current,
@@ -468,7 +510,7 @@ export function useActiveSession(uid: string | null) {
         sessionWriteGeneration,
         ++sessionWriteOperationRef.current,
       )
-      void saveSessionWithRevision(currentUid, snapshot, sessionWriteGeneration)
+      void saveSessionWithRevision(currentUid, snapshot, sessionWriteGeneration, finalWrite)
         .then(() => {
           if (!isSessionWriteCurrent(
             write,
@@ -512,12 +554,12 @@ export function useActiveSession(uid: string | null) {
         const nextSerialized = serializeActiveWorkout(session)
         const preserveLocalBaseRevision = Boolean(
           authoritative
-          && current
+          && current?.sessionId === session?.sessionId
           && hasUnsyncedLocalChangesRef.current
           && currentSerialized !== nextSerialized,
         )
         if (authoritative && !preserveLocalBaseRevision) {
-          activeSessionRevisionRef.current = sessionRevision ?? null
+          activeSessionRevisionRef.current.value = sessionRevision ?? null
         }
         const decision = decideRemoteSessionSync({
           localSession: current,
@@ -534,7 +576,7 @@ export function useActiveSession(uid: string | null) {
         if (session && decision === 'review_stale_remote') {
           hadRemoteSessionRef.current = true
           staleSessionRef.current = session
-          writeActiveSessionBackup(currentUid, session)
+          writeSessionBackup(currentUid, session, false)
           setStaleSession({ ageLabel: getStaleSessionAgeLabel(session.startedAt) })
           setReady(true)
           return
@@ -542,7 +584,7 @@ export function useActiveSession(uid: string | null) {
           hadRemoteSessionRef.current = true
           staleSessionRef.current = null
           setStaleSession(null)
-          writeActiveSessionBackup(currentUid, session)
+          writeSessionBackup(currentUid, session, false)
           applyingRemoteRef.current = true
           hasUnsyncedLocalChangesRef.current = false
           activeRef.current = session
@@ -556,8 +598,9 @@ export function useActiveSession(uid: string | null) {
           hadRemoteSessionRef.current = true
           const matchingIntent = closureIntentRef.current?.session.sessionId === session.sessionId
           if (!matchingIntent && isActiveSessionStale(session)) {
-            staleSessionRef.current = session
-            writeActiveSessionBackup(currentUid, session)
+            const retained = current && hasUnsyncedLocalChangesRef.current ? current : session
+            staleSessionRef.current = retained
+            writeSessionBackup(currentUid, retained, hasUnsyncedLocalChangesRef.current)
             setStaleSession({ ageLabel: getStaleSessionAgeLabel(session.startedAt) })
             setReady(true)
             return
@@ -566,12 +609,12 @@ export function useActiveSession(uid: string | null) {
           staleSessionRef.current = null
           setStaleSession(null)
           if (!matchingIntent && current && hasUnsyncedLocalChangesRef.current && currentSerialized !== nextSerialized) {
-            writeActiveSessionBackup(currentUid, current)
+            writeSessionBackup(currentUid, current)
             persistSession(current)
             setReady(true)
             return
           }
-          writeActiveSessionBackup(currentUid, matchingIntent ? closureIntentRef.current!.session : session)
+          writeSessionBackup(currentUid, matchingIntent ? closureIntentRef.current!.session : session, false)
           if (!matchingIntent && currentSerialized !== nextSerialized) {
             applyingRemoteRef.current = true
             hasUnsyncedLocalChangesRef.current = false
@@ -589,7 +632,7 @@ export function useActiveSession(uid: string | null) {
             applyingRemoteRef.current = true
             activeRef.current = pendingSnapshot
             hydrateFromDoc(pendingSnapshot)
-            writeActiveSessionBackup(currentUid, pendingSnapshot)
+            writeSessionBackup(currentUid, pendingSnapshot)
             setClosureState('closure_unconfirmed')
           }
         } else if (decision === 'clear_local') {
@@ -604,7 +647,7 @@ export function useActiveSession(uid: string | null) {
             clearWorkout()
           }
         } else if (current && !closureIntentRef.current) {
-          writeActiveSessionBackup(currentUid, current)
+          writeSessionBackup(currentUid, current)
           persistSession(current)
         }
         const reconciliationResolved = authoritative && (
@@ -654,32 +697,33 @@ export function useActiveSession(uid: string | null) {
       )) return
       if (!shouldPersistActiveSession(snapshot, closureIntentRef.current)) return
       hasUnsyncedLocalChangesRef.current = true
-      writeActiveSessionBackup(currentUid, snapshot)
+      writeSessionBackup(currentUid, snapshot)
       timerRef.current = setTimeout(() => persistSession(snapshot), 400)
     })
 
-    function flushPendingSession() {
+    function flushPendingSession(finalWrite = false) {
       cancelPendingPersistence()
       if (isConfirmedClosedSessionId(
         activeRef.current?.sessionId,
         confirmedClosedSessionIdsRef.current,
       )) return
       if (!activeRef.current || !shouldPersistActiveSession(activeRef.current, closureIntentRef.current)) return
-      writeActiveSessionBackup(currentUid, activeRef.current)
-      persistSession(activeRef.current)
+      writeSessionBackup(currentUid, activeRef.current)
+      persistSession(activeRef.current, finalWrite)
     }
 
     function handleVisibilityChange() {
       if (document.visibilityState === 'hidden') flushPendingSession()
     }
 
-    window.addEventListener('pagehide', flushPendingSession)
+    const handlePageHide = () => flushPendingSession()
+    window.addEventListener('pagehide', handlePageHide)
     document.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
-      flushPendingSession()
+      if (hasUnsyncedLocalChangesRef.current) flushPendingSession(true)
       unsubscribeRemote()
       unsubscribe()
-      window.removeEventListener('pagehide', flushPendingSession)
+      window.removeEventListener('pagehide', handlePageHide)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       if (sessionWriteGenerationRef.current === sessionWriteGeneration) {
         sessionWriteGenerationRef.current += 1
@@ -698,7 +742,7 @@ export function useActiveSession(uid: string | null) {
     hasUnsyncedLocalChangesRef.current = false
     activeRef.current = refreshedSession
     useWorkoutStore.getState().hydrateFromDoc(refreshedSession)
-    writeActiveSessionBackup(uid, refreshedSession)
+    writeSessionBackup(uid, refreshedSession, true)
     const write = captureSessionWrite(
       refreshedSession.sessionId,
       sessionWriteGenerationRef.current,
@@ -782,7 +826,7 @@ export function useActiveSession(uid: string | null) {
             sessionWriteGeneration,
             ++sessionWriteOperationRef.current,
           )
-          writeActiveSessionBackup(uid, createdSession)
+          writeSessionBackup(uid, createdSession)
           try {
             await saveSessionWithRevision(uid, createdSession, sessionWriteGeneration)
             if (!isSessionWriteCurrent(
@@ -832,7 +876,7 @@ export function useActiveSession(uid: string | null) {
       sessionWriteGenerationRef.current,
       ++sessionWriteOperationRef.current,
     )
-    writeActiveSessionBackup(uid, snapshot)
+    writeSessionBackup(uid, snapshot)
     setActiveSessionSyncStatus('retrying')
     try {
       await saveSessionWithRevision(

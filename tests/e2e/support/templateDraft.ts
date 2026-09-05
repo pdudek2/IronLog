@@ -38,7 +38,7 @@ export async function openTemplateDraft(page: Page, draft: TemplateInput): Promi
     }, '', '/templates/new?draft=ai')
     window.dispatchEvent(new PopStateEvent('popstate', { state: history.state }))
   }, draft)
-  await expect(page.getByRole('textbox', { name: 'Nazwa' })).toHaveValue(draft.name)
+  await expect(page.getByRole('textbox', { name: 'Nazwa', exact: true })).toHaveValue(draft.name)
 }
 
 export async function openLargeTemplateDraft(page: Page): Promise<void> {

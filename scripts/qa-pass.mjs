@@ -1,11 +1,15 @@
 // Comprehensive QA pass: navigate the app like a real user, capture screenshots,
 // log all errors (page errors, console errors, failed network requests).
 // Run from project root with dev server already running:
-//   node scripts/qa-pass.mjs
+//   node --import tsx scripts/qa-pass.mjs
 import { chromium, devices } from '@playwright/test'
 import fs from 'node:fs/promises'
+import { guardQaCaptureContext, resolveQaCapture } from './qaSafety.ts'
 
-const BASE = 'http://localhost:5173'
+// Requires the local emulator hosts and a seeded TEST_EMAIL / TEST_PASSWORD account.
+const { baseUrl: BASE, email: QA_EMAIL, password: QA_PASSWORD } = resolveQaCapture(
+  process.env, process.env.QA_URL,
+)
 const OUT = '/tmp/ironlog-qa-pass'
 await fs.rm(OUT, { recursive: true, force: true })
 await fs.mkdir(OUT, { recursive: true })
@@ -42,18 +46,18 @@ async function login(page, badPasswordFirst = false) {
   await page.waitForTimeout(800)
 
   if (badPasswordFirst) {
-    await page.getByPlaceholder('user@mail.pl').fill('demo@ironlog.app')
-    await page.getByPlaceholder('••••••••').fill('wrong-password')
+    await page.getByLabel('Email', { exact: true }).fill(QA_EMAIL)
+    await page.getByLabel('Hasło', { exact: true }).fill('wrong-password')
     await page.getByRole('button', { name: 'Zaloguj się' }).click()
     await page.waitForTimeout(2500)
     await shoot(page, '01-login-wrong-password')
     // Clear and re-fill
-    await page.getByPlaceholder('••••••••').fill('')
+    await page.getByLabel('Hasło', { exact: true }).fill('')
   } else {
-    await page.getByPlaceholder('user@mail.pl').fill('demo@ironlog.app')
+    await page.getByLabel('Email', { exact: true }).fill(QA_EMAIL)
   }
 
-  await page.getByPlaceholder('••••••••').fill('demo123')
+  await page.getByLabel('Hasło', { exact: true }).fill(QA_PASSWORD)
   await page.getByRole('button', { name: 'Zaloguj się' }).click()
   await page.waitForURL(`${BASE}/dashboard`, { timeout: 25_000 })
   await page.waitForTimeout(1500)
@@ -255,7 +259,8 @@ async function flowWorkoutNew(page) {
 
 async function runViewport(browser, viewportName, viewport, deviceCtx) {
   console.log(`\n========== ${viewportName.toUpperCase()} (${viewport.width}×${viewport.height}) ==========`)
-  const context = await browser.newContext({ ...deviceCtx, viewport })
+  const context = await browser.newContext({ ...deviceCtx, viewport, serviceWorkers: 'block' })
+  await guardQaCaptureContext(context, BASE)
   await context.addInitScript(() => {
     const s = document.createElement('style')
     s.textContent = '*, *::before, *::after { animation-duration:0.001ms !important; transition-duration:0.001ms !important; }'
@@ -314,4 +319,5 @@ console.log(`\n🟠 Failed requests (${failedRequests.length}):`)
 failedRequests.slice(0, 20).forEach((r) => console.log(`   [${r.viewport}] ${r.method} ${r.url} — ${r.failure}`))
 if (failedRequests.length > 20) console.log(`   ... + ${failedRequests.length - 20} more`)
 
-console.log(`\n✅ done — screenshots in ${OUT}/`)
+if (errors.length) process.exitCode = 1
+console.log(`\nQA finished — screenshots in ${OUT}/`)

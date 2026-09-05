@@ -176,11 +176,16 @@ export default function DashboardPage() {
     dismissTemplateLaunchError,
   } = useTemplateWorkoutLaunch(user?.uid)
   const {
-    workouts,
-    weeklyDone,
-    ready: dashboardReady,
+    workouts: snapshotWorkouts,
+    weeklyDone: snapshotWeeklyDone,
+    uid: snapshotUid,
+    ready: snapshotReady,
     setSnapshot,
   } = useDashboardStore()
+  const ownsSnapshot = snapshotUid === user?.uid
+  const workouts = ownsSnapshot ? snapshotWorkouts : []
+  const weeklyDone = ownsSnapshot ? snapshotWeeklyDone : 0
+  const dashboardReady = ownsSnapshot && snapshotReady
   const [transientDeleteOperation, setTransientDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [openingWorkout, setOpeningWorkout] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -197,6 +202,7 @@ export default function DashboardPage() {
   const [projectionRetryStates, setProjectionRetryStates] = useState<Record<string, ProjectionRetryState>>({})
   const workoutsRef = useRef<WorkoutSummary[]>([])
   const snapshotRequestRef = useRef(0)
+  const dashboardScopeRef = useRef<{ uid: string } | null>(null)
   const materializationRetriesRef = useRef(new Map<string, Promise<void>>())
   const templatesMountedRef = useRef(false)
   const templatesRequestRef = useRef(0)
@@ -209,6 +215,25 @@ export default function DashboardPage() {
         ? { workoutId: persistedDeleteRecovery.workoutId, status: 'cleanup_pending' as const }
         : null
     )
+
+  useEffect(() => {
+    dashboardScopeRef.current = user?.uid ? { uid: user.uid } : null
+    const snapshot = useDashboardStore.getState()
+    workoutsRef.current = snapshot.uid === user?.uid ? snapshot.workouts : []
+    const retries = materializationRetriesRef.current
+    return () => {
+      dashboardScopeRef.current = null
+      retries.clear()
+    }
+  }, [user?.uid])
+
+  const captureDashboardScope = useCallback((uid: string) => {
+    const scope = dashboardScopeRef.current
+    return () => scope !== null
+      && scope.uid === uid
+      && dashboardScopeRef.current === scope
+      && useAuthStore.getState().user?.uid === uid
+  }, [])
 
   const loadTemplates = useCallback((uid: string) => {
     if (inFlightTemplatesUserRef.current === uid) return
@@ -260,21 +285,29 @@ export default function DashboardPage() {
     }))
   }, [])
 
-  const setDashboardSnapshot = useCallback((all: WorkoutSummary[]) => {
-    setSnapshot({
+  const setDashboardSnapshot = useCallback((uid: string, all: WorkoutSummary[]) => {
+    if (!setSnapshot(uid, {
       workouts: all,
       weeklyDone: countWeeklyWorkouts(all),
       streak: calcStreak(all),
-    })
+    })) return
     workoutsRef.current = all
   }, [setSnapshot])
 
   const refreshDashboardSnapshot = useCallback(async (uid: string): Promise<WorkoutSummary[] | null> => {
+    const isCurrent = captureDashboardScope(uid)
+    if (!isCurrent()) return null
     const requestId = ++snapshotRequestRef.current
-    const all = await getRecentWorkouts(uid, 50)
-    if (requestId !== snapshotRequestRef.current) return null
+    let all: WorkoutSummary[]
+    try {
+      all = await getRecentWorkouts(uid, 50)
+    } catch (error) {
+      if (!isCurrent() || requestId !== snapshotRequestRef.current) return null
+      throw error
+    }
+    if (!isCurrent() || requestId !== snapshotRequestRef.current) return null
 
-    setDashboardSnapshot(all)
+    setDashboardSnapshot(uid, all)
     setProjectionRetryStates((current) => {
       const pendingIds = new Set(
         all.filter((workout) => !workout.materialized).map((workout) => workout.id),
@@ -286,12 +319,14 @@ export default function DashboardPage() {
       return next
     })
     return all
-  }, [setDashboardSnapshot])
+  }, [captureDashboardScope, setDashboardSnapshot])
 
   const retryPendingProjections = useCallback(async (
     uid: string,
     all: WorkoutSummary[],
   ) => {
+    const isCurrent = captureDashboardScope(uid)
+    if (!isCurrent()) return
     const pending = all.filter((workout) => !workout.materialized)
     if (pending.length === 0) return
 
@@ -304,6 +339,7 @@ export default function DashboardPage() {
       pending.map((workout) => retryProjectionOnce(workout.id)),
     )
 
+    if (!isCurrent()) return
     const fulfilledIds = pending.flatMap((workout, index) => (
       results[index]?.status === 'fulfilled' ? [workout.id] : []
     ))
@@ -315,32 +351,34 @@ export default function DashboardPage() {
     if (fulfilledIds.length > 0) {
       try {
         const refreshed = await refreshDashboardSnapshot(uid)
-        if (!refreshed) return
+        if (!refreshed || !isCurrent()) return
         markProjectionRetriesFailed(fulfilledIds)
       } catch {
-        markProjectionRetriesFailed(fulfilledIds)
+        if (isCurrent()) markProjectionRetriesFailed(fulfilledIds)
       }
     }
-  }, [markProjectionRetriesFailed, refreshDashboardSnapshot, retryProjectionOnce])
+  }, [captureDashboardScope, markProjectionRetriesFailed, refreshDashboardSnapshot, retryProjectionOnce])
 
   const fetchData = useCallback(async (uid: string) => {
+    const isCurrent = captureDashboardScope(uid)
+    if (!isCurrent()) return
     setDashboardError(false)
-    const all = await refreshDashboardSnapshot(uid)
-    if (all) void retryPendingProjections(uid, all)
-  }, [refreshDashboardSnapshot, retryPendingProjections])
-
-  const handleDashboardFetchError = useCallback((error: unknown) => {
-    console.error('[DashboardPage] getRecentWorkouts failed', error)
-    setDashboardError(true)
-    toast.error('Nie udało się wczytać treningów. Spróbuj ponownie.')
-  }, [])
+    try {
+      const all = await refreshDashboardSnapshot(uid)
+      if (all && isCurrent()) void retryPendingProjections(uid, all)
+    } catch (error) {
+      if (!isCurrent()) return
+      console.error('[DashboardPage] getRecentWorkouts failed', error)
+      setDashboardError(true)
+      toast.error('Nie udało się wczytać treningów. Spróbuj ponownie.')
+    }
+  }, [captureDashboardScope, refreshDashboardSnapshot, retryPendingProjections])
 
   useEffect(() => {
     if (!user) return
     void Promise.resolve()
       .then(() => fetchData(user.uid))
-      .catch(handleDashboardFetchError)
-  }, [dashboardLoadAttempt, user, fetchData, handleDashboardFetchError])
+  }, [dashboardLoadAttempt, user, fetchData])
 
   useEffect(() => {
     function handleOnline() {
@@ -392,18 +430,24 @@ export default function DashboardPage() {
 
   async function handleProjectionRetry(workoutId: string) {
     if (!user || projectionRetryStates[workoutId] === 'retrying') return
+    const isCurrent = captureDashboardScope(user.uid)
+    if (!isCurrent()) return
     setProjectionRetryStates((current) => ({ ...current, [workoutId]: 'retrying' }))
     try {
       await retryProjectionOnce(workoutId)
+      if (!isCurrent()) return
       const refreshed = await refreshDashboardSnapshot(user.uid)
-      if (!refreshed) return
+      if (!refreshed || !isCurrent()) return
       markProjectionRetriesFailed([workoutId])
     } catch {
-      markProjectionRetriesFailed([workoutId])
+      if (isCurrent()) markProjectionRetriesFailed([workoutId])
     }
   }
 
   async function runWorkoutDelete(workoutId: string) {
+    if (!user) return
+    const isCurrent = captureDashboardScope(user.uid)
+    if (!isCurrent()) return
     const retryingCommittedDelete = deleteOperation?.workoutId === workoutId
       && deleteOperation.status === 'cleanup_pending'
     setTransientDeleteOperation({ workoutId, status: 'pending' })
@@ -411,15 +455,17 @@ export default function DashboardPage() {
       const result = await deleteWorkout(workoutId)
       if (result.status === 'cleanup_pending') {
         if (user?.uid) writeWorkoutDeleteRecovery(user.uid, { workoutId })
-        setTransientDeleteOperation({ workoutId, status: 'cleanup_pending' })
+        if (isCurrent()) setTransientDeleteOperation({ workoutId, status: 'cleanup_pending' })
         return
       }
       if (user?.uid) clearWorkoutDeleteRecovery(user.uid)
-      setDashboardSnapshot(workoutsRef.current.filter((workout) => workout.id !== workoutId))
+      if (!isCurrent()) return
+      setDashboardSnapshot(user.uid, workoutsRef.current.filter((workout) => workout.id !== workoutId))
       setTransientDeleteOperation(null)
-      if (user) void fetchData(user.uid).catch(handleDashboardFetchError)
+      void fetchData(user.uid)
       toast.success('Trening usunięty')
     } catch {
+      if (!isCurrent()) return
       setTransientDeleteOperation({ workoutId, status: retryingCommittedDelete ? 'cleanup_pending' : 'error' })
       toast.error('Nie udało się usunąć treningu.')
     }

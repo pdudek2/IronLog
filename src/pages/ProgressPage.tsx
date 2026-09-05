@@ -74,6 +74,7 @@ const DAY_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd']
 const EMPTY_SESSIONS: ProgressSessionLite[] = []
 const EMPTY_RECORDS: RecordSummary[] = []
 const DEFAULT_VISIBLE_REMAINING_RECORDS = 5
+const RECORDS_PAGE_SIZE = 20
 
 function formatVolume(kg: number): string {
   if (kg >= 1_000_000) return `${(kg / 1_000_000).toFixed(1)}M kg`
@@ -239,7 +240,7 @@ export default function ProgressPage() {
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [selectedStrengthKey, setSelectedStrengthKey] = useState<string | null>(null)
   const [selectedHeatmapDate, setSelectedHeatmapDate] = useState<string | null>(null)
-  const [showAllRecords, setShowAllRecords] = useState(false)
+  const [recordsPage, setRecordsPage] = useState<number | null>(null)
 
   function handleRangeChange(days: number) {
     if (days === rangeDays) return
@@ -435,9 +436,14 @@ export default function ProgressPage() {
   const featuredRecords = records.slice(0, 1)
   const remainingRecords = records.slice(1)
   const hasHiddenRemainingRecords = remainingRecords.length > DEFAULT_VISIBLE_REMAINING_RECORDS
-  const visibleRemainingRecords = showAllRecords
-    ? remainingRecords
-    : remainingRecords.slice(0, DEFAULT_VISIBLE_REMAINING_RECORDS)
+  const showAllRecords = recordsPage !== null
+  const recordsPageCount = Math.max(1, Math.ceil(remainingRecords.length / RECORDS_PAGE_SIZE))
+  const currentRecordsPage = Math.min(recordsPage ?? 0, recordsPageCount - 1)
+  const recordsOffset = showAllRecords ? currentRecordsPage * RECORDS_PAGE_SIZE : 0
+  const visibleRemainingRecords = remainingRecords.slice(
+    recordsOffset,
+    recordsOffset + (showAllRecords ? RECORDS_PAGE_SIZE : DEFAULT_VISIBLE_REMAINING_RECORDS),
+  )
   const retryableIssues: string[] = []
   if (freshnessUncertain) {
     retryableIssues.push('Nie udało się potwierdzić świeżości danych. Ostatnie treningi mogą być jeszcze niewidoczne.')
@@ -920,7 +926,7 @@ export default function ProgressPage() {
                   <div
                     key={rec.id}
                     className="progress-record-ledger-row"
-                    style={{ '--record-accent': MUSCLE_COLORS[recordAccentKeys[(index + featuredRecords.length) % recordAccentKeys.length] ?? 'chest'] } as CSSProperties}
+                    style={{ '--record-accent': MUSCLE_COLORS[recordAccentKeys[(recordsOffset + index + featuredRecords.length) % recordAccentKeys.length] ?? 'chest'] } as CSSProperties}
                   >
                     <div className="progress-record-ledger-main">
                       <strong>{rec.exerciseName}</strong>
@@ -933,12 +939,40 @@ export default function ProgressPage() {
                   </div>
                 ))}
 
+                {showAllRecords && recordsPageCount > 1 && (
+                  <nav aria-label="Strony rekordów" className="flex flex-wrap items-center justify-between gap-2 py-3">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={currentRecordsPage === 0}
+                      onClick={() => setRecordsPage(currentRecordsPage - 1)}
+                      aria-label="Poprzednia strona rekordów"
+                      aria-controls="progress-remaining-records"
+                    >
+                      Poprzednia
+                    </Button>
+                    <span className="text-sm" style={{ color: 'var(--muted)' }} aria-live="polite" aria-atomic="true">
+                      Strona {currentRecordsPage + 1} z {recordsPageCount}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={currentRecordsPage === recordsPageCount - 1}
+                      onClick={() => setRecordsPage(currentRecordsPage + 1)}
+                      aria-label="Następna strona rekordów"
+                      aria-controls="progress-remaining-records"
+                    >
+                      Następna
+                    </Button>
+                  </nav>
+                )}
+
                 {hasHiddenRemainingRecords && (
                   <Button
                     type="button"
                     variant="ghost"
                     className="progress-record-toggle"
-                    onClick={() => setShowAllRecords((current) => !current)}
+                    onClick={() => setRecordsPage((current) => current === null ? 0 : null)}
                     aria-expanded={showAllRecords}
                     aria-controls="progress-remaining-records"
                   >

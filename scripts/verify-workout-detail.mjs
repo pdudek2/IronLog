@@ -1,10 +1,14 @@
-// Ad-hoc verification: log in as demo, navigate to a workout detail, screenshot.
-// Run from project root: node scripts/verify-workout-detail.mjs
+// Ad-hoc verification: log in to a seeded emulator account and capture workout detail.
+// Run from project root: node --import tsx scripts/verify-workout-detail.mjs
 // Output: /tmp/workout-detail-verify/{mobile,desktop}-{read,edit}.png
 import { chromium, devices } from '@playwright/test'
 import fs from 'node:fs/promises'
+import { guardQaCaptureContext, resolveQaCapture } from './qaSafety.ts'
 
-const BASE = 'http://localhost:5173'
+// Requires the local emulator hosts and a seeded TEST_EMAIL / TEST_PASSWORD account.
+const { baseUrl: BASE, email: QA_EMAIL, password: QA_PASSWORD } = resolveQaCapture(
+  process.env, process.env.QA_URL,
+)
 const OUT = '/tmp/workout-detail-verify'
 await fs.rm(OUT, { recursive: true, force: true })
 await fs.mkdir(OUT, { recursive: true })
@@ -12,7 +16,8 @@ await fs.mkdir(OUT, { recursive: true })
 const DISABLE_ANIM = `*, *::before, *::after { animation-duration:0.001ms !important; transition-duration:0.001ms !important; }`
 
 async function captureViewport(browser, name, viewport, deviceCtx) {
-  const context = await browser.newContext({ ...deviceCtx, viewport })
+  const context = await browser.newContext({ ...deviceCtx, viewport, serviceWorkers: 'block' })
+  await guardQaCaptureContext(context, BASE)
   await context.addInitScript(() => {
     const s = document.createElement('style')
     s.textContent = '*, *::before, *::after { animation-duration:0.001ms !important; transition-duration:0.001ms !important; }'
@@ -23,8 +28,8 @@ async function captureViewport(browser, name, viewport, deviceCtx) {
   await page.addStyleTag({ content: DISABLE_ANIM }).catch(() => {})
 
   await page.goto(`${BASE}/login`, { waitUntil: 'domcontentloaded' })
-  await page.getByPlaceholder('user@mail.pl').fill('demo@ironlog.app')
-  await page.getByPlaceholder('••••••••').fill('demo123')
+  await page.getByLabel('Email', { exact: true }).fill(QA_EMAIL)
+  await page.getByLabel('Hasło', { exact: true }).fill(QA_PASSWORD)
   await page.getByRole('button', { name: 'Zaloguj się' }).click()
   await page.waitForURL(`${BASE}/dashboard`, { timeout: 25_000 })
   await page.waitForTimeout(1500)
@@ -39,7 +44,7 @@ async function captureViewport(browser, name, viewport, deviceCtx) {
     console.log(`[${name}] no workout cards found on /history`)
     await page.screenshot({ path: `${OUT}/${name}-DEBUG-no-card.png`, fullPage: true })
     await context.close()
-    return
+    throw new Error(`[${name}] expected a seeded workout on /history`)
   }
   await card.click()
   await page.waitForURL(/\/workout\/[^/]+$/, { timeout: 10_000 })
@@ -63,7 +68,8 @@ async function captureViewport(browser, name, viewport, deviceCtx) {
     await page.screenshot({ path: `${OUT}/${name}-edit.png`, fullPage: false })
     console.log(`[${name}] edit mode → ${OUT}/${name}-edit.png`)
   } else {
-    console.log(`[${name}] edit button not found`)
+    await context.close()
+    throw new Error(`[${name}] edit button not found`)
   }
 
   await context.close()

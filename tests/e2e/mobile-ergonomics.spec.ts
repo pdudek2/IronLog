@@ -80,7 +80,7 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await openLargeTemplateDraft(page)
 
-    const name = page.getByRole('textbox', { name: 'Nazwa' })
+    const name = page.getByRole('textbox', { name: 'Nazwa', exact: true })
     await name.fill('Upper / Lower 4× zmieniony')
     await name.blur()
 

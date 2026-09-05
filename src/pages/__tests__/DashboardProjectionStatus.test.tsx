@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
+import type { User } from 'firebase/auth'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -8,6 +9,7 @@ import MobileInteractionProvider from '../../components/MobileInteractionProvide
 import TopNav from '../../components/TopNav'
 import { readActiveSessionBackup, writeActiveSessionBackup } from '../../lib/activeSessionBackup'
 import type { WorkoutSummary } from '../../lib/workoutService'
+import { useAuthStore } from '../../store/authStore'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useWorkoutStore, type ActiveWorkout } from '../../store/workoutStore'
 import DashboardPage from '../DashboardPage'
@@ -18,7 +20,6 @@ const mocks = vi.hoisted(() => ({
   deleteWorkout: vi.fn(),
   getTemplates: vi.fn(),
   toastError: vi.fn(),
-  user: { uid: 'user-1' },
   profile: { displayName: 'Patryk', weeklyGoal: 3 },
   navigate: vi.fn(),
   preloadRouteByPath: vi.fn(),
@@ -34,10 +35,6 @@ const mocks = vi.hoisted(() => ({
   },
   activeSessionHasWork: false,
   activeSessionListener: null as null | ((snapshot: { session: ActiveWorkout | null }) => void),
-}))
-
-vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: mocks.user }),
 }))
 
 vi.mock('../../store/profileStore', () => ({
@@ -190,10 +187,135 @@ describe('Dashboard workout projection status', () => {
     mocks.readinessEntry = null
     mocks.activeSessionHasWork = false
     mocks.activeSessionListener = null
-    mocks.user = { uid: 'user-1' }
+    useAuthStore.getState().setUser({ uid: 'user-1' } as User)
     localStorage.clear()
     useDashboardStore.getState().clearSnapshot()
     useWorkoutStore.getState().clearWorkout()
+  })
+
+  it('accepts a delayed same-account snapshot and keeps it cached on remount', async () => {
+    const request = deferred<WorkoutSummary[]>()
+    const workout = { ...pendingWorkout, materialized: true }
+    mocks.getRecentWorkouts.mockReturnValueOnce(request.promise)
+    const first = render(<DashboardPage />)
+    await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledWith('user-1', 50))
+
+    await act(async () => request.resolve([workout]))
+    expect(await screen.findByText('Push day')).toBeInTheDocument()
+    expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-1', ready: true, workouts: [workout] })
+    first.unmount()
+
+    mocks.getRecentWorkouts.mockReturnValueOnce(deferred<WorkoutSummary[]>().promise)
+    render(<DashboardPage />)
+    expect(screen.getByText('Push day')).toBeInTheDocument()
+  })
+
+  it.each(['success', 'failure'] as const)('ignores an initial account A %s after unmount and login B', async (outcome) => {
+    const requestA = deferred<WorkoutSummary[]>()
+    const requestB = deferred<WorkoutSummary[]>()
+    mocks.getRecentWorkouts.mockReturnValueOnce(requestA.promise).mockReturnValueOnce(requestB.promise)
+    const first = render(<DashboardPage />)
+    await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledWith('user-1', 50))
+    first.unmount()
+    act(() => {
+      useDashboardStore.getState().clearSnapshot()
+      useAuthStore.getState().setUser({ uid: 'user-2' } as User)
+    })
+    render(<DashboardPage />)
+    await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledWith('user-2', 50))
+    await act(async () => {
+      if (outcome === 'success') requestA.resolve([pendingWorkout])
+      else requestA.reject(new Error('late A failure'))
+    })
+    expect(useDashboardStore.getState()).toMatchObject({ uid: null, ready: false, workouts: [] })
+    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+    expect(mocks.toastError).not.toHaveBeenCalled()
+    expect(mocks.retryWorkoutMaterialization).not.toHaveBeenCalled()
+
+    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Account B workout', materialized: true }
+    await act(async () => requestB.resolve([workoutB]))
+    expect(await screen.findByText('Account B workout')).toBeInTheDocument()
+    expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-2', workouts: [workoutB] })
+  })
+
+  it('hides an old snapshot in Dashboard and TopNav and rejects an old owner write before B loads', async () => {
+    const workoutA = { ...pendingWorkout, materialized: true }
+    useDashboardStore.getState().setSnapshot('user-1', { workouts: [workoutA], weeklyDone: 4, streak: 8 })
+    const requestB = deferred<WorkoutSummary[]>()
+    mocks.getRecentWorkouts.mockReturnValue(requestB.promise)
+    act(() => useAuthStore.getState().setUser({ uid: 'user-2' } as User))
+    render(<MemoryRouter><TopNav /><DashboardPage /></MemoryRouter>)
+
+    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Seria treningowa 8 dni' })).not.toBeInTheDocument()
+    expect(useDashboardStore.getState().setSnapshot('user-1', {
+      workouts: [pendingWorkout], weeklyDone: 9, streak: 9,
+    })).toBe(false)
+    expect(useDashboardStore.getState().streak).toBe(8)
+    await act(async () => requestB.resolve([]))
+    expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-2', ready: true, workouts: [] })
+  })
+
+  it.each(['success', 'failure'] as const)('ignores an automatic projection retry %s after an account change', async (outcome) => {
+    const retryA = deferred<void>()
+    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Account B workout', materialized: true }
+    mocks.getRecentWorkouts.mockResolvedValueOnce([pendingWorkout]).mockResolvedValueOnce([workoutB])
+    mocks.retryWorkoutMaterialization.mockReturnValueOnce(retryA.promise)
+    render(<DashboardPage />)
+    await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(1))
+
+    act(() => {
+      useDashboardStore.getState().clearSnapshot()
+      useAuthStore.getState().setUser({ uid: 'user-2' } as User)
+    })
+    expect(await screen.findByText('Account B workout')).toBeInTheDocument()
+    await act(async () => {
+      if (outcome === 'success') retryA.resolve()
+      else retryA.reject(new Error('late A retry failure'))
+    })
+    expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2)
+    expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-2', workouts: [workoutB] })
+    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Ponów synchronizację' })).not.toBeInTheDocument()
+  })
+
+  it('ignores an in-flight retry refresh after unmount and B has loaded', async () => {
+    const refreshA = deferred<WorkoutSummary[]>()
+    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Account B workout', materialized: true }
+    mocks.getRecentWorkouts
+      .mockResolvedValueOnce([pendingWorkout])
+      .mockReturnValueOnce(refreshA.promise)
+      .mockResolvedValueOnce([workoutB])
+    mocks.retryWorkoutMaterialization.mockResolvedValueOnce(undefined)
+    const first = render(<DashboardPage />)
+    await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2))
+    first.unmount()
+    act(() => {
+      useDashboardStore.getState().clearSnapshot()
+      useAuthStore.getState().setUser({ uid: 'user-2' } as User)
+    })
+    render(<DashboardPage />)
+    expect(await screen.findByText('Account B workout')).toBeInTheDocument()
+    await act(async () => refreshA.resolve([{ ...pendingWorkout, materialized: true }]))
+    expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-2', workouts: [workoutB] })
+    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+  })
+
+  it.each(['success', 'failure'] as const)('ignores a manual projection retry %s after unmount', async (outcome) => {
+    const retry = deferred<void>()
+    mocks.getRecentWorkouts.mockResolvedValue([pendingWorkout])
+    mocks.retryWorkoutMaterialization.mockRejectedValueOnce(new Error('automatic failure')).mockReturnValueOnce(retry.promise)
+    const page = render(<DashboardPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Ponów synchronizację' }))
+    await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(2))
+    page.unmount()
+    useDashboardStore.getState().clearSnapshot()
+    await act(async () => {
+      if (outcome === 'success') retry.resolve()
+      else retry.reject(new Error('late manual failure'))
+    })
+    expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(1)
+    expect(useDashboardStore.getState()).toMatchObject({ uid: null, ready: false, workouts: [] })
   })
 
   it('keeps the empty week summary compact for a new account', async () => {
@@ -1059,7 +1181,7 @@ describe('Dashboard workout projection status', () => {
     const { rerender } = render(<DashboardPage />)
     await waitFor(() => expect(mocks.getTemplates).toHaveBeenCalledTimes(1))
 
-    mocks.user = { uid: 'user-2' }
+    act(() => useAuthStore.getState().setUser({ uid: 'user-2' } as User))
     rerender(<DashboardPage />)
 
     await screen.findByText('Brak zapisanych szablonów')

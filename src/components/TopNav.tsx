@@ -4,6 +4,7 @@ import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Spark
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { hasActiveSessionWork } from '../lib/activeSessionService'
+import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useWorkoutStore } from '../store/workoutStore'
 
@@ -33,7 +34,8 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
   const navigate = useNavigate()
   const location = useLocation()
   const path = location.pathname
-  const storeStreak = useDashboardStore((s) => s.streak)
+  const { user } = useAuthStore()
+  const storeStreak = useDashboardStore((s) => s.uid === user?.uid ? s.streak : 0)
   const active = useWorkoutStore((state) => state.active)
   const streak = typeof streakProp === 'number' ? streakProp : storeStreak
   const hasActiveWork = hasActiveSessionWork(active)

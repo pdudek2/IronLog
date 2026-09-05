@@ -146,7 +146,8 @@ test.describe('Progress analytics', () => {
     const picker = page.getByRole('combobox', { name: 'Ćwiczenie na wykresie' })
     await expect(picker).toHaveValue(/bench/)
     await expect(page.locator('.recharts-line')).toHaveCount(1)
-    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toContainText('Phase 7 Bench Press')
+    await expect(picker.locator('option:checked')).toHaveText('Phase 7 Bench Press')
+    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toContainText('Ostatnio 80 kg')
 
     await picker.selectOption({ label: 'Phase 7 Squat' })
     await expect(page.locator('.recharts-line')).toHaveCount(1)
@@ -200,12 +201,12 @@ test.describe('Progress analytics', () => {
       }
 
       const insight = page.getByLabel('Trend wybranego ćwiczenia')
-      const firstChart = page.locator('.progress-chart-frame').first()
+      const strengthChart = page.locator('.progress-chart-frame--strength')
       await expect(insight).toBeVisible()
-      await expect(firstChart).toBeVisible()
-      expect((await insight.boundingBox())!.y).toBeLessThan((await firstChart.boundingBox())!.y)
+      await expect(strengthChart).toBeVisible()
+      expect((await insight.boundingBox())!.y).toBeLessThan((await strengthChart.boundingBox())!.y)
       await expectNoHorizontalOverflow(insight, width)
-      await clearNavigation(firstChart)
+      await clearNavigation(strengthChart)
 
       const strengthPicker = page.getByRole('combobox', { name: 'Ćwiczenie na wykresie' })
       await expect(strengthPicker).toBeVisible()

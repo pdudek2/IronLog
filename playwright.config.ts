@@ -1,7 +1,13 @@
 import { defineConfig, devices } from '@playwright/test'
 import { config } from 'dotenv'
+import { assertLocalQaEmulators } from './scripts/qaSafety'
 
+process.env.E2E_BACKEND ??= 'emulator'
+if (!['emulator', 'live'].includes(process.env.E2E_BACKEND)) {
+  throw new Error('E2E_BACKEND must be emulator or explicitly live.')
+}
 const emulatorMode = process.env.E2E_BACKEND === 'emulator'
+if (emulatorMode) assertLocalQaEmulators(process.env)
 const cspMode = process.env.E2E_CSP === 'true'
 const storageStatePath = emulatorMode
   ? 'tests/e2e/.auth/emulator-user.json'
@@ -29,11 +35,16 @@ const emulatorWebEnv = {
 
 export default defineConfig({
   testDir: './tests/e2e',
-  testMatch: '**/*.spec.ts',
-  testIgnore: emulatorMode ? [] : [
-    '**/contrast.spec.ts',
-    '**/workout-detail-mobile.spec.ts',
-    '**/workout-lifecycle.spec.ts',
+  outputDir: cspMode ? 'test-results/csp' : 'test-results',
+  testMatch: cspMode ? '**/csp.spec.ts' : '**/*.spec.ts',
+  testIgnore: [
+    ...(cspMode ? [] : ['**/csp.spec.ts']),
+    ...(emulatorMode ? [] : [
+      '**/contrast.spec.ts',
+      '**/workout-detail-mobile.spec.ts',
+      '**/workout-lifecycle.spec.ts',
+      '**/session-recovery.spec.ts',
+    ]),
   ],
   fullyParallel: false,
   retries: emulatorMode ? 0 : 1,

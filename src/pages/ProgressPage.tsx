@@ -708,7 +708,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               ) : selectedStrengthPoints.length < 3 ? (
                 <>
                   <p className="progress-muted-copy">
-                    Potrzebujesz jeszcze {missingStrengthSessions} dni z zapisanym ciężarem do wykresu.
+                    Do wykresu: jeszcze {missingStrengthSessions} {polishPlural(missingStrengthSessions, 'dzień', 'dni', 'dni')} z zapisanym ciężarem.
                   </p>
                   <div className="progress-session-markers" aria-label={`${selectedStrengthPoints.length} z 3 dni do wykresu`}>
                     {Array.from({ length: 3 }).map((_, index) => (

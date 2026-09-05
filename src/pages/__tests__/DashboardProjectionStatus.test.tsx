@@ -1061,12 +1061,12 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     expect(await screen.findByText('Nie udało się wczytać planów')).toBeInTheDocument()
-    expect(screen.queryByText('Brak zapisanych szablonów')).not.toBeInTheDocument()
+    expect(screen.queryByText('Brak zapisanych planów')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Utwórz pierwszy plan' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
 
-    expect(await screen.findByText('Brak zapisanych szablonów')).toBeInTheDocument()
+    expect(await screen.findByText('Brak zapisanych planów')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Utwórz pierwszy plan' })).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
   })
@@ -1098,7 +1098,7 @@ describe('Dashboard workout projection status', () => {
       name: 'Rozpocznij Upper z planu Upper / Lower',
     })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Plany' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Brak zapisanych szablonów')).not.toBeInTheDocument()
+    expect(screen.queryByText('Brak zapisanych planów')).not.toBeInTheDocument()
   })
 
   it('uses the first launchable day when the first saved day is empty', async () => {
@@ -1229,10 +1229,10 @@ describe('Dashboard workout projection status', () => {
     act(() => useAuthStore.getState().setUser({ uid: 'user-2' } as User))
     rerender(<DashboardPage />)
 
-    await screen.findByText('Brak zapisanych szablonów')
+    await screen.findByText('Brak zapisanych planów')
     await act(async () => obsoleteRequest.reject(new Error('obsolete templates failure')))
 
-    expect(screen.getByText('Brak zapisanych szablonów')).toBeInTheDocument()
+    expect(screen.getByText('Brak zapisanych planów')).toBeInTheDocument()
     expect(mocks.toastError).not.toHaveBeenCalled()
     expect(consoleError).not.toHaveBeenCalled()
     consoleError.mockRestore()

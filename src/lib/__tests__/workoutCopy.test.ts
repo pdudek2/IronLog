@@ -1,6 +1,19 @@
 import { describe, expect, it } from 'vitest'
 
-import { getCategoryWorkloadInsight } from '../workoutCopy'
+import { getCategoryWorkloadInsight, workoutTitle } from '../workoutCopy'
+
+it.each([
+  [' Push ', ['Bench Press'], 'Push'],
+  [' ', ['Bench Press'], 'Bench Press'],
+  [null, ['Bench Press', 'Row'], 'Bench Press + Row'],
+  [null, ['Bench Press', 'Row', 'Squat'], 'Bench Press +2'],
+  [null, ['  ', ''], 'Trening'],
+] as const)('names a workout with label %s and exercises %j', (label, names, expected) => {
+  expect(workoutTitle({
+    label,
+    exercises: names.map((name) => ({ name, sets: [] })),
+  })).toBe(expected)
+})
 
 describe('getCategoryWorkloadInsight', () => {
   it.each([

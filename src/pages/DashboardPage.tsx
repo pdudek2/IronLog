@@ -33,6 +33,7 @@ import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
 import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
+import { workoutTitle } from '../lib/workoutCopy'
 import {
   DEFAULT_EXERCISE_CATEGORY_COLOR,
   EXERCISE_CATEGORY_COLORS,
@@ -68,13 +69,6 @@ function workoutAccent(workout: WorkoutSummary): string {
   if (!firstExercise?.exerciseId) return DEFAULT_EXERCISE_CATEGORY_COLOR
   const category = exerciseMap.get(firstExercise.exerciseId)?.category
   return EXERCISE_CATEGORY_COLORS[category ?? ''] ?? DEFAULT_EXERCISE_CATEGORY_COLOR
-}
-
-function workoutTitle(workout: WorkoutSummary): string {
-  const names = workout.exercises.map((exercise) => exercise.name)
-  if (!names.length) return 'Trening'
-  if (names.length <= 2) return names.join(' + ')
-  return `${names[0]} +${names.length - 1}`
 }
 
 function formatDate(ts: number): string {
@@ -608,7 +602,7 @@ export default function DashboardPage() {
         activeExerciseCount > 0 ? formatExerciseCount(activeExerciseCount) : null,
       ].filter(Boolean).join(' • ')
     : latestWorkout
-      ? `Ostatni trening: ${latestWorkout.label ?? workoutTitle(latestWorkout)} • ${formatDate(latestWorkout.startedAt)} • ${formatDuration(latestWorkout.startedAt, latestWorkout.finishedAt)}`
+      ? `Ostatnio: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
       : null
   const weeklySummaryRows = [
     {
@@ -922,10 +916,7 @@ export default function DashboardPage() {
                 </div>
               ) : recentTemplates.length === 0 ? (
                 <div className="dashboard-inline-state">
-                  <p className="text-sm font-semibold text-white">Brak zapisanych szablonów</p>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Nie masz jeszcze zapisanych szablonów.
-                  </p>
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>Brak zapisanych planów</p>
                   <motion.button
                     onClick={() => navigate('/templates/new')}
                     className="dashboard-inline-primary"
@@ -1086,7 +1077,7 @@ export default function DashboardPage() {
                                 onClick={() => openWorkout(workout)}
                                 className="dashboard-history-open"
                                 disabled={isWorkoutUnavailable}
-                                aria-label={`Otwórz trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
+                                aria-label={`Otwórz trening ${workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
                               >
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
@@ -1097,7 +1088,7 @@ export default function DashboardPage() {
                                     </span>
                                   </div>
                                   <p className="mt-2 text-lg font-semibold text-white truncate">
-                                    {workout.label ?? workoutTitle(workout)}
+                                    {workoutTitle(workout)}
                                   </p>
                                   <div className="mt-2 flex items-center gap-2 flex-wrap">
                                     <span className="text-xs" style={{ color: 'var(--muted)' }}>
@@ -1121,7 +1112,7 @@ export default function DashboardPage() {
                                   || (workoutDeleteOperation?.status === 'cleanup_pending' || workoutDeleteOperation?.status === 'unknown')
                                   ? deleteFeedbackId
                                   : undefined}
-                                aria-label={`Usuń trening ${workout.label ?? workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
+                                aria-label={`Usuń trening ${workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
                               >
                                 <Trash2 size={13} />
                               </motion.button>
@@ -1155,20 +1146,22 @@ export default function DashboardPage() {
                               />
                             )}
 
-                            <div className="dashboard-history-exercises">
-                              {workout.exercises.slice(0, 3).map((exercise) => (
-                                <span
-                                  key={`${workout.id}-${exercise.exerciseId ?? exercise.name}`}
-                                >
-                                  {exercise.name}
-                                </span>
-                              ))}
-                              {workout.exercises.length > 3 && (
-                                <span>
-                                  +{workout.exercises.length - 3}
-                                </span>
-                              )}
-                            </div>
+                            {workoutTitle(workout) !== workout.exercises.map((exercise) => exercise.name.trim()).join(' + ') && (
+                              <div className="dashboard-history-exercises">
+                                {workout.exercises.slice(0, 3).map((exercise) => (
+                                  <span
+                                    key={`${workout.id}-${exercise.exerciseId ?? exercise.name}`}
+                                  >
+                                    {exercise.name}
+                                  </span>
+                                ))}
+                                {workout.exercises.length > 3 && (
+                                  <span>
+                                    +{workout.exercises.length - 3}
+                                  </span>
+                                )}
+                              </div>
+                            )}
                           </div>
 
                           <div className="dashboard-history-metrics">
@@ -1196,7 +1189,7 @@ export default function DashboardPage() {
       {workoutToDelete && (
         <ConfirmDialog
           title="Usunąć trening?"
-          message={`„${workoutToDelete.label ?? workoutTitle(workoutToDelete)}” · ${formatDate(workoutToDelete.startedAt)}. Tej operacji nie można cofnąć.`}
+          message={`„${workoutTitle(workoutToDelete)}” · ${formatDate(workoutToDelete.startedAt)}. Tej operacji nie można cofnąć.`}
           confirmLabel="Usuń"
           danger
           onConfirm={confirmDeleteWorkout}

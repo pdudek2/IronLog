@@ -210,7 +210,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
           <strong className="tabular-nums">{formatCompactVolume(exerciseVolume, units)}</strong>
         </div>
         <div>
-          <span>Top set</span>
+          <span>Max</span>
           <strong className="tabular-nums">{bestSet ? `${kgToDisplayWeight(bestSet, units)} ${units}` : '—'}</strong>
         </div>
       </div>
@@ -225,7 +225,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
       )}
 
       <div className="workout-set-header">
-        <span>#</span>
+        <span aria-hidden="true" />
         <span>Poprz.</span>
         <span>{units}</span>
         <span>Powt.</span>
@@ -251,11 +251,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   type="button"
                   onClick={() => onToggleSet(exerciseIndex, setIndex)}
                   className="workout-set-toggle"
-                  style={{
-                    background: set.done ? 'var(--success)' : 'var(--input-bg)',
-                    color: set.done ? 'var(--success-foreground)' : 'var(--muted)',
-                    border: `1px solid ${set.done ? 'var(--success)' : 'var(--border)'}`,
-                  }}
                   whileTap={{ scale: 0.9 }}
                   animate={set.done ? { scale: [1, 1.08, 1] } : { scale: 1 }}
                   transition={{ duration: 0.25 }}
@@ -315,8 +310,8 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   {[
                     { label: `−2.5 ${units}`, delta: -2.5, field: 'weight' as const },
                     { label: `+2.5 ${units}`, delta: 2.5, field: 'weight' as const },
-                    { label: '−1 rep', delta: -1, field: 'reps' as const },
-                    { label: '+1 rep', delta: +1, field: 'reps' as const },
+                    { label: '−1 powt.', delta: -1, field: 'reps' as const },
+                    { label: '+1 powt.', delta: +1, field: 'reps' as const },
                   ].map(({ label, delta, field }) => (
                     <button
                       key={label}

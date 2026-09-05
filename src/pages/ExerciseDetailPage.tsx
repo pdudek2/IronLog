@@ -333,7 +333,7 @@ export default function ExerciseDetailPage() {
                         </div>
                       </div>
                       <div className="exercise-detail-session-metrics">
-                        <span><strong>{session.totalSets}</strong> serie</span>
+                        <span><strong>{session.totalSets}</strong> {polishPlural(session.totalSets, 'seria', 'serie', 'serii')}</span>
                         <span><strong>{session.totalReps}</strong> powt.</span>
                         <span>
                           top <strong style={{ color: accent }}>

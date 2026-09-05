@@ -10,6 +10,7 @@ import { getWorkoutHistory, calcVolume, type WorkoutSummary } from '../lib/worko
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
+import { workoutTitle } from '../lib/workoutCopy'
 import {
   EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
@@ -420,10 +421,12 @@ export default function HistoryPage() {
                                 <span>{formatDate(workout.startedAt)}</span>
                                 <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
                                 <span className="history-inline-stat">{formatCompactVolume(totalVolume)}</span>
-                                <span className="history-inline-stat">{totalSets} serii</span>
+                                <span className="history-inline-stat">{totalSets} {polishPlural(totalSets, 'seria', 'serie', 'serii')}</span>
                               </div>
-                              <h3>{workout.label?.trim() || 'Sesja treningowa'}</h3>
-                              <p>{formatExercisePreview(exerciseNames)}</p>
+                              <h3>{workoutTitle(workout)}</h3>
+                              {workoutTitle(workout) !== exerciseNames.map((name) => name.trim()).join(' + ') && (
+                                <p>{formatExercisePreview(exerciseNames)}</p>
+                              )}
                             </div>
                             <ChevronRight size={18} className="history-workout-arrow" aria-hidden="true" />
                           </div>

@@ -1,0 +1,24 @@
+# Local evidence and private workflow files are never deployment inputs.
+output/
+docs/
+mockups/
+deliverables/
+.superpowers/
+.agent-memory/
+.claude/
+.codex/
+WORKING_CONTEXT.md
+AGENTS.md
+CLAUDE.md
+.mcp.json
+test-results/
+playwright-report/
+.playwright/
+.playwright-cli/
+.playwright-mcp/
+tests/e2e/.auth/
+.env.local
+.env.test
+*.log
+*.docx
+*.pdf

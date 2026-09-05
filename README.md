@@ -4,10 +4,6 @@ IronLog records strength workouts and tracks progress over time. An active worko
 
 [Open IronLog](https://ironlog-coach.vercel.app/login)
 
-![IronLog on desktop](docs/screenshots/app/desktop-showcase.png)
-
-![IronLog on mobile](docs/screenshots/app/mobile-showcase.png)
-
 ## Training
 
 Start an empty workout or use a saved template. IronLog shows the previous result for each exercise, keeps the active session available after a refresh, and includes a rest timer between sets.
@@ -102,3 +98,9 @@ TEST_PASSWORD=REPLACE_WITH_TEST_ACCOUNT_PASSWORD
 ```
 
 Live tests can create, update and delete data in that configured project and account. They are not part of `npm run test:e2e`; use a dedicated test project/account when choosing this mode.
+
+## Repository contents
+
+Keep application code, reusable tooling, tests, required visual test baselines, and current product documentation in Git. [PRODUCT.md](PRODUCT.md) records the product direction and remaining work.
+
+Generated screenshots, audit output, completed implementation plans, browser traces, and local agent state are ignored. Keep temporary evidence in `output/`; keep private documents outside this repository. Do not force-add these artifacts. The four images beside `templates.visual.spec.ts` are executable test baselines and remain versioned.

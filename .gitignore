@@ -39,10 +39,18 @@ deliverables/
 docs/
 CLAUDE.md
 
+# Generated audit evidence and retired agent workflow state
+/output/
+/.superpowers/
+/.agent-memory/
+/WORKING_CONTEXT.md
+/coverage/
+
 # Per-developer AI agent instructions
 AGENTS.md
 .mcp.json
 .codex/
+.claude/
 .playwright-mcp/
 .worktrees/
 

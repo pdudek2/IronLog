@@ -39,3 +39,13 @@ IronLog nie powinien przypominać generycznej czarno-czerwonej aplikacji „gym 
 ## Accessibility & Inclusion
 
 Celem jest WCAG 2.2 AA. Interfejs zapewnia obsługę klawiatury, czytelny kontrast, dostępne formularze i dialogi oraz respektuje `prefers-reduced-motion`.
+
+## Delivery status — 2026-09-05
+
+Uzgodniony zakres nocnego audytu i dwóch audytów wrześniowych został zintegrowany, a poprawki backendu i mobilnego UI wdrożono na produkcję. Ostatni mobilny polish: `4f73161`. Dawne plany, raporty agentów i screeny zostały wycofane z bieżącego drzewa repo; szczegółowe dowody zamknięcia pozostają w historii Git, m.in. w commicie `cdb18ed`.
+
+Pozostałe zobowiązania:
+
+- **Desktop (F08/UI01, UX02):** geometria kolumn edytora i kompozycja aktywnej sesji są odłożone zgodnie z decyzją właściciela produktu.
+- **Historyczne projekcje (F12):** kod poprawnie scala powtórzone ćwiczenia według treningu, `exerciseSource` i `exerciseId`. Nie wykonano produkcyjnego backfillu starszych danych. Kontrolowane przeliczenie musi objąć wszystkie dotknięte treningi przed uznaniem wspólnych rekordów za naprawione.
+- **Weryfikacja operacyjna:** pozostają próby na fizycznym telefonie, Safari/VoiceOver, rzeczywistym Anthropic i pomiar produkcyjnej latencji. Dotychczasowe testy przeglądarkowe i emulatory nie zastępują tych prób.

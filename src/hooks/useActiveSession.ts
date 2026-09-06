@@ -539,6 +539,13 @@ export function useActiveSession(uid: string | null) {
       currentUid,
       ({ session, sessionRevision, fromCache, hasPendingWrites }) => {
         const authoritative = isAuthoritativeActiveSessionSnapshot({ fromCache, hasPendingWrites })
+        const confirmedRemoteSessionId = authoritative && !session
+          ? remoteSessionRef.current?.sessionId
+          : undefined
+        const observesConfirmedSessionDeletion = Boolean(
+          confirmedRemoteSessionId
+          && confirmedClosedSessionIdsRef.current.has(confirmedRemoteSessionId),
+        )
         if (authoritative && isConfirmedClosedSessionId(
           session?.sessionId,
           confirmedClosedSessionIdsRef.current,
@@ -550,6 +557,12 @@ export function useActiveSession(uid: string | null) {
           remoteSessionRef.current = session
         }
         const current = useWorkoutStore.getState().active
+        if (observesConfirmedSessionDeletion
+          && current
+          && current.sessionId !== confirmedRemoteSessionId) {
+          setReady(true)
+          return
+        }
         const currentSerialized = serializeActiveWorkout(current)
         const nextSerialized = serializeActiveWorkout(session)
         const preserveLocalBaseRevision = Boolean(
@@ -795,6 +808,9 @@ export function useActiveSession(uid: string | null) {
             sessionWriteGenerationRef.current,
           )) return
           clearConfirmedClosure()
+          if (confirmedClosedSessionIdsRef.current.has(intent.session.sessionId)) {
+            activeSessionRevisionRef.current.value = null
+          }
         },
         startReplacement: () => {
           if (!isSessionWriteGenerationCurrent(

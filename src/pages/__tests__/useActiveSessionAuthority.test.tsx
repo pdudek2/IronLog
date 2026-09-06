@@ -805,6 +805,130 @@ describe('useActiveSession snapshot authority', () => {
     expect(saveActiveSession).toHaveBeenCalledWith('user-1', replacement, null)
   })
 
+  it('starts a confirmed stale-session replacement from the deleted remote revision', async () => {
+    let replacement: ActiveWorkout | null = null
+    discardStaleSessionLifecycle.mockImplementationOnce(async (dependencies: {
+      clearConfirmed(): void
+      startReplacement(): ActiveWorkout | null
+      persistReplacement(workout: ActiveWorkout): Promise<void>
+    }) => {
+      dependencies.clearConfirmed()
+      replacement = dependencies.startReplacement()
+      if (replacement) await dependencies.persistReplacement(replacement)
+      return { status: 'discarded' as const, replacement }
+    })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      sessionRevision: 'revision-stale',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    await act(async () => {
+      await result.current.discardStaleSession()
+    })
+
+    expect(replacement).not.toBeNull()
+    expect(saveActiveSession).toHaveBeenCalledWith('user-1', replacement, null)
+  })
+
+  it('keeps a stale-session replacement when the confirmed deletion snapshot arrives late', async () => {
+    let replacement: ActiveWorkout | null = null
+    discardStaleSessionLifecycle.mockImplementationOnce(async (dependencies: {
+      clearConfirmed(): void
+      startReplacement(): ActiveWorkout | null
+      persistReplacement(workout: ActiveWorkout): Promise<void>
+    }) => {
+      dependencies.clearConfirmed()
+      replacement = dependencies.startReplacement()
+      listener.current?.({
+        session: null,
+        sessionRevision: null,
+        fromCache: false,
+        hasPendingWrites: false,
+      })
+      if (replacement) await dependencies.persistReplacement(replacement)
+      return { status: 'discarded' as const, replacement }
+    })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      sessionRevision: 'revision-stale',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    await act(async () => {
+      await result.current.discardStaleSession()
+    })
+
+    expect(replacement).not.toBeNull()
+    const createdReplacement = replacement as ActiveWorkout | null
+    expect(useWorkoutStore.getState().active?.sessionId).toBe(createdReplacement?.sessionId)
+
+    act(() => listener.current?.({
+      session: createdReplacement,
+      sessionRevision: 'revision-replacement',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    act(() => listener.current?.({
+      session: null,
+      sessionRevision: null,
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    expect(useWorkoutStore.getState().active).toBeNull()
+  })
+
+  it('keeps the acknowledged replacement revision when the confirmed deletion snapshot arrives late', async () => {
+    let replacement: ActiveWorkout | null = null
+    saveActiveSession.mockResolvedValueOnce({ sessionRevision: 'revision-replacement' })
+    discardStaleSessionLifecycle.mockImplementationOnce(async (dependencies: {
+      clearConfirmed(): void
+      startReplacement(): ActiveWorkout | null
+      persistReplacement(workout: ActiveWorkout): Promise<void>
+    }) => {
+      dependencies.clearConfirmed()
+      replacement = dependencies.startReplacement()
+      if (replacement) await dependencies.persistReplacement(replacement)
+      listener.current?.({
+        session: null,
+        sessionRevision: null,
+        fromCache: false,
+        hasPendingWrites: false,
+      })
+      return { status: 'discarded' as const, replacement }
+    })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: staleRemoteSession,
+      sessionRevision: 'revision-stale',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+
+    await act(async () => {
+      await result.current.discardStaleSession()
+    })
+    act(() => useWorkoutStore.getState().setLabel('Replacement'))
+    await act(async () => {
+      window.dispatchEvent(new Event('pagehide'))
+      await Promise.resolve()
+    })
+
+    expect(replacement).not.toBeNull()
+    expect(useWorkoutStore.getState().active?.sessionId).toBe((replacement as ActiveWorkout | null)?.sessionId)
+    expect(saveActiveSession).toHaveBeenNthCalledWith(
+      2,
+      'user-1',
+      expect.objectContaining({ label: 'Replacement' }),
+      'revision-replacement',
+    )
+  })
+
   it('ignores a late failed write for the first of two confirmed closed sessions', async () => {
     const closedWrite = createDeferred<{ sessionRevision: string }>()
     const saveError = new Error('permission-denied')

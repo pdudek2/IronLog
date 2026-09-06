@@ -27,6 +27,9 @@ import {
   type WeeklyPoint,
 } from '../lib/progressService'
 import { polishPlural } from '../lib/polishPlural'
+import { useProfileStore } from '../store/profileStore'
+import { kgToDisplayWeight } from '../lib/weightUnits'
+import type { Units } from '../lib/userProfile'
 
 const RANGE_OPTIONS = [
   { label: '30 dni', days: 30 },
@@ -76,10 +79,11 @@ const EMPTY_RECORDS: RecordSummary[] = []
 const DEFAULT_VISIBLE_REMAINING_RECORDS = 5
 const RECORDS_PAGE_SIZE = 20
 
-function formatVolume(kg: number): string {
-  if (kg >= 1_000_000) return `${(kg / 1_000_000).toFixed(1)}M kg`
-  if (kg >= 1000) return `${(kg / 1000).toFixed(1)}k kg`
-  return `${Math.round(kg)} kg`
+function formatVolume(volumeKg: number, units: Units): string {
+  const volume = kgToDisplayWeight(volumeKg, units)
+  if (volume >= 1_000_000) return `${(volume / 1_000_000).toFixed(1)}M ${units}`
+  if (volume >= 1000) return `${(volume / 1000).toFixed(1)}k ${units}`
+  return `${Math.round(volume)} ${units}`
 }
 
 function formatDelta(delta: number): string {
@@ -95,7 +99,7 @@ function formatHeatmapDate(date: string): string {
   return Number.isFinite(timestamp) ? formatDate(timestamp) : date
 }
 
-function summarizeWeeklyVolume(data: WeeklyPoint[]): string {
+function summarizeWeeklyVolume(data: WeeklyPoint[], units: Units): string {
   if (data.length === 0) return 'Wolumen treningowy: brak danych w wybranym zakresie.'
 
   const first = data[0]
@@ -106,10 +110,10 @@ function summarizeWeeklyVolume(data: WeeklyPoint[]): string {
   const firstWeek = first.weekLabel
   const lastWeek = data[data.length - 1]?.weekLabel ?? 'koniec zakresu'
 
-  return `Wolumen treningowy od ${firstWeek} do ${lastWeek}. Łącznie ${formatVolume(total)}. Najwyższy tydzień: ${peak.weekLabel}, ${formatVolume(peak.volume)}.`
+  return `Wolumen treningowy od ${firstWeek} do ${lastWeek}. Łącznie ${formatVolume(total, units)}. Najwyższy tydzień: ${peak.weekLabel}, ${formatVolume(peak.volume, units)}.`
 }
 
-function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSeries[]): string {
+function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSeries[], units: Units): string {
   if (data.length === 0 || series.length === 0) return 'Progresja ciężaru: brak danych do wykresu.'
 
   const summaries = series.slice(0, 5).map(({ exerciseName, key }) => {
@@ -121,7 +125,7 @@ function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSer
       .map((point) => Number(point[key] ?? 0))
       .find((value) => value > 0) ?? 0
     const top = values.length ? Math.max(...values) : 0
-    return `${exerciseName}: ostatnio ${latest} kg, max ${top} kg`
+    return `${exerciseName}: ostatnio ${kgToDisplayWeight(latest, units)} ${units}, max ${kgToDisplayWeight(top, units)} ${units}`
   })
 
   const exerciseCount = series.length === 1 ? '1 ćwiczenia' : `${series.length} ćwiczeń`
@@ -139,7 +143,7 @@ function summarizeMuscleBalance(data: MuscleBalancePoint[]): string {
   return `Balans grup mięśniowych. Najczęściej trenowana grupa: ${muscleName}, ${top.count} ${polishPlural(top.count, 'wpis', 'wpisy', 'wpisów')}. Łącznie ${total} ${polishPlural(total, 'wpis', 'wpisy', 'wpisów')} w zestawieniu.`
 }
 
-function summarizeActivityHeatmap(data: HeatmapDay[]): string {
+function summarizeActivityHeatmap(data: HeatmapDay[], units: Units): string {
   const activeDays = data.filter((cell) => cell.volume > 0)
   if (activeDays.length === 0) return 'Kalendarz treningów: brak aktywnych dni w wybranym zakresie.'
 
@@ -147,16 +151,17 @@ function summarizeActivityHeatmap(data: HeatmapDay[]): string {
   if (!first) return 'Kalendarz treningów: brak aktywnych dni w wybranym zakresie.'
   const peak = activeDays.reduce((top, cell) => cell.volume > top.volume ? cell : top, first)
 
-  return `Kalendarz treningów z ostatnich 12 tygodni. Aktywne dni: ${activeDays.length}. Największy dzień: ${formatHeatmapDate(peak.date)}, ${formatVolume(peak.volume)}.`
+  return `Kalendarz treningów z ostatnich 12 tygodni. Aktywne dni: ${activeDays.length}. Największy dzień: ${formatHeatmapDate(peak.date)}, ${formatVolume(peak.volume, units)}.`
 }
 
 interface DarkTooltipProps {
   active?: boolean
   payload?: Array<{ name?: string; dataKey?: string | number; value?: number | string; color?: string }>
   label?: string
+  units?: Units
 }
 
-export function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
+export function DarkTooltip({ active, payload, label, units = 'kg' }: DarkTooltipProps) {
   if (!active || !payload?.length) return null
   const tooltipLabel = typeof label === 'string' ? (MUSCLE_PL[label] ?? label) : label
 
@@ -172,10 +177,10 @@ export function DarkTooltip({ active, payload, label }: DarkTooltipProps) {
       return `${value} ${polishPlural(value, 'wpis', 'wpisy', 'wpisów')}`
     }
     if (key === 'volume') {
-      return formatVolume(value)
+      return formatVolume(value, units)
     }
 
-    return `${value} kg`
+    return `${kgToDisplayWeight(value, units)} ${units}`
   }
 
   return (
@@ -238,6 +243,7 @@ export default function ProgressPage() {
 }
 
 function ProgressContent({ userId }: { userId: string | undefined }) {
+  const units = useProfileStore((state) => state.profile?.units ?? 'kg')
   const [rangeDays, setRangeDays] = useState(90)
   const [requestedRangeDays, setRequestedRangeDays] = useState(90)
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null)
@@ -403,13 +409,14 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
       : ''
     return weekIndex === 0 || month !== previousMonth ? month : ''
   })
-  const weeklyVolumeLabel = useMemo(() => summarizeWeeklyVolume(weeklyData), [weeklyData])
+  const weeklyVolumeLabel = useMemo(() => summarizeWeeklyVolume(weeklyData, units), [weeklyData, units])
   const strengthProgressionLabel = summarizeStrengthProgression(
     selectedStrengthPoints,
     selectedStrengthSeries ? [selectedStrengthSeries] : [],
+    units,
   )
   const muscleBalanceLabel = useMemo(() => summarizeMuscleBalance(muscleData), [muscleData])
-  const activityHeatmapLabel = useMemo(() => summarizeActivityHeatmap(heatmapData), [heatmapData])
+  const activityHeatmapLabel = useMemo(() => summarizeActivityHeatmap(heatmapData, units), [heatmapData, units])
   const activityHeatmapSummary = useMemo(() => {
     const activeDays = heatmapData.filter((cell) => cell.volume > 0)
     const peak = activeDays.reduce<HeatmapDay | null>(
@@ -418,8 +425,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
     )
     if (!peak) return ''
 
-    return `${activeDays.length} ${polishPlural(activeDays.length, 'aktywny dzień', 'aktywne dni', 'aktywnych dni')} · najmocniejszy dzień ${formatHeatmapDate(peak.date)} · ${formatVolume(peak.volume)}`
-  }, [heatmapData])
+    return `${activeDays.length} ${polishPlural(activeDays.length, 'aktywny dzień', 'aktywne dni', 'aktywnych dni')} · najmocniejszy dzień ${formatHeatmapDate(peak.date)} · ${formatVolume(peak.volume, units)}`
+  }, [heatmapData, units])
 
   const totalVolume = useMemo(
     () => currentSessions.reduce((sum, s) => sum + s.totalVolume, 0),
@@ -525,12 +532,12 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               <span>Objętość</span>
               <strong>
                 <NumberFlow
-                  value={Math.round(totalVolume)}
+                  value={kgToDisplayWeight(totalVolume, units)}
                   transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
                   format={{ useGrouping: true }}
                   locales="pl-PL"
                 />
-                <small> kg</small>
+                <small> {units}</small>
               </strong>
               <p>Ostatnie {rangeDays} dni</p>
               {hasPreviousPeriod && (
@@ -550,7 +557,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 },
                 {
                   label: 'Śr. / sesję',
-                  value: formatVolume(periodComparison.currentAvgVolume),
+                  value: formatVolume(periodComparison.currentAvgVolume, units),
                   meta: 'w zakresie',
                   delta: hasPreviousPeriod ? periodComparison.avgVolumeDelta : undefined,
                 },
@@ -636,13 +643,13 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                       interval={rangeDays === 30 ? 0 : rangeDays === 90 ? 1 : 7}
                     />
                     <YAxis
-                      tickFormatter={(v) => formatVolume(Number(v))}
+                      tickFormatter={(v) => formatVolume(Number(v), units)}
                       tick={{ fill: 'var(--muted)', fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
                       width={52}
                     />
-                    <Tooltip content={<DarkTooltip />} />
+                    <Tooltip content={<DarkTooltip units={units} />} />
                     <Area
                       type="monotone"
                       dataKey="volume"
@@ -687,23 +694,23 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               {selectedStrengthSeries && selectedStrengthPoints.length >= 3 && (
                 <div className="progress-strength-insight" aria-label="Trend wybranego ćwiczenia">
                   <div>
-                    <strong>Ostatnio {latestStrength} kg</strong>
+                    <strong>Ostatnio {kgToDisplayWeight(latestStrength, units)} {units}</strong>
                   </div>
                   <p>
                     <span>
                       {strengthDelta > 0
-                        ? `+${strengthDelta} kg względem pierwszego w zakresie`
+                        ? `+${kgToDisplayWeight(strengthDelta, units)} ${units} względem pierwszego w zakresie`
                         : strengthDelta < 0
-                          ? `${strengthDelta} kg względem pierwszego w zakresie`
+                          ? `${kgToDisplayWeight(strengthDelta, units)} ${units} względem pierwszego w zakresie`
                           : 'Bez zmiany względem pierwszego w zakresie'}
                     </span>
-                    {' · '}maks. {maxStrength} kg
+                    {' · '}maks. {kgToDisplayWeight(maxStrength, units)} {units}
                   </p>
                 </div>
               )}
               {!selectedStrengthSeries ? (
                 <p className="progress-muted-copy">
-                  Brak zapisanych ciężarów większych od 0 kg w tym zakresie. Uzupełnij ciężar w serii, aby zobaczyć progresję.
+                  Brak zapisanych ciężarów większych od 0 {units} w tym zakresie. Uzupełnij ciężar w serii, aby zobaczyć progresję.
                 </p>
               ) : selectedStrengthPoints.length < 3 ? (
                 <>
@@ -732,10 +739,11 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                         tick={{ fill: 'var(--muted)', fontSize: 12 }}
                         axisLine={false}
                         tickLine={false}
-                        unit=" kg"
+                        tickFormatter={(value) => String(kgToDisplayWeight(Number(value), units))}
+                        unit={` ${units}`}
                         width={56}
                       />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<DarkTooltip units={units} />} />
                       {selectedStrengthSeries && (
                         <Line
                           type="monotone"
@@ -792,7 +800,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                         tickLine={false}
                         tickFormatter={(v: string) => MUSCLE_PL[v] ?? v}
                       />
-                      <Tooltip content={<DarkTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                      <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                       <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
                         {muscleData.map((entry, index) => (
                           <Cell
@@ -834,7 +842,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                           <i
                             key={weekIdx}
                             title={cell?.date && cell.volume > 0
-                              ? `${formatHeatmapDate(cell.date)}: ${formatVolume(cell.volume)}`
+                              ? `${formatHeatmapDate(cell.date)}: ${formatVolume(cell.volume, units)}`
                               : cell?.date
                                 ? formatHeatmapDate(cell.date)
                                 : ''}
@@ -867,7 +875,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                     </label>
                     {selectedHeatmapDay && (
                       <p role="status">
-                        {formatHeatmapDate(selectedHeatmapDay.date)} · {formatVolume(selectedHeatmapDay.volume)}
+                        {formatHeatmapDate(selectedHeatmapDay.date)} · {formatVolume(selectedHeatmapDay.volume, units)}
                       </p>
                     )}
                   </div>
@@ -927,7 +935,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                   <strong>{rec.exerciseName}</strong>
 
                   <div className="progress-record-result">
-                    <span>{rec.maxWeight}<small> kg</small></span>
+                    <span>{kgToDisplayWeight(rec.maxWeight, units)}<small> {units}</small></span>
                     <small>× {rec.maxReps}</small>
                   </div>
 
@@ -960,7 +968,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                         {polishPlural(rec.totalSessions, 'sesja', 'sesje', 'sesji')}
                       </small>
                     </div>
-                    <span className="progress-record-ledger-result">{rec.maxWeight} kg <small>× {rec.maxReps}</small></span>
+                    <span className="progress-record-ledger-result">{kgToDisplayWeight(rec.maxWeight, units)} {units} <small>× {rec.maxReps}</small></span>
                   </div>
                 ))}
 

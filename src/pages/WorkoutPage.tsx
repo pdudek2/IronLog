@@ -23,8 +23,7 @@ import { LoadingState } from '../components/ui'
 import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
 import { exercises as exerciseDb } from '../data/exercises'
 import { isActiveSessionStale } from '../lib/sessionDuration'
-import { kgToDisplayWeight } from '../lib/weightUnits'
-import type { Units } from '../lib/userProfile'
+import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
 import {
   EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
@@ -222,14 +221,6 @@ function parseReps(value: string): number {
 
 function calcSetVolume(set: Pick<WorkoutSet, 'weight' | 'reps'>): number {
   return parseWeight(set.weight) * parseReps(set.reps)
-}
-
-function formatCompactVolume(volumeKg: number, units: Units): string {
-  const volume = kgToDisplayWeight(volumeKg, units)
-  if (!volume) return `0 ${units}`
-  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k ${units}`
-  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k ${units}`
-  return `${Math.round(volume).toLocaleString('pl-PL')} ${units}`
 }
 
 function getExerciseClientId(exercise: WorkoutExercise, exerciseIndex: number): string {

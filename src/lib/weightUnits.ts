@@ -36,3 +36,11 @@ export function displayWeightStringToKg(value: string, units: Units): string {
 export function displayWeightDeltaToKg(delta: number, units: Units): number {
   return units === 'lbs' ? delta / POUNDS_PER_KILOGRAM : delta
 }
+
+export function formatCompactVolume(volumeKg: number, units: Units): string {
+  const volume = kgToDisplayWeight(volumeKg, units)
+  if (!volume) return `0 ${units}`
+  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k ${units}`
+  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k ${units}`
+  return `${Math.round(volume).toLocaleString('pl-PL')} ${units}`
+}

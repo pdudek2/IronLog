@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import HistoryPage from '../HistoryPage'
+import { useProfileStore } from '../../store/profileStore'
 
 const mocks = vi.hoisted(() => ({
   getWorkoutHistory: vi.fn(),
@@ -56,6 +57,9 @@ describe('HistoryPage range state', () => {
     mocks.user = { uid: 'user-1' }
     mocks.getUserExercises.mockResolvedValue([])
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    useProfileStore.getState().setProfile('user-1', {
+      displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'kg', createdAt: 1,
+    })
   })
 
   afterEach(() => vi.restoreAllMocks())
@@ -297,5 +301,24 @@ describe('HistoryPage range state', () => {
     expect(within(row).getByText('1h 0m')).toBeInTheDocument()
     expect(within(row).getByText('1.8k kg')).toBeInTheDocument()
     expect(within(row).getByText('5 serii')).toBeInTheDocument()
+  })
+
+  it('presents aggregate workout volume in the preferred units', async () => {
+    useProfileStore.getState().setProfile('user-1', {
+      displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'lbs', createdAt: 1,
+    })
+    mocks.getWorkoutHistory.mockResolvedValue({
+      workouts: [{
+        id: 'lbs-workout', startedAt: Date.now() - 86_400_000, finishedAt: Date.now(),
+        materialized: true, label: 'Lbs session',
+        exercises: [{ name: 'Wyciskanie', sets: [{ weight: 65, reps: 8 }] }],
+      }],
+      truncated: false,
+    })
+
+    render(<HistoryPage />)
+
+    const row = await screen.findByRole('button', { name: /Lbs session/i })
+    expect(within(row).getByText('1.1k lbs')).toBeInTheDocument()
   })
 })

@@ -7,7 +7,16 @@ import {
   readLifecycleExerciseSessions,
   readLifecycleWorkout,
   seedLifecycleActiveSession,
+  seedLifecycleWorkout,
 } from './support/workoutLifecycleEmulator'
+import {
+  cleanupExerciseDetailEmulatorState,
+  cleanupProgressEmulatorState,
+  closeProgressEmulator,
+  PROGRESS_DETAIL_EXERCISE_ID,
+  seedExerciseDetailEmulatorState,
+  seedProgressEmulatorState,
+} from './support/progressEmulator'
 
 async function countFocusEvents(page: Page, durationMs = 1_000): Promise<number> {
   return page.evaluate((duration) => new Promise<number>((resolve) => {
@@ -21,7 +30,20 @@ async function countFocusEvents(page: Page, durationMs = 1_000): Promise<number>
   }), durationMs)
 }
 
-test.afterAll(closeWorkoutLifecycleEmulator)
+async function setProfileUnits(page: Page, units: 'kg' | 'lbs'): Promise<void> {
+  await page.goto('/profile')
+  await expectAppReady(page, '/profile')
+  const choice = page.getByRole('button', { name: units, exact: true })
+  await choice.click()
+  await page.getByRole('button', { name: 'Zapisz zmiany' }).click()
+  await expect(page.getByText('Profil zapisany')).toBeVisible({ timeout: 8_000 })
+  await expect(choice).toHaveAttribute('aria-pressed', 'true')
+}
+
+test.afterAll(async () => {
+  await closeWorkoutLifecycleEmulator()
+  await closeProgressEmulator()
+})
 
 test.describe('training stabilization', () => {
   test.beforeEach(async ({ cleanup }) => {
@@ -107,5 +129,79 @@ test.describe('training stabilization', () => {
     const workout = await readLifecycleWorkout(sessionId)
     expect(workout?.exercises?.[0]?.sets).toEqual([{ weight: 60, reps: 8 }])
     await expect.poll(async () => (await readLifecycleExerciseSessions(sessionId))[0]?.totalVolume).toBe(480)
+  })
+
+  test('kg and lbs presentation preserves completed-workout storage while editing', async ({ page, cleanup }) => {
+    const sessionId = 'phase-1-training-stabilization-units'
+    cleanup.add('remove progress unit fixtures', async () => {
+      await cleanupProgressEmulatorState()
+      await cleanupExerciseDetailEmulatorState()
+    })
+    await cleanupProgressEmulatorState()
+    await cleanupExerciseDetailEmulatorState()
+    await seedProgressEmulatorState(Date.now() - Date.UTC(2026, 3, 6, 12))
+    await seedExerciseDetailEmulatorState()
+    await seedLifecycleWorkout({
+      sessionId,
+      materialized: true,
+      label: 'Phase 1 training stabilization units',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: 65, reps: 8 }],
+      }],
+    })
+
+    await page.goto('/profile')
+    await expectAppReady(page, '/profile')
+    const originalUnits = await page.getByRole('button', { name: 'lbs', exact: true }).getAttribute('aria-pressed') === 'true'
+      ? 'lbs'
+      : 'kg'
+    cleanup.add('restore profile units', () => setProfileUnits(page, originalUnits))
+    await setProfileUnits(page, 'lbs')
+
+    await page.goto('/dashboard')
+    await expectAppReady(page, '/dashboard')
+    await expect(page.getByText('1.1k lbs').first()).toBeVisible({ timeout: 15_000 })
+
+    await page.goto('/history')
+    await expectAppReady(page, '/history')
+    const historyRow = page.getByRole('button', { name: /Phase 1 training stabilization units/i })
+    await expect(historyRow).toContainText('1.1k lbs')
+    await historyRow.click()
+
+    const detailTable = page.getByRole('table', { name: 'Serie: Bench Press' })
+    await expect(detailTable.getByRole('columnheader', { name: 'Ciężar lbs' })).toBeVisible()
+    await expect(detailTable.getByRole('cell', { name: '143.3' })).toBeVisible()
+    const visibleEdit = page.locator('button:visible').filter({ hasText: /^Edytuj trening$/ }).first()
+    await visibleEdit.click()
+    const weightInput = page.getByRole('spinbutton', { name: 'Ciężar, Bench Press, seria 1, lbs' })
+    await expect(weightInput).toHaveValue('143.3')
+    await page.locator('button:visible').filter({ hasText: /^Zapisz$/ }).first().click()
+    await expect(weightInput).toHaveCount(0)
+    expect((await readLifecycleWorkout(sessionId))?.exercises?.[0]?.sets?.[0]?.weight).toBe(65)
+
+    await page.locator('button:visible').filter({ hasText: /^Edytuj trening$/ }).first().click()
+    const fractionalWeight = page.getByRole('spinbutton', { name: 'Ciężar, Bench Press, seria 1, lbs' })
+    await fractionalWeight.fill('')
+    await fractionalWeight.pressSequentially('100.5')
+    await expect(fractionalWeight).toHaveValue('100.5')
+    await page.locator('button:visible').filter({ hasText: /^Zapisz$/ }).first().click()
+    await expect(fractionalWeight).toHaveCount(0)
+    const storedWeight = (await readLifecycleWorkout(sessionId))?.exercises?.[0]?.sets?.[0]?.weight
+    expect(storedWeight).toBeCloseTo(100.5 / 2.2046226218, 4)
+
+    await page.goto(`/exercises/user/${PROGRESS_DETAIL_EXERCISE_ID}`)
+    await expect(page.getByRole('heading', { name: 'Phase 7 Volume Detail' })).toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('.exercise-detail-volume-summary')).toContainText('lbs')
+
+    await page.goto('/progress')
+    await expectAppReady(page, '/progress')
+    await expect(page.getByText('lbs', { exact: false }).first()).toBeVisible({ timeout: 15_000 })
+
+    await setProfileUnits(page, 'kg')
+    await page.goto(`/workout/${sessionId}`)
+    await expect(page.getByRole('table', { name: 'Serie: Bench Press' }).getByRole('columnheader', { name: 'Ciężar kg' })).toBeVisible()
   })
 })

@@ -11,6 +11,8 @@ import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { polishPlural } from '../lib/polishPlural'
 import { workoutTitle } from '../lib/workoutCopy'
+import { formatCompactVolume } from '../lib/weightUnits'
+import { useProfileStore } from '../store/profileStore'
 import {
   EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
@@ -24,13 +26,6 @@ const RANGE_PRESETS: Array<{ key: RangePreset; label: string; days: number | nul
   { key: '365', label: 'Rok', days: 365 },
   { key: 'all', label: 'Wszystko', days: null },
 ]
-
-function formatCompactVolume(volume: number): string {
-  if (!volume) return '0 kg'
-  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k kg`
-  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k kg`
-  return `${Math.round(volume).toLocaleString('pl-PL')} kg`
-}
 
 function formatDate(ts: number): string {
   const date = new Date(ts)
@@ -124,6 +119,7 @@ function deriveWorkout(workout: WorkoutSummary, exerciseMap: Map<string, Exercis
 
 export default function HistoryPage() {
   const { user } = useAuthStore()
+  const units = useProfileStore((state) => state.profile?.units ?? 'kg')
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [workouts, setWorkouts] = useState<WorkoutSummary[]>([])
@@ -249,7 +245,7 @@ export default function HistoryPage() {
             ? 'W tym zakresie nie ma treningów.'
             : filtered.length === 0
             ? 'Nie masz jeszcze zapisanych treningów.'
-            : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} · ${formatCompactVolume(totalVolumeInRange)}${historyTruncated ? ' · ostatnie 2000' : ''}`}
+            : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} · ${formatCompactVolume(totalVolumeInRange, units)}${historyTruncated ? ' · ostatnie 2000' : ''}`}
         </p>
       </header>
 
@@ -420,7 +416,7 @@ export default function HistoryPage() {
                               <div className="history-workout-meta">
                                 <span>{formatDate(workout.startedAt)}</span>
                                 <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
-                                <span className="history-inline-stat">{formatCompactVolume(totalVolume)}</span>
+                                <span className="history-inline-stat">{formatCompactVolume(totalVolume, units)}</span>
                                 <span className="history-inline-stat">{totalSets} {polishPlural(totalSets, 'seria', 'serie', 'serii')}</span>
                               </div>
                               <h3>{workoutTitle(workout)}</h3>

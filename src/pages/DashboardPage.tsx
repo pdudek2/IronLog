@@ -44,6 +44,7 @@ import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore } from '../store/workoutStore'
 import type { DataState } from '../types/dataState'
+import { formatCompactVolume } from '../lib/weightUnits'
 
 interface TemplatesResource {
   uid: string | null
@@ -85,13 +86,6 @@ function formatDuration(start: number, end: number): string {
   if (minutes < 1) return '< 1 min'
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-}
-
-function formatCompactVolume(volume: number): string {
-  if (!volume) return '0 kg'
-  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k kg`
-  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k kg`
-  return `${Math.round(volume).toLocaleString('pl-PL')} kg`
 }
 
 function formatExerciseCount(count: number): string {
@@ -154,6 +148,7 @@ export default function DashboardPage() {
   const { user } = useAuthStore()
   usePassiveActiveSessionSync(user?.uid)
   const { profile } = useProfileStore()
+  const units = profile?.units ?? 'kg'
   const active = useWorkoutStore((state) => state.active)
   const navigate = useNavigate()
   const {
@@ -622,12 +617,12 @@ export default function DashboardPage() {
     {
       label: 'Mocny dzień',
       value: peakDay?.volume ? `${peakDay.label}` : 'Brak',
-      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume)} • ${peakDay.sets} ${polishPlural(peakDay.sets, 'seria', 'serie', 'serii')}` : 'Brak treningów w tym tygodniu',
+      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume, units)} • ${peakDay.sets} ${polishPlural(peakDay.sets, 'seria', 'serie', 'serii')}` : 'Brak treningów w tym tygodniu',
     },
     {
       label: 'Średnia sesja',
       value: avgMinutes ? `${avgMinutes} min` : '—',
-      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession)} na trening` : 'Brak średniej w tym tygodniu',
+      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession, units)} na trening` : 'Brak średniej w tym tygodniu',
     },
   ]
 
@@ -820,7 +815,7 @@ export default function DashboardPage() {
                     <div className="dashboard-week-chart-head">
                       <div>
                         <p className="stat-meta">Wolumen tygodnia</p>
-                        <p className="dashboard-week-total">{formatCompactVolume(weeklyVolume)}</p>
+                        <p className="dashboard-week-total">{formatCompactVolume(weeklyVolume, units)}</p>
                       </div>
                       <div className="dashboard-week-count">
                         <strong>{weeklyDone}/{weeklyGoal}</strong>
@@ -842,7 +837,7 @@ export default function DashboardPage() {
                               />
                             </div>
                             <span>{day.label}</span>
-                            <small>{day.volume > 0 ? formatCompactVolume(day.volume).replace(' kg', '') : '—'}</small>
+                            <small>{day.volume > 0 ? formatCompactVolume(day.volume, units).replace(` ${units}`, '') : '—'}</small>
                           </div>
                         )
                       })}
@@ -1167,7 +1162,7 @@ export default function DashboardPage() {
                           <div className="dashboard-history-metrics">
                             <div>
                               <span>Objętość</span>
-                              <strong>{formatCompactVolume(volume)}</strong>
+                              <strong>{formatCompactVolume(volume, units)}</strong>
                             </div>
                             <div>
                               <span>Ćwiczenia</span>

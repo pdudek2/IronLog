@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { loadProgressData, type ProgressLoadResult } from '../../lib/progressLoadService'
 import type { ProgressSessionLite, RecordSummary } from '../../lib/progressService'
 import ProgressPage, { DarkTooltip } from '../ProgressPage'
+import { useProfileStore } from '../../store/profileStore'
 
 const { authUser } = vi.hoisted(() => ({
   authUser: { uid: 'user-1' },
@@ -152,6 +153,9 @@ describe('ProgressPage', () => {
     dateNow = vi.spyOn(Date, 'now').mockReturnValue(NOW)
     mockLoadProgressData.mockReset()
     consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    useProfileStore.getState().setProfile('user-1', {
+      displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'kg', createdAt: 1,
+    })
   })
 
   afterEach(() => {
@@ -223,6 +227,27 @@ describe('ProgressPage', () => {
     } else {
       expect(within(summary).queryByText(/vs poprzednio/)).not.toBeInTheDocument()
     }
+  })
+
+  it('presents volume, strength and records in lbs while retaining kg chart data', async () => {
+    useProfileStore.getState().setProfile('user-1', {
+      displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'lbs', createdAt: 1,
+    })
+    mockLoadProgressData.mockResolvedValue(successfulLoad({
+      sessions: [
+        session('one', 3, { totalVolume: 520, bestSetWeight: 65 }),
+        session('two', 2, { totalVolume: 520, bestSetWeight: 65 }),
+        session('three', 1, { totalVolume: 520, bestSetWeight: 65 }),
+      ],
+      records: [record('record-lbs', { maxWeight: 65 })],
+    }))
+
+    render(<ProgressPage />)
+
+    const summary = await screen.findByRole('group', { name: 'Podsumowanie: 90 dni' })
+    expect(within(summary).getByRole('group', { name: 'Śr. / sesję' })).toHaveTextContent('1.1k lbs')
+    expect(screen.getByLabelText('Najlepszy rekord')).toHaveTextContent('143.3 lbs')
+    expect(screen.getByRole('img', { name: /Progresja ciężaru/ })).toHaveAccessibleName(/143.3 lbs/)
   })
 
   it('loads annual data older than 180 days and compares the previous year after a range switch', async () => {

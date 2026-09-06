@@ -20,6 +20,8 @@ import { useAuthStore } from '../store/authStore'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { ActionFeedback } from '../components/ActionFeedback'
 import { Button, LoadingState } from '../components/ui'
+import { useProfileStore } from '../store/profileStore'
+import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('pl-PL', {
@@ -29,16 +31,10 @@ function formatDate(ts: number): string {
   })
 }
 
-function formatVolume(v: number): string {
-  if (!v) return '0 kg'
-  if (v >= 10_000) return `${Math.round(v / 1_000)}k kg`
-  if (v >= 1_000) return `${(v / 1_000).toFixed(1)}k kg`
-  return `${Math.round(v).toLocaleString('pl-PL')} kg`
-}
-
 export default function ExerciseDetailPage() {
   const { source, id } = useParams<{ source: string; id: string }>()
   const { user } = useAuthStore()
+  const units = useProfileStore((state) => state.profile?.units ?? 'kg')
   const navigate = useNavigate()
   const exerciseSource = source === 'global' || source === 'user' ? source : null
 
@@ -234,7 +230,7 @@ export default function ExerciseDetailPage() {
               <div>
                 <dt>Ciężar max</dt>
                 <dd>
-                  {record.maxWeight} <span className="text-base" style={{ color: 'var(--muted)' }}>kg</span>
+                  {kgToDisplayWeight(record.maxWeight, units)} <span className="text-base" style={{ color: 'var(--muted)' }}>{units}</span>
                 </dd>
               </div>
               <div>
@@ -258,11 +254,11 @@ export default function ExerciseDetailPage() {
               </div>
               <div className="exercise-detail-volume-summary">
                 {latestIsMaximum ? (
-                  <p><span>Ostatnio · maksimum</span><strong>{formatVolume(latestVolume)}</strong></p>
+                  <p><span>Ostatnio · maksimum</span><strong>{formatCompactVolume(latestVolume, units)}</strong></p>
                 ) : (
                   <>
-                    <p><span>Ostatnio</span><strong>{formatVolume(latestVolume)}</strong></p>
-                    <p><span>Maksimum</span><strong>{formatVolume(maxVolume)}</strong></p>
+                    <p><span>Ostatnio</span><strong>{formatCompactVolume(latestVolume, units)}</strong></p>
+                    <p><span>Maksimum</span><strong>{formatCompactVolume(maxVolume, units)}</strong></p>
                   </>
                 )}
               </div>
@@ -271,15 +267,15 @@ export default function ExerciseDetailPage() {
                 tabIndex={0}
                 role="list"
                 aria-label={latestIsMaximum
-                  ? `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio i maksimum ${formatVolume(latestVolume)}.`
-                  : `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio ${formatVolume(latestVolume)}. Maksimum ${formatVolume(maxVolume)}.`}
+                  ? `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio i maksimum ${formatCompactVolume(latestVolume, units)}.`
+                  : `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio ${formatCompactVolume(latestVolume, units)}. Maksimum ${formatCompactVolume(maxVolume, units)}.`}
               >
                 {chronologicalSessions.map((session) => (
                   <div
                     key={session.id}
                     className="exercise-detail-volume-column"
                     role="listitem"
-                    aria-label={`${formatDate(session.startedAt)}: ${formatVolume(session.totalVolume)}`}
+                    aria-label={`${formatDate(session.startedAt)}: ${formatCompactVolume(session.totalVolume, units)}`}
                   >
                     <div className="exercise-detail-volume-track">
                       <motion.div
@@ -325,7 +321,7 @@ export default function ExerciseDetailPage() {
                           )}
                         </div>
                         <div className="exercise-detail-session-volume">
-                          <p className="text-sm font-bold text-white tabular-nums">{formatVolume(session.totalVolume)}</p>
+                          <p className="text-sm font-bold text-white tabular-nums">{formatCompactVolume(session.totalVolume, units)}</p>
                           <span className="exercise-detail-session-toggle" aria-hidden="true">
                             Szczegóły
                             <ChevronDown className="exercise-detail-session-chevron" size={16} />
@@ -337,7 +333,7 @@ export default function ExerciseDetailPage() {
                         <span><strong>{session.totalReps}</strong> powt.</span>
                         <span>
                           top <strong style={{ color: accent }}>
-                            {session.bestSetWeight ? `${session.bestSetWeight} kg` : '—'}
+                            {session.bestSetWeight ? `${kgToDisplayWeight(session.bestSetWeight, units)} ${units}` : '—'}
                           </strong>
                         </span>
                       </div>
@@ -352,7 +348,7 @@ export default function ExerciseDetailPage() {
                               key={i}
                               className="text-xs tabular-nums"
                             >
-                              {set.weight}×{set.reps}
+                              {kgToDisplayWeight(set.weight, units)}×{set.reps}
                             </span>
                           ))}
                         </div>

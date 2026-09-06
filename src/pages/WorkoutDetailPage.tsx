@@ -30,6 +30,12 @@ import {
   getEquipmentLabel,
 } from '../lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
+import { useProfileStore } from '../store/profileStore'
+import {
+  displayWeightStringToKg,
+  formatCompactVolume,
+  kgToDisplayWeight,
+} from '../lib/weightUnits'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
@@ -62,13 +68,6 @@ function formatDuration(start: number, end: number): string {
   if (minutes < 1) return '< 1 min'
   if (minutes < 60) return `${minutes} min`
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-}
-
-function formatCompactVolume(volume: number): string {
-  if (!volume) return '0 kg'
-  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k kg`
-  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k kg`
-  return `${Math.round(volume).toLocaleString('pl-PL')} kg`
 }
 
 function cloneExercises(exercises: WorkoutSummary['exercises']): WorkoutSummary['exercises'] {
@@ -114,6 +113,7 @@ export default function WorkoutDetailPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useAuthStore()
+  const units = useProfileStore((state) => state.profile?.units ?? 'kg')
   const previewWorkout = readWorkoutPreview(location.state, id)
   const [workoutResource, setWorkoutResource] = useState<WorkoutReadState>(() => ({
     uid: user?.uid ?? null,
@@ -544,7 +544,7 @@ export default function WorkoutDetailPage() {
           </div>
           <div>
             <dt>Objętość</dt>
-            <dd>{formatCompactVolume(volume)}</dd>
+            <dd>{formatCompactVolume(volume, units)}</dd>
           </div>
         </dl>
 
@@ -634,18 +634,18 @@ export default function WorkoutDetailPage() {
                       <thead>
                         <tr>
                           <th scope="col">Seria</th>
-                          <th scope="col">Ciężar kg</th>
+                          <th scope="col">Ciężar {units}</th>
                           <th scope="col">Powt.</th>
-                          <th scope="col">Obj. kg</th>
+                          <th scope="col">Obj. {units}</th>
                         </tr>
                       </thead>
                       <tbody>
                         {exercise.sets.map((set, setIndex) => (
                           <tr key={setIndex}>
                             <td className="workout-detail-set-index">{setIndex + 1}</td>
-                            <td>{set.weight}</td>
+                            <td>{kgToDisplayWeight(set.weight, units)}</td>
                             <td>{set.reps}</td>
-                            <td>{(set.weight * set.reps).toLocaleString('pl-PL')}</td>
+                            <td>{kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('pl-PL')}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -654,7 +654,7 @@ export default function WorkoutDetailPage() {
                     <div className="workout-detail-set-editor">
                       <div className={`workout-detail-set-editor-head grid ${mobileEditGrid} gap-1.5`}>
                         <span>#</span>
-                        <span>kg</span>
+                        <span>{units}</span>
                         <span>Powt.</span>
                         <span className="hidden lg:block">Vol.</span>
                         <span aria-hidden="true" />
@@ -671,10 +671,15 @@ export default function WorkoutDetailPage() {
                             inputMode="decimal"
                             step="any"
                             min="0"
-                            value={set.weight === 0 ? '' : set.weight}
-                            onChange={(event) => handleSetChange(exerciseIndex, setIndex, 'weight', event.target.value)}
+                            value={set.weight === 0 ? '' : kgToDisplayWeight(set.weight, units)}
+                            onChange={(event) => handleSetChange(
+                              exerciseIndex,
+                              setIndex,
+                              'weight',
+                              displayWeightStringToKg(event.target.value, units),
+                            )}
                             placeholder="0"
-                            aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, kg`}
+                            aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, ${units}`}
                           />
                           <input
                             type="number"
@@ -687,7 +692,7 @@ export default function WorkoutDetailPage() {
                             aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
                           />
                           <span className="hidden lg:block">
-                            {(set.weight * set.reps).toLocaleString('pl-PL')}
+                            {kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('pl-PL')}
                           </span>
                           {exercise.sets.length > 1 ? (
                             <button

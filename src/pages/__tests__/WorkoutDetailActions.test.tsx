@@ -7,6 +7,7 @@ import { clearWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from '../../li
 import type { WorkoutSummary } from '../../lib/workoutService'
 import WorkoutDetailPage from '../WorkoutDetailPage'
 import { useAuthStore } from '../../store/authStore'
+import { useProfileStore } from '../../store/profileStore'
 import type { User } from 'firebase/auth'
 
 const workout: WorkoutSummary = {
@@ -106,11 +107,15 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.getWorkout.mockResolvedValue(workout)
     mocks.deleteWorkout.mockReset()
     mocks.updateWorkout.mockReset()
+    mocks.updateWorkout.mockResolvedValue({ status: 'materialized' })
     mocks.getUserExercises.mockReset()
     mocks.getUserExercises.mockResolvedValue([])
     mocks.toastSuccess.mockReset()
     mocks.toastError.mockReset()
     localStorage.clear()
+    useProfileStore.getState().setProfile('user-1', {
+      displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'kg', createdAt: 1,
+    })
   })
 
   it.each([
@@ -462,5 +467,40 @@ describe('WorkoutDetailPage delete action', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
 
     expect(screen.getByRole('combobox', { name: 'Typ sesji' })).toHaveValue('Push day')
+  })
+
+  it('shows lbs while a no-op save preserves the original kg payload exactly', async () => {
+    useProfileStore.getState().setProfile('user-1', {
+      displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'lbs', createdAt: 1,
+    })
+    renderPage()
+
+    expect(screen.getByRole('cell', { name: '176.4' })).toBeInTheDocument()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
+    expect(screen.getByRole('spinbutton', { name: 'Ciężar, Wyciskanie, seria 1, lbs' })).toHaveValue(176.4)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
+
+    await waitFor(() => expect(mocks.updateWorkout).toHaveBeenCalledOnce())
+    expect(mocks.updateWorkout.mock.calls[0]?.[1].exercises[0].sets[0].weight).toBe(80)
+  })
+
+  it('converts only the changed lbs input and keeps a failed draft available to cancel', async () => {
+    useProfileStore.getState().setProfile('user-1', {
+      displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'lbs', createdAt: 1,
+    })
+    mocks.updateWorkout.mockRejectedValueOnce(new Error('offline'))
+    renderPage()
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
+    const weightInput = screen.getByRole('spinbutton', { name: 'Ciężar, Wyciskanie, seria 1, lbs' })
+
+    fireEvent.change(weightInput, { target: { value: '100' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Błąd zapisu: offline'))
+    expect(mocks.updateWorkout.mock.calls[0]?.[1].exercises[0].sets[0].weight).toBeCloseTo(45.3592, 4)
+    expect(weightInput).toHaveValue(100)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Anuluj' })[0])
+    expect(mocks.updateWorkout).toHaveBeenCalledOnce()
+    expect(screen.queryByRole('spinbutton', { name: 'Ciężar, Wyciskanie, seria 1, lbs' })).not.toBeInTheDocument()
   })
 })

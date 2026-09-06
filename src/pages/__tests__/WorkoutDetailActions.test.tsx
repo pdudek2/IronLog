@@ -95,6 +95,7 @@ function renderPage(initialEntries: Array<string | { pathname: string; state?: u
       <Routes>
         <Route path="/workout/:id" element={<WorkoutDetailPage />} />
         <Route path="/history" element={<p>Historia treningów</p>} />
+        <Route path="/dashboard" element={<p>Dashboard home</p>} />
       </Routes>
     </MemoryRouter>,
   )
@@ -467,6 +468,26 @@ describe('WorkoutDetailPage delete action', () => {
     fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
 
     expect(screen.getByRole('combobox', { name: 'Typ sesji' })).toHaveValue('Push day')
+  })
+
+  it.each([
+    { origin: '/dashboard', expected: 'Dashboard home' },
+    { origin: '/history', expected: 'Historia treningów' },
+  ])('returns to the $origin route through the Back action', async ({ origin, expected }) => {
+    window.history.pushState({}, '', '/workout-detail-origin')
+    renderPage([origin, { pathname: '/workout/workout-1', state: { workoutPreview: workout } }])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+
+    expect(await screen.findByText(expected)).toBeInTheDocument()
+  })
+
+  it('uses history as the Back fallback on a direct workout URL', async () => {
+    renderPage(['/workout/workout-1'])
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Back' }))
+
+    expect(await screen.findByText('Historia treningów')).toBeInTheDocument()
   })
 
   it('shows lbs while a no-op save preserves the original kg payload exactly', async () => {

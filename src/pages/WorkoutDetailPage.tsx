@@ -462,7 +462,7 @@ export default function WorkoutDetailPage() {
           whileTap={{ scale: 0.97 }}
         >
           <ArrowLeft size={16} aria-hidden="true" />
-          Historia
+          Back
         </motion.button>
 
         <header className="workout-detail-session-head">

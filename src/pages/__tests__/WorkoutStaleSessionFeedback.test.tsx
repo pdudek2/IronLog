@@ -30,8 +30,11 @@ const mocks = vi.hoisted(() => ({
   setLabel: vi.fn(),
   startNewSession: vi.fn(),
   staleSession: { ageLabel: '2 dni' } as { ageLabel: string } | null,
+  storeActive: undefined as ActiveWorkout | null | undefined,
+  storeUid: undefined as string | null | undefined,
   toastError: vi.fn(),
   toastSuccess: vi.fn(),
+  uid: 'user-1' as string | null,
 }))
 
 vi.mock('../../hooks/useActiveSession', () => ({
@@ -81,7 +84,13 @@ vi.mock('../../lib/workoutClosureService', () => ({
 }))
 
 vi.mock('../../store/authStore', () => ({
-  useAuthStore: () => ({ user: { uid: 'user-1' } }),
+  useAuthStore: Object.assign(
+    () => ({ user: mocks.uid ? { uid: mocks.uid } : null }),
+    { getState: () => {
+      const uid = mocks.storeUid === undefined ? mocks.uid : mocks.storeUid
+      return { user: uid ? { uid } : null }
+    } },
+  ),
 }))
 
 vi.mock('../../store/profileStore', () => ({
@@ -96,7 +105,10 @@ vi.mock('../../store/workoutStore', () => {
       setLabel: mocks.setLabel,
       startWorkout: vi.fn(),
     }),
-    { getState: () => ({ active: mocks.active, removeExercise: mocks.removeExercise }) },
+    { getState: () => ({
+      active: mocks.storeActive === undefined ? mocks.active : mocks.storeActive,
+      removeExercise: mocks.removeExercise,
+    }) },
   )
   return { useWorkoutStore }
 })
@@ -151,7 +163,7 @@ vi.mock('framer-motion', () => ({
 }))
 
 function renderStaleSessionPage() {
-  render(
+  return render(
     <MemoryRouter>
       <WorkoutPage />
     </MemoryRouter>,
@@ -181,8 +193,11 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.setLabel.mockReset()
     mocks.startNewSession.mockReset()
     mocks.staleSession = { ageLabel: '2 dni' }
+    mocks.storeActive = undefined
+    mocks.storeUid = undefined
     mocks.toastError.mockReset()
     mocks.toastSuccess.mockReset()
+    mocks.uid = 'user-1'
   })
 
   it('presents authoritative absence as a direct new-workout entry', () => {
@@ -504,6 +519,200 @@ describe('WorkoutPage stale-session feedback', () => {
 
     await waitFor(() => expect(mocks.prepareFinishClosure).toHaveBeenCalledWith(intent))
     expect(mocks.finalizeWorkout).not.toHaveBeenCalled()
+  })
+
+  it('does not finalize entered unfinished sets without confirmation', async () => {
+    mocks.staleSession = null
+    mocks.active = {
+      sessionId: 'finish-review', startedAt: Date.now(), templateId: null,
+      exercises: [{
+        clientId: 'bench', exerciseId: 'bench-press', exerciseSource: 'global',
+        name: 'Bench Press', sets: [
+          { clientId: 's1', weight: '60', reps: '8', done: true },
+          { clientId: 's2', weight: '60', reps: '8', done: false },
+        ],
+      }],
+    }
+    renderStaleSessionPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Finish workout?' })
+    expect(dialog).toHaveTextContent('Unfinished sets: 1')
+    expect(mocks.beginClosure).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue workout' }))
+    expect(mocks.beginClosure).not.toHaveBeenCalled()
+    expect(mocks.active.exercises[0].sets).toHaveLength(2)
+  })
+
+  it('keeps an incomplete workout after Escape cancellation', async () => {
+    mocks.staleSession = null
+    mocks.active = {
+      sessionId: 'cancel-Escape', startedAt: Date.now(), templateId: null,
+      exercises: [{ exerciseId: 'bench', exerciseSource: 'global', name: 'Bench', sets: [
+        { weight: '60', reps: '8', done: true },
+        { weight: '', reps: '', done: false },
+      ] }],
+    }
+    renderStaleSessionPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    await screen.findByRole('dialog', { name: 'Finish workout?' })
+
+    fireEvent.keyDown(document, { key: 'Escape' })
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Finish workout?' })).not.toBeInTheDocument())
+    expect(mocks.beginClosure).not.toHaveBeenCalled()
+  })
+
+  it.each(['session', 'account', 'missing session', 'missing account'])(
+    'cannot finalize after the %s changes while confirmation is open', async (change) => {
+    mocks.staleSession = null
+    const session: ActiveWorkout = {
+      sessionId: 'identity-original', startedAt: Date.now(), templateId: null,
+      exercises: [{ exerciseId: 'bench', exerciseSource: 'global', name: 'Bench', sets: [
+        { weight: '60', reps: '8', done: true },
+        { weight: '', reps: '', done: false },
+      ] }],
+    }
+    mocks.active = session
+    const view = renderStaleSessionPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    await screen.findByRole('button', { name: 'Save completed sets' })
+
+    if (change === 'session') mocks.active = { ...session, sessionId: 'identity-replacement' }
+    else if (change === 'account') mocks.uid = 'user-2'
+    else if (change === 'missing session') mocks.active = null
+    else mocks.uid = null
+    view.rerender(<MemoryRouter><WorkoutPage /></MemoryRouter>)
+
+    expect(mocks.beginClosure).not.toHaveBeenCalled()
+    expect(screen.queryByRole('dialog', { name: 'Finish workout?' })).not.toBeInTheDocument()
+    },
+  )
+
+  it('requires fresh confirmation after a replacement session briefly takes over', async () => {
+    mocks.staleSession = null
+    const session: ActiveWorkout = {
+      sessionId: 'identity-return', startedAt: Date.now(), templateId: null,
+      exercises: [{ exerciseId: 'bench', exerciseSource: 'global', name: 'Bench', sets: [
+        { weight: '60', reps: '8', done: true },
+        { weight: '60', reps: '8', done: false },
+      ] }],
+    }
+    mocks.active = session
+    const view = renderStaleSessionPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    await screen.findByRole('dialog', { name: 'Finish workout?' })
+
+    mocks.active = { ...session, sessionId: 'identity-temporary' }
+    view.rerender(<MemoryRouter><WorkoutPage /></MemoryRouter>)
+    expect(screen.queryByRole('dialog', { name: 'Finish workout?' })).not.toBeInTheDocument()
+    mocks.active = session
+    view.rerender(<MemoryRouter><WorkoutPage /></MemoryRouter>)
+
+    expect(screen.queryByRole('dialog', { name: 'Finish workout?' })).not.toBeInTheDocument()
+    expect(mocks.beginClosure).not.toHaveBeenCalled()
+  })
+
+  it('finalizes the latest same-session payload after confirmation', async () => {
+    mocks.staleSession = null
+    const session: ActiveWorkout = {
+      sessionId: 'same-session', startedAt: Date.now(), templateId: null,
+      exercises: [{ exerciseId: 'bench', exerciseSource: 'global', name: 'Bench', sets: [
+        { weight: '60', reps: '8', done: true },
+        { weight: '', reps: '', done: false },
+      ] }],
+    }
+    mocks.active = session
+    mocks.prepareFinishClosure.mockResolvedValue({ status: 'failed' })
+    renderStaleSessionPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    const latest = {
+      ...session,
+      exercises: [{ ...session.exercises[0], sets: [
+        { weight: '62.5', reps: '8', done: true },
+        { weight: '', reps: '', done: false },
+      ] }],
+    }
+    const intent = { action: 'finish' as const, session: latest, createdAt: Date.now() }
+    mocks.storeActive = latest
+    mocks.beginClosure.mockReturnValue(intent)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save completed sets' }))
+
+    await waitFor(() => expect(mocks.prepareFinishClosure).toHaveBeenCalledWith(intent))
+    expect(mocks.beginClosure).toHaveBeenCalledWith('finish', latest)
+    expect(mocks.finalizeWorkout).not.toHaveBeenCalled()
+  })
+
+  it('finishes directly when all sets are completed', async () => {
+    mocks.staleSession = null
+    const session: ActiveWorkout = {
+      sessionId: 'all-done', startedAt: Date.now(), templateId: null,
+      exercises: [{ exerciseId: 'bench', exerciseSource: 'global', name: 'Bench', sets: [
+        { weight: '60', reps: '8', done: true },
+      ] }],
+    }
+    const intent = { action: 'finish' as const, session, createdAt: Date.now() }
+    mocks.active = session
+    mocks.beginClosure.mockReturnValue(intent)
+    mocks.prepareFinishClosure.mockResolvedValue({ status: 'failed' })
+    renderStaleSessionPage()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+
+    await waitFor(() => expect(mocks.prepareFinishClosure).toHaveBeenCalledWith(intent))
+    expect(screen.queryByRole('dialog', { name: 'Finish workout?' })).not.toBeInTheDocument()
+  })
+
+  it('starts only one effective closure when confirmation is double-clicked', async () => {
+    mocks.staleSession = null
+    const session: ActiveWorkout = {
+      sessionId: 'double-finish', startedAt: Date.now(), templateId: null,
+      exercises: [{ exerciseId: 'bench', exerciseSource: 'global', name: 'Bench', sets: [
+        { weight: '60', reps: '8', done: true },
+        { weight: '', reps: '', done: false },
+      ] }],
+    }
+    const intent = { action: 'finish' as const, session, createdAt: Date.now() }
+    mocks.active = session
+    mocks.storeActive = session
+    mocks.storeUid = 'user-1'
+    mocks.beginClosure.mockReturnValue(intent)
+    mocks.prepareFinishClosure.mockResolvedValue({ status: 'failed' })
+    renderStaleSessionPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+
+    const confirm = screen.getByRole('button', { name: 'Save completed sets' })
+    fireEvent.click(confirm)
+    fireEvent.click(confirm)
+
+    expect(mocks.beginClosure).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(mocks.prepareFinishClosure).toHaveBeenCalledOnce())
+    expect(mocks.finalizeWorkout).not.toHaveBeenCalled()
+  })
+
+  it('reapplies the empty-session guard when the same session loses its completed set', async () => {
+    mocks.staleSession = null
+    const session: ActiveWorkout = {
+      sessionId: 'same-empty', startedAt: Date.now(), templateId: null,
+      exercises: [{ exerciseId: 'bench', exerciseSource: 'global', name: 'Bench', sets: [
+        { weight: '60', reps: '8', done: true },
+        { weight: '', reps: '', done: false },
+      ] }],
+    }
+    mocks.active = session
+    renderStaleSessionPage()
+    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    mocks.storeActive = {
+      ...session,
+      exercises: [{ ...session.exercises[0], sets: session.exercises[0].sets.map((set) => ({ ...set, done: false })) }],
+    }
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save completed sets' }))
+
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Zakończyć bez zapisu?' })).toBeVisible())
+    expect(mocks.beginClosure).not.toHaveBeenCalled()
   })
 
   it('discards an empty session instead of sending a finalize request', async () => {

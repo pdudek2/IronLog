@@ -276,6 +276,11 @@ export default function WorkoutPage() {
   const [manualExpandedExerciseClientId, setManualExpandedExerciseClientId] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
+  const [pendingFinish, setPendingFinish] = useState<{ uid: string; sessionId: string } | null>(null)
+  const pendingFinishMatches = pendingFinish !== null
+    && pendingFinish.uid === user?.uid
+    && pendingFinish.sessionId === active?.sessionId
+  if (pendingFinish && !pendingFinishMatches) setPendingFinish(null)
   const [pendingExerciseRemoval, setPendingExerciseRemoval] = useState<{ sessionId: string; exerciseClientId: string } | null>(null)
   const [pendingSetRemoval, setPendingSetRemoval] = useState<PendingSetRemoval | null>(null)
   const {
@@ -481,8 +486,8 @@ export default function WorkoutPage() {
     }
   }
 
-  async function submitFinish(intent: WorkoutClosureIntent) {
-    if (!user || intent.action !== 'finish') return
+  async function submitFinish(intent: WorkoutClosureIntent, uid = user?.uid) {
+    if (!uid || intent.action !== 'finish') return
     try {
       const prepared = intent.sessionRevision
         ? { status: 'ready', sessionRevision: intent.sessionRevision } as const
@@ -490,7 +495,7 @@ export default function WorkoutPage() {
       if (prepared.status === 'failed') return
 
       const result = await finishWorkoutLifecycle({
-        uid: user.uid,
+        uid,
         session: intent.session,
         sessionRevision: prepared.sessionRevision,
         now: () => intent.createdAt,
@@ -521,7 +526,38 @@ export default function WorkoutPage() {
     if (!active || !user || closureLocked) return
     const hasSets = active.exercises.some((exercise) => exercise.sets.some((set) => set.done))
     if (!hasSets) { setConfirmFinishEmpty(true); return }
+    const unfinished = active.exercises.reduce(
+      (count, exercise) => count + exercise.sets.filter((set) => !set.done).length,
+      0,
+    )
+    if (unfinished > 0) {
+      setPendingFinish({ uid: user.uid, sessionId: active.sessionId })
+      return
+    }
     void doFinish()
+  }
+
+  function handleConfirmFinish(pending: { uid: string; sessionId: string }) {
+    if (closureLocked) return
+    const currentUser = useAuthStore.getState().user
+    const currentActive = useWorkoutStore.getState().active
+    if (
+      !currentUser
+      || currentUser.uid !== pending.uid
+      || !currentActive
+      || currentActive.sessionId !== pending.sessionId
+    ) return
+
+    const hasCompletedSets = currentActive.exercises.some(
+      (exercise) => exercise.sets.some((set) => set.done),
+    )
+    if (!hasCompletedSets) {
+      setConfirmFinishEmpty(true)
+      return
+    }
+
+    const intent = beginClosure('finish', currentActive)
+    if (intent) void submitFinish(intent, currentUser.uid)
   }
 
   function handleDiscard() {
@@ -745,6 +781,9 @@ export default function WorkoutPage() {
   const exerciseCatalog = new Map([...exerciseDb, ...userExercises].map((exercise) => [exercise.id, exercise]))
   const totalExercises = active.exercises.length
   const totalSets = active.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
+  const unfinishedSets = active.exercises.reduce((sum, exercise) => (
+    sum + exercise.sets.filter((set) => !set.done).length
+  ), 0)
   const completedSets = active.exercises.reduce((sum, exercise) => (
     sum + exercise.sets.filter((set) => set.done && parseReps(set.reps) > 0).length
   ), 0)
@@ -1252,6 +1291,21 @@ export default function WorkoutPage() {
             void handleConfirmDiscard()
           }}
           onCancel={() => setConfirmFinishEmpty(false)}
+        />
+      )}
+
+      {pendingFinishMatches && (
+        <ConfirmDialog
+          title="Finish workout?"
+          message={`Unfinished sets: ${unfinishedSets}. Only completed sets will be saved.`}
+          confirmLabel="Save completed sets"
+          cancelLabel="Continue workout"
+          confirmDisabled={closureLocked}
+          onConfirm={() => {
+            setPendingFinish(null)
+            if (pendingFinish) handleConfirmFinish(pendingFinish)
+          }}
+          onCancel={() => setPendingFinish(null)}
         />
       )}
 

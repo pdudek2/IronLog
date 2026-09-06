@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useEffectEvent } from 'react'
 import type { RefObject } from 'react'
 
 const FOCUSABLE_SELECTOR = [
@@ -26,6 +26,8 @@ export function useDialogA11y({
   onClose,
   initialFocusRef,
 }: UseDialogA11yOptions) {
+  const closeDialog = useEffectEvent(onClose)
+
   useEffect(() => {
     const dialog = containerRef.current
     if (!dialog) return
@@ -48,7 +50,7 @@ export function useDialogA11y({
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') {
         event.preventDefault()
-        onClose()
+        closeDialog()
         return
       }
 
@@ -86,5 +88,5 @@ export function useDialogA11y({
       document.body.style.overflow = previousOverflow
       previousActiveElement?.focus?.()
     }
-  }, [containerRef, onClose, initialFocusRef])
+  }, [containerRef, initialFocusRef])
 }

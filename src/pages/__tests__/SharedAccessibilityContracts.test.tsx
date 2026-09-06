@@ -1,13 +1,14 @@
-import { createElement, useState, type ReactNode } from 'react'
+import { createElement, useRef, useState, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import BottomNav from '../../components/BottomNav'
 import ConfirmDialog from '../../components/ConfirmDialog'
 import ExercisePicker from '../../components/ExercisePicker'
-import MobileInteractionProvider from '../../components/MobileInteractionProvider'
+import MobileInteractionProvider, { useMobileInteraction } from '../../components/MobileInteractionProvider'
 import TopNav from '../../components/TopNav'
 import Input from '../../components/ui/Input'
+import { useDialogA11y } from '../../hooks/useDialogA11y'
 import { useWorkoutStore } from '../../store/workoutStore'
 
 vi.mock('framer-motion', () => ({
@@ -49,6 +50,7 @@ function DialogHarness() {
 
 function ExercisePickerHarness() {
   const [open, setOpen] = useState(false)
+  useMobileInteraction()
   return (
     <>
       <button type="button" onClick={() => setOpen(true)}>Dodaj ćwiczenie</button>
@@ -62,6 +64,16 @@ function ExercisePickerHarness() {
       )}
     </>
   )
+}
+
+function FocusLifecycleProbe({ onClose }: { onClose: () => void }) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const initialFocusRef = useRef<HTMLInputElement>(null)
+  useDialogA11y({ containerRef, initialFocusRef, onClose })
+  return <div ref={containerRef} role="dialog" aria-label="Focus probe">
+    <input ref={initialFocusRef} aria-label="Search probe" />
+    <button>Second control</button>
+  </div>
 }
 
 function WorkoutStartIntentProbe() {
@@ -125,12 +137,50 @@ describe('shared accessibility contracts', () => {
   })
 
   it('focuses shared exercise search and restores its opener after Escape', async () => {
-    render(<ExercisePickerHarness />)
+    render(<MobileInteractionProvider><ExercisePickerHarness /></MobileInteractionProvider>)
     const opener = screen.getByRole('button', { name: 'Dodaj ćwiczenie' })
     opener.focus()
     fireEvent.click(opener)
     expect(screen.getByRole('textbox', { name: 'Szukaj ćwiczenia' })).toHaveFocus()
     fireEvent.keyDown(document, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(opener).toHaveFocus()
+  })
+
+  it('keeps focus on rerender and calls the latest close callback', () => {
+    const firstClose = vi.fn()
+    const nextClose = vi.fn()
+    const { rerender } = render(<FocusLifecycleProbe onClose={firstClose} />)
+    const second = screen.getByRole('button', { name: 'Second control' })
+    second.focus()
+    rerender(<FocusLifecycleProbe onClose={nextClose} />)
+    expect(second).toHaveFocus()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(nextClose).toHaveBeenCalledOnce()
+    expect(firstClose).not.toHaveBeenCalled()
+  })
+
+  it('keeps picker interactions stable through provider rerenders', async () => {
+    render(<MobileInteractionProvider><ExercisePickerHarness /></MobileInteractionProvider>)
+    const opener = screen.getByRole('button', { name: 'Dodaj ćwiczenie' })
+    opener.focus()
+    fireEvent.click(opener)
+
+    const search = screen.getByRole('textbox', { name: 'Szukaj ćwiczenia' })
+    fireEvent.change(search, { target: { value: 'bench press' } })
+    expect(search).toHaveFocus()
+    const results = await screen.findAllByRole('button', { name: /Bench Press/i })
+    const result = results[0]
+    const close = screen.getByRole('button', { name: 'Zamknij wybór ćwiczenia' })
+
+    close.focus()
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(results.at(-1)).toHaveFocus()
+    results.at(-1)!.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(close).toHaveFocus()
+
+    fireEvent.click(result)
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(opener).toHaveFocus()
   })

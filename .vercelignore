@@ -8,6 +8,7 @@ deliverables/
 .claude/
 .codex/
 WORKING_CONTEXT.md
+PRODUCT.md
 AGENTS.md
 CLAUDE.md
 .mcp.json

@@ -101,6 +101,6 @@ Live tests can create, update and delete data in that configured project and acc
 
 ## Repository contents
 
-Keep application code, reusable tooling, tests, required visual test baselines, and current product documentation in Git. [PRODUCT.md](PRODUCT.md) records the product direction and remaining work.
+Keep application code, reusable tooling, tests, required visual test baselines, and this README in Git. Product notes, plans, audit reports, and agent memory stay local and are excluded from Git and deployments.
 
 Generated screenshots, audit output, completed implementation plans, browser traces, and local agent state are ignored. Keep temporary evidence in `output/`; keep private documents outside this repository. Do not force-add these artifacts. The four images beside `templates.visual.spec.ts` are executable test baselines and remain versioned.

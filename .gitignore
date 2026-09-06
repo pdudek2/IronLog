@@ -44,6 +44,7 @@ CLAUDE.md
 /.superpowers/
 /.agent-memory/
 /WORKING_CONTEXT.md
+/PRODUCT.md
 /coverage/
 
 # Per-developer AI agent instructions

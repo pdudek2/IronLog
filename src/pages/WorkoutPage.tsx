@@ -271,6 +271,7 @@ export default function WorkoutPage() {
     staleSession,
   } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
+  const mobileAddExerciseRef = useRef<HTMLButtonElement>(null)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
   const [manualExpandedExerciseClientId, setManualExpandedExerciseClientId] = useState<string | null>(null)
@@ -1125,6 +1126,7 @@ export default function WorkoutPage() {
               <>
                 <section className="workout-empty-state" aria-label="Pusta rozpiska">
                   <motion.button
+                    ref={mobileAddExerciseRef}
                     type="button"
                     onClick={() => setShowPicker(true)}
                     className="workout-primary-action"
@@ -1219,6 +1221,7 @@ export default function WorkoutPage() {
 
                 {active.exercises.length > 0 && (
                   <motion.button
+                    ref={mobileAddExerciseRef}
                     type="button"
                     onClick={() => setShowPicker(true)}
                     className="workout-primary-action workout-mobile-inline-add"
@@ -1258,6 +1261,7 @@ export default function WorkoutPage() {
           onSelect={(id, name, source) => {
             setShowPicker(false)
             void handlePickExercise(id, name, source)
+            window.requestAnimationFrame(() => mobileAddExerciseRef.current?.focus())
           }}
           onClose={() => setShowPicker(false)}
           userExercisesState={userExercisesState}

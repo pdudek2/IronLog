@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { ChevronRight, Dumbbell } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { useAuthStore } from '../store/authStore'
 import { useWorkoutStore } from '../store/workoutStore'
 
@@ -37,7 +36,6 @@ export default function ActiveWorkoutReturnBar() {
     location.pathname.startsWith('/workout/new')
     || !uid
     || !active
-    || !hasActiveSessionWork(active)
   ) return null
 
   return (

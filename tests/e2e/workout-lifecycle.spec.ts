@@ -69,6 +69,40 @@ function phase1Id(scenario: string): string {
 test.afterAll(closeWorkoutLifecycleEmulator)
 
 test.describe('Workout lifecycle Phase 1 regressions', () => {
+  test('mobile returns to the same explicitly started empty session after minimize', async ({
+    page,
+    cleanup,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Mobile empty-session return contract')
+    cleanup.add('remove empty workout lifecycle state', cleanupWorkoutLifecycleState)
+    await cleanupWorkoutLifecycleState()
+
+    await page.goto('/dashboard')
+    await expectAppReady(page, '/dashboard')
+    await page.getByRole('button', { name: 'Start new workout' }).first().click()
+    await expectAppReady(page, '/workout/new')
+    const started = await waitForSettledLifecycleActiveSession((session) => (
+      session !== null && session.exercises.length === 0 && !session.label
+    ))
+    expect(started).not.toBeNull()
+
+    await page.getByRole('button', { name: 'Minimize workout' }).click()
+    await expect(page).toHaveURL('/dashboard')
+    const returnBar = page.getByRole('region', { name: 'Active workout' })
+    await expect(returnBar).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Resume workout' }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start new workout' })).toHaveCount(0)
+
+    await returnBar.getByRole('button', { name: 'Return to workout' }).click()
+    await expectAppReady(page, '/workout/new')
+    const returned = await readLifecycleActiveSession()
+    expect(returned).toMatchObject({
+      sessionId: started!.sessionId,
+      startedAt: started!.startedAt,
+      exercises: [],
+    })
+  })
+
   test('mobile minimizes, browses secondary screens, and returns to the same running session', async ({
     page,
     cleanup,

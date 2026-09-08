@@ -4,7 +4,6 @@ import { motion } from 'framer-motion'
 import { Dumbbell, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
-import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { useWorkoutStore } from '../store/workoutStore'
 import { useMobileInteraction } from './MobileInteractionProvider'
@@ -50,7 +49,7 @@ export default function BottomNav() {
   const path = location.pathname
   const workoutActive = path.startsWith('/workout/new')
   const workoutDetail = path.startsWith('/workout/') && !workoutActive
-  const hasActiveWork = hasActiveSessionWork(active)
+  const hasActiveSession = active !== null
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
   useEffect(() => {
@@ -148,7 +147,7 @@ export default function BottomNav() {
         <motion.button
           type="button"
           onClick={() => {
-            if (hasActiveWork) go('/workout/new')
+            if (hasActiveSession) go('/workout/new')
             else navigateWithAppTransition(navigate, '/workout/new', { state: { startNew: true } })
           }}
           onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
@@ -161,9 +160,9 @@ export default function BottomNav() {
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}
           aria-current={workoutActive ? 'page' : undefined}
-          aria-label={hasActiveWork ? 'Resume workout' : 'Start new workout'}
+          aria-label={hasActiveSession ? 'Resume workout' : 'Start new workout'}
         >
-          {hasActiveWork
+          {hasActiveSession
             ? <Dumbbell size={22} strokeWidth={2.5} />
             : <Plus size={22} strokeWidth={2.5} />}
         </motion.button>

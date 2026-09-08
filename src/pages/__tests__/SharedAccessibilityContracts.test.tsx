@@ -261,12 +261,11 @@ describe('shared accessibility contracts', () => {
     expect(screen.getByTestId('workout-start-intent')).toHaveTextContent('start')
   })
 
-  it('labels shell workout entry actions when the workout store contains active work', () => {
+  it('labels shell workout entry actions as resume for an explicitly started empty session', () => {
     useWorkoutStore.setState({
       active: {
         sessionId: 'active-session',
         startedAt: 1,
-        label: 'Push',
         exercises: [],
       },
     })

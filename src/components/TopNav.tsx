@@ -3,7 +3,6 @@ import { motion } from 'framer-motion'
 import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
-import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useWorkoutStore } from '../store/workoutStore'
@@ -38,7 +37,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
   const storeStreak = useDashboardStore((s) => s.uid === user?.uid ? s.streak : 0)
   const active = useWorkoutStore((state) => state.active)
   const streak = typeof streakProp === 'number' ? streakProp : storeStreak
-  const hasActiveWork = hasActiveSessionWork(active)
+  const hasActiveSession = active !== null
 
   const isActive = (item: (typeof NAV_ITEMS)[number]) =>
     current ? current === item.key : item.match ? item.match(path) : path === item.to
@@ -103,16 +102,16 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             type="button"
             className="top-nav-cta"
             onClick={() => {
-              if (hasActiveWork) go('/workout/new')
+              if (hasActiveSession) go('/workout/new')
               else navigateWithAppTransition(navigate, '/workout/new', { state: { startNew: true } })
             }}
             onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
             onFocus={() => { void preloadRouteByPath('/workout/new') }}
             whileTap={{ scale: 0.97 }}
-            aria-label={hasActiveWork ? 'Resume workout' : 'Start new workout'}
+            aria-label={hasActiveSession ? 'Resume workout' : 'Start new workout'}
           >
             <Plus size={15} strokeWidth={2.4} />
-            <span>{hasActiveWork ? 'Resume workout' : 'New workout'}</span>
+            <span>{hasActiveSession ? 'Resume workout' : 'New workout'}</span>
           </motion.button>
 
           <button

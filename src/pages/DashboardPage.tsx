@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -30,7 +30,6 @@ import {
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
 import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
-import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
@@ -386,7 +385,7 @@ export default function DashboardPage() {
     }
   }, [loadTemplates, user])
 
-  const hasActiveWork = useMemo(() => hasActiveSessionWork(active), [active])
+  const hasActiveSession = active !== null
   const handleReadinessStateChange = useCallback((state: DataState<ReadinessEntry | null>) => {
     setReadinessResource({ uid: user?.uid ?? null, state })
   }, [user?.uid])
@@ -402,7 +401,7 @@ export default function DashboardPage() {
     try {
       await preloadRouteByPath('/workout/new')
     } finally {
-      if (hasActiveWork) navigate('/workout/new')
+      if (hasActiveSession) navigate('/workout/new')
       else navigate('/workout/new', { state: { startNew: true } })
       setOpeningWorkout(false)
     }
@@ -514,7 +513,7 @@ export default function DashboardPage() {
     ? quickTemplate?.days[quickTemplateDayIndex] ?? null
     : null
   const quickTemplateExerciseCount = quickTemplateDay?.exercises.length ?? 0
-  const secondaryTemplates = hasActiveWork ? recentTemplates : recentTemplates.slice(1)
+  const secondaryTemplates = hasActiveSession ? recentTemplates : recentTemplates.slice(1)
   const quickTemplateRequestKey = quickTemplate
     ? `dashboard:${quickTemplate.id}:quick`
     : null
@@ -530,7 +529,7 @@ export default function DashboardPage() {
       ? readinessResource.state
       : { status: 'loading' }
   const quickTemplateHasExercises = Boolean(quickTemplateDay)
-  const showTodayRecommendation = !hasActiveWork
+  const showTodayRecommendation = !hasActiveSession
     && quickTemplateHasExercises
     && readinessState.status === 'success'
     && readinessState.data !== null
@@ -585,7 +584,7 @@ export default function DashboardPage() {
   const activeDays = weekDailyStats.filter((day) => day.workouts > 0).length
   const peakDay = [...weekDailyStats].sort((a, b) => b.volume - a.volume)[0]
   const latestWorkout = recentWorkouts[0] ?? null
-  const supportLine = !hasActiveWork && latestWorkout
+  const supportLine = !hasActiveSession && latestWorkout
     ? `Last: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
     : null
   const weeklySummaryRows = [
@@ -633,7 +632,7 @@ export default function DashboardPage() {
             </h1>
             {supportLine && <p className="dashboard-home-copyline">{supportLine}</p>}
 
-            {!hasActiveWork && <div className="dashboard-home-action-stack">
+            {!hasActiveSession && <div className="dashboard-home-action-stack">
               <div className="dashboard-home-actions">
                 {quickTemplate && quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
                   <motion.button
@@ -700,7 +699,7 @@ export default function DashboardPage() {
             </div>}
           </motion.div>
 
-          {!hasActiveWork && (
+          {!hasActiveSession && (
             <motion.aside
               className="dashboard-home-panel"
               initial={{ opacity: 0, y: 8 }}
@@ -870,7 +869,7 @@ export default function DashboardPage() {
               <div className="dashboard-section-head">
                 <div>
                   <h2 className="section-title">
-                    {recentTemplates.length === 0 ? 'Plans' : hasActiveWork ? 'Plans' : 'Other plans'}
+                    {recentTemplates.length === 0 ? 'Plans' : hasActiveSession ? 'Plans' : 'Other plans'}
                   </h2>
                 </div>
                 <motion.button

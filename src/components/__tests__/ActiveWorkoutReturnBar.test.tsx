@@ -56,6 +56,22 @@ describe('ActiveWorkoutReturnBar', () => {
     expect(useWorkoutStore.getState().active).toMatchObject(activeSession)
   })
 
+  it('returns to an explicitly started empty session without replacing its identity', () => {
+    const emptySession: ActiveWorkout = {
+      sessionId: 'empty-session',
+      startedAt: Date.UTC(2026, 8, 8, 10, 3),
+      exercises: [],
+    }
+    useWorkoutStore.getState().hydrateFromDoc(emptySession)
+    renderBar()
+
+    expect(screen.getByRole('region', { name: 'Active workout' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Return to workout' }))
+
+    expect(screen.getByText('Workout route')).toBeInTheDocument()
+    expect(useWorkoutStore.getState().active).toMatchObject(emptySession)
+  })
+
   it('stays hidden without authoritative work and disappears after a terminal update', () => {
     renderBar()
     expect(screen.queryByRole('region', { name: 'Active workout' })).not.toBeInTheDocument()

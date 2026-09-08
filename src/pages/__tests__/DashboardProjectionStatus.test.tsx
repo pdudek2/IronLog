@@ -34,7 +34,6 @@ const mocks = vi.hoisted(() => ({
     soreness: number
     createdAt: number
   },
-  activeSessionHasWork: false,
   activeSessionListener: null as null | ((snapshot: { session: ActiveWorkout | null }) => void),
 }))
 
@@ -79,9 +78,6 @@ vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
 }))
 
 vi.mock('../../lib/activeSessionService', () => ({
-  hasActiveSessionWork: (session: ActiveWorkout | null | undefined) => (
-    Boolean(session) && mocks.activeSessionHasWork
-  ),
   subscribeToActiveSession: (
     _uid: string,
     onChange: (snapshot: { session: ActiveWorkout | null }) => void,
@@ -188,7 +184,6 @@ describe('Dashboard workout projection status', () => {
     mocks.requestTemplateLaunch.mockReset()
     mocks.reportedReadinessEntry = null
     mocks.readinessEntry = null
-    mocks.activeSessionHasWork = false
     mocks.activeSessionListener = null
     useAuthStore.getState().setUser({ uid: 'user-1' } as User)
     localStorage.clear()
@@ -475,7 +470,6 @@ describe('Dashboard workout projection status', () => {
         .toHaveLength(3)
     })
 
-    mocks.activeSessionHasWork = true
     act(() => {
       mocks.activeSessionListener?.({
         session: {
@@ -492,7 +486,6 @@ describe('Dashboard workout projection status', () => {
     })
     expect(useWorkoutStore.getState().active?.sessionId).toBe('remote-session')
 
-    mocks.activeSessionHasWork = false
     act(() => {
       mocks.activeSessionListener?.({ session: null })
     })
@@ -552,13 +545,11 @@ describe('Dashboard workout projection status', () => {
     })
   })
 
-  it('leaves active-workout return to the shared app-shell affordance', async () => {
-    mocks.activeSessionHasWork = true
+  it('does not offer a replacement workout when an explicitly started empty session exists', async () => {
     useWorkoutStore.setState({
       active: {
         sessionId: 'active-session',
         startedAt: 1,
-        label: 'Push',
         exercises: [],
       },
     })
@@ -566,7 +557,9 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
+    await screen.findByRole('heading', { name: 'Patryk' })
     expect(screen.queryByRole('button', { name: 'Resume workout' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start new workout' })).not.toBeInTheDocument()
     expect(screen.queryByText(/Active session/)).not.toBeInTheDocument()
   })
 

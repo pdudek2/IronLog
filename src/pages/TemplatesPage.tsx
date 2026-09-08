@@ -131,6 +131,12 @@ export default function TemplatesPage() {
         </div>
 
         <div className="planner-header-actions">
+          <a
+            href="/exercises"
+            className="planner-secondary-action mobile-touch-target"
+          >
+            Exercises
+          </a>
           {templates.length > 0 && (
             <div className="planner-mini-stats" aria-label="Plan summary">
               <span>

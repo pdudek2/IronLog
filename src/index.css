@@ -8796,10 +8796,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 @media (max-width: 420px) {
-  .bottom-nav {
-    padding-inline: 0.125rem !important;
-  }
-
   .bottom-nav-panel {
     gap: 0;
     padding-inline: 0;
@@ -8823,14 +8819,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 @media (max-width: 340px) {
-  .bottom-nav-button > span {
-    display: none;
-  }
-
-  .bottom-nav-button {
-    gap: 0;
-  }
-
   .workout-exercise-ledger div {
     flex-direction: column;
     align-items: center;

@@ -996,16 +996,14 @@ export default function DashboardPage() {
                 {recentWorkouts.length > 0 ? 'Recent workouts' : 'History'}
               </h2>
             </div>
-            {recentWorkouts.length > 0 && (
-              <button
-                type="button"
-                onClick={() => navigate('/history')}
-                className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
-              >
-                View all
-                <ChevronRight size={15} strokeWidth={2.3} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate('/history')}
+              className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
+            >
+              View history
+              <ChevronRight size={15} strokeWidth={2.3} />
+            </button>
           </div>
 
           {orphanedDeleteOperation && (

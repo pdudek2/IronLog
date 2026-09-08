@@ -20,19 +20,35 @@ for (const [name, route] of PAGES) {
 }
 
 // Bottom nav is lg:hidden — only visible on mobile viewports
-test('mobile nav shows all primary items', async ({ page, isMobile }) => {
+test('mobile nav shows five usable primary items at 360px and 390px', async ({ page, isMobile }, testInfo) => {
   test.skip(!isMobile, 'BottomNav is lg:hidden — only visible on mobile viewports')
 
   await page.goto('/dashboard')
+  await expectAppReady(page, '/dashboard')
+  await expect(page.getByRole('heading', { name: /^(Recent workouts|History)$/ })).toBeVisible()
   const nav = page.getByLabel('Bottom navigation')
   await expect(nav).toBeVisible()
 
-  for (const label of ['Start', 'Progress', 'Plans', 'Exercises', 'History', 'AI']) {
+  for (const label of ['Home', 'Plans', 'Progress', 'Coach']) {
     await expect(nav.getByRole('button', { name: label, exact: true })).toBeVisible()
   }
   await expect(nav.getByRole('button', {
     name: /^(?:Start new workout|Resume workout)$/,
   })).toBeVisible()
+  await expect(nav.getByRole('button')).toHaveCount(5)
+
+  for (const width of [360, 390]) {
+    await page.setViewportSize({ width, height: 800 })
+    const buttons = await nav.getByRole('button').all()
+    for (const button of buttons) {
+      const box = await button.boundingBox()
+      expect(box).not.toBeNull()
+      expect(box!.width).toBeGreaterThanOrEqual(44)
+      expect(box!.height).toBeGreaterThanOrEqual(44)
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(width)
+    await page.screenshot({ path: testInfo.outputPath(`mobile-nav-${width}.png`) })
+  }
 })
 
 test('desktop nav shows an approved workout entry label', async ({ page }, testInfo) => {
@@ -50,6 +66,12 @@ test('bottom nav active state updates on navigation', async ({ page, isMobile })
   await page.goto('/dashboard')
   const nav = page.getByLabel('Bottom navigation')
 
+  await page.getByRole('button', { name: 'View history', exact: true }).click()
+  await page.waitForURL('/history')
+  await expect(nav.getByRole('button', { name: 'Progress', exact: true })).toHaveAttribute('aria-current', 'page')
+  await nav.getByRole('button', { name: 'Home', exact: true }).click()
+  await page.waitForURL('/dashboard')
+
   // Navigate to Progress
   await nav.getByRole('button', { name: 'Progress', exact: true }).click()
   await page.waitForURL('/progress')
@@ -59,8 +81,16 @@ test('bottom nav active state updates on navigation', async ({ page, isMobile })
   await page.waitForURL('/templates')
 
   // Navigate to Exercises
-  await nav.getByRole('button', { name: 'Exercises', exact: true }).click()
+  await page.getByRole('link', { name: 'Exercises', exact: true }).click()
   await page.waitForURL('/exercises')
+  await expect(nav.locator('[aria-current="page"]')).toHaveCount(1)
+  await expect(nav.getByRole('button', { name: 'Plans', exact: true })).toHaveAttribute('aria-current', 'page')
+
+  await nav.getByRole('button', { name: 'Progress', exact: true }).click()
+  await page.getByRole('link', { name: 'View history', exact: true }).click()
+  await page.waitForURL('/history')
+  await expect(nav.locator('[aria-current="page"]')).toHaveCount(1)
+  await expect(nav.getByRole('button', { name: 'Progress', exact: true })).toHaveAttribute('aria-current', 'page')
 })
 
 test('page shell settles to a single element after load', async ({ page }) => {

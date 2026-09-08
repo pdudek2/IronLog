@@ -219,6 +219,31 @@ describe('shared accessibility contracts', () => {
     expect(workoutActions[0]).toHaveTextContent('New workout')
   })
 
+  it.each([
+    ['/exercises', 'Plans'],
+    ['/history', 'Progress'],
+  ])('keeps five ordered mobile actions and one active parent on %s', (route, activeLabel) => {
+    render(
+      <MemoryRouter initialEntries={[route]}>
+        <MobileInteractionProvider>
+          <BottomNav />
+        </MobileInteractionProvider>
+      </MemoryRouter>,
+    )
+
+    const nav = screen.getByRole('navigation', { name: 'Bottom navigation' })
+    const actions = Array.from(nav.querySelectorAll('button'))
+    expect(actions.map((action) => action.getAttribute('aria-label'))).toEqual([
+      'Home',
+      'Plans',
+      'Start new workout',
+      'Progress',
+      'Coach',
+    ])
+    expect(actions.filter((action) => action.getAttribute('aria-current') === 'page'))
+      .toEqual([screen.getByRole('button', { name: activeLabel })])
+  })
+
   it.each([0, 1])('marks shell workout action %i as an explicit start', (actionIndex) => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Dumbbell, History, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { hasActiveSessionWork } from '../lib/activeSessionService'
@@ -131,34 +131,18 @@ export default function BottomNav() {
       <div className="bottom-nav-panel flex w-full items-center gap-1">
         <NavBtn
           icon={<LayoutDashboard size={20} />}
-          label="Start"
+          label="Home"
           active={path === '/dashboard'}
           preloadTo="/dashboard"
           onClick={() => go('/dashboard')}
         />
 
         <NavBtn
-          icon={<TrendingUp size={20} />}
-          label="Progress"
-          active={path.startsWith('/progress')}
-          preloadTo="/progress"
-          onClick={() => go('/progress')}
-        />
-
-        <NavBtn
           icon={<Layers3 size={20} />}
           label="Plans"
-          active={path.startsWith('/templates')}
+          active={path.startsWith('/templates') || path.startsWith('/exercises')}
           preloadTo="/templates"
           onClick={() => go('/templates')}
-        />
-
-        <NavBtn
-          icon={<Dumbbell size={20} />}
-          label="Exercises"
-          active={path.startsWith('/exercises')}
-          preloadTo="/exercises"
-          onClick={() => go('/exercises')}
         />
 
         <motion.button
@@ -183,16 +167,16 @@ export default function BottomNav() {
         </motion.button>
 
         <NavBtn
-          icon={<History size={20} />}
-          label="History"
-          active={path.startsWith('/history')}
-          preloadTo="/history"
-          onClick={() => go('/history')}
+          icon={<TrendingUp size={20} />}
+          label="Progress"
+          active={path.startsWith('/progress') || path.startsWith('/history')}
+          preloadTo="/progress"
+          onClick={() => go('/progress')}
         />
 
         <NavBtn
           icon={<Sparkles size={20} />}
-          label="AI"
+          label="Coach"
           active={path.startsWith('/chat')}
           preloadTo="/chat"
           onClick={() => go('/chat')}

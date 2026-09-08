@@ -12,7 +12,7 @@ async function openCoach(page: Page, projectName: string) {
     name: projectName === 'mobile' ? 'Bottom navigation' : 'Main navigation',
   })
   await navigation.getByRole('button', {
-    name: projectName === 'mobile' ? 'AI' : 'AI Coach', exact: true,
+    name: projectName === 'mobile' ? 'Coach' : 'AI Coach', exact: true,
   }).click()
   await expectAppReady(page, '/chat')
 }

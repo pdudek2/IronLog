@@ -82,9 +82,9 @@ test.describe('Protected application shell', () => {
       ? 'Bottom navigation'
       : 'Main navigation'
     const navigation = page.getByRole('navigation', { name: navigationName })
-    await navigation.getByRole('button', { name: 'History', exact: true }).click()
+    await navigation.getByRole('button', { name: 'Progress', exact: true }).click()
 
-    await expect(page).toHaveURL('/history')
+    await expect(page).toHaveURL('/progress')
     await expect(main).toBeFocused()
   })
 

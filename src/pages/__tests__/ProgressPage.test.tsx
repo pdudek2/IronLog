@@ -181,6 +181,7 @@ describe('ProgressPage', () => {
     })
 
     await waitFor(() => expect(initialPage).toHaveAttribute('aria-busy', 'false'))
+    expect(screen.getByRole('link', { name: 'View history' })).toHaveAttribute('href', '/history')
     expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('2')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '30 days' }))
@@ -531,6 +532,7 @@ describe('ProgressPage', () => {
 
     const emptyStatus = screen.getByRole('status')
     expect(emptyStatus).toHaveTextContent('No workouts in this date range')
+    expect(screen.getByRole('link', { name: 'View history' })).toHaveAttribute('href', '/history')
     expect(screen.queryByText('0 sessions in range')).not.toBeInTheDocument()
     fireEvent.click(within(emptyStatus).getByRole('button', { name: 'Show year' }))
 

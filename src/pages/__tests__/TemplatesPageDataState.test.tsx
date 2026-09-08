@@ -86,6 +86,7 @@ describe('TemplatesPage data states', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     expect(await screen.findByText('You have no plans yet')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Exercises' })).toHaveAttribute('href', '/exercises')
     expect(screen.getByRole('button', { name: 'Create your first plan' })).toBeInTheDocument()
     expect(screen.getByText('Upper / Lower · 4 days')).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
@@ -104,6 +105,7 @@ describe('TemplatesPage data states', () => {
     render(<TemplatesPage />)
 
     expect(await screen.findByLabelText('Plan summary')).toHaveTextContent('1 plan')
+    expect(screen.getByRole('link', { name: 'Exercises' })).toHaveAttribute('href', '/exercises')
     expect(screen.getByLabelText('Plan summary')).not.toHaveTextContent('1 day')
   })
 

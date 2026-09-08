@@ -50,12 +50,12 @@ test('navigation before debounce saves the last edit and resumes without a false
     const input = document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '9')
     input.dispatchEvent(new Event('input', { bubbles: true }))
-    const history = [...document.querySelectorAll<HTMLButtonElement>('nav button')]
-      .find((element) => (element.getAttribute('aria-label') === 'History' || element.textContent?.trim() === 'History')
+    const progress = [...document.querySelectorAll<HTMLButtonElement>('nav button')]
+      .find((element) => (element.getAttribute('aria-label') === 'Progress' || element.textContent?.trim() === 'Progress')
         && element.getBoundingClientRect().width > 0)!
-    history.click()
+    progress.click()
   }, repsLabel)
-  await expect(page).toHaveURL(/\/history$/)
+  await expect(page).toHaveURL(/\/progress$/)
   await expect.poll(serverReps, { timeout: 20_000 }).toBe('9')
   await page.goto('/workout/new')
   await expect(page.getByLabel(repsLabel)).toHaveValue('9')

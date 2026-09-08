@@ -84,7 +84,7 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await name.fill('Upper / Lower 4× zmieniony')
     await name.blur()
 
-    await page.getByRole('button', { name: 'Start', exact: true }).click()
+    await page.getByRole('button', { name: 'Home', exact: true }).click()
     const dialog = page.getByRole('dialog', { name: 'Leave editor?' })
     await expect(dialog).toBeVisible()
     await dialog.getByRole('button', { name: 'Stay' }).click()
@@ -105,13 +105,11 @@ test.describe('Phase 4 mobile ergonomics', () => {
 
     const navBoxes = []
     const navItems = [
-      ['Start', /^Start$/],
-      ['Progress', /^Progress$/],
+      ['Home', /^Home$/],
       ['Plans', /^Plans$/],
-      ['Exercises', /^Exercises$/],
-      ['wejście do treningu', /^(?:Start new workout|Resume workout)$/],
-      ['History', /^History$/],
-      ['AI', /^AI$/],
+      ['workout entry', /^(?:Start new workout|Resume workout)$/],
+      ['Progress', /^Progress$/],
+      ['Coach', /^Coach$/],
     ] as const
     for (const [label, accessibleName] of navItems) {
       const item = page.getByRole('navigation', { name: 'Bottom navigation' })

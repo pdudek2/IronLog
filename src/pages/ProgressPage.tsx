@@ -502,6 +502,12 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
           >
             <div>
               <h1>Progress</h1>
+              <a
+                href="/history"
+                className="puls-link-button mobile-touch-target py-2 text-sm font-medium"
+              >
+                View history
+              </a>
               {(!hasSessionSnapshot || uniqueWorkouts === 0) && (
                 <p>
                   {!hasSessionSnapshot

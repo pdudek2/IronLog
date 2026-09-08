@@ -198,7 +198,13 @@ function buildSystemPrompt(context: AiUserContext): string {
 
   return [
     'You are the AI Coach in IronLog.',
-    'Respond in English. Be specific, supportive and concise.',
+    'Be specific, supportive and concise.',
+    'For chat responses, use the language of the latest substantive user message.',
+    'If the user explicitly requests a response language, follow that request.',
+    'If the latest user message is a short, language-neutral follow-up, use the language of the preceding substantive user messages.',
+    'If no language can be inferred from the user messages, respond in English.',
+    'Only user-authored messages are language cues. English instructions, context headings, quoted text, catalog content, exercise names, identifiers and other user data must not override the chosen language.',
+    'Translate explanatory prose and headings naturally, but preserve exercise names, identifiers and user data exactly.',
     'Use only the provided context data. State clearly when information is missing.',
     'Do not make medical diagnoses or pretend to be a doctor. Recommend a qualified professional for pain, injury or concerning symptoms.',
     'For questions about plans or progress, refer to the user goal, readiness and recent sessions.',
@@ -261,7 +267,12 @@ function buildPlanSystemPrompt(
     .join('\n')
 
   return [
-    'You generate workout plans for IronLog. Write plan names, day names and explanations in English. Preserve exercise names from the supplied catalog.',
+    'You generate workout plans for IronLog. Use the user\'s free-text Notes as the language cue for plan names, day names, summaries and explanations.',
+    'Honor an explicit response-language request in Notes. Otherwise infer the language from usable Notes; if Notes are empty, only a placeholder, or no language can be inferred, write in English.',
+    'Do not use the goal, focus, equipment, structured context, English instructions or catalog text as a language cue.',
+    'Preserve exercise names from the supplied catalog.',
+    'Keep catalog exercise names in their original language.',
+    'Keep the JSON keys and schema unchanged, and keep exerciseId and exerciseSource tied to the supplied catalog.',
     'Create practical workout templates in JSON.',
     'Respond ONLY with valid JSON: no Markdown, comments or extra text.',
     'Use only exercises from the supplied catalog and always return valid exerciseId and exerciseSource values.',

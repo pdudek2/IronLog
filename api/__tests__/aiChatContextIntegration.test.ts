@@ -108,6 +108,65 @@ const generatedPlanResponse = {
   }),
 } as Response
 
+interface CapturedOpenRouterBody {
+  model: string
+  reasoning: { effort: string }
+  messages: Array<{ role: string; content: string }>
+}
+
+async function captureChatRequest(
+  messages: Array<{ role: 'user' | 'assistant'; content: string }>,
+): Promise<CapturedOpenRouterBody> {
+  mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
+    profile: { displayName: 'Patryk' },
+    readinessEntries: [],
+    workouts: [],
+    records: [],
+  }))
+  const encoder = new TextEncoder()
+  const fetchMock = vi.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode([
+          'data: {"choices":[{"index":0,"delta":{"content":"Gotowe"}}]}',
+          'data: {"choices":[{"index":0,"finish_reason":"stop"}]}\n\ndata: [DONE]',
+          '',
+        ].join('\n\n')))
+        controller.close()
+      },
+    }),
+  } as Response)
+  vi.stubGlobal('fetch', fetchMock)
+
+  const captured = createHandlerDoubles({ ...validBody, messages })
+  await handler(captured.req, captured.res)
+
+  const [, request] = fetchMock.mock.calls[0] as [string, RequestInit]
+  return JSON.parse(String(request.body)) as CapturedOpenRouterBody
+}
+
+async function capturePlanRequest(notes = ''): Promise<CapturedOpenRouterBody> {
+  mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
+    profile: null,
+    readinessEntries: [],
+    workouts: [],
+    records: [],
+  }))
+  const fetchMock = vi.fn().mockResolvedValue(generatedPlanResponse)
+  vi.stubGlobal('fetch', fetchMock)
+
+  const captured = createHandlerDoubles({
+    ...validPlanBody,
+    planRequest: { ...validPlanBody.planRequest, notes },
+  })
+  await handler(captured.req, captured.res)
+
+  const [, request] = fetchMock.mock.calls[0] as [string, RequestInit]
+  return JSON.parse(String(request.body)) as CapturedOpenRouterBody
+}
+
 beforeEach(() => {
   mocks.loadAiUserContext.mockReset()
   mocks.requireUserId.mockReset()
@@ -187,7 +246,7 @@ describe('AI context response metadata', () => {
 
     const [, request] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit]
     const sent = JSON.parse(String(request.body)) as { model: string; reasoning: { effort: string }; messages: Array<{content:string}> }
-    expect(sent.messages[0].content).toContain('Respond in English.')
+    expect(sent.messages[0].content).toContain('If no language can be inferred from the user messages, respond in English.')
     expect(sent.messages[0].content).toContain('User: Łukasz')
     expect(sent.messages.slice(1)).toEqual(validBody.messages)
     expect(sent.model).toBe('openai/gpt-5.6-luna')
@@ -313,7 +372,7 @@ describe('AI context response metadata', () => {
     expect(openrouterBody.model).toBe('openai/gpt-5.6-luna')
     expect(openrouterBody.reasoning.effort).toBe('max')
     expect(openrouterBody.messages[0].content).toContain('TOP RECORDS')
-    expect(openrouterBody.messages[0].content).toContain('Write plan names, day names and explanations in English.')
+    expect(openrouterBody.messages[0].content).toContain("Use the user's free-text Notes as the language cue")
     expect(openrouterBody.messages[0].content).toContain('Preserve exercise names from the supplied catalog.')
     expect(openrouterBody.messages[0].content).toContain(expected)
     expect(captured.status()).toBe(200)
@@ -463,5 +522,67 @@ describe('AI context response metadata', () => {
       exerciseId: 'bench-press',
       exerciseSource: 'global',
     })
+  })
+})
+
+describe('AI response language prompt contract', () => {
+  it('uses the latest substantive user message after a language switch', async () => {
+    const sent = await captureChatRequest([
+      { role: 'user', content: 'How should I train this week?' },
+      { role: 'assistant', content: 'Start with your main lifts.' },
+      { role: 'user', content: 'Jak mam trenować w tym tygodniu?' },
+    ])
+
+    expect(sent.messages.slice(1)).toEqual([
+      { role: 'user', content: 'How should I train this week?' },
+      { role: 'assistant', content: 'Start with your main lifts.' },
+      { role: 'user', content: 'Jak mam trenować w tym tygodniu?' },
+    ])
+    expect(sent.messages[0]?.content).toContain('use the language of the latest substantive user message')
+    expect(sent.messages[0]?.content).toContain('If the user explicitly requests a response language, follow that request.')
+  })
+
+  it('uses preceding user messages when the latest follow-up is language-neutral', async () => {
+    const sent = await captureChatRequest([
+      { role: 'user', content: 'Jak ocenić mój ostatni trening?' },
+      { role: 'assistant', content: 'Skup się na jakości serii.' },
+      { role: 'user', content: 'Dzięki!' },
+    ])
+
+    expect(sent.messages[0]?.content).toContain('short, language-neutral follow-up')
+    expect(sent.messages.at(-1)).toEqual({ role: 'user', content: 'Dzięki!' })
+  })
+
+  it('does not let English context headings or catalog content override user language', async () => {
+    const sent = await captureChatRequest([
+      { role: 'user', content: 'Czy mój ostatni trening był dobry?' },
+    ])
+
+    expect(sent.messages[0]?.content).toContain('English instructions, context headings, quoted text, catalog content, exercise names, identifiers and other user data must not override the chosen language.')
+    expect(sent.messages[0]?.content).toContain('USER CONTEXT')
+    expect(sent.messages[0]?.content).toContain('No recent workouts.')
+    expect(sent.messages[0]?.content).not.toContain('Respond in English.')
+  })
+})
+
+describe('AI plan language prompt contract', () => {
+  it('uses free-text notes for the plan language while preserving the catalog contract', async () => {
+    const sent = await capturePlanRequest('Odpowiadaj po polsku. Plan siłowy na trzy dni.')
+    const systemPrompt = sent.messages[0]?.content ?? ''
+
+    expect(systemPrompt).toContain("Use the user's free-text Notes as the language cue")
+    expect(systemPrompt).toContain('Honor an explicit response-language request in Notes.')
+    expect(systemPrompt).toContain('Preserve exercise names from the supplied catalog')
+    expect(systemPrompt).toContain('Keep the JSON keys and schema unchanged')
+    expect(sent.messages[1]?.content).toContain('Notes: Odpowiadaj po polsku. Plan siłowy na trzy dni.')
+  })
+
+  it('defaults plan language to English when notes are absent', async () => {
+    const sent = await capturePlanRequest()
+    const systemPrompt = sent.messages[0]?.content ?? ''
+
+    expect(systemPrompt).toContain('if Notes are empty, only a placeholder, or no language can be inferred, write in English.')
+    expect(systemPrompt).toContain('Do not use the goal, focus, equipment, structured context, English instructions or catalog text as a language cue.')
+    expect(sent.messages[1]?.content).toContain('Notes: no additional notes')
   })
 })

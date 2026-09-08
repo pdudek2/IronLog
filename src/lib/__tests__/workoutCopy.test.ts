@@ -7,7 +7,7 @@ it.each([
   [' ', ['Bench Press'], 'Bench Press'],
   [null, ['Bench Press', 'Row'], 'Bench Press + Row'],
   [null, ['Bench Press', 'Row', 'Squat'], 'Bench Press +2'],
-  [null, ['  ', ''], 'Trening'],
+  [null, ['  ', ''], 'Workout'],
 ] as const)('names a workout with label %s and exercises %j', (label, names, expected) => {
   expect(workoutTitle({
     label,
@@ -17,20 +17,20 @@ it.each([
 
 describe('getCategoryWorkloadInsight', () => {
   it.each([
-    ['chest', 'Najwięcej pracy poszło na klatkę.'],
-    ['back', 'Najwięcej pracy poszło na plecy.'],
-    ['legs', 'Najwięcej pracy wykonały nogi.'],
-    ['shoulders', 'Najwięcej pracy poszło w barki.'],
-    ['arms', 'Najwięcej pracy poszło w ramiona.'],
-    ['core', 'Najwięcej pracy wykonał core.'],
-    ['cardio', 'Najmocniejszym akcentem było cardio.'],
+    ['chest', 'Chest accounted for most of the work.'],
+    ['back', 'Back accounted for most of the work.'],
+    ['legs', 'Legs accounted for most of the work.'],
+    ['shoulders', 'Shoulders accounted for most of the work.'],
+    ['arms', 'Arms accounted for most of the work.'],
+    ['core', 'Core accounted for most of the work.'],
+    ['cardio', 'Cardio was the main focus.'],
   ])('uses the approved sentence for %s', (category, expected) => {
     expect(getCategoryWorkloadInsight(category, 'Fallback')).toBe(expected)
   })
 
   it('uses the presentation label in a safe fallback sentence', () => {
-    expect(getCategoryWorkloadInsight('mobility', 'Mobilność')).toBe(
-      'Najwięcej pracy przypadło kategorii „Mobilność”.',
+    expect(getCategoryWorkloadInsight('mobility', 'Mobility')).toBe(
+      'Most of the work went to the category “Mobility”.',
     )
   })
 })

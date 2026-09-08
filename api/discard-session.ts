@@ -21,7 +21,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     sendJson(res, 200, result)
   } catch (error) {
     sendApiError(res, error, {
-      fallbackMessage: 'Nie udało się odrzucić sesji.',
+      fallbackMessage: 'Could not discard the session.',
       fallbackStatus: 500,
     })
   }

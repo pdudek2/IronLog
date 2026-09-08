@@ -40,17 +40,17 @@ export default function LoginPage() {
     setResetNotice('')
 
     if (!normalizedEmail) {
-      setError({ field: 'email', message: 'Wpisz email, a wyślemy link do resetu hasła.' })
+      setError({ field: 'email', message: 'Enter your email and we will send a password reset link.' })
       return
     }
 
     setResetLoading(true)
     try {
       await resetPassword(normalizedEmail)
-      setResetNotice('Jeśli konto istnieje, wysłaliśmy link do resetu hasła.')
+      setResetNotice('If an account exists, we have sent a password reset link.')
     } catch (err) {
       console.error('[password reset error]', err)
-      setError({ field: 'email', message: 'Nie udało się wysłać linku. Sprawdź email i spróbuj ponownie.' })
+      setError({ field: 'email', message: 'Could not send the link. Check your email and try again.' })
     } finally {
       setResetLoading(false)
     }
@@ -60,10 +60,10 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Zaloguj się"
+      title="Sign in"
       subtitle={(
         <Link to="/register" className="auth-account-link transition-opacity hover:opacity-80">
-          Załóż konto
+          Create account
         </Link>
       )}
     >
@@ -87,7 +87,7 @@ export default function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="login-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
+          <label htmlFor="login-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Password</label>
           <Input
             id="login-password"
             name="password"
@@ -108,14 +108,14 @@ export default function LoginPage() {
             disabled={loading || resetLoading}
             className="auth-password-reset -my-1 self-end px-1 text-xs font-semibold transition-opacity hover:opacity-80 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {resetLoading ? 'Wysyłam...' : 'Nie pamiętasz hasła?'}
+            {resetLoading ? 'Sending...' : 'Forgot password?'}
           </button>
         </div>
 
         {resetNotice && <p id="login-reset-notice" role="status" className="text-sm" style={{ color: 'var(--success)' }}>{resetNotice}</p>}
 
         <Button type="submit" loading={loading} disabled={resetLoading} className="auth-instrument-submit mt-2 w-full">
-          Zaloguj się
+          Sign in
         </Button>
       </form>
     </AuthShell>

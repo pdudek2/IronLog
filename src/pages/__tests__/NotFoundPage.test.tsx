@@ -11,8 +11,8 @@ describe('NotFoundPage', () => {
       </MemoryRouter>,
     )
 
-    expect(screen.getByRole('heading', { name: 'Ta strona nie istnieje' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Wróć do panelu' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+    expect(screen.getByRole('link', { name: 'Back to dashboard' })).toHaveAttribute('href', '/dashboard')
     expect(container.querySelector('.surface-panel')).toBeNull()
   })
 
@@ -24,7 +24,7 @@ describe('NotFoundPage', () => {
     )
 
     expect(container.querySelector('main')).toBeNull()
-    expect(screen.getByRole('heading', { name: 'Ta strona nie istnieje' }))
+    expect(screen.getByRole('heading', { name: 'Page not found' }))
       .toHaveAttribute('id', 'not-found-title')
   })
 })

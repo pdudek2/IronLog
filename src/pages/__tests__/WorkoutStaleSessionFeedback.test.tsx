@@ -29,7 +29,7 @@ const mocks = vi.hoisted(() => ({
   reloadCurrentSession: vi.fn(),
   setLabel: vi.fn(),
   startNewSession: vi.fn(),
-  staleSession: { ageLabel: '2 dni' } as { ageLabel: string } | null,
+  staleSession: { ageLabel: '2 days' } as { ageLabel: string } | null,
   storeActive: undefined as ActiveWorkout | null | undefined,
   storeUid: undefined as string | null | undefined,
   toastError: vi.fn(),
@@ -192,7 +192,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.reloadCurrentSession.mockReset()
     mocks.setLabel.mockReset()
     mocks.startNewSession.mockReset()
-    mocks.staleSession = { ageLabel: '2 dni' }
+    mocks.staleSession = { ageLabel: '2 days' }
     mocks.storeActive = undefined
     mocks.storeUid = undefined
     mocks.toastError.mockReset()
@@ -204,11 +204,11 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.staleSession = null
     renderStaleSessionPage()
 
-    expect(screen.getByRole('heading', { name: 'Nowy trening' })).toBeInTheDocument()
-    expect(screen.queryByText('Nie ma aktywnej sesji')).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'New workout' })).toBeInTheDocument()
+    expect(screen.queryByText('Nie ma aktywnej sessions')).not.toBeInTheDocument()
     expect(screen.queryByText(/zakończona albo usunięta na innym urządzeniu/i)).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rozpocznij nową sesję' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start a new session' }))
     expect(mocks.startNewSession).toHaveBeenCalledOnce()
   })
 
@@ -241,11 +241,11 @@ describe('WorkoutPage stale-session feedback', () => {
     ])
     renderStaleSessionPage()
 
-    expect(await screen.findByRole('heading', { name: 'Ostatnio używane' })).toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Dodaj ćwiczenie' })).toHaveLength(1)
+    expect(await screen.findByRole('heading', { name: 'Recently used' })).toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Add exercise' })).toHaveLength(1)
     expect(screen.queryByText('Szybki start')).not.toBeInTheDocument()
-    expect(screen.queryByText('Dodaj pierwszy ruch')).not.toBeInTheDocument()
-    expect(screen.queryByText(/Wybierz ćwiczenie, wpisz pierwszą serię/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Add pierwszy ruch')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Choose an exercise, wpisz pierwszą serię/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Użyte .* w ostatnich sesjach/)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Wiosłowanie na wyciągu/ }))
@@ -258,9 +258,9 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.staleSession = null
     renderStaleSessionPage()
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Nie udało się wczytać aktualnej sesji.')
-    expect(screen.queryByText('Przygotowuję trening...')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not load the current session.')
+    expect(screen.queryByText('Preparing workout...')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     expect(mocks.reloadAuthentication).toHaveBeenCalledOnce()
   })
@@ -269,7 +269,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.continueStaleSession.mockResolvedValue({ status: 'ignored' })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     await waitFor(() => expect(mocks.continueStaleSession).toHaveBeenCalledTimes(1))
 
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
@@ -280,10 +280,10 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.continueStaleSession.mockResolvedValue({ status: 'completed' })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 
     await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith(
-      'Wróciłem do zapisanej sesji z odświeżonym timerem.',
+      'Saved session resumed with a refreshed timer.',
     ))
     expect(mocks.toastError).not.toHaveBeenCalled()
   })
@@ -315,10 +315,10 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.continueStaleSession.mockResolvedValue({ status: 'sync_failed' })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Kontynuuj' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
-      'Sesja została przywrócona lokalnie. Ponów synchronizację.',
+      'Session restored locally. Retry sync.',
     ))
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
   })
@@ -327,7 +327,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.discardStaleSession.mockResolvedValue({ status: 'ignored' })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Discard and start again' }))
     await waitFor(() => expect(mocks.discardStaleSession).toHaveBeenCalledTimes(1))
 
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
@@ -338,10 +338,10 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.discardStaleSession.mockResolvedValue({ status: 'discarded', replacement: {} })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Discard and start again' }))
 
     await waitFor(() => expect(mocks.toastSuccess).toHaveBeenCalledWith(
-      'Stara sesja odrzucona. Zaczynamy od nowa.',
+      'Old session discarded. Starting fresh.',
     ))
     expect(mocks.toastError).not.toHaveBeenCalled()
   })
@@ -358,7 +358,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.staleSession = null
     renderStaleSessionPage()
 
-    expect(screen.getByRole('button', { name: 'Spróbuj ponownie' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible()
     expect(screen.queryByRole('button', { name: 'Wczytaj aktualny stan' })).not.toBeInTheDocument()
   })
 
@@ -392,7 +392,7 @@ describe('WorkoutPage stale-session feedback', () => {
     })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     await waitFor(() => expect(mocks.finalizeWorkout).toHaveBeenCalledWith(
       'session-recovery',
@@ -426,10 +426,10 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.markClosureError.mockResolvedValue('active_session_changed')
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(
-      'Sesja zmieniła się na innym urządzeniu. Sprawdź dane i zakończ ją ponownie.',
+      'The session changed on another device. Check the data and finish it again.',
     ))
     expect(mocks.markClosureError).toHaveBeenCalledWith(conflict)
     expect(mocks.markClosureUnconfirmed).not.toHaveBeenCalled()
@@ -460,11 +460,11 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.markClosureError.mockResolvedValue(null)
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
 
     await waitFor(() => expect(mocks.markClosureError).toHaveBeenCalledWith(conflict))
     expect(mocks.toastError).not.toHaveBeenCalledWith(
-      'Sesja zmieniła się na innym urządzeniu. Sprawdź dane i zakończ ją ponownie.',
+      'The session changed on another device. Check the data and finish it again.',
     )
     expect(mocks.markClosureUnconfirmed).not.toHaveBeenCalled()
   })
@@ -482,9 +482,9 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.staleSession = null
     renderStaleSessionPage()
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Sesja zmieniła się na innym urządzeniu.')
-    expect(screen.queryByRole('button', { name: 'Ponów synchronizację' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Wczytaj aktualną sesję' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('The session changed on another device.')
+    expect(screen.queryByRole('button', { name: 'Retry sync' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Load current session' }))
 
     expect(mocks.reloadCurrentSession).toHaveBeenCalledOnce()
     expect(mocks.prepareFinishClosure).not.toHaveBeenCalled()
@@ -515,7 +515,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.prepareFinishClosure.mockResolvedValue({ status: 'failed' })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
 
     await waitFor(() => expect(mocks.prepareFinishClosure).toHaveBeenCalledWith(intent))
     expect(mocks.finalizeWorkout).not.toHaveBeenCalled()
@@ -535,7 +535,7 @@ describe('WorkoutPage stale-session feedback', () => {
     }
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Finish workout?' })
     expect(dialog).toHaveTextContent('Unfinished sets: 1')
@@ -555,7 +555,7 @@ describe('WorkoutPage stale-session feedback', () => {
       ] }],
     }
     renderStaleSessionPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
     await screen.findByRole('dialog', { name: 'Finish workout?' })
 
     fireEvent.keyDown(document, { key: 'Escape' })
@@ -576,7 +576,7 @@ describe('WorkoutPage stale-session feedback', () => {
     }
     mocks.active = session
     const view = renderStaleSessionPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
     await screen.findByRole('button', { name: 'Save completed sets' })
 
     if (change === 'session') mocks.active = { ...session, sessionId: 'identity-replacement' }
@@ -601,7 +601,7 @@ describe('WorkoutPage stale-session feedback', () => {
     }
     mocks.active = session
     const view = renderStaleSessionPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
     await screen.findByRole('dialog', { name: 'Finish workout?' })
 
     mocks.active = { ...session, sessionId: 'identity-temporary' }
@@ -626,7 +626,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.active = session
     mocks.prepareFinishClosure.mockResolvedValue({ status: 'failed' })
     renderStaleSessionPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
     const latest = {
       ...session,
       exercises: [{ ...session.exercises[0], sets: [
@@ -659,7 +659,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.prepareFinishClosure.mockResolvedValue({ status: 'failed' })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
 
     await waitFor(() => expect(mocks.prepareFinishClosure).toHaveBeenCalledWith(intent))
     expect(screen.queryByRole('dialog', { name: 'Finish workout?' })).not.toBeInTheDocument()
@@ -681,7 +681,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.beginClosure.mockReturnValue(intent)
     mocks.prepareFinishClosure.mockResolvedValue({ status: 'failed' })
     renderStaleSessionPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
 
     const confirm = screen.getByRole('button', { name: 'Save completed sets' })
     fireEvent.click(confirm)
@@ -703,7 +703,7 @@ describe('WorkoutPage stale-session feedback', () => {
     }
     mocks.active = session
     renderStaleSessionPage()
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
     mocks.storeActive = {
       ...session,
       exercises: [{ ...session.exercises[0], sets: session.exercises[0].sets.map((set) => ({ ...set, done: false })) }],
@@ -711,7 +711,7 @@ describe('WorkoutPage stale-session feedback', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Save completed sets' }))
 
-    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Zakończyć bez zapisu?' })).toBeVisible())
+    await waitFor(() => expect(screen.getByRole('dialog', { name: 'Finish without saving?' })).toBeVisible())
     expect(mocks.beginClosure).not.toHaveBeenCalled()
   })
 
@@ -733,12 +733,12 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.discardWorkoutLifecycle.mockResolvedValue({ status: 'discarded' })
     renderStaleSessionPage()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zakończ' }))
-    expect(screen.getByRole('dialog')).toHaveTextContent('Zakończyć bez zapisu?')
+    fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
+    expect(screen.getByRole('dialog')).toHaveTextContent('Finish without saving?')
     expect(screen.getByRole('dialog')).toHaveTextContent(
-      'Nie zaznaczono żadnej serii jako wykonanej. Sesja zostanie odrzucona bez zapisywania treningu.',
+      'No sets are marked complete. The session will be discarded without saving a workout.',
     )
-    fireEvent.click(screen.getByRole('button', { name: 'Odrzuć sesję' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Discard session' }))
 
     await waitFor(() => expect(mocks.discardWorkoutLifecycle).toHaveBeenCalledOnce())
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
@@ -765,7 +765,7 @@ describe('WorkoutPage exercise removal identity', () => {
       mocks.active = { sessionId: 'original', startedAt: Date.now(), templateId: null, exercises }
       renderStaleSessionPage()
       fireEvent.click(screen.getByRole('button', { name: 'Remove exercise 1' }))
-      await screen.findByRole('dialog', { name: 'Usunąć ćwiczenie?' })
+      await screen.findByRole('dialog', { name: 'Remove exercise?' })
       mocks.active = {
         ...mocks.active!,
         sessionId: change === 'session replaced' ? 'replacement' : 'original',
@@ -774,7 +774,7 @@ describe('WorkoutPage exercise removal identity', () => {
             : change === 'client IDs replaced' ? exercises.map((exercise) => ({ ...exercise, clientId: `${exercise.clientId}-new` }))
               : exercises,
       }
-      fireEvent.click(screen.getByRole('button', { name: 'Usuń ćwiczenie' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Remove exercise' }))
       if (change === 'preceding removed') expect(mocks.removeExercise).toHaveBeenCalledWith(0)
       else expect(mocks.removeExercise).not.toHaveBeenCalled()
     },

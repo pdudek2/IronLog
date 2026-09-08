@@ -18,10 +18,10 @@ export interface TemplateSaveDockProps {
 }
 
 const statusLabels: Record<Exclude<TemplateSaveState, 'error'>, string> = {
-  'new-pristine': 'Nowy plan · jeszcze niezapisany',
-  dirty: 'Niezapisane zmiany',
-  saving: 'Trwa zapis',
-  'persisted-clean': 'Wszystkie zmiany zapisane',
+  'new-pristine': 'New plan · not saved yet',
+  dirty: 'Unsaved changes',
+  saving: 'Saving',
+  'persisted-clean': 'All changes saved',
 }
 
 export default function TemplateSaveDock({
@@ -37,10 +37,10 @@ export default function TemplateSaveDock({
   const saving = state === 'saving'
   const hasError = state === 'error'
   const label = saving
-    ? 'Zapisuję…'
+    ? 'Saving…'
     : isEdit
-      ? 'Zapisz zmiany'
-      : 'Zapisz szablon'
+      ? 'Save changes'
+      : 'Save template'
 
   return (
     <div className="template-save-dock" data-state={state} data-testid="template-save-dock">

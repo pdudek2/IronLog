@@ -19,7 +19,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const body = await readJsonBody<UpdateWorkoutBody>(req, { maxBytes: 128 * 1024 })
 
     if (!body.workoutId) {
-      sendJson(res, 400, { error: 'Brak workoutId.' })
+      sendJson(res, 400, { error: 'Missing workoutId.' })
       return
     }
 
@@ -30,6 +30,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
     sendJson(res, 200, result)
   } catch (error) {
-    sendApiError(res, error, { fallbackMessage: 'Nie udało się zaktualizować treningu.' })
+    sendApiError(res, error, { fallbackMessage: 'Could not update the workout.' })
   }
 }

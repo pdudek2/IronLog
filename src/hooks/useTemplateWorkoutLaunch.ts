@@ -111,7 +111,7 @@ export function useTemplateWorkoutLaunch(
       if (!isCurrentLaunch(generation)) return
       setLaunchOperation(null)
       hydrateFromDoc(workout)
-      toast.success(`Szablon „${target.template.name}” gotowy do startu`)
+      toast.success(`Template “${target.template.name}” ready to start`)
       navigate('/workout/new')
     } catch (error) {
       if (!isCurrentLaunch(generation)) return
@@ -125,7 +125,7 @@ export function useTemplateWorkoutLaunch(
         target,
         replaceExisting,
         status: 'error',
-        errorMessage: 'Nie udało się uruchomić planu.',
+        errorMessage: 'Could not start the plan.',
       })
     } finally {
       if (launchGenerationRef.current === generation) {

@@ -19,13 +19,13 @@ export function ActiveSessionSyncStatus({ status, onRetry, onReload }: ActiveSes
     >
       <p className="text-sm font-semibold text-white">
         {conflict
-          ? 'Sesja zmieniła się na innym urządzeniu.'
-          : 'Nie udało się zsynchronizować aktywnej sesji.'}
+          ? 'The session changed on another device.'
+          : 'Could not sync the active session.'}
       </p>
       <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
         {conflict
-          ? 'Na serwerze jest nowsza wersja. Wczytanie jej zastąpi niezapisane zmiany na tym urządzeniu.'
-          : 'Dane są zachowane na tym urządzeniu. Ponów zapis lub poczekaj na uzgodnienie z serwerem.'}
+          ? 'A newer version is available on the server. Loading it will replace unsaved changes on this device.'
+          : 'Your data is saved on this device. Retry saving or wait for the server to sync.'}
       </p>
       <button
         type="button"
@@ -34,7 +34,7 @@ export function ActiveSessionSyncStatus({ status, onRetry, onReload }: ActiveSes
         className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
         style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
       >
-        {conflict ? 'Wczytaj nowszą wersję' : retrying ? 'Synchronizuję…' : 'Ponów synchronizację'}
+        {conflict ? 'Load newer version' : retrying ? 'Syncing…' : 'Retry sync'}
       </button>
     </div>
   )

@@ -19,7 +19,7 @@ export function writeWorkoutDeleteRecovery(
 ): void {
   const existing = readWorkoutDeleteRecovery(uid, storage)
   if (existing && existing.workoutId !== recovery.workoutId) {
-    throw new Error('Najpierw ponów poprzednie usunięcie treningu.')
+    throw new Error('Retry the previous workout deletion first.')
   }
   storage.setItem(storageKey(uid), JSON.stringify({
     uid,

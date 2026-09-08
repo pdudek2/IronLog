@@ -22,22 +22,22 @@ export default function LogoutPage() {
     }
   }, [])
 
-  if (!failed) return <LoadingState message="Wylogowywanie..." />
+  if (!failed) return <LoadingState message="Signing out..." />
 
   return (
     <main className="page-shell flex items-center justify-center">
       <div className="page-container flex justify-center">
         <section className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] px-6 py-8 text-center" role="alert">
-          <h1 className="text-lg font-semibold text-white">Nie udało się wylogować</h1>
+          <h1 className="text-lg font-semibold text-white">Could not sign out</h1>
           <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-            Sesja nadal jest aktywna. Sprawdź połączenie przed kolejną próbą.
+            Your session is still active. Check your connection before trying again.
           </p>
           <button
             type="button"
             className="planner-primary-action mt-5 w-full"
             onClick={() => navigate('/dashboard', { replace: true })}
           >
-            Wróć do panelu
+            Back to dashboard
           </button>
         </section>
       </div>

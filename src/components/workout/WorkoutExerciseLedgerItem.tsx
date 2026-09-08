@@ -61,7 +61,7 @@ function formatCompactVolume(volumeKg: number, units: Units): string {
   if (!volume) return `0 ${units}`
   if (volume >= 10_000) return `${Math.round(volume / 1_000)}k ${units}`
   if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k ${units}`
-  return `${Math.round(volume).toLocaleString('pl-PL')} ${units}`
+  return `${Math.round(volume).toLocaleString('en-US')} ${units}`
 }
 
 function selectExerciseByIdentity(state: ReturnType<typeof useWorkoutStore.getState>, exerciseIndex: number, exerciseClientId: string): WorkoutExercise | null {
@@ -150,7 +150,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
             onClick={() => onExpandExercise(exerciseClientId)}
             aria-expanded={isExpanded}
             aria-controls={`workout-exercise-body-${exerciseIndex}`}
-            aria-label={`${isExpanded ? 'Zwiń' : 'Rozwiń'} ćwiczenie ${exercise.name}`}
+            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} exercise ${exercise.name}`}
           >
             <span className="min-w-0 text-left">
               {(categoryLabel || equipmentLabel) && (
@@ -166,7 +166,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
               )}
               <span className="workout-exercise-name mt-1.5 block text-lg font-semibold text-white">{exercise.name}</span>
               <span className="workout-exercise-compact-summary tabular-nums">
-                {exerciseCompleted}/{exercise.sets.length} serii · {formatCompactVolume(exerciseVolume, units)}
+                {exerciseCompleted}/{exercise.sets.length} sets · {formatCompactVolume(exerciseVolume, units)}
               </span>
             </span>
             <ChevronDown className="workout-exercise-chevron" size={18} aria-hidden="true" />
@@ -192,21 +192,21 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
           onClick={() => onRemoveExercise(exerciseIndex)}
           className="workout-danger-action"
           style={{ color: 'var(--muted)' }}
-          aria-label={`Usuń ćwiczenie ${exercise.name}`}
+          aria-label={`Remove exercise ${exercise.name}`}
         >
           <Trash2 size={14} />
-          <span>Usuń</span>
+          <span>Delete</span>
         </button>
       </div>
 
       <div id={`workout-exercise-body-${exerciseIndex}`} className="workout-exercise-body">
-      <div className="workout-exercise-ledger" aria-label={`Podsumowanie ćwiczenia ${exercise.name}`}>
+      <div className="workout-exercise-ledger" aria-label={`Exercise summary ${exercise.name}`}>
         <div>
-          <span>Postęp</span>
+          <span>Progress</span>
           <strong className="tabular-nums">{exerciseCompleted}/{exercise.sets.length}</strong>
         </div>
         <div>
-          <span>Objętość</span>
+          <span>Volume</span>
           <strong className="tabular-nums">{formatCompactVolume(exerciseVolume, units)}</strong>
         </div>
         <div>
@@ -226,9 +226,9 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
 
       <div className="workout-set-header">
         <span aria-hidden="true" />
-        <span>Poprz.</span>
+        <span>Prev.</span>
         <span>{units}</span>
-        <span>Powt.</span>
+        <span>Reps</span>
         <span />
       </div>
 
@@ -255,14 +255,14 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   animate={set.done ? { scale: [1, 1.08, 1] } : { scale: 1 }}
                   transition={{ duration: 0.25 }}
                   aria-label={set.done
-                    ? `Odznacz serię ${setIndex + 1} ćwiczenia ${exercise.name}`
-                    : `Oznacz serię ${setIndex + 1} ćwiczenia ${exercise.name}`}
+                    ? `Unmark set ${setIndex + 1} for ${exercise.name}`
+                    : `Mark set ${setIndex + 1} for ${exercise.name}`}
                 >
                   {set.done ? <Check size={16} /> : setIndex + 1}
                 </motion.button>
                 <span
                   className="workout-set-previous tabular-nums"
-                  aria-label={`Poprzedni wynik serii ${setIndex + 1}`}
+                  aria-label={`Previous set result ${setIndex + 1}`}
                 >
                   {previousSet
                     ? `${kgToDisplayWeight(previousSet.weight, units)}×${previousSet.reps}`
@@ -279,7 +279,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                     'weight',
                     displayWeightStringToKg(event.target.value, units),
                   )}
-                  aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, ${units}`}
+                  aria-label={`Weight, ${exercise.name}, set ${setIndex + 1}, ${units}`}
                   className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                 />
                 <input
@@ -288,7 +288,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   placeholder="0"
                   value={set.reps}
                   onChange={(event) => onUpdateSet(exerciseIndex, setIndex, 'reps', event.target.value)}
-                  aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
+                  aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
                   className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                 />
                 <button
@@ -296,7 +296,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   onClick={() => onRemoveSet(exerciseIndex, setIndex)}
                   className="workout-set-remove"
                   style={{ color: 'var(--muted-soft)' }}
-                  aria-label={`Usuń serię ${setIndex + 1}`}
+                  aria-label={`Remove set ${setIndex + 1}`}
                 >
                   <X size={15} />
                 </button>
@@ -305,13 +305,13 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                 <div
                   className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5"
                   role="group"
-                  aria-label={`Szybka korekta serii ${setIndex + 1}`}
+                  aria-label={`Quick set adjustments ${setIndex + 1}`}
                 >
                   {[
                     { label: `−2.5 ${units}`, delta: -2.5, field: 'weight' as const },
                     { label: `+2.5 ${units}`, delta: 2.5, field: 'weight' as const },
-                    { label: '−1 powt.', delta: -1, field: 'reps' as const },
-                    { label: '+1 powt.', delta: +1, field: 'reps' as const },
+                    { label: '−1 rep', delta: -1, field: 'reps' as const },
+                    { label: '+1 rep', delta: +1, field: 'reps' as const },
                   ].map(({ label, delta, field }) => (
                     <button
                       key={label}
@@ -323,7 +323,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                         field === 'weight' ? displayWeightDeltaToKg(delta, units) : delta,
                       )}
                       className="set-stepper-btn"
-                      aria-label={`Dostosuj ${field === 'weight' ? 'wagę' : 'powtórzenia'} o ${delta}`}
+                      aria-label={`Adjust ${field === 'weight' ? 'weight' : 'reps'} by ${delta}`}
                     >
                       {label}
                     </button>
@@ -342,7 +342,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
       >
         <span className="inline-flex items-center justify-center gap-2">
           <Plus size={15} strokeWidth={2.4} />
-          Dodaj serię
+          Add set
         </span>
       </button>
       </div>

@@ -17,14 +17,14 @@ test.describe('Critical application contract', () => {
   test('template editor opens from the loaded templates screen', async ({ page }) => {
     await page.goto('/templates')
     await expectAppReady(page, '/templates')
-    await page.getByRole('button', { name: /^(Nowy plan|Utwórz pierwszy plan)$/ }).click()
+    await page.getByRole('button', { name: /^(New plan|Create your first plan)$/ }).click()
     await expectAppReady(page, '/templates/new')
   })
 
   test('progress reaches an interactive loaded state', async ({ page }) => {
     await page.goto('/progress')
     await expectAppReady(page, '/progress', 20_000)
-    await expect(page.getByRole('button', { name: '30 dni' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '30 days' })).toBeVisible()
   })
 
   test('dashboard exposes its primary workout action', async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe('Unauthenticated application contract', () => {
     const page = await context.newPage()
     await page.goto('/dashboard')
     await expect(page).toHaveURL('/login', { timeout: 10_000 })
-    await expect(page.getByRole('button', { name: 'Zaloguj się' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
     await page.close()
   })
 })

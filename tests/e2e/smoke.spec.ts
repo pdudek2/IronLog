@@ -24,14 +24,14 @@ test('mobile nav shows all primary items', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'BottomNav is lg:hidden — only visible on mobile viewports')
 
   await page.goto('/dashboard')
-  const nav = page.getByLabel('Nawigacja dolna')
+  const nav = page.getByLabel('Bottom navigation')
   await expect(nav).toBeVisible()
 
-  for (const label of ['Start', 'Postępy', 'Plany', 'Ćwiczenia', 'Historia', 'AI']) {
+  for (const label of ['Start', 'Progress', 'Plans', 'Exercises', 'History', 'AI']) {
     await expect(nav.getByRole('button', { name: label, exact: true })).toBeVisible()
   }
   await expect(nav.getByRole('button', {
-    name: /^(?:Rozpocznij nowy trening|Wznów trening)$/,
+    name: /^(?:Start new workout|Resume workout)$/,
   })).toBeVisible()
 })
 
@@ -40,26 +40,26 @@ test('desktop nav shows an approved workout entry label', async ({ page }, testI
 
   await page.goto('/dashboard')
   await expect(page.locator('header.top-nav')
-    .getByRole('button', { name: /^(?:Rozpocznij nowy trening|Wznów trening)$/ }))
-    .toHaveText(/^(?:Nowy trening|Wznów trening)$/)
+    .getByRole('button', { name: /^(?:Start new workout|Resume workout)$/ }))
+    .toHaveText(/^(?:New workout|Resume workout)$/)
 })
 
 test('bottom nav active state updates on navigation', async ({ page, isMobile }) => {
   test.skip(!isMobile, 'BottomNav is lg:hidden — only visible on mobile viewports')
 
   await page.goto('/dashboard')
-  const nav = page.getByLabel('Nawigacja dolna')
+  const nav = page.getByLabel('Bottom navigation')
 
   // Navigate to Progress
-  await nav.getByRole('button', { name: 'Postępy', exact: true }).click()
+  await nav.getByRole('button', { name: 'Progress', exact: true }).click()
   await page.waitForURL('/progress')
 
   // Navigate to Templates
-  await nav.getByRole('button', { name: 'Plany', exact: true }).click()
+  await nav.getByRole('button', { name: 'Plans', exact: true }).click()
   await page.waitForURL('/templates')
 
   // Navigate to Exercises
-  await nav.getByRole('button', { name: 'Ćwiczenia', exact: true }).click()
+  await nav.getByRole('button', { name: 'Exercises', exact: true }).click()
   await page.waitForURL('/exercises')
 })
 

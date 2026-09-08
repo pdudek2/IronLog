@@ -146,13 +146,13 @@ export default function ReadinessWidget({
         transition={{ duration: 0.2 }}
       >
         <p className="text-sm font-semibold text-white">
-          Nie udało się wczytać gotowości
+          Could not load readiness
         </p>
         <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-          Sprawdź połączenie i spróbuj ponownie.
+          Check your connection and try again.
         </p>
         <Button type="button" className="mt-4" onClick={handleRetry}>
-          Spróbuj ponownie
+          Try again
         </Button>
       </motion.div>
     )
@@ -181,7 +181,7 @@ export default function ReadinessWidget({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <p className="eyebrow mb-3" style={{ color: 'var(--accent)' }}>Gotowość</p>
+      <p className="eyebrow mb-3" style={{ color: 'var(--accent)' }}>Readiness</p>
 
       <div className="flex items-center gap-4">
         <div className="relative flex-none">
@@ -205,12 +205,12 @@ export default function ReadinessWidget({
 
         <div className="flex-1 min-w-0">
           <p className="text-base font-bold text-white leading-tight">{label}</p>
-          <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>dzisiejszy wynik</p>
+          <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>today’s score</p>
 
           <div className="mt-3 grid grid-cols-3 gap-2">
             {[
-              { label: 'Sen', value: entry.sleep },
-              { label: 'Nastrój', value: entry.mood },
+              { label: 'Sleep', value: entry.sleep },
+              { label: 'Mood', value: entry.mood },
               { label: 'DOMS', value: entry.soreness },
             ].map(({ label: l, value }) => (
               <div key={l}>

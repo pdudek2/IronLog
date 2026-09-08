@@ -14,7 +14,7 @@ import {
   getTemplates,
   type WorkoutTemplate,
 } from '../lib/templateService'
-import { polishPlural } from '../lib/polishPlural'
+import { pluralize } from '../lib/pluralize'
 
 interface TemplateDeleteOperation {
   target: WorkoutTemplate
@@ -22,8 +22,8 @@ interface TemplateDeleteOperation {
 }
 
 function formatDate(ts: number): string {
-  if (!ts) return 'teraz'
-  return new Date(ts).toLocaleDateString('pl-PL', {
+  if (!ts) return 'now'
+  return new Date(ts).toLocaleDateString('en-US', {
     day: 'numeric',
     month: 'short',
   })
@@ -67,7 +67,7 @@ export default function TemplatesPage() {
       })
       .catch(() => {
         if (cancelled) return
-        toast.error('Nie udało się pobrać szablonów.')
+        toast.error('Could not load templates.')
         setError(true)
       })
 
@@ -94,10 +94,10 @@ export default function TemplatesPage() {
       await deleteTemplate(target.id)
       setTemplates((prev) => prev.filter((template) => template.id !== target.id))
       setDeleteOperation(null)
-      toast.success('Szablon usunięty')
+      toast.success('Template deleted')
     } catch {
       setDeleteOperation({ target, status: 'error' })
-      toast.error('Nie udało się usunąć planu.')
+      toast.error('Could not delete the plan.')
     }
   }
 
@@ -119,7 +119,7 @@ export default function TemplatesPage() {
   }
 
   if (loading) {
-    return <LoadingState message="Ładowanie szablonów..." />
+    return <LoadingState message="Loading templates..." />
   }
 
   return (
@@ -127,16 +127,16 @@ export default function TemplatesPage() {
       <div className="workbench-page">
         <section className="planner-header">
         <div>
-          <h1>Plany</h1>
+          <h1>Plans</h1>
         </div>
 
         <div className="planner-header-actions">
           {templates.length > 0 && (
-            <div className="planner-mini-stats" aria-label="Podsumowanie planów">
+            <div className="planner-mini-stats" aria-label="Plan summary">
               <span>
                 <strong>{templates.length}</strong>
                 {' '}
-                {polishPlural(templates.length, 'plan', 'plany', 'planów')}
+                {pluralize(templates.length, 'plan', 'plans')}
               </span>
             </div>
           )}
@@ -148,7 +148,7 @@ export default function TemplatesPage() {
             whileTap={{ scale: 0.97 }}
           >
             <Plus size={16} />
-            {!error && templates.length === 0 ? 'Utwórz pierwszy plan' : 'Nowy plan'}
+            {!error && templates.length === 0 ? 'Create your first plan' : 'New plan'}
           </motion.button>
         </div>
         </section>
@@ -161,12 +161,12 @@ export default function TemplatesPage() {
             initial={false}
             animate={{ opacity: 1 }}
           >
-            <p className="text-lg font-semibold text-white">Nie udało się pobrać szablonów</p>
+            <p className="text-lg font-semibold text-white">Could not load templates</p>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              Sprawdź połączenie i spróbuj ponownie bez odświeżania strony.
+              Check your connection and try again without reloading the page.
             </p>
             <Button type="button" className="mt-6 min-w-[12rem]" onClick={handleRetryLoad}>
-              Spróbuj ponownie
+              Try again
             </Button>
           </motion.div>
         ) : templates.length === 0 ? (
@@ -177,17 +177,17 @@ export default function TemplatesPage() {
           >
             <div className="planner-empty-copy">
               <div>
-                <h2>Nie masz jeszcze planu</h2>
+                <h2>You have no plans yet</h2>
                 <p>
-                  Plan zapisuje dni, ćwiczenia i serie. Potem uruchamiasz wybrany dzień jednym kliknięciem.
+                  A plan stores your days, exercises and sets. Start any day with one click.
                 </p>
               </div>
             </div>
 
             <div className="planner-empty-example">
               <div>
-                <span>Przykładowy układ</span>
-                <strong>Upper / Lower · 4 dni</strong>
+                <span>Example schedule</span>
+                <strong>Upper / Lower · 4 days</strong>
               </div>
               <ol>
                 {[
@@ -245,14 +245,14 @@ export default function TemplatesPage() {
                         {template.name}
                       </h2>
                       <p>
-                        {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} · {totalExercises} {totalExercises === 1 ? 'ćwiczenie' : 'ćwiczeń'} · aktualizacja {formatDate(template.updatedAt)}
+                        {template.days.length} {template.days.length === 1 ? 'day' : 'days'} · {totalExercises} {totalExercises === 1 ? 'exercise' : 'exercises'} · updated {formatDate(template.updatedAt)}
                       </p>
                     </div>
 
                     <div className="planner-template-actions">
                       <button
                         type="button"
-                        aria-label={`Edytuj szablon ${template.name}`}
+                        aria-label={`Edit template ${template.name}`}
                         onClick={() => navigate(`/templates/${template.id}/edit`)}
                         className="planner-icon-action"
                       >
@@ -260,7 +260,7 @@ export default function TemplatesPage() {
                       </button>
                       <button
                         type="button"
-                        aria-label={`Usuń szablon ${template.name}`}
+                        aria-label={`Delete template ${template.name}`}
                         onClick={() => requestTemplateDelete(template)}
                         disabled={deleteOperation !== null}
                         aria-describedby={templateDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
@@ -277,7 +277,7 @@ export default function TemplatesPage() {
                           aria-controls={structureId}
                         >
                           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                          {expanded ? 'Zwiń' : 'Struktura'}
+                          {expanded ? 'Collapse' : 'Structure'}
                         </button>
                       )}
                     </div>
@@ -288,7 +288,7 @@ export default function TemplatesPage() {
                       <ActionFeedback
                         id={launchErrorId}
                         status="error"
-                        message={templateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                        message={templateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
                         onRetry={() => { void retryTemplateLaunch() }}
                         onDismiss={dismissTemplateLaunchError}
                       />
@@ -301,8 +301,8 @@ export default function TemplatesPage() {
                         id={deleteFeedbackId}
                         status={templateDeleteOperation.status}
                         message={templateDeleteOperation.status === 'pending'
-                          ? 'Usuwanie planu…'
-                          : 'Nie udało się usunąć planu.'}
+                          ? 'Deleting plan…'
+                          : 'Could not delete the plan.'}
                         onRetry={templateDeleteOperation.status === 'error' ? retryTemplateDelete : undefined}
                         onDismiss={templateDeleteOperation.status === 'error'
                           ? () => setDeleteOperation(null)
@@ -326,7 +326,7 @@ export default function TemplatesPage() {
                             key={`${template.id}-${dayIndex}`}
                             type="button"
                             data-testid={`template-day-detail-${template.id}-${dayIndex}`}
-                            aria-label={`Uruchom dzień ${day.name} z szablonu ${template.name}`}
+                            aria-label={`Start day ${day.name} from template ${template.name}`}
                             aria-describedby={feedbackDescription}
                             aria-busy={isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`) || undefined}
                             onClick={() => void requestTemplateLaunch(
@@ -342,13 +342,13 @@ export default function TemplatesPage() {
                               <span>
                                 <strong className="planner-day-row-title">{day.name}</strong>
                                 <small>
-                                  {day.exercises.length} {day.exercises.length === 1 ? 'ćwiczenie' : 'ćwiczeń'}
+                                  {day.exercises.length} {day.exercises.length === 1 ? 'exercise' : 'exercises'}
                                 </small>
                               </span>
 
                               <span className="planner-day-row-affordance" aria-hidden="true">
                                 {isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`)
-                                  ? 'Uruchamiam…'
+                                  ? 'Starting…'
                                   : <Play size={15} />}
                               </span>
                             </span>
@@ -382,9 +382,9 @@ export default function TemplatesPage() {
 
       {deleteTarget && (
         <ConfirmDialog
-          message={`Usunąć szablon "${deleteTarget.name}"? Ta operacja jest nieodwracalna.`}
-          confirmLabel="Usuń"
-          cancelLabel="Anuluj"
+          message={`Delete template "${deleteTarget.name}"? Ta operacja jest nieodwracalna.`}
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
           onConfirm={handleDeleteConfirmed}
           onCancel={() => setDeleteTarget(null)}
           danger

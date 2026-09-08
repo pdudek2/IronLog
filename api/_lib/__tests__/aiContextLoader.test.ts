@@ -32,9 +32,9 @@ const populatedReaders = (): AiContextReaders => ({
 
 const preservedPromptSignals = {
   profile: ['Readiness: 75/100', 'Upper A', 'Deadlift: max 180 kg'],
-  readiness: ['Użytkownik: Patryk', 'Upper A', 'Deadlift: max 180 kg'],
-  workouts: ['Użytkownik: Patryk', 'Readiness: 75/100', 'Deadlift: max 180 kg'],
-  records: ['Użytkownik: Patryk', 'Readiness: 75/100', 'Upper A'],
+  readiness: ['User: Patryk', 'Upper A', 'Deadlift: max 180 kg'],
+  workouts: ['User: Patryk', 'Readiness: 75/100', 'Deadlift: max 180 kg'],
+  records: ['User: Patryk', 'Readiness: 75/100', 'Upper A'],
 } as const
 
 describe('loadAiUserContext', () => {
@@ -126,7 +126,7 @@ describe('loadAiUserContext', () => {
       name: 'ApiError',
       status: 503,
       code: 'ai_context_unavailable',
-      message: 'Nie udało się załadować kontekstu. Spróbuj ponownie.',
+      message: 'Could not load context. Try again.',
     })
   })
 })

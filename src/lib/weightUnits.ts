@@ -42,5 +42,5 @@ export function formatCompactVolume(volumeKg: number, units: Units): string {
   if (!volume) return `0 ${units}`
   if (volume >= 10_000) return `${Math.round(volume / 1_000)}k ${units}`
   if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k ${units}`
-  return `${Math.round(volume).toLocaleString('pl-PL')} ${units}`
+  return `${Math.round(volume).toLocaleString('en-US')} ${units}`
 }

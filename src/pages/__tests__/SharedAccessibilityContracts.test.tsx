@@ -33,13 +33,13 @@ function DialogHarness() {
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)}>Usuń plan</button>
+      <button type="button" onClick={() => setOpen(true)}>Delete plan</button>
       {open && (
         <ConfirmDialog
           title="Usunąć plan?"
           message="Tej operacji nie można cofnąć."
-          confirmLabel="Usuń"
-          cancelLabel="Anuluj"
+          confirmLabel="Delete"
+          cancelLabel="Cancel"
           onConfirm={() => setOpen(false)}
           onCancel={() => setOpen(false)}
         />
@@ -53,7 +53,7 @@ function ExercisePickerHarness() {
   useMobileInteraction()
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)}>Dodaj ćwiczenie</button>
+      <button type="button" onClick={() => setOpen(true)}>Add exercise</button>
       {open && (
         <ExercisePicker
           onSelect={() => setOpen(false)}
@@ -116,13 +116,13 @@ describe('shared accessibility contracts', () => {
   it('names and describes the dialog while preserving focus behavior', async () => {
     render(<DialogHarness />)
 
-    const trigger = screen.getByRole('button', { name: 'Usuń plan' })
+    const trigger = screen.getByRole('button', { name: 'Delete plan' })
     trigger.focus()
     fireEvent.click(trigger)
 
     const dialog = screen.getByRole('dialog', { name: 'Usunąć plan?' })
-    const cancel = screen.getByRole('button', { name: 'Anuluj' })
-    const confirm = screen.getByRole('button', { name: /^Usuń$/ })
+    const cancel = screen.getByRole('button', { name: 'Cancel' })
+    const confirm = screen.getByRole('button', { name: /^Delete$/ })
 
     expect(dialog).toHaveAccessibleDescription('Tej operacji nie można cofnąć.')
     expect(cancel).toHaveFocus()
@@ -138,10 +138,10 @@ describe('shared accessibility contracts', () => {
 
   it('focuses shared exercise search and restores its opener after Escape', async () => {
     render(<MobileInteractionProvider><ExercisePickerHarness /></MobileInteractionProvider>)
-    const opener = screen.getByRole('button', { name: 'Dodaj ćwiczenie' })
+    const opener = screen.getByRole('button', { name: 'Add exercise' })
     opener.focus()
     fireEvent.click(opener)
-    expect(screen.getByRole('textbox', { name: 'Szukaj ćwiczenia' })).toHaveFocus()
+    expect(screen.getByRole('textbox', { name: 'Search exercises' })).toHaveFocus()
     fireEvent.keyDown(document, { key: 'Escape' })
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
     expect(opener).toHaveFocus()
@@ -162,16 +162,16 @@ describe('shared accessibility contracts', () => {
 
   it('keeps picker interactions stable through provider rerenders', async () => {
     render(<MobileInteractionProvider><ExercisePickerHarness /></MobileInteractionProvider>)
-    const opener = screen.getByRole('button', { name: 'Dodaj ćwiczenie' })
+    const opener = screen.getByRole('button', { name: 'Add exercise' })
     opener.focus()
     fireEvent.click(opener)
 
-    const search = screen.getByRole('textbox', { name: 'Szukaj ćwiczenia' })
+    const search = screen.getByRole('textbox', { name: 'Search exercises' })
     fireEvent.change(search, { target: { value: 'bench press' } })
     expect(search).toHaveFocus()
     const results = await screen.findAllByRole('button', { name: /Bench Press/i })
     const result = results[0]
-    const close = screen.getByRole('button', { name: 'Zamknij wybór ćwiczenia' })
+    const close = screen.getByRole('button', { name: 'Close exercise picker' })
 
     close.focus()
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
@@ -189,16 +189,16 @@ describe('shared accessibility contracts', () => {
     const onConfirm = vi.fn()
     render(
       <ConfirmDialog
-        title="Zapis w toku"
-        message="Poczekaj na wynik zapisu."
-        confirmLabel="Zapisuję..."
+        title="Saving in progress"
+        message="Poczekaj na result zapisu."
+        confirmLabel="Saving..."
         confirmDisabled
         onConfirm={onConfirm}
         onCancel={vi.fn()}
       />,
     )
 
-    const confirm = screen.getByRole('button', { name: 'Zapisuję...' })
+    const confirm = screen.getByRole('button', { name: 'Saving...' })
     expect(confirm).toBeDisabled()
     fireEvent.click(confirm)
     expect(onConfirm).not.toHaveBeenCalled()
@@ -214,9 +214,9 @@ describe('shared accessibility contracts', () => {
       </MemoryRouter>,
     )
 
-    const workoutActions = screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })
+    const workoutActions = screen.getAllByRole('button', { name: 'Start new workout' })
     expect(workoutActions).toHaveLength(2)
-    expect(workoutActions[0]).toHaveTextContent('Nowy trening')
+    expect(workoutActions[0]).toHaveTextContent('New workout')
   })
 
   it.each([0, 1])('marks shell workout action %i as an explicit start', (actionIndex) => {
@@ -230,7 +230,7 @@ describe('shared accessibility contracts', () => {
       </MemoryRouter>,
     )
 
-    const workoutActions = screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })
+    const workoutActions = screen.getAllByRole('button', { name: 'Start new workout' })
     fireEvent.click(workoutActions[actionIndex])
 
     expect(screen.getByTestId('workout-start-intent')).toHaveTextContent('start')
@@ -255,9 +255,9 @@ describe('shared accessibility contracts', () => {
       </MemoryRouter>,
     )
 
-    const workoutActions = screen.getAllByRole('button', { name: 'Wznów trening' })
+    const workoutActions = screen.getAllByRole('button', { name: 'Resume workout' })
     expect(workoutActions).toHaveLength(2)
-    expect(workoutActions[0]).toHaveTextContent('Wznów trening')
+    expect(workoutActions[0]).toHaveTextContent('Resume workout')
   })
 
   it('gives workout detail actions exclusive ownership of the mobile bottom area', () => {
@@ -269,7 +269,7 @@ describe('shared accessibility contracts', () => {
       </MemoryRouter>,
     )
 
-    const nav = container.querySelector('nav[aria-label="Nawigacja dolna"]')
+    const nav = container.querySelector('nav[aria-label="Bottom navigation"]')
     expect(nav).toHaveAttribute('aria-hidden', 'true')
     expect(nav).toHaveAttribute('inert')
   })
@@ -283,7 +283,7 @@ describe('shared accessibility contracts', () => {
       </MemoryRouter>,
     )
 
-    const nav = screen.getByRole('navigation', { name: 'Nawigacja dolna' })
+    const nav = screen.getByRole('navigation', { name: 'Bottom navigation' })
 
     Object.defineProperty(window, 'scrollY', { configurable: true, value: 80 })
     fireEvent.scroll(window)

@@ -82,7 +82,7 @@ export function createFirestoreAiContextReaders(database: Firestore = adminDb): 
       return snapshot.docs.map((document) => {
         const data = document.data()
         return {
-          exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : 'Ćwiczenie',
+          exerciseName: typeof data.exerciseName === 'string' ? data.exerciseName : 'Exercise',
           maxWeight: Number(data.maxWeight ?? 0),
           maxReps: Number(data.maxReps ?? 0),
           bestVolume: Number(data.bestVolume ?? 0),
@@ -118,7 +118,7 @@ export async function loadAiUserContext(
   })) as AiContextSourceStatuses
 
   if (SOURCE_ORDER.every((source) => sources[source] === 'unavailable')) {
-    throw new ApiError(503, 'Nie udało się załadować kontekstu. Spróbuj ponownie.', {
+    throw new ApiError(503, 'Could not load context. Try again.', {
       code: 'ai_context_unavailable',
     })
   }

@@ -18,11 +18,11 @@ function GuardHarness() {
       <button type="button" onClick={() => setDirty(true)}>Zmień</button>
       <button type="button" onClick={() => navigate('/next')}>Dalej</button>
       <button type="button" onClick={() => { guard.allowNextNavigation(); navigate('/next') }}>
-        Zapisz i przejdź
+        Save i przejdź
       </button>
       {guard.blocked && (
         <div role="dialog" aria-label="Opuścić?">
-          <button type="button" onClick={guard.reset}>Zostań</button>
+          <button type="button" onClick={guard.reset}>Stay</button>
           <button type="button" onClick={guard.proceed}>Opuść</button>
         </div>
       )}
@@ -33,7 +33,7 @@ function GuardHarness() {
 function renderGuard() {
   const router = createMemoryRouter([
     { path: '/edit', element: <GuardHarness /> },
-    { path: '/next', element: <p>Następna strona</p> },
+    { path: '/next', element: <p>Next page</p> },
   ], { initialEntries: ['/edit'] })
   render(<RouterProvider router={router} />)
   return router
@@ -46,19 +46,19 @@ describe('useUnsavedChangesGuard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Dalej' }))
     expect(screen.getByRole('dialog', { name: 'Opuścić?' })).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zostań' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Stay' }))
     expect(router.state.location.pathname).toBe('/edit')
 
     fireEvent.click(screen.getByRole('button', { name: 'Dalej' }))
     fireEvent.click(screen.getByRole('button', { name: 'Opuść' }))
-    expect(await screen.findByText('Następna strona')).toBeInTheDocument()
+    expect(await screen.findByText('Next page')).toBeInTheDocument()
   })
 
   it('allows exactly the navigation authorized after save', async () => {
     const router = renderGuard()
     fireEvent.click(screen.getByRole('button', { name: 'Zmień' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz i przejdź' }))
-    expect(await screen.findByText('Następna strona')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save i przejdź' }))
+    expect(await screen.findByText('Next page')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/next')
   })
 

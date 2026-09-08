@@ -27,12 +27,12 @@ async function openChatWithMock(page: Page, attempts: MockAiAttempt[]) {
   await installMockAiRuntime(page, attempts)
   await page.goto('/chat')
   await expectAppReady(page, '/chat')
-  await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
+  await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled()
 }
 
 async function sendQuestion(page: Page) {
-  await page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' }).fill(QUESTION)
-  await page.getByRole('button', { name: 'Wyślij' }).click()
+  await page.getByRole('textbox', { name: 'Message AI Coach' }).fill(QUESTION)
+  await page.getByRole('button', { name: 'Send' }).click()
 }
 
 async function expectAbortCount(page: Page, count: number) {
@@ -60,18 +60,18 @@ test.describe('Chat UI', () => {
 
     const keyGate = page.locator('.coach-key-gate')
     await expect(keyGate).toBeVisible({ timeout: 5_000 })
-    await expect(keyGate.getByText('Dodaj lokalny klucz Claude', { exact: true })).toBeVisible()
+    await expect(keyGate.getByText('Add a local Claude key', { exact: true })).toBeVisible()
     await expect(page.locator('.ai-key-panel')).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Skonfiguruj klucz' }).click()
+    await page.getByRole('button', { name: 'Set up key' }).click()
     await expect(keyGate).toHaveCount(0)
-    await expect(page.getByRole('button', { name: 'Anuluj' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
 
-    await expect(page.getByPlaceholder('Wklej Claude API key')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByText('Zapis lokalny · wysyłany przez IronLog do Anthropic tylko na czas żądania.', { exact: true }))
+    await expect(page.getByPlaceholder('Paste Claude API key')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Stored locally · sent through IronLog to Anthropic only for each request.', { exact: true }))
       .toBeVisible({ timeout: 5_000 })
 
-    await expect(page.getByRole('button', { name: 'Usuń lokalnie zapisany klucz' }))
+    await expect(page.getByRole('button', { name: 'Remove locally stored key' }))
       .toBeDisabled()
 
     await page.screenshot({ path: 'test-results/chat-key-panel.png' })
@@ -81,8 +81,8 @@ test.describe('Chat UI', () => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
 
-    await expect(page.getByText('Dodaj lokalny klucz Claude', { exact: true })).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toHaveCount(0)
+    await expect(page.getByText('Add a local Claude key', { exact: true })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toHaveCount(0)
 
     await page.screenshot({ path: 'test-results/chat-disabled-input.png' })
   })
@@ -137,8 +137,8 @@ test.describe('Chat UI', () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
 
     if (testInfo.project.name === 'mobile') {
-      const sendBox = await page.getByRole('button', { name: 'Wyślij' }).boundingBox()
-      const bottomNavBox = await page.getByRole('navigation', { name: 'Nawigacja dolna' }).boundingBox()
+      const sendBox = await page.getByRole('button', { name: 'Send' }).boundingBox()
+      const bottomNavBox = await page.getByRole('navigation', { name: 'Bottom navigation' }).boundingBox()
       expect(sendBox).not.toBeNull()
       expect(bottomNavBox).not.toBeNull()
       expect(sendBox!.y + sendBox!.height).toBeLessThanOrEqual(bottomNavBox!.y + 1)
@@ -166,19 +166,19 @@ test.describe('Chat UI', () => {
     await openChatWithMock(page, [{
       kind: 'error',
       status: 503,
-      message: 'Nie udało się załadować kontekstu. Spróbuj ponownie.',
+      message: 'Could not load context. Try again.',
     }])
 
     await sendQuestion(page)
-    await expect(page.getByRole('alert')).toContainText('Nie udało się załadować kontekstu.')
+    await expect(page.getByRole('alert')).toContainText('Could not load context.')
 
     const composer = page.locator('.coach-composer')
     await expect(composer).toBeInViewport()
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
 
     if (testInfo.project.name === 'mobile') {
-      const sendBox = await page.getByRole('button', { name: 'Wyślij' }).boundingBox()
-      const bottomNavBox = await page.getByRole('navigation', { name: 'Nawigacja dolna' }).boundingBox()
+      const sendBox = await page.getByRole('button', { name: 'Send' }).boundingBox()
+      const bottomNavBox = await page.getByRole('navigation', { name: 'Bottom navigation' }).boundingBox()
       expect(sendBox).not.toBeNull()
       expect(bottomNavBox).not.toBeNull()
       expect(sendBox!.y + sendBox!.height).toBeLessThanOrEqual(bottomNavBox!.y + 1)
@@ -206,7 +206,7 @@ test.describe('Chat UI', () => {
   test('can switch between conversation and plan workspaces', async ({ page }) => {
     await openChatWithMock(page, [])
 
-    await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toBeVisible({ timeout: 5_000 })
     await expect(page.getByRole('button', { name: 'Reset' })).toHaveCount(0)
 
     const modeSwitch = page.locator('.coach-mode-switch')
@@ -214,19 +214,19 @@ test.describe('Chat UI', () => {
     await expect(planBtn).toBeVisible({ timeout: 5_000 })
     await planBtn.click()
 
-    await expect(page.getByRole('heading', { name: 'Brief treningowy' })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('heading', { name: 'Workout brief' })).toBeVisible({ timeout: 5_000 })
 
     await page.screenshot({ path: 'test-results/chat-generator.png' })
 
-    const conversationBtn = modeSwitch.getByRole('button', { name: /^Rozmowa/i })
+    const conversationBtn = modeSwitch.getByRole('button', { name: /^Chat/i })
     await conversationBtn.click()
-    await expect(page.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toBeVisible({ timeout: 5_000 })
   })
 
   test('mock runtime rejects invalid AI request contracts without consuming an attempt', async ({ page }) => {
     await openChatWithMock(page, [{
       frames: [
-        { delayMs: 20, frame: { type: 'chunk', text: 'Pełna odpowiedź' } },
+        { delayMs: 20, frame: { type: 'chunk', text: 'Pełna response' } },
         { delayMs: 20, frame: { type: 'done' } },
       ],
     }])
@@ -297,23 +297,23 @@ test.describe('Chat UI', () => {
     ])
 
     await sendQuestion(page)
-    await expect(page.getByText('Pełna odpowiedź', { exact: true })).toBeVisible()
+    await expect(page.getByText('Pełna response', { exact: true })).toBeVisible()
   })
 
   test('attaches limited context to the completed answer', async ({ page }) => {
     await openChatWithMock(page, [{
       contextHeader: 'limited;unavailable=readiness,records',
       frames: [
-        { delayMs: 20, frame: { type: 'chunk', text: 'Odpowiedź z częściowym kontekstem' } },
+        { delayMs: 20, frame: { type: 'chunk', text: 'Response z częściowym kontekstem' } },
         { delayMs: 20, frame: { type: 'done' } },
       ],
     }])
 
     await sendQuestion(page)
     await expect(page.getByRole('status')).toContainText(
-      'Odpowiedź powstała bez części danych: gotowości i rekordów.',
+      'Response was created with some data unavailable: readiness and records.',
     )
-    await expect(page.getByText('Odpowiedź z częściowym kontekstem', { exact: true })).toBeVisible()
+    await expect(page.getByText('Response z częściowym kontekstem', { exact: true })).toBeVisible()
   })
 
   test('attaches limited context to the generated plan preview', async ({ page }) => {
@@ -328,52 +328,52 @@ test.describe('Chat UI', () => {
     }])
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
-    await page.getByRole('group', { name: 'Tryb AI Coacha' })
+    await page.getByRole('group', { name: 'AI Coach mode' })
       .getByRole('button', { name: /^Plan/ }).click()
-    await page.getByRole('textbox', { name: 'Cel planu' }).fill('Budowa siły')
-    await page.getByRole('button', { name: 'Generuj plan' }).click()
+    await page.getByRole('textbox', { name: 'Plan goal' }).fill('Budowa siły')
+    await page.getByRole('button', { name: 'Generate plan' }).click()
 
     await expect(page.getByRole('heading', { name: 'Plan testowy' })).toBeVisible()
     await expect(page.getByRole('status')).toContainText(
-      'Plan powstał bez części danych: profilu i treningów.',
+      'Plan was created with some data unavailable: profile and workouts.',
     )
   })
 
   test('retries after total context failure without duplicating the question', async ({ page }) => {
     await openChatWithMock(page, [
-      { kind: 'error', status: 503, message: 'Nie udało się załadować kontekstu. Spróbuj ponownie.' },
+      { kind: 'error', status: 503, message: 'Could not load context. Try again.' },
       {
         frames: [
-          { delayMs: 20, frame: { type: 'chunk', text: 'Odpowiedź po ponowieniu' } },
+          { delayMs: 20, frame: { type: 'chunk', text: 'Response po ponowieniu' } },
           { delayMs: 20, frame: { type: 'done' } },
         ],
       },
     ])
 
     await sendQuestion(page)
-    await expect(page.getByRole('alert')).toContainText('Nie udało się załadować kontekstu.')
-    await page.getByRole('button', { name: 'Ponów odpowiedź AI' }).click()
+    await expect(page.getByRole('alert')).toContainText('Could not load context.')
+    await page.getByRole('button', { name: 'Retry AI response' }).click()
 
-    await expect(page.getByText('Odpowiedź po ponowieniu', { exact: true })).toBeVisible()
+    await expect(page.getByText('Response po ponowieniu', { exact: true })).toBeVisible()
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
   })
 
   test('removes a partial answer and exposes retry after a stream error', async ({ page }) => {
     await openChatWithMock(page, [{
       frames: [
-        { delayMs: 20, frame: { type: 'chunk', text: 'Częściowa odpowiedź' } },
+        { delayMs: 20, frame: { type: 'chunk', text: 'Częściowa response' } },
         { delayMs: 150, frame: { type: 'error', message: 'Połączenie zostało zerwane.' } },
       ],
     }])
 
     await sendQuestion(page)
-    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toBeVisible()
-    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Częściowa response', { exact: true })).toBeVisible()
+    await expect(page.getByText('Częściowa response', { exact: true })).toHaveCount(0)
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
 
     const alert = page.getByRole('alert')
     await expect(alert).toContainText('Połączenie zostało zerwane.')
-    const retry = page.getByRole('button', { name: 'Ponów odpowiedź AI' })
+    const retry = page.getByRole('button', { name: 'Retry AI response' })
     await expect(retry).toBeVisible()
     await retry.focus()
     await expect(retry).toBeFocused()
@@ -383,54 +383,54 @@ test.describe('Chat UI', () => {
   test('aborts on mode switch and retries without duplicating the question', async ({ page }) => {
     await openChatWithMock(page, [
       {
-        frames: [{ delayMs: 20, frame: { type: 'chunk', text: 'Częściowa odpowiedź' } }],
+        frames: [{ delayMs: 20, frame: { type: 'chunk', text: 'Częściowa response' } }],
         holdOpen: true,
       },
       {
         frames: [
-          { delayMs: 20, frame: { type: 'chunk', text: 'Pełna odpowiedź' } },
+          { delayMs: 20, frame: { type: 'chunk', text: 'Pełna response' } },
           { delayMs: 20, frame: { type: 'done' } },
         ],
       },
     ])
 
     await sendQuestion(page)
-    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toBeVisible()
+    await expect(page.getByText('Częściowa response', { exact: true })).toBeVisible()
 
-    const modeSwitch = page.getByRole('group', { name: 'Tryb AI Coacha' })
+    const modeSwitch = page.getByRole('group', { name: 'AI Coach mode' })
     await modeSwitch.getByRole('button', { name: /^Plan/i }).click()
     await expectAbortCount(page, 1)
-    await expect(page.getByRole('heading', { name: 'Brief treningowy' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Workout brief' })).toBeVisible()
 
-    await modeSwitch.getByRole('button', { name: /^Rozmowa/i }).click()
-    await expect(page.getByRole('status')).toContainText('Generowanie przerwane')
-    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toHaveCount(0)
+    await modeSwitch.getByRole('button', { name: /^Chat/i }).click()
+    await expect(page.getByRole('status')).toContainText('Generation stopped')
+    await expect(page.getByText('Częściowa response', { exact: true })).toHaveCount(0)
     await page.screenshot({ path: 'test-results/chat-stream-interrupted.png', fullPage: true })
 
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
-    await page.getByRole('button', { name: 'Ponów odpowiedź AI' }).click()
-    await expect(page.getByText('Pełna odpowiedź', { exact: true })).toBeVisible()
+    await page.getByRole('button', { name: 'Retry AI response' }).click()
+    await expect(page.getByText('Pełna response', { exact: true })).toBeVisible()
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
   })
 
   test('aborts on Reset and ignores late assistant text', async ({ page }) => {
     await openChatWithMock(page, [{
       frames: [
-        { delayMs: 20, frame: { type: 'chunk', text: 'Częściowa odpowiedź' } },
+        { delayMs: 20, frame: { type: 'chunk', text: 'Częściowa response' } },
         { delayMs: 250, frame: { type: 'chunk', text: 'Spóźniony tekst' } },
       ],
       holdOpen: true,
     }])
 
     await sendQuestion(page)
-    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toBeVisible()
+    await expect(page.getByText('Częściowa response', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Reset' }).click()
     await expectAbortCount(page, 1)
 
-    await expect(page.getByLabel('Rozmowa z AI Coachem')
-      .getByText('Zadaj pytanie albo wybierz skrót.', { exact: true })).toBeVisible()
+    await expect(page.getByLabel('Chat with AI Coach')
+      .getByText('Ask a question or choose a shortcut.', { exact: true })).toBeVisible()
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(0)
-    await expect(page.getByText('Częściowa odpowiedź', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Częściowa response', { exact: true })).toHaveCount(0)
     await page.waitForTimeout(350)
     await expect(page.getByText('Spóźniony tekst', { exact: true })).toHaveCount(0)
   })

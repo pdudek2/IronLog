@@ -31,10 +31,10 @@ test.describe('Phase 4 mobile ergonomics', () => {
   test('preserves the 44px desktop picker close control', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'desktop-only geometry contract')
     await openLargeTemplateDraft(page)
-    await page.getByRole('button', { name: 'Dodaj ćwiczenie' }).first().click()
+    await page.getByRole('button', { name: 'Add exercise' }).first().click()
 
-    const close = page.getByRole('dialog', { name: /Wybierz ćwiczenie/ })
-      .getByRole('button', { name: 'Zamknij wybór ćwiczenia' })
+    const close = page.getByRole('dialog', { name: /Choose an exercise/ })
+      .getByRole('button', { name: 'Close exercise picker' })
     const box = await close.boundingBox()
     expect(box, 'picker close should be visible').not.toBeNull()
     expect(box!.width).toBe(44)
@@ -80,21 +80,21 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await openLargeTemplateDraft(page)
 
-    const name = page.getByRole('textbox', { name: 'Nazwa', exact: true })
+    const name = page.getByRole('textbox', { name: 'Name', exact: true })
     await name.fill('Upper / Lower 4× zmieniony')
     await name.blur()
 
     await page.getByRole('button', { name: 'Start', exact: true }).click()
-    const dialog = page.getByRole('dialog', { name: 'Opuścić edytor?' })
+    const dialog = page.getByRole('dialog', { name: 'Leave editor?' })
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: 'Zostań' }).click()
+    await dialog.getByRole('button', { name: 'Stay' }).click()
     await expect(page).toHaveURL(/\/templates\/new/)
     await expect(dialog).toBeHidden()
     await expect(name).toHaveValue('Upper / Lower 4× zmieniony')
 
     await page.evaluate(() => history.back())
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: 'Opuść bez zapisu' }).click({ noWaitAfter: true })
+    await dialog.getByRole('button', { name: 'Leave without saving' }).click({ noWaitAfter: true })
     await expect(page).toHaveURL(/\/templates$/)
   })
 
@@ -106,15 +106,15 @@ test.describe('Phase 4 mobile ergonomics', () => {
     const navBoxes = []
     const navItems = [
       ['Start', /^Start$/],
-      ['Postępy', /^Postępy$/],
-      ['Plany', /^Plany$/],
-      ['Ćwiczenia', /^Ćwiczenia$/],
-      ['wejście do treningu', /^(?:Rozpocznij nowy trening|Wznów trening)$/],
-      ['Historia', /^Historia$/],
+      ['Progress', /^Progress$/],
+      ['Plans', /^Plans$/],
+      ['Exercises', /^Exercises$/],
+      ['wejście do treningu', /^(?:Start new workout|Resume workout)$/],
+      ['History', /^History$/],
       ['AI', /^AI$/],
     ] as const
     for (const [label, accessibleName] of navItems) {
-      const item = page.getByRole('navigation', { name: 'Nawigacja dolna' })
+      const item = page.getByRole('navigation', { name: 'Bottom navigation' })
         .getByRole('button', { name: accessibleName })
       await expectMinHitArea(item, `BottomNav ${label}`)
       navBoxes.push((await item.boundingBox())!)
@@ -122,12 +122,12 @@ test.describe('Phase 4 mobile ergonomics', () => {
     for (let index = 1; index < navBoxes.length; index += 1) {
       expect(navBoxes[index].x).toBeGreaterThanOrEqual(navBoxes[index - 1].x + navBoxes[index - 1].width)
     }
-    await expectMinHitArea(page.getByRole('button', { name: /Usuń ćwiczenie Bench Press/ }).first(), 'template delete')
+    await expectMinHitArea(page.getByRole('button', { name: /Remove exercise Bench Press/ }).first(), 'template delete')
 
-    await page.getByRole('button', { name: 'Dodaj ćwiczenie' }).first().click()
-    const picker = page.getByRole('dialog', { name: /Wybierz ćwiczenie/ })
-    await expectMinHitArea(picker.getByRole('button', { name: 'Zamknij wybór ćwiczenia' }), 'picker close')
-    await expectMinHitArea(picker.getByRole('button', { name: 'Wszystkie' }), 'picker category')
+    await page.getByRole('button', { name: 'Add exercise' }).first().click()
+    const picker = page.getByRole('dialog', { name: /Choose an exercise/ })
+    await expectMinHitArea(picker.getByRole('button', { name: 'Close exercise picker' }), 'picker close')
+    await expectMinHitArea(picker.getByRole('button', { name: 'All' }), 'picker category')
   })
 
   test('exposes 44px route filter targets at 320px', async ({ page, cleanup }, testInfo) => {
@@ -136,27 +136,27 @@ test.describe('Phase 4 mobile ergonomics', () => {
 
     await page.goto('/exercises')
     await expectAppReady(page, '/exercises')
-    await page.getByRole('button', { name: 'Filtry' }).click()
+    await page.getByRole('button', { name: 'Filters' }).click()
     await expectMinHitArea(
-      page.getByRole('group', { name: 'Kategoria ćwiczenia' }).getByRole('button', { name: 'Wszystkie', exact: true }),
+      page.getByRole('group', { name: 'Exercise category' }).getByRole('button', { name: 'All', exact: true }),
       'exercise category',
     )
 
-    await page.getByRole('button', { name: 'Dodaj własne' }).click()
-    const muscleButton = page.getByRole('group', { name: 'Grupy mięśniowe' })
-      .getByRole('button', { name: 'Klatka', exact: true })
+    await page.getByRole('button', { name: 'Add custom' }).click()
+    const muscleButton = page.getByRole('group', { name: 'Muscle groups' })
+      .getByRole('button', { name: 'Chest', exact: true })
     await expectMinHitArea(
       muscleButton,
       'exercise form muscle',
     )
     expect(await muscleButton.evaluate((element) => getComputedStyle(element).cursor)).toBe('pointer')
     expect(await muscleButton.evaluate((element) => getComputedStyle(element).transitionProperty)).not.toContain('all')
-    await page.getByRole('button', { name: 'Zamknij formularz' }).click()
+    await page.getByRole('button', { name: 'Close form' }).click()
 
     await page.goto('/history')
     await expectAppReady(page, '/history')
-    await expectMinHitArea(page.getByRole('button', { name: 'Wszystko', exact: true }), 'history range')
-    const historySearch = page.getByLabel('Szukaj w historii treningów')
+    await expectMinHitArea(page.getByRole('button', { name: 'All', exact: true }), 'history range')
+    const historySearch = page.getByLabel('Search workout history')
     await historySearch.fill('bench')
     expect(await page.evaluate(() => Array.from(document.styleSheets).some((sheet) => {
       try {
@@ -169,28 +169,28 @@ test.describe('Phase 4 mobile ergonomics', () => {
         return false
       }
     }))).toBe(true)
-    await expectMinHitArea(page.getByRole('button', { name: 'Wyczyść wyszukiwanie' }), 'history clear search')
+    await expectMinHitArea(page.getByRole('button', { name: 'Clear search' }), 'history clear search')
 
     await page.goto('/progress')
     await expectAppReady(page, '/progress')
-    await expectMinHitArea(page.getByRole('button', { name: '30 dni', exact: true }), 'progress range')
+    await expectMinHitArea(page.getByRole('button', { name: '30 days', exact: true }), 'progress range')
 
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
-    await page.getByRole('group', { name: 'Tryb AI Coacha' }).getByRole('button', { name: 'Plan', exact: true }).click()
+    await page.getByRole('group', { name: 'AI Coach mode' }).getByRole('button', { name: 'Plan', exact: true }).click()
     await expectMinHitArea(
-      page.getByRole('group', { name: 'Liczba dni treningowych w tygodniu' }).getByRole('button', { name: '3 dni' }),
+      page.getByRole('group', { name: 'Training days per week' }).getByRole('button', { name: '3 days' }),
       'coach plan days',
     )
 
     cleanup.add('discard active session', () => discardActiveSession(page))
     await page.goto('/workout/new')
     await expectAppReady(page, '/workout/new', 25_000)
-    const staleSession = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
+    const staleSession = page.getByRole('button', { name: 'Discard and start again' })
     if (await staleSession.isVisible().catch(() => false)) {
       await staleSession.click()
     }
-    const startSession = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
+    const startSession = page.getByRole('button', { name: 'Start a new session' })
     if (await startSession.isVisible().catch(() => false)) {
       await startSession.click()
     }

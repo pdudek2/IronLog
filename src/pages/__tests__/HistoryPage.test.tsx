@@ -71,7 +71,7 @@ describe('HistoryPage range state', () => {
         startedAt: Date.now() - 120 * 86_400_000,
         finishedAt: Date.now() - 120 * 86_400_000 + 3_600_000,
         materialized: true,
-        label: 'Starsza sesja',
+        label: 'Starsza session',
         exercises: [{ name: 'Przysiad', sets: [{ weight: 80, reps: 5 }] }],
       }],
       truncated: false,
@@ -79,12 +79,12 @@ describe('HistoryPage range state', () => {
 
     render(<HistoryPage />)
 
-    const action = await screen.findByRole('button', { name: 'Pokaż wszystko' })
-    expect(screen.queryByText('Starsza sesja')).not.toBeInTheDocument()
+    const action = await screen.findByRole('button', { name: 'Show all' })
+    expect(screen.queryByText('Starsza session')).not.toBeInTheDocument()
     fireEvent.click(action)
 
-    expect(screen.getByText('Starsza sesja')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Wszystko' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByText('Starsza session')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'All' })).toHaveAttribute('aria-pressed', 'true')
   })
 
   it('keeps workout history visible while a failed user catalog remains retryable', async () => {
@@ -94,11 +94,11 @@ describe('HistoryPage range state', () => {
         startedAt: Date.now() - 86_400_000,
         finishedAt: Date.now() - 86_400_000 + 3_600_000,
         materialized: true,
-        label: 'Wieczorna sesja',
+        label: 'Wieczorna session',
         exercises: [{
           exerciseId: 'custom-row',
           exerciseSource: 'user',
-          name: 'Wiosłowanie własne',
+          name: 'Wiosłowanie custom',
           sets: [{ weight: 50, reps: 8 }],
         }],
       }],
@@ -110,13 +110,13 @@ describe('HistoryPage range state', () => {
 
     render(<HistoryPage />)
 
-    expect(await screen.findByText('Wieczorna sesja')).toBeInTheDocument()
-    expect(screen.queryByText('Nie udało się pobrać historii')).not.toBeInTheDocument()
+    expect(await screen.findByText('Wieczorna session')).toBeInTheDocument()
+    expect(screen.queryByText('Could not load history')).not.toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Nie udało się wczytać Twoich ćwiczeń. Historia nadal jest dostępna, ale część kategorii może być niepełna.',
+      'Could not load your exercises. History is still available, but some categories may be incomplete.',
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
   })
 
@@ -127,11 +127,11 @@ describe('HistoryPage range state', () => {
         startedAt: Date.now() - 86_400_000,
         finishedAt: Date.now() - 86_400_000 + 3_600_000,
         materialized: true,
-        label: 'Plecy',
+        label: 'Back',
         exercises: [{
           exerciseId: 'custom-row',
           exerciseSource: 'user',
-          name: 'Wiosłowanie własne',
+          name: 'Wiosłowanie custom',
           sets: [{ weight: 50, reps: 8 }],
         }],
       }],
@@ -139,7 +139,7 @@ describe('HistoryPage range state', () => {
     })
     mocks.getUserExercises.mockResolvedValue([{
       id: 'custom-row',
-      name: 'Wiosłowanie własne',
+      name: 'Wiosłowanie custom',
       category: 'back',
       equipment: 'barbell',
       muscles: ['back'],
@@ -147,8 +147,8 @@ describe('HistoryPage range state', () => {
 
     render(<HistoryPage />)
 
-    const categories = await screen.findByRole('group', { name: 'Kategorie ćwiczeń' })
-    expect(within(categories).getByRole('button', { name: 'Plecy' })).toBeInTheDocument()
+    const categories = await screen.findByRole('group', { name: 'Exercise categories' })
+    expect(within(categories).getByRole('button', { name: 'Back' })).toBeInTheDocument()
   })
 
   it('renders a failed history load as a flat retryable result state', async () => {
@@ -156,7 +156,7 @@ describe('HistoryPage range state', () => {
 
     const { container } = render(<HistoryPage />)
 
-    const retry = await screen.findByRole('button', { name: 'Spróbuj ponownie' })
+    const retry = await screen.findByRole('button', { name: 'Try again' })
     const results = container.querySelector('.history-results')
 
     expect(results).toContainElement(retry)
@@ -182,7 +182,7 @@ describe('HistoryPage range state', () => {
         startedAt: Date.now() - 86_400_000,
         finishedAt: Date.now() - 86_400_000 + 3_600_000,
         materialized: true,
-        label: 'Nowsza sesja',
+        label: 'Nowsza session',
         exercises: [{ name: 'Przysiad', sets: [{ weight: 80, reps: 5 }] }],
       }],
       truncated: false,
@@ -197,10 +197,10 @@ describe('HistoryPage range state', () => {
     mocks.user = { uid: 'user-2' }
     rerender(<HistoryPage />)
 
-    expect(await screen.findByText('Nowsza sesja')).toBeInTheDocument()
+    expect(await screen.findByText('Nowsza session')).toBeInTheDocument()
     await act(async () => olderRequest.reject(new Error('obsolete history failure')))
 
-    expect(screen.getByText('Nowsza sesja')).toBeInTheDocument()
+    expect(screen.getByText('Nowsza session')).toBeInTheDocument()
     expect(mocks.toastError).not.toHaveBeenCalled()
   })
 
@@ -295,12 +295,12 @@ describe('HistoryPage range state', () => {
 
     expect(within(row).getByText('Przysiad · Wiosłowanie · Wyciskanie · +2')).toBeInTheDocument()
     expect(within(row).queryByText(/Martwy ciąg/)).not.toBeInTheDocument()
-    expect(within(row).queryByLabelText('Kategorie ćwiczeń')).not.toBeInTheDocument()
+    expect(within(row).queryByLabelText('Exercise categories')).not.toBeInTheDocument()
     expect(within(row).queryByLabelText('Statystyki treningu')).not.toBeInTheDocument()
-    expect(within(row).getByText('niedz., 30')).toBeInTheDocument()
+    expect(within(row).getByText('Sun, 30')).toBeInTheDocument()
     expect(within(row).getByText('1h 0m')).toBeInTheDocument()
     expect(within(row).getByText('1.8k kg')).toBeInTheDocument()
-    expect(within(row).getByText('5 serii')).toBeInTheDocument()
+    expect(within(row).getByText('5 sets')).toBeInTheDocument()
   })
 
   it('presents aggregate workout volume in the preferred units', async () => {

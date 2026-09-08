@@ -29,8 +29,8 @@ export function getCappedWorkoutFinishedAt(startedAt: number, now = Date.now()):
 export function getStaleSessionAgeLabel(startedAt: number, now = Date.now()): string {
   const ageMs = Math.max(0, now - startedAt)
   const days = Math.floor(ageMs / 86_400_000)
-  if (days >= 1) return `${days} ${days === 1 ? 'dzień' : 'dni'}`
+  if (days >= 1) return `${days} ${days === 1 ? 'day' : 'days'}`
 
   const hours = Math.max(1, Math.floor(ageMs / 3_600_000))
-  return `${hours} ${hours === 1 ? 'godzinę' : hours < 5 ? 'godziny' : 'godzin'}`
+  return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
 }

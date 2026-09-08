@@ -24,7 +24,7 @@ async function buildNameClaimId(uid: string, name: string): Promise<string> {
 }
 
 function duplicateNameError(name: string): Error {
-  return new Error(`Ćwiczenie o nazwie "${name}" już istnieje.`)
+  return new Error(`An exercise named "${name}" already exists.`)
 }
 
 export async function getUserExercises(uid: string): Promise<Exercise[]> {
@@ -89,7 +89,7 @@ export async function updateUserExercise(
   const current = await getDoc(ref)
 
   if (!current.exists()) {
-    throw new Error('Nie znaleziono ćwiczenia do aktualizacji.')
+    throw new Error('Exercise to update was not found.')
   }
 
   const currentData = current.data()
@@ -108,7 +108,7 @@ export async function updateUserExercise(
 
     const hasOtherExerciseWithSameName = duplicate.docs.some((docSnap) => docSnap.id !== id)
     if (hasOtherExerciseWithSameName) {
-      throw new Error(`Ćwiczenie o nazwie "${trimmedName}" już istnieje.`)
+      throw new Error(`An exercise named "${trimmedName}" already exists.`)
     }
   }
 
@@ -118,7 +118,7 @@ export async function updateUserExercise(
   await runTransaction(db, async (transaction) => {
     const stored = await transaction.get(ref)
     if (!stored.exists()) {
-      throw new Error('Nie znaleziono ćwiczenia do aktualizacji.')
+      throw new Error('Exercise to update was not found.')
     }
 
     const storedData = stored.data() as StoredUserExercise

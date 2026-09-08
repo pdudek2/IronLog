@@ -60,7 +60,7 @@ describe('ProfileRouteOutlet', () => {
     mocks.getProfile.mockReturnValue(request.promise)
     renderProfileRouter('/workout/new')
 
-    expect(screen.getByText('Wczytywanie profilu...')).toBeInTheDocument()
+    expect(screen.getByText('Loading profile...')).toBeInTheDocument()
     expect(screen.queryByTestId('protected-content')).not.toBeInTheDocument()
 
     act(() => request.resolve(lbsProfile))
@@ -74,8 +74,8 @@ describe('ProfileRouteOutlet', () => {
       .mockResolvedValueOnce(lbsProfile)
     renderProfileRouter('/workout/new')
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się wczytać profilu')
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load your profile')
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     expect(await screen.findByText('units:lbs')).toBeInTheDocument()
   })

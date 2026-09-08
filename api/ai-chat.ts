@@ -135,7 +135,7 @@ function normalizePlanRequest(raw: AiChatBody['planRequest']) {
     : []
 
   if (goal.length < 2) {
-    throw new ApiError(400, 'Podaj cel planu, żeby wygenerować szablon.')
+    throw new ApiError(400, 'Enter a plan goal to generate a template.')
   }
 
   return { goal, daysPerWeek, experience, focus, notes, equipment }
@@ -148,7 +148,7 @@ async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]
       .limit(AI_USER_EXERCISE_LIMIT + 1)
       .get()
     if (userExercisesSnap.docs.length > AI_USER_EXERCISE_LIMIT) {
-      throw new ApiError(422, `Generator obsługuje do ${AI_USER_EXERCISE_LIMIT} własnych ćwiczeń. Przy większym katalogu utwórz plan ręcznie w Planach.`, {
+      throw new ApiError(422, `The generator supports up to ${AI_USER_EXERCISE_LIMIT} custom exercises. For a larger library, create a plan manually in Plans.`, {
         code: 'ai_catalog_too_large',
       })
     }
@@ -184,7 +184,7 @@ async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]
     console.error('[ai-chat exercise catalog error]', error)
     throw new ApiError(
       503,
-      'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      'Could not load the exercise library. Try again.',
       {
         code: 'ai_catalog_unavailable',
         cause: error,
@@ -197,29 +197,29 @@ function buildSystemPrompt(context: AiUserContext): string {
   const sections = buildChatContextSections(context)
 
   return [
-    'Jesteś AI Coachem aplikacji IronLog.',
-    'Odpowiadasz po polsku, konkretnie, wspierająco i bez lania wody.',
-    'Bazuj wyłącznie na danych z kontekstu, a jeśli czegoś brakuje, powiedz to wprost.',
-    'Nie diagnozuj medycznie i nie udawaj lekarza. Przy bólu, kontuzji lub niepokojących objawach kieruj do specjalisty.',
-    'Jeśli użytkownik pyta o plan lub progres, odnoś się do jego celu, readiness i ostatnich sesji.',
-    'Jeśli w sekcji OSTATNIE 4 TRENINGI widzisz ćwiczenia i sety, traktuj to jako dostęp do szczegółów sesji i nie proś ponownie o listę ćwiczeń.',
-    'Jeśli użytkownik pyta o miesiąc, spadki formy lub gorsze momenty, korzystaj z sekcji SYGNAŁY Z OSTATNICH 30 DNI.',
-    'Źródło oznaczone jako chwilowo niedostępne nie dowodzi braku aktywności ani braku danych użytkownika; nie wyciągaj z niego wniosków.',
-    'Nie streszczaj samych danych. Każda odpowiedź ma prowadzić do wniosku, decyzji albo poprawki na kolejny trening.',
-    'Używaj krótkiego markdownu: krótkie nagłówki, zwięzłe bullet pointy, bez ściany tekstu.',
-    'Gdy użytkownik pyta, czy ostatni trening był dobry, odpowiedz w strukturze:',
-    '## Werdykt',
-    '1-2 zdania oceny ogólnej.',
-    '## Co było dobre',
-    '2-4 konkretne punkty z nazwami ćwiczeń lub objętością.',
-    '## Co poprawić',
-    '2-4 konkretne punkty dotyczące doboru ćwiczeń, balansu, objętości albo intensywności.',
-    '## Kolejny krok',
-    '2-3 konkretne rekomendacje na następną sesję.',
-    'Jeśli pytanie dotyczy jednej sesji, odnoś się do ćwiczeń z nazwy, nie tylko do całego wolumenu.',
-    'Jeśli readiness jest umiarkowane lub niskie, oceń czy intensywność i objętość były adekwatne do tego stanu.',
+    'You are the AI Coach in IronLog.',
+    'Respond in English. Be specific, supportive and concise.',
+    'Use only the provided context data. State clearly when information is missing.',
+    'Do not make medical diagnoses or pretend to be a doctor. Recommend a qualified professional for pain, injury or concerning symptoms.',
+    'For questions about plans or progress, refer to the user goal, readiness and recent sessions.',
+    'When RECENT 4 WORKOUTS includes exercises and sets, use those session details rather than asking for the exercise list again.',
+    'For questions about the month, performance drops or difficult periods, use SIGNALS FROM THE LAST 30 DAYS.',
+    'A temporarily unavailable source is not evidence of inactivity or missing user data; do not draw conclusions from it.',
+    'Go beyond summarizing data. Each response should lead to an insight, decision or adjustment for the next workout.',
+    'Use brief Markdown: short headings and concise bullet points, without walls of text.',
+    'When asked whether the last workout was good, use this structure:',
+    '## Verdict',
+    '1-2 sentences of overall assessment.',
+    '## What went well',
+    '2-4 specific points with exercise names or volume.',
+    '## What to improve',
+    '2-4 specific points about exercise selection, balance, volume or intensity.',
+    '## Next step',
+    '2-3 specific recommendations for the next session.',
+    'For a question about one session, refer to exercises by name, not just total volume.',
+    'If readiness is moderate or low, assess whether intensity and volume were appropriate.',
     '',
-    'KONTEKST UŻYTKOWNIKA',
+    'USER CONTEXT',
     sections.profileLine,
     sections.readinessLine,
     '',
@@ -245,9 +245,9 @@ function buildPlanSystemPrompt(
     ? sections.workoutsLine
     : context.recentWorkouts.length > 0
       ? context.recentWorkouts
-          .map((workout) => `${workout.label}: ${workout.exerciseCount} ćwiczeń, ${workout.totalVolume} kg`)
+          .map((workout) => `${workout.label}: ${workout.exerciseCount} exercises, ${workout.totalVolume} kg`)
           .join('\n')
-      : 'Brak historii treningów.'
+      : 'No workout history.'
 
   const catalogLines = catalog
     .map((exercise) => [
@@ -261,30 +261,30 @@ function buildPlanSystemPrompt(
     .join('\n')
 
   return [
-    'Jesteś generatorem planów treningowych dla aplikacji IronLog.',
-    'Tworzysz praktyczne szablony treningowe zapisane w JSON.',
-    'Odpowiadasz WYŁĄCZNIE poprawnym JSON-em bez markdownu, bez komentarzy i bez dodatkowego tekstu.',
-    'Używaj tylko ćwiczeń z podanego katalogu i zawsze zwracaj poprawne exerciseId oraz exerciseSource.',
-    'Jeśli nie znasz sensownego ciężaru startowego, ustaw targetWeight na 0.',
-    `Zwróć dokładnie ${request.daysPerWeek} dni treningowe.`,
-    'Każdy dzień powinien mieć zwykle 4-6 ćwiczeń, chyba że kontekst sugeruje mniej.',
-    'Dobieraj plan do celu użytkownika, readiness i ostatnich sesji, ale nie wymyślaj nieistniejących danych.',
-    'Źródło oznaczone jako chwilowo niedostępne nie dowodzi braku aktywności ani braku danych użytkownika; nie wyciągaj z niego wniosków.',
-    'JSON ma mieć shape:',
+    'You generate workout plans for IronLog. Write plan names, day names and explanations in English. Preserve exercise names from the supplied catalog.',
+    'Create practical workout templates in JSON.',
+    'Respond ONLY with valid JSON: no Markdown, comments or extra text.',
+    'Use only exercises from the supplied catalog and always return valid exerciseId and exerciseSource values.',
+    'If you cannot determine a sensible starting weight, set targetWeight to 0.',
+    `Return exactly ${request.daysPerWeek} workout days.`,
+    'Each day should usually contain 4-6 exercises, unless the context suggests fewer.',
+    'Adapt the plan to the user goal, readiness and recent sessions without inventing data.',
+    'A temporarily unavailable source is not evidence of inactivity or missing user data; do not draw conclusions from it.',
+    'Use this JSON shape:',
     '{"name":"string","summary":"string","days":[{"name":"string","exercises":[{"exerciseId":"string","exerciseSource":"global|user","sets":4,"targetReps":8,"targetWeight":0}]}]}',
     '',
-    'KONTEKST UŻYTKOWNIKA',
+    'USER CONTEXT',
     sections.profileLine,
     sections.readinessLine,
-    'OSTATNIE 4 TRENINGI',
+    'RECENT 4 WORKOUTS',
     recentContext,
-    'SYGNAŁY Z OSTATNICH 30 DNI',
+    'SIGNALS FROM THE LAST 30 DAYS',
     sections.monthlyLine,
     '',
     sections.recordsHeading,
     sections.recordsLine,
     '',
-    'DOSTĘPNE ĆWICZENIA',
+    'AVAILABLE EXERCISES',
     catalogLines,
   ].join('\n')
 }
@@ -295,18 +295,18 @@ function buildPlanUserPrompt(
 ): string {
   const equipmentLine = request.equipment.length > 0
     ? request.equipment.join(', ')
-    : 'brak ograniczeń sprzętowych'
+    : 'no equipment restrictions'
 
   return [
-    `Cel planu: ${request.goal}`,
-    `Liczba dni w tygodniu: ${request.daysPerWeek}`,
-    `Poziom: ${request.experience}`,
-    `Dostępny sprzęt: ${equipmentLine}`,
-    `Fokus: ${request.focus || 'brak dodatkowego fokusu'}`,
-    `Uwagi: ${request.notes || 'brak dodatkowych uwag'}`,
+    `Plan goal: ${request.goal}`,
+    `Days per week: ${request.daysPerWeek}`,
+    `Level: ${request.experience}`,
+    `Available equipment: ${equipmentLine}`,
+    `Focus: ${request.focus || 'no additional focus'}`,
+    `Notes: ${request.notes || 'no additional notes'}`,
     context.sources.profile === 'unavailable'
-      ? 'Priorytet wynikający z profilu: dane chwilowo niedostępne'
-      : `Priorytet wynikający z profilu: ${context.primaryGoal || 'brak danych'}`,
+      ? 'Profile priority: data temporarily unavailable'
+      : `Profile priority: ${context.primaryGoal || 'no data'}`,
   ].join('\n')
 }
 
@@ -343,7 +343,7 @@ function extractJsonObject(raw: string): string {
     return withoutFence.slice(firstBrace, lastBrace + 1)
   }
 
-  throw new Error('Generator planu nie zwrócił poprawnego JSON-a.')
+  throw new Error('The plan generator did not return valid JSON.')
 }
 
 function normalizeExerciseName(value: string) {
@@ -410,25 +410,25 @@ export function normalizeGeneratedPlan(
     return [{
       name: typeof dayRecord.name === 'string' && dayRecord.name.trim()
         ? dayRecord.name.trim().slice(0, 80)
-        : `Dzień ${dayIndex + 1}`,
+        : `Day ${dayIndex + 1}`,
       exercises: exercises.slice(0, 20),
     }]
   })
 
   if (days.length === 0) {
-    throw new Error('Generator nie zwrócił żadnego poprawnego dnia treningowego.')
+    throw new Error('The generator did not return any valid workout days.')
   }
   if (days.length !== request.daysPerWeek) {
-    throw new Error(`Generator zwrócił ${days.length} dni zamiast ${request.daysPerWeek}. Spróbuj wygenerować plan ponownie.`)
+    throw new Error(`The generator returned ${days.length} days instead of ${request.daysPerWeek}. Try generating the plan again.`)
   }
 
-  const fallbackName = request.goal.trim().length > 1 ? `Plan: ${request.goal.trim()}` : 'Nowy plan'
+  const fallbackName = request.goal.trim().length > 1 ? `Plan: ${request.goal.trim()}` : 'New plan'
   const name = typeof record.name === 'string' && record.name.trim()
     ? record.name.trim().slice(0, 80)
     : fallbackName
   const summary = typeof record.summary === 'string' && record.summary.trim()
     ? record.summary.trim().slice(0, 280)
-    : 'Plan wygenerowany na podstawie celu, dostępnego sprzętu i historii treningowej.'
+    : 'Plan generated from your goal, available equipment and training history.'
 
   return { name, summary, days }
 }
@@ -530,7 +530,7 @@ export async function streamChatReply(
     const body = upstream.body
     if (!body) {
       if (bridge.signal.aborted) return
-      throw new Error('Claude API nie zwróciło treści odpowiedzi.')
+      throw new Error('Claude API returned no response content.')
     }
 
     res.statusCode = 200
@@ -604,12 +604,12 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const messages = sanitizeMessages(body.messages)
 
     if (apiKey.length < 20) {
-      sendJson(res, 400, { error: 'Brak poprawnego Claude API key.' })
+      sendJson(res, 400, { error: 'A valid Claude API key is required.' })
       return
     }
 
     if (mode === 'chat' && messages.length === 0) {
-      sendJson(res, 400, { error: 'Brak wiadomości do wysłania.' })
+      sendJson(res, 400, { error: 'No message to send.' })
       return
     }
 
@@ -637,6 +637,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    sendApiError(res, error, { fallbackMessage: 'Nie udało się połączyć z AI Coachem.' })
+    sendApiError(res, error, { fallbackMessage: 'Could not connect to AI Coach.' })
   }
 }

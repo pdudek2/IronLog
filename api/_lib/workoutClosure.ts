@@ -222,7 +222,7 @@ function requireActiveSessionRevision(
 ): void {
   if (expectedRevision === undefined) return
   if (active.sessionRevision !== expectedRevision) {
-    throw new ApiError(409, 'Aktywna sesja zmieniła się na innym urządzeniu.', {
+    throw new ApiError(409, 'The active session changed on another device.', {
       code: 'active_session_changed',
     })
   }
@@ -235,7 +235,7 @@ function requireOwnedRecord(
 ): DocumentData {
   const data = snapshot.data()
   if (!data || data.userId !== userId) {
-    throw new ApiError(403, `Brak dostępu do ${resource}.`, { code: 'resource_owner_mismatch' })
+    throw new ApiError(403, `No access to ${resource}.`, { code: 'resource_owner_mismatch' })
   }
   return data
 }
@@ -245,13 +245,13 @@ function requireIdentity(actual: unknown, expected: string): void {
 }
 
 function sessionMismatch(): ApiError {
-  return new ApiError(409, 'Ta sesja nie jest już aktywna na serwerze.', {
+  return new ApiError(409, 'This session is no longer active on the server.', {
     code: 'session_mismatch',
   })
 }
 
 function closureConflict(): ApiError {
-  return new ApiError(409, 'Sesja ma już inny wynik zamknięcia.', {
+  return new ApiError(409, 'The session already has a different closure outcome.', {
     code: 'closure_conflict',
   })
 }

@@ -7,9 +7,9 @@ import {
 } from './support/workoutLifecycleEmulator'
 
 function monthLabel(timestamp: number): string {
-  const label = new Intl.DateTimeFormat('pl-PL', { month: 'long', year: 'numeric' })
+  const label = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
     .format(timestamp)
-  return label.charAt(0).toLocaleUpperCase('pl-PL') + label.slice(1)
+  return label.charAt(0).toLocaleUpperCase('en-US') + label.slice(1)
 }
 
 test.describe('History and list workbenches', () => {

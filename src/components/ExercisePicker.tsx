@@ -3,17 +3,18 @@ import { Search, X } from 'lucide-react'
 import { searchExercises, type Category, type Exercise } from '../data/exercises'
 import type { ExerciseSource } from '../store/workoutStore'
 import { useDialogA11y } from '../hooks/useDialogA11y'
+import { pluralize } from '../lib/pluralize'
 import { formatExerciseMeta } from '../lib/exerciseLabels'
 import type { DataState } from '../types/dataState'
 import { ActionFeedback } from './ActionFeedback'
 
 const CATEGORIES: { value: Category | 'all'; label: string }[] = [
-  { value: 'all',       label: 'Wszystkie' },
-  { value: 'chest',     label: 'Klatka' },
-  { value: 'back',      label: 'Plecy' },
-  { value: 'legs',      label: 'Nogi' },
-  { value: 'shoulders', label: 'Barki' },
-  { value: 'arms',      label: 'Ramiona' },
+  { value: 'all',       label: 'All' },
+  { value: 'chest',     label: 'Chest' },
+  { value: 'back',      label: 'Back' },
+  { value: 'legs',      label: 'Legs' },
+  { value: 'shoulders', label: 'Shoulders' },
+  { value: 'arms',      label: 'Arms' },
   { value: 'core',      label: 'Core' },
   { value: 'cardio',    label: 'Cardio' },
 ]
@@ -79,14 +80,14 @@ export default function ExercisePicker({
         <div className="exercise-picker-head">
           <div className="exercise-picker-title-row">
             <div>
-              <p id={titleId}>Wybierz ćwiczenie</p>
-              <span>{results.length} wyników</span>
+              <p id={titleId}>Choose an exercise</p>
+              <span>{results.length} {pluralize(results.length, 'result', 'results')}</span>
             </div>
             <button
               type="button"
               onClick={onClose}
               className="exercise-picker-close mobile-touch-target"
-              aria-label="Zamknij wybór ćwiczenia"
+              aria-label="Close exercise picker"
             >
               <X size={17} />
             </button>
@@ -97,10 +98,10 @@ export default function ExercisePicker({
             <input
               ref={searchInputRef}
               type="text"
-              placeholder="Szukaj ćwiczenia..."
+              placeholder="Search exercises..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              aria-label="Szukaj ćwiczenia"
+              aria-label="Search exercises"
             />
           </label>
         </div>
@@ -108,7 +109,7 @@ export default function ExercisePicker({
         <div
           className="exercise-picker-categories no-scrollbar"
           role="group"
-          aria-label="Kategoria ćwiczenia"
+          aria-label="Exercise category"
         >
           {CATEGORIES.map((c) => (
             <button
@@ -130,22 +131,22 @@ export default function ExercisePicker({
           {userExercisesState.status === 'loading' && (
             <ActionFeedback
               status="pending"
-              message="Wczytywanie Twoich ćwiczeń…"
+              message="Loading your exercises…"
               className="mx-2 mb-2 sm:mx-1"
             />
           )}
           {userExercisesState.status === 'error' && (
             <ActionFeedback
               status="error"
-              message="Nie udało się wczytać Twoich ćwiczeń. Katalog globalny nadal jest dostępny."
+              message="Could not load your exercises. The shared library is still available."
               onRetry={onRetryUserExercises}
               className="mx-2 mb-2 sm:mx-1"
             />
           )}
           {userExercisesState.status === 'success' && results.length === 0 ? (
             <div className="exercise-picker-empty">
-              <strong>Brak wyników</strong>
-              <p>Zmień wyszukiwanie albo wybierz inną kategorię.</p>
+              <strong>No results</strong>
+              <p>Change your search or choose another category.</p>
             </div>
           ) : results.length > 0 ? (
             <div className="exercise-picker-results">
@@ -160,7 +161,7 @@ export default function ExercisePicker({
                     <p>{ex.name}</p>
                     {ex.source === 'user' && (
                       <span>
-                        moje
+                        mine
                       </span>
                     )}
                   </div>

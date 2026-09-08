@@ -171,7 +171,7 @@ describe('ProgressPage', () => {
 
     const initialPage = screen.getByTestId('progress-page')
     expect(initialPage).toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByRole('status')).toHaveTextContent('Ładowanie postępów')
+    expect(screen.getByRole('status')).toHaveTextContent('Loading progress')
 
     await act(async () => {
       pending.resolve(successfulLoad({
@@ -181,13 +181,13 @@ describe('ProgressPage', () => {
     })
 
     await waitFor(() => expect(initialPage).toHaveAttribute('aria-busy', 'false'))
-    expect(within(screen.getByRole('group', { name: 'Sesje' })).getByText('2')).toBeInTheDocument()
+    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('2')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '30 dni' }))
+    fireEvent.click(screen.getByRole('button', { name: '30 days' }))
 
     expect(screen.getByTestId('progress-page')).toBe(initialPage)
     expect(initialPage).toHaveAttribute('aria-busy', 'false')
-    expect(within(screen.getByRole('group', { name: 'Sesje' })).getByText('1')).toBeInTheDocument()
+    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('1')).toBeInTheDocument()
     expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
   })
 
@@ -204,28 +204,28 @@ describe('ProgressPage', () => {
     }))
     render(<ProgressPage />)
 
-    const summary = await screen.findByRole('group', { name: 'Podsumowanie: 90 dni' })
-    const volume = within(summary).getByRole('group', { name: 'Objętość' })
-    const sessions = within(summary).getByRole('group', { name: 'Sesje' })
-    const average = within(summary).getByRole('group', { name: 'Śr. / sesję' })
+    const summary = await screen.findByRole('group', { name: 'Summary: 90 days' })
+    const volume = within(summary).getByRole('group', { name: 'Volume' })
+    const sessions = within(summary).getByRole('group', { name: 'Sessions' })
+    const average = within(summary).getByRole('group', { name: 'Avg. / session' })
     expect(within(volume).getByText('2250')).toBeInTheDocument()
-    expect(within(volume).getByText('Ostatnie 90 dni')).toBeInTheDocument()
+    expect(within(volume).getByText('Last 90 days')).toBeInTheDocument()
     expect(within(sessions).getByText('5')).toBeInTheDocument()
     expect(within(average).getByText('450 kg')).toBeInTheDocument()
     expect(within(summary).getAllByRole('group')).toHaveLength(6)
-    for (const name of ['Objętość', 'Sesje', 'Śr. / sesję', 'Ćwiczenia', 'Rekordy', 'Grupa mięśniowa']) {
+    for (const name of ['Volume', 'Sessions', 'Avg. / session', 'Exercises', 'Records', 'Muscle group']) {
       expect(within(summary).getAllByRole('group', { name })).toHaveLength(1)
     }
     expect(document.querySelector('.progress-comparison-strip')).not.toBeInTheDocument()
     expect(within(summary).queryByText('2.3k kg')).not.toBeInTheDocument()
 
     if (hasPreviousPeriod) {
-      expect(within(volume).getByText('+105% vs poprzednio')).toHaveAttribute('data-trend', 'up')
-      expect(within(sessions).getByText('+150% vs poprzednio')).toHaveAttribute('data-trend', 'up')
-      expect(within(average).getByText('-18% vs poprzednio')).toHaveAttribute('data-trend', 'down')
-      expect(within(summary).getAllByText(/vs poprzednio/)).toHaveLength(3)
+      expect(within(volume).getByText('+105% vs previous')).toHaveAttribute('data-trend', 'up')
+      expect(within(sessions).getByText('+150% vs previous')).toHaveAttribute('data-trend', 'up')
+      expect(within(average).getByText('-18% vs previous')).toHaveAttribute('data-trend', 'down')
+      expect(within(summary).getAllByText(/vs previous/)).toHaveLength(3)
     } else {
-      expect(within(summary).queryByText(/vs poprzednio/)).not.toBeInTheDocument()
+      expect(within(summary).queryByText(/vs previous/)).not.toBeInTheDocument()
     }
   })
 
@@ -244,10 +244,10 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    const summary = await screen.findByRole('group', { name: 'Podsumowanie: 90 dni' })
-    expect(within(summary).getByRole('group', { name: 'Śr. / sesję' })).toHaveTextContent('1.1k lbs')
-    expect(screen.getByLabelText('Najlepszy rekord')).toHaveTextContent('143.3 lbs')
-    expect(screen.getByRole('img', { name: /Progresja ciężaru/ })).toHaveAccessibleName(/143.3 lbs/)
+    const summary = await screen.findByRole('group', { name: 'Summary: 90 days' })
+    expect(within(summary).getByRole('group', { name: 'Avg. / session' })).toHaveTextContent('1.1k lbs')
+    expect(screen.getByLabelText('Best record')).toHaveTextContent('143.3 lbs')
+    expect(screen.getByRole('img', { name: /Weight progression/ })).toHaveAccessibleName(/143.3 lbs/)
   })
 
   it('loads annual data older than 180 days and compares the previous year after a range switch', async () => {
@@ -256,29 +256,29 @@ describe('ProgressPage', () => {
       .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10)], records: [record('record-1')] }))
       .mockReturnValueOnce(annual.promise)
     render(<ProgressPage />)
-    await screen.findByRole('group', { name: 'Sesje' })
+    await screen.findByRole('group', { name: 'Sessions' })
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 90)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Rok' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Year' }))
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
     expect(screen.getByTestId('progress-page')).toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByText('Ładowanie postępów')).toBeInTheDocument()
-    expect(screen.queryByRole('group', { name: 'Sesje' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Wolumen tygodniowy' })).not.toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Rekordy od początku' })).toBeInTheDocument()
+    expect(screen.getByText('Loading progress')).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Sessions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Weekly volume' })).not.toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'All-time records' })).toBeInTheDocument()
 
     await act(async () => annual.resolve(successfulLoad({
       sessions: [session('recent', 10), session('old-current-year', 200), session('previous-year', 400)],
       records: [record('record-1')],
     })))
-    expect(within(screen.getByRole('group', { name: 'Sesje' })).getByText('2')).toBeInTheDocument()
-    const comparison = screen.getByRole('group', { name: 'Podsumowanie: 365 dni' })
-    expect(within(comparison).getByRole('group', { name: 'Objętość' })).toHaveTextContent('2000 kg')
-    expect(within(comparison).getAllByText('+100% vs poprzednio')).toHaveLength(2)
-    expect(within(comparison).getByText('+0% vs poprzednio')).toBeInTheDocument()
+    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('2')).toBeInTheDocument()
+    const comparison = screen.getByRole('group', { name: 'Summary: 365 days' })
+    expect(within(comparison).getByRole('group', { name: 'Volume' })).toHaveTextContent('2000 kg')
+    expect(within(comparison).getAllByText('+100% vs previous')).toHaveLength(2)
+    expect(within(comparison).getByText('+0% vs previous')).toBeInTheDocument()
     expect(screen.getByTestId('progress-page')).toHaveAttribute('aria-busy', 'false')
-    fireEvent.click(screen.getByRole('button', { name: '90 dni' }))
-    expect(within(screen.getByRole('group', { name: 'Sesje' })).getByText('1')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '90 days' }))
+    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('1')).toBeInTheDocument()
     expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
   })
 
@@ -288,24 +288,24 @@ describe('ProgressPage', () => {
       .mockResolvedValueOnce(successfulLoad({ sessions: [session('recent', 10)], records: [record('record-1')] }))
       .mockReturnValueOnce(annual.promise)
     render(<ProgressPage />)
-    await screen.findByRole('group', { name: 'Sesje' })
-    fireEvent.click(screen.getByRole('button', { name: 'Rok' }))
+    await screen.findByRole('group', { name: 'Sessions' })
+    fireEvent.click(screen.getByRole('button', { name: 'Year' }))
 
     await act(async () => annual.resolve({
       ...successfulLoad({ records: [record('record-2', { exerciseName: 'Nowy rekord' })] }),
       sessions: { status: 'error', error: new Error('annual sessions unavailable') },
     }))
-    expect(screen.queryByRole('group', { name: 'Sesje' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Wolumen tygodniowy' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Brak danych', { exact: true })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Sessions' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Weekly volume' })).not.toBeInTheDocument()
+    expect(screen.queryByText('No data', { exact: true })).not.toBeInTheDocument()
     expect(screen.getByText('Nowy rekord')).toBeInTheDocument()
-    expect(screen.getByText('Nie udało się odświeżyć danych treningowych.')).toBeInTheDocument()
+    expect(screen.getByText('Could not refresh workout data.')).toBeInTheDocument()
 
     mockLoadProgressData.mockResolvedValueOnce(successfulLoad({ sessions: [session('older', 200)] }))
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
-    await screen.findByRole('group', { name: 'Sesje' })
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await screen.findByRole('group', { name: 'Sessions' })
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
-    expect(screen.getByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
   })
 
   it('discards the previous account snapshot and its in-flight range result', async () => {
@@ -317,15 +317,15 @@ describe('ProgressPage', () => {
       .mockReturnValueOnce(nextAccount.promise)
     const view = render(<ProgressPage />)
     await screen.findAllByText('Account A record')
-    fireEvent.click(screen.getByRole('button', { name: 'Rok' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Year' }))
     authUser.uid = 'user-2'
     view.rerender(<ProgressPage />)
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-2', 90)
     expect(screen.queryByText('Account A record')).not.toBeInTheDocument()
     await act(async () => annual.resolve(successfulLoad({ sessions: [session('stale-account', 200)], records: [record('stale-record')] })))
-    expect(screen.queryByRole('group', { name: 'Sesje' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Sessions' })).not.toBeInTheDocument()
     await act(async () => nextAccount.resolve(successfulLoad()))
-    expect(screen.getByText('Brak danych', { exact: true })).toBeInTheDocument()
+    expect(screen.getByText('No data', { exact: true })).toBeInTheDocument()
     expect(screen.queryByText('Wyciskanie sztangi')).not.toBeInTheDocument()
   })
 
@@ -338,12 +338,12 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    expect(await screen.findByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
-    expect(screen.getByText('Nie udało się odświeżyć rekordów od początku.').closest('[role="status"]')).toBeInTheDocument()
-    const recordsMetric = screen.getByText('Rekordy').parentElement
+    expect(await screen.findByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
+    expect(screen.getByText('Could not refresh all-time records.').closest('[role="status"]')).toBeInTheDocument()
+    const recordsMetric = screen.getByText('Records').parentElement
     expect(recordsMetric).not.toBeNull()
     expect(within(recordsMetric!).getByText('—')).toBeInTheDocument()
-    expect(screen.queryByText('Nie udało się pobrać danych')).not.toBeInTheDocument()
+    expect(screen.queryByText('Could not load data')).not.toBeInTheDocument()
     expect(consoleError).toHaveBeenCalledTimes(1)
     expect(consoleError).toHaveBeenCalledWith('[ProgressPage] records load failed', recordsError)
   })
@@ -357,9 +357,9 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    expect(await screen.findByRole('heading', { name: 'Rekordy od początku' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Nie udało się odświeżyć danych treningowych.')
-    expect(screen.queryByRole('heading', { name: 'Wolumen tygodniowy' })).not.toBeInTheDocument()
+    expect(await screen.findByRole('heading', { name: 'All-time records' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Could not refresh workout data.')
+    expect(screen.queryByRole('heading', { name: 'Weekly volume' })).not.toBeInTheDocument()
     expect(consoleError).toHaveBeenCalledTimes(1)
     expect(consoleError).toHaveBeenCalledWith('[ProgressPage] sessions load failed', sessionsError)
   })
@@ -375,11 +375,11 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    const featured = await screen.findByLabelText('Najlepszy rekord')
-    const ledger = screen.getByLabelText('Pozostałe rekordy')
+    const featured = await screen.findByLabelText('Best record')
+    const ledger = screen.getByLabelText('More records')
     expect(featured.querySelectorAll('.progress-record-feature')).toHaveLength(1)
     expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(2)
-    expect(screen.queryByRole('button', { name: /Pokaż wszystkie/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Show all/i })).not.toBeInTheDocument()
     expect(screen.queryByText('PR', { exact: true })).not.toBeInTheDocument()
   })
 
@@ -398,8 +398,8 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    const ledger = await screen.findByLabelText('Pozostałe rekordy')
-    const toggle = screen.getByRole('button', { name: 'Pokaż wszystkie (6)' })
+    const ledger = await screen.findByLabelText('More records')
+    const toggle = screen.getByRole('button', { name: 'Show all (6)' })
 
     expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(5)
     expect(within(ledger).queryByText('Hip thrust')).not.toBeInTheDocument()
@@ -408,93 +408,93 @@ describe('ProgressPage', () => {
 
     fireEvent.click(toggle)
 
-    const expandedLedger = screen.getByLabelText('Pozostałe rekordy')
+    const expandedLedger = screen.getByLabelText('More records')
     expect(expandedLedger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(6)
     expect(within(expandedLedger).getByText('Hip thrust')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Pokaż mniej' })).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByRole('button', { name: 'Show less' })).toHaveAttribute('aria-expanded', 'true')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pokaż mniej' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show less' }))
 
-    const collapsedLedger = screen.getByLabelText('Pozostałe rekordy')
+    const collapsedLedger = screen.getByLabelText('More records')
     expect(collapsedLedger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(5)
     expect(within(collapsedLedger).queryByText('Hip thrust')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Pokaż wszystkie (6)' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: 'Show all (6)' })).toHaveAttribute('aria-expanded', 'false')
   })
 
   it('pages every remaining record in bounded groups, handles the last page and resets on collapse', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       records: Array.from({ length: 46 }, (_, index) => record(`record-${index}`, {
-        exerciseName: `Ćwiczenie ${index}`,
+        exerciseName: `Exercise ${index}`,
       })),
     }))
     render(<ProgressPage />)
 
-    await screen.findByLabelText('Pozostałe rekordy')
-    const rowNames = () => Array.from(screen.getByLabelText('Pozostałe rekordy').querySelectorAll('.progress-record-ledger-row strong'), (row) => row.textContent)
-    expect(rowNames()).toEqual(Array.from({ length: 5 }, (_, index) => `Ćwiczenie ${index + 1}`))
-    expect(screen.queryByRole('navigation', { name: 'Strony rekordów' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Pokaż wszystkie (45)' }))
+    await screen.findByLabelText('More records')
+    const rowNames = () => Array.from(screen.getByLabelText('More records').querySelectorAll('.progress-record-ledger-row strong'), (row) => row.textContent)
+    expect(rowNames()).toEqual(Array.from({ length: 5 }, (_, index) => `Exercise ${index + 1}`))
+    expect(screen.queryByRole('navigation', { name: 'Record pages' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all (45)' }))
 
-    const previous = () => screen.getByRole('button', { name: 'Poprzednia strona rekordów' })
-    const next = () => screen.getByRole('button', { name: 'Następna strona rekordów' })
+    const previous = () => screen.getByRole('button', { name: 'Previous record page' })
+    const next = () => screen.getByRole('button', { name: 'Next record page' })
     expect(previous()).toBeDisabled()
     expect(next()).toBeEnabled()
     expect(next()).toHaveAttribute('aria-controls', 'progress-remaining-records')
-    expect(screen.getByText('Strona 1 z 3')).toHaveAttribute('aria-live', 'polite')
-    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Ćwiczenie ${index + 1}`))
+    expect(screen.getByText('Page 1 of 3')).toHaveAttribute('aria-live', 'polite')
+    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Exercise ${index + 1}`))
     const visited = [...rowNames()]
     fireEvent.click(previous())
-    expect(screen.getByText('Strona 1 z 3')).toBeInTheDocument()
+    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument()
 
     fireEvent.click(next())
-    expect(screen.getByText('Strona 2 z 3')).toBeInTheDocument()
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument()
     expect(previous()).toBeEnabled()
-    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Ćwiczenie ${index + 21}`))
+    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Exercise ${index + 21}`))
     visited.push(...rowNames())
     fireEvent.click(next())
-    expect(screen.getByText('Strona 3 z 3')).toBeInTheDocument()
+    expect(screen.getByText('Page 3 of 3')).toBeInTheDocument()
     expect(next()).toBeDisabled()
-    expect(rowNames()).toEqual(Array.from({ length: 5 }, (_, index) => `Ćwiczenie ${index + 41}`))
+    expect(rowNames()).toEqual(Array.from({ length: 5 }, (_, index) => `Exercise ${index + 41}`))
     visited.push(...rowNames())
-    expect(visited).toEqual(Array.from({ length: 45 }, (_, index) => `Ćwiczenie ${index + 1}`))
-    expect(within(screen.getByLabelText('Najlepszy rekord')).getByText('Ćwiczenie 0')).toBeInTheDocument()
+    expect(visited).toEqual(Array.from({ length: 45 }, (_, index) => `Exercise ${index + 1}`))
+    expect(within(screen.getByLabelText('Best record')).getByText('Exercise 0')).toBeInTheDocument()
     fireEvent.click(next())
-    expect(screen.getByText('Strona 3 z 3')).toBeInTheDocument()
+    expect(screen.getByText('Page 3 of 3')).toBeInTheDocument()
     fireEvent.click(previous())
-    expect(screen.getByText('Strona 2 z 3')).toBeInTheDocument()
+    expect(screen.getByText('Page 2 of 3')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Pokaż mniej' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Show less' }))
     expect(rowNames()).toHaveLength(5)
-    expect(screen.queryByRole('navigation', { name: 'Strony rekordów' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Pokaż wszystkie (45)' }))
-    expect(screen.getByText('Strona 1 z 3')).toBeInTheDocument()
-    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Ćwiczenie ${index + 1}`))
+    expect(screen.queryByRole('navigation', { name: 'Record pages' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show all (45)' }))
+    expect(screen.getByText('Page 1 of 3')).toBeInTheDocument()
+    expect(rowNames()).toEqual(Array.from({ length: 20 }, (_, index) => `Exercise ${index + 1}`))
     expect(mockLoadProgressData).toHaveBeenCalledTimes(1)
   })
 
   it('clamps the expanded page when refreshed records shrink', async () => {
     mockLoadProgressData
       .mockResolvedValueOnce(successfulLoad({
-        records: Array.from({ length: 46 }, (_, index) => record(`record-${index}`, { exerciseName: `Ćwiczenie ${index}` })),
+        records: Array.from({ length: 46 }, (_, index) => record(`record-${index}`, { exerciseName: `Exercise ${index}` })),
         freshness: 'uncertain',
       }))
       .mockResolvedValueOnce(successfulLoad({
-        records: Array.from({ length: 22 }, (_, index) => record(`record-${index}`, { exerciseName: `Ćwiczenie ${index}` })),
+        records: Array.from({ length: 22 }, (_, index) => record(`record-${index}`, { exerciseName: `Exercise ${index}` })),
       }))
     render(<ProgressPage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Pokaż wszystkie (45)' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Następna strona rekordów' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Następna strona rekordów' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Show all (45)' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Next record page' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Next record page' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByText('Strona 2 z 2')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Następna strona rekordów' })).toBeDisabled()
-    const ledger = screen.getByLabelText('Pozostałe rekordy')
+    expect(await screen.findByText('Page 2 of 2')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Next record page' })).toBeDisabled()
+    const ledger = screen.getByLabelText('More records')
     expect(ledger.querySelectorAll('.progress-record-ledger-row')).toHaveLength(1)
-    expect(within(ledger).getByText('Ćwiczenie 21')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Poprzednia strona rekordów' }))
-    expect(screen.getByText('Strona 1 z 2')).toBeInTheDocument()
-    expect(screen.getByLabelText('Pozostałe rekordy').querySelectorAll('.progress-record-ledger-row')).toHaveLength(20)
+    expect(within(ledger).getByText('Exercise 21')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Previous record page' }))
+    expect(screen.getByText('Page 1 of 2')).toBeInTheDocument()
+    expect(screen.getByLabelText('More records').querySelectorAll('.progress-record-ledger-row')).toHaveLength(20)
   })
 
   it('shows the hard error only when both datasets fail with no previous snapshot', async () => {
@@ -510,8 +510,8 @@ describe('ProgressPage', () => {
     render(<ProgressPage />)
 
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('Nie udało się pobrać danych')
-    expect(within(alert).getByRole('button', { name: 'Spróbuj ponownie' })).toBeInTheDocument()
+    expect(alert).toHaveTextContent('Could not load data')
+    expect(within(alert).getByRole('button', { name: 'Try again' })).toBeInTheDocument()
     expect(screen.getByTestId('progress-page')).toHaveAttribute('aria-busy', 'false')
     expect(consoleError).toHaveBeenCalledTimes(2)
     expect(consoleError).toHaveBeenNthCalledWith(1, '[ProgressPage] sessions load failed', sessionsError)
@@ -526,17 +526,17 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    expect(await screen.findByRole('heading', { name: 'Rekordy od początku' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: '30 dni' }))
+    expect(await screen.findByRole('heading', { name: 'All-time records' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '30 days' }))
 
     const emptyStatus = screen.getByRole('status')
-    expect(emptyStatus).toHaveTextContent('W tym zakresie nie ma treningów')
-    expect(screen.queryByText('0 sesji w zakresie')).not.toBeInTheDocument()
-    fireEvent.click(within(emptyStatus).getByRole('button', { name: 'Pokaż rok' }))
+    expect(emptyStatus).toHaveTextContent('No workouts in this date range')
+    expect(screen.queryByText('0 sessions in range')).not.toBeInTheDocument()
+    fireEvent.click(within(emptyStatus).getByRole('button', { name: 'Show year' }))
 
-    expect(screen.getByRole('button', { name: 'Rok' })).toHaveAttribute('aria-pressed', 'true')
-    expect(await screen.findByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Rekordy od początku' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Year' })).toHaveAttribute('aria-pressed', 'true')
+    expect(await screen.findByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'All-time records' })).toBeInTheDocument()
     expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
     expect(mockLoadProgressData).toHaveBeenLastCalledWith('user-1', 365)
   })
@@ -553,13 +553,13 @@ describe('ProgressPage', () => {
     render(<ProgressPage />)
 
     const notice = await waitFor(() => {
-      const settledNotice = screen.getByText(/Ostatnie treningi mogą być jeszcze niewidoczne/).closest('[role="status"]')
+      const settledNotice = screen.getByText(/Recent workouts may not be visible yet/).closest('[role="status"]')
       expect(settledNotice).toBeInTheDocument()
       return settledNotice
     })
-    expect(notice).toHaveTextContent('Analizy treningowe obejmują najnowsze 5000 wpisów.')
-    expect(notice).toHaveTextContent('Lista rekordów jest ograniczona do 1000 wpisów.')
-    expect(screen.getAllByRole('button', { name: 'Spróbuj ponownie' })).toHaveLength(1)
+    expect(notice).toHaveTextContent('Workout analytics include the 5,000 most recent entries.')
+    expect(notice).toHaveTextContent('The record list is limited to 1,000 entries.')
+    expect(screen.getAllByRole('button', { name: 'Try again' })).toHaveLength(1)
   })
 
   it('presents truncation as a stable limit without a retry action', async () => {
@@ -573,14 +573,14 @@ describe('ProgressPage', () => {
     render(<ProgressPage />)
 
     const notice = await waitFor(() => {
-      const settledNotice = screen.getByText('Zakres danych został ograniczony').closest('[role="status"]')
+      const settledNotice = screen.getByText('Data range has been limited').closest('[role="status"]')
       if (!(settledNotice instanceof HTMLElement)) throw new Error('Expected a settled truncation status.')
       return settledNotice
     })
-    expect(notice).toHaveTextContent('Zakres danych został ograniczony')
-    expect(notice).toHaveTextContent('Analizy treningowe obejmują najnowsze 5000 wpisów.')
-    expect(notice).toHaveTextContent('Lista rekordów jest ograniczona do 1000 wpisów.')
-    expect(within(notice).queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
+    expect(notice).toHaveTextContent('Data range has been limited')
+    expect(notice).toHaveTextContent('Workout analytics include the 5,000 most recent entries.')
+    expect(notice).toHaveTextContent('The record list is limited to 1,000 entries.')
+    expect(within(notice).queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   })
 
   it('retains successful previous data while retrying and merges settled partial results', async () => {
@@ -596,17 +596,17 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    const retryButton = await screen.findByRole('button', { name: 'Spróbuj ponownie' })
+    const retryButton = await screen.findByRole('button', { name: 'Try again' })
     const page = screen.getByTestId('progress-page')
     fireEvent.click(retryButton)
 
     expect(screen.getByTestId('progress-page')).toBe(page)
     expect(page).toHaveAttribute('aria-busy', 'true')
-    expect(screen.getByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
-    const recordsSection = screen.getByRole('heading', { name: 'Rekordy od początku' }).closest('section')
+    expect(screen.getByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
+    const recordsSection = screen.getByRole('heading', { name: 'All-time records' }).closest('section')
     expect(recordsSection).not.toBeNull()
     expect(within(recordsSection!).getByText('Wyciskanie sztangi')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Odświeżanie…' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Refreshing…' })).toBeDisabled()
 
     await act(async () => {
       pendingRetry.resolve({
@@ -620,12 +620,12 @@ describe('ProgressPage', () => {
     })
 
     await waitFor(() => expect(page).toHaveAttribute('aria-busy', 'false'))
-    expect(screen.getByRole('heading', { name: 'Wolumen tygodniowy' })).toBeInTheDocument()
-    const refreshedRecordsSection = screen.getByRole('heading', { name: 'Rekordy od początku' }).closest('section')
+    expect(screen.getByRole('heading', { name: 'Weekly volume' })).toBeInTheDocument()
+    const refreshedRecordsSection = screen.getByRole('heading', { name: 'All-time records' }).closest('section')
     expect(refreshedRecordsSection).not.toBeNull()
     expect(within(refreshedRecordsSection!).getByText('Przysiad')).toBeInTheDocument()
     expect(within(refreshedRecordsSection!).queryByText('Wyciskanie sztangi')).not.toBeInTheDocument()
-    expect(screen.getByText('Nie udało się odświeżyć danych treningowych.').closest('[role="status"]')).toBeInTheDocument()
+    expect(screen.getByText('Could not refresh workout data.').closest('[role="status"]')).toBeInTheDocument()
   })
 
   it('keeps the previous session fetchedAt anchor when a retry refreshes only records', async () => {
@@ -646,18 +646,18 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    expect(await screen.findByRole('img', { name: /Wolumen treningowy/ })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(await screen.findByRole('img', { name: /Workout volume/ })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     const page = screen.getByTestId('progress-page')
     await waitFor(() => expect(page).toHaveAttribute('aria-busy', 'false'))
     expect(mockLoadProgressData).toHaveBeenCalledTimes(2)
-    const recordsSection = screen.getByRole('heading', { name: 'Rekordy od początku' }).closest('section')
+    const recordsSection = screen.getByRole('heading', { name: 'All-time records' }).closest('section')
     expect(recordsSection).not.toBeNull()
     expect(within(recordsSection!).getByText('Martwy ciąg po odświeżeniu')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: /Wolumen treningowy/ })).toBeInTheDocument()
-    expect(within(screen.getByRole('group', { name: 'Sesje' })).getByText('1')).toBeInTheDocument()
-    expect(screen.queryByText('Brak treningów w wybranym zakresie.')).not.toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Workout volume/ })).toBeInTheDocument()
+    expect(within(screen.getByRole('group', { name: 'Sessions' })).getByText('1')).toBeInTheDocument()
+    expect(screen.queryByText('No workouts in this date range.')).not.toBeInTheDocument()
   })
 
   it('uses data keys to distinguish tooltip rows with the same strength display name', () => {
@@ -688,19 +688,19 @@ describe('ProgressPage', () => {
         session('user-0', 5, {
           exerciseSource: 'user',
           exerciseId: 'row',
-          exerciseName: 'Wiosłowanie własne',
+          exerciseName: 'Wiosłowanie custom',
           bestSetWeight: 50,
         }),
         session('user-1', 3, {
           exerciseSource: 'user',
           exerciseId: 'row',
-          exerciseName: 'Wiosłowanie własne',
+          exerciseName: 'Wiosłowanie custom',
           bestSetWeight: 55,
         }),
         session('user-2', 1, {
           exerciseSource: 'user',
           exerciseId: 'row',
-          exerciseName: 'Wiosłowanie własne',
+          exerciseName: 'Wiosłowanie custom',
           bestSetWeight: 60,
         }),
       ],
@@ -708,19 +708,19 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    const selector = await screen.findByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+    const selector = await screen.findByRole('combobox', { name: 'Chart exercise' })
     expect(selector).toHaveValue('global:bench')
     expect(screen.getAllByTestId('strength-line')).toHaveLength(1)
     expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'global:bench')
-    expect(screen.getByRole('img', { name: /Progresja ciężaru dla 1 ćwiczenia\./ })).toBeInTheDocument()
-    expect(screen.getByText('Ostatnio 80 kg')).toBeInTheDocument()
-    expect(screen.getByText('+10 kg względem pierwszego w zakresie')).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Weight progression for 1 exercise\./ })).toBeInTheDocument()
+    expect(screen.getByText('Latest 80 kg')).toBeInTheDocument()
+    expect(screen.getByText('+10 kg compared with the first in this range')).toBeInTheDocument()
 
     fireEvent.change(selector, { target: { value: 'user:row' } })
 
     expect(screen.getAllByTestId('strength-line')).toHaveLength(1)
     expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'user:row')
-    expect(screen.getByText('Ostatnio 60 kg')).toBeInTheDocument()
+    expect(screen.getByText('Latest 60 kg')).toBeInTheDocument()
   })
 
   it('disambiguates colliding strength names in the selector without repeating the selection in the insight', async () => {
@@ -743,17 +743,17 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    const selector = await screen.findByRole('combobox', { name: 'Ćwiczenie na wykresie' })
-    expect(within(selector).getByRole('option', { name: 'Wyciskanie sztangi · globalne' })).toBeInTheDocument()
-    expect(within(selector).getByRole('option', { name: 'Wyciskanie sztangi · moje' })).toBeInTheDocument()
+    const selector = await screen.findByRole('combobox', { name: 'Chart exercise' })
+    expect(within(selector).getByRole('option', { name: 'Wyciskanie sztangi · shared' })).toBeInTheDocument()
+    expect(within(selector).getByRole('option', { name: 'Wyciskanie sztangi · mine' })).toBeInTheDocument()
     expect(within(selector).getByRole('option', { name: 'Wiosłowanie' })).toBeInTheDocument()
     expect(within(selector).queryByRole('option', { name: /Wiosłowanie ·/ })).not.toBeInTheDocument()
 
     fireEvent.change(selector, { target: { value: 'user:bench' } })
 
-    const insight = screen.getByLabelText('Trend wybranego ćwiczenia')
-    expect(within(insight).queryByText('Wyciskanie sztangi · moje')).not.toBeInTheDocument()
-    expect(within(insight).getByText('Ostatnio 60 kg')).toBeInTheDocument()
+    const insight = screen.getByLabelText('Selected exercise trend')
+    expect(within(insight).queryByText('Wyciskanie sztangi · mine')).not.toBeInTheDocument()
+    expect(within(insight).getByText('Latest 60 kg')).toBeInTheDocument()
     expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'user:bench')
   })
 
@@ -767,13 +767,13 @@ describe('ProgressPage', () => {
 
     render(<ProgressPage />)
 
-    const heading = await screen.findByRole('heading', { name: 'Progresja ciężaru' })
+    const heading = await screen.findByRole('heading', { name: 'Weight progression' })
     const panel = heading.closest('section')
     expect(panel).not.toBeNull()
     expect(within(panel!).getByText(
-      'Brak zapisanych ciężarów większych od 0 kg w tym zakresie. Uzupełnij ciężar w serii, aby zobaczyć progresję.',
+      'No recorded weights above 0 kg in this range. Add a set weight to see progression.',
     )).toBeInTheDocument()
-    expect(within(panel!).queryByRole('combobox', { name: 'Ćwiczenie na wykresie' })).not.toBeInTheDocument()
+    expect(within(panel!).queryByRole('combobox', { name: 'Chart exercise' })).not.toBeInTheDocument()
     expect(screen.queryByTestId('strength-line')).not.toBeInTheDocument()
   })
 
@@ -792,12 +792,12 @@ describe('ProgressPage', () => {
     }))
 
     render(<ProgressPage />)
-    const selector = await screen.findByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+    const selector = await screen.findByRole('combobox', { name: 'Chart exercise' })
     fireEvent.change(selector, { target: { value: 'global:row' } })
 
-    expect(screen.getByText('Do wykresu: jeszcze 2 dni z zapisanym ciężarem.')).toBeInTheDocument()
+    expect(screen.getByText('Chart needs 2 days with recorded weight.')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: '30 dni' }))
+    fireEvent.click(screen.getByRole('button', { name: '30 days' }))
     expect(selector).toHaveValue('global:bench')
   })
 
@@ -813,23 +813,23 @@ describe('ProgressPage', () => {
     render(<ProgressPage />)
 
     expect(await screen.findByText(
-      /3 aktywne dni · najmocniejszy dzień 7 lip · 1\.0k kg/i,
+      /3 active days · strongest day Jul 7 · 1\.0k kg/i,
     )).toBeInTheDocument()
     expect(screen.getByRole('img', {
-      name: /Największy dzień: 7 lip, 1\.0k kg\./i,
+      name: /Highest day: Jul 7, 1\.0k kg\./i,
     })).toBeInTheDocument()
-    expect(screen.getByTitle('7 lip: 1.0k kg')).toBeInTheDocument()
-    expect(screen.queryByText(/najmocniejszy dzień 2026-/i)).not.toBeInTheDocument()
+    expect(screen.getByTitle('Jul 7: 1.0k kg')).toBeInTheDocument()
+    expect(screen.queryByText(/najmocniejszy day 2026-/i)).not.toBeInTheDocument()
 
-    const dayPicker = screen.getByRole('combobox', { name: 'Sprawdź dzień w kalendarzu' })
+    const dayPicker = screen.getByRole('combobox', { name: 'View calendar day' })
     expect(dayPicker).toHaveClass('progress-heatmap-picker')
-    expect(screen.getByLabelText('Miesiące kalendarza')).not.toBeEmptyDOMElement()
+    expect(screen.getByLabelText('Calendar months')).not.toBeEmptyDOMElement()
 
     fireEvent.change(dayPicker, { target: { value: '2026-07-07' } })
-    expect(screen.getByRole('status')).toHaveTextContent('7 lip · 1.0k kg')
+    expect(screen.getByRole('status')).toHaveTextContent('Jul 7 · 1.0k kg')
   })
 
-  it('uses singular and paucal forms in the muscle balance accessible summary', async () => {
+  it('uses singular and plural forms in the muscle balance accessible summary', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [
         session('chest', 2, { muscleGroups: ['chest'] }),
@@ -840,9 +840,9 @@ describe('ProgressPage', () => {
     render(<ProgressPage />)
 
     expect(await screen.findByRole('img', {
-      name: 'Balans grup mięśniowych. Najczęściej trenowana grupa: Klatka, 1 wpis. Łącznie 2 wpisy w zestawieniu.',
+      name: 'Muscle group balance. Most trained group: Chest, 1 entry. Total 2 entries in this view.',
     })).toBeInTheDocument()
-    expect(screen.getByText('Grupa mięśniowa')).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: 'Grupy mięśniowe' })).toBeInTheDocument()
+    expect(screen.getByText('Muscle group')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Muscle groups' })).toBeInTheDocument()
   })
 })

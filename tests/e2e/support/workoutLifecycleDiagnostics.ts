@@ -28,7 +28,7 @@ export function isExpectedWorkoutLifecycleAckLossDiagnostic(entry: BrowserDiagno
   if (entry.kind === 'requestfailed') return entry.message === 'net::ERR_FAILED' && entry.method === 'POST'
   if (entry.kind !== 'console') return false
   return entry.message === 'Failed to load resource: net::ERR_FAILED'
-    || /^\[(?:finish workout closure error|discard workout closure error)\] WorkoutClosureError: Nie udało się potwierdzić zamknięcia sesji\.$/.test(entry.message)
+    || /^\[(?:finish workout closure error|discard workout closure error)\] WorkoutClosureError: Nie udało się potwierdzić zamknięcia sessions\.$/.test(entry.message)
 }
 
 export function isExpectedWorkoutLifecycleTombstoneDiagnostic(entry: BrowserDiagnostic): boolean {

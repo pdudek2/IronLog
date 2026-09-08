@@ -15,7 +15,7 @@ import {
   getEquipmentLabel,
   getMuscleLabel,
 } from '../lib/exerciseLabels'
-import { polishPlural } from '../lib/polishPlural'
+import { pluralize } from '../lib/pluralize'
 import { useAuthStore } from '../store/authStore'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { ActionFeedback } from '../components/ActionFeedback'
@@ -24,7 +24,7 @@ import { useProfileStore } from '../store/profileStore'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
 
 function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('pl-PL', {
+  return new Date(ts).toLocaleDateString('en-US', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -120,16 +120,16 @@ export default function ExerciseDetailPage() {
   )
 
   if ((!skipHistoryLoad && loading) || userCatalogLoading) {
-    return <LoadingState message="Ładowanie ćwiczenia..." />
+    return <LoadingState message="Loading exercise..." />
   }
 
   if (!skipHistoryLoad && loadError) {
     return (
       <div className="mx-auto max-w-lg">
         <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center">
-          <p className="text-lg font-semibold text-white">Nie udało się wczytać ćwiczenia</p>
+          <p className="text-lg font-semibold text-white">Could not load exercise</p>
           <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Dane historii nie dotarły. Sprawdź połączenie i spróbuj ponownie.
+            History data did not load. Check your connection and try again.
           </p>
           <Button
             type="button"
@@ -140,7 +140,7 @@ export default function ExerciseDetailPage() {
               setLoadAttempt((value) => value + 1)
             }}
           >
-            Spróbuj ponownie
+            Try again
           </Button>
         </div>
       </div>
@@ -151,13 +151,13 @@ export default function ExerciseDetailPage() {
     return (
       <div className="mx-auto max-w-lg">
         <div className="surface-panel rounded-[var(--radius-xl)] p-6 text-center sm:p-8">
-          <p className="eyebrow">Biblioteka ćwiczeń</p>
-          <h1 className="section-title mt-2">Ćwiczenie nie istnieje</h1>
+          <p className="eyebrow">Exercise library</p>
+          <h1 className="section-title mt-2">Exercise not found</h1>
           <p className="mx-auto mt-3 max-w-sm text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Ten link jest nieaktualny albo ćwiczenie zostało usunięte.
+            This link is outdated or the exercise has been deleted.
           </p>
           <Button type="button" className="mt-5 min-w-[12rem]" onClick={() => navigate('/exercises')}>
-            Wróć do biblioteki
+            Back to library
           </Button>
         </div>
       </div>
@@ -171,7 +171,7 @@ export default function ExerciseDetailPage() {
   const taxonomy = Array.from(new Set([
     categoryLabel,
     exercise?.equipment ? getEquipmentLabel(exercise.equipment) : null,
-    exerciseSource === 'user' ? 'Własne' : null,
+    exerciseSource === 'user' ? 'Custom' : null,
   ].filter((label): label is string => Boolean(label))))
   const muscleLabels = Array.from(new Set(
     (exercise?.muscles ?? [])
@@ -192,7 +192,7 @@ export default function ExerciseDetailPage() {
           {exerciseSource === 'user' && userCatalog.state.status === 'error' && (
             <ActionFeedback
               status="error"
-              message="Nie udało się wczytać nazwy i kategorii tego ćwiczenia. Historia i rekordy nadal są dostępne."
+              message="Could not load this exercise name and category. History and records are still available."
               onRetry={userCatalog.retry}
             />
           )}
@@ -207,8 +207,8 @@ export default function ExerciseDetailPage() {
                 ))}
               </div>
               {muscleLabels.length > 0 && (
-                <div className="exercise-detail-muscles" aria-label={`Mięśnie: ${muscleLabels.join(', ')}`}>
-                  <span>Mięśnie</span>
+                <div className="exercise-detail-muscles" aria-label={`Muscles: ${muscleLabels.join(', ')}`}>
+                  <span>Muscles</span>
                   {muscleLabels.map((label) => <span key={label}>{label}</span>)}
                 </div>
               )}
@@ -221,20 +221,20 @@ export default function ExerciseDetailPage() {
 
           <p className="hero-editorial-sub">
             {allTimeSessions > 0
-              ? `${allTimeSessions} ${polishPlural(allTimeSessions, 'sesja', 'sesje', 'sesji')} łącznie${sessions.length > 0 && allTimeSessions > sessions.length ? ` · ${sessions.length} ostatnich poniżej` : ''}`
-              : 'Brak historii. Dodaj to ćwiczenie do sesji, żeby zacząć śledzić progres.'}
+              ? `${allTimeSessions} ${pluralize(allTimeSessions, 'session', 'sessions')} total${sessions.length > 0 && allTimeSessions > sessions.length ? ` · ${sessions.length} most recent below` : ''}`
+              : 'No history yet. Add this exercise to a session to start tracking progress.'}
           </p>
 
           {record && (
             <dl className="exercise-detail-records">
               <div>
-                <dt>Ciężar max</dt>
+                <dt>Max weight</dt>
                 <dd>
                   {kgToDisplayWeight(record.maxWeight, units)} <span className="text-base" style={{ color: 'var(--muted)' }}>{units}</span>
                 </dd>
               </div>
               <div>
-                <dt>Powt. przy rekordzie</dt>
+                <dt>Reps at record weight</dt>
                 <dd>
                   {record.maxReps}
                 </dd>
@@ -250,15 +250,15 @@ export default function ExerciseDetailPage() {
           {sessions.length > 0 && (
             <section className="exercise-detail-panel exercise-detail-trend">
               <div className="mb-4">
-                <h2 className="section-title">Wolumen na sesję</h2>
+                <h2 className="section-title">Volume per session</h2>
               </div>
               <div className="exercise-detail-volume-summary">
                 {latestIsMaximum ? (
-                  <p><span>Ostatnio · maksimum</span><strong>{formatCompactVolume(latestVolume, units)}</strong></p>
+                  <p><span>Latest · maximum</span><strong>{formatCompactVolume(latestVolume, units)}</strong></p>
                 ) : (
                   <>
-                    <p><span>Ostatnio</span><strong>{formatCompactVolume(latestVolume, units)}</strong></p>
-                    <p><span>Maksimum</span><strong>{formatCompactVolume(maxVolume, units)}</strong></p>
+                    <p><span>Latest</span><strong>{formatCompactVolume(latestVolume, units)}</strong></p>
+                    <p><span>Maximum</span><strong>{formatCompactVolume(maxVolume, units)}</strong></p>
                   </>
                 )}
               </div>
@@ -267,8 +267,8 @@ export default function ExerciseDetailPage() {
                 tabIndex={0}
                 role="list"
                 aria-label={latestIsMaximum
-                  ? `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio i maksimum ${formatCompactVolume(latestVolume, units)}.`
-                  : `Wolumen ostatnich ${chronologicalSessions.length} sesji. Ostatnio ${formatCompactVolume(latestVolume, units)}. Maksimum ${formatCompactVolume(maxVolume, units)}.`}
+                  ? `Volume over the last ${chronologicalSessions.length} ${pluralize(chronologicalSessions.length, 'session', 'sessions')}. Latest and maximum ${formatCompactVolume(latestVolume, units)}.`
+                  : `Volume over the last ${chronologicalSessions.length} ${pluralize(chronologicalSessions.length, 'session', 'sessions')}. Latest ${formatCompactVolume(latestVolume, units)}. Maximum ${formatCompactVolume(maxVolume, units)}.`}
               >
                 {chronologicalSessions.map((session) => (
                   <div
@@ -291,7 +291,7 @@ export default function ExerciseDetailPage() {
                       />
                     </div>
                     <span>
-                      {new Date(session.startedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'numeric' })}
+                      {new Date(session.startedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'numeric' })}
                     </span>
                   </div>
                 ))}
@@ -303,7 +303,7 @@ export default function ExerciseDetailPage() {
           {sessions.length > 0 && (
             <section className="exercise-detail-panel exercise-detail-history">
               <div className="mb-4">
-                <h2 className="section-title">Ostatnie treningi</h2>
+                <h2 className="section-title">Recent workouts</h2>
               </div>
 
               <div className="exercise-detail-session-list">
@@ -323,14 +323,14 @@ export default function ExerciseDetailPage() {
                         <div className="exercise-detail-session-volume">
                           <p className="text-sm font-bold text-white tabular-nums">{formatCompactVolume(session.totalVolume, units)}</p>
                           <span className="exercise-detail-session-toggle" aria-hidden="true">
-                            Szczegóły
+                            Details
                             <ChevronDown className="exercise-detail-session-chevron" size={16} />
                           </span>
                         </div>
                       </div>
                       <div className="exercise-detail-session-metrics">
-                        <span><strong>{session.totalSets}</strong> {polishPlural(session.totalSets, 'seria', 'serie', 'serii')}</span>
-                        <span><strong>{session.totalReps}</strong> powt.</span>
+                        <span><strong>{session.totalSets}</strong> {pluralize(session.totalSets, 'set', 'sets')}</span>
+                        <span><strong>{session.totalReps}</strong> reps</span>
                         <span>
                           top <strong style={{ color: accent }}>
                             {session.bestSetWeight ? `${kgToDisplayWeight(session.bestSetWeight, units)} ${units}` : '—'}
@@ -341,7 +341,7 @@ export default function ExerciseDetailPage() {
 
                     {session.sets.length > 0 && (
                       <div className="exercise-detail-set-list">
-                        <span className="stat-meta">Serie</span>
+                        <span className="stat-meta">Sets</span>
                         <div>
                           {session.sets.map((set, i) => (
                             <span

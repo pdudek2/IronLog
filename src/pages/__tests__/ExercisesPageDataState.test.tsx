@@ -97,10 +97,10 @@ describe('ExercisesPage user library states', () => {
 
     render(<ExercisesPage />)
 
-    expect(await screen.findByText('Nie udało się wczytać Twoich ćwiczeń')).toBeInTheDocument()
-    expect(screen.queryByText('Brak własnych ćwiczeń')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Dodaj pierwsze' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeDisabled()
+    expect(await screen.findByText('Could not load your exercises')).toBeInTheDocument()
+    expect(screen.queryByText('None własnych exercises')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add pierwsze' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Add custom' })).toBeDisabled()
     expect(screen.getByText('Przysiad')).toBeInTheDocument()
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
     expect(mocks.toastError).not.toHaveBeenCalled()
@@ -127,10 +127,10 @@ describe('ExercisesPage user library states', () => {
       .mockResolvedValueOnce([customExercise])
 
     render(<ExercisesPage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
 
     expect(await screen.findByText('Skos hantlami')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Add custom' })).toBeEnabled()
     expect(mocks.getUserExercises).toHaveBeenCalledTimes(2)
   })
 
@@ -139,12 +139,12 @@ describe('ExercisesPage user library states', () => {
 
     render(<ExercisesPage />)
 
-    const edit = await screen.findByRole('button', { name: 'Edytuj ćwiczenie Skos hantlami' })
-    expect(screen.queryByRole('button', { name: 'Usuń ćwiczenie Skos hantlami' })).not.toBeInTheDocument()
+    const edit = await screen.findByRole('button', { name: 'Edit exercise Skos hantlami' })
+    expect(screen.queryByRole('button', { name: 'Remove exercise Skos hantlami' })).not.toBeInTheDocument()
 
     fireEvent.click(edit)
-    const dialog = screen.getByRole('dialog', { name: 'Edytuj własne ćwiczenie' })
-    expect(within(dialog).getByRole('button', { name: 'Usuń ćwiczenie' })).toBeInTheDocument()
+    const dialog = screen.getByRole('dialog', { name: 'Edit custom exercise' })
+    expect(within(dialog).getByRole('button', { name: 'Remove exercise' })).toBeInTheDocument()
   })
 
   it('keeps one create action after a successful empty response', async () => {
@@ -152,13 +152,13 @@ describe('ExercisesPage user library states', () => {
 
     render(<ExercisesPage />)
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Dodaj własne' })).toBeEnabled())
-    expect(screen.queryByText('Brak własnych ćwiczeń')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Dodaj pierwsze' })).not.toBeInTheDocument()
-    expect(screen.getAllByRole('button', { name: 'Dodaj własne' })).toHaveLength(1)
-    expect(screen.queryByLabelText('Podsumowanie biblioteki ćwiczeń')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Add custom' })).toBeEnabled())
+    expect(screen.queryByText('None własnych exercises')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add pierwsze' })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: 'Add custom' })).toHaveLength(1)
+    expect(screen.queryByLabelText('Summary biblioteki exercises')).not.toBeInTheDocument()
 
-    const globalHeading = screen.getByRole('heading', { name: 'Katalog globalny' })
+    const globalHeading = screen.getByRole('heading', { name: 'Shared library' })
     const globalSection = globalHeading.closest('section')
     expect(globalSection).not.toBeNull()
     expect(within(globalSection as HTMLElement).getByText('1')).toBeInTheDocument()
@@ -172,27 +172,27 @@ describe('ExercisesPage user library states', () => {
     const page = await screen.findByTestId('exercises-page')
     const workbench = page.closest('.workbench-page')
     expect(workbench).not.toBeNull()
-    expect(workbench).toContainElement(screen.getByLabelText('Szukaj ćwiczenia'))
-    expect(workbench).toContainElement(screen.getByRole('heading', { name: 'Katalog globalny' }))
+    expect(workbench).toContainElement(screen.getByLabelText('Search exercises'))
+    expect(workbench).toContainElement(screen.getByRole('heading', { name: 'Shared library' }))
   })
 
   it('exposes filter state and exactly one open action per exercise', async () => {
     mocks.getUserExercises.mockResolvedValueOnce([])
     render(<ExercisesPage />)
 
-    const filterToggle = screen.getByRole('button', { name: 'Filtry' })
+    const filterToggle = screen.getByRole('button', { name: 'Filters' })
     expect(filterToggle).toHaveAttribute('aria-expanded', 'false')
     fireEvent.click(filterToggle)
     expect(filterToggle).toHaveAttribute('aria-expanded', 'true')
 
-    const muscleGroup = await screen.findByRole('group', { name: 'Kategoria ćwiczenia' })
-    const equipmentGroup = screen.getByRole('group', { name: 'Sprzęt' })
-    const allMuscles = within(muscleGroup).getByRole('button', { name: 'Wszystkie' })
-    const chest = within(muscleGroup).getByRole('button', { name: 'Klatka' })
+    const muscleGroup = await screen.findByRole('group', { name: 'Exercise category' })
+    const equipmentGroup = screen.getByRole('group', { name: 'Equipment' })
+    const allMuscles = within(muscleGroup).getByRole('button', { name: 'All' })
+    const chest = within(muscleGroup).getByRole('button', { name: 'Chest' })
 
     expect(allMuscles).toHaveAttribute('aria-pressed', 'true')
     expect(chest).toHaveAttribute('aria-pressed', 'false')
-    expect(within(equipmentGroup).getByRole('button', { name: 'Wszystkie' }))
+    expect(within(equipmentGroup).getByRole('button', { name: 'All' }))
       .toHaveAttribute('aria-pressed', 'true')
 
     fireEvent.click(chest)
@@ -200,7 +200,7 @@ describe('ExercisesPage user library states', () => {
     expect(allMuscles).toHaveAttribute('aria-pressed', 'false')
 
     fireEvent.click(allMuscles)
-    expect(screen.getAllByRole('button', { name: 'Otwórz ćwiczenie Przysiad' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Open exercise Przysiad' })).toHaveLength(1)
   })
 
   it('announces only a field-specific name validation error and exposes muscle state', async () => {
@@ -208,47 +208,47 @@ describe('ExercisesPage user library states', () => {
     render(<ExercisesPage />)
 
     await waitFor(() => expect(
-      screen.getByRole('button', { name: 'Dodaj własne' }),
+      screen.getByRole('button', { name: 'Add custom' }),
     ).toBeEnabled())
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
-    const dialog = screen.getByRole('dialog', { name: 'Dodaj własne ćwiczenie' })
-    const name = within(dialog).getByRole('textbox', { name: 'Nazwa *' })
-    const muscles = within(dialog).getByRole('group', { name: 'Grupy mięśniowe' })
-    const chest = within(muscles).getByRole('button', { name: 'Klatka' })
+    fireEvent.click(screen.getByRole('button', { name: 'Add custom' }))
+    const dialog = screen.getByRole('dialog', { name: 'Add custom exercise' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name *' })
+    const muscles = within(dialog).getByRole('group', { name: 'Muscle groups' })
+    const chest = within(muscles).getByRole('button', { name: 'Chest' })
 
     expect(chest).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(chest)
     expect(chest).toHaveAttribute('aria-pressed', 'true')
 
-    const submit = within(dialog).getByRole('button', { name: 'Dodaj ćwiczenie' })
+    const submit = within(dialog).getByRole('button', { name: 'Add exercise' })
     submit.focus()
     fireEvent.click(submit)
     expect(name).toHaveFocus()
     expect(within(dialog).getAllByRole('alert')).toHaveLength(1)
     expect(name.nextElementSibling).toBe(within(dialog).getByRole('alert'))
-    expect(within(dialog).getByRole('alert')).toHaveTextContent('Nazwa musi mieć co najmniej 2 znaki.')
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Name must contain at least 2 characters.')
     expect(name).toHaveAttribute('aria-invalid', 'true')
-    expect(name).toHaveAccessibleDescription('Nazwa musi mieć co najmniej 2 znaki.')
+    expect(name).toHaveAccessibleDescription('Name must contain at least 2 characters.')
   })
 
   it('announces a create failure without marking the valid name field as invalid', async () => {
     mocks.getUserExercises.mockResolvedValueOnce([])
-    mocks.createUserExercise.mockRejectedValueOnce(new Error('Nie udało się zapisać ćwiczenia.'))
+    mocks.createUserExercise.mockRejectedValueOnce(new Error('Nie udało się zapisać exercises.'))
     render(<ExercisesPage />)
 
     await waitFor(() => expect(
-      screen.getByRole('button', { name: 'Dodaj własne' }),
+      screen.getByRole('button', { name: 'Add custom' }),
     ).toBeEnabled())
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
-    const dialog = screen.getByRole('dialog', { name: 'Dodaj własne ćwiczenie' })
-    const name = within(dialog).getByRole('textbox', { name: 'Nazwa *' })
-    fireEvent.change(name, { target: { value: 'Ćwiczenie testowe' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Dodaj ćwiczenie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add custom' }))
+    const dialog = screen.getByRole('dialog', { name: 'Add custom exercise' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name *' })
+    fireEvent.change(name, { target: { value: 'Exercise testowe' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add exercise' }))
 
-    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Nie udało się zapisać ćwiczenia.')
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Nie udało się zapisać exercises.')
     expect(mocks.createUserExercise).toHaveBeenCalledWith(
       'user-1',
-      expect.objectContaining({ name: 'Ćwiczenie testowe' }),
+      expect.objectContaining({ name: 'Exercise testowe' }),
     )
     expect(name).not.toHaveAttribute('aria-invalid')
     expect(name).not.toHaveAttribute('aria-describedby')
@@ -257,22 +257,22 @@ describe('ExercisesPage user library states', () => {
   it('keeps the create form open and announces a duplicate-name conflict', async () => {
     mocks.getUserExercises.mockResolvedValueOnce([])
     mocks.createUserExercise.mockRejectedValueOnce(
-      new Error('Ćwiczenie o nazwie "Concurrent Curl" już istnieje.'),
+      new Error('Exercise o nazwie "Concurrent Curl" już istnieje.'),
     )
     render(<ExercisesPage />)
 
     await waitFor(() => expect(
-      screen.getByRole('button', { name: 'Dodaj własne' }),
+      screen.getByRole('button', { name: 'Add custom' }),
     ).toBeEnabled())
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
-    const dialog = screen.getByRole('dialog', { name: 'Dodaj własne ćwiczenie' })
-    const name = within(dialog).getByRole('textbox', { name: 'Nazwa *' })
+    fireEvent.click(screen.getByRole('button', { name: 'Add custom' }))
+    const dialog = screen.getByRole('dialog', { name: 'Add custom exercise' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name *' })
     fireEvent.change(name, { target: { value: 'Concurrent Curl' } })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Dodaj ćwiczenie' }))
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Add exercise' }))
 
     expect(await within(dialog).findByRole('alert'))
-      .toHaveTextContent('Ćwiczenie o nazwie "Concurrent Curl" już istnieje.')
-    expect(within(dialog).getByRole('textbox', { name: 'Nazwa *' }))
+      .toHaveTextContent('Exercise o nazwie "Concurrent Curl" już istnieje.')
+    expect(within(dialog).getByRole('textbox', { name: 'Name *' }))
       .toHaveValue('Concurrent Curl')
   })
 
@@ -286,9 +286,9 @@ describe('ExercisesPage user library states', () => {
       />,
     )
 
-    const categoryGroup = screen.getByRole('group', { name: 'Kategoria ćwiczenia' })
-    const allCategories = within(categoryGroup).getByRole('button', { name: 'Wszystkie' })
-    const chest = within(categoryGroup).getByRole('button', { name: 'Klatka' })
+    const categoryGroup = screen.getByRole('group', { name: 'Exercise category' })
+    const allCategories = within(categoryGroup).getByRole('button', { name: 'All' })
+    const chest = within(categoryGroup).getByRole('button', { name: 'Chest' })
 
     expect(allCategories).toHaveAttribute('aria-pressed', 'true')
     expect(chest).toHaveAttribute('aria-pressed', 'false')
@@ -312,12 +312,12 @@ describe('ExercisesPage user library states', () => {
     )
 
     expect(screen.getByRole('alert')).toHaveTextContent(
-      'Nie udało się wczytać Twoich ćwiczeń. Katalog globalny nadal jest dostępny.',
+      'Could not load your exercises. The shared library is still available.',
     )
     fireEvent.click(screen.getByRole('button', { name: /^Przysiad/ }))
     expect(onSelect).toHaveBeenCalledWith('squat', 'Przysiad', 'global')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(onRetry).toHaveBeenCalledOnce()
   })
 
@@ -326,7 +326,7 @@ describe('ExercisesPage user library states', () => {
     const createRequest = new Promise<typeof customExercise>((resolve) => {
       resolveCreate = resolve
     })
-    const userTwoExercise = { ...customExercise, id: 'user-two', name: 'Ćwiczenie B' }
+    const userTwoExercise = { ...customExercise, id: 'user-two', name: 'Exercise B' }
     mocks.getUserExercises
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([userTwoExercise])
@@ -334,27 +334,27 @@ describe('ExercisesPage user library states', () => {
 
     const view = render(<ExercisesPage />)
     await waitFor(() => expect(
-      screen.getByRole('button', { name: 'Dodaj własne' }),
+      screen.getByRole('button', { name: 'Add custom' }),
     ).toBeEnabled())
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj własne' }))
-    fireEvent.change(await screen.findByPlaceholderText('np. Banded Pull-apart'), {
-      target: { value: 'Ćwiczenie A' },
+    fireEvent.click(screen.getByRole('button', { name: 'Add custom' }))
+    fireEvent.change(await screen.findByPlaceholderText('E.g. Banded Pull-apart'), {
+      target: { value: 'Exercise A' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Dodaj ćwiczenie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add exercise' }))
     await waitFor(() => expect(mocks.createUserExercise).toHaveBeenCalledWith(
       'user-1',
-      expect.objectContaining({ name: 'Ćwiczenie A' }),
+      expect.objectContaining({ name: 'Exercise A' }),
     ))
 
     mocks.currentUser = { uid: 'user-2' }
-    await act(async () => resolveCreate({ ...customExercise, id: 'user-one', name: 'Ćwiczenie A' }))
+    await act(async () => resolveCreate({ ...customExercise, id: 'user-one', name: 'Exercise A' }))
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
 
     view.rerender(<ExercisesPage />)
-    expect(await screen.findByText('Ćwiczenie B')).toBeInTheDocument()
+    expect(await screen.findByText('Exercise B')).toBeInTheDocument()
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
-    expect(screen.getByText('Ćwiczenie B')).toBeInTheDocument()
-    expect(screen.queryByText('Ćwiczenie A')).not.toBeInTheDocument()
+    expect(screen.getByText('Exercise B')).toBeInTheDocument()
+    expect(screen.queryByText('Exercise A')).not.toBeInTheDocument()
   })
 })

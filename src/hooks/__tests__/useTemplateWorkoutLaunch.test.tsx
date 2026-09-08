@@ -55,7 +55,7 @@ const template: WorkoutTemplate = {
   createdAt: 1,
   updatedAt: 2,
   days: [{
-    name: 'Dzień A',
+    name: 'Day A',
     exercises: [{
       exerciseId: 'squat',
       exerciseSource: 'global',
@@ -138,7 +138,7 @@ describe('useTemplateWorkoutLaunch', () => {
       target: { template, dayIndex: 0, requestKey: 'templates:template-a:summary:0' },
       replaceExisting: false,
       status: 'error',
-      errorMessage: 'Nie udało się uruchomić planu.',
+      errorMessage: 'Could not start the plan.',
     })
     expect(result.current.launchingTemplateId).toBeNull()
   })
@@ -216,7 +216,7 @@ describe('useTemplateWorkoutLaunch', () => {
   })
 
   it('keeps replaceExisting true after a failed confirmation and retry', async () => {
-    mocks.active = { ...workout, label: 'Trwająca sesja' }
+    mocks.active = { ...workout, label: 'Trwająca session' }
     mocks.createPersistedTemplateWorkout
       .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValueOnce(workout)
@@ -303,7 +303,7 @@ describe('useTemplateWorkoutLaunch', () => {
   })
 
   it('clears the conflict dialog on uid change and cannot confirm the old target', async () => {
-    mocks.active = { ...workout, label: 'Trwająca sesja' }
+    mocks.active = { ...workout, label: 'Trwająca session' }
     const { result, rerender } = renderHook(
       ({ uid }: { uid: string }) => useTemplateWorkoutLaunch(uid),
       { initialProps: { uid: 'user-1' }, wrapper },

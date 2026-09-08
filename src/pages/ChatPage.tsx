@@ -20,18 +20,18 @@ import {
 import { useAuthStore } from '../store/authStore'
 
 const STARTER_PROMPTS = [
-  'Przeanalizuj mój ostatni tydzień treningowy.',
-  'Na czym powinienem się skupić w kolejnym treningu upper body?',
-  'Czy moje readiness sugeruje dziś mocniejszą czy lżejszą sesję?',
+  'Analyze my last week of training.',
+  'What should I focus on in my next upper body workout?',
+  'Does my readiness suggest a harder or lighter session today?',
 ]
 
 const STARTER_PROMPT_LABELS: Record<string, string> = {
-  'Przeanalizuj mój ostatni tydzień treningowy.': 'Podsumuj tydzień',
-  'Na czym powinienem się skupić w kolejnym treningu upper body?': 'Kolejny upper',
-  'Czy moje readiness sugeruje dziś mocniejszą czy lżejszą sesję?': 'Readiness dziś',
+  'Analyze my last week of training.': 'Summarize my week',
+  'What should I focus on in my next upper body workout?': 'Next upper body',
+  'Does my readiness suggest a harder or lighter session today?': 'Readiness today',
 }
 
-const MISSING_PLAN_KEY_MESSAGE = 'Dodaj Claude API key, żeby odblokować generator planu.'
+const MISSING_PLAN_KEY_MESSAGE = 'Add a Claude API key to unlock the plan generator.'
 
 const DEMO_EMAIL = 'demo@ironlog.app'
 
@@ -39,72 +39,72 @@ const DEMO_CHAT_MESSAGES: ChatMessage[] = [
   {
     id: 'demo-msg-1',
     role: 'user',
-    content: 'Przeanalizuj mój ostatni tydzień treningowy.',
+    content: 'Analyze my last week of training.',
   },
   {
     id: 'demo-msg-2',
     role: 'assistant',
-    content: `Zrobiłeś **3 pełne sesje** w tym tygodniu (Upper A, Lower A, Upper B) — solidny mikrocykl.
+    content: `You completed **3 full sessions** this week (Upper A, Lower A, Upper B) — a solid training week.
 
-**Kluczowe momenty:**
-- **Bench Press**: 72.5 kg × 8, 8, 7, 6 — nowy PR w serii roboczej
-- **Squat**: 100 kg × 6, 6, 5, 5 — pierwszy raz trzycyfrowy ciężar
-- **OHP**: 50 kg × 6, 5, 5 — trzymasz tempo
+**Highlights:**
+- **Bench Press**: 72.5 kg × 8, 8, 7, 6 — a new working-set PR
+- **Squat**: 100 kg × 6, 6, 5, 5 — your first three-digit weight
+- **OHP**: 50 kg × 6, 5, 5 — steady progress
 
-**Readiness** z ostatnich 7 dni: średnio 4/5 snu, soreness 2/5. Masz zielone światło na progresję.
+**Readiness** over the last 7 days: sleep averaged 4/5, soreness 2/5. You look ready to progress.
 
-**Na jutro (Lower B):**
-- Deadlift **122.5 kg** w top secie (ostrożnie, sprawdź technikę)
-- Bulgarian Split Squat bez zmian
-- Trzymaj wolumen na core — ostatnio spadł.`,
+**For tomorrow (Lower B):**
+- Deadlift **122.5 kg** for your top set, with careful attention to technique
+- Keep Bulgarian Split Squats unchanged
+- Maintain your core volume — it has dropped recently.`,
   },
   {
     id: 'demo-msg-3',
     role: 'user',
-    content: 'Co z plateau w OHP? Tkwię na 50 kg od dwóch tygodni.',
+    content: 'What about my OHP plateau? I have been stuck at 50 kg for two weeks.',
   },
   {
     id: 'demo-msg-4',
     role: 'assistant',
-    content: `Klasyczny stall przy OHP — typowe okno między 45-55 kg. Kilka powodów może za tym stać:
+    content: `An OHP plateau around 45–55 kg is common. A few factors may contribute:
 
-1. **Za mała praca pomocnicza** tylnych aktonów barków i tricepsa
-2. **Słaby lockout** — potrzeba więcej objętości nad głową
-3. **Recovery** — OHP mocno reaguje na deficyt snu
+1. **Limited accessory work** for rear delts and triceps
+2. **Lockout strength** — more overhead volume may help
+3. **Recovery** — OHP can be sensitive to poor sleep
 
-**Plan na 3 tygodnie:**
-- **Tydzień 1 (deload)**: OHP 42.5 kg 3×8, pełne kontrolowane powtórzenia
-- **Tydzień 2 (intensity)**: OHP 47.5 kg 5×3 + **Face Pull 4×15** po każdym Upper
-- **Tydzień 3 (PR attempt)**: 3 serie rozgrzewkowe → 52.5 kg × 3-5
+**A 3-week plan:**
+- **Week 1 (deload)**: OHP 42.5 kg 3×8 with controlled reps
+- **Week 2 (intensity)**: OHP 47.5 kg 5×3 + **Face Pull 4×15** after each upper body session
+- **Week 3 (PR attempt)**: 3 warm-up sets → 52.5 kg × 3–5
 
-Dodatkowo: **Seated DB Press 3×10** zaraz po OHP. Uzupełni wolumen bez dodatkowego obciążenia stawów.
+Add **Seated DB Press 3×10** after OHP for accessory volume. Adjust if recovery or comfort suffers.
 
-Wróć po tygodniu z feedbackiem jak idzie.`,
+Check back after a week and let me know how it goes.`,
   },
 ]
 
 const EXPERIENCE_OPTIONS = [
-  { value: 'beginner', label: 'Początkujący' },
-  { value: 'intermediate', label: 'Średniozaawansowany' },
-  { value: 'advanced', label: 'Zaawansowany' },
+  { value: 'beginner', label: 'Beginner' },
+  { value: 'intermediate', label: 'Intermediate' },
+  { value: 'advanced', label: 'Advanced' },
 ]
 
 const EQUIPMENT_OPTIONS = [
-  { value: 'barbell', label: 'Sztanga' },
-  { value: 'dumbbell', label: 'Hantle' },
-  { value: 'cable', label: 'Wyciąg' },
-  { value: 'machine', label: 'Maszyny' },
-  { value: 'bodyweight', label: 'Własne ciało' },
+  { value: 'barbell', label: 'Barbell' },
+  { value: 'dumbbell', label: 'Dumbbells' },
+  { value: 'cable', label: 'Cable' },
+  { value: 'machine', label: 'Machines' },
+  { value: 'bodyweight', label: 'Bodyweight' },
   { value: 'kettlebell', label: 'Kettlebell' },
 ]
 
 const CONTEXT_SOURCE_LABELS: Record<AiContextSource, string> = {
-  profile: 'profilu',
-  readiness: 'gotowości',
-  workouts: 'treningów',
-  records: 'rekordów',
+  profile: 'profile',
+  readiness: 'readiness',
+  workouts: 'workouts',
+  records: 'records',
 }
-const polishList = new Intl.ListFormat('pl-PL', { style: 'long', type: 'conjunction' })
+const contextList = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' })
 
 type AiWorkspaceTab = 'chat' | 'plan'
 
@@ -149,14 +149,14 @@ function ContextAvailabilityNotice({
   subject,
   unavailableSources,
 }: {
-  subject: 'Odpowiedź' | 'Plan'
+  subject: 'Response' | 'Plan'
   unavailableSources: AiContextSource[]
 }) {
   if (unavailableSources.length === 0) return null
   const labels = unavailableSources.map((source) => CONTEXT_SOURCE_LABELS[source])
   return (
     <div className="coach-generation-feedback" role="status">
-      {subject} powstał{subject === 'Odpowiedź' ? 'a' : ''} bez części danych: {polishList.format(labels)}.
+      {subject} was created with some data unavailable: {contextList.format(labels)}.
     </div>
   )
 }
@@ -243,7 +243,7 @@ export default function ChatPage() {
 
     cancelActiveGeneration('superseded')
     setConfigured(false)
-    setError('Dodaj Claude API key, żeby uruchomić AI Coach.')
+    setError('Add a Claude API key to use AI Coach.')
     return null
   }
 
@@ -309,7 +309,7 @@ export default function ChatPage() {
         {
           id: crypto.randomUUID(),
           role: 'assistant',
-          content: reply || 'Nie udało się wygenerować odpowiedzi.',
+          content: reply || 'Could not generate a response.',
           contextUnavailableSources: generationUnavailableSources,
         },
       ])
@@ -325,7 +325,7 @@ export default function ChatPage() {
         return
       }
 
-      const message = nextError instanceof Error ? nextError.message : 'Nie udało się połączyć z AI Coachem.'
+      const message = nextError instanceof Error ? nextError.message : 'Could not connect to AI Coach.'
       setStreamText('')
       setStreamUnavailableSources([])
       setGenerationState({ status: 'failed', questionId, message })
@@ -416,7 +416,7 @@ export default function ChatPage() {
     }
 
     if (planGoal.trim().length < 2) {
-      setPlanError({ message: 'Podaj cel planu, zanim uruchomisz generator.', field: 'goal' })
+      setPlanError({ message: 'Enter a plan goal before starting the generator.', field: 'goal' })
       planGoalRef.current?.focus()
       return
     }
@@ -442,9 +442,9 @@ export default function ChatPage() {
       setSelectedPreviewDay(0)
       setPlanPreview(plan)
       setPlanUnavailableSources(context.unavailableSources)
-      toast.success('Plan wygenerowany. Możesz go zapisać jako szablon.')
+      toast.success('Plan generated. You can save it as a template.')
     } catch (nextError) {
-      const message = nextError instanceof Error ? nextError.message : 'Nie udało się wygenerować planu.'
+      const message = nextError instanceof Error ? nextError.message : 'Could not generate a plan.'
       setPlanError({ message, field: null })
       setPlanPreview(null)
       setPlanUnavailableSources([])
@@ -463,7 +463,7 @@ export default function ChatPage() {
         name: planPreview.name,
         days: planPreview.days,
       })
-      toast.success('Plan zapisany jako nowy szablon.')
+      toast.success('Plan saved as a new template.')
       setPlanPreview(null)
       setPlanUnavailableSources([])
       setPlanGoal('')
@@ -471,7 +471,7 @@ export default function ChatPage() {
       setPlanNotes('')
       setPlanError(null)
     } catch {
-      setPlanError({ message: 'Nie udało się zapisać wygenerowanego planu.', field: null })
+      setPlanError({ message: 'Could not save the generated plan.', field: null })
     } finally {
       setSavingPlan(false)
     }
@@ -517,22 +517,22 @@ export default function ChatPage() {
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <h1>Coach</h1>
-          <p>Zapytaj o ostatnią sesję albo ułóż plan.</p>
+          <p>Ask about your last session or build a plan.</p>
         </motion.div>
       </section>
 
       <div className="ai-workspace coach-workspace">
-        <section className="coach-mode-switch" role="group" aria-label="Tryb AI Coacha">
+        <section className="coach-mode-switch" role="group" aria-label="AI Coach mode">
             {[
               {
                 key: 'chat' as const,
-                title: 'Rozmowa',
-                desc: 'Omów ostatnią sesję albo kolejny trening.',
+                title: 'Chat',
+                desc: 'Discuss your last session or next workout.',
               },
               {
                 key: 'plan' as const,
                 title: 'Plan',
-                desc: 'Ułóż plan i zapisz go w aplikacji.',
+                desc: 'Build a plan and save it in the app.',
               },
             ].map((tab) => {
               const active = activeTab === tab.key
@@ -562,9 +562,9 @@ export default function ChatPage() {
               <>
                 <section className="coach-key-gate">
                   <div>
-                    <strong>Dodaj lokalny klucz Claude</strong>
+                    <strong>Add a local Claude key</strong>
                     <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      Bez niego przejrzysz rozmowę i brief, ale nie wyślesz pytania ani nie wygenerujesz planu.
+                      Without it, you can review the conversation and brief, but cannot send questions or generate plans.
                     </p>
                   </div>
                   <div className="mt-4">
@@ -574,7 +574,7 @@ export default function ChatPage() {
                       aria-controls={keyPanelId}
                       onClick={() => setShowConfigPanel((current) => !current)}
                     >
-                      Skonfiguruj klucz
+                      Set up key
                     </Button>
                   </div>
                 </section>
@@ -612,7 +612,7 @@ export default function ChatPage() {
 
                   <div
                     className={`coach-thread ${messages.length === 0 && !streamText ? 'coach-thread--empty' : ''}`}
-                    aria-label="Rozmowa z AI Coachem"
+                    aria-label="Chat with AI Coach"
                     aria-busy={sending}
                   >
                     {messages.length === 0 && !streamText ? (
@@ -621,11 +621,11 @@ export default function ChatPage() {
                           <div className="coach-empty-icon">
                             <Bot size={24} />
                           </div>
-                          <p>{configured ? 'Zadaj pytanie albo wybierz skrót.' : 'Brak historii rozmowy'}</p>
+                          <p>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</p>
                           <span>
                             {configured
-                              ? 'Możesz zapytać o tydzień, kolejny trening, readiness albo blokadę w ćwiczeniu.'
-                              : 'Tutaj pojawi się analiza i kolejne pytania.'}
+                              ? 'Ask about your week, next workout, readiness or an exercise plateau.'
+                              : 'Your analysis and follow-up questions will appear here.'}
                           </span>
                         </div>
 
@@ -664,12 +664,12 @@ export default function ChatPage() {
                               data-role={message.role}
                             >
                               <p>
-                                {message.role === 'assistant' ? 'AI Coach' : 'Ty'}
+                                {message.role === 'assistant' ? 'AI Coach' : 'You'}
                               </p>
                               <ChatMarkdown content={message.content} />
                               {message.role === 'assistant' && (
                                 <ContextAvailabilityNotice
-                                  subject="Odpowiedź"
+                                  subject="Response"
                                   unavailableSources={message.contextUnavailableSources ?? []}
                                 />
                               )}
@@ -685,10 +685,10 @@ export default function ChatPage() {
                                   <span className="chat-typing-dot" />
                                   <span className="chat-typing-dot" />
                                 </div>
-                                <span className="coach-thinking">Analizuję kontekst...</span>
+                                <span className="coach-thinking">Analyzing context...</span>
                               </div>
                               <ContextAvailabilityNotice
-                                subject="Odpowiedź"
+                                subject="Response"
                                 unavailableSources={streamUnavailableSources}
                               />
                             </div>
@@ -701,7 +701,7 @@ export default function ChatPage() {
                                 <div className="min-w-0 flex-1">
                                   <ChatMarkdown content={streamText} />
                                   <ContextAvailabilityNotice
-                                    subject="Odpowiedź"
+                                    subject="Response"
                                     unavailableSources={streamUnavailableSources}
                                   />
                                 </div>
@@ -717,9 +717,9 @@ export default function ChatPage() {
 
                   {generationState.status === 'interrupted' && (
                     <div className="coach-generation-feedback" role="status" aria-live="polite">
-                      <span>Generowanie przerwane.</span>
+                      <span>Generation stopped.</span>
                       <Button type="button" variant="ghost" onClick={handleRetry}>
-                        Ponów odpowiedź AI
+                        Retry AI response
                       </Button>
                     </div>
                   )}
@@ -728,7 +728,7 @@ export default function ChatPage() {
                     <div className="coach-generation-feedback coach-generation-feedback--error" role="alert">
                       <span>{generationState.message}</span>
                       <Button type="button" variant="ghost" onClick={handleRetry}>
-                        Ponów odpowiedź AI
+                        Retry AI response
                       </Button>
                     </div>
                   )}
@@ -738,7 +738,7 @@ export default function ChatPage() {
                   {configured && (
                     <form onSubmit={handleSubmit} className="coach-composer">
                     <textarea
-                      aria-label="Wiadomość do AI Coacha"
+                      aria-label="Message AI Coach"
                       value={input}
                       onChange={(event) => {
                         setInput(event.target.value)
@@ -747,14 +747,14 @@ export default function ChatPage() {
                         el.style.height = `${Math.min(el.scrollHeight, 160)}px`
                       }}
                       onKeyDown={handleComposerKeyDown}
-                      placeholder="Zapytaj o progres, plan albo ostatnią sesję"
+                      placeholder="Ask about progress, a plan or your last session"
                       disabled={!configured || sending}
                       rows={2}
                       className="coach-composer-input"
                     />
 
                     <div className="coach-composer-footer">
-                      <p>Koszt odpowiedzi rozlicza Twój klucz Claude.</p>
+                      <p>Responses are billed to your Claude API key.</p>
 
                       <Button
                         type="submit"
@@ -763,7 +763,7 @@ export default function ChatPage() {
                         className="inline-flex items-center gap-2"
                       >
                         {sending ? <LoaderCircle size={15} className="animate-spin" /> : <Send size={15} />}
-                        {sending ? 'Wysyłanie...' : 'Wyślij'}
+                        {sending ? 'Sending...' : 'Send'}
                       </Button>
                     </div>
                     </form>
@@ -774,12 +774,12 @@ export default function ChatPage() {
               <>
                 <section className="coach-plan-panel">
                   <div className="coach-panel-head">
-                    <h2>Brief treningowy</h2>
+                    <h2>Workout brief</h2>
                   </div>
 
                   <div className="coach-plan-form">
                     <div className="coach-field md:col-span-2">
-                      <label htmlFor={planGoalId} className="stat-meta">Cel planu</label>
+                      <label htmlFor={planGoalId} className="stat-meta">Plan goal</label>
                       <input
                         id={planGoalId}
                         ref={planGoalRef}
@@ -791,7 +791,7 @@ export default function ChatPage() {
                         }}
                         aria-invalid={planError?.field === 'goal' ? true : undefined}
                         aria-describedby={planError?.field === 'goal' ? planErrorId : undefined}
-                        placeholder="Np. siłowy upper/lower"
+                        placeholder="E.g. upper/lower strength plan"
                       />
                       {planError?.field === 'goal' && (
                         <p id={planErrorId} role="alert" className="text-xs" style={{ color: 'var(--danger)' }}>
@@ -801,8 +801,8 @@ export default function ChatPage() {
                     </div>
 
                     <div className="coach-field">
-                      <span className="stat-meta">Dni w tygodniu</span>
-                      <div className="coach-chip-row" role="group" aria-label="Liczba dni treningowych w tygodniu">
+                      <span className="stat-meta">Days per week</span>
+                      <div className="coach-chip-row" role="group" aria-label="Training days per week">
                         {[2, 3, 4, 5, 6].map((days) => (
                           <button
                             key={days}
@@ -816,15 +816,15 @@ export default function ChatPage() {
                               color: planDays === days ? 'var(--accent)' : 'var(--muted)',
                             }}
                           >
-                            {days} dni
+                            {days} days
                           </button>
                         ))}
                       </div>
                     </div>
 
                     <div className="coach-field">
-                      <span className="stat-meta">Poziom</span>
-                      <div className="coach-choice-stack" role="group" aria-label="Poziom zaawansowania">
+                      <span className="stat-meta">Level</span>
+                      <div className="coach-choice-stack" role="group" aria-label="Experience level">
                         {EXPERIENCE_OPTIONS.map((option) => (
                           <button
                             key={option.value}
@@ -840,8 +840,8 @@ export default function ChatPage() {
                     </div>
 
                     <div className="coach-field md:col-span-2">
-                      <span className="stat-meta">Dostępny sprzęt</span>
-                      <div className="coach-chip-row" role="group" aria-label="Dostępny sprzęt">
+                      <span className="stat-meta">Available equipment</span>
+                      <div className="coach-chip-row" role="group" aria-label="Available equipment">
                         {EQUIPMENT_OPTIONS.map((option) => {
                           const active = planEquipment.includes(option.value)
                           return (
@@ -865,22 +865,22 @@ export default function ChatPage() {
                     </div>
 
                     <label className="coach-field">
-                      <span className="stat-meta">Fokus</span>
+                      <span className="stat-meta">Focus</span>
                       <input
                         type="text"
                         value={planFocus}
                         onChange={(event) => setPlanFocus(event.target.value)}
-                        placeholder="Np. bench i plecy"
+                        placeholder="E.g. bench press and back"
                       />
                     </label>
 
                     <label className="coach-field">
-                      <span className="stat-meta">Dodatkowe uwagi</span>
+                      <span className="stat-meta">Additional notes</span>
                       <textarea
                         value={planNotes}
                         onChange={(event) => setPlanNotes(event.target.value)}
                         rows={4}
-                        placeholder="Np. 60 min, bez martwego ciągu"
+                        placeholder="E.g. 60 min, no deadlifts"
                       />
                     </label>
                   </div>
@@ -892,7 +892,7 @@ export default function ChatPage() {
                   )}
 
                   <div className="coach-plan-actions">
-                    <p>Coach dołącza do briefu profil, historię i katalog ćwiczeń.</p>
+                    <p>Coach adds your profile, history and exercise library to the brief.</p>
 
                     <Button
                       type="button"
@@ -901,7 +901,7 @@ export default function ChatPage() {
                       className="inline-flex items-center gap-2"
                     >
                       {generatingPlan ? <LoaderCircle size={15} className="animate-spin" /> : <Sparkles size={15} />}
-                      {generatingPlan ? 'Generowanie planu...' : 'Generuj plan'}
+                      {generatingPlan ? 'Generating plan...' : 'Generate plan'}
                     </Button>
                   </div>
                 </section>
@@ -910,7 +910,7 @@ export default function ChatPage() {
                   <section className="coach-plan-preview">
                     <div className="coach-plan-preview-head">
                       <div>
-                        <p>Podgląd planu</p>
+                        <p>Plan preview</p>
                         <h2>{planPreview.name}</h2>
                         <p className="mt-2 max-w-2xl text-sm leading-6" style={{ color: 'var(--muted)' }}>
                           {planPreview.summary}
@@ -919,9 +919,9 @@ export default function ChatPage() {
 
                       <div className="coach-preview-stats">
                         {[
-                          { label: 'Dni', value: String(planPreview.days.length) },
-                          { label: 'Ćwiczenia', value: String(totalPlanExercises) },
-                          { label: 'Poziom', value: experienceLabel },
+                          { label: 'Days', value: String(planPreview.days.length) },
+                          { label: 'Exercises', value: String(totalPlanExercises) },
+                          { label: 'Level', value: experienceLabel },
                         ].map((metric) => (
                           <div
                             key={metric.label}
@@ -939,7 +939,7 @@ export default function ChatPage() {
                       unavailableSources={planUnavailableSources}
                     />
 
-                    <div className="coach-chip-row mt-5" role="group" aria-label="Dzień podglądu planu">
+                    <div className="coach-chip-row mt-5" role="group" aria-label="Plan preview day">
                       {planPreview.days.map((day, index) => (
                         <button
                           key={`${day.name}-${index}`}
@@ -964,18 +964,18 @@ export default function ChatPage() {
                           <div>
                             <p className="text-sm font-semibold text-white">{previewDay.name}</p>
                             <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-                              {previewDay.exercises.length} ćwiczeń w tej jednostce
+                              Exercises in this session: {previewDay.exercises.length}
                             </p>
                           </div>
                           <div className="coach-preview-sequence">
-                            Dzień {selectedPreviewDay + 1}
+                            Day {selectedPreviewDay + 1}
                           </div>
                         </div>
 
                         <div className="px-4 py-3">
                           <div className="coach-preview-columns grid grid-cols-[minmax(0,1.4fr)_6rem_7rem] gap-3 px-1 pb-2">
-                            <p className="stat-meta">Ćwiczenie</p>
-                            <p className="stat-meta text-right">Serie x powt.</p>
+                            <p className="stat-meta">Exercise</p>
+                            <p className="stat-meta text-right">Sets × reps</p>
                             <p className="stat-meta text-right">Start</p>
                           </div>
 
@@ -988,7 +988,7 @@ export default function ChatPage() {
                                 <div className="min-w-0">
                                   <p className="min-w-0 break-words font-semibold text-white">{exercise.name}</p>
                                   <p className="mt-1 text-xs" style={{ color: 'var(--muted)' }}>
-                                    {exercise.exerciseSource === 'user' ? 'Moje ćwiczenie' : 'Katalog globalny'}
+                                    {exercise.exerciseSource === 'user' ? 'My exercise' : 'Shared library'}
                                   </p>
                                 </div>
                                 <p className="text-right font-semibold text-white">{exercise.sets} x {exercise.targetReps}</p>
@@ -1008,7 +1008,7 @@ export default function ChatPage() {
                         variant="ghost"
                         onClick={handleEditGeneratedPlan}
                       >
-                        Edytuj przed zapisem
+                        Edit before saving
                       </Button>
 
                       <Button
@@ -1018,7 +1018,7 @@ export default function ChatPage() {
                         className="inline-flex items-center gap-2"
                       >
                         {savingPlan ? <LoaderCircle size={15} className="animate-spin" /> : <Sparkles size={15} />}
-                        {savingPlan ? 'Zapisywanie...' : 'Zapisz jako szablon'}
+                        {savingPlan ? 'Saving...' : 'Save as template'}
                       </Button>
 
                       <Button
@@ -1029,7 +1029,7 @@ export default function ChatPage() {
                           setPlanUnavailableSources([])
                         }}
                       >
-                        Zamknij podgląd
+                        Close preview
                       </Button>
                     </div>
                   </section>
@@ -1052,13 +1052,13 @@ export default function ChatPage() {
               <section className="coach-context-panel">
                 <div className="coach-context-head">
                   <Sparkles size={16} />
-                  <p>Kontekst planu</p>
+                  <p>Plan context</p>
                 </div>
                 <div className="coach-context-list">
                   {[
-                    { label: 'Cel', value: planGoal.trim() || 'jeszcze nie podany' },
-                    { label: 'Rytm', value: `${planPreview?.days.length ?? planDays} dni w tygodniu` },
-                    { label: 'Sprzęt', value: `${planEquipment.length} wybranych` },
+                    { label: 'Goal', value: planGoal.trim() || 'not entered yet' },
+                    { label: 'Schedule', value: `${planPreview?.days.length ?? planDays} days per week` },
+                    { label: 'Equipment', value: `${planEquipment.length} selected` },
                   ].map((item) => (
                     <div key={item.label}>
                       <span>{item.label}</span>

@@ -75,19 +75,19 @@ export function parseProjectionFence(raw: unknown): ProjectionFence | null {
 }
 
 export function projectionSuperseded(): ApiError {
-  return new ApiError(409, 'Operacja dotyczy starszej wersji treningu.', {
+  return new ApiError(409, 'This operation refers to an older workout version.', {
     code: 'projection_superseded',
   })
 }
 
 export function workoutDeleted(): ApiError {
-  return new ApiError(409, 'Trening został już usunięty.', {
+  return new ApiError(409, 'This workout has already been deleted.', {
     code: 'workout_deleted',
   })
 }
 
 export function projectionStateConflict(): ApiError {
-  return new ApiError(409, 'Stan projekcji treningu jest niespójny.', {
+  return new ApiError(409, 'Workout projection state is inconsistent.', {
     code: 'projection_state_conflict',
   })
 }

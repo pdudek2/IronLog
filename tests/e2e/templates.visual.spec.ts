@@ -5,7 +5,7 @@ test('empty templates page', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/templates')
   await expectAppReady(page, '/templates')
-  await expect(page.getByText('Nie masz jeszcze planu')).toBeVisible()
+  await expect(page.getByText('You have no plans yet')).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
   if (testInfo.project.name === 'desktop') {
     await page.addStyleTag({
@@ -48,7 +48,7 @@ test('new template editor empty state', async ({ page }, testInfo) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/templates/new')
   await expectAppReady(page, '/templates/new')
-  await expect(page.getByRole('heading', { name: 'Nowy plan' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'New plan' })).toBeVisible()
   await page.evaluate(() => document.fonts.ready)
   const headerStats = page.locator('.template-editor-heading .planner-mini-stats')
   const summary = page.locator('.template-editor-summary')
@@ -70,7 +70,7 @@ test('new template editor empty state', async ({ page }, testInfo) => {
     })
   } else {
     await expect(headerStats).toBeVisible()
-    await expect(headerStats).toContainText('1dzień')
+    await expect(headerStats).toContainText('1day')
     await expect(summary).toBeHidden()
   }
 

@@ -6,8 +6,8 @@ function Probe() {
   const state = useMobileInteraction()
   return (
     <>
-      <input aria-label="Ciężar" />
-      <button type="submit">Zapisz</button>
+      <input aria-label="Weight" />
+      <button type="submit">Save</button>
       <output data-testid="state">
         {JSON.stringify(state)}
       </output>
@@ -31,7 +31,7 @@ describe('MobileInteractionProvider', () => {
 
   it('publishes focused input and reduced visual viewport geometry', () => {
     render(<MobileInteractionProvider><Probe /></MobileInteractionProvider>)
-    fireEvent.focus(screen.getByRole('textbox', { name: 'Ciężar' }))
+    fireEvent.focus(screen.getByRole('textbox', { name: 'Weight' }))
     viewport.height = 500
     act(() => viewport.dispatchEvent(new Event('resize')))
 
@@ -45,8 +45,8 @@ describe('MobileInteractionProvider', () => {
     vi.useFakeTimers()
     try {
       render(<MobileInteractionProvider><Probe /></MobileInteractionProvider>)
-      const input = screen.getByRole('textbox', { name: 'Ciężar' })
-      const submit = screen.getByRole('button', { name: 'Zapisz' })
+      const input = screen.getByRole('textbox', { name: 'Weight' })
+      const submit = screen.getByRole('button', { name: 'Save' })
       Object.defineProperty(submit, 'isContentEditable', { configurable: true, value: false })
 
       act(() => {

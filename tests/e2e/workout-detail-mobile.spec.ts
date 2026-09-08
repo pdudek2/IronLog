@@ -84,8 +84,8 @@ test('mobile workout actions adapt between inline content and the fixed viewport
     if (!summaryBox || !actionsBox) return false
     return actionsBox.y + actionsBox.height <= summaryBox.y
   }).toBe(true)
-  expect(await countVisibleFocusableButtons(allButtons, 'Edytuj trening')).toBe(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Usuń')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Edit workout')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Delete')).toBe(1)
 
   await anchor.scrollIntoViewIfNeeded()
   await expect(actions).toHaveAttribute('data-placement', 'inline')
@@ -103,8 +103,8 @@ test('mobile workout actions adapt between inline content and the fixed viewport
   await page.mouse.wheel(0, 24)
   await expect(navigation).toHaveAttribute('aria-hidden', 'true')
   await expect.poll(() => actionClearanceDeltaFromCssTarget(actions)).toBeLessThanOrEqual(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Edytuj trening')).toBe(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Usuń')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Edit workout')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Delete')).toBe(1)
 
   await anchor.scrollIntoViewIfNeeded()
   await expect(actions).toHaveAttribute('data-placement', 'inline')

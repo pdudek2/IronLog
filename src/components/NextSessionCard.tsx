@@ -9,7 +9,7 @@ import type {
 import type { Units } from '../lib/userProfile'
 import { kgToDisplayWeight } from '../lib/weightUnits'
 import type { WorkoutSummary } from '../lib/workoutService'
-import { polishPlural } from '../lib/polishPlural'
+import { pluralize } from '../lib/pluralize'
 
 interface NextSessionCardProps {
   template: WorkoutTemplate
@@ -26,23 +26,23 @@ interface NextSessionCardProps {
 function formatDate(date: string): string {
   const parsed = new Date(`${date}T12:00:00`)
   if (Number.isNaN(parsed.getTime())) return date
-  const label = parsed.toLocaleDateString('pl-PL', {
+  const label = parsed.toLocaleDateString('en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   })
-  return `${label.charAt(0).toLocaleUpperCase('pl-PL')}${label.slice(1)}`
+  return `${label.charAt(0).toLocaleUpperCase('en-US')}${label.slice(1)}`
 }
 
 function formatWeight(weightKg: number, units: Units): string {
-  if (weightKg <= 0) return 'bez ciężaru'
-  return `${kgToDisplayWeight(weightKg, units).toLocaleString('pl-PL', {
+  if (weightKg <= 0) return 'no weight'
+  return `${kgToDisplayWeight(weightKg, units).toLocaleString('en-US', {
     maximumFractionDigits: 1,
   })} ${units}`
 }
 
 function formatWeightDelta(deltaKg: number, units: Units): string {
-  const delta = kgToDisplayWeight(Math.abs(deltaKg), units).toLocaleString('pl-PL', {
+  const delta = kgToDisplayWeight(Math.abs(deltaKg), units).toLocaleString('en-US', {
     maximumFractionDigits: 1,
   })
   return `${deltaKg > 0 ? '+' : '−'}${delta} ${units}`
@@ -93,8 +93,8 @@ export default function NextSessionCard({
 
   const count = recommendation.exercises.length
   const readinessLabel = recommendation.tone === 'high'
-    ? 'wysoka'
-    : recommendation.tone === 'mid' ? 'umiarkowana' : 'niska'
+    ? 'high'
+    : recommendation.tone === 'mid' ? 'moderate' : 'low'
   const reducedSets = recommendation.exercises.reduce((sum, exercise) => (
     sum + Math.max(0, -exercise.setsDelta)
   ), 0)
@@ -102,27 +102,27 @@ export default function NextSessionCard({
   const hasAdjustments = reducedSets > 0 || changedWeights > 0
   const adjustmentLabel = [
     reducedSets > 0
-      ? `${reducedSets} ${polishPlural(reducedSets, 'seria', 'serie', 'serii')} mniej`
+      ? `${reducedSets} fewer ${pluralize(reducedSets, 'set', 'sets')}`
       : null,
     changedWeights > 0
-      ? `${changedWeights} ${polishPlural(changedWeights, 'obciążenie', 'obciążenia', 'obciążeń')} dopasowane`
+      ? `${changedWeights} ${pluralize(changedWeights, 'weight', 'weights')} adjusted`
       : null,
-  ].filter(Boolean).join(' · ') || 'Plan bez zmian'
+  ].filter(Boolean).join(' · ') || 'Plan unchanged'
 
   return (
     <>
       <section
         className="dashboard-today-card"
         role="region"
-        aria-label="Dzisiejszy trening"
+        aria-label="Today’s workout"
       >
         <p className="dashboard-today-date">{formatDate(readiness.date)}</p>
 
         <header className="dashboard-today-head">
           <div>
-            <p className="dashboard-today-plan-name">Z planu · {template.name}</p>
+            <p className="dashboard-today-plan-name">From plan · {template.name}</p>
             <h1>{recommendation.dayName}</h1>
-            <p>{count} {polishPlural(count, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}</p>
+            <p>{count} {pluralize(count, 'exercise', 'exercises')}</p>
           </div>
         </header>
 
@@ -130,9 +130,9 @@ export default function NextSessionCard({
           className="dashboard-today-adjustment"
           data-tone={recommendation.tone}
           data-adjusted={hasAdjustments}
-          aria-label={`Gotowość ${readinessLabel}, ${recommendation.score} na 100. ${adjustmentLabel}`}
+          aria-label={`Readiness ${readinessLabel}, ${recommendation.score} out of 100. ${adjustmentLabel}`}
         >
-          <span>Gotowość {readinessLabel}</span>
+          <span>Readiness {readinessLabel}</span>
           <strong>{adjustmentLabel}</strong>
         </p>
 
@@ -145,16 +145,16 @@ export default function NextSessionCard({
             aria-describedby={describedBy}
             onClick={handleStart}
           >
-            {launching ? 'Uruchamiam…' : `Rozpocznij ${recommendation.dayName}`}
+            {launching ? 'Starting…' : `Start ${recommendation.dayName}`}
           </button>
 
           <button
             type="button"
             className="dashboard-today-trigger"
             popoverTarget={popoverId}
-            aria-label="Zobacz ćwiczenia w planie"
+            aria-label="View plan exercises"
           >
-            <span>Zobacz ćwiczenia</span>
+            <span>View exercises</span>
             <ChevronRight size={18} aria-hidden="true" />
           </button>
         </div>
@@ -171,21 +171,21 @@ export default function NextSessionCard({
         <header className="dashboard-plan-popover-head">
           <div>
             <h2 id={popoverTitleId}>{recommendation.dayName}</h2>
-            <p>{count} {polishPlural(count, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}</p>
+            <p>{count} {pluralize(count, 'exercise', 'exercises')}</p>
           </div>
           <button
             type="button"
             className="dashboard-plan-popover-close"
             popoverTarget={popoverId}
             popoverTargetAction="hide"
-            aria-label="Zamknij plan"
+            aria-label="Close plan"
             autoFocus
           >
             <X size={18} aria-hidden="true" />
           </button>
         </header>
 
-        <ol className="dashboard-plan-exercises" aria-label="Dzisiejszy plan">
+        <ol className="dashboard-plan-exercises" aria-label="Today’s plan">
           {recommendation.exercises.map((exercise, index) => (
             <li key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`}>
               <div>
@@ -201,7 +201,7 @@ export default function NextSessionCard({
                         ? formatWeightDelta(exercise.weightDelta, units)
                         : null,
                       exercise.setsDelta !== 0
-                        ? `−${Math.abs(exercise.setsDelta)} ${polishPlural(Math.abs(exercise.setsDelta), 'seria', 'serie', 'serii')}`
+                        ? `−${Math.abs(exercise.setsDelta)} ${pluralize(Math.abs(exercise.setsDelta), 'set', 'sets')}`
                         : null,
                     ].filter(Boolean).join(' · ')}
                   </span>
@@ -218,14 +218,14 @@ export default function NextSessionCard({
             disabled={launching}
             onClick={handleStart}
           >
-            {launching ? 'Uruchamiam…' : 'Rozpocznij'}
+            {launching ? 'Starting…' : 'Start'}
           </button>
           <button
             type="button"
             className="dashboard-plan-edit"
             onClick={handleEdit}
           >
-            Edytuj
+            Edit
           </button>
         </div>
       </article>

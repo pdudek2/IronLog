@@ -7,8 +7,8 @@ interface AuthShellProps {
 }
 
 const HEADLINE_LINES = [
-  ['Trening', 'ma'],
-  ['swój', 'rytm.'],
+  ['Find', 'your'],
+  ['training', 'rhythm.'],
 ]
 
 const SIGNAL_PATH =
@@ -49,7 +49,7 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
       <main className="auth-instrument-main">
         <section className="auth-instrument-hero">
           <p className="auth-instrument-title">
-            <span className="sr-only">Trening ma swój rytm.</span>
+            <span className="sr-only">Find your training rhythm.</span>
             {HEADLINE_LINES.map((line, lineIndex) => (
               <span key={lineIndex} className="auth-title-line" aria-hidden="true">
                 {line.map((word) => (
@@ -64,7 +64,7 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
           </p>
 
           <p className="auth-instrument-copy">
-            Następna seria zaczyna się od poprzedniej.
+            Every set builds on the last.
           </p>
         </section>
 

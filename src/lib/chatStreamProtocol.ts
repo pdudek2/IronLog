@@ -37,11 +37,11 @@ function parseFrame(line: string): ChatStreamFrame {
   try {
     value = JSON.parse(line)
   } catch {
-    throw new ChatStreamProtocolError('Stream AI zwrócił niepoprawne dane.')
+    throw new ChatStreamProtocolError('The AI stream returned invalid data.')
   }
 
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
-    throw new ChatStreamProtocolError('Stream AI zwrócił niepoprawną ramkę.')
+    throw new ChatStreamProtocolError('The AI stream returned an invalid frame.')
   }
 
   const frame = value as Record<string, unknown>
@@ -53,11 +53,11 @@ function parseFrame(line: string): ChatStreamFrame {
     && typeof frame.message === 'string' && frame.message.trim()) {
     return { type: 'error', message: frame.message.trim() }
   }
-  throw new ChatStreamProtocolError('Stream AI zwrócił nieznany typ ramki.')
+  throw new ChatStreamProtocolError('The AI stream returned an unknown frame type.')
 }
 
 function createAbortError(): Error {
-  const error = new Error('Odczyt streamu AI został anulowany.')
+  const error = new Error('Reading the AI stream was cancelled.')
   error.name = 'AbortError'
   return error
 }
@@ -90,7 +90,7 @@ export async function readChatStream(
 
       if (didFinish) {
         if (line.trim()) {
-          throw new ChatStreamProtocolError('Stream AI zwrócił dane po zakończeniu.')
+          throw new ChatStreamProtocolError('The AI stream returned data after completion.')
         }
       } else {
         const frame = parseFrame(line)
@@ -101,7 +101,7 @@ export async function readChatStream(
           throw new ChatStreamRemoteError(frame.message)
         } else {
           if (!response) {
-            throw new ChatStreamProtocolError('Stream AI zakończył się bez odpowiedzi.')
+            throw new ChatStreamProtocolError('The AI stream ended without a response.')
           }
           didFinish = true
         }
@@ -139,10 +139,10 @@ export async function readChatStream(
     processLines()
 
     if (!didFinish) {
-      throw new ChatStreamProtocolError('Stream AI zakończył się bez potwierdzenia.')
+      throw new ChatStreamProtocolError('The AI stream ended without confirmation.')
     }
     if (buffer.trim()) {
-      throw new ChatStreamProtocolError('Stream AI zwrócił dane po zakończeniu.')
+      throw new ChatStreamProtocolError('The AI stream returned data after completion.')
     }
     return response
   } catch (error) {

@@ -35,7 +35,7 @@ function workoutExerciseRow(page: Page, exerciseName: string) {
 }
 
 async function openExercisePicker(page: Page): Promise<void> {
-  const addExerciseButton = page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()
+  const addExerciseButton = page.getByRole('button', { name: 'Add exercise', exact: true }).first()
   await addExerciseButton.scrollIntoViewIfNeeded()
   await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
   await expect(addExerciseButton).toBeEnabled()
@@ -45,10 +45,10 @@ async function openExercisePicker(page: Page): Promise<void> {
 
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
-    page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Zakończ', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Rozpocznij nową sesję' }).waitFor({ state: 'visible', timeout: 25_000 }),
-    page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Discard and start again' }).waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Finish', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Start a new session' }).waitFor({ state: 'visible', timeout: 25_000 }),
+    page.getByRole('button', { name: 'Add exercise', exact: true }).first().waitFor({ state: 'visible', timeout: 25_000 }),
   ])
 }
 
@@ -56,18 +56,18 @@ async function createLaunchTemplate(page: Page, templateName: string): Promise<v
   await page.goto('/templates/new')
   await expectAppReady(page, '/templates/new')
 
-  await page.getByPlaceholder('np. Upper / Lower 4 dni').fill(templateName)
+  await page.getByPlaceholder('E.g. Upper / Lower 4 days').fill(templateName)
   await openExercisePicker(page)
 
-  const picker = page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })
+  const picker = page.getByRole('dialog', { name: /Choose an exercise/i })
   await expect(picker).toBeVisible({ timeout: 5_000 })
-  await page.getByPlaceholder('Szukaj ćwiczenia...').fill('Squat')
+  await page.getByPlaceholder('Search exercises...').fill('Squat')
   const squat = picker.locator('button').filter({ hasText: /squat/i }).first()
   await expect(squat).toBeVisible({ timeout: 5_000 })
   await squat.click()
   await expect(picker).not.toBeVisible({ timeout: 5_000 })
 
-  await page.getByRole('button', { name: 'Zapisz szablon' }).click()
+  await page.getByRole('button', { name: 'Save template' }).click()
   await page.waitForURL('/templates', { timeout: 15_000 })
   await expect(page.getByRole('heading', { name: templateName, exact: true }).first()).toBeVisible({ timeout: 10_000 })
 }
@@ -78,16 +78,16 @@ async function startFreshSessionWithExercise(page: Page, exerciseName: string): 
   await expectAppReady(page, '/workout/new', 25_000)
   await waitForWorkoutState(page)
 
-  const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
+  const startButton = page.getByRole('button', { name: 'Start a new session' })
   if (await startButton.isVisible({ timeout: 1_500 }).catch(() => false)) {
     await startButton.click()
   }
 
   await openExercisePicker(page)
 
-  const picker = page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })
+  const picker = page.getByRole('dialog', { name: /Choose an exercise/i })
   await expect(picker).toBeVisible({ timeout: 5_000 })
-  await page.getByPlaceholder('Szukaj ćwiczenia...').fill(exerciseName)
+  await page.getByPlaceholder('Search exercises...').fill(exerciseName)
   const exercise = picker.locator('button').filter({ hasText: new RegExp(exerciseName, 'i') }).first()
   await expect(exercise).toBeVisible({ timeout: 5_000 })
   await exercise.click()
@@ -108,14 +108,14 @@ test.describe('Template launch contract', () => {
     await page.goto('/dashboard')
 
     const launch = page.getByRole('button', {
-      name: `Uruchom szablon ${REPLACE_TEMPLATE_NAME}`,
+      name: `Start template ${REPLACE_TEMPLATE_NAME}`,
     }).first()
     await expect(launch).toBeVisible({ timeout: 15_000 })
     await launch.click()
 
-    const dialog = page.getByRole('dialog').filter({ hasText: 'Zastąpić aktywną sesję?' })
+    const dialog = page.getByRole('dialog').filter({ hasText: 'Replace active session?' })
     await expect(dialog).toBeVisible()
-    await dialog.getByRole('button', { name: 'Zostaw obecną' }).click()
+    await dialog.getByRole('button', { name: 'Keep current session' }).click()
 
     await page.goto('/workout/new')
     await expect(page.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
@@ -123,7 +123,7 @@ test.describe('Template launch contract', () => {
 
     await page.goto('/dashboard')
     await launch.click()
-    await dialog.getByRole('button', { name: 'Uruchom szablon' }).click()
+    await dialog.getByRole('button', { name: 'Start template' }).click()
 
     await expect(page).toHaveURL('/workout/new', { timeout: 10_000 })
     await expect(page.getByText('Squat', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
@@ -145,23 +145,23 @@ test.describe('Template launch contract', () => {
     await page.goto('/templates')
     await expectAppReady(page, '/templates')
     const launch = page.getByRole('button', {
-      name: `Uruchom dzień Dzień 1 z szablonu ${OFFLINE_TEMPLATE_NAME}`,
+      name: `Start day Day 1 from template ${OFFLINE_TEMPLATE_NAME}`,
       exact: true,
     })
     await expect(launch).toHaveCount(1)
     await expect(launch).toBeVisible({ timeout: 15_000 })
 
     await startFreshSessionWithExercise(page, 'Bench Press')
-    const bottomNav = page.getByRole('navigation', { name: 'Nawigacja dolna' })
-    const topNav = page.getByRole('navigation', { name: 'Nawigacja główna' })
+    const bottomNav = page.getByRole('navigation', { name: 'Bottom navigation' })
+    const topNav = page.getByRole('navigation', { name: 'Main navigation' })
     const plansNav = (await bottomNav.isVisible())
-      ? bottomNav.getByRole('button', { name: 'Plany', exact: true })
-      : topNav.getByRole('button', { name: 'Plany', exact: true })
+      ? bottomNav.getByRole('button', { name: 'Plans', exact: true })
+      : topNav.getByRole('button', { name: 'Plans', exact: true })
     await plansNav.click()
     await expectAppReady(page, '/templates')
     await expect(launch).toBeVisible({ timeout: 15_000 })
 
-    const dialog = page.getByRole('dialog').filter({ hasText: 'Zastąpić aktywną sesję?' })
+    const dialog = page.getByRole('dialog').filter({ hasText: 'Replace active session?' })
     await expectedBrowserDiagnostics.during(
       'intentional offline template launch',
       isExpectedTemplateLaunchOfflineDiagnostic,
@@ -171,7 +171,7 @@ test.describe('Template launch contract', () => {
           await expect(dialog).toBeVisible({ timeout: 5_000 })
 
           await context.setOffline(true)
-          await dialog.getByRole('button', { name: 'Uruchom szablon' }).click()
+          await dialog.getByRole('button', { name: 'Start template' }).click()
 
           const matchingCard = page.locator('article').filter({
             has: page.getByRole('heading', { name: OFFLINE_TEMPLATE_NAME, exact: true }),
@@ -191,7 +191,7 @@ test.describe('Template launch contract', () => {
     const matchingCard = page.locator('article').filter({
       has: page.getByRole('heading', { name: OFFLINE_TEMPLATE_NAME, exact: true }),
     })
-    await matchingCard.getByRole('button', { name: 'Spróbuj ponownie' }).click()
+    await matchingCard.getByRole('button', { name: 'Try again' }).click()
 
     await expect(page).toHaveURL('/workout/new', { timeout: 15_000 })
     await expect(page.getByText('Squat', { exact: true }).first()).toBeVisible({ timeout: 15_000 })

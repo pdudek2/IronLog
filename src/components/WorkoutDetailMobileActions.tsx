@@ -31,7 +31,7 @@ export function WorkoutDetailMobileActions({ children }: WorkoutDetailMobileActi
       />
       <div
         role="group"
-        aria-label="Akcje treningu"
+        aria-label="Workout actions"
         className="workout-detail-mobile-actions"
         data-placement={fixed ? 'fixed' : 'inline'}
       >

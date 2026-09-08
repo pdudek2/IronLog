@@ -51,7 +51,7 @@ const NotFoundPage = lazy(loadNotFoundPage)
 
 function LogoutRoute() {
   return (
-    <Suspense fallback={<LoadingState message="Wylogowywanie..." />}>
+    <Suspense fallback={<LoadingState message="Signing out..." />}>
       <LogoutPage />
     </Suspense>
   )
@@ -59,7 +59,7 @@ function LogoutRoute() {
 
 function PrivateRouteOutlet() {
   const { user, loading } = useAuthStore()
-  if (loading) return <LoadingState message="Sprawdzanie sesji..." />
+  if (loading) return <LoadingState message="Checking session..." />
   if (!user) return <Navigate to="/login" replace />
   return <Outlet />
 }
@@ -74,7 +74,7 @@ export function ProfileRouteOutlet() {
   }, [loadProfile, profileUid, user])
 
   if (!user || profileUid !== user.uid || status === 'loading') {
-    return <LoadingState message="Wczytywanie profilu..." />
+    return <LoadingState message="Loading profile..." />
   }
 
   if (status === 'error') {
@@ -83,7 +83,7 @@ export function ProfileRouteOutlet() {
         <div className="page-container max-w-lg">
           <ActionFeedback
             status="error"
-            message="Nie udało się wczytać profilu. Sprawdź połączenie i spróbuj ponownie."
+            message="Could not load your profile. Check your connection and try again."
             onRetry={() => { void loadProfile(user.uid) }}
           />
         </div>
@@ -104,7 +104,7 @@ export function ProfileRouteOutlet() {
 
 function PublicRouteOutlet() {
   const { user, loading } = useAuthStore()
-  if (loading) return <LoadingState message="Sprawdzanie sesji..." />
+  if (loading) return <LoadingState message="Checking session..." />
   if (user) return <Navigate to="/dashboard" replace />
   return <Outlet />
 }

@@ -60,6 +60,6 @@ describe('sessionDuration', () => {
   it('formats stale session age for the confirm dialog', () => {
     const now = 3 * 86_400_000 + 2 * 60 * 60_000
 
-    expect(getStaleSessionAgeLabel(0, now)).toBe('3 dni')
+    expect(getStaleSessionAgeLabel(0, now)).toBe('3 days')
   })
 })

@@ -28,7 +28,7 @@ describe('readJsonBody', () => {
 
     await expect(readJsonBody(req, { maxBytes: 8 })).rejects.toMatchObject({
       status: 413,
-      message: 'Body requestu jest zbyt duże.',
+      message: 'Request body is too large.',
     })
   })
 
@@ -37,7 +37,7 @@ describe('readJsonBody', () => {
 
     await expect(readJsonBody(req)).rejects.toMatchObject({
       status: 415,
-      message: 'Content-Type musi być application/json.',
+      message: 'Content-Type must be application/json.',
     })
   })
 
@@ -46,7 +46,7 @@ describe('readJsonBody', () => {
 
     await expect(readJsonBody(req)).rejects.toMatchObject({
       status: 400,
-      message: 'Niepoprawny JSON w body requestu.',
+      message: 'Invalid JSON in request body.',
     })
   })
 })
@@ -57,13 +57,13 @@ describe('sendApiError', () => {
 
     sendApiError(
       captured.res,
-      new ApiError(409, 'Ta sesja nie jest aktywna.', { code: 'session_mismatch' }),
+      new ApiError(409, 'Ta session nie jest aktywna.', { code: 'session_mismatch' }),
       { fallbackMessage: 'Fallback.' },
     )
 
     expect(captured.res.statusCode).toBe(409)
     expect(captured.body()).toEqual({
-      error: 'Ta sesja nie jest aktywna.',
+      error: 'Ta session nie jest aktywna.',
       code: 'session_mismatch',
     })
   })

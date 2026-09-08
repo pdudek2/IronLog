@@ -1,3 +1,5 @@
+import { pluralize } from '../src/lib/pluralize.js'
+
 const DAY_MS = 24 * 60 * 60 * 1000
 const MONTH_WINDOW_DAYS = 30
 const RECENT_WORKOUT_LIMIT = 4
@@ -129,8 +131,8 @@ export function createEmptyAiUserContext(): AiUserContext {
       workoutCount: 0,
       totalVolume: 0,
       averageWorkoutVolume: 0,
-      signals: ['Brak treningów w ostatnich 30 dniach.'],
-      recommendations: ['Zacznij od spokojnej sesji bazowej i odbuduj regularność.'],
+      signals: ['No workouts in the last 30 days.'],
+      recommendations: ['Start with an easy baseline session and rebuild consistency.'],
     },
   }
 }
@@ -209,65 +211,65 @@ export function buildAiUserContext({
 
 export function buildChatContextSections(context: AiUserContext) {
   const profileLine = context.sources.profile === 'unavailable'
-    ? 'Profil: dane chwilowo niedostępne.'
+    ? 'Profile: data temporarily unavailable.'
     : [
-        context.displayName ? `Użytkownik: ${context.displayName}` : null,
-        context.primaryGoal ? `Cel główny: ${context.primaryGoal}` : null,
-        context.weeklyGoal ? `Cel tygodniowy: ${context.weeklyGoal} sesje` : null,
-        context.units ? `Jednostki: ${context.units}` : null,
-      ].filter(Boolean).join(' | ') || 'Profil: brak danych.'
+        context.displayName ? `User: ${context.displayName}` : null,
+        context.primaryGoal ? `Primary goal: ${context.primaryGoal}` : null,
+        context.weeklyGoal ? `Weekly goal: ${context.weeklyGoal} ${pluralize(context.weeklyGoal, 'session', 'sessions')}` : null,
+        context.units ? `Units: ${context.units}` : null,
+      ].filter(Boolean).join(' | ') || 'Profile: no data.'
 
   const readinessLine = context.sources.readiness === 'unavailable'
-    ? 'Readiness: dane chwilowo niedostępne.'
+    ? 'Readiness: data temporarily unavailable.'
     : context.readiness
-      ? `Readiness: ${context.readiness.score}/100 (${context.readiness.label}), dzień ${context.readiness.date}`
-      : 'Readiness: brak dzisiejszego lub ostatniego wpisu.'
+      ? `Readiness: ${context.readiness.score}/100 (${context.readiness.label}), day ${context.readiness.date}`
+      : 'Readiness: no current or recent entry.'
 
   const workoutsLine = context.sources.workouts === 'unavailable'
-    ? 'Historia treningów: dane chwilowo niedostępne.'
+    ? 'Workout history: data temporarily unavailable.'
     : formatRecentWorkouts(context.recentWorkouts)
 
   const recordsLine = context.sources.records === 'unavailable'
-    ? 'Rekordy: dane chwilowo niedostępne.'
+    ? 'Records: data temporarily unavailable.'
     : formatRecords(context.topRecords)
 
   const monthlyLine = context.sources.workouts !== 'available'
     ? [
         context.sources.workouts === 'limited'
-          ? 'Analiza 30 dni jest niepełna: limit odczytu obejmuje tylko najnowsze treningi. Nie wyliczaj sum miesięcznych ani nie wnioskuj o słabszych tygodniach z tego wycinka.'
-          : 'Analiza treningów: dane chwilowo niedostępne.',
+          ? 'The 30-day analysis is incomplete: the read limit covers only the most recent workouts. Do not calculate monthly totals or infer weaker weeks from this subset.'
+          : 'Workout analysis: data temporarily unavailable.',
         ...context.monthlyInsights.signals.map((signal) => `- ${signal}`),
-        ...context.monthlyInsights.recommendations.map((recommendation) => `Rekomendacja: ${recommendation}`),
+        ...context.monthlyInsights.recommendations.map((recommendation) => `Recommendation: ${recommendation}`),
       ].join('\n')
     : formatMonthlyInsights(context.monthlyInsights)
 
   return {
     profileLine,
     readinessLine,
-    workoutsHeading: 'OSTATNIE 4 TRENINGI',
+    workoutsHeading: 'RECENT 4 WORKOUTS',
     workoutsLine,
-    monthlyHeading: 'SYGNAŁY Z OSTATNICH 30 DNI',
+    monthlyHeading: 'SIGNALS FROM THE LAST 30 DAYS',
     monthlyLine,
-    recordsHeading: 'TOP REKORDY',
+    recordsHeading: 'TOP RECORDS',
     recordsLine,
   }
 }
 
 function formatRecentWorkouts(workouts: AiWorkoutSummary[]): string {
-  if (workouts.length === 0) return 'Brak ostatnich treningów.'
+  if (workouts.length === 0) return 'No recent workouts.'
   return workouts.map((workout) => {
-    const date = new Date(workout.startedAt).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
+    const date = new Date(workout.startedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
     const exerciseLines = workout.exercises.length > 0
       ? workout.exercises
-          .map((exercise) => `  - ${exercise.name}: ${exercise.setCount} serie, ${exercise.totalVolume} kg volume, sety [${exercise.setsSummary}]`)
+          .map((exercise) => `  - ${exercise.name}: ${exercise.setCount} ${pluralize(exercise.setCount, 'set', 'sets')}, ${exercise.totalVolume} kg volume, sets [${exercise.setsSummary}]`)
           .join('\n')
-      : '  - brak szczegółów ćwiczeń'
-    return `${date} — ${workout.label} — ${workout.exerciseCount} ćwiczeń — ${workout.totalVolume} kg\n${exerciseLines}`
+      : '  - no exercise details'
+    return `${date} — ${workout.label} — ${workout.exerciseCount} ${pluralize(workout.exerciseCount, 'exercise', 'exercises')} — ${workout.totalVolume} kg\n${exerciseLines}`
   }).join('\n')
 }
 
 function formatRecords(records: AiUserContext['topRecords']): string {
-  if (records.length === 0) return 'Brak rekordów.'
+  if (records.length === 0) return 'No records.'
   return records
     .map((record) => `${record.exerciseName}: max ${record.maxWeight} kg, reps ${record.maxReps}, volume ${record.bestVolume}`)
     .join('\n')
@@ -275,10 +277,10 @@ function formatRecords(records: AiUserContext['topRecords']): string {
 
 function formatMonthlyInsights(insights: AiMonthlyInsights): string {
   return [
-    `${insights.workoutCount} treningów / ${insights.totalVolume} kg w ostatnich ${insights.windowDays} dniach.`,
-    `Średnio ${insights.averageWorkoutVolume} kg na trening.`,
+    `${insights.workoutCount} ${pluralize(insights.workoutCount, 'workout', 'workouts')} / ${insights.totalVolume} kg over the last ${insights.windowDays} days.`,
+    `Average ${insights.averageWorkoutVolume} kg per workout.`,
     ...insights.signals.map((signal) => `- ${signal}`),
-    ...insights.recommendations.map((recommendation) => `Rekomendacja: ${recommendation}`),
+    ...insights.recommendations.map((recommendation) => `Recommendation: ${recommendation}`),
   ].join('\n')
 }
 
@@ -286,7 +288,7 @@ export function summarizeWorkout(workout: AiContextWorkoutInput): AiWorkoutSumma
   const exercises = summarizeWorkoutExercises(workout.exercises)
 
   return {
-    label: readOptionalString(workout.label) ?? 'Sesja',
+    label: readOptionalString(workout.label) ?? 'Session',
     startedAt: finiteNumber(workout.startedAt),
     exerciseCount: Array.isArray(workout.exercises) ? workout.exercises.length : exercises.length,
     totalVolume: exercises.reduce((sum, exercise) => sum + exercise.totalVolume, 0),
@@ -299,7 +301,7 @@ function summarizeWorkoutExercises(exercises: unknown): AiWorkoutExerciseSummary
 
   return exercises.flatMap((exercise) => {
     const record = asRecord(exercise)
-    const name = readOptionalString(record.name) ?? 'Ćwiczenie'
+    const name = readOptionalString(record.name) ?? 'Exercise'
     const rawSets = Array.isArray(record.sets) ? record.sets : []
     const normalizedSets = rawSets
       .map((set) => {
@@ -348,8 +350,8 @@ function buildMonthlyInsights({
     ? findLowReadinessStreak(readinessEntries, since, now)
     : []
   if (lowReadinessStreak.length >= 2) {
-    signals.push(`readiness był obniżony przez ${lowReadinessStreak.length} dni z rzędu; główne sygnały to sen/nastrój/obolałość.`)
-    recommendations.push('Po takim okresie wracaj przez 1-2 treningi na 80-90% normalnej objętości zamiast nadrabiać wszystko jedną sesją.')
+    signals.push(`readiness was low for ${lowReadinessStreak.length} consecutive days; the main signals were sleep, mood and soreness.`)
+    recommendations.push('After this period, use 80–90% of normal volume for 1–2 workouts rather than making up for everything in one session.')
   }
 
   if (sources.workouts !== 'available') {
@@ -381,14 +383,14 @@ function buildMonthlyInsights({
     : []
 
   for (const bucket of weakBuckets.slice(0, 2)) {
-    signals.push(`Wykryto słabszy tydzień ${bucket.index + 1}: ${bucket.workouts} treningów i ${bucket.volume} kg objętości względem celu ${goal} sesji.`)
+    signals.push(`A weaker week was detected (week ${bucket.index + 1}): ${bucket.workouts} ${pluralize(bucket.workouts, 'workout', 'workouts')} and ${bucket.volume} kg volume against a goal of ${goal} ${pluralize(goal, 'session', 'sessions')}.`)
   }
 
   if (monthlyWorkouts.length === 0) {
-    signals.push('Brak treningów w ostatnich 30 dniach.')
-    recommendations.push('Zacznij od spokojnej sesji bazowej i odbuduj regularność.')
+    signals.push('No workouts in the last 30 days.')
+    recommendations.push('Start with an easy baseline session and rebuild consistency.')
   } else if (weakBuckets.length > 0 && recommendations.length === 0) {
-    recommendations.push('Po słabszym tygodniu zrób pierwszy trening powrotny lżej i oceniaj gotowość po rozgrzewce.')
+    recommendations.push('After a weaker week, make your first workout back lighter and assess readiness after warming up.')
   }
 
   const exerciseCounts = new Map<string, number>()
@@ -403,7 +405,7 @@ function buildMonthlyInsights({
     .map(([name, count]) => `${name} (${count}x)`)
 
   if (topExercises.length > 0) {
-    signals.push(`Najczęściej powtarzane ćwiczenia: ${topExercises.join(', ')}.`)
+    signals.push(`Most frequent exercises: ${topExercises.join(', ')}.`)
   }
 
   return {
@@ -478,9 +480,9 @@ function computeReadinessScore(entry: { sleep: number; mood: number; soreness: n
   const raw = entry.sleep * 0.4 + entry.mood * 0.3 + (6 - entry.soreness) * 0.3
   const score = Math.round(((raw - 1) / 4) * 100)
 
-  if (score >= 70) return { score, label: 'Gotowy' }
-  if (score >= 40) return { score, label: 'Umiarkowany' }
-  return { score, label: 'Odpoczynek' }
+  if (score >= 70) return { score, label: 'Ready' }
+  if (score >= 40) return { score, label: 'Moderate' }
+  return { score, label: 'Rest' }
 }
 
 function readOptionalString(value: unknown): string | null {

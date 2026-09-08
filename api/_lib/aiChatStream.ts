@@ -30,7 +30,7 @@ export interface ClientAbortBridge {
   dispose: () => void
 }
 
-const GENERIC_STREAM_ERROR = 'Nie udało się dokończyć odpowiedzi.'
+const GENERIC_STREAM_ERROR = 'Could not complete the response.'
 
 export function encodeChatStreamFrame(frame: ServerChatStreamFrame): string {
   return `${JSON.stringify(frame)}\n`

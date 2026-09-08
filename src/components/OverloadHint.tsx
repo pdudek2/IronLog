@@ -12,9 +12,9 @@ interface Props {
 }
 
 const REASON_LABEL: Record<string, string> = {
-  progressive: 'Progresja',
-  deload_gap:  'Deload — długa przerwa',
-  maintain:    'Utrzymaj ciężar',
+  progressive: 'Progression',
+  deload_gap:  'Deload — long break',
+  maintain:    'Keep weight',
 }
 
 export default function OverloadHint({ suggestion, units, onApply, onDismiss }: Props) {
@@ -61,11 +61,11 @@ export default function OverloadHint({ suggestion, units, onApply, onDismiss }: 
           onClick={() => onApply(suggestedWeight)}
           className="overload-hint-apply"
         >
-          Ustaw
+          Apply
         </button>
         <button
           onClick={onDismiss}
-          aria-label="Odrzuć sugestię"
+          aria-label="Dismiss suggestion"
           className="overload-hint-dismiss"
         >
           <X size={14} />

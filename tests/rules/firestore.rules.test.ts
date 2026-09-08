@@ -105,7 +105,7 @@ describe('userExercises rules', () => {
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
     expect(results.find((result) => result.status === 'rejected')).toMatchObject({
-      reason: { message: 'Ćwiczenie o nazwie "Concurrent Curl" już istnieje.' },
+      reason: { message: 'Exercise o nazwie "Concurrent Curl" już istnieje.' },
     })
 
     const stored = await getDocs(query(
@@ -329,7 +329,7 @@ describe('activeSessions rules', () => {
     await assertSucceeds(setDoc(doc(db, 'activeSessions', 'alice'), {
       ...validActiveSession('alice'),
       templateId: 'template-lower',
-      label: 'Dzień 1',
+      label: 'Day 1',
       exercises,
     }))
   })

@@ -11,7 +11,7 @@ export function classifyAnthropicStatus(status: number): ClassifiedAnthropicErro
     return {
       status: 401,
       code: 'invalid-key',
-      message: 'Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.',
+      message: 'Claude API rejected your key. Check it and save it again.',
     }
   }
 
@@ -19,7 +19,7 @@ export function classifyAnthropicStatus(status: number): ClassifiedAnthropicErro
     return {
       status: 429,
       code: 'rate-limited',
-      message: 'Claude API zgłosiło limit lub brak środków na kluczu. Odczekaj chwilę albo sprawdź konto Anthropic.',
+      message: 'Claude API reported a limit or insufficient credits. Wait a moment or check your Anthropic account.',
     }
   }
 
@@ -27,19 +27,19 @@ export function classifyAnthropicStatus(status: number): ClassifiedAnthropicErro
     return {
       status: 400,
       code: 'model-unavailable',
-      message: 'Wybrany model Claude nie jest dostępny dla tego klucza. Wybierz inny model w konfiguracji.',
+      message: 'The selected Claude model is unavailable for this key. Choose another model in settings.',
     }
   }
 
   return {
     status: status >= 500 ? 503 : 502,
     code: 'upstream-unavailable',
-    message: 'Claude API jest chwilowo niedostępne. Spróbuj ponownie za chwilę.',
+    message: 'Claude API is temporarily unavailable. Try again shortly.',
   }
 }
 
 export function anthropicNetworkError(): ApiError {
-  return new ApiError(503, 'Nie udało się połączyć z Claude API. Spróbuj ponownie za chwilę.', {
+  return new ApiError(503, 'Could not connect to Claude API. Try again shortly.', {
     code: 'network-retryable',
   })
 }

@@ -16,23 +16,23 @@ test.describe('Workout persistence', () => {
     await expectAppReady(page, '/workout/new', 25_000)
 
     // Start session if not already active
-    const startBtn = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
+    const startBtn = page.getByRole('button', { name: 'Start a new session' })
     if (await startBtn.isVisible({ timeout: 3_000 }).catch(() => false)) {
       await startBtn.click()
     }
 
     // Wait for workout UI to be ready
-    const addExBtn = page.getByRole('button', { name: /Dodaj ćwiczenie/ }).first()
+    const addExBtn = page.getByRole('button', { name: /Add exercise/ }).first()
     await expect(addExBtn).toBeVisible({ timeout: 15_000 })
 
     await page.screenshot({ path: 'test-results/workout-ready.png' })
 
     // Open exercise picker
     await addExBtn.click()
-    await expect(page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).toBeVisible({ timeout: 5_000 })
 
     // Search and select first matching exercise
-    await page.getByPlaceholder('Szukaj ćwiczenia...').fill('Bench Press')
+    await page.getByPlaceholder('Search exercises...').fill('Bench Press')
     const firstResult = page.getByRole('dialog').locator('button').filter({ hasText: /bench press/i }).first()
     await expect(firstResult).toBeVisible({ timeout: 5_000 })
     // Get just the exercise name (first <p> in button, not full textContent which includes equipment)
@@ -40,7 +40,7 @@ test.describe('Workout persistence', () => {
     await firstResult.click()
 
     // Picker should close
-    await expect(page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })).not.toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).not.toBeVisible({ timeout: 5_000 })
 
     // Exercise name appears in the workout card header
     await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 5_000 })

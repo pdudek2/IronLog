@@ -13,8 +13,8 @@ describe('TemplateSaveDock', () => {
     )
 
     expect(screen.getByTestId('template-save-dock')).toHaveAttribute('data-state', 'new-pristine')
-    expect(screen.getByRole('status')).toHaveTextContent('Nowy plan · jeszcze niezapisany')
-    expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('New plan · not saved yet')
+    expect(screen.getByRole('button', { name: 'Save template' })).toBeDisabled()
   })
 
   it('enables the matching create or edit action for a valid dirty draft', () => {
@@ -22,18 +22,18 @@ describe('TemplateSaveDock', () => {
       <TemplateSaveDock state="dirty" isEdit={false} canSubmit />,
     )
 
-    expect(screen.getByRole('status')).toHaveTextContent('Niezapisane zmiany')
-    expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeEnabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Unsaved changes')
+    expect(screen.getByRole('button', { name: 'Save template' })).toBeEnabled()
 
     view.rerender(<TemplateSaveDock state="dirty" isEdit canSubmit />)
-    expect(screen.getByRole('button', { name: 'Zapisz zmiany' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled()
   })
 
   it('disables duplicate submit while saving', () => {
     render(<TemplateSaveDock state="saving" isEdit canSubmit />)
 
-    expect(screen.getByRole('status')).toHaveTextContent('Trwa zapis')
-    expect(screen.getByRole('button', { name: 'Zapisuję…' })).toBeDisabled()
+    expect(screen.getByRole('status')).toHaveTextContent('Saving')
+    expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
   })
 
   it('keeps a failed save visible with retry and dismiss actions', () => {
@@ -44,15 +44,15 @@ describe('TemplateSaveDock', () => {
         state="error"
         isEdit={false}
         canSubmit
-        errorMessage="Nie udało się zapisać planu."
+        errorMessage="Could not save the plan."
         onRetry={onRetry}
         onDismissError={onDismissError}
       />,
     )
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Nie udało się zapisać planu.')
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Zamknij' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not save the plan.')
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
     expect(onRetry).toHaveBeenCalledOnce()
     expect(onDismissError).toHaveBeenCalledOnce()
   })

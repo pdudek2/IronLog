@@ -210,7 +210,7 @@ describe('workout mutation results', () => {
       json: vi.fn().mockResolvedValue({ status: 'unknown' }),
     }))
 
-    await expect(operation()).rejects.toThrow('Nieprawidłowa odpowiedź serwera.')
+    await expect(operation()).rejects.toThrow('Invalid server response.')
   })
   it('persists before a request that commits then loses its response, and retries after reload', async () => {
     let committed = false
@@ -225,7 +225,7 @@ describe('workout mutation results', () => {
     vi.stubGlobal('fetch', fetchMock)
     await expect(deleteWorkout('workout-1')).resolves.toEqual({ status: 'unknown' })
     const restored = readWorkoutDeleteRecovery('user-1')!
-    await expect(deleteWorkout('another-workout')).rejects.toThrow('Najpierw ponów')
+    await expect(deleteWorkout('another-workout')).rejects.toThrow('Retry the previous workout deletion')
     expect(fetchMock).toHaveBeenCalledTimes(1)
     await expect(deleteWorkout(restored.workoutId)).resolves.toEqual({ status: 'deleted' })
     expect(readWorkoutDeleteRecovery('user-1')).toBeNull()
@@ -265,7 +265,7 @@ describe('workout mutation results', () => {
     }
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
-    await expect(deleteWorkout('workout-1')).rejects.toThrow('Konto użytkownika zmieniło się.')
+    await expect(deleteWorkout('workout-1')).rejects.toThrow('The user account has changed.')
     expect(fetchMock).not.toHaveBeenCalled()
     expect(readWorkoutDeleteRecovery('user-1')).toBeNull()
   })

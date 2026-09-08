@@ -6,7 +6,7 @@ import {
   seedProgressEmulatorState,
 } from './support/progressEmulator'
 
-const progressHeading = (page: Page) => page.getByRole('heading', { name: 'Postępy' })
+const progressHeading = (page: Page) => page.getByRole('heading', { name: 'Progress', exact: true })
 const emulatorMode = process.env.E2E_BACKEND === 'emulator'
 
 async function useHistoricalSessionClock(
@@ -63,7 +63,7 @@ test.describe('Progress analytics', () => {
     await gotoProgressReady(page)
 
     await expect(page.locator('.progress-board')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Rekordy od początku' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'All-time records' })).toBeVisible()
     await expect(page.locator('.progress-panel-head > div > p')).toHaveCount(0)
     await expect(page.locator('.progress-records-head > div > p')).toHaveCount(0)
     await page.screenshot({ path: 'test-results/progress-loaded.png', fullPage: true })
@@ -78,9 +78,9 @@ test.describe('Progress analytics', () => {
     const progressPage = page.getByTestId('progress-page')
     const board = page.locator('.progress-board')
     const boardHandle = await board.elementHandle()
-    const button30 = page.getByRole('button', { name: '30 dni' })
-    const button90 = page.getByRole('button', { name: '90 dni' })
-    const fullPageError = page.getByText('Nie udało się pobrać danych', { exact: true })
+    const button30 = page.getByRole('button', { name: '30 days' })
+    const button90 = page.getByRole('button', { name: '90 days' })
+    const fullPageError = page.getByText('Could not load data', { exact: true })
 
     expect(boardHandle).not.toBeNull()
 
@@ -119,7 +119,7 @@ test.describe('Progress analytics', () => {
 
     const records = page.locator('.progress-records')
     await records.scrollIntoViewIfNeeded()
-    await expect(page.getByRole('heading', { name: 'Rekordy od początku' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'All-time records' })).toBeVisible()
 
     const viewport = page.viewportSize()
     expect(viewport).not.toBeNull()
@@ -143,40 +143,40 @@ test.describe('Progress analytics', () => {
     await useHistoricalSessionClock(page)
     await gotoProgressReady(page)
 
-    const picker = page.getByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+    const picker = page.getByRole('combobox', { name: 'Chart exercise' })
     await expect(picker).toHaveValue(/bench/)
     await expect(page.locator('.recharts-line')).toHaveCount(1)
     await expect(picker.locator('option:checked')).toHaveText('Phase 7 Bench Press')
-    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toContainText('Ostatnio 80 kg')
+    await expect(page.getByLabel('Selected exercise trend')).toContainText('Latest 80 kg')
 
     await picker.selectOption({ label: 'Phase 7 Squat' })
     await expect(page.locator('.recharts-line')).toHaveCount(1)
-    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toContainText('Ostatnio 110 kg')
+    await expect(page.getByLabel('Selected exercise trend')).toContainText('Latest 110 kg')
   })
 
   test('shows a deliberate short-series state without an empty axis or false trend', async ({ page }) => {
     await useHistoricalSessionClock(page)
     await gotoProgressReady(page)
 
-    await page.getByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+    await page.getByRole('combobox', { name: 'Chart exercise' })
       .selectOption({ label: 'Phase 7 Short Series' })
 
     const strengthPanel = page.locator('.progress-panel').filter({
-      has: page.getByRole('heading', { name: 'Progresja ciężaru' }),
+      has: page.getByRole('heading', { name: 'Weight progression' }),
     })
-    await expect(strengthPanel.getByText('Do wykresu: jeszcze 2 dni z zapisanym ciężarem.')).toBeVisible()
-    await expect(strengthPanel.getByLabel('1 z 3 dni do wykresu')).toBeVisible()
+    await expect(strengthPanel.getByText('Chart needs 2 days with recorded weight.')).toBeVisible()
+    await expect(strengthPanel.getByLabel('1 of 3 days for the chart')).toBeVisible()
     await expect(strengthPanel.locator('.recharts-line')).toHaveCount(0)
-    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toHaveCount(0)
+    await expect(page.getByLabel('Selected exercise trend')).toHaveCount(0)
   })
 
   test('shows a deliberate empty-range state without analytics or a false trend', async ({ page }) => {
     await useHistoricalSessionClock(page, '2026-08-17T12:00:00.000Z')
     await gotoProgressReady(page)
 
-    await expect(page.getByRole('status').filter({ hasText: 'W tym zakresie nie ma treningów' })).toBeVisible()
+    await expect(page.getByRole('status').filter({ hasText: 'No workouts in this date range' })).toBeVisible()
     await expect(page.locator('.progress-analysis-grid')).toHaveCount(0)
-    await expect(page.getByLabel('Trend wybranego ćwiczenia')).toHaveCount(0)
+    await expect(page.getByLabel('Selected exercise trend')).toHaveCount(0)
   })
 
   test('mobile content exposes the strength selector and heatmap inspector without overflow', async ({ page }) => {
@@ -200,7 +200,7 @@ test.describe('Progress analytics', () => {
         expect(sectionBox!.y + sectionBox!.height).toBeLessThanOrEqual(bottomNavigationBox!.y + 1)
       }
 
-      const insight = page.getByLabel('Trend wybranego ćwiczenia')
+      const insight = page.getByLabel('Selected exercise trend')
       const strengthChart = page.locator('.progress-chart-frame--strength')
       await expect(insight).toBeVisible()
       await expect(strengthChart).toBeVisible()
@@ -208,12 +208,12 @@ test.describe('Progress analytics', () => {
       await expectNoHorizontalOverflow(insight, width)
       await clearNavigation(strengthChart)
 
-      const strengthPicker = page.getByRole('combobox', { name: 'Ćwiczenie na wykresie' })
+      const strengthPicker = page.getByRole('combobox', { name: 'Chart exercise' })
       await expect(strengthPicker).toBeVisible()
       expect((await strengthPicker.boundingBox())!.height).toBeGreaterThanOrEqual(44)
       await expectNoHorizontalOverflow(strengthPicker, width)
 
-      const heatmapPicker = page.getByRole('combobox', { name: 'Sprawdź dzień w kalendarzu' })
+      const heatmapPicker = page.getByRole('combobox', { name: 'View calendar day' })
       await expect(heatmapPicker).toBeVisible()
       expect((await heatmapPicker.boundingBox())!.height).toBeGreaterThanOrEqual(44)
       await expectNoHorizontalOverflow(heatmapPicker, width)

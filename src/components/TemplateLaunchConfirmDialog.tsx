@@ -15,10 +15,10 @@ export default function TemplateLaunchConfirmDialog({
 
   return (
     <ConfirmDialog
-      title="Zastąpić aktywną sesję?"
-      message="Uruchomienie szablonu zastąpi ćwiczenia i serie w obecnej sesji."
-      confirmLabel="Uruchom szablon"
-      cancelLabel="Zostaw obecną"
+      title="Replace active session?"
+      message="Starting this template will replace the exercises and sets in your current session."
+      confirmLabel="Start template"
+      cancelLabel="Keep current session"
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

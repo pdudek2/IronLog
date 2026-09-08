@@ -13,40 +13,40 @@ export const EXERCISE_CATEGORY_COLORS: Readonly<Record<string, string>> = {
 }
 
 export const EXERCISE_CATEGORY_LABELS: Readonly<Record<string, string>> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  legs: 'Nogi',
-  shoulders: 'Barki',
-  arms: 'Ramiona',
+  chest: 'Chest',
+  back: 'Back',
+  legs: 'Legs',
+  shoulders: 'Shoulders',
+  arms: 'Arms',
   core: 'Core',
   cardio: 'Cardio',
 }
 
 const EQUIPMENT_LABELS: Record<Equipment | string, string> = {
-  barbell: 'Sztanga',
-  dumbbell: 'Hantle',
-  cable: 'Wyciąg',
-  machine: 'Maszyna',
-  bodyweight: 'Własne ciało',
+  barbell: 'Barbell',
+  dumbbell: 'Dumbbells',
+  cable: 'Cable',
+  machine: 'Machine',
+  bodyweight: 'Bodyweight',
   kettlebell: 'Kettlebell',
 }
 
 const MUSCLE_LABELS: Record<MuscleGroup | string, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  shoulders: 'Barki',
+  chest: 'Chest',
+  back: 'Back',
+  shoulders: 'Shoulders',
   biceps: 'Biceps',
   triceps: 'Triceps',
-  forearms: 'Przedramiona',
-  quads: 'Quady',
-  hamstrings: 'Dwugłowe',
-  glutes: 'Pośladki',
-  calves: 'Łydki',
+  forearms: 'Forearms',
+  quads: 'Quads',
+  hamstrings: 'Hamstrings',
+  glutes: 'Glutes',
+  calves: 'Calves',
   core: 'Core',
-  lats: 'Najszersze',
-  traps: 'Czworoboczne',
-  abs: 'Brzuch',
-  obliques: 'Skośne',
+  lats: 'Lats',
+  traps: 'Traps',
+  abs: 'Abs',
+  obliques: 'Obliques',
 }
 
 export function getEquipmentLabel(equipment: string): string {

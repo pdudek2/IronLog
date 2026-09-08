@@ -59,7 +59,7 @@ export async function discardWorkoutSession(sessionId: string): Promise<DiscardW
 async function callClosureEndpoint(path: string, body: unknown): Promise<unknown> {
   const user = auth.currentUser
   if (!user) {
-    throw new WorkoutClosureError('definitive', 'Brak aktywnej sesji użytkownika.', {
+    throw new WorkoutClosureError('definitive', 'No active user session.', {
       code: 'unauthenticated',
     })
   }
@@ -81,7 +81,7 @@ async function callClosureEndpoint(path: string, body: unknown): Promise<unknown
     })
     payload = await response.json().catch(() => null) as unknown
   } catch (cause) {
-    throw new WorkoutClosureError('ambiguous', 'Nie udało się potwierdzić zamknięcia sesji.', {
+    throw new WorkoutClosureError('ambiguous', 'Could not confirm session closure.', {
       cause,
     })
   } finally {
@@ -100,13 +100,13 @@ async function callClosureEndpoint(path: string, body: unknown): Promise<unknown
     })
   }
 
-  throw new WorkoutClosureError('ambiguous', 'Nie udało się potwierdzić zamknięcia sesji.', {
+  throw new WorkoutClosureError('ambiguous', 'Could not confirm session closure.', {
     status: response.status,
   })
 }
 
 function ambiguousResponse(status?: number): WorkoutClosureError {
-  return new WorkoutClosureError('ambiguous', 'Serwer zwrócił nieczytelną odpowiedź.', { status })
+  return new WorkoutClosureError('ambiguous', 'The server returned an unreadable response.', { status })
 }
 
 function isStructuredError(value: unknown): value is { error: string; code?: string } {

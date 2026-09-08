@@ -64,8 +64,8 @@ describe('workout mutation handlers', () => {
   })
 
   it.each([
-    [updateHandler, mocks.updateFinishedWorkoutForUser, 'Nie udało się zaktualizować treningu.'],
-    [deleteHandler, mocks.deleteFinishedWorkoutForUser, 'Nie udało się usunąć treningu.'],
+    [updateHandler, mocks.updateFinishedWorkoutForUser, 'Could not update the workout.'],
+    [deleteHandler, mocks.deleteFinishedWorkoutForUser, 'Could not delete the workout.'],
   ] as const)('maps an unexpected mutation error to its sanitized 500 response', async (
     handler,
     operation,

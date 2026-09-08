@@ -14,10 +14,10 @@ interface ConfirmDialogProps {
 }
 
 export default function ConfirmDialog({
-  title = 'Potwierdź akcję',
+  title = 'Confirm action',
   message,
-  confirmLabel = 'Tak',
-  cancelLabel = 'Anuluj',
+  confirmLabel = 'Yes',
+  cancelLabel = 'Cancel',
   danger = false,
   confirmDisabled = false,
   onConfirm,

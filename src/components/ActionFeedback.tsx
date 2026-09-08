@@ -37,12 +37,12 @@ export function ActionFeedback({
         <div className="action-feedback-actions">
           {onRetry && (
             <button type="button" onClick={onRetry}>
-              Spróbuj ponownie
+              Try again
             </button>
           )}
           {onDismiss && (
             <button type="button" onClick={onDismiss}>
-              Zamknij
+              Close
             </button>
           )}
         </div>

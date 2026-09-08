@@ -95,12 +95,12 @@ function rejectWithLateChunkOnAbort(options: PendingReply['options']): Promise<s
 }
 
 async function sendPrompt(prompt: string) {
-  const composer = screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })
+  const composer = screen.getByRole('textbox', { name: 'Message AI Coach' })
   await waitFor(() => expect(composer).toBeEnabled())
   fireEvent.change(composer, {
     target: { value: prompt },
   })
-  fireEvent.click(screen.getByRole('button', { name: 'Wyślij' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 }
 
 describe('ChatPage stream lifecycle', () => {
@@ -132,9 +132,9 @@ describe('ChatPage stream lifecycle', () => {
 
     await act(async () => {
       first.options.onChunk('Spóźniony tekst')
-      first.resolve('Spóźniona odpowiedź')
+      first.resolve('Spóźniona response')
     })
-    await waitFor(() => expect(screen.queryByText('Spóźniona odpowiedź')).not.toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Spóźniona response')).not.toBeInTheDocument())
     expect(screen.queryByText('Czy progresuję?')).not.toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
@@ -146,15 +146,15 @@ describe('ChatPage stream lifecycle', () => {
 
     act(() => {
       pending.options.onContext({ status: 'limited', unavailableSources: ['readiness', 'records'] })
-      pending.options.onChunk('Odpowiedź')
+      pending.options.onChunk('Response')
     })
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Odpowiedź powstała bez części danych: gotowości i rekordów.',
+      'Response was created with some data unavailable: readiness and records.',
     )
 
-    await act(async () => pending.resolve('Odpowiedź'))
+    await act(async () => pending.resolve('Response'))
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Odpowiedź powstała bez części danych: gotowości i rekordów.',
+      'Response was created with some data unavailable: readiness and records.',
     )
   })
 
@@ -167,9 +167,9 @@ describe('ChatPage stream lifecycle', () => {
       pending.options.onContext({ status: 'limited', unavailableSources: ['readiness', 'records'] })
     })
 
-    expect(screen.getByText('Analizuję kontekst...')).toBeInTheDocument()
+    expect(screen.getByText('Analyzing context...')).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Odpowiedź powstała bez części danych: gotowości i rekordów.',
+      'Response was created with some data unavailable: readiness and records.',
     )
   })
 
@@ -180,9 +180,9 @@ describe('ChatPage stream lifecycle', () => {
 
     reportFullContext(pending)
 
-    expect(screen.getByText('Analizuję kontekst...')).toBeInTheDocument()
+    expect(screen.getByText('Analyzing context...')).toBeInTheDocument()
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/with some data unavailable/)).not.toBeInTheDocument()
   })
 
   it('ignores stale context metadata after Reset', async () => {
@@ -192,7 +192,7 @@ describe('ChatPage stream lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
 
     act(() => pending.options.onContext({ status: 'limited', unavailableSources: ['records'] }))
-    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/with some data unavailable/)).not.toBeInTheDocument()
   })
 
   it('keeps one question and exposes retry after a mode-change abort', async () => {
@@ -204,11 +204,11 @@ describe('ChatPage stream lifecycle', () => {
     expect(first.options.signal).toBeInstanceOf(AbortSignal)
     expect(first.options.signal.aborted).toBe(true)
     act(() => first.options.onContext({ status: 'limited', unavailableSources: ['records'] }))
-    fireEvent.click(screen.getByRole('button', { name: /Rozmowa/ }))
+    fireEvent.click(screen.getByRole('button', { name: /Chat/ }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Generowanie przerwane')
-    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Ponów odpowiedź AI' }))
+    expect(screen.getByRole('status')).toHaveTextContent('Generation stopped')
+    expect(screen.queryByText(/with some data unavailable/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry AI response' }))
     expect(screen.getAllByText('Czy progresuję?')).toHaveLength(1)
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(2)
   })
@@ -235,15 +235,15 @@ describe('ChatPage stream lifecycle', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
     mocks.apiKey = ''
-    fireEvent.click(screen.getByRole('button', { name: /Rozmowa/ }))
-    expect(screen.getByRole('status')).toHaveTextContent('Generowanie przerwane')
+    fireEvent.click(screen.getByRole('button', { name: /Chat/ }))
+    expect(screen.getByRole('status')).toHaveTextContent('Generation stopped')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ponów odpowiedź AI' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry AI response' }))
 
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('alert')).toHaveTextContent('Dodaj Claude API key, żeby uruchomić AI Coach.')
-    expect(screen.queryByRole('button', { name: 'Ponów odpowiedź AI' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('textbox', { name: 'Wiadomość do AI Coacha' })).not.toBeInTheDocument()
+    expect(screen.getByRole('alert')).toHaveTextContent('Add a Claude API key to use AI Coach.')
+    expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
   })
 
   it('returns to the compact read-only state when the API key disappears', async () => {
@@ -252,30 +252,30 @@ describe('ChatPage stream lifecycle', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
     mocks.apiKey = ''
-    fireEvent.click(screen.getByRole('button', { name: /Rozmowa/ }))
-    expect(screen.getByRole('status')).toHaveTextContent('Generowanie przerwane')
+    fireEvent.click(screen.getByRole('button', { name: /Chat/ }))
+    expect(screen.getByRole('status')).toHaveTextContent('Generation stopped')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Ponów odpowiedź AI' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry AI response' }))
 
-    expect(screen.getByLabelText('Rozmowa z AI Coachem')).toBeVisible()
+    expect(screen.getByLabelText('Chat with AI Coach')).toBeVisible()
     expect(within(screen.getByRole('log')).getByText('Czy progresuję?')).toBeVisible()
-    expect(screen.getByText('Dodaj lokalny klucz Claude')).toBeVisible()
-    expect(screen.queryByRole('textbox', { name: 'Wiadomość do AI Coacha' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Przeanalizuj mój ostatni tydzień treningowy.' }))
+    expect(screen.getByText('Add a local Claude key')).toBeVisible()
+    expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Analyze my last week of training.' }))
       .not.toBeInTheDocument()
-    expect(screen.queryByLabelText('Twój klucz', { selector: 'input' })).not.toBeInTheDocument()
+    expect(screen.queryByLabelText('Your key', { selector: 'input' })).not.toBeInTheDocument()
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Skonfiguruj klucz' }))
-    const key = screen.getByLabelText('Twój klucz', { selector: 'input' })
+    fireEvent.click(screen.getByRole('button', { name: 'Set up key' }))
+    const key = screen.getByLabelText('Your key', { selector: 'input' })
     expect(key).toBeVisible()
     fireEvent.change(key, {
       target: { value: 'sk-ant-restored-test-key-longer-than-twenty-characters' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz klucz' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
 
-    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled())
-    expect(screen.queryByText('Dodaj Claude API key, żeby uruchomić AI Coach.')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled())
+    expect(screen.queryByText('Add a Claude API key to use AI Coach.')).not.toBeInTheDocument()
   })
 
   it('clears failed-generation feedback when a new send finds no API key', async () => {
@@ -286,19 +286,19 @@ describe('ChatPage stream lifecycle', () => {
     await act(async () => {
       first.reject(new Error('Awaria testowa.'))
     })
-    expect(screen.getByRole('button', { name: 'Ponów odpowiedź AI' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Retry AI response' })).toBeEnabled()
 
     mocks.apiKey = ''
-    fireEvent.change(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Message AI Coach' }), {
       target: { value: 'Nowe pytanie' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Wyślij' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
 
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
     expect(within(screen.getByRole('log')).queryByText('Nowe pytanie')).not.toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('Dodaj Claude API key, żeby uruchomić AI Coach.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Add a Claude API key to use AI Coach.')
     expect(screen.queryByText('Awaria testowa.')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Ponów odpowiedź AI' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
   })
 
   it('clears a partial chunk and exposes retry after a generation failure', async () => {
@@ -306,16 +306,16 @@ describe('ChatPage stream lifecycle', () => {
     await sendPrompt('Czy progresuję?')
     const first = pendingReplies[0]
 
-    act(() => first.options.onChunk('Częściowa odpowiedź'))
-    expect(screen.getByText('Częściowa odpowiedź')).toBeInTheDocument()
+    act(() => first.options.onChunk('Częściowa response'))
+    expect(screen.getByText('Częściowa response')).toBeInTheDocument()
 
     await act(async () => {
       first.reject(new Error('Połączenie zostało zerwane.'))
     })
 
-    expect(screen.queryByText('Częściowa odpowiedź')).not.toBeInTheDocument()
+    expect(screen.queryByText('Częściowa response')).not.toBeInTheDocument()
     expect(screen.getByRole('alert')).toHaveTextContent('Połączenie zostało zerwane.')
-    expect(screen.getByRole('button', { name: 'Ponów odpowiedź AI' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Retry AI response' })).toBeEnabled()
   })
 
   it('retries a failed answer without duplicating the question and commits success', async () => {
@@ -326,7 +326,7 @@ describe('ChatPage stream lifecycle', () => {
     await act(async () => {
       first.reject(new Error('Awaria testowa.'))
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Ponów odpowiedź AI' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry AI response' }))
     const retry = pendingReplies[1]
 
     expect(screen.getAllByText('Czy progresuję?')).toHaveLength(1)
@@ -334,14 +334,14 @@ describe('ChatPage stream lifecycle', () => {
 
     reportFullContext(retry)
     await act(async () => {
-      retry.options.onChunk('Pełna odpowiedź')
-      retry.resolve('Pełna odpowiedź')
+      retry.options.onChunk('Pełna response')
+      retry.resolve('Pełna response')
     })
 
-    expect(screen.getAllByText('Pełna odpowiedź')).toHaveLength(1)
-    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
+    expect(screen.getAllByText('Pełna response')).toHaveLength(1)
+    expect(screen.queryByText(/with some data unavailable/)).not.toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })).toBeEnabled()
+    expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled()
   })
 
   it('ignores stale rejection and finally while the retry generation is streaming', async () => {
@@ -350,10 +350,10 @@ describe('ChatPage stream lifecycle', () => {
     const first = pendingReplies[0]
 
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
-    fireEvent.click(screen.getByRole('button', { name: /Rozmowa/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Ponów odpowiedź AI' }))
+    fireEvent.click(screen.getByRole('button', { name: /Chat/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Retry AI response' }))
     const retry = pendingReplies[1]
-    const composer = screen.getByRole('textbox', { name: 'Wiadomość do AI Coacha' })
+    const composer = screen.getByRole('textbox', { name: 'Message AI Coach' })
 
     await act(async () => {
       first.options.onContext({ status: 'limited', unavailableSources: ['records'] })
@@ -362,17 +362,17 @@ describe('ChatPage stream lifecycle', () => {
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByText('Spóźniona awaria.')).not.toBeInTheDocument()
-    expect(screen.queryByText(/bez części danych/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/with some data unavailable/)).not.toBeInTheDocument()
     expect(composer).toBeDisabled()
 
     act(() => retry.options.onContext({ status: 'limited', unavailableSources: ['profile'] }))
     await act(async () => {
-      retry.resolve('Aktualna odpowiedź')
+      retry.resolve('Aktualna response')
     })
 
-    expect(screen.getByText('Aktualna odpowiedź')).toBeInTheDocument()
+    expect(screen.getByText('Aktualna response')).toBeInTheDocument()
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Odpowiedź powstała bez części danych: profilu.',
+      'Response was created with some data unavailable: profile.',
     )
     expect(composer).toBeEnabled()
   })

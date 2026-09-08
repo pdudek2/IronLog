@@ -11,10 +11,10 @@ export default function WorkoutProjectionStatus({
 }: WorkoutProjectionStatusProps) {
   return (
     <div className="workout-projection-status" role="status">
-      <p>Statystyki oczekują na synchronizację.</p>
+      <p>Stats are waiting to sync.</p>
       {state === 'failed' && (
         <p className="workout-projection-status-error">
-          Automatyczna synchronizacja nie powiodła się.
+          Automatic sync failed.
         </p>
       )}
       {state !== 'idle' && (
@@ -24,7 +24,7 @@ export default function WorkoutProjectionStatus({
           onClick={onRetry}
           disabled={state === 'retrying'}
         >
-          {state === 'retrying' ? 'Synchronizowanie…' : 'Ponów synchronizację'}
+          {state === 'retrying' ? 'Syncing…' : 'Retry sync'}
         </button>
       )}
     </div>

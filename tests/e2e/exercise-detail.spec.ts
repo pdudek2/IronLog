@@ -31,8 +31,8 @@ test.describe('Exercise detail analytics', () => {
       await expect(page.getByRole('heading', { name: 'Phase 7 Volume Detail' })).toBeVisible({ timeout: 15_000 })
 
       const summary = page.locator('.exercise-detail-volume-summary')
-      await expect(summary.getByText('Ostatnio', { exact: true })).toBeVisible()
-      await expect(summary.getByText('Maksimum', { exact: true })).toBeVisible()
+      await expect(summary.getByText('Latest', { exact: true })).toBeVisible()
+      await expect(summary.getByText('Maximum', { exact: true })).toBeVisible()
       await expect(summary.locator('strong')).toHaveText(['1.2k kg', '1.4k kg'])
 
       const chart = page.locator('.exercise-detail-volume-chart')

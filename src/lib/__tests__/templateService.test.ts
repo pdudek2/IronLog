@@ -27,7 +27,7 @@ function template(overrides: Partial<WorkoutTemplate> = {}): WorkoutTemplate {
     createdAt: 1,
     updatedAt: 2,
     days: [{
-      name: 'Dzień 1',
+      name: 'Day 1',
       exercises: [{
         exerciseId: 'incline-bench-press',
         exerciseSource: 'global',
@@ -64,7 +64,7 @@ describe('buildActiveWorkoutFromTemplate', () => {
   it('falls back to template targets when there is no recent history', () => {
     const workout = buildActiveWorkoutFromTemplate(template({
       days: [{
-        name: 'Dzień 1',
+        name: 'Day 1',
         exercises: [{
           exerciseId: 'squat',
           exerciseSource: 'global',

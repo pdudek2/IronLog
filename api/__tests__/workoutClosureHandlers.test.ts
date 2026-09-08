@@ -52,8 +52,8 @@ describe('workout closure handlers', () => {
   })
 
   it.each([
-    ['finalize', finalizeHandler, mocks.finalizeWorkoutForUser, 'Nie udało się zakończyć treningu.'],
-    ['discard', discardHandler, mocks.discardSessionForUser, 'Nie udało się odrzucić sesji.'],
+    ['finalize', finalizeHandler, mocks.finalizeWorkoutForUser, 'Could not finish the workout.'],
+    ['discard', discardHandler, mocks.discardSessionForUser, 'Could not discard the session.'],
   ] as const)('maps an unexpected %s transaction error to a non-sensitive 500', async (
     _name,
     handler,
@@ -103,13 +103,13 @@ describe('workout closure handlers', () => {
 
   it('rejects a finalize request without a revision', async () => {
     mocks.parseFinalizeWorkoutRequest.mockImplementationOnce(() => {
-      throw new ApiError(400, 'Brak pola sessionRevision.')
+      throw new ApiError(400, 'Missing sessionRevision field.')
     })
     const captured = captureResponse()
 
     await finalizeHandler(request({ sessionId: 'session-1' }), captured.res)
 
     expect(captured.status()).toBe(400)
-    expect(captured.body()).toEqual({ error: 'Brak pola sessionRevision.' })
+    expect(captured.body()).toEqual({ error: 'Missing sessionRevision field.' })
   })
 })

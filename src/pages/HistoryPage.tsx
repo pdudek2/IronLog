@@ -9,7 +9,7 @@ import { useUserExercises } from '../hooks/useUserExercises'
 import { getWorkoutHistory, calcVolume, type WorkoutSummary } from '../lib/workoutService'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
-import { polishPlural } from '../lib/polishPlural'
+import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
 import { formatCompactVolume } from '../lib/weightUnits'
 import { useProfileStore } from '../store/profileStore'
@@ -21,15 +21,15 @@ import {
 type RangePreset = '30' | '90' | '365' | 'all'
 
 const RANGE_PRESETS: Array<{ key: RangePreset; label: string; days: number | null }> = [
-  { key: '30', label: '30 dni', days: 30 },
-  { key: '90', label: '90 dni', days: 90 },
-  { key: '365', label: 'Rok', days: 365 },
-  { key: 'all', label: 'Wszystko', days: null },
+  { key: '30', label: '30 days', days: 30 },
+  { key: '90', label: '90 days', days: 90 },
+  { key: '365', label: 'Year', days: 365 },
+  { key: 'all', label: 'All', days: null },
 ]
 
 function formatDate(ts: number): string {
   const date = new Date(ts)
-  const weekdays = ['niedz.', 'pon.', 'wt.', 'śr.', 'czw.', 'pt.', 'sob.']
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   return `${weekdays[date.getDay()]}, ${date.getDate()}`
 }
 
@@ -42,7 +42,7 @@ function formatDuration(start: number, end: number): string {
 }
 
 function formatExercisePreview(exerciseNames: string[]): string {
-  if (exerciseNames.length === 0) return 'brak ćwiczeń'
+  if (exerciseNames.length === 0) return 'no exercises'
 
   const visibleNames = exerciseNames.slice(0, 3)
   const hiddenCount = exerciseNames.length - visibleNames.length
@@ -65,11 +65,11 @@ interface WorkoutMonthGroup {
 }
 
 function formatMonthLabel(timestamp: number): string {
-  const label = new Intl.DateTimeFormat('pl-PL', {
+  const label = new Intl.DateTimeFormat('en-US', {
     month: 'long',
     year: 'numeric',
   }).format(timestamp)
-  return label.charAt(0).toLocaleUpperCase('pl-PL') + label.slice(1)
+  return label.charAt(0).toLocaleUpperCase('en-US') + label.slice(1)
 }
 
 function groupWorkoutsByMonth(workouts: DerivedWorkout[]): WorkoutMonthGroup[] {
@@ -165,7 +165,7 @@ export default function HistoryPage() {
       console.error('[HistoryPage] load failed', err)
       setLoadError(true)
       setHistoryTruncated(false)
-      toast.error('Nie udało się pobrać historii treningów.')
+      toast.error('Could not load workout history.')
     } finally {
       if (historyMountedRef.current && requestId === historyRequestRef.current) {
         setLoading(false)
@@ -230,42 +230,42 @@ export default function HistoryPage() {
   const showRangeEmpty = workouts.length > 0 && filtered.length === 0 && !hasActiveFilters
   const showFilterEmpty = filtered.length === 0 && hasActiveFilters
 
-  if (loading && workouts.length === 0) return <LoadingState message="Ładowanie historii..." />
+  if (loading && workouts.length === 0) return <LoadingState message="Loading history..." />
 
   return (
     <div className="history-page workbench-page">
       <header className="history-page-header">
-        <h1>Historia</h1>
+        <h1>History</h1>
         <p>
           {loadError && workouts.length === 0
-            ? 'Nie udało się pobrać historii treningów.'
+            ? 'Could not load workout history.'
             : showFilterEmpty
-            ? 'Brak treningów pasujących do filtrów.'
+            ? 'No workouts match these filters.'
             : showRangeEmpty
-            ? 'W tym zakresie nie ma treningów.'
+            ? 'No workouts in this date range.'
             : filtered.length === 0
-            ? 'Nie masz jeszcze zapisanych treningów.'
-            : `${filtered.length} ${polishPlural(filtered.length, 'sesja', 'sesje', 'sesji')} · ${formatCompactVolume(totalVolumeInRange, units)}${historyTruncated ? ' · ostatnie 2000' : ''}`}
+            ? 'You have no saved workouts yet.'
+            : `${filtered.length} ${pluralize(filtered.length, 'session', 'sessions')} · ${formatCompactVolume(totalVolumeInRange, units)}${historyTruncated ? ' · latest 2,000' : ''}`}
         </p>
       </header>
 
-      <section className="history-control-panel" aria-label="Filtry historii">
+      <section className="history-control-panel" aria-label="History filters">
         {historyTruncated && (
           <div className="history-limit-notice">
-            Historia została ograniczona do ostatnich 2000 treningów, żeby utrzymać płynność widoku.
+            History is limited to your 2,000 most recent workouts to keep this view responsive.
           </div>
         )}
 
         {userExercisesState.status === 'error' && (
           <ActionFeedback
             status="error"
-            message="Nie udało się wczytać Twoich ćwiczeń. Historia nadal jest dostępna, ale część kategorii może być niepełna."
+            message="Could not load your exercises. History is still available, but some categories may be incomplete."
             onRetry={retryUserExercises}
           />
         )}
 
         <div className="history-filter-row">
-          <div className="history-range-row" role="group" aria-label="Zakres historii">
+          <div className="history-range-row" role="group" aria-label="History range">
             {RANGE_PRESETS.map(({ key, label }) => (
               <button
                 key={key}
@@ -284,8 +284,8 @@ export default function HistoryPage() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--muted-soft)' }} />
             <input
               type="search"
-              aria-label="Szukaj w historii treningów"
-              placeholder="Szukaj treningu lub ćwiczenia..."
+              aria-label="Search workout history"
+              placeholder="Search workouts or exercises..."
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
               className="history-search-input w-full pl-9 pr-9 py-1.5 text-xs font-medium outline-none"
@@ -295,7 +295,7 @@ export default function HistoryPage() {
                 type="button"
                 onClick={() => setSearchText('')}
                 className="puls-icon-button mobile-touch-target absolute right-2 top-1/2 -translate-y-1/2 p-1"
-                aria-label="Wyczyść wyszukiwanie"
+                aria-label="Clear search"
               >
                 <X size={12} style={{ color: 'var(--muted)' }} />
               </button>
@@ -306,7 +306,7 @@ export default function HistoryPage() {
         {availableCategories.length > 0 && (
           <div className="history-category-filter-group">
             <span id="history-category-filter-label" className="history-category-filter-label">
-              Kategorie ćwiczeń
+              Exercise categories
             </span>
             <div className="history-category-filter-row" role="group" aria-labelledby="history-category-filter-label">
               {availableCategories.map((cat) => {
@@ -335,37 +335,37 @@ export default function HistoryPage() {
         {/* Workout list */}
         {loadError && workouts.length === 0 ? (
           <div className="history-empty-state">
-            <p className="text-lg font-semibold text-white">Nie udało się pobrać historii</p>
+            <p className="text-lg font-semibold text-white">Could not load history</p>
             <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-              Nie udało się pobrać danych. Spróbuj ponownie.
+              Could not load data. Try again.
             </p>
             <button
               type="button"
               onClick={() => void loadHistory()}
               className="history-state-action mobile-touch-target mt-4"
             >
-              Spróbuj ponownie
+              Try again
             </button>
           </div>
         ) : showRangeEmpty ? (
           <div className="history-empty-state">
-            <p className="text-base font-semibold text-white">W tym zakresie nie ma treningów</p>
+            <p className="text-base font-semibold text-white">No workouts in this date range</p>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-              Wcześniejsze sesje nadal są w historii.
+              Earlier sessions are still in your history.
             </p>
             <button
               type="button"
               onClick={() => setRangePreset('all')}
               className="history-state-action mobile-touch-target mt-4"
             >
-              Pokaż wszystko
+              Show all
             </button>
           </div>
         ) : showFilterEmpty ? (
           <div className="history-empty-state">
-            <p className="text-base font-semibold text-white">Brak wyników</p>
+            <p className="text-base font-semibold text-white">No results</p>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-              Żaden trening nie pasuje do wyszukiwania i wybranych partii.
+              No workouts match your search and selected muscle groups.
             </p>
             <button
               type="button"
@@ -375,14 +375,14 @@ export default function HistoryPage() {
               }}
               className="history-state-action mobile-touch-target mt-4"
             >
-              Wyczyść filtry
+              Clear filters
             </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="history-empty-state">
-            <p className="text-base font-semibold text-white">Historia jest jeszcze pusta</p>
+            <p className="text-base font-semibold text-white">Your history is empty</p>
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-              Pierwszy ukończony trening pojawi się tutaj.
+              Your first completed workout will appear here.
             </p>
           </div>
         ) : (
@@ -396,7 +396,7 @@ export default function HistoryPage() {
                     <h2 id={headingId}>{group.label}</h2>
                     <span>
                       {group.workouts.length}{' '}
-                      {polishPlural(group.workouts.length, 'sesja', 'sesje', 'sesji')}
+                      {pluralize(group.workouts.length, 'session', 'sessions')}
                     </span>
                   </div>
                   <div className="history-workout-list">
@@ -417,7 +417,7 @@ export default function HistoryPage() {
                                 <span>{formatDate(workout.startedAt)}</span>
                                 <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
                                 <span className="history-inline-stat">{formatCompactVolume(totalVolume, units)}</span>
-                                <span className="history-inline-stat">{totalSets} {polishPlural(totalSets, 'seria', 'serie', 'serii')}</span>
+                                <span className="history-inline-stat">{totalSets} {pluralize(totalSets, 'set', 'sets')}</span>
                               </div>
                               <h3>{workoutTitle(workout)}</h3>
                               {workoutTitle(workout) !== exerciseNames.map((name) => name.trim()).join(' + ') && (

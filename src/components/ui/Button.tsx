@@ -30,7 +30,7 @@ export default function Button({
       style={style}
       {...props}
     >
-      {loading ? 'Ładowanie...' : children}
+      {loading ? 'Loading...' : children}
     </button>
   )
 }

@@ -16,7 +16,7 @@ test.describe('Profile hydration and save', () => {
     await page.screenshot({ path: 'test-results/profile-loaded.png' })
 
     // The form input should have a value (not empty) if profile loaded
-    const nameInput = page.getByPlaceholder('np. Jan')
+    const nameInput = page.getByPlaceholder('E.g. Alex')
     await expect(nameInput).toBeVisible({ timeout: 5_000 })
 
     // Wait for profile to load from Firestore — on mobile (slower CPU emulation) the data
@@ -31,7 +31,7 @@ test.describe('Profile hydration and save', () => {
     await page.goto('/profile')
     await expectAppReady(page, '/profile')
 
-    const nameInput = page.getByPlaceholder('np. Jan')
+    const nameInput = page.getByPlaceholder('E.g. Alex')
     await expect(nameInput).toBeVisible()
     // Wait for profile to load before reading (same as first test — mobile can be slow)
     await expect(nameInput).not.toHaveValue('', { timeout: 10_000 })
@@ -45,10 +45,10 @@ test.describe('Profile hydration and save', () => {
     await nameInput.fill(testName)
 
     // Submit form
-    await page.getByRole('button', { name: /Zapisz zmiany/ }).click()
+    await page.getByRole('button', { name: /Save changes/ }).click()
 
     // Toast feedback should appear (BUG-05/06 fix)
-    await expect(page.getByText('Profil zapisany')).toBeVisible({ timeout: 8_000 })
+    await expect(page.getByText('Profile saved')).toBeVisible({ timeout: 8_000 })
 
     await page.screenshot({ path: 'test-results/profile-saved.png' })
 
@@ -56,7 +56,7 @@ test.describe('Profile hydration and save', () => {
     await page.reload()
     await expectAppReady(page, '/profile')
 
-    const nameInputAfterReload = page.getByPlaceholder('np. Jan')
+    const nameInputAfterReload = page.getByPlaceholder('E.g. Alex')
     await expect(nameInputAfterReload).toBeVisible()
     await expect(nameInputAfterReload).toHaveValue(testName)
 
@@ -69,7 +69,7 @@ test.describe('Profile hydration and save', () => {
     await expectAppReady(page, '/profile')
 
     // Wait for async data to settle
-    await expect(page.getByPlaceholder('np. Jan')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByPlaceholder('E.g. Alex')).toBeVisible({ timeout: 5_000 })
 
   })
 
@@ -77,7 +77,7 @@ test.describe('Profile hydration and save', () => {
     await page.goto('/profile')
     await expectAppReady(page, '/profile')
 
-    const slider = page.getByRole('slider', { name: 'Treningi w tygodniu' })
+    const slider = page.getByRole('slider', { name: 'Workouts per week' })
     const unitSwitch = page.locator('.profile-unit-grid')
 
     await expect(slider).toHaveClass(/readiness-slider/)

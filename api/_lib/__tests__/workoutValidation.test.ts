@@ -67,7 +67,7 @@ describe('normalizeWorkoutExercises', () => {
   it('rejects payloads with too many exercises', () => {
     const exercises = Array.from({ length: MAX_WORKOUT_EXERCISES + 1 }, () => validExercise)
 
-    expect(() => normalizeWorkoutExercises(exercises)).toThrow('Za dużo ćwiczeń w treningu.')
+    expect(() => normalizeWorkoutExercises(exercises)).toThrow('Too many exercises in the workout.')
   })
 
   it('rejects exercises with too many sets', () => {
@@ -76,25 +76,25 @@ describe('normalizeWorkoutExercises', () => {
       sets: Array.from({ length: MAX_SETS_PER_EXERCISE + 1 }, () => ({ weight: 20, reps: 10 })),
     }
 
-    expect(() => normalizeWorkoutExercises([exercise])).toThrow('Za dużo serii w ćwiczeniu.')
+    expect(() => normalizeWorkoutExercises([exercise])).toThrow('Too many sets in the exercise.')
   })
 
   it('rejects invalid exercise sources instead of coercing them to global', () => {
     expect(() => normalizeWorkoutExercises([{ ...validExercise, exerciseSource: 'shared' }]))
-      .toThrow('Niepoprawne źródło ćwiczenia.')
+      .toThrow('Invalid exercise source.')
   })
 
   it('rejects unsafe exercise IDs', () => {
     expect(() => normalizeWorkoutExercises([{ ...validExercise, exerciseId: 'global/bench-press' }]))
-      .toThrow('Niepoprawny identyfikator ćwiczenia.')
+      .toThrow('Invalid exercise ID.')
   })
 
   it('rejects out-of-range set values', () => {
     expect(() => normalizeWorkoutExercises([{ ...validExercise, sets: [{ weight: -1, reps: 5 }] }]))
-      .toThrow('Niepoprawny ciężar w serii.')
+      .toThrow('Invalid set weight.')
 
     expect(() => normalizeWorkoutExercises([{ ...validExercise, sets: [{ weight: 80, reps: 0 }] }]))
-      .toThrow('Niepoprawna liczba powtórzeń w serii.')
+      .toThrow('Invalid set reps.')
   })
 })
 
@@ -105,14 +105,14 @@ describe('validateWorkoutLabel', () => {
   })
 
   it('rejects labels above the storage limit', () => {
-    expect(() => validateWorkoutLabel('x'.repeat(121))).toThrow('Nazwa treningu jest za długa.')
+    expect(() => validateWorkoutLabel('x'.repeat(121))).toThrow('Workout name is too long.')
   })
 })
 
 describe('validateFirestoreDocumentId', () => {
   it('rejects path-like document IDs before they reach Firestore', () => {
     expect(() => validateFirestoreDocumentId('workouts/abc', 'workoutId'))
-      .toThrow('Niepoprawne pole workoutId.')
+      .toThrow('Invalid field workoutId.')
   })
 })
 
@@ -137,23 +137,23 @@ describe('parseFinalizeWorkoutRequest', () => {
     expect(parseFinalizeWorkoutRequest({ ...legacyFinalizeBody, sessionRevision: undefined }))
       .toEqual({ sessionId: 'session-1' })
     expect(() => parseFinalizeWorkoutRequest({ sessionId: 'session-1' }, { requireRevision: true }))
-      .toThrow('Brak pola sessionRevision.')
+      .toThrow('Missing sessionRevision field.')
   })
 
   it('requires a revision and rejects legacy fields in strict mode', () => {
     expect(() => parseFinalizeWorkoutRequest({ sessionId: 'session-1' }, { requireRevision: true }))
-      .toThrow('Brak pola sessionRevision.')
+      .toThrow('Missing sessionRevision field.')
     expect(() => parseFinalizeWorkoutRequest({
       sessionId: 'session-1',
       sessionRevision: 'revision-1',
       exercises: [],
     }, { requireRevision: true, allowLegacyFields: false }))
-      .toThrow('Nieoczekiwane pole exercises.')
+      .toThrow('Unexpected field exercises.')
   })
 
   it.each(['userId', 'materialized', 'closedAt'])('rejects request-supplied %s', (field) => {
     expect(() => parseFinalizeWorkoutRequest({ ...legacyFinalizeBody, [field]: field === 'materialized' ? true : 'value' }))
-      .toThrow(`Nieoczekiwane pole ${field}.`)
+      .toThrow(`Unexpected field ${field}.`)
   })
 })
 
@@ -184,7 +184,7 @@ describe('buildFinishedWorkoutFromActiveSession', () => {
     }
 
     expect(() => buildFinishedWorkoutFromActiveSession(empty, 1_790_003_600_000))
-      .toThrow('Trening musi zawierać co najmniej jedno ćwiczenie.')
+      .toThrow('A workout must contain at least one exercise.')
   })
 
   it('rejects a malformed completed set in the canonical active draft', () => {
@@ -197,6 +197,6 @@ describe('buildFinishedWorkoutFromActiveSession', () => {
     }
 
     expect(() => buildFinishedWorkoutFromActiveSession(malformed, 1_790_003_600_000))
-      .toThrow('Niepoprawny ciężar w serii.')
+      .toThrow('Invalid set weight.')
   })
 })

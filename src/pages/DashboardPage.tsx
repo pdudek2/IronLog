@@ -32,7 +32,7 @@ import {
 import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
 import { hasActiveSessionWork } from '../lib/activeSessionService'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
-import { polishPlural } from '../lib/polishPlural'
+import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
 import {
   DEFAULT_EXERCISE_CATEGORY_COLOR,
@@ -62,7 +62,7 @@ interface ReadinessResource {
   state: DataState<ReadinessEntry | null>
 }
 
-const WEEK_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'Sb', 'Nd']
+const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
 
 function workoutAccent(workout: WorkoutSummary): string {
@@ -73,7 +73,7 @@ function workoutAccent(workout: WorkoutSummary): string {
 }
 
 function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('pl-PL', {
+  return new Date(ts).toLocaleDateString('en-US', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -89,7 +89,7 @@ function formatDuration(start: number, end: number): string {
 }
 
 function formatExerciseCount(count: number): string {
-  return `${count} ${polishPlural(count, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}`
+  return `${count} ${pluralize(count, 'exercise', 'exercises')}`
 }
 
 function formatWeekRange(dates: Date[]): string {
@@ -97,11 +97,11 @@ function formatWeekRange(dates: Date[]): string {
   const start = dates[0]
   const end = dates[dates.length - 1]
   const sameMonth = start.getMonth() === end.getMonth()
-  const startMonth = start.toLocaleDateString('pl-PL', { month: 'short' })
-  const endMonth = end.toLocaleDateString('pl-PL', { month: 'short' })
+  const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
+  const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
   return sameMonth
-    ? `${start.getDate()}–${end.getDate()} ${endMonth}`
-    : `${start.getDate()} ${startMonth} – ${end.getDate()} ${endMonth}`
+    ? `${startMonth} ${start.getDate()}–${end.getDate()}`
+    : `${startMonth} ${start.getDate()} – ${endMonth} ${end.getDate()}`
 }
 
 function getWeekDates(): Date[] {
@@ -130,10 +130,10 @@ function addLocalDays(date: Date, days: number): Date {
 
 function getGreeting(): string {
   const hour = new Date().getHours()
-  if (hour < 6) return 'Dobranoc'
-  if (hour < 12) return 'Dzień dobry'
-  if (hour < 18) return 'Cześć'
-  return 'Dobry wieczór'
+  if (hour < 6) return 'Good night'
+  if (hour < 12) return 'Good morning'
+  if (hour < 18) return 'Hello'
+  return 'Good evening'
 }
 
 function fadeUp(delay: number) {
@@ -238,7 +238,7 @@ export default function DashboardPage() {
       .catch((error: unknown) => {
         if (!templatesMountedRef.current || requestId !== templatesRequestRef.current) return
         console.error('[DashboardPage] getTemplates failed', error)
-        toast.error('Nie udało się wczytać szablonów.')
+        toast.error('Could not load templates.')
         setTemplatesResource({ uid, state: { status: 'error', error } })
       })
       .finally(() => {
@@ -360,7 +360,7 @@ export default function DashboardPage() {
       if (!isCurrent()) return
       console.error('[DashboardPage] getRecentWorkouts failed', error)
       setDashboardError(true)
-      toast.error('Nie udało się wczytać treningów. Spróbuj ponownie.')
+      toast.error('Could not load workouts. Try again.')
     }
   }, [captureDashboardScope, refreshDashboardSnapshot, retryPendingProjections])
 
@@ -453,11 +453,11 @@ export default function DashboardPage() {
       setDashboardSnapshot(user.uid, workoutsRef.current.filter((workout) => workout.id !== workoutId))
       setTransientDeleteOperation(null)
       void fetchData(user.uid)
-      toast.success('Trening usunięty')
+      toast.success('Workout deleted')
     } catch {
       if (!isCurrent()) return
       setTransientDeleteOperation({ uid: user.uid, workoutId, status: recoveryStatus })
-      toast.error('Nie udało się usunąć treningu.')
+      toast.error('Could not delete the workout.')
     }
   }
 
@@ -477,16 +477,16 @@ export default function DashboardPage() {
     return (
       <div className="dashboard-load-state" role="alert">
         <div>
-          <p className="text-lg font-semibold text-white">Nie udało się wczytać dashboardu</p>
+          <p className="text-lg font-semibold text-white">Could not load the dashboard</p>
           <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Dane treningów nie dotarły. Sprawdź połączenie i spróbuj ponownie.
+            Workout data did not load. Check your connection and try again.
           </p>
           <Button
             type="button"
             className="mt-5 min-w-[12rem]"
             onClick={() => setDashboardLoadAttempt((value) => value + 1)}
           >
-            Spróbuj ponownie
+            Try again
           </Button>
         </div>
       </div>
@@ -494,7 +494,7 @@ export default function DashboardPage() {
   }
 
   if (!dashboardReady && !!user) {
-    return <LoadingState message="Ładowanie dashboardu..." />
+    return <LoadingState message="Loading dashboard..." />
   }
 
   const weeklyGoal = profile?.weeklyGoal ?? 3
@@ -593,36 +593,36 @@ export default function DashboardPage() {
   const activeLabel = active?.label?.trim()
   const supportLine = hasActiveWork
     ? [
-        `Aktywna sesja${activeLabel ? `: ${activeLabel}` : ''}`,
+        `Active session${activeLabel ? `: ${activeLabel}` : ''}`,
         activeExerciseCount > 0 ? formatExerciseCount(activeExerciseCount) : null,
       ].filter(Boolean).join(' • ')
     : latestWorkout
-      ? `Ostatnio: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
+      ? `Last: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
       : null
   const weeklySummaryRows = [
     {
-      label: 'Cel tygodnia',
+      label: 'Weekly goal',
       value: `${weeklyDone}/${weeklyGoal}`,
       copy: weeklyDone >= weeklyGoal
-        ? 'Cel zamknięty.'
-        : `${remainingWeeklySessions} ${polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu w tym tygodniu.`,
+        ? 'Goal reached.'
+        : `${remainingWeeklySessions} ${pluralize(remainingWeeklySessions, 'session', 'sessions')} to reach this week’s goal.`,
     },
     {
-      label: 'Rytm',
-      value: `${activeDays}/7 dni`,
+      label: 'Schedule',
+      value: `${activeDays}/7 days`,
       copy: weeklySessionsDelta >= 0
-        ? `${weeklySessionsDelta === 0 ? 'Tak samo' : `+${weeklySessionsDelta}`} względem poprzedniego tygodnia`
-        : `${weeklySessionsDelta} względem poprzedniego tygodnia`,
+        ? `${weeklySessionsDelta === 0 ? 'No change' : `+${weeklySessionsDelta}`} compared with last week`
+        : `${weeklySessionsDelta} compared with last week`,
     },
     {
-      label: 'Mocny dzień',
-      value: peakDay?.volume ? `${peakDay.label}` : 'Brak',
-      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume, units)} • ${peakDay.sets} ${polishPlural(peakDay.sets, 'seria', 'serie', 'serii')}` : 'Brak treningów w tym tygodniu',
+      label: 'Strong day',
+      value: peakDay?.volume ? `${peakDay.label}` : 'None',
+      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume, units)} • ${peakDay.sets} ${pluralize(peakDay.sets, 'set', 'sets')}` : 'No workouts this week',
     },
     {
-      label: 'Średnia sesja',
+      label: 'Average session',
       value: avgMinutes ? `${avgMinutes} min` : '—',
-      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession, units)} na trening` : 'Brak średniej w tym tygodniu',
+      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession, units)} per workout` : 'No average this week',
     },
   ]
 
@@ -636,11 +636,11 @@ export default function DashboardPage() {
             transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
           >
             <p className="dashboard-home-date">
-              {new Date().toLocaleDateString('pl-PL', { weekday: 'long', day: 'numeric', month: 'long' })}
+              {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
             <p className="dashboard-home-greeting">{getGreeting()},</p>
             <h1 className="dashboard-home-title">
-              {profile?.displayName ?? 'treningowcu'}
+              {profile?.displayName ?? 'athlete'}
             </h1>
             {supportLine && <p className="dashboard-home-copyline">{supportLine}</p>}
 
@@ -655,15 +655,15 @@ export default function DashboardPage() {
                     aria-describedby={quickTemplateLaunchOperation?.status === 'error'
                       ? quickTemplateLaunchErrorId
                       : undefined}
-                    aria-label={`Rozpocznij ${quickTemplateDay.name} z planu ${quickTemplate.name}`}
+                    aria-label={`Start ${quickTemplateDay.name} from plan ${quickTemplate.name}`}
                     className="dashboard-planned-start"
                     whileTap={{ scale: 0.97 }}
                   >
                     <span className="dashboard-planned-start-copy">
-                      <small>Z planu · {quickTemplate.name}</small>
+                      <small>From plan · {quickTemplate.name}</small>
                       <strong>{quickTemplateDay.name}</strong>
                       <span>
-                        {quickTemplateExerciseCount} {polishPlural(quickTemplateExerciseCount, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}
+                        {quickTemplateExerciseCount} {pluralize(quickTemplateExerciseCount, 'exercise', 'exercises')}
                       </span>
                     </span>
                     <span className="dashboard-planned-start-affordance" aria-hidden="true">
@@ -681,8 +681,8 @@ export default function DashboardPage() {
                   >
                     {hasActiveWork ? <Play size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
                     {openingWorkout
-                      ? (hasActiveWork ? 'Otwieram sesję…' : 'Otwieram trening…')
-                      : (hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening')}
+                      ? (hasActiveWork ? 'Opening session…' : 'Opening workout…')
+                      : (hasActiveWork ? 'Resume workout' : 'Start new workout')}
                   </motion.button>
                 )}
 
@@ -693,7 +693,7 @@ export default function DashboardPage() {
                     disabled={openingWorkout}
                     className="dashboard-ad-hoc-action"
                   >
-                    {openingWorkout ? 'Otwieram trening…' : 'Trening bez planu'}
+                    {openingWorkout ? 'Opening workout…' : 'Workout without a plan'}
                   </button>
                 )}
               </div>
@@ -704,7 +704,7 @@ export default function DashboardPage() {
                 <ActionFeedback
                   id={quickTemplateLaunchErrorId}
                   status="error"
-                  message={quickTemplateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                  message={quickTemplateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
                   onRetry={() => { void retryTemplateLaunch() }}
                   onDismiss={dismissTemplateLaunchError}
                   className="dashboard-quick-plan-feedback"
@@ -756,7 +756,7 @@ export default function DashboardPage() {
                 <ActionFeedback
                   id={quickTemplateLaunchErrorId}
                   status="error"
-                  message={quickTemplateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                  message={quickTemplateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
                   onRetry={() => { void retryTemplateLaunch() }}
                   onDismiss={dismissTemplateLaunchError}
                   className="dashboard-quick-plan-feedback"
@@ -776,14 +776,14 @@ export default function DashboardPage() {
               <motion.div className="dashboard-week-panel" {...fadeUp(0.09)}>
                 <div className="dashboard-panel-head">
                   <div>
-                    <h2 className="section-title">Ten tydzień</h2>
+                    <h2 className="section-title">This week</h2>
                   </div>
                   <div className="dashboard-range-chip">
                     <span>{formatWeekRange(weekDates)}</span>
                     <small>
                       {weeklyVolumeDelta === null
-                        ? 'brak porównania'
-                        : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs poprzedni tydzień`}
+                        ? 'no comparison'
+                        : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs last week`}
                     </small>
                   </div>
                 </div>
@@ -792,15 +792,15 @@ export default function DashboardPage() {
                   <div className="dashboard-week-empty">
                     <div className="dashboard-week-empty-summary">
                       <div>
-                        <p className="stat-meta">Cel tygodnia</p>
+                        <p className="stat-meta">Weekly goal</p>
                         <p className="dashboard-week-empty-copy">
-                          {remainingWeeklySessions} {polishPlural(remainingWeeklySessions, 'sesja', 'sesje', 'sesji')} do celu.
+                          {remainingWeeklySessions} {pluralize(remainingWeeklySessions, 'session', 'sessions')} to reach your goal.
                         </p>
                       </div>
                       <strong>{weeklyDone}/{weeklyGoal}</strong>
                     </div>
 
-                    <div className="dashboard-week-empty-days" aria-label="Dni bieżącego tygodnia">
+                    <div className="dashboard-week-empty-days" aria-label="Days of the current week">
                       {weekDailyStats.map((day) => (
                         <span key={day.label} data-today={day.isToday}>
                           <strong>{day.label}</strong>
@@ -814,12 +814,12 @@ export default function DashboardPage() {
                   <div className="dashboard-week-chart">
                     <div className="dashboard-week-chart-head">
                       <div>
-                        <p className="stat-meta">Wolumen tygodnia</p>
+                        <p className="stat-meta">Weekly volume</p>
                         <p className="dashboard-week-total">{formatCompactVolume(weeklyVolume, units)}</p>
                       </div>
                       <div className="dashboard-week-count">
                         <strong>{weeklyDone}/{weeklyGoal}</strong>
-                        <span>sesji / cel</span>
+                        <span>sessions / goal</span>
                       </div>
                     </div>
 
@@ -851,7 +851,7 @@ export default function DashboardPage() {
                         onClick={() => navigate('/progress')}
                         className="puls-link-button mobile-touch-target px-0 py-0 text-sm font-semibold"
                       >
-                        Zobacz progres
+                        View progress
                         <ChevronRight size={15} strokeWidth={2.3} />
                       </button>
                     </div>
@@ -883,7 +883,7 @@ export default function DashboardPage() {
               <div className="dashboard-section-head">
                 <div>
                   <h2 className="section-title">
-                    {recentTemplates.length === 0 ? 'Plany' : hasActiveWork ? 'Plany' : 'Inne plany'}
+                    {recentTemplates.length === 0 ? 'Plans' : hasActiveWork ? 'Plans' : 'Other plans'}
                   </h2>
                 </div>
                 <motion.button
@@ -891,33 +891,33 @@ export default function DashboardPage() {
                   className="dashboard-section-action"
                   whileTap={{ scale: 0.97 }}
                 >
-                  Otwórz plany
+                  Open plans
                 </motion.button>
               </div>
 
               {templatesState.status === 'loading' ? (
                 <div className="dashboard-inline-state">
-                  <p className="text-sm font-semibold text-white">Ładowanie planów...</p>
+                  <p className="text-sm font-semibold text-white">Loading plans...</p>
                 </div>
               ) : templatesState.status === 'error' ? (
                 <div className="dashboard-inline-state" role="alert">
-                  <p className="text-sm font-semibold text-white">Nie udało się wczytać planów</p>
+                  <p className="text-sm font-semibold text-white">Could not load plans</p>
                   <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Sprawdź połączenie i spróbuj ponownie.
+                    Check your connection and try again.
                   </p>
                   <Button type="button" className="mt-5" onClick={handleRetryTemplates}>
-                    Spróbuj ponownie
+                    Try again
                   </Button>
                 </div>
               ) : recentTemplates.length === 0 ? (
                 <div className="dashboard-inline-state">
-                  <p className="text-sm" style={{ color: 'var(--muted)' }}>Brak zapisanych planów</p>
+                  <p className="text-sm" style={{ color: 'var(--muted)' }}>No saved plans</p>
                   <motion.button
                     onClick={() => navigate('/templates/new')}
                     className="dashboard-inline-primary"
                     whileTap={{ scale: 0.97 }}
                   >
-                    Utwórz pierwszy plan
+                    Create your first plan
                   </motion.button>
                 </div>
               ) : (
@@ -938,7 +938,7 @@ export default function DashboardPage() {
                           disabled={launchingTemplateId !== null}
                           aria-busy={isLaunching ? 'true' : undefined}
                           aria-describedby={templateLaunchOperation?.status === 'error' ? launchErrorId : undefined}
-                          aria-label={`Uruchom szablon ${template.name}`}
+                          aria-label={`Start template ${template.name}`}
                           className="dashboard-template-tile"
                           style={{
                             opacity: isLaunching ? 0.72 : 1,
@@ -949,12 +949,12 @@ export default function DashboardPage() {
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-white truncate">{template.name}</p>
                               <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>
-                                {template.days.length} {template.days.length === 1 ? 'dzień' : 'dni'} • {exerciseCount} {exerciseCount === 1 ? 'ćwiczenie' : 'ćwiczeń'}
+                                {template.days.length} {template.days.length === 1 ? 'day' : 'days'} • {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
                               </p>
                             </div>
                             {isLaunching ? (
                               <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>
-                                Uruchamiam…
+                                Starting…
                               </span>
                             ) : (
                               <Play size={15} style={{ color: 'var(--accent)' }} />
@@ -975,7 +975,7 @@ export default function DashboardPage() {
                           <ActionFeedback
                             id={launchErrorId}
                             status="error"
-                            message={templateLaunchOperation.errorMessage ?? 'Nie udało się uruchomić planu.'}
+                            message={templateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
                             onRetry={() => { void retryTemplateLaunch() }}
                             onDismiss={dismissTemplateLaunchError}
                             className="dashboard-template-feedback"
@@ -993,7 +993,7 @@ export default function DashboardPage() {
           <div className="dashboard-section-head">
             <div>
               <h2 className="section-title">
-                {recentWorkouts.length > 0 ? 'Ostatnie treningi' : 'Historia'}
+                {recentWorkouts.length > 0 ? 'Recent workouts' : 'History'}
               </h2>
             </div>
             {recentWorkouts.length > 0 && (
@@ -1002,7 +1002,7 @@ export default function DashboardPage() {
                 onClick={() => navigate('/history')}
                 className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
               >
-                Zobacz wszystkie
+                View all
                 <ChevronRight size={15} strokeWidth={2.3} />
               </button>
             )}
@@ -1012,10 +1012,10 @@ export default function DashboardPage() {
             <ActionFeedback
               status={orphanedDeleteOperation.status === 'pending' ? 'pending' : 'error'}
               message={orphanedDeleteOperation.status === 'pending'
-                ? 'Usuwanie treningu…'
+                ? 'Deleting workout…'
                 : orphanedDeleteOperation.status === 'cleanup_pending'
-                  ? 'Trening usunięty. Nie udało się odświeżyć statystyk.'
-                  : 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'}
+                  ? 'Workout deleted. Could not refresh stats.'
+                  : 'Could not confirm workout deletion. Retry deletion.'}
               onRetry={orphanedDeleteOperation.status !== 'pending' ? retryWorkoutDelete : undefined}
               className="dashboard-workout-delete-feedback mb-4"
             />
@@ -1030,7 +1030,7 @@ export default function DashboardPage() {
                     animate={{ opacity: 1 }}
                   >
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      Pierwszy zapisany trening pojawi się tutaj.
+                      Your first saved workout will appear here.
                     </p>
                   </motion.div>
             ) : (
@@ -1072,14 +1072,14 @@ export default function DashboardPage() {
                                 onClick={() => openWorkout(workout)}
                                 className="dashboard-history-open"
                                 disabled={isWorkoutUnavailable}
-                                aria-label={`Otwórz trening ${workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
+                                aria-label={`Open workout ${workoutTitle(workout)} on ${formatDate(workout.startedAt)}`}
                               >
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span
                                       className="dashboard-history-set"
                                     >
-                                      {totalSets} {polishPlural(totalSets, 'seria', 'serie', 'serii')}
+                                      {totalSets} {pluralize(totalSets, 'set', 'sets')}
                                     </span>
                                   </div>
                                   <p className="mt-2 text-lg font-semibold text-white truncate">
@@ -1107,7 +1107,7 @@ export default function DashboardPage() {
                                   || (workoutDeleteOperation?.status === 'cleanup_pending' || workoutDeleteOperation?.status === 'unknown')
                                   ? deleteFeedbackId
                                   : undefined}
-                                aria-label={`Usuń trening ${workoutTitle(workout)} z ${formatDate(workout.startedAt)}`}
+                                aria-label={`Delete workout ${workoutTitle(workout)} on ${formatDate(workout.startedAt)}`}
                               >
                                 <Trash2 size={13} />
                               </motion.button>
@@ -1118,12 +1118,12 @@ export default function DashboardPage() {
                                 id={deleteFeedbackId}
                                 status={workoutDeleteOperation.status === 'pending' ? 'pending' : 'error'}
                                 message={workoutDeleteOperation.status === 'pending'
-                                  ? 'Usuwanie treningu…'
+                                  ? 'Deleting workout…'
                                   : workoutDeleteOperation.status === 'cleanup_pending'
-                                    ? 'Trening usunięty. Nie udało się odświeżyć statystyk.'
+                                    ? 'Workout deleted. Could not refresh stats.'
                                     : workoutDeleteOperation.status === 'unknown'
-                                      ? 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'
-                                      : 'Nie udało się usunąć treningu.'}
+                                      ? 'Could not confirm workout deletion. Retry deletion.'
+                                      : 'Could not delete the workout.'}
                                 onRetry={workoutDeleteOperation.status !== 'pending'
                                   ? retryWorkoutDelete
                                   : undefined}
@@ -1161,15 +1161,15 @@ export default function DashboardPage() {
 
                           <div className="dashboard-history-metrics">
                             <div>
-                              <span>Objętość</span>
+                              <span>Volume</span>
                               <strong>{formatCompactVolume(volume, units)}</strong>
                             </div>
                             <div>
-                              <span>Ćwiczenia</span>
+                              <span>Exercises</span>
                               <strong>{totalExercises}</strong>
                             </div>
                             <div>
-                              <span>Czas</span>
+                              <span>Time</span>
                               <strong>{formatDuration(workout.startedAt, workout.finishedAt)}</strong>
                             </div>
                           </div>
@@ -1183,9 +1183,9 @@ export default function DashboardPage() {
 
       {workoutToDelete && (
         <ConfirmDialog
-          title="Usunąć trening?"
-          message={`„${workoutTitle(workoutToDelete)}” · ${formatDate(workoutToDelete.startedAt)}. Tej operacji nie można cofnąć.`}
-          confirmLabel="Usuń"
+          title="Delete workout?"
+          message={`„${workoutTitle(workoutToDelete)}” · ${formatDate(workoutToDelete.startedAt)}. This cannot be undone.`}
+          confirmLabel="Delete"
           danger
           onConfirm={confirmDeleteWorkout}
           onCancel={() => setConfirmDelete(null)}

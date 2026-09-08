@@ -47,7 +47,7 @@ test.describe('Phase 3 navigation accessibility', () => {
     const start = nav.locator('button[aria-label="Start"]')
     await expect(nav).not.toHaveAttribute('aria-hidden', 'true')
 
-    await page.getByLabel('Imię').focus()
+    await page.getByLabel('Name').focus()
     await expect(nav).toHaveAttribute('aria-hidden', 'true')
     await expect.poll(() => nav.evaluate((element) => (element as HTMLElement).inert)).toBe(true)
 
@@ -89,7 +89,7 @@ test.describe('Phase 3 navigation accessibility', () => {
 
     await page.goto('/profile')
     await expectAppReady(page, '/profile')
-    await expect(page.getByRole('button', { name: 'Profil' })).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByRole('button', { name: 'Profile' })).toHaveAttribute('aria-current', 'page')
   })
 
   test('mobile workout action communicates the current page', async ({ page }, testInfo) => {
@@ -98,7 +98,7 @@ test.describe('Phase 3 navigation accessibility', () => {
     await page.goto('/workout/new')
     await expectAppReady(page, '/workout/new', 25_000)
     await expect(page.locator('nav.bottom-nav').getByRole('button', {
-      name: /^(?:Rozpocznij nowy trening|Wznów trening)$/,
+      name: /^(?:Start new workout|Resume workout)$/,
     })).toHaveAttribute('aria-current', 'page')
   })
 })
@@ -124,11 +124,11 @@ test('primary mobile controls expose at least 44px hit areas', async ({ page }, 
   const readinessSummary = page.locator('summary.readiness-summary')
   await expect(readinessSummary).toBeVisible()
   await readinessSummary.click()
-  await expect(page.getByRole('slider', { name: 'Gotowość: Sen' })).toBeVisible()
+  await expect(page.getByRole('slider', { name: 'Readiness: Sleep' })).toBeVisible()
 
   const controls = [
-    page.getByRole('button', { name: 'IronLog — strona główna' }),
-    page.getByRole('slider', { name: 'Gotowość: Sen' }),
+    page.getByRole('button', { name: 'IronLog — home' }),
+    page.getByRole('slider', { name: 'Readiness: Sleep' }),
   ]
 
   for (const control of controls) {
@@ -144,8 +144,8 @@ test('desktop top navigation actions expose at least 44px hit areas', async ({ p
   await expectAppReady(page, '/dashboard')
 
   const controls = [
-    ...await page.getByRole('navigation', { name: 'Nawigacja główna' }).getByRole('button').all(),
-    page.getByRole('button', { name: /^(?:Rozpocznij nowy trening|Wznów trening)$/ }),
+    ...await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button').all(),
+    page.getByRole('button', { name: /^(?:Start new workout|Resume workout)$/ }),
   ]
 
   for (const control of controls) {
@@ -179,7 +179,7 @@ test('attaches route accessibility snapshots for manual review', async ({ page }
     const regions = {
       navigation: testInfo.project.name === 'mobile'
         ? page.locator('nav.bottom-nav')
-        : page.getByRole('navigation', { name: 'Nawigacja główna' }),
+        : page.getByRole('navigation', { name: 'Main navigation' }),
       main: page.getByRole('main'),
     }
 

@@ -50,12 +50,12 @@ export async function readJsonBody<T>(
   const contentType = getHeader(req, 'content-type')
 
   if (contentType && requireJsonContentType && !isJsonContentType(contentType)) {
-    throw new ApiError(415, 'Content-Type musi być application/json.')
+    throw new ApiError(415, 'Content-Type must be application/json.')
   }
 
   if (req.body !== undefined) {
     if (requireJsonContentType && !contentType && hasKnownBodyContent(req.body)) {
-      throw new ApiError(415, 'Content-Type musi być application/json.')
+      throw new ApiError(415, 'Content-Type must be application/json.')
     }
 
     assertKnownBodySize(req.body, maxBytes)
@@ -71,7 +71,7 @@ export async function readJsonBody<T>(
 
     if (size > maxBytes) {
       req.destroy()
-      throw new ApiError(413, 'Body requestu jest zbyt duże.')
+      throw new ApiError(413, 'Request body is too large.')
     }
 
     chunks.push(buffer)
@@ -81,13 +81,13 @@ export async function readJsonBody<T>(
   if (!raw) return {} as T
 
   if (requireJsonContentType && !contentType) {
-    throw new ApiError(415, 'Content-Type musi być application/json.')
+    throw new ApiError(415, 'Content-Type must be application/json.')
   }
 
   try {
     return JSON.parse(raw) as T
   } catch {
-    throw new ApiError(400, 'Niepoprawny JSON w body requestu.')
+    throw new ApiError(400, 'Invalid JSON in request body.')
   }
 }
 
@@ -106,7 +106,7 @@ function parseKnownBody(body: unknown): unknown {
     if (typeof body === 'string') return body ? JSON.parse(body) : {}
     if (Buffer.isBuffer(body)) return body.length ? JSON.parse(body.toString('utf8')) : {}
   } catch {
-    throw new ApiError(400, 'Niepoprawny JSON w body requestu.')
+    throw new ApiError(400, 'Invalid JSON in request body.')
   }
 
   return body
@@ -114,7 +114,7 @@ function parseKnownBody(body: unknown): unknown {
 
 function assertKnownBodySize(body: unknown, maxBytes: number): void {
   const size = estimateKnownBodySize(body)
-  if (size > maxBytes) throw new ApiError(413, 'Body requestu jest zbyt duże.')
+  if (size > maxBytes) throw new ApiError(413, 'Request body is too large.')
 }
 
 function estimateKnownBodySize(body: unknown): number {

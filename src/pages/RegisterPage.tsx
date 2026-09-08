@@ -26,10 +26,10 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="Załóż konto"
+      title="Create account"
       subtitle={(
         <Link to="/login" className="auth-account-link transition-opacity hover:opacity-80">
-          Wróć do logowania
+          Back to sign in
         </Link>
       )}
     >
@@ -49,7 +49,7 @@ export default function RegisterPage() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label htmlFor="register-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Hasło</label>
+          <label htmlFor="register-password" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Password</label>
           <Input
             id="register-password"
             name="password"
@@ -62,13 +62,13 @@ export default function RegisterPage() {
             required
             minLength={6}
           />
-          <span id="register-password-help" className="text-xs" style={{ color: 'var(--muted)' }}>Minimum 6 znaków</span>
+          <span id="register-password-help" className="text-xs" style={{ color: 'var(--muted)' }}>At least 6 characters</span>
         </div>
 
         {error && <p id="register-form-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
 
         <Button type="submit" loading={loading} className="auth-instrument-submit mt-2 w-full">
-          Zarejestruj się
+          Sign up
         </Button>
       </form>
     </AuthShell>

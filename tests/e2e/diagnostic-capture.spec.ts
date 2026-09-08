@@ -73,8 +73,8 @@ for (const vp of VIEWPORTS) {
     // Click the first global exercise card
     const card = page
       .locator('section')
-      .filter({ hasText: 'Katalog globalny' })
-      .getByRole('button', { name: /^Otwórz ćwiczenie / })
+      .filter({ hasText: 'Shared library' })
+      .getByRole('button', { name: /^Open exercise / })
       .first()
     await expect(card).toBeVisible()
     await card.click()

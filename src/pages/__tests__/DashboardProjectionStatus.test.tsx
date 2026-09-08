@@ -202,16 +202,16 @@ describe('Dashboard workout projection status', () => {
   ])('identifies the delete target $expectedName and initially focuses cancellation', async ({ label, expectedName }) => {
     mocks.getRecentWorkouts.mockResolvedValue([{ ...pendingWorkout, materialized: true, label }])
     render(<DashboardPage />)
-    fireEvent.click(await screen.findByRole('button', { name: new RegExp(`Usuń trening ${expectedName}`) }))
-    const dialog = screen.getByRole('dialog', { name: 'Usunąć trening?' })
-    const date = new Date(pendingWorkout.startedAt).toLocaleDateString('pl-PL', {
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(`Delete workout ${expectedName}`) }))
+    const dialog = screen.getByRole('dialog', { name: 'Delete workout?' })
+    const date = new Date(pendingWorkout.startedAt).toLocaleDateString('en-US', {
       weekday: 'short', day: 'numeric', month: 'short',
     })
-    expect(dialog).toHaveAccessibleDescription(`„${expectedName}” · ${date}. Tej operacji nie można cofnąć.`)
-    const cancel = within(dialog).getByRole('button', { name: 'Anuluj' })
+    expect(dialog).toHaveAccessibleDescription(`„${expectedName}” · ${date}. This cannot be undone.`)
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' })
     await waitFor(() => expect(cancel).toHaveFocus())
     fireEvent.click(cancel)
-    expect(screen.queryByRole('dialog', { name: 'Usunąć trening?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Delete workout?' })).not.toBeInTheDocument()
     expect(mocks.deleteWorkout).not.toHaveBeenCalled()
   })
 
@@ -269,7 +269,7 @@ describe('Dashboard workout projection status', () => {
     render(<MemoryRouter><TopNav /><DashboardPage /></MemoryRouter>)
 
     expect(screen.queryByText('Push day')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Seria treningowa 8 dni' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Workout streak 8 days' })).not.toBeInTheDocument()
     expect(useDashboardStore.getState().setSnapshot('user-1', {
       workouts: [pendingWorkout], weeklyDone: 9, streak: 9,
     })).toBe(false)
@@ -298,7 +298,7 @@ describe('Dashboard workout projection status', () => {
     expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2)
     expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-2', workouts: [workoutB] })
     expect(screen.queryByText('Push day')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Ponów synchronizację' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry sync' })).not.toBeInTheDocument()
   })
 
   it('ignores an in-flight retry refresh after unmount and B has loaded', async () => {
@@ -328,7 +328,7 @@ describe('Dashboard workout projection status', () => {
     mocks.getRecentWorkouts.mockResolvedValue([pendingWorkout])
     mocks.retryWorkoutMaterialization.mockRejectedValueOnce(new Error('automatic failure')).mockReturnValueOnce(retry.promise)
     const page = render(<DashboardPage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Ponów synchronizację' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry sync' }))
     await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(2))
     page.unmount()
     useDashboardStore.getState().clearSnapshot()
@@ -345,7 +345,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText(/sesje do celu\./)).toBeInTheDocument()
+    expect(await screen.findByText(/sessions to reach your goal\./)).toBeInTheDocument()
     expect(screen.getByText('0/3')).toBeInTheDocument()
     expect(screen.queryByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).not.toBeInTheDocument()
   })
@@ -361,8 +361,8 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText(/sesje do celu\./)).toBeInTheDocument()
-    expect(screen.queryByText('Brak zapisanych treningów w tym tygodniu.')).not.toBeInTheDocument()
+    expect(await screen.findByText(/sessions to reach your goal\./)).toBeInTheDocument()
+    expect(screen.queryByText('None zapisanych workouts w tym tygodniu.')).not.toBeInTheDocument()
     expect(screen.queryByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).not.toBeInTheDocument()
   })
 
@@ -380,10 +380,10 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('3 sesje do celu.')).toBeInTheDocument()
+    expect(await screen.findByText('3 sessions to reach your goal.')).toBeInTheDocument()
     expect(screen.getByText('0/3')).toBeInTheDocument()
-    expect(screen.getByText('brak porównania')).toBeInTheDocument()
-    expect(screen.queryByText(/-100% vs poprzedni tydzień/)).not.toBeInTheDocument()
+    expect(screen.getByText('no comparison')).toBeInTheDocument()
+    expect(screen.queryByText(/-100% vs last week/)).not.toBeInTheDocument()
   })
 
   it('keeps the full local Sunday in the current week across the autumn DST change', async () => {
@@ -414,14 +414,14 @@ describe('Dashboard workout projection status', () => {
       })
 
       expect(screen.getByText('800 kg')).toBeInTheDocument()
-      expect(screen.getByText('2/7 dni')).toBeInTheDocument()
+      expect(screen.getByText('2/7 days')).toBeInTheDocument()
     } finally {
       view?.unmount()
       vi.useRealTimers()
     }
   })
 
-  it('uses Polish set-count forms in the peak-day summary', async () => {
+  it('uses English set-count forms in the peak-day summary', async () => {
     const now = Date.now()
     mocks.getRecentWorkouts.mockResolvedValue([{
       ...pendingWorkout,
@@ -432,11 +432,11 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('400 kg • 1 seria')).toBeInTheDocument()
-    expect(screen.queryByText('400 kg • 1 serii')).not.toBeInTheDocument()
+    expect(await screen.findByText('400 kg • 1 set')).toBeInTheDocument()
+    expect(screen.queryByText('400 kg • 1 sets')).not.toBeInTheDocument()
   })
 
-  it('uses the Polish paucal set-count form in the peak-day summary', async () => {
+  it('uses the English plural set-count form in the peak-day summary', async () => {
     const now = Date.now()
     mocks.getRecentWorkouts.mockResolvedValue([{
       ...pendingWorkout,
@@ -454,7 +454,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('400 kg • 2 serie')).toBeInTheDocument()
+    expect(await screen.findByText('400 kg • 2 sets')).toBeInTheDocument()
   })
 
   it('keeps the dashboard shell aligned when remote work appears and disappears', async () => {
@@ -471,7 +471,7 @@ describe('Dashboard workout projection status', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' }))
+      expect(screen.getAllByRole('button', { name: 'Start new workout' }))
         .toHaveLength(3)
     })
 
@@ -488,7 +488,7 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Wznów trening' })).toHaveLength(3)
+      expect(screen.getAllByRole('button', { name: 'Resume workout' })).toHaveLength(3)
     })
     expect(useWorkoutStore.getState().active?.sessionId).toBe('remote-session')
 
@@ -498,7 +498,7 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Rozpocznij nowy trening' })).toHaveLength(3)
+      expect(screen.getAllByRole('button', { name: 'Start new workout' })).toHaveLength(3)
     })
     expect(useWorkoutStore.getState().active).toBeNull()
   })
@@ -532,11 +532,11 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    const [workoutCta] = await screen.findAllByRole('button', { name: 'Rozpocznij nowy trening' })
+    const [workoutCta] = await screen.findAllByRole('button', { name: 'Start new workout' })
     fireEvent.click(workoutCta)
     fireEvent.click(workoutCta)
 
-    screen.getAllByRole('button', { name: 'Otwieram trening…' })
+    screen.getAllByRole('button', { name: 'Opening workout…' })
       .forEach((button) => expect(button).toBeDisabled())
     expect(mocks.preloadRouteByPath).toHaveBeenCalledTimes(1)
     expect(mocks.preloadRouteByPath).toHaveBeenCalledWith('/workout/new')
@@ -568,16 +568,16 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    const [workoutCta] = await screen.findAllByRole('button', { name: 'Wznów trening' })
+    const [workoutCta] = await screen.findAllByRole('button', { name: 'Resume workout' })
     fireEvent.click(workoutCta)
-    screen.getAllByRole('button', { name: 'Otwieram sesję…' })
+    screen.getAllByRole('button', { name: 'Opening session…' })
       .forEach((button) => expect(button).toBeDisabled())
 
     await act(async () => preload.reject(new Error('chunk unavailable')))
 
     expect(mocks.navigate).toHaveBeenCalledTimes(1)
     expect(mocks.navigate).toHaveBeenCalledWith('/workout/new')
-    expect(screen.getAllByRole('button', { name: 'Wznów trening' })[0]).toBeEnabled()
+    expect(screen.getAllByRole('button', { name: 'Resume workout' })[0]).toBeEnabled()
   })
 
   it('keeps pending feedback visible and recovers one workout after a failed automatic retry', async () => {
@@ -591,20 +591,20 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    await screen.findByText('Statystyki oczekują na synchronizację.')
+    await screen.findByText('Stats are waiting to sync.')
     expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Statystyki oczekują na synchronizację.')).toBeInTheDocument()
-    const retryButton = await screen.findByRole('button', { name: 'Ponów synchronizację' })
+    expect(screen.getByText('Stats are waiting to sync.')).toBeInTheDocument()
+    const retryButton = await screen.findByRole('button', { name: 'Retry sync' })
 
     fireEvent.click(retryButton)
 
-    const syncingButton = screen.getByRole('button', { name: 'Synchronizowanie…' })
+    const syncingButton = screen.getByRole('button', { name: 'Syncing…' })
     expect(syncingButton).toBeDisabled()
 
     await act(async () => manualRetry.resolve())
 
     await waitFor(() => {
-      expect(screen.queryByText('Statystyki oczekują na synchronizację.')).not.toBeInTheDocument()
+      expect(screen.queryByText('Stats are waiting to sync.')).not.toBeInTheDocument()
     })
     expect(mocks.retryWorkoutMaterialization).toHaveBeenNthCalledWith(2, 'workout-pending')
     expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2)
@@ -618,8 +618,8 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByRole('button', { name: 'Ponów synchronizację' })).toBeInTheDocument()
-    expect(screen.getByText('Statystyki oczekują na synchronizację.')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Retry sync' })).toBeInTheDocument()
+    expect(screen.getByText('Stats are waiting to sync.')).toBeInTheDocument()
   })
 
   it('does not let an older retry refresh restore a workout after deletion', async () => {
@@ -634,8 +634,8 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2))
-    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(3))
     await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
@@ -662,15 +662,15 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
     const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
     expect(pushRow).not.toBeNull()
     expect(pullRow).not.toBeNull()
-    expect(within(pushRow as HTMLElement).getByText('Usuwanie treningu…')).toBeInTheDocument()
-    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Otwórz trening Pull day/ }))
+    expect(within(pushRow as HTMLElement).getByText('Deleting workout…')).toBeInTheDocument()
+    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Open workout Pull day/ }))
       .toBeEnabled()
     expect(mocks.deleteWorkout).toHaveBeenLastCalledWith('workout-pending')
 
@@ -682,20 +682,20 @@ describe('Dashboard workout projection status', () => {
     const failedPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(failedPushRow).not.toBeNull()
     const alert = await within(failedPushRow as HTMLElement).findByRole('alert')
-    expect(alert).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
+    expect(alert).toHaveTextContent('Workout deleted. Could not refresh stats.')
     expect(screen.getByText('Push day')).toBeInTheDocument()
-    expect(within(failedPushRow as HTMLElement).getByRole('button', { name: /Otwórz trening Push day/ }))
+    expect(within(failedPushRow as HTMLElement).getByRole('button', { name: /Open workout Push day/ }))
       .toBeDisabled()
-    expect(within(failedPushRow as HTMLElement).getByRole('button', { name: /Usuń trening Push day/ }))
+    expect(within(failedPushRow as HTMLElement).getByRole('button', { name: /Delete workout Push day/ }))
       .toBeDisabled()
-    expect(within(failedPushRow as HTMLElement).queryByText('Statystyki oczekują na synchronizację.'))
+    expect(within(failedPushRow as HTMLElement).queryByText('Stats are waiting to sync.'))
       .not.toBeInTheDocument()
 
-    fireEvent.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
 
     const retryingPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(retryingPushRow).not.toBeNull()
-    expect(within(retryingPushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
+    expect(within(retryingPushRow as HTMLElement).getByRole('status')).toHaveTextContent('Deleting workout…')
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
 
     failedCleanupRetry.reject(new Error('offline'))
@@ -706,17 +706,17 @@ describe('Dashboard workout projection status', () => {
     const failedRetryPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(failedRetryPushRow).not.toBeNull()
     const retryAlert = within(failedRetryPushRow as HTMLElement).getByRole('alert')
-    expect(retryAlert).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
-    expect(within(failedRetryPushRow as HTMLElement).queryByRole('button', { name: 'Zamknij' }))
+    expect(retryAlert).toHaveTextContent('Workout deleted. Could not refresh stats.')
+    expect(within(failedRetryPushRow as HTMLElement).queryByRole('button', { name: 'Close' }))
       .not.toBeInTheDocument()
-    expect(within(failedRetryPushRow as HTMLElement).getByRole('button', { name: /Otwórz trening Push day/ }))
+    expect(within(failedRetryPushRow as HTMLElement).getByRole('button', { name: /Open workout Push day/ }))
       .toBeDisabled()
-    expect(within(failedRetryPushRow as HTMLElement).getByRole('button', { name: /Usuń trening Push day/ }))
+    expect(within(failedRetryPushRow as HTMLElement).getByRole('button', { name: /Delete workout Push day/ }))
       .toBeDisabled()
-    expect(within(failedRetryPushRow as HTMLElement).queryByText('Statystyki oczekują na synchronizację.'))
+    expect(within(failedRetryPushRow as HTMLElement).queryByText('Stats are waiting to sync.'))
       .not.toBeInTheDocument()
 
-    fireEvent.click(within(retryAlert).getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(within(retryAlert).getByRole('button', { name: 'Try again' }))
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(3, 'workout-pending')
 
     retryDelete.resolve({ status: 'deleted' })
@@ -745,8 +745,8 @@ describe('Dashboard workout projection status', () => {
     const firstRender = render(<DashboardPage />)
 
     await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     firstDelete.resolve({ status: 'cleanup_pending' })
     await act(async () => {
@@ -756,10 +756,10 @@ describe('Dashboard workout projection status', () => {
     firstRender.unmount()
     render(<DashboardPage />)
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Workout deleted. Could not refresh stats.')
     expect(screen.queryByText('Push day')).not.toBeInTheDocument()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
     await waitFor(() => {
       expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
     })
@@ -769,10 +769,10 @@ describe('Dashboard workout projection status', () => {
       await repeatedCleanupPending.promise
     })
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Workout deleted. Could not refresh stats.')
     expect(screen.queryByText('Push day')).not.toBeInTheDocument()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
     await waitFor(() => {
       expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(3, 'workout-pending')
     })
@@ -795,19 +795,19 @@ describe('Dashboard workout projection status', () => {
     mocks.deleteWorkout.mockResolvedValueOnce({ status: 'unknown' }).mockResolvedValueOnce({ status: 'deleted' })
     const firstRender = render(<DashboardPage />)
     await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
-    expect(screen.getByRole('button', { name: /Usuń trening Pull day/ })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Zamknij' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
+    expect(screen.getByRole('button', { name: /Delete workout Pull day/ })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     firstRender.unmount()
     render(<DashboardPage />)
     await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
-    expect(screen.getByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
-    expect(screen.getByRole('button', { name: /Usuń trening Pull day/ })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /Delete workout Pull day/ })).toBeEnabled()
   })
 
   it('keeps the pending delete owner when another workout delete is attempted', async () => {
@@ -826,25 +826,25 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
     expect(pullRow).not.toBeNull()
     const pullDelete = within(pullRow as HTMLElement).getByRole('button', {
-      name: /Usuń trening Pull day/,
+      name: /Delete workout Pull day/,
     })
     fireEvent.click(pullDelete)
-    const secondConfirm = screen.queryByRole('button', { name: 'Usuń' })
+    const secondConfirm = screen.queryByRole('button', { name: 'Delete' })
     if (secondConfirm) fireEvent.click(secondConfirm)
 
     const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(pushRow).not.toBeNull()
     expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
     expect(pullDelete).toBeDisabled()
-    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Otwórz trening Pull day/ }))
+    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Open workout Pull day/ }))
       .toBeEnabled()
-    expect(within(pushRow as HTMLElement).getByRole('status')).toHaveTextContent('Usuwanie treningu…')
+    expect(within(pushRow as HTMLElement).getByRole('status')).toHaveTextContent('Deleting workout…')
     expect(within(pullRow as HTMLElement).queryByRole('status')).not.toBeInTheDocument()
 
     firstDelete.resolve({ status: 'deleted' })
@@ -856,12 +856,12 @@ describe('Dashboard workout projection status', () => {
     const availablePullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
     expect(availablePullRow).not.toBeNull()
     const availablePullDelete = within(availablePullRow as HTMLElement).getByRole('button', {
-      name: /Usuń trening Pull day/,
+      name: /Delete workout Pull day/,
     })
     expect(availablePullDelete).toBeEnabled()
 
     fireEvent.click(availablePullDelete)
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => {
       expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-b')
@@ -877,8 +877,8 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     const row = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(row).not.toBeNull()
@@ -888,7 +888,7 @@ describe('Dashboard workout projection status', () => {
     const failedRow = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(failedRow).not.toBeNull()
     const alert = await within(failedRow as HTMLElement).findByRole('alert')
-    fireEvent.click(within(alert).getByRole('button', { name: 'Zamknij' }))
+    fireEvent.click(within(alert).getByRole('button', { name: 'Close' }))
 
     expect(within(failedRow as HTMLElement).queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.getByText('Push day')).toBeInTheDocument()
@@ -905,8 +905,8 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await act(async () => {
       await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
@@ -918,12 +918,12 @@ describe('Dashboard workout projection status', () => {
     expect(pullRow).not.toBeNull()
     const alert = await within(pushRow as HTMLElement).findByRole('alert')
     const pullDelete = within(pullRow as HTMLElement).getByRole('button', {
-      name: /Usuń trening Pull day/,
+      name: /Delete workout Pull day/,
     })
 
     expect(pullDelete).toBeDisabled()
     fireEvent.click(pullDelete)
-    expect(screen.queryByRole('button', { name: 'Usuń' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
     expect(within(pushRow as HTMLElement).getByRole('alert')).toBe(alert)
     expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
   })
@@ -976,23 +976,23 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    await screen.findAllByRole('button', { name: 'Ponów synchronizację' })
+    await screen.findAllByRole('button', { name: 'Retry sync' })
     const workoutBRow = screen.getByText('Workout B').closest('.dashboard-history-row')
     expect(workoutBRow).not.toBeNull()
     const retryWorkoutB = within(workoutBRow as HTMLElement).getByRole('button', {
-      name: 'Ponów synchronizację',
+      name: 'Retry sync',
     })
     fireEvent.click(retryWorkoutB)
 
     await waitFor(() => expect(screen.queryByText('Workout A')).not.toBeInTheDocument())
     const workoutCRow = screen.getByText('Workout C').closest('.dashboard-history-row')
     expect(workoutCRow).not.toBeNull()
-    fireEvent.click(within(workoutCRow as HTMLElement).getByRole('button', { name: 'Ponów synchronizację' }))
+    fireEvent.click(within(workoutCRow as HTMLElement).getByRole('button', { name: 'Retry sync' }))
 
     const returnedWorkoutARow = (await screen.findByText('Workout A')).closest('.dashboard-history-row')
     expect(returnedWorkoutARow).not.toBeNull()
     expect(within(returnedWorkoutARow as HTMLElement).queryByRole('button', {
-      name: 'Ponów synchronizację',
+      name: 'Retry sync',
     })).not.toBeInTheDocument()
   })
 
@@ -1028,19 +1028,19 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    await screen.findAllByRole('button', { name: 'Ponów synchronizację' })
+    await screen.findAllByRole('button', { name: 'Retry sync' })
     const workoutBRow = screen.getByText('Workout B').closest('.dashboard-history-row')
     expect(workoutBRow).not.toBeNull()
     fireEvent.click(within(workoutBRow as HTMLElement).getByRole('button', {
-      name: 'Ponów synchronizację',
+      name: 'Retry sync',
     }))
 
     await screen.findByText('Workout A')
     await act(async () => window.dispatchEvent(new Event('online')))
     await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(5))
 
-    fireEvent.click(screen.getByRole('button', { name: /Usuń trening Workout A/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getByRole('button', { name: /Delete workout Workout A/ }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(screen.queryByText('Workout A')).not.toBeInTheDocument())
 
     await act(async () => retryWorkoutA.reject(new Error('obsolete A failed')))
@@ -1048,7 +1048,7 @@ describe('Dashboard workout projection status', () => {
     const returnedWorkoutARow = (await screen.findByText('Workout A')).closest('.dashboard-history-row')
     expect(returnedWorkoutARow).not.toBeNull()
     expect(within(returnedWorkoutARow as HTMLElement).queryByRole('button', {
-      name: 'Ponów synchronizację',
+      name: 'Retry sync',
     })).not.toBeInTheDocument()
   })
 
@@ -1060,14 +1060,14 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('Nie udało się wczytać planów')).toBeInTheDocument()
-    expect(screen.queryByText('Brak zapisanych planów')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Utwórz pierwszy plan' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Could not load plans')).toBeInTheDocument()
+    expect(screen.queryByText('No saved plans')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create your first plan' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByText('Brak zapisanych planów')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Utwórz pierwszy plan' })).toBeInTheDocument()
+    expect(await screen.findByText('No saved plans')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create your first plan' })).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
   })
 
@@ -1095,10 +1095,10 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     expect(await screen.findByRole('button', {
-      name: 'Rozpocznij Upper z planu Upper / Lower',
+      name: 'Start Upper from plan Upper / Lower',
     })).toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Plany' })).not.toBeInTheDocument()
-    expect(screen.queryByText('Brak zapisanych planów')).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Plans' })).not.toBeInTheDocument()
+    expect(screen.queryByText('No saved plans')).not.toBeInTheDocument()
   })
 
   it('uses the first launchable day when the first saved day is empty', async () => {
@@ -1129,7 +1129,7 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     const start = await screen.findByRole('button', {
-      name: 'Rozpocznij Lower A z planu Upper / Lower',
+      name: 'Start Lower A from plan Upper / Lower',
     })
     fireEvent.click(start)
 
@@ -1138,7 +1138,7 @@ describe('Dashboard workout projection status', () => {
       1,
       'dashboard:template-1:quick',
     )
-    expect(screen.queryByRole('heading', { name: 'Plany' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Plans' })).not.toBeInTheDocument()
   })
 
   it('starts the compact recommendation before offering template editing', async () => {
@@ -1171,13 +1171,13 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    await screen.findByRole('region', { name: 'Dzisiejszy trening' })
+    await screen.findByRole('region', { name: 'Today’s workout' })
     await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Dzisiejszy trening' }).closest('.dashboard-home'))
+      expect(screen.getByRole('region', { name: 'Today’s workout' }).closest('.dashboard-home'))
         .toHaveClass('dashboard-home--today')
     })
-    const recommendation = screen.getByRole('region', { name: 'Dzisiejszy trening' })
-    const startRecommendation = within(recommendation).getByRole('button', { name: 'Rozpocznij Upper A' })
+    const recommendation = screen.getByRole('region', { name: 'Today’s workout' })
+    const startRecommendation = within(recommendation).getByRole('button', { name: 'Start Upper A' })
     expect(startRecommendation).toBeEnabled()
     fireEvent.click(startRecommendation)
 
@@ -1190,8 +1190,8 @@ describe('Dashboard workout projection status', () => {
 
     const dialog = screen.getByRole('dialog', { hidden: true })
     const [start, edit] = within(dialog).getAllByRole('button', { hidden: true }).slice(-2)
-    expect(start).toHaveTextContent('Rozpocznij')
-    expect(edit).toHaveTextContent('Edytuj')
+    expect(start).toHaveTextContent('Start')
+    expect(edit).toHaveTextContent('Edit')
     expect(start.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 
     fireEvent.click(edit)
@@ -1229,10 +1229,10 @@ describe('Dashboard workout projection status', () => {
     act(() => useAuthStore.getState().setUser({ uid: 'user-2' } as User))
     rerender(<DashboardPage />)
 
-    await screen.findByText('Brak zapisanych planów')
+    await screen.findByText('No saved plans')
     await act(async () => obsoleteRequest.reject(new Error('obsolete templates failure')))
 
-    expect(screen.getByText('Brak zapisanych planów')).toBeInTheDocument()
+    expect(screen.getByText('No saved plans')).toBeInTheDocument()
     expect(mocks.toastError).not.toHaveBeenCalled()
     expect(consoleError).not.toHaveBeenCalled()
     consoleError.mockRestore()

@@ -140,25 +140,25 @@ describe('streamChatReply integration', () => {
       status: 401,
       expectedStatus: 401,
       code: 'invalid-key',
-      message: 'Claude API odrzuciło klucz. Sprawdź klucz i zapisz go ponownie.',
+      message: 'Claude API rejected your key. Check it and save it again.',
     },
     {
       status: 429,
       expectedStatus: 429,
       code: 'rate-limited',
-      message: 'Claude API zgłosiło limit lub brak środków na kluczu. Odczekaj chwilę albo sprawdź konto Anthropic.',
+      message: 'Claude API reported a limit or insufficient credits. Wait a moment or check your Anthropic account.',
     },
     {
       status: 404,
       expectedStatus: 400,
       code: 'model-unavailable',
-      message: 'Wybrany model Claude nie jest dostępny dla tego klucza. Wybierz inny model w konfiguracji.',
+      message: 'The selected Claude model is unavailable for this key. Choose another model in settings.',
     },
     {
       status: 503,
       expectedStatus: 503,
       code: 'upstream-unavailable',
-      message: 'Claude API jest chwilowo niedostępne. Spróbuj ponownie za chwilę.',
+      message: 'Claude API is temporarily unavailable. Try again shortly.',
     },
   ])('classifies upstream $status without exposing upstream detail', async ({ status, expectedStatus, code, message }) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamError(
@@ -199,7 +199,7 @@ describe('streamChatReply integration', () => {
       name: 'ApiError',
       status: 503,
       code: 'network-retryable',
-      message: 'Nie udało się połączyć z Claude API. Spróbuj ponownie za chwilę.',
+      message: 'Could not connect to Claude API. Try again shortly.',
     })
   })
 

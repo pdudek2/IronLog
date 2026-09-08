@@ -54,16 +54,16 @@ describe('ReadinessPrompt', () => {
     mocks.saveReadiness.mockResolvedValue(entry)
     render(<ReadinessPrompt onSaved={mocks.onSaved} />)
 
-    const summary = screen.getByText('Dopasuj dzisiejszy trening')
+    const summary = screen.getByText('Adjust today’s workout')
     const details = summary.closest('details')
     expect(details).not.toHaveAttribute('open')
     fireEvent.click(summary)
     expect(details).toHaveAttribute('open')
 
-    fireEvent.change(screen.getByRole('slider', { name: 'Gotowość: Sen' }), {
+    fireEvent.change(screen.getByRole('slider', { name: 'Readiness: Sleep' }), {
       target: { value: '4' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz wynik' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save score' }))
 
     await waitFor(() => expect(mocks.onSaved).toHaveBeenCalledWith(entry))
     expect(mocks.saveReadiness).toHaveBeenCalledWith('user-1', {
@@ -71,17 +71,17 @@ describe('ReadinessPrompt', () => {
       mood: 3,
       soreness: 3,
     })
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('Gotowość zapisana')
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Readiness saved')
   })
 
   it('restores the save action after a failed request', async () => {
     mocks.saveReadiness.mockRejectedValue(new Error('offline'))
     render(<ReadinessPrompt onSaved={mocks.onSaved} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz wynik' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save score' }))
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Zapisz wynik' })).toBeEnabled())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save score' })).toBeEnabled())
     expect(mocks.onSaved).not.toHaveBeenCalled()
-    expect(mocks.toastError).toHaveBeenCalledWith('Nie udało się zapisać gotowości.')
+    expect(mocks.toastError).toHaveBeenCalledWith('Could not save readiness.')
   })
 })

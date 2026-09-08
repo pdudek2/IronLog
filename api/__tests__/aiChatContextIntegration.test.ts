@@ -81,7 +81,7 @@ const validPlanBody = {
   ...validBody,
   mode: 'plan' as const,
   planRequest: {
-    goal: 'siła',
+    goal: 'strength',
     daysPerWeek: 2,
   },
 }
@@ -94,14 +94,14 @@ const generatedPlanResponse = {
       type: 'text',
       text: JSON.stringify({
         name: 'Plan siłowy',
-        summary: 'Dwa dni bazowe.',
+        summary: 'Dwa days bazowe.',
         days: [
           {
-            name: 'Dzień A',
+            name: 'Day A',
             exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 80 }],
           },
           {
-            name: 'Dzień B',
+            name: 'Day B',
             exercises: [{ exerciseId: 'squat', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 100 }],
           },
         ],
@@ -143,7 +143,7 @@ describe('AI context response metadata', () => {
   it('does not fetch Anthropic when context loading rejects with ai_context_unavailable', async () => {
     mocks.loadAiUserContext.mockRejectedValueOnce(new ApiError(
       503,
-      'Nie udało się załadować kontekstu. Spróbuj ponownie.',
+      'Could not load context. Try again.',
       { code: 'ai_context_unavailable' },
     ))
     const fetchMock = vi.fn()
@@ -154,7 +154,7 @@ describe('AI context response metadata', () => {
 
     expect(captured.status()).toBe(503)
     expect(captured.json()).toEqual({
-      error: 'Nie udało się załadować kontekstu. Spróbuj ponownie.',
+      error: 'Could not load context. Try again.',
       code: 'ai_context_unavailable',
     })
     expect(fetchMock).not.toHaveBeenCalled()
@@ -163,7 +163,7 @@ describe('AI context response metadata', () => {
   it('sets limited metadata without changing successful NDJSON frames', async () => {
     mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
       sources: { ...AVAILABLE_AI_CONTEXT_SOURCES, readiness: 'unavailable' },
-      profile: null,
+      profile: { displayName: 'Łukasz' },
       readinessEntries: [],
       workouts: [],
       records: [],
@@ -187,6 +187,11 @@ describe('AI context response metadata', () => {
     const captured = createHandlerDoubles(validBody)
     await handler(captured.req, captured.res)
 
+    const [, request] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit]
+    const sent = JSON.parse(String(request.body)) as { system: string; messages: unknown }
+    expect(sent.system).toContain('Respond in English.')
+    expect(sent.system).toContain('User: Łukasz')
+    expect(sent.messages).toEqual(validBody.messages)
     expect(captured.header('X-IronLog-AI-Context')).toBe('limited;unavailable=readiness')
     expect(captured.text()).toBe('{"type":"chunk","text":"Gotowe"}\n{"type":"done"}\n')
   })
@@ -209,7 +214,7 @@ describe('AI context response metadata', () => {
 
     expect(captured.status()).toBe(503)
     expect(captured.json()).toEqual({
-      error: 'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      error: 'Could not load the exercise library. Try again.',
       code: 'ai_catalog_unavailable',
     })
     expect(fetchMock).not.toHaveBeenCalled()
@@ -284,7 +289,7 @@ describe('AI context response metadata', () => {
       name: 'unavailable record wording',
       sources: { ...AVAILABLE_AI_CONTEXT_SOURCES, records: 'unavailable' as const },
       records: [],
-      expected: 'Rekordy: dane chwilowo niedostępne.',
+      expected: 'Records: data temporarily unavailable.',
     },
   ])('includes $name in the plan Anthropic prompt', async ({ sources, records, expected }) => {
     mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
@@ -303,13 +308,15 @@ describe('AI context response metadata', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     const anthropicBody = JSON.parse(String(init.body)) as { system: string }
-    expect(anthropicBody.system).toContain('TOP REKORDY')
+    expect(anthropicBody.system).toContain('TOP RECORDS')
+    expect(anthropicBody.system).toContain('Write plan names, day names and explanations in English.')
+    expect(anthropicBody.system).toContain('Preserve exercise names from the supplied catalog.')
     expect(anthropicBody.system).toContain(expected)
     expect(captured.status()).toBe(200)
     expect(captured.json()).toEqual({
       plan: {
         name: 'Plan siłowy',
-        summary: 'Dwa dni bazowe.',
+        summary: 'Dwa days bazowe.',
         days: expect.any(Array),
       },
     })
@@ -319,36 +326,36 @@ describe('AI context response metadata', () => {
     expect(() => normalizeGeneratedPlan({
       name: 'Plan',
       days: [
-        { name: 'Dzień A', exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 80 }] },
+        { name: 'Day A', exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 80 }] },
       ],
     }, [
       { id: 'bench-press', name: 'Bench Press', source: 'global', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
     ], {
-      goal: 'siła',
+      goal: 'strength',
       daysPerWeek: 2,
       experience: 'intermediate',
       equipment: ['barbell'],
       focus: '',
       notes: '',
-    })).toThrow('Generator zwrócił 1 dni zamiast 2.')
+    })).toThrow('The generator returned 1 days instead of 2.')
   })
 
   it('filters exercises outside the requested equipment before accepting a plan', () => {
     expect(() => normalizeGeneratedPlan({
       name: 'Plan',
       days: [
-        { name: 'Dzień A', exercises: [{ exerciseId: 'leg-press', exerciseSource: 'global', sets: 4, targetReps: 8, targetWeight: 120 }] },
+        { name: 'Day A', exercises: [{ exerciseId: 'leg-press', exerciseSource: 'global', sets: 4, targetReps: 8, targetWeight: 120 }] },
       ],
     }, [
       { id: 'leg-press', name: 'Leg Press', source: 'global', equipment: 'machine', category: 'legs', muscles: ['quads'] },
     ], {
-      goal: 'siła',
+      goal: 'strength',
       daysPerWeek: 1,
       experience: 'intermediate',
       equipment: ['barbell'],
       focus: '',
       notes: '',
-    })).toThrow('Generator nie zwrócił żadnego poprawnego dnia treningowego.')
+    })).toThrow('The generator did not return any valid workout days.')
   })
 
   it('rejects ambiguous name fallbacks regardless of catalog order', () => {
@@ -373,7 +380,7 @@ describe('AI context response metadata', () => {
     const planWithMissingId = {
       name: 'Plan',
       days: [{
-        name: 'Dzień A',
+        name: 'Day A',
         exercises: [{
           exerciseId: 'missing-bench',
           exerciseSource: 'global',
@@ -385,7 +392,7 @@ describe('AI context response metadata', () => {
       }],
     }
     const request = {
-      goal: 'siła',
+      goal: 'strength',
       daysPerWeek: 1,
       experience: 'intermediate',
       equipment: [],
@@ -395,7 +402,7 @@ describe('AI context response metadata', () => {
 
     for (const catalog of [collidingCatalog, [...collidingCatalog].reverse()]) {
       expect(() => normalizeGeneratedPlan(planWithMissingId, catalog, request))
-        .toThrow('Generator nie zwrócił żadnego poprawnego dnia treningowego.')
+        .toThrow('The generator did not return any valid workout days.')
     }
   })
 
@@ -412,7 +419,7 @@ describe('AI context response metadata', () => {
     }, [
       { id: 'custom-bench', name: 'Bench Press', source: 'user', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
     ], {
-      goal: 'siła',
+      goal: 'strength',
       daysPerWeek: 1,
       experience: 'intermediate',
       equipment: [],
@@ -440,7 +447,7 @@ describe('AI context response metadata', () => {
       { id: 'custom-bench', name: 'Bench Press', source: 'user', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
       { id: 'bench-press', name: 'Bench Press', source: 'global', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
     ], {
-      goal: 'siła',
+      goal: 'strength',
       daysPerWeek: 1,
       experience: 'intermediate',
       equipment: [],

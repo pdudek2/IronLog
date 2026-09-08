@@ -23,10 +23,10 @@ const NAV_ITEMS: Array<{
   match?: (path: string) => boolean
 }> = [
   { key: 'dashboard', label: 'Start', icon: LayoutDashboard, to: '/dashboard' },
-  { key: 'history', label: 'Historia', icon: History, to: '/history', match: (p) => p.startsWith('/history') },
-  { key: 'progress', label: 'Postępy', icon: TrendingUp, to: '/progress', match: (p) => p.startsWith('/progress') },
-  { key: 'templates', label: 'Plany', icon: Layers3, to: '/templates', match: (p) => p.startsWith('/templates') },
-  { key: 'exercises', label: 'Ćwiczenia', icon: Dumbbell, to: '/exercises', match: (p) => p.startsWith('/exercises') },
+  { key: 'history', label: 'History', icon: History, to: '/history', match: (p) => p.startsWith('/history') },
+  { key: 'progress', label: 'Progress', icon: TrendingUp, to: '/progress', match: (p) => p.startsWith('/progress') },
+  { key: 'templates', label: 'Plans', icon: Layers3, to: '/templates', match: (p) => p.startsWith('/templates') },
+  { key: 'exercises', label: 'Exercises', icon: Dumbbell, to: '/exercises', match: (p) => p.startsWith('/exercises') },
   { key: 'chat', label: 'AI Coach', icon: Sparkles, to: '/chat', match: (p) => p.startsWith('/chat') },
 ]
 
@@ -52,7 +52,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           type="button"
           className="top-nav-brand"
           onClick={() => go('/dashboard')}
-          aria-label="IronLog — strona główna"
+          aria-label="IronLog — home"
         >
           <span className="top-nav-brand-mark" aria-hidden="true">
             IL
@@ -60,7 +60,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           <span className="hidden sm:inline">IronLog</span>
         </button>
 
-        <nav className="top-nav-links" aria-label="Nawigacja główna">
+        <nav className="top-nav-links" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon
             const active = isActive(item)
@@ -91,8 +91,8 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
               onPointerEnter={() => { void preloadRouteByPath('/progress') }}
               onFocus={() => { void preloadRouteByPath('/progress') }}
               whileTap={{ scale: 0.96 }}
-              title={`Seria ${streak} ${streak === 1 ? 'dzień' : 'dni'} — zobacz postępy`}
-              aria-label={`Seria treningowa ${streak} dni`}
+              title={`Streak ${streak} ${streak === 1 ? 'day' : 'days'} — view progress`}
+              aria-label={`Workout streak ${streak} ${streak === 1 ? 'day' : 'days'}`}
             >
               <Flame size={13} strokeWidth={2.4} />
               <span>{streak}</span>
@@ -109,10 +109,10 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
             onFocus={() => { void preloadRouteByPath('/workout/new') }}
             whileTap={{ scale: 0.97 }}
-            aria-label={hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening'}
+            aria-label={hasActiveWork ? 'Resume workout' : 'Start new workout'}
           >
             <Plus size={15} strokeWidth={2.4} />
-            <span>{hasActiveWork ? 'Wznów trening' : 'Nowy trening'}</span>
+            <span>{hasActiveWork ? 'Resume workout' : 'New workout'}</span>
           </motion.button>
 
           <button
@@ -123,7 +123,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             onFocus={() => { void preloadRouteByPath('/profile') }}
             data-active={current === 'profile'}
             aria-current={current === 'profile' ? 'page' : undefined}
-            aria-label="Profil"
+            aria-label="Profile"
             style={current === 'profile' ? { color: 'var(--text-strong)', background: 'var(--selected-bg)' } : undefined}
           >
             <User size={16} />
@@ -133,8 +133,8 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             type="button"
             className="top-nav-icon-btn inline-flex"
             onClick={() => go('/logout')}
-            aria-label="Wyloguj"
-            title="Wyloguj"
+            aria-label="Sign out"
+            title="Sign out"
           >
             <LogOut size={15} />
           </button>

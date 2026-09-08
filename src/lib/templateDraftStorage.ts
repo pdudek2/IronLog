@@ -31,7 +31,7 @@ export function readTemplateDraft(): TemplateInput | null {
         const exercises = Array.isArray(record.exercises) ? record.exercises : []
 
         return [{
-          name: typeof record.name === 'string' && record.name.trim() ? record.name.trim() : `Dzień ${index + 1}`,
+          name: typeof record.name === 'string' && record.name.trim() ? record.name.trim() : `Day ${index + 1}`,
           exercises: exercises.flatMap((exercise) => {
             if (typeof exercise !== 'object' || exercise === null || Array.isArray(exercise)) return []
             const item = exercise as Record<string, unknown>

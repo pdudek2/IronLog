@@ -11,7 +11,7 @@ export interface AiContextMetadata {
 }
 
 const AI_CONTEXT_HEADER = 'X-IronLog-AI-Context'
-const INVALID_CONTEXT_MESSAGE = 'AI Coach zwrócił niepoprawny status kontekstu.'
+const INVALID_CONTEXT_MESSAGE = 'AI Coach returned an invalid context status.'
 
 export function parseAiContextHeader(headers: Headers): AiContextMetadata {
   const value = headers.get(AI_CONTEXT_HEADER)
@@ -106,13 +106,13 @@ function getChatApiUrl(): string {
 
 function aiConnectionError(chatApiUrl: string): Error {
   return new Error(import.meta.env.DEV
-    ? `Lokalnie endpoint AI nie jest dostępny pod ${chatApiUrl}. Uruchom \`npm run dev:api\` obok \`npm run dev:web\`, albo po prostu \`npm run dev:all\`.`
-    : 'Nie udało się połączyć z AI Coachem. Sprawdź połączenie i spróbuj ponownie.')
+    ? `The local AI endpoint is unavailable at ${chatApiUrl}. Uruchom \`npm run dev:api\` obok \`npm run dev:web\`, albo po prostu \`npm run dev:all\`.`
+    : 'Could not connect to AI Coach. Check your connection and try again.')
 }
 
 async function getAuthenticatedUserToken() {
   const user = auth.currentUser
-  if (!user) throw new Error('Brak aktywnej sesji użytkownika.')
+  if (!user) throw new Error('No active user session.')
   return user.getIdToken()
 }
 
@@ -140,7 +140,7 @@ export async function streamChatReply({
     body = JSON.stringify(requestBody)
   }
   if (encoder.encode(body).byteLength > 128 * 1024) {
-    throw new Error('Żądanie do AI Coacha jest zbyt duże. Sprawdź klucz API i treść wiadomości.')
+    throw new Error('The AI Coach request is too large. Check your API key and message.')
   }
 
   try {
@@ -165,25 +165,25 @@ export async function streamChatReply({
       response.status === 404 &&
       typeof window !== 'undefined' &&
       (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
-      payload?.error?.includes('Nie znaleziono lokalnego endpointu')
+      payload?.error?.includes('Local endpoint not found')
     ) {
       throw new Error(
-        `Frontend działa lokalnie, ale backend AI zwrócił 404 pod ${chatApiUrl}. Uruchom \`npm run dev:api\` albo \`npm run dev:all\`.`,
+        `The frontend is running locally, but the AI backend returned 404 at ${chatApiUrl}. Uruchom \`npm run dev:api\` albo \`npm run dev:all\`.`,
       )
     }
-    throw new AiApiError(payload?.error ?? 'AI Coach nie odpowiedział poprawnie.', payload?.code)
+    throw new AiApiError(payload?.error ?? 'AI Coach returned an invalid response.', payload?.code)
   }
 
   const context = parseAiContextHeader(response.headers)
   onContext(context)
 
   if (!response.body) {
-    throw new Error('Stream AI nie zwrócił danych.')
+    throw new Error('The AI stream returned no data.')
   }
 
   const mediaType = response.headers.get('Content-Type')?.split(';', 1)[0]?.trim().toLowerCase()
   if (mediaType !== 'application/x-ndjson') {
-    throw new Error('Stream AI zwrócił niepoprawny format odpowiedzi.')
+    throw new Error('The AI stream returned an invalid response format.')
   }
 
   return readChatStream(response.body, { signal, onChunk })
@@ -224,11 +224,11 @@ export async function generateTrainingPlan({
     | null
 
   if (!response.ok) {
-    throw new AiApiError(payload?.error ?? 'Nie udało się wygenerować planu.', payload?.code)
+    throw new AiApiError(payload?.error ?? 'Could not generate a plan.', payload?.code)
   }
 
   if (!payload?.plan) {
-    throw new Error('Generator planu nie zwrócił poprawnych danych.')
+    throw new Error('The plan generator returned invalid data.')
   }
 
   return {
@@ -256,7 +256,7 @@ export async function fetchAvailableClaudeModels(apiKey: string): Promise<Claude
       body: JSON.stringify({ apiKey }),
     })
   } catch {
-    throw new Error('Nie udało się pobrać listy modeli Claude.')
+    throw new Error('Could not load the Claude model list.')
   }
 
   const payload = await response.json().catch(() => null) as
@@ -264,7 +264,7 @@ export async function fetchAvailableClaudeModels(apiKey: string): Promise<Claude
     | null
 
   if (!response.ok) {
-    throw new AiApiError(payload?.error ?? 'Nie udało się pobrać listy modeli Claude.', payload?.code)
+    throw new AiApiError(payload?.error ?? 'Could not load the Claude model list.', payload?.code)
   }
 
   return Array.isArray(payload?.models) ? payload.models : []

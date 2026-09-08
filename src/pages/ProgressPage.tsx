@@ -26,15 +26,15 @@ import {
   type StrengthSeries,
   type WeeklyPoint,
 } from '../lib/progressService'
-import { polishPlural } from '../lib/polishPlural'
+import { pluralize } from '../lib/pluralize'
 import { useProfileStore } from '../store/profileStore'
 import { kgToDisplayWeight } from '../lib/weightUnits'
 import type { Units } from '../lib/userProfile'
 
 const RANGE_OPTIONS = [
-  { label: '30 dni', days: 30 },
-  { label: '90 dni', days: 90 },
-  { label: 'Rok', days: 365 },
+  { label: '30 days', days: 30 },
+  { label: '90 days', days: 90 },
+  { label: 'Year', days: 365 },
 ]
 
 const MUSCLE_COLORS: Record<string, string> = {
@@ -51,18 +51,18 @@ const MUSCLE_COLORS: Record<string, string> = {
   core:       '#918A9D',
 }
 
-const MUSCLE_PL: Record<string, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  shoulders: 'Barki',
+const MUSCLE_LABELS: Record<string, string> = {
+  chest: 'Chest',
+  back: 'Back',
+  shoulders: 'Shoulders',
   biceps: 'Biceps',
   triceps: 'Triceps',
-  quads: 'Quady',
-  hamstrings: 'Dwugłowe',
-  glutes: 'Pośladki',
+  quads: 'Quads',
+  hamstrings: 'Hamstrings',
+  glutes: 'Glutes',
   core: 'Core',
-  calves: 'Łydki',
-  forearms: 'Przedramiona',
+  calves: 'Calves',
+  forearms: 'Forearms',
 }
 
 const HEATMAP_COLORS = [
@@ -73,7 +73,7 @@ const HEATMAP_COLORS = [
   'rgba(240,67,90,0.9)',
 ]
 
-const DAY_LABELS = ['Pn', 'Wt', 'Śr', 'Cz', 'Pt', 'So', 'Nd']
+const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const EMPTY_SESSIONS: ProgressSessionLite[] = []
 const EMPTY_RECORDS: RecordSummary[] = []
 const DEFAULT_VISIBLE_REMAINING_RECORDS = 5
@@ -87,11 +87,11 @@ function formatVolume(volumeKg: number, units: Units): string {
 }
 
 function formatDelta(delta: number): string {
-  return `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}% vs poprzednio`
+  return `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}% vs previous`
 }
 
 function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
+  return new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
 }
 
 function formatHeatmapDate(date: string): string {
@@ -100,21 +100,21 @@ function formatHeatmapDate(date: string): string {
 }
 
 function summarizeWeeklyVolume(data: WeeklyPoint[], units: Units): string {
-  if (data.length === 0) return 'Wolumen treningowy: brak danych w wybranym zakresie.'
+  if (data.length === 0) return 'Workout volume: no data in this date range.'
 
   const first = data[0]
-  if (!first) return 'Wolumen treningowy: brak danych w wybranym zakresie.'
+  if (!first) return 'Workout volume: no data in this date range.'
 
   const total = data.reduce((sum, point) => sum + point.volume, 0)
   const peak = data.reduce((top, point) => point.volume > top.volume ? point : top, first)
   const firstWeek = first.weekLabel
-  const lastWeek = data[data.length - 1]?.weekLabel ?? 'koniec zakresu'
+  const lastWeek = data[data.length - 1]?.weekLabel ?? 'end of range'
 
-  return `Wolumen treningowy od ${firstWeek} do ${lastWeek}. Łącznie ${formatVolume(total, units)}. Najwyższy tydzień: ${peak.weekLabel}, ${formatVolume(peak.volume, units)}.`
+  return `Workout volume from ${firstWeek} to ${lastWeek}. Total ${formatVolume(total, units)}. Highest week: ${peak.weekLabel}, ${formatVolume(peak.volume, units)}.`
 }
 
 function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSeries[], units: Units): string {
-  if (data.length === 0 || series.length === 0) return 'Progresja ciężaru: brak danych do wykresu.'
+  if (data.length === 0 || series.length === 0) return 'Weight progression: no chart data.'
 
   const summaries = series.slice(0, 5).map(({ exerciseName, key }) => {
     const values = data
@@ -125,33 +125,33 @@ function summarizeStrengthProgression(data: StrengthPoint[], series: StrengthSer
       .map((point) => Number(point[key] ?? 0))
       .find((value) => value > 0) ?? 0
     const top = values.length ? Math.max(...values) : 0
-    return `${exerciseName}: ostatnio ${kgToDisplayWeight(latest, units)} ${units}, max ${kgToDisplayWeight(top, units)} ${units}`
+    return `${exerciseName}: latest ${kgToDisplayWeight(latest, units)} ${units}, max ${kgToDisplayWeight(top, units)} ${units}`
   })
 
-  const exerciseCount = series.length === 1 ? '1 ćwiczenia' : `${series.length} ćwiczeń`
-  return `Progresja ciężaru dla ${exerciseCount}. ${summaries.join('; ')}.`
+  const exerciseCount = series.length === 1 ? '1 exercise' : `${series.length} exercises`
+  return `Weight progression for ${exerciseCount}. ${summaries.join('; ')}.`
 }
 
 function summarizeMuscleBalance(data: MuscleBalancePoint[]): string {
-  if (data.length === 0) return 'Balans grup mięśniowych: brak danych.'
+  if (data.length === 0) return 'Muscle group balance: no data.'
 
   const top = data[0]
-  if (!top) return 'Balans grup mięśniowych: brak danych.'
+  if (!top) return 'Muscle group balance: no data.'
   const total = data.reduce((sum, point) => sum + point.count, 0)
-  const muscleName = MUSCLE_PL[top.muscle] ?? top.muscle
+  const muscleName = MUSCLE_LABELS[top.muscle] ?? top.muscle
 
-  return `Balans grup mięśniowych. Najczęściej trenowana grupa: ${muscleName}, ${top.count} ${polishPlural(top.count, 'wpis', 'wpisy', 'wpisów')}. Łącznie ${total} ${polishPlural(total, 'wpis', 'wpisy', 'wpisów')} w zestawieniu.`
+  return `Muscle group balance. Most trained group: ${muscleName}, ${top.count} ${pluralize(top.count, 'entry', 'entries')}. Total ${total} ${pluralize(total, 'entry', 'entries')} in this view.`
 }
 
 function summarizeActivityHeatmap(data: HeatmapDay[], units: Units): string {
   const activeDays = data.filter((cell) => cell.volume > 0)
-  if (activeDays.length === 0) return 'Kalendarz treningów: brak aktywnych dni w wybranym zakresie.'
+  if (activeDays.length === 0) return 'Workout calendar: no active days in this date range.'
 
   const first = activeDays[0]
-  if (!first) return 'Kalendarz treningów: brak aktywnych dni w wybranym zakresie.'
+  if (!first) return 'Workout calendar: no active days in this date range.'
   const peak = activeDays.reduce((top, cell) => cell.volume > top.volume ? cell : top, first)
 
-  return `Kalendarz treningów z ostatnich 12 tygodni. Aktywne dni: ${activeDays.length}. Największy dzień: ${formatHeatmapDate(peak.date)}, ${formatVolume(peak.volume, units)}.`
+  return `Workout calendar for the last 12 weeks. Active days: ${activeDays.length}. Highest day: ${formatHeatmapDate(peak.date)}, ${formatVolume(peak.volume, units)}.`
 }
 
 interface DarkTooltipProps {
@@ -163,7 +163,7 @@ interface DarkTooltipProps {
 
 export function DarkTooltip({ active, payload, label, units = 'kg' }: DarkTooltipProps) {
   if (!active || !payload?.length) return null
-  const tooltipLabel = typeof label === 'string' ? (MUSCLE_PL[label] ?? label) : label
+  const tooltipLabel = typeof label === 'string' ? (MUSCLE_LABELS[label] ?? label) : label
 
   function formatTooltipValue(item: NonNullable<DarkTooltipProps['payload']>[number]) {
     const key = String(item.dataKey ?? item.name ?? '')
@@ -171,10 +171,10 @@ export function DarkTooltip({ active, payload, label, units = 'kg' }: DarkToolti
     if (typeof value !== 'number') return value
 
     if (key === 'sessions') {
-      return `${value} ${polishPlural(value, 'sesja', 'sesje', 'sesji')}`
+      return `${value} ${pluralize(value, 'session', 'sessions')}`
     }
     if (key === 'count') {
-      return `${value} ${polishPlural(value, 'wpis', 'wpisy', 'wpisów')}`
+      return `${value} ${pluralize(value, 'entry', 'entries')}`
     }
     if (key === 'volume') {
       return formatVolume(value, units)
@@ -218,7 +218,7 @@ interface ProgressSnapshot {
 function ProgressLoadingSkeleton() {
   return (
     <>
-      <span className="progress-visually-hidden" role="status">Ładowanie postępów</span>
+      <span className="progress-visually-hidden" role="status">Loading progress</span>
       <section className="progress-board progress-skeleton-board" aria-hidden="true">
         <div className="progress-skeleton-head">
           <span />
@@ -400,12 +400,12 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   const heatmapMonthLabels = Array.from({ length: 12 }, (_, weekIndex) => {
     const monday = heatmapData.find((cell) => cell.weekIndex === weekIndex && cell.dayOfWeek === 0 && cell.date)
     if (!monday) return ''
-    const month = new Date(`${monday.date}T12:00:00`).toLocaleDateString('pl-PL', { month: 'short' })
+    const month = new Date(`${monday.date}T12:00:00`).toLocaleDateString('en-US', { month: 'short' })
     const previous = weekIndex > 0
       ? heatmapData.find((cell) => cell.weekIndex === weekIndex - 1 && cell.dayOfWeek === 0 && cell.date)
       : null
     const previousMonth = previous
-      ? new Date(`${previous.date}T12:00:00`).toLocaleDateString('pl-PL', { month: 'short' })
+      ? new Date(`${previous.date}T12:00:00`).toLocaleDateString('en-US', { month: 'short' })
       : ''
     return weekIndex === 0 || month !== previousMonth ? month : ''
   })
@@ -425,7 +425,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
     )
     if (!peak) return ''
 
-    return `${activeDays.length} ${polishPlural(activeDays.length, 'aktywny dzień', 'aktywne dni', 'aktywnych dni')} · najmocniejszy dzień ${formatHeatmapDate(peak.date)} · ${formatVolume(peak.volume, units)}`
+    return `${activeDays.length} ${pluralize(activeDays.length, 'active day', 'active days')} · strongest day ${formatHeatmapDate(peak.date)} · ${formatVolume(peak.volume, units)}`
   }, [heatmapData, units])
 
   const totalVolume = useMemo(
@@ -452,7 +452,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
     && currentSessions.length === 0
     && !showEmptyState
   const topMuscle = muscleData[0]
-  const topMuscleName = topMuscle ? (MUSCLE_PL[topMuscle.muscle] ?? topMuscle.muscle) : 'Brak'
+  const topMuscleName = topMuscle ? (MUSCLE_LABELS[topMuscle.muscle] ?? topMuscle.muscle) : 'None'
   const topRecord = records[0]
   const hasPreviousPeriod = periodComparison.previousSessions > 0
   const recordAccentKeys = Object.keys(MUSCLE_COLORS)
@@ -469,16 +469,16 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   )
   const retryableIssues: string[] = []
   if (freshnessUncertain) {
-    retryableIssues.push('Nie udało się potwierdzić świeżości danych. Ostatnie treningi mogą być jeszcze niewidoczne.')
+    retryableIssues.push('Could not confirm data freshness. Recent workouts may not be visible yet.')
   }
-  if (sessionsError) retryableIssues.push('Nie udało się odświeżyć danych treningowych.')
-  if (recordsError) retryableIssues.push('Nie udało się odświeżyć rekordów od początku.')
+  if (sessionsError) retryableIssues.push('Could not refresh workout data.')
+  if (recordsError) retryableIssues.push('Could not refresh all-time records.')
   const limitNotices: string[] = []
   if (hasRangeCoverage && snapshot?.sessionsTruncated) {
-    limitNotices.push('Analizy treningowe obejmują najnowsze 5000 wpisów.')
+    limitNotices.push('Workout analytics include the 5,000 most recent entries.')
   }
   if (snapshot?.recordsTruncated) {
-    limitNotices.push('Lista rekordów jest ograniczona do 1000 wpisów.')
+    limitNotices.push('The record list is limited to 1,000 entries.')
   }
   const issues = [...retryableIssues, ...limitNotices]
 
@@ -501,17 +501,17 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
           >
             <div>
-              <h1>Postępy</h1>
+              <h1>Progress</h1>
               {(!hasSessionSnapshot || uniqueWorkouts === 0) && (
                 <p>
                   {!hasSessionSnapshot
-                    ? (refreshing ? 'Ładowanie postępów' : 'Dane treningowe są chwilowo niedostępne.')
-                    : 'Brak treningów w wybranym zakresie.'}
+                    ? (refreshing ? 'Loading progress' : 'Workout data is temporarily unavailable.')
+                    : 'No workouts in this date range.'}
                 </p>
               )}
             </div>
 
-            <div className="progress-range-toggle" aria-label="Zakres danych">
+            <div className="progress-range-toggle" aria-label="Date range">
               {RANGE_OPTIONS.map(({ label, days }) => (
                 <button
                   key={days}
@@ -527,19 +527,19 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
           </motion.div>
 
           {hasSessionSnapshot && !showRangeEmpty && (
-          <div className="progress-summary-grid" role="group" aria-label={`Podsumowanie: ${rangeDays} dni`}>
-            <div className="progress-volume-tile" role="group" aria-label="Objętość">
-              <span>Objętość</span>
+          <div className="progress-summary-grid" role="group" aria-label={`Summary: ${rangeDays} days`}>
+            <div className="progress-volume-tile" role="group" aria-label="Volume">
+              <span>Volume</span>
               <strong>
                 <NumberFlow
                   value={kgToDisplayWeight(totalVolume, units)}
                   transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
                   format={{ useGrouping: true }}
-                  locales="pl-PL"
+                  locales="en-US"
                 />
                 <small> {units}</small>
               </strong>
-              <p>Ostatnie {rangeDays} dni</p>
+              <p>Last {rangeDays} days</p>
               {hasPreviousPeriod && (
                 <p className="progress-metric-delta" data-trend={periodComparison.volumeDelta >= 0 ? 'up' : 'down'}>
                   {formatDelta(periodComparison.volumeDelta)}
@@ -550,26 +550,26 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             <div className="progress-signal-rail">
               {[
                 {
-                  label: 'Sesje',
+                  label: 'Sessions',
                   value: uniqueWorkouts,
-                  meta: 'w zakresie',
+                  meta: 'in range',
                   delta: hasPreviousPeriod ? periodComparison.sessionsDelta : undefined,
                 },
                 {
-                  label: 'Śr. / sesję',
+                  label: 'Avg. / session',
                   value: formatVolume(periodComparison.currentAvgVolume, units),
-                  meta: 'w zakresie',
+                  meta: 'in range',
                   delta: hasPreviousPeriod ? periodComparison.avgVolumeDelta : undefined,
                 },
-                { label: 'Ćwiczenia', value: uniqueExerciseCount, meta: 'w zakresie' },
+                { label: 'Exercises', value: uniqueExerciseCount, meta: 'in range' },
                 {
-                  label: 'Rekordy',
+                  label: 'Records',
                   value: recordsLoadedOnce ? records.length : '—',
                   meta: recordsLoadedOnce
-                    ? (topRecord ? topRecord.exerciseName : 'brak zapisów')
-                    : 'niedostępne',
+                    ? (topRecord ? topRecord.exerciseName : 'no records')
+                    : 'unavailable',
                 },
-                { label: 'Grupa mięśniowa', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${polishPlural(topMuscle.count, 'wpis', 'wpisy', 'wpisów')}` : 'brak danych' },
+                { label: 'Muscle group', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${pluralize(topMuscle.count, 'entry', 'entries')}` : 'no data' },
               ].map((item) => (
                 <div key={item.label} className="progress-signal-row" role="group" aria-label={item.label}>
                   <span>{item.label}</span>
@@ -597,14 +597,14 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             <div>
               <strong>
                 {retryableIssues.length > 0
-                  ? (hasUsableData ? 'Dane wymagają odświeżenia' : 'Nie udało się pobrać danych')
-                  : 'Zakres danych został ograniczony'}
+                  ? (hasUsableData ? 'Data needs refreshing' : 'Could not load data')
+                  : 'Data range has been limited'}
               </strong>
               {issues.map((issue) => <p key={issue}>{issue}</p>)}
             </div>
             {retryableIssues.length > 0 && (
               <Button type="button" onClick={handleRetry} disabled={refreshing}>
-                {refreshing ? 'Odświeżanie…' : 'Spróbuj ponownie'}
+                {refreshing ? 'Refreshing…' : 'Try again'}
               </Button>
             )}
           </div>
@@ -621,9 +621,9 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             >
               <div className="progress-panel-head">
                 <div>
-                  <h2>Wolumen tygodniowy</h2>
+                  <h2>Weekly volume</h2>
                 </div>
-                <span>{rangeDays === 30 ? '5 tyg.' : rangeDays === 90 ? '13 tyg.' : '53 tyg.'}</span>
+                <span>{rangeDays === 30 ? '5 weeks' : rangeDays === 90 ? '13 weeks' : '53 weeks'}</span>
               </div>
               <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
                 <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
@@ -669,13 +669,13 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             >
               <div className="progress-panel-head progress-panel-head--strength">
                 <div>
-                  <h2>Progresja ciężaru</h2>
+                  <h2>Weight progression</h2>
                 </div>
                 {selectedStrengthSeries && (
                   <label className="progress-strength-picker">
-                    <span>Ćwiczenie</span>
+                    <span>Exercise</span>
                     <select
-                      aria-label="Ćwiczenie na wykresie"
+                      aria-label="Chart exercise"
                       value={effectiveStrengthKey ?? ''}
                       onChange={(event) => setSelectedStrengthKey(event.target.value)}
                     >
@@ -683,7 +683,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                         <option key={series.key} value={series.key}>
                           {series.exerciseName}
                           {(strengthNameCounts.get(series.exerciseName) ?? 0) > 1
-                            ? ` · ${series.key.startsWith('user:') ? 'moje' : 'globalne'}`
+                            ? ` · ${series.key.startsWith('user:') ? 'mine' : 'shared'}`
                             : ''}
                         </option>
                       ))}
@@ -692,32 +692,32 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 )}
               </div>
               {selectedStrengthSeries && selectedStrengthPoints.length >= 3 && (
-                <div className="progress-strength-insight" aria-label="Trend wybranego ćwiczenia">
+                <div className="progress-strength-insight" aria-label="Selected exercise trend">
                   <div>
-                    <strong>Ostatnio {kgToDisplayWeight(latestStrength, units)} {units}</strong>
+                    <strong>Latest {kgToDisplayWeight(latestStrength, units)} {units}</strong>
                   </div>
                   <p>
                     <span>
                       {strengthDelta > 0
-                        ? `+${kgToDisplayWeight(strengthDelta, units)} ${units} względem pierwszego w zakresie`
+                        ? `+${kgToDisplayWeight(strengthDelta, units)} ${units} compared with the first in this range`
                         : strengthDelta < 0
-                          ? `${kgToDisplayWeight(strengthDelta, units)} ${units} względem pierwszego w zakresie`
-                          : 'Bez zmiany względem pierwszego w zakresie'}
+                          ? `${kgToDisplayWeight(strengthDelta, units)} ${units} compared with the first in this range`
+                          : 'No change from the first in this range'}
                     </span>
-                    {' · '}maks. {kgToDisplayWeight(maxStrength, units)} {units}
+                    {' · '}max. {kgToDisplayWeight(maxStrength, units)} {units}
                   </p>
                 </div>
               )}
               {!selectedStrengthSeries ? (
                 <p className="progress-muted-copy">
-                  Brak zapisanych ciężarów większych od 0 {units} w tym zakresie. Uzupełnij ciężar w serii, aby zobaczyć progresję.
+                  No recorded weights above 0 {units} in this range. Add a set weight to see progression.
                 </p>
               ) : selectedStrengthPoints.length < 3 ? (
                 <>
                   <p className="progress-muted-copy">
-                    Do wykresu: jeszcze {missingStrengthSessions} {polishPlural(missingStrengthSessions, 'dzień', 'dni', 'dni')} z zapisanym ciężarem.
+                    Chart needs {missingStrengthSessions} {pluralize(missingStrengthSessions, 'day', 'days')} with recorded weight.
                   </p>
-                  <div className="progress-session-markers" aria-label={`${selectedStrengthPoints.length} z 3 dni do wykresu`}>
+                  <div className="progress-session-markers" aria-label={`${selectedStrengthPoints.length} of 3 days for the chart`}>
                     {Array.from({ length: 3 }).map((_, index) => (
                       <span key={index} data-active={index < selectedStrengthPoints.length} />
                     ))}
@@ -769,7 +769,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               >
                 <div className="progress-panel-head">
                   <div>
-                    <h2>Grupy mięśniowe</h2>
+                    <h2>Muscle groups</h2>
                   </div>
                 </div>
                 <div style={{ height: muscleData.length * 34 + 16 }} role="img" aria-label={muscleBalanceLabel}>
@@ -798,7 +798,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                         tick={{ fill: 'var(--muted)', fontSize: 12 }}
                         axisLine={false}
                         tickLine={false}
-                        tickFormatter={(v: string) => MUSCLE_PL[v] ?? v}
+                        tickFormatter={(v: string) => MUSCLE_LABELS[v] ?? v}
                       />
                       <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                       <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
@@ -824,10 +824,10 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               >
                 <div className="progress-panel-head">
                   <div>
-                    <h2>Kalendarz</h2>
+                    <h2>Calendar</h2>
                   </div>
                 </div>
-                <div className="progress-heatmap-months" aria-label="Miesiące kalendarza">
+                <div className="progress-heatmap-months" aria-label="Calendar months">
                   {heatmapMonthLabels.map((month, weekIndex) => (
                     <span key={weekIndex}>{month}</span>
                   ))}
@@ -859,10 +859,10 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 {activeHeatmapDays.length > 0 && (
                   <div className="progress-heatmap-inspector">
                     <label>
-                      <span>Sprawdź dzień</span>
+                      <span>View day</span>
                       <select
                         className="progress-heatmap-picker"
-                        aria-label="Sprawdź dzień w kalendarzu"
+                        aria-label="View calendar day"
                         value={effectiveHeatmapDate ?? ''}
                         onChange={(event) => setSelectedHeatmapDate(event.target.value)}
                       >
@@ -881,11 +881,11 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                   </div>
                 )}
                 <div className="progress-heatmap-scale">
-                  <span>Mniej</span>
+                  <span>Less</span>
                   {HEATMAP_COLORS.map((color) => (
                     <i key={color} style={{ background: color }} />
                   ))}
-                  <span>Więcej</span>
+                  <span>More</span>
                 </div>
               </motion.section>
             )}
@@ -896,14 +896,14 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
         {showRangeEmpty && (
           <div className="progress-panel progress-empty-state" role="status">
             <div className="progress-empty-copy">
-              <p className="text-base font-semibold text-white">W tym zakresie nie ma treningów</p>
+              <p className="text-base font-semibold text-white">No workouts in this date range</p>
               <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                Wcześniejsze sesje i rekordy nadal są zapisane.
+                Earlier sessions and records are still saved.
               </p>
             </div>
             {rangeDays < 365 && (
               <Button type="button" onClick={() => handleRangeChange(365)}>
-                Pokaż rok
+                Show year
               </Button>
             )}
           </div>
@@ -917,10 +917,10 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             transition={{ delay: 0.15, duration: 0.2 }}
           >
             <div className="progress-records-head">
-              <h2>Rekordy od początku</h2>
+              <h2>All-time records</h2>
             </div>
 
-            <div className="progress-record-showcase" aria-label="Najlepszy rekord">
+            <div className="progress-record-showcase" aria-label="Best record">
               {featuredRecords.map((rec, index) => (
                 <article
                   key={rec.id}
@@ -939,7 +939,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                     <small>× {rec.maxReps}</small>
                   </div>
 
-                  <p>{rec.totalSessions} {polishPlural(rec.totalSessions, 'sesja', 'sesje', 'sesji')}</p>
+                  <p>{rec.totalSessions} {pluralize(rec.totalSessions, 'session', 'sessions')}</p>
                 </article>
               ))}
             </div>
@@ -948,11 +948,11 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               <div
                 id="progress-remaining-records"
                 className="progress-record-ledger"
-                aria-label="Pozostałe rekordy"
+                aria-label="More records"
               >
                 <div className="progress-record-ledger-head" aria-hidden="true">
-                  <span>Pozostałe rekordy</span>
-                  <span>Wynik</span>
+                  <span>More records</span>
+                  <span>Result</span>
                 </div>
 
                 {visibleRemainingRecords.map((rec, index) => (
@@ -965,7 +965,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                       <strong>{rec.exerciseName}</strong>
                       <small>
                         {formatDate(rec.lastPerformedAt)} · {rec.totalSessions}{' '}
-                        {polishPlural(rec.totalSessions, 'sesja', 'sesje', 'sesji')}
+                        {pluralize(rec.totalSessions, 'session', 'sessions')}
                       </small>
                     </div>
                     <span className="progress-record-ledger-result">{kgToDisplayWeight(rec.maxWeight, units)} {units} <small>× {rec.maxReps}</small></span>
@@ -973,29 +973,29 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 ))}
 
                 {showAllRecords && recordsPageCount > 1 && (
-                  <nav aria-label="Strony rekordów" className="flex flex-wrap items-center justify-between gap-2 py-3">
+                  <nav aria-label="Record pages" className="flex flex-wrap items-center justify-between gap-2 py-3">
                     <Button
                       type="button"
                       variant="ghost"
                       disabled={currentRecordsPage === 0}
                       onClick={() => setRecordsPage(currentRecordsPage - 1)}
-                      aria-label="Poprzednia strona rekordów"
+                      aria-label="Previous record page"
                       aria-controls="progress-remaining-records"
                     >
-                      Poprzednia
+                      Previous
                     </Button>
                     <span className="text-sm" style={{ color: 'var(--muted)' }} aria-live="polite" aria-atomic="true">
-                      Strona {currentRecordsPage + 1} z {recordsPageCount}
+                      Page {currentRecordsPage + 1} of {recordsPageCount}
                     </span>
                     <Button
                       type="button"
                       variant="ghost"
                       disabled={currentRecordsPage === recordsPageCount - 1}
                       onClick={() => setRecordsPage(currentRecordsPage + 1)}
-                      aria-label="Następna strona rekordów"
+                      aria-label="Next record page"
                       aria-controls="progress-remaining-records"
                     >
-                      Następna
+                      Next
                     </Button>
                   </nav>
                 )}
@@ -1009,7 +1009,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                     aria-expanded={showAllRecords}
                     aria-controls="progress-remaining-records"
                   >
-                    {showAllRecords ? 'Pokaż mniej' : `Pokaż wszystkie (${remainingRecords.length})`}
+                    {showAllRecords ? 'Show less' : `Show all (${remainingRecords.length})`}
                   </Button>
                 )}
               </div>
@@ -1020,9 +1020,9 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
         {showEmptyState && (
           <div className="progress-panel progress-empty-state">
             <div className="progress-empty-copy">
-              <p className="text-lg font-semibold text-white">Brak danych</p>
+              <p className="text-lg font-semibold text-white">No data</p>
               <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                Ukończ kilka treningów, żeby zobaczyć wykresy i rekordy.
+                Complete a few workouts to see charts and records.
               </p>
             </div>
           </div>

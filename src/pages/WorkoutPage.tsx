@@ -30,12 +30,12 @@ import {
 } from '../lib/exerciseLabels'
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 
-const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
+const WORKOUT_LABELS = ['Push', 'Pull', 'Legs', 'Upper Body', 'Lower Body', 'Full Body', 'Back & Biceps', 'Chest & Triceps', 'Cardio', 'Crossfit', 'Mobility'] as const
 const EQUIPMENT_LABELS: Record<string, string> = {
-  barbell: 'Sztanga',
-  dumbbell: 'Hantle',
-  cable: 'Wyciąg',
-  machine: 'Maszyna',
+  barbell: 'Barbell',
+  dumbbell: 'Dumbbells',
+  cable: 'Cable',
+  machine: 'Machine',
   bodyweight: 'BW',
   kettlebell: 'KB',
 }
@@ -163,10 +163,10 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
         <Timer size={16} strokeWidth={2.2} className="flex-none" />
         <div className="rest-timer-label">
           {restRemainingMs === 0 ? (
-            <span>Gotowe — czas na kolejną serię</span>
+            <span>Ready — time for the next set</span>
           ) : (
             <>
-              <span style={{ color: 'var(--muted)' }}>Przerwa</span>
+              <span style={{ color: 'var(--muted)' }}>Rest</span>
               <span className="tabular-nums font-bold ml-2">
                 {Math.floor(restRemainingSec / 60)}:{String(restRemainingSec % 60).padStart(2, '0')}
               </span>
@@ -180,7 +180,7 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
                 type="button"
                 onClick={() => onAddTime(30)}
                 className="rest-timer-action"
-                aria-label="Dodaj 30 sekund"
+                aria-label="Add 30 seconds"
               >
                 +30s
               </button>
@@ -189,7 +189,7 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
               type="button"
               onClick={onSkip}
               className="rest-timer-action rest-timer-action--icon"
-              aria-label="Pomiń przerwę"
+              aria-label="Skip rest"
             >
               <X size={14} />
             </button>
@@ -199,7 +199,7 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
             type="button"
             onClick={onSkip}
             className="rest-timer-action"
-            aria-label="Zamknij"
+            aria-label="Close"
           >
             OK
           </button>
@@ -321,7 +321,7 @@ export default function WorkoutPage() {
       (set, index) => index === setIndex || set.done,
     )
     if (wasNotDone && parseReps(currentSet.reps) <= 0) {
-      toast.error('Wpisz liczbę powtórzeń, zanim oznaczysz serię jako wykonaną.')
+      toast.error('Enter reps before marking this set as complete.')
       return
     }
     toggleSetDone(exerciseIndex, setIndex)
@@ -362,7 +362,7 @@ export default function WorkoutPage() {
     }
 
     if (!exercise.clientId || !set.clientId) {
-      toast.error('Nie udało się przygotować bezpiecznego usunięcia serii. Odśwież widok i spróbuj ponownie.')
+      toast.error('Could not prepare to safely remove this set. Refresh the view and try again.')
       return
     }
     setPendingSetRemoval({ exerciseClientId: exercise.clientId, setClientId: set.clientId })
@@ -474,7 +474,7 @@ export default function WorkoutPage() {
     }
     const failure = await markClosureError(error)
     if (failure === 'active_session_changed') {
-      toast.error('Sesja zmieniła się na innym urządzeniu. Sprawdź dane i zakończ ją ponownie.')
+      toast.error('The session changed on another device. Check the data and finish it again.')
     }
   }
 
@@ -500,8 +500,8 @@ export default function WorkoutPage() {
       }
       navigate('/dashboard', { replace: true })
       toast.success(result.status === 'materialized'
-        ? 'Trening zapisany!'
-        : 'Trening zapisany. Statystyki oczekują na synchronizację.')
+        ? 'Workout saved!'
+        : 'Workout saved. Stats are waiting to sync.')
     } catch (error) {
       console.error('[finish workout closure error]', error)
       await handleClosureError(error)
@@ -563,7 +563,7 @@ export default function WorkoutPage() {
     const hasEnteredSets = exercise.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
     if (hasEnteredSets) {
       if (!exercise.clientId) {
-        toast.error('Nie udało się przygotować bezpiecznego usunięcia ćwiczenia. Odśwież widok i spróbuj ponownie.')
+        toast.error('Could not prepare to safely remove this exercise. Refresh the view and try again.')
         return
       }
       setPendingExerciseRemoval({ sessionId: currentActive.sessionId, exerciseClientId: exercise.clientId })
@@ -634,13 +634,13 @@ export default function WorkoutPage() {
       const result = await continueStaleSession()
       if (result.status === 'ignored') return
       if (result.status === 'sync_failed') {
-        toast.error('Sesja została przywrócona lokalnie. Ponów synchronizację.')
+        toast.error('Session restored locally. Retry sync.')
         return
       }
-      toast.success('Wróciłem do zapisanej sesji z odświeżonym timerem.')
+      toast.success('Saved session resumed with a refreshed timer.')
     } catch (error) {
       console.error('[continue stale session error]', error)
-      toast.error('Nie udało się przywrócić sesji. Spróbuj ponownie.')
+      toast.error('Could not restore the session. Try again.')
     } finally {
       setHandlingStaleSession(false)
     }
@@ -653,12 +653,12 @@ export default function WorkoutPage() {
       const result = await discardStaleSession()
       if (result.status === 'ignored' || result.status === 'closure_unconfirmed') return
       toast.success(result.replacement
-        ? 'Stara sesja odrzucona. Zaczynamy od nowa.'
-        : 'Stara sesja odrzucona. Zachowano aktualną sesję.')
+        ? 'Old session discarded. Starting fresh.'
+        : 'Old session discarded. Current session preserved.')
     } catch (error) {
       console.error('[discard stale session error]', error)
       if (!(error instanceof WorkoutClosureError)) {
-        toast.error('Nie udało się odrzucić starej sesji. Spróbuj ponownie.')
+        toast.error('Could not discard the old session. Try again.')
       }
     } finally {
       setHandlingStaleSession(false)
@@ -703,23 +703,23 @@ export default function WorkoutPage() {
         <div className="mx-auto max-w-lg">
           <ActionFeedback
             status="error"
-            message="Nie udało się wczytać aktualnej sesji. Sprawdź połączenie i spróbuj ponownie."
+            message="Could not load the current session. Check your connection and try again."
             onRetry={reloadAuthentication}
           />
         </div>
       )
     }
-    return <LoadingState message="Przygotowuję trening..." />
+    return <LoadingState message="Preparing workout..." />
   }
 
   if (staleSession) {
     return (
       <div className="mx-auto max-w-lg">
         <div className="surface-panel rounded-[var(--radius-xl)] p-6">
-          <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>Aktywna sesja</p>
-          <h1 className="section-title">Wrócić do starej sesji?</h1>
+          <p className="eyebrow mb-2" style={{ color: 'var(--accent)' }}>Active session</p>
+          <h1 className="section-title">Resume an old session?</h1>
           <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Masz aktywną sesję sprzed {staleSession.ageLabel}. Możesz wrócić do wpisanych ćwiczeń z odświeżonym timerem albo odrzucić ją i zacząć od nowa.
+            You have an active session from {staleSession.ageLabel} ago. Resume your exercises with a refreshed timer, or discard the session and start again.
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <motion.button
@@ -730,7 +730,7 @@ export default function WorkoutPage() {
               style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
               whileTap={{ scale: 0.97 }}
             >
-              Kontynuuj
+              Continue
             </motion.button>
             <motion.button
               type="button"
@@ -740,7 +740,7 @@ export default function WorkoutPage() {
               style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
               whileTap={{ scale: 0.97 }}
             >
-              Odrzuć i zacznij od nowa
+              Discard and start again
             </motion.button>
           </div>
         </div>
@@ -755,7 +755,7 @@ export default function WorkoutPage() {
         style={{ maxWidth: '32rem' }}
         aria-labelledby="workout-session-entry-title"
       >
-        <h1 id="workout-session-entry-title" className="section-title">Nowy trening</h1>
+        <h1 id="workout-session-entry-title" className="section-title">New workout</h1>
         <motion.button
           type="button"
           onClick={() => { void startNewSession() }}
@@ -763,7 +763,7 @@ export default function WorkoutPage() {
           style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           whileTap={{ scale: 0.97 }}
         >
-          Rozpocznij nową sesję
+          Start a new session
         </motion.button>
       </section>
     )
@@ -791,14 +791,14 @@ export default function WorkoutPage() {
     return Math.max(top, next)
   }, 0)
   const completionPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0
-  const activeLabel = active.label?.trim() || 'Sesja w toku'
+  const activeLabel = active.label?.trim() || 'Session in progress'
   const sessionSignal = totalExercises === 0
-    ? 'Dodaj pierwsze ćwiczenie, żeby zacząć sesję.'
+    ? 'Add your first exercise to start a session.'
     : completedSets === 0
-      ? 'Pierwsze serie jeszcze przed Tobą. Zacznij od głównego ruchu dnia.'
+      ? 'Your first sets are ahead. Start with your main lift for the day.'
       : completionPct >= 100
-        ? 'Cała rozpiska jest oznaczona jako wykonana. Możesz domknąć sesję albo dorzucić kolejne serie.'
-        : `${completedSets} z ${totalSets} serii masz już zamknięte.`
+        ? 'All sets are marked complete. Finish the session or add more sets.'
+        : `${completedSets} of ${totalSets} sets completed.`
 
   const focusExerciseIndex = (() => {
     const nextIndex = active.exercises.findIndex((exercise) => exercise.sets.some((set) => !set.done))
@@ -820,7 +820,7 @@ export default function WorkoutPage() {
     <div
       className="workout-focus-shell"
       role="region"
-      aria-label={`Aktywna sesja: ${activeLabel}`}
+      aria-label={`Active session: ${activeLabel}`}
     >
       {closureState !== 'active_session_changed' && (
         <ActiveSessionSyncStatus
@@ -831,9 +831,9 @@ export default function WorkoutPage() {
       )}
       {closureState === 'active_session_changed' && (
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
-          <p className="text-sm font-semibold text-white">Sesja zmieniła się na innym urządzeniu.</p>
+          <p className="text-sm font-semibold text-white">The session changed on another device.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Nie udało się wczytać aktualnych danych. Edycja pozostaje zablokowana do czasu uzgodnienia sesji z serwerem.
+            Could not load current data. Editing is locked until the session is synced with the server.
           </p>
           <button
             type="button"
@@ -841,15 +841,15 @@ export default function WorkoutPage() {
             className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           >
-            Wczytaj aktualną sesję
+            Load current session
           </button>
         </div>
       )}
       {closureState === 'closure_unconfirmed' && (
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
-          <p className="text-sm font-semibold text-white">Nie udało się potwierdzić zamknięcia sesji.</p>
+          <p className="text-sm font-semibold text-white">Could not confirm session closure.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Dane treningu są zachowane. Edycja pozostaje zablokowana, dopóki serwer nie potwierdzi wyniku.
+            Your workout data is preserved. Editing is locked until the server confirms the outcome.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <button
@@ -858,7 +858,7 @@ export default function WorkoutPage() {
               className="rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
               style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
             >
-              Spróbuj ponownie
+              Try again
             </button>
           </div>
         </div>
@@ -866,9 +866,9 @@ export default function WorkoutPage() {
 
       {closureState === 'session_mismatch' && (
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
-          <p className="text-sm font-semibold text-white">Ta sesja nie jest już aktywna na serwerze.</p>
+          <p className="text-sm font-semibold text-white">This session is no longer active on the server.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Nie udało się automatycznie uzgodnić sesji otwartej na innym urządzeniu.
+            Could not automatically sync the session opened on another device.
           </p>
           <button
             type="button"
@@ -876,16 +876,16 @@ export default function WorkoutPage() {
             className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           >
-            Spróbuj ponownie
+            Try again
           </button>
         </div>
       )}
 
       {closureState === 'closure_conflict' && (
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
-          <p className="text-sm font-semibold text-white">Serwer odrzucił zamknięcie tej sesji.</p>
+          <p className="text-sm font-semibold text-white">The server rejected closing this session.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Sesja została wcześniej zamknięta w inny sposób, a automatyczne uzgodnienie stanu nie powiodło się.
+            This session was already closed with a different outcome, and automatic reconciliation failed.
           </p>
           <button
             type="button"
@@ -893,16 +893,16 @@ export default function WorkoutPage() {
             className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           >
-            Spróbuj ponownie
+            Try again
           </button>
         </div>
       )}
 
       {closureState === 'auth_required' && (
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
-          <p className="text-sm font-semibold text-white">Sesja logowania wymaga odświeżenia.</p>
+          <p className="text-sm font-semibold text-white">Your sign-in session needs refreshing.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Dane treningu są zachowane. Odśwież logowanie, a potem ponów zamknięcie sesji.
+            Your workout data is preserved. Sign in again, then retry closing the session.
           </p>
           <button
             type="button"
@@ -910,16 +910,16 @@ export default function WorkoutPage() {
             className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           >
-            Odśwież logowanie
+            Sign in again
           </button>
         </div>
       )}
 
       {closureState === 'closure_failed' && (
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
-          <p className="text-sm font-semibold text-white">Nie można zamknąć tej sesji.</p>
+          <p className="text-sm font-semibold text-white">This session cannot be closed.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            Serwer definitywnie odrzucił operację. Spróbuj ponownie po sprawdzeniu połączenia.
+            The server rejected this operation. Check your connection and try again.
           </p>
           <button
             type="button"
@@ -927,7 +927,7 @@ export default function WorkoutPage() {
             className="mt-3 rounded-[var(--radius-lg)] px-4 py-2.5 text-sm font-semibold"
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
           >
-            Spróbuj ponownie
+            Try again
           </button>
         </div>
       )}
@@ -953,7 +953,7 @@ export default function WorkoutPage() {
             type="button"
             className="workout-mobile-options-trigger"
             popoverTarget="workout-mobile-options"
-            aria-label="Więcej opcji treningu"
+            aria-label="More workout options"
             aria-haspopup="menu"
           >
             <Ellipsis size={20} aria-hidden="true" />
@@ -963,7 +963,7 @@ export default function WorkoutPage() {
             className="workout-mobile-options-menu"
             popover="auto"
             role="menu"
-            aria-label="Opcje treningu"
+            aria-label="Workout options"
           >
             <button
               type="button"
@@ -972,7 +972,7 @@ export default function WorkoutPage() {
               popoverTargetAction="hide"
               onClick={handleDiscard}
             >
-              Odrzuć trening
+              Discard workout
             </button>
           </div>
           <motion.button
@@ -983,7 +983,7 @@ export default function WorkoutPage() {
             style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
             whileTap={{ scale: 0.93 }}
           >
-            {saving ? '...' : 'Zakończ'}
+            {saving ? '...' : 'Finish'}
           </motion.button>
         </div>
       )}
@@ -995,11 +995,11 @@ export default function WorkoutPage() {
           <aside className="hidden lg:block desktop-sticky">
             <div className="workout-control-panel">
               <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
-                Aktywna sesja
+                Active session
               </p>
 
               <div className="workout-time-card">
-                <p className="stat-meta mb-2">Czas sesji</p>
+                <p className="stat-meta mb-2">Session time</p>
                 <div className="flex items-end justify-between gap-3">
                   <ElapsedTimer startedAt={active.startedAt} className="workout-time-value" />
                   <span
@@ -1032,26 +1032,26 @@ export default function WorkoutPage() {
 
               <div className="workout-side-metrics">
                 <div className="workout-micro-card">
-                  <p className="stat-meta">Ćwiczenia</p>
+                  <p className="stat-meta">Exercises</p>
                   <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{totalExercises}</p>
                 </div>
                 <div className="workout-micro-card">
-                  <p className="stat-meta">Serie</p>
+                  <p className="stat-meta">Sets</p>
                   <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{completedSets}/{totalSets}</p>
                 </div>
                 <div className="workout-micro-card">
-                  <p className="stat-meta">Objętość</p>
+                  <p className="stat-meta">Volume</p>
                   <p className="mt-2 text-xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume, units)}</p>
                 </div>
                 <div className="workout-micro-card">
-                  <p className="stat-meta">Najcięższy set</p>
+                  <p className="stat-meta">Heaviest set</p>
                   <p className="mt-2 text-xl font-semibold text-white tabular-nums">{strongestSet ? `${kgToDisplayWeight(strongestSet, units)} ${units}` : '—'}</p>
                 </div>
               </div>
 
               <div>
                 <p className="mb-3 text-xs uppercase" style={{ color: 'var(--muted)' }}>
-                  Typ sesji
+                  Session type
                 </p>
                 <LabelChips
                   activeLabel={active.label ?? ''}
@@ -1069,7 +1069,7 @@ export default function WorkoutPage() {
                   whileTap={{ scale: 0.97 }}
                 >
                   <Plus size={16} strokeWidth={2.4} />
-                  <span>Dodaj ćwiczenie</span>
+                  <span>Add exercise</span>
                 </motion.button>
                 <div className="grid grid-cols-2 gap-2">
                   <motion.button
@@ -1078,7 +1078,7 @@ export default function WorkoutPage() {
                     style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    Anuluj
+                    Cancel
                   </motion.button>
                   <motion.button
                     onClick={handleFinish}
@@ -1087,7 +1087,7 @@ export default function WorkoutPage() {
                     style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)', opacity: saving ? 0.6 : 1 }}
                     whileTap={{ scale: 0.97 }}
                   >
-                    {saving ? '...' : 'Zakończ'}
+                    {saving ? '...' : 'Finish'}
                   </motion.button>
                 </div>
               </div>
@@ -1099,9 +1099,9 @@ export default function WorkoutPage() {
           <div className="workout-section-head">
             <div>
               <p className="eyebrow" style={{ color: 'var(--muted)' }}>
-                Ćwiczenia
+                Exercises
               </p>
-              <h2 className="mt-2 text-2xl font-bold text-white">Bieżąca rozpiska</h2>
+              <h2 className="mt-2 text-2xl font-bold text-white">Current exercises</h2>
             </div>
           </div>
 
@@ -1115,7 +1115,7 @@ export default function WorkoutPage() {
           <div className="flex flex-col gap-4">
             {active.exercises.length === 0 && !keepExerciseStackMounted && (
               <>
-                <section className="workout-empty-state" aria-label="Pusta rozpiska">
+                <section className="workout-empty-state" aria-label="No exercises yet">
                   <motion.button
                     ref={mobileAddExerciseRef}
                     type="button"
@@ -1125,12 +1125,12 @@ export default function WorkoutPage() {
                     whileTap={{ scale: 0.97 }}
                   >
                     <Plus size={16} strokeWidth={2.4} />
-                    Dodaj ćwiczenie
+                    Add exercise
                   </motion.button>
                 </section>
                 {quickPicks.length > 0 && (
                   <section className="workout-quick-start" aria-labelledby="workout-quick-start-title">
-                    <h3 id="workout-quick-start-title">Ostatnio używane</h3>
+                    <h3 id="workout-quick-start-title">Recently used</h3>
                     <div className="workout-quick-pick-list">
                       {quickPicks.map(({ id, name, source }) => {
                         const meta = exerciseCatalog.get(id)
@@ -1150,7 +1150,7 @@ export default function WorkoutPage() {
                                 </span>
                               )}
                             </span>
-                            <span className="workout-quick-pick-action">Dodaj</span>
+                            <span className="workout-quick-pick-action">Add</span>
                           </motion.button>
                         )
                       })}
@@ -1220,7 +1220,7 @@ export default function WorkoutPage() {
                     whileTap={{ scale: 0.97 }}
                   >
                     <Plus size={16} strokeWidth={2.4} />
-                    <span>Dodaj ćwiczenie</span>
+                    <span>Add exercise</span>
                   </motion.button>
                 )}
               </>
@@ -1262,10 +1262,10 @@ export default function WorkoutPage() {
 
       {confirmDiscard && (
         <ConfirmDialog
-          title="Odrzucić trening?"
-          message="Wszystkie dane tej sesji zostaną utracone."
-          confirmLabel="Odrzuć trening"
-          cancelLabel="Wróć"
+          title="Discard workout?"
+          message="All data from this session will be lost."
+          confirmLabel="Discard workout"
+          cancelLabel="Back"
           danger
           onConfirm={() => { setConfirmDiscard(false); void handleConfirmDiscard() }}
           onCancel={() => {
@@ -1276,10 +1276,10 @@ export default function WorkoutPage() {
 
       {confirmFinishEmpty && (
         <ConfirmDialog
-          title="Zakończyć bez zapisu?"
-          message="Nie zaznaczono żadnej serii jako wykonanej. Sesja zostanie odrzucona bez zapisywania treningu."
-          confirmLabel="Odrzuć sesję"
-          cancelLabel="Wróć"
+          title="Finish without saving?"
+          message="No sets are marked complete. The session will be discarded without saving a workout."
+          confirmLabel="Discard session"
+          cancelLabel="Back"
           danger
           onConfirm={() => {
             setConfirmFinishEmpty(false)
@@ -1306,10 +1306,10 @@ export default function WorkoutPage() {
 
       {pendingExerciseRemoval !== null && (
         <ConfirmDialog
-          title="Usunąć ćwiczenie?"
-          message="To usunie ćwiczenie wraz z wpisanymi seriami z aktywnej sesji."
-          confirmLabel="Usuń ćwiczenie"
-          cancelLabel="Zostaw"
+          title="Remove exercise?"
+          message="This will remove the exercise and its sets from the active session."
+          confirmLabel="Remove exercise"
+          cancelLabel="Keep"
           danger
           onConfirm={handleConfirmRemoveExercise}
           onCancel={() => setPendingExerciseRemoval(null)}
@@ -1317,10 +1317,10 @@ export default function WorkoutPage() {
       )}
       {pendingSetRemoval && (
         <ConfirmDialog
-          title="Usunąć serię?"
-          message="Ta seria zawiera wpisane dane lub jest oznaczona jako wykonana."
-          confirmLabel="Usuń serię"
-          cancelLabel="Zostaw"
+          title="Remove set?"
+          message="This set contains data or is marked complete."
+          confirmLabel="Remove set"
+          cancelLabel="Keep"
           danger
           onConfirm={handleConfirmRemoveSet}
           onCancel={() => setPendingSetRemoval(null)}

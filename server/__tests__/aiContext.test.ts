@@ -63,8 +63,8 @@ describe('buildAiUserContext', () => {
     expect(context.recentWorkouts.map((item) => item.label)).toEqual(['Upper A', 'Lower A', 'Upper B', 'Lower B'])
 
     const sections = buildChatContextSections(context)
-    expect(sections.workoutsHeading).toBe('OSTATNIE 4 TRENINGI')
-    expect(sections.monthlyHeading).toBe('SYGNAŁY Z OSTATNICH 30 DNI')
+    expect(sections.workoutsHeading).toBe('RECENT 4 WORKOUTS')
+    expect(sections.monthlyHeading).toBe('SIGNALS FROM THE LAST 30 DAYS')
     expect(sections.workoutsLine).toContain('Bench Press')
   })
 
@@ -83,13 +83,13 @@ describe('buildAiUserContext', () => {
     expect(context.recentWorkouts).toHaveLength(4)
     expect(sections.workoutsLine).toContain('Session 0')
     expect(sections.workoutsLine).toContain('500 kg')
-    expect(sections.monthlyLine).toContain('Analiza 30 dni jest niepełna')
-    expect(sections.monthlyLine).toContain('2 dni z rzędu')
+    expect(sections.monthlyLine).toContain('The 30-day analysis is incomplete')
+    expect(sections.monthlyLine).toContain('2 consecutive days')
     expect(sections.monthlyLine).not.toContain('15500')
-    expect(sections.monthlyLine).not.toContain('31 treningów /')
-    expect(sections.monthlyLine).not.toContain('Średnio')
-    expect(sections.monthlyLine).not.toContain('Wykryto słabszy tydzień')
-    expect(context.monthlyInsights.signals.join(' ')).not.toContain('Najczęściej')
+    expect(sections.monthlyLine).not.toContain('31 workouts /')
+    expect(sections.monthlyLine).not.toContain('Average')
+    expect(sections.monthlyLine).not.toContain('A weaker week was detected:')
+    expect(context.monthlyInsights.signals.join(' ')).not.toContain('Most frequent')
   })
 
   it.each([
@@ -111,7 +111,7 @@ describe('buildAiUserContext', () => {
     expect(context.sources.workouts).toBe(expected)
     expect(context.monthlyInsights.workoutCount).toBe(count)
     if (expected === 'available') {
-      expect(buildChatContextSections(context).monthlyLine).toContain('30 treningów / 15000 kg')
+      expect(buildChatContextSections(context).monthlyLine).toContain('30 workouts / 15000 kg')
     }
   })
 
@@ -134,9 +134,9 @@ describe('buildAiUserContext', () => {
       records,
     })
 
-    expect(context.monthlyInsights.signals.join('\n')).toContain('słabszy tydzień')
+    expect(context.monthlyInsights.signals.join('\n')).toContain('weaker week')
     expect(context.monthlyInsights.signals.join('\n')).toContain('readiness')
-    expect(context.monthlyInsights.recommendations.join('\n')).toContain('80-90%')
+    expect(context.monthlyInsights.recommendations.join('\n')).toContain('80–90%')
   })
 
   it('distinguishes available empty data from an unavailable source', () => {
@@ -155,10 +155,10 @@ describe('buildAiUserContext', () => {
 
     const sections = buildChatContextSections(context)
 
-    expect(sections.profileLine).toBe('Profil: brak danych.')
-    expect(sections.workoutsLine).toBe('Brak ostatnich treningów.')
-    expect(sections.recordsLine).toBe('Rekordy: dane chwilowo niedostępne.')
-    expect(sections.monthlyLine).toContain('Brak treningów w ostatnich 30 dniach.')
+    expect(sections.profileLine).toBe('Profile: no data.')
+    expect(sections.workoutsLine).toBe('No recent workouts.')
+    expect(sections.recordsLine).toBe('Records: data temporarily unavailable.')
+    expect(sections.monthlyLine).toContain('No workouts in the last 30 days.')
   })
 
   it('keeps a low-readiness streak when workout analysis is unavailable', () => {
@@ -172,13 +172,13 @@ describe('buildAiUserContext', () => {
     })
 
     const sections = buildChatContextSections(context)
-    expect(sections.workoutsLine).toBe('Historia treningów: dane chwilowo niedostępne.')
-    expect(sections.monthlyLine).toContain('Analiza treningów: dane chwilowo niedostępne.')
-    expect(sections.monthlyLine).toContain('2 dni z rzędu')
-    expect(sections.monthlyLine).toContain('80-90%')
-    expect(sections.monthlyLine).not.toContain('0 treningów')
-    expect(sections.monthlyLine).not.toContain('Brak treningów')
-    expect(sections.monthlyLine).not.toContain('Średnio')
+    expect(sections.workoutsLine).toBe('Workout history: data temporarily unavailable.')
+    expect(sections.monthlyLine).toContain('Workout analysis: data temporarily unavailable.')
+    expect(sections.monthlyLine).toContain('2 consecutive days')
+    expect(sections.monthlyLine).toContain('80–90%')
+    expect(sections.monthlyLine).not.toContain('0 workouts')
+    expect(sections.monthlyLine).not.toContain('None workouts')
+    expect(sections.monthlyLine).not.toContain('Average')
   })
 
   it('keeps readiness-derived monthly signals silent when readiness is unavailable', () => {
@@ -196,7 +196,7 @@ describe('buildAiUserContext', () => {
     })
 
     const sections = buildChatContextSections(context)
-    expect(sections.monthlyLine).toBe('Analiza treningów: dane chwilowo niedostępne.')
+    expect(sections.monthlyLine).toBe('Workout analysis: data temporarily unavailable.')
     expect(sections.monthlyLine).not.toContain('readiness')
   })
 
@@ -212,7 +212,7 @@ describe('buildAiUserContext', () => {
       records: [],
     })
 
-    expect(context.monthlyInsights.signals.join('\n')).not.toContain('dni z rzędu')
+    expect(context.monthlyInsights.signals.join('\n')).not.toContain('consecutive days')
   })
 
   it('detects consecutive low readiness across a calendar boundary', () => {
@@ -231,7 +231,7 @@ describe('buildAiUserContext', () => {
       records: [],
     })
 
-    expect(context.monthlyInsights.signals.join('\n')).toContain('2 dni z rzędu')
+    expect(context.monthlyInsights.signals.join('\n')).toContain('2 consecutive days')
   })
 
   it.each([
@@ -256,6 +256,6 @@ describe('buildAiUserContext', () => {
       records: [],
     })
 
-    expect(context.monthlyInsights.signals.join('\n')).not.toContain('dni z rzędu')
+    expect(context.monthlyInsights.signals.join('\n')).not.toContain('consecutive days')
   })
 })

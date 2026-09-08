@@ -26,7 +26,7 @@ describe('requireUserId', () => {
   it('throws a public 401 error when the bearer token is missing', async () => {
     await expect(requireUserId(makeRequest())).rejects.toMatchObject({
       status: 401,
-      message: 'Brak tokenu autoryzacji.',
+      message: 'Missing authentication token.',
     })
   })
 
@@ -35,7 +35,7 @@ describe('requireUserId', () => {
 
     await expect(requireUserId(makeRequest('Bearer expired-token'))).rejects.toMatchObject({
       status: 401,
-      message: 'Nieprawidłowy lub wygasły token autoryzacji.',
+      message: 'Invalid or expired authentication token.',
     })
   })
 

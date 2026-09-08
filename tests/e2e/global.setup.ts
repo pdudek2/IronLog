@@ -37,16 +37,16 @@ setup('authenticate', async ({ page, request }) => {
 
   await page.goto('/login')
   await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Hasło').fill(password)
-  await page.getByRole('button', { name: 'Zaloguj się' }).click()
+  await page.getByLabel('Password').fill(password)
+  await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL('/dashboard', { timeout: 20_000 })
 
   if (emulatorMode) {
-    const onboardingHeading = page.getByRole('heading', { name: 'Ustaw profil' })
+    const onboardingHeading = page.getByRole('heading', { name: 'Set up your profile' })
     await expect(page).toHaveURL('/onboarding', { timeout: 20_000 })
     await expect(onboardingHeading).toBeVisible({ timeout: 20_000 })
-    await page.getByLabel('Imię').fill('IronLog E2E')
-    await page.getByRole('button', { name: 'Zapisz profil' }).click()
+    await page.getByLabel('Name').fill('IronLog E2E')
+    await page.getByRole('button', { name: 'Save profile' }).click()
     await page.waitForURL('/dashboard', { timeout: 20_000 })
   }
 

@@ -10,13 +10,13 @@ import {
 
 describe('exerciseLabels', () => {
   it('translates equipment and muscle ids to Polish labels', () => {
-    expect(getEquipmentLabel('barbell')).toBe('Sztanga')
+    expect(getEquipmentLabel('barbell')).toBe('Barbell')
     expect(getMuscleLabel('triceps')).toBe('Triceps')
   })
 
   it('formats picker metadata without raw English ids', () => {
     expect(formatExerciseMeta('barbell', ['chest', 'triceps', 'shoulders'])).toBe(
-      'Sztanga · Klatka, Triceps, Barki',
+      'Barbell · Chest, Triceps, Shoulders',
     )
   })
 
@@ -24,7 +24,7 @@ describe('exerciseLabels', () => {
     const categoryColors = Object.values(EXERCISE_CATEGORY_COLORS).map((color) => color.toUpperCase())
     const semanticStateColors = ['#F0435A', '#8FB8A0', '#F0A75A']
 
-    expect(EXERCISE_CATEGORY_LABELS.chest).toBe('Klatka')
+    expect(EXERCISE_CATEGORY_LABELS.chest).toBe('Chest')
     expect(new Set(categoryColors).size).toBe(categoryColors.length)
     expect(categoryColors.filter((color) => semanticStateColors.includes(color))).toEqual([])
     expect(DEFAULT_EXERCISE_CATEGORY_COLOR).toBe('#A09AA0')

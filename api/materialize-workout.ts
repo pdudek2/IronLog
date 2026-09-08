@@ -17,13 +17,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const body = await readJsonBody<MaterializeBody>(req, { maxBytes: 8 * 1024 })
 
     if (!body.workoutId) {
-      sendJson(res, 400, { error: 'Brak workoutId.' })
+      sendJson(res, 400, { error: 'Missing workoutId.' })
       return
     }
 
     await materializeWorkoutForUser(userId, body.workoutId)
     sendJson(res, 200, { ok: true })
   } catch (error) {
-    sendApiError(res, error, { fallbackMessage: 'Nie udało się zsynchronizować treningu.' })
+    sendApiError(res, error, { fallbackMessage: 'Could not sync the workout.' })
   }
 }

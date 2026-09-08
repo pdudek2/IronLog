@@ -79,15 +79,15 @@ describe('TemplatesPage data states', () => {
 
     render(<TemplatesPage />)
 
-    expect(await screen.findByText('Nie udało się pobrać szablonów')).toBeInTheDocument()
-    expect(screen.queryByText('Nie masz jeszcze planu')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Utwórz pierwszy plan' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Could not load templates')).toBeInTheDocument()
+    expect(screen.queryByText('You have no plans yet')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Create your first plan' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByText('Nie masz jeszcze planu')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Utwórz pierwszy plan' })).toBeInTheDocument()
-    expect(screen.getByText('Upper / Lower · 4 dni')).toBeInTheDocument()
+    expect(await screen.findByText('You have no plans yet')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create your first plan' })).toBeInTheDocument()
+    expect(screen.getByText('Upper / Lower · 4 days')).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
   })
 
@@ -98,13 +98,13 @@ describe('TemplatesPage data states', () => {
       name: 'Plan testowy',
       createdAt: 1,
       updatedAt: 1,
-      days: [{ name: 'Dzień 1', exercises: [] }],
+      days: [{ name: 'Day 1', exercises: [] }],
     }])
 
     render(<TemplatesPage />)
 
-    expect(await screen.findByLabelText('Podsumowanie planów')).toHaveTextContent('1 plan')
-    expect(screen.getByLabelText('Podsumowanie planów')).not.toHaveTextContent('1 dzień')
+    expect(await screen.findByLabelText('Plan summary')).toHaveTextContent('1 plan')
+    expect(screen.getByLabelText('Plan summary')).not.toHaveTextContent('1 day')
   })
 
   it('ignores a templates failure that arrives after unmount', async () => {

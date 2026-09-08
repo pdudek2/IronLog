@@ -157,7 +157,7 @@ function normalizeTemplate(id: string, raw: unknown): WorkoutTemplate {
   return {
     id,
     userId: typeof record.userId === 'string' ? record.userId : '',
-    name: typeof record.name === 'string' && record.name.trim() ? record.name.trim() : 'Szablon',
+    name: typeof record.name === 'string' && record.name.trim() ? record.name.trim() : 'Template',
     createdAt: toFiniteNumber(record.createdAt),
     updatedAt: toFiniteNumber(record.updatedAt ?? record.createdAt),
     days: normalizeDays(record.days),
@@ -173,7 +173,7 @@ function normalizeDays(raw: unknown): TemplateDay[] {
 
     const name = typeof record.name === 'string' && record.name.trim()
       ? record.name.trim()
-      : `Dzień ${index + 1}`
+      : `Day ${index + 1}`
 
     const exercises = normalizeExercises(record.exercises)
 

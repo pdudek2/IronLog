@@ -85,7 +85,7 @@ function AccountAiKeyPanel({
         if (cancelled) return
         const code = getAiErrorCode(nextError)
         setModelsError({
-          message: nextError instanceof Error ? nextError.message : 'Nie udało się pobrać modeli Claude.',
+          message: nextError instanceof Error ? nextError.message : 'Could not load Claude models.',
           code,
         })
         onConfiguredChange?.(code !== 'invalid-key')
@@ -105,7 +105,7 @@ function AccountAiKeyPanel({
     const normalized = draft.trim()
 
     if (normalized.length < 20) {
-      setError('Klucz wygląda na zbyt krótki. Wklej pełny Claude API key.')
+      setError('This key looks too short. Paste your full Claude API key.')
       setSaved(false)
       return
     }
@@ -137,19 +137,19 @@ function AccountAiKeyPanel({
       <section id={id} className="ai-key-panel ai-key-panel--collapsed">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold text-white">Klucz Claude</h2>
+            <h2 className="text-lg font-semibold text-white">Claude key</h2>
             <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
               {hasSavedKey
                 ? needsAttention
-                  ? 'Wymaga sprawdzenia.'
-                  : 'Zapisany lokalnie w tej przeglądarce.'
-                : 'Nie zapisano lokalnie.'}
+                  ? 'Needs verification.'
+                  : 'Saved locally in this browser.'
+                : 'Not saved locally.'}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             <Button type="button" variant="ghost" onClick={onExpand}>
-              Ustawienia
+              Settings
             </Button>
           </div>
         </div>
@@ -161,16 +161,16 @@ function AccountAiKeyPanel({
     <section id={id} className="ai-key-panel">
       <div className="ai-key-panel-head">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold text-white">Klucz Claude</h2>
+          <h2 className="text-xl font-bold text-white">Claude key</h2>
           <p className="ai-key-panel-description mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Klucz zapisujesz lokalnie w tej przeglądarce. Żądania AI przesyłają go przez serwer IronLog do Anthropic; IronLog nie zapisuje go w bazie.
+            Your key is stored locally in this browser. AI requests send it through the IronLog server to Anthropic; IronLog does not store it in the database.
           </p>
         </div>
 
         <div className="ai-key-panel-actions">
           {onCollapse && (
             <Button type="button" variant="ghost" onClick={onCollapse}>
-              {hasSavedKey ? 'Zwiń' : 'Anuluj'}
+              {hasSavedKey ? 'Collapse' : 'Cancel'}
             </Button>
           )}
         </div>
@@ -178,12 +178,12 @@ function AccountAiKeyPanel({
 
       <div className="ai-key-flow">
         <div className="grid gap-2">
-          <label htmlFor={keyInputId} className="stat-meta">Twój klucz</label>
+          <label htmlFor={keyInputId} className="stat-meta">Your key</label>
           <div className="ai-key-entry">
             <Input
               id={keyInputId}
               type={showKey ? 'text' : 'password'}
-              placeholder="Wklej Claude API key"
+              placeholder="Paste Claude API key"
               value={draft}
               onChange={(event) => {
                 setDraft(event.target.value)
@@ -200,19 +200,19 @@ function AccountAiKeyPanel({
               type="button"
               variant="ghost"
               onClick={() => setShowKey((current) => !current)}
-              aria-label={showKey ? 'Ukryj klucz' : 'Pokaż klucz'}
+              aria-label={showKey ? 'Hide key' : 'Show key'}
             >
               {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
             </Button>
             <Button type="button" onClick={handleSave}>
-              {saved ? 'Zapisano klucz' : hasSavedKey ? 'Zaktualizuj klucz' : 'Zapisz klucz'}
+              {saved ? 'Key saved' : hasSavedKey ? 'Update key' : 'Save key'}
             </Button>
             <Button
               type="button"
               variant="ghost"
               onClick={handleClear}
               disabled={!hasSavedKey && draft.length === 0}
-              aria-label="Usuń lokalnie zapisany klucz"
+              aria-label="Remove locally stored key"
             >
               <Trash2 size={15} />
             </Button>
@@ -221,20 +221,20 @@ function AccountAiKeyPanel({
 
         <p className="ai-key-local-note">
           <ShieldCheck size={14} aria-hidden="true" />
-          Zapis lokalny · wysyłany przez IronLog do Anthropic tylko na czas żądania.
+          Stored locally · sent through IronLog to Anthropic only for each request.
         </p>
 
         {hasSavedKey && (
           <div className="ai-key-model">
             <div className="min-w-0">
               <label htmlFor={modelSelectId} className="text-sm font-semibold text-white">
-                Model Claude
+                Claude model
               </label>
             </div>
 
             {loadingModels && (
               <span role="status" className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>
-                Ładowanie...
+                Loading...
               </span>
             )}
             <select
@@ -256,7 +256,7 @@ function AccountAiKeyPanel({
             >
               {models.length === 0 ? (
                 <option value="">
-                  Brak dostępnych modeli
+                  No models available
                 </option>
               ) : (
                 models.map((model) => (

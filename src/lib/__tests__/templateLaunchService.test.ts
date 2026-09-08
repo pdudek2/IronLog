@@ -26,7 +26,7 @@ function templateWithDuplicateExercise(): WorkoutTemplate {
     name: 'Upper',
     createdAt: 1,
     updatedAt: 2,
-    days: [{ name: 'Dzień 1', exercises: [exercise, { ...exercise }] }],
+    days: [{ name: 'Day 1', exercises: [exercise, { ...exercise }] }],
   }
 }
 
@@ -38,7 +38,7 @@ function templateWithTargets(): WorkoutTemplate {
     createdAt: 1,
     updatedAt: 2,
     days: [{
-      name: 'Dzień 1',
+      name: 'Day 1',
       exercises: [{
         exerciseId: 'squat',
         exerciseSource: 'global',

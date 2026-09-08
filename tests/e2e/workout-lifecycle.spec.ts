@@ -50,14 +50,14 @@ async function openWorkoutClient(
 }
 
 async function finishWorkout(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Zakończ' }).click()
+  await page.getByRole('button', { name: 'Finish' }).click()
   await page.waitForURL('/dashboard', { timeout: RESPONSE_TIMEOUT_MS })
 }
 
 async function confirmOrdinaryDiscard(page: Page): Promise<void> {
   const dialog = await openWorkoutDiscardDialog(page)
-  await expect(dialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
-  const confirmDiscard = dialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
+  await expect(dialog.getByRole('button', { name: 'Back', exact: true })).toBeVisible()
+  const confirmDiscard = dialog.getByRole('button', { name: 'Discard workout', exact: true })
   await expect(confirmDiscard).toBeVisible()
   await confirmDiscard.click()
 }
@@ -97,8 +97,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
     expect(page.viewportSize()).toEqual(viewport)
     expect(page.viewportSize()!.width).toBeLessThan(1024)
-    await expect(page.getByRole('navigation', { name: 'Nawigacja dolna' })).toBeVisible()
-    const addSet = page.getByRole('button', { name: 'Dodaj serię' })
+    await expect(page.getByRole('navigation', { name: 'Bottom navigation' })).toBeVisible()
+    const addSet = page.getByRole('button', { name: 'Add set' })
     for (let index = 0; index < 4; index += 1) await addSet.click()
 
     const previousSets = page.locator('.workout-set-previous')
@@ -129,8 +129,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await seedLifecycleActiveSession({ sessionId, label: 'Phase 1 previous benchmark' })
 
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
-    const currentWeight = page.getByLabel('Ciężar, Phase 1 Bench Press, seria 1, kg')
-    const addSet = page.getByRole('button', { name: 'Dodaj serię' })
+    const currentWeight = page.getByLabel('Weight, Phase 1 Bench Press, set 1, kg')
+    const addSet = page.getByRole('button', { name: 'Add set' })
     await addSet.click()
     await addSet.click()
 
@@ -172,7 +172,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expect(page.getByText('Phase 1 Bench Press', { exact: true }).first()).toBeVisible()
     await finishWorkout(page)
 
-    await expect(page.getByText('Trening zapisany!', { exact: true })).toBeVisible()
+    await expect(page.getByText('Workout saved!', { exact: true })).toBeVisible()
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)
     expect(await readLifecycleWorkout(sessionId)).toMatchObject({
       sessionId,
@@ -194,7 +194,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     await page.reload()
     await expectAppReady(page, '/dashboard')
-    await expect(page.getByRole('button', { name: 'Rozpocznij nowy trening' }).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start new workout' }).first()).toBeVisible()
     expect(await readLifecycleActiveSession()).toBeNull()
   })
 
@@ -226,8 +226,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       'intentional Phase 1 finalize acknowledgement loss',
       isExpectedWorkoutLifecycleAckLossDiagnostic,
       async () => {
-        await page.getByRole('button', { name: 'Zakończ' }).click()
-        await expect(page.getByRole('alert')).toContainText('Nie udało się potwierdzić zamknięcia sesji.')
+        await page.getByRole('button', { name: 'Finish' }).click()
+        await expect(page.getByRole('alert')).toContainText('Could not confirm session closure.')
         await failedRequest
         await expect.poll(() => browserDiagnostics.some((entry) => (
           entry.kind === 'console' && isExpectedWorkoutLifecycleAckLossDiagnostic(entry)
@@ -238,8 +238,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)
     expect(await readLifecycleActiveSession()).toBeNull()
     await page.reload()
-    await expect(page.getByRole('alert')).toContainText('Nie udało się potwierdzić zamknięcia sesji.')
-    await page.getByRole('button', { name: 'Spróbuj ponownie' }).click()
+    await expect(page.getByRole('alert')).toContainText('Could not confirm session closure.')
+    await page.getByRole('button', { name: 'Try again' }).click()
     await page.waitForURL('/dashboard', { timeout: RESPONSE_TIMEOUT_MS })
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)
     expect(await readLifecycleClosedSession(sessionId)).toMatchObject({ outcome: 'finished' })
@@ -277,7 +277,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       async () => {
         await confirmOrdinaryDiscard(page)
         await expect(page).toHaveURL(/\/workout\/new$/)
-        await expect(page.getByRole('alert')).toContainText('Nie udało się potwierdzić zamknięcia sesji.')
+        await expect(page.getByRole('alert')).toContainText('Could not confirm session closure.')
         await failedRequest
         await failedConsole
       },
@@ -286,7 +286,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     expect(await readLifecycleClosedSession(sessionId)).toMatchObject({ outcome: 'discarded' })
     expect(await readLifecycleWorkout(sessionId)).toBeNull()
 
-    await page.getByRole('button', { name: 'Spróbuj ponownie' }).click()
+    await page.getByRole('button', { name: 'Try again' }).click()
     await page.waitForURL('/dashboard', { timeout: RESPONSE_TIMEOUT_MS })
     expect(await readLifecycleClosedSession(sessionId)).toMatchObject({ outcome: 'discarded' })
     expect(await readLifecycleWorkout(sessionId)).toBeNull()
@@ -303,7 +303,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await cleanupWorkoutLifecycleState()
     await seedLifecycleActiveSession({ sessionId, startedAt, label: 'Phase 1 stale discard' })
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
-    await expect(page.getByRole('heading', { name: 'Wrócić do starej sesji?' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Resume an old session?' })).toBeVisible()
 
     let releaseRequest!: () => void
     let markRequestSeen!: () => void
@@ -316,7 +316,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       await route.fulfill({ response })
     })
 
-    await page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' }).click()
+    await page.getByRole('button', { name: 'Discard and start again' }).click()
     await requestSeen
     expect(await readLifecycleActiveSession()).toMatchObject({ sessionId })
 
@@ -363,10 +363,10 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       isExpectedWorkoutLifecycleProjectionDiagnostic,
       async () => {
         await finishWorkout(page)
-        await expect(page.getByText('Trening zapisany. Statystyki oczekują na synchronizację.', { exact: true })).toBeVisible()
+        await expect(page.getByText('Workout saved. Stats are waiting to sync.', { exact: true })).toBeVisible()
         const row = page.locator('.dashboard-history-row').filter({ hasText: 'Phase 1 projection pending' })
-        await expect(row).toContainText('Statystyki oczekują na synchronizację.')
-        await expect(row.getByRole('button', { name: 'Ponów synchronizację' })).toBeVisible()
+        await expect(row).toContainText('Stats are waiting to sync.')
+        await expect(row.getByRole('button', { name: 'Retry sync' })).toBeVisible()
       },
     )
     expect(await readLifecycleWorkout(sessionId)).toMatchObject({ materialized: false })
@@ -414,11 +414,11 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       async () => {
         await page.goto('/dashboard')
         await expectAppReady(page, '/dashboard')
-        await expect(row).toContainText('Automatyczna synchronizacja nie powiodła się.')
+        await expect(row).toContainText('Automatic sync failed.')
       },
     )
-    await row.getByRole('button', { name: 'Ponów synchronizację' }).click()
-    await expect(row.getByText('Statystyki oczekują na synchronizację.')).not.toBeVisible()
+    await row.getByRole('button', { name: 'Retry sync' }).click()
+    await expect(row.getByText('Stats are waiting to sync.')).not.toBeVisible()
     expect(await readLifecycleWorkout(sessionId)).toMatchObject({ materialized: true })
     expect(await readLifecycleExerciseSessions(sessionId)).toHaveLength(1)
     expect(await readLifecycleRecords()).toHaveLength(1)
@@ -437,12 +437,12 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     const storageState = await context.storageState()
     const clientA = await openWorkoutClient(observedContextFactory, storageState)
     const clientB = await openWorkoutClient(observedContextFactory, storageState)
-    const repsA = clientA.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()
-    const repsB = clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()
+    const repsA = clientA.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()
+    const repsB = clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()
     await expect(repsA).toHaveValue('5')
     await expect(repsB).toHaveValue('5')
 
-    const conflictMessage = 'Sesja zmieniła się na innym urządzeniu.'
+    const conflictMessage = 'The session changed on another device.'
     await expectedBrowserDiagnostics.during(
       'expected active-session CAS rejection',
       (entry) => entry.kind === 'console'
@@ -463,8 +463,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await conflictedPage.screenshot({ path: testInfo.outputPath('session-conflict.png'), fullPage: true })
     const storedReps = (await readLifecycleActiveSession())?.exercises?.[0]?.sets?.[0]?.reps
     expect(['6', '7']).toContain(storedReps)
-    await conflictedPage.getByRole('button', { name: 'Wczytaj nowszą wersję' }).click()
-    await expect(conflictedPage.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first())
+    await conflictedPage.getByRole('button', { name: 'Load newer version' }).click()
+    await expect(conflictedPage.getByLabel('Reps, Phase 1 Bench Press, set 1').first())
       .toHaveValue(storedReps)
     await expect(conflictedPage.getByText(conflictMessage, { exact: true })).not.toBeVisible()
   })
@@ -491,8 +491,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
           && entry.url?.includes('/documents:commit') === true),
       async () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
-        await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
-        await expect(clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()).toHaveValue('6')
+        await clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first().fill('6')
+        await expect(clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()).toHaveValue('6')
         expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
           sessionId,
           exerciseNames: ['Phase 1 Bench Press'],
@@ -505,8 +505,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         })
         expect(await readLifecycleActiveSession()).toBeNull()
         await setFirestoreNetworkEnabled(clientB.page, true)
-        await expect(clientB.page.getByRole('heading', { name: 'Nowy trening' })).toBeVisible()
-        await expect(clientB.page.getByText('Nie udało się zsynchronizować aktywnej sesji.', { exact: true })).not.toBeVisible()
+        await expect(clientB.page.getByRole('heading', { name: 'New workout' })).toBeVisible()
+        await expect(clientB.page.getByText('Could not sync the active session.', { exact: true })).not.toBeVisible()
         await expect.poll(() => readCachedActiveSessionWrite(clientB.page)).toEqual({
           exists: false,
           hasPendingWrites: false,
@@ -521,7 +521,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         })
         await clientB.page.reload()
         await expectAppReady(clientB.page, '/workout/new', 25_000)
-        await expect(clientB.page.getByRole('heading', { name: 'Nowy trening' })).toBeVisible()
+        await expect(clientB.page.getByRole('heading', { name: 'New workout' })).toBeVisible()
         await expect.poll(() => readLifecycleActiveSession()).toBeNull()
         await clientB.context.close()
         await clientA.context.close()
@@ -555,7 +555,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
           && entry.url?.includes('/documents:commit') === true),
       async () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
-        await clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first().fill('6')
+        await clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first().fill('6')
         expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
           sessionId: oldSessionId,
           exerciseNames: ['Phase 1 Bench Press'],
@@ -568,7 +568,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         })
         await seedLifecycleActiveSession({ sessionId: newSessionId, label: 'Phase 1 offline new' })
         const clientC = await openWorkoutClient(observedContextFactory, storageState, '/dashboard')
-        await expect(clientC.page.getByText('Aktywna sesja: Phase 1 offline new • 1 ćwiczenie', { exact: true })).toBeVisible({
+        await expect(clientC.page.getByText('Active session: Phase 1 offline new • 1 exercise', { exact: true })).toBeVisible({
           timeout: RESPONSE_TIMEOUT_MS,
         })
         await setFirestoreNetworkEnabled(clientB.page, true)
@@ -584,7 +584,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
           exerciseNames: ['Phase 1 Bench Press'],
           reps: '5',
         })
-        await expect(clientB.page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').first()).toHaveValue('5')
+        await expect(clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()).toHaveValue('5')
         await clientC.context.close()
         await clientB.context.close()
         await clientA.context.close()
@@ -606,14 +606,14 @@ test('exercise confirmation cannot delete a remotely rehydrated exercise', async
   await seedLifecycleActiveSession({ sessionId })
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new')
-  await page.getByRole('button', { name: 'Usuń ćwiczenie Phase 1 Bench Press' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Usunąć ćwiczenie?' })
+  await page.getByRole('button', { name: 'Remove exercise Phase 1 Bench Press' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Remove exercise?' })
   await expect(dialog).toBeVisible()
   await seedLifecycleActiveSession({ sessionId, reps: '9' })
-  await expect.poll(() => page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(['9'])
-  await dialog.getByRole('button', { name: 'Usuń ćwiczenie', exact: true }).click()
+  await expect.poll(() => page.getByLabel('Reps, Phase 1 Bench Press, set 1').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(['9'])
+  await dialog.getByRole('button', { name: 'Remove exercise', exact: true }).click()
   await expect(dialog).not.toBeVisible()
-  await expect.poll(() => page.getByLabel('Powtórzenia, Phase 1 Bench Press, seria 1').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(['9'])
+  await expect.poll(() => page.getByLabel('Reps, Phase 1 Bench Press, set 1').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(['9'])
   expect((await readLifecycleActiveSession())?.exercises).toHaveLength(1)
   await page.screenshot({ path: testInfo.outputPath('exercise-removal-identity.png'), fullPage: true })
 })
@@ -638,15 +638,15 @@ for (const source of ['dashboard', 'detail'] as const) {
     await expect(page).toHaveURL(routePath)
     if (source === 'dashboard') await expectAppReady(page, '/dashboard')
     const remove = source === 'dashboard'
-      ? page.getByRole('button', { name: /Usuń trening Phase 1 delete acknowledgement/ })
-      : page.getByRole('button', { name: 'Usuń trening', exact: true })
+      ? page.getByRole('button', { name: /Delete workout Phase 1 delete acknowledgement/ })
+      : page.getByRole('button', { name: 'Delete workout', exact: true })
     await remove.click()
-    await expect(page.getByRole('dialog', { name: 'Usunąć trening?' })).toContainText('Phase 1 delete acknowledgement')
+    await expect(page.getByRole('dialog', { name: 'Delete workout?' })).toContainText('Phase 1 delete acknowledgement')
     await page.getByRole('dialog').screenshot({ path: testInfo.outputPath(`delete-${source}-confirmation.png`) })
     const failedRequest = page.waitForEvent('requestfailed', (request) => new URL(request.url()).pathname === '/api/delete-workout')
-    const unknown = 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'
+    const unknown = 'Could not confirm workout deletion. Retry deletion.'
     await expectedBrowserDiagnostics.during('intentional delete acknowledgement loss', isExpectedWorkoutLifecycleAckLossDiagnostic, async () => {
-      await page.getByRole('dialog').getByRole('button', { name: /Usuń/ }).click()
+      await page.getByRole('dialog').getByRole('button', { name: /Delete/ }).click()
       await failedRequest
       await expect(page.getByText(unknown, { exact: true })).toBeVisible()
     })
@@ -654,7 +654,7 @@ for (const source of ['dashboard', 'detail'] as const) {
     await page.reload()
     await expect(page.getByText(unknown, { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath(`delete-${source}-recovery.png`), fullPage: true })
-    await page.getByRole('button', { name: 'Spróbuj ponownie' }).click()
+    await page.getByRole('button', { name: 'Try again' }).click()
     await expect(page.getByText(unknown, { exact: true })).not.toBeVisible()
     expect(await readLifecycleWorkout(sessionId)).toBeNull()
     expect(await readLifecycleExerciseSessions(sessionId)).toHaveLength(0)

@@ -4,19 +4,19 @@ import { getAuthErrorMessage } from '../auth'
 describe('getAuthErrorMessage', () => {
   it('keeps credential failures private while separating recoverable failures', () => {
     expect(getAuthErrorMessage({ code: 'auth/wrong-password' }, 'login'))
-      .toBe('Nieprawidłowy email lub hasło.')
+      .toBe('Invalid email or password.')
     expect(getAuthErrorMessage({ code: 'auth/network-request-failed' }, 'login'))
-      .toBe('Brak połączenia. Sprawdź internet i spróbuj ponownie.')
+      .toBe('No connection. Check your internet and try again.')
     expect(getAuthErrorMessage({ code: 'auth/too-many-requests' }, 'register'))
-      .toBe('Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.')
+      .toBe('Too many attempts. Wait a moment and try again.')
   })
 
   it('returns registration-specific guidance and safe fallbacks', () => {
     expect(getAuthErrorMessage({ code: 'auth/email-already-in-use' }, 'register'))
-      .toBe('Konto z tym adresem już istnieje.')
+      .toBe('An account with this email already exists.')
     expect(getAuthErrorMessage(new Error('unknown'), 'login'))
-      .toBe('Nie udało się zalogować. Spróbuj ponownie.')
+      .toBe('Could not sign in. Try again.')
     expect(getAuthErrorMessage(new Error('unknown'), 'register'))
-      .toBe('Nie udało się utworzyć konta. Spróbuj ponownie.')
+      .toBe('Could not create your account. Try again.')
   })
 })

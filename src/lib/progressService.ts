@@ -92,7 +92,7 @@ function compareRecords(a: RecordSummary, b: RecordSummary): number {
   return b.maxWeight - a.maxWeight
     || b.bestVolume - a.bestVolume
     || b.maxReps - a.maxReps
-    || a.exerciseName.localeCompare(b.exerciseName, 'pl')
+    || a.exerciseName.localeCompare(b.exerciseName, 'en-US')
     || a.id.localeCompare(b.id)
 }
 
@@ -215,7 +215,7 @@ export function aggregateWeeklyVolume(
   // Wygeneruj puste buckety dla ostatnich `weeks` tygodni
   for (let i = weeks - 1; i >= 0; i--) {
     const monday = getWeekMonday(addLocalDays(now, -i * 7))
-    const label = monday.toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' })
+    const label = monday.toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
     buckets.set(monday.getTime(), { weekStart: monday.getTime(), weekLabel: label, volume: 0, sessions: 0 })
   }
 
@@ -362,7 +362,7 @@ export function aggregateStrengthProgression(
 
   const rankedExercises = [...exerciseCounts.entries()]
     .sort((a, b) => b[1].count - a[1].count
-      || a[1].name.localeCompare(b[1].name, 'pl')
+      || a[1].name.localeCompare(b[1].name, 'en-US')
       || a[0].localeCompare(b[0]))
 
   const selectedExercises = limit === undefined
@@ -400,7 +400,7 @@ export function aggregateStrengthProgression(
     .sort((a, b) => a[1].timestamp - b[1].timestamp)
     .map(([, day]) => {
       const point: StrengthPoint = {
-        date: new Date(day.timestamp).toLocaleDateString('pl-PL', { day: 'numeric', month: 'short' }),
+        date: new Date(day.timestamp).toLocaleDateString('en-US', { day: 'numeric', month: 'short' }),
         timestamp: day.timestamp,
       }
       for (const [key, weight] of day.weights) {

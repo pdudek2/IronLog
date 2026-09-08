@@ -17,7 +17,7 @@ test('public app has no analytics consent UI or vendor requests', async ({ page 
   await page.addInitScript(() => window.localStorage.clear())
   await page.goto('/login')
 
-  await expect(page.getByRole('button', { name: 'Zaloguj się' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
   await expect(page.getByRole('region', { name: 'Zgoda na analitykę' })).toHaveCount(0)
   expect(analyticsRequests).toEqual([])
 })

@@ -78,7 +78,7 @@ describe('streamChatReply', () => {
       'X-IronLog-AI-Context': 'full',
     } })))
 
-    await expect(streamChatReply(options())).rejects.toThrow('Stream AI nie zwrócił danych.')
+    await expect(streamChatReply(options())).rejects.toThrow('The AI stream returned no data.')
   })
 
   it('rejects a successful response with a non-NDJSON content type', async () => {
@@ -87,7 +87,7 @@ describe('streamChatReply', () => {
       'X-IronLog-AI-Context': 'full',
     } })))
 
-    await expect(streamChatReply(options())).rejects.toThrow('Stream AI zwrócił niepoprawny format odpowiedzi.')
+    await expect(streamChatReply(options())).rejects.toThrow('The AI stream returned an invalid response format.')
   })
 
   it('rejects a content type that only starts with the NDJSON media type', async () => {
@@ -96,7 +96,7 @@ describe('streamChatReply', () => {
       'X-IronLog-AI-Context': 'full',
     } })))
 
-    await expect(streamChatReply(options())).rejects.toThrow('Stream AI zwrócił niepoprawny format odpowiedzi.')
+    await expect(streamChatReply(options())).rejects.toThrow('The AI stream returned an invalid response format.')
   })
 
   it('propagates AbortError instead of replacing it with local backend guidance', async () => {
@@ -140,14 +140,14 @@ describe('streamChatReply', () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
 
     await expect(streamChatReply({ ...options(), onContext: vi.fn() }))
-      .rejects.toThrow('AI Coach zwrócił niepoprawny status kontekstu.')
+      .rejects.toThrow('AI Coach returned an invalid context status.')
   })
 })
 
 describe('generateTrainingPlan', () => {
   it('preserves the retryable catalog error contract', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
-      error: 'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      error: 'Could not load the exercise library. Try again.',
       code: 'ai_catalog_unavailable',
     }), {
       status: 503,
@@ -157,7 +157,7 @@ describe('generateTrainingPlan', () => {
     const result = generateTrainingPlan({
       apiKey: 'sk-ant-test-key-longer-than-twenty-characters',
       request: {
-        goal: 'Siła',
+        goal: 'Strength',
         daysPerWeek: 3,
         experience: 'intermediate',
         equipment: [],
@@ -168,7 +168,7 @@ describe('generateTrainingPlan', () => {
 
     await expect(result).rejects.toBeInstanceOf(AiApiError)
     await expect(result).rejects.toMatchObject({
-      message: 'Nie udało się załadować katalogu ćwiczeń. Spróbuj ponownie.',
+      message: 'Could not load the exercise library. Try again.',
       code: 'ai_catalog_unavailable',
     })
   })
@@ -187,7 +187,7 @@ describe('generateTrainingPlan', () => {
     await expect(generateTrainingPlan({
       apiKey: 'sk-ant-test-key-longer-than-twenty-characters',
       request: {
-        goal: 'Siła', daysPerWeek: 3, experience: 'intermediate',
+        goal: 'Strength', daysPerWeek: 3, experience: 'intermediate',
         equipment: [], focus: '', notes: '',
       },
     })).resolves.toEqual({
@@ -226,10 +226,10 @@ describe('bounded chat context and connection errors', () => {
   it.each([true, false])('uses an appropriate connection message with DEV=%s', async (dev) => {
     vi.stubEnv('DEV', dev)
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
-    const expected = dev ? /npm run dev:api/ : /Sprawdź połączenie i spróbuj ponownie/
+    const expected = dev ? /npm run dev:api/ : /Check your connection and try again/
     await expect(streamChatReply(options())).rejects.toThrow(expected)
     await expect(generateTrainingPlan({ apiKey: options().apiKey, request: {
-      goal: 'Siła', daysPerWeek: 3, experience: 'intermediate', equipment: [], focus: '', notes: '',
+      goal: 'Strength', daysPerWeek: 3, experience: 'intermediate', equipment: [], focus: '', notes: '',
     } })).rejects.toThrow(expected)
   })
 })

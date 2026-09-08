@@ -72,13 +72,13 @@ describe('WorkoutDetailMobileActions', () => {
   it('starts inline and does not become fixed while its anchor is below the viewport', () => {
     render(
       <WorkoutDetailMobileActions>
-        <button type="button">Edytuj</button>
+        <button type="button">Edit</button>
       </WorkoutDetailMobileActions>,
     )
 
-    const actions = screen.getByRole('group', { name: 'Akcje treningu' })
+    const actions = screen.getByRole('group', { name: 'Workout actions' })
     expect(actions).toHaveAttribute('data-placement', 'inline')
-    expect(screen.getAllByRole('button', { name: 'Edytuj' })).toHaveLength(1)
+    expect(screen.getAllByRole('button', { name: 'Edit' })).toHaveLength(1)
 
     emitIntersection(false, 120)
 
@@ -88,31 +88,31 @@ describe('WorkoutDetailMobileActions', () => {
   it('fixes only after the anchor passes the top and returns inline when it intersects again', () => {
     render(
       <WorkoutDetailMobileActions>
-        <button type="button">Edytuj</button>
+        <button type="button">Edit</button>
       </WorkoutDetailMobileActions>,
     )
 
-    const actions = screen.getByRole('group', { name: 'Akcje treningu' })
-    const editButton = screen.getByRole('button', { name: 'Edytuj' })
+    const actions = screen.getByRole('group', { name: 'Workout actions' })
+    const editButton = screen.getByRole('button', { name: 'Edit' })
     editButton.focus()
 
     emitIntersection(false, -1)
 
     expect(actions).toHaveAttribute('data-placement', 'fixed')
-    expect(screen.getByRole('button', { name: 'Edytuj' })).toBe(editButton)
+    expect(screen.getByRole('button', { name: 'Edit' })).toBe(editButton)
     expect(editButton).toHaveFocus()
 
     emitIntersection(true, 0)
 
     expect(actions).toHaveAttribute('data-placement', 'inline')
-    expect(screen.getByRole('button', { name: 'Edytuj' })).toBe(editButton)
+    expect(screen.getByRole('button', { name: 'Edit' })).toBe(editButton)
     expect(editButton).toHaveFocus()
   })
 
   it('disconnects the anchor observer on unmount', () => {
     const { unmount } = render(
       <WorkoutDetailMobileActions>
-        <button type="button">Edytuj</button>
+        <button type="button">Edit</button>
       </WorkoutDetailMobileActions>,
     )
 

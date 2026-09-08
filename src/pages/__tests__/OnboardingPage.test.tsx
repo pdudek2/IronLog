@@ -37,11 +37,11 @@ describe('OnboardingPage hierarchy', () => {
       </MemoryRouter>,
     )
 
-    const goalGroup = screen.getByRole('group', { name: 'Cel treningowy' })
-    expect(within(goalGroup).getByRole('button', { name: /Masa mięśniowa/ })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('group', { name: 'Jednostki' })).toBeInTheDocument()
-    expect(screen.getByRole('slider', { name: 'Treningi w tygodniu' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Zapisz profil' })).toBeInTheDocument()
+    const goalGroup = screen.getByRole('group', { name: 'Training goal' })
+    expect(within(goalGroup).getByRole('button', { name: /Muscle growth/ })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('group', { name: 'Units' })).toBeInTheDocument()
+    expect(screen.getByRole('slider', { name: 'Workouts per week' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save profile' })).toBeInTheDocument()
   })
 
   it('validates the name and keeps the form usable after a failed save', async () => {
@@ -52,15 +52,15 @@ describe('OnboardingPage hierarchy', () => {
       </MemoryRouter>,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz profil' }))
-    expect(await screen.findByText('Podaj imię')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Save profile' }))
+    expect(await screen.findByText('Enter your name')).toBeInTheDocument()
     expect(mocks.saveProfile).not.toHaveBeenCalled()
 
-    fireEvent.change(screen.getByLabelText('Imię'), { target: { value: ' Patryk ' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz profil' }))
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: ' Patryk ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save profile' }))
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się zapisać profilu')
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Zapisz profil' })).toBeEnabled())
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save your profile')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save profile' })).toBeEnabled())
     expect(mocks.saveProfile).toHaveBeenCalledWith('user-1', expect.objectContaining({ displayName: 'Patryk' }))
     expect(mocks.toastError).toHaveBeenCalledTimes(1)
   })

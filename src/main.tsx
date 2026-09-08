@@ -19,7 +19,7 @@ createRoot(document.getElementById('root')!).render(
     <MotionConfig reducedMotion="user">
       <AppRouter />
       <Toaster
-        containerAriaLabel="Powiadomienia"
+        containerAriaLabel="Notifications"
         theme="dark"
         position="top-center"
         toastOptions={{

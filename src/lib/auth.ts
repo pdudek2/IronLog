@@ -10,21 +10,21 @@ import { auth } from './firebase'
 type AuthAction = 'login' | 'register'
 
 const SHARED_AUTH_ERRORS: Record<string, string> = {
-  'auth/network-request-failed': 'Brak połączenia. Sprawdź internet i spróbuj ponownie.',
-  'auth/too-many-requests': 'Zbyt wiele prób. Odczekaj chwilę i spróbuj ponownie.',
+  'auth/network-request-failed': 'No connection. Check your internet and try again.',
+  'auth/too-many-requests': 'Too many attempts. Wait a moment and try again.',
 }
 
 const LOGIN_AUTH_ERRORS: Record<string, string> = {
-  'auth/invalid-credential': 'Nieprawidłowy email lub hasło.',
-  'auth/invalid-email': 'Nieprawidłowy email lub hasło.',
-  'auth/user-not-found': 'Nieprawidłowy email lub hasło.',
-  'auth/wrong-password': 'Nieprawidłowy email lub hasło.',
+  'auth/invalid-credential': 'Invalid email or password.',
+  'auth/invalid-email': 'Invalid email or password.',
+  'auth/user-not-found': 'Invalid email or password.',
+  'auth/wrong-password': 'Invalid email or password.',
 }
 
 const REGISTER_AUTH_ERRORS: Record<string, string> = {
-  'auth/email-already-in-use': 'Konto z tym adresem już istnieje.',
-  'auth/invalid-email': 'Wpisz prawidłowy adres email.',
-  'auth/weak-password': 'Hasło jest zbyt słabe. Użyj co najmniej 6 znaków.',
+  'auth/email-already-in-use': 'An account with this email already exists.',
+  'auth/invalid-email': 'Enter a valid email address.',
+  'auth/weak-password': 'This password is too weak. Use at least 6 characters.',
 }
 
 export function getAuthErrorMessage(error: unknown, action: AuthAction): string {
@@ -35,8 +35,8 @@ export function getAuthErrorMessage(error: unknown, action: AuthAction): string 
   return SHARED_AUTH_ERRORS[code]
     ?? (action === 'login' ? LOGIN_AUTH_ERRORS[code] : REGISTER_AUTH_ERRORS[code])
     ?? (action === 'login'
-      ? 'Nie udało się zalogować. Spróbuj ponownie.'
-      : 'Nie udało się utworzyć konta. Spróbuj ponownie.')
+      ? 'Could not sign in. Try again.'
+      : 'Could not create your account. Try again.')
 }
 import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'

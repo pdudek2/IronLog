@@ -5,13 +5,13 @@ import { updateProfile, type PrimaryGoal, type Units } from '../lib/userProfile'
 import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { Button, Input } from '../components/ui'
-import { polishPlural } from '../lib/polishPlural'
+import { pluralize } from '../lib/pluralize'
 
 const GOALS: { value: PrimaryGoal; label: string }[] = [
-  { value: 'strength', label: 'Siła' },
-  { value: 'hypertrophy', label: 'Masa mięśniowa' },
-  { value: 'endurance', label: 'Wytrzymałość' },
-  { value: 'weight_loss', label: 'Redukcja' },
+  { value: 'strength', label: 'Strength' },
+  { value: 'hypertrophy', label: 'Muscle growth' },
+  { value: 'endurance', label: 'Endurance' },
+  { value: 'weight_loss', label: 'Fat loss' },
 ]
 
 export default function ProfilePage() {
@@ -36,16 +36,16 @@ export default function ProfilePage() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!user || !profile) return
-    if (!displayName.trim()) { setNameError('Podaj imię'); return }
+    if (!displayName.trim()) { setNameError('Enter your name'); return }
     setNameError('')
     setSaving(true)
     const updated = { displayName: displayName.trim(), primaryGoal, weeklyGoal, units }
     try {
       await updateProfile(user.uid, updated)
       setProfile(user.uid, { ...profile, ...updated })
-      toast.success('Profil zapisany')
+      toast.success('Profile saved')
     } catch {
-      toast.error('Nie udało się zapisać. Spróbuj ponownie.')
+      toast.error('Could not save. Try again.')
     } finally {
       setSaving(false)
     }
@@ -57,7 +57,7 @@ export default function ProfilePage() {
         className="pt-4 pb-5 sm:pt-6 sm:pb-6"
         style={{ borderBottom: '1px solid var(--border)' }}
       >
-        <h1 id="profile-title" className="page-title">Profil</h1>
+        <h1 id="profile-title" className="page-title">Profile</h1>
       </header>
 
       <div className="profile-settings-shell" style={{ maxWidth: '42rem' }}>
@@ -68,13 +68,13 @@ export default function ProfilePage() {
               style={{ borderColor: 'var(--border)' }}
             >
               <label htmlFor="profile-display-name" className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
-                Imię
+                Name
               </label>
               <Input
                 id="profile-display-name"
                 name="displayName"
                 type="text"
-                placeholder="np. Jan"
+                placeholder="E.g. Alex"
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
                 autoComplete="name"
@@ -87,7 +87,7 @@ export default function ProfilePage() {
               style={{ borderColor: 'var(--border)' }}
             >
               <legend className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
-                Główny cel
+                Primary goal
               </legend>
               <div
                 className="grid grid-cols-2 gap-px overflow-hidden"
@@ -123,7 +123,7 @@ export default function ProfilePage() {
               <div className="flex min-w-0 flex-col gap-2">
                 <div className="flex items-baseline justify-between gap-4">
                   <label htmlFor="profile-weekly-goal" className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
-                    Treningi w tygodniu
+                    Workouts per week
                   </label>
                   <output
                     htmlFor="profile-weekly-goal"
@@ -131,7 +131,7 @@ export default function ProfilePage() {
                     style={{ color: 'var(--accent-text)' }}
                     aria-live="polite"
                   >
-                    {weeklyGoal} {polishPlural(weeklyGoal, 'trening', 'treningi', 'treningów')}
+                    {weeklyGoal} {pluralize(weeklyGoal, 'workout', 'workouts')}
                   </output>
                 </div>
                 <input
@@ -141,7 +141,7 @@ export default function ProfilePage() {
                   min={1}
                   max={7}
                   value={weeklyGoal}
-                  aria-valuetext={`${weeklyGoal} ${polishPlural(weeklyGoal, 'trening', 'treningi', 'treningów')}`}
+                  aria-valuetext={`${weeklyGoal} ${pluralize(weeklyGoal, 'workout', 'workouts')}`}
                   onChange={(e) => setWeeklyGoal(Number(e.target.value))}
                   className="readiness-slider w-full"
                 />
@@ -152,7 +152,7 @@ export default function ProfilePage() {
 
               <fieldset className="m-0 min-w-0 border-0 p-0">
                 <legend className="mb-2 text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
-                  Jednostki
+                  Units
                 </legend>
                 <div className="profile-unit-grid">
                   {(['kg', 'lbs'] as Units[]).map((u) => (
@@ -177,7 +177,7 @@ export default function ProfilePage() {
                 aria-busy={saving || undefined}
                 className="w-full sm:w-auto sm:min-w-52"
               >
-                {saving ? 'Zapisywanie…' : 'Zapisz zmiany'}
+                {saving ? 'Saving…' : 'Save changes'}
               </Button>
             </div>
           </form>

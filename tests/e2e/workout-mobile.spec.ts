@@ -10,10 +10,10 @@ type WorkoutTerminalState = 'stale-session' | 'active-session' | 'empty-session'
 
 async function getWorkoutState(page: Page): Promise<WorkoutTerminalState | null> {
   const states: Array<[WorkoutTerminalState, Locator]> = [
-    ['stale-session', page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })],
-    ['active-session', page.getByRole('button', { name: 'Zakończ', exact: true }).first()],
-    ['empty-session', page.getByRole('button', { name: 'Rozpocznij nową sesję' })],
-    ['ready-workout', page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()],
+    ['stale-session', page.getByRole('button', { name: 'Discard and start again' })],
+    ['active-session', page.getByRole('button', { name: 'Finish', exact: true }).first()],
+    ['empty-session', page.getByRole('button', { name: 'Start a new session' })],
+    ['ready-workout', page.getByRole('button', { name: 'Add exercise', exact: true }).first()],
   ]
 
   for (const [state, locator] of states) {
@@ -164,9 +164,9 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
 
   const workoutState = await waitForWorkoutState(page)
 
-  const staleDiscardButton = page.getByRole('button', { name: 'Odrzuć i zacznij od nowa' })
-  const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
-  const addExerciseButton = page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()
+  const staleDiscardButton = page.getByRole('button', { name: 'Discard and start again' })
+  const startButton = page.getByRole('button', { name: 'Start a new session' })
+  const addExerciseButton = page.getByRole('button', { name: 'Add exercise', exact: true }).first()
 
   if (workoutState === 'stale-session') {
     await staleDiscardButton.click()
@@ -176,8 +176,8 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
 
   if (workoutState === 'active-session') {
     const confirmDialog = await openWorkoutDiscardDialog(page)
-    await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
-    const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
+    await expect(confirmDialog.getByRole('button', { name: 'Back', exact: true })).toBeVisible()
+    const confirmDiscard = confirmDialog.getByRole('button', { name: 'Discard workout', exact: true })
     await expect(confirmDiscard).toBeVisible()
     await confirmDiscard.click()
     await page.waitForURL('/dashboard', { timeout: 10_000 })
@@ -188,8 +188,8 @@ async function discardSessionIfPresent(page: Page): Promise<void> {
     await startButton.click()
     await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
     const confirmDialog = await openWorkoutDiscardDialog(page)
-    await expect(confirmDialog.getByRole('button', { name: 'Wróć', exact: true })).toBeVisible()
-    const confirmDiscard = confirmDialog.getByRole('button', { name: 'Odrzuć trening', exact: true })
+    await expect(confirmDialog.getByRole('button', { name: 'Back', exact: true })).toBeVisible()
+    const confirmDiscard = confirmDialog.getByRole('button', { name: 'Discard workout', exact: true })
     await expect(confirmDiscard).toBeVisible()
     await confirmDiscard.click()
     await page.waitForURL('/dashboard', { timeout: 10_000 })
@@ -202,24 +202,24 @@ async function goToFreshWorkout(page: Page): Promise<void> {
   await expectAppReady(page, '/workout/new', 25_000)
   const workoutState = await waitForWorkoutState(page)
 
-  const startButton = page.getByRole('button', { name: 'Rozpocznij nową sesję' })
+  const startButton = page.getByRole('button', { name: 'Start a new session' })
   if (workoutState === 'empty-session') {
     await startButton.click()
   }
 
-  await expect(page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first()).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('button', { name: 'Add exercise', exact: true }).first()).toBeVisible({ timeout: 15_000 })
 }
 
 async function addExercise(page: Page, search: string): Promise<void> {
-  await page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }).first().click()
-  const picker = page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })
+  await page.getByRole('button', { name: 'Add exercise', exact: true }).first().click()
+  const picker = page.getByRole('dialog', { name: /Choose an exercise/i })
   await expect(picker).toBeVisible({ timeout: 5_000 })
-  await page.getByPlaceholder('Szukaj ćwiczenia...').fill(search)
+  await page.getByPlaceholder('Search exercises...').fill(search)
   const result = picker.locator('button').filter({ hasText: new RegExp(search, 'i') }).first()
   await expect(result).toBeVisible({ timeout: 5_000 })
   await result.click()
   await expect(picker).not.toBeVisible({ timeout: 5_000 })
-  await expect(page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })).toHaveCount(0, { timeout: 5_000 })
+  await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).toHaveCount(0, { timeout: 5_000 })
   await expect(page.locator('.exercise-picker-overlay')).toHaveCount(0, { timeout: 5_000 })
 }
 
@@ -285,7 +285,7 @@ test.describe('Active workout shell reduction', () => {
 
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
-    await page.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' }).click()
+    await page.getByRole('button', { name: 'Mark set 1 exercise Squat' }).click()
 
     await expect(page.locator('.rest-timer-bar')).toHaveCount(1)
     expect(await page.evaluate(() => (
@@ -296,7 +296,7 @@ test.describe('Active workout shell reduction', () => {
     await page.evaluate(() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     })
-    const navigation = page.getByRole('navigation', { name: 'Nawigacja dolna' })
+    const navigation = page.getByRole('navigation', { name: 'Bottom navigation' })
     await expect(navigation).toBeVisible()
     await expect(navigation).not.toHaveAttribute('aria-hidden', 'true')
     await expect.poll(() => navigation.evaluate((element) => (
@@ -331,10 +331,10 @@ test.describe('Active workout shell reduction', () => {
     await expect(exerciseCards).toHaveCount(2)
     await expect(page.locator('.workout-exercise-toggle[aria-expanded="true"]')).toHaveCount(1)
     await expect(exerciseCards.first().locator('.workout-exercise-body')).not.toBeVisible()
-    await expect(page.getByRole('dialog', { name: /Wybierz ćwiczenie/i })).toHaveCount(0)
+    await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Rozwiń ćwiczenie Squat' }).click()
-    await expect(page.getByRole('button', { name: 'Zwiń ćwiczenie Squat' })).toHaveAttribute('aria-expanded', 'true')
+    await page.getByRole('button', { name: 'Expand exercise Squat' }).click()
+    await expect(page.getByRole('button', { name: 'Collapse exercise Squat' })).toHaveAttribute('aria-expanded', 'true')
     await expect(exerciseCards.nth(1).locator('.workout-exercise-body')).not.toBeVisible()
 
     const activeWeightInput = exerciseCards.first().locator('input').first()
@@ -352,7 +352,7 @@ test.describe('Active workout shell reduction', () => {
     await addExercise(page, 'Squat')
 
     const firstSetRow = page.locator('.workout-set-row').first()
-    const doneButton = page.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' })
+    const doneButton = page.getByRole('button', { name: 'Mark set 1 exercise Squat' })
     await firstSetRow.locator('input').nth(0).fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
     await doneButton.click()
@@ -416,7 +416,7 @@ test.describe('Active workout shell reduction', () => {
 
     await expect(page.locator('.top-nav')).not.toBeVisible()
     expect(await visibleCount(page.locator('.session-quick-link'))).toBe(0)
-    await expect(page.getByRole('navigation', { name: 'Nawigacja dolna' })).toBeVisible()
+    await expect(page.getByRole('navigation', { name: 'Bottom navigation' })).toBeVisible()
 
     await addExercise(page, 'Squat')
     const expectedSession = await readLocalActiveSessionRecovery(page)
@@ -424,7 +424,7 @@ test.describe('Active workout shell reduction', () => {
     expect(expectedSession.exerciseNames).toEqual(['Squat'])
     expect(expectedSession.reps).toBe('')
 
-    await page.getByRole('button', { name: 'Plany', exact: true }).click()
+    await page.getByRole('button', { name: 'Plans', exact: true }).click()
     await expect(page).toHaveURL('/templates')
 
     await expect.poll(
@@ -441,7 +441,7 @@ test.describe('Active workout shell reduction', () => {
 
     await page.goto('/workout/new')
     await expect.poll(
-      () => page.getByRole('button', { name: 'Usuń ćwiczenie Squat' }).count(),
+      () => page.getByRole('button', { name: 'Remove exercise Squat' }).count(),
       { message: 'Squat should remain in the active session after route navigation' },
     ).toBeGreaterThan(0)
 
@@ -455,19 +455,19 @@ test.describe('Active workout shell reduction', () => {
     await goToFreshWorkout(page)
 
     const lifecycleBar = page.locator('.workout-mobile-lifecycle-bar')
-    await expect(lifecycleBar.getByRole('button', { name: 'Anuluj', exact: true })).toHaveCount(0)
+    await expect(lifecycleBar.getByRole('button', { name: 'Cancel', exact: true })).toHaveCount(0)
 
-    const optionsButton = lifecycleBar.getByRole('button', { name: 'Więcej opcji treningu' })
+    const optionsButton = lifecycleBar.getByRole('button', { name: 'More workout options' })
     await expect(optionsButton).toBeVisible()
     await expectMinHitArea(optionsButton, 'Workout options')
     await optionsButton.click()
 
-    const menu = page.getByRole('menu', { name: 'Opcje treningu' })
+    const menu = page.getByRole('menu', { name: 'Workout options' })
     await expect(menu).toBeVisible()
-    const discardItem = menu.getByRole('menuitem', { name: 'Odrzuć trening' })
+    const discardItem = menu.getByRole('menuitem', { name: 'Discard workout' })
     await expect(discardItem).toHaveCSS('color', 'rgb(240, 167, 90)')
     await discardItem.click()
-    await expect(page.getByRole('dialog', { name: 'Odrzucić trening?' })).toBeVisible()
+    await expect(page.getByRole('dialog', { name: 'Discard workout?' })).toBeVisible()
   })
 
   test('mobile workout keeps the first set visible and a single add action after adding an exercise', async ({ page, cleanup }, testInfo) => {
@@ -479,7 +479,7 @@ test.describe('Active workout shell reduction', () => {
 
     await addExercise(page, 'Squat')
 
-    expect(await visibleCount(page.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true }))).toBe(1)
+    expect(await visibleCount(page.getByRole('button', { name: 'Add exercise', exact: true }))).toBe(1)
     await expect(page.locator('.workout-set-row').first()).toBeVisible()
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(0), 'First weight input')
     await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(1), 'First reps input')
@@ -495,28 +495,28 @@ test.describe('Active workout shell reduction', () => {
     await addExercise(page, 'Squat')
 
     const setRows = page.locator('.workout-set-row')
-    await page.getByRole('button', { name: /Dodaj serię/i }).click()
+    await page.getByRole('button', { name: /Add set/i }).click()
     await expect(setRows).toHaveCount(2)
 
-    await page.getByRole('button', { name: 'Usuń serię 2' }).click()
+    await page.getByRole('button', { name: 'Remove set 2' }).click()
     await expect(setRows).toHaveCount(1)
-    await expect(page.getByRole('dialog', { name: 'Usunąć serię?' })).toHaveCount(0)
+    await expect(page.getByRole('dialog', { name: 'Remove set?' })).toHaveCount(0)
 
     const populatedSet = setRows.first()
     await populatedSet.locator('input').nth(0).fill('60')
     await populatedSet.locator('input').nth(1).fill('8')
-    await populatedSet.getByRole('button', { name: 'Usuń serię 1' }).click()
+    await populatedSet.getByRole('button', { name: 'Remove set 1' }).click()
 
-    const confirmDialog = page.getByRole('dialog', { name: 'Usunąć serię?' })
+    const confirmDialog = page.getByRole('dialog', { name: 'Remove set?' })
     await expect(confirmDialog).toBeVisible()
     await expect(setRows).toHaveCount(1)
-    await confirmDialog.getByRole('button', { name: 'Zostaw' }).click()
+    await confirmDialog.getByRole('button', { name: 'Keep' }).click()
     await expect(confirmDialog).toHaveCount(0)
     await expect(setRows).toHaveCount(1)
 
-    await populatedSet.getByRole('button', { name: 'Usuń serię 1' }).click()
+    await populatedSet.getByRole('button', { name: 'Remove set 1' }).click()
     await expect(confirmDialog).toBeVisible()
-    await confirmDialog.getByRole('button', { name: 'Usuń serię' }).click()
+    await confirmDialog.getByRole('button', { name: 'Remove set' }).click()
     await expect(setRows).toHaveCount(0)
   })
 
@@ -529,16 +529,16 @@ test.describe('Active workout shell reduction', () => {
 
     await addExercise(page, 'Squat')
 
-    const doneButton = page.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' })
-    const removeSetButton = page.getByRole('button', { name: 'Usuń serię 1' })
+    const doneButton = page.getByRole('button', { name: 'Mark set 1 exercise Squat' })
+    const removeSetButton = page.getByRole('button', { name: 'Remove set 1' })
     const actionBar = page.locator('.workout-mobile-action-bar')
 
     await expectMinHitArea(doneButton, 'Done button')
     await expectMinHitArea(removeSetButton, 'Remove set button')
     await expect(actionBar).toHaveCount(0)
 
-    await expect(page.getByRole('button', { name: /Dodaj serię/i })).toBeVisible()
-    await page.getByRole('button', { name: /Dodaj serię/i }).click()
+    await expect(page.getByRole('button', { name: /Add set/i })).toBeVisible()
+    await page.getByRole('button', { name: /Add set/i }).click()
 
     const visibleStepperRows = page.locator('.set-stepper-row:visible')
     await expect(visibleStepperRows).toHaveCount(1)
@@ -586,11 +586,11 @@ test.describe('Active workout shell reduction', () => {
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
     await doneButton.click()
-    await expect(page.getByRole('button', { name: 'Odznacz serię 1 ćwiczenia Squat' })).toHaveCSS('color', 'rgb(143, 184, 160)')
+    await expect(page.getByRole('button', { name: 'Unmark set 1 exercise Squat' })).toHaveCSS('color', 'rgb(143, 184, 160)')
 
     const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar .tabular-nums').innerText()
-    const addRestButton = actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })
-    const skipRestButton = actionBar.getByRole('button', { name: 'Pomiń przerwę' })
+    const addRestButton = actionBar.getByRole('button', { name: 'Add 30 seconds' })
+    const skipRestButton = actionBar.getByRole('button', { name: 'Skip rest' })
     await expect(actionBar).toBeVisible()
     await expect(addRestButton).toBeVisible()
     await expect(skipRestButton).toBeVisible()
@@ -598,9 +598,9 @@ test.describe('Active workout shell reduction', () => {
     await expectMinHitArea(skipRestButton, 'Skip rest button')
     await addRestButton.click()
     await expect(actionBar).not.toContainText(sessionTimerText)
-    await expect(actionBar.getByRole('button', { name: 'Dodaj ćwiczenie', exact: true })).toHaveCount(0)
+    await expect(actionBar.getByRole('button', { name: 'Add exercise', exact: true })).toHaveCount(0)
 
-    const bottomNavigation = page.getByRole('navigation', { name: 'Nawigacja dolna' })
+    const bottomNavigation = page.getByRole('navigation', { name: 'Bottom navigation' })
     await page.evaluate(() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
       window.scrollTo(0, 0)
@@ -644,10 +644,10 @@ test.describe('Active workout shell reduction', () => {
     const weightInput = firstSetRow.locator('input').nth(0)
     await weightInput.fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
-    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' }).click()
+    await firstSetRow.getByRole('button', { name: 'Mark set 1 exercise Squat' }).click()
 
     const actionBar = page.locator('.workout-mobile-action-bar')
-    const skipRestButton = actionBar.getByRole('button', { name: 'Pomiń przerwę' })
+    const skipRestButton = actionBar.getByRole('button', { name: 'Skip rest' })
     await expect(actionBar).toHaveAttribute('data-variant', 'full')
     await installScrollIntoViewSpy(page)
 
@@ -655,7 +655,7 @@ test.describe('Active workout shell reduction', () => {
     await page.setViewportSize({ width: 390, height: 500 })
     await expect(actionBar).toHaveAttribute('data-variant', 'compact')
     await expect(skipRestButton).toBeVisible()
-    await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toHaveCount(0)
+    await expect(actionBar.getByRole('button', { name: 'Add 30 seconds' })).toHaveCount(0)
     await expect.poll(async () => (await readScrollIntoViewCalls(page)).length).toBeGreaterThan(0)
     const focusedInputScrollCalls = await readScrollIntoViewCalls(page)
     expect(focusedInputScrollCalls).toEqual(
@@ -690,7 +690,7 @@ test.describe('Active workout shell reduction', () => {
     await restoreVisualViewportHeight(page)
     await page.setViewportSize({ width: 390, height: 844 })
     await expect(actionBar).toHaveAttribute('data-variant', 'full')
-    await expect(actionBar.getByRole('button', { name: 'Dodaj 30 sekund' })).toBeVisible()
+    await expect(actionBar.getByRole('button', { name: 'Add 30 seconds' })).toBeVisible()
 
     await skipRestButton.click()
     await expect(actionBar).toHaveCount(0)
@@ -716,7 +716,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
     await expect(page.locator('.top-nav')).toBeVisible()
     await expect(page.locator('aside .workout-control-panel')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Bieżąca rozpiska' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Current exercises' })).toBeVisible()
 
     await addExercise(page, 'Squat')
 
@@ -748,19 +748,19 @@ test.describe('Active workout shell reduction', () => {
 
     await firstSetRow.locator('input').nth(0).fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
-    await firstSetRow.getByRole('button', { name: 'Oznacz serię 1 ćwiczenia Squat' }).click()
+    await firstSetRow.getByRole('button', { name: 'Mark set 1 exercise Squat' }).click()
 
     const restTimerBar = page.locator('.rest-timer-bar')
     await expect(restTimerBar).toHaveCount(1)
-    await page.getByRole('button', { name: 'Pomiń przerwę' }).click()
+    await page.getByRole('button', { name: 'Skip rest' }).click()
     await expect(restTimerBar).toHaveCount(0)
 
-    const removeExerciseButton = page.getByRole('button', { name: 'Usuń ćwiczenie Squat' })
+    const removeExerciseButton = page.getByRole('button', { name: 'Remove exercise Squat' })
     await removeExerciseButton.click()
 
-    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'To usunie ćwiczenie wraz z wpisanymi seriami z aktywnej sesji.' })
+    const confirmDialog = page.getByRole('dialog').filter({ hasText: 'This will remove the exercise and its sets from the active session.' })
     await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
-    await confirmDialog.getByRole('button', { name: 'Usuń ćwiczenie' }).click()
+    await confirmDialog.getByRole('button', { name: 'Remove exercise' }).click()
 
     await expect(removeExerciseButton).toHaveCount(1)
     await expect(removeExerciseButton).toHaveCount(0)

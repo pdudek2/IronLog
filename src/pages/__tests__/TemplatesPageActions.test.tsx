@@ -14,7 +14,7 @@ const templates: WorkoutTemplate[] = [
     updatedAt: 2,
     days: [
       {
-        name: 'Dzień A',
+        name: 'Day A',
         exercises: [{
           exerciseId: 'squat',
           exerciseSource: 'global',
@@ -25,7 +25,7 @@ const templates: WorkoutTemplate[] = [
         }],
       },
       {
-        name: 'Dzień A2',
+        name: 'Day A2',
         exercises: [{
           exerciseId: 'bench-press',
           exerciseSource: 'global',
@@ -43,7 +43,7 @@ const templates: WorkoutTemplate[] = [
     name: 'Plan B',
     createdAt: 1,
     updatedAt: 2,
-    days: [{ name: 'Dzień B', exercises: [] }],
+    days: [{ name: 'Day B', exercises: [] }],
   },
 ]
 
@@ -74,7 +74,7 @@ vi.mock('../../components/ConfirmDialog', () => ({
   default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
     <div>
       <button type="button" onClick={onConfirm}>Potwierdź usunięcie</button>
-      <button type="button" onClick={onCancel}>Anuluj usunięcie</button>
+      <button type="button" onClick={onCancel}>Cancel usunięcie</button>
     </div>
   ),
 }))
@@ -156,19 +156,19 @@ describe('TemplatesPage launch actions', () => {
 
     const planACard = cardFor('Plan A')
     expect(within(planACard).getAllByRole('button', {
-      name: /Uruchom dzień Dzień A2? z szablonu Plan A/,
+      name: /Start day Day A2? from template Plan A/,
     })).toHaveLength(2)
     expect(within(cardFor('Plan B')).getAllByRole('button', {
-      name: 'Uruchom dzień Dzień B z szablonu Plan B',
+      name: 'Start day Day B from template Plan B',
     })).toHaveLength(1)
-    expect(within(planACard).queryByRole('button', { name: 'Uruchom szablon Plan A' }))
+    expect(within(planACard).queryByRole('button', { name: 'Start template Plan A' }))
       .not.toBeInTheDocument()
 
     const secondDayRow = within(planACard)
       .getByTestId('template-day-detail-template-a-1')
       .closest('.planner-day-row')
-    expect(secondDayRow).toHaveTextContent('Dzień A2')
-    expect(secondDayRow).toHaveTextContent('1 ćwiczenie')
+    expect(secondDayRow).toHaveTextContent('Day A2')
+    expect(secondDayRow).toHaveTextContent('1 exercise')
     expect(secondDayRow).toHaveTextContent('Bench Press')
   })
 
@@ -176,7 +176,7 @@ describe('TemplatesPage launch actions', () => {
     await renderPage()
 
     fireEvent.click(within(cardFor('Plan A')).getByRole('button', {
-      name: 'Uruchom dzień Dzień A2 z szablonu Plan A',
+      name: 'Start day Day A2 from template Plan A',
     }))
 
     expect(mocks.requestTemplateLaunch).toHaveBeenCalledTimes(1)
@@ -207,10 +207,10 @@ describe('TemplatesPage launch actions', () => {
 
     const card = cardFor('Plan A')
     expect(within(card).getByTestId('template-day-detail-template-a-0'))
-      .toHaveTextContent('Uruchamiam…')
+      .toHaveTextContent('Starting…')
     expect(within(card).getByTestId('template-day-detail-template-a-1'))
-      .not.toHaveTextContent('Uruchamiam…')
-    expect(cardFor('Plan B')).not.toHaveTextContent('Uruchamiam…')
+      .not.toHaveTextContent('Starting…')
+    expect(cardFor('Plan B')).not.toHaveTextContent('Starting…')
   })
 
   it('marks the card busy and disables every launch action while one launch is pending', async () => {
@@ -234,10 +234,10 @@ describe('TemplatesPage launch actions', () => {
     const card = cardFor('Plan A')
     expect(card).toHaveAttribute('aria-busy', 'true')
     expect(within(card).getByTestId('template-day-detail-template-a-0'))
-      .toHaveTextContent('Uruchamiam…')
+      .toHaveTextContent('Starting…')
     expect(within(card).getByTestId('template-day-detail-template-a-1'))
-      .not.toHaveTextContent('Uruchamiam…')
-    screen.getAllByRole('button', { name: /Uruchom dzień/ }).forEach((button) => {
+      .not.toHaveTextContent('Starting…')
+    screen.getAllByRole('button', { name: /Start day/ }).forEach((button) => {
       expect(button).toBeDisabled()
     })
   })
@@ -253,7 +253,7 @@ describe('TemplatesPage launch actions', () => {
         },
         replaceExisting: true,
         status: 'error',
-        errorMessage: 'Nie udało się uruchomić planu.',
+        errorMessage: 'Could not start the plan.',
       },
     }
 
@@ -262,7 +262,7 @@ describe('TemplatesPage launch actions', () => {
     const matchingCard = cardFor('Plan A')
     const otherCard = cardFor('Plan B')
     const alert = within(matchingCard).getByRole('alert')
-    expect(alert).toHaveTextContent('Nie udało się uruchomić planu.')
+    expect(alert).toHaveTextContent('Could not start the plan.')
     expect(otherCard).not.toContainElement(alert)
     expect(matchingCard).toHaveAttribute('aria-describedby', alert.id)
     expect(within(matchingCard).getByTestId('template-day-detail-template-a-0'))
@@ -272,8 +272,8 @@ describe('TemplatesPage launch actions', () => {
     expect(within(otherCard).getByTestId('template-day-detail-template-b-0'))
       .not.toHaveAttribute('aria-describedby')
 
-    fireEvent.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))
-    fireEvent.click(within(alert).getByRole('button', { name: 'Zamknij' }))
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
+    fireEvent.click(within(alert).getByRole('button', { name: 'Close' }))
 
     await waitFor(() => {
       expect(mocks.retryTemplateLaunch).toHaveBeenCalledTimes(1)
@@ -290,13 +290,13 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Usuń szablon Plan A' }))
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete template Plan A' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     const pending = within(cardFor('Plan A')).getByRole('status')
-    expect(pending).toHaveTextContent('Usuwanie planu…')
+    expect(pending).toHaveTextContent('Deleting plan…')
     expect(cardFor('Plan A')).toBeInTheDocument()
-    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edytuj szablon Plan B' }))
+    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edit template Plan B' }))
       .toBeEnabled()
     expect(mocks.deleteTemplate).toHaveBeenLastCalledWith('template-a')
 
@@ -306,12 +306,12 @@ describe('TemplatesPage launch actions', () => {
     })
 
     const alert = await within(cardFor('Plan A')).findByRole('alert')
-    expect(alert).toHaveTextContent('Nie udało się usunąć planu.')
+    expect(alert).toHaveTextContent('Could not delete the plan.')
     expect(cardFor('Plan A')).toBeInTheDocument()
 
-    fireEvent.click(within(alert).getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
 
-    expect(within(cardFor('Plan A')).getByRole('status')).toHaveTextContent('Usuwanie planu…')
+    expect(within(cardFor('Plan A')).getByRole('status')).toHaveTextContent('Deleting plan…')
     expect(mocks.deleteTemplate).toHaveBeenNthCalledWith(2, 'template-a')
     expect(cardFor('Plan A')).toBeInTheDocument()
 
@@ -334,19 +334,19 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Usuń szablon Plan A' }))
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete template Plan A' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
-    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Usuń szablon Plan B' })
+    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Delete template Plan B' })
     fireEvent.click(planBDelete)
     const secondConfirm = screen.queryByRole('button', { name: 'Potwierdź usunięcie' })
     if (secondConfirm) fireEvent.click(secondConfirm)
 
     expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
     expect(planBDelete).toBeDisabled()
-    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edytuj szablon Plan B' }))
+    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edit template Plan B' }))
       .toBeEnabled()
-    expect(within(cardFor('Plan A')).getByRole('status')).toHaveTextContent('Usuwanie planu…')
+    expect(within(cardFor('Plan A')).getByRole('status')).toHaveTextContent('Deleting plan…')
     expect(within(cardFor('Plan B')).queryByRole('status')).not.toBeInTheDocument()
 
     firstDelete.resolve()
@@ -358,7 +358,7 @@ describe('TemplatesPage launch actions', () => {
       expect(screen.queryByRole('heading', { name: 'Plan A' })).not.toBeInTheDocument()
     })
     const availablePlanBDelete = within(cardFor('Plan B')).getByRole('button', {
-      name: 'Usuń szablon Plan B',
+      name: 'Delete template Plan B',
     })
     expect(availablePlanBDelete).toBeEnabled()
 
@@ -376,14 +376,14 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Usuń szablon Plan A' }))
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete template Plan A' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     await act(async () => {
       await expect(mocks.deleteTemplate.mock.results[0]?.value).rejects.toThrow('offline')
     })
     const alert = await within(cardFor('Plan A')).findByRole('alert')
-    fireEvent.click(within(alert).getByRole('button', { name: 'Zamknij' }))
+    fireEvent.click(within(alert).getByRole('button', { name: 'Close' }))
 
     expect(within(cardFor('Plan A')).queryByRole('alert')).not.toBeInTheDocument()
     expect(cardFor('Plan A')).toBeInTheDocument()
@@ -395,7 +395,7 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Usuń szablon Plan A' }))
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete template Plan A' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     await act(async () => {
@@ -403,7 +403,7 @@ describe('TemplatesPage launch actions', () => {
     })
 
     const alert = await within(cardFor('Plan A')).findByRole('alert')
-    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Usuń szablon Plan B' })
+    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Delete template Plan B' })
 
     expect(planBDelete).toBeDisabled()
     fireEvent.click(planBDelete)
@@ -416,7 +416,7 @@ describe('TemplatesPage launch actions', () => {
     await renderPage()
 
     expect(within(cardFor('Plan A')).getByText('Squat')).toBeInTheDocument()
-    expect(within(cardFor('Plan A')).queryByRole('button', { name: 'Struktura' }))
+    expect(within(cardFor('Plan A')).queryByRole('button', { name: 'Structure' }))
       .not.toBeInTheDocument()
   })
 
@@ -433,11 +433,11 @@ describe('TemplatesPage launch actions', () => {
 
     const card = cardFor('Plan A')
     expect(within(card).queryByText('Squat')).not.toBeInTheDocument()
-    fireEvent.click(within(card).getByRole('button', { name: 'Struktura' }))
+    fireEvent.click(within(card).getByRole('button', { name: 'Structure' }))
     await waitFor(() => {
       const expandedCard = cardFor('Plan A')
       expect(within(expandedCard).getByText('Squat')).toBeInTheDocument()
-      expect(within(expandedCard).getByRole('button', { name: 'Zwiń' }))
+      expect(within(expandedCard).getByRole('button', { name: 'Collapse' }))
         .toHaveAttribute('aria-expanded', 'true')
     })
   })

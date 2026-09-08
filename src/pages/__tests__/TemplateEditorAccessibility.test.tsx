@@ -130,8 +130,8 @@ function EditorShell() {
 }
 
 function getEditorBackButton() {
-  const heading = screen.getByRole('heading', { name: /^(Edytuj plan|Nowy plan)$/ })
-  return within(heading.closest('section')!).getByRole('button', { name: 'Plany' })
+  const heading = screen.getByRole('heading', { name: /^(Edit plan|New plan)$/ })
+  return within(heading.closest('section')!).getByRole('button', { name: 'Plans' })
 }
 
 function renderEditor(initialEntry = '/templates/new?draft=ai') {
@@ -141,7 +141,7 @@ function renderEditor(initialEntry = '/templates/new?draft=ai') {
       children: [
         { path: '/templates/new', element: <TemplateEditorPage /> },
         { path: '/templates/:id/edit', element: <TemplateEditorPage /> },
-        { path: '/templates', element: <p>Lista planów</p> },
+        { path: '/templates', element: <p>Lista plans</p> },
         { path: '/logout', element: <p>Trasa wylogowania</p> },
       ],
     },
@@ -175,14 +175,14 @@ describe('TemplateEditorPage accessibility', () => {
       days: [{ ...multiDayTemplate.days[0], exercises: [{ ...multiDayTemplate.days[0].exercises[0], targetWeight: 80 }] }],
     })
     renderEditor('/templates/template-tabs/edit')
-    const weight = await screen.findByRole('spinbutton', { name: 'Ciężar startowy (lbs) — Bench Press' })
+    const weight = await screen.findByRole('spinbutton', { name: 'Starting weight (lbs) — Bench Press' })
     expect(weight).toHaveValue(176.4)
     expect(weight).toBeValid()
-    expect(screen.getByText('Ciężar (lbs)')).toBeInTheDocument()
-    expect(screen.queryByText('Niezapisane zmiany')).not.toBeInTheDocument()
-    fireEvent.change(screen.getByRole('textbox', { name: 'Nazwa' }), { target: { value: 'Renamed plan' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz zmiany' }))
-    await screen.findByText('Lista planów')
+    expect(screen.getByText('Weight (lbs)')).toBeInTheDocument()
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Renamed plan' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    await screen.findByText('Lista plans')
     expect(mocks.updateTemplate.mock.calls[0]?.[1].days[0].exercises[0].targetWeight).toBe(80)
   })
 
@@ -192,62 +192,62 @@ describe('TemplateEditorPage accessibility', () => {
   ] as const)('converts only an edited %s weight to canonical kg', async (units, displayed, expectedKg) => {
     mocks.units = units
     renderEditor()
-    const weight = await screen.findByRole('spinbutton', { name: `Ciężar startowy (${units}) — Bench Press` })
+    const weight = await screen.findByRole('spinbutton', { name: `Starting weight (${units}) — Bench Press` })
     expect(weight).toHaveValue(displayed)
     fireEvent.change(weight, { target: { value: '100' } })
     expect(weight).toHaveValue(100)
     expect(weight).toBeValid()
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz szablon' }))
-    await screen.findByText('Lista planów')
+    fireEvent.click(screen.getByRole('button', { name: 'Save template' }))
+    await screen.findByText('Lista plans')
     expect(mocks.createTemplate.mock.calls[0]?.[1].days[0].exercises[0].targetWeight).toBe(expectedKg)
   })
 
-  it('names the back action Plany and emphasizes adding an exercise only for an empty day', async () => {
+  it('names the back action Plans and emphasizes adding an exercise only for an empty day', async () => {
     mocks.getTemplate.mockResolvedValue(multiDayTemplate)
     renderEditor('/templates/template-tabs/edit')
-    await screen.findByRole('heading', { name: 'Edytuj plan' })
-    expect(getEditorBackButton()).toHaveAccessibleName('Plany')
-    expect(getEditorBackButton()).toHaveTextContent('Plany')
-    expect(screen.getByRole('button', { name: 'Dodaj ćwiczenie' })).toHaveClass('planner-secondary-action')
+    await screen.findByRole('heading', { name: 'Edit plan' })
+    expect(getEditorBackButton()).toHaveAccessibleName('Plans')
+    expect(getEditorBackButton()).toHaveTextContent('Plans')
+    expect(screen.getByRole('button', { name: 'Add exercise' })).toHaveClass('planner-secondary-action')
     fireEvent.click(screen.getByRole('tab', { name: /Full Body/ }))
-    expect(screen.getByRole('button', { name: 'Dodaj ćwiczenie' })).toHaveClass('planner-primary-action')
-    expect(screen.getByRole('button', { name: 'Dodaj ćwiczenie' })).not.toHaveClass('planner-secondary-action')
+    expect(screen.getByRole('button', { name: 'Add exercise' })).toHaveClass('planner-primary-action')
+    expect(screen.getByRole('button', { name: 'Add exercise' })).not.toHaveClass('planner-secondary-action')
   })
 
   it('describes the missing name beside its input after exercises exist', async () => {
     renderEditor()
-    const name = await screen.findByRole('textbox', { name: 'Nazwa' })
+    const name = await screen.findByRole('textbox', { name: 'Name' })
     fireEvent.change(name, { target: { value: '' } })
-    expect(name).toHaveAccessibleDescription('Dodaj nazwę planu (co najmniej 2 znaki), aby go zapisać.')
-    expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeDisabled()
+    expect(name).toHaveAccessibleDescription('Enter a plan name (at least 2 characters) to save it.')
+    expect(screen.getByRole('button', { name: 'Save template' })).toBeDisabled()
     expect(mocks.createTemplate).not.toHaveBeenCalled()
     fireEvent.change(name, { target: { value: 'A' } })
     expect(name).toHaveAttribute('aria-describedby', 'template-name-hint')
     fireEvent.change(name, { target: { value: 'Plan' } })
     expect(name).not.toHaveAttribute('aria-describedby')
-    expect(screen.queryByText('Dodaj nazwę planu (co najmniej 2 znaki), aby go zapisać.')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeEnabled()
+    expect(screen.queryByText('Enter a plan name (at least 2 characters) to save it.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save template' })).toBeEnabled()
   })
 
   it('shows a pristine create draft as not yet saved and invalid', async () => {
     renderEditor('/templates/new')
 
-    expect(await screen.findByText('Nowy plan · jeszcze niezapisany')).toBeInTheDocument()
-    expect(screen.queryByText('Dodaj nazwę planu (co najmniej 2 znaki), aby go zapisać.')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeDisabled()
-    expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1dzień')
+    expect(await screen.findByText('New plan · not saved yet')).toBeInTheDocument()
+    expect(screen.queryByText('Enter a plan name (at least 2 characters) to save it.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save template' })).toBeDisabled()
+    expect(screen.getByLabelText('Plan editor summary')).toHaveTextContent('1day')
     expect(document.querySelector('.template-editor-main')).toContainElement(
-      screen.getByRole('button', { name: 'Zapisz szablon w formularzu' }),
+      screen.getByRole('button', { name: 'Save template in form' }),
     )
   })
 
   it('labels the plan and day names and gives delete action full context', async () => {
     renderEditor()
 
-    expect(await screen.findByRole('textbox', { name: 'Nazwa' })).toHaveValue('Upper / Lower')
-    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 1' })).toHaveValue('Upper A')
+    expect(await screen.findByRole('textbox', { name: 'Name' })).toHaveValue('Upper / Lower')
+    expect(screen.getByRole('textbox', { name: 'Day name 1' })).toHaveValue('Upper A')
     expect(screen.getByRole('button', {
-      name: 'Usuń ćwiczenie Bench Press z dnia Upper A',
+      name: 'Remove exercise Bench Press from day Upper A',
     })).toBeInTheDocument()
   })
 
@@ -255,31 +255,31 @@ describe('TemplateEditorPage accessibility', () => {
     mocks.getTemplate.mockResolvedValue(multiDayTemplate)
     renderEditor('/templates/template-tabs/edit')
 
-    const tablist = await screen.findByRole('tablist', { name: 'Dni planu' })
+    const tablist = await screen.findByRole('tablist', { name: 'Plan days' })
     const tabs = within(tablist).getAllByRole('tab')
     expect(tabs).toHaveLength(3)
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
     expect(tabs[0]).toHaveAttribute('tabindex', '0')
     expect(tabs[0]).toHaveTextContent('Upper A')
-    expect(tabs[0]).toHaveTextContent('1 ćw. · 4 serie')
+    expect(tabs[0]).toHaveTextContent('1 ex. · 4 sets')
     expect(tabs[1]).toHaveAttribute('aria-selected', 'false')
     expect(tabs[1]).toHaveAttribute('tabindex', '-1')
-    expect(tabs[1]).toHaveTextContent('2 ćw. · 5 serii')
+    expect(tabs[1]).toHaveTextContent('2 ex. · 5 sets')
 
     const panels = screen.getAllByRole('tabpanel')
     expect(panels).toHaveLength(1)
     expect(tabs[0]).toHaveAttribute('aria-controls', panels[0].id)
     expect(panels[0]).toHaveAttribute('aria-labelledby', tabs[0].id)
-    expect(within(panels[0]).getByRole('textbox', { name: 'Nazwa dnia 1' }))
+    expect(within(panels[0]).getByRole('textbox', { name: 'Day name 1' }))
       .toHaveValue('Upper A')
-    expect(screen.queryByRole('textbox', { name: 'Nazwa dnia 2' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('textbox', { name: 'Day name 2' })).not.toBeInTheDocument()
   })
 
   it('switches and focuses day tabs with ArrowLeft, ArrowRight, Home and End', async () => {
     mocks.getTemplate.mockResolvedValue(multiDayTemplate)
     renderEditor('/templates/template-tabs/edit')
 
-    const tabs = within(await screen.findByRole('tablist', { name: 'Dni planu' }))
+    const tabs = within(await screen.findByRole('tablist', { name: 'Plan days' }))
       .getAllByRole('tab')
     tabs[0].focus()
 
@@ -288,7 +288,7 @@ describe('TemplateEditorPage accessibility', () => {
     expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
     expect(tabs[0]).toHaveAttribute('tabindex', '-1')
     expect(tabs[1]).toHaveAttribute('tabindex', '0')
-    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 2' })).toHaveValue('Lower A')
+    expect(screen.getByRole('textbox', { name: 'Day name 2' })).toHaveValue('Lower A')
 
     fireEvent.keyDown(tabs[1], { key: 'End' })
     expect(tabs[2]).toHaveFocus()
@@ -301,74 +301,74 @@ describe('TemplateEditorPage accessibility', () => {
     fireEvent.keyDown(tabs[0], { key: 'ArrowLeft' })
     expect(tabs[2]).toHaveFocus()
     expect(tabs[2]).toHaveAttribute('aria-selected', 'true')
-    expect(screen.queryByText('Niezapisane zmiany')).not.toBeInTheDocument()
+    expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
   })
 
   it('selects a newly added day', async () => {
     renderEditor()
 
     await screen.findByRole('tab', { name: /Upper A/ })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Dodaj dzień' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add day' })[0])
 
     const tabs = screen.getAllByRole('tab')
     expect(tabs).toHaveLength(2)
     expect(tabs[0]).toHaveAttribute('aria-selected', 'false')
     expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 2' })).toHaveValue('Dzień 2')
+    expect(screen.getByRole('textbox', { name: 'Day name 2' })).toHaveValue('Day 2')
   })
 
   it('selects the next neighbor when the selected day is removed', async () => {
     mocks.getTemplate.mockResolvedValue(multiDayTemplate)
     renderEditor('/templates/template-tabs/edit')
 
-    const tablist = await screen.findByRole('tablist', { name: 'Dni planu' })
+    const tablist = await screen.findByRole('tablist', { name: 'Plan days' })
     fireEvent.click(within(tablist).getByRole('tab', { name: /Lower A/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń dzień' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove day' }))
 
     const tabs = within(tablist).getAllByRole('tab')
     expect(tabs).toHaveLength(2)
     expect(tabs[1]).toHaveTextContent('Full Body')
     expect(tabs[1]).toHaveAttribute('aria-selected', 'true')
-    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 2' })).toHaveValue('Full Body')
+    expect(screen.getByRole('textbox', { name: 'Day name 2' })).toHaveValue('Full Body')
   })
 
   it('preserves unsaved day fields while switching panels', async () => {
     mocks.getTemplate.mockResolvedValue(multiDayTemplate)
     renderEditor('/templates/template-tabs/edit')
 
-    const tablist = await screen.findByRole('tablist', { name: 'Dni planu' })
-    const firstDayName = screen.getByRole('textbox', { name: 'Nazwa dnia 1' })
+    const tablist = await screen.findByRole('tablist', { name: 'Plan days' })
+    const firstDayName = screen.getByRole('textbox', { name: 'Day name 1' })
     fireEvent.change(firstDayName, { target: { value: 'Upper poprawiony' } })
 
     fireEvent.click(within(tablist).getByRole('tab', { name: /Lower A/ }))
     expect(firstDayName).not.toBeInTheDocument()
     fireEvent.click(within(tablist).getByRole('tab', { name: /Upper poprawiony/ }))
 
-    expect(screen.getByRole('textbox', { name: 'Nazwa dnia 1' }))
+    expect(screen.getByRole('textbox', { name: 'Day name 1' }))
       .toHaveValue('Upper poprawiony')
-    expect(screen.getByText('Niezapisane zmiany')).toBeInTheDocument()
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument()
   })
 
   it('treats an imported AI draft as unsaved', async () => {
     renderEditor()
 
-    expect(await screen.findByText('Niezapisane zmiany')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Zapisz szablon' })).toBeEnabled()
+    expect(await screen.findByText('Unsaved changes')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save template' })).toBeEnabled()
     fireEvent.click(getEditorBackButton())
 
-    expect(await screen.findByRole('dialog', { name: 'Opuścić edytor?' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Opuść bez zapisu' })).toBeEnabled()
+    expect(await screen.findByRole('dialog', { name: 'Leave editor?' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Leave without saving' })).toBeEnabled()
   })
 
   it('keeps a dirty draft when logout is cancelled', async () => {
     const router = renderEditor()
-    const name = await screen.findByRole('textbox', { name: 'Nazwa' })
+    const name = await screen.findByRole('textbox', { name: 'Name' })
     fireEvent.change(name, { target: { value: 'Upper / Lower zmieniony' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Wyloguj' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'Opuścić edytor?' })
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Zostań' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Leave editor?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Stay' }))
 
     expect(router.state.location.pathname).toBe('/templates/new')
     expect(name).toHaveValue('Upper / Lower zmieniony')
@@ -380,18 +380,18 @@ describe('TemplateEditorPage accessibility', () => {
     mocks.createTemplate.mockReturnValue(new Promise((resolve) => { resolveSave = () => resolve(undefined) }))
     renderEditor()
 
-    fireEvent.change(await screen.findByRole('textbox', { name: 'Nazwa' }), {
+    fireEvent.change(await screen.findByRole('textbox', { name: 'Name' }), {
       target: { value: 'Upper / Lower zmieniony' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Zapisz szablon' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save template' }))
     fireEvent.click(getEditorBackButton())
 
-    const dialog = await screen.findByRole('dialog', { name: 'Zapis w toku' })
-    expect(screen.getByRole('button', { name: 'Zapisuję… w formularzu' })).toBeDisabled()
-    expect(within(dialog).getByRole('button', { name: 'Zapisuję…' })).toBeDisabled()
+    const dialog = await screen.findByRole('dialog', { name: 'Saving in progress' })
+    expect(screen.getByRole('button', { name: 'Saving… in the form' })).toBeDisabled()
+    expect(within(dialog).getByRole('button', { name: 'Saving…' })).toBeDisabled()
 
     resolveSave()
-    expect(await screen.findByText('Lista planów')).toBeInTheDocument()
+    expect(await screen.findByText('Lista plans')).toBeInTheDocument()
   })
 
   it('keeps logout blocked during save and lets save success win', async () => {
@@ -404,15 +404,15 @@ describe('TemplateEditorPage accessibility', () => {
     ))
     const router = renderEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Zapisz szablon' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Wyloguj' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save template' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
 
-    const dialog = await screen.findByRole('dialog', { name: 'Zapis w toku' })
-    expect(within(dialog).getByRole('button', { name: 'Zapisuję…' })).toBeDisabled()
+    const dialog = await screen.findByRole('dialog', { name: 'Saving in progress' })
+    expect(within(dialog).getByRole('button', { name: 'Saving…' })).toBeDisabled()
     expect(mocks.logoutUser).not.toHaveBeenCalled()
 
     resolveSave()
-    expect(await screen.findByText('Lista planów')).toBeInTheDocument()
+    expect(await screen.findByText('Lista plans')).toBeInTheDocument()
     await waitFor(() => expect(router.state.location.pathname).toBe('/templates'))
 
     settleLogoutPreload()
@@ -427,24 +427,24 @@ describe('TemplateEditorPage accessibility', () => {
     mocks.createTemplate.mockRejectedValueOnce(new Error('write failed'))
     renderEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Zapisz szablon' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się zapisać planu.')
+    fireEvent.click(await screen.findByRole('button', { name: 'Save template' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the plan.')
     fireEvent.click(getEditorBackButton())
 
-    expect(await screen.findByRole('dialog', { name: 'Opuścić edytor?' })).toBeInTheDocument()
+    expect(await screen.findByRole('dialog', { name: 'Leave editor?' })).toBeInTheDocument()
   })
 
   it('keeps the persistent failure while the user edits the draft', async () => {
     mocks.createTemplate.mockRejectedValueOnce(new Error('write failed'))
     renderEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Zapisz szablon' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save template' }))
     const alert = await screen.findByRole('alert')
-    const name = screen.getByRole('textbox', { name: 'Nazwa' })
+    const name = screen.getByRole('textbox', { name: 'Name' })
     fireEvent.change(name, { target: { value: 'Aktualny plan po błędzie' } })
 
     expect(name).toHaveValue('Aktualny plan po błędzie')
-    expect(alert).toHaveTextContent('Nie udało się zapisać planu.')
+    expect(alert).toHaveTextContent('Could not save the plan.')
   })
 
   it('revalidates and retries with the current draft instead of the failed payload', async () => {
@@ -453,14 +453,14 @@ describe('TemplateEditorPage accessibility', () => {
       .mockResolvedValueOnce(undefined)
     renderEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Zapisz szablon' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save template' }))
     await screen.findByRole('alert')
-    fireEvent.change(screen.getByRole('textbox', { name: 'Nazwa' }), {
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
       target: { value: 'Plan poprawiony po błędzie' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByText('Lista planów')).toBeInTheDocument()
+    expect(await screen.findByText('Lista plans')).toBeInTheDocument()
     expect(mocks.createTemplate).toHaveBeenCalledTimes(2)
     expect(mocks.createTemplate.mock.calls[0]?.[1]).toMatchObject({ name: 'Upper / Lower' })
     expect(mocks.createTemplate.mock.calls[1]?.[1]).toMatchObject({ name: 'Plan poprawiony po błędzie' })
@@ -474,7 +474,7 @@ describe('TemplateEditorPage accessibility', () => {
       createdAt: 1,
       updatedAt: 2,
       days: [{
-        name: 'Dzień siłowy',
+        name: 'Day siłowy',
         exercises: [{
           exerciseId: 'bench-press',
           exerciseSource: 'global',
@@ -487,13 +487,13 @@ describe('TemplateEditorPage accessibility', () => {
     })
     const router = renderEditor('/templates/template-1/edit')
 
-    const name = await screen.findByRole('textbox', { name: 'Nazwa' })
+    const name = await screen.findByRole('textbox', { name: 'Name' })
     const form = name.closest('form')
     expect(name).toHaveValue('Plan zapisany')
     expect(form).not.toBeNull()
     expect(screen.queryByTestId('template-save-dock')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Zapisano w formularzu' })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Podsumowanie edytowanego planu')).toHaveTextContent('1ćw.')
+    expect(screen.getByLabelText('Plan editor summary')).toHaveTextContent('1ex.')
 
     await act(async () => {
       fireEvent.submit(form!)
@@ -507,7 +507,7 @@ describe('TemplateEditorPage accessibility', () => {
     fireEvent.change(name, { target: { value: 'Plan zapisany po zmianie' } })
     fireEvent.submit(form!)
 
-    expect(await screen.findByText('Lista planów')).toBeInTheDocument()
+    expect(await screen.findByText('Lista plans')).toBeInTheDocument()
     expect(mocks.updateTemplate).toHaveBeenCalledOnce()
     expect(mocks.updateTemplate).toHaveBeenCalledWith('template-1', expect.objectContaining({
       name: 'Plan zapisany po zmianie',

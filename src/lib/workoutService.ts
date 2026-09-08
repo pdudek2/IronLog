@@ -136,13 +136,13 @@ export async function updateWorkout(
     label: data.label ?? null,
     exercises: data.exercises ?? [],
   })
-  if (!isWorkoutUpdateResult(result)) throw new Error('Nieprawidłowa odpowiedź serwera.')
+  if (!isWorkoutUpdateResult(result)) throw new Error('Invalid server response.')
   return result
 }
 
 export async function deleteWorkout(id: string): Promise<WorkoutDeleteResult> {
   const user = auth.currentUser
-  if (!user) throw new Error('Brak aktywnej sesji użytkownika.')
+  if (!user) throw new Error('No active user session.')
   const previous = readWorkoutDeleteRecovery(user.uid)
   writeWorkoutDeleteRecovery(user.uid, previous?.workoutId === id
     ? previous
@@ -150,7 +150,7 @@ export async function deleteWorkout(id: string): Promise<WorkoutDeleteResult> {
 
   try {
     const result = await callAuthedApi<unknown>('/api/delete-workout', { workoutId: id }, user)
-    if (!isWorkoutDeleteResult(result)) throw new Error('Nieprawidłowa odpowiedź serwera.')
+    if (!isWorkoutDeleteResult(result)) throw new Error('Invalid server response.')
     if (result.status === 'deleted') {
       clearWorkoutDeleteRecovery(user.uid, id)
     } else if (readWorkoutDeleteRecovery(user.uid)?.workoutId === id) {
@@ -300,12 +300,12 @@ export async function retryWorkoutMaterialization(workoutId: string): Promise<vo
 class ApiRejectedError extends Error {}
 
 async function callAuthedApi<T>(path: string, body: unknown, user = auth.currentUser): Promise<T> {
-  if (!user) throw new Error('Brak aktywnej sesji użytkownika.')
+  if (!user) throw new Error('No active user session.')
 
   const idToken = await user.getIdToken().catch((error: unknown) => {
-    throw new ApiRejectedError(error instanceof Error ? error.message : 'Nie udało się uwierzytelnić.')
+    throw new ApiRejectedError(error instanceof Error ? error.message : 'Could not authenticate.')
   })
-  if (auth.currentUser !== user) throw new ApiRejectedError('Konto użytkownika zmieniło się.')
+  if (auth.currentUser !== user) throw new ApiRejectedError('The user account has changed.')
   const response = await fetch(path, {
     method: 'POST',
     headers: {
@@ -319,9 +319,9 @@ async function callAuthedApi<T>(path: string, body: unknown, user = auth.current
   if (!response.ok) {
     const errorPayload = payload as { error?: string } | null
     const ErrorType = response.status >= 400 && response.status < 500 ? ApiRejectedError : Error
-    throw new ErrorType(errorPayload?.error ?? 'Operacja serwerowa nie powiodła się.')
+    throw new ErrorType(errorPayload?.error ?? 'The server operation failed.')
   }
-  if (!payload) throw new Error('Nieprawidłowa odpowiedź serwera.')
+  if (!payload) throw new Error('Invalid server response.')
   return payload as T
 }
 

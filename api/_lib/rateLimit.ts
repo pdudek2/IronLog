@@ -4,7 +4,7 @@ export class RateLimitError extends Error {
   retryAfterSeconds: number
 
   constructor(retryAfterSeconds: number) {
-    super('Zbyt wiele żądań. Odczekaj chwilę i spróbuj ponownie.')
+    super('Too many requests. Wait a moment and try again.')
     this.name = 'RateLimitError'
     this.retryAfterSeconds = retryAfterSeconds
   }

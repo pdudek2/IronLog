@@ -25,14 +25,14 @@ import {
   type TemplateExercise,
   type WorkoutTemplate,
 } from '../lib/templateService'
-import { polishPlural } from '../lib/polishPlural'
+import { pluralize } from '../lib/pluralize'
 
 type DraftDay = TemplateDay & { _id: string }
 
 function emptyDay(index: number): DraftDay {
   return {
     _id: crypto.randomUUID(),
-    name: `Dzień ${index + 1}`,
+    name: `Day ${index + 1}`,
     exercises: [],
   }
 }
@@ -67,7 +67,7 @@ function serializeDraftState(name: string, days: Array<Pick<TemplateDay, 'name' 
 }
 
 function defaultSerializableDays(): TemplateDay[] {
-  return [{ name: 'Dzień 1', exercises: [] }]
+  return [{ name: 'Day 1', exercises: [] }]
 }
 
 function normalizeTemplateExercise(exercise: TemplateExercise): TemplateExercise {
@@ -121,7 +121,7 @@ export default function TemplateEditorPage() {
       .then((nextTemplate) => {
         if (cancelled) return
         if (!nextTemplate) {
-          toast.error('Nie znaleziono szablonu.')
+          toast.error('Template not found.')
           navigate('/templates', { replace: true })
           return
         }
@@ -138,7 +138,7 @@ export default function TemplateEditorPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          toast.error('Nie udało się załadować szablonu.')
+          toast.error('Could not load the template.')
           navigate('/templates', { replace: true })
         }
       })
@@ -155,11 +155,11 @@ export default function TemplateEditorPage() {
     if (isEdit || searchParams.get('draft') !== 'ai') return
 
     if (!initialDraft) {
-      toast.message('Nie znaleziono draftu AI. Możesz złożyć szablon ręcznie.')
+      toast.message('AI draft not found. You can build a template manually.')
       return
     }
 
-    toast.success('Załadowano draft wygenerowany przez AI.')
+    toast.success('AI-generated draft loaded.')
   }, [initialDraft, isEdit, searchParams])
 
   const totalExercises = useMemo(
@@ -204,7 +204,7 @@ export default function TemplateEditorPage() {
       .filter((_, dayIndex) => dayIndex !== index)
       .map((day, dayIndex) => ({
         ...day,
-        name: day.name.trim() || `Dzień ${dayIndex + 1}`,
+        name: day.name.trim() || `Day ${dayIndex + 1}`,
       }))
 
     setDays(nextDays)
@@ -234,7 +234,7 @@ export default function TemplateEditorPage() {
     setDays((prev) => prev.map((day, index) => {
       if (index !== dayIndex) return day
       if (day.exercises.some((exercise) => exercise.exerciseId === exerciseId && exercise.exerciseSource === source)) {
-        toast.message('To ćwiczenie jest już w tym dniu.')
+        toast.message('This exercise is already in this day.')
         return day
       }
 
@@ -283,12 +283,12 @@ export default function TemplateEditorPage() {
 
     const trimmedName = name.trim()
     if (trimmedName.length < 2) {
-      toast.error('Nazwa szablonu musi mieć co najmniej 2 znaki.')
+      toast.error('Template name must contain at least 2 characters.')
       return
     }
 
     if (days.every((day) => day.exercises.length === 0)) {
-      toast.error('Dodaj przynajmniej jedno ćwiczenie do szablonu.')
+      toast.error('Add at least one exercise to the template.')
       return
     }
 
@@ -298,7 +298,7 @@ export default function TemplateEditorPage() {
     const payload = {
       name: trimmedName,
       days: days.map((day, index) => ({
-        name: day.name.trim() || `Dzień ${index + 1}`,
+        name: day.name.trim() || `Day ${index + 1}`,
         exercises: day.exercises.map(normalizeTemplateExercise),
       })),
     }
@@ -306,18 +306,18 @@ export default function TemplateEditorPage() {
     try {
       if (isEdit && id) {
         await updateTemplate(id, payload)
-        toast.success('Szablon zaktualizowany')
+        toast.success('Template updated')
       } else {
         await createTemplate(user.uid, payload)
         clearTemplateDraft()
-        toast.success('Szablon zapisany')
+        toast.success('Template saved')
       }
       setSavedSnapshot(serializeDraftState(payload.name, payload.days))
       leaveGuard.reset()
       leaveGuard.allowNextNavigation()
       navigate('/templates')
     } catch {
-      setSaveError('Nie udało się zapisać planu.')
+      setSaveError('Could not save the plan.')
       setSaving(false)
     }
   }
@@ -328,7 +328,7 @@ export default function TemplateEditorPage() {
   }
 
   if (loading) {
-    return <LoadingState message="Ładowanie edytora..." />
+    return <LoadingState message="Loading editor..." />
   }
 
   return (
@@ -340,19 +340,19 @@ export default function TemplateEditorPage() {
           className="template-editor-back"
         >
           <ChevronLeft size={16} aria-hidden="true" />
-          Plany
+          Plans
         </button>
 
         <div className="template-editor-heading">
-          <h1>{isEdit ? 'Edytuj plan' : 'Nowy plan'}</h1>
-          <div className="planner-mini-stats" aria-label="Podsumowanie edytowanego planu">
+          <h1>{isEdit ? 'Edit plan' : 'New plan'}</h1>
+          <div className="planner-mini-stats" aria-label="Plan editor summary">
             <span>
               <strong>{days.length}</strong>
-              {polishPlural(days.length, 'dzień', 'dni', 'dni')}
+              {pluralize(days.length, 'day', 'days')}
             </span>
             <span>
               <strong>{totalExercises}</strong>
-              ćw.
+              ex.
             </span>
           </div>
         </div>
@@ -362,19 +362,19 @@ export default function TemplateEditorPage() {
         <div className="template-editor-layout">
           <div className="template-editor-main">
             <section className="template-name-panel">
-              <label htmlFor="template-name" className="planner-kicker">Nazwa</label>
+              <label htmlFor="template-name" className="planner-kicker">Name</label>
               <input
                 id="template-name"
                 aria-describedby={needsName ? 'template-name-hint' : undefined}
                 type="text"
                 value={name}
                 onChange={(event) => setName(event.target.value)}
-                placeholder="np. Upper / Lower 4 dni"
+                placeholder="E.g. Upper / Lower 4 days"
                 className="template-text-input w-full px-4 py-3 text-sm outline-none text-white"
               />
               {needsName && (
                 <p id="template-name-hint" className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-                  Dodaj nazwę planu (co najmniej 2 znaki), aby go zapisać.
+                  Enter a plan name (at least 2 characters) to save it.
                 </p>
               )}
             </section>
@@ -382,11 +382,11 @@ export default function TemplateEditorPage() {
             <div
               className="planner-template-days"
               role="tablist"
-              aria-label="Dni planu"
+              aria-label="Plan days"
               aria-orientation="horizontal"
             >
               {days.map((day, dayIndex) => {
-                const dayDisplayName = day.name.trim() || `Dzień ${dayIndex + 1}`
+                const dayDisplayName = day.name.trim() || `Day ${dayIndex + 1}`
                 const targetSets = day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)
                 const selected = day._id === selectedDayId
 
@@ -398,7 +398,7 @@ export default function TemplateEditorPage() {
                     role="tab"
                     aria-selected={selected}
                     aria-controls={`template-day-panel-${day._id}`}
-                    aria-label={`Dzień ${dayIndex + 1}: ${dayDisplayName}, ${day.exercises.length} ${polishPlural(day.exercises.length, 'ćwiczenie', 'ćwiczenia', 'ćwiczeń')}, ${targetSets} ${polishPlural(targetSets, 'seria docelowa', 'serie docelowe', 'serii docelowych')}`}
+                    aria-label={`Day ${dayIndex + 1}: ${dayDisplayName}, ${day.exercises.length} ${pluralize(day.exercises.length, 'exercise', 'exercises')}, ${targetSets} ${pluralize(targetSets, 'target set', 'target sets')}`}
                     tabIndex={selected ? 0 : -1}
                     onClick={() => setSelectedDayId(day._id)}
                     onKeyDown={(event) => handleDayTabKeyDown(event, dayIndex)}
@@ -406,8 +406,8 @@ export default function TemplateEditorPage() {
                   >
                     <span>{dayDisplayName}</span>
                     <small>
-                      {day.exercises.length} ćw. · {targetSets}{' '}
-                      {polishPlural(targetSets, 'seria', 'serie', 'serii')}
+                      {day.exercises.length} ex. · {targetSets}{' '}
+                      {pluralize(targetSets, 'set', 'sets')}
                     </small>
                   </button>
                 )
@@ -428,7 +428,7 @@ export default function TemplateEditorPage() {
                       htmlFor={`template-day-name-${selectedDay._id}`}
                       className="planner-kicker"
                     >
-                      Nazwa dnia <span className="sr-only">{selectedDayIndex + 1}</span>
+                      Day name <span className="sr-only">{selectedDayIndex + 1}</span>
                     </label>
                     <input
                       id={`template-day-name-${selectedDay._id}`}
@@ -449,7 +449,7 @@ export default function TemplateEditorPage() {
                       className="template-day-remove"
                     >
                       <Trash2 size={13} />
-                      Usuń dzień
+                      Remove day
                     </button>
                   )}
                 </div>
@@ -457,10 +457,10 @@ export default function TemplateEditorPage() {
                 <div className="template-exercise-list">
                   {selectedDay.exercises.length > 0 && (
                     <div className="template-exercise-columns" aria-hidden="true">
-                      <span>Ćwiczenie</span>
-                      <span>Serie</span>
-                      <span>Powt.</span>
-                      <span>Ciężar ({units})</span>
+                      <span>Exercise</span>
+                      <span>Sets</span>
+                      <span>Reps</span>
+                      <span>Weight ({units})</span>
                     </div>
                   )}
                   {selectedDay.exercises.map((exercise, exerciseIndex) => (
@@ -473,7 +473,7 @@ export default function TemplateEditorPage() {
                           <div className="template-exercise-identity">
                             <p>{exercise.name}</p>
                             {exercise.exerciseSource === 'user' && (
-                              <span className="template-exercise-source">moje</span>
+                              <span className="template-exercise-source">mine</span>
                             )}
                           </div>
                         </div>
@@ -481,7 +481,7 @@ export default function TemplateEditorPage() {
                         <button
                           type="button"
                           onClick={() => removeExercise(selectedDayIndex, exerciseIndex)}
-                          aria-label={`Usuń ćwiczenie ${exercise.name} z dnia ${selectedDay.name.trim() || `Dzień ${selectedDayIndex + 1}`}`}
+                          aria-label={`Remove exercise ${exercise.name} from day ${selectedDay.name.trim() || `Day ${selectedDayIndex + 1}`}`}
                           className="planner-icon-action planner-icon-action--danger"
                         >
                           <Trash2 size={13} aria-hidden="true" />
@@ -490,10 +490,10 @@ export default function TemplateEditorPage() {
 
                       <div className="template-exercise-inputs">
                         <label>
-                          <span className="template-input-label">Serie — {exercise.name}</span>
+                          <span className="template-input-label">Sets — {exercise.name}</span>
                           <input
                             type="number"
-                            aria-label={`Serie — ${exercise.name}`}
+                            aria-label={`Sets — ${exercise.name}`}
                             inputMode="numeric"
                             min={1}
                             value={exercise.sets === 0 ? '' : exercise.sets}
@@ -506,10 +506,10 @@ export default function TemplateEditorPage() {
                         </label>
 
                         <label>
-                          <span className="template-input-label">Powtórzenia docelowe — {exercise.name}</span>
+                          <span className="template-input-label">Target reps — {exercise.name}</span>
                           <input
                             type="number"
-                            aria-label={`Powtórzenia docelowe — ${exercise.name}`}
+                            aria-label={`Target reps — ${exercise.name}`}
                             inputMode="numeric"
                             min={0}
                             value={exercise.targetReps === 0 ? '' : exercise.targetReps}
@@ -522,10 +522,10 @@ export default function TemplateEditorPage() {
                         </label>
 
                         <label>
-                          <span className="template-input-label">Ciężar startowy ({units}) — {exercise.name}</span>
+                          <span className="template-input-label">Starting weight ({units}) — {exercise.name}</span>
                           <input
                             type="number"
-                            aria-label={`Ciężar startowy (${units}) — ${exercise.name}`}
+                            aria-label={`Starting weight (${units}) — ${exercise.name}`}
                             inputMode="decimal"
                             min={0}
                             step={units === 'lbs' ? '0.1' : '0.5'}
@@ -543,7 +543,7 @@ export default function TemplateEditorPage() {
 
                   {selectedDay.exercises.length === 0 && (
                     <div className="template-day-empty">
-                      Dodaj pierwsze ćwiczenie do tego dnia.
+                      Add the first exercise to this day.
                     </div>
                   )}
                 </div>
@@ -556,7 +556,7 @@ export default function TemplateEditorPage() {
                     whileTap={{ scale: 0.97 }}
                   >
                     <Plus size={15} />
-                    Dodaj ćwiczenie
+                    Add exercise
                   </motion.button>
                 </div>
               </section>
@@ -570,7 +570,7 @@ export default function TemplateEditorPage() {
                 whileTap={{ scale: 0.97 }}
               >
                 <Plus size={15} />
-                Dodaj dzień
+                Add day
               </motion.button>
 
               {saveState !== 'persisted-clean' && (
@@ -578,19 +578,19 @@ export default function TemplateEditorPage() {
                   type="submit"
                   disabled={!canSubmit || saveState === 'saving' || saveState === 'error'}
                   aria-label={saveState === 'saving'
-                    ? 'Zapisuję… w formularzu'
+                    ? 'Saving… in the form'
                     : isEdit
-                      ? 'Zapisz zmiany w formularzu'
-                      : 'Zapisz szablon w formularzu'}
+                      ? 'Save changes in form'
+                      : 'Save template in form'}
                   className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
                   whileTap={{ scale: 0.97 }}
                 >
                   <Pencil size={15} />
                   {saveState === 'saving'
-                    ? 'Zapisuję…'
+                    ? 'Saving…'
                     : isEdit
-                      ? 'Zapisz zmiany'
-                      : 'Zapisz szablon'}
+                      ? 'Save changes'
+                      : 'Save template'}
                 </motion.button>
               )}
             </div>
@@ -598,14 +598,14 @@ export default function TemplateEditorPage() {
 
           <aside className="desktop-sticky hidden xl:block template-editor-side">
             <div className="template-editor-summary">
-              <p className="planner-kicker">Podsumowanie</p>
+              <p className="planner-kicker">Summary</p>
               <div className="template-editor-summary-grid">
                 <div>
-                  <span>Dni</span>
+                  <span>Days</span>
                   <strong>{days.length}</strong>
                 </div>
                 <div>
-                  <span>Ćwiczenia</span>
+                  <span>Exercises</span>
                   <strong>{totalExercises}</strong>
                 </div>
               </div>
@@ -619,7 +619,7 @@ export default function TemplateEditorPage() {
               whileTap={{ scale: 0.97 }}
             >
               <Plus size={15} />
-              Dodaj dzień
+              Add day
             </motion.button>
           </aside>
         </div>
@@ -645,12 +645,12 @@ export default function TemplateEditorPage() {
 
       {leaveGuard.blocked && (
         <ConfirmDialog
-          title={saving ? 'Zapis w toku' : 'Opuścić edytor?'}
+          title={saving ? 'Saving in progress' : 'Leave editor?'}
           message={saving
-            ? 'Poczekaj na wynik zapisu. Po zakończeniu przejdziesz dalej albo będzie można ponowić zapis.'
-            : 'Masz niezapisane zmiany w szablonie. Jeśli wyjdziesz teraz, stracisz bieżące poprawki.'}
-          confirmLabel={saving ? 'Zapisuję…' : 'Opuść bez zapisu'}
-          cancelLabel="Zostań"
+            ? 'Wait for saving to finish. You can then continue or retry saving.'
+            : 'You have unsaved template changes. Leaving now will discard them.'}
+          confirmLabel={saving ? 'Saving…' : 'Leave without saving'}
+          cancelLabel="Stay"
           danger={!saving}
           confirmDisabled={saving}
           onConfirm={leaveGuard.proceed}

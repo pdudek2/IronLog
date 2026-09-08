@@ -1,13 +1,13 @@
 import type { WorkoutSummary } from './workoutService'
 
 const CATEGORY_WORKLOAD_INSIGHTS: Record<string, string> = {
-  chest: 'Najwięcej pracy poszło na klatkę.',
-  back: 'Najwięcej pracy poszło na plecy.',
-  legs: 'Najwięcej pracy wykonały nogi.',
-  shoulders: 'Najwięcej pracy poszło w barki.',
-  arms: 'Najwięcej pracy poszło w ramiona.',
-  core: 'Najwięcej pracy wykonał core.',
-  cardio: 'Najmocniejszym akcentem było cardio.',
+  chest: 'Chest accounted for most of the work.',
+  back: 'Back accounted for most of the work.',
+  legs: 'Legs accounted for most of the work.',
+  shoulders: 'Shoulders accounted for most of the work.',
+  arms: 'Arms accounted for most of the work.',
+  core: 'Core accounted for most of the work.',
+  cardio: 'Cardio was the main focus.',
 }
 
 export function getCategoryWorkloadInsight(
@@ -15,13 +15,13 @@ export function getCategoryWorkloadInsight(
   fallbackLabel: string,
 ): string {
   return CATEGORY_WORKLOAD_INSIGHTS[category]
-    ?? `Najwięcej pracy przypadło kategorii „${fallbackLabel}”.`
+    ?? `Most of the work went to the category “${fallbackLabel}”.`
 }
 
 export function workoutTitle(workout: Pick<WorkoutSummary, 'label' | 'exercises'>): string {
   if (workout.label?.trim()) return workout.label.trim()
   const names = workout.exercises.map((exercise) => exercise.name.trim()).filter(Boolean)
-  if (!names.length) return 'Trening'
+  if (!names.length) return 'Workout'
   if (names.length <= 2) return names.join(' + ')
   return `${names[0]} +${names.length - 1}`
 }

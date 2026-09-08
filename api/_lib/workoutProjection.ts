@@ -563,7 +563,7 @@ export async function deleteFinishedWorkoutForUser(
 
 function assertOwnership(currentUserId: string, resourceUserId: string): void {
   if (currentUserId !== resourceUserId) {
-    throw new ApiError(403, 'Brak dostępu do tego treningu.', {
+    throw new ApiError(403, 'You do not have access to this workout.', {
       code: 'resource_owner_mismatch',
     })
   }
@@ -571,7 +571,7 @@ function assertOwnership(currentUserId: string, resourceUserId: string): void {
 
 function assertFinishedWorkout(workout: StoredWorkoutMetadata): void {
   if (workout.finishedAt <= 0) {
-    throw new Error('Można synchronizować tylko zakończone treningi.')
+    throw new Error('Only completed workouts can be synced.')
   }
 }
 
@@ -603,7 +603,7 @@ function parseWorkoutUpdate(raw: unknown): Pick<StoredWorkout, 'label' | 'exerci
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error('Niepoprawny payload treningu.')
+    throw new Error('Invalid workout payload.')
   }
   return value as Record<string, unknown>
 }
@@ -661,25 +661,25 @@ function requireFinishedTombstone(
 }
 
 function closureConflict(): ApiError {
-  return new ApiError(409, 'Sesja ma już inny wynik zamknięcia.', {
+  return new ApiError(409, 'The session already has a different closure outcome.', {
     code: 'closure_conflict',
   })
 }
 
 function workoutNotFound(): ApiError {
-  return new ApiError(404, 'Trening nie istnieje.', {
+  return new ApiError(404, 'Workout not found.', {
     code: 'workout_not_found',
   })
 }
 
 function asNonEmptyString(value: unknown, field: string): string {
-  if (typeof value !== 'string' || !value.trim()) throw new Error(`Brak pola ${field}.`)
+  if (typeof value !== 'string' || !value.trim()) throw new Error(`Missing field ${field}.`)
   return value.trim()
 }
 
 function asNumber(value: unknown, field: string): number {
   const numeric = toFiniteNumber(value)
-  if (numeric < 0) throw new Error(`Niepoprawne pole ${field}.`)
+  if (numeric < 0) throw new Error(`Invalid field ${field}.`)
   return numeric
 }
 

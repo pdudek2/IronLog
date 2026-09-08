@@ -147,7 +147,7 @@ describe('workout closure', () => {
       sessionId: input.sessionId,
       sessionRevision: 'revision-1',
     }, { db, now: () => FINISHED_AT, materialize }))
-      .rejects.toMatchObject({ status: 400, message: 'Niepoprawny ciężar w serii.' })
+      .rejects.toMatchObject({ status: 400, message: 'Invalid set weight.' })
 
     const state = await readClosure()
     expect(state.active.exists).toBe(true)

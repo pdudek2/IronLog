@@ -116,7 +116,7 @@ export default function BottomNav() {
   return (
     <nav
       ref={navRef}
-      aria-label="Nawigacja dolna"
+      aria-label="Bottom navigation"
       aria-hidden={navHidden ? true : undefined}
       inert={navHidden}
       className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex justify-center lg:hidden"
@@ -139,7 +139,7 @@ export default function BottomNav() {
 
         <NavBtn
           icon={<TrendingUp size={20} />}
-          label="Postępy"
+          label="Progress"
           active={path.startsWith('/progress')}
           preloadTo="/progress"
           onClick={() => go('/progress')}
@@ -147,7 +147,7 @@ export default function BottomNav() {
 
         <NavBtn
           icon={<Layers3 size={20} />}
-          label="Plany"
+          label="Plans"
           active={path.startsWith('/templates')}
           preloadTo="/templates"
           onClick={() => go('/templates')}
@@ -155,7 +155,7 @@ export default function BottomNav() {
 
         <NavBtn
           icon={<Dumbbell size={20} />}
-          label="Ćwiczenia"
+          label="Exercises"
           active={path.startsWith('/exercises')}
           preloadTo="/exercises"
           onClick={() => go('/exercises')}
@@ -177,14 +177,14 @@ export default function BottomNav() {
           whileTap={{ scale: 0.88 }}
           whileHover={{ scale: 1.06 }}
           aria-current={workoutActive ? 'page' : undefined}
-          aria-label={hasActiveWork ? 'Wznów trening' : 'Rozpocznij nowy trening'}
+          aria-label={hasActiveWork ? 'Resume workout' : 'Start new workout'}
         >
           <Plus size={22} strokeWidth={2.5} />
         </motion.button>
 
         <NavBtn
           icon={<History size={20} />}
-          label="Historia"
+          label="History"
           active={path.startsWith('/history')}
           preloadTo="/history"
           onClick={() => go('/history')}

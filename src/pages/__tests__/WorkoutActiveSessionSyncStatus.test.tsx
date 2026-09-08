@@ -4,13 +4,13 @@ import { describe, expect, it, vi } from 'vitest'
 import { ActiveSessionSyncStatus } from '../../components/workout/ActiveSessionSyncStatus'
 
 describe('ActiveSessionSyncStatus', () => {
-  it('keeps a persistent Polish warning with a viable retry action after autosave failure', () => {
+  it('keeps a persistent English warning with a viable retry action after autosave failure', () => {
     const onRetry = vi.fn()
     render(<ActiveSessionSyncStatus status="failed" onRetry={onRetry} onReload={vi.fn()} />)
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Nie udało się zsynchronizować aktywnej sesji.')
-    expect(screen.getByRole('alert')).toHaveTextContent('Dane są zachowane na tym urządzeniu.')
-    fireEvent.click(screen.getByRole('button', { name: 'Ponów synchronizację' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not sync the active session.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Your data is saved on this device.')
+    fireEvent.click(screen.getByRole('button', { name: 'Retry sync' }))
     expect(onRetry).toHaveBeenCalledOnce()
   })
 
@@ -24,10 +24,10 @@ describe('ActiveSessionSyncStatus', () => {
       />,
     )
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Sesja zmieniła się na innym urządzeniu.')
-    expect(screen.getByRole('alert')).toHaveTextContent('Wczytanie jej zastąpi niezapisane zmiany')
-    expect(screen.queryByRole('button', { name: 'Ponów synchronizację' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Wczytaj nowszą wersję' }))
+    expect(screen.getByRole('alert')).toHaveTextContent('The session changed on another device.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Loading it will replace unsaved changes')
+    expect(screen.queryByRole('button', { name: 'Retry sync' })).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Load newer version' }))
     expect(onReload).toHaveBeenCalledOnce()
   })
 
@@ -35,7 +35,7 @@ describe('ActiveSessionSyncStatus', () => {
     const { rerender } = render(
       <ActiveSessionSyncStatus status="retrying" onRetry={vi.fn()} onReload={vi.fn()} />,
     )
-    expect(screen.getByRole('button', { name: 'Synchronizuję…' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Syncing…' })).toBeDisabled()
 
     rerender(<ActiveSessionSyncStatus status="idle" onRetry={vi.fn()} onReload={vi.fn()} />)
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()

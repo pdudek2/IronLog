@@ -57,7 +57,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''
 
     if (apiKey.length < 20) {
-      sendJson(res, 400, { error: 'Brak poprawnego Claude API key.' })
+      sendJson(res, 400, { error: 'A valid Claude API key is required.' })
       return
     }
 
@@ -91,7 +91,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       })
       .sort((a, b) => {
         const rankDiff = rankModel(a.id) - rankModel(b.id)
-        return rankDiff !== 0 ? rankDiff : a.label.localeCompare(b.label, 'pl')
+        return rankDiff !== 0 ? rankDiff : a.label.localeCompare(b.label, 'en-US')
       })
 
     sendJson(res, 200, { models })
@@ -102,6 +102,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    sendApiError(res, error, { fallbackMessage: 'Nie udało się pobrać modeli Claude.' })
+    sendApiError(res, error, { fallbackMessage: 'Could not load Claude models.' })
   }
 }

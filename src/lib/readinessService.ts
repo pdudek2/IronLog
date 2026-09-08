@@ -73,7 +73,7 @@ export function computeReadinessScore(entry: Pick<ReadinessEntry, 'sleep' | 'moo
   const raw = entry.sleep * 0.4 + entry.mood * 0.3 + (6 - entry.soreness) * 0.3
   const score = Math.round(((raw - 1) / 4) * 100)
 
-  if (score >= 70) return { score, tone: 'high', color: 'var(--accent)', label: 'Gotowy' }
-  if (score >= 40) return { score, tone: 'mid', color: '#f5a623', label: 'Umiarkowany' }
-  return { score, tone: 'low', color: 'var(--danger)', label: 'Odpoczynek' }
+  if (score >= 70) return { score, tone: 'high', color: 'var(--accent)', label: 'Ready' }
+  if (score >= 40) return { score, tone: 'mid', color: '#f5a623', label: 'Moderate' }
+  return { score, tone: 'low', color: 'var(--danger)', label: 'Rest' }
 }

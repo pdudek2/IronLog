@@ -99,9 +99,9 @@ describe('ReadinessWidget data states', () => {
 
     render(<ReadinessWidget />)
 
-    expect(await screen.findByText('Nie udało się wczytać gotowości')).toBeInTheDocument()
+    expect(await screen.findByText('Could not load readiness')).toBeInTheDocument()
     expect(screen.queryByText('readiness-prompt')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('2026-07-12')).toBeInTheDocument()
     expect(mocks.getReadiness).toHaveBeenCalledTimes(2)
   })
@@ -193,7 +193,7 @@ describe('ReadinessWidget data states', () => {
     )
 
     expect(await screen.findByText('compact-2026-07-12')).toBeInTheDocument()
-    expect(screen.queryByText('dzisiejszy wynik')).not.toBeInTheDocument()
+    expect(screen.queryByText('today’s score')).not.toBeInTheDocument()
     expect(mocks.getReadiness).toHaveBeenCalledTimes(1)
   })
 
@@ -237,7 +237,7 @@ describe('ReadinessWidget data states', () => {
 
     render(<ReadinessWidget />)
 
-    expect(await screen.findByText('Nie udało się wczytać gotowości')).toBeInTheDocument()
+    expect(await screen.findByText('Could not load readiness')).toBeInTheDocument()
     expect(consoleError).toHaveBeenCalledWith(
       '[ReadinessWidget] load failed',
       expect.any(Error),

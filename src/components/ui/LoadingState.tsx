@@ -15,7 +15,7 @@ function LoadingPanel({ message }: { message: string }) {
 }
 
 export default function LoadingState({
-  message = 'Ładowanie...',
+  message = 'Loading...',
   fullScreen = true,
 }: LoadingStateProps) {
   if (!fullScreen) return <LoadingPanel message={message} />

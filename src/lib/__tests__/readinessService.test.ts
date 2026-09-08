@@ -59,14 +59,14 @@ describe('computeReadinessScore', () => {
     const result = computeReadinessScore({ sleep: 5, mood: 5, soreness: 1 })
     expect(result.score).toBe(100)
     expect(result.tone).toBe('high')
-    expect(result.label).toBe('Gotowy')
+    expect(result.label).toBe('Ready')
   })
 
   it('returns min score (0) for worst inputs (1,1,5)', () => {
     const result = computeReadinessScore({ sleep: 1, mood: 1, soreness: 5 })
     expect(result.score).toBe(0)
     expect(result.tone).toBe('low')
-    expect(result.label).toBe('Odpoczynek')
+    expect(result.label).toBe('Rest')
   })
 
   it('returns mid-range score for average inputs (3,3,3)', () => {
@@ -75,7 +75,7 @@ describe('computeReadinessScore', () => {
     const result = computeReadinessScore({ sleep: 3, mood: 3, soreness: 3 })
     expect(result.score).toBe(50)
     expect(result.tone).toBe('mid')
-    expect(result.label).toBe('Umiarkowany')
+    expect(result.label).toBe('Moderate')
   })
 
   it('tone=high when score >= 70', () => {
@@ -100,7 +100,7 @@ describe('computeReadinessScore', () => {
     // score=round(((1.6-1)/4)*100)=round(15)=15
     const result = computeReadinessScore({ sleep: 1, mood: 2, soreness: 4 })
     expect(result.tone).toBe('low')
-    expect(result.label).toBe('Odpoczynek')
+    expect(result.label).toBe('Rest')
     expect(result.score).toBeLessThan(40)
   })
 

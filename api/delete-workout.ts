@@ -17,13 +17,13 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const body = await readJsonBody<DeleteWorkoutBody>(req, { maxBytes: 8 * 1024 })
 
     if (!body.workoutId) {
-      sendJson(res, 400, { error: 'Brak workoutId.' })
+      sendJson(res, 400, { error: 'Missing workoutId.' })
       return
     }
 
     const result = await deleteFinishedWorkoutForUser(userId, body.workoutId)
     sendJson(res, 200, result)
   } catch (error) {
-    sendApiError(res, error, { fallbackMessage: 'Nie udało się usunąć treningu.' })
+    sendApiError(res, error, { fallbackMessage: 'Could not delete the workout.' })
   }
 }

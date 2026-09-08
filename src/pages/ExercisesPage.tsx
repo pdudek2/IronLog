@@ -18,38 +18,38 @@ import ConfirmDialog from '../components/ConfirmDialog'
 // ─── Labels ──────────────────────────────────────────────────────────────────
 
 const CATEGORY_LABELS: Record<Category | 'all', string> = {
-  all: 'Wszystkie',
-  chest: 'Klatka',
-  back: 'Plecy',
-  legs: 'Nogi',
-  shoulders: 'Barki',
-  arms: 'Ramiona',
+  all: 'All',
+  chest: 'Chest',
+  back: 'Back',
+  legs: 'Legs',
+  shoulders: 'Shoulders',
+  arms: 'Arms',
   core: 'Core',
   cardio: 'Cardio',
 }
 
 const EQUIPMENT_LABELS: Record<Equipment | 'all', string> = {
-  all: 'Wszystkie',
-  barbell: 'Sztanga',
-  dumbbell: 'Hantle',
-  cable: 'Kabel',
-  machine: 'Maszyna',
-  bodyweight: 'Własne ciało',
+  all: 'All',
+  barbell: 'Barbell',
+  dumbbell: 'Dumbbells',
+  cable: 'Cable',
+  machine: 'Machine',
+  bodyweight: 'Bodyweight',
   kettlebell: 'Kettlebell',
 }
 
 const MUSCLE_LABELS: Record<MuscleGroup, string> = {
-  chest: 'Klatka',
-  back: 'Plecy',
-  quads: 'Quady',
-  hamstrings: 'Dwugłowe',
-  glutes: 'Pośladki',
-  shoulders: 'Barki',
+  chest: 'Chest',
+  back: 'Back',
+  quads: 'Quads',
+  hamstrings: 'Hamstrings',
+  glutes: 'Glutes',
+  shoulders: 'Shoulders',
   triceps: 'Triceps',
   biceps: 'Biceps',
-  forearms: 'Przedramiona',
+  forearms: 'Forearms',
   core: 'Core',
-  calves: 'Łydki',
+  calves: 'Calves',
 }
 
 const CATEGORIES = (Object.keys(CATEGORY_LABELS) as (Category | 'all')[])
@@ -98,7 +98,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
     e.preventDefault()
     const trimmed = name.trim()
     if (trimmed.length < 2) {
-      setError({ message: 'Nazwa musi mieć co najmniej 2 znaki.', field: 'name' })
+      setError({ message: 'Name must contain at least 2 characters.', field: 'name' })
       nameInputRef.current?.focus()
       return
     }
@@ -108,7 +108,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
       await onSubmit({ name: trimmed, category, equipment, muscles })
     } catch (nextError) {
       setError({
-        message: nextError instanceof Error ? nextError.message : 'Błąd zapisu. Spróbuj ponownie.',
+        message: nextError instanceof Error ? nextError.message : 'Could not save. Try again.',
         field: null,
       })
       setSaving(false)
@@ -151,12 +151,12 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
             onClick={onClose}
             className="mobile-touch-target flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
             style={{ color: 'var(--muted)' }}
-            aria-label="Zamknij formularz"
+            aria-label="Close form"
           >
             <X size={16} />
           </button>
           <p id={titleId} className="text-sm font-semibold text-white">
-            {mode === 'edit' ? 'Edytuj własne ćwiczenie' : 'Dodaj własne ćwiczenie'}
+            {mode === 'edit' ? 'Edit custom exercise' : 'Add custom exercise'}
           </p>
         </div>
 
@@ -165,7 +165,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
           {/* Name */}
           <div>
             <label htmlFor={nameInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Nazwa *
+              Name *
             </label>
             <input
               id={nameInputId}
@@ -178,7 +178,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
               }}
               aria-invalid={error?.field === 'name' ? true : undefined}
               aria-describedby={error?.field === 'name' ? errorId : undefined}
-              placeholder="np. Banded Pull-apart"
+              placeholder="E.g. Banded Pull-apart"
               maxLength={60}
               style={{
                 background: 'var(--input-bg)',
@@ -200,7 +200,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
           {/* Category */}
           <div>
             <label htmlFor={categoryInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Kategoria ćwiczenia
+              Exercise category
             </label>
             <select id={categoryInputId} value={category} onChange={(e) => setCategory(e.target.value as Category)} style={selectStyle}>
               {(Object.keys(CATEGORY_LABELS) as (Category | 'all')[])
@@ -214,7 +214,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
           {/* Equipment */}
           <div>
             <label htmlFor={equipmentInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Sprzęt
+              Equipment
             </label>
             <select id={equipmentInputId} value={equipment} onChange={(e) => setEquipment(e.target.value as Equipment)} style={selectStyle}>
               {(Object.keys(EQUIPMENT_LABELS) as (Equipment | 'all')[])
@@ -228,7 +228,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
           {/* Muscles */}
           <div>
             <p id={musclesGroupId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Grupy mięśniowe
+              Muscle groups
             </p>
             <div className="flex flex-wrap gap-2" role="group" aria-labelledby={musclesGroupId}>
               {MUSCLE_OPTIONS.map((m) => {
@@ -269,7 +269,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
             }}
             whileTap={{ scale: 0.97 }}
           >
-            {saving ? 'Zapisuję...' : mode === 'edit' ? 'Zapisz zmiany' : 'Dodaj ćwiczenie'}
+            {saving ? 'Saving...' : mode === 'edit' ? 'Save changes' : 'Add exercise'}
           </motion.button>
 
           {onDelete && (
@@ -279,7 +279,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
               className="exercise-form-delete mobile-touch-target"
             >
               <Trash2 size={15} aria-hidden="true" />
-              Usuń ćwiczenie
+              Remove exercise
             </button>
           )}
         </form>
@@ -311,12 +311,12 @@ function ExerciseCard({ exercise, isUser, onEdit, onNavigate }: CardProps) {
         type="button"
         onClick={onNavigate}
         className="exercise-library-row-main"
-        aria-label={`Otwórz ćwiczenie ${exercise.name}`}
+        aria-label={`Open exercise ${exercise.name}`}
       >
         <strong>{exercise.name}</strong>
         <small>{categoryLabel} · {EQUIPMENT_LABELS[exercise.equipment]}</small>
         {visibleMuscles.length > 0 && (
-          <span className="exercise-library-muscles" aria-label={`Grupy mięśniowe: ${labeledMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
+          <span className="exercise-library-muscles" aria-label={`Muscle groups: ${labeledMuscles.map((m) => MUSCLE_LABELS[m]).join(', ')}`}>
             {visibleMuscles.map((muscle) => (
               <span key={muscle}>{MUSCLE_LABELS[muscle]}</span>
             ))}
@@ -331,7 +331,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onNavigate }: CardProps) {
             type="button"
             onClick={onEdit}
             className="planner-icon-action"
-            aria-label={`Edytuj ćwiczenie ${exercise.name}`}
+            aria-label={`Edit exercise ${exercise.name}`}
           >
             <Pencil size={14} />
           </button>
@@ -450,7 +450,7 @@ export default function ExercisesPage() {
     updateExercises(operationUid, (current) => [created, ...current])
     setShowForm(false)
     setFormExercise(null)
-    toast.success('Ćwiczenie dodane!')
+    toast.success('Exercise added!')
   }
 
   async function handleUpdate(input: UserExerciseInput) {
@@ -468,7 +468,7 @@ export default function ExercisesPage() {
     ))
     setShowForm(false)
     setFormExercise(null)
-    toast.success('Ćwiczenie zaktualizowane!')
+    toast.success('Exercise updated!')
   }
 
   async function handleDeleteConfirmed() {
@@ -484,11 +484,11 @@ export default function ExercisesPage() {
       updateExercises(operationUid, (current) => (
         current.filter((exercise) => exercise.id !== deletingId)
       ))
-      toast.success('Ćwiczenie usunięte!')
+      toast.success('Exercise deleted!')
     } catch (err) {
       if (useAuthStore.getState().user?.uid !== operationUid) return
       console.error('[userExercise delete error]', err)
-      toast.error('Nie udało się usunąć ćwiczenia.')
+      toast.error('Could not delete exercise.')
     }
   }
 
@@ -512,7 +512,7 @@ export default function ExercisesPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <h1>Biblioteka</h1>
+          <h1>Library</h1>
         </motion.div>
 
         <div className="exercise-command-panel">
@@ -520,15 +520,15 @@ export default function ExercisesPage() {
             <Search size={16} aria-hidden="true" />
             <input
               type="text"
-              aria-label="Szukaj ćwiczenia"
-              placeholder="Szukaj ćwiczenia..."
+              aria-label="Search exercises"
+              placeholder="Search exercises..."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
             {hasActiveFilters && (
-              <button type="button" onClick={clearFilters} aria-label="Wyczyść filtry">
+              <button type="button" onClick={clearFilters} aria-label="Clear filters">
                 <X size={15} />
-                Wyczyść
+                Clear
               </button>
             )}
           </div>
@@ -541,9 +541,9 @@ export default function ExercisesPage() {
             onClick={() => setFiltersExpanded((expanded) => !expanded)}
           >
             <SlidersHorizontal size={16} aria-hidden="true" />
-            <span>Filtry</span>
+            <span>Filters</span>
             {activeFilterCount > 0 && (
-              <strong aria-label={`${activeFilterCount} aktywne filtry`}>
+              <strong aria-label={`${activeFilterCount} active filters`}>
                 {activeFilterCount}
               </strong>
             )}
@@ -556,12 +556,12 @@ export default function ExercisesPage() {
             data-expanded={filtersExpanded}
           >
             <div className="exercise-filter-group">
-              <span>Kategoria ćwiczenia</span>
-              <ChipRow label="Kategoria ćwiczenia" options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
+              <span>Exercise category</span>
+              <ChipRow label="Exercise category" options={CATEGORIES} labels={CATEGORY_LABELS} active={category} onSelect={setCategory} />
             </div>
             <div className="exercise-filter-group">
-              <span>Sprzęt</span>
-              <ChipRow label="Sprzęt" options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
+              <span>Equipment</span>
+              <ChipRow label="Equipment" options={EQUIPMENT_OPTIONS} labels={EQUIPMENT_LABELS} active={equipment} onSelect={setEquipment} />
             </div>
           </div>
 
@@ -575,7 +575,7 @@ export default function ExercisesPage() {
               whileTap={{ scale: 0.97 }}
             >
               <Plus size={16} strokeWidth={2.5} />
-              Dodaj własne
+              Add custom
             </motion.button>
           </div>
         </div>
@@ -592,29 +592,29 @@ export default function ExercisesPage() {
         >
         <section className="exercise-library-section">
           <SectionHeader
-            title="Moje ćwiczenia"
+            title="My exercises"
             count={userExercisesState.status === 'success' ? filteredUser.length : '—'}
           />
 
           {userExercisesState.status === 'loading' ? (
             <div className="exercise-empty-state">
-              <p>Ładowanie...</p>
+              <p>Loading...</p>
             </div>
           ) : userExercisesState.status === 'error' ? (
             <div id="user-exercises-load-error" className="exercise-empty-state">
-              <strong>Nie udało się wczytać Twoich ćwiczeń</strong>
-              <p>Katalog globalny nadal jest dostępny. Sprawdź połączenie i spróbuj ponownie.</p>
+              <strong>Could not load your exercises</strong>
+              <p>The shared library is still available. Check your connection and try again.</p>
               <button
                 type="button"
                 onClick={handleRetryUserExercises}
                 className="planner-secondary-action"
               >
-                Spróbuj ponownie
+                Try again
               </button>
             </div>
           ) : filteredUser.length === 0 && userExercises.length > 0 ? (
             <div className="exercise-empty-state">
-              <p>Żadne z Twoich ćwiczeń nie pasuje do filtrów.</p>
+              <p>None of your exercises match these filters.</p>
             </div>
           ) : filteredUser.length > 0 ? (
             <AnimatePresence initial={false}>
@@ -640,13 +640,13 @@ export default function ExercisesPage() {
         </section>
 
         <section className="exercise-library-section">
-          <SectionHeader title="Katalog globalny" count={filteredGlobal.length} />
+          <SectionHeader title="Shared library" count={filteredGlobal.length} />
 
           {filteredGlobal.length === 0 ? (
             hasNoResults && (
               <div className="exercise-empty-state">
-                <strong>Brak wyników</strong>
-                <p>Zmień filtry albo wpisz inną nazwę.</p>
+                <strong>No results</strong>
+                <p>Change filters or enter another name.</p>
               </div>
             )
           ) : (
@@ -694,8 +694,8 @@ export default function ExercisesPage() {
 
       {confirmDeleteExercise && (
         <ConfirmDialog
-          message={`Usunąć ćwiczenie "${confirmDeleteExercise.name}"? Nie będzie już dostępne w katalogu użytkownika.`}
-          confirmLabel="Usuń"
+          message={`Delete exercise "${confirmDeleteExercise.name}"? It will no longer be available in your exercise library.`}
+          confirmLabel="Delete"
           danger
           onConfirm={() => { void handleDeleteConfirmed() }}
           onCancel={() => setConfirmDeleteExercise(null)}

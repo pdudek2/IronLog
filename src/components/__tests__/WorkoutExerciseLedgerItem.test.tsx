@@ -68,12 +68,12 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     )
 
     const weightInput = screen.getByRole('spinbutton', {
-      name: 'Ciężar, Bench Press, seria 1, lbs',
+      name: 'Weight, Bench Press, set 1, lbs',
     })
 
     expect(weightInput).toHaveValue(132.3)
     expect(screen.getByRole('button', {
-      name: 'Oznacz serię 1 ćwiczenia Bench Press',
+      name: 'Mark set 1 for Bench Press',
     })).toBeInTheDocument()
 
     fireEvent.change(weightInput, { target: { value: '100' } })
@@ -132,11 +132,11 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       />,
     )
 
-    expect(await screen.findByLabelText('Poprzedni wynik serii 1')).toHaveTextContent('496×12')
-    expect(screen.getByLabelText('Poprzedni wynik serii 2')).toHaveTextContent('176.4×8')
-    expect(screen.getByLabelText('Poprzedni wynik serii 3')).toHaveTextContent('—')
-    expect(screen.getByText('Poprz.')).toBeInTheDocument()
-    expect(screen.queryByText('Obj.')).not.toBeInTheDocument()
+    expect(await screen.findByLabelText('Previous set result 1')).toHaveTextContent('496×12')
+    expect(screen.getByLabelText('Previous set result 2')).toHaveTextContent('176.4×8')
+    expect(screen.getByLabelText('Previous set result 3')).toHaveTextContent('—')
+    expect(screen.getByText('Prev.')).toBeInTheDocument()
+    expect(screen.queryByText('Vol.')).not.toBeInTheDocument()
     expect(mocks.getExerciseSessions).toHaveBeenCalledWith('user-1', 'bench-press', 'global', 1)
   })
 
@@ -172,7 +172,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     )
 
     expect(screen.getByRole('spinbutton', {
-      name: 'Ciężar, Bench Press, seria 1, kg',
+      name: 'Weight, Bench Press, set 1, kg',
     })).toHaveValue(82.25)
     expect(screen.getByText('82.25 kg')).toBeInTheDocument()
   })
@@ -197,10 +197,10 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     )
 
     const adjustments = screen.getByRole('group', {
-      name: 'Szybka korekta serii 1',
+      name: 'Quick set adjustments 1',
     })
-    fireEvent.click(within(adjustments).getByRole('button', { name: /o 2.5/ }))
-    fireEvent.click(within(adjustments).getByRole('button', { name: /o 1/ }))
+    fireEvent.click(within(adjustments).getByRole('button', { name: /by 2.5/ }))
+    fireEvent.click(within(adjustments).getByRole('button', { name: /by 1/ }))
 
     expect(callbacks.onAdjustSet).toHaveBeenNthCalledWith(1, 0, 0, 'weight', 2.5)
     expect(callbacks.onAdjustSet).toHaveBeenNthCalledWith(2, 0, 0, 'reps', 1)
@@ -225,7 +225,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       />,
     )
 
-    const expandButton = screen.getByRole('button', { name: 'Rozwiń ćwiczenie Bench Press' })
+    const expandButton = screen.getByRole('button', { name: 'Expand exercise Bench Press' })
     expect(expandButton).toHaveAttribute('aria-expanded', 'false')
 
     fireEvent.click(expandButton)
@@ -261,7 +261,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       />,
     )
 
-    expect(screen.getByText(/Deload — długa przerwa/)).toBeInTheDocument()
+    expect(screen.getByText(/Deload — long break/)).toBeInTheDocument()
 
     const active = useWorkoutStore.getState().active
     if (!active) throw new Error('Expected an active workout fixture.')
@@ -277,6 +277,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       })
     })
 
-    expect(screen.queryByText(/Deload — długa przerwa/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Deload — long break/)).not.toBeInTheDocument()
   })
 })

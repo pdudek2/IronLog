@@ -133,7 +133,7 @@ describe('pipeAnthropicStream', () => {
     const result = await pipeAnthropicStream({
       body: streamFrom(
         'data: {"type":"content_block_delta","delta":{"type":"text_delta",',
-        '"text":"Cześć"}}\n\ndata: {"type":"message_stop"}\n',
+        '"text":"Hello"}}\n\ndata: {"type":"message_stop"}\n',
         '\n',
       ),
       signal: new AbortController().signal,
@@ -143,7 +143,7 @@ describe('pipeAnthropicStream', () => {
 
     expect(result).toEqual({ status: 'done' })
     expect(frames).toEqual([
-      { type: 'chunk', text: 'Cześć' },
+      { type: 'chunk', text: 'Hello' },
       { type: 'done' },
     ])
   })
@@ -207,7 +207,7 @@ describe('pipeAnthropicStream', () => {
     expect(result).toEqual({ status: 'error', reason: 'upstream-error' })
     expect(frames.at(-1)).toEqual({
       type: 'error',
-      message: 'Nie udało się dokończyć odpowiedzi.',
+      message: 'Could not complete the response.',
     })
     expect(frames.some((frame) => frame.type === 'done')).toBe(false)
     expect(JSON.stringify(frames)).not.toContain('connection lost')
@@ -227,7 +227,7 @@ describe('pipeAnthropicStream', () => {
     expect(result).toEqual({ status: 'error', reason: 'invalid-event' })
     expect(frames).toEqual([{
       type: 'error',
-      message: 'Nie udało się dokończyć odpowiedzi.',
+      message: 'Could not complete the response.',
     }])
     expect(cancel).toHaveBeenCalledOnce()
   })
@@ -244,7 +244,7 @@ describe('pipeAnthropicStream', () => {
     expect(result).toEqual({ status: 'error', reason: 'reader-error' })
     expect(frames).toEqual([{
       type: 'error',
-      message: 'Nie udało się dokończyć odpowiedzi.',
+      message: 'Could not complete the response.',
     }])
     expect(JSON.stringify(frames)).not.toContain('private upstream detail')
   })
@@ -263,7 +263,7 @@ describe('pipeAnthropicStream', () => {
     expect(result).toEqual({ status: 'error', reason: 'unexpected-eof' })
     expect(frames).toEqual([
       { type: 'chunk', text: 'Urwane' },
-      { type: 'error', message: 'Nie udało się dokończyć odpowiedzi.' },
+      { type: 'error', message: 'Could not complete the response.' },
     ])
   })
 
@@ -279,7 +279,7 @@ describe('pipeAnthropicStream', () => {
     expect(result).toEqual({ status: 'error', reason: 'empty-response' })
     expect(frames).toEqual([{
       type: 'error',
-      message: 'Nie udało się dokończyć odpowiedzi.',
+      message: 'Could not complete the response.',
     }])
   })
 

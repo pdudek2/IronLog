@@ -64,17 +64,17 @@ export function parseFinalizeWorkoutRequest(
   raw: unknown,
   options: ParseFinalizeWorkoutRequestOptions = {},
 ): FinalizeWorkoutRequest {
-  const record = asRecord(raw, 'Niepoprawny payload treningu.')
+  const record = asRecord(raw, 'Invalid workout payload.')
   const allowedFields = options.allowLegacyFields === false
     ? STRICT_FINALIZE_FIELDS
     : COMPATIBILITY_FINALIZE_FIELDS
   for (const field of Object.keys(record)) {
-    if (!allowedFields.has(field)) throw badRequest(`Nieoczekiwane pole ${field}.`)
+    if (!allowedFields.has(field)) throw badRequest(`Unexpected field ${field}.`)
   }
 
   const sessionId = validateFirestoreDocumentId(record.sessionId, 'sessionId')
   if (record.sessionRevision === undefined || record.sessionRevision === null) {
-    if (options.requireRevision) throw badRequest('Brak pola sessionRevision.')
+    if (options.requireRevision) throw badRequest('Missing sessionRevision field.')
     return { sessionId }
   }
 
@@ -88,11 +88,11 @@ export function buildFinishedWorkoutFromActiveSession(
   raw: unknown,
   finishedAt: number,
 ): FinalizeWorkoutInput {
-  const record = asRecord(raw, 'Niepoprawna aktywna sesja.')
+  const record = asRecord(raw, 'Invalid active session.')
   const startedAt = normalizeTimestamp(record.startedAt, 'startedAt')
   const normalizedFinishedAt = normalizeTimestamp(finishedAt, 'finishedAt')
   if (normalizedFinishedAt < startedAt) {
-    throw badRequest('Czas zakończenia nie może poprzedzać rozpoczęcia.')
+    throw badRequest('Finish time cannot be before start time.')
   }
   const exercises = normalizeActiveWorkoutExercises(record.exercises)
 
@@ -113,26 +113,26 @@ export function normalizeWorkoutExercises(
   options: NormalizeWorkoutExercisesOptions = {},
 ): ValidatedWorkoutExercise[] {
   if (!Array.isArray(raw)) {
-    throw badRequest('Ćwiczenia treningu muszą być tablicą.')
+    throw badRequest('Workout exercises must be an array.')
   }
   if (!options.allowEmpty && raw.length === 0) {
-    throw badRequest('Trening musi zawierać co najmniej jedno ćwiczenie.')
+    throw badRequest('A workout must contain at least one exercise.')
   }
   if (raw.length > MAX_WORKOUT_EXERCISES) {
-    throw badRequest('Za dużo ćwiczeń w treningu.')
+    throw badRequest('Too many exercises in the workout.')
   }
 
   return raw.map((exercise) => normalizeWorkoutExercise(exercise))
 }
 
 function normalizeActiveWorkoutExercises(raw: unknown): ValidatedWorkoutExercise[] {
-  if (!Array.isArray(raw)) throw badRequest('Ćwiczenia treningu muszą być tablicą.')
+  if (!Array.isArray(raw)) throw badRequest('Workout exercises must be an array.')
 
   const completed = raw.map((exercise) => {
-    const record = asRecord(exercise, 'Niepoprawne ćwiczenie w treningu.')
+    const record = asRecord(exercise, 'Invalid workout exercise.')
     const sets = Array.isArray(record.sets)
       ? record.sets.flatMap((set) => {
-        const setRecord = asRecord(set, 'Niepoprawna seria w treningu.')
+        const setRecord = asRecord(set, 'Invalid workout set.')
         return setRecord.done === true
           ? [{ weight: setRecord.weight, reps: setRecord.reps }]
           : []
@@ -152,12 +152,12 @@ function normalizeActiveWorkoutExercises(raw: unknown): ValidatedWorkoutExercise
 
 export function validateWorkoutLabel(value: unknown): string | null {
   if (value === undefined || value === null) return null
-  if (typeof value !== 'string') throw badRequest('Niepoprawna nazwa treningu.')
+  if (typeof value !== 'string') throw badRequest('Invalid workout name.')
 
   const trimmed = value.trim()
   if (!trimmed) return null
   if (trimmed.length > MAX_WORKOUT_LABEL_LENGTH) {
-    throw badRequest('Nazwa treningu jest za długa.')
+    throw badRequest('Workout name is too long.')
   }
 
   return trimmed
@@ -165,12 +165,12 @@ export function validateWorkoutLabel(value: unknown): string | null {
 
 export function validateFirestoreDocumentId(value: unknown, fieldName: string): string {
   if (typeof value !== 'string' || !value.trim()) {
-    throw badRequest(`Brak pola ${fieldName}.`)
+    throw badRequest(`Missing field ${fieldName}.`)
   }
 
   const trimmed = value.trim()
   if (trimmed.includes('/') || trimmed.length > MAX_FIRESTORE_DOCUMENT_ID_LENGTH) {
-    throw badRequest(`Niepoprawne pole ${fieldName}.`)
+    throw badRequest(`Invalid field ${fieldName}.`)
   }
 
   return trimmed
@@ -191,7 +191,7 @@ export function buildExerciseSessionDocumentId(
 }
 
 function normalizeWorkoutExercise(raw: unknown): ValidatedWorkoutExercise {
-  const record = asRecord(raw, 'Niepoprawne ćwiczenie w treningu.')
+  const record = asRecord(raw, 'Invalid workout exercise.')
   const exerciseId = normalizeExerciseId(record.exerciseId)
   const exerciseSource = normalizeExerciseSource(record.exerciseSource)
   const name = normalizeExerciseName(record.name)
@@ -202,28 +202,28 @@ function normalizeWorkoutExercise(raw: unknown): ValidatedWorkoutExercise {
 
 function normalizeWorkoutSets(raw: unknown): ValidatedWorkoutSet[] {
   if (!Array.isArray(raw)) {
-    throw badRequest('Serie ćwiczenia muszą być tablicą.')
+    throw badRequest('Exercise sets must be an array.')
   }
   if (raw.length === 0) {
-    throw badRequest('Ćwiczenie musi zawierać co najmniej jedną serię.')
+    throw badRequest('An exercise must contain at least one set.')
   }
   if (raw.length > MAX_SETS_PER_EXERCISE) {
-    throw badRequest('Za dużo serii w ćwiczeniu.')
+    throw badRequest('Too many sets in the exercise.')
   }
 
   return raw.map((set) => normalizeWorkoutSet(set))
 }
 
 function normalizeWorkoutSet(raw: unknown): ValidatedWorkoutSet {
-  const record = asRecord(raw, 'Niepoprawna seria w ćwiczeniu.')
-  const weight = normalizeNumber(record.weight ?? record.weightKg, 'Niepoprawny ciężar w serii.')
-  const reps = normalizeNumber(record.reps, 'Niepoprawna liczba powtórzeń w serii.')
+  const record = asRecord(raw, 'Invalid exercise set.')
+  const weight = normalizeNumber(record.weight ?? record.weightKg, 'Invalid set weight.')
+  const reps = normalizeNumber(record.reps, 'Invalid set reps.')
 
   if (weight < 0 || weight > MAX_SET_WEIGHT_KG) {
-    throw badRequest('Niepoprawny ciężar w serii.')
+    throw badRequest('Invalid set weight.')
   }
   if (reps <= 0 || reps > MAX_SET_REPS || !Number.isInteger(reps)) {
-    throw badRequest('Niepoprawna liczba powtórzeń w serii.')
+    throw badRequest('Invalid set reps.')
   }
 
   return { weight, reps }
@@ -231,7 +231,7 @@ function normalizeWorkoutSet(raw: unknown): ValidatedWorkoutSet {
 
 function normalizeExerciseId(value: unknown): string {
   if (typeof value !== 'string') {
-    throw badRequest('Niepoprawny identyfikator ćwiczenia.')
+    throw badRequest('Invalid exercise ID.')
   }
 
   const trimmed = value.trim()
@@ -240,7 +240,7 @@ function normalizeExerciseId(value: unknown): string {
     || trimmed.length > MAX_EXERCISE_ID_LENGTH
     || !EXERCISE_ID_PATTERN.test(trimmed)
   ) {
-    throw badRequest('Niepoprawny identyfikator ćwiczenia.')
+    throw badRequest('Invalid exercise ID.')
   }
 
   return trimmed
@@ -248,17 +248,17 @@ function normalizeExerciseId(value: unknown): string {
 
 function normalizeExerciseSource(value: unknown): ExerciseSource {
   if (value === 'global' || value === 'user') return value
-  throw badRequest('Niepoprawne źródło ćwiczenia.')
+  throw badRequest('Invalid exercise source.')
 }
 
 function normalizeExerciseName(value: unknown): string {
   if (typeof value !== 'string') {
-    throw badRequest('Niepoprawna nazwa ćwiczenia.')
+    throw badRequest('Invalid exercise name.')
   }
 
   const trimmed = value.trim()
   if (!trimmed || trimmed.length > MAX_EXERCISE_NAME_LENGTH) {
-    throw badRequest('Niepoprawna nazwa ćwiczenia.')
+    throw badRequest('Invalid exercise name.')
   }
 
   return trimmed
@@ -272,7 +272,7 @@ function normalizeNumber(value: unknown, message: string): number {
 
 function normalizeTimestamp(value: unknown, fieldName: string): number {
   if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    throw badRequest(`Niepoprawne pole ${fieldName}.`)
+    throw badRequest(`Invalid field ${fieldName}.`)
   }
   return value
 }

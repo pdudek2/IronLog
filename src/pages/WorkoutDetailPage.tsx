@@ -37,7 +37,7 @@ import {
   kgToDisplayWeight,
 } from '../lib/weightUnits'
 
-const WORKOUT_LABELS = ['Push', 'Pull', 'Nogi', 'Upper Body', 'Lower Body', 'Full Body', 'Plecy & Biceps', 'Klatka & Triceps', 'Cardio', 'Crossfit', 'Mobilność'] as const
+const WORKOUT_LABELS = ['Push', 'Pull', 'Legs', 'Upper Body', 'Lower Body', 'Full Body', 'Back & Biceps', 'Chest & Triceps', 'Cardio', 'Crossfit', 'Mobility'] as const
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
 
 interface WorkoutReadState {
@@ -54,7 +54,7 @@ interface WorkoutDeleteOperation {
 }
 
 function formatDate(ts: number): string {
-  return new Date(ts).toLocaleDateString('pl-PL', {
+  return new Date(ts).toLocaleDateString('en-US', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -98,12 +98,12 @@ function parseSetDraftValue(field: 'weight' | 'reps', value: string): number {
 }
 
 function getWorkoutEditError(exercises: WorkoutSummary['exercises']): string | null {
-  if (exercises.length === 0) return 'Trening musi zawierać co najmniej jedno ćwiczenie.'
+  if (exercises.length === 0) return 'A workout must contain at least one exercise.'
   if (exercises.some((exercise) => exercise.sets.length === 0)) {
-    return 'Każde ćwiczenie musi zawierać co najmniej jedną serię.'
+    return 'Each exercise must contain at least one set.'
   }
   if (exercises.some((exercise) => exercise.sets.some((set) => set.reps <= 0))) {
-    return 'Każda seria musi zawierać co najmniej jedno powtórzenie.'
+    return 'Each set must contain at least one rep.'
   }
   return null
 }
@@ -270,12 +270,12 @@ export default function WorkoutDetailPage() {
       setShowPicker(false)
       setIsEditing(false)
       if (result.status === 'projection_pending') {
-        toast.success('Trening zapisany. Statystyki zostaną zsynchronizowane.')
+        toast.success('Workout saved. Stats will be synced.')
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err)
       console.error('[updateWorkout error]', err)
-      toast.error(`Błąd zapisu: ${msg}`)
+      toast.error(`Save error: ${msg}`)
     } finally {
       setSaving(false)
     }
@@ -300,7 +300,7 @@ export default function WorkoutDetailPage() {
       }
       setTransientDeleteOperation(null)
       navigate('/history', { replace: true })
-      toast.success('Trening usunięty')
+      toast.success('Workout deleted')
     } catch {
       if (!isCurrent()) return
       setTransientDeleteOperation((current) => (
@@ -308,7 +308,7 @@ export default function WorkoutDetailPage() {
           ? { uid: user.uid, workoutId, status: recoveryStatus }
           : current
       ))
-      toast.error('Nie udało się usunąć treningu.')
+      toast.error('Could not delete the workout.')
     }
   }
 
@@ -336,7 +336,7 @@ export default function WorkoutDetailPage() {
   }
 
   if (!workout && !deleteOperation && readStatus === 'loading') {
-    return <LoadingState message="Ładowanie treningu..." />
+    return <LoadingState message="Loading workout..." />
   }
 
   if (!workout) {
@@ -347,15 +347,15 @@ export default function WorkoutDetailPage() {
             <ActionFeedback
               status={deleteOperation.status === 'pending' ? 'pending' : 'error'}
               message={deleteOperation.status === 'pending'
-                ? 'Usuwanie treningu…'
+                ? 'Deleting workout…'
                 : deleteOperation.status === 'cleanup_pending'
-                  ? 'Trening usunięty. Nie udało się odświeżyć statystyk.'
-                  : 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'}
+                  ? 'Workout deleted. Could not refresh stats.'
+                  : 'Could not confirm workout deletion. Retry deletion.'}
               onRetry={deleteOperation.status !== 'pending' ? retryWorkoutDelete : undefined}
               className="workout-detail-delete-feedback"
             />
             <button onClick={handleBack} className="mt-4" style={{ color: 'var(--accent)' }}>
-              Wróć
+              Back
             </button>
           </div>
         </div>
@@ -368,15 +368,15 @@ export default function WorkoutDetailPage() {
           {readStatus === 'error' ? (
             <ActionFeedback
               status="error"
-              message="Nie udało się wczytać treningu."
+              message="Could not load workout."
               onRetry={retryWorkoutRead}
               className="mb-4"
             />
           ) : (
-            <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Trening nie istnieje.</p>
+            <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Workout not found.</p>
           )}
           <button onClick={handleBack} style={{ color: 'var(--accent)' }}>
-            Wróć
+            Back
           </button>
         </div>
       </div>
@@ -412,7 +412,7 @@ export default function WorkoutDetailPage() {
         className="workout-detail-action workout-detail-action-secondary disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
       >
-        Anuluj
+        Cancel
       </motion.button>
       <motion.button
         onClick={handleSave}
@@ -420,7 +420,7 @@ export default function WorkoutDetailPage() {
         className="workout-detail-action workout-detail-action-primary disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
       >
-        {saving ? 'Zapisywanie...' : 'Zapisz'}
+        {saving ? 'Saving...' : 'Save'}
       </motion.button>
     </div>
   ) : (
@@ -431,7 +431,7 @@ export default function WorkoutDetailPage() {
         className="workout-detail-action workout-detail-action-secondary"
         whileTap={{ scale: 0.97 }}
       >
-        Edytuj trening
+        Edit workout
       </motion.button>
       <motion.button
         onClick={handleDelete}
@@ -439,17 +439,17 @@ export default function WorkoutDetailPage() {
         aria-describedby={deleteOperation?.status === 'error' || (deleteOperation?.status === 'cleanup_pending' || deleteOperation?.status === 'unknown')
           ? deleteFeedbackId
           : undefined}
-        aria-label="Usuń trening"
+        aria-label="Delete workout"
         className="workout-detail-action workout-detail-action-delete disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
       >
-        {isDeleting ? 'Usuwanie…' : 'Usuń'}
+        {isDeleting ? 'Deleting…' : 'Delete'}
       </motion.button>
     </div>
   )
 
   const heroLabel = displayedWorkout.label
-    ?? (topFocus ? (EXERCISE_CATEGORY_LABELS[topFocus[0]] ?? 'Trening') : 'Trening')
+    ?? (topFocus ? (EXERCISE_CATEGORY_LABELS[topFocus[0]] ?? 'Workout') : 'Workout')
   return (
     <>
       <div className="workout-detail-page workout-detail-content">
@@ -472,7 +472,7 @@ export default function WorkoutDetailPage() {
             </p>
             <h1>{heroLabel}</h1>
           </div>
-          <div className="workout-detail-desktop-actions" role="group" aria-label="Akcje treningu">
+          <div className="workout-detail-desktop-actions" role="group" aria-label="Workout actions">
             {actionButtons}
           </div>
         </header>
@@ -481,8 +481,8 @@ export default function WorkoutDetailPage() {
           <ActionFeedback
             status={readStatus === 'loading' ? 'pending' : 'error'}
             message={readStatus === 'loading'
-              ? 'Odświeżanie treningu…'
-              : 'Nie udało się odświeżyć treningu. Wyświetlam ostatnie dostępne dane.'}
+              ? 'Refreshing workout…'
+              : 'Could not refresh workout. Showing the last available data.'}
             onRetry={readStatus === 'error' ? retryWorkoutRead : undefined}
             className="mb-4"
           />
@@ -497,9 +497,9 @@ export default function WorkoutDetailPage() {
           >
             {persistedDeleteRecovery && persistedDeleteRecovery.workoutId !== id && (
               <p className="mb-3 text-sm" style={{ color: 'var(--muted)' }}>
-                Poprzednie usunięcie treningu wymaga ponowienia.{' '}
+                The previous workout deletion needs to be retried.{' '}
                 <button type="button" onClick={() => navigate('/dashboard')} className="underline" style={{ color: 'var(--accent)' }}>
-                  Przejdź do odzyskiwania na pulpicie
+                  Go to recovery on the dashboard
                 </button>
               </p>
             )}
@@ -508,12 +508,12 @@ export default function WorkoutDetailPage() {
                 id={deleteFeedbackId}
                 status={deleteOperation.status === 'pending' ? 'pending' : 'error'}
                 message={deleteOperation.status === 'pending'
-                  ? 'Usuwanie treningu…'
+                  ? 'Deleting workout…'
                   : deleteOperation.status === 'cleanup_pending'
-                    ? 'Trening usunięty. Nie udało się odświeżyć statystyk.'
+                    ? 'Workout deleted. Could not refresh stats.'
                     : deleteOperation.status === 'unknown'
-                      ? 'Nie udało się potwierdzić usunięcia treningu. Ponów usunięcie.'
-                      : 'Nie udało się usunąć treningu.'}
+                      ? 'Could not confirm workout deletion. Retry deletion.'
+                      : 'Could not delete the workout.'}
                 onRetry={deleteOperation.status !== 'pending'
                   ? retryWorkoutDelete
                   : undefined}
@@ -529,34 +529,34 @@ export default function WorkoutDetailPage() {
           </motion.div>
         </WorkoutDetailMobileActions>
 
-        <dl className="workout-summary-panel workout-detail-session-facts" aria-label="Podsumowanie treningu">
+        <dl className="workout-summary-panel workout-detail-session-facts" aria-label="Workout summary">
           <div>
-            <dt>Czas</dt>
+            <dt>Time</dt>
             <dd>{formatDuration(displayedWorkout.startedAt, displayedWorkout.finishedAt)}</dd>
           </div>
           <div>
-            <dt>Serie</dt>
+            <dt>Sets</dt>
             <dd>{totalSets}</dd>
           </div>
           <div>
-            <dt aria-label="Powtórzenia">Powt.</dt>
+            <dt aria-label="Reps">Reps</dt>
             <dd>{totalReps}</dd>
           </div>
           <div>
-            <dt>Objętość</dt>
+            <dt>Volume</dt>
             <dd>{formatCompactVolume(volume, units)}</dd>
           </div>
         </dl>
 
         {isEditing && (
           <section className="workout-detail-label-editor">
-            <label htmlFor="workout-detail-label">Typ sesji</label>
+            <label htmlFor="workout-detail-label">Session type</label>
             <select
               id="workout-detail-label"
               value={editedLabel}
               onChange={(event) => setEditedLabel(event.target.value)}
             >
-              <option value="">Bez etykiety</option>
+              <option value="">No label</option>
               {editedLabel && !WORKOUT_LABELS.some((label) => label === editedLabel) && (
                 <option value={editedLabel}>{editedLabel}</option>
               )}
@@ -576,7 +576,7 @@ export default function WorkoutDetailPage() {
               ? (EXERCISE_CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category)
               : null
             const equipmentLabel = exerciseData?.equipment
-              ? getEquipmentLabel(exerciseData.equipment).toLocaleLowerCase('pl-PL')
+              ? getEquipmentLabel(exerciseData.equipment).toLocaleLowerCase('en-US')
               : null
             const exerciseReps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
             const exerciseHeadingId = `workout-exercise-${exerciseIndex}`
@@ -597,7 +597,7 @@ export default function WorkoutDetailPage() {
                     <div className="workout-exercise-tools">
                       <span
                         className="workout-exercise-sequence"
-                        aria-label={`Ćwiczenie ${exerciseIndex + 1} z ${displayedWorkout.exercises.length}`}
+                        aria-label={`Exercise ${exerciseIndex + 1} of ${displayedWorkout.exercises.length}`}
                       >
                         {exerciseIndex + 1} / {displayedWorkout.exercises.length}
                       </span>
@@ -606,9 +606,9 @@ export default function WorkoutDetailPage() {
                           type="button"
                           onClick={() => handleRemoveExercise(exerciseIndex)}
                           className="workout-exercise-remove mobile-touch-target"
-                          aria-label={`Usuń ćwiczenie ${exercise.name}`}
+                          aria-label={`Remove exercise ${exercise.name}`}
                         >
-                          Usuń
+                          Delete
                         </button>
                       )}
                     </div>
@@ -623,20 +623,20 @@ export default function WorkoutDetailPage() {
                   )}
 
                   <p className="workout-exercise-totals">
-                    {exercise.sets.length} {exercise.sets.length === 1 ? 'seria' : 'serie'}
-                    <span>{exerciseReps} powt.</span>
+                    {exercise.sets.length} {exercise.sets.length === 1 ? 'set' : 'sets'}
+                    <span>{exerciseReps} reps</span>
                   </p>
                 </header>
 
                 <div className="workout-exercise-body">
                   {!isEditing ? (
-                    <table className="workout-detail-set-table" aria-label={`Serie: ${exercise.name}`}>
+                    <table className="workout-detail-set-table" aria-label={`Sets: ${exercise.name}`}>
                       <thead>
                         <tr>
-                          <th scope="col">Seria</th>
-                          <th scope="col">Ciężar {units}</th>
-                          <th scope="col">Powt.</th>
-                          <th scope="col">Obj. {units}</th>
+                          <th scope="col">Streak</th>
+                          <th scope="col">Weight {units}</th>
+                          <th scope="col">Reps</th>
+                          <th scope="col">Vol. {units}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -645,7 +645,7 @@ export default function WorkoutDetailPage() {
                             <td className="workout-detail-set-index">{setIndex + 1}</td>
                             <td>{kgToDisplayWeight(set.weight, units)}</td>
                             <td>{set.reps}</td>
-                            <td>{kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('pl-PL')}</td>
+                            <td>{kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('en-US')}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -655,7 +655,7 @@ export default function WorkoutDetailPage() {
                       <div className={`workout-detail-set-editor-head grid ${mobileEditGrid} gap-1.5`}>
                         <span>#</span>
                         <span>{units}</span>
-                        <span>Powt.</span>
+                        <span>Reps</span>
                         <span className="hidden lg:block">Vol.</span>
                         <span aria-hidden="true" />
                       </div>
@@ -679,7 +679,7 @@ export default function WorkoutDetailPage() {
                               displayWeightStringToKg(event.target.value, units),
                             )}
                             placeholder="0"
-                            aria-label={`Ciężar, ${exercise.name}, seria ${setIndex + 1}, ${units}`}
+                            aria-label={`Weight, ${exercise.name}, set ${setIndex + 1}, ${units}`}
                           />
                           <input
                             type="number"
@@ -689,17 +689,17 @@ export default function WorkoutDetailPage() {
                             value={set.reps === 0 ? '' : set.reps}
                             onChange={(event) => handleSetChange(exerciseIndex, setIndex, 'reps', event.target.value)}
                             placeholder="0"
-                            aria-label={`Powtórzenia, ${exercise.name}, seria ${setIndex + 1}`}
+                            aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
                           />
                           <span className="hidden lg:block">
-                            {kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('pl-PL')}
+                            {kgToDisplayWeight(set.weight * set.reps, units).toLocaleString('en-US')}
                           </span>
                           {exercise.sets.length > 1 ? (
                             <button
                               type="button"
                               onClick={() => handleRemoveSet(exerciseIndex, setIndex)}
                               className="workout-detail-remove-set mobile-touch-target"
-                              aria-label={`Usuń serię ${setIndex + 1}`}
+                              aria-label={`Remove set ${setIndex + 1}`}
                             >
                               <X size={14} aria-hidden="true" />
                             </button>
@@ -714,7 +714,7 @@ export default function WorkoutDetailPage() {
                         onClick={() => handleAddSet(exerciseIndex)}
                         className="workout-detail-add-set"
                       >
-                        + Seria
+                        + Set
                       </button>
                     </div>
                   )}
@@ -731,7 +731,7 @@ export default function WorkoutDetailPage() {
             className="workout-detail-add-exercise"
             whileTap={{ scale: 0.97 }}
           >
-            + Dodaj ćwiczenie
+            + Add exercise
           </motion.button>
         )}
       </div>
@@ -746,9 +746,9 @@ export default function WorkoutDetailPage() {
 
       {confirmDeleteOpen && (
         <ConfirmDialog
-          title="Usunąć trening?"
-          message={`„${heroLabel}” · ${formatDate(displayedWorkout.startedAt)}. Tej operacji nie można cofnąć.`}
-          confirmLabel="Usuń"
+          title="Delete workout?"
+          message={`„${heroLabel}” · ${formatDate(displayedWorkout.startedAt)}. This cannot be undone.`}
+          confirmLabel="Delete"
           danger
           onConfirm={() => { setConfirmDeleteOpen(false); doDelete() }}
           onCancel={() => setConfirmDeleteOpen(false)}

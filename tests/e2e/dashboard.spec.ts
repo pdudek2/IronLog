@@ -13,7 +13,7 @@ const emulatorMode = process.env.E2E_BACKEND === 'emulator'
 async function openDashboard(page: Page) {
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
-  await expect(page.getByRole('heading', { name: /^(Ostatnie treningi|Historia)$/ })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: /^(Recent workouts|History)$/ })).toBeVisible({ timeout: 15_000 })
 }
 
 test.describe('Dashboard regressions', () => {
@@ -28,8 +28,8 @@ test.describe('Dashboard regressions', () => {
     await openDashboard(page)
 
     for (const control of [
-      page.getByRole('button', { name: /Seria treningowa/ }),
-      page.getByRole('button', { name: 'Zobacz progres' }),
+      page.getByRole('button', { name: /Workout streak/ }),
+      page.getByRole('button', { name: 'View progress' }),
     ]) {
       const box = await control.boundingBox()
       expect(box).not.toBeNull()
@@ -70,7 +70,7 @@ test.describe('Dashboard regressions', () => {
     const workoutRow = page.locator('.dashboard-history-row').filter({
       hasText: 'Phase 1 dashboard labeled sets',
     })
-    await expect(workoutRow.locator('.dashboard-history-set')).toHaveText('2 serie')
+    await expect(workoutRow.locator('.dashboard-history-set')).toHaveText('2 sets')
   })
 
   test('delete action on recent workout stays on dashboard when activated with Enter', async ({
@@ -90,17 +90,17 @@ test.describe('Dashboard regressions', () => {
     await openDashboard(page)
 
     const deleteButton = page.getByRole('button', {
-      name: /Usuń trening Phase 1 dashboard keyboard delete/,
+      name: /Delete workout Phase 1 dashboard keyboard delete/,
     })
     await expect(deleteButton).toBeVisible()
     await deleteButton.focus()
     await expect(deleteButton).toBeFocused()
     await page.keyboard.press('Enter')
 
-    const confirmDialog = page.getByRole('dialog', { name: 'Usunąć trening?' })
+    const confirmDialog = page.getByRole('dialog', { name: 'Delete workout?' })
     await expect(confirmDialog).toBeVisible()
     await expect(page).toHaveURL('/dashboard')
-    await confirmDialog.getByRole('button', { name: 'Anuluj', exact: true }).click()
+    await confirmDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(confirmDialog).not.toBeVisible()
   })
 
@@ -128,39 +128,39 @@ test.describe('Dashboard regressions', () => {
         })),
       }],
     })
-    await page.getByRole('button', { name: 'Zapisz szablon' }).click()
+    await page.getByRole('button', { name: 'Save template' }).click()
     await page.waitForURL('/templates', { timeout: 15_000 })
     cleanup.add('delete next-session template', () => deleteTemplateByName(page, NEXT_SESSION_TEMPLATE_NAME))
 
     await openDashboard(page)
-    const readinessSave = page.getByRole('button', { name: 'Zapisz wynik' })
+    const readinessSave = page.getByRole('button', { name: 'Save score' })
     if (await readinessSave.isVisible().catch(() => false)) {
       await readinessSave.click()
     } else {
-      await page.getByText('Dopasuj dzisiejszy trening', { exact: true }).click()
+      await page.getByText('Adjust today’s workout', { exact: true }).click()
       await readinessSave.click()
     }
 
-    const recommendation = page.getByRole('region', { name: 'Dzisiejszy trening' })
+    const recommendation = page.getByRole('region', { name: 'Today’s workout' })
     await expect(recommendation).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByRole('button', { name: 'Edytuj' })).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Edit' })).toBeHidden()
     expect(await page.evaluate(() => (
       document.documentElement.scrollWidth - document.documentElement.clientWidth
     ))).toBe(0)
 
-    await recommendation.getByRole('button', { name: 'Zobacz ćwiczenia w planie' }).click()
+    await recommendation.getByRole('button', { name: 'View plan exercises' }).click()
     const dialog = page.getByRole('dialog', { name: 'Upper A' })
     await expect(dialog).toBeVisible()
     await expect(dialog.locator('.dashboard-plan-popover-actions > button')).toHaveText([
-      'Rozpocznij',
-      'Edytuj',
+      'Start',
+      'Edit',
     ])
 
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()
 
-    await recommendation.getByRole('button', { name: 'Zobacz ćwiczenia w planie' }).click()
-    await dialog.getByRole('button', { name: 'Rozpocznij' }).click()
+    await recommendation.getByRole('button', { name: 'View plan exercises' }).click()
+    await dialog.getByRole('button', { name: 'Start' }).click()
     await expect(dialog).toBeHidden()
     await expect(page).toHaveURL('/workout/new', { timeout: 15_000 })
     await expect(page.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })

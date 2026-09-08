@@ -27,19 +27,19 @@ test.describe('Protected application shell', () => {
     await page.goto('/definitely-missing')
 
     await expect(page).toHaveURL('/definitely-missing')
-    await expect(page.getByRole('heading', { name: 'Ta strona nie istnieje' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
     await expect(page.getByRole('main')).toHaveCount(1)
     await expect(page.getByRole('main')).toBeFocused()
 
     const navigationName = testInfo.project.name === 'mobile'
-      ? 'Nawigacja dolna'
-      : 'Nawigacja główna'
+      ? 'Bottom navigation'
+      : 'Main navigation'
     await expect(page.getByRole('navigation', { name: navigationName })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Wróć do panelu' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Back to dashboard' })).toBeVisible()
 
     const geometry = await page.locator('.not-found-page').evaluate((element) => {
       const actionBox = element.querySelector('a')?.getBoundingClientRect()
-      const bottomNav = document.querySelector('[aria-label="Nawigacja dolna"]')
+      const bottomNav = document.querySelector('[aria-label="Bottom navigation"]')
         ?.getBoundingClientRect()
       return {
         viewportWidth: document.documentElement.getBoundingClientRect().width,
@@ -68,7 +68,7 @@ test.describe('Protected application shell', () => {
 
     await page.goto('/definitely-missing')
     await expect(page).toHaveURL('/login', { timeout: 15_000 })
-    await expect(page.getByRole('heading', { name: 'Zaloguj się' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible()
   })
 
   test('provides one main landmark and moves focus after route navigation', async ({ page }, testInfo) => {
@@ -79,10 +79,10 @@ test.describe('Protected application shell', () => {
     await expect(main).toHaveCount(1)
 
     const navigationName = testInfo.project.name === 'mobile'
-      ? 'Nawigacja dolna'
-      : 'Nawigacja główna'
+      ? 'Bottom navigation'
+      : 'Main navigation'
     const navigation = page.getByRole('navigation', { name: navigationName })
-    await navigation.getByRole('button', { name: 'Historia', exact: true }).click()
+    await navigation.getByRole('button', { name: 'History', exact: true }).click()
 
     await expect(page).toHaveURL('/history')
     await expect(main).toBeFocused()
@@ -100,13 +100,13 @@ test.describe('Protected application shell', () => {
 
     await page.goto('/dashboard')
     await expect(page).toHaveURL('/dashboard', { timeout: 15_000 })
-    await expect(page.getByRole('heading', { name: /^(Ostatnie treningi|Historia)$/ })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: /^(Recent workouts|History)$/ })).toBeVisible({ timeout: 15_000 })
     await page.waitForTimeout(500)
 
     expect(progressRequests).toHaveLength(0)
 
-    const navigation = page.getByRole('navigation', { name: 'Nawigacja główna' })
-    await navigation.getByRole('button', { name: 'Postępy', exact: true }).hover()
+    const navigation = page.getByRole('navigation', { name: 'Main navigation' })
+    await navigation.getByRole('button', { name: 'Progress', exact: true }).hover()
 
     await expect.poll(() => progressRequests.length).toBeGreaterThan(0)
   })
@@ -117,7 +117,7 @@ test.describe('Protected application shell', () => {
 
     const liveRegion = page.locator('section[aria-live="polite"][aria-relevant="additions text"]')
     await expect(liveRegion).toHaveCount(1)
-    await expect(liveRegion).toHaveAttribute('aria-label', /Powiadomienia/)
+    await expect(liveRegion).toHaveAttribute('aria-label', /Notifications/)
   })
 
   test('keeps exactly one main landmark on nested tool routes', async ({ page }, testInfo) => {

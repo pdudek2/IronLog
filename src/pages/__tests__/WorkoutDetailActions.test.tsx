@@ -94,7 +94,7 @@ function renderPage(initialEntries: Array<string | { pathname: string; state?: u
     <MemoryRouter initialEntries={initialEntries}>
       <Routes>
         <Route path="/workout/:id" element={<WorkoutDetailPage />} />
-        <Route path="/history" element={<p>Historia treningów</p>} />
+        <Route path="/history" element={<p>History workouts</p>} />
         <Route path="/dashboard" element={<p>Dashboard home</p>} />
       </Routes>
     </MemoryRouter>,
@@ -121,20 +121,20 @@ describe('WorkoutDetailPage delete action', () => {
 
   it.each([
     { label: 'Push day', expectedName: 'Push day' },
-    { label: null, expectedName: 'Klatka' },
+    { label: null, expectedName: 'Chest' },
   ])('identifies the delete target $expectedName and initially focuses cancellation', async ({ label, expectedName }) => {
     mocks.getWorkout.mockResolvedValueOnce({ ...workout, label })
     renderPage(['/workout/workout-1'])
-    fireEvent.click((await screen.findAllByRole('button', { name: 'Usuń trening' }))[0])
-    const dialog = screen.getByRole('dialog', { name: 'Usunąć trening?' })
-    const date = new Date(workout.startedAt).toLocaleDateString('pl-PL', {
+    fireEvent.click((await screen.findAllByRole('button', { name: 'Delete workout' }))[0])
+    const dialog = screen.getByRole('dialog', { name: 'Delete workout?' })
+    const date = new Date(workout.startedAt).toLocaleDateString('en-US', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     })
-    expect(dialog).toHaveAccessibleDescription(`„${expectedName}” · ${date}. Tej operacji nie można cofnąć.`)
-    const cancel = within(dialog).getByRole('button', { name: 'Anuluj' })
+    expect(dialog).toHaveAccessibleDescription(`„${expectedName}” · ${date}. This cannot be undone.`)
+    const cancel = within(dialog).getByRole('button', { name: 'Cancel' })
     await waitFor(() => expect(cancel).toHaveFocus())
     fireEvent.click(cancel)
-    expect(screen.queryByRole('dialog', { name: 'Usunąć trening?' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('dialog', { name: 'Delete workout?' })).not.toBeInTheDocument()
     expect(mocks.deleteWorkout).not.toHaveBeenCalled()
   })
 
@@ -142,10 +142,10 @@ describe('WorkoutDetailPage delete action', () => {
     const retryRead = deferred<WorkoutSummary>()
     mocks.getWorkout.mockRejectedValueOnce(new Error('offline')).mockReturnValueOnce(retryRead.promise)
     renderPage(['/workout/workout-1'])
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się wczytać treningu.')
-    expect(screen.queryByText('Trening nie istnieje.')).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
-    expect(screen.getByText('Ładowanie treningu...')).toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load workout.')
+    expect(screen.queryByText('Workout not found.')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(screen.getByText('Loading workout...')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     await act(async () => { retryRead.resolve(workout) })
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
@@ -155,18 +155,18 @@ describe('WorkoutDetailPage delete action', () => {
   it('shows confirmed absence separately from a failed read', async () => {
     mocks.getWorkout.mockResolvedValueOnce(null)
     renderPage(['/workout/workout-1'])
-    expect(await screen.findByText('Trening nie istnieje.')).toBeInTheDocument()
+    expect(await screen.findByText('Workout not found.')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   })
 
   it('preserves preview on a read error and replaces it after retry', async () => {
     mocks.getWorkout.mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValueOnce({ ...workout, label: 'Updated workout' })
     renderPage()
-    expect(await screen.findByRole('alert')).toHaveTextContent('Wyświetlam ostatnie dostępne dane.')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Showing the last available data.')
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByRole('heading', { name: 'Updated workout' })).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
@@ -176,9 +176,9 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.getWorkout.mockRejectedValueOnce(new Error('offline'))
     mocks.deleteWorkout.mockResolvedValueOnce({ status: 'deleted' })
     renderPage(['/workout/workout-1'])
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
-    await screen.findByText('Historia treningów')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await screen.findByText('History workouts')
     expect(mocks.deleteWorkout).toHaveBeenCalledWith('workout-1')
     expect(mocks.getWorkout).toHaveBeenCalledTimes(1)
   })
@@ -207,10 +207,10 @@ describe('WorkoutDetailPage delete action', () => {
     renderPage()
     await act(async () => { useAuthStore.setState({ user: { uid: 'user-2' } as User }) })
     expect(screen.queryByRole('heading', { name: 'Push day' })).not.toBeInTheDocument()
-    expect(screen.getByText('Ładowanie treningu...')).toBeInTheDocument()
+    expect(screen.getByText('Loading workout...')).toBeInTheDocument()
     await act(async () => { newRead.resolve(null) })
     await act(async () => { oldRead.reject(new Error('old account request failed')) })
-    expect(screen.getByText('Trening nie istnieje.')).toBeInTheDocument()
+    expect(screen.getByText('Workout not found.')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
   })
 
@@ -228,10 +228,10 @@ describe('WorkoutDetailPage delete action', () => {
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     const mobileActions = document.querySelector<HTMLElement>('.workout-detail-mobile-actions')
     if (!mobileActions) throw new Error('Expected mobile workout actions.')
-    fireEvent.click(within(mobileActions).getByRole('button', { name: 'Usuń trening' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(within(mobileActions).getByRole('button', { name: 'Delete workout' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Usuwanie treningu…')
+    expect(screen.getByRole('status')).toHaveTextContent('Deleting workout…')
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(mocks.deleteWorkout).toHaveBeenLastCalledWith('workout-1')
 
@@ -241,20 +241,20 @@ describe('WorkoutDetailPage delete action', () => {
     })
 
     const alert = screen.getByRole('alert')
-    expect(alert).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
+    expect(alert).toHaveTextContent('Workout deleted. Could not refresh stats.')
     expect(mobileActions).toContainElement(alert)
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
-    expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
-    screen.getAllByRole('button', { name: 'Edytuj trening' }).forEach((button) => {
+    expect(screen.queryByText('History workouts')).not.toBeInTheDocument()
+    screen.getAllByRole('button', { name: 'Edit workout' }).forEach((button) => {
       expect(button).toBeDisabled()
     })
-    screen.getAllByRole('button', { name: 'Usuń trening' }).forEach((button) => {
+    screen.getAllByRole('button', { name: 'Delete workout' }).forEach((button) => {
       expect(button).toBeDisabled()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(screen.getByRole('status')).toHaveTextContent('Usuwanie treningu…')
+    expect(screen.getByRole('status')).toHaveTextContent('Deleting workout…')
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
 
     failedCleanupRetry.reject(new Error('offline'))
@@ -263,16 +263,16 @@ describe('WorkoutDetailPage delete action', () => {
     })
 
     const retryAlert = screen.getByRole('alert')
-    expect(retryAlert).toHaveTextContent('Trening usunięty. Nie udało się odświeżyć statystyk.')
-    expect(screen.queryByRole('button', { name: 'Zamknij' })).not.toBeInTheDocument()
-    screen.getAllByRole('button', { name: 'Edytuj trening' }).forEach((button) => {
+    expect(retryAlert).toHaveTextContent('Workout deleted. Could not refresh stats.')
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
+    screen.getAllByRole('button', { name: 'Edit workout' }).forEach((button) => {
       expect(button).toBeDisabled()
     })
-    screen.getAllByRole('button', { name: 'Usuń trening' }).forEach((button) => {
+    screen.getAllByRole('button', { name: 'Delete workout' }).forEach((button) => {
       expect(button).toBeDisabled()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(3, 'workout-1')
 
     retryDelete.resolve({ status: 'deleted' })
@@ -280,7 +280,7 @@ describe('WorkoutDetailPage delete action', () => {
       await retryDelete.promise
     })
 
-    await waitFor(() => expect(screen.getByText('Historia treningów')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('History workouts')).toBeInTheDocument())
   })
 
   it('restores cleanup retry after reload when the workout document is already gone', async () => {
@@ -292,23 +292,23 @@ describe('WorkoutDetailPage delete action', () => {
 
     const firstRender = renderPage()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     firstDelete.resolve({ status: 'cleanup_pending' })
     await act(async () => {
       await firstDelete.promise
     })
 
-    expect(await screen.findByText('Trening usunięty. Nie udało się odświeżyć statystyk.')).toBeInTheDocument()
+    expect(await screen.findByText('Workout deleted. Could not refresh stats.')).toBeInTheDocument()
 
     firstRender.unmount()
     mocks.getWorkout.mockResolvedValueOnce(null)
     renderPage(['/workout/workout-1'])
 
-    expect(await screen.findByText('Trening usunięty. Nie udało się odświeżyć statystyk.')).toBeInTheDocument()
+    expect(await screen.findByText('Workout deleted. Could not refresh stats.')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
 
     retryDelete.resolve({ status: 'deleted' })
@@ -316,7 +316,7 @@ describe('WorkoutDetailPage delete action', () => {
       await retryDelete.promise
     })
 
-    await waitFor(() => expect(screen.getByText('Historia treningów')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('History workouts')).toBeInTheDocument())
   })
 
   it('keeps committed cleanup recovery available after reload when the retry request fails', async () => {
@@ -328,8 +328,8 @@ describe('WorkoutDetailPage delete action', () => {
 
     const firstRender = renderPage()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     firstDelete.resolve({ status: 'cleanup_pending' })
     await act(async () => {
@@ -340,7 +340,7 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.getWorkout.mockResolvedValueOnce(null)
     renderPage(['/workout/workout-1'])
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Spróbuj ponownie' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
 
     failedRetry.reject(new Error('offline'))
@@ -348,8 +348,8 @@ describe('WorkoutDetailPage delete action', () => {
       await failedRetry.promise.catch(() => undefined)
     })
 
-    expect(screen.getByText('Trening usunięty. Nie udało się odświeżyć statystyk.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Spróbuj ponownie' })).toBeInTheDocument()
+    expect(screen.getByText('Workout deleted. Could not refresh stats.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
   })
 
   it('does not restore recovery after a definite delete rejection', async () => {
@@ -357,8 +357,8 @@ describe('WorkoutDetailPage delete action', () => {
 
     const firstRender = renderPage()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await act(async () => {
       await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
@@ -368,8 +368,8 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.getWorkout.mockResolvedValueOnce(null)
     renderPage(['/workout/workout-1'])
 
-    expect(await screen.findByText('Trening nie istnieje.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Spróbuj ponownie' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Workout not found.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Try again' })).not.toBeInTheDocument()
   })
 
   it('dismisses deletion feedback without navigating or mutating the workout', async () => {
@@ -377,35 +377,35 @@ describe('WorkoutDetailPage delete action', () => {
 
     renderPage()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await act(async () => {
       await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
     })
     const alert = await screen.findByRole('alert')
-    fireEvent.click(screen.getByRole('button', { name: 'Zamknij' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
 
     expect(alert).not.toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
-    expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
+    expect(screen.queryByText('History workouts')).not.toBeInTheDocument()
     expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
   })
 
   it('restores an unknown delete after reload without claiming success when its document is gone', async () => {
     mocks.deleteWorkout.mockResolvedValueOnce({ status: 'unknown' }).mockResolvedValueOnce({ status: 'deleted' })
     const firstRender = renderPage()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
-    expect(screen.queryByRole('button', { name: 'Zamknij' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
     firstRender.unmount()
     mocks.getWorkout.mockResolvedValueOnce(null)
     renderPage(['/workout/workout-1'])
-    expect(await screen.findByRole('alert')).toHaveTextContent('Nie udało się potwierdzić usunięcia')
-    fireEvent.click(screen.getByRole('button', { name: 'Spróbuj ponownie' }))
-    await screen.findByText('Historia treningów')
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await screen.findByText('History workouts')
     expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
   })
 
@@ -413,36 +413,36 @@ describe('WorkoutDetailPage delete action', () => {
     const deletion = deferred<{ status: 'deleted' }>()
     mocks.deleteWorkout.mockReturnValueOnce(deletion.promise)
     renderPage()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Usuń trening' })[0])
-    fireEvent.click(screen.getByRole('button', { name: 'Usuń' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0])
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await act(async () => { useAuthStore.setState({ user: { uid: 'user-2' } as User }) })
     await act(async () => { deletion.resolve({ status: 'deleted' }) })
-    expect(screen.queryByText('Historia treningów')).not.toBeInTheDocument()
+    expect(screen.queryByText('History workouts')).not.toBeInTheDocument()
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
-    expect(screen.queryByText('Usuwanie treningu…')).not.toBeInTheDocument()
+    expect(screen.queryByText('Deleting workout…')).not.toBeInTheDocument()
   })
 
   it('blocks another deletion while a different workout has unresolved recovery', async () => {
     writeWorkoutDeleteRecovery('user-1', { workoutId: 'other-workout', status: 'unknown' })
     renderPage()
     await waitFor(() => expect(mocks.getWorkout).toHaveBeenCalled())
-    screen.getAllByRole('button', { name: 'Usuń trening' }).forEach((button) => expect(button).toBeDisabled())
-    expect(screen.getByRole('button', { name: 'Przejdź do odzyskiwania na pulpicie' })).toBeInTheDocument()
+    screen.getAllByRole('button', { name: 'Delete workout' }).forEach((button) => expect(button).toBeDisabled())
+    expect(screen.getByRole('button', { name: 'Go to recovery on the dashboard' })).toBeInTheDocument()
     expect(mocks.deleteWorkout).not.toHaveBeenCalled()
   })
 
   it('does not save a set after its repetitions are cleared', () => {
     renderPage()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
-    fireEvent.change(screen.getByRole('spinbutton', { name: 'Powtórzenia, Wyciskanie, seria 1' }), {
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0])
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Reps, Wyciskanie, set 1' }), {
       target: { value: '' },
     })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     expect(mocks.updateWorkout).not.toHaveBeenCalled()
     expect(mocks.toastError).toHaveBeenCalledWith(
-      'Każda seria musi zawierać co najmniej jedno powtórzenie.',
+      'Each set must contain at least one rep.',
     )
   })
 
@@ -450,29 +450,29 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.updateWorkout.mockResolvedValue({ status: 'projection_pending' })
     renderPage()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
-    fireEvent.change(screen.getByLabelText('Typ sesji'), {
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0])
+    fireEvent.change(screen.getByLabelText('Session type'), {
       target: { value: 'Pull' },
     })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     expect(await screen.findByRole('heading', { name: 'Pull' })).toBeInTheDocument()
-    expect(screen.queryByText(/Błąd zapisu/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Save error/)).not.toBeInTheDocument()
     expect(mocks.toastError).not.toHaveBeenCalled()
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('Trening zapisany. Statystyki zostaną zsynchronizowane.')
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('Workout saved. Stats will be synced.')
   })
 
   it('keeps a custom workout label selected when editing starts', () => {
     renderPage()
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0])
 
-    expect(screen.getByRole('combobox', { name: 'Typ sesji' })).toHaveValue('Push day')
+    expect(screen.getByRole('combobox', { name: 'Session type' })).toHaveValue('Push day')
   })
 
   it.each([
     { origin: '/dashboard', expected: 'Dashboard home' },
-    { origin: '/history', expected: 'Historia treningów' },
+    { origin: '/history', expected: 'History workouts' },
   ])('returns to the $origin route through the Back action', async ({ origin, expected }) => {
     window.history.pushState({}, '', '/workout-detail-origin')
     renderPage([origin, { pathname: '/workout/workout-1', state: { workoutPreview: workout } }])
@@ -487,7 +487,7 @@ describe('WorkoutDetailPage delete action', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'Back' }))
 
-    expect(await screen.findByText('Historia treningów')).toBeInTheDocument()
+    expect(await screen.findByText('History workouts')).toBeInTheDocument()
   })
 
   it('shows lbs while a no-op save preserves the original kg payload exactly', async () => {
@@ -497,9 +497,9 @@ describe('WorkoutDetailPage delete action', () => {
     renderPage()
 
     expect(screen.getByRole('cell', { name: '176.4' })).toBeInTheDocument()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
-    expect(screen.getByRole('spinbutton', { name: 'Ciężar, Wyciskanie, seria 1, lbs' })).toHaveValue(176.4)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0])
+    expect(screen.getByRole('spinbutton', { name: 'Weight, Wyciskanie, set 1, lbs' })).toHaveValue(176.4)
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(mocks.updateWorkout).toHaveBeenCalledOnce())
     expect(mocks.updateWorkout.mock.calls[0]?.[1].exercises[0].sets[0].weight).toBe(80)
@@ -511,17 +511,17 @@ describe('WorkoutDetailPage delete action', () => {
     })
     mocks.updateWorkout.mockRejectedValueOnce(new Error('offline'))
     renderPage()
-    fireEvent.click(screen.getAllByRole('button', { name: 'Edytuj trening' })[0])
-    const weightInput = screen.getByRole('spinbutton', { name: 'Ciężar, Wyciskanie, seria 1, lbs' })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0])
+    const weightInput = screen.getByRole('spinbutton', { name: 'Weight, Wyciskanie, set 1, lbs' })
 
     fireEvent.change(weightInput, { target: { value: '100' } })
-    fireEvent.click(screen.getAllByRole('button', { name: 'Zapisz' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
-    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Błąd zapisu: offline'))
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Save error: offline'))
     expect(mocks.updateWorkout.mock.calls[0]?.[1].exercises[0].sets[0].weight).toBeCloseTo(45.3592, 4)
     expect(weightInput).toHaveValue(100)
-    fireEvent.click(screen.getAllByRole('button', { name: 'Anuluj' })[0])
+    fireEvent.click(screen.getAllByRole('button', { name: 'Cancel' })[0])
     expect(mocks.updateWorkout).toHaveBeenCalledOnce()
-    expect(screen.queryByRole('spinbutton', { name: 'Ciężar, Wyciskanie, seria 1, lbs' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton', { name: 'Weight, Wyciskanie, set 1, lbs' })).not.toBeInTheDocument()
   })
 })

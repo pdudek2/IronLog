@@ -16,9 +16,9 @@ interface SliderField {
 }
 
 const FIELDS: SliderField[] = [
-  { key: 'sleep',    label: 'Sen',      lowLabel: 'Słaby',    highLabel: 'Świetny' },
-  { key: 'mood',     label: 'Nastrój',  lowLabel: 'Zły',      highLabel: 'Świetny' },
-  { key: 'soreness', label: 'DOMS',     lowLabel: 'Brak',     highLabel: 'Silny' },
+  { key: 'sleep',    label: 'Sleep',      lowLabel: 'Poor',    highLabel: 'Great' },
+  { key: 'mood',     label: 'Mood',  lowLabel: 'Bad',      highLabel: 'Great' },
+  { key: 'soreness', label: 'DOMS',     lowLabel: 'None',     highLabel: 'Severe' },
 ]
 
 export default function ReadinessPrompt({ onSaved }: Props) {
@@ -31,10 +31,10 @@ export default function ReadinessPrompt({ onSaved }: Props) {
     setSaving(true)
     try {
       const entry = await saveReadiness(user.uid, values)
-      toast.success('Gotowość zapisana')
+      toast.success('Readiness saved')
       onSaved(entry)
     } catch {
-      toast.error('Nie udało się zapisać gotowości.')
+      toast.error('Could not save readiness.')
       setSaving(false)
     }
   }
@@ -48,11 +48,11 @@ export default function ReadinessPrompt({ onSaved }: Props) {
     >
       <summary className="readiness-summary">
         <div>
-          <span>Gotowość · opcjonalnie</span>
-          <strong>Dopasuj dzisiejszy trening</strong>
-          <small>Sen, nastrój i DOMS</small>
+          <span>Readiness · optional</span>
+          <strong>Adjust today’s workout</strong>
+          <small>Sleep, mood and soreness</small>
         </div>
-        <span className="readiness-summary-action">Oceń</span>
+        <span className="readiness-summary-action">Check in</span>
       </summary>
 
       <div className="readiness-prompt-body">
@@ -70,8 +70,8 @@ export default function ReadinessPrompt({ onSaved }: Props) {
               </div>
               <input
                 type="range"
-                aria-label={`Gotowość: ${label}`}
-                aria-valuetext={`${values[key]} z 5`}
+                aria-label={`Readiness: ${label}`}
+                aria-valuetext={`${values[key]} out of 5`}
                 min={1}
                 max={5}
                 step={1}
@@ -94,7 +94,7 @@ export default function ReadinessPrompt({ onSaved }: Props) {
           className="readiness-save"
           whileTap={{ scale: 0.98 }}
         >
-          {saving ? 'Zapisuję...' : 'Zapisz wynik'}
+          {saving ? 'Saving...' : 'Save score'}
         </motion.button>
       </div>
     </motion.details>

@@ -90,9 +90,7 @@ const generatedPlanResponse = {
   ok: true,
   status: 200,
   json: async () => ({
-    content: [{
-      type: 'text',
-      text: JSON.stringify({
+    choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({
         name: 'Plan siłowy',
         summary: 'Dwa days bazowe.',
         days: [
@@ -106,7 +104,7 @@ const generatedPlanResponse = {
           },
         ],
       }),
-    }],
+    } }],
   }),
 } as Response
 
@@ -140,7 +138,7 @@ describe('AI context response metadata', () => {
     })).toBe('limited;unavailable=workouts')
   })
 
-  it('does not fetch Anthropic when context loading rejects with ai_context_unavailable', async () => {
+  it('does not fetch OpenRouter when context loading rejects with ai_context_unavailable', async () => {
     mocks.loadAiUserContext.mockRejectedValueOnce(new ApiError(
       503,
       'Could not load context. Try again.',
@@ -175,8 +173,8 @@ describe('AI context response metadata', () => {
       body: new ReadableStream({
         start(controller) {
           controller.enqueue(encoder.encode([
-            'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Gotowe"}}',
-            'data: {"type":"message_stop"}',
+            'data: {"choices":[{"index":0,"delta":{"content":"Gotowe"}}]}',
+            'data: {"choices":[{"index":0,"finish_reason":"stop"}]}\n\ndata: [DONE]',
             '',
           ].join('\n\n')))
           controller.close()
@@ -188,15 +186,19 @@ describe('AI context response metadata', () => {
     await handler(captured.req, captured.res)
 
     const [, request] = vi.mocked(fetch).mock.calls[0] as [string, RequestInit]
-    const sent = JSON.parse(String(request.body)) as { system: string; messages: unknown }
-    expect(sent.system).toContain('Respond in English.')
-    expect(sent.system).toContain('User: Łukasz')
-    expect(sent.messages).toEqual(validBody.messages)
+    const sent = JSON.parse(String(request.body)) as { model: string; reasoning: { effort: string }; messages: Array<{content:string}> }
+    expect(sent.messages[0].content).toContain('Respond in English.')
+    expect(sent.messages[0].content).toContain('User: Łukasz')
+    expect(sent.messages.slice(1)).toEqual(validBody.messages)
+    expect(sent.model).toBe('openai/gpt-5.6-luna')
+    expect(sent.reasoning.effort).toBe('max')
+    expect(vi.mocked(fetch).mock.calls[0][0]).toBe('https://openrouter.ai/api/v1/chat/completions')
+    expect(request.headers).toMatchObject({ Authorization: `Bearer ${validBody.apiKey}` })
     expect(captured.header('X-IronLog-AI-Context')).toBe('limited;unavailable=readiness')
     expect(captured.text()).toBe('{"type":"chunk","text":"Gotowe"}\n{"type":"done"}\n')
   })
 
-  it('returns a retryable catalog error without calling Anthropic', async () => {
+  it('returns a retryable catalog error without calling OpenRouter', async () => {
     mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
       sources: AVAILABLE_AI_CONTEXT_SOURCES,
       profile: null,
@@ -220,7 +222,7 @@ describe('AI context response metadata', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('bounds oversized custom catalogs and rejects truncation before calling Anthropic', async () => {
+  it('bounds oversized custom catalogs and rejects truncation before calling OpenRouter', async () => {
     mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
       profile: null, readinessEntries: [], workouts: [], records: [],
     }))
@@ -252,7 +254,7 @@ describe('AI context response metadata', () => {
     })
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true, status: 200,
-      json: async () => ({ content: [{ type: 'text', text: JSON.stringify({
+      json: async () => ({ choices: [{ finish_reason: 'stop', message: { content: JSON.stringify({
         name: 'Bounded catalog plan',
         days: [0, 1].map((index) => ({
           name: `Day ${index}`,
@@ -261,7 +263,7 @@ describe('AI context response metadata', () => {
             { exerciseId: 'custom-100', exerciseSource: 'user', name: 'Missing custom 100' },
           ],
         })),
-      }) }] }),
+      }) } }] }),
     })
     vi.stubGlobal('fetch', fetchMock)
     const captured = createHandlerDoubles(validPlanBody)
@@ -270,9 +272,9 @@ describe('AI context response metadata', () => {
 
     expect(mocks.limitUserExercises).toHaveBeenCalledExactlyOnceWith(101)
     expect(captured.status()).toBe(200)
-    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { system: string }
-    expect(body.system).toContain('exerciseId=custom-99')
-    expect(body.system).not.toContain('exerciseId=custom-100')
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)) as { messages: Array<{content:string}> }
+    expect(body.messages[0].content).toContain('exerciseId=custom-99')
+    expect(body.messages[0].content).not.toContain('exerciseId=custom-100')
     const result = captured.json() as { plan: { days: Array<{ exercises: Array<{ exerciseId: string }> }> } }
     expect(result.plan.days.map((day) => day.exercises.map((exercise) => exercise.exerciseId)))
       .toEqual([['custom-99'], ['custom-99']])
@@ -291,7 +293,7 @@ describe('AI context response metadata', () => {
       records: [],
       expected: 'Records: data temporarily unavailable.',
     },
-  ])('includes $name in the plan Anthropic prompt', async ({ sources, records, expected }) => {
+  ])('includes $name in the plan OpenRouter prompt', async ({ sources, records, expected }) => {
     mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({
       sources,
       profile: null,
@@ -307,11 +309,13 @@ describe('AI context response metadata', () => {
     await handler(captured.req, captured.res)
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
-    const anthropicBody = JSON.parse(String(init.body)) as { system: string }
-    expect(anthropicBody.system).toContain('TOP RECORDS')
-    expect(anthropicBody.system).toContain('Write plan names, day names and explanations in English.')
-    expect(anthropicBody.system).toContain('Preserve exercise names from the supplied catalog.')
-    expect(anthropicBody.system).toContain(expected)
+    const openrouterBody = JSON.parse(String(init.body)) as { model: string; reasoning: { effort: string }; messages: Array<{content:string}> }
+    expect(openrouterBody.model).toBe('openai/gpt-5.6-luna')
+    expect(openrouterBody.reasoning.effort).toBe('max')
+    expect(openrouterBody.messages[0].content).toContain('TOP RECORDS')
+    expect(openrouterBody.messages[0].content).toContain('Write plan names, day names and explanations in English.')
+    expect(openrouterBody.messages[0].content).toContain('Preserve exercise names from the supplied catalog.')
+    expect(openrouterBody.messages[0].content).toContain(expected)
     expect(captured.status()).toBe(200)
     expect(captured.json()).toEqual({
       plan: {

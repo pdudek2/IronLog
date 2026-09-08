@@ -4,7 +4,7 @@ import { installMockAiRuntime, type MockAiAttempt } from './support/mockAiStream
 
 /**
  * Chat E2E tests use a browser-local NDJSON runtime for AI lifecycle coverage.
- * No Anthropic request or test API key leaves the browser context.
+ * No OpenRouter request or test API key leaves the browser context.
  */
 
 const QUESTION = 'Czy progresuję?'
@@ -60,15 +60,15 @@ test.describe('Chat UI', () => {
 
     const keyGate = page.locator('.coach-key-gate')
     await expect(keyGate).toBeVisible({ timeout: 5_000 })
-    await expect(keyGate.getByText('Add a local Claude key', { exact: true })).toBeVisible()
+    await expect(keyGate.getByText('Add a local OpenRouter key', { exact: true })).toBeVisible()
     await expect(page.locator('.ai-key-panel')).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Set up key' }).click()
     await expect(keyGate).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
 
-    await expect(page.getByPlaceholder('Paste Claude API key')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByText('Stored locally · sent through IronLog to Anthropic only for each request.', { exact: true }))
+    await expect(page.getByPlaceholder('Paste OpenRouter API key')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Stored locally · sent through IronLog to OpenRouter only for each request.', { exact: true }))
       .toBeVisible({ timeout: 5_000 })
 
     await expect(page.getByRole('button', { name: 'Remove locally stored key' }))
@@ -81,7 +81,7 @@ test.describe('Chat UI', () => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
 
-    await expect(page.getByText('Add a local Claude key', { exact: true })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Add a local OpenRouter key', { exact: true })).toBeVisible({ timeout: 5_000 })
     await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toHaveCount(0)
 
     await page.screenshot({ path: 'test-results/chat-disabled-input.png' })

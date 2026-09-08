@@ -12,12 +12,12 @@ export type ChatStreamFailureReason =
   | 'unexpected-eof'
   | 'empty-response'
 
-export type AnthropicStreamResult =
+export type OpenRouterStreamResult =
   | { status: 'done' }
   | { status: 'error'; reason: ChatStreamFailureReason }
   | { status: 'aborted' }
 
-export interface PipeAnthropicStreamOptions {
+export interface PipeOpenRouterStreamOptions {
   body: ReadableStream<Uint8Array>
   signal: AbortSignal
   isClientOpen: () => boolean
@@ -71,17 +71,18 @@ function getSseData(block: string): string | null {
   return dataLines.length > 0 ? dataLines.join('\n') : null
 }
 
-export async function pipeAnthropicStream({
+export async function pipeOpenRouterStream({
   body,
   signal,
   isClientOpen,
   writeFrame,
-}: PipeAnthropicStreamOptions): Promise<AnthropicStreamResult> {
+}: PipeOpenRouterStreamOptions): Promise<OpenRouterStreamResult> {
   const reader = body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
   let hasContent = false
   let terminalSent = false
+  let finished = false
   let cancelPromise: Promise<void> | null = null
 
   const isDisconnected = () => signal.aborted || !isClientOpen()
@@ -92,7 +93,7 @@ export async function pipeAnthropicStream({
   const onAbort = () => {
     void cancelReader('client-disconnected')
   }
-  const abortStream = async (): Promise<AnthropicStreamResult> => {
+  const abortStream = async (): Promise<OpenRouterStreamResult> => {
     await cancelReader('client-disconnected')
     return { status: 'aborted' }
   }
@@ -118,7 +119,7 @@ export async function pipeAnthropicStream({
     if (isTerminal) terminalSent = true
     return true
   }
-  const fail = async (reason: ChatStreamFailureReason): Promise<AnthropicStreamResult> => {
+  const fail = async (reason: ChatStreamFailureReason): Promise<OpenRouterStreamResult> => {
     if (!terminalSent) {
       const written = await writeSafely(
         { type: 'error', message: GENERIC_STREAM_ERROR },
@@ -160,40 +161,28 @@ export async function pipeAnthropicStream({
         const data = getSseData(nextBlock.block)
 
         if (data !== null) {
-          let event: unknown
-          try {
-            event = JSON.parse(data)
-          } catch {
-            return await fail('invalid-event')
-          }
-
-          if (!isRecord(event) || typeof event.type !== 'string') {
-            return await fail('invalid-event')
-          }
-
-          if (event.type === 'error') {
-            return await fail('upstream-error')
-          }
-
-          if (event.type === 'message_stop') {
+          if (data === '[DONE]') {
+            if (!finished) return await fail('unexpected-eof')
             if (!hasContent) return await fail('empty-response')
             const written = await writeSafely({ type: 'done' }, true)
             if (!written) return { status: 'aborted' }
             return { status: 'done' }
           }
-
-          if (event.type === 'content_block_delta') {
-            if (!isRecord(event.delta) || typeof event.delta.type !== 'string') {
-              return await fail('invalid-event')
+          let event: unknown
+          try { event = JSON.parse(data) } catch { return await fail('invalid-event') }
+          if (!isRecord(event)) return await fail('invalid-event')
+          if (event.error) return await fail('upstream-error')
+          if (!Array.isArray(event.choices)) return await fail('invalid-event')
+          for (const choice of event.choices) {
+            if (!isRecord(choice) || choice.index !== 0) continue
+            if (choice.finish_reason != null) {
+              if (choice.finish_reason !== 'stop') return await fail('upstream-error')
+              finished = true
             }
-
-            if (event.delta.type === 'text_delta') {
-              if (typeof event.delta.text !== 'string') {
-                return await fail('invalid-event')
-              }
-
-              if (event.delta.text.length > 0) {
-                const written = await writeSafely({ type: 'chunk', text: event.delta.text })
+            if (isRecord(choice.delta) && choice.delta.content != null) {
+              if (typeof choice.delta.content !== 'string') return await fail('invalid-event')
+              if (choice.delta.content.length > 0) {
+                const written = await writeSafely({ type: 'chunk', text: choice.delta.content })
                 if (!written) return { status: 'aborted' }
                 hasContent = true
               }

@@ -70,11 +70,11 @@ function upstreamError(
   } as unknown as Response
 }
 
-function anthropicBody(...events: unknown[]): ReadableStream<Uint8Array> {
+function openrouterBody(...events: unknown[]): ReadableStream<Uint8Array> {
   return new ReadableStream({
     start(controller) {
       controller.enqueue(encoder.encode(events
-        .map((event) => `data: ${JSON.stringify(event)}\n\n`)
+        .map((event) => `data: ${JSON.stringify(event)}\n\n${JSON.stringify(event).includes('"finish_reason":"stop"') ? 'data: [DONE]\n\n' : ''}`)
         .join('')))
       controller.close()
     },
@@ -91,7 +91,7 @@ describe('streamChatReply integration', () => {
     vi.restoreAllMocks()
   })
 
-  it('does not fetch Anthropic when the client was already disconnected', async () => {
+  it('does not fetch OpenRouter when the client was already disconnected', async () => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
@@ -140,25 +140,25 @@ describe('streamChatReply integration', () => {
       status: 401,
       expectedStatus: 401,
       code: 'invalid-key',
-      message: 'Claude API rejected your key. Check it and save it again.',
+      message: 'OpenRouter API rejected your key. Check it and save it again.',
     },
     {
       status: 429,
       expectedStatus: 429,
       code: 'rate-limited',
-      message: 'Claude API reported a limit or insufficient credits. Wait a moment or check your Anthropic account.',
+      message: 'OpenRouter API reported a limit or insufficient credits. Wait a moment or check your OpenRouter account.',
     },
     {
       status: 404,
       expectedStatus: 400,
       code: 'model-unavailable',
-      message: 'The selected Claude model is unavailable for this key. Choose another model in settings.',
+      message: 'The selected OpenRouter model is unavailable for this key. Check model access in your OpenRouter account.',
     },
     {
       status: 503,
       expectedStatus: 503,
       code: 'upstream-unavailable',
-      message: 'Claude API is temporarily unavailable. Try again shortly.',
+      message: 'OpenRouter API is temporarily unavailable. Try again shortly.',
     },
   ])('classifies upstream $status without exposing upstream detail', async ({ status, expectedStatus, code, message }) => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(upstreamError(
@@ -183,7 +183,7 @@ describe('streamChatReply integration', () => {
     })
   })
 
-  it('classifies Anthropic network errors as retryable', async () => {
+  it('classifies OpenRouter network errors as retryable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('private network detail')))
 
     const { res } = createResponse()
@@ -199,7 +199,7 @@ describe('streamChatReply integration', () => {
       name: 'ApiError',
       status: 503,
       code: 'network-retryable',
-      message: 'Could not connect to Claude API. Try again shortly.',
+      message: 'Could not connect to OpenRouter API. Try again shortly.',
     })
   })
 
@@ -210,9 +210,9 @@ describe('streamChatReply integration', () => {
       return {
         ok: true,
         status: 200,
-        body: anthropicBody(
-          { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
-          { type: 'message_stop' },
+        body: openrouterBody(
+          { choices: [{ index: 0, delta: { content: 'Plan' }, finish_reason: null }] },
+          { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
         ),
       } as Response
     }))

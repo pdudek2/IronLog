@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import AiKeyPanel from '../components/AiKeyPanel'
 import ChatMarkdown from '../components/ChatMarkdown'
 import { Button } from '../components/ui'
-import { getClaudeApiKey, hasClaudeApiKey } from '../lib/aiKeyStorage'
+import { getOpenRouterApiKey, hasOpenRouterApiKey } from '../lib/aiKeyStorage'
 import { createTemplate } from '../lib/templateService'
 import { saveTemplateDraft } from '../lib/templateDraftStorage'
 import {
@@ -31,7 +31,7 @@ const STARTER_PROMPT_LABELS: Record<string, string> = {
   'Does my readiness suggest a harder or lighter session today?': 'Readiness today',
 }
 
-const MISSING_PLAN_KEY_MESSAGE = 'Add a Claude API key to unlock the plan generator.'
+const MISSING_PLAN_KEY_MESSAGE = 'Add a OpenRouter API key to unlock the plan generator.'
 
 const DEMO_EMAIL = 'demo@ironlog.app'
 
@@ -169,11 +169,11 @@ export default function ChatPage() {
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
   const [keyConfiguration, setKeyConfiguration] = useState(() => ({
     uid: keyOwnerUid,
-    configured: hasClaudeApiKey(),
+    configured: hasOpenRouterApiKey(),
   }))
   const configured = keyOwnerUid !== null && (keyConfiguration.uid === keyOwnerUid
     ? keyConfiguration.configured
-    : hasClaudeApiKey())
+    : hasOpenRouterApiKey())
   const setConfigured = useCallback((nextConfigured: boolean) => {
     setKeyConfiguration({ uid: keyOwnerUid, configured: nextConfigured })
   }, [keyOwnerUid])
@@ -238,12 +238,12 @@ export default function ChatPage() {
   }
 
   function getChatActionApiKey(): string | null {
-    const apiKey = getClaudeApiKey()
+    const apiKey = getOpenRouterApiKey()
     if (configured && apiKey) return apiKey
 
     cancelActiveGeneration('superseded')
     setConfigured(false)
-    setError('Add a Claude API key to use AI Coach.')
+    setError('Add a OpenRouter API key to use AI Coach.')
     return null
   }
 
@@ -408,7 +408,7 @@ export default function ChatPage() {
   }
 
   async function handleGeneratePlan() {
-    const apiKey = getClaudeApiKey()
+    const apiKey = getOpenRouterApiKey()
     if (!apiKey) {
       setConfigured(false)
       setPlanError({ message: MISSING_PLAN_KEY_MESSAGE, field: null })
@@ -496,7 +496,7 @@ export default function ChatPage() {
       setShowConfigPanel(false)
       return
     }
-    setShowConfigPanel(hasClaudeApiKey())
+    setShowConfigPanel(hasOpenRouterApiKey())
   }, [setConfigured])
 
   const handleRailConfiguredChange = useCallback((nextConfigured: boolean) => {
@@ -562,7 +562,7 @@ export default function ChatPage() {
               <>
                 <section className="coach-key-gate">
                   <div>
-                    <strong>Add a local Claude key</strong>
+                    <strong>Add a local OpenRouter key</strong>
                     <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
                       Without it, you can review the conversation and brief, but cannot send questions or generate plans.
                     </p>
@@ -754,7 +754,7 @@ export default function ChatPage() {
                     />
 
                     <div className="coach-composer-footer">
-                      <p>Responses are billed to your Claude API key.</p>
+                      <p>Responses are billed to your OpenRouter API key.</p>
 
                       <Button
                         type="submit"

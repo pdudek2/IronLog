@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatPage from '../ChatPage'
 
 const mocks = vi.hoisted(() => ({
-  fetchAvailableClaudeModels: vi.fn(),
+  fetchAvailableOpenRouterModels: vi.fn(),
   generateTrainingPlan: vi.fn(),
   streamChatReply: vi.fn(),
   navigate: vi.fn(),
@@ -15,18 +15,18 @@ vi.mock('../../store/authStore', () => ({
   useAuthStore: () => ({ user: { uid: 'user-1', email: 'user@example.com' } }),
 }))
 vi.mock('../../lib/aiKeyStorage', () => ({
-  clearClaudeApiKey: () => {
+  clearOpenRouterApiKey: () => {
     mocks.apiKey = ''
   },
-  clearClaudeModel: vi.fn(),
-  getClaudeApiKey: () => mocks.apiKey,
-  getClaudeModel: () => 'claude-test',
-  hasClaudeApiKey: () => Boolean(mocks.apiKey),
-  setClaudeApiKey: (value: string) => {
+  clearOpenRouterModel: vi.fn(),
+  getOpenRouterApiKey: () => mocks.apiKey,
+  getOpenRouterModel: () => 'claude-test',
+  hasOpenRouterApiKey: () => Boolean(mocks.apiKey),
+  setOpenRouterApiKey: (value: string) => {
     mocks.apiKey = value.trim()
     return mocks.apiKey
   },
-  setClaudeModel: (value: string) => value.trim(),
+  setOpenRouterModel: (value: string) => value.trim(),
 }))
 vi.mock('../../lib/chatService', () => ({
   AiApiError: class AiApiError extends Error {
@@ -37,7 +37,7 @@ vi.mock('../../lib/chatService', () => ({
       this.code = code
     }
   },
-  fetchAvailableClaudeModels: mocks.fetchAvailableClaudeModels,
+  fetchAvailableOpenRouterModels: mocks.fetchAvailableOpenRouterModels,
   generateTrainingPlan: mocks.generateTrainingPlan,
   streamChatReply: mocks.streamChatReply,
 }))
@@ -66,19 +66,19 @@ vi.mock('framer-motion', () => ({
 }))
 
 async function openModelSelect() {
-  const current = screen.queryByRole('combobox', { name: 'Claude model' })
+  const current = screen.queryByRole('combobox', { name: 'OpenRouter model' })
   if (current) return current
 
   fireEvent.click(await screen.findByRole('button', { name: 'Settings' }))
-  return screen.findByRole('combobox', { name: 'Claude model' })
+  return screen.findByRole('combobox', { name: 'OpenRouter model' })
 }
 
 describe('ChatPage accessibility', () => {
   beforeEach(() => {
     mocks.apiKey = 'sk-ant-test-key-longer-than-twenty-characters'
-    mocks.fetchAvailableClaudeModels.mockReset()
-    mocks.fetchAvailableClaudeModels.mockResolvedValue([
-      { id: 'claude-test', label: 'Claude Test' },
+    mocks.fetchAvailableOpenRouterModels.mockReset()
+    mocks.fetchAvailableOpenRouterModels.mockResolvedValue([
+      { id: 'claude-test', label: 'OpenRouter Test' },
     ])
     mocks.generateTrainingPlan.mockReset()
     mocks.streamChatReply.mockReset()
@@ -89,7 +89,7 @@ describe('ChatPage accessibility', () => {
     mocks.apiKey = ''
     render(<ChatPage />)
 
-    expect(screen.getByText('Add a local Claude key')).toBeVisible()
+    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
     const configure = screen.getByRole('button', { name: 'Set up key' })
     expect(configure).toBeVisible()
     expect(configure).toHaveAttribute('aria-expanded', 'false')
@@ -101,12 +101,12 @@ describe('ChatPage accessibility', () => {
     const controlledPanel = configure.getAttribute('aria-controls')
     expect(controlledPanel).toBeTruthy()
     fireEvent.click(configure)
-    expect(screen.queryByText('Add a local Claude key')).not.toBeInTheDocument()
+    expect(screen.queryByText('Add a local OpenRouter key')).not.toBeInTheDocument()
     expect(document.getElementById(controlledPanel!)).toBeVisible()
     const cancel = screen.getByRole('button', { name: 'Cancel' })
     fireEvent.click(cancel)
     expect(screen.getByRole('button', { name: 'Set up key' })).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByText('Add a local Claude key')).toBeVisible()
+    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
 
@@ -120,7 +120,7 @@ describe('ChatPage accessibility', () => {
     await openModelSelect()
     fireEvent.click(screen.getByRole('button', { name: 'Remove locally stored key' }))
 
-    expect(screen.getByText('Add a local Claude key')).toBeVisible()
+    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Set up key' })).toBeVisible()
     expect(screen.queryByLabelText('Your key', { selector: 'input' })).not.toBeInTheDocument()
 
@@ -138,10 +138,10 @@ describe('ChatPage accessibility', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Update key' }))
 
-    await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(mocks.fetchAvailableOpenRouterModels).toHaveBeenCalledTimes(2))
 
     expect(screen.getByLabelText('Your key', { selector: 'input' })).toBeVisible()
-    expect(screen.getByRole('combobox', { name: 'Claude model' })).toBeVisible()
+    expect(screen.getByRole('combobox', { name: 'OpenRouter model' })).toBeVisible()
     expect(screen.getByRole('button', { name: 'Collapse' })).toBeVisible()
   })
 
@@ -280,46 +280,46 @@ describe('ChatPage accessibility', () => {
   })
 
   it('announces and associates a retryable model-list failure without blocking chat', async () => {
-    mocks.fetchAvailableClaudeModels.mockRejectedValueOnce(new Error('Could not load Claude models.'))
+    mocks.fetchAvailableOpenRouterModels.mockRejectedValueOnce(new Error('Could not load OpenRouter models.'))
     render(<ChatPage />)
 
     const model = await openModelSelect()
     const alert = await screen.findByRole('alert')
-    expect(alert).toHaveTextContent('Could not load Claude models.')
+    expect(alert).toHaveTextContent('Could not load OpenRouter models.')
     expect(model).not.toHaveAttribute('aria-invalid')
-    expect(model).toHaveAccessibleDescription('Could not load Claude models.')
+    expect(model).toHaveAccessibleDescription('Could not load OpenRouter models.')
     expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled()
   })
 
   it('keeps rejected key details open so the key can be corrected', async () => {
     const error = Object.assign(
-      new Error('Claude API rejected your key. Check it and save it again.'),
+      new Error('OpenRouter API rejected your key. Check it and save it again.'),
       { code: 'invalid-key' },
     )
-    mocks.fetchAvailableClaudeModels
+    mocks.fetchAvailableOpenRouterModels
       .mockRejectedValueOnce(error)
       .mockRejectedValueOnce(error)
-      .mockResolvedValue([{ id: 'claude-test', label: 'Claude Test' }])
+      .mockResolvedValue([{ id: 'claude-test', label: 'OpenRouter Test' }])
     render(<ChatPage />)
 
     const configure = await screen.findByRole('button', { name: 'Set up key' })
-    expect(screen.getByText('Add a local Claude key')).toBeVisible()
+    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
 
     fireEvent.click(configure)
-    await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(mocks.fetchAvailableOpenRouterModels).toHaveBeenCalledTimes(2))
     const key = screen.getByLabelText('Your key', { selector: 'input' })
     expect(key).toBeVisible()
-    expect(screen.getByRole('alert')).toHaveTextContent('Claude API rejected your key.')
+    expect(screen.getByRole('alert')).toHaveTextContent('OpenRouter API rejected your key.')
 
     fireEvent.change(key, {
       target: { value: 'sk-ant-corrected-test-key-longer-than-twenty-characters' },
     })
     fireEvent.click(screen.getByRole('button', { name: 'Update key' }))
 
-    await waitFor(() => expect(mocks.fetchAvailableClaudeModels).toHaveBeenCalledTimes(3))
+    await waitFor(() => expect(mocks.fetchAvailableOpenRouterModels).toHaveBeenCalledTimes(3))
     expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled()
-    expect(screen.queryByText('Add a local Claude key')).not.toBeInTheDocument()
+    expect(screen.queryByText('Add a local OpenRouter key')).not.toBeInTheDocument()
   })
 
   it('clears the missing-key plan alert after successful key recovery', async () => {
@@ -330,7 +330,7 @@ describe('ChatPage accessibility', () => {
     mocks.apiKey = ''
     fireEvent.click(screen.getByRole('button', { name: 'Generate plan' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Add a Claude API key to unlock the plan generator.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Add a OpenRouter API key to unlock the plan generator.')
     let key = screen.queryByLabelText('Your key', { selector: 'input' })
     if (!key) {
       fireEvent.click(screen.getByRole('button', { name: 'Set up key' }))
@@ -341,8 +341,8 @@ describe('ChatPage accessibility', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
 
-    await waitFor(() => expect(screen.queryByText('Add a local Claude key')).not.toBeInTheDocument())
-    expect(screen.queryByText('Add a Claude API key to unlock the plan generator.')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Add a local OpenRouter key')).not.toBeInTheDocument())
+    expect(screen.queryByText('Add a OpenRouter API key to unlock the plan generator.')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Generate plan' })).toBeEnabled()
   })
 

@@ -5,7 +5,7 @@ const { auth } = vi.hoisted(() => ({
 }))
 
 vi.mock('../firebase', () => ({ auth, db: {} }))
-vi.mock('../aiKeyStorage', () => ({ getClaudeModel: () => 'claude-test' }))
+vi.mock('../aiKeyStorage', () => ({ getOpenRouterModel: () => 'claude-test' }))
 
 import { AiApiError, generateTrainingPlan, streamChatReply } from '../chatService'
 

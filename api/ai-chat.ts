@@ -1,13 +1,13 @@
 import { adminDb } from './_lib/firebaseAdmin.js'
 import { requireUserId } from './_lib/auth.js'
 import { loadAiUserContext } from './_lib/aiContextLoader.js'
-import { anthropicApiError, anthropicNetworkError } from './_lib/anthropicErrors.js'
+import { openrouterApiError, openrouterNetworkError } from './_lib/openrouterErrors.js'
 import { ApiError } from './_lib/errors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
 import { RateLimitError, assertRateLimit } from './_lib/rateLimit.js'
 import {
   createClientAbortBridge,
-  pipeAnthropicStream,
+  pipeOpenRouterStream,
   writeChatStreamFrame,
 } from './_lib/aiChatStream.js'
 import {
@@ -18,7 +18,7 @@ import {
 } from '../server/aiContext.js'
 
 export const config = {
-  maxDuration: 30,
+  maxDuration: 300,
 }
 
 export const AI_CONTEXT_HEADER = 'X-IronLog-AI-Context'
@@ -310,19 +310,16 @@ function buildPlanUserPrompt(
   ].join('\n')
 }
 
-function readAnthropicTextPayload(payload: unknown): string {
+function readOpenRouterTextPayload(payload: unknown): string {
   const record = asRecord(payload)
-  const content = Array.isArray(record.content) ? record.content : []
-
-  return content
-    .flatMap((block) => {
-      const blockRecord = asRecord(block)
-      return blockRecord.type === 'text' && typeof blockRecord.text === 'string'
-        ? [blockRecord.text]
-        : []
-    })
-    .join('\n')
-    .trim()
+  if (record.error) throw new Error('Could not complete the plan response.')
+  const choice = asRecord(Array.isArray(record.choices) ? record.choices[0] : null)
+  if (choice.finish_reason !== 'stop') throw new Error('The plan response was incomplete. Try again.')
+  const message = asRecord(choice.message)
+  if (typeof message.content !== 'string' || !message.content.trim()) {
+    throw new Error('The model returned no plan content.')
+  }
+  return message.content.trim()
 }
 
 function extractJsonObject(raw: string): string {
@@ -440,25 +437,25 @@ async function generatePlan(
   request: ReturnType<typeof normalizePlanRequest>,
   catalog: AvailableExercise[],
 ): Promise<GeneratedPlan> {
-  const upstream = await fetch('https://api.anthropic.com/v1/messages', {
+  const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
       model,
-      max_tokens: 1600,
+      max_tokens: 32768,
+      reasoning: { effort: 'max', exclude: true },
+      provider: { require_parameters: true },
       stream: false,
-      system: buildPlanSystemPrompt(context, request, catalog),
-      messages: [{
+      messages: [{ role: 'system', content: buildPlanSystemPrompt(context, request, catalog) }, {
         role: 'user',
         content: buildPlanUserPrompt(request, context),
       }],
     }),
   }).catch(() => {
-    throw anthropicNetworkError()
+    throw openrouterNetworkError()
   })
 
   if (!upstream.ok) {
@@ -466,11 +463,11 @@ async function generatePlan(
       status: upstream.status,
       model,
     })
-    throw anthropicApiError(upstream.status)
+    throw openrouterApiError(upstream.status)
   }
 
   const payload = await upstream.json().catch(() => null)
-  const text = readAnthropicTextPayload(payload)
+  const text = readOpenRouterTextPayload(payload)
   const parsed = JSON.parse(extractJsonObject(text)) as unknown
   return normalizeGeneratedPlan(parsed, catalog, request)
 }
@@ -490,27 +487,27 @@ export async function streamChatReply(
 
     let upstream: Response
     try {
-      upstream = await fetch('https://api.anthropic.com/v1/messages', {
+      upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
+          Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
           model,
-          max_tokens: 700,
+          max_tokens: 16384,
+          reasoning: { effort: 'max', exclude: true },
+          provider: { require_parameters: true },
           stream: true,
-          system: buildSystemPrompt(context),
-          messages: messages.map((message) => ({
+          messages: [{ role: 'system', content: buildSystemPrompt(context) }, ...messages.map((message) => ({
             role: message.role,
             content: message.content,
-          })),
+          }))],
         }),
         signal: bridge.signal,
       }).catch((error) => {
         if (bridge.signal.aborted) throw error
-        throw anthropicNetworkError()
+        throw openrouterNetworkError()
       })
     } catch (error) {
       if (bridge.signal.aborted) return
@@ -524,20 +521,20 @@ export async function streamChatReply(
         status: upstream.status,
         model,
       })
-      throw anthropicApiError(upstream.status)
+      throw openrouterApiError(upstream.status)
     }
 
     const body = upstream.body
     if (!body) {
       if (bridge.signal.aborted) return
-      throw new Error('Claude API returned no response content.')
+      throw new Error('OpenRouter API returned no response content.')
     }
 
     res.statusCode = 200
     res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8')
     res.setHeader('Cache-Control', 'no-store')
 
-    const result = await pipeAnthropicStream({
+    const result = await pipeOpenRouterStream({
       body: body as ReadableStream<Uint8Array>,
       signal: bridge.signal,
       isClientOpen: () => !res.writableEnded && !res.destroyed,
@@ -604,7 +601,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const messages = sanitizeMessages(body.messages)
 
     if (apiKey.length < 20) {
-      sendJson(res, 400, { error: 'A valid Claude API key is required.' })
+      sendJson(res, 400, { error: 'A valid OpenRouter API key is required.' })
       return
     }
 
@@ -615,8 +612,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
     const context = await loadAiUserContext(userId)
     res.setHeader(AI_CONTEXT_HEADER, serializeAiContextHeader(context.sources))
-    const requestedModel = typeof body.model === 'string' ? body.model.trim() : ''
-    const model = requestedModel || process.env.CLAUDE_CHAT_MODEL || 'claude-sonnet-4-20250514'
+    const model = 'openai/gpt-5.6-luna'
 
     if (mode === 'plan') {
       const request = normalizePlanRequest(body.planRequest)

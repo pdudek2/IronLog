@@ -1,5 +1,5 @@
 import { auth } from './firebase'
-import { getClaudeModel } from './aiKeyStorage'
+import { getOpenRouterModel } from './aiKeyStorage'
 import { isAbortError, readChatStream } from './chatStreamProtocol'
 
 export const AI_CONTEXT_SOURCES = ['profile', 'readiness', 'workouts', 'records'] as const
@@ -74,7 +74,7 @@ export interface TrainingPlanRequest {
   notes: string
 }
 
-export interface ClaudeModelOption {
+export interface OpenRouterModelOption {
   id: string
   label: string
 }
@@ -132,7 +132,7 @@ export async function streamChatReply({
     .filter(({ content }) => content.trim())
     .slice(-12)
     .map(({ role, content }) => ({ role, content: content.trim().slice(0, 4000) }))
-  const requestBody = { apiKey, model: getClaudeModel() || undefined, messages: recentMessages }
+  const requestBody = { apiKey, model: getOpenRouterModel() || undefined, messages: recentMessages }
   let body = JSON.stringify(requestBody)
   const encoder = new TextEncoder()
   while (encoder.encode(body).byteLength > 128 * 1024 && recentMessages.length > 1) {
@@ -210,7 +210,7 @@ export async function generateTrainingPlan({
       },
       body: JSON.stringify({
         apiKey,
-        model: getClaudeModel() || undefined,
+        model: getOpenRouterModel() || undefined,
         mode: 'plan',
         planRequest: request,
       }),
@@ -237,7 +237,7 @@ export async function generateTrainingPlan({
   }
 }
 
-export async function fetchAvailableClaudeModels(apiKey: string): Promise<ClaudeModelOption[]> {
+export async function fetchAvailableOpenRouterModels(apiKey: string): Promise<OpenRouterModelOption[]> {
   const idToken = await getAuthenticatedUserToken()
   const host = typeof window !== 'undefined' ? window.location.hostname || 'localhost' : 'localhost'
   const url = !import.meta.env.DEV || typeof window === 'undefined'
@@ -256,15 +256,15 @@ export async function fetchAvailableClaudeModels(apiKey: string): Promise<Claude
       body: JSON.stringify({ apiKey }),
     })
   } catch {
-    throw new Error('Could not load the Claude model list.')
+    throw new Error('Could not load the OpenRouter model list.')
   }
 
   const payload = await response.json().catch(() => null) as
-    | { error?: string; code?: string; models?: ClaudeModelOption[] }
+    | { error?: string; code?: string; models?: OpenRouterModelOption[] }
     | null
 
   if (!response.ok) {
-    throw new AiApiError(payload?.error ?? 'Could not load the Claude model list.', payload?.code)
+    throw new AiApiError(payload?.error ?? 'Could not load the OpenRouter model list.', payload?.code)
   }
 
   return Array.isArray(payload?.models) ? payload.models : []

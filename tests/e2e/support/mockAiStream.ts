@@ -118,10 +118,10 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
     )
 
     runtimeWindow.__ironlogMockAiAbortCount = 0
-    if (!window.localStorage.getItem(`ironlog.claudeApiKey:${uid}`)) {
-      window.localStorage.setItem(`ironlog.claudeApiKey:${uid}`, 'sk-ant-test-only-browser-key')
+    if (!window.localStorage.getItem(`ironlog.openrouterApiKey:${uid}`)) {
+      window.localStorage.setItem(`ironlog.openrouterApiKey:${uid}`, 'sk-ant-test-only-browser-key')
     }
-    window.localStorage.setItem('ironlog.claudeModel', 'claude-test')
+    window.localStorage.setItem('ironlog.openrouterModel', 'claude-test')
 
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const requestUrl = typeof input === 'string' || input instanceof URL
@@ -134,7 +134,7 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
         if (!isModelsBody(body)) throw contractViolation(pathname, 'body { apiKey }')
 
         return new Response(JSON.stringify({
-          models: [{ id: 'claude-test', label: 'Claude Test' }],
+          models: [{ id: 'claude-test', label: 'OpenRouter Test' }],
         }), {
           status: 200,
           headers: { 'Content-Type': 'application/json; charset=utf-8' },

@@ -1,13 +1,13 @@
 import { useAuthStore } from '../store/authStore'
 
-const CLAUDE_API_KEY_STORAGE = 'ironlog.claudeApiKey'
-const CLAUDE_MODEL_STORAGE = 'ironlog.claudeModel'
+const OPENROUTER_API_KEY_STORAGE = 'ironlog.openrouterApiKey'
+const OPENROUTER_MODEL_STORAGE = 'ironlog.openrouterModel'
 
 function canUseStorage() {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined'
 }
 
-export function getClaudeApiKey(): string {
+export function getOpenRouterApiKey(): string {
   if (!canUseStorage()) return ''
   const storageKey = getAccountKeyStorage()
   return storageKey ? window.localStorage.getItem(storageKey)?.trim() ?? '' : ''
@@ -15,16 +15,16 @@ export function getClaudeApiKey(): string {
 
 function getAccountKeyStorage(): string | null {
   // Legacy keys have no owner, so never adopt one for the next account.
-  window.localStorage.removeItem(CLAUDE_API_KEY_STORAGE)
+  window.localStorage.removeItem(OPENROUTER_API_KEY_STORAGE)
   const { user, loading } = useAuthStore.getState()
-  return !loading && user && !user.isAnonymous ? `${CLAUDE_API_KEY_STORAGE}:${user.uid}` : null
+  return !loading && user && !user.isAnonymous ? `${OPENROUTER_API_KEY_STORAGE}:${user.uid}` : null
 }
 
-export function hasClaudeApiKey(): boolean {
-  return getClaudeApiKey().length > 0
+export function hasOpenRouterApiKey(): boolean {
+  return getOpenRouterApiKey().length > 0
 }
 
-export function setClaudeApiKey(value: string): string {
+export function setOpenRouterApiKey(value: string): string {
   if (!canUseStorage()) return ''
   const storageKey = getAccountKeyStorage()
   if (!storageKey) return ''
@@ -40,32 +40,32 @@ export function setClaudeApiKey(value: string): string {
   return normalized
 }
 
-export function clearClaudeApiKey() {
+export function clearOpenRouterApiKey() {
   if (!canUseStorage()) return
   const storageKey = getAccountKeyStorage()
   if (storageKey) window.localStorage.removeItem(storageKey)
 }
 
-export function getClaudeModel(): string {
+export function getOpenRouterModel(): string {
   if (!canUseStorage()) return ''
-  return window.localStorage.getItem(CLAUDE_MODEL_STORAGE)?.trim() ?? ''
+  return window.localStorage.getItem(OPENROUTER_MODEL_STORAGE)?.trim() ?? ''
 }
 
-export function setClaudeModel(value: string): string {
+export function setOpenRouterModel(value: string): string {
   if (!canUseStorage()) return ''
 
   const normalized = value.trim()
 
   if (!normalized) {
-    window.localStorage.removeItem(CLAUDE_MODEL_STORAGE)
+    window.localStorage.removeItem(OPENROUTER_MODEL_STORAGE)
     return ''
   }
 
-  window.localStorage.setItem(CLAUDE_MODEL_STORAGE, normalized)
+  window.localStorage.setItem(OPENROUTER_MODEL_STORAGE, normalized)
   return normalized
 }
 
-export function clearClaudeModel() {
+export function clearOpenRouterModel() {
   if (!canUseStorage()) return
-  window.localStorage.removeItem(CLAUDE_MODEL_STORAGE)
+  window.localStorage.removeItem(OPENROUTER_MODEL_STORAGE)
 }

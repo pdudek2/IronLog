@@ -2,14 +2,14 @@ import { useEffect, useId, useState } from 'react'
 import { Eye, EyeOff, ShieldCheck, Trash2 } from 'lucide-react'
 import { Button, Input } from './ui'
 import {
-  clearClaudeApiKey,
-  clearClaudeModel,
-  getClaudeApiKey,
-  getClaudeModel,
-  setClaudeApiKey,
-  setClaudeModel,
+  clearOpenRouterApiKey,
+  clearOpenRouterModel,
+  getOpenRouterApiKey,
+  getOpenRouterModel,
+  setOpenRouterApiKey,
+  setOpenRouterModel,
 } from '../lib/aiKeyStorage'
-import { AiApiError, fetchAvailableClaudeModels, type ClaudeModelOption } from '../lib/chatService'
+import { AiApiError, fetchAvailableOpenRouterModels, type OpenRouterModelOption } from '../lib/chatService'
 
 import { useAuthStore } from '../store/authStore'
 
@@ -44,13 +44,13 @@ function AccountAiKeyPanel({
   const keyInputId = useId()
   const modelSelectId = useId()
   const modelsErrorId = useId()
-  const [draft, setDraft] = useState(() => getClaudeApiKey())
-  const [savedKey, setSavedKey] = useState(() => getClaudeApiKey())
-  const [selectedModel, setSelectedModel] = useState(() => getClaudeModel())
+  const [draft, setDraft] = useState(() => getOpenRouterApiKey())
+  const [savedKey, setSavedKey] = useState(() => getOpenRouterApiKey())
+  const [selectedModel, setSelectedModel] = useState(() => getOpenRouterModel())
   const [showKey, setShowKey] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
-  const [models, setModels] = useState<ClaudeModelOption[]>([])
+  const [models, setModels] = useState<OpenRouterModelOption[]>([])
   const [modelsError, setModelsError] = useState<{ message: string; code?: string }>({ message: '' })
   const [loadingModels, setLoadingModels] = useState(false)
 
@@ -68,24 +68,24 @@ function AccountAiKeyPanel({
       setModelsError({ message: '' })
 
       try {
-        const nextModels = await fetchAvailableClaudeModels(savedKey)
+        const nextModels = await fetchAvailableOpenRouterModels(savedKey)
         if (cancelled) return
         setModels(nextModels)
 
-        const currentModel = getClaudeModel()
+        const currentModel = getOpenRouterModel()
         const fallbackModel = nextModels[0]?.id ?? ''
         const nextSelected = nextModels.some((model) => model.id === currentModel)
           ? currentModel
           : fallbackModel
 
         setSelectedModel(nextSelected)
-        if (nextSelected) setClaudeModel(nextSelected)
+        if (nextSelected) setOpenRouterModel(nextSelected)
         onConfiguredChange?.(true)
       } catch (nextError) {
         if (cancelled) return
         const code = getAiErrorCode(nextError)
         setModelsError({
-          message: nextError instanceof Error ? nextError.message : 'Could not load Claude models.',
+          message: nextError instanceof Error ? nextError.message : 'Could not load OpenRouter models.',
           code,
         })
         onConfiguredChange?.(code !== 'invalid-key')
@@ -105,12 +105,12 @@ function AccountAiKeyPanel({
     const normalized = draft.trim()
 
     if (normalized.length < 20) {
-      setError('This key looks too short. Paste your full Claude API key.')
+      setError('This key looks too short. Paste your full OpenRouter API key.')
       setSaved(false)
       return
     }
 
-    const nextKey = setClaudeApiKey(normalized)
+    const nextKey = setOpenRouterApiKey(normalized)
     setSavedKey(nextKey)
     setDraft(nextKey)
     setError('')
@@ -119,8 +119,8 @@ function AccountAiKeyPanel({
   }
 
   function handleClear() {
-    clearClaudeApiKey()
-    clearClaudeModel()
+    clearOpenRouterApiKey()
+    clearOpenRouterModel()
     setSavedKey('')
     setDraft('')
     setSelectedModel('')
@@ -137,7 +137,7 @@ function AccountAiKeyPanel({
       <section id={id} className="ai-key-panel ai-key-panel--collapsed">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <h2 className="text-lg font-semibold text-white">Claude key</h2>
+            <h2 className="text-lg font-semibold text-white">OpenRouter key</h2>
             <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
               {hasSavedKey
                 ? needsAttention
@@ -161,9 +161,9 @@ function AccountAiKeyPanel({
     <section id={id} className="ai-key-panel">
       <div className="ai-key-panel-head">
         <div className="min-w-0">
-          <h2 className="text-xl font-bold text-white">Claude key</h2>
+          <h2 className="text-xl font-bold text-white">OpenRouter key</h2>
           <p className="ai-key-panel-description mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Your key is stored locally in this browser. AI requests send it through the IronLog server to Anthropic; IronLog does not store it in the database.
+            Your key is stored locally in this browser. AI requests send it through the IronLog server to OpenRouter; IronLog does not store it in the database.
           </p>
         </div>
 
@@ -183,7 +183,7 @@ function AccountAiKeyPanel({
             <Input
               id={keyInputId}
               type={showKey ? 'text' : 'password'}
-              placeholder="Paste Claude API key"
+              placeholder="Paste OpenRouter API key"
               value={draft}
               onChange={(event) => {
                 setDraft(event.target.value)
@@ -221,14 +221,14 @@ function AccountAiKeyPanel({
 
         <p className="ai-key-local-note">
           <ShieldCheck size={14} aria-hidden="true" />
-          Stored locally · sent through IronLog to Anthropic only for each request.
+          Stored locally · sent through IronLog to OpenRouter only for each request.
         </p>
 
         {hasSavedKey && (
           <div className="ai-key-model">
             <div className="min-w-0">
               <label htmlFor={modelSelectId} className="text-sm font-semibold text-white">
-                Claude model
+                OpenRouter model
               </label>
             </div>
 
@@ -244,7 +244,7 @@ function AccountAiKeyPanel({
               aria-invalid={keyRejected ? true : undefined}
               aria-describedby={modelsError.message ? modelsErrorId : undefined}
               onChange={(event) => {
-                const nextModel = setClaudeModel(event.target.value)
+                const nextModel = setOpenRouterModel(event.target.value)
                 setSelectedModel(nextModel)
               }}
               className="w-full rounded-[var(--radius-lg)] px-4 py-3 text-sm outline-none"

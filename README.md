@@ -26,7 +26,7 @@ Templates keep exercise order, targets, and notes for repeatable sessions. A tem
 
 AI Coach answers questions about training and can draft a workout plan from the user's profile, readiness, recent sessions, and records. The draft can be edited before it is saved as a template.
 
-The integration uses the user's own Claude API key. The key stays in local browser storage, scoped to the authenticated Firebase user, and is sent to the server only for the current request. IronLog does not store it in the training database.
+The integration uses the user's own OpenRouter API key. The key stays in local browser storage, scoped to the authenticated Firebase user, and is sent to the server only for the current request. IronLog does not store it in the training database. Both chat and plan generation use `openai/gpt-5.6-luna` with `reasoning.effort: max`; the server fixes the model and does not fall back to another model. Add the key in Coach settings. Older Claude keys are not reused.
 
 ## Local development
 
@@ -76,7 +76,7 @@ It runs `test:e2e:emulator` followed by `test:e2e:csp`. Each script starts Auth 
 
 `scripts/qaSafety.ts` requires `E2E_BACKEND=emulator`, `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080`, and `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099`. The npm scripts select emulator mode and Firebase CLI supplies the host variables. Running bare `playwright test` without that environment fails the local QA check.
 
-Default E2E tests make **no real AI calls** and require no real Claude API key. The chat scenarios intercept `/api/ai-models` and `/api/ai-chat` in a browser-local mock using test-only keys. Both `chat.spec.ts` and `ai-key-isolation.spec.ts` are emulator-only: their mock setup obtains the authenticated UID through the emulator test bridge. Playwright excludes these files from live runs.
+Default E2E tests make **no real AI calls** and require no real OpenRouter API key. The chat scenarios intercept `/api/ai-models` and `/api/ai-chat` in a browser-local mock using test-only keys. Both `chat.spec.ts` and `ai-key-isolation.spec.ts` are emulator-only: their mock setup obtains the authenticated UID through the emulator test bridge. Playwright excludes these files from live runs.
 
 Other checks:
 

@@ -22,7 +22,7 @@ async function logout(page: Page) {
   await expectAppReady(page, '/login')
 }
 
-test('isolates Claude keys through A → logout → B → A without adopting legacy storage', async ({
+test('isolates OpenRouter keys through A → logout → B → A without adopting legacy storage', async ({
   page, context, request, cleanup, expectedBrowserDiagnostics,
 }, testInfo) => {
   test.setTimeout(60_000)
@@ -33,7 +33,7 @@ test('isolates Claude keys through A → logout → B → A without adopting leg
   const emailB = `ai-key-isolation-${randomUUID()}@ironlog.local`
   const passwordB = 'ironlog-isolation-test-only'
   const escapedAiRequests: string[] = []
-  await context.route(/\/api\/|api\.anthropic\.com/, async (route) => {
+  await context.route(/\/api\/|api\.openrouter\.com/, async (route) => {
     escapedAiRequests.push(route.request().url())
     await route.abort('blockedbyclient')
   })
@@ -48,13 +48,13 @@ test('isolates Claude keys through A → logout → B → A without adopting leg
   await expectAppReady(page, '/chat')
   await page.waitForFunction(() => Boolean(window.__ironlogEmulatorTestBridge?.readAuthenticatedUid()))
   const uidA = await page.evaluate(() => window.__ironlogEmulatorTestBridge!.readAuthenticatedUid()!)
-  await page.evaluate(() => window.localStorage.setItem('ironlog.claudeApiKey', 'sk-ant-test-only-unowned-legacy'))
+  await page.evaluate(() => window.localStorage.setItem('ironlog.openrouterApiKey', 'sk-ant-test-only-unowned-legacy'))
   await page.reload()
   await expectAppReady(page, '/chat')
-  await expect(page.getByText('Add a local Claude key', { exact: true })).toBeVisible()
+  await expect(page.getByText('Add a local OpenRouter key', { exact: true })).toBeVisible()
   expect(await page.evaluate((uid) => ({
-    legacy: window.localStorage.getItem('ironlog.claudeApiKey'),
-    account: window.localStorage.getItem(`ironlog.claudeApiKey:${uid}`),
+    legacy: window.localStorage.getItem('ironlog.openrouterApiKey'),
+    account: window.localStorage.getItem(`ironlog.openrouterApiKey:${uid}`),
   }), uidA)).toEqual({ legacy: null, account: null })
 
   await installMockAiRuntime(page, [])
@@ -63,8 +63,8 @@ test('isolates Claude keys through A → logout → B → A without adopting leg
   await page.getByRole('button', { name: 'Settings', exact: true }).click()
   await page.getByLabel('Your key', { exact: true }).fill(KEY_A)
   await page.getByRole('button', { name: 'Update key', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: 'Claude model' })).toBeEnabled()
-  expect(await page.evaluate((uid) => window.localStorage.getItem(`ironlog.claudeApiKey:${uid}`), uidA)).toBe(KEY_A)
+  await expect(page.getByRole('combobox', { name: 'OpenRouter model' })).toBeEnabled()
+  expect(await page.evaluate((uid) => window.localStorage.getItem(`ironlog.openrouterApiKey:${uid}`), uidA)).toBe(KEY_A)
 
   // Use real auth and UI navigation; the mock never overwrites an existing account key.
   await logout(page)
@@ -102,13 +102,13 @@ test('isolates Claude keys through A → logout → B → A without adopting leg
   await expectAppReady(page, '/dashboard')
   await openCoach(page, testInfo.project.name)
   await expect.poll(() => page.evaluate(() => window.__ironlogEmulatorTestBridge?.readAuthenticatedUid())).toBe(uidB)
-  await expect(page.getByText('Add a local Claude key', { exact: true })).toBeVisible()
+  await expect(page.getByText('Add a local OpenRouter key', { exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toHaveCount(0)
   await page.screenshot({ path: testInfo.outputPath('account-b-key-gate.png'), fullPage: true })
   await page.getByRole('button', { name: 'Set up key', exact: true }).click()
   await expect(page.getByLabel('Your key', { exact: true })).toHaveValue('')
   await expect(page.getByRole('button', { name: 'Remove locally stored key' })).toBeDisabled()
-  expect(await page.evaluate((uid) => window.localStorage.getItem(`ironlog.claudeApiKey:${uid}`), uidB)).toBeNull()
+  expect(await page.evaluate((uid) => window.localStorage.getItem(`ironlog.openrouterApiKey:${uid}`), uidB)).toBeNull()
 
   await logout(page)
   await page.getByLabel('Email', { exact: true }).fill(emailA)

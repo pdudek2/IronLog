@@ -5,19 +5,19 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   createClientAbortBridge,
   encodeChatStreamFrame,
-  pipeAnthropicStream,
+  pipeOpenRouterStream,
   writeChatStreamFrame,
   type ServerChatStreamFrame,
 } from '../aiChatStream'
 
 const encoder = new TextEncoder()
 
-function anthropicEvent(event: unknown): string {
-  return `data: ${JSON.stringify(event)}\n\n`
+function openrouterEvent(event: unknown): string {
+  return `data: ${JSON.stringify(event)}\n\n${JSON.stringify(event).includes('"finish_reason":"stop"') ? 'data: [DONE]\n\n' : ''}`
 }
 
-function anthropicStream(...events: unknown[]): ReadableStream<Uint8Array> {
-  return streamFrom(events.map(anthropicEvent).join(''))
+function openrouterStream(...events: unknown[]): ReadableStream<Uint8Array> {
+  return streamFrom(events.map(openrouterEvent).join(''))
 }
 
 function streamFrom(...chunks: string[]): ReadableStream<Uint8Array> {
@@ -107,14 +107,40 @@ describe('writeChatStreamFrame', () => {
   })
 })
 
-describe('pipeAnthropicStream', () => {
-  it('emits chunks and exactly one done after message_stop', async () => {
+describe('pipeOpenRouterStream', () => {
+  it.each(['length', 'content_filter', 'tool_calls'])('rejects %s rather than saving an incomplete answer', async (finishReason) => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
-      body: anthropicStream(
-        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
-        { type: 'message_stop' },
-        { type: 'message_stop' },
+    const result = await pipeOpenRouterStream({
+      body: openrouterStream(
+        { choices: [{ index: 0, delta: { content: 'Partial' } }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: finishReason }] },
+      ),
+      signal: new AbortController().signal,
+      isClientOpen: () => true,
+      writeFrame: (frame) => frames.push(frame),
+    })
+    expect(result).toEqual({ status: 'error', reason: 'upstream-error' })
+    expect(frames.map((frame) => frame.type)).toEqual(['chunk', 'error'])
+  })
+
+  it('does not treat a bare DONE marker as a successful response', async () => {
+    const frames: ServerChatStreamFrame[] = []
+    const result = await pipeOpenRouterStream({
+      body: streamFrom('data: [DONE]\n\n'),
+      signal: new AbortController().signal,
+      isClientOpen: () => true,
+      writeFrame: (frame) => frames.push(frame),
+    })
+    expect(result).toEqual({ status: 'error', reason: 'unexpected-eof' })
+    expect(frames.map((frame) => frame.type)).toEqual(['error'])
+  })
+  it('emits chunks and exactly one done after completion terminator', async () => {
+    const frames: ServerChatStreamFrame[] = []
+    const result = await pipeOpenRouterStream({
+      body: openrouterStream(
+        { choices: [{ index: 0, delta: { content: 'Plan' }, finish_reason: null }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
       ),
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -130,10 +156,10 @@ describe('pipeAnthropicStream', () => {
 
   it('reassembles SSE events split across transport chunks', async () => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
+    const result = await pipeOpenRouterStream({
       body: streamFrom(
-        'data: {"type":"content_block_delta","delta":{"type":"text_delta",',
-        '"text":"Hello"}}\n\ndata: {"type":"message_stop"}\n',
+        'data: {"choices":[{"index":0,"delta":{',
+        '"content":"Hello"}}]}\n\ndata: {"choices":[{"index":0,"finish_reason":"stop"}]}\n\ndata: [DONE]\n',
         '\n',
       ),
       signal: new AbortController().signal,
@@ -150,11 +176,11 @@ describe('pipeAnthropicStream', () => {
 
   it('parses CRLF-delimited SSE events', async () => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
+    const result = await pipeOpenRouterStream({
       body: streamFrom(
         'event: content_block_delta\r\n',
-        'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Plan"}}\r\n\r\n',
-        'event: message_stop\r\ndata: {"type":"message_stop"}\r\n\r\n',
+        'data: {"choices":[{"index":0,"delta":{"content":"Plan"}}]}\r\n\r\n',
+        'event: completion terminator\r\ndata: {"choices":[{"index":0,"finish_reason":"stop"}]}\n\ndata: [DONE]\r\n\r\n',
       ),
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -170,11 +196,11 @@ describe('pipeAnthropicStream', () => {
 
   it('joins multiple data lines within one SSE event', async () => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
+    const result = await pipeOpenRouterStream({
       body: streamFrom(
-        'data: {"type":"content_block_delta",\n',
-        'data: "delta":{"type":"text_delta","text":"Plan"}}\n\n',
-        'data: {"type":"message_stop"}\n\n',
+        'data: {"choices":[{"index":0,\n',
+        'data: "delta":{"content":"Plan"}}]}\n\n',
+        'data: {"choices":[{"index":0,"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n',
       ),
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -191,13 +217,10 @@ describe('pipeAnthropicStream', () => {
   it('turns an upstream error after content into an error terminal', async () => {
     const frames: ServerChatStreamFrame[] = []
     const { body, cancel } = cancellableStreamFrom(
-      anthropicEvent({
-        type: 'content_block_delta',
-        delta: { type: 'text_delta', text: 'Część' },
-      }),
-      anthropicEvent({ type: 'error', error: { message: 'connection lost' } }),
+      openrouterEvent({ choices: [{ index: 0, delta: { content: 'Część' }, finish_reason: null }] }),
+      openrouterEvent({ type: 'error', error: { message: 'connection lost' } }),
     )
-    const result = await pipeAnthropicStream({
+    const result = await pipeOpenRouterStream({
       body,
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -214,10 +237,10 @@ describe('pipeAnthropicStream', () => {
     expect(cancel).toHaveBeenCalledOnce()
   })
 
-  it('turns malformed Anthropic JSON into an invalid-event terminal', async () => {
+  it('turns malformed OpenRouter JSON into an invalid-event terminal', async () => {
     const frames: ServerChatStreamFrame[] = []
     const { body, cancel } = cancellableStreamFrom('data: {not-json}\n\n')
-    const result = await pipeAnthropicStream({
+    const result = await pipeOpenRouterStream({
       body,
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -234,7 +257,7 @@ describe('pipeAnthropicStream', () => {
 
   it('turns a reader exception into a reader-error terminal', async () => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
+    const result = await pipeOpenRouterStream({
       body: streamThatErrors(new Error('private upstream detail')),
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -249,11 +272,11 @@ describe('pipeAnthropicStream', () => {
     expect(JSON.stringify(frames)).not.toContain('private upstream detail')
   })
 
-  it('turns EOF without message_stop into an unexpected-eof terminal', async () => {
+  it('turns EOF without completion terminator into an unexpected-eof terminal', async () => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
-      body: anthropicStream(
-        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Urwane' } },
+    const result = await pipeOpenRouterStream({
+      body: openrouterStream(
+        { choices: [{ index: 0, delta: { content: 'Urwane' }, finish_reason: null }] },
       ),
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -267,10 +290,10 @@ describe('pipeAnthropicStream', () => {
     ])
   })
 
-  it('turns message_stop without text into an empty-response terminal', async () => {
+  it('turns completion terminator without text into an empty-response terminal', async () => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
-      body: anthropicStream({ type: 'message_stop' }),
+    const result = await pipeOpenRouterStream({
+      body: openrouterStream({ choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] }),
       signal: new AbortController().signal,
       isClientOpen: () => true,
       writeFrame: (frame) => frames.push(frame),
@@ -283,13 +306,14 @@ describe('pipeAnthropicStream', () => {
     }])
   })
 
-  it('ignores unknown nonterminal events', async () => {
+  it('ignores reasoning and usage-only chunks', async () => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
-      body: anthropicStream(
-        { type: 'future_progress_event', progress: 0.5 },
-        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
-        { type: 'message_stop' },
+    const result = await pipeOpenRouterStream({
+      body: openrouterStream(
+        { choices: [{ index: 0, delta: { reasoning: 'private reasoning' } }] },
+        { choices: [], usage: { total_tokens: 123 } },
+        { choices: [{ index: 0, delta: { content: 'Plan' }, finish_reason: null }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
       ),
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -308,8 +332,8 @@ describe('pipeAnthropicStream', () => {
     const frames: ServerChatStreamFrame[] = []
     controller.abort('client-disconnected')
 
-    const result = await pipeAnthropicStream({
-      body: anthropicStream({ type: 'message_stop' }),
+    const result = await pipeOpenRouterStream({
+      body: openrouterStream({ choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] }),
       signal: controller.signal,
       isClientOpen: () => true,
       writeFrame: (frame) => frames.push(frame),
@@ -321,10 +345,10 @@ describe('pipeAnthropicStream', () => {
 
   it('returns aborted without writing when the client is closed', async () => {
     const frames: ServerChatStreamFrame[] = []
-    const result = await pipeAnthropicStream({
-      body: anthropicStream(
-        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Ukryte' } },
-        { type: 'message_stop' },
+    const result = await pipeOpenRouterStream({
+      body: openrouterStream(
+        { choices: [{ index: 0, delta: { content: 'Ukryte' }, finish_reason: null }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
       ),
       signal: new AbortController().signal,
       isClientOpen: () => false,
@@ -339,14 +363,14 @@ describe('pipeAnthropicStream', () => {
     {
       target: 'chunk' as const,
       events: [
-        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
+        { choices: [{ index: 0, delta: { content: 'Plan' }, finish_reason: null }] },
       ],
     },
     {
       target: 'done' as const,
       events: [
-        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
-        { type: 'message_stop' },
+        { choices: [{ index: 0, delta: { content: 'Plan' }, finish_reason: null }] },
+        { choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] },
       ],
     },
     {
@@ -360,8 +384,8 @@ describe('pipeAnthropicStream', () => {
     const writtenFrames: ServerChatStreamFrame[] = []
     let clientOpen = true
 
-    const resultPromise = pipeAnthropicStream({
-      body: anthropicStream(...events),
+    const resultPromise = pipeOpenRouterStream({
+      body: openrouterStream(...events),
       signal: controller.signal,
       isClientOpen: () => clientOpen,
       writeFrame: (frame) => {
@@ -381,9 +405,9 @@ describe('pipeAnthropicStream', () => {
   it('rethrows a writer exception while the signal and client remain open', async () => {
     const writeError = new Error('writer programming failure')
 
-    await expect(pipeAnthropicStream({
-      body: anthropicStream(
-        { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Plan' } },
+    await expect(pipeOpenRouterStream({
+      body: openrouterStream(
+        { choices: [{ index: 0, delta: { content: 'Plan' }, finish_reason: null }] },
       ),
       signal: new AbortController().signal,
       isClientOpen: () => true,
@@ -403,7 +427,7 @@ describe('pipeAnthropicStream', () => {
       cancel,
     })
 
-    const resultPromise = pipeAnthropicStream({
+    const resultPromise = pipeOpenRouterStream({
       body,
       signal: controller.signal,
       isClientOpen: () => true,
@@ -423,17 +447,14 @@ describe('pipeAnthropicStream', () => {
     const body = new ReadableStream<Uint8Array>({
       start(streamController) {
         streamController.enqueue(encoder.encode([
-          anthropicEvent({
-            type: 'content_block_delta',
-            delta: { type: 'text_delta', text: 'Plan' },
-          }),
-          anthropicEvent({ type: 'message_stop' }),
+          openrouterEvent({ choices: [{ index: 0, delta: { content: 'Plan' }, finish_reason: null }] }),
+          openrouterEvent({ choices: [{ index: 0, delta: {}, finish_reason: 'stop' }] }),
         ].join('')))
       },
       cancel,
     })
 
-    await expect(pipeAnthropicStream({
+    await expect(pipeOpenRouterStream({
       body,
       signal: controller.signal,
       isClientOpen: () => true,

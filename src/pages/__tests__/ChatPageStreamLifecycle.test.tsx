@@ -5,7 +5,7 @@ import type { streamChatReply } from '../../lib/chatService'
 import ChatPage from '../ChatPage'
 
 const mocks = vi.hoisted(() => ({
-  fetchAvailableClaudeModels: vi.fn(),
+  fetchAvailableOpenRouterModels: vi.fn(),
   generateTrainingPlan: vi.fn(),
   streamChatReply: vi.fn(),
   navigate: vi.fn(),
@@ -16,18 +16,18 @@ vi.mock('../../store/authStore', () => ({
   useAuthStore: () => ({ user: { uid: 'user-1', email: 'user@example.com' } }),
 }))
 vi.mock('../../lib/aiKeyStorage', () => ({
-  clearClaudeApiKey: () => {
+  clearOpenRouterApiKey: () => {
     mocks.apiKey = ''
   },
-  clearClaudeModel: vi.fn(),
-  getClaudeApiKey: () => mocks.apiKey,
-  getClaudeModel: () => 'claude-test',
-  hasClaudeApiKey: () => Boolean(mocks.apiKey),
-  setClaudeApiKey: (value: string) => {
+  clearOpenRouterModel: vi.fn(),
+  getOpenRouterApiKey: () => mocks.apiKey,
+  getOpenRouterModel: () => 'claude-test',
+  hasOpenRouterApiKey: () => Boolean(mocks.apiKey),
+  setOpenRouterApiKey: (value: string) => {
     mocks.apiKey = value.trim()
     return mocks.apiKey
   },
-  setClaudeModel: (value: string) => value.trim(),
+  setOpenRouterModel: (value: string) => value.trim(),
 }))
 vi.mock('../../lib/chatService', () => ({
   AiApiError: class AiApiError extends Error {
@@ -38,7 +38,7 @@ vi.mock('../../lib/chatService', () => ({
       this.code = code
     }
   },
-  fetchAvailableClaudeModels: mocks.fetchAvailableClaudeModels,
+  fetchAvailableOpenRouterModels: mocks.fetchAvailableOpenRouterModels,
   generateTrainingPlan: mocks.generateTrainingPlan,
   streamChatReply: mocks.streamChatReply,
 }))
@@ -107,9 +107,9 @@ describe('ChatPage stream lifecycle', () => {
   beforeEach(() => {
     pendingReplies.length = 0
     mocks.apiKey = 'sk-ant-test-key-longer-than-twenty-characters'
-    mocks.fetchAvailableClaudeModels.mockReset()
-    mocks.fetchAvailableClaudeModels.mockResolvedValue([
-      { id: 'claude-test', label: 'Claude Test' },
+    mocks.fetchAvailableOpenRouterModels.mockReset()
+    mocks.fetchAvailableOpenRouterModels.mockResolvedValue([
+      { id: 'claude-test', label: 'OpenRouter Test' },
     ])
     mocks.generateTrainingPlan.mockReset()
     mocks.streamChatReply.mockReset()
@@ -241,7 +241,7 @@ describe('ChatPage stream lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry AI response' }))
 
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('alert')).toHaveTextContent('Add a Claude API key to use AI Coach.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Add a OpenRouter API key to use AI Coach.')
     expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
   })
@@ -259,7 +259,7 @@ describe('ChatPage stream lifecycle', () => {
 
     expect(screen.getByLabelText('Chat with AI Coach')).toBeVisible()
     expect(within(screen.getByRole('log')).getByText('Czy progresuję?')).toBeVisible()
-    expect(screen.getByText('Add a local Claude key')).toBeVisible()
+    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Analyze my last week of training.' }))
       .not.toBeInTheDocument()
@@ -275,7 +275,7 @@ describe('ChatPage stream lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
 
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled())
-    expect(screen.queryByText('Add a Claude API key to use AI Coach.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Add a OpenRouter API key to use AI Coach.')).not.toBeInTheDocument()
   })
 
   it('clears failed-generation feedback when a new send finds no API key', async () => {
@@ -296,7 +296,7 @@ describe('ChatPage stream lifecycle', () => {
 
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
     expect(within(screen.getByRole('log')).queryByText('Nowe pytanie')).not.toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('Add a Claude API key to use AI Coach.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Add a OpenRouter API key to use AI Coach.')
     expect(screen.queryByText('Awaria testowa.')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
   })

@@ -88,10 +88,6 @@ function formatDuration(start: number, end: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
-function formatExerciseCount(count: number): string {
-  return `${count} ${pluralize(count, 'exercise', 'exercises')}`
-}
-
 function formatWeekRange(dates: Date[]): string {
   if (!dates.length) return ''
   const start = dates[0]
@@ -589,16 +585,9 @@ export default function DashboardPage() {
   const activeDays = weekDailyStats.filter((day) => day.workouts > 0).length
   const peakDay = [...weekDailyStats].sort((a, b) => b.volume - a.volume)[0]
   const latestWorkout = recentWorkouts[0] ?? null
-  const activeExerciseCount = active?.exercises.length ?? 0
-  const activeLabel = active?.label?.trim()
-  const supportLine = hasActiveWork
-    ? [
-        `Active session${activeLabel ? `: ${activeLabel}` : ''}`,
-        activeExerciseCount > 0 ? formatExerciseCount(activeExerciseCount) : null,
-      ].filter(Boolean).join(' • ')
-    : latestWorkout
-      ? `Last: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
-      : null
+  const supportLine = !hasActiveWork && latestWorkout
+    ? `Last: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
+    : null
   const weeklySummaryRows = [
     {
       label: 'Weekly goal',
@@ -644,9 +633,9 @@ export default function DashboardPage() {
             </h1>
             {supportLine && <p className="dashboard-home-copyline">{supportLine}</p>}
 
-            <div className="dashboard-home-action-stack">
+            {!hasActiveWork && <div className="dashboard-home-action-stack">
               <div className="dashboard-home-actions">
-                {!hasActiveWork && quickTemplate && quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
+                {quickTemplate && quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
                   <motion.button
                     type="button"
                     onClick={() => { void requestTemplateLaunch(quickTemplate, quickTemplateDayIndex, quickTemplateRequestKey) }}
@@ -679,14 +668,12 @@ export default function DashboardPage() {
                     className="hero-editorial-cta"
                     whileTap={{ scale: 0.97 }}
                   >
-                    {hasActiveWork ? <Play size={18} strokeWidth={2.4} /> : <Plus size={18} strokeWidth={2.4} />}
-                    {openingWorkout
-                      ? (hasActiveWork ? 'Opening session…' : 'Opening workout…')
-                      : (hasActiveWork ? 'Resume workout' : 'Start new workout')}
+                    <Plus size={18} strokeWidth={2.4} />
+                    {openingWorkout ? 'Opening workout…' : 'Start new workout'}
                   </motion.button>
                 )}
 
-                {!hasActiveWork && quickTemplateHasExercises && (
+                {quickTemplateHasExercises && (
                   <button
                     type="button"
                     onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
@@ -710,7 +697,7 @@ export default function DashboardPage() {
                   className="dashboard-quick-plan-feedback"
                 />
               )}
-            </div>
+            </div>}
           </motion.div>
 
           {!hasActiveWork && (

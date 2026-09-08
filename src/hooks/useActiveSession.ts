@@ -692,7 +692,8 @@ export function useActiveSession(uid: string | null) {
       },
     )
 
-    const unsubscribe = useWorkoutStore.subscribe((state) => {
+    const unsubscribe = useWorkoutStore.subscribe((state, previousState) => {
+      if (state.active === previousState.active) return
       activeRef.current = state.active
       cancelPendingPersistence()
       if (applyingRemoteRef.current) {

@@ -69,6 +69,121 @@ function phase1Id(scenario: string): string {
 test.afterAll(closeWorkoutLifecycleEmulator)
 
 test.describe('Workout lifecycle Phase 1 regressions', () => {
+  test('mobile minimizes, browses secondary screens, and returns to the same running session', async ({
+    page,
+    cleanup,
+    expectedBrowserDiagnostics,
+  }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'Mobile browse-and-return contract')
+    const sessionId = phase1Id('browse-return')
+    const historyId = phase1Id('browse-return-history')
+    const startedAt = Date.now() - 5 * 60_000
+    cleanup.add('remove Phase 1 workout lifecycle state', cleanupWorkoutLifecycleState)
+    await cleanupWorkoutLifecycleState()
+    await seedLifecycleActiveSession({
+      sessionId,
+      startedAt,
+      label: 'Phase 1 browse and return with a deliberately long label',
+    })
+    await seedLifecycleWorkout({
+      sessionId: historyId,
+      materialized: true,
+      label: 'Phase 1 browse history detail',
+    })
+    await seedLifecycleExerciseSession({
+      sessionId: historyId,
+      sets: [{ weight: 80, reps: 5 }],
+    })
+
+    await page.goto('/workout/new')
+    await expectAppReady(page, '/workout/new')
+    const reps = page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()
+    await page.getByRole('button', { name: 'Unmark set 1 for Phase 1 Bench Press' }).click()
+    await reps.fill('6')
+    await page.getByRole('button', { name: 'Mark set 1 for Phase 1 Bench Press' }).click()
+    await expect(page.locator('.rest-timer-bar')).toContainText('Rest')
+    await waitForSettledLifecycleActiveSession((session) => (
+      session?.sessionId === sessionId && session.exercises[0]?.sets[0]?.reps === '6'
+    ))
+
+    await page.getByRole('button', { name: 'Minimize workout' }).click()
+    await expect(page).toHaveURL('/dashboard')
+    const returnBar = page.getByRole('region', { name: 'Active workout' })
+    await expect(returnBar).toContainText('Workout in progress')
+    await expect(returnBar).toContainText('Phase 1 browse and return with a deliberately long label')
+
+    await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('button', { name: 'Plans' }).click()
+    await expect(page).toHaveURL('/templates')
+    await expect(returnBar).toBeVisible()
+    await page.getByRole('link', { name: 'Exercises' }).click()
+    await expect(page).toHaveURL('/exercises')
+    await expect(returnBar).toBeVisible()
+
+    await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('button', { name: 'Progress' }).click()
+    await expect(page).toHaveURL('/progress')
+    await page.getByRole('link', { name: 'View history' }).click()
+    await expect(page).toHaveURL('/history')
+    await page.getByRole('button', { name: /Phase 1 browse history detail/ }).click()
+    await expect(page).toHaveURL(`/workout/${historyId}`)
+    await expect(returnBar).toBeVisible()
+
+    await page.getByRole('button', { name: 'Profile' }).click()
+    await expect(page).toHaveURL('/profile')
+    const nameInput = page.getByLabel('Name')
+    await nameInput.focus()
+    await expect(returnBar).toBeVisible()
+    expect(await page.evaluate(() => {
+      const bar = document.querySelector('.active-workout-return-bar')
+      const input = document.activeElement
+      return bar instanceof HTMLElement
+        && input instanceof HTMLElement
+        && bar.getBoundingClientRect().bottom <= input.getBoundingClientRect().top
+    })).toBe(true)
+
+    await nameInput.blur()
+    await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('button', { name: 'Coach' }).click()
+    await expect(page).toHaveURL('/chat')
+    await returnBar.getByRole('button', { name: 'Return to workout' }).click()
+    await expect(page).toHaveURL('/workout/new')
+    await expect(reps).toHaveValue('6')
+    await expect(page.locator('.rest-timer-bar')).toContainText('Rest')
+
+    expect(await readLifecycleActiveSession()).toMatchObject({
+      sessionId,
+      startedAt,
+      exercises: [{ sets: [{ reps: '6', done: true }] }],
+    })
+
+    await expectedBrowserDiagnostics.during(
+      'intentional pending browse-and-return edit',
+      isExpectedFirestoreOfflineDiagnostic,
+      async () => {
+        await setFirestoreNetworkEnabled(page, false)
+        await reps.fill('7')
+        await page.getByRole('button', { name: 'Minimize workout' }).click()
+        await expect(returnBar).toBeVisible()
+        await expect(returnBar).not.toContainText(/saved|cloud/i)
+        await returnBar.getByRole('button', { name: 'Return to workout' }).click()
+        await expect(reps).toHaveValue('7')
+        await expect(page.locator('.rest-timer-bar')).toContainText('Rest')
+        await setFirestoreNetworkEnabled(page, true)
+      },
+    )
+    await waitForSettledLifecycleActiveSession((session) => (
+      session?.sessionId === sessionId && session.exercises[0]?.sets[0]?.reps === '7'
+    ))
+
+    await page.getByRole('button', { name: 'Minimize workout' }).click()
+    await expect(returnBar).toBeVisible()
+    await commitPendingLifecycleFinalization({
+      sessionId,
+      materialized: true,
+      label: 'Phase 1 browse and return with a deliberately long label',
+    })
+    await expect(returnBar).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Start new workout' }).first()).toBeVisible()
+  })
+
   test('mobile shows every set from the previous workout beside the active ledger', async ({
     context,
     cleanup,

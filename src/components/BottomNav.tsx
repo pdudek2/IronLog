@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
+import { Dumbbell, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { hasActiveSessionWork } from '../lib/activeSessionService'
@@ -163,7 +163,9 @@ export default function BottomNav() {
           aria-current={workoutActive ? 'page' : undefined}
           aria-label={hasActiveWork ? 'Resume workout' : 'Start new workout'}
         >
-          <Plus size={22} strokeWidth={2.5} />
+          {hasActiveWork
+            ? <Dumbbell size={22} strokeWidth={2.5} />
+            : <Plus size={22} strokeWidth={2.5} />}
         </motion.button>
 
         <NavBtn

@@ -219,6 +219,24 @@ describe('useActiveSession snapshot authority', () => {
     expect(saveActiveSession.mock.calls[0][2]).toBe('revision-initial')
   })
 
+  it('does not persist the active session again when only the local rest timer changes', async () => {
+    vi.useFakeTimers()
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    act(() => listener.current?.({
+      session: editableRemoteSession,
+      sessionRevision: 'revision-initial',
+      fromCache: false,
+      hasPendingWrites: false,
+    }))
+    saveActiveSession.mockClear()
+
+    act(() => useWorkoutStore.getState().startRestTimer(90, 500))
+    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+
+    expect(saveActiveSession).not.toHaveBeenCalled()
+    expect(result.current.activeSessionSyncStatus).toBe('idle')
+  })
+
   it('retains unsaved reps through stale-session review and continuation after restart', async () => {
     const remote = { ...editableRemoteSession, startedAt: staleRemoteSession.startedAt }
     const local = structuredClone(remote)

@@ -26,10 +26,19 @@ export interface ActiveWorkout {
   exercises: WorkoutExercise[]
 }
 
+export interface RestTimerState {
+  startedAt: number
+  totalSec: number
+}
+
 interface WorkoutState {
   active: ActiveWorkout | null
+  restTimer: RestTimerState | null
   startWorkout: () => void
   hydrateFromDoc: (workout: ActiveWorkout) => void
+  startRestTimer: (totalSec: number, startedAt?: number) => void
+  addRestTimerSeconds: (deltaSec: number) => void
+  clearRestTimer: () => void
   setLabel: (label: string) => void
   addExercise: (exerciseId: string, name: string, source: ExerciseSource) => void
   addSet: (exerciseIndex: number) => void
@@ -102,12 +111,28 @@ function formatAdjustedSetValue(value: number, field: 'weight' | 'reps'): string
 
 export const useWorkoutStore = create<WorkoutState>()((set) => ({
   active: null,
+  restTimer: null,
 
   startWorkout: () =>
-    set({ active: { sessionId: createSessionId(), startedAt: Date.now(), templateId: null, exercises: [] } }),
+    set({ active: { sessionId: createSessionId(), startedAt: Date.now(), templateId: null, exercises: [] }, restTimer: null }),
 
   hydrateFromDoc: (workout) =>
-    set({ active: withClientIds(workout) }),
+    set((state) => ({
+      active: withClientIds(workout),
+      restTimer: state.active?.sessionId === workout.sessionId ? state.restTimer : null,
+    })),
+
+  startRestTimer: (totalSec, startedAt = Date.now()) =>
+    set({ restTimer: { startedAt, totalSec } }),
+
+  addRestTimerSeconds: (deltaSec) =>
+    set((state) => ({
+      restTimer: state.restTimer
+        ? { ...state.restTimer, totalSec: state.restTimer.totalSec + deltaSec }
+        : null,
+    })),
+
+  clearRestTimer: () => set({ restTimer: null }),
 
   setLabel: (label) =>
     set((s) => s.active ? { active: { ...s.active, label } } : s),
@@ -217,5 +242,5 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
       }
     }),
 
-  clearWorkout: () => set({ active: null }),
+  clearWorkout: () => set({ active: null, restTimer: null }),
 }))

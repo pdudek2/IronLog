@@ -6,6 +6,22 @@ describe('workoutStore set steppers', () => {
     useWorkoutStore.setState({ active: null })
   })
 
+  it('keeps a running rest deadline for the same session and clears it when session authority changes', () => {
+    const first = {
+      sessionId: 'session-1',
+      startedAt: 100,
+      exercises: [],
+    }
+    useWorkoutStore.getState().hydrateFromDoc(first)
+    useWorkoutStore.getState().startRestTimer(90, 500)
+
+    useWorkoutStore.getState().hydrateFromDoc({ ...first, label: 'Push' })
+    expect(useWorkoutStore.getState().restTimer).toEqual({ startedAt: 500, totalSec: 90 })
+
+    useWorkoutStore.getState().hydrateFromDoc({ ...first, sessionId: 'session-2' })
+    expect(useWorkoutStore.getState().restTimer).toBeNull()
+  })
+
   it('accumulates rapid weight adjustments from the latest store value', () => {
     const store = useWorkoutStore.getState()
     store.hydrateFromDoc({

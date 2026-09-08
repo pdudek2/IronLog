@@ -19,6 +19,12 @@ vi.mock('../../lib/progressLoadService', () => ({
   loadProgressData: vi.fn(),
 }))
 
+vi.mock('react-router-dom', () => ({
+  Link: ({ to, children, ...props }: { to: string; children?: ReactNode } & Record<string, unknown>) => (
+    <a href={to} {...props}>{children}</a>
+  ),
+}))
+
 vi.mock('../../lib/progressService', async () => {
   const actual = await vi.importActual<typeof import('../../lib/progressService')>('../../lib/progressService')
   return {

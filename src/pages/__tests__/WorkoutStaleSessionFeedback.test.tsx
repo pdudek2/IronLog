@@ -1,6 +1,6 @@
 import { createElement, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ActiveWorkout } from '../../store/workoutStore'
@@ -101,6 +101,7 @@ vi.mock('../../store/workoutStore', () => {
   const useWorkoutStore = Object.assign(
     () => ({
       active: mocks.active,
+      restTimer: null,
       addExercise: mocks.addExercise,
       setLabel: mocks.setLabel,
       startWorkout: vi.fn(),
@@ -198,6 +199,54 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.toastError.mockReset()
     mocks.toastSuccess.mockReset()
     mocks.uid = 'user-1'
+  })
+
+  it('minimizes an idle session without changing its workout data', () => {
+    const session: ActiveWorkout = {
+      sessionId: 'session-minimize',
+      startedAt: 500,
+      label: 'Push',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: '80', reps: '5', done: true }],
+      }],
+    }
+    mocks.active = session
+    mocks.staleSession = null
+
+    render(
+      <MemoryRouter initialEntries={['/workout/new']}>
+        <Routes>
+          <Route path="/workout/new" element={<WorkoutPage />} />
+          <Route path="/dashboard" element={<output>Dashboard route</output>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    expect(screen.getByText('Your workout keeps running')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Minimize workout' }))
+
+    expect(screen.getByText('Dashboard route')).toBeInTheDocument()
+    expect(mocks.active).toEqual(session)
+    expect(mocks.beginClosure).not.toHaveBeenCalled()
+    expect(mocks.startNewSession).not.toHaveBeenCalled()
+  })
+
+  it('keeps minimize unavailable while session closure is locked', () => {
+    mocks.active = {
+      sessionId: 'session-closing',
+      startedAt: 500,
+      label: 'Push',
+      exercises: [],
+    }
+    mocks.staleSession = null
+    mocks.closureState = 'submitting'
+
+    renderStaleSessionPage()
+
+    expect(screen.getByRole('button', { name: 'Minimize workout' })).toBeDisabled()
   })
 
   it('presents authoritative absence as a direct new-workout entry', () => {

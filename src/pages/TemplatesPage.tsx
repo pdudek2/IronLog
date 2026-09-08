@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -131,12 +131,12 @@ export default function TemplatesPage() {
         </div>
 
         <div className="planner-header-actions">
-          <a
-            href="/exercises"
+          <Link
+            to="/exercises"
             className="planner-secondary-action mobile-touch-target"
           >
             Exercises
-          </a>
+          </Link>
           {templates.length > 0 && (
             <div className="planner-mini-stats" aria-label="Plan summary">
               <span>

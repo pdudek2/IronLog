@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Ellipsis, Plus, Timer, X } from 'lucide-react'
+import { ChevronDown, Ellipsis, Plus, Timer, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -29,6 +29,7 @@ import {
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
+import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
 const WORKOUT_LABELS = ['Push', 'Pull', 'Legs', 'Upper Body', 'Lower Body', 'Full Body', 'Back & Biceps', 'Chest & Triceps', 'Cardio', 'Crossfit', 'Mobility'] as const
 const EQUIPMENT_LABELS: Record<string, string> = {
@@ -40,7 +41,6 @@ const EQUIPMENT_LABELS: Record<string, string> = {
   kettlebell: 'KB',
 }
 
-type RestTimerState = { startedAt: number; totalSec: number }
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
 
 interface LabelChipsProps {
@@ -75,41 +75,8 @@ function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) 
   )
 }
 
-function formatDuration(startedAt: number, now = Date.now()): { h: string; m: string; s: string } {
-  const total = Math.max(0, Math.floor((now - startedAt) / 1000))
-  const h = Math.floor(total / 3600)
-  const m = Math.floor((total % 3600) / 60)
-  const s = total % 60
-  return {
-    h: String(h).padStart(2, '0'),
-    m: String(m).padStart(2, '0'),
-    s: String(s).padStart(2, '0'),
-  }
-}
-
-function formatSessionTimer(startedAt: number, now = Date.now()): string {
-  const t = formatDuration(startedAt, now)
-  return t.h !== '00' ? `${t.h}:${t.m}:${t.s}` : `${t.m}:${t.s}`
-}
-
-interface ElapsedTimerProps {
-  startedAt: number
-  className?: string
-}
-
-function ElapsedTimer({ startedAt, className = '' }: ElapsedTimerProps) {
-  const [now, setNow] = useState(() => Date.now())
-
-  useEffect(() => {
-    const interval = window.setInterval(() => setNow(Date.now()), 1_000)
-    return () => window.clearInterval(interval)
-  }, [startedAt])
-
-  return <span className={className} data-testid="elapsed-session-timer">{formatSessionTimer(startedAt, now)}</span>
-}
-
 interface RestTimerBarProps {
-  rest: RestTimerState
+  rest: { startedAt: number; totalSec: number }
   onAddTime: (deltaSec: number) => void
   onSkip: () => void
   variant?: 'full' | 'compact'
@@ -232,6 +199,7 @@ export default function WorkoutPage() {
   const { profile } = useProfileStore()
   const {
     active,
+    restTimer: rest,
     setLabel,
     addExercise,
   } = useWorkoutStore()
@@ -284,9 +252,6 @@ export default function WorkoutPage() {
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
   const fetchedKeys = useRef(new Set<string>())
 
-  // Rest timer state
-  const [rest, setRest] = useState<RestTimerState | null>(null)
-
   useEffect(() => {
     if (!ready || !shouldStartFromRoute) return
     navigate(location.pathname, { replace: true, state: null })
@@ -326,19 +291,19 @@ export default function WorkoutPage() {
     }
     toggleSetDone(exerciseIndex, setIndex)
     if (wasNotDone) {
-      setRest({ startedAt: Date.now(), totalSec: 90 })
+      useWorkoutStore.getState().startRestTimer(90)
       if (completesExercise) setManualExpandedExerciseClientId(null)
       if ('vibrate' in navigator) navigator.vibrate(12)
     } else {
-      setRest(null)
+      useWorkoutStore.getState().clearRestTimer()
     }
   }, [])
 
   const handleAddRestTime = useCallback((deltaSec: number) => {
-    setRest((prev) => prev ? { ...prev, totalSec: prev.totalSec + deltaSec } : prev)
+    useWorkoutStore.getState().addRestTimerSeconds(deltaSec)
   }, [])
 
-  const handleSkipRest = useCallback(() => setRest(null), [])
+  const handleSkipRest = useCallback(() => useWorkoutStore.getState().clearRestTimer(), [])
 
   const handleUpdateSet = useCallback((exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => {
     useWorkoutStore.getState().updateSet(exerciseIndex, setIndex, field, value)
@@ -947,8 +912,23 @@ export default function WorkoutPage() {
             borderBottom: '1px solid var(--border)',
           }}
         >
-          <ElapsedTimer startedAt={active.startedAt} className="text-xl font-bold tabular-nums text-white flex-none" />
+          <ElapsedSessionTimer startedAt={active.startedAt} className="text-xl font-bold tabular-nums text-white flex-none" />
           <div className="flex-1 min-w-0" />
+          <button
+            type="button"
+            className="workout-mobile-minimize"
+            onClick={() => navigate('/dashboard')}
+            disabled={closureLocked}
+            aria-label="Minimize workout"
+            aria-describedby="workout-mobile-minimize-help"
+          >
+            <ChevronDown size={17} aria-hidden="true" />
+            <span>
+              <strong>Minimize</strong>
+              <small aria-hidden="true">Keeps running</small>
+            </span>
+          </button>
+          <span id="workout-mobile-minimize-help" className="sr-only">Your workout keeps running</span>
           <button
             type="button"
             className="workout-mobile-options-trigger"
@@ -1001,7 +981,7 @@ export default function WorkoutPage() {
               <div className="workout-time-card">
                 <p className="stat-meta mb-2">Session time</p>
                 <div className="flex items-end justify-between gap-3">
-                  <ElapsedTimer startedAt={active.startedAt} className="workout-time-value" />
+                  <ElapsedSessionTimer startedAt={active.startedAt} className="workout-time-value" />
                   <span
                     className="workout-live-pill"
                   >

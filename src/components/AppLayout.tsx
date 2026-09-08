@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom'
 import BottomNav from './BottomNav'
 import MobileInteractionProvider from './MobileInteractionProvider'
 import TopNav from './TopNav'
+import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import { usePassiveActiveSessionSync } from '../hooks/usePassiveActiveSessionSync'
 import { useAuthStore } from '../store/authStore'
 
@@ -65,6 +66,7 @@ export default function AppLayout() {
       <div className={workoutFocusShell ? 'top-nav-workout-mobile-shell' : undefined}>
         <TopNav current={section} />
       </div>
+      <ActiveWorkoutReturnBar />
       <main ref={mainRef} className="page-shell" tabIndex={-1}>
         <div className="page-container">
           <div className="min-w-0">

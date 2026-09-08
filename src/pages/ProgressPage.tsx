@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { AlertCircle } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import {
   Area, AreaChart, CartesianGrid, Cell,
   Line, LineChart,
@@ -502,12 +503,12 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
           >
             <div>
               <h1>Progress</h1>
-              <a
-                href="/history"
+              <Link
+                to="/history"
                 className="puls-link-button mobile-touch-target py-2 text-sm font-medium"
               >
                 View history
-              </a>
+              </Link>
               {(!hasSessionSnapshot || uniqueWorkouts === 0) && (
                 <p>
                   {!hasSessionSnapshot

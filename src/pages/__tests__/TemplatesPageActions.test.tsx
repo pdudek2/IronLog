@@ -81,7 +81,13 @@ vi.mock('../../components/ConfirmDialog', () => ({
 vi.mock('../../components/TemplateLaunchConfirmDialog', () => ({ default: () => null }))
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
-  return { ...actual, useNavigate: () => mocks.navigate }
+  return {
+    ...actual,
+    Link: ({ to, children, ...props }: { to: string; children?: ReactNode } & Record<string, unknown>) => (
+      <a href={to} {...props}>{children}</a>
+    ),
+    useNavigate: () => mocks.navigate,
+  }
 })
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },

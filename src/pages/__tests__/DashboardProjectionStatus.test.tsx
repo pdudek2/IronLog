@@ -488,7 +488,7 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Resume workout' })).toHaveLength(3)
+      expect(screen.getAllByRole('button', { name: 'Resume workout' })).toHaveLength(2)
     })
     expect(useWorkoutStore.getState().active?.sessionId).toBe('remote-session')
 
@@ -552,8 +552,7 @@ describe('Dashboard workout projection status', () => {
     })
   })
 
-  it('hands off an active workout route and clears pending state when preload fails', async () => {
-    const preload = deferred<void>()
+  it('leaves active-workout return to the shared app-shell affordance', async () => {
     mocks.activeSessionHasWork = true
     useWorkoutStore.setState({
       active: {
@@ -564,20 +563,11 @@ describe('Dashboard workout projection status', () => {
       },
     })
     mocks.getRecentWorkouts.mockResolvedValue([])
-    mocks.preloadRouteByPath.mockReturnValueOnce(preload.promise)
 
     render(<DashboardPage />)
 
-    const [workoutCta] = await screen.findAllByRole('button', { name: 'Resume workout' })
-    fireEvent.click(workoutCta)
-    screen.getAllByRole('button', { name: 'Opening session…' })
-      .forEach((button) => expect(button).toBeDisabled())
-
-    await act(async () => preload.reject(new Error('chunk unavailable')))
-
-    expect(mocks.navigate).toHaveBeenCalledTimes(1)
-    expect(mocks.navigate).toHaveBeenCalledWith('/workout/new')
-    expect(screen.getAllByRole('button', { name: 'Resume workout' })[0]).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Resume workout' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Active session/)).not.toBeInTheDocument()
   })
 
   it('keeps pending feedback visible and recovers one workout after a failed automatic retry', async () => {

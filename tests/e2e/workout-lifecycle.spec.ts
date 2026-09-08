@@ -49,9 +49,9 @@ async function openWorkoutClient(
   return { context, page }
 }
 
-async function finishWorkout(page: Page): Promise<void> {
+async function finishWorkout(page: Page, workoutId: string): Promise<void> {
   await page.getByRole('button', { name: 'Finish' }).click()
-  await page.waitForURL('/dashboard', { timeout: RESPONSE_TIMEOUT_MS })
+  await page.waitForURL(`/workout/${workoutId}`, { timeout: RESPONSE_TIMEOUT_MS })
 }
 
 async function confirmOrdinaryDiscard(page: Page): Promise<void> {
@@ -319,9 +319,10 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
     await expect(page.getByText('Phase 1 Bench Press', { exact: true }).first()).toBeVisible()
-    await finishWorkout(page)
+    await finishWorkout(page, sessionId)
 
-    await expect(page.getByText('Workout saved!', { exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Workout saved' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Phase 1 normal finish' })).toBeVisible()
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)
     expect(await readLifecycleWorkout(sessionId)).toMatchObject({
       sessionId,
@@ -342,8 +343,9 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     expect(await readLifecycleActiveSession()).toBeNull()
 
     await page.reload()
-    await expectAppReady(page, '/dashboard')
-    await expect(page.getByRole('button', { name: 'Start new workout' }).first()).toBeVisible()
+    await expect(page).toHaveURL(`/workout/${sessionId}`)
+    await expect(page.getByRole('heading', { name: 'Phase 1 normal finish' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Workout saved' })).toHaveCount(0)
     expect(await readLifecycleActiveSession()).toBeNull()
   })
 
@@ -389,7 +391,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await page.reload()
     await expect(page.getByRole('alert')).toContainText('Could not confirm session closure.')
     await page.getByRole('button', { name: 'Try again' }).click()
-    await page.waitForURL('/dashboard', { timeout: RESPONSE_TIMEOUT_MS })
+    await page.waitForURL(`/workout/${sessionId}`, { timeout: RESPONSE_TIMEOUT_MS })
+    await expect(page.getByRole('heading', { name: 'Workout saved' })).toBeVisible()
     expect(await readLifecycleWorkouts(sessionId)).toHaveLength(1)
     expect(await readLifecycleClosedSession(sessionId)).toMatchObject({ outcome: 'finished' })
   })
@@ -511,8 +514,11 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       'intentional Phase 1 pending projection failure',
       isExpectedWorkoutLifecycleProjectionDiagnostic,
       async () => {
-        await finishWorkout(page)
-        await expect(page.getByText('Workout saved. Stats are waiting to sync.', { exact: true })).toBeVisible()
+        await finishWorkout(page, sessionId)
+        await expect(page.getByRole('heading', { name: 'Workout saved' })).toBeVisible()
+        await expect(page.getByText('Stats are still syncing.', { exact: true })).toBeVisible()
+        await page.getByRole('button', { name: 'Back to Home' }).click()
+        await expectAppReady(page, '/dashboard')
         const row = page.locator('.dashboard-history-row').filter({ hasText: 'Phase 1 projection pending' })
         await expect(row).toContainText('Stats are waiting to sync.')
         await expect(row.getByRole('button', { name: 'Retry sync' })).toBeVisible()

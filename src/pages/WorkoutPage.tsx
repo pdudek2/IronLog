@@ -463,10 +463,15 @@ export default function WorkoutPage() {
         markClosureUnconfirmed()
         return
       }
-      navigate('/dashboard', { replace: true })
-      toast.success(result.status === 'materialized'
-        ? 'Workout saved!'
-        : 'Workout saved. Stats are waiting to sync.')
+      navigate(`/workout/${encodeURIComponent(result.workoutId)}`, {
+        replace: true,
+        state: {
+          workoutResult: {
+            workoutId: result.workoutId,
+            status: result.status,
+          },
+        },
+      })
     } catch (error) {
       console.error('[finish workout closure error]', error)
       await handleClosureError(error)

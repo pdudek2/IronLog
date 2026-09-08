@@ -152,6 +152,62 @@ describe('WorkoutDetailPage delete action', () => {
     expect(mocks.getWorkout).toHaveBeenNthCalledWith(2, 'workout-1')
   })
 
+  it('shows a scoped completion state and sends its onward action home', async () => {
+    renderPage([{
+      pathname: '/workout/workout-1',
+      state: { workoutResult: { workoutId: 'workout-1', status: 'materialized' } },
+    }])
+
+    expect(await screen.findByRole('heading', { name: 'Workout saved' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Home' }))
+
+    expect(await screen.findByText('Dashboard home')).toBeInTheDocument()
+  })
+
+  it('shows truthful syncing feedback from the saved workout projection state', async () => {
+    mocks.getWorkout.mockResolvedValueOnce({ ...workout, materialized: false })
+    renderPage([{
+      pathname: '/workout/workout-1',
+      state: { workoutResult: { workoutId: 'workout-1', status: 'projection_pending' } },
+    }])
+
+    expect(await screen.findByRole('heading', { name: 'Workout saved' })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent('Stats are still syncing.')
+    expect(screen.getByText('400 kg')).toBeInTheDocument()
+  })
+
+  it('keeps confirmed save success distinct from a failed summary read and retries only the read', async () => {
+    const retryRead = deferred<WorkoutSummary>()
+    mocks.getWorkout.mockRejectedValueOnce(new Error('offline')).mockReturnValueOnce(retryRead.promise)
+    renderPage([{
+      pathname: '/workout/workout-1',
+      state: { workoutResult: { workoutId: 'workout-1', status: 'materialized' } },
+    }])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Workout saved, but its summary could not load.',
+    )
+    expect(screen.queryByText('Workout not found.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back to Home' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await act(async () => { retryRead.resolve(workout) })
+
+    expect(await screen.findByRole('heading', { name: 'Workout saved' })).toBeInTheDocument()
+    expect(mocks.getWorkout).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores completion state scoped to another workout', async () => {
+    renderPage([{
+      pathname: '/workout/workout-1',
+      state: { workoutResult: { workoutId: 'another-workout', status: 'materialized' } },
+    }])
+
+    expect(await screen.findByRole('heading', { name: 'Push day' })).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Workout saved' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
+  })
+
   it('shows confirmed absence separately from a failed read', async () => {
     mocks.getWorkout.mockResolvedValueOnce(null)
     renderPage(['/workout/workout-1'])

@@ -3327,6 +3327,55 @@ a {
   margin-inline: auto;
 }
 
+.workout-result-confirmation {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0.5rem 0 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg-elevated));
+}
+
+.workout-result-confirmation-icon {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.workout-result-confirmation h2,
+.workout-result-confirmation p {
+  margin: 0;
+}
+
+.workout-result-confirmation h2 {
+  color: var(--text-strong);
+  font-size: 1rem;
+  font-weight: 740;
+}
+
+.workout-result-confirmation p,
+.workout-result-projection-status {
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.workout-result-confirmation p {
+  margin-top: 0.18rem;
+}
+
+.workout-result-projection-status {
+  margin: 0.75rem 0 0;
+}
+
 .workout-detail-back {
   display: inline-flex;
   min-height: 2.75rem;

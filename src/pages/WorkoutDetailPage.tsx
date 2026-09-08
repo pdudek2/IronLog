@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft,
+  Check,
   X,
 } from 'lucide-react'
 import {
@@ -53,6 +54,11 @@ interface WorkoutDeleteOperation {
   status: 'pending' | 'cleanup_pending' | 'unknown' | 'error'
 }
 
+interface WorkoutResultState {
+  workoutId: string
+  status: 'materialized' | 'projection_pending'
+}
+
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('en-US', {
     weekday: 'long',
@@ -88,6 +94,22 @@ function readWorkoutPreview(state: unknown, workoutId: string | undefined): Work
   return preview
 }
 
+function readWorkoutResult(state: unknown, workoutId: string | undefined): WorkoutResultState | null {
+  if (!state || typeof state !== 'object' || Array.isArray(state)) return null
+
+  const result = (state as { workoutResult?: unknown }).workoutResult
+  if (!result || typeof result !== 'object' || Array.isArray(result)) return null
+
+  const { workoutId: resultWorkoutId, status } = result as Record<string, unknown>
+  if (
+    typeof resultWorkoutId !== 'string'
+    || resultWorkoutId !== workoutId
+    || (status !== 'materialized' && status !== 'projection_pending')
+  ) return null
+
+  return { workoutId: resultWorkoutId, status }
+}
+
 function parseSetDraftValue(field: 'weight' | 'reps', value: string): number {
   if (value.trim() === '') return 0
 
@@ -115,6 +137,15 @@ export default function WorkoutDetailPage() {
   const { user } = useAuthStore()
   const units = useProfileStore((state) => state.profile?.units ?? 'kg')
   const previewWorkout = readWorkoutPreview(location.state, id)
+  const [workoutResultScope, setWorkoutResultScope] = useState(() => ({
+    workoutId: id,
+    result: readWorkoutResult(location.state, id),
+  }))
+  const ownsWorkoutResult = workoutResultScope.workoutId === id
+  const workoutResult = ownsWorkoutResult ? workoutResultScope.result : null
+  if (!ownsWorkoutResult) {
+    setWorkoutResultScope({ workoutId: id, result: readWorkoutResult(location.state, id) })
+  }
   const [workoutResource, setWorkoutResource] = useState<WorkoutReadState>(() => ({
     uid: user?.uid ?? null,
     workoutId: id,
@@ -143,6 +174,10 @@ export default function WorkoutDetailPage() {
     setShowPicker(false)
     setConfirmDeleteOpen(false)
   }
+  useEffect(() => {
+    if (!workoutResult) return
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.pathname, navigate, workoutResult])
   const deleteScopeRef = useRef<object | null>(null)
   useEffect(() => {
     deleteScopeRef.current = {}
@@ -328,6 +363,10 @@ export default function WorkoutDetailPage() {
   }
 
   function handleBack() {
+    if (workoutResult) {
+      navigate('/dashboard', { replace: true })
+      return
+    }
     if (location.key !== 'default' && window.history.length > 1) {
       navigate(-1)
       return
@@ -368,7 +407,9 @@ export default function WorkoutDetailPage() {
           {readStatus === 'error' ? (
             <ActionFeedback
               status="error"
-              message="Could not load workout."
+              message={workoutResult
+                ? 'Workout saved, but its summary could not load.'
+                : 'Could not load workout.'}
               onRetry={retryWorkoutRead}
               className="mb-4"
             />
@@ -376,7 +417,7 @@ export default function WorkoutDetailPage() {
             <p className="text-sm mb-4" style={{ color: 'var(--muted)' }}>Workout not found.</p>
           )}
           <button onClick={handleBack} style={{ color: 'var(--accent)' }}>
-            Back
+            {workoutResult ? 'Back to Home' : 'Back'}
           </button>
         </div>
       </div>
@@ -462,8 +503,20 @@ export default function WorkoutDetailPage() {
           whileTap={{ scale: 0.97 }}
         >
           <ArrowLeft size={16} aria-hidden="true" />
-          Back
+          {workoutResult ? 'Back to Home' : 'Back'}
         </motion.button>
+
+        {workoutResult && (
+          <section className="workout-result-confirmation" aria-labelledby="workout-result-title">
+            <span className="workout-result-confirmation-icon" aria-hidden="true">
+              <Check size={18} strokeWidth={2.5} />
+            </span>
+            <div>
+              <h2 id="workout-result-title">Workout saved</h2>
+              <p>Your completed session is ready below.</p>
+            </div>
+          </section>
+        )}
 
         <header className="workout-detail-session-head">
           <div className="min-w-0">
@@ -547,6 +600,12 @@ export default function WorkoutDetailPage() {
             <dd>{formatCompactVolume(volume, units)}</dd>
           </div>
         </dl>
+
+        {!displayedWorkout.materialized && (
+          <p className="workout-result-projection-status" role="status">
+            Stats are still syncing.
+          </p>
+        )}
 
         {isEditing && (
           <section className="workout-detail-label-editor">

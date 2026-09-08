@@ -1,6 +1,6 @@
 import { createElement, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import type { ActiveWorkout } from '../../store/workoutStore'
@@ -168,6 +168,19 @@ function renderStaleSessionPage() {
     <MemoryRouter>
       <WorkoutPage />
     </MemoryRouter>,
+  )
+}
+
+function WorkoutResultRoute() {
+  const location = useLocation()
+  const state = location.state as {
+    workoutResult?: { workoutId?: unknown; status?: unknown }
+  } | null
+
+  return (
+    <output data-testid="workout-result-route">
+      {location.pathname}|{String(state?.workoutResult?.workoutId)}|{String(state?.workoutResult?.status)}
+    </output>
   )
 }
 
@@ -449,6 +462,46 @@ describe('WorkoutPage stale-session feedback', () => {
     ))
     expect(mocks.prepareFinishClosure).not.toHaveBeenCalled()
   })
+
+  it.each(['materialized', 'projection_pending'] as const)(
+    'opens the confirmed workout result after a %s finish',
+    async (status) => {
+      const session: ActiveWorkout = {
+        sessionId: `session-${status}`,
+        startedAt: Date.now(),
+        templateId: null,
+        label: 'Push',
+        exercises: [{
+          exerciseId: 'bench-press',
+          exerciseSource: 'global',
+          name: 'Bench Press',
+          sets: [{ weight: '80', reps: '5', done: true }],
+        }],
+      }
+      const intent = { action: 'finish' as const, session, createdAt: Date.now() }
+      mocks.active = session
+      mocks.staleSession = null
+      mocks.beginClosure.mockReturnValue(intent)
+      mocks.prepareFinishClosure.mockResolvedValue({ status: 'ready', sessionRevision: 'revision-1' })
+      mocks.finalizeWorkout.mockResolvedValue({ workoutId: 'confirmed-workout', status })
+
+      render(
+        <MemoryRouter initialEntries={['/workout/new']}>
+          <Routes>
+            <Route path="/workout/new" element={<WorkoutPage />} />
+            <Route path="/workout/:id" element={<WorkoutResultRoute />} />
+          </Routes>
+        </MemoryRouter>,
+      )
+
+      fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
+
+      expect(await screen.findByTestId('workout-result-route')).toHaveTextContent(
+        `/workout/confirmed-workout|confirmed-workout|${status}`,
+      )
+      expect(mocks.finalizeWorkout).toHaveBeenCalledOnce()
+    },
+  )
 
   it('shows precise feedback after reloading a session changed on another device', async () => {
     const session: ActiveWorkout = {

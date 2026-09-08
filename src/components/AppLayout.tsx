@@ -63,10 +63,12 @@ export default function AppLayout() {
 
   return (
     <MobileInteractionProvider>
-      <div className={workoutFocusShell ? 'top-nav-workout-mobile-shell' : undefined}>
-        <TopNav current={section} />
+      <div className="app-sticky-header">
+        <div className={workoutFocusShell ? 'top-nav-workout-mobile-shell' : undefined}>
+          <TopNav current={section} />
+        </div>
+        <ActiveWorkoutReturnBar />
       </div>
-      <ActiveWorkoutReturnBar />
       <main ref={mainRef} className="page-shell" tabIndex={-1}>
         <div className="page-container">
           <div className="min-w-0">

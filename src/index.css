@@ -1590,10 +1590,13 @@ a {
 }
 
 /* ── Top navigation ─────────────────────────────── */
-.top-nav {
+.app-sticky-header {
   position: sticky;
   top: 0;
   z-index: 40;
+}
+
+.top-nav {
   height: var(--top-nav-height);
   background:
     linear-gradient(180deg, rgba(18, 17, 20, 0.94), rgba(13, 12, 14, 0.9)),
@@ -1778,12 +1781,8 @@ a {
 }
 
 .active-workout-return-bar {
-  position: sticky;
-  top: var(--top-nav-height);
-  z-index: 35;
   border-bottom: 1px solid var(--live-border);
   background: rgba(20, 18, 21, 0.97);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2);
 }
 
 .active-workout-return-inner {
@@ -1834,10 +1833,9 @@ a {
   justify-content: center;
   gap: 0.15rem;
   min-height: 2.75rem;
-  padding: 0.45rem 0.55rem;
-  border: 1px solid var(--live-border);
-  border-radius: var(--radius-md);
-  background: var(--live-bg);
+  padding: 0.45rem 0.35rem;
+  border: 0;
+  background: transparent;
   color: var(--accent-text);
   font-size: 0.78rem;
   font-weight: 750;
@@ -8896,8 +8894,8 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 @media (max-width: 420px) {
   .bottom-nav-panel {
-    gap: 0;
-    padding-inline: 0;
+    gap: 0.25rem;
+    padding-inline: 0.25rem;
   }
 
   .bottom-nav-button {

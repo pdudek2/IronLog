@@ -164,9 +164,13 @@ describe('TemplatesPage launch actions', () => {
     expect(within(planACard).getAllByRole('button', {
       name: /Start day Day A2? from template Plan A/,
     })).toHaveLength(2)
-    expect(within(cardFor('Plan B')).getAllByRole('button', {
+    expect(within(cardFor('Plan B')).queryByRole('button', {
       name: 'Start day Day B from template Plan B',
-    })).toHaveLength(1)
+    })).not.toBeInTheDocument()
+    expect(within(cardFor('Plan B')).getByText('No exercises')).toBeInTheDocument()
+    expect(within(cardFor('Plan B')).getByRole('button', {
+      name: 'Edit Plan B to add exercises to Day B',
+    })).toBeInTheDocument()
     expect(within(planACard).queryByRole('button', { name: 'Start template Plan A' }))
       .not.toBeInTheDocument()
 
@@ -271,9 +275,13 @@ describe('TemplatesPage launch actions', () => {
     expect(alert).toHaveTextContent('Could not start the plan.')
     expect(otherCard).not.toContainElement(alert)
     expect(matchingCard).toHaveAttribute('aria-describedby', alert.id)
-    expect(within(matchingCard).getByTestId('template-day-detail-template-a-0'))
+    expect(within(within(matchingCard).getByTestId('template-day-detail-template-a-0')).getByRole('button', {
+      name: 'Start day Day A from template Plan A',
+    }))
       .toHaveAttribute('aria-describedby', alert.id)
-    expect(within(matchingCard).getByTestId('template-day-detail-template-a-1'))
+    expect(within(within(matchingCard).getByTestId('template-day-detail-template-a-1')).getByRole('button', {
+      name: 'Start day Day A2 from template Plan A',
+    }))
       .toHaveAttribute('aria-describedby', alert.id)
     expect(within(otherCard).getByTestId('template-day-detail-template-b-0'))
       .not.toHaveAttribute('aria-describedby')

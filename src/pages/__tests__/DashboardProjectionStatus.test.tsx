@@ -467,7 +467,8 @@ describe('Dashboard workout projection status', () => {
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: 'Start new workout' }))
-        .toHaveLength(3)
+        .toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'Start empty workout' })).toBeInTheDocument()
     })
 
     act(() => {
@@ -491,7 +492,8 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Start new workout' })).toHaveLength(3)
+      expect(screen.getAllByRole('button', { name: 'Start new workout' })).toHaveLength(2)
+      expect(screen.getByRole('button', { name: 'Start empty workout' })).toBeInTheDocument()
     })
     expect(useWorkoutStore.getState().active).toBeNull()
   })
@@ -525,12 +527,11 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    const [workoutCta] = await screen.findAllByRole('button', { name: 'Start new workout' })
+    const workoutCta = await screen.findByRole('button', { name: 'Start empty workout' })
     fireEvent.click(workoutCta)
     fireEvent.click(workoutCta)
 
-    screen.getAllByRole('button', { name: 'Opening workout…' })
-      .forEach((button) => expect(button).toBeDisabled())
+    expect(screen.getByRole('button', { name: 'Opening workout…' })).toBeDisabled()
     expect(mocks.preloadRouteByPath).toHaveBeenCalledTimes(1)
     expect(mocks.preloadRouteByPath).toHaveBeenCalledWith('/workout/new')
     expect(mocks.navigate).not.toHaveBeenCalledWith('/workout/new', {
@@ -1077,9 +1078,9 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByRole('button', {
-      name: 'Start Upper from plan Upper / Lower',
-    })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Start workout' })).toBeInTheDocument()
+    expect(screen.getByText('Upper')).toBeInTheDocument()
+    expect(screen.getByText(/Upper \/ Lower/)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Plans' })).not.toBeInTheDocument()
     expect(screen.queryByText('No saved plans')).not.toBeInTheDocument()
   })
@@ -1111,17 +1112,163 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    const start = await screen.findByRole('button', {
-      name: 'Start Lower A from plan Upper / Lower',
-    })
+    const start = await screen.findByRole('button', { name: 'Start workout' })
     fireEvent.click(start)
 
     expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
       template,
       1,
-      'dashboard:template-1:quick',
+      'dashboard:template-1:selection:1',
     )
     expect(screen.queryByRole('heading', { name: 'Plans' })).not.toBeInTheDocument()
+  })
+
+  it('chooses a non-first day without launching until Start workout is pressed', async () => {
+    const template = {
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Upper / Lower',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [
+        {
+          name: 'Upper A',
+          exercises: [{
+            exerciseId: 'bench',
+            exerciseSource: 'global' as const,
+            name: 'Bench Press',
+            sets: 4,
+            targetReps: 8,
+            targetWeight: 70,
+          }],
+        },
+        {
+          name: 'Lower A',
+          exercises: [{
+            exerciseId: 'squat',
+            exerciseSource: 'global' as const,
+            name: 'Back Squat',
+            sets: 4,
+            targetReps: 6,
+            targetWeight: 90,
+          }],
+        },
+      ],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([template])
+
+    render(<DashboardPage />)
+
+    await screen.findByText('Upper A')
+    fireEvent.click(screen.getByRole('button', { name: 'Change workout' }))
+    const picker = screen.getByRole('dialog', { name: 'Choose a workout' })
+    fireEvent.click(within(picker).getByRole('button', {
+      name: 'Select Lower A from plan Upper / Lower',
+    }))
+
+    expect(mocks.requestTemplateLaunch).not.toHaveBeenCalled()
+    fireEvent.click(within(picker).getByRole('button', { name: 'Choose workout' }))
+
+    expect(screen.getByText('Lower A')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Start workout' }))
+    expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
+      template,
+      1,
+      'dashboard:template-1:selection:1',
+    )
+  })
+
+  it('cancels a draft workout choice and keeps the original selection', async () => {
+    const template = {
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Upper / Lower',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [
+        { name: 'Upper A', exercises: [{ exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 3, targetReps: 8, targetWeight: 70 }] },
+        { name: 'Lower A', exercises: [{ exerciseId: 'squat', exerciseSource: 'global' as const, name: 'Back Squat', sets: 3, targetReps: 6, targetWeight: 90 }] },
+      ],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([template])
+
+    render(<DashboardPage />)
+
+    await screen.findByText('Upper A')
+    fireEvent.click(screen.getByRole('button', { name: 'Change workout' }))
+    const picker = screen.getByRole('dialog', { name: 'Choose a workout' })
+    fireEvent.click(within(picker).getByRole('button', {
+      name: 'Select Lower A from plan Upper / Lower',
+    }))
+    fireEvent.click(within(picker).getByRole('button', { name: 'Cancel' }))
+
+    expect(screen.getByText('Upper A')).toBeInTheDocument()
+    expect(screen.queryByText('Lower A')).not.toBeInTheDocument()
+    expect(mocks.requestTemplateLaunch).not.toHaveBeenCalled()
+  })
+
+  it('clears a selected day that becomes empty before launch instead of starting a fallback', async () => {
+    const template = {
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Upper / Lower',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [
+        { name: 'Upper A', exercises: [{ exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 3, targetReps: 8, targetWeight: 70 }] },
+        { name: 'Lower A', exercises: [{ exerciseId: 'squat', exerciseSource: 'global' as const, name: 'Back Squat', sets: 3, targetReps: 6, targetWeight: 90 }] },
+      ],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([template])
+
+    render(<DashboardPage />)
+
+    await screen.findByText('Upper A')
+    fireEvent.click(screen.getByRole('button', { name: 'Change workout' }))
+    const picker = screen.getByRole('dialog', { name: 'Choose a workout' })
+    fireEvent.click(within(picker).getByRole('button', {
+      name: 'Select Lower A from plan Upper / Lower',
+    }))
+    fireEvent.click(within(picker).getByRole('button', { name: 'Choose workout' }))
+
+    template.days[1].exercises = []
+    fireEvent.click(screen.getByRole('button', { name: 'Start workout' }))
+
+    expect(mocks.requestTemplateLaunch).not.toHaveBeenCalled()
+    expect(screen.getByText('Workout no longer available')).toBeInTheDocument()
+    expect(screen.getByText('Choose another workout before starting.')).toBeInTheDocument()
+  })
+
+  it('skips an empty newest plan when choosing the documented default', async () => {
+    const emptyTemplate = {
+      id: 'template-empty', userId: 'user-1', name: 'Newest empty', createdAt: 2, updatedAt: 3,
+      days: [{ name: 'Rest', exercises: [] }],
+    }
+    const launchableTemplate = {
+      id: 'template-ready', userId: 'user-1', name: 'Ready plan', createdAt: 1, updatedAt: 2,
+      days: [{
+        name: 'Pull',
+        exercises: [{ exerciseId: 'row', exerciseSource: 'global' as const, name: 'Barbell Row', sets: 3, targetReps: 8, targetWeight: 60 }],
+      }],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([emptyTemplate, launchableTemplate])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('Pull')).toBeInTheDocument()
+    expect(screen.getByText(/Ready plan/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start workout' })).toBeEnabled()
+    expect(screen.queryByRole('button', { name: 'Start template Newest empty' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'Other plans' })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change workout' }))
+    const picker = screen.getByRole('dialog', { name: 'Choose a workout' })
+    expect(within(picker).getByText('No exercises')).toBeInTheDocument()
+    expect(within(picker).getByRole('button', { name: 'Edit plan Newest empty' })).toBeInTheDocument()
   })
 
   it('starts the compact recommendation before offering template editing', async () => {
@@ -1167,7 +1314,7 @@ describe('Dashboard workout projection status', () => {
     expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
       template,
       0,
-      'dashboard:template-1:quick',
+      'dashboard:template-1:selection:0',
       expect.any(Map),
     )
 

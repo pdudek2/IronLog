@@ -325,6 +325,157 @@ a {
   backdrop-filter: blur(10px);
 }
 
+.workout-picker-overlay {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+  display: grid;
+  align-items: end;
+  background: rgba(11, 10, 12, 0.82);
+  backdrop-filter: blur(10px);
+}
+
+.workout-picker-dialog {
+  display: grid;
+  max-height: min(88dvh, 48rem);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.workout-picker-head,
+.workout-picker-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.workout-picker-head {
+  border-bottom: 1px solid var(--border);
+  padding-top: max(1rem, env(safe-area-inset-top, 0px));
+}
+
+.workout-picker-head p,
+.workout-picker-head h2,
+.workout-picker-plan h3 {
+  margin: 0;
+}
+
+.workout-picker-head p {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 720;
+}
+
+.workout-picker-head h2 {
+  margin-top: 0.18rem;
+  color: var(--text-strong);
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+}
+
+.workout-picker-head > button {
+  display: inline-grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: none;
+  place-items: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted);
+}
+
+.workout-picker-plans {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 0 1rem;
+}
+
+.workout-picker-plan {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.workout-picker-plan h3 {
+  overflow-wrap: anywhere;
+  color: var(--text-strong);
+  font-size: 0.88rem;
+}
+
+.workout-picker-days {
+  display: grid;
+  gap: 0.45rem;
+  margin-top: 0.65rem;
+}
+
+.workout-picker-day {
+  display: grid;
+  min-height: 3.25rem;
+  gap: 0.14rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  padding: 0.65rem 0.75rem;
+  color: var(--text-strong);
+  text-align: left;
+}
+
+.workout-picker-day[aria-pressed="true"] {
+  border-color: rgba(240, 67, 90, 0.55);
+  background: var(--accent-soft);
+}
+
+.workout-picker-day:disabled {
+  color: var(--muted);
+  opacity: 0.68;
+}
+
+.workout-picker-day strong {
+  overflow-wrap: anywhere;
+}
+
+.workout-picker-day span,
+.workout-picker-edit {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.workout-picker-edit {
+  min-height: 2.75rem;
+  margin-top: 0.35rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.workout-picker-actions {
+  border-top: 1px solid var(--border);
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 640px) {
+  .workout-picker-overlay {
+    align-items: center;
+    justify-items: center;
+    padding: 1.5rem;
+  }
+
+  .workout-picker-dialog {
+    width: min(100%, 38rem);
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-panel);
+  }
+
+  .workout-picker-days {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .exercise-picker-dialog {
   border-radius: 0;
   background: var(--bg-elevated);
@@ -5509,20 +5660,6 @@ a {
   gap: 0.8rem;
 }
 
-.planner-day-row:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.025);
-}
-
-.planner-day-row:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.planner-day-row:disabled {
-  cursor: wait;
-  opacity: 0.62;
-}
-
 .planner-day-row-head > span:first-child {
   display: grid;
   gap: 0.18rem;
@@ -5539,15 +5676,35 @@ a {
   font-size: 0.72rem;
 }
 
-.planner-day-row-affordance {
+.planner-day-start,
+.planner-day-edit {
   display: inline-flex;
   min-width: 2.75rem;
   min-height: 2.75rem;
+  flex: none;
   align-items: center;
-  justify-content: flex-end;
-  color: var(--text-strong);
+  justify-content: center;
+  gap: 0.35rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--accent-text);
   font-size: 0.72rem;
   font-weight: 720;
+}
+
+.planner-day-edit {
+  color: var(--muted);
+}
+
+.planner-day-start:hover:not(:disabled),
+.planner-day-edit:hover {
+  background: rgba(255, 255, 255, 0.045);
+}
+
+.planner-day-start:disabled {
+  cursor: wait;
+  opacity: 0.62;
 }
 
 .planner-exercise-strip {
@@ -9042,24 +9199,17 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     var(--puls-surface-2);
   color: var(--text-strong);
   text-align: left;
-  transition:
-    background-color 160ms ease,
-    transform 160ms ease;
 }
 
-.dashboard-planned-start:hover:not(:disabled) {
-  background:
-    linear-gradient(135deg, rgba(240, 67, 90, 0.19), transparent 62%),
-    var(--puls-surface-2);
-}
-
-.dashboard-planned-start:focus-visible,
+.dashboard-planned-start-primary:focus-visible,
+.dashboard-planned-start-change:focus-visible,
 .dashboard-ad-hoc-action:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 
-.dashboard-planned-start:disabled,
+.dashboard-planned-start-primary:disabled,
+.dashboard-planned-start-change:disabled,
 .dashboard-ad-hoc-action:disabled {
   cursor: wait;
   opacity: 0.65;
@@ -9080,27 +9230,70 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .dashboard-planned-start strong {
   max-width: 24rem;
-  overflow: hidden;
   margin-block: 0.12rem;
   font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 760;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
 }
 
-.dashboard-planned-start-affordance {
+.dashboard-planned-start-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem;
+}
+
+.dashboard-planned-start-primary,
+.dashboard-planned-start-change {
   display: inline-flex;
   min-height: 2.75rem;
-  flex: none;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: 0 0.75rem;
+  background: var(--primary-gradient);
   color: var(--accent-text);
   font-size: 0.76rem;
   font-weight: 760;
 }
 
+.dashboard-planned-start-primary {
+  color: var(--accent-foreground);
+}
+
+.dashboard-planned-start-change {
+  background: transparent;
+  color: var(--text-strong);
+}
+
+.dashboard-workout-choice-empty {
+  display: grid;
+  gap: 0.2rem;
+  border-radius: var(--radius-xl);
+  background: var(--puls-surface-2);
+  padding: 0.9rem 1rem;
+}
+
+.dashboard-workout-choice-empty > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.dashboard-workout-choice-empty .dashboard-planned-start-change {
+  justify-self: start;
+  margin-top: 0.35rem;
+  padding-inline: 0;
+}
+
 .dashboard-ad-hoc-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   justify-self: start;
   min-height: 2.75rem;
   border: 0;
@@ -9114,6 +9307,21 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .dashboard-ad-hoc-action:hover:not(:disabled) {
   color: var(--text-strong);
+}
+
+@media (max-width: 520px) {
+  .dashboard-planned-start {
+    display: grid;
+    align-items: start;
+  }
+
+  .dashboard-planned-start strong {
+    max-width: none;
+  }
+
+  .dashboard-planned-start-actions {
+    justify-content: start;
+  }
 }
 
 .dashboard-quick-plan-feedback {

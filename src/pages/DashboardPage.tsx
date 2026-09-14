@@ -12,6 +12,7 @@ import ReadinessWidget from '../components/ReadinessWidget'
 import NextSessionCard from '../components/NextSessionCard'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
+import WorkoutPickerDialog, { type WorkoutSelectionKey } from '../components/WorkoutPickerDialog'
 import { ActionFeedback } from '../components/ActionFeedback'
 import WorkoutProjectionStatus, {
   type ProjectionRetryState,
@@ -19,6 +20,7 @@ import WorkoutProjectionStatus, {
 import { Button, LoadingState } from '../components/ui'
 import {
   getTemplates,
+  type TemplateExerciseOverrideMap,
   type WorkoutTemplate,
 } from '../lib/templateService'
 import type { ReadinessEntry } from '../lib/readinessService'
@@ -61,8 +63,35 @@ interface ReadinessResource {
   state: DataState<ReadinessEntry | null>
 }
 
+interface WorkoutSelectionResource {
+  uid: string | null
+  initialized: boolean
+  target: WorkoutSelectionKey | null
+  unavailable: boolean
+}
+
 const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
+
+function firstLaunchableWorkout(templates: WorkoutTemplate[]): WorkoutSelectionKey | null {
+  for (const template of templates) {
+    const dayIndex = template.days.findIndex((day) => day.exercises.length > 0)
+    if (dayIndex >= 0) return { templateId: template.id, dayIndex }
+  }
+  return null
+}
+
+function resolveWorkoutSelection(
+  templates: WorkoutTemplate[],
+  selection: WorkoutSelectionKey | null,
+): { template: WorkoutTemplate, dayIndex: number } | null {
+  if (!selection) return null
+  const template = templates.find((candidate) => candidate.id === selection.templateId)
+  const day = template?.days[selection.dayIndex]
+  return template && day && day.exercises.length > 0
+    ? { template, dayIndex: selection.dayIndex }
+    : null
+}
 
 function workoutAccent(workout: WorkoutSummary): string {
   const firstExercise = workout.exercises[0]
@@ -175,6 +204,13 @@ export default function DashboardPage() {
     uid: user?.uid ?? null,
     state: { status: 'loading' },
   })
+  const [workoutSelection, setWorkoutSelection] = useState<WorkoutSelectionResource>({
+    uid: null,
+    initialized: false,
+    target: null,
+    unavailable: false,
+  })
+  const [workoutPickerOpen, setWorkoutPickerOpen] = useState(false)
   const [readinessResource, setReadinessResource] = useState<ReadinessResource>({
     uid: user?.uid ?? null,
     state: { status: 'loading' },
@@ -229,6 +265,18 @@ export default function DashboardPage() {
       .then((data) => {
         if (!templatesMountedRef.current || requestId !== templatesRequestRef.current) return
         setTemplatesResource({ uid, state: { status: 'success', data } })
+        setWorkoutSelection((current) => {
+          if (current.uid !== uid || !current.initialized) {
+            return {
+              uid,
+              initialized: true,
+              target: firstLaunchableWorkout(data),
+              unavailable: false,
+            }
+          }
+          if (!current.target || resolveWorkoutSelection(data, current.target)) return current
+          return { ...current, target: null, unavailable: true }
+        })
       })
       .catch((error: unknown) => {
         if (!templatesMountedRef.current || requestId !== templatesRequestRef.current) return
@@ -507,15 +555,20 @@ export default function DashboardPage() {
       : { status: 'loading' }
   const templates = templatesState.status === 'success' ? templatesState.data : []
   const recentTemplates = templates.slice(0, 3)
-  const quickTemplate = recentTemplates[0] ?? null
-  const quickTemplateDayIndex = quickTemplate?.days.findIndex((day) => day.exercises.length > 0) ?? -1
+  const selectedWorkout = workoutSelection.uid === user?.uid
+    ? resolveWorkoutSelection(templates, workoutSelection.target)
+    : null
+  const quickTemplate = selectedWorkout?.template ?? null
+  const quickTemplateDayIndex = selectedWorkout?.dayIndex ?? -1
   const quickTemplateDay = quickTemplateDayIndex >= 0
     ? quickTemplate?.days[quickTemplateDayIndex] ?? null
     : null
   const quickTemplateExerciseCount = quickTemplateDay?.exercises.length ?? 0
-  const secondaryTemplates = hasActiveSession ? recentTemplates : recentTemplates.slice(1)
+  const secondaryTemplates = hasActiveSession
+    ? recentTemplates
+    : recentTemplates.filter((template) => template.id !== quickTemplate?.id)
   const quickTemplateRequestKey = quickTemplate
-    ? `dashboard:${quickTemplate.id}:quick`
+    ? `dashboard:${quickTemplate.id}:selection:${quickTemplateDayIndex}`
     : null
   const quickTemplateLaunchOperation = quickTemplateRequestKey
     && launchOperation?.target.requestKey === quickTemplateRequestKey
@@ -535,14 +588,47 @@ export default function DashboardPage() {
     && readinessState.data !== null
   const showPlansStrip = templatesState.status !== 'success'
     || recentTemplates.length === 0
-    || secondaryTemplates.length > 0
-    || Boolean(quickTemplate && !quickTemplateHasExercises)
+    || quickTemplate === null
+    || hasActiveSession
 
   function handleRetryTemplates() {
     if (!user) return
     requestedTemplatesUserRef.current = user.uid
     setTemplatesResource({ uid: user.uid, state: { status: 'loading' } })
     loadTemplates(user.uid)
+  }
+
+  function chooseWorkout(selection: WorkoutSelectionKey) {
+    if (!user || !resolveWorkoutSelection(templates, selection)) return
+    dismissTemplateLaunchError()
+    setWorkoutSelection({
+      uid: user.uid,
+      initialized: true,
+      target: selection,
+      unavailable: false,
+    })
+    setWorkoutPickerOpen(false)
+  }
+
+  function editPickerPlan(templateId: string) {
+    setWorkoutPickerOpen(false)
+    navigate(`/templates/${templateId}/edit`)
+  }
+
+  function launchSelectedWorkout(overrides?: TemplateExerciseOverrideMap) {
+    if (!user || workoutSelection.uid !== user.uid || !workoutSelection.target) return
+    const resolved = resolveWorkoutSelection(templates, workoutSelection.target)
+    if (!resolved) {
+      dismissTemplateLaunchError()
+      setWorkoutSelection((current) => ({ ...current, target: null, unavailable: true }))
+      return
+    }
+    const requestKey = `dashboard:${resolved.template.id}:selection:${resolved.dayIndex}`
+    if (overrides) {
+      void requestTemplateLaunch(resolved.template, resolved.dayIndex, requestKey, overrides)
+    } else {
+      void requestTemplateLaunch(resolved.template, resolved.dayIndex, requestKey)
+    }
   }
   const weekStart = weekDates[0]?.getTime() ?? 0
   const weekEnd = addLocalDays(weekDates[6] ?? new Date(weekStart), 1).getTime()
@@ -635,53 +721,71 @@ export default function DashboardPage() {
             {!hasActiveSession && <div className="dashboard-home-action-stack">
               <div className="dashboard-home-actions">
                 {quickTemplate && quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
-                  <motion.button
-                    type="button"
-                    onClick={() => { void requestTemplateLaunch(quickTemplate, quickTemplateDayIndex, quickTemplateRequestKey) }}
-                    disabled={launchingTemplateId !== null}
-                    aria-busy={quickTemplateLaunchOperation?.status === 'pending' ? 'true' : undefined}
-                    aria-describedby={quickTemplateLaunchOperation?.status === 'error'
-                      ? quickTemplateLaunchErrorId
-                      : undefined}
-                    aria-label={`Start ${quickTemplateDay.name} from plan ${quickTemplate.name}`}
-                    className="dashboard-planned-start"
-                    whileTap={{ scale: 0.97 }}
-                  >
+                  <div className="dashboard-planned-start">
                     <span className="dashboard-planned-start-copy">
-                      <small>From plan · {quickTemplate.name}</small>
+                      <small>From your plans · {quickTemplate.name}</small>
                       <strong>{quickTemplateDay.name}</strong>
                       <span>
                         {quickTemplateExerciseCount} {pluralize(quickTemplateExerciseCount, 'exercise', 'exercises')}
                       </span>
                     </span>
-                    <span className="dashboard-planned-start-affordance" aria-hidden="true">
-                      Start
-                      <Play size={15} strokeWidth={2.3} />
-                    </span>
-                  </motion.button>
+                    <div className="dashboard-planned-start-actions">
+                      <button
+                        type="button"
+                        onClick={() => launchSelectedWorkout()}
+                        disabled={launchingTemplateId !== null}
+                        aria-busy={quickTemplateLaunchOperation?.status === 'pending' ? 'true' : undefined}
+                        aria-describedby={quickTemplateLaunchOperation?.status === 'error'
+                          ? quickTemplateLaunchErrorId
+                          : undefined}
+                        className="dashboard-planned-start-primary"
+                      >
+                        {quickTemplateLaunchOperation?.status === 'pending' ? 'Starting…' : 'Start workout'}
+                        <Play size={15} strokeWidth={2.3} aria-hidden="true" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWorkoutPickerOpen(true)}
+                        disabled={launchingTemplateId !== null}
+                        className="dashboard-planned-start-change"
+                      >
+                        Change workout
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <motion.button
-                    type="button"
-                    onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
-                    disabled={openingWorkout}
-                    className="hero-editorial-cta"
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <Plus size={18} strokeWidth={2.4} />
-                    {openingWorkout ? 'Opening workout…' : 'Start new workout'}
-                  </motion.button>
+                  <div className="dashboard-workout-choice-empty">
+                    <strong>
+                      {templatesState.status === 'loading'
+                        ? 'Loading plans…'
+                        : templatesState.status === 'error'
+                          ? 'Plans unavailable'
+                          : workoutSelection.unavailable
+                            ? 'Workout no longer available'
+                            : 'No workouts in your plans'}
+                    </strong>
+                    <span>
+                      {workoutSelection.unavailable
+                        ? 'Choose another workout before starting.'
+                        : 'You can still start an empty workout.'}
+                    </span>
+                    {templatesState.status === 'success' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && (
+                      <button type="button" className="dashboard-planned-start-change" onClick={() => setWorkoutPickerOpen(true)}>
+                        Change workout
+                      </button>
+                    )}
+                  </div>
                 )}
 
-                {quickTemplateHasExercises && (
-                  <button
-                    type="button"
-                    onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
-                    disabled={openingWorkout}
-                    className="dashboard-ad-hoc-action"
-                  >
-                    {openingWorkout ? 'Opening workout…' : 'Workout without a plan'}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                  disabled={openingWorkout}
+                  className="dashboard-ad-hoc-action"
+                >
+                  <Plus size={15} aria-hidden="true" />
+                  {openingWorkout ? 'Opening workout…' : 'Start empty workout'}
+                </button>
               </div>
 
               {!showTodayRecommendation
@@ -722,12 +826,7 @@ export default function DashboardPage() {
                             ? quickTemplateLaunchErrorId
                             : undefined}
                           onStart={(overrides) => {
-                            void requestTemplateLaunch(
-                              quickTemplate,
-                              quickTemplateDayIndex,
-                              quickTemplateRequestKey,
-                              overrides,
-                            )
+                            launchSelectedWorkout(overrides)
                           }}
                           onEdit={() => navigate(`/templates/${quickTemplate.id}/edit`)}
                         />
@@ -910,6 +1009,27 @@ export default function DashboardPage() {
                 <div className="dashboard-template-row">
                   {secondaryTemplates.map((template) => {
                     const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
+                    const dayIndex = template.days.findIndex((day) => day.exercises.length > 0)
+                    if (dayIndex < 0) {
+                      return (
+                        <div key={template.id} className="dashboard-template-launch-item dashboard-template-tile">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-white">{template.name}</p>
+                              <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>No exercises</p>
+                            </div>
+                            <button
+                              type="button"
+                              className="dashboard-planned-start-change"
+                              aria-label={`Edit plan ${template.name}`}
+                              onClick={() => navigate(`/templates/${template.id}/edit`)}
+                            >
+                              Edit plan
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    }
                     const requestKey = `dashboard:${template.id}:primary`
                     const templateLaunchOperation = launchOperation?.target.requestKey === requestKey
                       ? launchOperation
@@ -920,7 +1040,7 @@ export default function DashboardPage() {
                       <div key={template.id} className="dashboard-template-launch-item">
                         <motion.button
                           type="button"
-                          onClick={() => { void requestTemplateLaunch(template, 0, requestKey) }}
+                          onClick={() => { void requestTemplateLaunch(template, dayIndex, requestKey) }}
                           disabled={launchingTemplateId !== null}
                           aria-busy={isLaunching ? 'true' : undefined}
                           aria-describedby={templateLaunchOperation?.status === 'error' ? launchErrorId : undefined}
@@ -1173,6 +1293,16 @@ export default function DashboardPage() {
           danger
           onConfirm={confirmDeleteWorkout}
           onCancel={() => setConfirmDelete(null)}
+        />
+      )}
+
+      {workoutPickerOpen && templatesState.status === 'success' && (
+        <WorkoutPickerDialog
+          templates={templates}
+          selected={workoutSelection.uid === user?.uid ? workoutSelection.target : null}
+          onChoose={chooseWorkout}
+          onCancel={() => setWorkoutPickerOpen(false)}
+          onEdit={editPickerPlan}
         />
       )}
 

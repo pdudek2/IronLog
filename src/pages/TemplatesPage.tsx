@@ -327,39 +327,51 @@ export default function TemplatesPage() {
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.18 }}
                       >
-                        {template.days.map((day, dayIndex) => (
-                          <motion.button
+                        {template.days.map((day, dayIndex) => {
+                          const launchable = day.exercises.length > 0
+                          const requestKey = `templates:${template.id}:detail:${dayIndex}`
+                          return (
+                          <motion.div
                             key={`${template.id}-${dayIndex}`}
-                            type="button"
                             data-testid={`template-day-detail-${template.id}-${dayIndex}`}
-                            aria-label={`Start day ${day.name} from template ${template.name}`}
-                            aria-describedby={feedbackDescription}
-                            aria-busy={isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`) || undefined}
-                            onClick={() => void requestTemplateLaunch(
-                              template,
-                              dayIndex,
-                              `templates:${template.id}:detail:${dayIndex}`,
-                            )}
-                            disabled={launchingTemplateId !== null}
                             className="planner-day-row"
-                            whileTap={{ scale: 0.995 }}
                           >
                             <span className="planner-day-row-head">
                               <span>
                                 <strong className="planner-day-row-title">{day.name}</strong>
                                 <small>
-                                  {day.exercises.length} {day.exercises.length === 1 ? 'exercise' : 'exercises'}
+                                  {launchable
+                                    ? `${day.exercises.length} ${day.exercises.length === 1 ? 'exercise' : 'exercises'}`
+                                    : 'No exercises'}
                                 </small>
                               </span>
 
-                              <span className="planner-day-row-affordance" aria-hidden="true">
-                                {isLaunchingControl(`templates:${template.id}:detail:${dayIndex}`)
-                                  ? 'Starting…'
-                                  : <Play size={15} />}
-                              </span>
+                              {launchable ? (
+                                <button
+                                  type="button"
+                                  aria-label={`Start day ${day.name} from template ${template.name}`}
+                                  aria-describedby={feedbackDescription}
+                                  aria-busy={isLaunchingControl(requestKey) || undefined}
+                                  onClick={() => void requestTemplateLaunch(template, dayIndex, requestKey)}
+                                  disabled={launchingTemplateId !== null}
+                                  className="planner-day-start"
+                                >
+                                  {isLaunchingControl(requestKey) ? 'Starting…' : 'Start'}
+                                  {!isLaunchingControl(requestKey) && <Play size={15} aria-hidden="true" />}
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  aria-label={`Edit ${template.name} to add exercises to ${day.name}`}
+                                  className="planner-day-edit"
+                                  onClick={() => navigate(`/templates/${template.id}/edit`)}
+                                >
+                                  Edit plan
+                                </button>
+                              )}
                             </span>
 
-                            <span className="planner-exercise-strip">
+                            {launchable && <span className="planner-exercise-strip">
                               {day.exercises.slice(0, 5).map((exercise) => (
                                 <span
                                   key={`${day.name}-${exercise.exerciseSource}-${exercise.exerciseId}`}
@@ -372,9 +384,10 @@ export default function TemplatesPage() {
                                   +{day.exercises.length - 5}
                                 </span>
                               )}
-                            </span>
-                          </motion.button>
-                        ))}
+                            </span>}
+                          </motion.div>
+                          )
+                        })}
                       </motion.div>
                     )}
                   </AnimatePresence>

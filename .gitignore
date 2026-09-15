@@ -47,6 +47,15 @@ CLAUDE.md
 /PRODUCT.md
 /coverage/
 
+# Expo native client (generated projects, local Firebase config, and evidence)
+/mobile/node_modules/
+/mobile/.expo/
+/mobile/android/
+/mobile/ios/
+/mobile/config/google-services.json
+/mobile/test-results/
+/mobile/artifacts/
+
 # Per-developer AI agent instructions
 AGENTS.md
 .mcp.json

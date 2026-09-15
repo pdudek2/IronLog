@@ -54,7 +54,7 @@ test('new template editor empty state', async ({ page }, testInfo) => {
   const summary = page.locator('.template-editor-summary')
   await expect(page.locator('.template-editor-main .template-editor-bottom-actions')).toHaveCount(1)
   if (testInfo.project.name === 'desktop') {
-    await expect(headerStats).toBeHidden()
+    await expect(headerStats).toHaveCount(0)
     await expect(summary).toBeVisible()
     await page.addStyleTag({
       content: `
@@ -69,8 +69,7 @@ test('new template editor empty state', async ({ page }, testInfo) => {
       `,
     })
   } else {
-    await expect(headerStats).toBeVisible()
-    await expect(headerStats).toContainText('1day')
+    await expect(headerStats).toHaveCount(0)
     await expect(summary).toBeHidden()
   }
 

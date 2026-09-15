@@ -181,7 +181,7 @@ describe('TemplateEditorPage accessibility', () => {
     expect(screen.getByText('Weight (lbs)')).toBeInTheDocument()
     expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Renamed plan' } })
-    fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save plan' }))
     await screen.findByText('Lista plans')
     expect(mocks.updateTemplate.mock.calls[0]?.[1].days[0].exercises[0].targetWeight).toBe(80)
   })
@@ -197,7 +197,7 @@ describe('TemplateEditorPage accessibility', () => {
     fireEvent.change(weight, { target: { value: '100' } })
     expect(weight).toHaveValue(100)
     expect(weight).toBeValid()
-    fireEvent.click(screen.getByRole('button', { name: 'Save template' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save plan' }))
     await screen.findByText('Lista plans')
     expect(mocks.createTemplate.mock.calls[0]?.[1].days[0].exercises[0].targetWeight).toBe(expectedKg)
   })
@@ -219,25 +219,25 @@ describe('TemplateEditorPage accessibility', () => {
     const name = await screen.findByRole('textbox', { name: 'Name' })
     fireEvent.change(name, { target: { value: '' } })
     expect(name).toHaveAccessibleDescription('Enter a plan name (at least 2 characters) to save it.')
-    expect(screen.getByRole('button', { name: 'Save template' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
     expect(mocks.createTemplate).not.toHaveBeenCalled()
     fireEvent.change(name, { target: { value: 'A' } })
     expect(name).toHaveAttribute('aria-describedby', 'template-name-hint')
     fireEvent.change(name, { target: { value: 'Plan' } })
     expect(name).not.toHaveAttribute('aria-describedby')
     expect(screen.queryByText('Enter a plan name (at least 2 characters) to save it.')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save template' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save plan' })).toBeEnabled()
   })
 
-  it('shows a pristine create draft as not yet saved and invalid', async () => {
+  it('keeps a pristine create draft quiet and invalid', async () => {
     renderEditor('/templates/new')
 
-    expect(await screen.findByText('New plan · not saved yet')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Save plan' })).toBeDisabled()
+    expect(screen.queryByText('New plan · not saved yet')).not.toBeInTheDocument()
     expect(screen.queryByText('Enter a plan name (at least 2 characters) to save it.')).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save template' })).toBeDisabled()
-    expect(screen.getByLabelText('Plan editor summary')).toHaveTextContent('1day')
+    expect(screen.queryByLabelText('Plan editor summary')).not.toBeInTheDocument()
     expect(document.querySelector('.template-editor-main')).toContainElement(
-      screen.getByRole('button', { name: 'Save template in form' }),
+      screen.getByRole('button', { name: 'Save plan in form' }),
     )
   })
 
@@ -257,6 +257,7 @@ describe('TemplateEditorPage accessibility', () => {
 
     const tablist = await screen.findByRole('tablist', { name: 'Plan days' })
     const tabs = within(tablist).getAllByRole('tab')
+    expect(tablist).not.toContainElement(screen.getByRole('button', { name: 'Add day' }))
     expect(tabs).toHaveLength(3)
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
     expect(tabs[0]).toHaveAttribute('tabindex', '0')
@@ -353,7 +354,7 @@ describe('TemplateEditorPage accessibility', () => {
     renderEditor()
 
     expect(await screen.findByText('Unsaved changes')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save template' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save plan' })).toBeEnabled()
     fireEvent.click(getEditorBackButton())
 
     expect(await screen.findByRole('dialog', { name: 'Leave editor?' })).toBeInTheDocument()
@@ -383,7 +384,7 @@ describe('TemplateEditorPage accessibility', () => {
     fireEvent.change(await screen.findByRole('textbox', { name: 'Name' }), {
       target: { value: 'Upper / Lower zmieniony' },
     })
-    fireEvent.click(screen.getByRole('button', { name: 'Save template' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save plan' }))
     fireEvent.click(getEditorBackButton())
 
     const dialog = await screen.findByRole('dialog', { name: 'Saving in progress' })
@@ -404,7 +405,7 @@ describe('TemplateEditorPage accessibility', () => {
     ))
     const router = renderEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save template' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save plan' }))
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Saving in progress' })
@@ -427,7 +428,7 @@ describe('TemplateEditorPage accessibility', () => {
     mocks.createTemplate.mockRejectedValueOnce(new Error('write failed'))
     renderEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save template' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save plan' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not save the plan.')
     fireEvent.click(getEditorBackButton())
 
@@ -438,7 +439,7 @@ describe('TemplateEditorPage accessibility', () => {
     mocks.createTemplate.mockRejectedValueOnce(new Error('write failed'))
     renderEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save template' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save plan' }))
     const alert = await screen.findByRole('alert')
     const name = screen.getByRole('textbox', { name: 'Name' })
     fireEvent.change(name, { target: { value: 'Aktualny plan po błędzie' } })
@@ -453,7 +454,7 @@ describe('TemplateEditorPage accessibility', () => {
       .mockResolvedValueOnce(undefined)
     renderEditor()
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Save template' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Save plan' }))
     await screen.findByRole('alert')
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), {
       target: { value: 'Plan poprawiony po błędzie' },
@@ -493,7 +494,7 @@ describe('TemplateEditorPage accessibility', () => {
     expect(form).not.toBeNull()
     expect(screen.queryByTestId('template-save-dock')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Zapisano w formularzu' })).not.toBeInTheDocument()
-    expect(screen.getByLabelText('Plan editor summary')).toHaveTextContent('1ex.')
+    expect(screen.queryByLabelText('Plan editor summary')).not.toBeInTheDocument()
 
     await act(async () => {
       fireEvent.submit(form!)

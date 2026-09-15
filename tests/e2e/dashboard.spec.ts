@@ -128,7 +128,7 @@ test.describe('Dashboard regressions', () => {
         })),
       }],
     })
-    await page.getByRole('button', { name: 'Save template' }).click()
+    await page.getByRole('button', { name: 'Save plan' }).click()
     await page.waitForURL('/templates', { timeout: 15_000 })
     cleanup.add('delete next-session template', () => deleteTemplateByName(page, NEXT_SESSION_TEMPLATE_NAME))
 

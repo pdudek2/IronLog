@@ -3,34 +3,33 @@ import { describe, expect, it, vi } from 'vitest'
 import TemplateSaveDock from '../TemplateSaveDock'
 
 describe('TemplateSaveDock', () => {
-  it('describes a pristine create draft as not saved and disables submit', () => {
+  it('keeps a pristine draft quiet and disables the plan save action', () => {
     render(
       <TemplateSaveDock
         state="new-pristine"
-        isEdit={false}
         canSubmit={false}
       />,
     )
 
     expect(screen.getByTestId('template-save-dock')).toHaveAttribute('data-state', 'new-pristine')
-    expect(screen.getByRole('status')).toHaveTextContent('New plan · not saved yet')
-    expect(screen.getByRole('button', { name: 'Save template' })).toBeDisabled()
+    expect(screen.queryByRole('status')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
   })
 
-  it('enables the matching create or edit action for a valid dirty draft', () => {
+  it('enables the save-plan action for a valid dirty draft', () => {
     const view = render(
-      <TemplateSaveDock state="dirty" isEdit={false} canSubmit />,
+      <TemplateSaveDock state="dirty" canSubmit />,
     )
 
     expect(screen.getByRole('status')).toHaveTextContent('Unsaved changes')
-    expect(screen.getByRole('button', { name: 'Save template' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save plan' })).toBeEnabled()
 
-    view.rerender(<TemplateSaveDock state="dirty" isEdit canSubmit />)
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled()
+    view.rerender(<TemplateSaveDock state="dirty" canSubmit={false} />)
+    expect(screen.getByRole('button', { name: 'Save plan' })).toBeDisabled()
   })
 
   it('disables duplicate submit while saving', () => {
-    render(<TemplateSaveDock state="saving" isEdit canSubmit />)
+    render(<TemplateSaveDock state="saving" canSubmit />)
 
     expect(screen.getByRole('status')).toHaveTextContent('Saving')
     expect(screen.getByRole('button', { name: 'Saving…' })).toBeDisabled()
@@ -42,7 +41,6 @@ describe('TemplateSaveDock', () => {
     render(
       <TemplateSaveDock
         state="error"
-        isEdit={false}
         canSubmit
         errorMessage="Could not save the plan."
         onRetry={onRetry}
@@ -58,7 +56,7 @@ describe('TemplateSaveDock', () => {
   })
 
   it('removes the fixed dock for a loaded unchanged template', () => {
-    render(<TemplateSaveDock state="persisted-clean" isEdit canSubmit />)
+    render(<TemplateSaveDock state="persisted-clean" canSubmit />)
 
     expect(screen.queryByTestId('template-save-dock')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Zapisano' })).not.toBeInTheDocument()

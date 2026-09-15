@@ -16,23 +16,9 @@ test.describe('Templates CRUD', () => {
     await page.goto('/templates/new')
     await expectAppReady(page, '/templates/new')
     await page.evaluate(() => document.fonts.ready)
-    await expect(page.getByText('New plan · not saved yet', { exact: true })).toHaveCount(1)
-    const emptyDay = page.locator('.template-day-empty')
-    await expect(emptyDay).toBeVisible()
-    const emptyStyle = await emptyDay.evaluate((element) => {
-      const style = getComputedStyle(element)
-      return {
-        background: style.backgroundColor,
-        border: style.borderTopWidth,
-        radius: style.borderTopLeftRadius,
-      }
-    })
-    expect(emptyStyle).toEqual({
-      background: 'rgba(0, 0, 0, 0)',
-      border: '0px',
-      radius: '0px',
-    })
-    const createSave = page.locator('button[type="submit"]:visible').filter({ hasText: 'Save template' })
+    await expect(page.getByText('New plan · not saved yet', { exact: true })).toHaveCount(0)
+    await expect(page.getByText('Add the first exercise to this day.', { exact: true })).toHaveCount(0)
+    const createSave = page.locator('button[type="submit"]:visible').filter({ hasText: 'Save plan' })
     await expect(createSave).toHaveCount(1)
     await expect(createSave).toBeDisabled()
     await page.getByPlaceholder('E.g. Upper / Lower 4 days').fill(TEST_TEMPLATE_NAME)
@@ -66,7 +52,7 @@ test.describe('Templates CRUD', () => {
     await expect(page).toHaveURL(/\/templates\/.*\/edit/, { timeout: 5_000 })
     await expect(page.getByPlaceholder('E.g. Upper / Lower 4 days')).toHaveValue(TEST_TEMPLATE_NAME)
     await page.getByRole('textbox', { name: 'Day name 1' }).fill('Day siłowy')
-    const saveChanges = page.locator('button[type="submit"]:visible').filter({ hasText: 'Save changes' })
+    const saveChanges = page.locator('button[type="submit"]:visible').filter({ hasText: 'Save plan' })
     await expect(saveChanges).toHaveCount(1)
     await saveChanges.click()
     await page.waitForURL('/templates', { timeout: 10_000 })

@@ -21,14 +21,6 @@ interface TemplateDeleteOperation {
   status: 'pending' | 'error'
 }
 
-function formatDate(ts: number): string {
-  if (!ts) return 'now'
-  return new Date(ts).toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'short',
-  })
-}
-
 function countTemplateExercises(template: WorkoutTemplate): number {
   return template.days.reduce((sum, day) => sum + day.exercises.length, 0)
 }
@@ -125,18 +117,9 @@ export default function TemplatesPage() {
   return (
     <>
       <div className="workbench-page">
-        <section className="planner-header">
-        <div>
+        <section className="planner-header plans-header">
+        <div className="plans-header-title">
           <h1>Plans</h1>
-        </div>
-
-        <div className="planner-header-actions">
-          <Link
-            to="/exercises"
-            className="planner-secondary-action mobile-touch-target"
-          >
-            Exercises
-          </Link>
           {templates.length > 0 && (
             <div className="planner-mini-stats" aria-label="Plan summary">
               <span>
@@ -146,6 +129,15 @@ export default function TemplatesPage() {
               </span>
             </div>
           )}
+        </div>
+
+        <div className="planner-header-actions">
+          <Link
+            to="/exercises"
+            className="planner-secondary-action plans-exercises-link mobile-touch-target"
+          >
+            Exercises
+          </Link>
 
           <motion.button
             type="button"
@@ -251,7 +243,7 @@ export default function TemplatesPage() {
                         {template.name}
                       </h2>
                       <p>
-                        {template.days.length} {template.days.length === 1 ? 'day' : 'days'} · {totalExercises} {totalExercises === 1 ? 'exercise' : 'exercises'} · updated {formatDate(template.updatedAt)}
+                        {template.days.length} {template.days.length === 1 ? 'day' : 'days'} · {totalExercises} {totalExercises === 1 ? 'exercise' : 'exercises'}
                       </p>
                     </div>
 

@@ -10,15 +10,13 @@ export type TemplateSaveState =
 
 export interface TemplateSaveDockProps {
   state: TemplateSaveState
-  isEdit: boolean
   canSubmit: boolean
   errorMessage?: string
   onRetry?: () => void
   onDismissError?: () => void
 }
 
-const statusLabels: Record<Exclude<TemplateSaveState, 'error'>, string> = {
-  'new-pristine': 'New plan · not saved yet',
+const statusLabels: Record<Exclude<TemplateSaveState, 'error' | 'new-pristine'>, string> = {
   dirty: 'Unsaved changes',
   saving: 'Saving',
   'persisted-clean': 'All changes saved',
@@ -26,7 +24,6 @@ const statusLabels: Record<Exclude<TemplateSaveState, 'error'>, string> = {
 
 export default function TemplateSaveDock({
   state,
-  isEdit,
   canSubmit,
   errorMessage,
   onRetry,
@@ -36,11 +33,7 @@ export default function TemplateSaveDock({
 
   const saving = state === 'saving'
   const hasError = state === 'error'
-  const label = saving
-    ? 'Saving…'
-    : isEdit
-      ? 'Save changes'
-      : 'Save template'
+  const label = saving ? 'Saving…' : 'Save plan'
 
   return (
     <div className="template-save-dock" data-state={state} data-testid="template-save-dock">
@@ -54,7 +47,7 @@ export default function TemplateSaveDock({
         />
       )}
       <div className="template-save-dock-panel">
-        {!hasError && (
+        {!hasError && state !== 'new-pristine' && (
           <span className="template-save-dock-status" role="status" aria-live="polite">
             {statusLabels[state]}
           </span>

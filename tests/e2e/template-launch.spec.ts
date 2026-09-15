@@ -67,7 +67,7 @@ async function createLaunchTemplate(page: Page, templateName: string): Promise<v
   await squat.click()
   await expect(picker).not.toBeVisible({ timeout: 5_000 })
 
-  await page.getByRole('button', { name: 'Save template' }).click()
+  await page.getByRole('button', { name: 'Save plan' }).click()
   await page.waitForURL('/templates', { timeout: 15_000 })
   await expect(page.getByRole('heading', { name: templateName, exact: true }).first()).toBeVisible({ timeout: 10_000 })
 }

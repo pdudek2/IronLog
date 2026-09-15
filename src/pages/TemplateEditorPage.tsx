@@ -184,6 +184,13 @@ export default function TemplateEditorPage() {
           : 'new-pristine'
   const leaveGuard = useUnsavedChangesGuard(hasUnsavedChanges || saving)
 
+  useEffect(() => {
+    document.getElementById(`template-day-tab-${selectedDayId}`)?.scrollIntoView?.({
+      block: 'nearest',
+      inline: 'nearest',
+    })
+  }, [selectedDayId])
+
   function handleBackToTemplates() {
     navigate('/templates')
   }
@@ -345,16 +352,6 @@ export default function TemplateEditorPage() {
 
         <div className="template-editor-heading">
           <h1>{isEdit ? 'Edit plan' : 'New plan'}</h1>
-          <div className="planner-mini-stats" aria-label="Plan editor summary">
-            <span>
-              <strong>{days.length}</strong>
-              {pluralize(days.length, 'day', 'days')}
-            </span>
-            <span>
-              <strong>{totalExercises}</strong>
-              ex.
-            </span>
-          </div>
         </div>
       </section>
 
@@ -379,13 +376,14 @@ export default function TemplateEditorPage() {
               )}
             </section>
 
-            <div
-              className="planner-template-days"
-              role="tablist"
-              aria-label="Plan days"
-              aria-orientation="horizontal"
-            >
-              {days.map((day, dayIndex) => {
+            <div className="template-day-selector">
+              <div
+                className="planner-template-days"
+                role="tablist"
+                aria-label="Plan days"
+                aria-orientation="horizontal"
+              >
+                {days.map((day, dayIndex) => {
                 const dayDisplayName = day.name.trim() || `Day ${dayIndex + 1}`
                 const targetSets = day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)
                 const selected = day._id === selectedDayId
@@ -411,7 +409,18 @@ export default function TemplateEditorPage() {
                     </small>
                   </button>
                 )
-              })}
+                })}
+              </div>
+
+              <motion.button
+                type="button"
+                onClick={addDay}
+                className="planner-secondary-action template-selector-add-day mobile-touch-target"
+                whileTap={{ scale: 0.97 }}
+              >
+                <Plus size={15} />
+                Add day
+              </motion.button>
             </div>
 
             {selectedDay && (
@@ -541,11 +550,6 @@ export default function TemplateEditorPage() {
                     </div>
                   ))}
 
-                  {selectedDay.exercises.length === 0 && (
-                    <div className="template-day-empty">
-                      Add the first exercise to this day.
-                    </div>
-                  )}
                 </div>
 
                 <div className="template-day-actions">
@@ -563,34 +567,20 @@ export default function TemplateEditorPage() {
             )}
 
             <div className="template-editor-bottom-actions">
-              <motion.button
-                type="button"
-                onClick={addDay}
-                className="planner-secondary-action template-editor-mobile-add-day mobile-touch-target"
-                whileTap={{ scale: 0.97 }}
-              >
-                <Plus size={15} />
-                Add day
-              </motion.button>
-
               {saveState !== 'persisted-clean' && (
                 <motion.button
                   type="submit"
                   disabled={!canSubmit || saveState === 'saving' || saveState === 'error'}
                   aria-label={saveState === 'saving'
                     ? 'Saving… in the form'
-                    : isEdit
-                      ? 'Save changes in form'
-                      : 'Save template in form'}
+                    : 'Save plan in form'}
                   className="planner-primary-action template-editor-desktop-save disabled:opacity-60"
                   whileTap={{ scale: 0.97 }}
                 >
                   <Pencil size={15} />
                   {saveState === 'saving'
                     ? 'Saving…'
-                    : isEdit
-                      ? 'Save changes'
-                      : 'Save template'}
+                    : 'Save plan'}
                 </motion.button>
               )}
             </div>
@@ -611,22 +601,11 @@ export default function TemplateEditorPage() {
               </div>
 
             </div>
-
-            <motion.button
-              type="button"
-              onClick={addDay}
-              className="planner-secondary-action template-editor-add-day"
-              whileTap={{ scale: 0.97 }}
-            >
-              <Plus size={15} />
-              Add day
-            </motion.button>
           </aside>
         </div>
 
         <TemplateSaveDock
           state={saveState}
-          isEdit={isEdit}
           canSubmit={canSubmit}
           errorMessage={saveError ?? undefined}
           onRetry={() => { void saveTemplate() }}

@@ -1,5 +1,5 @@
 import { deriveLegacySessionId } from '../../src/shared/sessionIdentity'
-import { kgStringToDisplayWeight } from '../../src/shared/weightUnits'
+import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 
 export type Units = 'kg' | 'lbs'
 export type ExerciseSource = 'global' | 'user'
@@ -116,6 +116,21 @@ export function formatSet(set: WorkoutSet, units: Units): string {
   const weightLabel = weight ? `${weight} ${units}` : `— ${units}`
   const repsLabel = set.reps ? `${set.reps} reps` : '— reps'
   return `${weightLabel} × ${repsLabel}`
+}
+
+export function summarizeExercise(exercise: WorkoutExercise, units: Units) {
+  const completedSets = exercise.sets.filter((set) => set.done && Number.parseInt(set.reps, 10) > 0)
+  const volumeKg = completedSets.reduce((total, set) => (
+    total + (Number.parseFloat(set.weight) || 0) * (Number.parseInt(set.reps, 10) || 0)
+  ), 0)
+  const maxKg = completedSets.reduce((max, set) => Math.max(max, Number.parseFloat(set.weight) || 0), 0)
+
+  return {
+    completed: completedSets.length,
+    total: exercise.sets.length,
+    volume: formatCompactVolume(volumeKg, units),
+    max: maxKg ? `${kgStringToDisplayWeight(String(maxKg), units)} ${units}` : '—',
+  }
 }
 
 export function formatElapsed(startedAt: number, now = Date.now()): string {

@@ -7,6 +7,7 @@ import {
   formatElapsed,
   formatSet,
   parseSessionDocument,
+  summarizeExercise,
 } from './session'
 
 function session(overrides: Record<string, unknown> = {}) {
@@ -66,4 +67,24 @@ test('elapsed time is derived from timestamps and clamped for future starts', ()
   assert.equal(formatElapsed(0, 65_000), '01:05')
   assert.equal(formatElapsed(0, 3_665_000), '01:01:05')
   assert.equal(formatElapsed(10_000, 5_000), '00:00')
+})
+
+test('summarizes only completed exercise work like the web ledger', () => {
+  const exercise = parseSessionDocument('user-a', session({
+    exercises: [{
+      exerciseId: 'bench-press',
+      name: 'Bench Press',
+      sets: [
+        { weight: '64.9998', reps: '8', done: true },
+        { weight: '62.5', reps: '10', done: false },
+      ],
+    }],
+  })).exercises[0]!
+
+  assert.deepEqual(summarizeExercise(exercise, 'lbs'), {
+    completed: 1,
+    total: 2,
+    volume: '1.1k lbs',
+    max: '143.3 lbs',
+  })
 })

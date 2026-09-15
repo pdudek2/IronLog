@@ -14,8 +14,21 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 
+import { exercises as exerciseCatalog } from '../../data/exercises'
+import {
+  EXERCISE_CATEGORY_COLORS,
+  EXERCISE_CATEGORY_LABELS,
+  getEquipmentLabel,
+} from '../../src/lib/exerciseLabels'
+import { kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 import { login, logout, observeAuth, type AuthUser } from '../src/firebase'
-import { formatElapsed, formatSet, type ActiveWorkout } from '../src/session'
+import {
+  formatElapsed,
+  summarizeExercise,
+  type ActiveWorkout,
+  type Units,
+  type WorkoutExercise,
+} from '../src/session'
 import { useActiveSession } from '../src/useActiveSession'
 
 const colors = {
@@ -29,6 +42,7 @@ const colors = {
   muted: '#a09aa0',
   mutedSoft: '#8f8990',
   accent: '#f0435a',
+  accentDark: '#ca203e',
   accentText: '#ff7182',
   recovery: '#8fb8a0',
   warning: '#f0a75a',
@@ -67,11 +81,39 @@ function ActionButton({ label, onPress, secondary = false, disabled = false }: {
   )
 }
 
+function SignalBackdrop() {
+  const points = [[-10, 112], [14, 64], [31, 112], [66, 112], [88, 16], [108, 112], [145, 112], [165, 59], [183, 112], [218, 112], [239, 72], [257, 112], [291, 112], [311, 79], [329, 112], [380, 112]]
+
+  return (
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.signalBackdrop}>
+      {points.slice(1).map(([x2, y2], index) => {
+        const [x1, y1] = points[index]!
+        const width = Math.hypot(x2 - x1, y2 - y1)
+        return (
+          <View
+            key={index}
+            style={[
+              styles.signalSegment,
+              {
+                left: (x1 + x2 - width) / 2,
+                top: (y1 + y2) / 2,
+                transform: [{ rotate: `${Math.atan2(y2 - y1, x2 - x1)}rad` }],
+                width,
+              },
+            ]}
+          />
+        )
+      })}
+    </View>
+  )
+}
+
 function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
 
   const submit = async () => {
     if (!email.trim() || !password) {
@@ -90,18 +132,22 @@ function LoginForm() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.flex}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.flex, styles.loginShell]}>
       <ScrollView
+        automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.loginContent}
         keyboardShouldPersistTaps="handled"
       >
+        <SignalBackdrop />
         <View style={styles.brandRow}>
-          <View style={styles.brandMark}><Text style={styles.brandMarkText}>IL</Text></View>
+          <View style={styles.brandMark}>
+            <Text style={styles.brandMarkText}>IL</Text>
+            <View style={styles.brandDot} />
+          </View>
           <Text style={styles.brandName}>IronLog</Text>
-          <Text style={styles.previewLabel}>Native preview</Text>
         </View>
         <Text accessibilityRole="header" style={styles.hero}>
-          Find your{`\n`}training <Text style={styles.heroAccent}>rhythm.</Text>
+          Find your{`\n`}training{`\n`}<Text style={styles.heroAccent}>rhythm.</Text>
         </Text>
         <Text style={styles.lead}>Every set builds on the last.</Text>
         <View style={styles.formDivider} />
@@ -115,29 +161,34 @@ function LoginForm() {
             inputMode="email"
             keyboardType="email-address"
             onChangeText={setEmail}
+            onBlur={() => setFocusedField(null)}
+            onFocus={() => setFocusedField('email')}
             placeholder="email@example.com"
             placeholderTextColor={colors.mutedSoft}
             returnKeyType="next"
             selectionColor={colors.accentText}
-            style={styles.input}
+            style={[styles.input, focusedField === 'email' && styles.inputFocused]}
             value={email}
           />
-          <Text style={styles.label}>Password</Text>
+          <Text style={[styles.label, styles.passwordLabel]}>Password</Text>
           <TextInput
             accessibilityLabel="Password"
             autoCapitalize="none"
             autoComplete="current-password"
             onChangeText={setPassword}
+            onBlur={() => setFocusedField(null)}
+            onFocus={() => setFocusedField('password')}
             onSubmitEditing={() => void submit()}
             placeholder="••••••••"
             placeholderTextColor={colors.mutedSoft}
             returnKeyType="done"
             selectionColor={colors.accentText}
             secureTextEntry
-            style={styles.input}
+            style={[styles.input, focusedField === 'password' && styles.inputFocused]}
             value={password}
           />
           {error && <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text>}
+          {!error && <View style={styles.omittedAuthActionSpace} />}
           <ActionButton disabled={busy} label={busy ? 'Signing in…' : 'Sign in'} onPress={() => void submit()} />
         </View>
       </ScrollView>
@@ -162,6 +213,133 @@ function Elapsed({ session }: { session: ActiveWorkout }) {
   return <Text accessibilityLabel={`Elapsed time ${formatElapsed(session.startedAt, now)}`} style={styles.elapsed}>{formatElapsed(session.startedAt, now)}</Text>
 }
 
+function SignOutButton({ busy, onPress }: { busy: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Sign out"
+      disabled={busy}
+      hitSlop={8}
+      onPress={onPress}
+      style={({ pressed }) => [styles.signOutButton, busy && styles.buttonDisabled, pressed && styles.buttonPressed]}
+    >
+      <Text style={styles.signOutButtonText}>{busy ? 'Signing out…' : 'Sign out'}</Text>
+    </Pressable>
+  )
+}
+
+function displaySetWeight(weightKg: string, units: Units): string {
+  return (kgStringToDisplayWeight(weightKg, units) || '—').replace('.', ',')
+}
+
+function ExerciseLedger({
+  exercise,
+  expanded,
+  units,
+  onToggle,
+}: {
+  exercise: WorkoutExercise
+  expanded: boolean
+  units: Units
+  onToggle: () => void
+}) {
+  const summary = summarizeExercise(exercise, units)
+  const catalogExercise = exercise.exerciseSource === 'global'
+    ? exerciseCatalog.find(({ id }) => id === exercise.exerciseId)
+    : undefined
+  const category = catalogExercise ? EXERCISE_CATEGORY_LABELS[catalogExercise.category] : undefined
+  const equipment = catalogExercise ? getEquipmentLabel(catalogExercise.equipment) : undefined
+  const accent = catalogExercise ? EXERCISE_CATEGORY_COLORS[catalogExercise.category] : colors.muted
+
+  return (
+    <View style={styles.exerciseCard}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} exercise ${exercise.name}`}
+        accessibilityState={{ expanded }}
+        onPress={onToggle}
+        style={({ pressed }) => [styles.exerciseHeading, pressed && styles.headingPressed]}
+      >
+        <View style={styles.flex}>
+          {expanded && (category || equipment) && (
+            <Text style={styles.exerciseMeta}>
+              {category && <Text style={{ color: accent }}>{category}</Text>}
+              {category && equipment ? ' · ' : ''}
+              {equipment}
+            </Text>
+          )}
+          <Text style={styles.exerciseName}>{exercise.name}</Text>
+          {!expanded && (
+            <Text style={styles.exerciseCompact}>
+              {summary.completed}/{summary.total} sets · {summary.volume}
+            </Text>
+          )}
+        </View>
+        <Text accessibilityElementsHidden style={styles.chevron}>{expanded ? '⌃' : '⌄'}</Text>
+      </Pressable>
+
+      {expanded && (
+        <View>
+          <View accessibilityLabel={`Exercise summary ${exercise.name}`} style={styles.exerciseSummary}>
+            {[
+              ['Progress', `${summary.completed}/${summary.total}`],
+              ['Volume', summary.volume],
+              ['Max', summary.max],
+            ].map(([label, value]) => (
+              <View key={label} style={styles.summaryCell}>
+                <Text style={styles.summaryLabel}>{label}</Text>
+                <Text style={styles.summaryValue}>{value}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View accessibilityElementsHidden style={[styles.setGrid, styles.setHeaderGrid]}>
+            <View style={styles.setToggleColumn} />
+            <Text style={styles.setHeaderCell}>Prev.</Text>
+            <Text style={styles.setHeaderCell}>{units}</Text>
+            <Text style={styles.setHeaderCell}>Reps</Text>
+            <View style={styles.setTrailingColumn} />
+          </View>
+
+          {exercise.sets.map((set, setIndex) => (
+            <View accessibilityLabel={`Set ${setIndex + 1}, ${displaySetWeight(set.weight, units)} ${units}, ${set.reps} reps, ${set.done ? 'completed' : 'not completed'}`} key={setIndex} style={styles.setGrid}>
+              <Text style={[styles.setToggle, set.done ? styles.setToggleDone : styles.setToggleOpen]}>{set.done ? '✓' : setIndex + 1}</Text>
+              <Text style={styles.setCellMuted}>—</Text>
+              <Text style={[styles.setCellValue, !set.done && styles.setCellCurrent]}>{displaySetWeight(set.weight, units)}</Text>
+              <Text style={[styles.setCellValue, !set.done && styles.setCellCurrent]}>{set.reps || '—'}</Text>
+              <View style={styles.setTrailingColumn} />
+            </View>
+          ))}
+
+          <View accessibilityElementsHidden style={styles.omittedWorkoutActionsSpace} />
+        </View>
+      )}
+    </View>
+  )
+}
+
+function WorkoutLedger({ session, units }: { session: ActiveWorkout; units: Units }) {
+  const [expandedIndex, setExpandedIndex] = useState(() => {
+    const openIndex = session.exercises.findIndex((exercise) => exercise.sets.some((set) => !set.done))
+    return openIndex >= 0 ? openIndex : 0
+  })
+
+  return (
+    <View style={styles.exerciseStack}>
+      {session.exercises.map((exercise, exerciseIndex) => (
+        <ExerciseLedger
+          exercise={exercise}
+          expanded={exerciseIndex === expandedIndex}
+          key={`${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`}
+          onToggle={() => setExpandedIndex(exerciseIndex === expandedIndex ? -1 : exerciseIndex)}
+          units={units}
+        />
+      ))}
+      <View accessibilityElementsHidden style={styles.omittedAddExerciseSpace} />
+    </View>
+  )
+}
+
 function SessionScreen({ user }: { user: AuthUser }) {
   const { state, retry } = useActiveSession(user.uid)
   const [signingOut, setSigningOut] = useState(false)
@@ -180,19 +358,23 @@ function SessionScreen({ user }: { user: AuthUser }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.sessionContent}>
-      <View style={styles.topbar}>
-        <View style={[styles.flex, styles.sessionBrand]}>
-          <View style={styles.brandMarkSmall}><Text style={styles.brandMarkTextSmall}>IL</Text></View>
-          <View style={styles.flex}>
-            <Text style={styles.brandNameSmall}>IronLog</Text>
-            <Text numberOfLines={1} style={styles.account}>{user.email ?? 'Signed in'}</Text>
+    <ScrollView contentContainerStyle={styles.sessionContent} stickyHeaderIndices={[0]}>
+      {state.status === 'ready' ? (
+        <View style={styles.lifecycleBar}>
+          <View style={styles.lifecycleBarInner}>
+            <Elapsed session={state.session} />
+            <SignOutButton busy={signingOut} onPress={() => void doLogout()} />
           </View>
         </View>
-        <Pressable accessibilityRole="button" accessibilityLabel="Sign out" disabled={signingOut} onPress={() => void doLogout()} hitSlop={12}>
-          <Text style={styles.signOut}>{signingOut ? 'Signing out…' : 'Sign out'}</Text>
-        </Pressable>
-      </View>
+      ) : (
+        <View style={styles.accountBar}>
+          <View style={styles.sessionBrand}>
+            <View style={styles.brandMarkSmall}><Text style={styles.brandMarkTextSmall}>IL</Text></View>
+            <Text style={styles.brandNameSmall}>IronLog</Text>
+          </View>
+          <SignOutButton busy={signingOut} onPress={() => void doLogout()} />
+        </View>
+      )}
       {logoutError && <Text accessibilityLiveRegion="polite" style={styles.logoutError}>{logoutError}</Text>}
 
       {state.status === 'loading' && (
@@ -227,35 +409,23 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
       {state.status === 'ready' && (
         <View>
-          <View style={styles.sessionHeader}>
-            <Text style={styles.sectionLabel}>Active workout</Text>
-            <Text accessibilityRole="header" style={styles.sessionTitle}>{state.session.label ?? 'Current workout'}</Text>
-            <Elapsed session={state.session} />
-            {state.stale && (
-              <View style={styles.staleNotice}>
-                <Text style={styles.staleTitle}>Saved on this device</Text>
-                <Text style={styles.staleCopy}>This may be out of date. Reconnect to confirm the workout is still active.</Text>
-              </View>
-            )}
+          <View accessibilityElementsHidden style={styles.omittedWorkoutLabelsBand} />
+          {state.stale && (
+            <View style={styles.staleNotice}>
+              <Text style={styles.staleTitle}>Saved on this device</Text>
+              <Text style={styles.staleCopy}>This may be out of date. Reconnect to confirm the workout is still active.</Text>
+            </View>
+          )}
+
+          <View accessibilityElementsHidden>
+            <Text style={styles.srSessionLabel}>{state.session.label ?? 'Current workout'}</Text>
           </View>
 
           {state.session.exercises.length === 0 ? (
-            <Text style={styles.stateCopy}>No exercises yet.</Text>
-          ) : state.session.exercises.map((exercise, exerciseIndex) => (
-            <View key={`${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`} style={styles.exercise}>
-              <View style={styles.exerciseBody}>
-                <Text style={styles.exerciseName}>{exercise.name}</Text>
-                {exercise.sets.map((set, setIndex) => (
-                  <View key={setIndex} style={styles.setRow}>
-                    <Text style={styles.setNumber}>SET {setIndex + 1}</Text>
-                    <Text style={styles.setValue}>{formatSet(set, state.units)}</Text>
-                    <Text accessibilityLabel={set.done ? 'Completed' : 'Not completed'} style={set.done ? styles.done : styles.pending}>{set.done ? 'DONE' : 'OPEN'}</Text>
-                  </View>
-                ))}
-              </View>
-            </View>
-          ))}
-          <Text style={styles.previewFooter}>Native preview · Read only</Text>
+            <Text style={[styles.stateCopy, styles.emptyExerciseCopy]}>No exercises yet.</Text>
+          ) : (
+            <WorkoutLedger key={state.session.sessionId} session={state.session} units={state.units} />
+          )}
         </View>
       )}
     </ScrollView>
@@ -289,21 +459,26 @@ export default function IndexScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  loginContent: { flexGrow: 1, justifyContent: 'center', padding: 28, paddingBottom: 44 },
-  sessionContent: { flexGrow: 1, padding: 22, paddingBottom: 44 },
-  brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 34 },
-  brandMark: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 7, height: 34, justifyContent: 'center', width: 34 },
+  loginShell: { experimental_backgroundImage: 'linear-gradient(118deg, #301116 0%, #151113 46%, #101815 100%)' },
+  loginContent: { flexGrow: 1, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 20, position: 'relative' },
+  signalBackdrop: { bottom: 50, height: 130, left: 0, overflow: 'hidden', position: 'absolute', right: 0 },
+  signalSegment: { backgroundColor: 'rgba(240, 67, 90, 0.16)', height: 1, position: 'absolute' },
+  brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 17 },
+  brandMark: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.22)', borderRadius: 6, borderWidth: 1, elevation: 4, height: 36, justifyContent: 'center', shadowColor: '#000000', shadowOffset: { height: 6, width: 0 }, shadowOpacity: 0.26, shadowRadius: 12, width: 36 },
   brandMarkText: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 13 },
-  brandName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 19, marginLeft: 10 },
-  previewLabel: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginLeft: 'auto' },
-  hero: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 39, letterSpacing: -0.6, lineHeight: 40, maxWidth: 330 },
-  heroAccent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold' },
-  lead: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, lineHeight: 24, marginTop: 14 },
-  formDivider: { backgroundColor: colors.lineStrong, height: 1, marginBottom: 24, marginTop: 30 },
-  formTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 27, lineHeight: 30 },
-  form: { gap: 9, marginTop: 16 },
-  label: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, marginTop: 8 },
-  input: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 8, borderWidth: 1, color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 16, minHeight: 54, paddingHorizontal: 16 },
+  brandDot: { backgroundColor: colors.accent, borderRadius: 2, bottom: 7, height: 4, position: 'absolute', right: 7, width: 4 },
+  brandName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15, marginLeft: 12 },
+  hero: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 34, letterSpacing: -0.6, lineHeight: 34, maxWidth: 210 },
+  heroAccent: { color: colors.accentText, fontFamily: 'Archivo_700Bold' },
+  lead: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 16 },
+  formDivider: { backgroundColor: colors.lineStrong, height: StyleSheet.hairlineWidth, marginBottom: 18, marginTop: 21 },
+  formTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 29, lineHeight: 34 },
+  form: { marginTop: 50 },
+  label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 17, marginBottom: 6 },
+  passwordLabel: { marginTop: 16 },
+  input: { backgroundColor: 'rgba(255,255,255,0.035)', borderColor: colors.lineStrong, borderRadius: 8, borderWidth: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, minHeight: 52, paddingHorizontal: 16 },
+  inputFocused: { borderColor: colors.accentText, borderWidth: 1.5 },
+  omittedAuthActionSpace: { height: 44 },
   button: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 8, justifyContent: 'center', minHeight: 52, marginTop: 15, paddingHorizontal: 18 },
   buttonSecondary: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderWidth: 1, minWidth: 140 },
   buttonDisabled: { opacity: 0.55 },
@@ -311,31 +486,50 @@ const styles = StyleSheet.create({
   buttonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15 },
   buttonSecondaryText: { color: colors.text },
   error: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 20, marginTop: 6 },
-  topbar: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 16, paddingBottom: 18 },
+  sessionContent: { flexGrow: 1, paddingBottom: 24 },
+  lifecycleBar: { backgroundColor: '#0d0b0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 69, zIndex: 4 },
+  lifecycleBarInner: { alignItems: 'center', flexDirection: 'row', height: 69, justifyContent: 'space-between', paddingHorizontal: 16 },
+  accountBar: { alignItems: 'center', backgroundColor: '#0d0b0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', height: 69, justifyContent: 'space-between', paddingHorizontal: 16 },
   sessionBrand: { alignItems: 'center', flexDirection: 'row' },
-  brandMarkSmall: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 6, height: 30, justifyContent: 'center', marginRight: 10, width: 30 },
+  brandMarkSmall: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.lineStrong, borderRadius: 5, borderWidth: 1, height: 32, justifyContent: 'center', marginRight: 10, width: 32 },
   brandMarkTextSmall: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 11 },
   brandNameSmall: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15 },
-  account: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, marginTop: 2 },
-  signOut: { color: colors.accentText, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, paddingVertical: 10 },
-  logoutError: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 19, paddingTop: 14 },
+  signOutButton: { alignItems: 'center', backgroundColor: colors.accentDark, borderRadius: 15, justifyContent: 'center', marginRight: 16, minHeight: 44, minWidth: 80, paddingHorizontal: 13 },
+  signOutButtonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  logoutError: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 19, paddingHorizontal: 16, paddingVertical: 10 },
   centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 420, paddingHorizontal: 20, gap: 12 },
   stateTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 22, textAlign: 'center' },
   stateCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
-  sessionHeader: { paddingBottom: 28, paddingTop: 34 },
-  sectionLabel: { color: colors.accentText, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
-  sessionTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 34, letterSpacing: -0.5, marginTop: 9 },
-  elapsed: { color: colors.text, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 28, fontVariant: ['tabular-nums'], letterSpacing: 0.5, marginTop: 8 },
-  staleNotice: { borderLeftColor: colors.warning, borderLeftWidth: 2, marginTop: 20, paddingLeft: 12 },
+  elapsed: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 20, fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
+  omittedWorkoutLabelsBand: { backgroundColor: '#121013', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 52 },
+  srSessionLabel: { height: 0, opacity: 0, position: 'absolute', width: 0 },
+  staleNotice: { backgroundColor: 'rgba(240,167,90,0.08)', borderLeftColor: colors.warning, borderLeftWidth: 2, marginHorizontal: 16, marginTop: 14, paddingHorizontal: 12, paddingVertical: 10 },
   staleTitle: { color: colors.warning, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
-  staleCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19, marginTop: 4, maxWidth: 380 },
-  exercise: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 20 },
-  exerciseBody: { flex: 1 },
-  exerciseName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 19, marginBottom: 10 },
-  setRow: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 10, minHeight: 44 },
-  setNumber: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 11, width: 48 },
-  setValue: { color: colors.text, flex: 1, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 13, fontVariant: ['tabular-nums'] },
-  done: { color: colors.recovery, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 },
-  pending: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 },
-  previewFooter: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, marginTop: 18, textAlign: 'center' },
+  staleCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 3 },
+  emptyExerciseCopy: { marginTop: 80 },
+  exerciseStack: { paddingHorizontal: 16 },
+  exerciseCard: { paddingTop: 16 },
+  exerciseHeading: { alignItems: 'center', flexDirection: 'row', minHeight: 52 },
+  headingPressed: { opacity: 0.72 },
+  exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 16 },
+  exerciseName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 20, lineHeight: 25, marginTop: 5 },
+  exerciseCompact: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 4 },
+  chevron: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 20, marginLeft: 12, width: 24 },
+  exerciseSummary: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginTop: 8, minHeight: 39 },
+  summaryCell: { alignItems: 'center', borderRightColor: colors.line, borderRightWidth: StyleSheet.hairlineWidth, flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 8 },
+  summaryLabel: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11 },
+  summaryValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, fontVariant: ['tabular-nums'] },
+  setGrid: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 48 },
+  setHeaderGrid: { minHeight: 32 },
+  setToggleColumn: { width: 38 },
+  setTrailingColumn: { width: 28 },
+  setHeaderCell: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, textAlign: 'center' },
+  setToggle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, textAlign: 'center', width: 38 },
+  setToggleDone: { color: colors.recovery },
+  setToggleOpen: { color: '#d97b91' },
+  setCellMuted: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, textAlign: 'center' },
+  setCellValue: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 15, fontVariant: ['tabular-nums'], lineHeight: 30, textAlign: 'center' },
+  setCellCurrent: { borderBottomColor: colors.lineStrong, borderBottomWidth: StyleSheet.hairlineWidth },
+  omittedWorkoutActionsSpace: { height: 104 },
+  omittedAddExerciseSpace: { height: 72 },
 })

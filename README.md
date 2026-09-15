@@ -8,6 +8,8 @@ IronLog records strength workouts and tracks progress over time. An active worko
 
 On iPhone, open IronLog in Safari and choose **Share → Add to Home Screen**. On Android, open it in Chrome and choose **Menu → Install app** (or **Add to Home screen**). Reopen the installed app after a release to load the latest version; offline launch is not supported.
 
+The native Android preview in `mobile/` implements sign-in and a read-only view of the active workout. It deliberately omits the web app's create-account, password-reset, label editing, set editing, add/delete, finish/minimize, overflow, and bottom-navigation controls because their destinations or mutations are outside this preview; sign-out and exercise expand/collapse remain functional.
+
 ## Training
 
 Start an empty workout or use a saved template. IronLog shows the previous result for each exercise, keeps the active session available after a refresh, and includes a rest timer between sets.

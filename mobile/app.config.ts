@@ -20,6 +20,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   plugins: [
     'expo-router',
+    'expo-font',
     '@react-native-firebase/app',
     '@react-native-firebase/auth',
   ],

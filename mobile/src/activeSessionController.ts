@@ -14,6 +14,16 @@ export type ActiveSessionState =
   | { status: 'ready'; session: ActiveWorkout; units: Units; stale: boolean }
   | { status: 'error'; session: null; units: Units; message: string }
 
+const INITIAL_SESSION_STATE: ActiveSessionState = { status: 'loading', session: null, units: 'kg' }
+
+export function stateForAccount(
+  currentUid: string | null,
+  stateOwnerUid: string | null,
+  state: ActiveSessionState,
+): ActiveSessionState {
+  return currentUid === stateOwnerUid ? state : INITIAL_SESSION_STATE
+}
+
 export type SubscribeToSession = (
   uid: string,
   onSnapshot: (snapshot: SessionSnapshot) => void,

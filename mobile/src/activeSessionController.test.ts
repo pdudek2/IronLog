@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   ActiveSessionController,
+  stateForAccount,
   type ActiveSessionState,
   type SessionSnapshot,
   type SubscribeToSession,
@@ -157,4 +158,26 @@ test('account switches clear immediately and ignore late callbacks from the prev
   assert.equal(states.at(-1)?.status, 'loading')
   listeners[1]!.next({ exists: false, data: null, fromCache: false, hasPendingWrites: false })
   assert.equal(states.at(-1)?.status, 'empty')
+})
+
+test('a direct account render never exposes the previous account state', () => {
+  const accountAState: ActiveSessionState = {
+    status: 'ready',
+    session: {
+      sessionId: 'session-a',
+      sessionRevision: 'revision-a',
+      startedAt: 1_000,
+      templateId: null,
+      exercises: [],
+    },
+    units: 'kg',
+    stale: false,
+  }
+
+  assert.deepEqual(stateForAccount('account-b', 'account-a', accountAState), {
+    status: 'loading',
+    session: null,
+    units: 'kg',
+  })
+  assert.equal(stateForAccount('account-b', 'account-b', accountAState), accountAState)
 })

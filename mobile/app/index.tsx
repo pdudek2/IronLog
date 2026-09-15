@@ -19,14 +19,19 @@ import { formatElapsed, formatSet, type ActiveWorkout } from '../src/session'
 import { useActiveSession } from '../src/useActiveSession'
 
 const colors = {
-  background: '#080b0f',
-  surface: '#11161d',
-  surfaceRaised: '#171e27',
-  line: '#27313d',
-  text: '#f5f7fa',
-  muted: '#97a3b2',
-  accent: '#d8ff3e',
-  danger: '#ff7b7b',
+  background: '#111012',
+  surface: '#1a191c',
+  surfaceRaised: '#211f23',
+  line: 'rgba(244, 241, 242, 0.12)',
+  lineStrong: 'rgba(244, 241, 242, 0.20)',
+  text: '#f4f1f2',
+  textStrong: '#ffffff',
+  muted: '#a09aa0',
+  mutedSoft: '#8f8990',
+  accent: '#f0435a',
+  accentText: '#ff7182',
+  recovery: '#8fb8a0',
+  warning: '#f0a75a',
 }
 
 function authMessage(error: unknown): string {
@@ -90,9 +95,17 @@ function LoginForm() {
         contentContainerStyle={styles.loginContent}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.eyebrow}>IRONLOG · NATIVE PREVIEW</Text>
-        <Text accessibilityRole="header" style={styles.hero}>Your session, at a glance.</Text>
-        <Text style={styles.lead}>Sign in to view the workout currently saved to your account.</Text>
+        <View style={styles.brandRow}>
+          <View style={styles.brandMark}><Text style={styles.brandMarkText}>IL</Text></View>
+          <Text style={styles.brandName}>IronLog</Text>
+          <Text style={styles.previewLabel}>Native preview</Text>
+        </View>
+        <Text accessibilityRole="header" style={styles.hero}>
+          Find your{`\n`}training <Text style={styles.heroAccent}>rhythm.</Text>
+        </Text>
+        <Text style={styles.lead}>Every set builds on the last.</Text>
+        <View style={styles.formDivider} />
+        <Text accessibilityRole="header" style={styles.formTitle}>Sign in</Text>
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
           <TextInput
@@ -102,7 +115,10 @@ function LoginForm() {
             inputMode="email"
             keyboardType="email-address"
             onChangeText={setEmail}
+            placeholder="email@example.com"
+            placeholderTextColor={colors.mutedSoft}
             returnKeyType="next"
+            selectionColor={colors.accentText}
             style={styles.input}
             value={email}
           />
@@ -113,7 +129,10 @@ function LoginForm() {
             autoComplete="current-password"
             onChangeText={setPassword}
             onSubmitEditing={() => void submit()}
+            placeholder="••••••••"
+            placeholderTextColor={colors.mutedSoft}
             returnKeyType="done"
+            selectionColor={colors.accentText}
             secureTextEntry
             style={styles.input}
             value={password}
@@ -146,11 +165,15 @@ function Elapsed({ session }: { session: ActiveWorkout }) {
 function SessionScreen({ user }: { user: AuthUser }) {
   const { state, retry } = useActiveSession(user.uid)
   const [signingOut, setSigningOut] = useState(false)
+  const [logoutError, setLogoutError] = useState<string | null>(null)
 
   const doLogout = async () => {
     setSigningOut(true)
+    setLogoutError(null)
     try {
       await logout()
+    } catch {
+      setLogoutError('Could not sign out. Check your connection and try again.')
     } finally {
       setSigningOut(false)
     }
@@ -159,14 +182,18 @@ function SessionScreen({ user }: { user: AuthUser }) {
   return (
     <ScrollView contentContainerStyle={styles.sessionContent}>
       <View style={styles.topbar}>
-        <View style={styles.flex}>
-          <Text style={styles.eyebrow}>IRONLOG · PREVIEW</Text>
-          <Text numberOfLines={1} style={styles.account}>{user.email ?? 'Signed in'}</Text>
+        <View style={[styles.flex, styles.sessionBrand]}>
+          <View style={styles.brandMarkSmall}><Text style={styles.brandMarkTextSmall}>IL</Text></View>
+          <View style={styles.flex}>
+            <Text style={styles.brandNameSmall}>IronLog</Text>
+            <Text numberOfLines={1} style={styles.account}>{user.email ?? 'Signed in'}</Text>
+          </View>
         </View>
         <Pressable accessibilityRole="button" accessibilityLabel="Sign out" disabled={signingOut} onPress={() => void doLogout()} hitSlop={12}>
           <Text style={styles.signOut}>{signingOut ? 'Signing out…' : 'Sign out'}</Text>
         </Pressable>
       </View>
+      {logoutError && <Text accessibilityLiveRegion="polite" style={styles.logoutError}>{logoutError}</Text>}
 
       {state.status === 'loading' && (
         <View accessibilityLiveRegion="polite" style={styles.centerState}>
@@ -201,13 +228,14 @@ function SessionScreen({ user }: { user: AuthUser }) {
       {state.status === 'ready' && (
         <View>
           <View style={styles.sessionHeader}>
-            <Text style={[styles.badge, state.stale && styles.badgeStale]}>
-              {state.stale ? 'SAVED ON DEVICE' : 'LIVE FROM SERVER'}
-            </Text>
+            <Text style={styles.sectionLabel}>Active workout</Text>
             <Text accessibilityRole="header" style={styles.sessionTitle}>{state.session.label ?? 'Current workout'}</Text>
             <Elapsed session={state.session} />
             {state.stale && (
-              <Text style={styles.staleCopy}>Not yet confirmed by the server. Reconnect before relying on its active status.</Text>
+              <View style={styles.staleNotice}>
+                <Text style={styles.staleTitle}>Saved on this device</Text>
+                <Text style={styles.staleCopy}>This may be out of date. Reconnect to confirm the workout is still active.</Text>
+              </View>
             )}
           </View>
 
@@ -215,7 +243,6 @@ function SessionScreen({ user }: { user: AuthUser }) {
             <Text style={styles.stateCopy}>No exercises yet.</Text>
           ) : state.session.exercises.map((exercise, exerciseIndex) => (
             <View key={`${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`} style={styles.exercise}>
-              <Text style={styles.exerciseIndex}>{String(exerciseIndex + 1).padStart(2, '0')}</Text>
               <View style={styles.exerciseBody}>
                 <Text style={styles.exerciseName}>{exercise.name}</Text>
                 {exercise.sets.map((set, setIndex) => (
@@ -228,6 +255,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
               </View>
             </View>
           ))}
+          <Text style={styles.previewFooter}>Native preview · Read only</Text>
         </View>
       )}
     </ScrollView>
@@ -261,40 +289,53 @@ export default function IndexScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  loginContent: { flexGrow: 1, justifyContent: 'center', padding: 24, paddingBottom: 40 },
-  sessionContent: { flexGrow: 1, padding: 20, paddingBottom: 48 },
-  eyebrow: { color: colors.accent, fontSize: 11, fontWeight: '800', letterSpacing: 1.6 },
-  hero: { color: colors.text, fontSize: 38, fontWeight: '800', letterSpacing: -1.2, lineHeight: 42, marginTop: 14 },
-  lead: { color: colors.muted, fontSize: 16, lineHeight: 24, marginTop: 12, maxWidth: 360 },
-  form: { marginTop: 38, gap: 10 },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '700', marginTop: 8, textTransform: 'uppercase', letterSpacing: 0.8 },
-  input: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 12, borderWidth: 1, color: colors.text, fontSize: 17, minHeight: 54, paddingHorizontal: 16 },
-  button: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 12, justifyContent: 'center', minHeight: 52, marginTop: 14, paddingHorizontal: 18 },
-  buttonSecondary: { backgroundColor: colors.surfaceRaised, borderColor: colors.line, borderWidth: 1, minWidth: 140 },
+  loginContent: { flexGrow: 1, justifyContent: 'center', padding: 28, paddingBottom: 44 },
+  sessionContent: { flexGrow: 1, padding: 22, paddingBottom: 44 },
+  brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 34 },
+  brandMark: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 7, height: 34, justifyContent: 'center', width: 34 },
+  brandMarkText: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 13 },
+  brandName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 19, marginLeft: 10 },
+  previewLabel: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginLeft: 'auto' },
+  hero: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 39, letterSpacing: -0.6, lineHeight: 40, maxWidth: 330 },
+  heroAccent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold' },
+  lead: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, lineHeight: 24, marginTop: 14 },
+  formDivider: { backgroundColor: colors.lineStrong, height: 1, marginBottom: 24, marginTop: 30 },
+  formTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 27, lineHeight: 30 },
+  form: { gap: 9, marginTop: 16 },
+  label: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, marginTop: 8 },
+  input: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 8, borderWidth: 1, color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 16, minHeight: 54, paddingHorizontal: 16 },
+  button: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 8, justifyContent: 'center', minHeight: 52, marginTop: 15, paddingHorizontal: 18 },
+  buttonSecondary: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderWidth: 1, minWidth: 140 },
   buttonDisabled: { opacity: 0.55 },
   buttonPressed: { opacity: 0.82 },
-  buttonText: { color: '#111500', fontSize: 15, fontWeight: '800' },
+  buttonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15 },
   buttonSecondaryText: { color: colors.text },
-  error: { color: colors.danger, fontSize: 14, lineHeight: 20, marginTop: 6 },
+  error: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 20, marginTop: 6 },
   topbar: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 16, paddingBottom: 18 },
-  account: { color: colors.muted, fontSize: 13, marginTop: 5 },
-  signOut: { color: colors.text, fontSize: 14, fontWeight: '700', paddingVertical: 10 },
+  sessionBrand: { alignItems: 'center', flexDirection: 'row' },
+  brandMarkSmall: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 6, height: 30, justifyContent: 'center', marginRight: 10, width: 30 },
+  brandMarkTextSmall: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 11 },
+  brandNameSmall: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15 },
+  account: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, marginTop: 2 },
+  signOut: { color: colors.accentText, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, paddingVertical: 10 },
+  logoutError: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 19, paddingTop: 14 },
   centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 420, paddingHorizontal: 20, gap: 12 },
-  stateTitle: { color: colors.text, fontSize: 22, fontWeight: '800', textAlign: 'center' },
-  stateCopy: { color: colors.muted, fontSize: 15, lineHeight: 22, textAlign: 'center' },
-  sessionHeader: { paddingBottom: 28, paddingTop: 32 },
-  badge: { alignSelf: 'flex-start', backgroundColor: '#25320d', borderRadius: 999, color: colors.accent, fontSize: 10, fontWeight: '900', letterSpacing: 1, overflow: 'hidden', paddingHorizontal: 10, paddingVertical: 6 },
-  badgeStale: { backgroundColor: '#352b16', color: '#ffd27a' },
-  sessionTitle: { color: colors.text, fontSize: 34, fontWeight: '800', letterSpacing: -1, marginTop: 16 },
-  elapsed: { color: colors.accent, fontSize: 30, fontVariant: ['tabular-nums'], fontWeight: '700', letterSpacing: 1, marginTop: 8 },
-  staleCopy: { color: '#d7b86e', fontSize: 13, lineHeight: 19, marginTop: 12, maxWidth: 380 },
-  exercise: { borderTopColor: colors.line, borderTopWidth: 1, flexDirection: 'row', gap: 14, paddingVertical: 22 },
-  exerciseIndex: { color: colors.accent, fontSize: 12, fontWeight: '900', letterSpacing: 1, paddingTop: 3 },
+  stateTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 22, textAlign: 'center' },
+  stateCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
+  sessionHeader: { paddingBottom: 28, paddingTop: 34 },
+  sectionLabel: { color: colors.accentText, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
+  sessionTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 34, letterSpacing: -0.5, marginTop: 9 },
+  elapsed: { color: colors.text, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 28, fontVariant: ['tabular-nums'], letterSpacing: 0.5, marginTop: 8 },
+  staleNotice: { borderLeftColor: colors.warning, borderLeftWidth: 2, marginTop: 20, paddingLeft: 12 },
+  staleTitle: { color: colors.warning, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
+  staleCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19, marginTop: 4, maxWidth: 380 },
+  exercise: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 20 },
   exerciseBody: { flex: 1 },
-  exerciseName: { color: colors.text, fontSize: 19, fontWeight: '700', marginBottom: 12 },
-  setRow: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 9, flexDirection: 'row', gap: 10, marginTop: 7, minHeight: 44, paddingHorizontal: 12 },
-  setNumber: { color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 0.7, width: 42 },
-  setValue: { color: colors.text, flex: 1, fontSize: 14, fontVariant: ['tabular-nums'], fontWeight: '600' },
-  done: { color: colors.accent, fontSize: 10, fontWeight: '900' },
-  pending: { color: colors.muted, fontSize: 10, fontWeight: '900' },
+  exerciseName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 19, marginBottom: 10 },
+  setRow: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 10, minHeight: 44 },
+  setNumber: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 11, width: 48 },
+  setValue: { color: colors.text, flex: 1, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 13, fontVariant: ['tabular-nums'] },
+  done: { color: colors.recovery, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 },
+  pending: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 },
+  previewFooter: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, marginTop: 18, textAlign: 'center' },
 })

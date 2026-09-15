@@ -12,12 +12,16 @@
     "test": "node --import tsx --test src/**/*.test.ts"
   },
   "dependencies": {
+    "@expo-google-fonts/archivo": "^0.4.2",
+    "@expo-google-fonts/instrument-sans": "^0.4.2",
+    "@expo-google-fonts/spline-sans-mono": "^0.4.2",
     "@react-native-firebase/app": "26.4.0",
     "@react-native-firebase/auth": "26.4.0",
     "@react-native-firebase/firestore": "26.4.0",
     "expo": "~57.0.23",
     "expo-constants": "~57.0.18",
     "expo-dev-client": "~57.0.19",
+    "expo-font": "~57.0.4",
     "expo-linking": "~57.0.10",
     "expo-router": "~57.0.21",
     "expo-status-bar": "~57.0.1",

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 
 import {
   ActiveSessionController,
+  stateForAccount,
   type ActiveSessionState,
 } from './activeSessionController'
 import { readUnits, subscribeToActiveSession } from './firebase'
@@ -9,19 +10,24 @@ import { readUnits, subscribeToActiveSession } from './firebase'
 const initialState: ActiveSessionState = { status: 'loading', session: null, units: 'kg' }
 
 export function useActiveSession(uid: string | null) {
-  const [state, setState] = useState<ActiveSessionState>(initialState)
+  const [scopedState, setScopedState] = useState<{ uid: string | null; state: ActiveSessionState }>({
+    uid: null,
+    state: initialState,
+  })
   const controller = useMemo(
-    () => new ActiveSessionController(subscribeToActiveSession, readUnits, setState),
-    [],
+    () => new ActiveSessionController(
+      subscribeToActiveSession,
+      readUnits,
+      (state) => setScopedState({ uid, state }),
+    ),
+    [uid],
   )
 
   useEffect(() => {
     if (uid) controller.start(uid)
     else controller.clear()
-    return () => controller.clear()
+    return () => controller.dispose()
   }, [controller, uid])
 
-  useEffect(() => () => controller.dispose(), [controller])
-
-  return { state, retry: () => controller.retry() }
+  return { state: stateForAccount(uid, scopedState.uid, scopedState.state), retry: () => controller.retry() }
 }

@@ -157,85 +157,6 @@ service cloud.firestore {
              && value.size() <= 20;
     }
 
-    function isTemplateExercise(value) {
-      return value is map
-             && value.keys().hasOnly(['exerciseId', 'exerciseSource', 'name', 'sets', 'targetReps', 'targetWeight'])
-             && value.keys().hasAll(['exerciseId', 'exerciseSource', 'name', 'sets', 'targetReps', 'targetWeight'])
-             && isDocumentId(value.exerciseId)
-             && isExerciseSource(value.exerciseSource)
-             && isNonEmptyString(value.name, 120)
-             && value.sets is int
-             && value.sets >= 1
-             && value.sets <= 20
-             && value.targetReps is int
-             && value.targetReps >= 0
-             && value.targetReps <= 1000
-             && value.targetWeight is number
-             && value.targetWeight >= 0
-             && value.targetWeight <= 2000;
-    }
-
-    function isTemplateDay(value) {
-      return value is map
-             && value.keys().hasOnly(['name', 'exercises'])
-             && value.keys().hasAll(['name', 'exercises'])
-             && isNonEmptyString(value.name, 80)
-             && isTemplateExercises(value.exercises);
-    }
-
-    function isTemplateExerciseAt(exercises, index) {
-      return exercises.size() <= index || isTemplateExercise(exercises[index]);
-    }
-
-    function isTemplateExercises(value) {
-      return value is list
-             && value.size() <= 20
-             && isTemplateExerciseAt(value, 0)
-             && isTemplateExerciseAt(value, 1)
-             && isTemplateExerciseAt(value, 2)
-             && isTemplateExerciseAt(value, 3)
-             && isTemplateExerciseAt(value, 4)
-             && isTemplateExerciseAt(value, 5)
-             && isTemplateExerciseAt(value, 6)
-             && isTemplateExerciseAt(value, 7)
-             && isTemplateExerciseAt(value, 8)
-             && isTemplateExerciseAt(value, 9)
-             && isTemplateExerciseAt(value, 10)
-             && isTemplateExerciseAt(value, 11)
-             && isTemplateExerciseAt(value, 12)
-             && isTemplateExerciseAt(value, 13)
-             && isTemplateExerciseAt(value, 14)
-             && isTemplateExerciseAt(value, 15)
-             && isTemplateExerciseAt(value, 16)
-             && isTemplateExerciseAt(value, 17)
-             && isTemplateExerciseAt(value, 18)
-             && isTemplateExerciseAt(value, 19);
-    }
-
-    function isTemplateDayAt(days, index) {
-      return days.size() <= index || isTemplateDay(days[index]);
-    }
-
-    function isTemplateDays(value) {
-      return value is list
-             && value.size() > 0
-             && value.size() <= 14
-             && isTemplateDayAt(value, 0)
-             && isTemplateDayAt(value, 1)
-             && isTemplateDayAt(value, 2)
-             && isTemplateDayAt(value, 3)
-             && isTemplateDayAt(value, 4)
-             && isTemplateDayAt(value, 5)
-             && isTemplateDayAt(value, 6)
-             && isTemplateDayAt(value, 7)
-             && isTemplateDayAt(value, 8)
-             && isTemplateDayAt(value, 9)
-             && isTemplateDayAt(value, 10)
-             && isTemplateDayAt(value, 11)
-             && isTemplateDayAt(value, 12)
-             && isTemplateDayAt(value, 13);
-    }
-
     function isWorkoutCreate(data) {
       return data.keys().hasOnly(['userId', 'templateId', 'startedAt', 'finishedAt', 'materialized', 'label', 'exercises'])
              && data.keys().hasAll(['userId', 'startedAt', 'finishedAt', 'materialized', 'label', 'exercises'])
@@ -279,17 +200,6 @@ service cloud.firestore {
              && isCategory(data.category)
              && isEquipment(data.equipment)
              && isMuscleList(data.muscles);
-    }
-
-    function isTemplate(data) {
-      return data.keys().hasOnly(['userId', 'name', 'createdAt', 'updatedAt', 'days'])
-             && data.keys().hasAll(['userId', 'name', 'createdAt', 'updatedAt', 'days'])
-             && data.userId == currentUid()
-             && isNonEmptyString(data.name, 120)
-             && isMillis(data.createdAt)
-             && isMillis(data.updatedAt)
-             && data.updatedAt >= data.createdAt
-             && isTemplateDays(data.days);
     }
 
     function isReadiness(id, data) {
@@ -413,12 +323,8 @@ service cloud.firestore {
     }
 
     match /templates/{id} {
-      allow create: if ownsNewDoc()
-                    && isTemplate(request.resource.data);
+      allow create, update: if false;
       allow read: if ownsDoc();
-      allow update: if ownsDoc()
-                    && keepsOwner()
-                    && isTemplate(request.resource.data);
       allow delete: if ownsDoc();
     }
 

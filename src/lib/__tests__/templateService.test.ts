@@ -1,6 +1,12 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-vi.mock('../firebase', () => ({ db: {} }))
+const { auth } = vi.hoisted(() => ({
+  auth: {
+    currentUser: null as { uid: string; getIdToken: () => Promise<string> } | null,
+  },
+}))
+
+vi.mock('../firebase', () => ({ db: {}, auth }))
 vi.mock('firebase/firestore', () => ({
   addDoc: vi.fn(),
   collection: vi.fn(),
@@ -15,7 +21,9 @@ vi.mock('firebase/firestore', () => ({
 
 import {
   buildActiveWorkoutFromTemplate,
+  createTemplate,
   templateExerciseKey,
+  updateTemplate,
   type WorkoutTemplate,
 } from '../templateService'
 
@@ -106,5 +114,91 @@ describe('buildActiveWorkoutFromTemplate', () => {
       { weight: '45', reps: '6', done: false },
       { weight: '45', reps: '6', done: false },
     ])
+  })
+})
+
+describe('template saves', () => {
+  beforeEach(() => {
+    auth.currentUser = {
+      uid: 'user-1',
+      getIdToken: vi.fn().mockResolvedValue('id-token'),
+    }
+  })
+
+  afterEach(() => {
+    auth.currentUser = null
+    vi.unstubAllGlobals()
+  })
+
+  it('creates through the authenticated endpoint and preserves the multi-day response', async () => {
+    const input = {
+      name: 'Three day plan',
+      days: [
+        template().days[0],
+        { name: 'Lower', exercises: [] },
+        { name: 'Rest', exercises: [] },
+      ],
+    }
+    const saved = { id: 'template-2', userId: 'user-1', createdAt: 10, updatedAt: 10, ...input }
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ template: saved }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createTemplate('user-1', input)).resolves.toEqual(saved)
+    expect(fetchMock).toHaveBeenCalledWith('/api/save-template', expect.objectContaining({
+      method: 'POST',
+      headers: expect.objectContaining({ Authorization: 'Bearer id-token' }),
+      body: JSON.stringify(input),
+    }))
+  })
+
+  it('updates through the endpoint with the template id', async () => {
+    const saved = template()
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ template: saved }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await updateTemplate(saved.id, { name: saved.name, days: saved.days })
+    expect(fetchMock).toHaveBeenCalledWith('/api/save-template', expect.objectContaining({
+      body: JSON.stringify({ id: saved.id, name: saved.name, days: saved.days }),
+    }))
+  })
+
+  it('does not send a request when token acquisition fails', async () => {
+    auth.currentUser!.getIdToken = vi.fn().mockRejectedValue(new Error('token unavailable'))
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createTemplate('user-1', { name: 'Plan', days: template().days }))
+      .rejects.toThrow('token unavailable')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('does not send a request after the account changes while obtaining a token', async () => {
+    auth.currentUser!.getIdToken = async () => {
+      auth.currentUser = { uid: 'user-2', getIdToken: async () => 'token-2' }
+      return 'token-1'
+    }
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(createTemplate('user-1', { name: 'Plan', days: template().days }))
+      .rejects.toThrow('The user account has changed.')
+    expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('surfaces a server rejection instead of returning a saved template', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({ error: 'Invalid template sets.' }),
+    }))
+
+    await expect(createTemplate('user-1', { name: 'Plan', days: template().days }))
+      .rejects.toThrow('Invalid template sets.')
   })
 })

@@ -5,6 +5,7 @@ import deleteWorkoutHandler from '../api/delete-workout.ts'
 import discardSessionHandler from '../api/discard-session.ts'
 import finalizeWorkoutHandler from '../api/finalize-workout.ts'
 import materializeWorkoutHandler from '../api/materialize-workout.ts'
+import saveTemplateHandler from '../api/save-template.ts'
 import updateWorkoutHandler from '../api/update-workout.ts'
 import { sendJson, type ApiRequest, type ApiResponse } from '../api/_lib/http.ts'
 
@@ -17,6 +18,7 @@ const routes = new Map<string, RouteHandler>([
   ['/api/discard-session', discardSessionHandler],
   ['/api/finalize-workout', finalizeWorkoutHandler],
   ['/api/materialize-workout', materializeWorkoutHandler],
+  ['/api/save-template', saveTemplateHandler],
   ['/api/update-workout', updateWorkoutHandler],
 ])
 

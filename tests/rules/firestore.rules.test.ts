@@ -58,17 +58,25 @@ describe('workouts rules', () => {
 })
 
 describe('templates rules', () => {
-  it('allows a valid template and rejects oversized nested arrays', async () => {
-    const db = testEnv.authenticatedContext('alice').firestore()
+  it('denies direct writes while preserving owner read and delete', async () => {
+    const aliceDb = testEnv.authenticatedContext('alice').firestore()
+    const bobDb = testEnv.authenticatedContext('bob').firestore()
+    const anonymousDb = testEnv.unauthenticatedContext().firestore()
 
-    await assertSucceeds(setDoc(doc(db, 'templates', 'template-valid'), validTemplate('alice')))
-    await assertFails(setDoc(doc(db, 'templates', 'template-large'), {
+    await assertFails(setDoc(doc(aliceDb, 'templates', 'direct-create'), validTemplate('alice')))
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'templates', 'server-created'), validTemplate('alice'))
+    })
+
+    await assertFails(setDoc(doc(aliceDb, 'templates', 'server-created'), {
       ...validTemplate('alice'),
-      days: [{
-        name: 'Push',
-        exercises: Array.from({ length: 61 }, () => validTemplateExercise()),
-      }],
+      name: 'Direct update',
     }))
+    await assertSucceeds(getDoc(doc(aliceDb, 'templates', 'server-created')))
+    await assertFails(getDoc(doc(bobDb, 'templates', 'server-created')))
+    await assertFails(getDoc(doc(anonymousDb, 'templates', 'server-created')))
+    await assertFails(deleteDoc(doc(bobDb, 'templates', 'server-created')))
+    await assertSucceeds(deleteDoc(doc(aliceDb, 'templates', 'server-created')))
   })
 })
 

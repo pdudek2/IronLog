@@ -192,9 +192,9 @@ export function buildExerciseSessionDocumentId(
 
 function normalizeWorkoutExercise(raw: unknown): ValidatedWorkoutExercise {
   const record = asRecord(raw, 'Invalid workout exercise.')
-  const exerciseId = normalizeExerciseId(record.exerciseId)
-  const exerciseSource = normalizeExerciseSource(record.exerciseSource)
-  const name = normalizeExerciseName(record.name)
+  const exerciseId = validateExerciseId(record.exerciseId)
+  const exerciseSource = validateExerciseSource(record.exerciseSource)
+  const name = validateExerciseName(record.name)
   const sets = normalizeWorkoutSets(record.sets)
 
   return { exerciseId, exerciseSource, name, sets }
@@ -229,7 +229,7 @@ function normalizeWorkoutSet(raw: unknown): ValidatedWorkoutSet {
   return { weight, reps }
 }
 
-function normalizeExerciseId(value: unknown): string {
+export function validateExerciseId(value: unknown): string {
   if (typeof value !== 'string') {
     throw badRequest('Invalid exercise ID.')
   }
@@ -246,12 +246,12 @@ function normalizeExerciseId(value: unknown): string {
   return trimmed
 }
 
-function normalizeExerciseSource(value: unknown): ExerciseSource {
+export function validateExerciseSource(value: unknown): ExerciseSource {
   if (value === 'global' || value === 'user') return value
   throw badRequest('Invalid exercise source.')
 }
 
-function normalizeExerciseName(value: unknown): string {
+export function validateExerciseName(value: unknown): string {
   if (typeof value !== 'string') {
     throw badRequest('Invalid exercise name.')
   }

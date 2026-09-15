@@ -1,16 +1,15 @@
 import {
-  addDoc,
   collection,
   deleteDoc,
   doc,
   getDoc,
   getDocs,
   query,
-  updateDoc,
   where,
 } from 'firebase/firestore'
 import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
 import { db } from './firebase'
+import { callAuthedApi } from './authedApi'
 import { createSessionId } from './sessionIdentity'
 
 export interface TemplateExercise {
@@ -76,33 +75,11 @@ export async function getTemplate(id: string): Promise<WorkoutTemplate | null> {
 }
 
 export async function createTemplate(uid: string, input: TemplateInput): Promise<WorkoutTemplate> {
-  const now = Date.now()
-  const days = normalizeDays(input.days)
-
-  const ref = await addDoc(collection(db, 'templates'), {
-    userId: uid,
-    name: input.name.trim(),
-    createdAt: now,
-    updatedAt: now,
-    days,
-  })
-
-  return {
-    id: ref.id,
-    userId: uid,
-    name: input.name.trim(),
-    createdAt: now,
-    updatedAt: now,
-    days,
-  }
+  return saveTemplate(input, undefined, uid)
 }
 
 export async function updateTemplate(id: string, input: TemplateInput): Promise<void> {
-  await updateDoc(doc(db, 'templates', id), {
-    name: input.name.trim(),
-    days: normalizeDays(input.days),
-    updatedAt: Date.now(),
-  })
+  await saveTemplate(input, id)
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
@@ -162,6 +139,22 @@ function normalizeTemplate(id: string, raw: unknown): WorkoutTemplate {
     updatedAt: toFiniteNumber(record.updatedAt ?? record.createdAt),
     days: normalizeDays(record.days),
   }
+}
+
+async function saveTemplate(
+  input: TemplateInput,
+  id?: string,
+  expectedUid?: string,
+): Promise<WorkoutTemplate> {
+  const response = await callAuthedApi<unknown>('/api/save-template', {
+    ...(id ? { id } : {}),
+    name: input.name,
+    days: input.days,
+  }, expectedUid)
+  const record = asRecord(response)
+  const template = asNullableRecord(record.template)
+  if (!template || typeof template.id !== 'string') throw new Error('Invalid server response.')
+  return normalizeTemplate(template.id, template)
 }
 
 function normalizeDays(raw: unknown): TemplateDay[] {

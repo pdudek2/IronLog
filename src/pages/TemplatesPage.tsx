@@ -21,10 +21,6 @@ interface TemplateDeleteOperation {
   status: 'pending' | 'error'
 }
 
-function countTemplateExercises(template: WorkoutTemplate): number {
-  return template.days.reduce((sum, day) => sum + day.exercises.length, 0)
-}
-
 export default function TemplatesPage() {
   const { user } = useAuthStore()
   const navigate = useNavigate()
@@ -205,7 +201,6 @@ export default function TemplatesPage() {
         ) : (
           <div className="template-board planner-template-board">
             {templates.map((template, index) => {
-              const totalExercises = countTemplateExercises(template)
               const expanded = expandedTemplateId === template.id
               const showStructure = shortPlanList || expanded
               const structureId = `template-structure-${template.id}`
@@ -242,9 +237,7 @@ export default function TemplatesPage() {
                       <h2>
                         {template.name}
                       </h2>
-                      <p>
-                        {template.days.length} {template.days.length === 1 ? 'day' : 'days'} · {totalExercises} {totalExercises === 1 ? 'exercise' : 'exercises'}
-                      </p>
+                      {template.days.length > 1 && <p>{template.days.length} days</p>}
                     </div>
 
                     <div className="planner-template-actions">

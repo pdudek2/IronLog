@@ -78,3 +78,38 @@ test('Home changes the selected day without launching and then starts that exact
   await expect(page.getByText('Barbell Row', { exact: true }).first()).toBeVisible()
   await expect(page.getByText('Bench Press', { exact: true })).toHaveCount(0)
 })
+
+test('Home rejects a plan deleted after its selection loaded', async ({ page, cleanup }, testInfo) => {
+  cleanup.add('discard active session', () => discardActiveSession(page))
+  await discardActiveSession(page)
+
+  await page.goto('/dashboard')
+  await expectAppReady(page, '/dashboard')
+  const uid = await page.evaluate(async () => {
+    const { auth } = await import('/src/lib/firebase.ts')
+    if (!auth.currentUser) throw new Error('Missing authenticated user')
+    return auth.currentUser.uid
+  })
+  const adminApp = getApps().find((app) => app.name === 'home-workout-selection')
+    ?? initializeApp({ projectId: 'demo-ironlog' }, 'home-workout-selection')
+  const now = Date.now()
+  const templateRef = await getFirestore(adminApp).collection('templates').add({
+    ...draft,
+    name: `${TEMPLATE_NAME} stale`,
+    userId: uid,
+    createdAt: now,
+    updatedAt: now,
+  })
+  await page.reload()
+  await expectAppReady(page, '/dashboard')
+  await expect(page.getByText('Upper first', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+
+  await templateRef.delete()
+  await page.getByRole('button', { name: 'Start workout' }).click()
+
+  await expect(page).toHaveURL('/dashboard')
+  await expect(page.getByText('Workout no longer available', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Start workout' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Start empty workout' })).toBeVisible()
+  await page.screenshot({ path: `output/home-plans/deleted-target-${testInfo.project.name}.png` })
+})

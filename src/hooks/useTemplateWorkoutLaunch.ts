@@ -6,9 +6,10 @@ import {
   TemplateLaunchConflictError,
 } from '../lib/activeSessionService'
 import { createPersistedTemplateWorkout } from '../lib/templateLaunchService'
-import type {
-  TemplateExerciseOverrideMap,
-  WorkoutTemplate,
+import {
+  getTemplates,
+  type TemplateExerciseOverrideMap,
+  type WorkoutTemplate,
 } from '../lib/templateService'
 import { useWorkoutStore } from '../store/workoutStore'
 
@@ -44,6 +45,7 @@ export interface TemplateWorkoutLaunch {
 
 export function useTemplateWorkoutLaunch(
   uid: string | null | undefined,
+  onTargetUnavailable?: (target: TemplateLaunchTarget, templates: WorkoutTemplate[]) => void,
 ): TemplateWorkoutLaunch {
   const active = useWorkoutStore((state) => state.active)
   const hydrateFromDoc = useWorkoutStore((state) => state.hydrateFromDoc)
@@ -94,24 +96,43 @@ export function useTemplateWorkoutLaunch(
     })
 
     try {
+      const currentTemplates = await getTemplates(uid)
+      if (!isCurrentLaunch(generation)) return
+      const currentTemplate = currentTemplates.find((template) => template.id === target.template.id)
+      const selectedDay = target.template.days[target.dayIndex]
+      const currentDay = currentTemplate?.days[target.dayIndex]
+      if (
+        !currentTemplate
+        || currentTemplate.userId !== uid
+        || currentTemplate.name !== target.template.name
+        || !selectedDay
+        || !currentDay?.exercises.length
+        || JSON.stringify(currentDay) !== JSON.stringify(selectedDay)
+      ) {
+        setLaunchOperation(null)
+        onTargetUnavailable?.(target, currentTemplates)
+        toast.error('Workout no longer available.')
+        return
+      }
+      const currentTarget = { ...target, template: currentTemplate }
       const workout = target.overrides
         ? await createPersistedTemplateWorkout(
             uid,
-            target.template,
-            target.dayIndex,
+            currentTarget.template,
+            currentTarget.dayIndex,
             replaceExisting,
-            target.overrides,
+            currentTarget.overrides,
           )
         : await createPersistedTemplateWorkout(
             uid,
-            target.template,
-            target.dayIndex,
+            currentTarget.template,
+            currentTarget.dayIndex,
             replaceExisting,
           )
       if (!isCurrentLaunch(generation)) return
       setLaunchOperation(null)
       hydrateFromDoc(workout)
-      toast.success(`Template “${target.template.name}” ready to start`)
+      toast.success(`Template “${currentTarget.template.name}” ready to start`)
       navigate('/workout/new')
     } catch (error) {
       if (!isCurrentLaunch(generation)) return
@@ -132,7 +153,7 @@ export function useTemplateWorkoutLaunch(
         launchLockRef.current = false
       }
     }
-  }, [hydrateFromDoc, isCurrentLaunch, navigate, uid])
+  }, [hydrateFromDoc, isCurrentLaunch, navigate, onTargetUnavailable, uid])
 
   const requestTemplateLaunch = useCallback(async (
     template: WorkoutTemplate,

@@ -25,6 +25,10 @@ const mocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   preloadRouteByPath: vi.fn(),
   requestTemplateLaunch: vi.fn(),
+  targetUnavailable: null as null | ((target: {
+    template: { id: string }
+    dayIndex: number
+  }, templates: never[]) => void),
   reportedReadinessEntry: null as object | null,
   readinessEntry: null as null | {
     userId: string
@@ -65,16 +69,19 @@ vi.mock('../../lib/templateService', () => ({
 }))
 
 vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
-  useTemplateWorkoutLaunch: () => ({
-    pendingLaunch: null,
-    launchOperation: null,
-    launchingTemplateId: null,
-    requestTemplateLaunch: mocks.requestTemplateLaunch,
-    confirmTemplateLaunch: vi.fn(),
-    cancelTemplateLaunch: vi.fn(),
-    retryTemplateLaunch: vi.fn(),
-    dismissTemplateLaunchError: vi.fn(),
-  }),
+  useTemplateWorkoutLaunch: (_uid: string | null | undefined, onTargetUnavailable?: typeof mocks.targetUnavailable) => {
+    mocks.targetUnavailable = onTargetUnavailable ?? null
+    return ({
+      pendingLaunch: null,
+      launchOperation: null,
+      launchingTemplateId: null,
+      requestTemplateLaunch: mocks.requestTemplateLaunch,
+      confirmTemplateLaunch: vi.fn(),
+      cancelTemplateLaunch: vi.fn(),
+      retryTemplateLaunch: vi.fn(),
+      dismissTemplateLaunchError: vi.fn(),
+    })
+  },
 }))
 
 vi.mock('../../lib/activeSessionService', () => ({
@@ -182,6 +189,7 @@ describe('Dashboard workout projection status', () => {
     mocks.preloadRouteByPath.mockReset()
     mocks.preloadRouteByPath.mockResolvedValue(undefined)
     mocks.requestTemplateLaunch.mockReset()
+    mocks.targetUnavailable = null
     mocks.reportedReadinessEntry = null
     mocks.readinessEntry = null
     mocks.activeSessionListener = null
@@ -1240,6 +1248,33 @@ describe('Dashboard workout projection status', () => {
     expect(mocks.requestTemplateLaunch).not.toHaveBeenCalled()
     expect(screen.getByText('Workout no longer available')).toBeInTheDocument()
     expect(screen.getByText('Choose another workout before starting.')).toBeInTheDocument()
+  })
+
+  it('clears the Home selection when fresh launch validation rejects its target', async () => {
+    const template = {
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Upper / Lower',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [{
+        name: 'Upper A',
+        exercises: [{ exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 3, targetReps: 8, targetWeight: 70 }],
+      }],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates
+      .mockResolvedValueOnce([template])
+      .mockResolvedValueOnce([])
+
+    render(<DashboardPage />)
+
+    await screen.findByRole('button', { name: 'Start workout' })
+    act(() => mocks.targetUnavailable?.({ template, dayIndex: 0 }, []))
+
+    expect(await screen.findByText('Workout no longer available')).toBeInTheDocument()
+    expect(screen.getByText('Choose another workout before starting.')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start workout' })).not.toBeInTheDocument()
   })
 
   it('skips an empty newest plan when choosing the documented default', async () => {

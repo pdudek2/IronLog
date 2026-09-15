@@ -8,6 +8,7 @@ import { useTemplateWorkoutLaunch } from '../useTemplateWorkoutLaunch'
 
 const mocks = vi.hoisted(() => ({
   active: null as ActiveWorkout | null,
+  getTemplates: vi.fn(),
   createPersistedTemplateWorkout: vi.fn(),
   hydrateFromDoc: vi.fn(),
   navigate: vi.fn(),
@@ -27,6 +28,11 @@ vi.mock('../../store/workoutStore', () => ({
 
 vi.mock('../../lib/templateLaunchService', () => ({
   createPersistedTemplateWorkout: mocks.createPersistedTemplateWorkout,
+}))
+
+vi.mock('../../lib/templateService', async () => ({
+  ...await vi.importActual<typeof import('../../lib/templateService')>('../../lib/templateService'),
+  getTemplates: mocks.getTemplates,
 }))
 
 vi.mock('../../lib/activeSessionService', () => {
@@ -92,6 +98,8 @@ function wrapper({ children }: { children: ReactNode }) {
 describe('useTemplateWorkoutLaunch', () => {
   beforeEach(() => {
     mocks.active = null
+    mocks.getTemplates.mockReset()
+    mocks.getTemplates.mockResolvedValue([template])
     mocks.createPersistedTemplateWorkout.mockReset()
     mocks.hydrateFromDoc.mockReset()
     mocks.navigate.mockReset()
@@ -124,6 +132,83 @@ describe('useTemplateWorkoutLaunch', () => {
     expect(mocks.hydrateFromDoc).toHaveBeenCalledWith(workout)
     expect(mocks.navigate).toHaveBeenCalledTimes(1)
     expect(mocks.navigate).toHaveBeenCalledWith('/workout/new')
+  })
+
+  it.each([
+    ['deleted', null],
+    ['emptied', { ...template, days: [{ ...template.days[0], exercises: [] }] }],
+    ['changed', { ...template, days: [{ ...template.days[0], name: 'Renamed day' }] }],
+  ])('invalidates a %s template target before starting a workout', async (_state, freshTemplate) => {
+    const onTargetUnavailable = vi.fn()
+    mocks.getTemplates.mockResolvedValueOnce(freshTemplate ? [freshTemplate] : [])
+    const { result } = renderHook(
+      () => useTemplateWorkoutLaunch('user-1', onTargetUnavailable),
+      { wrapper },
+    )
+
+    await act(async () => {
+      await result.current.requestTemplateLaunch(template, 0, 'dashboard:template-a:selection:0')
+    })
+
+    expect(mocks.createPersistedTemplateWorkout).not.toHaveBeenCalled()
+    expect(mocks.hydrateFromDoc).not.toHaveBeenCalled()
+    expect(mocks.navigate).not.toHaveBeenCalled()
+    expect(onTargetUnavailable).toHaveBeenCalledWith(
+      {
+        template,
+        dayIndex: 0,
+        requestKey: 'dashboard:template-a:selection:0',
+      },
+      freshTemplate ? [freshTemplate] : [],
+    )
+    expect(result.current.launchOperation).toBeNull()
+  })
+
+  it('revalidates a pending replacement after confirmation', async () => {
+    const onTargetUnavailable = vi.fn()
+    mocks.active = { ...workout, label: 'Current workout' }
+    const { result } = renderHook(
+      () => useTemplateWorkoutLaunch('user-1', onTargetUnavailable),
+      { wrapper },
+    )
+
+    await act(async () => {
+      await result.current.requestTemplateLaunch(template, 0, 'templates:template-a:primary')
+    })
+    mocks.getTemplates.mockResolvedValueOnce([])
+    await act(async () => {
+      await result.current.confirmTemplateLaunch()
+    })
+
+    expect(mocks.createPersistedTemplateWorkout).not.toHaveBeenCalled()
+    expect(onTargetUnavailable).toHaveBeenCalledTimes(1)
+    expect(result.current.pendingLaunch).toBeNull()
+  })
+
+  it('keeps read failures retryable and revalidates the target on retry', async () => {
+    const onTargetUnavailable = vi.fn()
+    mocks.getTemplates
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce([])
+    const { result } = renderHook(
+      () => useTemplateWorkoutLaunch('user-1', onTargetUnavailable),
+      { wrapper },
+    )
+
+    await act(async () => {
+      await result.current.requestTemplateLaunch(template, 0, 'dashboard:template-a:selection:0')
+    })
+    expect(result.current.launchOperation?.status).toBe('error')
+    expect(onTargetUnavailable).not.toHaveBeenCalled()
+
+    await act(async () => {
+      await result.current.retryTemplateLaunch()
+    })
+
+    expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
+    expect(mocks.createPersistedTemplateWorkout).not.toHaveBeenCalled()
+    expect(onTargetUnavailable).toHaveBeenCalledTimes(1)
+    expect(result.current.launchOperation).toBeNull()
   })
 
   it('stores the exact failed target as a retryable non-replace operation', async () => {
@@ -259,6 +344,7 @@ describe('useTemplateWorkoutLaunch', () => {
       void result.current.requestTemplateLaunch(template, 0, 'templates:template-a:primary')
     })
 
+    await act(async () => { await Promise.resolve() })
     expect(mocks.createPersistedTemplateWorkout).toHaveBeenCalledTimes(1)
     await act(async () => launch.resolve(workout))
   })

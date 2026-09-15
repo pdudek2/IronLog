@@ -176,16 +176,6 @@ export default function DashboardPage() {
   const active = useWorkoutStore((state) => state.active)
   const navigate = useNavigate()
   const {
-    pendingLaunch,
-    launchOperation,
-    launchingTemplateId,
-    requestTemplateLaunch,
-    confirmTemplateLaunch,
-    cancelTemplateLaunch,
-    retryTemplateLaunch,
-    dismissTemplateLaunchError,
-  } = useTemplateWorkoutLaunch(user?.uid)
-  const {
     workouts: snapshotWorkouts,
     weeklyDone: snapshotWeeklyDone,
     uid: snapshotUid,
@@ -211,6 +201,26 @@ export default function DashboardPage() {
     unavailable: false,
   })
   const [workoutPickerOpen, setWorkoutPickerOpen] = useState(false)
+  const {
+    pendingLaunch,
+    launchOperation,
+    launchingTemplateId,
+    requestTemplateLaunch,
+    confirmTemplateLaunch,
+    cancelTemplateLaunch,
+    retryTemplateLaunch,
+    dismissTemplateLaunchError,
+  } = useTemplateWorkoutLaunch(user?.uid, (target, currentTemplates) => {
+    if (!user) return
+    setWorkoutSelection((current) => (
+      current.uid === user.uid
+        && current.target?.templateId === target.template.id
+        && current.target.dayIndex === target.dayIndex
+        ? { ...current, target: null, unavailable: true }
+        : current
+    ))
+    setTemplatesResource({ uid: user.uid, state: { status: 'success', data: currentTemplates } })
+  })
   const [readinessResource, setReadinessResource] = useState<ReadinessResource>({
     uid: user?.uid ?? null,
     state: { status: 'loading' },

@@ -45,7 +45,7 @@
   --danger-foreground: #221307;
   --danger-soft: rgba(240, 167, 90, 0.12);
   --danger-soft-strong: rgba(240, 167, 90, 0.26);
-  --top-nav-height: 64px;
+  --top-nav-height: calc(64px + env(safe-area-inset-top, 0px));
   --text: #f4f1f2;
   --text-strong: #ffffff;
   --muted: #a09aa0;
@@ -1764,7 +1764,11 @@ a {
   width: min(100%, 92rem);
   height: 100%;
   margin: 0 auto;
-  padding: 0 clamp(1rem, 2vw, 2rem);
+  padding:
+    env(safe-area-inset-top, 0px)
+    max(clamp(1rem, 2vw, 2rem), env(safe-area-inset-right, 0px))
+    0
+    max(clamp(1rem, 2vw, 2rem), env(safe-area-inset-left, 0px));
 }
 
 .top-nav-brand {
@@ -6905,6 +6909,8 @@ a {
 .workout-mobile-action-bar {
   bottom: calc(4.25rem + env(safe-area-inset-bottom, 0px));
   z-index: 45;
+  padding-right: max(1rem, env(safe-area-inset-right, 0px));
+  padding-left: max(1rem, env(safe-area-inset-left, 0px));
   transition: bottom 220ms ease;
 }
 

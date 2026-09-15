@@ -4,6 +4,10 @@ IronLog records strength workouts and tracks progress over time. An active worko
 
 [Open IronLog](https://ironlog-coach.vercel.app/login)
 
+## Install on a phone
+
+On iPhone, open IronLog in Safari and choose **Share → Add to Home Screen**. On Android, open it in Chrome and choose **Menu → Install app** (or **Add to Home screen**). Reopen the installed app after a release to load the latest version; offline launch is not supported.
+
 ## Training
 
 Start an empty workout or use a saved template. IronLog shows the previous result for each exercise, keeps the active session available after a refresh, and includes a rest timer between sets.

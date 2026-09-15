@@ -12,6 +12,8 @@ The native Android preview in `mobile/` implements sign-in and a read-only view 
 
 Exact screenshot identity is separately limited by Android system safe areas, native font rasterization, and those intentionally omitted controls; the native surfaces otherwise reuse the web layout, palette, gradients, and active-workout hierarchy.
 
+The native waveform matches the web path, fill, and stroke, but its animated trace remains unfinished parity work rather than a platform limitation.
+
 ## Training
 
 Start an empty workout or use a saved template. IronLog shows the previous result for each exercise, keeps the active session available after a refresh, and includes a rest timer between sets.

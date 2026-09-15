@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import {
   ActivityIndicator,
   AppState,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -16,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg'
 
+import grainTexture from '../assets/grain.png'
 import { exercises as exerciseCatalog } from '../../data/exercises'
 import {
   EXERCISE_CATEGORY_COLORS,
@@ -100,6 +102,17 @@ function GridBackdrop() {
   )
 }
 
+function GrainBackdrop() {
+  return (
+    <Image
+      accessibilityElementsHidden
+      resizeMode="repeat"
+      source={grainTexture}
+      style={styles.grainBackdrop}
+    />
+  )
+}
+
 function SignalBackdrop() {
   return (
     <View
@@ -158,6 +171,7 @@ function LoginForm() {
         keyboardShouldPersistTaps="handled"
       >
         <GridBackdrop />
+        <GrainBackdrop />
         <SignalBackdrop />
         <View style={styles.brandRow}>
           <View style={styles.brandMark}>
@@ -281,10 +295,10 @@ function ExerciseLedger({
         style={({ pressed }) => [styles.exerciseHeading, pressed && styles.headingPressed]}
       >
         <View style={styles.flex}>
-          {expanded && (category || equipment) && (
+          {(category || equipment) && (
             <Text style={styles.exerciseMeta}>
               {category && <Text style={{ color: accent }}>{category}</Text>}
-              {category && equipment ? ' · ' : ''}
+              {category && equipment ? '\u00A0·\u00A0' : ''}
               {equipment}
             </Text>
           )}
@@ -383,6 +397,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   return (
     <View style={styles.sessionShell}>
       <GridBackdrop />
+      <GrainBackdrop />
       <ScrollView contentContainerStyle={styles.sessionContent} stickyHeaderIndices={[0]}>
       {state.status === 'ready' ? (
         <View style={styles.lifecycleBar}>
@@ -490,6 +505,7 @@ const styles = StyleSheet.create({
   },
   loginContent: { flexGrow: 1, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 20, position: 'relative' },
   gridBackdrop: { height: 440, left: 0, opacity: 0.72, overflow: 'hidden', position: 'absolute', right: 0, top: 0 },
+  grainBackdrop: { bottom: 0, left: 0, opacity: 0.024, position: 'absolute', right: 0, top: 0 },
   gridVertical: { backgroundColor: 'rgba(244, 241, 242, 0.018)', bottom: 0, position: 'absolute', top: 0, width: StyleSheet.hairlineWidth },
   gridHorizontal: { backgroundColor: 'rgba(244, 241, 242, 0.024)', height: StyleSheet.hairlineWidth, left: 0, position: 'absolute', right: 0 },
   signalBackdrop: { height: 288, left: '-6%', opacity: 0.2, overflow: 'hidden', position: 'absolute', top: 544, transform: [{ rotate: '-4deg' }, { scaleY: 1.02 }], width: '112%' },
@@ -512,26 +528,26 @@ const styles = StyleSheet.create({
   hero: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.5, maxWidth: 220 },
   heroAccent: { color: colors.accentText, fontFamily: 'Archivo_700Bold' },
   lead: { color: 'rgba(244, 241, 242, 0.7)', fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 22.3, marginTop: 12 },
-  formDivider: { backgroundColor: colors.lineStrong, height: StyleSheet.hairlineWidth, marginBottom: 18, marginTop: 21 },
+  formDivider: { backgroundColor: colors.lineStrong, height: 1, marginBottom: 18, marginTop: 21 },
   formTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 29, lineHeight: 34 },
   form: { marginTop: 50 },
   label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 17, marginBottom: 6 },
-  passwordLabel: { marginTop: 16 },
+  passwordLabel: { marginTop: 10 },
   input: {
-    backgroundColor: 'rgba(8, 7, 9, 0.16)',
-    borderColor: 'rgba(244, 241, 242, 0.13)',
+    backgroundColor: 'rgba(255, 255, 255, 0.035)',
+    borderColor: 'rgba(244, 241, 242, 0.135)',
     borderRadius: 8,
     borderWidth: 1,
     boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.075), 0 1px 0 rgba(255, 255, 255, 0.035)',
     color: colors.text,
-    experimental_backgroundImage: 'linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03))',
     fontFamily: 'InstrumentSans_400Regular',
-    fontSize: 16,
+    fontSize: 14,
+    lineHeight: 20,
     minHeight: 52,
     paddingHorizontal: 16,
   },
   inputFocused: { borderColor: colors.accentText, borderWidth: 1.5 },
-  omittedAuthActionSpace: { height: 44 },
+  omittedAuthActionSpace: { height: 49 },
   button: { alignItems: 'center', borderRadius: 8, justifyContent: 'center', minHeight: 48, marginTop: 15, paddingHorizontal: 18 },
   buttonPrimary: {
     backgroundColor: '#a91f35',
@@ -569,34 +585,34 @@ const styles = StyleSheet.create({
   staleTitle: { color: colors.warning, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
   staleCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 3 },
   emptyExerciseCopy: { marginTop: 80 },
-  exerciseStack: { paddingHorizontal: 16 },
-  exerciseCard: { paddingVertical: 12 },
+  exerciseStack: { paddingHorizontal: 16, paddingTop: 4 },
+  exerciseCard: { paddingBottom: 12, paddingTop: 10.4 },
   exerciseHeading: { alignItems: 'center', flexDirection: 'row', minHeight: 44 },
   headingPressed: { opacity: 0.72 },
-  exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 10.6, letterSpacing: 1.48, lineHeight: 14, textTransform: 'uppercase' },
-  exerciseName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, lineHeight: 22, marginTop: 6 },
+  exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
+  exerciseName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, lineHeight: 28, marginTop: 6 },
   exerciseCompact: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 4 },
   chevron: { height: 18, marginLeft: 12, transform: [{ rotate: '0deg' }], width: 18 },
   chevronExpanded: { transform: [{ rotate: '180deg' }] },
   chevronStroke: { backgroundColor: colors.muted, borderRadius: 1, height: 1.5, position: 'absolute', top: 9, width: 8 },
   chevronStrokeLeft: { left: 2, transform: [{ rotate: '45deg' }] },
   chevronStrokeRight: { right: 2, transform: [{ rotate: '-45deg' }] },
-  exerciseSummary: { borderBottomColor: 'rgba(244, 241, 242, 0.09)', borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(244, 241, 242, 0.09)', borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginBottom: 9, marginTop: 10, paddingVertical: 7 },
+  exerciseSummary: { borderBottomColor: 'rgba(244, 241, 242, 0.09)', borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(244, 241, 242, 0.09)', borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginBottom: 3.2, marginTop: 5.6, paddingVertical: 4 },
   summaryCell: { alignItems: 'baseline', flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'center', paddingHorizontal: 6 },
   summaryCellLast: { paddingRight: 0 },
-  summaryLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
-  summaryValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.8, fontVariant: ['tabular-nums'] },
-  setGrid: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 48 },
-  setHeaderGrid: { minHeight: 32 },
+  summaryLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
+  summaryValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.8, fontVariant: ['tabular-nums'], lineHeight: 19.2 },
+  setGrid: { alignItems: 'center', flexDirection: 'row', gap: 5.6, minHeight: 47.2 },
+  setHeaderGrid: { minHeight: 18 },
   setToggleColumn: { width: 38 },
   setTrailingColumn: { width: 28 },
-  setHeaderCell: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, textAlign: 'center' },
+  setHeaderCell: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18, textAlign: 'center' },
   setToggle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, textAlign: 'center', width: 38 },
   setToggleDone: { color: colors.recovery },
   setToggleOpen: { color: '#d97b91' },
   setCellMuted: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, textAlign: 'center' },
   setCellValue: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'], lineHeight: 30, textAlign: 'center' },
   setCellCurrent: { borderBottomColor: colors.lineStrong, borderBottomWidth: StyleSheet.hairlineWidth },
-  omittedWorkoutActionsSpace: { height: 81 },
+  omittedWorkoutActionsSpace: { height: 101 },
   omittedAddExerciseSpace: { height: 72 },
 })

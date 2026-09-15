@@ -10,6 +10,8 @@ On iPhone, open IronLog in Safari and choose **Share → Add to Home Screen**. O
 
 The native Android preview in `mobile/` implements sign-in and a read-only view of the active workout. It deliberately omits the web app's create-account, password-reset, label editing, set editing, add/delete, finish/minimize, overflow, and bottom-navigation controls because their destinations or mutations are outside this preview; sign-out and exercise expand/collapse remain functional.
 
+Exact screenshot identity is separately limited by Android system safe areas, native font rasterization, and those intentionally omitted controls; the native surfaces otherwise reuse the web layout, palette, gradients, and active-workout hierarchy.
+
 ## Training
 
 Start an empty workout or use a saved template. IronLog shows the previous result for each exercise, keeps the active session available after a refresh, and includes a rest timer between sets.

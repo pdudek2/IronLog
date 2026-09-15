@@ -10,9 +10,11 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg'
 
 import { exercises as exerciseCatalog } from '../../data/exercises'
 import {
@@ -42,7 +44,6 @@ const colors = {
   muted: '#a09aa0',
   mutedSoft: '#8f8990',
   accent: '#f0435a',
-  accentDark: '#ca203e',
   accentText: '#ff7182',
   recovery: '#8fb8a0',
   warning: '#f0a75a',
@@ -71,7 +72,7 @@ function ActionButton({ label, onPress, secondary = false, disabled = false }: {
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
-        secondary && styles.buttonSecondary,
+        secondary ? styles.buttonSecondary : styles.buttonPrimary,
         disabled && styles.buttonDisabled,
         pressed && !disabled && styles.buttonPressed,
       ]}
@@ -81,29 +82,47 @@ function ActionButton({ label, onPress, secondary = false, disabled = false }: {
   )
 }
 
-function SignalBackdrop() {
-  const points = [[-10, 112], [14, 64], [31, 112], [66, 112], [88, 16], [108, 112], [145, 112], [165, 59], [183, 112], [218, 112], [239, 72], [257, 112], [291, 112], [311, 79], [329, 112], [380, 112]]
+const SIGNAL_PATH = 'M-20 190C40 190 72 190 94 184C112 178 120 158 132 132C146 102 162 82 184 84C208 86 218 116 230 150C240 178 252 190 278 190C314 190 332 184 346 158C364 124 374 66 402 58C430 50 444 102 458 150C468 180 480 190 506 190C542 190 558 182 574 154C592 120 606 92 628 94C650 96 662 128 674 158C686 182 700 190 724 190C758 190 776 184 790 162C808 136 818 112 840 114C864 116 874 146 886 168C896 184 908 190 930 190C960 190 976 184 990 166C1004 148 1016 132 1034 134C1054 136 1062 158 1074 174C1086 188 1098 190 1116 188C1148 186 1178 180 1220 176'
+
+function GridBackdrop() {
+  const { width } = useWindowDimensions()
+  const columns = Math.ceil(width / 44)
 
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.signalBackdrop}>
-      {points.slice(1).map(([x2, y2], index) => {
-        const [x1, y1] = points[index]!
-        const width = Math.hypot(x2 - x1, y2 - y1)
-        return (
-          <View
-            key={index}
-            style={[
-              styles.signalSegment,
-              {
-                left: (x1 + x2 - width) / 2,
-                top: (y1 + y2) / 2,
-                transform: [{ rotate: `${Math.atan2(y2 - y1, x2 - x1)}rad` }],
-                width,
-              },
-            ]}
-          />
-        )
-      })}
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.gridBackdrop}>
+      {Array.from({ length: columns + 1 }, (_, index) => (
+        <View key={`v${index}`} style={[styles.gridVertical, { left: index * 44 }]} />
+      ))}
+      {Array.from({ length: 10 }, (_, index) => (
+        <View key={`h${index}`} style={[styles.gridHorizontal, { opacity: Math.max(0.1, 1 - index / 10), top: index * 44 }]} />
+      ))}
+    </View>
+  )
+}
+
+function SignalBackdrop() {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents="none"
+      style={styles.signalBackdrop}
+    >
+      <Svg height="100%" preserveAspectRatio="none" viewBox="0 0 1200 240" width="100%">
+        <Defs>
+          <LinearGradient id="auth-signal-stroke" x1="0" x2="0" y1="46" y2="196" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#ff7182" />
+            <Stop offset="0.52" stopColor="#f0435a" />
+            <Stop offset="1" stopColor="#8fb8a0" />
+          </LinearGradient>
+          <LinearGradient id="auth-signal-fill" x1="0" x2="0" y1="46" y2="240" gradientUnits="userSpaceOnUse">
+            <Stop offset="0" stopColor="#f0435a" stopOpacity="0.15" />
+            <Stop offset="1" stopColor="#f0435a" stopOpacity="0" />
+          </LinearGradient>
+        </Defs>
+        <Path d={`${SIGNAL_PATH}V240H-20Z`} fill="url(#auth-signal-fill)" opacity="0.72" />
+        <Path d={SIGNAL_PATH} fill="none" stroke="url(#auth-signal-stroke)" strokeWidth="3" opacity="0.62" />
+      </Svg>
     </View>
   )
 }
@@ -138,6 +157,7 @@ function LoginForm() {
         contentContainerStyle={styles.loginContent}
         keyboardShouldPersistTaps="handled"
       >
+        <GridBackdrop />
         <SignalBackdrop />
         <View style={styles.brandRow}>
           <View style={styles.brandMark}>
@@ -275,7 +295,10 @@ function ExerciseLedger({
             </Text>
           )}
         </View>
-        <Text accessibilityElementsHidden style={styles.chevron}>{expanded ? '⌃' : '⌄'}</Text>
+        <View accessibilityElementsHidden style={[styles.chevron, expanded && styles.chevronExpanded]}>
+          <View style={[styles.chevronStroke, styles.chevronStrokeLeft]} />
+          <View style={[styles.chevronStroke, styles.chevronStrokeRight]} />
+        </View>
       </Pressable>
 
       {expanded && (
@@ -285,8 +308,8 @@ function ExerciseLedger({
               ['Progress', `${summary.completed}/${summary.total}`],
               ['Volume', summary.volume],
               ['Max', summary.max],
-            ].map(([label, value]) => (
-              <View key={label} style={styles.summaryCell}>
+            ].map(([label, value], index) => (
+              <View key={label} style={[styles.summaryCell, index === 2 && styles.summaryCellLast]}>
                 <Text style={styles.summaryLabel}>{label}</Text>
                 <Text style={styles.summaryValue}>{value}</Text>
               </View>
@@ -358,7 +381,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.sessionContent} stickyHeaderIndices={[0]}>
+    <View style={styles.sessionShell}>
+      <GridBackdrop />
+      <ScrollView contentContainerStyle={styles.sessionContent} stickyHeaderIndices={[0]}>
       {state.status === 'ready' ? (
         <View style={styles.lifecycleBar}>
           <View style={styles.lifecycleBarInner}>
@@ -407,7 +432,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-      {state.status === 'ready' && (
+        {state.status === 'ready' && (
         <View>
           <View accessibilityElementsHidden style={styles.omittedWorkoutLabelsBand} />
           {state.stale && (
@@ -427,8 +452,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
             <WorkoutLedger key={state.session.sessionId} session={state.session} units={state.units} />
           )}
         </View>
-      )}
-    </ScrollView>
+        )}
+      </ScrollView>
+    </View>
   )
 }
 
@@ -459,27 +485,59 @@ export default function IndexScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  loginShell: { experimental_backgroundImage: 'linear-gradient(118deg, #301116 0%, #151113 46%, #101815 100%)' },
+  loginShell: {
+    experimental_backgroundImage: 'radial-gradient(ellipse 672px 544px at 12% 12%, rgba(240, 67, 90, 0.14), transparent 72%), radial-gradient(ellipse 736px 608px at 86% 78%, rgba(143, 184, 160, 0.11), transparent 74%), linear-gradient(122deg, #181114 0%, #0b0a0c 52%, #080d0b 100%)',
+  },
   loginContent: { flexGrow: 1, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 20, position: 'relative' },
-  signalBackdrop: { bottom: 50, height: 130, left: 0, overflow: 'hidden', position: 'absolute', right: 0 },
-  signalSegment: { backgroundColor: 'rgba(240, 67, 90, 0.16)', height: 1, position: 'absolute' },
+  gridBackdrop: { height: 440, left: 0, opacity: 0.72, overflow: 'hidden', position: 'absolute', right: 0, top: 0 },
+  gridVertical: { backgroundColor: 'rgba(244, 241, 242, 0.018)', bottom: 0, position: 'absolute', top: 0, width: StyleSheet.hairlineWidth },
+  gridHorizontal: { backgroundColor: 'rgba(244, 241, 242, 0.024)', height: StyleSheet.hairlineWidth, left: 0, position: 'absolute', right: 0 },
+  signalBackdrop: { height: 288, left: '-6%', opacity: 0.2, overflow: 'hidden', position: 'absolute', top: 544, transform: [{ rotate: '-4deg' }, { scaleY: 1.02 }], width: '112%' },
   brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 17 },
-  brandMark: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.22)', borderRadius: 6, borderWidth: 1, elevation: 4, height: 36, justifyContent: 'center', shadowColor: '#000000', shadowOffset: { height: 6, width: 0 }, shadowOpacity: 0.26, shadowRadius: 12, width: 36 },
+  brandMark: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(17, 16, 18, 0.68)',
+    borderColor: 'rgba(244, 241, 242, 0.18)',
+    borderRadius: 8,
+    borderWidth: 1,
+    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.16)',
+    experimental_backgroundImage: 'linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.045))',
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
   brandMarkText: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 13 },
   brandDot: { backgroundColor: colors.accent, borderRadius: 2, bottom: 7, height: 4, position: 'absolute', right: 7, width: 4 },
   brandName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15, marginLeft: 12 },
-  hero: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 34, letterSpacing: -0.6, lineHeight: 34, maxWidth: 210 },
+  hero: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.5, maxWidth: 220 },
   heroAccent: { color: colors.accentText, fontFamily: 'Archivo_700Bold' },
-  lead: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 16 },
+  lead: { color: 'rgba(244, 241, 242, 0.7)', fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 22.3, marginTop: 12 },
   formDivider: { backgroundColor: colors.lineStrong, height: StyleSheet.hairlineWidth, marginBottom: 18, marginTop: 21 },
   formTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 29, lineHeight: 34 },
   form: { marginTop: 50 },
   label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 17, marginBottom: 6 },
   passwordLabel: { marginTop: 16 },
-  input: { backgroundColor: 'rgba(255,255,255,0.035)', borderColor: colors.lineStrong, borderRadius: 8, borderWidth: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, minHeight: 52, paddingHorizontal: 16 },
+  input: {
+    backgroundColor: 'rgba(8, 7, 9, 0.16)',
+    borderColor: 'rgba(244, 241, 242, 0.13)',
+    borderRadius: 8,
+    borderWidth: 1,
+    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.075), 0 1px 0 rgba(255, 255, 255, 0.035)',
+    color: colors.text,
+    experimental_backgroundImage: 'linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03))',
+    fontFamily: 'InstrumentSans_400Regular',
+    fontSize: 16,
+    minHeight: 52,
+    paddingHorizontal: 16,
+  },
   inputFocused: { borderColor: colors.accentText, borderWidth: 1.5 },
   omittedAuthActionSpace: { height: 44 },
-  button: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 8, justifyContent: 'center', minHeight: 52, marginTop: 15, paddingHorizontal: 18 },
+  button: { alignItems: 'center', borderRadius: 8, justifyContent: 'center', minHeight: 48, marginTop: 15, paddingHorizontal: 18 },
+  buttonPrimary: {
+    backgroundColor: '#a91f35',
+    boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)',
+    experimental_backgroundImage: 'linear-gradient(180deg, #c72e44 0%, #a91f35 100%)',
+  },
   buttonSecondary: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderWidth: 1, minWidth: 140 },
   buttonDisabled: { opacity: 0.55 },
   buttonPressed: { opacity: 0.82 },
@@ -487,15 +545,19 @@ const styles = StyleSheet.create({
   buttonSecondaryText: { color: colors.text },
   error: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 20, marginTop: 6 },
   sessionContent: { flexGrow: 1, paddingBottom: 24 },
+  sessionShell: {
+    flex: 1,
+    experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)',
+  },
   lifecycleBar: { backgroundColor: '#0d0b0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 69, zIndex: 4 },
-  lifecycleBarInner: { alignItems: 'center', flexDirection: 'row', height: 69, justifyContent: 'space-between', paddingHorizontal: 16 },
+  lifecycleBarInner: { alignItems: 'center', flexDirection: 'row', height: 69, paddingHorizontal: 16 },
   accountBar: { alignItems: 'center', backgroundColor: '#0d0b0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', height: 69, justifyContent: 'space-between', paddingHorizontal: 16 },
   sessionBrand: { alignItems: 'center', flexDirection: 'row' },
   brandMarkSmall: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.lineStrong, borderRadius: 5, borderWidth: 1, height: 32, justifyContent: 'center', marginRight: 10, width: 32 },
   brandMarkTextSmall: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 11 },
   brandNameSmall: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15 },
-  signOutButton: { alignItems: 'center', backgroundColor: colors.accentDark, borderRadius: 15, justifyContent: 'center', marginRight: 16, minHeight: 44, minWidth: 80, paddingHorizontal: 13 },
-  signOutButtonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  signOutButton: { alignItems: 'center', justifyContent: 'center', marginLeft: 'auto', minHeight: 44, paddingHorizontal: 6 },
+  signOutButtonText: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },
   logoutError: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 19, paddingHorizontal: 16, paddingVertical: 10 },
   centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 420, paddingHorizontal: 20, gap: 12 },
   stateTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 22, textAlign: 'center' },
@@ -508,17 +570,22 @@ const styles = StyleSheet.create({
   staleCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 3 },
   emptyExerciseCopy: { marginTop: 80 },
   exerciseStack: { paddingHorizontal: 16 },
-  exerciseCard: { paddingTop: 16 },
-  exerciseHeading: { alignItems: 'center', flexDirection: 'row', minHeight: 52 },
+  exerciseCard: { paddingVertical: 12 },
+  exerciseHeading: { alignItems: 'center', flexDirection: 'row', minHeight: 44 },
   headingPressed: { opacity: 0.72 },
-  exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 16 },
-  exerciseName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 20, lineHeight: 25, marginTop: 5 },
+  exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 10.6, letterSpacing: 1.48, lineHeight: 14, textTransform: 'uppercase' },
+  exerciseName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, lineHeight: 22, marginTop: 6 },
   exerciseCompact: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 4 },
-  chevron: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 20, marginLeft: 12, width: 24 },
-  exerciseSummary: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginTop: 8, minHeight: 39 },
-  summaryCell: { alignItems: 'center', borderRightColor: colors.line, borderRightWidth: StyleSheet.hairlineWidth, flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 8 },
-  summaryLabel: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11 },
-  summaryValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, fontVariant: ['tabular-nums'] },
+  chevron: { height: 18, marginLeft: 12, transform: [{ rotate: '0deg' }], width: 18 },
+  chevronExpanded: { transform: [{ rotate: '180deg' }] },
+  chevronStroke: { backgroundColor: colors.muted, borderRadius: 1, height: 1.5, position: 'absolute', top: 9, width: 8 },
+  chevronStrokeLeft: { left: 2, transform: [{ rotate: '45deg' }] },
+  chevronStrokeRight: { right: 2, transform: [{ rotate: '-45deg' }] },
+  exerciseSummary: { borderBottomColor: 'rgba(244, 241, 242, 0.09)', borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(244, 241, 242, 0.09)', borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginBottom: 9, marginTop: 10, paddingVertical: 7 },
+  summaryCell: { alignItems: 'baseline', flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 5, justifyContent: 'center', paddingHorizontal: 6 },
+  summaryCellLast: { paddingRight: 0 },
+  summaryLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
+  summaryValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.8, fontVariant: ['tabular-nums'] },
   setGrid: { alignItems: 'center', flexDirection: 'row', gap: 6, minHeight: 48 },
   setHeaderGrid: { minHeight: 32 },
   setToggleColumn: { width: 38 },
@@ -528,8 +595,8 @@ const styles = StyleSheet.create({
   setToggleDone: { color: colors.recovery },
   setToggleOpen: { color: '#d97b91' },
   setCellMuted: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, textAlign: 'center' },
-  setCellValue: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 15, fontVariant: ['tabular-nums'], lineHeight: 30, textAlign: 'center' },
+  setCellValue: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'], lineHeight: 30, textAlign: 'center' },
   setCellCurrent: { borderBottomColor: colors.lineStrong, borderBottomWidth: StyleSheet.hairlineWidth },
-  omittedWorkoutActionsSpace: { height: 104 },
+  omittedWorkoutActionsSpace: { height: 81 },
   omittedAddExerciseSpace: { height: 72 },
 })

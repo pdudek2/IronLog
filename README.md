@@ -12,7 +12,7 @@ The native Android preview in `mobile/` implements sign-in and a read-only view 
 
 Exact screenshot identity is separately limited by Android system safe areas, native font rasterization, and those intentionally omitted controls; the native surfaces otherwise reuse the web layout, palette, gradients, and active-workout hierarchy.
 
-The native waveform matches the web path, fill, and stroke, but its animated trace remains unfinished parity work rather than a platform limitation.
+The native waveform reuses the web path and one-shot trace timings, responds to form focus, stops in the background and respects Android’s reduced-motion setting. History and custom exercise details use owner-scoped reads; unavailable or cached history is labelled separately from confirmed absence.
 
 ## Training
 

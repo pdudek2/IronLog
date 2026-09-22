@@ -2,7 +2,7 @@ import React from 'react'
 import { motion } from 'framer-motion'
 import { Check, ChevronDown, Plus, Trash2, X } from 'lucide-react'
 import OverloadHint from '../OverloadHint'
-import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../../store/workoutStore'
+import { useWorkoutStore, type WorkoutExercise } from '../../store/workoutStore'
 import type { OverloadSuggestion } from '../../lib/overloadService'
 import { getExerciseSessions, type ExerciseSession } from '../../lib/exerciseDetailService'
 import type { Units } from '../../lib/userProfile'
@@ -12,6 +12,9 @@ import {
   kgStringToDisplayWeight,
   kgToDisplayWeight,
 } from '../../lib/weightUnits'
+
+import { exerciseMetrics, formatPreviousSet } from '../../shared/workoutDisplay'
+import { formatCompactVolume } from '../../shared/weightUnits'
 
 type SetField = 'weight' | 'reps'
 
@@ -40,28 +43,6 @@ interface WorkoutExerciseLedgerItemProps {
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void
   onToggleSet: (exerciseIndex: number, setIndex: number) => void
   onUpdateSet: (exerciseIndex: number, setIndex: number, field: SetField, value: string) => void
-}
-
-function parseWeight(value: string): number {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function parseReps(value: string): number {
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function calcSetVolume(set: Pick<WorkoutSet, 'weight' | 'reps'>): number {
-  return parseWeight(set.weight) * parseReps(set.reps)
-}
-
-function formatCompactVolume(volumeKg: number, units: Units): string {
-  const volume = kgToDisplayWeight(volumeKg, units)
-  if (!volume) return `0 ${units}`
-  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k ${units}`
-  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k ${units}`
-  return `${Math.round(volume).toLocaleString('en-US')} ${units}`
 }
 
 function selectExerciseByIdentity(state: ReturnType<typeof useWorkoutStore.getState>, exerciseIndex: number, exerciseClientId: string): WorkoutExercise | null {
@@ -121,15 +102,8 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
 
   if (!exercise) return null
 
-  const exerciseVolume = exercise.sets.reduce((sum, set) => (
-    set.done ? sum + calcSetVolume(set) : sum
-  ), 0)
-  const exerciseCompleted = exercise.sets.filter((set) => set.done && parseReps(set.reps) > 0).length
-  const exerciseComplete = exercise.sets.length > 0
-    && exerciseCompleted === exercise.sets.length
-  const bestSet = exercise.sets.reduce((top, set) => (
-    set.done ? Math.max(top, parseWeight(set.weight)) : top
-  ), 0)
+  const { volumeKg: exerciseVolume, completed: exerciseCompleted, maxKg: bestSet } = exerciseMetrics(exercise.sets)
+  const exerciseComplete = exercise.sets.length > 0 && exerciseCompleted === exercise.sets.length
 
   return (
     <motion.div
@@ -264,9 +238,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   className="workout-set-previous tabular-nums"
                   aria-label={`Previous set result ${setIndex + 1}`}
                 >
-                  {previousSet
-                    ? `${kgToDisplayWeight(previousSet.weight, units)}×${previousSet.reps}`
-                    : '—'}
+                  {formatPreviousSet(previousSet, units)}
                 </span>
                 <input
                   type="number"

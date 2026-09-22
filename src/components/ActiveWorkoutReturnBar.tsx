@@ -5,15 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/authStore'
 import { useWorkoutStore } from '../store/workoutStore'
 
-function formatElapsedTime(startedAt: number, now = Date.now()): string {
-  const total = Math.max(0, Math.floor((now - startedAt) / 1000))
-  const hours = Math.floor(total / 3600)
-  const minutes = Math.floor((total % 3600) / 60)
-  const seconds = total % 60
-  return hours > 0
-    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
+import { formatElapsedTime } from '../shared/workoutDisplay'
 
 export function ElapsedSessionTimer({ startedAt, className = '' }: { startedAt: number; className?: string }) {
   const [now, setNow] = useState(() => Date.now())

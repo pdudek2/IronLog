@@ -1,5 +1,5 @@
 import { deriveLegacySessionId } from '../../src/shared/sessionIdentity'
-import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
+import { kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 
 export type Units = 'kg' | 'lbs'
 export type ExerciseSource = 'global' | 'user'
@@ -11,6 +11,7 @@ export interface WorkoutSet {
 }
 
 export interface WorkoutExercise {
+  clientId?: string
   exerciseId: string
   exerciseSource: ExerciseSource
   name: string
@@ -92,6 +93,7 @@ export function parseSessionDocument(uid: string, value: unknown): ActiveWorkout
         throw new SessionDataError(`exercises[${exerciseIndex}].sets must be an array.`)
       }
       return {
+        ...(exercise.clientId === undefined ? {} : { clientId: requiredString(exercise.clientId, `exercises[${exerciseIndex}].clientId`) }),
         exerciseId: requiredString(exercise.exerciseId, `exercises[${exerciseIndex}].exerciseId`),
         exerciseSource: source,
         name: requiredString(exercise.name, `exercises[${exerciseIndex}].name`),
@@ -118,27 +120,4 @@ export function formatSet(set: WorkoutSet, units: Units): string {
   return `${weightLabel} × ${repsLabel}`
 }
 
-export function summarizeExercise(exercise: WorkoutExercise, units: Units) {
-  const completedSets = exercise.sets.filter((set) => set.done && Number.parseInt(set.reps, 10) > 0)
-  const volumeKg = completedSets.reduce((total, set) => (
-    total + (Number.parseFloat(set.weight) || 0) * (Number.parseInt(set.reps, 10) || 0)
-  ), 0)
-  const maxKg = completedSets.reduce((max, set) => Math.max(max, Number.parseFloat(set.weight) || 0), 0)
-
-  return {
-    completed: completedSets.length,
-    total: exercise.sets.length,
-    volume: formatCompactVolume(volumeKg, units),
-    max: maxKg ? `${kgStringToDisplayWeight(String(maxKg), units)} ${units}` : '—',
-  }
-}
-
-export function formatElapsed(startedAt: number, now = Date.now()): string {
-  const total = Math.max(0, Math.floor((now - startedAt) / 1000))
-  const hours = Math.floor(total / 3600)
-  const minutes = Math.floor((total % 3600) / 60)
-  const seconds = total % 60
-  return hours > 0
-    ? `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-}
+export { summarizeExercise, formatElapsedTime as formatElapsed } from '../../src/shared/workoutDisplay'

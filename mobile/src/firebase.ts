@@ -9,6 +9,7 @@ import {
 } from '@react-native-firebase/auth'
 import {
   connectFirestoreEmulator,
+  collection, getDocs, query, where, orderBy, limit,
   doc,
   getDoc,
   getFirestore,
@@ -17,19 +18,22 @@ import {
 import Constants from 'expo-constants'
 
 import type { SubscribeToSession } from './activeSessionController'
-import type { Units } from './session'
+import type { Units, ExerciseSource } from './session'
+import { parsePreviousSets, type ExerciseMetadata, type ReadResult } from './scopedRead'
+import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
+import { EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 
 const backend = Constants.expoConfig?.extra?.firebaseBackend
 const emulatorHost = Constants.expoConfig?.extra?.firebaseEmulatorHost
 
-if (backend !== 'emulator' && backend !== 'production') {
-  throw new Error('The Firebase backend was not configured at build time.')
-}
-if (backend === 'emulator' && typeof emulatorHost !== 'string') {
-  throw new Error('The Firebase emulator host was not configured at build time.')
-}
-
 async function initializeServices() {
+  if (backend !== 'emulator' && backend !== 'production') {
+    throw new Error('The Firebase backend was not configured at build time.')
+  }
+  if (backend === 'emulator' && typeof emulatorHost !== 'string') {
+    throw new Error('The Firebase emulator host was not configured at build time.')
+  }
+
   let firebaseApp: FirebaseApp
   if (backend === 'emulator') {
     firebaseApp = getApps().find((app) => app.name === 'ironlog-emulator') ?? await initializeApp({
@@ -52,7 +56,10 @@ async function initializeServices() {
   return { auth, firestore }
 }
 
-const services = initializeServices()
+let services: ReturnType<typeof initializeServices> | undefined
+function getServices() {
+  return services ??= initializeServices()
+}
 
 export type AuthUser = User
 
@@ -62,7 +69,7 @@ export function observeAuth(
 ): () => void {
   let active = true
   let unsubscribe: (() => void) | undefined
-  void services.then(
+  void getServices().then(
     ({ auth }) => {
       if (active) unsubscribe = onAuthStateChanged(auth, onChange)
     },
@@ -77,19 +84,19 @@ export function observeAuth(
 }
 
 export async function login(email: string, password: string): Promise<void> {
-  const { auth } = await services
+  const { auth } = await getServices()
   await signInWithEmailAndPassword(auth, email.trim(), password)
 }
 
 export async function logout(): Promise<void> {
-  const { auth } = await services
+  const { auth } = await getServices()
   await signOut(auth)
 }
 
 export const subscribeToActiveSession: SubscribeToSession = (uid, onChange, onError) => {
   let active = true
   let unsubscribe: (() => void) | undefined
-  void services.then(
+  void getServices().then(
     ({ firestore }) => {
       if (!active) return
       unsubscribe = onSnapshot(
@@ -115,10 +122,35 @@ export const subscribeToActiveSession: SubscribeToSession = (uid, onChange, onEr
 }
 
 export async function readUnits(uid: string): Promise<Units> {
-  const { firestore } = await services
+  const { firestore } = await getServices()
   const snapshot = await getDoc(doc(firestore, 'users', uid))
   if (!snapshot.exists()) return 'kg'
   const units = snapshot.data()?.units
   if (units !== 'kg' && units !== 'lbs') throw new Error('The profile has invalid units.')
   return units
+}
+
+export async function readPreviousSets(uid: string, exerciseId: string, source: ExerciseSource) {
+  const { firestore } = await getServices()
+  const snapshot = await getDocs(query(collection(firestore, 'exerciseSessions'),
+    where('userId', '==', uid), where('exerciseId', '==', exerciseId),
+    where('exerciseSource', '==', source), orderBy('startedAt', 'desc'), limit(1)))
+  return {
+    data: snapshot.empty ? [] : parsePreviousSets(snapshot.docs[0]!.data(), uid, exerciseId, source),
+    fromCache: snapshot.metadata.fromCache,
+  }
+}
+
+export async function readExerciseMetadata(uid: string): Promise<ReadResult<ExerciseMetadata[]>> {
+  const { firestore } = await getServices()
+  const snapshot = await getDocs(query(collection(firestore, 'userExercises'), where('userId', '==', uid)))
+  return {
+    data: snapshot.docs.map((document) => {
+      const data = document.data()
+      if (data.userId !== uid || typeof data.category !== 'string' || !(data.category in EXERCISE_CATEGORY_LABELS)
+        || typeof data.equipment !== 'string' || !(data.equipment in EQUIPMENT_LABELS)) throw new Error('Invalid exercise metadata')
+      return { id: document.id, category: data.category, equipment: data.equipment }
+    }),
+    fromCache: snapshot.metadata.fromCache,
+  }
 }

@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ChevronDown, Ellipsis, Plus, Timer, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { useWorkoutStore, type WorkoutExercise, type WorkoutSet } from '../store/workoutStore'
+import { useWorkoutStore, type WorkoutExercise } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { getRecentWorkouts } from '../lib/workoutService'
@@ -31,15 +31,7 @@ import {
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
-const WORKOUT_LABELS = ['Push', 'Pull', 'Legs', 'Upper Body', 'Lower Body', 'Full Body', 'Back & Biceps', 'Chest & Triceps', 'Cardio', 'Crossfit', 'Mobility'] as const
-const EQUIPMENT_LABELS: Record<string, string> = {
-  barbell: 'Barbell',
-  dumbbell: 'Dumbbells',
-  cable: 'Cable',
-  machine: 'Machine',
-  bodyweight: 'BW',
-  kettlebell: 'KB',
-}
+import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, focusExerciseIndex, focusSetIndex } from '../shared/workoutDisplay'
 
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
 
@@ -175,21 +167,6 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
     </motion.div>
   )
 }
-
-function parseWeight(value: string): number {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function parseReps(value: string): number {
-  const parsed = Number.parseInt(value, 10)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function calcSetVolume(set: Pick<WorkoutSet, 'weight' | 'reps'>): number {
-  return parseWeight(set.weight) * parseReps(set.reps)
-}
-
 function getExerciseClientId(exercise: WorkoutExercise, exerciseIndex: number): string {
   return exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`
 }
@@ -770,14 +747,10 @@ export default function WorkoutPage() {
         ? 'All sets are marked complete. Finish the session or add more sets.'
         : `${completedSets} of ${totalSets} sets completed.`
 
-  const focusExerciseIndex = (() => {
-    const nextIndex = active.exercises.findIndex((exercise) => exercise.sets.some((set) => !set.done))
-    if (nextIndex >= 0) return nextIndex
-    return active.exercises.length > 0 ? active.exercises.length - 1 : -1
-  })()
-  const focusExercise = focusExerciseIndex >= 0 ? active.exercises[focusExerciseIndex] : null
+  const focusedIndex = focusExerciseIndex(active.exercises)
+  const focusExercise = focusedIndex >= 0 ? active.exercises[focusedIndex] : null
   const defaultExpandedExerciseClientId = focusExercise
-    ? getExerciseClientId(focusExercise, focusExerciseIndex)
+    ? getExerciseClientId(focusExercise, focusedIndex)
     : null
   const manualExpandedExerciseExists = manualExpandedExerciseClientId === '' || active.exercises.some(
     (exercise, exerciseIndex) => getExerciseClientId(exercise, exerciseIndex) === manualExpandedExerciseClientId,
@@ -1153,10 +1126,7 @@ export default function WorkoutPage() {
                       const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
                       const exerciseClientId = getExerciseClientId(exercise, exerciseIndex)
                       const hintKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
-                      const exerciseOpenSetIndex = exercise.sets.findIndex((set) => !set.done)
-                      const exerciseFocusSetIndex = exerciseOpenSetIndex >= 0
-                        ? exerciseOpenSetIndex
-                        : Math.max(exercise.sets.length - 1, 0)
+                      const exerciseFocusSetIndex = focusSetIndex(exercise.sets)
                       const isCollapsible = active.exercises.length > 1
                       const isExpanded = !isCollapsible || exerciseClientId === expandedExerciseClientId
 
@@ -1174,7 +1144,7 @@ export default function WorkoutPage() {
                           hintKey={hintKey}
                           isCollapsible={isCollapsible}
                           isExpanded={isExpanded}
-                          isFocusedExercise={exerciseIndex === focusExerciseIndex}
+                          isFocusedExercise={exerciseIndex === focusedIndex}
                           suggestion={suggestions[hintKey] ?? null}
                           units={units}
                           userId={user?.uid}

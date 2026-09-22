@@ -112,15 +112,15 @@ async function main() {
     read: async () => {
       const snapshot = await transaction.get(reference)
       callbackCount += 1
-      if (callbackCount === 1) await adminDb.collection('activeSessions').doc(owner.uid).update({ label: 'Concurrent label' })
+      if (callbackCount === 1) await adminDb.collection('activeSessions').doc(owner.uid).update({ updatedAt: Date.now() + 1 })
       return { exists: snapshot.exists(), data: snapshot.exists() ? snapshot.data() : null }
     },
     update: (fields) => transaction.update(reference, fields),
-  }, owner.uid, { ...workout, sessionRevision: `${runId}-revision-4` }, `${runId}-revision-4`, `${runId}-revision-5`, Date.now()))
+  }, owner.uid, { ...workout, label: ' Native label ', sessionRevision: `${runId}-revision-4` }, `${runId}-revision-4`, `${runId}-revision-5`, Date.now()))
   const retried = (await getDoc(reference)).data()!
   assert.ok(callbackCount > 1)
   assert.equal(retried.sessionRevision, `${runId}-revision-5`)
-  assert.equal(retried.label, 'Concurrent label')
+  assert.equal(retried.label, 'Native label')
   assert.equal(retried.exercises[0].sets[0].done, true)
   console.log('native active-session adapter emulator checks passed')
   } finally {

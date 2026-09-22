@@ -400,3 +400,28 @@ test('a recovered offline draft wins when units lookup fails before journal reco
   assert.equal(ready(h.states).units, 'lbs')
   assert.equal(ready(h.states).stale, true)
 })
+
+test('label-only and exercise add/remove edits are saved as draft changes', async () => {
+  const h = harness()
+  await loadServer(h)
+  h.controller.setLabel('Pull')
+  await wait()
+  assert.equal(ready(h.states).session.label, 'Pull')
+  h.controller.retrySave()
+  await wait()
+  assert.equal(h.saves.length, 1)
+  assert.equal(h.saves[0]?.session.label, 'Pull')
+  h.saves[0]!.result.resolve()
+  h.listeners[0]!.next({ ...snapshot('user-a', 'request-1'), data: { ...session('user-a', 'request-1', 'Pull') } })
+  await wait(30)
+  assert.equal(ready(h.states).syncStatus, 'saved')
+
+  const addedId = h.controller.addExercise('custom-1', 'Mine', 'user')
+  await wait()
+  const added = ready(h.states).session
+  assert.equal(added.exercises.at(-1)?.clientId, addedId)
+  assert.equal(added.exercises.at(-1)?.exerciseSource, 'user')
+  h.controller.removeExercise(added.exercises[0]!.clientId)
+  await wait()
+  assert.deepEqual(ready(h.states).session.exercises.map(({ clientId }) => clientId), [addedId])
+})

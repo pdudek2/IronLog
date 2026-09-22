@@ -90,6 +90,37 @@ export function addSet(session: ActiveWorkout, exerciseId: string): ActiveWorkou
   }
 }
 
+// Firestore rules reject active sessions with more than 20 exercises.
+export const MAX_SESSION_EXERCISES = 20
+
+export function addExercise(
+  session: ActiveWorkout,
+  exercise: Pick<WorkoutExercise, 'clientId' | 'exerciseId' | 'exerciseSource' | 'name'>,
+): ActiveWorkout {
+  if (session.exercises.length >= MAX_SESSION_EXERCISES) return session
+  return {
+    ...session,
+    exercises: [...session.exercises, {
+      ...exercise,
+      sets: [{ clientId: createLocalId('set'), weight: '', reps: '', done: false }],
+    }],
+  }
+}
+
+export function removeExercise(session: ActiveWorkout, exerciseId: string): ActiveWorkout {
+  return { ...session, exercises: session.exercises.filter((exercise) => exercise.clientId !== exerciseId) }
+}
+
+export function setLabel(session: ActiveWorkout, label: string): ActiveWorkout {
+  const next: ActiveWorkout = { ...session, label: label.trim() }
+  if (!next.label) delete next.label
+  return next
+}
+
+export function exerciseHasEnteredSets(exercise: WorkoutExercise): boolean {
+  return exercise.sets.some((set) => set.done || set.weight.trim() !== '' || set.reps.trim() !== '')
+}
+
 export function removeSet(session: ActiveWorkout, exerciseId: string, setId: string): ActiveWorkout {
   return {
     ...session,

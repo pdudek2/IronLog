@@ -8,7 +8,9 @@ import {
   ActivityIndicator,
   AppState,
   Image,
+  FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -18,15 +20,17 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Defs, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg'
 
 import grainTexture from '../assets/grain.png'
-import { exercises as exerciseCatalog } from '../../data/exercises'
+import { exercises as exerciseCatalog, searchExercises, type Category } from '../../data/exercises'
 import {
   EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
+  formatExerciseMeta,
 } from '../../src/lib/exerciseLabels'
+import { pluralize } from '../../src/lib/pluralize'
 import {
   displayWeightDeltaToKg,
 } from '../../src/shared/weightUnits'
@@ -35,12 +39,14 @@ import {
   formatElapsed,
   summarizeExercise,
   type ActiveWorkout,
+  type ExerciseSource,
   type Units,
   type WorkoutExercise,
 } from '../src/session'
 import { useActiveSession } from '../src/useActiveSession'
 import { useSessionRead } from '../src/useSessionRead'
-import type { ExerciseMetadata } from '../src/scopedRead'
+import type { ExerciseMetadata, ReadState } from '../src/scopedRead'
+import { exerciseHasEnteredSets, MAX_SESSION_EXERCISES } from '../src/setMutations'
 import {
   reconcileSetInputSubmissions,
   setInputToStoredValue,
@@ -48,7 +54,7 @@ import {
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { SIGNAL_PATH } from '../../src/shared/authVisual'
-import { EQUIPMENT_LABELS, focusExerciseIndex, focusSetIndex, formatPreviousSet } from '../../src/shared/workoutDisplay'
+import { EQUIPMENT_LABELS, focusExerciseIndex, focusSetIndex, formatPreviousSet, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 
 const colors = {
   background: '#111012',
@@ -353,6 +359,106 @@ interface EditingActions {
   setDone(exerciseId: string, setId: string, done: boolean): void
   addSet(exerciseId: string): void
   removeSet(exerciseId: string, setId: string): void
+  addExercise(exerciseId: string, name: string, source: ExerciseSource): string
+  removeExercise(exerciseId: string): void
+}
+
+function PlusIcon({ color = colors.text }: { color?: string }) {
+  return <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="M12 5v14M5 12h14" fill="none" stroke={color} strokeWidth={2.4} strokeLinecap="round" /></Svg>
+}
+
+function LabelTabs({ active, onToggle }: { active: string; onToggle: (label: string) => void }) {
+  return <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.labelTabs}>
+    {WORKOUT_LABELS.map((label) => <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: active === label }}
+      accessibilityLabel={`Session type ${label}`} onPress={() => onToggle(label)}
+      style={({ pressed }) => [styles.labelTab, active === label && styles.labelTabActive, pressed && styles.headingPressed]}>
+      <Text style={[styles.labelTabText, active === label && styles.labelTabTextActive]}>{label}</Text>
+    </Pressable>)}
+  </ScrollView>
+}
+
+const PICKER_CATEGORIES: { value: Category | 'all'; label: string }[] = [
+  { value: 'all', label: 'All' },
+  ...(['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'cardio'] as const).map((value) => ({ value, label: EXERCISE_CATEGORY_LABELS[value] ?? value })),
+]
+
+type PickerResult = { id: string; name: string; source: ExerciseSource; equipment: string; muscles: string[] }
+
+function ExercisePicker({ userExercises, onRetryUserExercises, onSelect, onClose }: {
+  userExercises: ReadState<ExerciseMetadata[]>
+  onRetryUserExercises: () => void
+  onSelect: (id: string, name: string, source: ExerciseSource) => void
+  onClose: () => void
+}) {
+  const insets = useSafeAreaInsets()
+  const [query, setQuery] = useState('')
+  const [category, setCategory] = useState<Category | 'all'>('all')
+  const [searchFocused, setSearchFocused] = useState(false)
+  const q = query.toLowerCase()
+  // Matches web ordering: the user's own exercises first, then the shared library.
+  const results: PickerResult[] = [
+    ...(userExercises.status === 'ready' ? userExercises.data : [])
+      .filter((exercise) => (!q || exercise.name.toLowerCase().includes(q)) && (category === 'all' || exercise.category === category))
+      .map((exercise) => ({ ...exercise, source: 'user' as const })),
+    ...searchExercises(query, category === 'all' ? undefined : category).map((exercise) => ({ ...exercise, source: 'global' as const })),
+  ]
+  return <Modal animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent visible>
+    <View style={[styles.pickerShell, { paddingTop: Math.max(12.8, insets.top) }]}>
+      <View style={styles.pickerHead}>
+        <View style={styles.pickerTitleRow}>
+          <View style={styles.pickerTitleGroup}>
+            <Text accessibilityRole="header" style={styles.pickerTitle}>Choose an exercise</Text>
+            <Text style={styles.pickerMeta}>{results.length} {pluralize(results.length, 'result', 'results')}</Text>
+          </View>
+          <Pressable accessibilityRole="button" accessibilityLabel="Close exercise picker" onPress={onClose}
+            style={({ pressed }) => [styles.pickerClose, pressed && styles.pickerPressed]}>
+            <Svg width={17} height={17} viewBox="0 0 24 24"><Path d="m18 6-12 12M6 6l12 12" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" /></Svg>
+          </Pressable>
+        </View>
+        <View style={[styles.pickerSearch, searchFocused && styles.pickerSearchFocused]}>
+          <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="m21 21-4.34-4.34M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
+          <TextInput accessibilityLabel="Search exercises" autoFocus onBlur={() => setSearchFocused(false)} onChangeText={setQuery}
+            onFocus={() => setSearchFocused(true)} placeholder="Search exercises..." placeholderTextColor={colors.mutedSoft}
+            returnKeyType="search" selectionColor={colors.accentText} style={styles.pickerSearchInput} value={query} />
+        </View>
+      </View>
+      <View style={styles.pickerCategoriesBar}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.pickerCategories}
+          accessibilityLabel="Exercise category">
+          {PICKER_CATEGORIES.map(({ value, label }) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: category === value }}
+            onPress={() => setCategory(value)} style={({ pressed }) => [styles.pickerCategory, pressed && styles.pickerPressed]}>
+            <Text style={[styles.pickerCategoryText, category === value && styles.pickerCategoryTextActive]}>{label}</Text>
+            {category === value && <View style={styles.pickerCategoryUnderline} />}
+          </Pressable>)}
+        </ScrollView>
+      </View>
+      <FlatList
+        data={results}
+        keyExtractor={(item) => `${item.source}-${item.id}`}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[styles.pickerList, { paddingBottom: Math.max(12, insets.bottom) }]}
+        ListHeaderComponent={userExercises.status === 'loading'
+          ? <Text accessibilityLiveRegion="polite" style={styles.pickerFeedback}>Loading your exercises…</Text>
+          : userExercises.status === 'error'
+            ? <Pressable accessibilityRole="button" onPress={onRetryUserExercises} style={styles.lookupAction}>
+              <Text style={styles.pickerFeedback}>Could not load your exercises. The shared library is still available. <Text style={styles.syncActionText}>Retry</Text></Text>
+            </Pressable>
+            : null}
+        ListEmptyComponent={userExercises.status === 'ready' ? <View style={styles.pickerEmpty}>
+          <Text style={styles.pickerEmptyTitle}>No results</Text>
+          <Text style={styles.pickerEmptyCopy}>Change your search or choose another category.</Text>
+        </View> : null}
+        renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${item.name}${item.source === 'user' ? ', mine' : ''}`}
+          onPress={() => onSelect(item.id, item.name, item.source)} style={({ pressed }) => [styles.pickerResult, pressed && styles.pickerPressed]}>
+          <View style={styles.pickerResultMain}>
+            <Text numberOfLines={1} style={styles.pickerResultName}>{item.name}</Text>
+            {item.source === 'user' && <Text style={styles.pickerMine}>mine</Text>}
+          </View>
+          <Text style={styles.pickerMeta}>{formatExerciseMeta(item.equipment, item.muscles)}</Text>
+        </Pressable>}
+      />
+    </View>
+  </Modal>
 }
 
 function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, units, metadata, onToggle, editing }: {
@@ -380,12 +486,25 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
         <Path d="m6 9 6 6 6-6" fill="none" stroke={expanded ? accent : colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
       </Svg>
     </View>}
-    <View importantForAccessibility="no-hide-descendants" style={styles.omittedDeleteSpace} />
   </>
+  const remove = () => {
+    if (!exerciseHasEnteredSets(exercise)) return editing.removeExercise(exercise.clientId)
+    Alert.alert('Remove exercise?', 'This will remove the exercise and its sets from the active session.', [
+      { text: 'Keep', style: 'cancel' },
+      { text: 'Remove exercise', style: 'destructive', onPress: () => editing.removeExercise(exercise.clientId) },
+    ])
+  }
   return <View style={styles.exerciseCard}>
+    <View style={styles.exerciseHeadRow}>
     {collapsible ? <Pressable accessibilityRole="button" accessibilityLabel={`${expanded ? 'Collapse' : 'Expand'} exercise ${exercise.name}`}
       accessibilityState={{ expanded }} onPress={onToggle} style={({ pressed }) => [styles.exerciseHeading, pressed && styles.headingPressed]}>{heading}</Pressable>
       : <View style={styles.exerciseHeading}>{heading}</View>}
+    <Pressable accessibilityRole="button" accessibilityLabel={`Remove exercise ${exercise.name}`} hitSlop={4} onPress={remove}
+      style={({ pressed }) => [styles.deleteExercise, pressed && styles.headingPressed]}>
+      <Svg width={14} height={14} viewBox="0 0 24 24"><Path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
+      <Text style={styles.deleteExerciseText}>Delete</Text>
+    </Pressable>
+    </View>
     {expanded && <View>
       <View accessibilityLabel={`Exercise summary ${exercise.name}`} style={styles.exerciseSummary}>
         {[['Progress', `${summary.completed}/${summary.total}`], ['Volume', summary.volume], ['Max', summary.max]].map(([label, value], index) =>
@@ -443,6 +562,7 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
 
 function WorkoutLedger({ uid, session, units, stale, editing }: { uid: string; session: ActiveWorkout; units: Units; stale: boolean; editing: EditingActions }) {
   const [manual, setManual] = useState<string | null>(null)
+  const [picking, setPicking] = useState(false)
   const identity = (exercise: WorkoutExercise, index: number) => exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${index}`
   const focused = focusExerciseIndex(session.exercises)
   const defaultId = focused >= 0 ? identity(session.exercises[focused]!, focused) : ''
@@ -450,7 +570,23 @@ function WorkoutLedger({ uid, session, units, stale, editing }: { uid: string; s
   const loadMetadata = useCallback(() => readExerciseMetadata(uid), [uid])
   const hasCustom = session.exercises.some((exercise) => exercise.exerciseSource === 'user')
   const sessionKey = `${session.sessionId}:${stale}`
-  const catalog = useSessionRead(JSON.stringify([uid, sessionKey]), loadMetadata, hasCustom)
+  const catalog = useSessionRead(JSON.stringify([uid, sessionKey]), loadMetadata, hasCustom || picking)
+  const full = session.exercises.length >= MAX_SESSION_EXERCISES
+  const openPicker = () => setPicking(true)
+  const picker = picking && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} onClose={() => setPicking(false)}
+    onSelect={(id, name, source) => {
+      setPicking(false)
+      setManual(editing.addExercise(id, name, source))
+    }} />
+  if (session.exercises.length === 0) return <View style={styles.exerciseStack}>
+    <View accessibilityLabel="No exercises yet" style={styles.emptyWorkout}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Add exercise" onPress={openPicker}
+        style={({ pressed }) => [styles.primaryAction, styles.buttonPrimary, styles.emptyWorkoutAction, pressed && styles.buttonPressed]}>
+        <PlusIcon color={colors.textStrong} /><Text style={styles.primaryActionText}>Add exercise</Text>
+      </Pressable>
+    </View>
+    {picker}
+  </View>
   return <View style={styles.exerciseStack}>
     {hasCustom && catalog.state.status === 'error' && <Pressable onPress={catalog.retry} accessibilityRole="button" style={styles.lookupAction}><Text style={styles.lookupText}>Exercise details unavailable · Retry</Text></Pressable>}
     {session.exercises.map((exercise, index) => <ExerciseLedger
@@ -460,8 +596,12 @@ function WorkoutLedger({ uid, session, units, stale, editing }: { uid: string; s
         : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === exercise.exerciseId) : undefined}
       editing={editing}
       onToggle={() => setManual(identity(exercise, index) === expandedId ? '' : identity(exercise, index))} />)}
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.omittedAddExerciseSpace} />
-    <Text style={styles.previewCopy}>Exercise changes and finishing remain on web.</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel="Add exercise" accessibilityState={{ disabled: full }} disabled={full} onPress={openPicker}
+      style={({ pressed }) => [styles.primaryAction, styles.inlineAddExercise, full && styles.buttonDisabled, pressed && styles.setStepperPressed]}>
+      <PlusIcon color={colors.textStrong} /><Text style={styles.primaryActionText}>Add exercise</Text>
+    </Pressable>
+    <Text style={styles.previewCopy}>{full ? `Sessions hold up to ${MAX_SESSION_EXERCISES} exercises. ` : ''}Finishing remains on web.</Text>
+    {picker}
   </View>
 }
 
@@ -469,7 +609,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const scrollY = useRef(new Animated.Value(0)).current
   const {
     state, retry, retrySave, discardLocalChanges,
-    updateSet, adjustSet, setDone, addSet, removeSet,
+    updateSet, adjustSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel,
   } = useActiveSession(user.uid)
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
@@ -558,7 +698,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         {state.status === 'ready' && (
         <View>
           <View style={styles.workoutLabelsBand}>
-            <Text accessibilityLabel={`Session type: ${state.session.label ?? 'Current workout'}`} style={styles.sessionLabel}>{state.session.label ?? 'Current workout'}</Text>
+            <LabelTabs active={state.session.label ?? ''} onToggle={(label) => setLabel(state.session.label === label ? '' : label)} />
             <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' ? 'Saved on device' : ''}</Text>
           </View>
           {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
@@ -582,12 +722,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
             {state.syncStatus === 'conflict' && <Pressable accessibilityRole="button" onPress={confirmDiscardLocal} style={styles.syncAction}><Text style={styles.syncActionText}>Use latest</Text></Pressable>}
           </View>}
 
-          {state.session.exercises.length === 0 ? (
-            <Text style={[styles.stateCopy, styles.emptyExerciseCopy]}>No exercises yet.</Text>
-          ) : (
-            <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale}
-              editing={{ updateSet, adjustSet, setDone, addSet, removeSet }} />
-          )}
+          <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale}
+            editing={{ updateSet, adjustSet, setDone, addSet, removeSet, addExercise, removeExercise }} />
         </View>
         )}
       </Animated.ScrollView>
@@ -705,12 +841,10 @@ const styles = StyleSheet.create({
   stateCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
   elapsed: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20, lineHeight: 28, fontVariant: ['tabular-nums'] },
   workoutLabelsBand: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, height: 52 },
-  sessionLabel: { color: colors.accentText, borderBottomColor: colors.accent, borderBottomWidth: 2, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 18, paddingHorizontal: 12, paddingVertical: 12 },
   syncInline: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, lineHeight: 18, marginLeft: 'auto', paddingVertical: 12 },
   previewCopy: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, textAlign: 'center', paddingVertical: 8 },
   lookupText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   lookupAction: { minHeight: 44, justifyContent: 'center' },
-  omittedDeleteSpace: { width: 86 },
   setCellDone: { opacity: 0.7 },
   signalFocused: { opacity: 0.28, transform: [{ translateX: -9.6 }, { translateY: -5.6 }, { rotate: '-3deg' }, { scaleY: 1.08 }] },
   staleNotice: { backgroundColor: colors.surface, borderColor: colors.accent, borderWidth: 1, borderRadius: 16, marginHorizontal: 16, marginTop: 14, paddingHorizontal: 12, paddingVertical: 10 },
@@ -721,10 +855,13 @@ const styles = StyleSheet.create({
   syncCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 2 },
   syncAction: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44, paddingRight: 16 },
   syncActionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
-  emptyExerciseCopy: { marginTop: 80 },
   exerciseStack: { paddingHorizontal: 16, paddingTop: 4 },
   exerciseCard: { paddingBottom: 12, paddingTop: 10.4 },
-  exerciseHeading: { alignItems: 'center', flexDirection: 'row', minHeight: 44 },
+  exerciseHeadRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
+  exerciseHeading: { alignItems: 'center', flex: 1, flexDirection: 'row', minHeight: 44 },
+  // .workout-danger-action: 0.4rem 0.65rem padding, 0.76rem/700, muted.
+  deleteExercise: { alignItems: 'center', flexDirection: 'row', gap: 5.6, justifyContent: 'center', minHeight: 44, paddingHorizontal: 10.4 },
+  deleteExerciseText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.16, lineHeight: 18 },
   headingPressed: { opacity: 0.72 },
   exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
   exerciseName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, lineHeight: 28, marginTop: 6 },
@@ -765,5 +902,41 @@ const styles = StyleSheet.create({
   addSetText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
   omittedSetAdjustmentsSpace: { height: 52 },
   omittedWorkoutActionsSpace: { height: 49 },
-  omittedAddExerciseSpace: { height: 72 },
+  // .workout-primary-action: full width, 3rem tall, 0.9rem/700.
+  primaryAction: { alignItems: 'center', borderRadius: 8, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48 },
+  primaryActionText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4, lineHeight: 20 },
+  inlineAddExercise: { backgroundColor: colors.surfaceRaised, borderColor: colors.line, borderWidth: 1, marginTop: 16 },
+  emptyWorkout: { borderBottomColor: colors.lineStrong, borderBottomWidth: 1, borderTopColor: colors.lineStrong, borderTopWidth: 1, paddingVertical: 22.4 },
+  emptyWorkoutAction: { maxWidth: 320, width: '100%' },
+  labelTabs: { paddingRight: 32 },
+  labelTab: { borderBottomColor: 'transparent', borderBottomWidth: 2, justifyContent: 'center', minHeight: 44, paddingHorizontal: 12 },
+  labelTabActive: { borderBottomColor: colors.accent },
+  labelTabText: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 18 },
+  labelTabTextActive: { color: colors.accentText },
+  pickerShell: { backgroundColor: '#151316', flex: 1 },
+  pickerHead: { gap: 12, paddingBottom: 13.6, paddingHorizontal: 16 },
+  pickerTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 16, justifyContent: 'space-between' },
+  pickerTitleGroup: { alignItems: 'baseline', flexDirection: 'row', flexShrink: 1, gap: 10.4 },
+  pickerTitle: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 18.4 },
+  pickerMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.52, lineHeight: 17 },
+  pickerClose: { alignItems: 'center', borderRadius: 8, height: 44, justifyContent: 'center', width: 44 },
+  pickerPressed: { backgroundColor: 'rgba(255, 255, 255, 0.035)' },
+  pickerSearch: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.045)', borderRadius: 8, flexDirection: 'row', gap: 9.6, minHeight: 44, paddingHorizontal: 12 },
+  pickerSearchFocused: { boxShadow: '0 0 0 2px rgba(240, 67, 90, 0.24)' },
+  pickerSearchInput: { color: colors.textStrong, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, minHeight: 44, padding: 0 },
+  pickerCategoriesBar: { borderBottomColor: colors.line, borderBottomWidth: 1 },
+  pickerCategories: { paddingLeft: 16, paddingRight: 48 },
+  pickerCategory: { justifyContent: 'center', minHeight: 44, paddingHorizontal: 10.4 },
+  pickerCategoryText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.84, lineHeight: 18 },
+  pickerCategoryTextActive: { color: colors.textStrong },
+  pickerCategoryUnderline: { backgroundColor: colors.accent, bottom: -1, height: 2, left: 10.4, position: 'absolute', right: 10.4 },
+  pickerList: { paddingHorizontal: 16 },
+  pickerFeedback: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, paddingVertical: 10 },
+  pickerResult: { borderBottomColor: colors.line, borderBottomWidth: 1, gap: 4.5, justifyContent: 'center', minHeight: 58.4, paddingVertical: 11.5 },
+  pickerResultMain: { alignItems: 'baseline', flexDirection: 'row', gap: 8.8 },
+  pickerResultName: { color: colors.textStrong, flexShrink: 1, fontFamily: 'InstrumentSans_700Bold', fontSize: 16, lineHeight: 20 },
+  pickerMine: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 10.56 },
+  pickerEmpty: { alignItems: 'center', gap: 5.6, justifyContent: 'center', minHeight: 208 },
+  pickerEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
+  pickerEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13.12, textAlign: 'center' },
 })

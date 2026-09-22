@@ -54,5 +54,8 @@ export function useActiveSession(uid: string | null) {
     setDone: controller.setDone.bind(controller),
     addSet: controller.addSet.bind(controller),
     removeSet: controller.removeSet.bind(controller),
+    addExercise: controller.addExercise.bind(controller),
+    removeExercise: controller.removeExercise.bind(controller),
+    setLabel: controller.setLabel.bind(controller),
   }
 }

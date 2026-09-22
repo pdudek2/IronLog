@@ -17,7 +17,7 @@ export function readStateForKey<T>(key: string, stored: { key: string; state: Re
 }
 
 export type PreviousSet = { weight: number; reps: number }
-export type ExerciseMetadata = { id: string; category: string; equipment: string }
+export type ExerciseMetadata = { id: string; name: string; category: string; equipment: string; muscles: string[] }
 export function parsePreviousSets(data: Record<string, unknown>, uid: string, id: string, source: string): PreviousSet[] {
   if (data.userId !== uid || data.exerciseId !== id || data.exerciseSource !== source || !Array.isArray(data.sets)) {
     throw new Error('Invalid exercise history')

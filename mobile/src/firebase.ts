@@ -187,8 +187,13 @@ export async function readExerciseMetadata(uid: string): Promise<ReadResult<Exer
     data: snapshot.docs.map((document) => {
       const data = document.data()
       if (data.userId !== uid || typeof data.category !== 'string' || !(data.category in EXERCISE_CATEGORY_LABELS)
-        || typeof data.equipment !== 'string' || !(data.equipment in EQUIPMENT_LABELS)) throw new Error('Invalid exercise metadata')
-      return { id: document.id, category: data.category, equipment: data.equipment }
+        || typeof data.equipment !== 'string' || !(data.equipment in EQUIPMENT_LABELS)
+        || typeof data.name !== 'string' || !data.name.trim()) throw new Error('Invalid exercise metadata')
+      const muscles: unknown[] = Array.isArray(data.muscles) ? data.muscles : []
+      return {
+        id: document.id, name: data.name, category: data.category, equipment: data.equipment,
+        muscles: muscles.filter((muscle): muscle is string => typeof muscle === 'string'),
+      }
     }),
     fromCache: snapshot.metadata.fromCache,
   }

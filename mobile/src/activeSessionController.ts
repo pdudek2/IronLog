@@ -1,7 +1,10 @@
 import {
+  addExercise,
   addSet,
   adjustSetValue,
+  removeExercise,
   removeSet,
+  setLabel,
   setSetDone,
   updateSetValue,
   type SetField,
@@ -11,7 +14,7 @@ import {
   type SessionDraft,
   type TwoSlotSessionJournal,
 } from './sessionJournal'
-import { parseSessionDocument, type ActiveWorkout, type Units } from './session'
+import { createLocalId, parseSessionDocument, type ActiveWorkout, type ExerciseSource, type Units } from './session'
 
 export interface SessionSnapshot {
   exists: boolean
@@ -70,8 +73,9 @@ function errorMessage(error: unknown): string {
   return 'The active session could not be loaded.'
 }
 
-function sameExercises(left: ActiveWorkout, right: ActiveWorkout): boolean {
-  return left.sessionId === right.sessionId && JSON.stringify(left.exercises) === JSON.stringify(right.exercises)
+function sameContent(left: ActiveWorkout, right: ActiveWorkout): boolean {
+  return left.sessionId === right.sessionId && (left.label ?? '') === (right.label ?? '')
+    && JSON.stringify(left.exercises) === JSON.stringify(right.exercises)
 }
 
 function reuseStableIds(next: ActiveWorkout, previous: ActiveWorkout | null): ActiveWorkout {
@@ -245,6 +249,21 @@ export class ActiveSessionController {
     this.mutate((session) => removeSet(session, exerciseId, setId))
   }
 
+  /** Returns the new exercise's client id so the caller can focus it once the draft publishes. */
+  addExercise(exerciseId: string, name: string, exerciseSource: ExerciseSource): string {
+    const clientId = createLocalId('exercise')
+    this.mutate((session) => addExercise(session, { clientId, exerciseId, exerciseSource, name }))
+    return clientId
+  }
+
+  removeExercise(exerciseId: string): void {
+    this.mutate((session) => removeExercise(session, exerciseId))
+  }
+
+  setLabel(label: string): void {
+    this.mutate((session) => setLabel(session, label))
+  }
+
   clear(): void {
     this.resetRuntime()
     this.uid = null
@@ -264,7 +283,7 @@ export class ActiveSessionController {
       const current = this.draft?.session ?? this.authoritative ?? this.cachedSession
       if (!current) return
       const next = change(current)
-      if (sameExercises(current, next)) return
+      if (sameContent(current, next)) return
       const draft: SessionDraft = {
         session: next,
         units: this.units,
@@ -337,7 +356,7 @@ export class ActiveSessionController {
       if (revision === draft.pending.requestRevision) {
         this.conflict = null
         this.failed = false
-        if (sameExercises(draft.session, draft.pending.snapshot)) {
+        if (sameContent(draft.session, draft.pending.snapshot)) {
           try {
             await this.journal.clear(uid)
           } catch {
@@ -385,7 +404,7 @@ export class ActiveSessionController {
     }
 
     if (revision !== draft.baseRevision) return this.setConflict('changed')
-    if (sameExercises(draft.session, remote)) {
+    if (sameContent(draft.session, remote)) {
       try {
         await this.journal.clear(uid)
       } catch {

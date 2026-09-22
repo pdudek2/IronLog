@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { displayWeightDeltaToKg, displayWeightStringToKg, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
-import { addSet, adjustSetValue, removeSet, setSetDone, updateSetValue } from './setMutations'
+import {
+  addExercise, addSet, adjustSetValue, exerciseHasEnteredSets, MAX_SESSION_EXERCISES,
+  removeExercise, removeSet, setLabel, setSetDone, updateSetValue,
+} from './setMutations'
 import type { ActiveWorkout } from './session'
 
 function workout(): ActiveWorkout {
@@ -63,4 +66,26 @@ test('lbs input and quick adjustments round-trip through canonical kg', () => {
   assert.equal(kgStringToDisplayWeight(kg, 'lbs'), '143.3')
   const changed = adjustSetValue(workout(), 'exercise-a', 'set-a', 'weight', displayWeightDeltaToKg(2.5, 'lbs'))
   assert.equal(kgStringToDisplayWeight(changed.exercises[0]!.sets[0]!.weight, 'lbs'), '223')
+})
+
+test('exercise add appends one blank set, stops at the rules limit, and removal is by client id', () => {
+  const added = addExercise(workout(), { clientId: 'exercise-b', exerciseId: 'custom-1', exerciseSource: 'user', name: 'Mine' })
+  const exercise = added.exercises[1]!
+  assert.equal(exercise.exerciseSource, 'user')
+  assert.deepEqual(exercise.sets.map(({ weight, reps, done }) => ({ weight, reps, done })), [{ weight: '', reps: '', done: false }])
+  assert.equal(exerciseHasEnteredSets(exercise), false)
+  assert.equal(exerciseHasEnteredSets(workout().exercises[0]!), true)
+
+  const removed = removeExercise(added, 'exercise-a')
+  assert.deepEqual(removed.exercises.map(({ clientId }) => clientId), ['exercise-b'])
+
+  const full = workout()
+  full.exercises = Array.from({ length: MAX_SESSION_EXERCISES }, (_, index) => ({ ...workout().exercises[0]!, clientId: `e-${index}` }))
+  assert.equal(addExercise(full, { clientId: 'x', exerciseId: 'squat', exerciseSource: 'global', name: 'Squat' }), full)
+})
+
+test('label is trimmed and a blank label clears the field', () => {
+  const labelled = setLabel(workout(), ' Push ')
+  assert.equal(labelled.label, 'Push')
+  assert.equal('label' in setLabel(labelled, ''), false)
 })

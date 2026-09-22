@@ -84,27 +84,11 @@ function ActionButton({ label, onPress, secondary = false, disabled = false }: {
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 
-function GridBackdrop() {
-  const { width } = useWindowDimensions()
-  const columns = Math.ceil(width / 44)
-
+function GrainBackdrop({ scrollY }: { scrollY: Animated.Value }) {
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.gridBackdrop}>
-      {Array.from({ length: columns + 1 }, (_, index) => (
-        <View key={`v${index}`} style={[styles.gridVertical, { left: index * 44 }]} />
-      ))}
-      {Array.from({ length: 10 }, (_, index) => (
-        <View key={`h${index}`} style={[styles.gridHorizontal, { opacity: Math.max(0.1, 1 - index / 10), top: index * 44 }]} />
-      ))}
-    </View>
-  )
-}
-
-function GrainBackdrop() {
-  return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={StyleSheet.absoluteFill}>
+    <Animated.View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={[StyleSheet.absoluteFill, { transform: [{ translateY: scrollY }] }]}>
       <Image resizeMode="repeat" source={grainTexture} style={styles.grainBackdrop} />
-    </View>
+    </Animated.View>
   )
 }
 
@@ -204,8 +188,6 @@ function LoginForm() {
         contentContainerStyle={styles.loginContent}
         keyboardShouldPersistTaps="handled"
       >
-        <GridBackdrop />
-        <GrainBackdrop />
         <SignalBackdrop focused={focusedField !== null} />
         <View style={styles.brandRow}>
           <View style={styles.brandMark}>
@@ -408,6 +390,7 @@ function WorkoutLedger({ uid, session, units, stale }: { uid: string; session: A
 }
 
 function SessionScreen({ user }: { user: AuthUser }) {
+  const scrollY = useRef(new Animated.Value(0)).current
   const { state, retry } = useActiveSession(user.uid)
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
@@ -426,9 +409,13 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
   return (
     <View style={styles.sessionShell}>
-      <GridBackdrop />
-      <GrainBackdrop />
-      <ScrollView contentContainerStyle={styles.sessionContent} stickyHeaderIndices={[0]}>
+      <Animated.ScrollView
+        contentContainerStyle={styles.sessionContent}
+        stickyHeaderIndices={[1]}
+        scrollEventThrottle={16}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+      >
+      <GrainBackdrop scrollY={scrollY} />
       {state.status === 'ready' ? (
         <View style={styles.lifecycleBar}>
           <View style={styles.lifecycleBarInner}>
@@ -496,7 +483,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
           )}
         </View>
         )}
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   )
 }
@@ -532,10 +519,7 @@ const styles = StyleSheet.create({
     experimental_backgroundImage: 'radial-gradient(ellipse 672px 544px at 12% 12%, rgba(240, 67, 90, 0.14), transparent 72%), radial-gradient(ellipse 736px 608px at 86% 78%, rgba(143, 184, 160, 0.11), transparent 74%), linear-gradient(122deg, #181114 0%, #0b0a0c 52%, #080d0b 100%)',
   },
   loginContent: { flexGrow: 1, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 20, position: 'relative' },
-  gridBackdrop: { height: 440, left: 0, opacity: 0.72, overflow: 'hidden', position: 'absolute', right: 0, top: 0 },
   grainBackdrop: { height: '100%', opacity: 0.024, width: '100%' },
-  gridVertical: { backgroundColor: 'rgba(244, 241, 242, 0.018)', bottom: 0, position: 'absolute', top: 0, width: StyleSheet.hairlineWidth },
-  gridHorizontal: { backgroundColor: 'rgba(244, 241, 242, 0.024)', height: StyleSheet.hairlineWidth, left: 0, position: 'absolute', right: 0 },
   signalBackdrop: { height: 288, left: '-6%', opacity: 0.2, overflow: 'hidden', position: 'absolute', top: 544, transform: [{ rotate: '-4deg' }, { scaleY: 1.02 }], width: '112%' },
   brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 18.4 },
   brandMark: {
@@ -594,11 +578,12 @@ const styles = StyleSheet.create({
   buttonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   buttonSecondaryText: { color: colors.text },
   error: { color: colors.accent, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 20, marginTop: 6 },
-  sessionContent: { flexGrow: 1, paddingBottom: 24 },
-  sessionShell: {
-    flex: 1,
+  sessionContent: {
+    flexGrow: 1,
+    paddingBottom: 128,
     experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)',
   },
+  sessionShell: { flex: 1, backgroundColor: colors.background },
   lifecycleBar: { backgroundColor: '#0d0b0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 69, zIndex: 4 },
   lifecycleBarInner: { alignItems: 'center', flexDirection: 'row', height: 69, paddingHorizontal: 16 },
   sessionBrand: { alignItems: 'center', flexDirection: 'row' },
@@ -612,8 +597,8 @@ const styles = StyleSheet.create({
   stateTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 22, textAlign: 'center' },
   stateCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
   elapsed: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20, lineHeight: 28, fontVariant: ['tabular-nums'] },
-  workoutLabelsBand: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, backgroundColor: '#121013', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 52 },
-  sessionLabel: { color: colors.accentText, borderBottomColor: colors.accent, borderBottomWidth: 2, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, paddingHorizontal: 12, paddingVertical: 12 },
+  workoutLabelsBand: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, height: 52 },
+  sessionLabel: { color: colors.accentText, borderBottomColor: colors.accent, borderBottomWidth: 2, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 18, paddingHorizontal: 12, paddingVertical: 12 },
   previewCopy: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, textAlign: 'center', paddingVertical: 8 },
   lookupText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   lookupAction: { minHeight: 44, justifyContent: 'center' },

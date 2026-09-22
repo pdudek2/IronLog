@@ -21,7 +21,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Defs, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg'
+import Svg, { Circle, Defs, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg'
 
 import grainTexture from '../assets/grain.png'
 import { exercises as exerciseCatalog, searchExercises, type Category } from '../../data/exercises'
@@ -45,6 +45,7 @@ import {
 } from '../src/session'
 import { useActiveSession } from '../src/useActiveSession'
 import { useSessionRead } from '../src/useSessionRead'
+import { useWorkoutClosure, type ClosureState } from '../src/useWorkoutClosure'
 import type { ExerciseMetadata, ReadState } from '../src/scopedRead'
 import { exerciseHasEnteredSets, MAX_SESSION_EXERCISES } from '../src/setMutations'
 import {
@@ -600,9 +601,61 @@ function WorkoutLedger({ uid, session, units, stale, editing }: { uid: string; s
       style={({ pressed }) => [styles.primaryAction, styles.inlineAddExercise, full && styles.buttonDisabled, pressed && styles.setStepperPressed]}>
       <PlusIcon color={colors.textStrong} /><Text style={styles.primaryActionText}>Add exercise</Text>
     </Pressable>
-    <Text style={styles.previewCopy}>{full ? `Sessions hold up to ${MAX_SESSION_EXERCISES} exercises. ` : ''}Finishing remains on web.</Text>
+    {full && <Text style={styles.previewCopy}>Sessions hold up to {MAX_SESSION_EXERCISES} exercises.</Text>}
     {picker}
   </View>
+}
+
+// Copy mirrors the web closure alerts in WorkoutPage.
+const CLOSURE_COPY: Record<Exclude<ClosureState['status'], 'submitting'>, { title: string; copy: string; action: string }> = {
+  closure_unconfirmed: { title: 'Could not confirm session closure.', copy: 'Your workout data is preserved. Editing is locked until the server confirms the outcome.', action: 'Try again' },
+  closure_failed: { title: 'This session cannot be closed.', copy: 'The server rejected this operation. Check your connection and try again.', action: 'Try again' },
+  auth_required: { title: 'Your sign-in session needs refreshing.', copy: 'Your workout data is preserved. Sign in again, then retry closing the session.', action: 'Sign in again' },
+  session_mismatch: { title: 'This session is no longer active on the server.', copy: 'Could not automatically sync the session opened on another device.', action: 'Try again' },
+  closure_conflict: { title: 'The server rejected closing this session.', copy: 'This session was already closed with a different outcome, and automatic reconciliation failed.', action: 'Try again' },
+  active_session_changed: { title: 'The session changed on another device.', copy: 'Check the latest data on this device, then finish it again.', action: 'Load current session' },
+}
+
+function ClosureNotice({ closure, onRetry, onDismiss, onSignIn }: { closure: ClosureState; onRetry: () => void; onDismiss: () => void; onSignIn: () => void }) {
+  if (closure.status === 'submitting') return <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
+    <ActivityIndicator color={colors.accent} />
+    <Text style={styles.syncTitle}>{closure.intent.action === 'finish' ? 'Saving workout…' : 'Discarding workout…'}</Text>
+  </View>
+  const { title, copy, action } = CLOSURE_COPY[closure.status]
+  const onPress = closure.status === 'auth_required' ? onSignIn
+    : closure.status === 'closure_unconfirmed' || closure.status === 'closure_failed' ? onRetry : onDismiss
+  return <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.closureNotice}>
+    <Text style={styles.syncTitle}>{title}</Text>
+    <Text style={styles.syncCopy}>{copy}</Text>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.closureAction, styles.buttonPrimary, pressed && styles.buttonPressed]}>
+      <Text style={styles.closureActionText}>{action}</Text>
+    </Pressable>
+  </View>
+}
+
+function WorkoutOptionsMenu({ busy, onDiscard, onSignOut }: { busy: boolean; onDiscard: () => void; onSignOut: () => void }) {
+  const insets = useSafeAreaInsets()
+  const [open, setOpen] = useState(false)
+  const choose = (action: () => void) => () => { setOpen(false); action() }
+  return <>
+    <Pressable accessibilityRole="button" accessibilityLabel="More workout options" accessibilityState={{ expanded: open }} onPress={() => setOpen(true)}
+      style={({ pressed }) => [styles.optionsTrigger, pressed && styles.pickerPressed]}>
+      <Svg width={20} height={20} viewBox="0 0 24 24">
+        {[5, 12, 19].map((cx) => <Circle key={cx} cx={cx} cy={12} r={1} fill="none" stroke={colors.muted} strokeWidth={2} />)}
+      </Svg>
+    </Pressable>
+    <Modal animationType="fade" onRequestClose={() => setOpen(false)} statusBarTranslucent transparent visible={open}>
+      <Pressable accessibilityLabel="Close workout options" onPress={() => setOpen(false)} style={StyleSheet.absoluteFill} />
+      <View accessibilityLabel="Workout options" style={[styles.optionsMenu, { top: Math.max(12, insets.top) + 57.6 }]}>
+        <Pressable accessibilityRole="menuitem" disabled={busy} onPress={choose(onDiscard)} style={({ pressed }) => [styles.optionsItem, pressed && styles.optionsItemPressed]}>
+          <Text style={styles.optionsItemText}>Discard workout</Text>
+        </Pressable>
+        <Pressable accessibilityRole="menuitem" onPress={choose(onSignOut)} style={({ pressed }) => [styles.optionsItem, pressed && styles.pickerPressed]}>
+          <Text style={[styles.optionsItemText, styles.optionsItemNeutral]}>Sign out</Text>
+        </Pressable>
+      </View>
+    </Modal>
+  </>
 }
 
 function SessionScreen({ user }: { user: AuthUser }) {
@@ -613,6 +666,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
   } = useActiveSession(user.uid)
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
+  const { closure, completed, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = useWorkoutClosure(user.uid)
+  const locked = closure !== null
 
   const doLogout = async () => {
     setSigningOut(true)
@@ -625,6 +680,42 @@ function SessionScreen({ user }: { user: AuthUser }) {
       setSigningOut(false)
     }
   }
+
+  const session = state.status === 'ready' ? state.session : null
+  // Closure is decided against the server's revision, so it waits for local edits to be acknowledged.
+  const closable = (action: () => void) => () => {
+    if (state.status !== 'ready' || locked) return
+    if (state.stale || state.syncStatus !== 'saved') {
+      Alert.alert('Waiting for sync', state.stale
+        ? 'Reconnect to confirm the workout is still active, then try again.'
+        : 'Your latest changes are still syncing. Try again once they are saved.')
+      return
+    }
+    action()
+  }
+  const discard = closable(() => Alert.alert('Discard workout?', 'All data from this session will be lost.', [
+    { text: 'Back', style: 'cancel' },
+    { text: 'Discard workout', style: 'destructive', onPress: () => session && startClosure('discard', session) },
+  ]))
+  const discardEmpty = () => Alert.alert('Finish without saving?', 'No sets are marked complete. The session will be discarded without saving a workout.', [
+    { text: 'Back', style: 'cancel' },
+    { text: 'Discard session', style: 'destructive', onPress: () => session && startClosure('discard', session) },
+  ])
+  const finish = closable(() => {
+    if (!session) return
+    const sets = session.exercises.flatMap((exercise) => exercise.sets)
+    if (!sets.some((set) => set.done)) return discardEmpty()
+    if (!session.sessionRevision) {
+      Alert.alert('Waiting for sync', 'This workout has not been saved from this app yet. Change any set, then try again.')
+      return
+    }
+    const unfinished = sets.filter((set) => !set.done).length
+    if (unfinished === 0) return startClosure('finish', session)
+    Alert.alert('Finish workout?', `Unfinished sets: ${unfinished}. Only completed sets will be saved.`, [
+      { text: 'Continue workout', style: 'cancel' },
+      { text: 'Save completed sets', onPress: () => startClosure('finish', session) },
+    ])
+  })
 
   const confirmDiscardLocal = () => Alert.alert(
     'Use latest workout?',
@@ -649,7 +740,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
         <View style={styles.lifecycleBar}>
           <View style={styles.lifecycleBarInner}>
             <Elapsed session={state.session} />
-            <SignOutButton busy={signingOut} onPress={() => void doLogout()} />
+            <View style={styles.flex} />
+            <WorkoutOptionsMenu busy={locked} onDiscard={discard} onSignOut={() => void doLogout()} />
+            <Pressable accessibilityRole="button" accessibilityLabel="Finish workout" disabled={locked} onPress={finish}
+              style={({ pressed }) => [styles.finishButton, styles.buttonPrimary, locked && styles.buttonDisabled, pressed && styles.buttonPressed]}>
+              <Text style={styles.finishButtonText}>{closure?.status === 'submitting' ? '...' : 'Finish'}</Text>
+            </Pressable>
           </View>
         </View>
       ) : (
@@ -680,10 +776,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
+      {closure && <ClosureNotice closure={closure} onRetry={retryClosure} onDismiss={dismissClosure} onSignIn={() => void doLogout()} />}
+
       {state.status === 'empty' && (
         <View style={styles.centerState}>
-          <Text accessibilityRole="header" style={styles.stateTitle}>No workout in progress</Text>
-          <Text style={styles.stateCopy}>Start one on IronLog web and it will appear here.</Text>
+          <Text accessibilityRole="header" style={styles.stateTitle}>{completed?.action === 'finish' ? 'Workout saved' : completed ? 'Workout discarded' : 'No workout in progress'}</Text>
+          <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Find it in History on IronLog web.' : 'Start one on IronLog web and it will appear here.'}</Text>
         </View>
       )}
 
@@ -696,7 +794,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
       )}
 
         {state.status === 'ready' && (
-        <View>
+        <View pointerEvents={locked ? 'none' : 'auto'}>
           <View style={styles.workoutLabelsBand}>
             <LabelTabs active={state.session.label ?? ''} onToggle={(label) => setLabel(state.session.label === label ? '' : label)} />
             <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' ? 'Saved on device' : ''}</Text>
@@ -901,6 +999,18 @@ const styles = StyleSheet.create({
   addSetContent: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' },
   addSetText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
   omittedSetAdjustmentsSpace: { height: 52 },
+  // Web: rounded-xl px-5 text-sm font-bold min-h-11 with the primary gradient.
+  finishButton: { alignItems: 'center', borderRadius: 12, justifyContent: 'center', marginLeft: 8, minHeight: 44, paddingHorizontal: 20 },
+  finishButtonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
+  optionsTrigger: { alignItems: 'center', borderRadius: 8, height: 44, justifyContent: 'center', width: 44 },
+  optionsMenu: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderRadius: 8, borderWidth: 1, boxShadow: '0 12px 32px rgba(0, 0, 0, 0.42)', padding: 5.6, position: 'absolute', right: 16 },
+  optionsItem: { borderRadius: 5, justifyContent: 'center', minHeight: 44, paddingHorizontal: 13.6, paddingVertical: 10.4 },
+  optionsItemPressed: { backgroundColor: 'rgba(240, 167, 90, 0.10)' },
+  optionsItemText: { color: colors.warning, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
+  optionsItemNeutral: { color: colors.text },
+  closureNotice: { backgroundColor: colors.surface, borderColor: colors.warning, borderRadius: 16, borderWidth: 1, gap: 4, marginHorizontal: 16, marginTop: 14, padding: 16 },
+  closureAction: { alignItems: 'center', alignSelf: 'flex-start', borderRadius: 8, justifyContent: 'center', marginTop: 8, minHeight: 44, paddingHorizontal: 16 },
+  closureActionText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   omittedWorkoutActionsSpace: { height: 49 },
   // .workout-primary-action: full width, 3rem tall, 0.9rem/700.
   primaryAction: { alignItems: 'center', borderRadius: 8, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48 },

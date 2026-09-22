@@ -27,6 +27,7 @@ import { NativeActiveSessionConflictError, updateExistingActiveSession } from '.
 
 const backend = Constants.expoConfig?.extra?.firebaseBackend
 const emulatorHost = Constants.expoConfig?.extra?.firebaseEmulatorHost
+export const apiBaseUrl: string = Constants.expoConfig?.extra?.apiBaseUrl ?? ''
 
 async function initializeServices() {
   if (backend !== 'emulator' && backend !== 'production') {
@@ -105,6 +106,13 @@ export function observeAuth(
 export async function login(email: string, password: string): Promise<void> {
   const { auth } = await getServices()
   await signInWithEmailAndPassword(auth, email.trim(), password)
+}
+
+export async function currentIdToken(uid: string): Promise<string> {
+  const { auth } = await getServices()
+  const user = auth.currentUser
+  if (!user || user.uid !== uid) throw new Error('The signed-in account changed.')
+  return user.getIdToken()
 }
 
 export async function logout(): Promise<void> {

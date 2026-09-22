@@ -18,7 +18,7 @@ import {
   View,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg'
+import Svg, { Defs, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg'
 
 import grainTexture from '../assets/grain.png'
 import { exercises as exerciseCatalog } from '../../data/exercises'
@@ -142,7 +142,7 @@ function SignalBackdrop({ focused }: { focused: boolean }) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
       pointerEvents="none"
-      style={[styles.signalBackdrop, focused && styles.signalFocused]}
+      style={[styles.signalBackdrop, focused && { opacity: 0.28 }, focused && !reduced && styles.signalFocused]}
     >
       <Svg onLayout={() => requestAnimationFrame(() => setLength(path.current?.getTotalLength() ?? 0))} height="100%" preserveAspectRatio="none" viewBox="0 0 1200 240" width="100%">
         <Defs>
@@ -172,17 +172,18 @@ function SignalBackdrop({ focused }: { focused: boolean }) {
 }
 
 function LoginForm() {
+  const { fontScale } = useWindowDimensions()
   const passwordInput = useRef<TextInput>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ field: 'email' | 'password'; message: string } | null>(null)
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
 
   const submit = async () => {
     if (busy) return
     if (!email.trim() || !password) {
-      setError('Enter your email and password.')
+      setError({ field: !email.trim() ? 'email' : 'password', message: 'Enter your email and password.' })
       return
     }
     setBusy(true)
@@ -190,7 +191,7 @@ function LoginForm() {
     try {
       await login(email, password)
     } catch (cause) {
-      setError(getAuthErrorMessage(cause, 'login'))
+      setError({ field: 'password', message: getAuthErrorMessage(cause, 'login') })
     } finally {
       setBusy(false)
     }
@@ -213,52 +214,68 @@ function LoginForm() {
           </View>
           <Text style={styles.brandName}>IronLog</Text>
         </View>
-        <Text accessibilityRole="header" style={styles.hero}>
-          Find your{`\n`}training{`\n`}<Text style={styles.heroAccent}>rhythm.</Text>
-        </Text>
+        <View accessible accessibilityRole="header" accessibilityLabel="Find your training rhythm.">
+          <Text style={styles.hero}>Find your{`\n`}training</Text>
+          {/* Native Text preserves Android's nonlinear accessibility scaling; SVG does not. */}
+          {fontScale !== 1 ? <Text style={styles.heroAccent}>rhythm.</Text> : <Svg height={34.496} width={160} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+            <Defs>
+              <LinearGradient id="rhythm" x1="-160%" x2="100%" y1="0%" y2="100%">
+                <Stop offset="0" stopColor="#ff7182" /><Stop offset="0.38" stopColor="#ff7182" />
+                <Stop offset="0.49" stopColor="#fff7f8" /><Stop offset="0.60" stopColor="#ff7182" />
+                <Stop offset="1" stopColor="#d83a50" />
+              </LinearGradient>
+            </Defs>
+            <SvgText x={9.152} y={28.4} fill="url(#rhythm)" fontFamily="InstrumentSans_700Bold" fontSize={35.2} letterSpacing={-1.584}>rhythm.</SvgText>
+          </Svg>}
+        </View>
         <Text style={styles.lead}>Every set builds on the last.</Text>
-        <View style={styles.formDivider} />
+        <View style={[styles.formDivider, focusedField !== null && styles.formDividerFocused]} />
         <Text accessibilityRole="header" style={styles.formTitle}>Sign in</Text>
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
-          <TextInput
-            accessibilityLabel="Email"
-            autoCapitalize="none"
-            autoComplete="email"
-            inputMode="email"
-            keyboardType="email-address"
-            onChangeText={setEmail}
-            onBlur={() => setFocusedField(null)}
-            onFocus={() => setFocusedField('email')}
-            placeholder="email@example.com"
-            placeholderTextColor={colors.mutedSoft}
-            returnKeyType="next"
-            submitBehavior="submit"
-            onSubmitEditing={() => passwordInput.current?.focus()}
-            selectionColor={colors.accentText}
-            style={[styles.input, focusedField === 'email' && styles.inputFocused]}
-            value={email}
-          />
+          <View style={[styles.inputSurface, focusedField === 'email' && styles.inputFocused]}>
+            <TextInput
+              accessibilityLabel="Email"
+              autoCapitalize="none"
+              autoComplete="email"
+              inputMode="email"
+              keyboardType="email-address"
+              onChangeText={(value) => { setEmail(value); if (error?.field === 'email') setError(null) }}
+              onBlur={() => setFocusedField(null)}
+              onFocus={() => setFocusedField('email')}
+              placeholder="email@example.com"
+              placeholderTextColor={colors.mutedSoft}
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => passwordInput.current?.focus()}
+              selectionColor={colors.accentText}
+              style={styles.input}
+              value={email}
+            />
+          </View>
+          {error?.field === 'email' && <Text accessibilityLiveRegion="polite" style={styles.loginError}>{error.message}</Text>}
           <Text style={[styles.label, styles.passwordLabel]}>Password</Text>
-          <TextInput
-            accessibilityLabel="Password"
-            ref={passwordInput}
-            autoCapitalize="none"
-            autoComplete="current-password"
-            onChangeText={setPassword}
-            onBlur={() => setFocusedField(null)}
-            onFocus={() => setFocusedField('password')}
-            onSubmitEditing={() => void submit()}
-            placeholder="••••••••"
-            placeholderTextColor={colors.mutedSoft}
-            returnKeyType="done"
-            selectionColor={colors.accentText}
-            secureTextEntry
-            style={[styles.input, focusedField === 'password' && styles.inputFocused]}
-            value={password}
-          />
-          {error && <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text>}
-          {!error && <View style={styles.omittedAuthActionSpace} />}
+          <View style={[styles.inputSurface, focusedField === 'password' && styles.inputFocused]}>
+            <TextInput
+              accessibilityLabel="Password"
+              ref={passwordInput}
+              autoCapitalize="none"
+              autoComplete="current-password"
+              onChangeText={(value) => { setPassword(value); if (error?.field === 'password') setError(null) }}
+              onBlur={() => setFocusedField(null)}
+              onFocus={() => setFocusedField('password')}
+              onSubmitEditing={() => void submit()}
+              placeholder="••••••••"
+              placeholderTextColor={colors.mutedSoft}
+              returnKeyType="done"
+              selectionColor={colors.accentText}
+              secureTextEntry
+              style={styles.input}
+              value={password}
+            />
+          </View>
+          {error?.field === 'password' && <Text accessibilityLiveRegion="polite" style={styles.loginError}>{error.message}</Text>}
+          <View style={styles.omittedAuthActionSpace} />
           <ActionButton disabled={busy} label={busy ? 'Signing in…' : 'Sign in'} onPress={() => void submit()} />
         </View>
       </ScrollView>
@@ -318,7 +335,8 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
       {(category || equipment) && <Text style={styles.exerciseMeta}>
         {category && <Text style={{ color: accent }}>{category}</Text>}{category && equipment ? ' · ' : ''}{equipment}
       </Text>}
-      <Text style={styles.exerciseName}>{exercise.name}</Text>
+      {/* Android needs an explicit break opportunity after a hyphen to match browser wrapping. */}
+      <Text accessibilityLabel={exercise.name} textBreakStrategy="simple" style={styles.exerciseName}>{exercise.name.replaceAll('-', '-\u200b')}</Text>
       {!expanded && <Text style={styles.exerciseCompact}>{summary.completed}/{summary.total} sets · {summary.volume}</Text>}
     </View>
     {collapsible && <View importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={styles.chevron}>
@@ -336,12 +354,12 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
       <View accessibilityLabel={`Exercise summary ${exercise.name}`} style={styles.exerciseSummary}>
         {[['Progress', `${summary.completed}/${summary.total}`], ['Volume', summary.volume], ['Max', summary.max]].map(([label, value], index) =>
           <View key={label} style={[styles.summaryCell, index === 2 && styles.summaryCellLast]}>
-            <Text style={styles.summaryLabel}>{label}</Text><Text style={styles.summaryValue}>{value}</Text>
+            <Text style={styles.summaryLabel}>{label}</Text><Text numberOfLines={1} style={styles.summaryValue}>{value}</Text>
           </View>)}
       </View>
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.setGrid, styles.setHeaderGrid]}>
-        <View style={styles.setToggleColumn} /><Text style={styles.setHeaderCell}>Prev.</Text><Text style={styles.setHeaderCell}>{units}</Text>
-        <Text style={styles.setHeaderCell}>Reps</Text><View style={styles.setTrailingColumn} />
+        <View style={styles.setToggleColumn} /><Text style={[styles.setHeaderCell, styles.setPreviousColumn]}>Prev.</Text><Text style={[styles.setHeaderCell, styles.setWeightColumn]}>{units}</Text>
+        <Text style={[styles.setHeaderCell, styles.setRepsColumn]}>Reps</Text><View style={styles.setTrailingColumn} />
       </View>
       {exercise.sets.map((set, index) => {
         const previous = history.state.status === 'ready' ? history.state.data[index] : undefined
@@ -353,9 +371,9 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
             {set.done ? <Svg width={16} height={16} viewBox="0 0 24 24" style={{ alignSelf: 'center' }}><Path d="m20 6-11 11-5-5" fill="none" stroke={colors.recovery} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
               : <Text style={[styles.setToggle, { color: current ? accent : colors.muted }]}>{index + 1}</Text>}
           </View>
-          <Text accessibilityLabel={`Previous set result ${index + 1}: ${previousText}`} style={styles.setCellMuted}>{previousText}</Text>
-          <Text accessibilityLabel={`Weight, ${exercise.name}, set ${index + 1}, ${units}`} style={[styles.setCellValue, set.done ? styles.setCellDone : styles.setCellCurrent]}>{displaySetWeight(set.weight, units)}</Text>
-          <Text accessibilityLabel={`Reps, ${exercise.name}, set ${index + 1}`} style={[styles.setCellValue, set.done ? styles.setCellDone : styles.setCellCurrent]}>{set.reps || '—'}</Text>
+          <Text numberOfLines={1} accessibilityLabel={`Previous set result ${index + 1}: ${previousText}`} style={[styles.setCellMuted, styles.setPreviousColumn]}>{previousText}</Text>
+          <Text accessibilityLabel={`Weight, ${exercise.name}, set ${index + 1}, ${units}`} style={[styles.setCellValue, styles.setWeightColumn, set.done ? styles.setCellDone : styles.setCellCurrent]}>{displaySetWeight(set.weight, units)}</Text>
+          <Text accessibilityLabel={`Reps, ${exercise.name}, set ${index + 1}`} style={[styles.setCellValue, styles.setRepsColumn, set.done ? styles.setCellDone : styles.setCellCurrent]}>{set.reps || '—'}</Text>
           <View style={styles.setTrailingColumn} />
         </View>{current && <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.omittedSetAdjustmentsSpace} />}</Fragment>
       })}
@@ -519,7 +537,7 @@ const styles = StyleSheet.create({
   gridVertical: { backgroundColor: 'rgba(244, 241, 242, 0.018)', bottom: 0, position: 'absolute', top: 0, width: StyleSheet.hairlineWidth },
   gridHorizontal: { backgroundColor: 'rgba(244, 241, 242, 0.024)', height: StyleSheet.hairlineWidth, left: 0, position: 'absolute', right: 0 },
   signalBackdrop: { height: 288, left: '-6%', opacity: 0.2, overflow: 'hidden', position: 'absolute', top: 544, transform: [{ rotate: '-4deg' }, { scaleY: 1.02 }], width: '112%' },
-  brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 17 },
+  brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 18.4 },
   brandMark: {
     alignItems: 'center',
     backgroundColor: 'rgba(17, 16, 18, 0.68)',
@@ -535,28 +553,34 @@ const styles = StyleSheet.create({
   brandMarkText: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 13 },
   brandDot: { backgroundColor: colors.accent, borderRadius: 2, bottom: 7, height: 4, position: 'absolute', right: 7, width: 4 },
   brandName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15, marginLeft: 12 },
-  hero: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.5, maxWidth: 220 },
-  heroAccent: { color: colors.accentText, fontFamily: 'Archivo_700Bold' },
+  hero: { color: colors.textStrong, fontFamily: 'ArchivoHero', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.496 },
+  heroAccent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 35.2, letterSpacing: -1.584, lineHeight: 34.496, marginLeft: 9.152 },
   lead: { color: 'rgba(244, 241, 242, 0.7)', fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 22.3, marginTop: 12 },
-  formDivider: { backgroundColor: colors.lineStrong, height: 1, marginBottom: 18, marginTop: 21 },
-  formTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 29, lineHeight: 34 },
-  form: { marginTop: 50 },
-  label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 17, marginBottom: 6 },
-  passwordLabel: { marginTop: 10 },
-  input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.035)',
-    borderColor: 'rgba(244, 241, 242, 0.135)',
+  formDivider: { backgroundColor: colors.lineStrong, height: 1, marginBottom: 20, marginTop: 20 },
+  formDividerFocused: { backgroundColor: 'rgba(255, 113, 130, 0.5)' },
+  formTitle: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 29.6, lineHeight: 29.6 },
+  form: { marginTop: 51.84 },
+  label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, lineHeight: 16, marginBottom: 4 },
+  passwordLabel: { marginTop: 16 },
+  inputSurface: {
+    backgroundColor: 'rgba(8, 7, 9, 0.16)',
+    experimental_backgroundImage: 'linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03))',
+    borderColor: 'rgba(244, 241, 242, 0.13)',
     borderRadius: 8,
     borderWidth: 1,
     boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.075), 0 1px 0 rgba(255, 255, 255, 0.035)',
+  },
+  input: {
     color: colors.text,
     fontFamily: 'InstrumentSans_400Regular',
     fontSize: 14,
     lineHeight: 20,
-    minHeight: 52,
+    minHeight: 50,
     paddingHorizontal: 16,
+    paddingVertical: 12,
   },
-  inputFocused: { borderColor: colors.accentText, borderWidth: 1.5 },
+  inputFocused: { borderColor: colors.accentText, boxShadow: '0 0 0 3px rgba(240, 67, 90, 0.24)' },
+  loginError: { color: colors.warning, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 4 },
   omittedAuthActionSpace: { height: 49 },
   button: { alignItems: 'center', borderRadius: 8, justifyContent: 'center', minHeight: 48, marginTop: 15, paddingHorizontal: 18 },
   buttonPrimary: {
@@ -567,7 +591,7 @@ const styles = StyleSheet.create({
   buttonSecondary: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderWidth: 1, minWidth: 140 },
   buttonDisabled: { opacity: 0.55 },
   buttonPressed: { opacity: 0.82 },
-  buttonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15 },
+  buttonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   buttonSecondaryText: { color: colors.text },
   error: { color: colors.accent, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 20, marginTop: 6 },
   sessionContent: { flexGrow: 1, paddingBottom: 24 },
@@ -587,7 +611,7 @@ const styles = StyleSheet.create({
   centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 420, paddingHorizontal: 20, gap: 12 },
   stateTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 22, textAlign: 'center' },
   stateCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
-  elapsed: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 20, fontVariant: ['tabular-nums'], letterSpacing: -0.3 },
+  elapsed: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20, lineHeight: 28, fontVariant: ['tabular-nums'] },
   workoutLabelsBand: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, backgroundColor: '#121013', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 52 },
   sessionLabel: { color: colors.accentText, borderBottomColor: colors.accent, borderBottomWidth: 2, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, paddingHorizontal: 12, paddingVertical: 12 },
   previewCopy: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, textAlign: 'center', paddingVertical: 8 },
@@ -606,7 +630,7 @@ const styles = StyleSheet.create({
   headingPressed: { opacity: 0.72 },
   exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
   exerciseName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, lineHeight: 28, marginTop: 6 },
-  exerciseCompact: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 4 },
+  exerciseCompact: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.52, lineHeight: 17.28, marginTop: 5.6 },
   chevron: { height: 18, marginLeft: 12, transform: [{ rotate: '0deg' }], width: 18 },
   chevronExpanded: { transform: [{ rotate: '180deg' }] },
   exerciseSummary: { flexDirection: 'row', marginBottom: 3.2, marginTop: 5.6, paddingVertical: 4 },
@@ -616,12 +640,16 @@ const styles = StyleSheet.create({
   summaryValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.8, fontVariant: ['tabular-nums'], lineHeight: 19.2 },
   setGrid: { alignItems: 'center', flexDirection: 'row', gap: 5.6, minHeight: 47.2 },
   setHeaderGrid: { minHeight: 18 },
-  setToggleColumn: { width: 38 },
-  setTrailingColumn: { width: 28 },
-  setHeaderCell: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18, textAlign: 'center' },
-  setToggle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, textAlign: 'center', width: 38 },
-  setCellMuted: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, textAlign: 'center' },
-  setCellValue: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'], lineHeight: 30, textAlign: 'center' },
+  setToggleColumn: { width: 44, flexShrink: 0 },
+  // Proportional bases preserve CSS .9fr/1fr sizing even at the weight column minimum.
+  setPreviousColumn: { flexBasis: 48.96, flexGrow: 0.9, flexShrink: 1, minWidth: 0 },
+  setWeightColumn: { flexBasis: 54.4, flexGrow: 1, flexShrink: 0, minWidth: 54.4 },
+  setRepsColumn: { width: 52, flexShrink: 0 },
+  setTrailingColumn: { width: 44, flexShrink: 0 },
+  setHeaderCell: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  setToggle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, textAlign: 'center', width: 44 },
+  setCellMuted: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  setCellValue: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'], lineHeight: 44, textAlign: 'center' },
   setCellCurrent: { borderBottomColor: colors.lineStrong, borderBottomWidth: StyleSheet.hairlineWidth },
   omittedSetAdjustmentsSpace: { height: 52 },
   omittedWorkoutActionsSpace: { height: 49 },

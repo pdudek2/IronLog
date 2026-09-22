@@ -10,11 +10,15 @@ import { useFonts } from 'expo-font'
 import { SplashScreen, Stack } from 'expo-router'
 import { useEffect } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import ArchivoHero from '../assets/fonts/ArchivoHero.ttf'
+import ArchivoHeading from '../assets/fonts/ArchivoHeading.ttf'
 
 void SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
+    ArchivoHero,
+    ArchivoHeading,
     Archivo_700Bold,
     Archivo_800ExtraBold,
     InstrumentSans_400Regular,

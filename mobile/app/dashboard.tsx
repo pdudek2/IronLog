@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -10,10 +10,10 @@ import { pluralize } from '../../src/lib/pluralize'
 import { workoutTitle } from '../../src/lib/workoutCopy'
 import { formatCompactVolume } from '../../src/shared/weightUnits'
 import { readHome } from '../src/firebase'
-import { deriveWorkout, formatWorkoutDuration } from '../src/history'
-import { deriveHome, formatWeekRange, getGreeting } from '../src/home'
+import { deriveWorkout, formatExercisePreview, formatWorkoutDuration } from '../src/history'
+import { canShowHomeSummary, deriveHome, formatWeekRange, getGreeting } from '../src/home'
 import { readStateForKey, startRead, type ReadState } from '../src/scopedRead'
-import { useAuthRuntime, useOptionalClosureRuntime } from '../src/runtime'
+import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../src/runtime'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 
@@ -25,8 +25,10 @@ const colors = {
 
 export default function DashboardScreen() {
   const { user } = useAuthRuntime()
+  const active = useActiveRuntime()
   const completed = useOptionalClosureRuntime()?.completed
   const router = useRouter()
+  const { width } = useWindowDimensions()
   const uid = user?.uid ?? null
   const [result, setResult] = useState<{ key: string; state: ReadState<HomeData> } | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -42,7 +44,8 @@ export default function DashboardScreen() {
 
   const state = readStateForKey(key, result)
   const data = state.status === 'ready' ? state.data : null
-  const summary = useMemo(() => data ? deriveHome(data.workouts, now) : null, [data, now])
+  const showSummary = canShowHomeSummary(state)
+  const summary = useMemo(() => data && showSummary ? deriveHome(data.workouts, now) : null, [data, now, showSummary])
   const retry = () => setAttempt((value) => value + 1)
   const confirmedEmpty = state.status === 'ready' && !state.fromCache && data?.workouts.length === 0
   const cacheEmpty = state.status === 'ready' && state.fromCache && data?.workouts.length === 0
@@ -76,9 +79,9 @@ export default function DashboardScreen() {
           <Text style={styles.date}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
           <Text style={styles.greeting}>{getGreeting(now)},</Text>
           <Text accessibilityRole="header" style={styles.name}>{data.profile.displayName}</Text>
-          {recent[0] && <Text style={styles.last}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
+          {active.state.status === 'empty' && recent[0] && <Text style={styles.last}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
         </View>
-        <View style={styles.week}>
+        {showSummary && <View style={styles.week}>
           <View style={styles.sectionHead}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>This week</Text>
             <View style={styles.range}><Text style={styles.rangeDate}>{summary && formatWeekRange(summary.dates)}</Text><Text style={styles.mutedSmall}>{summary?.volumeDelta === null ? 'no comparison' : `${summary?.volumeDelta && summary.volumeDelta >= 0 ? '+' : ''}${summary?.volumeDelta}% vs last week`}</Text></View>
@@ -89,7 +92,7 @@ export default function DashboardScreen() {
           </View> : summary && <>
             <View style={styles.chart}>
               <View style={styles.chartHead}><View><Text style={styles.statLabel}>Weekly volume</Text><Text style={styles.volume}>{formatCompactVolume(summary.weeklyVolume, units)}</Text></View><View><Text style={styles.count}>{summary.weeklyDone}/{goal}</Text><Text style={styles.mutedSmall}>sessions / goal</Text></View></View>
-              <View style={styles.bars}>{summary.days.map((day) => <View key={day.label} style={styles.barCell}><View style={styles.barTrack}><View style={[styles.barFill, { height: `${day.volume > 0 ? Math.max(18, Math.round(day.volume / maxVolume * 100)) : 8}%`, backgroundColor: day.isToday ? colors.accent : day.volume > 0 ? '#8fb8a0' : 'rgba(255,255,255,0.035)' }]} /></View><Text style={[styles.dayLabel, day.isToday && styles.todayLabel]}>{day.label}</Text><Text style={styles.barValue}>{day.volume > 0 ? formatCompactVolume(day.volume, units).replace(` ${units}`, '') : '—'}</Text></View>)}</View>
+              <View style={styles.bars}>{summary.days.map((day) => <View key={day.label} style={styles.barCell}><View style={styles.barTrack}><View style={[styles.barFill, { height: `${day.volume > 0 ? Math.max(18, Math.round(day.volume / maxVolume * 100)) : 8}%`, backgroundColor: day.volume > 0 ? undefined : 'rgba(255,255,255,0.035)', experimental_backgroundImage: day.isToday ? 'linear-gradient(180deg, rgba(240, 67, 90, 0.96) 0%, rgba(240, 67, 90, 0.2) 100%)' : day.volume > 0 ? 'linear-gradient(180deg, rgba(143, 184, 160, 0.9) 0%, rgba(143, 184, 160, 0.16) 100%)' : undefined }]} /></View><Text style={[styles.dayLabel, day.isToday && styles.todayLabel]}>{day.label}</Text><Text style={styles.barValue}>{day.volume > 0 ? formatCompactVolume(day.volume, units).replace(` ${units}`, '') : '—'}</Text></View>)}</View>
             </View>
             <View style={styles.signals}>
               {[
@@ -97,10 +100,10 @@ export default function DashboardScreen() {
                 ['Schedule', `${summary.activeDays}/7 days`, `${summary.sessionsDelta > 0 ? '+' : ''}${summary.sessionsDelta === 0 ? 'No change' : summary.sessionsDelta} compared with last week`],
                 ['Strong day', peak?.volume ? peak.label : 'None', peak?.volume ? `${formatCompactVolume(peak.volume, units)} • ${peak.sets} ${pluralize(peak.sets, 'set', 'sets')}` : 'No workouts this week'],
                 ['Average session', summary.averageMinutes ? `${summary.averageMinutes} min` : '—', summary.averageVolume ? `${formatCompactVolume(summary.averageVolume, units)} per workout` : 'No average this week'],
-              ].map(([label, value, copy]) => <View key={label} style={styles.signal}><Text style={styles.statLabel}>{label}</Text><Text style={styles.signalValue}>{value}</Text><Text style={styles.mutedSmall}>{copy}</Text></View>)}
+              ].map(([label, value, copy]) => <View key={label} style={styles.signal}><Text style={styles.statLabel}>{label}</Text><Text style={styles.signalValue}>{value}</Text>{width > 520 && <Text style={styles.mutedSmall}>{copy}</Text>}</View>)}
             </View>
           </>}
-        </View>
+        </View>}
         <View style={styles.history}>
           <View style={styles.sectionHead}><Text accessibilityRole="header" style={styles.sectionTitle}>{recent.length ? 'Recent workouts' : 'History'}</Text><Pressable accessibilityRole="button" onPress={() => router.navigate('/history')} style={styles.historyLink}><Text style={styles.actionText}>View history</Text><Chevron /></Pressable></View>
           {confirmedEmpty && <Text style={styles.emptyCopy}>Your first saved workout will appear here.</Text>}
@@ -111,6 +114,7 @@ export default function DashboardScreen() {
               <Text numberOfLines={2} style={styles.workoutName}>{workoutTitle(workout)}</Text>
               <Text style={styles.mutedSmall}>{new Date(workout.startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>
               {!workout.materialized && <Text style={styles.pending}>Workout saved. Stats are still processing.</Text>}
+              {workoutTitle(workout) !== workout.exercises.map((exercise) => exercise.name.trim()).join(' + ') && <Text numberOfLines={2} style={styles.exercisePreview}>{formatExercisePreview(workout.exercises.map((exercise) => exercise.name))}</Text>}
               <View style={styles.metrics}><Metric label="Volume" value={formatCompactVolume(metrics.totalVolume, units)} /><Metric label="Exercises" value={String(workout.exercises.length)} /><Metric label="Time" value={formatWorkoutDuration(workout.startedAt, workout.finishedAt)} /></View>
             </Pressable>
           })}
@@ -129,7 +133,7 @@ const styles = StyleSheet.create({
   notice: { alignItems: 'flex-start', gap: 12, paddingVertical: 32 }, noticeTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 17 },
   muted: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19 }, mutedSmall: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.5, lineHeight: 16 },
   retry: { minHeight: 44, justifyContent: 'center' }, actionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
-  cacheRow: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingTop: 10 },
+  cacheRow: { alignItems: 'flex-start', gap: 4, paddingTop: 10 },
   hero: { borderBottomColor: colors.line, borderBottomWidth: 1, paddingTop: 8, paddingBottom: 24 },
   date: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.5, marginBottom: 12 },
   greeting: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, marginBottom: 7 },
@@ -142,9 +146,9 @@ const styles = StyleSheet.create({
   emptyDay: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12 }, todayDay: { backgroundColor: 'rgba(240,67,90,0.12)' }, dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_700Bold', fontSize: 10.5 }, todayLabel: { color: colors.accentText }, dayValue: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11 },
   chart: { backgroundColor: colors.surface, borderRadius: 8, padding: 16 }, chartHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10, marginBottom: 18 },
   volume: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 34, lineHeight: 37, marginTop: 7 }, count: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, textAlign: 'right' },
-  bars: { flexDirection: 'row', gap: 5, height: 152, paddingTop: 8 }, barCell: { flex: 1, alignItems: 'center', gap: 6 }, barTrack: { flex: 1, width: '100%', backgroundColor: 'rgba(255,255,255,0.025)', borderRadius: 5, justifyContent: 'flex-end', overflow: 'hidden' }, barFill: { width: '100%', borderRadius: 5 }, barValue: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 10.5 },
+  bars: { flexDirection: 'row', gap: 5, height: 152, paddingTop: 8 }, barCell: { flex: 1, alignItems: 'center', gap: 6 }, barTrack: { flex: 1, width: '100%', backgroundColor: 'rgba(255,255,255,0.025)', borderRadius: 5.6, justifyContent: 'flex-end', overflow: 'hidden' }, barFill: { width: '100%', borderTopLeftRadius: 5.6, borderTopRightRadius: 5.6 }, barValue: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 10.5 },
   signals: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }, signal: { width: '50%', paddingVertical: 10, paddingRight: 8 }, signalValue: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 3, marginBottom: 3 },
   history: { borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 26 }, historyLink: { alignItems: 'center', flexDirection: 'row', gap: 3, minHeight: 44 }, emptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, paddingVertical: 14 },
-  workoutRow: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 16 }, setCount: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 }, workoutName: { color: colors.strong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, marginTop: 8, marginBottom: 8 }, pending: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginTop: 8 },
+  workoutRow: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 16 }, setCount: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 }, workoutName: { color: colors.strong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, marginTop: 8, marginBottom: 8 }, pending: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginTop: 8 }, exercisePreview: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 10 },
   metrics: { flexDirection: 'row', marginTop: 12 }, metric: { flex: 1, paddingVertical: 8 }, metricValue: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 5 },
 })

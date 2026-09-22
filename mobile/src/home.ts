@@ -1,11 +1,16 @@
 import { getCappedWorkoutFinishedAt } from '../../src/lib/sessionDuration'
 import type { SavedWorkout } from './history'
 import { deriveWorkout } from './history'
+import type { ReadState } from './scopedRead'
 
 export interface HomeProfile {
   displayName: string
   weeklyGoal: number
   units: 'kg' | 'lbs'
+}
+
+export function canShowHomeSummary(state: ReadState<{ workouts: unknown[] }>): boolean {
+  return state.status === 'ready' && (!state.fromCache || state.data.workouts.length > 0)
 }
 
 export function parseHomeProfile(uid: string, value: unknown): HomeProfile {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { formatCompactVolume } from '../../src/shared/weightUnits'
-import { deriveHome, getGreeting, getWeekDates, parseHomeProfile } from './home'
+import { canShowHomeSummary, deriveHome, getGreeting, getWeekDates, parseHomeProfile } from './home'
 import { readStateForKey, startRead, type ReadState } from './scopedRead'
 import type { SavedWorkout } from './history'
 
@@ -53,6 +53,8 @@ test('read state distinguishes error/cache/empty and disposes stale account requ
   await new Promise<void>((resolve) => setImmediate(resolve))
   assert.equal(state.status, 'loading')
   assert.deepEqual(readStateForKey('new', { key: 'old', state: { status: 'ready', data: 7, fromCache: false } }), { status: 'loading' })
-  assert.notDeepEqual({ status: 'ready', data: [], fromCache: true }, { status: 'ready', data: [], fromCache: false })
-  assert.notDeepEqual({ status: 'error' }, { status: 'ready', data: [], fromCache: false })
+  assert.equal(canShowHomeSummary({ status: 'ready', data: { workouts: [] }, fromCache: true }), false)
+  assert.equal(canShowHomeSummary({ status: 'ready', data: { workouts: [] }, fromCache: false }), true)
+  assert.equal(canShowHomeSummary({ status: 'ready', data: { workouts: [workout('one', Date.now())] }, fromCache: true }), true)
+  assert.equal(canShowHomeSummary({ status: 'error' }), false)
 })

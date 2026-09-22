@@ -607,7 +607,14 @@ function WorkoutLedger({ uid, session, units, stale, editing }: { uid: string; s
 }
 
 // Copy mirrors the web closure alerts in WorkoutPage.
-const CLOSURE_COPY: Record<Exclude<ClosureState['status'], 'submitting'>, { title: string; copy: string; action: string }> = {
+type ClosureNoticeStatus = Exclude<ClosureState['status'], 'loading' | 'ready' | 'submitting'>
+
+const CLOSURE_COPY: Record<ClosureNoticeStatus, { title: string; copy: string; action: string }> = {
+  read_failed: { title: 'Could not check the saved workout request.', copy: 'Editing and closing stay locked until its local recovery record can be read.', action: 'Try again' },
+  corrupt: { title: 'The saved workout request is damaged.', copy: 'Its files were preserved. Editing and closing stay locked until recovery succeeds.', action: 'Try again' },
+  intent_storage_failed: { title: 'Could not save the close request on this device.', copy: 'The server was not contacted. Retry the local save, or return to editing.', action: 'Retry local save' },
+  retry_storage_failed: { title: 'Could not safely save the retry.', copy: 'The earlier request may already have reached the server. Editing remains locked while its last saved copy is preserved.', action: 'Retry recovery' },
+  resolution_storage_failed: { title: 'The server answered, but local recovery could not be cleared.', copy: 'Your workout stays locked until this device saves the resolved state.', action: 'Retry local recovery' },
   closure_unconfirmed: { title: 'Could not confirm session closure.', copy: 'Your workout data is preserved. Editing is locked until the server confirms the outcome.', action: 'Try again' },
   closure_failed: { title: 'This session cannot be closed.', copy: 'The server rejected this operation. Check your connection and try again.', action: 'Try again' },
   auth_required: { title: 'Your sign-in session needs refreshing.', copy: 'Your workout data is preserved. Sign in again, then retry closing the session.', action: 'Sign in again' },
@@ -617,20 +624,35 @@ const CLOSURE_COPY: Record<Exclude<ClosureState['status'], 'submitting'>, { titl
 }
 
 function ClosureNotice({ closure, onRetry, onDismiss, onSignIn }: { closure: ClosureState; onRetry: () => void; onDismiss: () => void; onSignIn: () => void }) {
+  if (closure.status === 'ready') return null
+  if (closure.status === 'loading') return <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
+    <ActivityIndicator color={colors.accent} />
+    <Text style={styles.syncTitle}>Checking saved workout requests…</Text>
+    <Text style={styles.syncCopy}>Editing and closing stay locked until recovery is checked.</Text>
+  </View>
   if (closure.status === 'submitting') return <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
     <ActivityIndicator color={colors.accent} />
     <Text style={styles.syncTitle}>{closure.intent.action === 'finish' ? 'Saving workout…' : 'Discarding workout…'}</Text>
   </View>
   const { title, copy, action } = CLOSURE_COPY[closure.status]
-  const onPress = closure.status === 'auth_required' ? onSignIn
-    : closure.status === 'closure_unconfirmed' || closure.status === 'closure_failed' ? onRetry : onDismiss
+  const canDismiss = closure.status === 'active_session_changed' || closure.status === 'closure_conflict' || closure.status === 'session_mismatch'
+  const onPress = closure.status === 'auth_required' ? onSignIn : canDismiss ? onDismiss : onRetry
   return <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.closureNotice}>
     <Text style={styles.syncTitle}>{title}</Text>
     <Text style={styles.syncCopy}>{copy}</Text>
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.closureAction, styles.buttonPrimary, pressed && styles.buttonPressed]}>
       <Text style={styles.closureActionText}>{action}</Text>
     </Pressable>
+    {closure.status === 'intent_storage_failed' && <Pressable accessibilityRole="button" onPress={onDismiss} style={styles.closureAction}>
+      <Text style={styles.syncActionText}>Return to editing</Text>
+    </Pressable>}
   </View>
+}
+
+function guardClosureInteraction<Args extends unknown[]>(canEdit: () => boolean, action: (...args: Args) => void): (...args: Args) => void
+function guardClosureInteraction<Args extends unknown[], Result>(canEdit: () => boolean, action: (...args: Args) => Result, blockedResult: Result): (...args: Args) => Result
+function guardClosureInteraction<Args extends unknown[], Result>(canEdit: () => boolean, action: (...args: Args) => Result, blockedResult?: Result) {
+  return (...args: Args): Result | undefined => canEdit() ? action(...args) : blockedResult
 }
 
 function WorkoutOptionsMenu({ busy, onDiscard, onSignOut }: { busy: boolean; onDiscard: () => void; onSignOut: () => void }) {
@@ -666,8 +688,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   } = useActiveSession(user.uid)
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
-  const { closure, completed, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = useWorkoutClosure(user.uid)
-  const locked = closure !== null
+  const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = useWorkoutClosure(user.uid)
 
   const doLogout = async () => {
     setSigningOut(true)
@@ -722,7 +743,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
     'Your edits saved on this device will be discarded.',
     [
       { text: 'Keep local edits', style: 'cancel' },
-      { text: 'Use latest', style: 'destructive', onPress: discardLocalChanges },
+      { text: 'Use latest', style: 'destructive', onPress: guardClosureInteraction(canEditClosure, discardLocalChanges) },
     ],
   )
 
@@ -796,7 +817,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         {state.status === 'ready' && (
         <View pointerEvents={locked ? 'none' : 'auto'}>
           <View style={styles.workoutLabelsBand}>
-            <LabelTabs active={state.session.label ?? ''} onToggle={(label) => setLabel(state.session.label === label ? '' : label)} />
+            <LabelTabs active={state.session.label ?? ''} onToggle={guardClosureInteraction(canEditClosure, (label) => setLabel(state.session.label === label ? '' : label))} />
             <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' ? 'Saved on device' : ''}</Text>
           </View>
           {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
@@ -816,12 +837,20 @@ function SessionScreen({ user }: { user: AuthUser }) {
               : state.syncStatus === 'failed' ? 'Your edits are preserved on this device. Retry when connected.'
                 : state.syncStatus === 'storage-error' ? 'The latest change was not accepted because it could not be saved safely.'
                   : state.syncStatus === 'saving' ? 'Syncing changes…' : 'Changes will sync when the server is available.'}</Text>
-            {state.syncStatus === 'failed' && <Pressable accessibilityRole="button" onPress={retrySave} style={styles.syncAction}><Text style={styles.syncActionText}>Retry</Text></Pressable>}
+            {state.syncStatus === 'failed' && <Pressable accessibilityRole="button" onPress={guardClosureInteraction(canEditClosure, retrySave)} style={styles.syncAction}><Text style={styles.syncActionText}>Retry</Text></Pressable>}
             {state.syncStatus === 'conflict' && <Pressable accessibilityRole="button" onPress={confirmDiscardLocal} style={styles.syncAction}><Text style={styles.syncActionText}>Use latest</Text></Pressable>}
           </View>}
 
           <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale}
-            editing={{ updateSet, adjustSet, setDone, addSet, removeSet, addExercise, removeExercise }} />
+            editing={{
+              updateSet: guardClosureInteraction(canEditClosure, updateSet),
+              adjustSet: guardClosureInteraction(canEditClosure, adjustSet),
+              setDone: guardClosureInteraction(canEditClosure, setDone),
+              addSet: guardClosureInteraction(canEditClosure, addSet),
+              removeSet: guardClosureInteraction(canEditClosure, removeSet),
+              addExercise: guardClosureInteraction(canEditClosure, addExercise, ''),
+              removeExercise: guardClosureInteraction(canEditClosure, removeExercise),
+            }} />
         </View>
         )}
       </Animated.ScrollView>

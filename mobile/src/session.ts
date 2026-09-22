@@ -5,17 +5,20 @@ export type Units = 'kg' | 'lbs'
 export type ExerciseSource = 'global' | 'user'
 
 export interface WorkoutSet {
+  clientId: string
   weight: string
   reps: string
   done: boolean
+  [key: string]: unknown
 }
 
 export interface WorkoutExercise {
-  clientId?: string
+  clientId: string
   exerciseId: string
   exerciseSource: ExerciseSource
   name: string
   sets: WorkoutSet[]
+  [key: string]: unknown
 }
 
 export interface ActiveWorkout {
@@ -52,6 +55,13 @@ function storedNumber(value: unknown, path: string): string {
   if (typeof value === 'string') return value
   if (typeof value === 'number' && Number.isFinite(value)) return String(value)
   throw new SessionDataError(`${path} must be a string or finite number.`)
+}
+
+let localIdCounter = 0
+
+export function createLocalId(prefix: 'exercise' | 'set'): string {
+  localIdCounter += 1
+  return `native-${prefix}-${Date.now().toString(36)}-${localIdCounter.toString(36)}`
 }
 
 export function parseSessionDocument(uid: string, value: unknown): ActiveWorkout {
@@ -93,7 +103,10 @@ export function parseSessionDocument(uid: string, value: unknown): ActiveWorkout
         throw new SessionDataError(`exercises[${exerciseIndex}].sets must be an array.`)
       }
       return {
-        ...(exercise.clientId === undefined ? {} : { clientId: requiredString(exercise.clientId, `exercises[${exerciseIndex}].clientId`) }),
+        ...exercise,
+        clientId: exercise.clientId === undefined
+          ? createLocalId('exercise')
+          : requiredString(exercise.clientId, `exercises[${exerciseIndex}].clientId`),
         exerciseId: requiredString(exercise.exerciseId, `exercises[${exerciseIndex}].exerciseId`),
         exerciseSource: source,
         name: requiredString(exercise.name, `exercises[${exerciseIndex}].name`),
@@ -103,6 +116,10 @@ export function parseSessionDocument(uid: string, value: unknown): ActiveWorkout
             throw new SessionDataError(`exercises[${exerciseIndex}].sets[${setIndex}].done must be boolean.`)
           }
           return {
+            ...set,
+            clientId: set.clientId === undefined
+              ? createLocalId('set')
+              : requiredString(set.clientId, `exercises[${exerciseIndex}].sets[${setIndex}].clientId`),
             weight: storedNumber(set.weight, `exercises[${exerciseIndex}].sets[${setIndex}].weight`),
             reps: storedNumber(set.reps, `exercises[${exerciseIndex}].sets[${setIndex}].reps`),
             done: set.done === true,

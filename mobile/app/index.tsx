@@ -3,6 +3,7 @@ import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import {
   AccessibilityInfo,
   Animated,
+  Alert,
   Easing,
   ActivityIndicator,
   AppState,
@@ -26,7 +27,9 @@ import {
   EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
 } from '../../src/lib/exerciseLabels'
-import { kgStringToDisplayWeight } from '../../src/shared/weightUnits'
+import {
+  displayWeightDeltaToKg,
+} from '../../src/shared/weightUnits'
 import { login, logout, observeAuth, readPreviousSets, readExerciseMetadata, type AuthUser } from '../src/firebase'
 import {
   formatElapsed,
@@ -38,6 +41,11 @@ import {
 import { useActiveSession } from '../src/useActiveSession'
 import { useSessionRead } from '../src/useSessionRead'
 import type { ExerciseMetadata } from '../src/scopedRead'
+import {
+  reconcileSetInputSubmissions,
+  setInputToStoredValue,
+  storedValueToSetInput,
+} from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { SIGNAL_PATH } from '../../src/shared/authVisual'
 import { EQUIPMENT_LABELS, focusExerciseIndex, focusSetIndex, formatPreviousSet } from '../../src/shared/workoutDisplay'
@@ -297,13 +305,59 @@ function SignOutButton({ busy, onPress }: { busy: boolean; onPress: () => void }
   )
 }
 
-function displaySetWeight(weightKg: string, units: Units): string {
-  return kgStringToDisplayWeight(weightKg, units) || '—'
+function SetValueInput({ value, units, field, label, done, onChange }: {
+  value: string
+  units: Units
+  field: 'weight' | 'reps'
+  label: string
+  done: boolean
+  onChange: (value: string) => void
+}) {
+  const displayed = storedValueToSetInput(value, field, units)
+  const [text, setText] = useState(displayed)
+  const focused = useRef(false)
+  const pendingSubmissions = useRef<string[]>([])
+  useEffect(() => {
+    const reconciliation = reconcileSetInputSubmissions(pendingSubmissions.current, value)
+    pendingSubmissions.current = reconciliation.pending
+    if (!reconciliation.acknowledged || (!focused.current && reconciliation.pending.length === 0)) {
+      setText(displayed)
+    }
+  }, [displayed, value])
+  return <TextInput
+    accessibilityLabel={label}
+    inputMode={field === 'weight' ? 'decimal' : 'numeric'}
+    keyboardType={field === 'weight' ? 'decimal-pad' : 'number-pad'}
+    onBlur={() => {
+      focused.current = false
+      if (pendingSubmissions.current.length === 0) setText(displayed)
+    }}
+    onChangeText={(next) => {
+      setText(next)
+      const canonical = setInputToStoredValue(next, field, units)
+      pendingSubmissions.current.push(canonical)
+      onChange(canonical)
+    }}
+    onFocus={() => { focused.current = true }}
+    placeholder="0"
+    placeholderTextColor={colors.mutedSoft}
+    selectionColor={colors.accentText}
+    style={[styles.setInput, done && styles.setInputDone]}
+    value={text}
+  />
 }
 
-function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, units, metadata, onToggle }: {
+interface EditingActions {
+  updateSet(exerciseId: string, setId: string, field: 'weight' | 'reps', value: string): void
+  adjustSet(exerciseId: string, setId: string, field: 'weight' | 'reps', delta: number): void
+  setDone(exerciseId: string, setId: string, done: boolean): void
+  addSet(exerciseId: string): void
+  removeSet(exerciseId: string, setId: string): void
+}
+
+function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, units, metadata, onToggle, editing }: {
   uid: string; sessionKey: string; exercise: WorkoutExercise; expanded: boolean; collapsible: boolean
-  units: Units; metadata: ExerciseMetadata | undefined; onToggle: () => void
+  units: Units; metadata: ExerciseMetadata | undefined; onToggle: () => void; editing: EditingActions
 }) {
   const summary = summarizeExercise(exercise, units)
   const load = useCallback(() => readPreviousSets(uid, exercise.exerciseId, exercise.exerciseSource), [uid, exercise.exerciseId, exercise.exerciseSource])
@@ -348,25 +402,46 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
         const previousText = history.state.status === 'ready' && (previous || !history.state.fromCache)
           ? formatPreviousSet(previous, units) : history.state.status === 'error' ? '?' : '…'
         const current = !set.done && index === currentSet
-        return <Fragment key={index}><View style={styles.setGrid}>
-          <View accessibilityLabel={`Set ${index + 1}, ${set.done ? 'completed' : 'not completed'}`} style={styles.setToggleColumn}>
+        return <Fragment key={set.clientId}><View style={styles.setGrid}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`${set.done ? 'Unmark' : 'Mark'} set ${index + 1} for ${exercise.name}`}
+            onPress={() => editing.setDone(exercise.clientId, set.clientId, !set.done)} style={[styles.setToggleColumn, styles.setTouchTarget]}>
             {set.done ? <Svg width={16} height={16} viewBox="0 0 24 24" style={{ alignSelf: 'center' }}><Path d="m20 6-11 11-5-5" fill="none" stroke={colors.recovery} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
-              : <Text style={[styles.setToggle, { color: current ? accent : colors.muted }]}>{index + 1}</Text>}
-          </View>
+              : <Text style={[styles.setToggle, current && styles.setToggleCurrent, { color: current ? accent : colors.muted }]}>{index + 1}</Text>}
+          </Pressable>
           <Text numberOfLines={1} accessibilityLabel={`Previous set result ${index + 1}: ${previousText}`} style={[styles.setCellMuted, styles.setPreviousColumn]}>{previousText}</Text>
-          <Text accessibilityLabel={`Weight, ${exercise.name}, set ${index + 1}, ${units}`} style={[styles.setCellValue, styles.setWeightColumn, set.done ? styles.setCellDone : styles.setCellCurrent]}>{displaySetWeight(set.weight, units)}</Text>
-          <Text accessibilityLabel={`Reps, ${exercise.name}, set ${index + 1}`} style={[styles.setCellValue, styles.setRepsColumn, set.done ? styles.setCellDone : styles.setCellCurrent]}>{set.reps || '—'}</Text>
-          <View style={styles.setTrailingColumn} />
-        </View>{current && <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.omittedSetAdjustmentsSpace} />}</Fragment>
+          <View style={styles.weightInputColumn}><SetValueInput value={set.weight} units={units} field="weight" done={set.done}
+            label={`Weight, ${exercise.name}, set ${index + 1}, ${units}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'weight', value)} /></View>
+          <View style={styles.repsInputColumn}><SetValueInput value={set.reps} units={units} field="reps" done={set.done}
+            label={`Reps, ${exercise.name}, set ${index + 1}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'reps', value)} /></View>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${index + 1}`} onPress={() => editing.removeSet(exercise.clientId, set.clientId)} style={[styles.setTrailingColumn, styles.setTouchTarget]}>
+            <Svg width={15} height={15} viewBox="0 0 24 24" style={{ alignSelf: 'center' }}><Path d="m18 6-12 12M6 6l12 12" fill="none" stroke={colors.mutedSoft} strokeWidth={2} strokeLinecap="round" /></Svg>
+          </Pressable>
+        </View>{current && <View accessibilityLabel={`Quick set adjustments ${index + 1}`} style={styles.setStepperRow}>
+          {[
+            [`−2.5 ${units}`, 'weight', displayWeightDeltaToKg(-2.5, units)],
+            [`+2.5 ${units}`, 'weight', displayWeightDeltaToKg(2.5, units)],
+            ['−1 rep', 'reps', -1],
+            ['+1 rep', 'reps', 1],
+          ].map(([label, field, delta], adjustmentIndex) => <Pressable key={String(label)} accessibilityRole="button"
+            accessibilityLabel={`Adjust ${field} by ${Number(delta) < 0 ? '' : '+'}${field === 'weight' ? (Number(delta) < 0 ? -2.5 : 2.5) : delta}`}
+            onPress={() => editing.adjustSet(exercise.clientId, set.clientId, field as 'weight' | 'reps', Number(delta))}
+            style={({ pressed }) => [styles.setStepperButton, adjustmentIndex > 0 && styles.setStepperSeparator, pressed && styles.setStepperPressed]}>
+            <Text style={styles.setStepperText}>{label}</Text>
+          </Pressable>)}
+        </View>}</Fragment>
       })}
       {history.state.status === 'error' && <Pressable accessibilityRole="button" onPress={history.retry} style={styles.lookupAction}><Text style={styles.lookupText}>History unavailable · Retry</Text></Pressable>}
       {history.state.status === 'ready' && history.state.fromCache && <Text style={styles.lookupText}>History saved on this device · reconnect to refresh</Text>}
-      <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.omittedWorkoutActionsSpace} />
+      <Pressable accessibilityRole="button" accessibilityLabel={`Add set to ${exercise.name}`} onPress={() => editing.addSet(exercise.clientId)}
+        style={({ pressed }) => [styles.addSetButton, pressed && styles.setStepperPressed]}><View style={styles.addSetContent}>
+          <Svg width={15} height={15} viewBox="0 0 24 24"><Path d="M12 5v14M5 12h14" fill="none" stroke={colors.text} strokeWidth={2.4} strokeLinecap="round" /></Svg>
+          <Text style={styles.addSetText}>Add set</Text>
+        </View></Pressable>
     </View>}
   </View>
 }
 
-function WorkoutLedger({ uid, session, units, stale }: { uid: string; session: ActiveWorkout; units: Units; stale: boolean }) {
+function WorkoutLedger({ uid, session, units, stale, editing }: { uid: string; session: ActiveWorkout; units: Units; stale: boolean; editing: EditingActions }) {
   const [manual, setManual] = useState<string | null>(null)
   const identity = (exercise: WorkoutExercise, index: number) => exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${index}`
   const focused = focusExerciseIndex(session.exercises)
@@ -383,15 +458,19 @@ function WorkoutLedger({ uid, session, units, stale }: { uid: string; session: A
       expanded={session.exercises.length === 1 || identity(exercise, index) === expandedId} collapsible={session.exercises.length > 1}
       metadata={exercise.exerciseSource === 'global' ? exerciseCatalog.find(({ id }) => id === exercise.exerciseId)
         : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === exercise.exerciseId) : undefined}
+      editing={editing}
       onToggle={() => setManual(identity(exercise, index) === expandedId ? '' : identity(exercise, index))} />)}
     <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.omittedAddExerciseSpace} />
-    <Text style={styles.previewCopy}>Read-only preview</Text>
+    <Text style={styles.previewCopy}>Exercise changes and finishing remain on web.</Text>
   </View>
 }
 
 function SessionScreen({ user }: { user: AuthUser }) {
   const scrollY = useRef(new Animated.Value(0)).current
-  const { state, retry } = useActiveSession(user.uid)
+  const {
+    state, retry, retrySave, discardLocalChanges,
+    updateSet, adjustSet, setDone, addSet, removeSet,
+  } = useActiveSession(user.uid)
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
 
@@ -407,10 +486,20 @@ function SessionScreen({ user }: { user: AuthUser }) {
     }
   }
 
+  const confirmDiscardLocal = () => Alert.alert(
+    'Use latest workout?',
+    'Your edits saved on this device will be discarded.',
+    [
+      { text: 'Keep local edits', style: 'cancel' },
+      { text: 'Use latest', style: 'destructive', onPress: discardLocalChanges },
+    ],
+  )
+
   return (
     <View style={styles.sessionShell}>
       <Animated.ScrollView
         contentContainerStyle={styles.sessionContent}
+        keyboardShouldPersistTaps="handled"
         stickyHeaderIndices={[1]}
         scrollEventThrottle={16}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
@@ -468,18 +557,36 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
         {state.status === 'ready' && (
         <View>
-          <View style={styles.workoutLabelsBand}><Text accessibilityLabel={`Session type: ${state.session.label ?? 'Current workout'}`} style={styles.sessionLabel}>{state.session.label ?? 'Current workout'}</Text></View>
-          {state.stale && (
+          <View style={styles.workoutLabelsBand}>
+            <Text accessibilityLabel={`Session type: ${state.session.label ?? 'Current workout'}`} style={styles.sessionLabel}>{state.session.label ?? 'Current workout'}</Text>
+            <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' ? 'Saved on device' : ''}</Text>
+          </View>
+          {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
             <View style={styles.staleNotice}>
               <Text style={styles.staleTitle}>Saved on this device</Text>
               <Text style={styles.staleCopy}>This may be out of date. Reconnect to confirm the workout is still active.</Text>
             </View>
           )}
 
+          {['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && <View accessibilityLiveRegion="polite" style={styles.syncNotice}>
+            <Text style={styles.syncTitle}>{state.syncStatus === 'conflict'
+              ? state.conflict === 'closed' ? 'Workout closed elsewhere' : state.conflict === 'replaced' ? 'A different workout is active' : 'Workout changed elsewhere'
+              : state.syncStatus === 'failed' ? 'Sync paused'
+                  : state.syncStatus === 'storage-error' ? 'Device save failed' : 'Saved on this device'}</Text>
+            <Text style={styles.syncCopy}>{state.syncStatus === 'conflict'
+              ? 'Your local edits are preserved. Review them, or use the latest server state.'
+              : state.syncStatus === 'failed' ? 'Your edits are preserved on this device. Retry when connected.'
+                : state.syncStatus === 'storage-error' ? 'The latest change was not accepted because it could not be saved safely.'
+                  : state.syncStatus === 'saving' ? 'Syncing changes…' : 'Changes will sync when the server is available.'}</Text>
+            {state.syncStatus === 'failed' && <Pressable accessibilityRole="button" onPress={retrySave} style={styles.syncAction}><Text style={styles.syncActionText}>Retry</Text></Pressable>}
+            {state.syncStatus === 'conflict' && <Pressable accessibilityRole="button" onPress={confirmDiscardLocal} style={styles.syncAction}><Text style={styles.syncActionText}>Use latest</Text></Pressable>}
+          </View>}
+
           {state.session.exercises.length === 0 ? (
             <Text style={[styles.stateCopy, styles.emptyExerciseCopy]}>No exercises yet.</Text>
           ) : (
-            <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale} />
+            <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale}
+              editing={{ updateSet, adjustSet, setDone, addSet, removeSet }} />
           )}
         </View>
         )}
@@ -599,6 +706,7 @@ const styles = StyleSheet.create({
   elapsed: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20, lineHeight: 28, fontVariant: ['tabular-nums'] },
   workoutLabelsBand: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, height: 52 },
   sessionLabel: { color: colors.accentText, borderBottomColor: colors.accent, borderBottomWidth: 2, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 18, paddingHorizontal: 12, paddingVertical: 12 },
+  syncInline: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, lineHeight: 18, marginLeft: 'auto', paddingVertical: 12 },
   previewCopy: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, textAlign: 'center', paddingVertical: 8 },
   lookupText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   lookupAction: { minHeight: 44, justifyContent: 'center' },
@@ -608,6 +716,11 @@ const styles = StyleSheet.create({
   staleNotice: { backgroundColor: colors.surface, borderColor: colors.accent, borderWidth: 1, borderRadius: 16, marginHorizontal: 16, marginTop: 14, paddingHorizontal: 12, paddingVertical: 10 },
   staleTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
   staleCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 3 },
+  syncNotice: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: 16, paddingHorizontal: 4, paddingVertical: 10 },
+  syncTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, lineHeight: 18 },
+  syncCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 2 },
+  syncAction: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44, paddingRight: 16 },
+  syncActionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   emptyExerciseCopy: { marginTop: 80 },
   exerciseStack: { paddingHorizontal: 16, paddingTop: 4 },
   exerciseCard: { paddingBottom: 12, paddingTop: 10.4 },
@@ -631,11 +744,25 @@ const styles = StyleSheet.create({
   setWeightColumn: { flexBasis: 54.4, flexGrow: 1, flexShrink: 0, minWidth: 54.4 },
   setRepsColumn: { width: 52, flexShrink: 0 },
   setTrailingColumn: { width: 44, flexShrink: 0 },
+  setTouchTarget: { alignItems: 'center', height: 44, justifyContent: 'center' },
+  weightInputColumn: { flexBasis: 54.4, flexGrow: 1, flexShrink: 0, minWidth: 54.4 },
+  repsInputColumn: { width: 52, flexShrink: 0 },
   setHeaderCell: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18, textAlign: 'center' },
-  setToggle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, textAlign: 'center', width: 44 },
+  setToggle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 16, lineHeight: 24, textAlign: 'center', width: 44 },
+  setToggleCurrent: { fontFamily: 'InstrumentSans_700Bold' },
   setCellMuted: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12, lineHeight: 18, textAlign: 'center' },
   setCellValue: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'], lineHeight: 44, textAlign: 'center' },
   setCellCurrent: { borderBottomColor: colors.lineStrong, borderBottomWidth: StyleSheet.hairlineWidth },
+  setInput: { borderBottomColor: colors.lineStrong, borderBottomWidth: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'], height: 44, lineHeight: 21, paddingHorizontal: 4, paddingVertical: 8, textAlign: 'center' },
+  setInputDone: { borderBottomColor: 'transparent', opacity: 0.7 },
+  setStepperRow: { backgroundColor: 'rgba(255,255,255,0.024)', borderRadius: 12, flexDirection: 'row', height: 44, marginTop: 8, overflow: 'hidden' },
+  setStepperButton: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 44 },
+  setStepperSeparator: { borderLeftColor: colors.line, borderLeftWidth: 1 },
+  setStepperPressed: { backgroundColor: 'rgba(240,67,90,0.12)', opacity: 0.9 },
+  setStepperText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
+  addSetButton: { alignItems: 'center', backgroundColor: 'rgba(33,31,35,0.76)', borderRadius: 8, justifyContent: 'center', minHeight: 44, marginTop: 4 },
+  addSetContent: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' },
+  addSetText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
   omittedSetAdjustmentsSpace: { height: 52 },
   omittedWorkoutActionsSpace: { height: 49 },
   omittedAddExerciseSpace: { height: 72 },

@@ -52,7 +52,23 @@ test('preserves supported legacy identity, source, and done semantics', () => {
   assert.equal(parsed.sessionId, deriveLegacySessionId('user-a', 1_000))
   assert.equal(parsed.sessionRevision, null)
   assert.equal(parsed.exercises[0]?.exerciseSource, 'global')
-  assert.deepEqual(parsed.exercises[0]?.sets[0], { weight: '100', reps: '5', done: false })
+  assert.deepEqual(parsed.exercises[0]?.sets[0], {
+    clientId: parsed.exercises[0]?.sets[0]?.clientId,
+    weight: '100', reps: '5', done: false,
+  })
+})
+
+test('assigns stable local identities and preserves unknown nested metadata', () => {
+  const parsed = parseSessionDocument('user-a', session({
+    exercises: [{
+      exerciseId: 'squat', name: 'Squat', tempo: '3-1-1',
+      sets: [{ weight: 100, reps: 5, cue: { text: 'brace' } }],
+    }],
+  }))
+  assert.match(parsed.exercises[0]!.clientId, /^native-exercise-/)
+  assert.match(parsed.exercises[0]!.sets[0]!.clientId, /^native-set-/)
+  assert.equal(parsed.exercises[0]?.tempo, '3-1-1')
+  assert.deepEqual(parsed.exercises[0]?.sets[0]?.cue, { text: 'brace' })
 })
 
 test('rejects malformed documents instead of fabricating an empty session', () => {

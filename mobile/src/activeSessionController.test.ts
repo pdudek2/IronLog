@@ -8,7 +8,8 @@ import {
   type SessionSnapshot,
   type SubscribeToSession,
 } from './activeSessionController'
-import type { Units } from './session'
+import { TwoSlotSessionJournal, type JournalSlotStorage } from './sessionJournal'
+import type { ActiveWorkout, Units } from './session'
 
 interface Listener {
   uid: string
@@ -17,167 +18,385 @@ interface Listener {
   unsubscribed: boolean
 }
 
-const flush = () => new Promise((resolve) => setImmediate(resolve))
+class MemorySlots implements JournalSlotStorage {
+  values = new Map<string, string>()
+  failWrite = false
+  writeGate: Promise<void> | null = null
+  async read(uid: string, slot: 0 | 1) { return this.values.get(`${uid}:${slot}`) ?? null }
+  async write(uid: string, slot: 0 | 1, value: string) {
+    if (this.failWrite) throw new Error('disk full')
+    if (this.writeGate) {
+      const gate = this.writeGate
+      this.writeGate = null
+      await gate
+    }
+    this.values.set(`${uid}:${slot}`, value)
+  }
+}
 
-function session(uid: string, label = 'Push') {
+class ConflictError extends Error {}
+const wait = (ms = 10) => new Promise((resolve) => setTimeout(resolve, ms))
+
+function session(uid: string, revision: string | null = `revision-${uid}`, label = 'Push') {
   return {
     userId: uid,
     sessionId: `session-${uid}`,
-    sessionRevision: `revision-${uid}`,
+    sessionRevision: revision,
     startedAt: 1_000,
     templateId: null,
     label,
     exercises: [{
+      clientId: `exercise-${uid}`,
       exerciseId: 'bench-press',
       exerciseSource: 'global',
       name: 'Bench Press',
-      sets: [{ weight: '65', reps: '8', done: true }],
+      sets: [{ clientId: `set-${uid}`, weight: '65', reps: '8', done: false }],
     }],
   }
 }
 
-function harness(units: Units = 'kg') {
+function snapshot(uid: string, revision: string | null = `revision-${uid}`): SessionSnapshot {
+  return { exists: true, data: session(uid, revision), fromCache: false, hasPendingWrites: false }
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => { resolve = res; reject = rej })
+  return { promise, resolve, reject }
+}
+
+function harness(options: { units?: Units; slots?: MemorySlots; readUnits?: () => Promise<Units> } = {}) {
   const listeners: Listener[] = []
   const states: ActiveSessionState[] = []
+  const saves: Array<{ uid: string; session: ActiveWorkout; expected: string | null; requested: string; result: ReturnType<typeof deferred<void>> }> = []
   const subscribe: SubscribeToSession = (uid, next, error) => {
     const listener = { uid, next, error, unsubscribed: false }
     listeners.push(listener)
     return () => { listener.unsubscribed = true }
   }
-  const controller = new ActiveSessionController(subscribe, async () => units, (state) => states.push(state))
-  return { controller, listeners, states }
+  const slots = options.slots ?? new MemorySlots()
+  let revision = 0
+  const controller = new ActiveSessionController({
+    subscribe,
+    readUnits: options.readUnits ?? (async () => options.units ?? 'kg'),
+    journal: new TwoSlotSessionJournal(slots),
+    createRevision: () => `request-${++revision}`,
+    isConflictError: (error) => error instanceof ConflictError,
+    isTransientError: (error) => typeof error === 'object' && error !== null && 'transient' in error,
+    save: (uid, value, expected, requested) => {
+      const result = deferred<void>()
+      saves.push({ uid, session: value, expected, requested, result })
+      return result.promise
+    },
+  }, (state) => states.push(state))
+  return { controller, listeners, states, saves, slots }
 }
 
-test('distinguishes cache-only absence from authoritative server absence', async () => {
-  const { controller, listeners, states } = harness()
-  controller.start('user-a')
-  await flush()
+function ready(states: ActiveSessionState[]) {
+  const state = states.at(-1)
+  assert.equal(state?.status, 'ready')
+  return state as Extract<ActiveSessionState, { status: 'ready' }>
+}
 
-  listeners[0]!.next({ exists: false, data: null, fromCache: true, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'cache-miss')
+async function loadServer(h: ReturnType<typeof harness>, uid = 'user-a', revision: string | null = `revision-${uid}`) {
+  h.controller.start(uid)
+  await wait()
+  h.listeners.at(-1)!.next(snapshot(uid, revision))
+  await wait()
+  return ready(h.states)
+}
 
-  listeners[0]!.next({ exists: false, data: null, fromCache: false, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'empty')
+test('distinguishes cache absence and stale content from authoritative state', async () => {
+  const h = harness({ units: 'lbs' })
+  h.controller.start('user-a')
+  await wait()
+  h.listeners[0]!.next({ exists: false, data: null, fromCache: true, hasPendingWrites: false })
+  await wait()
+  assert.equal(h.states.at(-1)?.status, 'cache-miss')
+  h.listeners[0]!.next({ ...snapshot('user-a'), fromCache: true })
+  await wait()
+  assert.equal(ready(h.states).stale, true)
+  h.listeners[0]!.next(snapshot('user-a'))
+  await wait()
+  assert.equal(ready(h.states).syncStatus, 'saved')
+  h.listeners[0]!.next({ exists: false, data: null, fromCache: false, hasPendingWrites: false })
+  await wait()
+  assert.equal(h.states.at(-1)?.status, 'empty')
 })
 
-test('shows cached data as stale, then accepts an authoritative update and deletion', async () => {
-  const { controller, listeners, states } = harness('lbs')
-  controller.start('user-a')
-  await flush()
+test('persists before publishing an edit and rejects memory-only fallback', async () => {
+  const h = harness()
+  const initial = await loadServer(h)
+  h.slots.failWrite = true
+  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  const failed = ready(h.states)
+  assert.equal(failed.session.exercises[0]?.sets[0]?.reps, '8')
+  assert.equal(failed.syncStatus, 'storage-error')
+  assert.equal(h.saves.length, 0)
+})
 
-  listeners[0]!.next({ exists: true, data: session('user-a'), fromCache: true, hasPendingWrites: false })
-  assert.deepEqual(states.at(-1), {
-    status: 'ready',
-    session: states.at(-1)?.session,
-    units: 'lbs',
-    stale: true,
-  })
+test('keeps edits made during a write and advances only after authoritative acknowledgement', async () => {
+  const h = harness()
+  const initial = await loadServer(h)
+  const exercise = initial.session.exercises[0]!
+  const set = exercise.sets[0]!
+  h.controller.updateSet(exercise.clientId, set.clientId, 'reps', '9')
+  await wait()
+  h.controller.retrySave()
+  await wait()
+  assert.equal(h.saves.length, 1)
+  h.listeners[0]!.next(snapshot('user-a', 'revision-user-a'))
+  h.listeners[0]!.next(snapshot('user-a', 'revision-user-a'))
+  await wait()
+  assert.equal(h.saves.length, 1)
+  assert.equal(h.saves[0]?.expected, 'revision-user-a')
+  assert.equal(h.saves[0]?.session.exercises[0]?.sets[0]?.reps, '9')
 
-  listeners[0]!.next({ exists: true, data: session('user-a', 'Pull'), fromCache: false, hasPendingWrites: false })
-  const serverState = states.at(-1)
-  assert.equal(serverState?.status, 'ready')
-  if (serverState?.status === 'ready') {
-    assert.equal(serverState.stale, false)
-    assert.equal(serverState.session.label, 'Pull')
+  h.controller.updateSet(exercise.clientId, set.clientId, 'reps', '10')
+  await wait()
+  h.saves[0]!.result.resolve()
+  h.listeners[0]!.next(snapshot('user-a', 'request-1'))
+  await wait(30)
+  assert.equal(h.saves.length, 2)
+  assert.equal(h.saves[1]?.expected, 'request-1')
+  assert.equal(h.saves[1]?.session.exercises[0]?.sets[0]?.reps, '10')
+})
+
+test('serializes a delayed journal edit before acknowledgement so newer input cannot be cleared', async () => {
+  const h = harness()
+  const initial = await loadServer(h)
+  const exercise = initial.session.exercises[0]!
+  const set = exercise.sets[0]!
+  h.controller.updateSet(exercise.clientId, set.clientId, 'reps', '9')
+  await wait()
+  h.controller.retrySave()
+  await wait()
+  const disk = deferred<void>()
+  h.slots.writeGate = disk.promise
+  h.controller.updateSet(exercise.clientId, set.clientId, 'reps', '10')
+  const acknowledged = session('user-a', 'request-1')
+  acknowledged.exercises[0]!.sets[0]!.reps = '9'
+  h.listeners[0]!.next({ exists: true, data: acknowledged, fromCache: false, hasPendingWrites: false })
+  await wait()
+  assert.equal(ready(h.states).session.exercises[0]?.sets[0]?.reps, '9')
+  disk.resolve()
+  await wait(40)
+  assert.equal(ready(h.states).session.exercises[0]?.sets[0]?.reps, '10')
+  assert.equal(h.saves.length, 2)
+  assert.equal(h.saves[1]?.session.exercises[0]?.sets[0]?.reps, '10')
+})
+
+test('retains stable row IDs across cached and authoritative copies of one revision', async () => {
+  const h = harness()
+  h.controller.start('user-a')
+  await wait()
+  const withoutIds = session('user-a')
+  delete (withoutIds.exercises[0] as Partial<typeof withoutIds.exercises[number]>).clientId
+  delete (withoutIds.exercises[0]!.sets[0] as Partial<typeof withoutIds.exercises[number]['sets'][number]>).clientId
+  h.listeners[0]!.next({ exists: true, data: withoutIds, fromCache: true, hasPendingWrites: false })
+  await wait()
+  const cachedIds = [ready(h.states).session.exercises[0]!.clientId, ready(h.states).session.exercises[0]!.sets[0]!.clientId]
+  h.listeners[0]!.next({ exists: true, data: withoutIds, fromCache: false, hasPendingWrites: false })
+  await wait()
+  assert.deepEqual([ready(h.states).session.exercises[0]!.clientId, ready(h.states).session.exercises[0]!.sets[0]!.clientId], cachedIds)
+})
+
+test('allows cached offline editing but does not write before an authoritative revision check', async () => {
+  const h = harness()
+  h.controller.start('user-a')
+  await wait()
+  h.listeners[0]!.next({ ...snapshot('user-a'), fromCache: true })
+  await wait()
+  const cached = ready(h.states).session
+  h.controller.updateSet(cached.exercises[0]!.clientId, cached.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  assert.equal(ready(h.states).session.exercises[0]?.sets[0]?.reps, '9')
+  assert.equal(h.saves.length, 0)
+  h.listeners[0]!.next(snapshot('user-a'))
+  await wait(30)
+  assert.equal(h.saves.length, 1)
+})
+
+test('CAS-upgrades an authoritative legacy document with a null revision', async () => {
+  const h = harness()
+  const initial = await loadServer(h, 'user-a', null)
+  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  h.controller.retrySave()
+  await wait()
+  assert.equal(h.saves.length, 1)
+  assert.equal(h.saves[0]?.expected, null)
+})
+
+test('recovers a lost acknowledgement after restart without replaying the mutation', async () => {
+  const slots = new MemorySlots()
+  const first = harness({ slots })
+  const initial = await loadServer(first)
+  first.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  first.controller.retrySave()
+  await wait()
+  assert.equal(first.saves.length, 1)
+  first.controller.dispose()
+
+  const second = harness({ slots })
+  second.controller.start('user-a')
+  await wait()
+  const acknowledged = session('user-a', 'request-1')
+  acknowledged.exercises[0]!.sets[0]!.reps = '9'
+  second.listeners[0]!.next({ exists: true, data: acknowledged, fromCache: false, hasPendingWrites: false })
+  await wait(30)
+  assert.equal(ready(second.states).syncStatus, 'saved')
+  assert.equal(second.saves.length, 0)
+  assert.deepEqual(await new TwoSlotSessionJournal(slots).load('user-a'), { status: 'empty' })
+})
+
+test('unknown revisions, replacement and deletion retain the draft until explicit discard', async () => {
+  for (const scenario of ['changed', 'replaced', 'closed'] as const) {
+    const h = harness()
+    const initial = await loadServer(h)
+    h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+    await wait()
+    if (scenario === 'changed') h.listeners[0]!.next(snapshot('user-a', 'web-revision'))
+    if (scenario === 'replaced') h.listeners[0]!.next({ ...snapshot('user-a', 'replacement'), data: { ...session('user-a', 'replacement'), sessionId: 'other-session' } })
+    if (scenario === 'closed') h.listeners[0]!.next({ exists: false, data: null, fromCache: false, hasPendingWrites: false })
+    await wait()
+    assert.equal(ready(h.states).conflict, scenario)
+    assert.equal(ready(h.states).session.exercises[0]?.sets[0]?.reps, '9')
+    h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '10')
+    h.listeners[0]!.next({ ...snapshot('user-a'), fromCache: true })
+    await wait()
+    assert.equal(ready(h.states).syncStatus, 'conflict')
+    h.controller.discardLocalChanges()
+    await wait()
+    assert.equal(scenario === 'closed' ? h.states.at(-1)?.status : ready(h.states).syncStatus, scenario === 'closed' ? 'empty' : 'saved')
   }
-
-  listeners[0]!.next({ exists: false, data: null, fromCache: false, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'empty')
 })
 
-test('malformed and permission failures clear protected session content', async () => {
-  const { controller, listeners, states } = harness()
-  controller.start('user-a')
-  await flush()
-
-  listeners[0]!.next({ exists: true, data: session('user-a'), fromCache: false, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'ready')
-  listeners[0]!.next({ exists: true, data: { userId: 'user-a', exercises: [] }, fromCache: false, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'error')
-  assert.equal(states.at(-1)?.session, null)
-  assert.equal(listeners[0]?.unsubscribed, true)
-
-  controller.retry()
-  await flush()
-  listeners[1]!.error({ code: 'firestore/permission-denied' })
-  const deniedState = states.at(-1)
-  assert.equal(deniedState?.status, 'error')
-  if (deniedState?.status === 'error') assert.match(deniedState.message, /permission/)
-  assert.equal(deniedState?.session, null)
+test('duplicate callbacks and late completion after account switch cannot advance the next account', async () => {
+  const h = harness()
+  const initial = await loadServer(h)
+  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  h.controller.retrySave()
+  await wait()
+  h.controller.start('user-b')
+  await wait()
+  h.saves[0]!.result.resolve()
+  h.listeners[0]!.next(snapshot('user-a', 'request-1'))
+  await wait()
+  assert.equal(h.states.at(-1)?.status, 'loading')
+  h.listeners[1]!.next(snapshot('user-b'))
+  await wait()
+  assert.equal(ready(h.states).session.sessionId, 'session-user-b')
+  h.listeners[0]!.next(snapshot('user-a', 'request-1'))
+  await wait()
+  assert.equal(ready(h.states).session.sessionId, 'session-user-b')
 })
 
-test('retry replaces the failed listener', async () => {
-  const { controller, listeners, states } = harness()
-  controller.start('user-a')
-  await flush()
-  listeners[0]!.error(new Error('offline'))
+test('permission failures hide remote content while offline errors retain an owner-scoped draft', async () => {
+  const h = harness()
+  await loadServer(h)
+  h.listeners[0]!.error({ code: 'firestore/permission-denied' })
+  await wait()
+  assert.equal(h.states.at(-1)?.status, 'error')
+  assert.equal(h.states.at(-1)?.session, null)
 
-  controller.retry()
-  await flush()
-  assert.equal(listeners.length, 2)
-  assert.equal(listeners[0]?.unsubscribed, true)
-  listeners[1]!.next({ exists: false, data: null, fromCache: false, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'empty')
+  const local = harness()
+  const initial = await loadServer(local)
+  local.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  local.listeners[0]!.error(new Error('offline'))
+  await wait()
+  assert.equal(ready(local.states).session.exercises[0]?.sets[0]?.reps, '9')
+  assert.equal(ready(local.states).stale, true)
+  assert.equal(ready(local.states).syncStatus, 'failed')
+  local.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '10')
+  await wait()
+  assert.equal(ready(local.states).syncStatus, 'failed')
 })
 
-test('keeps listening after malformed cache so server recovery can replace it', async () => {
-  const { controller, listeners, states } = harness()
-  controller.start('user-a')
-  await flush()
-
-  listeners[0]!.next({
-    exists: true,
-    data: { userId: 'user-a', exercises: [] },
-    fromCache: true,
-    hasPendingWrites: false,
-  })
-  assert.equal(states.at(-1)?.status, 'error')
-  assert.equal(states.at(-1)?.session, null)
-  assert.equal(listeners[0]?.unsubscribed, false)
-
-  listeners[0]!.next({ exists: true, data: session('user-a', 'Recovered'), fromCache: false, hasPendingWrites: false })
-  const recovered = states.at(-1)
-  assert.equal(recovered?.status, 'ready')
-  if (recovered?.status === 'ready') assert.equal(recovered.session.label, 'Recovered')
-})
-
-test('account switches clear immediately and ignore late callbacks from the previous account', async () => {
-  const { controller, listeners, states } = harness()
-  controller.start('user-a')
-  await flush()
-  listeners[0]!.next({ exists: true, data: session('user-a'), fromCache: true, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'ready')
-
-  controller.start('user-b')
-  assert.equal(states.at(-1)?.status, 'loading')
-  assert.equal(states.at(-1)?.session, null)
-  assert.equal(listeners[0]?.unsubscribed, true)
-  await flush()
-
-  listeners[0]!.next({ exists: true, data: session('user-a'), fromCache: false, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'loading')
-  listeners[1]!.next({ exists: false, data: null, fromCache: false, hasPendingWrites: false })
-  assert.equal(states.at(-1)?.status, 'empty')
-})
-
-test('a direct account render never exposes the previous account state', () => {
-  const accountAState: ActiveSessionState = {
-    status: 'ready',
-    session: {
-      sessionId: 'session-a',
-      sessionRevision: 'revision-a',
-      startedAt: 1_000,
-      templateId: null,
-      exercises: [],
-    },
-    units: 'kg',
-    stale: false,
+test('stateForAccount masks a previous account immediately', () => {
+  const accountA: ActiveSessionState = {
+    status: 'ready', session: { sessionId: 'session-a', sessionRevision: 'revision-a', startedAt: 1, templateId: null, exercises: [] },
+    units: 'kg', stale: false, syncStatus: 'saved',
   }
+  assert.equal(stateForAccount('b', 'a', accountA).status, 'loading')
+  assert.equal(stateForAccount('b', 'b', accountA), accountA)
+})
 
-  assert.deepEqual(stateForAccount('account-b', 'account-a', accountAState), {
-    status: 'loading',
-    session: null,
-    units: 'kg',
-  })
-  assert.equal(stateForAccount('account-b', 'account-b', accountAState), accountAState)
+test('a transaction conflict stops retries and keeps the durable draft', async () => {
+  const h = harness()
+  const initial = await loadServer(h)
+  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  h.controller.retrySave()
+  await wait()
+  h.saves[0]!.result.reject(new ConflictError())
+  await wait()
+  assert.equal(ready(h.states).syncStatus, 'conflict')
+  assert.equal(h.saves.length, 1)
+  const acknowledged = session('user-a', 'request-1')
+  acknowledged.exercises[0]!.sets[0]!.reps = '9'
+  h.listeners[0]!.next({ exists: true, data: acknowledged, fromCache: false, hasPendingWrites: false })
+  await wait(30)
+  assert.equal(ready(h.states).syncStatus, 'saved')
+  assert.equal(ready(h.states).conflict, undefined)
+})
+
+test('bounds transient retries per request and requires explicit Retry after exhaustion', async () => {
+  const h = harness()
+  const initial = await loadServer(h)
+  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  h.controller.retrySave()
+  await wait()
+  h.saves[0]!.result.reject({ transient: true })
+  await wait(350)
+  h.saves[1]!.result.reject({ transient: true })
+  await wait(650)
+  h.saves[2]!.result.reject({ transient: true })
+  await wait()
+  assert.equal(ready(h.states).syncStatus, 'failed')
+  h.listeners[0]!.next(snapshot('user-a'))
+  h.listeners[0]!.next(snapshot('user-a'))
+  await wait(30)
+  assert.equal(h.saves.length, 3)
+  assert.equal(ready(h.states).syncStatus, 'failed')
+  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '10')
+  await wait()
+  assert.equal(ready(h.states).syncStatus, 'failed')
+  h.controller.retrySave()
+  await wait()
+  assert.equal(h.saves.length, 4)
+})
+
+test('corrupt startup is absorbing and cannot be overwritten by a queued snapshot', async () => {
+  const slots = new MemorySlots()
+  slots.values.set('user-a:0', '{broken')
+  const h = harness({ slots })
+  h.controller.start('user-a')
+  h.listeners[0]!.next(snapshot('user-a'))
+  await wait(30)
+  const failed = h.states.at(-1)
+  assert.equal(failed?.status, 'error')
+  if (failed?.status === 'error') assert.match(failed.message, /damaged/)
+})
+
+test('a recovered offline draft wins when units lookup fails before journal recovery', async () => {
+  const slots = new MemorySlots()
+  const journal = new TwoSlotSessionJournal(slots)
+  await journal.load('user-a')
+  const stored = session('user-a')
+  await journal.writeDraft('user-a', { session: {
+    sessionId: stored.sessionId, sessionRevision: stored.sessionRevision, startedAt: stored.startedAt,
+    templateId: null, label: stored.label, exercises: stored.exercises as ActiveWorkout['exercises'],
+  }, units: 'lbs', baseRevision: stored.sessionRevision, pending: null })
+  const h = harness({ slots, readUnits: async () => { throw new Error('offline') } })
+  h.controller.start('user-a')
+  await wait(30)
+  assert.equal(ready(h.states).units, 'lbs')
+  assert.equal(ready(h.states).stale, true)
 })

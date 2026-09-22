@@ -5,7 +5,15 @@ import {
   stateForAccount,
   type ActiveSessionState,
 } from './activeSessionController'
-import { readUnits, subscribeToActiveSession } from './firebase'
+import {
+  createSessionRevision,
+  isNativeActiveSessionConflict,
+  isTransientFirestoreError,
+  readUnits,
+  saveExistingActiveSession,
+  subscribeToActiveSession,
+} from './firebase'
+import { sessionJournal } from './fileSessionJournal'
 
 const initialState: ActiveSessionState = { status: 'loading', session: null, units: 'kg' }
 
@@ -16,8 +24,15 @@ export function useActiveSession(uid: string | null) {
   })
   const controller = useMemo(
     () => new ActiveSessionController(
-      subscribeToActiveSession,
-      readUnits,
+      {
+        subscribe: subscribeToActiveSession,
+        readUnits,
+        save: saveExistingActiveSession,
+        createRevision: createSessionRevision,
+        isConflictError: isNativeActiveSessionConflict,
+        isTransientError: isTransientFirestoreError,
+        journal: sessionJournal,
+      },
       (state) => setScopedState({ uid, state }),
     ),
     [uid],
@@ -29,5 +44,15 @@ export function useActiveSession(uid: string | null) {
     return () => controller.dispose()
   }, [controller, uid])
 
-  return { state: stateForAccount(uid, scopedState.uid, scopedState.state), retry: () => controller.retry() }
+  return {
+    state: stateForAccount(uid, scopedState.uid, scopedState.state),
+    retry: () => controller.retry(),
+    retrySave: () => controller.retrySave(),
+    discardLocalChanges: () => controller.discardLocalChanges(),
+    updateSet: controller.updateSet.bind(controller),
+    adjustSet: controller.adjustSet.bind(controller),
+    setDone: controller.setDone.bind(controller),
+    addSet: controller.addSet.bind(controller),
+    removeSet: controller.removeSet.bind(controller),
+  }
 }

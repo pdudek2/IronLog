@@ -14,14 +14,16 @@ import {
   getDoc,
   getFirestore,
   onSnapshot,
+  runTransaction,
 } from '@react-native-firebase/firestore'
 import Constants from 'expo-constants'
 
 import type { SubscribeToSession } from './activeSessionController'
-import type { Units, ExerciseSource } from './session'
+import type { ActiveWorkout, Units, ExerciseSource } from './session'
 import { parsePreviousSets, type ExerciseMetadata, type ReadResult } from './scopedRead'
 import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
+import { NativeActiveSessionConflictError, updateExistingActiveSession } from './activeSessionTransaction'
 
 const backend = Constants.expoConfig?.extra?.firebaseBackend
 const emulatorHost = Constants.expoConfig?.extra?.firebaseEmulatorHost
@@ -62,6 +64,23 @@ function getServices() {
 }
 
 export type AuthUser = User
+
+export function isNativeActiveSessionConflict(error: unknown): boolean {
+  return error instanceof NativeActiveSessionConflictError
+}
+
+export function isTransientFirestoreError(error: unknown): boolean {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : ''
+  return ['unavailable', 'deadline-exceeded', 'aborted', 'internal', 'resource-exhausted']
+    .some((value) => code.endsWith(value))
+}
+
+let revisionCounter = 0
+
+export function createSessionRevision(): string {
+  revisionCounter += 1
+  return `native-${Date.now().toString(36)}-${revisionCounter.toString(36)}-${Math.random().toString(36).slice(2)}`
+}
 
 export function observeAuth(
   onChange: (user: AuthUser | null) => void,
@@ -119,6 +138,26 @@ export const subscribeToActiveSession: SubscribeToSession = (uid, onChange, onEr
     active = false
     unsubscribe?.()
   }
+}
+
+export async function saveExistingActiveSession(
+  uid: string,
+  session: ActiveWorkout,
+  expectedRevision: string | null,
+  requestRevision: string,
+): Promise<void> {
+  const { firestore } = await getServices()
+  const reference = doc(firestore, 'activeSessions', uid)
+  const updatedAt = Date.now()
+  await runTransaction(firestore, async (transaction) => {
+    await updateExistingActiveSession({
+      read: async () => {
+        const snapshot = await transaction.get(reference)
+        return { exists: snapshot.exists(), data: snapshot.exists() ? snapshot.data() : null }
+      },
+      update: (fields) => { transaction.update(reference, fields) },
+    }, uid, session, expectedRevision, requestRevision, updatedAt)
+  })
 }
 
 export async function readUnits(uid: string): Promise<Units> {

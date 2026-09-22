@@ -172,6 +172,7 @@ function SignalBackdrop({ focused }: { focused: boolean }) {
 }
 
 function LoginForm() {
+  const router = useRouter()
   const { fontScale } = useWindowDimensions()
   const passwordInput = useRef<TextInput>(null)
   const [email, setEmail] = useState('')
@@ -190,6 +191,7 @@ function LoginForm() {
     setError(null)
     try {
       await login(email, password)
+      router.replace('/dashboard')
     } catch (cause) {
       setError({ field: 'password', message: getAuthErrorMessage(cause, 'login') })
     } finally {
@@ -784,6 +786,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
           <View style={styles.lifecycleBarInner}>
             <Elapsed session={state.session} />
             <View style={styles.flex} />
+            <Pressable accessibilityRole="button" accessibilityLabel="Minimize workout" accessibilityHint="Your workout keeps running" onPress={() => router.navigate('/dashboard')} style={styles.minimizeButton}>
+              <Svg accessibilityElementsHidden height={17} width={17} viewBox="0 0 24 24"><Path d="m6 9 6 6 6-6" fill="none" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
+              <View><Text style={styles.minimizeText}>Minimize</Text><Text style={styles.minimizeHint}>Keeps running</Text></View>
+            </Pressable>
             <WorkoutOptionsMenu busy={locked} onDiscard={discard} onHistory={() => router.push('/history')} onSignOut={() => void doLogout()} />
             <Pressable accessibilityRole="button" accessibilityLabel="Finish workout" disabled={locked} onPress={finish}
               style={({ pressed }) => [styles.finishButton, styles.buttonPrimary, locked && styles.buttonDisabled, pressed && styles.buttonPressed]}>
@@ -794,10 +800,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
       ) : (
         <View style={styles.lifecycleBar}>
           <View style={styles.lifecycleBarInner}>
-          <View style={styles.sessionBrand}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Open Home" onPress={() => router.navigate('/dashboard')} style={styles.sessionBrand}>
             <View style={styles.brandMarkSmall}><Text style={styles.brandMarkTextSmall}>IL</Text></View>
             <Text style={styles.brandNameSmall}>IronLog</Text>
-          </View>
+          </Pressable>
           <SignOutButton busy={signingOut} onPress={() => void doLogout()} />
           </View>
         </View>
@@ -826,6 +832,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
           <Text accessibilityRole="header" style={styles.stateTitle}>{completed?.action === 'finish' ? 'Workout saved' : completed ? 'Workout discarded' : 'No workout in progress'}</Text>
           <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Your saved workout is ready in History.' : 'Start one on IronLog web and it will appear here.'}</Text>
           <ActionButton label="History" onPress={() => router.push('/history')} secondary />
+          <ActionButton label="Home" onPress={() => router.navigate('/dashboard')} secondary />
         </View>
       )}
 
@@ -834,6 +841,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
           <Text accessibilityRole="header" style={styles.stateTitle}>Workout saved</Text>
           <Text style={styles.stateCopy}>Your completed session is ready in History.</Text>
           <ActionButton label="History" onPress={() => router.push('/history')} secondary />
+          <ActionButton label="Home" onPress={() => router.navigate('/dashboard')} secondary />
         </View>
       )}
 
@@ -1058,6 +1066,9 @@ const styles = StyleSheet.create({
   omittedSetAdjustmentsSpace: { height: 52 },
   // Web: rounded-xl px-5 text-sm font-bold min-h-11 with the primary gradient.
   finishButton: { alignItems: 'center', borderRadius: 12, justifyContent: 'center', marginLeft: 8, minHeight: 44, paddingHorizontal: 20 },
+  minimizeButton: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 44, paddingHorizontal: 2 },
+  minimizeText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
+  minimizeHint: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 10 },
   finishButtonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
   optionsTrigger: { alignItems: 'center', borderRadius: 8, height: 44, justifyContent: 'center', width: 44 },
   optionsMenu: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderRadius: 8, borderWidth: 1, boxShadow: '0 12px 32px rgba(0, 0, 0, 0.42)', padding: 5.6, position: 'absolute', right: 16 },

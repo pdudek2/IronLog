@@ -22,7 +22,7 @@ export default function HistoryHeader() {
   }
 
   return <View style={styles.header}>
-    <Pressable accessibilityRole="button" accessibilityLabel="Open workout screen" hitSlop={6} onPress={() => router.navigate('/')} style={styles.brand}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open Home" hitSlop={6} onPress={() => router.navigate('/dashboard')} style={styles.brand}>
       <Text style={styles.brandText}>IL</Text>
       <View style={styles.brandDot} />
     </Pressable>

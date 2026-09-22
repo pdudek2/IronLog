@@ -114,7 +114,7 @@ test('finish posts the saved revision and validates the echoed workout id', asyn
 test('discard posts only the session id', async () => {
   const { calls, dependencies } = requestDependencies(() => json(200, { status: 'discarded' }))
   const result = await requestClosure({ action: 'discard', sessionId: 'session-a', sessionRevision: null, createdAt: 1 }, dependencies)
-  assert.deepEqual(result, { action: 'discard', status: 'discarded' })
+  assert.deepEqual(result, { action: 'discard', sessionId: 'session-a', status: 'discarded' })
   assert.deepEqual(calls[0]?.body, { sessionId: 'session-a' })
 })
 
@@ -277,7 +277,7 @@ test('a failed resolved-state clear stays locked and can be retried without anot
   const sending = h.controller.startClosure('discard', session('session-a', null))
   await wait()
   slots.failWrite = true
-  h.requests[0]!.resolve({ action: 'discard', status: 'discarded' })
+  h.requests[0]!.resolve({ action: 'discard', sessionId: 'session-b', status: 'discarded' })
   await sending
   assert.equal(lastState(h.states).status, 'resolution_storage_failed')
   assert.equal(h.controller.canEdit(), false)
@@ -285,7 +285,7 @@ test('a failed resolved-state clear stays locked and can be retried without anot
   slots.failWrite = false
   await h.controller.retry()
   assert.equal(lastState(h.states).status, 'ready')
-  assert.deepEqual(h.states.at(-1)?.completed, { action: 'discard', status: 'discarded' })
+  assert.deepEqual(h.states.at(-1)?.completed, { action: 'discard', sessionId: 'session-b', status: 'discarded' })
   assert.equal(h.calls.length, 1)
 })
 

@@ -20,7 +20,7 @@ export interface ClosureIntentStorage {
 
 export type ClosureResult =
   | { action: 'finish'; workoutId: string; status: 'materialized' | 'projection_pending' }
-  | { action: 'discard'; status: 'discarded' }
+  | { action: 'discard'; sessionId: string; status: 'discarded' }
 
 export type ClosureJournalLoad =
   | { status: 'empty'; generation: number }
@@ -484,7 +484,7 @@ export async function requestClosure(intent: ClosureIntent, dependencies: Closur
     return { action: 'finish', workoutId: payload.workoutId, status: payload.status }
   }
   if (payload.status !== 'discarded') throw new ClosureRequestError('ambiguous', 'The server returned an unreadable response.')
-  return { action: 'discard', status: 'discarded' }
+  return { action: 'discard', sessionId: intent.sessionId, status: 'discarded' }
 }
 
 async function post(dependencies: ClosureRequestDependencies, path: string, body: unknown): Promise<Record<string, unknown>> {

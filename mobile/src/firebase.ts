@@ -22,6 +22,7 @@ import type { SubscribeToSession } from './activeSessionController'
 import type { ActiveWorkout, Units, ExerciseSource } from './session'
 import { parsePreviousSets, type ExerciseMetadata, type ReadResult } from './scopedRead'
 import { parseSavedWorkout, type SavedWorkout } from './history'
+import { parseHomeProfile, type HomeProfile } from './home'
 import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 import { NativeActiveSessionConflictError, updateExistingActiveSession } from './activeSessionTransaction'
@@ -176,6 +177,22 @@ export async function readUnits(uid: string): Promise<Units> {
   const units = snapshot.data()?.units
   if (units !== 'kg' && units !== 'lbs') throw new Error('The profile has invalid units.')
   return units
+}
+
+export async function readHome(uid: string): Promise<ReadResult<{ profile: HomeProfile; workouts: SavedWorkout[] }>> {
+  const { firestore } = await getServices()
+  const [profileSnapshot, workoutsSnapshot] = await Promise.all([
+    getDoc(doc(firestore, 'users', uid)),
+    getDocs(query(collection(firestore, 'workouts'), where('userId', '==', uid), orderBy('startedAt', 'desc'), limit(50))),
+  ])
+  if (!profileSnapshot.exists()) throw new Error('Could not confirm profile')
+  return {
+    data: {
+      profile: parseHomeProfile(uid, profileSnapshot.data()),
+      workouts: workoutsSnapshot.docs.map((document) => parseSavedWorkout(document.id, uid, document.data())),
+    },
+    fromCache: profileSnapshot.metadata.fromCache || workoutsSnapshot.metadata.fromCache,
+  }
 }
 
 export async function readPreviousSets(uid: string, exerciseId: string, source: ExerciseSource) {

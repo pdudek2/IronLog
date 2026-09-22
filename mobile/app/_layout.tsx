@@ -7,7 +7,7 @@ import {
 } from '@expo-google-fonts/instrument-sans'
 import { SplineSansMono_600SemiBold } from '@expo-google-fonts/spline-sans-mono'
 import { useFonts } from 'expo-font'
-import { SplashScreen, Stack } from 'expo-router'
+import { SplashScreen, Stack, usePathname, useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import ArchivoHero from '../assets/fonts/ArchivoHero.ttf'
@@ -46,6 +46,11 @@ export default function RootLayout() {
 
 function RootStack() {
   const { user } = useAuthRuntime()
+  const pathname = usePathname()
+  const router = useRouter()
+  useEffect(() => {
+    if (user === null && pathname !== '/') router.replace('/')
+  }, [pathname, router, user])
   const stack = <Stack screenOptions={{ headerShown: false }} />
   return (
     <ActiveRuntimeProvider key={user?.uid ?? 'signed-out'} uid={user?.uid ?? null}>

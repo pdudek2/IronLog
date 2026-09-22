@@ -24,8 +24,8 @@ export default function ActiveWorkoutReturnBar() {
     return () => { clearInterval(interval); lifecycle.remove() }
   }, [startedAt])
 
-  const justFinished = session && closure.completed?.action === 'finish'
-    && closure.completed.workoutId === session.sessionId
+  const justFinished = session && closure.completed
+    && (closure.completed.action === 'finish' ? closure.completed.workoutId : closure.completed.sessionId) === session.sessionId
   if (!session || justFinished || pathname === '/') return null
 
   return (
@@ -43,7 +43,7 @@ export default function ActiveWorkoutReturnBar() {
       <Text accessibilityLabel={`Elapsed time ${formatElapsed(session.startedAt, now)}`} style={styles.elapsed}>
         {formatElapsed(session.startedAt, now)}
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => router.navigate('/')} style={styles.returnButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => router.dismissTo('/')} style={styles.returnButton}>
         <Text style={styles.returnText}>Return</Text>
         <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke="#ff7182" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg>
       </Pressable>

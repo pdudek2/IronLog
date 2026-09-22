@@ -12,6 +12,7 @@ import { useEffect } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import ArchivoHero from '../assets/fonts/ArchivoHero.ttf'
 import ArchivoHeading from '../assets/fonts/ArchivoHeading.ttf'
+import { ActiveRuntimeProvider, AuthRuntimeProvider, ClosureRuntimeProvider, useAuthRuntime } from '../src/runtime'
 
 void SplashScreen.preventAutoHideAsync()
 
@@ -36,7 +37,19 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <AuthRuntimeProvider>
+        <RootStack />
+      </AuthRuntimeProvider>
     </SafeAreaProvider>
+  )
+}
+
+function RootStack() {
+  const { user } = useAuthRuntime()
+  const stack = <Stack screenOptions={{ headerShown: false }} />
+  return (
+    <ActiveRuntimeProvider key={user?.uid ?? 'signed-out'} uid={user?.uid ?? null}>
+      {user ? <ClosureRuntimeProvider uid={user.uid}>{stack}</ClosureRuntimeProvider> : stack}
+    </ActiveRuntimeProvider>
   )
 }

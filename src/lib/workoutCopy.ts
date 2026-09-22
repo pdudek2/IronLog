@@ -1,5 +1,3 @@
-import type { WorkoutSummary } from './workoutService'
-
 const CATEGORY_WORKLOAD_INSIGHTS: Record<string, string> = {
   chest: 'Chest accounted for most of the work.',
   back: 'Back accounted for most of the work.',
@@ -18,7 +16,7 @@ export function getCategoryWorkloadInsight(
     ?? `Most of the work went to the category “${fallbackLabel}”.`
 }
 
-export function workoutTitle(workout: Pick<WorkoutSummary, 'label' | 'exercises'>): string {
+export function workoutTitle(workout: { label?: string | null; exercises: { name: string }[] }): string {
   if (workout.label?.trim()) return workout.label.trim()
   const names = workout.exercises.map((exercise) => exercise.name.trim()).filter(Boolean)
   if (!names.length) return 'Workout'

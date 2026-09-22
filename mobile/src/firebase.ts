@@ -21,6 +21,7 @@ import Constants from 'expo-constants'
 import type { SubscribeToSession } from './activeSessionController'
 import type { ActiveWorkout, Units, ExerciseSource } from './session'
 import { parsePreviousSets, type ExerciseMetadata, type ReadResult } from './scopedRead'
+import { parseSavedWorkout, type SavedWorkout } from './history'
 import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 import { NativeActiveSessionConflictError, updateExistingActiveSession } from './activeSessionTransaction'
@@ -203,6 +204,39 @@ export async function readExerciseMetadata(uid: string): Promise<ReadResult<Exer
         muscles: muscles.filter((muscle): muscle is string => typeof muscle === 'string'),
       }
     }),
+    fromCache: snapshot.metadata.fromCache,
+  }
+}
+
+const HISTORY_LIMIT = 2_000
+
+export interface WorkoutHistoryData {
+  workouts: SavedWorkout[]
+  truncated: boolean
+}
+
+export async function readWorkoutHistory(uid: string): Promise<ReadResult<WorkoutHistoryData>> {
+  const { firestore } = await getServices()
+  const snapshot = await getDocs(query(
+    collection(firestore, 'workouts'),
+    where('userId', '==', uid),
+    orderBy('startedAt', 'desc'),
+    limit(HISTORY_LIMIT + 1),
+  ))
+  return {
+    data: {
+      workouts: snapshot.docs.slice(0, HISTORY_LIMIT).map((document) => parseSavedWorkout(document.id, uid, document.data())),
+      truncated: snapshot.docs.length > HISTORY_LIMIT,
+    },
+    fromCache: snapshot.metadata.fromCache,
+  }
+}
+
+export async function readSavedWorkout(uid: string, workoutId: string): Promise<ReadResult<SavedWorkout | null>> {
+  const { firestore } = await getServices()
+  const snapshot = await getDoc(doc(firestore, 'workouts', workoutId))
+  return {
+    data: snapshot.exists() ? parseSavedWorkout(snapshot.id, uid, snapshot.data()) : null,
     fromCache: snapshot.metadata.fromCache,
   }
 }

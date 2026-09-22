@@ -1,19 +1,17 @@
-import type { ActiveWorkout } from '../store/workoutStore.js'
-
 export const MAX_ACTIVE_SESSION_AGE_MS = 12 * 60 * 60 * 1000
 
 export function isActiveSessionStale(
-  session: Pick<ActiveWorkout, 'startedAt'> | null,
+  session: { startedAt: number } | null,
   now = Date.now(),
 ): boolean {
   if (!session || !Number.isFinite(session.startedAt)) return false
   return now - session.startedAt > MAX_ACTIVE_SESSION_AGE_MS
 }
 
-export function refreshStaleActiveSession(
-  session: ActiveWorkout,
+export function refreshStaleActiveSession<T extends { startedAt: number }>(
+  session: T,
   now = Date.now(),
-): ActiveWorkout {
+): T {
   return {
     ...session,
     startedAt: now,

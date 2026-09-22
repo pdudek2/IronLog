@@ -1,4 +1,5 @@
 import { StatusBar } from 'expo-status-bar'
+import { useIsFocused, useRouter } from 'expo-router'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import {
   AccessibilityInfo,
@@ -34,7 +35,7 @@ import { pluralize } from '../../src/lib/pluralize'
 import {
   displayWeightDeltaToKg,
 } from '../../src/shared/weightUnits'
-import { login, logout, observeAuth, readPreviousSets, readExerciseMetadata, type AuthUser } from '../src/firebase'
+import { login, logout, readPreviousSets, readExerciseMetadata, type AuthUser } from '../src/firebase'
 import {
   formatElapsed,
   summarizeExercise,
@@ -43,9 +44,8 @@ import {
   type Units,
   type WorkoutExercise,
 } from '../src/session'
-import { useActiveSession } from '../src/useActiveSession'
 import { useSessionRead } from '../src/useSessionRead'
-import { useWorkoutClosure, type ClosureState } from '../src/useWorkoutClosure'
+import type { ClosureState } from '../src/useWorkoutClosure'
 import type { ExerciseMetadata, ReadState } from '../src/scopedRead'
 import { exerciseHasEnteredSets, MAX_SESSION_EXERCISES } from '../src/setMutations'
 import {
@@ -56,6 +56,7 @@ import {
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { SIGNAL_PATH } from '../../src/shared/authVisual'
 import { EQUIPMENT_LABELS, focusExerciseIndex, focusSetIndex, formatPreviousSet, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 
 const colors = {
   background: '#111012',
@@ -655,7 +656,7 @@ function guardClosureInteraction<Args extends unknown[], Result>(canEdit: () => 
   return (...args: Args): Result | undefined => canEdit() ? action(...args) : blockedResult
 }
 
-function WorkoutOptionsMenu({ busy, onDiscard, onSignOut }: { busy: boolean; onDiscard: () => void; onSignOut: () => void }) {
+function WorkoutOptionsMenu({ busy, onDiscard, onHistory, onSignOut }: { busy: boolean; onDiscard: () => void; onHistory: () => void; onSignOut: () => void }) {
   const insets = useSafeAreaInsets()
   const [open, setOpen] = useState(false)
   const choose = (action: () => void) => () => { setOpen(false); action() }
@@ -672,6 +673,9 @@ function WorkoutOptionsMenu({ busy, onDiscard, onSignOut }: { busy: boolean; onD
         <Pressable accessibilityRole="menuitem" disabled={busy} onPress={choose(onDiscard)} style={({ pressed }) => [styles.optionsItem, pressed && styles.optionsItemPressed]}>
           <Text style={styles.optionsItemText}>Discard workout</Text>
         </Pressable>
+        <Pressable accessibilityRole="menuitem" onPress={choose(onHistory)} style={({ pressed }) => [styles.optionsItem, pressed && styles.optionsItemPressed]}>
+          <Text style={styles.optionsItemText}>History</Text>
+        </Pressable>
         <Pressable accessibilityRole="menuitem" onPress={choose(onSignOut)} style={({ pressed }) => [styles.optionsItem, pressed && styles.pickerPressed]}>
           <Text style={[styles.optionsItemText, styles.optionsItemNeutral]}>Sign out</Text>
         </Pressable>
@@ -682,13 +686,31 @@ function WorkoutOptionsMenu({ busy, onDiscard, onSignOut }: { busy: boolean; onD
 
 function SessionScreen({ user }: { user: AuthUser }) {
   const scrollY = useRef(new Animated.Value(0)).current
+  const isFocused = useIsFocused()
+  const router = useRouter()
+  const active = useActiveRuntime()
+  const closureRuntime = useClosureRuntime()
   const {
     state, retry, retrySave, discardLocalChanges,
     updateSet, adjustSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel,
-  } = useActiveSession(user.uid)
+  } = active
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
-  const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = useWorkoutClosure(user.uid)
+  const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
+  const openedFinishId = useRef<string | null>(null)
+  const sessionClosed = state.status === 'ready' && completed?.action === 'finish'
+    && completed.workoutId === state.session.sessionId
+  const sessionLocked = locked || sessionClosed
+  const canEditCurrentSession = () => !sessionClosed && canEditClosure()
+
+  useEffect(() => {
+    if (completed?.action !== 'finish' || openedFinishId.current === completed.workoutId) return
+    openedFinishId.current = completed.workoutId
+    router.push({
+      pathname: '/workout/[workoutId]',
+      params: { workoutId: completed.workoutId },
+    })
+  }, [completed, router])
 
   const doLogout = async () => {
     setSigningOut(true)
@@ -705,7 +727,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const session = state.status === 'ready' ? state.session : null
   // Closure is decided against the server's revision, so it waits for local edits to be acknowledged.
   const closable = (action: () => void) => () => {
-    if (state.status !== 'ready' || locked) return
+    if (!isFocused || state.status !== 'ready' || sessionLocked) return
     if (state.stale || state.syncStatus !== 'saved') {
       Alert.alert('Waiting for sync', state.stale
         ? 'Reconnect to confirm the workout is still active, then try again.'
@@ -743,12 +765,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
     'Your edits saved on this device will be discarded.',
     [
       { text: 'Keep local edits', style: 'cancel' },
-      { text: 'Use latest', style: 'destructive', onPress: guardClosureInteraction(canEditClosure, discardLocalChanges) },
+      { text: 'Use latest', style: 'destructive', onPress: guardClosureInteraction(canEditCurrentSession, discardLocalChanges) },
     ],
   )
 
   return (
-    <View style={styles.sessionShell}>
+    <View pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
       <Animated.ScrollView
         contentContainerStyle={styles.sessionContent}
         keyboardShouldPersistTaps="handled"
@@ -757,12 +779,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
       >
       <GrainBackdrop scrollY={scrollY} />
-      {state.status === 'ready' ? (
+      {state.status === 'ready' && !sessionClosed ? (
         <View style={styles.lifecycleBar}>
           <View style={styles.lifecycleBarInner}>
             <Elapsed session={state.session} />
             <View style={styles.flex} />
-            <WorkoutOptionsMenu busy={locked} onDiscard={discard} onSignOut={() => void doLogout()} />
+            <WorkoutOptionsMenu busy={locked} onDiscard={discard} onHistory={() => router.push('/history')} onSignOut={() => void doLogout()} />
             <Pressable accessibilityRole="button" accessibilityLabel="Finish workout" disabled={locked} onPress={finish}
               style={({ pressed }) => [styles.finishButton, styles.buttonPrimary, locked && styles.buttonDisabled, pressed && styles.buttonPressed]}>
               <Text style={styles.finishButtonText}>{closure?.status === 'submitting' ? '...' : 'Finish'}</Text>
@@ -802,7 +824,16 @@ function SessionScreen({ user }: { user: AuthUser }) {
       {state.status === 'empty' && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>{completed?.action === 'finish' ? 'Workout saved' : completed ? 'Workout discarded' : 'No workout in progress'}</Text>
-          <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Find it in History on IronLog web.' : 'Start one on IronLog web and it will appear here.'}</Text>
+          <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Your saved workout is ready in History.' : 'Start one on IronLog web and it will appear here.'}</Text>
+          <ActionButton label="History" onPress={() => router.push('/history')} secondary />
+        </View>
+      )}
+
+      {sessionClosed && (
+        <View style={styles.centerState}>
+          <Text accessibilityRole="header" style={styles.stateTitle}>Workout saved</Text>
+          <Text style={styles.stateCopy}>Your completed session is ready in History.</Text>
+          <ActionButton label="History" onPress={() => router.push('/history')} secondary />
         </View>
       )}
 
@@ -814,10 +845,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-        {state.status === 'ready' && (
-        <View pointerEvents={locked ? 'none' : 'auto'}>
+        {state.status === 'ready' && !sessionClosed && (
+        <View pointerEvents={sessionLocked ? 'none' : 'auto'}>
           <View style={styles.workoutLabelsBand}>
-            <LabelTabs active={state.session.label ?? ''} onToggle={guardClosureInteraction(canEditClosure, (label) => setLabel(state.session.label === label ? '' : label))} />
+            <LabelTabs active={state.session.label ?? ''} onToggle={guardClosureInteraction(canEditCurrentSession, (label) => setLabel(state.session.label === label ? '' : label))} />
             <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' ? 'Saved on device' : ''}</Text>
           </View>
           {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
@@ -837,19 +868,19 @@ function SessionScreen({ user }: { user: AuthUser }) {
               : state.syncStatus === 'failed' ? 'Your edits are preserved on this device. Retry when connected.'
                 : state.syncStatus === 'storage-error' ? 'The latest change was not accepted because it could not be saved safely.'
                   : state.syncStatus === 'saving' ? 'Syncing changes…' : 'Changes will sync when the server is available.'}</Text>
-            {state.syncStatus === 'failed' && <Pressable accessibilityRole="button" onPress={guardClosureInteraction(canEditClosure, retrySave)} style={styles.syncAction}><Text style={styles.syncActionText}>Retry</Text></Pressable>}
+            {state.syncStatus === 'failed' && <Pressable accessibilityRole="button" onPress={guardClosureInteraction(canEditCurrentSession, retrySave)} style={styles.syncAction}><Text style={styles.syncActionText}>Retry</Text></Pressable>}
             {state.syncStatus === 'conflict' && <Pressable accessibilityRole="button" onPress={confirmDiscardLocal} style={styles.syncAction}><Text style={styles.syncActionText}>Use latest</Text></Pressable>}
           </View>}
 
           <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale}
             editing={{
-              updateSet: guardClosureInteraction(canEditClosure, updateSet),
-              adjustSet: guardClosureInteraction(canEditClosure, adjustSet),
-              setDone: guardClosureInteraction(canEditClosure, setDone),
-              addSet: guardClosureInteraction(canEditClosure, addSet),
-              removeSet: guardClosureInteraction(canEditClosure, removeSet),
-              addExercise: guardClosureInteraction(canEditClosure, addExercise, ''),
-              removeExercise: guardClosureInteraction(canEditClosure, removeExercise),
+              updateSet: guardClosureInteraction(canEditCurrentSession, updateSet),
+              adjustSet: guardClosureInteraction(canEditCurrentSession, adjustSet),
+              setDone: guardClosureInteraction(canEditCurrentSession, setDone),
+              addSet: guardClosureInteraction(canEditCurrentSession, addSet),
+              removeSet: guardClosureInteraction(canEditCurrentSession, removeSet),
+              addExercise: guardClosureInteraction(canEditCurrentSession, addExercise, ''),
+              removeExercise: guardClosureInteraction(canEditCurrentSession, removeExercise),
             }} />
         </View>
         )}
@@ -859,10 +890,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
 }
 
 export default function IndexScreen() {
-  const [user, setUser] = useState<AuthUser | null | undefined>(undefined)
-  const [startupError, setStartupError] = useState(false)
-
-  useEffect(() => observeAuth(setUser, () => setStartupError(true)), [])
+  const { user, startupError } = useAuthRuntime()
 
   return (
     <SafeAreaView style={styles.safeArea}>

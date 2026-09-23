@@ -172,7 +172,7 @@ export class WorkoutLaunchController {
       if (!silentOpen) this.emit({ status: 'retry', message: 'The saved start is ready to retry.' })
       return 'open'
     } catch { /* The attempt stays durable until the server can confirm its outcome. */ }
-    if (!silentOpen) this.emit({ status: 'retry', message: 'Could not confirm the workout start. Reconnect and try again.' })
+    this.emit({ status: 'retry', message: 'Could not confirm the workout start. Reconnect and try again.' })
     return 'unknown'
   }
 

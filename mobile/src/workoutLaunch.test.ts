@@ -143,6 +143,27 @@ test('same attempt retries after an unknown result using its original identity',
   assert.equal(h.claimCalls, 2)
 })
 
+for (const failure of ['active read', 'closure outcome']) test(`a failed ${failure} on Retry leaves visible feedback and can recover the same candidate`, async () => {
+  const h = harness()
+  const controller = h.controller()
+  await controller.load()
+  h.failClaim = 'before'
+  await controller.launch({ kind: 'empty' }, () => true)
+  const id = (await h.journal.load('owner'))?.candidate.sessionId
+  assert.ok(id)
+  if (failure === 'active read') h.readOffline = true
+  else h.outcomeOffline = true
+  await controller.retry(() => true)
+  assert.equal(h.states.at(-1)?.status, 'retry')
+  assert.equal((await h.journal.load('owner'))?.candidate.sessionId, id)
+  h.readOffline = false
+  h.outcomeOffline = false
+  h.failClaim = 'none'
+  await controller.retry(() => true)
+  assert.equal(h.results.at(-1)?.session.sessionId, id)
+  assert.equal(await h.journal.load('owner'), null)
+})
+
 test('lost acknowledgement survives restart and reconciles the same server session', async () => {
   const h = harness()
   const first = h.controller()

@@ -9,6 +9,7 @@ export type LaunchState = { status: 'loading' | 'ready' | 'starting' | 'retry' |
 export type LaunchTarget = { kind: 'empty' } | { kind: 'template'; selection: WorkoutSelection; snapshot: WorkoutTemplate }
 export interface LaunchPort {
   readActive(uid: string): Promise<ActiveWorkout | null>
+  isClosed(uid: string, sessionId: string): Promise<boolean>
   claim(uid: string, candidate: ActiveWorkout): Promise<LaunchResult>
   readTemplate(uid: string, id: string): Promise<WorkoutTemplate | null>
   readBest(uid: string, id: string, source: ExerciseSource): Promise<BestSet | null>
@@ -22,6 +23,7 @@ export class WorkoutLaunchController {
   private disposed = false
   private loaded = false
   private lastTarget: LaunchTarget | null = null
+  private observed: ActiveWorkout | null = null
 
   constructor(
     private uid: string,
@@ -46,15 +48,17 @@ export class WorkoutLaunchController {
       else this.emit({ status: 'ready' })
     } catch (error) {
       this.emit({ status: 'corrupt', message: error instanceof Error ? error.message : 'Could not open the saved start attempt.' })
-    } finally { this.busy = false }
+    } finally { this.finishBusy() }
   }
 
   async launch(target: LaunchTarget, canStart: () => boolean): Promise<void> {
-    if (this.busy || this.disposed || !this.loaded || !canStart()) return
+    if (this.busy || this.disposed || !this.loaded || (!this.attempt && !canStart())) return
     this.busy = true
     this.lastTarget = target
     this.emit({ status: 'starting' })
     try {
+      const pending = !!this.attempt
+      if (pending && await this.reconcile(true) !== 'open') return
       if (!this.attempt) {
         let next: LaunchAttempt
         if (target.kind === 'empty') {
@@ -84,13 +88,18 @@ export class WorkoutLaunchController {
         this.attempt = next
       }
       if (this.disposed) return
-      const remote = await this.port.readActive(this.uid)
-      if (remote) { await this.confirm({ kind: remote.sessionId === this.attempt.candidate.sessionId ? 'started' : 'existing', session: remote }); return }
+      if (!pending) {
+        const remote = await this.port.readActive(this.uid)
+        if (this.disposed) return
+        if (remote) { await this.confirm({ kind: remote.sessionId === this.attempt.candidate.sessionId ? 'started' : 'existing', session: remote }); return }
+      }
       if (this.attempt.selection) {
         const { templateId, dayIndex, fingerprint } = this.attempt.selection
         const fresh = await this.port.readTemplate(this.uid, templateId)
+        if (this.disposed) return
         if (!fresh || !fresh.days[dayIndex]?.exercises.length || selectionFingerprint(fresh, dayIndex) !== fingerprint) {
-          await this.journal.save(this.uid, null)
+          if (!await this.journal.clearIfMatches(this.uid, this.attempt.candidate.sessionId)) return
+          if (this.disposed) return
           this.attempt = null
           throw new TargetUnavailableError()
         }
@@ -105,7 +114,7 @@ export class WorkoutLaunchController {
       if (this.disposed) return
       if (error instanceof TargetUnavailableError) this.emit({ status: 'unavailable', message: error.message })
       else this.emit({ status: 'retry', message: 'Could not confirm the workout start. Reconnect and try again.' })
-    } finally { this.busy = false }
+    } finally { this.finishBusy() }
   }
 
   async retry(canStart: () => boolean): Promise<void> {
@@ -119,20 +128,62 @@ export class WorkoutLaunchController {
     this.emit({ status: 'ready' })
   }
 
-  private async reconcile(): Promise<void> {
-    if (!this.attempt) return
+  async recover(): Promise<void> {
+    if (this.busy || this.disposed || !this.loaded || !this.attempt) return
+    this.busy = true
+    try { await this.reconcile() }
+    finally { this.finishBusy() }
+  }
+
+  async observeActive(session: ActiveWorkout): Promise<void> {
+    if (this.disposed || !this.loaded || !this.attempt) return
+    if (this.busy) { this.observed = session; return }
+    this.busy = true
+    try { await this.confirm({ kind: session.sessionId === this.attempt.candidate.sessionId ? 'started' : 'existing', session }) }
+    finally { this.finishBusy() }
+  }
+
+  private finishBusy(): void {
+    this.busy = false
+    const session = this.observed
+    this.observed = null
+    if (session && !this.disposed) void this.observeActive(session)
+  }
+
+  private async reconcile(silentOpen = false): Promise<'active' | 'closed' | 'open' | 'unknown'> {
+    const attempt = this.attempt
+    if (!attempt || this.disposed) return 'unknown'
     try {
       const remote = await this.port.readActive(this.uid)
-      if (remote) { await this.confirm({ kind: remote.sessionId === this.attempt.candidate.sessionId ? 'started' : 'existing', session: remote }); return }
+      if (this.disposed || this.attempt !== attempt) return 'unknown'
+      if (remote) {
+        await this.confirm({ kind: remote.sessionId === attempt.candidate.sessionId ? 'started' : 'existing', session: remote })
+        return 'active'
+      }
+      const closed = await this.port.isClosed(this.uid, attempt.candidate.sessionId)
+      if (this.disposed || this.attempt !== attempt) return 'unknown'
+      if (closed) {
+        if (!await this.journal.clearIfMatches(this.uid, attempt.candidate.sessionId)) return 'unknown'
+        if (this.disposed) return 'unknown'
+        this.attempt = null
+        this.emit({ status: 'ready' })
+        return 'closed'
+      }
+      if (!silentOpen) this.emit({ status: 'retry', message: 'The saved start is ready to retry.' })
+      return 'open'
     } catch { /* The attempt stays durable until the server can confirm its outcome. */ }
-    this.emit({ status: 'retry', message: 'Could not confirm the workout start. Reconnect and try again.' })
+    if (!silentOpen) this.emit({ status: 'retry', message: 'Could not confirm the workout start. Reconnect and try again.' })
+    return 'unknown'
   }
 
   private async confirm(result: LaunchResult): Promise<void> {
-    try { await this.journal.save(this.uid, null); this.attempt = null }
-    catch { /* Reconcile the same candidate again after restart; never create a second one. */ }
-    if (this.disposed) return
-    this.emit({ status: 'ready' })
+    if (this.disposed || !this.attempt) return
+    let cleared: boolean | null = null
+    try { cleared = await this.journal.clearIfMatches(this.uid, this.attempt.candidate.sessionId) }
+    catch { /* Keep the candidate durable for closure recovery. */ }
+    if (this.disposed || cleared === false) return
+    if (cleared) this.attempt = null
+    this.emit(cleared ? { status: 'ready' } : { status: 'retry', message: 'Workout started. Its start record still needs recovery.' })
     this.onResult(result)
   }
 }

@@ -233,6 +233,24 @@ export async function readActiveFromServer(uid: string): Promise<ActiveWorkout |
   return snapshot.exists() ? parseSessionDocument(uid, snapshot.data()) : null
 }
 
+export async function isLaunchSessionClosed(uid: string, sessionId: string): Promise<boolean> {
+  const token = await currentIdToken(uid)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15_000)
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/session-launch-outcome`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId }), signal: controller.signal,
+    })
+    if (!response.ok) throw new Error('Could not confirm the session outcome.')
+    const payload: unknown = await response.json()
+    if (!payload || typeof payload !== 'object' || !('status' in payload)
+      || (payload.status !== 'closed' && payload.status !== 'open')) throw new Error('Invalid session outcome.')
+    return payload.status === 'closed'
+  } finally { clearTimeout(timeout) }
+}
+
 export async function claimNewActiveSession(uid: string, candidate: ActiveWorkout): Promise<LaunchResult> {
   await currentIdToken(uid)
   const { firestore } = await getServices()

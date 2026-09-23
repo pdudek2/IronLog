@@ -118,7 +118,7 @@ export default function DashboardScreen() {
             {chosen ? <View style={styles.planCard}>
               <View style={styles.planCopy}><Text style={styles.planMeta}>From your plans · {chosen.template.name}</Text><Text style={styles.planDay}>{chosen.day.name}</Text><Text style={styles.planMeta}>{chosen.day.exercises.length} {pluralize(chosen.day.exercises.length, 'exercise', 'exercises')}</Text></View>
               <View style={styles.planActions}>
-                <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.planPrimary, starting && styles.disabled]}><Text style={styles.planPrimaryText}>{starting ? 'Starting…' : 'Start workout'} ›</Text></Pressable>
+                <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.planPrimary, starting && styles.disabled]}><PlayIcon /><Text style={styles.planPrimaryText}>{starting ? 'Starting…' : 'Start workout'}</Text></Pressable>
                 <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>
               </View>
             </View> : <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text>{templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>}</View>}
@@ -180,6 +180,7 @@ export default function DashboardScreen() {
 }
 
 function Chevron() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.muted} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" /></Svg> }
+function PlayIcon() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m8 5 11 7-11 7z" fill="none" stroke={colors.strong} strokeWidth={2.3} strokeLinejoin="round" /></Svg> }
 function Metric({ label, value }: { label: string; value: string }) { return <View style={styles.metric}><Text style={styles.statLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View> }
 
 const styles = StyleSheet.create({
@@ -199,7 +200,7 @@ const styles = StyleSheet.create({
   planCopy: { gap: 2 }, planMeta: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.5 },
   planDay: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 20, lineHeight: 22, marginVertical: 2 },
   planActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  planPrimary: { minHeight: 44, justifyContent: 'center', borderRadius: 8, paddingHorizontal: 12, backgroundColor: colors.accent },
+  planPrimary: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 12, backgroundColor: '#a91f35', boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)', experimental_backgroundImage: 'linear-gradient(180deg, #c72e44 0%, #a91f35 100%)' },
   planPrimaryText: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
   changeButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
   changeText: { color: colors.strong, fontFamily: 'InstrumentSans_500Medium', fontSize: 12.5 },
@@ -233,5 +234,5 @@ const styles = StyleSheet.create({
   pickerDayName: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   pickerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 16, borderTopColor: colors.line, borderTopWidth: 1 },
   pickerCancel: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  pickerChoose: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: 8, backgroundColor: colors.accent },
+  pickerChoose: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: 8, backgroundColor: '#a91f35', boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)', experimental_backgroundImage: 'linear-gradient(180deg, #c72e44 0%, #a91f35 100%)' },
 })

@@ -4,6 +4,7 @@ import aiModelsHandler from '../api/ai-models.ts'
 import deleteWorkoutHandler from '../api/delete-workout.ts'
 import discardSessionHandler from '../api/discard-session.ts'
 import finalizeWorkoutHandler from '../api/finalize-workout.ts'
+import sessionLaunchOutcomeHandler from '../api/session-launch-outcome.ts'
 import materializeWorkoutHandler from '../api/materialize-workout.ts'
 import saveTemplateHandler from '../api/save-template.ts'
 import updateWorkoutHandler from '../api/update-workout.ts'
@@ -17,6 +18,7 @@ const routes = new Map<string, RouteHandler>([
   ['/api/delete-workout', deleteWorkoutHandler],
   ['/api/discard-session', discardSessionHandler],
   ['/api/finalize-workout', finalizeWorkoutHandler],
+  ['/api/session-launch-outcome', sessionLaunchOutcomeHandler],
   ['/api/materialize-workout', materializeWorkoutHandler],
   ['/api/save-template', saveTemplateHandler],
   ['/api/update-workout', updateWorkoutHandler],

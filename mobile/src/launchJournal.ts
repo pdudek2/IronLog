@@ -12,9 +12,12 @@ export interface LaunchStorage {
 
 export class LaunchJournal {
   private generations = new Map<string, number>()
+  private queues = new Map<string, Promise<void>>()
   constructor(private storage: LaunchStorage) {}
 
-  async load(uid: string): Promise<LaunchAttempt | null> {
+  load(uid: string): Promise<LaunchAttempt | null> { return this.exclusive(uid, () => this.loadUnlocked(uid)) }
+
+  private async loadUnlocked(uid: string): Promise<LaunchAttempt | null> {
     const slots = await Promise.all([this.storage.read(uid, 0), this.storage.read(uid, 1)])
     const records: { generation: number; attempt: LaunchAttempt | null }[] = []
     let invalid = false
@@ -46,12 +49,30 @@ export class LaunchJournal {
     return latest?.attempt ?? null
   }
 
-  async save(uid: string, attempt: LaunchAttempt | null): Promise<void> {
+  save(uid: string, attempt: LaunchAttempt | null): Promise<void> { return this.exclusive(uid, () => this.saveUnlocked(uid, attempt)) }
+
+  async clearIfMatches(uid: string, sessionId: string): Promise<boolean> {
+    return this.exclusive(uid, async () => {
+      const current = await this.loadUnlocked(uid)
+      if (current?.candidate.sessionId !== sessionId) return false
+      await this.saveUnlocked(uid, null)
+      return true
+    })
+  }
+
+  private async saveUnlocked(uid: string, attempt: LaunchAttempt | null): Promise<void> {
     const generation = (this.generations.get(uid) ?? 0) + 1
     await this.storage.write(uid, (generation % 2) as 0 | 1, JSON.stringify({
       version: 1, uid, generation, kind: attempt ? 'attempt' : 'empty',
       ...(attempt ? { candidate: attempt.candidate, selection: attempt.selection ?? null } : {}),
     }))
     this.generations.set(uid, generation)
+  }
+
+  private exclusive<T>(uid: string, task: () => Promise<T>): Promise<T> {
+    const pending = this.queues.get(uid) ?? Promise.resolve()
+    const next = pending.catch(() => undefined).then(task)
+    this.queues.set(uid, next.then(() => undefined, () => undefined))
+    return next
   }
 }

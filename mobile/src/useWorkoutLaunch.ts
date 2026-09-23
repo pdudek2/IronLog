@@ -3,7 +3,7 @@ import { useRouter } from 'expo-router'
 
 import { launchJournal } from './fileSessionJournal'
 import {
-  claimNewActiveSession, createSessionRevision, readActiveFromServer,
+  claimNewActiveSession, createSessionRevision, isLaunchSessionClosed, readActiveFromServer,
   readTemplateBestSet, readTemplateFromServer,
 } from './firebase'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from './runtime'
@@ -21,6 +21,7 @@ export function useWorkoutLaunch(uid: string) {
   const [owned, setOwned] = useState<{ uid: string; state: LaunchState }>({ uid, state: initial })
   const controller = useMemo(() => new WorkoutLaunchController(uid, launchJournal, {
     readActive: readActiveFromServer,
+    isClosed: isLaunchSessionClosed,
     claim: claimNewActiveSession,
     readTemplate: readTemplateFromServer,
     readBest: readTemplateBestSet,
@@ -35,6 +36,11 @@ export function useWorkoutLaunch(uid: string) {
     void controller.load()
     return () => controller.dispose()
   }, [controller])
+
+  useEffect(() => {
+    if (active.state.status === 'ready' && !active.state.stale) void controller.observeActive(active.state.session)
+    else if (active.state.status === 'empty') void controller.recover()
+  }, [controller, active.state])
 
   const canStart = () => current.current.user?.uid === uid
     && current.current.active.state.status === 'empty'

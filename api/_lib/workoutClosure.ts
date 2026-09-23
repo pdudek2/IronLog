@@ -33,6 +33,18 @@ export interface WorkoutClosureOptions {
   materialize?: MaterializeWorkout
 }
 
+export async function isSessionClosedForUser(
+  userId: string,
+  sessionId: unknown,
+  options: WorkoutClosureOptions = {},
+): Promise<boolean> {
+  const id = validateFirestoreDocumentId(sessionId, 'sessionId')
+  const tombstone = await (options.db ?? adminDb).collection('closedSessions').doc(id).get()
+  if (!tombstone.exists) return false
+  validateExistingClosureRecord(tombstone, userId, id, 'tombstone')
+  return true
+}
+
 interface ClosureTransactionResult {
   materialized: boolean
   projectionRevision?: number

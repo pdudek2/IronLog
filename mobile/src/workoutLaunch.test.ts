@@ -11,8 +11,12 @@ import type { ActiveWorkout } from './session'
 
 class MemoryStorage implements LaunchStorage {
   files = new Map<string, string>()
+  failClear = false
   async read(uid: string, slot: 0 | 1) { return this.files.get(`${uid}:${slot}`) ?? null }
-  async write(uid: string, slot: 0 | 1, value: string) { this.files.set(`${uid}:${slot}`, value) }
+  async write(uid: string, slot: 0 | 1, value: string) {
+    if (this.failClear && JSON.parse(value).kind === 'empty') { this.failClear = false; throw new Error('disk full') }
+    this.files.set(`${uid}:${slot}`, value)
+  }
 }
 
 function template(): WorkoutTemplate {
@@ -37,9 +41,12 @@ function harness(storage = new MemoryStorage()) {
   let claimCalls = 0
   let failClaim: 'none' | 'before' | 'after' | 'closed' = 'none'
   let readOffline = false
+  let outcomeOffline = false
+  let closed = false
   let currentTemplate: WorkoutTemplate | null = template()
   const port: LaunchPort = {
     readActive: async () => { if (readOffline) throw new Error('offline'); return remote },
+    isClosed: async () => { if (outcomeOffline) throw new Error('offline'); return closed },
     readTemplate: async () => currentTemplate,
     readBest: async (_uid, _id, source) => source === 'global'
       ? { bestSetWeight: 55, bestSetReps: 6 } : { bestSetWeight: 0, bestSetReps: 0 },
@@ -62,6 +69,7 @@ function harness(storage = new MemoryStorage()) {
     get remote() { return remote }, set remote(value: ActiveWorkout | null) { remote = value },
     get ids() { return ids }, get claimCalls() { return claimCalls },
     set failClaim(value: typeof failClaim) { failClaim = value }, set readOffline(value: boolean) { readOffline = value },
+    set outcomeOffline(value: boolean) { outcomeOffline = value }, set closed(value: boolean) { closed = value },
     set currentTemplate(value: WorkoutTemplate | null) { currentTemplate = value },
   }
 }
@@ -152,17 +160,116 @@ test('lost acknowledgement survives restart and reconciles the same server sessi
   assert.equal(await h.journal.load('owner'), null)
 })
 
-test('closed candidate cannot be recreated with a fresh ID on retry', async () => {
+test('a closed candidate is retired only after authoritative confirmation, then an intentional start gets a new ID', async () => {
   const h = harness()
   const controller = h.controller()
   await controller.load()
   h.failClaim = 'closed'
+  h.outcomeOffline = true
   await controller.launch({ kind: 'empty' }, () => true)
   const id = (await h.journal.load('owner'))?.candidate.sessionId
   await controller.retry(() => true)
   assert.equal((await h.journal.load('owner'))?.candidate.sessionId, id)
   assert.equal(h.ids, 2)
   assert.equal(h.remote, null)
+  h.outcomeOffline = false
+  h.closed = true
+  await controller.retry(() => false)
+  assert.equal(await h.journal.load('owner'), null)
+  h.failClaim = 'none'
+  h.closed = false
+  await controller.launch({ kind: 'empty' }, () => true)
+  assert.notEqual(h.results.at(-1)?.session.sessionId, id)
+  assert.equal(h.claimCalls, 2)
+})
+
+for (const outcome of ['finished', 'discarded']) test(`lost acknowledgement followed by external ${outcome} retires the saved attempt after restart`, async () => {
+  const h = harness()
+  const first = h.controller()
+  await first.load()
+  h.failClaim = 'after'
+  await first.launch({ kind: 'empty' }, () => true)
+  const id = (await h.journal.load('owner'))?.candidate.sessionId
+  first.dispose()
+  h.remote = null
+  h.readOffline = false
+  h.closed = true
+  const restarted = h.controller()
+  await restarted.load()
+  assert.equal(await h.journal.load('owner'), null)
+  assert.equal(h.results.length, 0)
+  assert.equal(h.states.at(-1)?.status, 'ready')
+  h.failClaim = 'none'
+  h.closed = false
+  await restarted.launch({ kind: 'empty' }, () => true)
+  assert.notEqual(h.results.at(-1)?.session.sessionId, id)
+})
+
+test('a failed journal clear after success can recover when that session later closes', async () => {
+  const storage = new MemoryStorage()
+  const h = harness(storage)
+  const controller = h.controller()
+  await controller.load()
+  storage.failClear = true
+  await controller.launch({ kind: 'empty' }, () => true)
+  assert.equal(h.results.length, 1)
+  assert.ok(await h.journal.load('owner'))
+  h.remote = null
+  h.closed = true
+  await controller.recover()
+  assert.equal(await h.journal.load('owner'), null)
+  assert.equal(h.states.at(-1)?.status, 'ready')
+})
+
+test('active observation confirms a lost acknowledgement while a create gate is closed', async () => {
+  const h = harness()
+  const controller = h.controller()
+  await controller.load()
+  h.failClaim = 'after'
+  await controller.launch({ kind: 'empty' }, () => true)
+  assert.ok(h.remote)
+  await controller.observeActive(h.remote!)
+  await controller.retry(() => false)
+  assert.equal(h.results.length, 1)
+  assert.equal(await h.journal.load('owner'), null)
+})
+
+test('an active snapshot received during a lost claim acknowledgement drains after the claim settles', async () => {
+  const h = harness()
+  const controller = h.controller()
+  await controller.load()
+  let rejectClaim!: (error: Error) => void
+  h.port.claim = async (_uid, candidate) => {
+    h.remote = candidate
+    return new Promise((_, reject) => { rejectClaim = reject })
+  }
+  const running = controller.launch({ kind: 'empty' }, () => true)
+  while (!rejectClaim) await new Promise((resolve) => setImmediate(resolve))
+  await controller.observeActive(h.remote!)
+  h.port.readActive = async () => { throw new Error('offline') }
+  rejectClaim(new Error('ack lost'))
+  await running
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(h.results.length, 1)
+  assert.equal(await h.journal.load('owner'), null)
+})
+
+test('a disposed controller cannot clear a newer owner attempt after an awaited read', async () => {
+  const h = harness()
+  const first = h.controller()
+  await first.load()
+  h.failClaim = 'before'
+  await first.launch({ kind: 'empty' }, () => true)
+  const old = await h.journal.load('owner')
+  let release!: (session: ActiveWorkout | null) => void
+  h.port.readActive = () => new Promise((resolve) => { release = resolve })
+  const pending = first.recover()
+  first.dispose()
+  const newer = { candidate: { ...old!.candidate, sessionId: 'new-owner-session' } }
+  await h.journal.save('owner', newer)
+  release(null)
+  await pending
+  assert.equal((await h.journal.load('owner'))?.candidate.sessionId, 'new-owner-session')
 })
 
 test('disposed owner cannot publish a late result into a different account', async () => {

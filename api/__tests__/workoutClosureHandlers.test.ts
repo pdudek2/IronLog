@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   requireUserId: vi.fn(),
   finalizeWorkoutForUser: vi.fn(),
   discardSessionForUser: vi.fn(),
+  isSessionClosedForUser: vi.fn(),
   parseFinalizeWorkoutRequest: vi.fn((body: unknown) => body),
 }))
 
@@ -15,6 +16,7 @@ vi.mock('../_lib/auth.js', () => ({ requireUserId: mocks.requireUserId }))
 vi.mock('../_lib/workoutClosure.js', () => ({
   finalizeWorkoutForUser: mocks.finalizeWorkoutForUser,
   discardSessionForUser: mocks.discardSessionForUser,
+  isSessionClosedForUser: mocks.isSessionClosedForUser,
 }))
 vi.mock('../_lib/workoutValidation.js', () => ({
   parseFinalizeWorkoutRequest: mocks.parseFinalizeWorkoutRequest,
@@ -22,6 +24,7 @@ vi.mock('../_lib/workoutValidation.js', () => ({
 
 import discardHandler from '../discard-session.js'
 import finalizeHandler from '../finalize-workout.js'
+import launchOutcomeHandler from '../session-launch-outcome.js'
 
 function request(body: unknown): ApiRequest {
   return {
@@ -111,5 +114,22 @@ describe('workout closure handlers', () => {
 
     expect(captured.status()).toBe(400)
     expect(captured.body()).toEqual({ error: 'Missing sessionRevision field.' })
+  })
+
+  it.each([[true, 'closed'], [false, 'open']] as const)('reports an authenticated launch outcome: %s', async (closed, status) => {
+    mocks.isSessionClosedForUser.mockResolvedValue(closed)
+    const captured = captureResponse()
+    await launchOutcomeHandler(request({ sessionId: 'session-1' }), captured.res)
+    expect(captured.status()).toBe(200)
+    expect(captured.body()).toEqual({ status })
+    expect(mocks.isSessionClosedForUser).toHaveBeenCalledWith('user-1', 'session-1')
+  })
+
+  it('does not turn a launch outcome read failure into open', async () => {
+    mocks.isSessionClosedForUser.mockRejectedValue(new Error('offline'))
+    const captured = captureResponse()
+    await launchOutcomeHandler(request({ sessionId: 'session-1' }), captured.res)
+    expect(captured.status()).toBe(500)
+    expect(captured.body()).toEqual({ error: 'Could not confirm the session outcome.' })
   })
 })

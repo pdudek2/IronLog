@@ -88,7 +88,7 @@ export default function DashboardScreen() {
           </View>
           {summary?.weeklyDone === 0 ? <View style={styles.weekEmpty}>
             <View style={styles.emptySummary}><View style={styles.flex}><Text style={styles.statLabel}>Weekly goal</Text><Text style={styles.muted}>{remaining} {pluralize(remaining, 'session', 'sessions')} to reach your goal.</Text></View><Text style={styles.goalCount}>0/{goal}</Text></View>
-            <View style={styles.emptyDays}>{summary.days.map((day) => <View key={day.label} style={[styles.emptyDay, day.isToday && styles.todayDay]}><Text style={[styles.dayLabel, day.isToday && styles.todayLabel]}>{day.label}</Text><Text style={styles.dayValue}>{day.date.getDate()}</Text></View>)}</View>
+            <View style={styles.emptyDays}>{summary.days.map((day) => <View key={day.label} style={[styles.emptyDay, day.isToday && styles.todayDay]}><Text style={[styles.emptyDayLabel, day.isToday && styles.todayLabel]}>{day.label}</Text><Text style={[styles.dayValue, day.isToday && styles.todayLabel]}>{day.date.getDate()}</Text></View>)}</View>
           </View> : summary && <>
             <View style={styles.chart}>
               <View style={styles.chartHead}><View><Text style={styles.statLabel}>Weekly volume</Text><Text style={styles.volume}>{formatCompactVolume(summary.weeklyVolume, units)}</Text></View><View><Text style={styles.count}>{summary.weeklyDone}/{goal}</Text><Text style={styles.mutedSmall}>sessions / goal</Text></View></View>
@@ -105,7 +105,7 @@ export default function DashboardScreen() {
           </>}
         </View>}
         <View style={styles.history}>
-          <View style={styles.sectionHead}><Text accessibilityRole="header" style={styles.sectionTitle}>{recent.length ? 'Recent workouts' : 'History'}</Text><Pressable accessibilityRole="button" onPress={() => router.navigate('/history')} style={styles.historyLink}><Text style={styles.actionText}>View history</Text><Chevron /></Pressable></View>
+          <View style={[styles.sectionHead, styles.historyHead]}><Text accessibilityRole="header" style={styles.sectionTitle}>{recent.length ? 'Recent workouts' : 'History'}</Text><Pressable accessibilityRole="button" onPress={() => router.navigate('/history')} style={styles.historyLink}><Text style={styles.historyLinkText}>View history</Text><Chevron /></Pressable></View>
           {confirmedEmpty && <Text style={styles.emptyCopy}>Your first saved workout will appear here.</Text>}
           {recent.map((workout) => {
             const metrics = deriveWorkout(workout, new Map())
@@ -124,31 +124,31 @@ export default function DashboardScreen() {
   </SafeAreaView>
 }
 
-function Chevron() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.accentText} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" /></Svg> }
+function Chevron() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.muted} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" /></Svg> }
 function Metric({ label, value }: { label: string; value: string }) { return <View style={styles.metric}><Text style={styles.statLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View> }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingHorizontal: 16, paddingBottom: 28, experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)' }, flex: { flex: 1 },
+  screen: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingTop: 26.4, paddingHorizontal: 16, paddingBottom: 28, experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)' }, flex: { flex: 1 },
   grain: { ...StyleSheet.absoluteFill, opacity: 0.024 }, grainImage: { width: '100%', height: '100%' },
   notice: { alignItems: 'flex-start', gap: 12, paddingVertical: 32 }, noticeTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 17 },
   muted: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19 }, mutedSmall: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.5, lineHeight: 16 },
   retry: { minHeight: 44, justifyContent: 'center' }, actionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   cacheRow: { alignItems: 'flex-start', gap: 4, paddingTop: 10 },
   hero: { borderBottomColor: colors.line, borderBottomWidth: 1, paddingTop: 8, paddingBottom: 24 },
-  date: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.5, marginBottom: 12 },
+  date: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, marginBottom: 12 },
   greeting: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, marginBottom: 7 },
   name: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 32, lineHeight: 35 },
   last: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 12 },
-  week: { paddingVertical: 26 }, sectionHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 18 },
-  sectionTitle: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 22, lineHeight: 25 }, range: { alignItems: 'flex-end' }, rangeDate: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  week: { paddingVertical: 26 }, sectionHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 18 }, historyHead: { alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 16 },
+  sectionTitle: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 24, lineHeight: 26.4 }, range: { alignItems: 'flex-end' }, rangeDate: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   weekEmpty: { gap: 14 }, emptySummary: { flexDirection: 'row', gap: 16 }, statLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.5 },
-  goalCount: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 26 }, emptyDays: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 14, overflow: 'hidden' },
-  emptyDay: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12 }, todayDay: { backgroundColor: 'rgba(240,67,90,0.12)' }, dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_700Bold', fontSize: 10.5 }, todayLabel: { color: colors.accentText }, dayValue: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11 },
+  goalCount: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 26 }, emptyDays: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 14, overflow: 'hidden' },
+  emptyDay: { flex: 1, alignItems: 'center', gap: 2.88, paddingVertical: 10.4 }, todayDay: { backgroundColor: 'rgba(244,241,242,0.075)', borderRadius: 8 }, emptyDayLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 }, dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_700Bold', fontSize: 10.5 }, todayLabel: { color: colors.accentText }, dayValue: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   chart: { backgroundColor: colors.surface, borderRadius: 8, padding: 16 }, chartHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10, marginBottom: 18 },
   volume: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 34, lineHeight: 37, marginTop: 7 }, count: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, textAlign: 'right' },
-  bars: { flexDirection: 'row', gap: 5, height: 152, paddingTop: 8 }, barCell: { flex: 1, alignItems: 'center', gap: 6 }, barTrack: { flex: 1, width: '100%', backgroundColor: 'rgba(255,255,255,0.025)', borderRadius: 5.6, justifyContent: 'flex-end', overflow: 'hidden' }, barFill: { width: '100%', borderTopLeftRadius: 5.6, borderTopRightRadius: 5.6 }, barValue: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 10.5 },
+  bars: { flexDirection: 'row', gap: 5, height: 162.8, paddingTop: 8 }, barCell: { flex: 1, alignItems: 'center', gap: 6.72 }, barTrack: { height: 108.8, width: '100%', backgroundColor: 'rgba(255,255,255,0.025)', borderRadius: 5.6, justifyContent: 'flex-end', overflow: 'hidden' }, barFill: { width: '100%', borderTopLeftRadius: 5.6, borderTopRightRadius: 5.6 }, barValue: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 10.5 },
   signals: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }, signal: { width: '50%', paddingVertical: 10, paddingRight: 8 }, signalValue: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 3, marginBottom: 3 },
-  history: { borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 26 }, historyLink: { alignItems: 'center', flexDirection: 'row', gap: 3, minHeight: 44 }, emptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, paddingVertical: 14 },
+  history: { borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 26 }, historyLink: { alignItems: 'center', flexDirection: 'row', gap: 5.6, minHeight: 44, paddingHorizontal: 12 }, historyLinkText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 }, emptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, paddingVertical: 14 },
   workoutRow: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 16 }, setCount: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 }, workoutName: { color: colors.strong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, marginTop: 8, marginBottom: 8 }, pending: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginTop: 8 }, exercisePreview: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 10 },
   metrics: { flexDirection: 'row', marginTop: 12 }, metric: { flex: 1, paddingVertical: 8 }, metricValue: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 5 },
 })

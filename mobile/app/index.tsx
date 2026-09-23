@@ -830,7 +830,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
       {state.status === 'empty' && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>{completed?.action === 'finish' ? 'Workout saved' : completed ? 'Workout discarded' : 'No workout in progress'}</Text>
-          <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Your saved workout is ready in History.' : 'Start one on IronLog web and it will appear here.'}</Text>
+          <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Your saved workout is ready in History.' : 'Start a workout from Home whenever you are ready.'}</Text>
           <ActionButton label="History" onPress={() => router.push('/history')} secondary />
           <ActionButton label="Home" onPress={() => router.navigate('/dashboard')} secondary />
         </View>

@@ -12,6 +12,7 @@ import {
   collection, getDocs, query, where, orderBy, limit,
   doc,
   getDoc,
+  getDocFromServer,
   getFirestore,
   onSnapshot,
   runTransaction,
@@ -19,13 +20,14 @@ import {
 import Constants from 'expo-constants'
 
 import type { SubscribeToSession } from './activeSessionController'
-import type { ActiveWorkout, Units, ExerciseSource } from './session'
+import { parseSessionDocument, type ActiveWorkout, type Units, type ExerciseSource } from './session'
 import { parsePreviousSets, type ExerciseMetadata, type ReadResult } from './scopedRead'
 import { parseSavedWorkout, type SavedWorkout } from './history'
 import { parseHomeProfile, type HomeProfile } from './home'
 import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 import { NativeActiveSessionConflictError, updateExistingActiveSession } from './activeSessionTransaction'
+import { claimAbsentSession, parseTemplate, type BestSet, type LaunchResult, type WorkoutTemplate } from './workoutLaunch'
 
 const backend = Constants.expoConfig?.extra?.firebaseBackend
 const emulatorHost = Constants.expoConfig?.extra?.firebaseEmulatorHost
@@ -193,6 +195,55 @@ export async function readHome(uid: string): Promise<ReadResult<{ profile: HomeP
     },
     fromCache: profileSnapshot.metadata.fromCache || workoutsSnapshot.metadata.fromCache,
   }
+}
+
+export async function readTemplates(uid: string): Promise<ReadResult<WorkoutTemplate[]>> {
+  const { firestore } = await getServices()
+  const snapshot = await getDocs(query(collection(firestore, 'templates'), where('userId', '==', uid)))
+  return {
+    data: snapshot.docs.map((item) => parseTemplate(item.id, uid, item.data())).sort((a, b) => b.updatedAt - a.updatedAt),
+    fromCache: snapshot.metadata.fromCache,
+  }
+}
+
+export async function readTemplateFromServer(uid: string, id: string): Promise<WorkoutTemplate | null> {
+  await currentIdToken(uid)
+  const { firestore } = await getServices()
+  const snapshot = await getDocFromServer(doc(firestore, 'templates', id))
+  return snapshot.exists() ? parseTemplate(snapshot.id, uid, snapshot.data()) : null
+}
+
+export async function readTemplateBestSet(uid: string, exerciseId: string, source: ExerciseSource): Promise<BestSet | null> {
+  const { firestore } = await getServices()
+  const snapshot = await getDocs(query(collection(firestore, 'exerciseSessions'),
+    where('userId', '==', uid), where('exerciseId', '==', exerciseId),
+    where('exerciseSource', '==', source), orderBy('startedAt', 'desc'), limit(1)))
+  if (snapshot.empty) return null
+  const data = snapshot.docs[0]!.data()
+  if (data.userId !== uid || data.exerciseId !== exerciseId || data.exerciseSource !== source) throw new Error('Invalid exercise history.')
+  const bestSetWeight = typeof data.bestSetWeight === 'number' && Number.isFinite(data.bestSetWeight) ? data.bestSetWeight : 0
+  const bestSetReps = typeof data.bestSetReps === 'number' && Number.isFinite(data.bestSetReps) ? data.bestSetReps : 0
+  return { bestSetWeight, bestSetReps }
+}
+
+export async function readActiveFromServer(uid: string): Promise<ActiveWorkout | null> {
+  await currentIdToken(uid)
+  const { firestore } = await getServices()
+  const snapshot = await getDocFromServer(doc(firestore, 'activeSessions', uid))
+  return snapshot.exists() ? parseSessionDocument(uid, snapshot.data()) : null
+}
+
+export async function claimNewActiveSession(uid: string, candidate: ActiveWorkout): Promise<LaunchResult> {
+  await currentIdToken(uid)
+  const { firestore } = await getServices()
+  const reference = doc(firestore, 'activeSessions', uid)
+  return runTransaction(firestore, async (transaction) => claimAbsentSession({
+    read: async () => {
+      const snapshot = await transaction.get(reference)
+      return { exists: snapshot.exists(), data: snapshot.exists() ? snapshot.data() : null }
+    },
+    create: (data) => { transaction.set(reference, data) },
+  }, uid, candidate, Math.max(Date.now(), candidate.startedAt)))
 }
 
 export async function readPreviousSets(uid: string, exerciseId: string, source: ExerciseSource) {

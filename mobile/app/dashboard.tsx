@@ -1,5 +1,5 @@
-import { useCallback, useMemo, useState } from 'react'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -9,15 +9,18 @@ import grainTexture from '../assets/grain.png'
 import { pluralize } from '../../src/lib/pluralize'
 import { workoutTitle } from '../../src/lib/workoutCopy'
 import { formatCompactVolume } from '../../src/shared/weightUnits'
-import { readHome } from '../src/firebase'
+import { readHome, readTemplates } from '../src/firebase'
 import { deriveWorkout, formatExercisePreview, formatWorkoutDuration } from '../src/history'
 import { canShowHomeSummary, deriveHome, formatWeekRange, getGreeting } from '../src/home'
 import { readStateForKey, startRead, type ReadState } from '../src/scopedRead'
 import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../src/runtime'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
+import { useOptionalLaunchRuntime } from '../src/launchRuntime'
+import { firstLaunchableWorkout, selectedWorkout, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
 
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
+type TemplateData = WorkoutTemplate[]
 const colors = {
   background: '#111012', surface: '#1a191c', text: '#f4f1f2', strong: '#fff', muted: '#a09aa0',
   mutedSoft: '#8f8990', accent: '#f0435a', accentText: '#ff7182', line: 'rgba(244,241,242,0.12)',
@@ -26,13 +29,20 @@ const colors = {
 export default function DashboardScreen() {
   const { user } = useAuthRuntime()
   const active = useActiveRuntime()
-  const completed = useOptionalClosureRuntime()?.completed
+  const closure = useOptionalClosureRuntime()
+  const completed = closure?.completed
+  const launch = useOptionalLaunchRuntime()
   const router = useRouter()
   const { width } = useWindowDimensions()
   const uid = user?.uid ?? null
   const [result, setResult] = useState<{ key: string; state: ReadState<HomeData> } | null>(null)
   const [attempt, setAttempt] = useState(0)
   const [now, setNow] = useState(() => new Date())
+  const [templatesResult, setTemplatesResult] = useState<{ key: string; state: ReadState<TemplateData> } | null>(null)
+  const [templatesAttempt, setTemplatesAttempt] = useState(0)
+  const [selection, setSelection] = useState<{ uid: string; target: WorkoutSelection | null; unavailable: boolean } | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
   const key = `home:${uid ?? ''}`
   const completion = completed ? `${completed.action}:${completed.action === 'finish' ? completed.workoutId : completed.sessionId}` : ''
 
@@ -41,6 +51,18 @@ export default function DashboardScreen() {
     setNow(new Date())
     return startRead(() => readHome(uid), (state) => setResult({ key, state }))
   }, [uid, key, attempt, completion]))
+
+  useFocusEffect(useCallback(() => {
+    if (!uid || active.state.status !== 'empty') return
+    return startRead(() => readTemplates(uid), (state) => {
+      setTemplatesResult({ key: uid, state })
+      if (state.status === 'ready') setSelection((current) => {
+        if (current?.uid === uid && current.unavailable) return current
+        if (current?.uid === uid && selectedWorkout(state.data, current.target)) return current
+        return { uid, target: firstLaunchableWorkout(state.data), unavailable: false }
+      })
+    })
+  }, [uid, active.state.status, templatesAttempt]))
 
   const state = readStateForKey(key, result)
   const data = state.status === 'ready' ? state.data : null
@@ -55,6 +77,18 @@ export default function DashboardScreen() {
   const remaining = Math.max(goal - (summary?.weeklyDone ?? 0), 0)
   const peak = summary?.peakDay
   const maxVolume = Math.max(...(summary?.days.map((day) => day.volume) ?? []), 1)
+  const templatesState = readStateForKey(uid ?? '', templatesResult)
+  const templates = templatesState.status === 'ready' ? templatesState.data : []
+  const chosen = selection?.uid === uid && !selection.unavailable ? selectedWorkout(templates, selection.target) : null
+  const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
+  const launchState = launch?.state.status ?? 'loading'
+  const starting = launchState === 'starting'
+
+  useEffect(() => {
+    if (launchState !== 'unavailable' || !uid) return
+    setSelection({ uid, target: null, unavailable: true })
+    setTemplatesAttempt((value) => value + 1)
+  }, [launchState, uid])
 
   if (!user) return <SafeAreaView edges={['top']} style={styles.screen}><StatusBar style="light" /><Text style={styles.muted}>Restoring sign-in…</Text></SafeAreaView>
 
@@ -80,6 +114,20 @@ export default function DashboardScreen() {
           <Text style={styles.greeting}>{getGreeting(now)},</Text>
           <Text accessibilityRole="header" style={styles.name}>{data.profile.displayName}</Text>
           {active.state.status === 'empty' && recent[0] && <Text style={styles.last}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
+          {canOfferStart && <View style={styles.startStack}>
+            {chosen ? <View style={styles.planCard}>
+              <View style={styles.planCopy}><Text style={styles.planMeta}>From your plans · {chosen.template.name}</Text><Text style={styles.planDay}>{chosen.day.name}</Text><Text style={styles.planMeta}>{chosen.day.exercises.length} {pluralize(chosen.day.exercises.length, 'exercise', 'exercises')}</Text></View>
+              <View style={styles.planActions}>
+                <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.planPrimary, starting && styles.disabled]}><Text style={styles.planPrimaryText}>{starting ? 'Starting…' : 'Start workout'} ›</Text></Pressable>
+                <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>
+              </View>
+            </View> : <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text>{templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>}</View>}
+            {templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
+            {templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
+            <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.emptyStart, starting && styles.disabled]}><Text style={styles.emptyStartText}>＋  Start empty workout</Text></Pressable>
+            {launchState === 'loading' && <Text style={styles.planEmptyCopy}>Checking workout start…</Text>}
+            {(launchState === 'retry' || launchState === 'unavailable' || launchState === 'corrupt') && <View accessibilityRole="alert" style={styles.launchFeedback}><Text style={styles.planEmptyCopy}>{launch?.state.message ?? 'Could not start workout.'}</Text>{launchState !== 'corrupt' && <Pressable accessibilityRole="button" onPress={() => { if (launchState === 'unavailable') { launch?.dismissUnavailable(); setSelection({ uid: uid!, target: null, unavailable: true }); setTemplatesAttempt((value) => value + 1) } else void launch?.retry() }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
+          </View>}
         </View>
         {showSummary && <View style={styles.week}>
           <View style={styles.sectionHead}>
@@ -121,6 +169,13 @@ export default function DashboardScreen() {
         </View>
       </>}
     </ScrollView>
+    <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
+      <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
+        <View style={styles.pickerHead}><View><Text style={styles.planMeta}>From your plans</Text><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Text style={styles.changeText}>×</Text></Pressable></View>
+        <ScrollView style={styles.pickerPlans}>{templates.map((template) => <View key={template.id} style={styles.pickerPlan}><Text accessibilityRole="header" style={styles.pickerPlanTitle}>{template.name}</Text>{template.days.map((day, index) => { const enabled = day.exercises.length > 0; const selected = pickerDraft?.templateId === template.id && pickerDraft.dayIndex === index; return <Pressable key={`${template.id}:${index}`} accessibilityRole="button" accessibilityLabel={enabled ? `Select ${day.name} from plan ${template.name}` : `${day.name} from plan ${template.name}, no exercises`} accessibilityState={{ selected, disabled: !enabled }} disabled={!enabled} onPress={() => setPickerDraft({ templateId: template.id, dayIndex: index })} style={[styles.pickerDay, selected && styles.pickerDaySelected, !enabled && styles.disabled]}><Text style={styles.pickerDayName}>{day.name}</Text><Text style={styles.planMeta}>{enabled ? `${day.exercises.length} ${pluralize(day.exercises.length, 'exercise', 'exercises')}` : 'No exercises'}</Text></Pressable> })}</View>)}</ScrollView>
+        <View style={styles.pickerActions}><Pressable accessibilityRole="button" onPress={() => setPickerOpen(false)} style={styles.pickerCancel}><Text style={styles.changeText}>Cancel</Text></Pressable><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.planPrimaryText}>Choose workout</Text></Pressable></View>
+      </View></View>
+    </Modal>
   </SafeAreaView>
 }
 
@@ -139,6 +194,21 @@ const styles = StyleSheet.create({
   greeting: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, marginBottom: 7 },
   name: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 32, lineHeight: 35 },
   last: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 12 },
+  startStack: { gap: 12, marginTop: 24 },
+  planCard: { minHeight: 88, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 16, backgroundColor: '#211f23', experimental_backgroundImage: 'linear-gradient(135deg, rgba(240, 67, 90, 0.14), transparent 62%)' },
+  planCopy: { gap: 2 }, planMeta: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.5 },
+  planDay: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 20, lineHeight: 22, marginVertical: 2 },
+  planActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  planPrimary: { minHeight: 44, justifyContent: 'center', borderRadius: 8, paddingHorizontal: 12, backgroundColor: colors.accent },
+  planPrimaryText: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
+  changeButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
+  changeText: { color: colors.strong, fontFamily: 'InstrumentSans_500Medium', fontSize: 12.5 },
+  planEmpty: { borderRadius: 14, backgroundColor: '#211f23', gap: 4, paddingHorizontal: 16, paddingVertical: 14 },
+  planEmptyTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },
+  emptyStart: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
+  emptyStartText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
+  launchFeedback: { gap: 4 }, disabled: { opacity: 0.65 },
   week: { paddingVertical: 26 }, sectionHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 18 }, historyHead: { alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 16 },
   sectionTitle: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 24, lineHeight: 26.4 }, range: { alignItems: 'flex-end' }, rangeDate: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   weekEmpty: { gap: 14 }, emptySummary: { flexDirection: 'row', gap: 16 }, statLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.5 },
@@ -151,4 +221,17 @@ const styles = StyleSheet.create({
   history: { borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 26 }, historyLink: { alignItems: 'center', flexDirection: 'row', gap: 5.6, minHeight: 44, paddingHorizontal: 12 }, historyLinkText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 }, emptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, paddingVertical: 14 },
   workoutRow: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 16 }, setCount: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 }, workoutName: { color: colors.strong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, marginTop: 8, marginBottom: 8 }, pending: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginTop: 8 }, exercisePreview: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 10 },
   metrics: { flexDirection: 'row', marginTop: 12 }, metric: { flex: 1, paddingVertical: 8 }, metricValue: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 5 },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(11,10,12,0.82)' },
+  pickerDialog: { maxHeight: '88%', backgroundColor: '#211f23' },
+  pickerHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 16, borderBottomWidth: 1, borderBottomColor: colors.line },
+  pickerTitle: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 23, marginTop: 3 },
+  pickerClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  pickerPlans: { paddingHorizontal: 16 }, pickerPlan: { paddingVertical: 16, borderBottomColor: colors.line, borderBottomWidth: 1, gap: 7 },
+  pickerPlanTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, marginBottom: 3 },
+  pickerDay: { minHeight: 52, borderColor: colors.line, borderWidth: 1, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12, gap: 2 },
+  pickerDaySelected: { borderColor: 'rgba(240,67,90,0.55)', backgroundColor: 'rgba(244,241,242,0.075)' },
+  pickerDayName: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  pickerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 16, borderTopColor: colors.line, borderTopWidth: 1 },
+  pickerCancel: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
+  pickerChoose: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: 8, backgroundColor: colors.accent },
 })

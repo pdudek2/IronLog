@@ -4,7 +4,7 @@ import test from 'node:test'
 import { LaunchJournal, type LaunchStorage } from './launchJournal'
 import { WorkoutLaunchController, type LaunchPort, type LaunchState } from './workoutLaunchController'
 import {
-  buildTemplateSession, claimAbsentSession, firstLaunchableWorkout, parseTemplate,
+  buildTemplateSession, claimAbsentSession, firstLaunchableWorkout, parseTemplate, shouldOpenLaunchResult,
   type LaunchResult, type WorkoutTemplate,
 } from './workoutLaunch'
 import type { ActiveWorkout } from './session'
@@ -141,6 +141,34 @@ test('same attempt retries after an unknown result using its original identity',
   assert.equal(h.remote?.sessionId, pending?.candidate.sessionId)
   assert.equal(h.ids, 2)
   assert.equal(h.claimCalls, 2)
+})
+
+test('shared plan launch retains the exact selected day and candidate through recovery', async () => {
+  const h = harness()
+  const first = h.controller()
+  await first.load()
+  h.failClaim = 'before'
+  const plan = template()
+  await first.launch({ kind: 'template', selection: { templateId: plan.id, dayIndex: 1 }, snapshot: plan }, () => true)
+  assert.deepEqual(h.states.at(-1)?.selection, { templateId: plan.id, dayIndex: 1 })
+  const pending = await h.journal.load('owner')
+  first.dispose()
+  const restored = h.controller()
+  await restored.load()
+  assert.equal(h.states.at(-1)?.selection?.templateId, plan.id)
+  assert.equal(h.states.at(-1)?.selection?.dayIndex, 1)
+  h.failClaim = 'none'
+  await restored.retry(() => true)
+  assert.equal(h.results.at(-1)?.session.sessionId, pending?.candidate.sessionId)
+  assert.equal(h.results.at(-1)?.session.label, 'Pull')
+  assert.deepEqual(h.results.at(-1)?.session.exercises.map((exercise) => exercise.exerciseSource), ['global', 'user'])
+})
+
+test('a late launch result opens a workout only on the initiating route', () => {
+  assert.equal(shouldOpenLaunchResult('/templates', '/templates'), true)
+  assert.equal(shouldOpenLaunchResult('/templates', '/dashboard'), false)
+  assert.equal(shouldOpenLaunchResult('/dashboard', '/templates'), false)
+  assert.equal(shouldOpenLaunchResult('/templates', '/history'), false)
 })
 
 for (const failure of ['active read', 'closure outcome']) test(`a failed ${failure} on Retry leaves visible feedback and can recover the same candidate`, async () => {

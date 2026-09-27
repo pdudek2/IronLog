@@ -19,6 +19,10 @@ export interface WorkoutSelection { templateId: string; dayIndex: number }
 export interface BestSet { bestSetWeight: number; bestSetReps: number }
 export type LaunchResult = { kind: 'started' | 'existing'; session: ActiveWorkout }
 
+export function shouldOpenLaunchResult(initiatingPath: string, currentPath: string): boolean {
+  return initiatingPath === currentPath
+}
+
 export class TargetUnavailableError extends Error {
   constructor() { super('Workout no longer available. Choose another workout.'); this.name = 'TargetUnavailableError' }
 }

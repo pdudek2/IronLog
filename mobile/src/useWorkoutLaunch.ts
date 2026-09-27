@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'expo-router'
+import { usePathname, useRouter } from 'expo-router'
 
 import { launchJournal } from './fileSessionJournal'
 import {
@@ -8,6 +8,7 @@ import {
 } from './firebase'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from './runtime'
 import { WorkoutLaunchController, type LaunchState, type LaunchTarget } from './workoutLaunchController'
+import { shouldOpenLaunchResult } from './workoutLaunch'
 
 const initial: LaunchState = { status: 'loading' }
 
@@ -16,8 +17,10 @@ export function useWorkoutLaunch(uid: string) {
   const active = useActiveRuntime()
   const closure = useClosureRuntime()
   const router = useRouter()
-  const current = useRef({ user, active, closure, router })
-  current.current = { user, active, closure, router }
+  const pathname = usePathname()
+  const initiatingPath = useRef(pathname)
+  const current = useRef({ user, active, closure, router, pathname })
+  current.current = { user, active, closure, router, pathname }
   const [owned, setOwned] = useState<{ uid: string; state: LaunchState }>({ uid, state: initial })
   const controller = useMemo(() => new WorkoutLaunchController(uid, launchJournal, {
     readActive: readActiveFromServer,
@@ -29,10 +32,11 @@ export function useWorkoutLaunch(uid: string) {
     now: Date.now,
   }, (state) => setOwned({ uid, state }), () => {
     current.current.active.retry()
-    current.current.router.dismissTo('/')
+    if (shouldOpenLaunchResult(initiatingPath.current, current.current.pathname)) current.current.router.dismissTo('/')
   }), [uid])
 
   useEffect(() => {
+    initiatingPath.current = current.current.pathname
     void controller.load()
     return () => controller.dispose()
   }, [controller])
@@ -48,8 +52,8 @@ export function useWorkoutLaunch(uid: string) {
 
   return {
     state: owned.uid === uid ? owned.state : initial,
-    start: (target: LaunchTarget) => controller.launch(target, canStart),
-    retry: () => controller.retry(canStart),
+    start: (target: LaunchTarget) => { initiatingPath.current = current.current.pathname; return controller.launch(target, canStart) },
+    retry: () => { initiatingPath.current = current.current.pathname; return controller.retry(canStart) },
     dismissUnavailable: () => controller.dismissUnavailable(),
   }
 }

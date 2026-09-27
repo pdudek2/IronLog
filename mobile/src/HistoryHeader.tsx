@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { usePathname, useRouter } from 'expo-router'
 import Svg, { Path } from 'react-native-svg'
 
 import { logout } from './firebase'
 
 export default function HistoryHeader() {
   const router = useRouter()
+  const pathname = usePathname()
   const [signingOut, setSigningOut] = useState(false)
 
   const signOut = async () => {
@@ -26,6 +27,8 @@ export default function HistoryHeader() {
       <Text style={styles.brandText}>IL</Text>
       <View style={styles.brandDot} />
     </Pressable>
+    <View style={styles.actions}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open Plans" accessibilityState={{ selected: pathname === '/templates' }} onPress={() => router.navigate('/templates')} style={styles.plans}><Text style={[styles.plansText, pathname === '/templates' && styles.plansActive]}>Plans</Text></Pressable>
     <Pressable accessibilityRole="button" accessibilityLabel="Sign out" disabled={signingOut} onPress={() => void signOut()} style={styles.signOut}>
       <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24">
         <Path d="m16 17 5-5-5-5" fill="none" stroke="#a09aa0" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
@@ -33,6 +36,7 @@ export default function HistoryHeader() {
         <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" fill="none" stroke="#a09aa0" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
       </Svg>
     </Pressable>
+    </View>
   </View>
 }
 
@@ -42,4 +46,8 @@ const styles = StyleSheet.create({
   brandText: { color: '#fff', fontFamily: 'Archivo_800ExtraBold', fontSize: 12 },
   brandDot: { backgroundColor: '#ff7182', borderRadius: 2, bottom: 4, height: 4, position: 'absolute', right: 4, width: 4 },
   signOut: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  plans: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
+  plansText: { color: '#a09aa0', fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
+  plansActive: { color: '#ff7182' },
 })

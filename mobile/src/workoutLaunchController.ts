@@ -5,7 +5,7 @@ import {
   type BestSet, type LaunchResult, type WorkoutSelection, type WorkoutTemplate,
 } from './workoutLaunch'
 
-export type LaunchState = { status: 'loading' | 'ready' | 'starting' | 'retry' | 'unavailable' | 'corrupt'; message?: string }
+export type LaunchState = { status: 'loading' | 'ready' | 'starting' | 'retry' | 'unavailable' | 'corrupt'; message?: string; selection?: WorkoutSelection }
 export type LaunchTarget = { kind: 'empty' } | { kind: 'template'; selection: WorkoutSelection; snapshot: WorkoutTemplate }
 export interface LaunchPort {
   readActive(uid: string): Promise<ActiveWorkout | null>
@@ -24,6 +24,7 @@ export class WorkoutLaunchController {
   private loaded = false
   private lastTarget: LaunchTarget | null = null
   private observed: ActiveWorkout | null = null
+  private selection?: WorkoutSelection
 
   constructor(
     private uid: string,
@@ -34,7 +35,7 @@ export class WorkoutLaunchController {
   ) {}
 
   dispose() { this.disposed = true }
-  private emit(state: LaunchState) { if (!this.disposed) this.publish(state) }
+  private emit(state: LaunchState) { if (!this.disposed) this.publish({ ...state, ...(state.status !== 'ready' && this.selection ? { selection: this.selection } : {}) }) }
 
   async load(): Promise<void> {
     if (this.busy || this.loaded) return
@@ -43,6 +44,7 @@ export class WorkoutLaunchController {
     try {
       this.attempt = await this.journal.load(this.uid)
       if (this.disposed) return
+      this.selection = this.attempt?.selection
       this.loaded = true
       if (this.attempt) await this.reconcile()
       else this.emit({ status: 'ready' })
@@ -54,6 +56,7 @@ export class WorkoutLaunchController {
   async launch(target: LaunchTarget, canStart: () => boolean): Promise<void> {
     if (this.busy || this.disposed || !this.loaded || (!this.attempt && !canStart())) return
     this.busy = true
+    if (!this.attempt) this.selection = target.kind === 'template' ? target.selection : undefined
     this.lastTarget = target
     this.emit({ status: 'starting' })
     try {

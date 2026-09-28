@@ -328,6 +328,10 @@ service cloud.firestore {
       allow delete: if ownsDoc();
     }
 
+    match /templateSaveOperations/{id} {
+      allow read, write: if false;
+    }
+
     match /readiness/{id} {
       allow create: if ownsNewDoc()
                     && isReadiness(id, request.resource.data);

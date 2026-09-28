@@ -59,7 +59,7 @@ export function parseTemplate(id: string, uid: string, raw: unknown): WorkoutTem
             exerciseId: text(exercise.exerciseId), exerciseSource: source, name: text(exercise.name),
             sets: Math.max(1, Math.round(number(exercise.sets ?? 1, 1))),
             targetReps: Math.max(0, Math.round(number(exercise.targetReps ?? 0, 0))),
-            targetWeight: Math.round(number(exercise.targetWeight ?? 0, 0) * 10) / 10,
+            targetWeight: number(exercise.targetWeight ?? 0, 0),
           }
         }),
       }

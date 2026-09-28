@@ -1,7 +1,9 @@
 import type { Firestore } from 'firebase-admin/firestore'
+import { createHash } from 'node:crypto'
 
 import { adminDb } from './firebaseAdmin.js'
 import { ApiError } from './errors.js'
+import { templateFingerprint, type EditableTemplate } from '../../src/shared/templateFingerprint.js'
 import {
   MAX_SET_REPS,
   MAX_SET_WEIGHT_KG,
@@ -17,7 +19,7 @@ const MAX_TEMPLATE_NAME_LENGTH = 120
 const MAX_DAY_NAME_LENGTH = 80
 const MAX_TEMPLATE_DAYS = 14
 const MAX_TEMPLATE_SETS = 20
-const SAVE_FIELDS = new Set(['id', 'name', 'days'])
+const SAVE_FIELDS = new Set(['id', 'name', 'days', 'operationId', 'baseline'])
 const REQUIRED_SAVE_FIELDS = ['name', 'days']
 const DAY_FIELDS = new Set(['name', 'exercises'])
 const EXERCISE_FIELDS = new Set([
@@ -45,6 +47,8 @@ export interface ValidatedTemplateDay {
 
 export interface SaveTemplateRequest {
   id?: string
+  operationId?: string
+  baseline?: string
   name: string
   days: ValidatedTemplateDay[]
 }
@@ -66,10 +70,22 @@ export function parseSaveTemplateRequest(raw: unknown): SaveTemplateRequest {
     throw badRequest('A template must contain between 1 and 14 days.')
   }
 
+  if (record.operationId !== undefined && (typeof record.operationId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(record.operationId))) {
+    throw badRequest('Invalid operation ID.')
+  }
+  if (record.baseline !== undefined && (typeof record.baseline !== 'string' || record.baseline.length > 64_000)) {
+    throw badRequest('Invalid edit baseline.')
+  }
+  if ((record.id !== undefined && record.operationId !== undefined && record.baseline === undefined)
+    || (record.baseline !== undefined && (record.id === undefined || record.operationId === undefined))) {
+    throw badRequest('Edit baseline and operation ID are required together.')
+  }
   return {
     ...(record.id === undefined
       ? {}
       : { id: validateFirestoreDocumentId(record.id, 'id') }),
+    ...(record.operationId === undefined ? {} : { operationId: record.operationId as string }),
+    ...(record.baseline === undefined ? {} : { baseline: record.baseline as string }),
     name: validateName(record.name, 'template name', MAX_TEMPLATE_NAME_LENGTH),
     days: days.map(validateDay),
   }
@@ -82,6 +98,36 @@ export async function saveTemplateForUser(
 ): Promise<SavedTemplate> {
   const db = options.db ?? adminDb
   const now = options.now?.() ?? Date.now()
+
+  if (input.operationId) {
+    const operationRef = db.collection('templateSaveOperations').doc(`${userId}_${input.operationId}`)
+    const templateRef = input.id ? db.collection('templates').doc(input.id) : db.collection('templates').doc()
+    const hash = createHash('sha256').update(JSON.stringify(input)).digest('hex')
+    return db.runTransaction(async (transaction) => {
+      const receipt = await transaction.get(operationRef)
+      if (receipt.exists) {
+        const data = receipt.data()
+        if (data?.userId !== userId || data?.requestHash !== hash) throw new ApiError(409, 'Operation ID was already used for another save.')
+        return data.template as SavedTemplate
+      }
+      const snapshot = input.id ? await transaction.get(templateRef) : null
+      if (input.id && !snapshot?.exists) throw new ApiError(404, 'Template not found.')
+      const stored = snapshot?.data()
+      if (input.id && stored?.userId !== userId) throw new ApiError(403, 'Template belongs to another user.')
+      if (input.id && templateFingerprint(stored as EditableTemplate) !== input.baseline) {
+        throw new ApiError(409, 'Template changed. Reload it before saving.')
+      }
+      const saved: SavedTemplate = {
+        id: templateRef.id, userId, name: input.name,
+        createdAt: input.id && typeof stored?.createdAt === 'number' ? stored.createdAt : now,
+        updatedAt: now, days: input.days,
+      }
+      if (input.id) transaction.update(templateRef, { name: input.name, days: input.days, updatedAt: now })
+      else transaction.create(templateRef, saved)
+      transaction.create(operationRef, { userId, requestHash: hash, template: saved })
+      return saved
+    })
+  }
 
   if (!input.id) {
     const ref = db.collection('templates').doc()

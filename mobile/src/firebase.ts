@@ -28,6 +28,8 @@ import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 import { NativeActiveSessionConflictError, updateExistingActiveSession } from './activeSessionTransaction'
 import { claimAbsentSession, parseTemplate, type BestSet, type LaunchResult, type WorkoutTemplate } from './workoutLaunch'
+import { templateFingerprint } from '../../src/shared/templateFingerprint'
+import type { PlanSaveRequest } from './planEditor'
 
 const backend = Constants.expoConfig?.extra?.firebaseBackend
 const emulatorHost = Constants.expoConfig?.extra?.firebaseEmulatorHost
@@ -211,6 +213,45 @@ export async function readTemplateFromServer(uid: string, id: string): Promise<W
   const { firestore } = await getServices()
   const snapshot = await getDocFromServer(doc(firestore, 'templates', id))
   return snapshot.exists() ? parseTemplate(snapshot.id, uid, snapshot.data()) : null
+}
+
+export class PlanRequestError extends Error {
+  constructor(readonly status: number, message: string) { super(message) }
+}
+
+export async function savePlan(uid: string, request: PlanSaveRequest): Promise<WorkoutTemplate> {
+  const token = await currentIdToken(uid)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15_000)
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/save-template`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(request), signal: controller.signal,
+    })
+    const result: unknown = await response.json()
+    if (!result || typeof result !== 'object') throw new Error('Invalid save response.')
+    if (!response.ok) {
+      const message = 'error' in result && typeof result.error === 'string' ? result.error : 'Could not save plan.'
+      throw new PlanRequestError(response.status, message)
+    }
+    if (!('template' in result) || !result.template || typeof result.template !== 'object'
+      || !('id' in result.template) || typeof result.template.id !== 'string') throw new Error('Invalid save response.')
+    return parseTemplate(result.template.id, uid, result.template)
+  } finally { clearTimeout(timeout) }
+}
+
+export async function deletePlanIfUnchanged(uid: string, id: string, baseline: string): Promise<'deleted' | 'absent'> {
+  await currentIdToken(uid)
+  const { firestore } = await getServices()
+  const reference = doc(firestore, 'templates', id)
+  return runTransaction(firestore, async (transaction) => {
+    const snapshot = await transaction.get(reference)
+    if (!snapshot.exists()) return 'absent'
+    const template = parseTemplate(id, uid, snapshot.data())
+    if (templateFingerprint(template) !== baseline) throw new PlanRequestError(409, 'Plan changed. Review it before deleting.')
+    transaction.delete(reference)
+    return 'deleted'
+  })
 }
 
 export async function readTemplateBestSet(uid: string, exerciseId: string, source: ExerciseSource): Promise<BestSet | null> {

@@ -78,6 +78,19 @@ describe('templates rules', () => {
     await assertFails(deleteDoc(doc(bobDb, 'templates', 'server-created')))
     await assertSucceeds(deleteDoc(doc(aliceDb, 'templates', 'server-created')))
   })
+
+  it('keeps native save receipts server-only', async () => {
+    const aliceDb = testEnv.authenticatedContext('alice').firestore()
+    const bobDb = testEnv.authenticatedContext('bob').firestore()
+    const receipt = { userId: 'alice', requestHash: 'hash', template: validTemplate('alice') }
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'templateSaveOperations', 'alice_operation'), receipt)
+    })
+    await assertFails(getDoc(doc(aliceDb, 'templateSaveOperations', 'alice_operation')))
+    await assertFails(getDoc(doc(bobDb, 'templateSaveOperations', 'alice_operation')))
+    await assertFails(setDoc(doc(aliceDb, 'templateSaveOperations', 'alice_fake'), receipt))
+    await assertFails(deleteDoc(doc(aliceDb, 'templateSaveOperations', 'alice_operation')))
+  })
 })
 
 describe('userExercises rules', () => {

@@ -73,7 +73,7 @@ export function parseSaveTemplateRequest(raw: unknown): SaveTemplateRequest {
   if (record.operationId !== undefined && (typeof record.operationId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(record.operationId))) {
     throw badRequest('Invalid operation ID.')
   }
-  if (record.baseline !== undefined && (typeof record.baseline !== 'string' || record.baseline.length > 64_000)) {
+  if (record.baseline !== undefined && (typeof record.baseline !== 'string' || record.baseline.length > 1_000_000)) {
     throw badRequest('Invalid edit baseline.')
   }
   if ((record.id !== undefined && record.operationId !== undefined && record.baseline === undefined)

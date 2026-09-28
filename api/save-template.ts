@@ -10,7 +10,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
   try {
     const userId = await requireUserId(req)
-    const body = await readJsonBody<unknown>(req, { maxBytes: 128 * 1024 })
+    const body = await readJsonBody<unknown>(req, { maxBytes: 2 * 1024 * 1024 })
     const template = await saveTemplateForUser(userId, parseSaveTemplateRequest(body))
     sendJson(res, 200, { template })
   } catch (error) {

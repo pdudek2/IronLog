@@ -54,4 +54,21 @@ describe('native plan save receipt', () => {
     await expect(saveTemplateForUser(uid, parseSaveTemplateRequest({ id: created.id, ...body('Missing'), operationId: operationId(), baseline: templateFingerprint(saved) }), { db }))
       .rejects.toMatchObject({ status: 404 })
   })
+
+  it('accepts a legal large edit whose baseline and body exceed the old caps', async () => {
+    const large = { name: 'Large plan', days: Array.from({ length: 14 }, (_, day) => ({ name: `Day ${day + 1}`,
+      exercises: Array.from({ length: 20 }, (_, exercise) => ({
+        exerciseId: `exercise-${day}-${exercise}-${'a'.repeat(120)}`, exerciseSource: 'global' as const,
+        name: 'X'.repeat(120), sets: 4, targetReps: 8, targetWeight: 80,
+      })),
+    })) }
+    const created = await saveTemplateForUser(uid, parseSaveTemplateRequest(large), { db })
+    createdIds.push(created.id)
+    const baseline = templateFingerprint(created)
+    const request = { ...large, id: created.id, name: 'Large edited plan', baseline, operationId: operationId() }
+    expect(baseline.length).toBeGreaterThan(64_000)
+    expect(Buffer.byteLength(JSON.stringify(request))).toBeGreaterThan(128 * 1024)
+    const saved = await saveTemplateForUser(uid, parseSaveTemplateRequest(request), { db })
+    expect(saved.name).toBe('Large edited plan')
+  })
 })

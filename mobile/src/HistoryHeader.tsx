@@ -5,31 +5,33 @@ import Svg, { Path } from 'react-native-svg'
 
 import { logout } from './firebase'
 
-export default function HistoryHeader() {
+export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (action: 'home' | 'plans' | 'signOut', proceed: () => void | Promise<boolean>) => void } = {}) {
   const router = useRouter()
   const pathname = usePathname()
   const [signingOut, setSigningOut] = useState(false)
 
   const signOut = async () => {
-    if (signingOut) return
+    if (signingOut) return false
     setSigningOut(true)
     try {
       await logout()
       router.replace('/')
+      return true
     } catch {
       Alert.alert('Could not sign out', 'Check your connection and try again.')
       setSigningOut(false)
+      return false
     }
   }
 
   return <View style={styles.header}>
-    <Pressable accessibilityRole="button" accessibilityLabel="Open Home" hitSlop={6} onPress={() => router.navigate('/dashboard')} style={styles.brand}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open Home" hitSlop={6} onPress={() => onRequestAction ? onRequestAction('home', () => router.replace('/dashboard')) : router.navigate('/dashboard')} style={styles.brand}>
       <Text style={styles.brandText}>IL</Text>
       <View style={styles.brandDot} />
     </Pressable>
     <View style={styles.actions}>
-    <Pressable accessibilityRole="button" accessibilityLabel="Open Plans" accessibilityState={{ selected: pathname === '/templates' }} onPress={() => router.navigate('/templates')} style={styles.plans}><Text style={[styles.plansText, pathname === '/templates' && styles.plansActive]}>Plans</Text></Pressable>
-    <Pressable accessibilityRole="button" accessibilityLabel="Sign out" disabled={signingOut} onPress={() => void signOut()} style={styles.signOut}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open Plans" accessibilityState={{ selected: pathname === '/templates' }} onPress={() => onRequestAction ? onRequestAction('plans', () => router.replace('/templates')) : router.navigate('/templates')} style={styles.plans}><Text style={[styles.plansText, pathname === '/templates' && styles.plansActive]}>Plans</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel="Sign out" disabled={signingOut} onPress={() => onRequestAction ? onRequestAction('signOut', signOut) : void signOut()} style={styles.signOut}>
       <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24">
         <Path d="m16 17 5-5-5-5" fill="none" stroke="#a09aa0" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
         <Path d="M21 12H9" fill="none" stroke="#a09aa0" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />

@@ -10,6 +10,7 @@ import { pluralize } from '../../src/lib/pluralize'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { deletePlanIfUnchanged, readTemplateFromServer, readTemplates } from '../src/firebase'
+import { inspectPlanForDelete } from '../src/planDeleteFlow'
 import { templateFingerprint } from '../../src/shared/templateFingerprint'
 import { useLaunchRuntime } from '../src/launchRuntime'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
@@ -54,7 +55,7 @@ function Plans({ uid }: { uid: string }) {
     try {
       await deletePlanIfUnchanged(uid, id, baseline)
       setPlanAction(null); retryRead()
-    } catch (error) {
+    } catch {
       try {
         const current = await readTemplateFromServer(uid, id)
         if (!current) { setPlanAction(null); retryRead(); return }
@@ -62,24 +63,25 @@ function Plans({ uid }: { uid: string }) {
           setPlanAction({ id, name, baseline, status: 'error', error: 'Plan changed. Review it before deleting.' }); retryRead(); return
         }
       } catch { /* Keep the confirmed target for an explicit retry. */ }
-      setPlanAction({ id, name, baseline, status: 'error', error: error instanceof Error ? error.message : 'Could not delete plan.' })
+      setPlanAction({ id, name, baseline, status: 'error', error: 'Could not delete plan. Check your connection and try again.' })
     }
   }
-  async function askDelete(plan: WorkoutTemplate) {
-    if (planAction) return
+  async function askDelete(plan: WorkoutTemplate, retry = false) {
+    if (planAction && !(retry && planAction.status === 'error' && planAction.id === plan.id)) return
     setPlanAction({ id: plan.id, name: plan.name, baseline: templateFingerprint(plan), status: 'checking' })
     try {
-      const current = await readTemplateFromServer(uid, plan.id)
-      if (!current) { setPlanAction(null); retryRead(); return }
-      if (templateFingerprint(current) !== templateFingerprint(plan)) {
+      const check = await inspectPlanForDelete(plan, planAction, retry, (id) => readTemplateFromServer(uid, id))
+      if (check.kind === 'busy') return
+      if (check.kind === 'absent') { setPlanAction(null); retryRead(); return }
+      if (check.kind === 'changed') {
         setPlanAction({ id: plan.id, name: plan.name, baseline: templateFingerprint(plan), status: 'error', error: 'Plan changed. Review the latest version before deleting.' }); retryRead(); return
       }
       setPlanAction(null)
-      Alert.alert('Delete plan?', `Delete “${current.name}”? This does not change an active workout.`, [
+      Alert.alert('Delete plan?', `Delete “${check.current.name}”? This does not change an active workout.`, [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete plan', style: 'destructive', onPress: () => { void deleteConfirmed(plan.id, current.name, templateFingerprint(current)) } },
+        { text: 'Delete plan', style: 'destructive', onPress: () => { void deleteConfirmed(plan.id, check.current.name, check.baseline) } },
       ])
-    } catch (error) { setPlanAction({ id: plan.id, name: plan.name, baseline: templateFingerprint(plan), status: 'error', error: error instanceof Error ? error.message : 'Could not check plan.' }) }
+    } catch { setPlanAction({ id: plan.id, name: plan.name, baseline: templateFingerprint(plan), status: 'error', error: 'Could not check plan. Check your connection and try again.' }) }
   }
   const retryLaunch = () => {
     if (unavailable) { launch.dismissUnavailable(); retryRead() }
@@ -108,7 +110,7 @@ function Plans({ uid }: { uid: string }) {
         const open = shortList || (expanded.uid === uid && expanded.id === plan.id)
         return <View key={plan.id} style={[styles.plan, planIndex < plans.length - 1 && styles.planDivider]}>
           <View style={styles.planHead}><View style={styles.planTitleCopy}><Text accessibilityRole="header" style={styles.planTitle}>{plan.name}</Text>{plan.days.length > 1 && <Text style={styles.daysCount}>{plan.days.length} days</Text>}</View><View style={styles.planActions}><Pressable accessibilityRole="button" accessibilityLabel={`Edit plan ${plan.name}`} disabled={!!planAction} onPress={() => router.navigate(`/templates/${plan.id}/edit`)} style={styles.planAction}><Icon kind="edit" color={colors.strong} /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete plan ${plan.name}`} disabled={!!planAction} onPress={() => void askDelete(plan)} style={styles.planAction}><Icon kind="delete" color={colors.accent} /></Pressable>{!shortList && <Pressable accessibilityRole="button" accessibilityLabel={`${open ? 'Collapse' : 'Structure'} ${plan.name}`} accessibilityState={{ expanded: open }} onPress={() => setExpanded({ uid, id: open ? null : plan.id })} style={styles.structure}><Icon kind={open ? 'up' : 'down'} color={colors.muted} /></Pressable>}</View></View>
-          {planAction?.id === plan.id && <View accessibilityRole="alert" style={styles.feedback}><Text style={styles.copy}>{planAction.status === 'checking' ? 'Checking plan…' : planAction.status === 'deleting' ? 'Deleting plan…' : planAction.error}</Text>{planAction.status === 'error' && <Pressable accessibilityRole="button" onPress={() => { setPlanAction(null); void askDelete(plan) }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
+          {planAction?.id === plan.id && <View accessibilityRole="alert" style={styles.feedback}><Text style={styles.copy}>{planAction.status === 'checking' ? 'Checking plan…' : planAction.status === 'deleting' ? 'Deleting plan…' : planAction.error}</Text>{planAction.status === 'error' && <Pressable accessibilityRole="button" onPress={() => { void askDelete(plan, true) }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
           {feedback && feedbackPlan?.id === plan.id && launchFeedback}
           {open && <View style={styles.days}>{plan.days.map((day, dayIndex) => {
             const pending = starting && launch.state.selection?.templateId === plan.id && launch.state.selection.dayIndex === dayIndex
@@ -133,7 +135,7 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)' },
   grain: { ...StyleSheet.absoluteFill, opacity: 0.024 }, grainImage: { width: '100%', height: '100%' },
   heading: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, borderBottomColor: 'rgba(244,241,242,0.11)', borderBottomWidth: 1, paddingTop: 16, paddingBottom: 16 },
-  newPlan: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#b5213a' }, newPlanText: { color: '#fff', fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
+  newPlan: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#b5213a', experimental_backgroundImage: 'linear-gradient(180deg, #c72e44 0%, #a91f35 100%)' }, newPlanText: { color: '#fff', fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   title: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 38.4, lineHeight: 37.632, marginTop: 6.08 },
   summary: { flexDirection: 'row', alignItems: 'baseline', gap: 4.8 }, count: { includeFontPadding: false, lineHeight: 12.672, color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.52 }, countNumber: { includeFontPadding: false, lineHeight: 15.656, color: colors.strong, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 14.08 },
   board: { marginTop: 7.2 }, plan: { padding: 0 }, planDivider: { borderBottomColor: colors.line, borderBottomWidth: 1 },

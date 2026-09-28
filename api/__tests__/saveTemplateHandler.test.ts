@@ -81,7 +81,7 @@ describe('save-template handler', () => {
   it('rejects an oversized request before persistence', async () => {
     const captured = captureResponse()
 
-    await handler(request(JSON.stringify({ name: 'x'.repeat(129 * 1024) })), captured.res)
+    await handler(request(JSON.stringify({ name: 'x'.repeat(2 * 1024 * 1024) })), captured.res)
 
     expect(captured.status()).toBe(413)
     expect(mocks.saveTemplateForUser).not.toHaveBeenCalled()

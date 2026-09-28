@@ -1,6 +1,6 @@
-import { useLocalSearchParams } from 'expo-router'
+import { Stack, useLocalSearchParams } from 'expo-router'
 import PlanEditorScreen from '../../../src/PlanEditorScreen'
 export default function EditPlan() {
   const { id } = useLocalSearchParams<{ id: string }>()
-  return <PlanEditorScreen targetId={id ?? null} />
+  return <><Stack.Screen options={{ gestureEnabled: false }} /><PlanEditorScreen targetId={id ?? null} /></>
 }

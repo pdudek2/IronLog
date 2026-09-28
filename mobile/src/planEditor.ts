@@ -28,6 +28,8 @@ export interface PlanDraft {
   days: EditorDay[]
   selectedDayId: string
   pending: PlanSaveRequest | null
+  resolvedId: string | null
+  dirty: boolean
 }
 
 export function newPlanDraft(draftId: string, units: WeightUnits, template: WorkoutTemplate | null, newId: () => string): PlanDraft {
@@ -41,7 +43,7 @@ export function newPlanDraft(draftId: string, units: WeightUnits, template: Work
   })) : [{ rowId: newId(), name: 'Day 1', exercises: [] }]
   return {
     draftId, revision: 0, targetId: template?.id ?? null, baseline: template ? templateFingerprint(template) : null,
-    units, name: template?.name ?? '', days, selectedDayId: days[0]!.rowId, pending: null,
+    units, name: template?.name ?? '', days, selectedDayId: days[0]!.rowId, pending: null, resolvedId: null, dirty: false,
   }
 }
 
@@ -54,6 +56,7 @@ function numeric(text: string, maximum: number, whole: boolean, label: string): 
 }
 
 export function normalizePlanDraft(draft: PlanDraft, operationId: string): PlanSaveRequest {
+  if (!draft.targetId && draft.resolvedId) throw new Error('This plan was already created. Reload or discard this draft before creating another.')
   if (draft.targetId && draft.baseline === null) throw new Error('The edit baseline is missing. Reload this plan.')
   const name = draft.name.trim()
   if (name.length < 2 || name.length > 120) throw new Error('Plan name must be 2–120 characters.')

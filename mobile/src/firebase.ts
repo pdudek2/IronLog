@@ -228,12 +228,14 @@ export async function savePlan(uid: string, request: PlanSaveRequest): Promise<W
       method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(request), signal: controller.signal,
     })
-    const result: unknown = await response.json()
-    if (!result || typeof result !== 'object') throw new Error('Invalid save response.')
+    const raw = await response.text()
+    let result: unknown
+    try { result = JSON.parse(raw) } catch { result = null }
     if (!response.ok) {
-      const message = 'error' in result && typeof result.error === 'string' ? result.error : 'Could not save plan.'
+      const message = result && typeof result === 'object' && 'error' in result && typeof result.error === 'string' ? result.error : 'Could not save plan.'
       throw new PlanRequestError(response.status, message)
     }
+    if (!result || typeof result !== 'object') throw new Error('Invalid save response.')
     if (!('template' in result) || !result.template || typeof result.template !== 'object'
       || !('id' in result.template) || typeof result.template.id !== 'string') throw new Error('Invalid save response.')
     return parseTemplate(result.template.id, uid, result.template)

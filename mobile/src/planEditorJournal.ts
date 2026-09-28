@@ -45,8 +45,10 @@ export class PlanEditorJournal {
         const draft = value.draft as PlanDraft | null
         if (draft !== null && (!draft || typeof draft.draftId !== 'string' || !Number.isSafeInteger(draft.revision) || draft.targetId !== targetId
           || !Array.isArray(draft.days) || !draft.days.length || !draft.days.every((day) => typeof day.rowId === 'string' && Array.isArray(day.exercises))
-          || (draft.units !== 'kg' && draft.units !== 'lbs'))) throw new Error('Invalid draft data.')
-        records.push({ generation: Number(value.generation), draft })
+          || (draft.units !== 'kg' && draft.units !== 'lbs')
+          || (draft.resolvedId !== undefined && draft.resolvedId !== null && typeof draft.resolvedId !== 'string')
+          || (draft.dirty !== undefined && typeof draft.dirty !== 'boolean'))) throw new Error('Invalid draft data.')
+        records.push({ generation: Number(value.generation), draft: draft ? { ...draft, resolvedId: draft.resolvedId ?? null, dirty: draft.dirty ?? draft.revision > 0 } : null })
       } catch { corrupt = true }
     }
     const latest = records.sort((a, b) => b.generation - a.generation)[0]

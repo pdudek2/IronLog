@@ -1257,9 +1257,9 @@ export default function DashboardPage() {
 
                             {workoutTitle(workout) !== workout.exercises.map((exercise) => exercise.name.trim()).join(' + ') && (
                               <div className="dashboard-history-exercises">
-                                {workout.exercises.slice(0, 3).map((exercise) => (
+                                {workout.exercises.slice(0, 3).map((exercise, index) => (
                                   <span
-                                    key={`${workout.id}-${exercise.exerciseId ?? exercise.name}`}
+                                    key={`${workout.id}-${exercise.exerciseSource ?? 'global'}-${exercise.exerciseId ?? exercise.name}-${index}`}
                                   >
                                     {exercise.name}
                                   </span>

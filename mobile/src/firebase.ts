@@ -9,13 +9,14 @@ import {
 } from '@react-native-firebase/auth'
 import {
   connectFirestoreEmulator,
-  collection, getDocs, query, where, orderBy, limit,
+  collection, getDocs, query, where, orderBy, limit, startAfter,
   doc,
   getDoc,
   getDocFromServer,
   getFirestore,
   onSnapshot,
   runTransaction,
+  type QuerySnapshot,
 } from '@react-native-firebase/firestore'
 import Constants from 'expo-constants'
 
@@ -30,6 +31,8 @@ import { NativeActiveSessionConflictError, updateExistingActiveSession } from '.
 import { claimAbsentSession, parseTemplate, type BestSet, type LaunchResult, type WorkoutTemplate } from './workoutLaunch'
 import { templateFingerprint } from '../../src/shared/templateFingerprint'
 import type { PlanSaveRequest } from './planEditor'
+import { compareProgressRecords, parseProgressRecord, parseProgressSession } from './progressData'
+import type { ProgressRecordsResult, ProgressSessionsResult } from '../../src/shared/progress'
 
 const backend = Constants.expoConfig?.extra?.firebaseBackend
 const emulatorHost = Constants.expoConfig?.extra?.firebaseEmulatorHost
@@ -359,6 +362,73 @@ export async function readWorkoutHistory(uid: string): Promise<ReadResult<Workou
     },
     fromCache: snapshot.metadata.fromCache,
   }
+}
+
+export async function readRecentProgressWorkouts(uid: string): Promise<ReadResult<Array<{ id: string; materialized: boolean }>>> {
+  await currentIdToken(uid)
+  const { firestore } = await getServices()
+  const snapshot = await getDocs(query(collection(firestore, 'workouts'), where('userId', '==', uid), orderBy('startedAt', 'desc'), limit(50)))
+  return {
+    data: snapshot.docs.map((document) => {
+      const workout = parseSavedWorkout(document.id, uid, document.data())
+      return { id: workout.id, materialized: workout.materialized }
+    }),
+    fromCache: snapshot.metadata.fromCache,
+  }
+}
+
+export async function retryProgressMaterialization(uid: string, workoutId: string): Promise<void> {
+  const token = await currentIdToken(uid)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15_000)
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/materialize-workout`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workoutId }), signal: controller.signal,
+    })
+    if (!response.ok) throw new Error('Could not confirm recent workout data.')
+    const result: unknown = await response.json()
+    if (!result || typeof result !== 'object' || !('ok' in result) || result.ok !== true) throw new Error('Invalid workout sync response.')
+  } finally { clearTimeout(timeout) }
+}
+
+export async function readProgressSessions(uid: string, fromMs: number): Promise<ReadResult<ProgressSessionsResult>> {
+  await currentIdToken(uid)
+  const { firestore } = await getServices()
+  const sessions: ProgressSessionsResult['sessions'] = []
+  let cursor: QuerySnapshot['docs'][number] | null = null
+  let fromCache = false
+  while (sessions.length < 5_001) {
+    const currentLimit = Math.min(1_000, 5_001 - sessions.length)
+    const base = [where('userId', '==', uid), where('finishedAt', '>=', fromMs), orderBy('finishedAt', 'desc')]
+    const snapshot: QuerySnapshot = await getDocs(query(collection(firestore, 'exerciseSessions'), ...base,
+      ...(cursor ? [startAfter(cursor)] : []), limit(currentLimit)))
+    fromCache ||= snapshot.metadata.fromCache
+    sessions.push(...snapshot.docs.map((document) => parseProgressSession(document.id, uid, document.data())))
+    if (snapshot.docs.length < currentLimit) break
+    cursor = snapshot.docs.at(-1) ?? null
+    if (!cursor) break
+  }
+  return { data: { sessions: sessions.slice(0, 5_000), truncated: sessions.length > 5_000 }, fromCache }
+}
+
+export async function readProgressRecords(uid: string): Promise<ReadResult<ProgressRecordsResult>> {
+  await currentIdToken(uid)
+  const { firestore } = await getServices()
+  const records: ProgressRecordsResult['records'] = []
+  let cursor: QuerySnapshot['docs'][number] | null = null
+  let fromCache = false
+  while (records.length < 1_001) {
+    const currentLimit = Math.min(1_000, 1_001 - records.length)
+    const snapshot: QuerySnapshot = await getDocs(query(collection(firestore, 'records'), where('userId', '==', uid),
+      ...(cursor ? [startAfter(cursor)] : []), limit(currentLimit)))
+    fromCache ||= snapshot.metadata.fromCache
+    records.push(...snapshot.docs.map((document) => parseProgressRecord(document.id, uid, document.data())))
+    if (snapshot.docs.length < currentLimit) break
+    cursor = snapshot.docs.at(-1) ?? null
+    if (!cursor) break
+  }
+  return { data: { records: records.slice(0, 1_000).sort(compareProgressRecords), truncated: records.length > 1_000 }, fromCache }
 }
 
 export async function readSavedWorkout(uid: string, workoutId: string): Promise<ReadResult<SavedWorkout | null>> {

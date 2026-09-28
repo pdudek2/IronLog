@@ -19,6 +19,10 @@ import {
   aggregatePeriodComparison,
   aggregateStrengthProgression,
   aggregateWeeklyVolume,
+  formatProgressVolume as formatVolume,
+  PROGRESS_MUSCLE_COLORS as MUSCLE_COLORS,
+  PROGRESS_MUSCLE_LABELS as MUSCLE_LABELS,
+  PROGRESS_HEATMAP_COLORS as HEATMAP_COLORS,
   type HeatmapDay,
   type MuscleBalancePoint,
   type ProgressSessionLite,
@@ -38,54 +42,11 @@ const RANGE_OPTIONS = [
   { label: 'Year', days: 365 },
 ]
 
-const MUSCLE_COLORS: Record<string, string> = {
-  chest:      '#D97B91',
-  shoulders:  '#A898C8',
-  triceps:    '#C38B73',
-  back:       '#9BB7C8',
-  biceps:     '#76ADB1',
-  forearms:   '#A7A0B5',
-  quads:      '#D6A06F',
-  hamstrings: '#C09172',
-  glutes:     '#B78568',
-  calves:     '#C3A477',
-  core:       '#918A9D',
-}
-
-const MUSCLE_LABELS: Record<string, string> = {
-  chest: 'Chest',
-  back: 'Back',
-  shoulders: 'Shoulders',
-  biceps: 'Biceps',
-  triceps: 'Triceps',
-  quads: 'Quads',
-  hamstrings: 'Hamstrings',
-  glutes: 'Glutes',
-  core: 'Core',
-  calves: 'Calves',
-  forearms: 'Forearms',
-}
-
-const HEATMAP_COLORS = [
-  'rgba(255,255,255,0.04)',
-  'rgba(240,67,90,0.15)',
-  'rgba(240,67,90,0.35)',
-  'rgba(240,67,90,0.6)',
-  'rgba(240,67,90,0.9)',
-]
-
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const EMPTY_SESSIONS: ProgressSessionLite[] = []
 const EMPTY_RECORDS: RecordSummary[] = []
 const DEFAULT_VISIBLE_REMAINING_RECORDS = 5
 const RECORDS_PAGE_SIZE = 20
-
-function formatVolume(volumeKg: number, units: Units): string {
-  const volume = kgToDisplayWeight(volumeKg, units)
-  if (volume >= 1_000_000) return `${(volume / 1_000_000).toFixed(1)}M ${units}`
-  if (volume >= 1000) return `${(volume / 1000).toFixed(1)}k ${units}`
-  return `${Math.round(volume)} ${units}`
-}
 
 function formatDelta(delta: number): string {
   return `${delta >= 0 ? '+' : ''}${delta.toFixed(0)}% vs previous`

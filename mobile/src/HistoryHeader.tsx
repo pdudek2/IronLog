@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
-import { usePathname, useRouter } from 'expo-router'
+import { usePathname, useRouter, type Href } from 'expo-router'
 import Svg, { Path } from 'react-native-svg'
 
 import { logout } from './firebase'
 
-export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (action: 'home' | 'plans' | 'signOut', proceed: () => void | Promise<boolean>) => void } = {}) {
+export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (action: 'home' | 'plans' | 'progress' | 'signOut', proceed: () => void | Promise<boolean>) => void } = {}) {
   const router = useRouter()
   const pathname = usePathname()
   const [signingOut, setSigningOut] = useState(false)
@@ -31,6 +31,7 @@ export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (
     </Pressable>
     <View style={styles.actions}>
     <Pressable accessibilityRole="button" accessibilityLabel="Open Plans" accessibilityState={{ selected: pathname === '/templates' }} onPress={() => onRequestAction ? onRequestAction('plans', () => router.replace('/templates')) : router.navigate('/templates')} style={styles.plans}><Text style={[styles.plansText, pathname === '/templates' && styles.plansActive]}>Plans</Text></Pressable>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open Progress" accessibilityState={{ selected: pathname === '/progress' }} onPress={() => onRequestAction ? onRequestAction('progress', () => router.replace('/progress' as Href)) : router.navigate('/progress' as Href)} style={styles.plans}><Text style={[styles.plansText, pathname === '/progress' && styles.plansActive]}>Progress</Text></Pressable>
     <Pressable accessibilityRole="button" accessibilityLabel="Sign out" disabled={signingOut} onPress={() => onRequestAction ? onRequestAction('signOut', signOut) : void signOut()} style={styles.signOut}>
       <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24">
         <Path d="m16 17 5-5-5-5" fill="none" stroke="#a09aa0" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />

@@ -21,7 +21,7 @@ function Chart({ values, labels, units, width, kind, summary }: { values: number
   const labelIndices = progressChartLabelIndices(labels.length, kind)
   const selectedValue = selected === null ? null : values[selected]
   return <View accessibilityLabel={kind === 'volume' ? 'Weekly workout volume chart' : 'Weight progression chart'}>
-    <View style={{ height: frameHeight, paddingTop: 12 }}>
+    <View style={{ height: frameHeight, paddingTop: kind === 'weight' ? 5 : 12 }}>
       <View style={styles.chartRow}>
       <View style={[styles.yLabels, { width: axisWidth, height: plotHeight }]}>{ticks.map((tick, index) => <Text key={tick} numberOfLines={1} adjustsFontSizeToFit style={[styles.axis, styles.yTick, { top: Math.max(0, Math.min(plotHeight - 14, index * plotHeight / (ticks.length - 1) - 7)) }]}>{progressChartValue(tick, units, kind)}</Text>)}</View>
       <Pressable accessibilityRole="button" accessibilityLabel={`${summary}${selected !== null && selectedValue != null ? ` Selected ${labels[selected]}: ${progressChartValue(selectedValue, units, kind)}.` : ''}`} accessibilityHint="Tap to inspect a chart point" style={{ width: plotWidth, height: plotHeight }} onPress={(event) => {

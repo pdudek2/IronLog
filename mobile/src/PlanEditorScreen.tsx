@@ -28,6 +28,7 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
   const active = useActiveRuntime()
   const insets = useSafeAreaInsets()
   const [draft, setDraft] = useState<PlanDraft | null>(null)
+  const ownerId = useRef(newId())
   const draftRef = useRef<PlanDraft | null>(null)
   const writeRef = useRef<Promise<void>>(Promise.resolve())
   const sequence = useRef(0)
@@ -61,14 +62,14 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
     setDraft(null); draftRef.current = null; setLoadingError(null); setMessage(null); setReloadAvailable(false)
     void (async () => {
       try {
-        const existing = await planEditorJournal.load(uid, targetId)
+        const existing = await planEditorJournal.open(uid, targetId, ownerId.current)
         if (cancelled) return
         if (existing) { draftRef.current = existing; setDraft(existing); return }
         const [units, template] = await Promise.all([readUnits(uid), targetId ? readTemplateFromServer(uid, targetId) : Promise.resolve(null)])
         if (cancelled) return
         if (targetId && !template) { setLoadingError('Plan was deleted or is unavailable.'); return }
         const fresh = newPlanDraft(newId(), units, template, newId)
-        await planEditorJournal.save(uid, fresh)
+        if (!await planEditorJournal.saveIfOwned(uid, fresh, ownerId.current, null)) throw new Error('Plan editor changed while loading. Retry to open the latest draft.')
         if (cancelled) return
         draftRef.current = fresh; setDraft(fresh)
       } catch (error) { if (!cancelled) setLoadingError(error instanceof Error ? error.message : 'Could not open plan editor.') }
@@ -77,12 +78,14 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
   }, [uid, targetId, attempt])
 
   function persist(next: PlanDraft): Promise<void> {
-    const updated = { ...next, revision: (draftRef.current?.revision ?? next.revision) + 1 }
+    const previous = draftRef.current
+    const updated = { ...next, revision: (previous?.revision ?? next.revision) + 1 }
     draftRef.current = updated
     setDraft(updated)
     setStorageError(null); setDurable(false)
     const token = ++sequence.current
-    const write = planEditorJournal.save(uid, updated)
+    const write = planEditorJournal.saveIfOwned(uid, updated, ownerId.current, previous && { draftId: previous.draftId, revision: previous.revision })
+      .then((saved) => { if (!saved) throw new Error('This draft is open in another editor. Reload it before editing.') })
     writeRef.current = write
     void write.then(() => { if (alive.current && sequence.current === token) setDurable(true) },
       () => { if (alive.current && sequence.current === token) { setStorageError('Draft could not be saved on this device. Retry before leaving or saving.'); setDurable(false) } })
@@ -134,7 +137,7 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
       if (!alive.current) return
       const outcome = await finishAcknowledgedPlanSave({ draft: () => draftRef.current!, acknowledged,
         read: (id) => readTemplateFromServer(uid, id), persist,
-        clear: (latest) => planEditorJournal.clearIfMatches(uid, targetId, latest.draftId, latest.revision),
+        clear: (latest) => planEditorJournal.clearIfOwned(uid, targetId, ownerId.current, latest.draftId, latest.revision),
         shouldNavigate: () => alive.current && focused.current && !exiting.current,
         navigate: () => router.replace('/templates'),
       })
@@ -162,7 +165,7 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
     const current = draftRef.current
     if (!current || current.pending || busy) return
     Alert.alert('Discard draft?', 'Your local changes will be removed.', [{ text: 'Keep draft', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: () => {
-      void planEditorJournal.clearIfMatches(uid, targetId, current.draftId, current.revision).then((cleared) => {
+      void planEditorJournal.clearIfOwned(uid, targetId, ownerId.current, current.draftId, current.revision).then((cleared) => {
         if (alive.current && cleared) router.replace('/templates')
         else if (alive.current) setMessage('Could not discard this draft. Retry.')
       }, () => { if (alive.current) setStorageError('Could not remove local draft. Retry.') })
@@ -175,7 +178,7 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
       void (async () => {
         try {
           const latest = current.resolvedId ? await readTemplateFromServer(uid, current.resolvedId) : null
-          const cleared = await planEditorJournal.clearIfMatches(uid, targetId, current.draftId, current.revision)
+          const cleared = await planEditorJournal.clearIfOwned(uid, targetId, ownerId.current, current.draftId, current.revision)
           if (!alive.current) return
           if (!cleared) { setStorageError('Could not discard the local draft.'); return }
           if (current.resolvedId) router.replace(latest ? `/templates/${current.resolvedId}/edit` : '/templates')

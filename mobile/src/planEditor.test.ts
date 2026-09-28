@@ -38,14 +38,15 @@ test('restores owner-scoped pending save and cannot clear a newer revision', asy
   const draft = newPlanDraft('draft-a', 'kg', null, () => 'row-a')
   draft.name = 'Stable plan'; draft.revision = 1
   draft.pending = { operationId: 'operation-a', name: 'Stable plan', days: [{ name: 'Day 1', exercises: [exercise('global')] }] }
-  await journal.save('alice', draft)
+  await journal.open('alice', null, 'editor-a')
+  assert.equal(await journal.saveIfOwned('alice', draft, 'editor-a', null), true)
   assert.deepEqual(await new PlanEditorJournal(storage).load('alice', null), draft)
   assert.equal(await journal.load('bob', null), null)
   const newer = { ...draft, revision: 2, name: 'Newer plan' }
-  await journal.save('alice', newer)
-  assert.equal(await journal.clearIfMatches('alice', null, draft.draftId, 1), false)
+  assert.equal(await journal.saveIfOwned('alice', newer, 'editor-a', { draftId: draft.draftId, revision: 1 }), true)
+  assert.equal(await journal.clearIfOwned('alice', null, 'editor-a', draft.draftId, 1), false)
   assert.equal((await journal.load('alice', null))?.name, 'Newer plan')
-  assert.equal(await journal.clearIfMatches('alice', null, draft.draftId, 2), true)
+  assert.equal(await journal.clearIfOwned('alice', null, 'editor-a', draft.draftId, 2), true)
   assert.equal(await journal.load('alice', null), null)
 })
 
@@ -58,10 +59,92 @@ test('failed clear preserves the unresolved operation', async () => {
   })
   const draft = newPlanDraft('draft-b', 'kg', null, () => 'row-b')
   draft.pending = { operationId: 'operation-b', name: 'Plan', days: [] }
-  await journal.save('alice', draft)
+  await journal.open('alice', null, 'editor-b')
+  assert.equal(await journal.saveIfOwned('alice', draft, 'editor-b', null), true)
   fail = true
-  await assert.rejects(journal.clearIfMatches('alice', null, draft.draftId, 0), /disk/)
+  await assert.rejects(journal.clearIfOwned('alice', null, 'editor-b', draft.draftId, 0), /disk/)
   assert.equal((await journal.load('alice', null))?.pending?.operationId, 'operation-b')
+})
+
+test('an owned retry can save a newer revision after a storage write fails', async () => {
+  const slots = new Map<string, string>()
+  let fail = false
+  const journal = new PlanEditorJournal({
+    read: async (key, slot) => slots.get(`${key}:${slot}`) ?? null,
+    write: async (key, slot, value) => { if (fail) throw new Error('disk'); slots.set(`${key}:${slot}`, value) },
+  })
+  await journal.open('alice', null, 'editor')
+  const initial = newPlanDraft('draft', 'kg', null, () => 'row')
+  assert.equal(await journal.saveIfOwned('alice', initial, 'editor', null), true)
+  fail = true
+  await assert.rejects(journal.saveIfOwned('alice', { ...initial, revision: 1, name: 'First edit' }, 'editor',
+    { draftId: initial.draftId, revision: 0 }), /disk/)
+  fail = false
+  const retry = { ...initial, revision: 2, name: 'Latest edit' }
+  assert.equal(await journal.saveIfOwned('alice', retry, 'editor', { draftId: initial.draftId, revision: 1 }), true)
+  assert.deepEqual(await journal.load('alice', null), retry)
+})
+
+test('a delayed acknowledgement cannot overwrite a replacement or a reopened revision', async () => {
+  for (const replacementId of [true, false]) {
+    const slots = new Map<string, string>()
+    const journal = new PlanEditorJournal({
+      read: async (key, slot) => slots.get(`${key}:${slot}`) ?? null,
+      write: async (key, slot, value) => { slots.set(`${key}:${slot}`, value) },
+    })
+    const initial = newPlanDraft('old-draft', 'kg', null, () => 'row')
+    initial.pending = { operationId: 'operation-old', name: 'Original', days: [{ name: 'Day 1', exercises: [exercise('global')] }] }
+    await journal.open('alice', null, 'old-editor')
+    assert.equal(await journal.saveIfOwned('alice', initial, 'old-editor', null), true)
+    let old = initial
+    let resolveRead!: (plan: WorkoutTemplate | null) => void
+    const read = new Promise<WorkoutTemplate | null>((resolve) => { resolveRead = resolve })
+    let enteredRead!: () => void
+    const readStarted = new Promise<void>((resolve) => { enteredRead = resolve })
+    const persistOld = async (next: typeof initial) => {
+      const previous = old
+      old = { ...next, revision: previous.revision + 1 }
+      if (!await journal.saveIfOwned('alice', old, 'old-editor', { draftId: previous.draftId, revision: previous.revision })) throw new Error('owner changed')
+    }
+    const acknowledged: WorkoutTemplate = { id: 'created-id', userId: 'alice', name: 'Original', days: initial.pending.days, updatedAt: 1 }
+    const finishing = finishAcknowledgedPlanSave({ draft: () => old, acknowledged, read: () => { enteredRead(); return read },
+      persist: persistOld, clear: (draft) => journal.clearIfOwned('alice', null, 'old-editor', draft.draftId, draft.revision),
+      shouldNavigate: () => false, navigate: () => {} })
+    await readStarted
+    const reopened = await journal.open('alice', null, 'new-editor')
+    assert.equal(reopened?.pending?.operationId, 'operation-old')
+    const newer = { ...reopened!, draftId: replacementId ? 'new-draft' : reopened!.draftId,
+      revision: reopened!.revision + 1, name: 'Newer work' }
+    assert.equal(await journal.saveIfOwned('alice', newer, 'new-editor', { draftId: reopened!.draftId, revision: reopened!.revision }), true)
+    resolveRead(null)
+    await assert.rejects(finishing, /owner changed/)
+    assert.deepEqual(await journal.load('alice', null), newer)
+    assert.equal((await journal.load('alice', null))?.pending?.operationId, 'operation-old')
+  }
+})
+
+test('a previous owner cannot persist a late receipt, rejection, or first draft', async () => {
+  const slots = new Map<string, string>()
+  const journal = new PlanEditorJournal({
+    read: async (key, slot) => slots.get(`${key}:${slot}`) ?? null,
+    write: async (key, slot, value) => { slots.set(`${key}:${slot}`, value) },
+  })
+  assert.equal(await journal.open('alice', null, 'old-editor'), null)
+  const initial = newPlanDraft('old-draft', 'kg', null, () => 'row')
+  initial.pending = { operationId: 'operation-old', name: 'Original', days: [{ name: 'Day 1', exercises: [exercise('global')] }] }
+  await journal.open('alice', null, 'new-editor')
+  const current = { ...initial, draftId: 'new-draft', name: 'Newer work' }
+  assert.equal(await journal.saveIfOwned('alice', current, 'new-editor', null), true)
+  assert.equal(await journal.saveIfOwned('alice', initial, 'old-editor', null), false)
+  const persistOld = async (next: typeof initial) => {
+    if (!await journal.saveIfOwned('alice', { ...next, revision: next.revision + 1 }, 'old-editor',
+      { draftId: initial.draftId, revision: initial.revision })) throw new Error('owner changed')
+  }
+  const acknowledged: WorkoutTemplate = { id: 'created-id', userId: 'alice', name: 'Original', days: initial.pending.days, updatedAt: 1 }
+  await assert.rejects(finishAcknowledgedPlanSave({ draft: () => initial, acknowledged, read: async () => acknowledged,
+    persist: persistOld, clear: async () => true, shouldNavigate: () => false, navigate: () => {} }), /owner changed/)
+  await assert.rejects(releaseRejectedPlanSave(400, initial, persistOld), /owner changed/)
+  assert.deepEqual(await journal.load('alice', null), current)
 })
 
 test('exit waits for a durable write and warns before leaving when storage fails', async () => {

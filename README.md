@@ -8,9 +8,9 @@ IronLog records strength workouts and tracks progress over time. An active worko
 
 On iPhone, open IronLog in Safari and choose **Share → Add to Home Screen**. On Android, open it in Chrome and choose **Menu → Install app** (or **Add to Home screen**). Reopen the installed app after a release to load the latest version; offline launch is not supported.
 
-The native Android preview in `mobile/` implements sign-in and a read-only view of the active workout. It deliberately omits the web app's create-account, password-reset, label editing, set editing, add/delete, finish/minimize, overflow, and bottom-navigation controls because their destinations or mutations are outside this preview; sign-out and exercise expand/collapse remain functional.
+The native Android app in `mobile/` supports sign-in, active-workout editing, exercise selection, Finish/Discard with offline recovery, Minimize/Return, workout history and detail, plan creation/editing/deletion, workout start, and Progress. It uses React Native with Expo Router and the existing Firebase backend. The native migration is still in progress; Coach, Profile, the full bottom navigation and other remaining web flows are not yet available.
 
-Exact screenshot identity is separately limited by Android system safe areas, native font rasterization, and those intentionally omitted controls; the native surfaces otherwise reuse the web layout, palette, gradients, and active-workout hierarchy.
+Native screens follow the mobile web layout, palette, gradients and typography within the implemented scope. Android system safe areas and font rasterization can differ. Changes accepted locally are not automatically included in the production web deployment.
 
 The native waveform reuses the web path and one-shot trace timings, responds to form focus, stops in the background and respects Android’s reduced-motion setting. History and custom exercise details use owner-scoped reads; unavailable or cached history is labelled separately from confirmed absence.
 

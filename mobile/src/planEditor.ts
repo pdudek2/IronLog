@@ -48,7 +48,7 @@ export function newPlanDraft(draftId: string, units: WeightUnits, template: Work
 }
 
 function numeric(text: string, maximum: number, whole: boolean, label: string): number {
-  const clean = text.trim()
+  const clean = whole ? text.trim() : text.trim().replace(',', '.')
   if (!clean || !(whole ? /^\d+$/.test(clean) : /^(?:\d+\.?\d*|\.\d+)$/.test(clean))) throw new Error(`Enter a valid ${label}.`)
   const value = Number(clean)
   if (!Number.isFinite(value) || value < 0 || value > maximum || (whole && !Number.isInteger(value))) throw new Error(`Enter a valid ${label}.`)

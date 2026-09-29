@@ -10,7 +10,7 @@ import { pluralize } from '../../src/lib/pluralize'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { deletePlanIfUnchanged, readTemplateFromServer, readTemplates } from '../src/firebase'
-import { inspectPlanForDelete } from '../src/planDeleteFlow'
+import { inspectPlanForDelete, reconcilePlanAction, type PlanAction } from '../src/planDeleteFlow'
 import { templateFingerprint } from '../../src/shared/templateFingerprint'
 import { useLaunchRuntime } from '../src/launchRuntime'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
@@ -33,12 +33,15 @@ function Plans({ uid }: { uid: string }) {
   const [stored, setStored] = useState<{ key: string; state: ReadState<WorkoutTemplate[]> } | null>(null)
   const [readAttempt, setReadAttempt] = useState(0)
   const [expanded, setExpanded] = useState<{ uid: string; id: string | null }>({ uid, id: null })
-  const [planAction, setPlanAction] = useState<{ id: string; name: string; baseline: string; status: 'checking' | 'deleting' | 'error'; error?: string } | null>(null)
+  const [planAction, setPlanAction] = useState<PlanAction | null>(null)
   const unavailable = launch.state.status === 'unavailable'
 
   useFocusEffect(useCallback(() => startRead(() => readTemplates(uid), (state) => {
     setStored({ key: uid, state })
-    if (state.status === 'ready') setExpanded((current) => ({ uid, id: current.uid === uid && state.data.some((plan) => plan.id === current.id) ? current.id : null }))
+    if (state.status === 'ready') {
+      setExpanded((current) => ({ uid, id: current.uid === uid && state.data.some((plan) => plan.id === current.id) ? current.id : null }))
+      setPlanAction((current) => reconcilePlanAction(current, state.data, state.fromCache))
+    }
   }), [uid, readAttempt, unavailable]))
 
   const state = readStateForKey(uid, stored)

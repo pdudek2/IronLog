@@ -349,3 +349,30 @@ test('a valid legacy intent remains locked when its migration write fails', asyn
   assert.equal(slots.legacy.has('user-a'), true)
   assert.equal(h.calls.length, 0)
 })
+
+
+test('finish navigation survives screen remounts without replaying the previous workout', async () => {
+  const h = harness()
+  await h.controller.start()
+  for (const id of ['session-a', 'session-next']) {
+    const saving = h.controller.startClosure('finish', session(id))
+    await wait()
+    h.requests.at(-1)!.resolve({ action: 'finish', workoutId: id, status: 'materialized' })
+    await saving
+    assert.equal(h.controller.consumeFinishedNavigation(true), id)
+    assert.equal(h.controller.consumeFinishedNavigation(true), null)
+    assert.deepEqual(h.states.at(-1)!.completed, { action: 'finish', workoutId: id, status: 'materialized' })
+  }
+})
+
+test('finish completed after Minimize is consumed without navigating now or on return', async () => {
+  const h = harness()
+  await h.controller.start()
+  const saving = h.controller.startClosure('finish', session())
+  await wait()
+  h.requests[0]!.resolve({ action: 'finish', workoutId: 'session-a', status: 'materialized' })
+  await saving
+  assert.equal(h.controller.consumeFinishedNavigation(false), null)
+  assert.equal(h.controller.consumeFinishedNavigation(true), null)
+  assert.deepEqual(h.states.at(-1)!.completed, { action: 'finish', workoutId: 'session-a', status: 'materialized' })
+})

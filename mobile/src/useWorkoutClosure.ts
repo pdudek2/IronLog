@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { usePathname, useRouter } from 'expo-router'
 
 import { closureIntentStorage } from './fileSessionJournal'
 import { apiBaseUrl, currentIdToken } from './firebase'
@@ -17,6 +18,8 @@ export type { ClosureState } from './workoutClosure'
 const initialState: ClosureState = { status: 'loading' }
 
 export function useWorkoutClosure(uid: string) {
+  const pathname = usePathname()
+  const router = useRouter()
   const [owned, setOwned] = useState<{ uid: string | null; state: ClosureState; completed: ClosureResult | null }>({
     uid: null,
     state: initialState,
@@ -35,6 +38,12 @@ export function useWorkoutClosure(uid: string) {
   }, [controller])
 
   const current = owned.uid === uid ? owned : { uid, state: initialState, completed: null }
+  useEffect(() => {
+    if (!current.completed) return
+    const workoutId = controller.consumeFinishedNavigation(pathname === '/')
+    if (workoutId) router.push({ pathname: '/workout/[workoutId]', params: { workoutId } })
+  }, [controller, current.completed, pathname, router])
+
   return {
     closure: current.state,
     completed: current.completed,

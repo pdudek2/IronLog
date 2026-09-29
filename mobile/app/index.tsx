@@ -611,20 +611,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
   const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
-  const openedFinishId = useRef<string | null>(null)
   const sessionClosed = state.status === 'ready' && completed?.action === 'finish'
     && completed.workoutId === state.session.sessionId
   const sessionLocked = locked || sessionClosed
   const canEditCurrentSession = () => !sessionClosed && canEditClosure()
-
-  useEffect(() => {
-    if (completed?.action !== 'finish' || openedFinishId.current === completed.workoutId) return
-    openedFinishId.current = completed.workoutId
-    router.push({
-      pathname: '/workout/[workoutId]',
-      params: { workoutId: completed.workoutId },
-    })
-  }, [completed, router])
 
   const doLogout = async () => {
     setSigningOut(true)

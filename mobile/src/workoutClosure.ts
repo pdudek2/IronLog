@@ -256,6 +256,7 @@ interface ClosureRecoveryResolution {
 export class WorkoutClosureController {
   private state: ClosureState = { status: 'loading' }
   private completed: ClosureResult | null = null
+  private consumedFinishId: string | null = null
   private token = 0
   private inFlight = false
   private disposed = false
@@ -271,6 +272,13 @@ export class WorkoutClosureController {
   start(): Promise<void> {
     this.disposed = false
     return this.readIntent()
+  }
+
+  consumeFinishedNavigation(workoutFocused: boolean): string | null {
+    if (this.disposed || this.completed?.action !== 'finish' || this.consumedFinishId === this.completed.workoutId) return null
+    this.consumedFinishId = this.completed.workoutId
+    // A late finish must not interrupt another screen or replay when the workout remounts.
+    return workoutFocused ? this.completed.workoutId : null
   }
 
   canEdit(): boolean {

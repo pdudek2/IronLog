@@ -1,4 +1,4 @@
-import type { ActiveWorkout } from './session'
+import { parseSessionDocument, type ActiveWorkout } from './session'
 
 export class NativeActiveSessionConflictError extends Error {
   constructor(message = 'The active session changed on the server.') {
@@ -23,10 +23,12 @@ export async function updateExistingActiveSession(
   const snapshot = await transaction.read()
   const data = snapshot.data
   if (!snapshot.exists || !data) throw new NativeActiveSessionConflictError('The active session no longer exists.')
-  if (data.userId !== uid || data.sessionId !== session.sessionId) {
+  if (data.userId !== uid) throw new NativeActiveSessionConflictError()
+  const stored = parseSessionDocument(uid, data)
+  if (stored.sessionId !== session.sessionId) {
     throw new NativeActiveSessionConflictError()
   }
   if (data.sessionRevision === requestRevision) return
   if ((data.sessionRevision ?? null) !== expectedRevision) throw new NativeActiveSessionConflictError()
-  transaction.update({ label: session.label?.trim() || null, exercises: session.exercises, sessionRevision: requestRevision, updatedAt })
+  transaction.update({ sessionId: stored.sessionId, templateId: stored.templateId, label: session.label?.trim() || null, exercises: session.exercises, sessionRevision: requestRevision, updatedAt })
 }

@@ -15,7 +15,7 @@ import {
 } from 'firebase/firestore'
 
 import { NativeActiveSessionConflictError, updateExistingActiveSession } from '../src/activeSessionTransaction'
-import type { ActiveWorkout } from '../src/session'
+import { parseSessionDocument, type ActiveWorkout } from '../src/session'
 
 const projectId = 'demo-ironlog'
 const runId = `native-adapter-${Date.now()}`
@@ -94,6 +94,23 @@ async function main() {
   })
   await save(owner.firestore, owner.uid, legacy, null, `${runId}-legacy-upgrade`)
   assert.equal((await getDoc(reference)).data()?.sessionRevision, `${runId}-legacy-upgrade`)
+
+  const preIdentity = { userId: owner.uid, startedAt: workout.startedAt, exercises: workout.exercises }
+  await adminDb.collection('activeSessions').doc(owner.uid).set(preIdentity)
+  const parsedLegacy = parseSessionDocument(owner.uid, preIdentity)
+  await save(owner.firestore, owner.uid, parsedLegacy, null, `${runId}-identity-upgrade`)
+  const upgraded = (await getDoc(reference)).data()!
+  assert.equal(upgraded.sessionId, parsedLegacy.sessionId)
+  assert.equal(upgraded.templateId, null)
+  assert.equal(upgraded.label, null)
+  assert.equal(upgraded.sessionRevision, `${runId}-identity-upgrade`)
+  await adminDb.collection('closedSessions').doc(parsedLegacy.sessionId).set({ userId: owner.uid, closedAt: Date.now() })
+  try {
+    await adminDb.collection('activeSessions').doc(owner.uid).set(preIdentity)
+    await assert.rejects(save(owner.firestore, owner.uid, parsedLegacy, null, `${runId}-legacy-tombstoned`))
+  } finally {
+    await adminDb.collection('closedSessions').doc(parsedLegacy.sessionId).delete()
+  }
 
   await adminDb.collection('activeSessions').doc(owner.uid).set({
     userId: owner.uid, sessionId, sessionRevision: `${runId}-revision-3`, startedAt: workout.startedAt,

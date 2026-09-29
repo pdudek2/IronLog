@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { inspectPlanForDelete } from './planDeleteFlow'
+import { inspectPlanForDelete, reconcilePlanAction, type PlanAction } from './planDeleteFlow'
 import type { WorkoutTemplate } from './workoutLaunch'
 
 const plan = (name: string): WorkoutTemplate => ({ id: 'plan-1', userId: 'alice', name, updatedAt: 1, days: [{ name: 'Day 1', exercises: [] }] })
@@ -26,4 +26,17 @@ test('delete Retry refuses a changed baseline until the refreshed plan is review
   assert.equal(stale.kind, 'changed')
   const refreshed = await inspectPlanForDelete(changed, { id: changed.id, status: 'error' }, true, async () => changed)
   assert.equal(refreshed.kind, 'confirm')
+})
+
+
+test('authoritative absence clears an orphaned delete error without clearing pending actions or cached uncertainty', () => {
+  const failed: PlanAction = { id: 'removed-plan', name: 'Removed', baseline: 'original', status: 'error' }
+  const remaining = [plan('Remaining')]
+  assert.equal(reconcilePlanAction(failed, remaining, false), null)
+  assert.equal(reconcilePlanAction(failed, remaining, true), failed)
+  assert.equal(reconcilePlanAction(failed, [{ ...plan('Still present'), id: failed.id }], false), failed)
+  for (const status of ['checking', 'deleting'] as const) {
+    const pending = { ...failed, status }
+    assert.equal(reconcilePlanAction(pending, remaining, false), pending)
+  }
 })

@@ -1,6 +1,12 @@
 import { templateFingerprint } from '../../src/shared/templateFingerprint'
 import type { WorkoutTemplate } from './workoutLaunch'
 
+export type PlanAction = { id: string; name: string; baseline: string; status: 'checking' | 'deleting' | 'error'; error?: string }
+
+export function reconcilePlanAction(action: PlanAction | null, plans: WorkoutTemplate[], fromCache: boolean): PlanAction | null {
+  return action?.status === 'error' && !fromCache && !plans.some((plan) => plan.id === action.id) ? null : action
+}
+
 export async function inspectPlanForDelete(
   plan: WorkoutTemplate,
   action: { id: string; status: 'checking' | 'deleting' | 'error' } | null,

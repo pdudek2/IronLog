@@ -211,3 +211,22 @@ test('definitive 400 unlocks correction while an unknown 5xx keeps the same oper
   draft.days[0]!.exercises[0]!.weight = '20'
   assert.equal(normalizePlanDraft(draft, 'operation-corrected').days[0]!.exercises[0]!.targetWeight, 20)
 })
+
+
+test('accepts decimal comma weights in kg and lbs without relaxing integer or separator validation', () => {
+  for (const units of ['kg', 'lbs'] as const) {
+    const draft = newPlanDraft('comma', units, null, () => 'row')
+    draft.name = 'Comma plan'
+    const row = { ...exercise('global'), rowId: 'exercise', sets: '4', targetReps: '8', weight: '12.5' }
+    draft.days[0]!.exercises = [row]
+    const expected = normalizePlanDraft(draft, 'save').days[0]!.exercises[0]!.targetWeight
+    row.weight = '12,5'
+    assert.equal(normalizePlanDraft(draft, 'save').days[0]!.exercises[0]!.targetWeight, expected)
+    for (const invalid of ['12,5.0', '12.5,0', '1,2,3']) {
+      row.weight = invalid
+      assert.throws(() => normalizePlanDraft(draft, 'save'), /weight/)
+    }
+    row.weight = '12,5'; row.sets = '4,0'
+    assert.throws(() => normalizePlanDraft(draft, 'save'), /sets/)
+  }
+})

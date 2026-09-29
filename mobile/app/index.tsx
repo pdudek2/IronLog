@@ -310,12 +310,13 @@ function SignOutButton({ busy, onPress }: { busy: boolean; onPress: () => void }
   )
 }
 
-function SetValueInput({ value, units, field, label, done, onChange }: {
+function SetValueInput({ value, units, field, label, done, rejectedEdit, onChange }: {
   value: string
   units: Units
   field: 'weight' | 'reps'
   label: string
   done: boolean
+  rejectedEdit: object | null
   onChange: (value: string) => void
 }) {
   const displayed = storedValueToSetInput(value, field, units)
@@ -323,12 +324,12 @@ function SetValueInput({ value, units, field, label, done, onChange }: {
   const focused = useRef(false)
   const pendingSubmissions = useRef<string[]>([])
   useEffect(() => {
-    const reconciliation = reconcileSetInputSubmissions(pendingSubmissions.current, value)
+    const reconciliation = reconcileSetInputSubmissions(pendingSubmissions.current, value, rejectedEdit !== null)
     pendingSubmissions.current = reconciliation.pending
     if (!reconciliation.acknowledged || (!focused.current && reconciliation.pending.length === 0)) {
       setText(displayed)
     }
-  }, [displayed, value])
+  }, [displayed, value, rejectedEdit])
   return <TextInput
     accessibilityLabel={label}
     inputMode={field === 'weight' ? 'decimal' : 'numeric'}
@@ -377,9 +378,9 @@ function LabelTabs({ active, onToggle }: { active: string; onToggle: (label: str
 }
 
 
-function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, units, metadata, onToggle, editing }: {
+function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, units, metadata, onToggle, editing, rejectedEdit }: {
   uid: string; sessionKey: string; exercise: WorkoutExercise; expanded: boolean; collapsible: boolean
-  units: Units; metadata: ExerciseMetadata | undefined; onToggle: () => void; editing: EditingActions
+  units: Units; metadata: ExerciseMetadata | undefined; onToggle: () => void; editing: EditingActions; rejectedEdit: object | null
 }) {
   const summary = summarizeExercise(exercise, units)
   const load = useCallback(() => readPreviousSets(uid, exercise.exerciseId, exercise.exerciseSource), [uid, exercise.exerciseId, exercise.exerciseSource])
@@ -444,9 +445,9 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
               : <Text style={[styles.setToggle, current && styles.setToggleCurrent, { color: current ? accent : colors.muted }]}>{index + 1}</Text>}
           </Pressable>
           <Text numberOfLines={1} accessibilityLabel={`Previous set result ${index + 1}: ${previousText}`} style={[styles.setCellMuted, styles.setPreviousColumn]}>{previousText}</Text>
-          <View style={styles.weightInputColumn}><SetValueInput value={set.weight} units={units} field="weight" done={set.done}
+          <View style={styles.weightInputColumn}><SetValueInput rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight" done={set.done}
             label={`Weight, ${exercise.name}, set ${index + 1}, ${units}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'weight', value)} /></View>
-          <View style={styles.repsInputColumn}><SetValueInput value={set.reps} units={units} field="reps" done={set.done}
+          <View style={styles.repsInputColumn}><SetValueInput rejectedEdit={rejectedEdit} value={set.reps} units={units} field="reps" done={set.done}
             label={`Reps, ${exercise.name}, set ${index + 1}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'reps', value)} /></View>
           <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${index + 1}`} onPress={() => editing.removeSet(exercise.clientId, set.clientId)} style={[styles.setTrailingColumn, styles.setTouchTarget]}>
             <Svg width={15} height={15} viewBox="0 0 24 24" style={{ alignSelf: 'center' }}><Path d="m18 6-12 12M6 6l12 12" fill="none" stroke={colors.mutedSoft} strokeWidth={2} strokeLinecap="round" /></Svg>
@@ -476,7 +477,7 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
   </View>
 }
 
-function WorkoutLedger({ uid, session, units, stale, editing }: { uid: string; session: ActiveWorkout; units: Units; stale: boolean; editing: EditingActions }) {
+function WorkoutLedger({ uid, session, units, stale, editing, rejectedEdit }: { uid: string; session: ActiveWorkout; units: Units; stale: boolean; editing: EditingActions; rejectedEdit: object | null }) {
   const [manual, setManual] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
   const identity = (exercise: WorkoutExercise, index: number) => exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${index}`
@@ -510,7 +511,7 @@ function WorkoutLedger({ uid, session, units, stale, editing }: { uid: string; s
       expanded={session.exercises.length === 1 || identity(exercise, index) === expandedId} collapsible={session.exercises.length > 1}
       metadata={exercise.exerciseSource === 'global' ? exerciseCatalog.find(({ id }) => id === exercise.exerciseId)
         : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === exercise.exerciseId) : undefined}
-      editing={editing}
+      editing={editing} rejectedEdit={rejectedEdit}
       onToggle={() => setManual(identity(exercise, index) === expandedId ? '' : identity(exercise, index))} />)}
     <Pressable accessibilityRole="button" accessibilityLabel="Add exercise" accessibilityState={{ disabled: full }} disabled={full} onPress={openPicker}
       style={({ pressed }) => [styles.primaryAction, styles.inlineAddExercise, full && styles.buttonDisabled, pressed && styles.setStepperPressed]}>
@@ -759,8 +760,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
         <View pointerEvents={sessionLocked ? 'none' : 'auto'}>
           <View style={styles.workoutLabelsBand}>
             <LabelTabs active={state.session.label ?? ''} onToggle={guardClosureInteraction(canEditCurrentSession, (label) => setLabel(state.session.label === label ? '' : label))} />
-            <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' ? 'Saved on device' : ''}</Text>
           </View>
+          <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' ? 'Saved on device' : ''}</Text>
           {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
             <View style={styles.staleNotice}>
               <Text style={styles.staleTitle}>Saved on this device</Text>
@@ -782,7 +783,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
             {state.syncStatus === 'conflict' && <Pressable accessibilityRole="button" onPress={confirmDiscardLocal} style={styles.syncAction}><Text style={styles.syncActionText}>Use latest</Text></Pressable>}
           </View>}
 
-          <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale}
+          <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale} rejectedEdit={state.syncStatus === 'storage-error' ? state : null}
             editing={{
               updateSet: guardClosureInteraction(canEditCurrentSession, updateSet),
               adjustSet: guardClosureInteraction(canEditCurrentSession, adjustSet),
@@ -906,7 +907,7 @@ const styles = StyleSheet.create({
   stateCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
   elapsed: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20, lineHeight: 28, fontVariant: ['tabular-nums'] },
   workoutLabelsBand: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, height: 52 },
-  syncInline: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, lineHeight: 18, marginLeft: 'auto', paddingVertical: 12 },
+  syncInline: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, lineHeight: 18, height: 18, textAlign: 'right', paddingHorizontal: 16 },
   previewCopy: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, textAlign: 'center', paddingVertical: 8 },
   lookupText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   lookupAction: { minHeight: 44, justifyContent: 'center' },

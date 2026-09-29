@@ -302,7 +302,8 @@ export class ActiveSessionController {
       if (!this.isCurrent(uid, generation)) return
       this.draft = draft
       this.emitDraft(this.conflict ? 'conflict' : 'local', this.authoritative === undefined)
-      if (!this.conflict) this.scheduleSave(400)
+      // A pending write owns its retry timer; newer edits drain after its acknowledgement.
+      if (!this.conflict && !draft.pending) this.scheduleSave(400)
     })
   }
 

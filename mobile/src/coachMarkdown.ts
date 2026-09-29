@@ -21,8 +21,8 @@ export function markdownBlocks(content: string): MarkdownBlock[] {
 }
 export function markdownInline(text: string): { text: string; kind: 'text' | 'code' | 'bold' | 'italic' }[] {
   return text.split(/(`[^`]+`|\*\*[^*]+\*\*|__[^_]+__|(?<!\*)\*[^*\n]+\*(?!\*)|(?<!_)_[^_\n]+_(?!_))/g).filter(Boolean).map(part => {
-    if (part.startsWith('`') && part.endsWith('`')) return { text: part.slice(1,-1), kind: 'code' }
-    if (/^(\*\*|__)/.test(part)) return { text: part.slice(2,-2), kind: 'bold' }
+    if (part.length > 2 && part.startsWith('`') && part.endsWith('`')) return { text: part.slice(1,-1), kind: 'code' }
+    if (/^(\*\*|__)(.+)\1$/.test(part)) return { text: part.slice(2,-2), kind: 'bold' }
     if (/^([*_]).+\1$/.test(part) && part.length > 2) return { text: part.slice(1,-1), kind: 'italic' }
     return { text: part, kind: 'text' }
   })

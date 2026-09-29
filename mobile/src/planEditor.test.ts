@@ -204,7 +204,10 @@ test('definitive 400 unlocks correction while an unknown 5xx keeps the same oper
   draft.days[0]!.exercises = [{ ...exercise('global'), rowId: 'exercise', sets: '4', targetReps: '8', weight: '0' }]
   draft.pending = normalizePlanDraft(draft, 'operation-invalid')
   const persist = async (next: typeof draft) => { draft = next }
-  assert.equal(await releaseRejectedPlanSave(500, draft, persist), 'unknown')
+  for (const status of [401, 405, 408, 413, 429, 500]) {
+    assert.equal(await releaseRejectedPlanSave(status, draft, persist), 'unknown')
+    assert.equal(draft.pending?.operationId, 'operation-invalid')
+  }
   assert.equal(draft.pending?.operationId, 'operation-invalid')
   assert.equal(await releaseRejectedPlanSave(400, draft, persist), 'correctable')
   assert.equal(draft.pending, null)

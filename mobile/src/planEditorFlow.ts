@@ -56,7 +56,8 @@ export async function releaseRejectedPlanSave(
   draft: PlanDraft,
   persist: (draft: PlanDraft) => Promise<void>,
 ): Promise<'unknown' | 'correctable' | 'conflict'> {
-  if (status < 400 || status >= 500 || status === 408 || status === 429) return 'unknown'
+  // Auth/transport failures do not establish the outcome of an earlier attempt.
+  if (![400, 403, 404, 409].includes(status)) return 'unknown'
   if (draft.pending) await persist({ ...draft, pending: null })
   return status === 409 || status === 404 ? 'conflict' : 'correctable'
 }

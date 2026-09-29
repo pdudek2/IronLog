@@ -66,7 +66,7 @@ test('Markdown preserves literal markup and supported headings/lists/code/emphas
  const blocks=markdownBlocks('## Heading\n\n1. First\n  continuation\n2. Second\n\n<script>literal</script>')
  assert.deepEqual(blocks.map(b=>[b.kind,b.text,b.marker]),[['heading','Heading',undefined],['item','First\ncontinuation','1.'],['item','Second','2.'],['paragraph','<script>literal</script>',undefined]])
  assert.deepEqual(markdownInline('**bold** *italic* `code`').filter(p=>p.kind!=='text').map(p=>p.kind),['bold','italic','code'])
- assert.deepEqual(markdownInline('*unfinished'),[{kind:'text',text:'*unfinished'}])
+ for (const text of ['*unfinished', '**Do not', '__5 kg', '**unfinished', '`']) assert.deepEqual(markdownInline(text),[{kind:'text',text}])
 })
 
 test('foreground transition publishes so disabled Retry becomes usable again',async()=>{

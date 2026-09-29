@@ -32,3 +32,10 @@ test('does not parse a numeric prefix from malformed pounds input', () => {
   const stored = setInputToStoredValue('143,3', 'weight', 'lbs')
   assert.equal(storedValueToSetInput(stored, 'weight', 'lbs'), '143.3')
 })
+
+// Rejection must reconcile even when the stored prop remains unchanged.
+test('rejected input clears outstanding submissions before blur and permits the next edit', () => {
+  const rejected = reconcileSetInputSubmissions(['9', '10'], '8', true)
+  assert.deepEqual(rejected, { pending: [], acknowledged: false })
+  assert.deepEqual(reconcileSetInputSubmissions(['11'], '11'), { pending: [], acknowledged: true })
+})

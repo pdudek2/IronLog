@@ -32,7 +32,8 @@ export interface SubmissionReconciliation {
   acknowledged: boolean
 }
 
-export function reconcileSetInputSubmissions(pending: readonly string[], incoming: string): SubmissionReconciliation {
+export function reconcileSetInputSubmissions(pending: readonly string[], incoming: string, rejected = false): SubmissionReconciliation {
+  if (rejected) return { pending: [], acknowledged: false }
   const acknowledgedIndex = pending.indexOf(incoming)
   if (acknowledgedIndex < 0) return { pending: [], acknowledged: false }
   return { pending: pending.slice(acknowledgedIndex + 1), acknowledged: true }

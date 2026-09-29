@@ -425,3 +425,24 @@ test('label-only and exercise add/remove edits are saved as draft changes', asyn
   await wait()
   assert.deepEqual(ready(h.states).session.exercises.map(({ clientId }) => clientId), [addedId])
 })
+
+test('editing during transient backoff retains the pending retry and drains the newer draft', async () => {
+  const h = harness()
+  try {
+    const initial = await loadServer(h)
+    const exercise = initial.session.exercises[0]!; const set = exercise.sets[0]!
+    h.controller.updateSet(exercise.clientId, set.clientId, 'reps', '9')
+    await wait(); h.controller.retrySave(); await wait()
+    h.saves[0]!.result.reject({ transient: true }); await wait(30)
+    h.controller.updateSet(exercise.clientId, set.clientId, 'reps', '10')
+    await wait(450)
+    assert.equal(h.saves.length, 2)
+    assert.equal(h.saves[1]!.requested, h.saves[0]!.requested)
+    assert.equal(h.saves[1]!.session.exercises[0]!.sets[0]!.reps, '9')
+    h.saves[1]!.result.resolve()
+    h.listeners[0]!.next(snapshot('user-a', 'request-1'))
+    await wait(30)
+    assert.equal(h.saves.length, 3)
+    assert.equal(h.saves[2]!.session.exercises[0]!.sets[0]!.reps, '10')
+  } finally { h.controller.dispose() }
+})

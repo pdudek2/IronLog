@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useFocusEffect, useRouter, type Href } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
@@ -97,6 +97,7 @@ export default function DashboardScreen() {
     <HistoryHeader />
     <ActiveWorkoutReturnBar />
     <ScrollView contentContainerStyle={styles.content}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Open Coach" onPress={() => router.navigate('/coach' as Href)} style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-end' }}><Text style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, color: '#ff7182' }}>Coach →</Text></Pressable>
       <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
       {state.status === 'loading' && <View style={styles.notice}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading dashboard…</Text></View>}
       {state.status === 'error' && <View accessibilityRole="alert" style={styles.notice}>

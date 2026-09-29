@@ -31,6 +31,7 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-font',
+    'expo-secure-store',
     '@react-native-firebase/app',
     '@react-native-firebase/auth',
     ...(backend === 'emulator' ? [allowEmulatorCleartext] : []),

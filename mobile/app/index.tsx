@@ -490,7 +490,7 @@ function WorkoutLedger({ uid, session, units, stale, editing, rejectedEdit }: { 
   const sessionKey = `${session.sessionId}:${stale}`
   const catalog = useSessionRead(JSON.stringify([uid, sessionKey]), loadMetadata, hasCustom || picking)
   const full = session.exercises.length >= MAX_SESSION_EXERCISES
-  const openPicker = () => setPicking(true)
+  const openPicker = () => { catalog.retry(); setPicking(true) }
   const picker = picking && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} onClose={() => setPicking(false)}
     onSelect={(id, name, source) => {
       setPicking(false)

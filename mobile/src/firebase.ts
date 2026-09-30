@@ -25,8 +25,7 @@ import { parseSessionDocument, type ActiveWorkout, type Units, type ExerciseSour
 import { parsePreviousSets, type ExerciseMetadata, type ReadResult } from './scopedRead'
 import { parseSavedWorkout, type SavedWorkout } from './history'
 import { parseHomeProfile, type HomeProfile } from './home'
-import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
-import { EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
+import { parseCatalogueExercise } from './exerciseCatalogue'
 import { NativeActiveSessionConflictError, updateExistingActiveSession } from './activeSessionTransaction'
 import { claimAbsentSession, parseTemplate, type BestSet, type LaunchResult, type WorkoutTemplate } from './workoutLaunch'
 import { templateFingerprint } from '../../src/shared/templateFingerprint'
@@ -69,7 +68,7 @@ async function initializeServices() {
 }
 
 let services: ReturnType<typeof initializeServices> | undefined
-function getServices() {
+export function getServices() {
   return services ??= initializeServices()
 }
 
@@ -325,17 +324,7 @@ export async function readExerciseMetadata(uid: string): Promise<ReadResult<Exer
   const { firestore } = await getServices()
   const snapshot = await getDocs(query(collection(firestore, 'userExercises'), where('userId', '==', uid)))
   return {
-    data: snapshot.docs.map((document) => {
-      const data = document.data()
-      if (data.userId !== uid || typeof data.category !== 'string' || !(data.category in EXERCISE_CATEGORY_LABELS)
-        || typeof data.equipment !== 'string' || !(data.equipment in EQUIPMENT_LABELS)
-        || typeof data.name !== 'string' || !data.name.trim()) throw new Error('Invalid exercise metadata')
-      const muscles: unknown[] = Array.isArray(data.muscles) ? data.muscles : []
-      return {
-        id: document.id, name: data.name, category: data.category, equipment: data.equipment,
-        muscles: muscles.filter((muscle): muscle is string => typeof muscle === 'string'),
-      }
-    }),
+    data: snapshot.docs.map((document) => parseCatalogueExercise(document.id, uid, document.data())),
     fromCache: snapshot.metadata.fromCache,
   }
 }

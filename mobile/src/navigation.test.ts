@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { navigationSection, scrollNavigation, workoutNavigationAction } from './navigation'
 
 test('child routes retain their navigation section and unknown routes do not invent one', () => {
-  for (const path of ['/templates', '/templates/new', '/templates/abc/edit']) assert.equal(navigationSection(path), 'Plans')
+  for (const path of ['/templates', '/templates/new', '/templates/abc/edit', '/exercises', '/exercises/global/squat', '/exercises/user/squat']) assert.equal(navigationSection(path), 'Plans')
   for (const path of ['/progress', '/history', '/workout/abc']) assert.equal(navigationSection(path), 'Progress')
   assert.equal(navigationSection('/'), 'Workout')
   assert.equal(navigationSection('/coach'), 'Coach')

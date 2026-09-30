@@ -1,3 +1,4 @@
+import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useState } from 'react'
 import { ActivityIndicator, Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
@@ -27,6 +28,7 @@ export default function TemplatesScreen() {
 
 function Plans({ uid }: { uid: string }) {
   const router = useRouter()
+  const navigation = useBottomNavigation()
   const active = useActiveRuntime()
   const closure = useClosureRuntime()
   const launch = useLaunchRuntime()
@@ -95,11 +97,11 @@ function Plans({ uid }: { uid: string }) {
     {launch.state.status !== 'corrupt' && <Pressable accessibilityRole="button" onPress={retryLaunch} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}
   </View>
 
-  return <SafeAreaView edges={['top']} style={styles.screen}>
+  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
     <ActiveWorkoutReturnBar />
-    <ScrollView contentContainerStyle={styles.content}>
+    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
       <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
       <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <View accessibilityLabel={`${plans.length} ${pluralize(plans.length, 'plan', 'plans')}`} style={styles.summary}><Text style={styles.countNumber}>{plans.length}</Text><Text style={styles.count}>{pluralize(plans.length, 'plan', 'plans')}</Text></View>}</View><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><Text style={styles.newPlanText}>＋ New plan</Text></Pressable></View>
       {hasActive && <Text style={styles.activeCopy}>Resume or finish your current workout before starting another day.</Text>}
@@ -125,6 +127,7 @@ function Plans({ uid }: { uid: string }) {
         </View>
       })}</View>}
     </ScrollView>
+  <BottomNavigation {...navigation} />
   </SafeAreaView>
 }
 

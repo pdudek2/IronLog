@@ -1,3 +1,4 @@
+import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
@@ -32,6 +33,7 @@ export default function ProgressScreen() {
 
 function ProgressContent({ uid }: { uid: string }) {
   const router = useRouter()
+  const navigation = useBottomNavigation()
   const active = useActiveRuntime()
   const units = active.state.units
   const { width } = useWindowDimensions()
@@ -98,11 +100,11 @@ function ProgressContent({ uid }: { uid: string }) {
   const navigateHistory = () => router.navigate('/history')
   const heatmapPeak = activeDays.reduce<(typeof activeDays)[number] | null>((best, cell) => !best || cell.volume > best.volume ? cell : best, null)
 
-  return <SafeAreaView edges={['top']} style={styles.screen}>
+  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
     <ActiveWorkoutReturnBar />
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>Progress</Text>
         <Pressable accessibilityRole="button" onPress={navigateHistory} style={styles.historyButton}><Text style={[styles.link, styles.historyLink]}>View history</Text></Pressable>
@@ -160,6 +162,7 @@ function ProgressContent({ uid }: { uid: string }) {
     </ScrollView>
     <ChoiceModal visible={picker === 'strength'} title="Exercise" options={strength.series.map((series) => ({ key: series.key, label: `${series.exerciseName}${(exerciseNames.get(series.exerciseName) ?? 0) > 1 ? ` · ${series.key.startsWith('user:') ? 'mine' : 'shared'}` : ''}` }))} selected={selectedStrengthKey} onSelect={(key) => { setStrengthKey(key); setPicker(null) }} onClose={() => setPicker(null)} />
     <ChoiceModal visible={picker === 'calendar'} title="View day" options={activeDays.map((day) => ({ key: day.date, label: `${formatCalendarDate(day.date)} · ${formatProgressVolume(day.volume, units)}` }))} selected={selectedDate} onSelect={(date) => { setCalendarDate(date); setPicker(null) }} onClose={() => setPicker(null)} />
+  <BottomNavigation {...navigation} />
   </SafeAreaView>
 }
 

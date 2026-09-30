@@ -1,3 +1,4 @@
+import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { StatusBar } from 'expo-status-bar'
 import { useIsFocused, useRouter } from 'expo-router'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
@@ -600,6 +601,7 @@ function WorkoutOptionsMenu({ busy, onDiscard, onHistory, onSignOut }: { busy: b
 }
 
 function SessionScreen({ user }: { user: AuthUser }) {
+  const navigation = useBottomNavigation()
   const scrollY = useRef(new Animated.Value(0)).current
   const isFocused = useIsFocused()
   const router = useRouter()
@@ -675,13 +677,13 @@ function SessionScreen({ user }: { user: AuthUser }) {
   )
 
   return (
-    <View pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
+    <View onFocus={navigation.onFocus} onBlur={navigation.onBlur} pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
       <Animated.ScrollView
         contentContainerStyle={styles.sessionContent}
         keyboardShouldPersistTaps="handled"
         stickyHeaderIndices={[1]}
         scrollEventThrottle={16}
-        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
+        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true, listener: navigation.onScroll })}
       >
       <GrainBackdrop scrollY={scrollY} />
       {state.status === 'ready' && !sessionClosed ? (
@@ -796,6 +798,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
         )}
       </Animated.ScrollView>
+      <BottomNavigation {...navigation} />
     </View>
   )
 }
@@ -804,7 +807,7 @@ export default function IndexScreen() {
   const { user, startupError } = useAuthRuntime()
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView edges={user ? ['top'] : ['top', 'bottom']} style={styles.safeArea}>
       <StatusBar style="light" />
       {startupError ? (
         <View style={styles.centerState}>

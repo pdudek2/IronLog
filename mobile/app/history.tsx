@@ -1,3 +1,4 @@
+import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -42,6 +43,7 @@ export default function HistoryScreen() {
   const { user } = useAuthRuntime()
   const active = useActiveRuntime()
   const router = useRouter()
+  const navigation = useBottomNavigation()
   const uid = user?.uid ?? null
   const historyLoader = useCallback(() => uid ? readWorkoutHistory(uid) : Promise.resolve({ data: { workouts: [], truncated: false }, fromCache: false }), [uid])
   const metadataLoader = useCallback(() => uid ? readExerciseMetadata(uid) : Promise.resolve({ data: [], fromCache: false }), [uid])
@@ -88,11 +90,11 @@ export default function HistoryScreen() {
   )
 
   return (
-    <SafeAreaView edges={['top']} style={styles.screen}>
+    <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
       <StatusBar style="light" />
       <HistoryHeader />
       <ActiveWorkoutReturnBar />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
         <View style={styles.header}>
           <Text accessibilityRole="header" style={styles.title}>History</Text>
@@ -206,7 +208,8 @@ export default function HistoryScreen() {
           </>
         )}
       </ScrollView>
-    </SafeAreaView>
+    <BottomNavigation {...navigation} />
+  </SafeAreaView>
   )
 }
 

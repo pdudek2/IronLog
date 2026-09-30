@@ -1,3 +1,4 @@
+import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
@@ -38,6 +39,7 @@ function ContextNotice({ context }: { context?: AiContextMetadata }) {
   return context?.status === 'limited' ? <Text style={s.context}>Response was created with some data unavailable: {context.unavailableSources.join(', ')}.</Text> : null
 }
 function Coach({ uid }: { uid: string }) {
+  const navigation = useBottomNavigation()
   const [, redraw] = useState(0)
   const [controller] = useState(() => new CoachController(nativeCoachDependencies(uid), () => redraw(value => value + 1)))
   const state = controller.state
@@ -91,12 +93,12 @@ function Coach({ uid }: { uid: string }) {
     <Text style={s.gateTitle}>Add a local OpenRouter key</Text><Text style={s.description}>Without it, you can review the conversation, but cannot send questions.</Text>
     <View style={s.left}><Button primary onPress={openSettings}>Set up key</Button></View>
   </View>
-  return <SafeAreaView style={s.screen} edges={['top', 'bottom']}><StatusBar style="light" />
+  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} style={s.screen} edges={['top']}><StatusBar style="light" />
     <HistoryHeader /><ActiveWorkoutReturnBar />
     <KeyboardAvoidingView style={s.grow} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={s.workspace}>
         <View pointerEvents="none" style={StyleSheet.absoluteFill}><Image source={grain} resizeMode="repeat" style={s.grain} /></View>
-        <ScrollView ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+        <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
           <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text><Text style={s.subtitle}>Ask about your last session or next workout.</Text></View>
           {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
           <View onLayout={event => { chatY.current = event.nativeEvent.layout.y }} style={[s.chat, conversation && { height: Math.max(336, height - 336) }]}>
@@ -125,6 +127,7 @@ function Coach({ uid }: { uid: string }) {
         </ScrollView>
       </View>
     </KeyboardAvoidingView>
+  <BottomNavigation {...navigation} />
   </SafeAreaView>
 }
 const s = StyleSheet.create({

@@ -1,3 +1,5 @@
+import BottomNavigation, { useBottomNavigation } from './BottomNavigation'
+import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, Alert, BackHandler, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
@@ -8,7 +10,7 @@ import Svg, { Path } from 'react-native-svg'
 import ExercisePicker from './ExercisePicker'
 import HistoryHeader from './HistoryHeader'
 import { createSessionRevision, PlanRequestError, readExerciseMetadata, readTemplateFromServer, readUnits, savePlan } from './firebase'
-import { useActiveRuntime, useAuthRuntime } from './runtime'
+import { useAuthRuntime } from './runtime'
 import { useSessionRead } from './useSessionRead'
 import { newPlanDraft, normalizePlanDraft, type EditorDay, type PlanDraft } from './planEditor'
 import { finishAcknowledgedPlanSave, releaseRejectedPlanSave, requestPlanEditorExit } from './planEditorFlow'
@@ -25,7 +27,7 @@ export default function PlanEditorScreen({ targetId }: { targetId: string | null
 
 function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
   const router = useRouter()
-  const active = useActiveRuntime()
+  const navigation = useBottomNavigation()
   const insets = useSafeAreaInsets()
   const [draft, setDraft] = useState<PlanDraft | null>(null)
   const ownerId = useRef(newId())
@@ -196,12 +198,13 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
   const canSubmit = (!!draft.pending || (draft.name.trim().length >= 2 && draft.days.some((item) => item.exercises.length > 0)))
     && !(draft.resolvedId && !draft.pending) && !busy && !storageError
   const showDock = !targetId || draft.dirty || !!draft.pending || !!error || reloadReady || busy
-  return <SafeAreaView edges={['top']} style={styles.screen}>
+  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader onRequestAction={(_, proceed) => leave(proceed)} />
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/templates'))} style={styles.headerLink}><Text style={styles.muted}>‹  Plans</Text></Pressable><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text>{active.state.status === 'ready' && <Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/'))} style={styles.headerLink}><Text style={styles.accent}>Return</Text></Pressable>}</View>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <ActiveWorkoutReturnBar onRequestExit={leave} />
+    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/templates'))} style={styles.headerLink}><Text style={styles.muted}>‹  Plans</Text></Pressable><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text></View>
+      <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <Text style={styles.label}>Name</Text>
         <TextInput accessibilityLabel="Plan name" editable={!locked} maxLength={120} value={draft.name} onFocus={() => { inputFocused.current = true }} onBlur={() => { inputFocused.current = false }} onChangeText={(value) => change((current) => ({ ...current, name: value }))} placeholder="E.g. Upper / Lower 4 days" placeholderTextColor={colors.muted} style={styles.nameInput} />
         <View style={styles.selector}><ScrollView ref={dayTabs} horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={styles.tabsContent}>{draft.days.map((item, index) => <Pressable key={item.rowId} accessibilityRole="tab" accessibilityState={{ selected: item.rowId === day.rowId }} onPress={() => change((current) => ({ ...current, selectedDayId: item.rowId }), false)} style={[styles.tab, item.rowId === day.rowId && styles.selectedTab]}><Text numberOfLines={1} style={[styles.tabText, item.rowId === day.rowId && styles.tabTextSelected]}>{item.name.trim() || `Day ${index + 1}`}</Text><Text style={styles.tabCount}>{item.exercises.length} ex. · {item.exercises.reduce((sum, exercise) => sum + (Number(exercise.sets) || 0), 0)} sets</Text></Pressable>)}</ScrollView><Pressable accessibilityRole="button" disabled={!canAddDay || locked} onPress={() => { const rowId = newId(); change((current) => ({ ...current, selectedDayId: rowId, days: [...current.days, { rowId, name: `Day ${current.days.length + 1}`, exercises: [] }] })) }} style={styles.addDay}><PlanIcon kind="plus" color={colors.text} /><Text style={styles.addDayText}>Add day</Text></Pressable></View>
@@ -211,8 +214,9 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
         </View>
         {(draft.dirty || draft.resolvedId) && <Pressable accessibilityRole="button" disabled={locked} onPress={() => void discard()} style={styles.discard}><Text style={styles.muted}>Discard draft</Text></Pressable>}
       </ScrollView>
-      {showDock && <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, 12) }]}><View style={styles.dockCopy}>{(draft.pending || draft.dirty || !durable) && <Text style={styles.dockTitle}>{draft.pending ? 'Save outcome unresolved' : durable ? 'Unsaved changes' : 'Saving draft…'}</Text>}{error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}</View><View style={styles.dockActions}>{reloadReady && !draft.pending && <Pressable accessibilityRole="button" onPress={reload} style={styles.secondary}><Text style={styles.accent}>Reload</Text></Pressable>}{storageError && <Pressable accessibilityRole="button" onPress={() => { void persist(draftRef.current!) }} style={styles.secondary}><Text style={styles.accent}>Retry draft</Text></Pressable>}<Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSubmit }} disabled={!canSubmit} onPress={() => void save()} style={[styles.save, !canSubmit && styles.disabled]}><PlanIcon kind="pencil" color="#fff" /><Text style={styles.saveText}>{busy ? 'Saving…' : draft.pending ? 'Retry save' : 'Save plan'}</Text></Pressable></View></View>}
+      {showDock && <View style={[styles.dock, { paddingBottom: navigation.keyboard ? Math.max(insets.bottom, 12) : 12 }]}><View style={styles.dockCopy}>{(draft.pending || draft.dirty || !durable) && <Text style={styles.dockTitle}>{draft.pending ? 'Save outcome unresolved' : durable ? 'Unsaved changes' : 'Saving draft…'}</Text>}{error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}</View><View style={styles.dockActions}>{reloadReady && !draft.pending && <Pressable accessibilityRole="button" onPress={reload} style={styles.secondary}><Text style={styles.accent}>Reload</Text></Pressable>}{storageError && <Pressable accessibilityRole="button" onPress={() => { void persist(draftRef.current!) }} style={styles.secondary}><Text style={styles.accent}>Retry draft</Text></Pressable>}<Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSubmit }} disabled={!canSubmit} onPress={() => void save()} style={[styles.save, !canSubmit && styles.disabled]}><PlanIcon kind="pencil" color="#fff" /><Text style={styles.saveText}>{busy ? 'Saving…' : draft.pending ? 'Retry save' : 'Save plan'}</Text></Pressable></View></View>}
     </KeyboardAvoidingView>
+    <BottomNavigation {...navigation} onRequestExit={leave} />
     {picking && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} onClose={() => setPicking(false)} onSelect={(exerciseId, name, source) => { if (day.exercises.some((exercise) => exercise.exerciseId === exerciseId && exercise.exerciseSource === source)) { setMessage('Exercise is already in this day.'); return }; changeDay((item) => ({ ...item, exercises: [...item.exercises, { rowId: newId(), exerciseId, exerciseSource: source, name, sets: '4', targetReps: '8', weight: '0' }] })); setPicking(false) }} />}
   </SafeAreaView>
 }

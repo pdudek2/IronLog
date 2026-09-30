@@ -1,7 +1,8 @@
+import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
-import { useFocusEffect, useRouter, type Href } from 'expo-router'
+import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
@@ -33,6 +34,7 @@ export default function DashboardScreen() {
   const completed = closure?.completed
   const launch = useOptionalLaunchRuntime()
   const router = useRouter()
+  const navigation = useBottomNavigation()
   const { width } = useWindowDimensions()
   const uid = user?.uid ?? null
   const [result, setResult] = useState<{ key: string; state: ReadState<HomeData> } | null>(null)
@@ -92,12 +94,11 @@ export default function DashboardScreen() {
 
   if (!user) return <SafeAreaView edges={['top']} style={styles.screen}><StatusBar style="light" /><Text style={styles.muted}>Restoring sign-in…</Text></SafeAreaView>
 
-  return <SafeAreaView edges={['top']} style={styles.screen}>
+  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
     <ActiveWorkoutReturnBar />
-    <ScrollView contentContainerStyle={styles.content}>
-      <Pressable accessibilityRole="button" accessibilityLabel="Open Coach" onPress={() => router.navigate('/coach' as Href)} style={{ minHeight: 44, justifyContent: 'center', alignSelf: 'flex-end' }}><Text style={{ fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, color: '#ff7182' }}>Coach →</Text></Pressable>
+    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
       <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
       {state.status === 'loading' && <View style={styles.notice}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading dashboard…</Text></View>}
       {state.status === 'error' && <View accessibilityRole="alert" style={styles.notice}>
@@ -177,6 +178,7 @@ export default function DashboardScreen() {
         <View style={styles.pickerActions}><Pressable accessibilityRole="button" onPress={() => setPickerOpen(false)} style={styles.pickerCancel}><Text style={styles.changeText}>Cancel</Text></Pressable><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.planPrimaryText}>Choose workout</Text></Pressable></View>
       </View></View>
     </Modal>
+  <BottomNavigation {...navigation} />
   </SafeAreaView>
 }
 

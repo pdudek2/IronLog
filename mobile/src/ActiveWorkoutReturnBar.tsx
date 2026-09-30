@@ -1,3 +1,4 @@
+import type { NavigationExit } from './BottomNavigation'
 import { useEffect, useState } from 'react'
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native'
 import { usePathname, useRouter } from 'expo-router'
@@ -6,7 +7,7 @@ import Svg, { Path } from 'react-native-svg'
 import { formatElapsed } from './session'
 import { useActiveRuntime, useClosureRuntime } from './runtime'
 
-export default function ActiveWorkoutReturnBar() {
+export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExit?: NavigationExit } = {}) {
   const { state } = useActiveRuntime()
   const closure = useClosureRuntime()
   const pathname = usePathname()
@@ -43,7 +44,7 @@ export default function ActiveWorkoutReturnBar() {
       <Text accessibilityLabel={`Elapsed time ${formatElapsed(session.startedAt, now)}`} style={styles.elapsed}>
         {formatElapsed(session.startedAt, now)}
       </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => router.dismissTo('/')} style={styles.returnButton}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => onRequestExit ? onRequestExit(() => router.dismissTo('/')) : router.dismissTo('/')} style={styles.returnButton}>
         <Text style={styles.returnText}>Return</Text>
         <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke="#ff7182" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg>
       </Pressable>

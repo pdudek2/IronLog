@@ -24,7 +24,12 @@ export async function writeCustomExercise(uid: string, operation: ExerciseMutati
     if (!existing.docs.some(document => document.id === operation.id)) return
   }
   assertCurrent()
-  } catch (error) { throw new ExerciseNotSubmittedError(error instanceof Error ? error.message : 'Could not save. Check your connection and try again.') }
+  } catch (error) {
+    const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : ''
+    throw new ExerciseNotSubmittedError(code.endsWith('unavailable') || code.endsWith('deadline-exceeded')
+      ? 'Could not save. Check your connection and try again.'
+      : error instanceof Error ? error.message : 'Could not save. Check your connection and try again.')
+  }
   await runTransaction(firestore, transaction => mutateExercise({
     read: async (name, id) => { const snapshot = await transaction.get(doc(firestore, name, id)); return snapshot.exists() ? snapshot.data()! : null },
     set: (name, id, data) => { transaction.set(doc(firestore, name, id), data) },

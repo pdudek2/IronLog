@@ -65,7 +65,7 @@ function Profile({ uid }: { uid: string }) {
   const current = state ?? controller.state
   const input = current.input
   const locked = current.status !== 'ready' || current.busy || current.pending
-  const submit = async () => { await controller.save(); if (controller.state.nameError && focused.current) name.current?.focus() }
+  const submit = async () => { await controller.save(); if (controller.state.nameError && focused.current) { scroll.current?.scrollTo({ y: 0, animated: true }); name.current?.focus() } }
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader onRequestAction={(action, proceed) => { if (action !== 'profile') leave(proceed) }} />

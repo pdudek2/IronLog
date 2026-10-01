@@ -334,3 +334,57 @@ test('disposed owner cannot publish a late result into a different account', asy
   assert.equal(h.claimCalls, 0)
   assert.equal(h.results.length, 0)
 })
+
+test('recommended overrides validate identities/legal values, preserve canonical kg and never mutate the template', () => {
+  const plan = template(), before = structuredClone(plan)
+  const overrides = new Map([['global:same', { sets: 1, weight: 57.5, reps: 7 }], ['user:same', { sets: 2, weight: 27.5, reps: 11 }]])
+  const session = buildTemplateSession(plan, 1, new Map(), 'recommended', 'r', 100, overrides)
+  assert.deepEqual(session.exercises.map(e => e.sets.map(s => [s.weight,s.reps])), [[['57.5','7']], [['27.5','11'],['27.5','11']]])
+  assert.deepEqual(plan,before)
+  for (const bad of [{ sets: 0, weight: 10, reps: 1 }, { sets: 21, weight: 10, reps: 1 }, { sets: 1, weight: NaN, reps: 1 }, { sets: 1, weight: -1, reps: 1 }, { sets: 1, weight: 2001, reps: 1 }, { sets: 1, weight: 10, reps: 0.5 }, { sets: 1, weight: 10, reps: 1001 }]) assert.throws(() => buildTemplateSession(plan,1,new Map(),'s','r',100,new Map([...overrides, ['global:same',bad]])), /Invalid recommendation/)
+  assert.throws(() => buildTemplateSession(plan,1,new Map(),'s','r',100,new Map([['other:same',{sets:1,weight:10,reps:1}]])), /Invalid recommendation/)
+})
+test('recommended candidate survives retry/restart unchanged without querying newer history', async () => {
+  const h = harness(), plan = template(), before = structuredClone(plan)
+  const overrides = new Map([['global:same', { sets: 1, weight: 57.5, reps: 7 }], ['user:same', { sets: 2, weight: 27.5, reps: 11 }]])
+  h.port.readBest = async () => { throw Error('Recommended start must use the preview') }
+  const first = h.controller(); await first.load(); h.failClaim = 'before'
+  await first.launch({ kind: 'template', selection: { templateId: plan.id, dayIndex: 1 }, snapshot: plan, overrides }, () => true)
+  const pending = await h.journal.load('owner'); assert.ok(pending)
+  overrides.set('global:same',{sets:4,weight:100,reps:12}); first.dispose()
+  const restored = h.controller(); await restored.load(); h.failClaim = 'none'
+  await restored.retry(() => true)
+  assert.deepEqual(h.results.at(-1)?.session,pending.candidate)
+  assert.equal(h.results.at(-1)?.session.exercises[0]?.sets[0]?.weight,'57.5')
+  assert.deepEqual(plan,before); assert.equal(h.ids,2)
+})
+test('recommended start preserves a concurrent winner including edited sets and candidate recovery', async () => {
+  const h = harness(), plan = template(), controller = h.controller(); await controller.load()
+  const winner = buildTemplateSession(plan,1,new Map(),'winner','r',100)
+  winner.exercises[0]!.sets[0]!.weight = '99'
+  h.port.claim = async () => ({ kind: 'existing', session: winner })
+  await controller.launch({ kind:'template',selection:{templateId:plan.id,dayIndex:1},snapshot:plan,
+    overrides:new Map([['global:same',{sets:1,weight:57.5,reps:7}],['user:same',{sets:1,weight:27.5,reps:11}]]) },()=>true)
+  assert.strictEqual(h.results.at(-1)?.session,winner)
+  assert.equal(winner.exercises[0]?.sets[0]?.weight,'99'); assert.equal(await h.journal.load('owner'),null)
+})
+test('edited plan on retry invalidates recommended candidate rather than applying its old overrides', async () => {
+  const h = harness(), plan = template(), controller = h.controller(); await controller.load(); h.failClaim='before'
+  await controller.launch({ kind:'template',selection:{templateId:plan.id,dayIndex:1},snapshot:plan,
+    overrides:new Map([['global:same',{sets:1,weight:57.5,reps:7}],['user:same',{sets:1,weight:27.5,reps:11}]]) },()=>true)
+  h.currentTemplate = {...plan, days: [...plan.days.slice(0,1),{...plan.days[1]!,exercises:[{...plan.days[1]!.exercises[0]!,exerciseId:'new'}]}]}
+  h.failClaim='none'; await controller.retry(()=>true)
+  assert.equal(h.states.at(-1)?.status,'unavailable'); assert.equal(h.claimCalls,1); assert.equal(await h.journal.load('owner'),null)
+})
+
+test('recommended values are copied on tap before asynchronous template validation', async () => {
+  const h = harness(), plan = template(), controller = h.controller(); await controller.load()
+  const overrides = new Map([['global:same',{sets:1,weight:57.5,reps:7}],['user:same',{sets:1,weight:27.5,reps:11}]])
+  let release!: () => void
+  h.port.readTemplate = async () => { await new Promise<void>(resolve => { release=resolve }); return plan }
+  const launching = controller.launch({kind:'template',selection:{templateId:plan.id,dayIndex:1},snapshot:plan,overrides},()=>true)
+  overrides.get('global:same')!.weight=100
+  release(); while (h.claimCalls===0 && h.results.length===0) { await new Promise(resolve=>setImmediate(resolve)); if(release) release() }
+  await launching
+  assert.equal(h.results.at(-1)?.session.exercises[0]?.sets[0]?.weight,'57.5')
+})

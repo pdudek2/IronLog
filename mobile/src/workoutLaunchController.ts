@@ -1,12 +1,13 @@
 import type { LaunchAttempt, LaunchJournal } from './launchJournal'
 import type { ActiveWorkout, ExerciseSource } from './session'
+import type { TemplateExerciseOverrideMap } from '../../src/shared/nextSessionRecommendation'
 import {
   buildTemplateSession, selectionFingerprint, TargetUnavailableError,
   type BestSet, type LaunchResult, type WorkoutSelection, type WorkoutTemplate,
 } from './workoutLaunch'
 
 export type LaunchState = { status: 'loading' | 'ready' | 'starting' | 'retry' | 'unavailable' | 'corrupt'; message?: string; selection?: WorkoutSelection }
-export type LaunchTarget = { kind: 'empty' } | { kind: 'template'; selection: WorkoutSelection; snapshot: WorkoutTemplate }
+export type LaunchTarget = { kind: 'empty' } | { kind: 'template'; selection: WorkoutSelection; snapshot: WorkoutTemplate; overrides?: TemplateExerciseOverrideMap }
 export interface LaunchPort {
   readActive(uid: string): Promise<ActiveWorkout | null>
   isClosed(uid: string, sessionId: string): Promise<boolean>
@@ -55,6 +56,7 @@ export class WorkoutLaunchController {
 
   async launch(target: LaunchTarget, canStart: () => boolean): Promise<void> {
     if (this.busy || this.disposed || !this.loaded || (!this.attempt && !canStart())) return
+    if (target.kind === 'template' && target.overrides) target = { ...target, overrides: new Map([...target.overrides].map(([key, value]) => [key, { ...value }])) }
     this.busy = true
     if (!this.attempt) this.selection = target.kind === 'template' ? target.selection : undefined
     this.lastTarget = target
@@ -76,14 +78,14 @@ export class WorkoutLaunchController {
           if (!fresh || fresh.userId !== this.uid || !fresh.days[dayIndex]?.exercises.length
             || selectionFingerprint(fresh, dayIndex) !== selectionFingerprint(target.snapshot, dayIndex)) throw new TargetUnavailableError()
           const unique = new Map(fresh.days[dayIndex]!.exercises.map((exercise) => [`${exercise.exerciseSource}:${exercise.exerciseId}`, exercise]))
-          const entries = await Promise.all([...unique].map(async ([key, exercise]) => {
+          const entries = target.overrides ? [] : await Promise.all([...unique].map(async ([key, exercise]) => {
             try { return [key, await this.port.readBest(this.uid, exercise.exerciseId, exercise.exerciseSource)] as const }
             catch { return [key, null] as const }
           }))
           if (this.disposed) return
           const history = new Map(entries.filter((entry): entry is readonly [string, BestSet] => entry[1] !== null))
           next = {
-            candidate: buildTemplateSession(fresh, dayIndex, history, this.port.createId(), this.port.createId(), this.port.now()),
+            candidate: buildTemplateSession(fresh, dayIndex, history, this.port.createId(), this.port.createId(), this.port.now(), target.overrides),
             selection: { templateId, dayIndex, fingerprint: selectionFingerprint(fresh, dayIndex) },
           }
         }

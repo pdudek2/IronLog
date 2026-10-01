@@ -1,4 +1,5 @@
 import { createLocalId, parseSessionDocument, type ActiveWorkout, type ExerciseSource } from './session'
+import type { TemplateExerciseOverrideMap } from '../../src/shared/nextSessionRecommendation'
 
 export interface TemplateExercise {
   exerciseId: string
@@ -85,18 +86,32 @@ export function selectionFingerprint(template: WorkoutTemplate, dayIndex: number
   return JSON.stringify({ name: template.name, day: template.days[dayIndex] })
 }
 
-export function buildTemplateSession(template: WorkoutTemplate, dayIndex: number, history: ReadonlyMap<string, BestSet>, sessionId: string, revision: string, startedAt: number): ActiveWorkout {
+export function validateTemplateOverrides(template: WorkoutTemplate, dayIndex: number, overrides: TemplateExerciseOverrideMap): void {
   const day = template.days[dayIndex]
   if (!day?.exercises.length) throw new TargetUnavailableError()
+  const keys = new Set(day.exercises.map(exercise => `${exercise.exerciseSource}:${exercise.exerciseId}`))
+  if (overrides.size !== keys.size) throw new Error('Invalid recommendation.')
+  for (const [key, value] of overrides) {
+    if (!keys.has(key) || !Number.isInteger(value.sets) || value.sets! < 1 || value.sets! > 20
+      || !Number.isInteger(value.reps) || value.reps! < 0 || value.reps! > 1000
+      || typeof value.weight !== 'number' || !Number.isFinite(value.weight) || value.weight < 0 || value.weight > 2000) throw new Error('Invalid recommendation.')
+  }
+}
+
+export function buildTemplateSession(template: WorkoutTemplate, dayIndex: number, history: ReadonlyMap<string, BestSet>, sessionId: string, revision: string, startedAt: number, overrides?: TemplateExerciseOverrideMap): ActiveWorkout {
+  const day = template.days[dayIndex]
+  if (!day?.exercises.length) throw new TargetUnavailableError()
+  if (overrides) validateTemplateOverrides(template, dayIndex, overrides)
   return {
     sessionId, sessionRevision: revision, startedAt, templateId: template.id, label: day.name || template.name,
     exercises: day.exercises.map((exercise) => {
       const best = history.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)
-      const weightValue = best && best.bestSetWeight > 0 ? best.bestSetWeight : exercise.targetWeight
-      const repsValue = best && best.bestSetReps > 0 ? best.bestSetReps : exercise.targetReps
+      const override = overrides?.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)
+      const weightValue = override?.weight ?? (best && best.bestSetWeight > 0 ? best.bestSetWeight : exercise.targetWeight)
+      const repsValue = override?.reps ?? (best && best.bestSetReps > 0 ? best.bestSetReps : exercise.targetReps)
       return {
         clientId: createLocalId('exercise'), exerciseId: exercise.exerciseId, exerciseSource: exercise.exerciseSource, name: exercise.name,
-        sets: Array.from({ length: exercise.sets }, () => ({
+        sets: Array.from({ length: override?.sets ?? exercise.sets }, () => ({
           clientId: createLocalId('set'), weight: weightValue > 0 ? String(weightValue) : '',
           reps: repsValue > 0 ? String(repsValue) : '', done: false,
         })),

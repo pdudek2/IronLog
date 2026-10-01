@@ -14,6 +14,7 @@ import ArchivoHero from '../assets/fonts/ArchivoHero.ttf'
 import ArchivoHeading from '../assets/fonts/ArchivoHeading.ttf'
 import { ActiveRuntimeProvider, AuthRuntimeProvider, ClosureRuntimeProvider, useAuthRuntime } from '../src/runtime'
 import { LaunchRuntimeProvider } from '../src/launchRuntime'
+import { ReadinessRuntimeProvider } from '../src/readinessRuntime'
 
 void SplashScreen.preventAutoHideAsync()
 
@@ -55,7 +56,7 @@ function RootStack() {
   const stack = <Stack screenOptions={{ headerShown: false }} />
   return (
     <ActiveRuntimeProvider key={user?.uid ?? 'signed-out'} uid={user?.uid ?? null}>
-      {user ? <ClosureRuntimeProvider uid={user.uid}><LaunchRuntimeProvider uid={user.uid}>{stack}</LaunchRuntimeProvider></ClosureRuntimeProvider> : stack}
+      {user ? <ClosureRuntimeProvider uid={user.uid}><LaunchRuntimeProvider uid={user.uid}><ReadinessRuntimeProvider uid={user.uid}>{stack}</ReadinessRuntimeProvider></LaunchRuntimeProvider></ClosureRuntimeProvider> : stack}
     </ActiveRuntimeProvider>
   )
 }

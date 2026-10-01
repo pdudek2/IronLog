@@ -6,6 +6,11 @@ import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
+import ReadinessHome from '../src/ReadinessHome'
+import { useReadinessRuntime } from '../src/readinessRuntime'
+import { buildNextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
+import { recommendationHistory } from '../src/readiness'
+
 import grainTexture from '../assets/grain.png'
 import { pluralize } from '../../src/lib/pluralize'
 import { workoutTitle } from '../../src/lib/workoutCopy'
@@ -18,7 +23,7 @@ import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
-import { firstLaunchableWorkout, selectedWorkout, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
+import { firstLaunchableWorkout, selectedWorkout, validateTemplateOverrides, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
 
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
 type TemplateData = WorkoutTemplate[]
@@ -33,6 +38,7 @@ export default function DashboardScreen() {
   const closure = useOptionalClosureRuntime()
   const completed = closure?.completed
   const launch = useOptionalLaunchRuntime()
+  const readiness = useReadinessRuntime()
   const router = useRouter()
   const navigation = useBottomNavigation()
   const { width } = useWindowDimensions()
@@ -51,8 +57,9 @@ export default function DashboardScreen() {
   useFocusEffect(useCallback(() => {
     if (!uid) return
     setNow(new Date())
+    readiness?.controller.refreshDay()
     return startRead(() => readHome(uid), (state) => setResult({ key, state }))
-  }, [uid, key, attempt, completion]))
+  }, [uid, key, attempt, completion, readiness?.controller]))
 
   useFocusEffect(useCallback(() => {
     if (!uid || active.state.status !== 'empty') return
@@ -85,6 +92,23 @@ export default function DashboardScreen() {
   const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
   const launchState = launch?.state.status ?? 'loading'
   const starting = launchState === 'starting'
+  const readinessEntry = readiness?.state.status === 'ready' ? readiness.state.entry : null
+  const recommendation = useMemo(() => {
+    if (active.state.status !== 'empty' || !chosen || !readinessEntry || state.status !== 'ready' || state.fromCache
+      || templatesState.status !== 'ready' || templatesState.fromCache || !selection?.target || !data) return null
+    try {
+      const next = buildNextSessionRecommendation(chosen.template, selection.target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now())
+      validateTemplateOverrides(chosen.template, selection.target.dayIndex, next.overrides)
+      return next
+    } catch { return null }
+  }, [active.state.status, chosen, readinessEntry, state, templatesState, selection, data, now])
+  const startRecommended = () => {
+    readiness?.controller.refreshDay()
+    if (!recommendation || !chosen || !selection?.target || readinessEntry?.date !== readiness?.controller.state.date) return
+    void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template, overrides: recommendation.overrides })
+  }
+
+  useEffect(() => { setNow(new Date()) }, [readiness?.state.date])
 
   useEffect(() => {
     if (launchState !== 'unavailable' || !uid) return
@@ -111,7 +135,7 @@ export default function DashboardScreen() {
           <Text style={styles.muted}>{cacheEmpty ? 'Could not confirm your saved workouts. This device has no copy to check offline.' : 'Showing data saved on this device.'}</Text>
           <Pressable accessibilityRole="button" onPress={retry} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>
         </View>}
-        <View style={styles.hero}>
+        {!recommendation && <View style={styles.hero}>
           <Text style={styles.date}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
           <Text style={styles.greeting}>{getGreeting(now)},</Text>
           <Text accessibilityRole="header" style={styles.name}>{data.profile.displayName}</Text>
@@ -123,14 +147,23 @@ export default function DashboardScreen() {
                 <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.planPrimary, starting && styles.disabled]}><Text style={styles.planPrimaryText}>{starting ? 'Starting…' : 'Start workout'}</Text><PlayIcon /></Pressable>
                 <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>
               </View>
-            </View> : <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text>{templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>}</View>}
+            </View> : !chosen ? <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text>{templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>}</View> : null}
             {templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
             {templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
             <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.emptyStart, starting && styles.disabled]}><Text style={styles.emptyStartText}>＋  Start empty workout</Text></Pressable>
+          </View>}
+        </View>}
+        {canOfferStart && <View>
             {launchState === 'loading' && <Text style={styles.planEmptyCopy}>Checking workout start…</Text>}
             {(launchState === 'retry' || launchState === 'unavailable' || launchState === 'corrupt') && <View accessibilityRole="alert" style={styles.launchFeedback}><Text style={styles.planEmptyCopy}>{launch?.state.message ?? 'Could not start workout.'}</Text>{launchState !== 'corrupt' && <Pressable accessibilityRole="button" onPress={() => { if (launchState === 'unavailable') { launch?.dismissUnavailable(); setSelection({ uid: uid!, target: null, unavailable: true }); setTemplatesAttempt((value) => value + 1) } else void launch?.retry() }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
-          </View>}
-        </View>
+        </View>}
+        {active.state.status === 'empty' && readiness && <ReadinessHome state={readiness.state} controller={readiness.controller}
+          recommendation={recommendation} templateName={chosen?.template.name ?? ''} units={units}
+          starting={starting} canStart={canOfferStart && launchState === 'ready'} onStart={startRecommended}
+          onChange={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }}
+          onEdit={() => { if (chosen) router.push({ pathname: '/templates/[templateId]/edit', params: { templateId: chosen.template.id } }) }}
+          prerequisiteMessage={readinessEntry && chosen && !recommendation ? state.status === 'loading' || templatesState.status === 'loading' ? 'Loading recommendation…' : 'Could not confirm recommendation data. You can still start the selected workout.' : null}
+          onRetry={() => { retry(); setTemplatesAttempt(value => value + 1) }} />}
         {showSummary && <View style={styles.week}>
           <View style={styles.sectionHead}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>This week</Text>

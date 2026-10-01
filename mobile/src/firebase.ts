@@ -20,6 +20,8 @@ import {
 } from '@react-native-firebase/firestore'
 import Constants from 'expo-constants'
 import { parseProfile, updateExistingProfile, ProfileNotSubmittedError, type ProfileFields } from './profile'
+import { parseReadiness, ReadinessNotSubmittedError } from './readiness'
+import type { ReadinessEntry } from '../../src/shared/readiness'
 
 import type { SubscribeToSession } from './activeSessionController'
 import { parseSessionDocument, type ActiveWorkout, type Units, type ExerciseSource } from './session'
@@ -226,6 +228,29 @@ export async function readHome(uid: string): Promise<ReadResult<{ profile: HomeP
     },
     fromCache: profileSnapshot.metadata.fromCache || workoutsSnapshot.metadata.fromCache,
   }
+}
+
+export async function readReadiness(uid: string, date: string, server = false): Promise<ReadResult<ReadinessEntry | null>> {
+  const { auth, firestore } = await getServices()
+  if (auth.currentUser?.uid !== uid) throw new ReadinessNotSubmittedError('The signed-in account changed.')
+  const reference = doc(firestore, 'readiness', `${uid}_${date}`)
+  const snapshot = await (server ? getDocFromServer(reference) : getDoc(reference))
+  if (auth.currentUser?.uid !== uid) throw new ReadinessNotSubmittedError('The signed-in account changed.')
+  return { data: snapshot.exists() ? parseReadiness(uid, date, snapshot.data()) : null,
+    fromCache: snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites }
+}
+
+export async function saveReadiness(entry: ReadinessEntry): Promise<void> {
+  const fields = parseReadiness(entry.userId, entry.date, entry)
+  const { auth, firestore } = await getServices()
+  const reference = doc(firestore, 'readiness', `${fields.userId}_${fields.date}`)
+  await runTransaction(firestore, async transaction => {
+    if (auth.currentUser?.uid !== fields.userId) throw new ReadinessNotSubmittedError('The signed-in account changed.')
+    const snapshot = await transaction.get(reference)
+    if (auth.currentUser?.uid !== fields.userId) throw new ReadinessNotSubmittedError('The signed-in account changed.')
+    if (snapshot.exists()) parseReadiness(fields.userId, fields.date, snapshot.data())
+    transaction.set(reference, fields)
+  }, { maxAttempts: 1 })
 }
 
 export async function readTemplates(uid: string): Promise<ReadResult<WorkoutTemplate[]>> {

@@ -47,17 +47,8 @@ export interface TemplateExerciseHistory {
 
 export type TemplateExerciseHistoryMap = Map<string, TemplateExerciseHistory>
 
-export interface TemplateExerciseOverride {
-  sets?: number
-  weight?: number
-  reps?: number
-}
-
-export type TemplateExerciseOverrideMap = ReadonlyMap<string, TemplateExerciseOverride>
-
-export function templateExerciseKey(exerciseId: string, source: ExerciseSource): string {
-  return `${source}:${exerciseId}`
-}
+import { templateExerciseKey, type TemplateExerciseOverrideMap } from '../shared/nextSessionRecommendation'
+export { templateExerciseKey, type TemplateExerciseOverride, type TemplateExerciseOverrideMap } from '../shared/nextSessionRecommendation'
 
 export async function getTemplates(uid: string): Promise<WorkoutTemplate[]> {
   const snap = await getDocs(

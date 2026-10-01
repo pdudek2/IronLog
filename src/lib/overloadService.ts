@@ -2,54 +2,8 @@ import { collection, getDocs, limit, orderBy, query, where } from 'firebase/fire
 import { db } from './firebase'
 import type { ExerciseSource } from '../store/workoutStore'
 
-export type OverloadReason = 'progressive' | 'deload_gap' | 'maintain'
-
-export interface OverloadSuggestion {
-  suggestedWeight: number  // zaokrąglone do 0.5
-  delta: number            // -2.5 | 0 | +2.5
-  reason: OverloadReason
-  lastWeight: number
-  basedOnSessions: number
-}
-
-const THREE_WEEKS_MS = 21 * 24 * 60 * 60 * 1000
-
-export interface OverloadHistoryEntry {
-  bestSetWeight: number
-  finishedAt: number
-}
-
-function roundToHalf(value: number): number {
-  return Math.max(0, Math.round(value * 2) / 2)
-}
-
-export function buildOverloadSuggestion(
-  history: OverloadHistoryEntry[],
-  now = Date.now(),
-): OverloadSuggestion | null {
-  if (history.length < 3) return null
-
-  const latest = history[0]
-  if (!latest || latest.bestSetWeight <= 0) return null
-
-  if (now - latest.finishedAt > THREE_WEEKS_MS) {
-    return {
-      suggestedWeight: roundToHalf(latest.bestSetWeight - 2.5),
-      delta: -2.5,
-      reason: 'deload_gap',
-      lastWeight: latest.bestSetWeight,
-      basedOnSessions: history.length,
-    }
-  }
-
-  return {
-    suggestedWeight: roundToHalf(latest.bestSetWeight + 2.5),
-    delta: 2.5,
-    reason: 'progressive',
-    lastWeight: latest.bestSetWeight,
-    basedOnSessions: history.length,
-  }
-}
+import { buildOverloadSuggestion, type OverloadSuggestion } from '../shared/nextSessionRecommendation'
+export { buildOverloadSuggestion, type OverloadHistoryEntry, type OverloadSuggestion, type OverloadReason } from '../shared/nextSessionRecommendation'
 
 export async function suggestNextSession(
   uid: string,

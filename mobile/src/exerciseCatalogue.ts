@@ -1,22 +1,12 @@
-import type { Category, Equipment, Exercise, MuscleGroup } from '../../data/exercises'
+import type { Exercise } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel, getMuscleLabel } from '../../src/lib/exerciseLabels'
 import { parsePreviousSets } from './scopedRead'
 import { parseProgressRecord } from './progressData'
 import type { ExerciseSource } from './session'
 
-export const categories = Object.keys(EXERCISE_CATEGORY_LABELS) as Category[]
-export const equipmentOptions: Equipment[] = ['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'kettlebell']
-export const muscleOptions: MuscleGroup[] = ['chest', 'back', 'quads', 'hamstrings', 'glutes', 'shoulders', 'triceps', 'biceps', 'forearms', 'core', 'calves']
-export type ExerciseInput = Omit<Exercise, 'id'>
-
-export function validateExerciseInput(input: ExerciseInput): ExerciseInput {
-  const name = typeof input.name === 'string' ? input.name.trim() : ''
-  if (name.length < 2 || name.length > 120) throw new Error('Name must contain 2–120 characters.')
-  if (!categories.includes(input.category) || !equipmentOptions.includes(input.equipment)
-    || !Array.isArray(input.muscles) || input.muscles.length > 12
-    || input.muscles.some(muscle => !muscleOptions.includes(muscle))) throw new Error('Choose a supported category, equipment and muscle group.')
-  return { name, category: input.category, equipment: input.equipment, muscles: [...new Set(input.muscles)] }
-}
+export { categories, equipmentOptions, muscleOptions, validateExerciseInput, sameExerciseInput } from '../../src/shared/exerciseInput'
+export type { ExerciseInput } from '../../src/shared/exerciseInput'
+import { validateExerciseInput, type ExerciseInput } from '../../src/shared/exerciseInput'
 
 export function filterExercises<T extends { name: string; category: string; equipment: string }>(list: T[], search: string, category: string = 'all', equipment: string = 'all'): T[] {
   const q = search.toLowerCase()
@@ -45,26 +35,17 @@ export interface ExerciseTransaction {
   remove: (collection: 'userExercises' | 'userExerciseNames', id: string) => void
 }
 const duplicate = (name: string) => new Error(`An exercise named "${name}" already exists.`)
-export function sameExerciseInput(data: Data, input: ExerciseInput): boolean {
-  return data.name === input.name && data.category === input.category && data.equipment === input.equipment
-    && JSON.stringify(data.muscles) === JSON.stringify(input.muscles)
-}
-
 // This is the transaction body used by the native SDK and the emulator contract check.
 export async function mutateExercise(transaction: ExerciseTransaction, uid: string, operation: ExerciseMutation, claimId: string | null, assertCurrent: () => void): Promise<void> {
   assertCurrent()
   if (operation.source !== 'user') throw new Error('Shared exercises cannot be changed.')
+  if (operation.kind === 'create') throw new Error('Exercise creation requires the server endpoint.')
   const input = operation.kind === 'delete' ? null : validateExerciseInput(operation.input)
   const nextClaim = claimId ? await transaction.read('userExerciseNames', claimId) : null
   if (nextClaim && (nextClaim.userId !== uid || nextClaim.exerciseId !== operation.id)) throw duplicate(input!.name)
-  // Missing userExercises documents cannot be read under owner-only rules. A claim confirms a retry's document exists.
-  const stored = operation.kind !== 'create' || nextClaim ? await transaction.read('userExercises', operation.id) : null
-  if (stored && stored.userId !== uid) throw new Error('Exercise belongs to another account.')
-  if (operation.kind === 'create' && stored) {
-    if (!sameExerciseInput(stored, input!) || stored.nameClaimId !== claimId) throw new Error('Create outcome changed. Reload the library.')
-    return
-  }
-  if (operation.kind !== 'create' && !stored) throw new Error('Exercise was deleted. Reload the library.')
+  const stored = await transaction.read('userExercises', operation.id)
+  if (!stored) throw new Error('Exercise was deleted. Reload the library.')
+  if (stored.userId !== uid) throw new Error('Exercise belongs to another account.')
   const previousId = typeof stored?.nameClaimId === 'string' ? stored.nameClaimId : null
   if (previousId && (!previousId.startsWith(`${uid}_`) || !/^[0-9a-f]{64}$/.test(previousId.slice(uid.length + 1)))) throw new Error('Invalid exercise name claim.')
   const previous = previousId && previousId !== claimId ? await transaction.read('userExerciseNames', previousId) : null
@@ -78,8 +59,7 @@ export async function mutateExercise(transaction: ExerciseTransaction, uid: stri
   if (!nextClaim) transaction.set('userExerciseNames', claimId, { userId: uid, exerciseId: operation.id, name: input.name })
   if (previousId && previous?.userId === uid && previous.exerciseId === operation.id) transaction.remove('userExerciseNames', previousId)
   const fields = { ...input, nameClaimId: claimId }
-  if (operation.kind === 'create') transaction.set('userExercises', operation.id, { userId: uid, ...fields })
-  else transaction.update(operation.id, fields)
+  transaction.update(operation.id, fields)
 }
 
 export function parseCatalogueExercise(id: string, uid: string, data: Data): Exercise {

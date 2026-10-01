@@ -15,6 +15,7 @@ import {
   query,
   runTransaction,
   setDoc,
+  updateDoc,
   where,
   type Firestore,
 } from 'firebase/firestore'
@@ -93,6 +94,20 @@ describe('templates rules', () => {
   })
 })
 
+describe('exercise creation receipts', () => {
+  it('rejects owner and foreign reads, creation, modification and deletion', async () => {
+    const receipt = { userId: 'alice', operationId: 'operation-one', exerciseId: 'custom-one', requestHash: 'hash' }
+    await testEnv.withSecurityRulesDisabled(async context => { await setDoc(doc(context.firestore(), 'exerciseCreateOperations', 'alice_operation'), receipt) })
+    for (const uid of ['alice', 'bob']) {
+      const db = testEnv.authenticatedContext(uid).firestore()
+      await assertFails(getDoc(doc(db, 'exerciseCreateOperations', 'alice_operation')))
+      await assertFails(setDoc(doc(db, 'exerciseCreateOperations', `${uid}_fake`), receipt))
+      await assertFails(updateDoc(doc(db, 'exerciseCreateOperations', 'alice_operation'), { requestHash: 'altered' }))
+      await assertFails(deleteDoc(doc(db, 'exerciseCreateOperations', 'alice_operation')))
+    }
+  })
+})
+
 describe('userExercises rules', () => {
   it('requires an atomic name claim and rejects invalid taxonomy values', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
@@ -125,9 +140,9 @@ describe('userExercises rules', () => {
 
     expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1)
     expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1)
-    expect(results.find((result) => result.status === 'rejected')).toMatchObject({
-      reason: { message: 'Exercise o nazwie "Concurrent Curl" już istnieje.' },
-    })
+    const rejected = results.find(result => result.status === 'rejected') as PromiseRejectedResult
+    expect(rejected.reason).toBeInstanceOf(Error)
+    expect(rejected.reason.message).toContain(input.name)
 
     const stored = await getDocs(query(
       collection(db, 'userExercises'),

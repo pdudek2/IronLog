@@ -38,15 +38,13 @@ test('source-qualified catalogue and detail do not collapse source collisions', 
   const record = { ...session, exerciseName: input.name, maxWeight: 10, maxReps: 5, bestVolume: 50, totalSessions: 1, lastPerformedAt: 10 }
   assert.throws(() => parseExerciseRecord('a_user_same', 'a', 'same', 'global', record))
 })
-test('claim transactions reconcile creates, move owned claims, upgrade and delete legacy exercises', async () => {
+test('native transactions reject client create, move owned claims, upgrade and delete legacy exercises', async () => {
   const claim = await exerciseClaimId('a', input.name, hash)
-  const { tx, documents, writes } = transaction()
+  const { tx, documents, writes } = transaction({ 'userExercises/same': { userId: 'a', ...input, nameClaimId: claim }, [`userExerciseNames/${claim}`]: { userId: 'a', exerciseId: 'same', name: input.name } })
   const create: ExerciseMutation = { kind: 'create', source: 'user', id: 'same', input }
-  await mutateExercise(tx, 'a', create, claim, () => {})
-  const count = writes.length
-  await mutateExercise(tx, 'a', create, claim, () => {})
-  assert.equal(writes.length, count)
-  await assert.rejects(mutateExercise(tx, 'a', { ...create, id: 'different' }, claim, () => {}), /already exists/)
+  await assert.rejects(mutateExercise(tx, 'a', create, claim, () => {}), /server/)
+  assert.equal(writes.length, 0)
+  await assert.rejects(mutateExercise(tx, 'a', { ...create, kind: 'update', id: 'different' }, claim, () => {}), /already exists/)
   const renamed = { ...input, name: 'New name' }
   const next = await exerciseClaimId('a', renamed.name, hash)
   await mutateExercise(tx, 'a', { ...create, kind: 'update', input: renamed }, next, () => {})
@@ -62,10 +60,10 @@ test('claim transactions reconcile creates, move owned claims, upgrade and delet
   assert.equal(noClaim.documents.size, 0)
 })
 test('global and stale-account mutations are rejected before any write', async () => {
-  const { tx, writes } = transaction()
+  const { tx, writes } = transaction({ 'userExercises/same': { userId: 'a', ...input } })
   await assert.rejects(mutateExercise(tx, 'a', { kind: 'create', source: 'global', id: 'same', input }, null, () => {}))
   let calls = 0
-  await assert.rejects(mutateExercise(tx, 'a', { kind: 'create', source: 'user', id: 'same', input }, await exerciseClaimId('a', input.name, hash), () => { if (++calls > 1) throw new Error('Account changed') }))
+  await assert.rejects(mutateExercise(tx, 'a', { kind: 'update', source: 'user', id: 'same', input }, await exerciseClaimId('a', input.name, hash), () => { if (++calls > 1) throw new Error('Account changed') }), /Account changed/)
   assert.deepEqual(writes, [])
 })
 test('timeout retains the single mutation and late completion; failed writes retain submitted values', async () => {

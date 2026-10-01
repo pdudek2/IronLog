@@ -4,7 +4,7 @@ import { getFirestore as adminFirestore } from 'firebase-admin/firestore'
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth'
 import { disableNetwork, enableNetwork, collection, getDocs, query, terminate, where } from 'firebase/firestore'
 import { getServices, readExerciseMetadata } from '../src/firebase'
-import { confirmExerciseMutation, readExerciseDetail, writeCustomExercise } from '../src/nativeExercises'
+import { confirmExerciseMutation, ExerciseCreateConflictError, readExerciseDetail, writeCustomExercise } from '../src/nativeExercises'
 import { exerciseClaimId, type ExerciseInput } from '../src/exerciseCatalogue'
 import { digestStringAsync, CryptoDigestAlgorithm } from 'expo-crypto'
 
@@ -61,7 +61,17 @@ async function main() {
     const before = await Promise.all(protectedRefs.map(async ([name, key]) => (await db.collection(name).doc(key).get()).data()))
     await mutation('update', id, { ...input, name: 'Renamed custom' })
     assert.equal((await db.collection('userExerciseNames').doc(claimId).get()).exists, false)
+    const renamed = (await db.collection('userExercises').doc(id).get()).data()
+    const renamedClaims = (await db.collection('userExerciseNames').where('userId', '==', uid).get()).docs.map(document => document.data())
+    await assert.rejects(mutation('create', id), error => error instanceof ExerciseCreateConflictError && error.code === 'EXERCISE_CREATE_CHANGED')
+    await assert.rejects(confirmExerciseMutation(uid, { kind: 'create', source: 'user', id, input }), error => error instanceof ExerciseCreateConflictError && error.code === 'EXERCISE_CREATE_CHANGED')
+    assert.deepEqual((await db.collection('userExercises').doc(id).get()).data(), renamed)
+    assert.deepEqual((await db.collection('userExerciseNames').where('userId', '==', uid).get()).docs.map(document => document.data()), renamedClaims)
     await writeCustomExercise(uid, { kind: 'delete', source: 'user', id })
+    await assert.rejects(mutation('create', id), error => error instanceof ExerciseCreateConflictError && error.code === 'EXERCISE_CREATE_DELETED')
+    await assert.rejects(confirmExerciseMutation(uid, { kind: 'create', source: 'user', id, input }), error => error instanceof ExerciseCreateConflictError && error.code === 'EXERCISE_CREATE_DELETED')
+    assert.equal((await db.collection('userExercises').doc(id).get()).exists, false)
+    assert.equal((await db.collection('userExerciseNames').doc(claimId).get()).exists, false)
     assert.deepEqual(await Promise.all(protectedRefs.map(async ([name, key]) => (await db.collection(name).doc(key).get()).data())), before)
     const detail = await readExerciseDetail(uid, id, 'user')
     assert.equal(detail.data.sessions.length, 1); assert.equal(detail.data.sessions[0]?.totalVolume, 400)
@@ -73,17 +83,34 @@ async function main() {
     await assert.rejects(writeCustomExercise(other.uid, { kind: 'delete', source: 'global', id: 'squat' }), /Shared exercises/)
     await signInWithEmailAndPassword(auth, ownerEmail, password)
     console.log('stage: offline')
+    const originalFetch = globalThis.fetch
+    globalThis.fetch = async (...args) => { if (String(args[0]).endsWith('/api/create-exercise')) throw new TypeError('offline'); return originalFetch(...args) }
     await disableNetwork(firestore)
     const unchanged = JSON.stringify(input)
-    await assert.rejects(mutation('create', ids('offline')))
+    try { await assert.rejects(mutation('create', ids('offline'))) } finally { globalThis.fetch = originalFetch; await enableNetwork(firestore) }
     assert.equal(JSON.stringify(input), unchanged)
-    await enableNetwork(firestore)
-    assert.equal(await confirmExerciseMutation(uid, { kind: 'create', source: 'user', id: ids('offline'), input }), false)
-    console.log('PASS actual native adapter with modular emulator transport: concurrent uniqueness, UTF-8 claims, case sensitivity, retry, rename collision, legacy upgrade/delete/duplicate, owner/global guard, offline save, source collisions, untouched plan/active/workout/history/record references')
+    assert.equal((await db.collection('userExercises').doc(ids('offline')).get()).exists, false)
+    console.log('stage: lost response')
+    let lost = false
+    globalThis.fetch = async (...args) => {
+      const response = await originalFetch(...args)
+      if (!lost && String(args[0]).endsWith('/api/create-exercise') && response.ok) { lost = true; throw new TypeError('response lost after commit') }
+      return response
+    }
+    try { await assert.rejects(mutation('create', ids('offline'))) } finally { globalThis.fetch = originalFetch }
+    assert.equal(lost, true)
+    assert.equal(await confirmExerciseMutation(uid, { kind: 'create', source: 'user', id: ids('offline'), input }), true)
+    assert.equal((await db.collection('userExercises').doc(ids('offline')).get()).data()?.name, input.name)
+    const token = await auth.currentUser!.getIdToken()
+    const endpoint = `${(await import('../src/firebase')).apiBaseUrl}/api/create-exercise`
+    assert.equal((await originalFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401)
+    assert.equal((await originalFetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ userId: other.uid }) })).status, 400)
+    console.log('PASS actual native adapter/server endpoint: exact rename/delete stale-create and confirmation conflicts, unchanged/lost-response retry, claims/receipt atomicity, concurrent uniqueness, UTF-8/case, legacy duplicate/upgrade/delete, auth/owner/global guards, offline rejection, source collisions, untouched references')
   } finally {
     const custom = await db.collection('userExercises').where('userId', '==', uid).get()
     for (const document of custom.docs) { const data = document.data(); if (data.nameClaimId) await db.collection('userExerciseNames').doc(data.nameClaimId).delete(); await document.ref.delete() }
     for (const [name, key] of refs) await db.collection(name).doc(key).delete()
+    for (const receipt of (await db.collection('exerciseCreateOperations').where('userId', '==', uid).get()).docs) await receipt.ref.delete()
     await terminate(firestore); await deleteAdminApp(admin)
   }
 }

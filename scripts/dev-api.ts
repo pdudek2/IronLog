@@ -7,6 +7,7 @@ import finalizeWorkoutHandler from '../api/finalize-workout.ts'
 import sessionLaunchOutcomeHandler from '../api/session-launch-outcome.ts'
 import materializeWorkoutHandler from '../api/materialize-workout.ts'
 import saveTemplateHandler from '../api/save-template.ts'
+import createExerciseHandler from '../api/create-exercise.ts'
 import updateWorkoutHandler from '../api/update-workout.ts'
 import { sendJson, type ApiRequest, type ApiResponse } from '../api/_lib/http.ts'
 
@@ -21,6 +22,7 @@ const routes = new Map<string, RouteHandler>([
   ['/api/session-launch-outcome', sessionLaunchOutcomeHandler],
   ['/api/materialize-workout', materializeWorkoutHandler],
   ['/api/save-template', saveTemplateHandler],
+  ['/api/create-exercise', createExerciseHandler],
   ['/api/update-workout', updateWorkoutHandler],
 ])
 
@@ -71,8 +73,9 @@ const server = createServer(async (req, res) => {
   }
 })
 
-server.listen(3000, () => {
-  console.log('Local API server ready at http://localhost:3000')
+const port = Number(process.env.IRONLOG_API_PORT ?? 3000)
+server.listen(port, () => {
+  console.log(`Local API server ready at http://localhost:${port}`)
   console.log(`Routes: ${[...routes.keys()].join(', ')}`)
 })
 

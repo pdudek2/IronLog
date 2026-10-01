@@ -5,7 +5,7 @@ import type { Exercise } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel, getMuscleLabel } from '../../src/lib/exerciseLabels'
 import { categories, equipmentOptions, muscleOptions, validateExerciseInput, type ExerciseInput, type ExerciseMutation } from './exerciseCatalogue'
 import { createSessionRevision } from './firebase'
-import { confirmExerciseMutation, ExerciseNotSubmittedError, writeCustomExercise } from './nativeExercises'
+import { confirmExerciseMutation, ExerciseCreateConflictError, ExerciseNotSubmittedError, writeCustomExercise } from './nativeExercises'
 import { startExerciseMutation, waitForExerciseMutation, waitForExerciseConfirmation, type MutationAttempt } from './exerciseMutation'
 
 const initial: ExerciseInput = { name: '', category: 'chest', equipment: 'barbell', muscles: [] }
@@ -14,6 +14,7 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
   const [input, setInput] = useState<ExerciseInput>(baseline.current)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [createConflict, setCreateConflict] = useState(false)
   const attempt = useRef<MutationAttempt | null>(null)
   const running = useRef(false)
   const alive = useRef(true)
@@ -24,12 +25,13 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
   const locked = busy || !!attempt.current
   function close() {
     if (!alive.current) return
+    if (createConflict) { onSaved(); return }
     if (running.current || attempt.current) { setError('Save outcome unresolved. Check the outcome before closing.'); return }
     if (JSON.stringify(input) === JSON.stringify(baseline.current)) { onClose(); return }
     Alert.alert('Discard changes?', 'Your exercise changes will be removed.', [{ text: 'Keep editing', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: () => { if (alive.current && !running.current && !attempt.current) onClose() } }])
   }
   async function submit(kind: 'save' | 'delete' = 'save') {
-    if (running.current) return
+    if (running.current || createConflict) return
     let operation: ExerciseMutation
     try { operation = attempt.current?.operation ?? (kind === 'delete' ? { kind: 'delete', id: id.current, source: 'user' }
       : { kind: exercise ? 'update' : 'create', id: id.current, source: 'user', input: validateExerciseInput(input) }) }
@@ -49,6 +51,9 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
       if (!alive.current) return
       if (status === 'saved') { onSaved(); return }
       if (status === 'pending') { setError('Could not confirm the save yet. Check the outcome before closing.'); return }
+      if (current.error instanceof ExerciseCreateConflictError) {
+        setCreateConflict(true); setError(current.error.message); return
+      }
       if (current.error instanceof ExerciseNotSubmittedError) {
         attempt.current = null
         setError(current.error.message)
@@ -60,13 +65,24 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
         if (!alive.current) return
         if (confirmed) { onSaved(); return }
         if (confirmed === null) { setError('Could not confirm the save yet. Check your connection and try again.'); return }
-      } catch { /* Retain the operation for reconciliation. */ }
+      } catch (confirmationError) {
+        if (confirmationError instanceof ExerciseCreateConflictError) {
+          if (alive.current) { setCreateConflict(true); setError(confirmationError.message) }
+          return
+        }
+        // Retain the operation for reconciliation.
+      }
       if (!alive.current) return
       const code = typeof current.error === 'object' && current.error && 'code' in current.error ? String(current.error.code) : ''
       const knownRejection = !code || code.endsWith('permission-denied') || code.endsWith('invalid-argument')
       if (knownRejection) attempt.current = null
       setError(current.error instanceof Error ? current.error.message : 'Could not save. Check your connection and try again.')
-    } catch { if (alive.current) setError('Could not confirm the save. Check your connection and try again.') }
+    } catch (nextError) {
+      if (alive.current) {
+        if (nextError instanceof ExerciseCreateConflictError) { setCreateConflict(true); setError(nextError.message) }
+        else setError('Could not confirm the save. Check your connection and try again.')
+      }
+    }
     finally { running.current = false; if (alive.current) setBusy(false) }
   }
   function askDelete() {
@@ -84,7 +100,7 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
           <Select label="Equipment" value={input.equipment} options={equipmentOptions} getLabel={getEquipmentLabel} disabled={locked} onChange={equipment => setInput({ ...input, equipment })} />
           <View style={styles.group}><Text style={styles.label}>MUSCLE GROUPS</Text><View style={styles.chips}>{muscleOptions.map(muscle => <Pressable key={muscle} accessibilityRole="button" accessibilityState={{ selected: input.muscles.includes(muscle), disabled: locked }} disabled={locked} onPress={() => setInput({ ...input, muscles: input.muscles.includes(muscle) ? input.muscles.filter(value => value !== muscle) : [...input.muscles, muscle] })} style={[styles.chip, input.muscles.includes(muscle) && styles.selectedChip]}><Text style={[styles.chipText, input.muscles.includes(muscle) && { color: '#fff' }]}>{getMuscleLabel(muscle)}</Text></Pressable>)}</View></View>
           {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-          <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy, busy }} onPress={() => void submit()} style={[styles.save, busy && { opacity: 0.5 }]}><Text style={styles.saveText}>{busy ? 'Saving…' : attempt.current ? 'Check outcome / Retry' : exercise ? 'Save changes' : 'Add exercise'}</Text></Pressable>
+          <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy, busy }} onPress={() => createConflict ? onSaved() : void submit()} style={[styles.save, busy && { opacity: 0.5 }]}><Text style={styles.saveText}>{busy ? 'Saving…' : createConflict ? 'Close and reload library' : attempt.current ? 'Check outcome / Retry' : exercise ? 'Save changes' : 'Add exercise'}</Text></Pressable>
           {exercise && <Pressable accessibilityRole="button" disabled={locked} onPress={askDelete} style={styles.remove}><Text style={styles.removeText}>Remove exercise</Text></Pressable>}
         </ScrollView>
       </View>

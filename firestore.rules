@@ -282,6 +282,10 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    match /exerciseCreateOperations/{id} {
+      allow read, write: if false;
+    }
+
     match /userExercises/{id} {
       allow create: if ownsNewDoc()
                     && isUserExercise(request.resource.data)

@@ -6,7 +6,7 @@ import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel, getMuscleLabel } from '../
 import { categories, equipmentOptions, muscleOptions, validateExerciseInput, type ExerciseInput, type ExerciseMutation } from './exerciseCatalogue'
 import { createSessionRevision } from './firebase'
 import { confirmExerciseMutation, ExerciseNotSubmittedError, writeCustomExercise } from './nativeExercises'
-import { startExerciseMutation, waitForExerciseMutation, type MutationAttempt } from './exerciseMutation'
+import { startExerciseMutation, waitForExerciseMutation, waitForExerciseConfirmation, type MutationAttempt } from './exerciseMutation'
 
 const initial: ExerciseInput = { name: '', category: 'chest', equipment: 'barbell', muscles: [] }
 export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid: string; exercise: Exercise | null; onClose: () => void; onSaved: () => void }) {
@@ -37,8 +37,9 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
     running.current = true; setBusy(true); setError(null)
     try {
       if (attempt.current) {
-        const confirmed = await confirmExerciseMutation(uid, operation)
+        const confirmed = await waitForExerciseConfirmation(confirmExerciseMutation(uid, operation))
         if (!alive.current) return
+        if (confirmed === null) { setError('Could not confirm the save yet. Check your connection and try again.'); return }
         if (confirmed) { onSaved(); return }
         if (attempt.current.status === 'pending') { setError('Still checking the save. Keep this form open and try again.'); return }
       }
@@ -48,11 +49,21 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
       if (!alive.current) return
       if (status === 'saved') { onSaved(); return }
       if (status === 'pending') { setError('Could not confirm the save yet. Check the outcome before closing.'); return }
+      if (current.error instanceof ExerciseNotSubmittedError) {
+        attempt.current = null
+        setError(current.error.message)
+        return
+      }
       // A lost acknowledgement is reconciled using the same exercise ID before any retry.
-      try { if (await confirmExerciseMutation(uid, operation)) { if (alive.current) onSaved(); return } } catch { /* Retain the operation for reconciliation. */ }
+      try {
+        const confirmed = await waitForExerciseConfirmation(confirmExerciseMutation(uid, operation))
+        if (!alive.current) return
+        if (confirmed) { onSaved(); return }
+        if (confirmed === null) { setError('Could not confirm the save yet. Check your connection and try again.'); return }
+      } catch { /* Retain the operation for reconciliation. */ }
       if (!alive.current) return
       const code = typeof current.error === 'object' && current.error && 'code' in current.error ? String(current.error.code) : ''
-      const knownRejection = current.error instanceof ExerciseNotSubmittedError || !code || code.endsWith('permission-denied') || code.endsWith('invalid-argument')
+      const knownRejection = !code || code.endsWith('permission-denied') || code.endsWith('invalid-argument')
       if (knownRejection) attempt.current = null
       setError(current.error instanceof Error ? current.error.message : 'Could not save. Check your connection and try again.')
     } catch { if (alive.current) setError('Could not confirm the save. Check your connection and try again.') }

@@ -15,3 +15,11 @@ export async function waitForExerciseMutation(attempt: MutationAttempt, millisec
     return attempt.status
   } finally { clearTimeout(timeout) }
 }
+
+// A read timeout is an unknown outcome, not evidence that a write failed.
+export async function waitForExerciseConfirmation(result: Promise<boolean>, milliseconds = 15_000): Promise<boolean | null> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+  try {
+    return await Promise.race([result, new Promise<null>(resolve => { timeout = setTimeout(() => resolve(null), milliseconds) })])
+  } finally { clearTimeout(timeout) }
+}

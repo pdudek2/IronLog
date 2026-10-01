@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import test from 'node:test'
 import { exerciseClaimId, filterExercises, mutateExercise, parseExerciseRecord, parseExerciseSession, validateExerciseInput, type ExerciseInput, type ExerciseMutation, type ExerciseTransaction } from './exerciseCatalogue'
-import { startExerciseMutation, waitForExerciseMutation } from './exerciseMutation'
+import { startExerciseMutation, waitForExerciseMutation, waitForExerciseConfirmation } from './exerciseMutation'
 import { startRead, readStateForKey, type ReadState } from './scopedRead'
 
 const input: ExerciseInput = { name: 'Żółć 💪', category: 'back', equipment: 'cable', muscles: ['back', 'biceps'] }
@@ -80,6 +80,15 @@ test('timeout retains the single mutation and late completion; failed writes ret
   const failed = startExerciseMutation(operation, async () => { throw new Error('offline') })
   assert.equal(await waitForExerciseMutation(failed), 'failed')
   assert.deepEqual(failed.operation, operation)
+})
+test('confirmation timeout recovers without reporting success or a definite rejection', async () => {
+  let confirm!: (saved: boolean) => void
+  const unresolved = new Promise<boolean>(resolve => { confirm = resolve })
+  assert.equal(await waitForExerciseConfirmation(unresolved, 5), null)
+  confirm(true)
+  assert.equal(await waitForExerciseConfirmation(unresolved, 5), true)
+  assert.equal(await waitForExerciseConfirmation(Promise.resolve(false), 5), false)
+  await assert.rejects(waitForExerciseConfirmation(Promise.reject(new Error('offline')), 5), /offline/)
 })
 test('failed reads stay distinct from empty and disposed account/route callbacks cannot publish', async () => {
   const states: ReadState<string[]>[] = []

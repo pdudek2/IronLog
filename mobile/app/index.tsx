@@ -324,13 +324,21 @@ function SetValueInput({ value, units, field, label, done, rejectedEdit, onChang
   const [text, setText] = useState(displayed)
   const focused = useRef(false)
   const pendingSubmissions = useRef<string[]>([])
+  const inputUnits = useRef(units)
   useEffect(() => {
+    if (inputUnits.current !== units) {
+      inputUnits.current = units
+      focused.current = false
+      pendingSubmissions.current = []
+      setText(displayed)
+      return
+    }
     const reconciliation = reconcileSetInputSubmissions(pendingSubmissions.current, value, rejectedEdit !== null)
     pendingSubmissions.current = reconciliation.pending
     if (!reconciliation.acknowledged || (!focused.current && reconciliation.pending.length === 0)) {
       setText(displayed)
     }
-  }, [displayed, value, rejectedEdit])
+  }, [displayed, value, rejectedEdit, units])
   return <TextInput
     accessibilityLabel={label}
     inputMode={field === 'weight' ? 'decimal' : 'numeric'}

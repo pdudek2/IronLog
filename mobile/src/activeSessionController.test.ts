@@ -48,7 +48,7 @@ function session(uid: string, revision: string | null = `revision-${uid}`, label
     exercises: [{
       clientId: `exercise-${uid}`,
       exerciseId: 'bench-press',
-      exerciseSource: 'global',
+      exerciseSource: 'global' as const,
       name: 'Bench Press',
       sets: [{ clientId: `set-${uid}`, weight: '65', reps: '8', done: false }],
     }],
@@ -445,4 +445,51 @@ test('editing during transient backoff retains the pending retry and drains the 
     assert.equal(h.saves.length, 3)
     assert.equal(h.saves[2]!.session.exercises[0]!.sets[0]!.reps, '10')
   } finally { h.controller.dispose() }
+})
+
+test('profile units refresh is serialized with edits and preserves pending identity, canonical sets and sync state', async () => {
+  const h = harness(); const initial = await loadServer(h)
+  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'weight', '72.5')
+  await wait(430)
+  const prior = await new TwoSlotSessionJournal(h.slots).load('user-a')
+  assert.equal(prior.status, 'draft'); if (prior.status !== 'draft') assert.fail()
+  assert.ok(prior.draft.pending)
+  await h.controller.refreshUnits('user-a', 'lbs')
+  assert.equal(ready(h.states).units, 'lbs'); assert.equal(ready(h.states).syncStatus, 'saving')
+  const next = await new TwoSlotSessionJournal(h.slots).load('user-a')
+  assert.equal(next.status, 'draft'); if (next.status !== 'draft') assert.fail()
+  assert.deepEqual(next.draft, { ...prior.draft, units: 'lbs' })
+  await h.controller.refreshUnits('user-a', 'kg'); assert.deepEqual(ready(h.states).session, prior.draft.session)
+  assert.equal(h.saves.length, 1)
+  h.slots.failWrite = true; await assert.rejects(h.controller.refreshUnits('user-a', 'lbs'))
+  assert.equal(ready(h.states).units, 'kg')
+  await assert.rejects(h.controller.refreshUnits('other', 'lbs'))
+  h.controller.dispose()
+})
+
+test('startup profile units supersede old journal units without reconverting weights or dropping a pending write', async () => {
+  const slots = new MemorySlots(); const canonical = parseSessionForTest()
+  await new TwoSlotSessionJournal(slots).writeDraft('user-a', { session: canonical, units: 'kg', baseRevision: canonical.sessionRevision,
+    pending: { expectedRevision: canonical.sessionRevision, requestRevision: 'pending-old', snapshot: canonical } })
+  const h = harness({ slots, units: 'lbs' }); await loadServer(h)
+  assert.equal(ready(h.states).units, 'lbs'); assert.equal(ready(h.states).session.exercises[0]!.sets[0]!.weight, '65')
+  const stored = await new TwoSlotSessionJournal(slots).load('user-a'); assert.equal(stored.status, 'draft')
+  if (stored.status === 'draft') { assert.equal(stored.draft.units, 'lbs'); assert.equal(stored.draft.pending?.requestRevision, 'pending-old') }
+  h.controller.dispose()
+})
+
+function parseSessionForTest(): ActiveWorkout {
+  const value = session('user-a'); return { sessionId: value.sessionId, sessionRevision: value.sessionRevision, startedAt: value.startedAt, templateId: value.templateId, label: value.label, exercises: value.exercises }
+}
+
+test('confirmed profile refresh supersedes a late startup units read/error without restarting the session', async () => {
+  for (const rejected of [false, true]) {
+    const units = deferred<Units>(); const h = harness({ readUnits: () => units.promise })
+    h.controller.start('user-a'); await wait(); h.listeners[0]!.next(snapshot('user-a')); await wait()
+    await h.controller.refreshUnits('user-a', 'lbs'); await wait()
+    assert.equal(ready(h.states).units, 'lbs')
+    if (rejected) units.reject(new Error('late startup failure')); else units.resolve('kg')
+    await wait(); assert.equal(ready(h.states).units, 'lbs'); assert.equal(h.listeners.length, 1)
+    h.controller.dispose()
+  }
 })

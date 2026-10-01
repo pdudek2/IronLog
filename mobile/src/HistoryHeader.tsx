@@ -1,12 +1,15 @@
 import { useState } from 'react'
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native'
-import { useRouter } from 'expo-router'
+import { usePathname, useRouter } from 'expo-router'
 import Svg, { Path } from 'react-native-svg'
 
 import { logout } from './firebase'
 
-export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (action: 'home' | 'plans' | 'progress' | 'signOut', proceed: () => void | Promise<boolean>) => void } = {}) {
+export type HeaderAction = 'home' | 'plans' | 'progress' | 'profile' | 'signOut'
+
+export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (action: HeaderAction, proceed: () => void | Promise<boolean>) => void } = {}) {
   const router = useRouter()
+  const pathname = usePathname()
   const [signingOut, setSigningOut] = useState(false)
 
   const signOut = async () => {
@@ -29,6 +32,9 @@ export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (
       <View style={styles.brandDot} />
     </Pressable>
     <View style={styles.actions}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Profile" accessibilityState={{ selected: pathname === '/profile' }} onPress={() => onRequestAction ? onRequestAction('profile', () => router.navigate('/profile')) : router.navigate('/profile')} style={[styles.signOut, pathname === '/profile' && styles.selected]}>
+      <Svg accessibilityElementsHidden height={16} width={16} viewBox="0 0 24 24" fill="none" stroke={pathname === '/profile' ? '#f4f1f2' : '#a09aa0'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M16 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0" /></Svg>
+    </Pressable>
     <Pressable accessibilityRole="button" accessibilityLabel="Sign out" disabled={signingOut} onPress={() => onRequestAction ? onRequestAction('signOut', signOut) : void signOut()} style={styles.signOut}>
       <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24">
         <Path d="m16 17 5-5-5-5" fill="none" stroke="#a09aa0" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} />
@@ -45,6 +51,7 @@ const styles = StyleSheet.create({
   brand: { alignItems: 'center', backgroundColor: 'rgba(17,16,18,0.76)', borderColor: 'rgba(244, 241, 242, 0.18)', borderRadius: 8, borderWidth: 1, height: 32, justifyContent: 'center', width: 32, experimental_backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.045))' },
   brandText: { color: '#fff', fontFamily: 'Archivo_800ExtraBold', fontSize: 12 },
   brandDot: { backgroundColor: '#ff7182', borderRadius: 2, bottom: 4, height: 4, position: 'absolute', right: 4, width: 4 },
+  selected: { backgroundColor: 'rgba(244,241,242,0.075)', borderRadius: 8 },
   signOut: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 })

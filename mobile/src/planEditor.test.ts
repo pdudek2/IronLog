@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { newPlanDraft, normalizePlanDraft } from './planEditor'
+import { newPlanDraft, normalizePlanDraft, refreshPlanDraftUnits } from './planEditor'
 import { PlanEditorJournal, type PlanDraftSlots } from './planEditorJournal'
 import { finishAcknowledgedPlanSave, releaseRejectedPlanSave, requestPlanEditorExit } from './planEditorFlow'
 import type { WorkoutTemplate } from './workoutLaunch'
@@ -232,4 +232,19 @@ test('accepts decimal comma weights in kg and lbs without relaxing integer or se
     row.weight = '12,5'; row.sets = '4,0'
     assert.throws(() => normalizePlanDraft(draft, 'save'), /sets/)
   }
+})
+
+test('profile units settle original display inputs and preserve canonical kg across round trips and pending saves', () => {
+  const original = newPlanDraft('units-draft', 'kg', null, () => 'id')
+  original.days[0]!.exercises = [{ rowId: 'ex', exerciseId: 'squat', exerciseSource: 'global', name: 'Squat', sets: '3', targetReps: '8', weight: '72.5' }]
+  const pending = normalizePlanDraft({ ...original, name: 'Plan' }, 'pending')
+  const pounds = refreshPlanDraftUnits({ ...original, pending }, 'lbs')
+  assert.equal(pounds.days[0]!.exercises[0]!.weight, '159.8')
+  assert.deepEqual(pounds.pending, pending)
+  const kg = refreshPlanDraftUnits(pounds, 'kg'); assert.equal(kg.days[0]!.exercises[0]!.weight, '72.5')
+  assert.equal(kg.days[0]!.exercises[0]!.originalWeightKg, 72.5)
+  pounds.days[0]!.exercises[0]!.weight = '100.'
+  const edited = refreshPlanDraftUnits(pounds, 'kg'); assert.equal(edited.days[0]!.exercises[0]!.originalWeightKg, 45.3592)
+  pounds.days[0]!.exercises[0]!.weight = '1..'; assert.throws(() => refreshPlanDraftUnits(pounds, 'kg'))
+  assert.equal(pounds.units, 'lbs'); assert.equal(pounds.days[0]!.exercises[0]!.weight, '1..')
 })

@@ -100,6 +100,9 @@ export class ActiveSessionController {
   private unsubscribe: (() => void) | null = null
   private units: Units = 'kg'
   private unitsReady = false
+  private profileUnits: Units | null = null
+  private unitsGeneration = 0
+  private currentState: ActiveSessionState = INITIAL_SESSION_STATE
   private unitsError: unknown = null
   private journalReady = false
   private latestSnapshot: SessionSnapshot | null = null
@@ -128,13 +131,14 @@ export class ActiveSessionController {
     this.resetRuntime()
     this.uid = uid
     const generation = ++this.generation
-    this.onState({ status: 'loading', session: null, units: this.units })
+    const unitsGeneration = ++this.unitsGeneration
+    this.publish({ status: 'loading', session: null, units: this.units })
 
     void this.journal.load(uid).then((result) => this.enqueue(async () => {
         if (!this.isCurrent(uid, generation)) return
         if (result.status === 'corrupt') {
           this.stopListener()
-          this.onState({ status: 'error', session: null, units: this.units, message: 'The saved workout draft is damaged. Its files were preserved for recovery.' })
+          this.publish({ status: 'error', session: null, units: this.units, message: 'The saved workout draft is damaged. Its files were preserved for recovery.' })
           this.generation += 1
           return
         }
@@ -147,24 +151,32 @@ export class ActiveSessionController {
           this.draft = result.draft
           this.units = result.draft.units
           this.unitsReady = true
+          if (this.profileUnits) {
+            try { await this.applyUnits(this.profileUnits) }
+            catch { this.emitDraft('storage-error', true); return }
+          }
           this.emitDraft(result.draft.pending ? 'saving' : 'local', true)
         }
         this.queueSnapshot(uid, generation)
       }), () => this.enqueue(async () => {
         if (this.isCurrent(uid, generation)) {
           this.stopListener()
-          this.onState({ status: 'error', session: null, units: this.units, message: 'The saved workout draft could not be opened.' })
+          this.publish({ status: 'error', session: null, units: this.units, message: 'The saved workout draft could not be opened.' })
           this.generation += 1
         }
       }))
 
     void this.dependencies.readUnits(uid).then((units) => this.enqueue(async () => {
-        if (!this.isCurrent(uid, generation)) return
-        if (!this.draft) this.units = units
+        if (!this.isCurrent(uid, generation) || unitsGeneration !== this.unitsGeneration) return
+        this.profileUnits = units
+        if (this.journalReady) {
+          try { await this.applyUnits(units) }
+          catch { this.emitDraft('storage-error', this.authoritative === undefined); return }
+        } else this.units = units
         this.unitsReady = true
         this.queueSnapshot(uid, generation)
       }), (error) => this.enqueue(async () => {
-        if (!this.isCurrent(uid, generation)) return
+        if (!this.isCurrent(uid, generation) || unitsGeneration !== this.unitsGeneration) return
         this.unitsError = error
         if (!this.journalReady || this.draft) return
         this.fail(uid, generation, error)
@@ -179,6 +191,43 @@ export class ActiveSessionController {
       },
       (error) => this.enqueue(async () => this.fail(uid, generation, error)),
     )
+  }
+
+  refreshUnits(uid: string, units: Units): Promise<void> {
+    const generation = this.generation
+    if (uid !== this.uid || (units !== 'kg' && units !== 'lbs')) return Promise.reject(new Error('The signed-in account changed.'))
+    this.unitsGeneration += 1
+    const result = this.transitionQueue.then(async () => {
+      if (!this.isCurrent(uid, generation)) throw new Error('The signed-in account changed.')
+      if (!this.journalReady) throw new Error('Profile saved. Workout storage is still loading; check again.')
+      await this.applyUnits(units)
+      this.profileUnits = units
+      this.unitsReady = true
+      this.queueSnapshot(uid, generation)
+    })
+    this.transitionQueue = result.catch(() => undefined)
+    return result
+  }
+
+  private async applyUnits(units: Units): Promise<void> {
+    const uid = this.uid
+    const generation = this.generation
+    if (!uid) return
+    if (this.draft && this.draft.units !== units) {
+      const draft = { ...this.draft, units }
+      // Unit preferences share the edit queue; canonical sets and pending write identity stay intact.
+      try { await this.journal.writeDraft(uid, draft) }
+      catch { throw new Error('Profile saved. Workout units could not be stored on this device; check again.') }
+      if (!this.isCurrent(uid, generation)) throw new Error('The signed-in account changed.')
+      this.draft = draft
+    }
+    this.units = units
+    this.publish({ ...this.currentState, units })
+  }
+
+  private publish(state: ActiveSessionState): void {
+    this.currentState = state
+    this.onState(state)
   }
 
   retry(): void {
@@ -225,7 +274,7 @@ export class ActiveSessionController {
       this.completedRevision = null
       this.blockedRevision = null
       if (this.authoritative) this.emitReady(this.authoritative, false, 'saved')
-      else this.onState({ status: 'empty', session: null, units: this.units })
+      else this.publish({ status: 'empty', session: null, units: this.units })
     })
   }
 
@@ -318,7 +367,7 @@ export class ActiveSessionController {
           : null
       } catch (error) {
         if (snapshot.fromCache || snapshot.hasPendingWrites) {
-          if (!this.draft) this.onState({ status: 'error', session: null, units: this.units, message: errorMessage(error) })
+          if (!this.draft) this.publish({ status: 'error', session: null, units: this.units, message: errorMessage(error) })
           return
         }
         this.fail(uid, generation, error)
@@ -331,7 +380,7 @@ export class ActiveSessionController {
           this.cachedSession = remote
           this.emitReady(remote, true, 'saved')
         }
-        else this.onState({ status: 'cache-miss', session: null, units: this.units })
+        else this.publish({ status: 'cache-miss', session: null, units: this.units })
         return
       }
 
@@ -339,7 +388,7 @@ export class ActiveSessionController {
       this.cachedSession = remote
       if (!this.draft) {
         if (remote) this.emitReady(remote, false, 'saved')
-        else this.onState({ status: 'empty', session: null, units: this.units })
+        else this.publish({ status: 'empty', session: null, units: this.units })
         return
       }
       await this.reconcileDraft(uid, generation, remote)
@@ -507,7 +556,7 @@ export class ActiveSessionController {
   private emitDraft(syncStatus: SessionSyncStatus, stale: boolean): void {
     if (!this.draft) return
     const effectiveStatus = this.conflict ? 'conflict' : this.failed ? 'failed' : syncStatus
-    this.onState({
+    this.publish({
       status: 'ready',
       session: this.draft.session,
       units: this.draft.units,
@@ -518,7 +567,7 @@ export class ActiveSessionController {
   }
 
   private emitReady(session: ActiveWorkout, stale: boolean, syncStatus: SessionSyncStatus): void {
-    this.onState({ status: 'ready', session, units: this.units, stale, syncStatus })
+    this.publish({ status: 'ready', session, units: this.units, stale, syncStatus })
   }
 
   private resetRuntime(): void {
@@ -526,6 +575,7 @@ export class ActiveSessionController {
     this.cancelSave()
     this.saveToken += 1
     this.units = 'kg'
+    this.profileUnits = null
     this.unitsReady = false
     this.unitsError = null
     this.journalReady = false
@@ -577,6 +627,6 @@ export class ActiveSessionController {
     this.stopListener()
     this.latestSnapshot = null
     this.generation += 1
-    this.onState({ status: 'error', session: null, units: this.units, message: errorMessage(error) })
+    this.publish({ status: 'error', session: null, units: this.units, message: errorMessage(error) })
   }
 }

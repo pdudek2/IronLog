@@ -47,6 +47,7 @@ export function useActiveSession(uid: string | null) {
   return {
     state: stateForAccount(uid, scopedState.uid, scopedState.state),
     retry: () => controller.retry(),
+    refreshUnits: controller.refreshUnits.bind(controller),
     retrySave: () => controller.retrySave(),
     discardLocalChanges: () => controller.discardLocalChanges(),
     updateSet: controller.updateSet.bind(controller),

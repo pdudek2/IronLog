@@ -89,3 +89,16 @@ export function normalizePlanDraft(draft: PlanDraft, operationId: string): PlanS
     operationId, name, days,
   }
 }
+
+// Settle display strings in their original units, retaining exact kg for unchanged values.
+export function refreshPlanDraftUnits(draft: PlanDraft, units: WeightUnits): PlanDraft {
+  if (draft.units === units) return draft
+  return { ...draft, units, days: draft.days.map(day => ({ ...day, exercises: day.exercises.map(exercise => {
+    if (!exercise.weight.trim()) return { ...exercise, originalWeightKg: undefined, originalWeightDisplay: undefined }
+    const display = numeric(exercise.weight, draft.units === 'lbs' ? 4_409.25 : 2_000, false, 'weight in the previous units')
+    const kg = exercise.originalWeightDisplay === exercise.weight && exercise.originalWeightKg !== undefined
+      ? exercise.originalWeightKg : Number(displayWeightStringToKg(String(display), draft.units))
+    const weight = String(kgToDisplayWeight(kg, units))
+    return { ...exercise, weight, originalWeightKg: kg, originalWeightDisplay: weight }
+  }) })) }
+}

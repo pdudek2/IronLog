@@ -19,6 +19,7 @@ import {
   type QuerySnapshot,
 } from '@react-native-firebase/firestore'
 import Constants from 'expo-constants'
+import { parseProfile, updateExistingProfile, ProfileNotSubmittedError, type ProfileFields } from './profile'
 
 import type { SubscribeToSession } from './activeSessionController'
 import { parseSessionDocument, type ActiveWorkout, type Units, type ExerciseSource } from './session'
@@ -183,6 +184,32 @@ export async function readUnits(uid: string): Promise<Units> {
   const units = snapshot.data()?.units
   if (units !== 'kg' && units !== 'lbs') throw new Error('The profile has invalid units.')
   return units
+}
+
+export async function readProfile(uid: string, server = false) {
+  const { auth, firestore } = await getServices()
+  if (auth.currentUser?.uid !== uid) throw new ProfileNotSubmittedError('The signed-in account changed.')
+  const reference = doc(firestore, 'users', uid)
+  const snapshot = await (server ? getDocFromServer(reference) : getDoc(reference))
+  if (auth.currentUser?.uid !== uid) throw new ProfileNotSubmittedError('The signed-in account changed.')
+  return { data: snapshot.exists() ? parseProfile(uid, snapshot.data()) : null,
+    fromCache: snapshot.metadata.fromCache || snapshot.metadata.hasPendingWrites }
+}
+
+export async function saveProfile(uid: string, input: ProfileFields): Promise<void> {
+  const { auth, firestore } = await getServices()
+  const reference = doc(firestore, 'users', uid)
+  await runTransaction(firestore, async transaction => {
+    if (auth.currentUser?.uid !== uid) throw new ProfileNotSubmittedError('The signed-in account changed.')
+    await updateExistingProfile({
+      read: async () => {
+        const snapshot = await transaction.get(reference)
+        if (auth.currentUser?.uid !== uid) throw new ProfileNotSubmittedError('The signed-in account changed.')
+        return { exists: snapshot.exists(), data: snapshot.data() }
+      },
+      update: fields => { transaction.update(reference, fields) },
+    }, uid, input)
+  }, { maxAttempts: 1 })
 }
 
 export async function readHome(uid: string): Promise<ReadResult<{ profile: HomeProfile; workouts: SavedWorkout[] }>> {

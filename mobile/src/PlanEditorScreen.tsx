@@ -10,9 +10,9 @@ import Svg, { Path } from 'react-native-svg'
 import ExercisePicker from './ExercisePicker'
 import HistoryHeader from './HistoryHeader'
 import { createSessionRevision, PlanRequestError, readExerciseMetadata, readTemplateFromServer, readUnits, savePlan } from './firebase'
-import { useAuthRuntime } from './runtime'
+import { useActiveRuntime, useAuthRuntime } from './runtime'
 import { useSessionRead } from './useSessionRead'
-import { newPlanDraft, normalizePlanDraft, type EditorDay, type PlanDraft } from './planEditor'
+import { newPlanDraft, normalizePlanDraft, refreshPlanDraftUnits, type EditorDay, type PlanDraft } from './planEditor'
 import { finishAcknowledgedPlanSave, releaseRejectedPlanSave, requestPlanEditorExit } from './planEditorFlow'
 import { planEditorJournal } from './filePlanEditorJournal'
 
@@ -26,6 +26,7 @@ export default function PlanEditorScreen({ targetId }: { targetId: string | null
 }
 
 function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
+  const active = useActiveRuntime()
   const router = useRouter()
   const navigation = useBottomNavigation()
   const insets = useSafeAreaInsets()
@@ -120,6 +121,22 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
     })
     return () => { focused.current = false; subscription.remove() }
   }, [picking]))
+
+  useFocusEffect(useCallback(() => {
+    let cancelled = false
+    const units = active.state.status === 'ready' || active.state.status === 'empty'
+      ? Promise.resolve(active.state.units) : readUnits(uid)
+    void units.then(async units => {
+      if (cancelled || !alive.current || !focused.current) return
+      await writeRef.current
+      if (cancelled || !alive.current || !focused.current) return
+      const current = draftRef.current
+      if (current && current.units !== units) await persist(refreshPlanDraftUnits(current, units))
+    }).catch(error => {
+      if (!cancelled && alive.current) setMessage(error instanceof Error ? error.message : 'Could not refresh profile units. Reopen this editor to retry.')
+    })
+    return () => { cancelled = true }
+  }, [uid, draft?.draftId, active.state.status, active.state.units]))
 
   async function save() {
     let current = draftRef.current

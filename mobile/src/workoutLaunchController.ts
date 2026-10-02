@@ -1,4 +1,4 @@
-import type { LaunchAttempt, LaunchJournal } from './launchJournal'
+import type { LaunchAttempt, LaunchJournal, ReplacementIdentity } from './launchJournal'
 import type { ActiveWorkout, ExerciseSource } from './session'
 import type { TemplateExerciseOverrideMap } from '../../src/shared/nextSessionRecommendation'
 import {
@@ -6,9 +6,12 @@ import {
   type BestSet, type LaunchResult, type WorkoutSelection, type WorkoutTemplate,
 } from './workoutLaunch'
 
-export type LaunchState = { status: 'loading' | 'ready' | 'starting' | 'retry' | 'unavailable' | 'corrupt'; message?: string; selection?: WorkoutSelection }
-export type LaunchTarget = { kind: 'empty' } | { kind: 'template'; selection: WorkoutSelection; snapshot: WorkoutTemplate; overrides?: TemplateExerciseOverrideMap }
+export class ReplacementRejectedError extends Error {}
+
+export type LaunchState = { replacing?: boolean; status: 'loading' | 'ready' | 'starting' | 'retry' | 'unavailable' | 'corrupt'; message?: string; selection?: WorkoutSelection }
+export type LaunchTarget = ({ kind: 'empty' } | { kind: 'template'; selection: WorkoutSelection; snapshot: WorkoutTemplate; overrides?: TemplateExerciseOverrideMap }) & { replaces?: ReplacementIdentity }
 export interface LaunchPort {
+  replace?(uid: string, attempt: LaunchAttempt): Promise<void>
   readActive(uid: string): Promise<ActiveWorkout | null>
   isClosed(uid: string, sessionId: string): Promise<boolean>
   claim(uid: string, candidate: ActiveWorkout): Promise<LaunchResult>
@@ -36,7 +39,7 @@ export class WorkoutLaunchController {
   ) {}
 
   dispose() { this.disposed = true }
-  private emit(state: LaunchState) { if (!this.disposed) this.publish({ ...state, ...(state.status !== 'ready' && this.selection ? { selection: this.selection } : {}) }) }
+  private emit(state: LaunchState) { if (!this.disposed) this.publish({ replacing: !!this.attempt?.replaces, ...state, ...(state.status !== 'ready' && this.selection ? { selection: this.selection } : {}) }) }
 
   async load(): Promise<void> {
     if (this.busy || this.loaded) return
@@ -89,11 +92,16 @@ export class WorkoutLaunchController {
             selection: { templateId, dayIndex, fingerprint: selectionFingerprint(fresh, dayIndex) },
           }
         }
+        if (target.replaces) {
+          if (target.kind !== 'template' || !this.port.replace) throw new Error('Replacement unavailable.')
+          next.replaces = { ...target.replaces }
+        }
         await this.journal.save(this.uid, next)
         this.attempt = next
+        this.emit({ status: 'starting' })
       }
       if (this.disposed) return
-      if (!pending) {
+      if (!pending && !this.attempt.replaces) {
         const remote = await this.port.readActive(this.uid)
         if (this.disposed) return
         if (remote) { await this.confirm({ kind: remote.sessionId === this.attempt.candidate.sessionId ? 'started' : 'existing', session: remote }); return }
@@ -113,8 +121,18 @@ export class WorkoutLaunchController {
         this.emit({ status: 'retry', message: 'Checking the current workout before starting. Try again.' })
         return
       }
-      try { await this.confirm(await this.port.claim(this.uid, this.attempt.candidate)) }
-      catch { await this.reconcile() }
+      try {
+        if (this.attempt.replaces) {
+          await this.port.replace!(this.uid, this.attempt)
+          await this.reconcile()
+        } else await this.confirm(await this.port.claim(this.uid, this.attempt.candidate))
+      } catch (error) {
+        if (error instanceof ReplacementRejectedError && this.attempt) {
+          if (!await this.journal.clearIfMatches(this.uid, this.attempt.candidate.sessionId) || this.disposed) return
+          this.attempt = null; this.lastTarget = null
+          this.emit({ status: 'unavailable', message: error.message })
+        } else await this.reconcile()
+      }
     } catch (error) {
       if (this.disposed) return
       if (error instanceof TargetUnavailableError) this.emit({ status: 'unavailable', message: error.message })
@@ -142,6 +160,7 @@ export class WorkoutLaunchController {
 
   async observeActive(session: ActiveWorkout): Promise<void> {
     if (this.disposed || !this.loaded || !this.attempt) return
+    if (session.sessionId === this.attempt.replaces?.sessionId) return
     if (this.busy) { this.observed = session; return }
     this.busy = true
     try { await this.confirm({ kind: session.sessionId === this.attempt.candidate.sessionId ? 'started' : 'existing', session }) }
@@ -161,6 +180,10 @@ export class WorkoutLaunchController {
     try {
       const remote = await this.port.readActive(this.uid)
       if (this.disposed || this.attempt !== attempt) return 'unknown'
+      if (remote && remote.sessionId === attempt.replaces?.sessionId) {
+        if (!silentOpen) this.emit({ status: 'retry', message: 'Replacement needs confirmation. Check the outcome before editing this workout.' })
+        return 'open'
+      }
       if (remote) {
         await this.confirm({ kind: remote.sessionId === attempt.candidate.sessionId ? 'started' : 'existing', session: remote })
         return 'active'

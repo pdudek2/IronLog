@@ -1,7 +1,10 @@
 import { parseSessionDocument, type ActiveWorkout } from './session'
 import type { WorkoutSelection } from './workoutLaunch'
 
+export interface ReplacementIdentity { sessionId: string; sessionRevision: string }
+
 export interface LaunchAttempt {
+  replaces?: ReplacementIdentity
   candidate: ActiveWorkout
   selection?: WorkoutSelection & { fingerprint: string }
 }
@@ -39,6 +42,13 @@ export class LaunchJournal {
               || typeof selection.fingerprint !== 'string' || !selection.fingerprint) throw new Error('Invalid selection.')
             attempt = { candidate, selection: { templateId: selection.templateId, dayIndex: Number(selection.dayIndex), fingerprint: selection.fingerprint } }
           }
+          if (value.replaces !== undefined) {
+            const from = value.replaces as Record<string, unknown>
+            if (!from || typeof from.sessionId !== 'string' || !from.sessionId || from.sessionId.includes('/')
+              || typeof from.sessionRevision !== 'string' || !from.sessionRevision || from.sessionRevision.includes('/')
+              || from.sessionId === candidate.sessionId || !attempt.selection) throw new Error('Invalid replacement identity.')
+            attempt.replaces = { sessionId: from.sessionId, sessionRevision: from.sessionRevision }
+          }
         } else if (value.kind !== 'empty') throw new Error('Invalid launch record.')
         records.push({ generation: Number(value.generation), attempt })
       } catch { invalid = true }
@@ -64,7 +74,7 @@ export class LaunchJournal {
     const generation = (this.generations.get(uid) ?? 0) + 1
     await this.storage.write(uid, (generation % 2) as 0 | 1, JSON.stringify({
       version: 1, uid, generation, kind: attempt ? 'attempt' : 'empty',
-      ...(attempt ? { candidate: attempt.candidate, selection: attempt.selection ?? null } : {}),
+      ...(attempt ? { candidate: attempt.candidate, selection: attempt.selection ?? null, ...(attempt.replaces ? { replaces: attempt.replaces } : {}) } : {}),
     }))
     this.generations.set(uid, generation)
   }

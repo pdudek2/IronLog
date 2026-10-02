@@ -50,8 +50,7 @@ function Plans({ uid }: { uid: string }) {
   const plans = state.status === 'ready' ? state.data : []
   const shortList = plans.length <= 2
   const starting = launch.state.status === 'starting'
-  const canStart = active.state.status === 'empty' && closure.closure.status === 'ready' && launch.state.status === 'ready' && !planAction
-  const hasActive = active.state.status === 'ready'
+  const canStart = (active.state.status === 'empty' || active.state.status === 'ready') && closure.closure.status === 'ready' && launch.state.status === 'ready' && !planAction
   const feedback = ['retry', 'unavailable', 'corrupt'].includes(launch.state.status)
   const feedbackPlan = plans.find((plan) => plan.id === launch.state.selection?.templateId)
   const retryRead = () => setReadAttempt((value) => value + 1)
@@ -104,7 +103,6 @@ function Plans({ uid }: { uid: string }) {
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
       <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
       <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <View accessibilityLabel={`${plans.length} ${pluralize(plans.length, 'plan', 'plans')}`} style={styles.summary}><Text style={styles.countNumber}>{plans.length}</Text><Text style={styles.count}>{pluralize(plans.length, 'plan', 'plans')}</Text></View>}</View><View style={styles.headerActions}><Pressable accessibilityRole="button" onPress={() => router.navigate('/exercises')} style={styles.exercisesLink}><Text style={styles.copy}>Exercises</Text></Pressable><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><Text style={styles.newPlanText}>＋ New plan</Text></Pressable></View></View>
-      {hasActive && <Text style={styles.activeCopy}>Resume or finish your current workout before starting another day.</Text>}
       {feedback && !feedbackPlan && launchFeedback}
       {launch.state.status === 'loading' && <Text style={styles.noticeCopy}>Checking workout start…</Text>}
       {state.status === 'loading' && <View style={[styles.status, styles.loading]}><ActivityIndicator color={colors.accent} /><Text style={styles.copy}>Loading templates…</Text></View>}

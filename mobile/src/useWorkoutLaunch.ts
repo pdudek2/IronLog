@@ -1,9 +1,10 @@
+import { Alert } from 'react-native'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'expo-router'
 
 import { launchJournal } from './fileSessionJournal'
 import {
-  claimNewActiveSession, createSessionRevision, isLaunchSessionClosed, readActiveFromServer,
+  replaceActiveSession, claimNewActiveSession, createSessionRevision, isLaunchSessionClosed, readActiveFromServer,
   readTemplateBestSet, readTemplateFromServer,
 } from './firebase'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from './runtime'
@@ -21,11 +22,14 @@ export function useWorkoutLaunch(uid: string) {
   const initiatingPath = useRef(pathname)
   const current = useRef({ user, active, closure, router, pathname })
   current.current = { user, active, closure, router, pathname }
+  const [confirmation, setConfirmation] = useState<{ uid: string; path: string; confirm: () => void } | null>(null)
+  useEffect(() => { setConfirmation(null) }, [uid, pathname])
   const [owned, setOwned] = useState<{ uid: string; state: LaunchState }>({ uid, state: initial })
   const controller = useMemo(() => new WorkoutLaunchController(uid, launchJournal, {
     readActive: readActiveFromServer,
     isClosed: isLaunchSessionClosed,
     claim: claimNewActiveSession,
+    replace: replaceActiveSession,
     readTemplate: readTemplateFromServer,
     readBest: readTemplateBestSet,
     createId: createSessionRevision,
@@ -50,10 +54,34 @@ export function useWorkoutLaunch(uid: string) {
     && current.current.active.state.status === 'empty'
     && current.current.closure.closure.status === 'ready'
 
+  const canReplace = () => {
+    const value = current.current.active.state
+    return current.current.user?.uid === uid && current.current.closure.closure.status === 'ready'
+      && value.status === 'ready' && !value.stale && value.syncStatus === 'saved' && !!value.session.sessionRevision
+  }
+  const start = (target: LaunchTarget) => {
+    initiatingPath.current = current.current.pathname
+    const value = current.current.active.state
+    if (target.kind !== 'template' || value.status !== 'ready') return controller.launch(target, canStart)
+    if (!canReplace()) { Alert.alert('Waiting for sync', 'Reconnect and wait for your changes to be saved before replacing this workout.'); return Promise.resolve() }
+    const replaces = { sessionId: value.session.sessionId, sessionRevision: value.session.sessionRevision! }
+    const path = current.current.pathname
+    setConfirmation({ uid, path, confirm: () => {
+      setConfirmation(null)
+      const fresh = current.current.active.state
+      if (current.current.pathname !== path || !canReplace() || fresh.status !== 'ready' || fresh.session.sessionId !== replaces.sessionId || fresh.session.sessionRevision !== replaces.sessionRevision) {
+        Alert.alert('Workout changed', 'Review your current workout before replacing it.'); return
+      }
+      void controller.launch({ ...target, replaces }, () => canReplace() && current.current.pathname === path)
+    } })
+    return Promise.resolve()
+  }
   return {
+    confirmation: confirmation?.uid === uid && confirmation.path === pathname ? confirmation : null,
+    cancelReplacement: () => setConfirmation(null),
     state: owned.uid === uid ? owned.state : initial,
-    start: (target: LaunchTarget) => { initiatingPath.current = current.current.pathname; return controller.launch(target, canStart) },
-    retry: () => { initiatingPath.current = current.current.pathname; return controller.retry(canStart) },
+    start,
+    retry: () => { initiatingPath.current = current.current.pathname; return controller.retry(() => canStart() || canReplace()) },
     dismissUnavailable: () => controller.dismissUnavailable(),
   }
 }

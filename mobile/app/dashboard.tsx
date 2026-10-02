@@ -161,7 +161,7 @@ export default function DashboardScreen() {
           recommendation={recommendation} templateName={chosen?.template.name ?? ''} units={units}
           starting={starting} canStart={canOfferStart && launchState === 'ready'} onStart={startRecommended}
           onChange={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }}
-          onEdit={() => { if (chosen) router.push({ pathname: '/templates/[templateId]/edit', params: { templateId: chosen.template.id } }) }}
+          onEdit={() => { if (chosen) router.push({ pathname: '/templates/[id]/edit', params: { id: chosen.template.id } }) }}
           prerequisiteMessage={readinessEntry && chosen && !recommendation ? state.status === 'loading' || templatesState.status === 'loading' ? 'Loading recommendation…' : 'Could not confirm recommendation data. You can still start the selected workout.' : null}
           onRetry={() => { retry(); setTemplatesAttempt(value => value + 1) }} />}
         {showSummary && <View style={styles.week}>

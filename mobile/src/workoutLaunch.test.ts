@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { LaunchJournal, type LaunchStorage } from './launchJournal'
-import { WorkoutLaunchController, type LaunchPort, type LaunchState } from './workoutLaunchController'
+import { ReplacementRejectedError, WorkoutLaunchController, type LaunchPort, type LaunchState } from './workoutLaunchController'
 import {
   buildTemplateSession, claimAbsentSession, firstLaunchableWorkout, parseTemplate, shouldOpenLaunchResult,
   type LaunchResult, type WorkoutTemplate,
@@ -387,4 +387,64 @@ test('recommended values are copied on tap before asynchronous template validati
   release(); while (h.claimCalls===0 && h.results.length===0) { await new Promise(resolve=>setImmediate(resolve)); if(release) release() }
   await launching
   assert.equal(h.results.at(-1)?.session.exercises[0]?.sets[0]?.weight,'57.5')
+})
+
+function replacementTarget() {
+  const plan = template()
+  return { kind: 'template' as const, snapshot: plan, selection: { templateId: plan.id, dayIndex: 1 }, replaces: { sessionId: 'old', sessionRevision: 'old-revision' } }
+}
+function oldSession() { return buildTemplateSession(template(), 1, new Map(), 'old', 'old-revision', 50) }
+
+test('replacement preserves its old session until atomic completion and never uses absent-session claim', async () => {
+  const h = harness(); h.remote = oldSession()
+  h.port.replace = async (_uid, attempt) => { assert.equal(h.remote?.sessionId, 'old'); h.remote = attempt.candidate }
+  const controller = h.controller(); await controller.load()
+  await controller.launch(replacementTarget(), () => true)
+  assert.equal(h.claimCalls, 0)
+  assert.equal(h.results.at(-1)?.kind, 'started')
+  assert.notEqual(h.remote?.sessionId, 'old')
+  assert.equal(await h.journal.load('owner'), null)
+})
+
+test('replacement survives restart offline and retries the exact candidate without resuming the old session', async () => {
+  const h = harness(); h.remote = oldSession()
+  h.port.replace = async () => { throw new Error('offline') }
+  const first = h.controller(); await first.load(); await first.launch(replacementTarget(), () => true)
+  const pending = await h.journal.load('owner'); assert.ok(pending?.replaces)
+  await first.observeActive(h.remote!)
+  assert.equal(h.results.length, 0); assert.equal(h.states.at(-1)?.replacing, true)
+  first.dispose()
+  const restored = h.controller(); await restored.load()
+  assert.equal(h.results.length, 0)
+  h.port.replace = async (_uid, attempt) => { assert.deepEqual(attempt, pending); h.remote = attempt.candidate }
+  await restored.retry(() => true)
+  assert.equal(h.results.at(-1)?.session.sessionId, pending.candidate.sessionId)
+  assert.equal(h.claimCalls, 0)
+})
+
+test('replacement acknowledgement loss reconciles without sending a second replacement', async () => {
+  const h = harness(); h.remote = oldSession(); let calls = 0
+  h.port.replace = async (_uid, attempt) => { calls++; h.remote = attempt.candidate; h.readOffline = true; throw new Error('ack lost') }
+  const first = h.controller(); await first.load(); await first.launch(replacementTarget(), () => true)
+  const pending = await h.journal.load('owner'); first.dispose(); h.readOffline = false
+  const restored = h.controller(); await restored.load()
+  assert.equal(calls, 1); assert.equal(h.results.at(-1)?.session.sessionId, pending?.candidate.sessionId)
+  assert.equal(await h.journal.load('owner'), null)
+})
+
+test('replacement revision conflict retires the attempt and leaves the changed session intact', async () => {
+  const h = harness(); h.remote = { ...oldSession(), sessionRevision: 'newer' }
+  h.port.replace = async () => { throw new ReplacementRejectedError('Review changed workout') }
+  const controller = h.controller(); await controller.load(); await controller.launch(replacementTarget(), () => true)
+  assert.equal(h.remote.sessionRevision, 'newer'); assert.equal(h.results.length, 0)
+  assert.equal(await h.journal.load('owner'), null)
+  assert.equal(h.states.at(-1)?.status, 'unavailable'); assert.equal(h.states.at(-1)?.replacing, false)
+})
+
+test('a replacement closed on another device after acknowledgement loss is never recreated', async () => {
+  const h = harness(); h.remote = oldSession(); let calls = 0
+  h.port.replace = async () => { calls++; h.remote = null; h.closed = true; throw new Error('ack lost') }
+  const controller = h.controller(); await controller.load(); await controller.launch(replacementTarget(), () => true)
+  assert.equal(h.remote, null); assert.equal(await h.journal.load('owner'), null)
+  assert.equal(h.states.at(-1)?.status, 'ready'); assert.equal(calls, 1); assert.equal(h.claimCalls, 0)
 })

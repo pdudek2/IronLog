@@ -1,3 +1,4 @@
+import { useOptionalLaunchRuntime } from '../src/launchRuntime'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { StatusBar } from 'expo-status-bar'
 import { useIsFocused, useRouter } from 'expo-router'
@@ -624,8 +625,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
   const sessionClosed = state.status === 'ready' && completed?.action === 'finish'
     && completed.workoutId === state.session.sessionId
-  const sessionLocked = locked || sessionClosed
-  const canEditCurrentSession = () => !sessionClosed && canEditClosure()
+  const launch = useOptionalLaunchRuntime()
+  const replacementLocked = !!launch?.state.replacing
+  const sessionLocked = locked || sessionClosed || replacementLocked
+  const canEditCurrentSession = () => !sessionClosed && !replacementLocked && canEditClosure()
 
   const doLogout = async () => {
     setSigningOut(true)
@@ -766,7 +769,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-        {state.status === 'ready' && !sessionClosed && (
+        {state.status === 'ready' && !sessionClosed && (<>
+        {replacementLocked && <View accessibilityRole="alert" style={styles.syncNotice}><Text style={styles.syncCopy}>{launch?.state.message ?? 'Replacing workout…'}</Text>{launch?.state.status !== 'starting' && <Pressable accessibilityRole="button" onPress={() => void launch?.retry()} style={styles.syncAction}><Text style={styles.syncActionText}>Check replacement</Text></Pressable>}</View>}
         <View pointerEvents={sessionLocked ? 'none' : 'auto'}>
           <View style={styles.workoutLabelsBand}>
             <LabelTabs active={state.session.label ?? ''} onToggle={guardClosureInteraction(canEditCurrentSession, (label) => setLabel(state.session.label === label ? '' : label))} />
@@ -804,7 +808,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
               removeExercise: guardClosureInteraction(canEditCurrentSession, removeExercise),
             }} />
         </View>
-        )}
+        </>)}
       </Animated.ScrollView>
       <BottomNavigation {...navigation} />
     </View>

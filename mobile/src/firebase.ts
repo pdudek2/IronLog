@@ -1,3 +1,5 @@
+import type { LaunchAttempt } from './launchJournal'
+import { ReplacementRejectedError } from './workoutLaunchController'
 import { getApp, getApps, initializeApp, type FirebaseApp } from '@react-native-firebase/app'
 import {
   connectAuthEmulator,
@@ -479,4 +481,16 @@ export async function readSavedWorkout(uid: string, workoutId: string): Promise<
     data: snapshot.exists() ? parseSavedWorkout(snapshot.id, uid, snapshot.data()) : null,
     fromCache: snapshot.metadata.fromCache,
   }
+}
+
+export async function replaceActiveSession(uid: string, attempt: LaunchAttempt): Promise<void> {
+  const token = await currentIdToken(uid)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 15_000)
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/replace-session`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify(attempt), signal: controller.signal })
+    const result = await response.json().catch(() => null)
+    if ([400, 403, 409].includes(response.status) && result?.error) throw new ReplacementRejectedError('The session or plan changed. Keep your current workout and review the plan before trying again.')
+    if (!response.ok || result?.status !== 'replaced' || result?.sessionId !== attempt.candidate.sessionId) throw new Error('Could not confirm replacement.')
+  } finally { clearTimeout(timeout) }
 }

@@ -6,6 +6,7 @@ import discardSessionHandler from '../api/discard-session.ts'
 import finalizeWorkoutHandler from '../api/finalize-workout.ts'
 import sessionLaunchOutcomeHandler from '../api/session-launch-outcome.ts'
 import materializeWorkoutHandler from '../api/materialize-workout.ts'
+import replaceSessionHandler from '../api/replace-session.ts'
 import saveTemplateHandler from '../api/save-template.ts'
 import createExerciseHandler from '../api/create-exercise.ts'
 import updateWorkoutHandler from '../api/update-workout.ts'
@@ -22,6 +23,7 @@ const routes = new Map<string, RouteHandler>([
   ['/api/session-launch-outcome', sessionLaunchOutcomeHandler],
   ['/api/materialize-workout', materializeWorkoutHandler],
   ['/api/save-template', saveTemplateHandler],
+  ['/api/replace-session', replaceSessionHandler],
   ['/api/create-exercise', createExerciseHandler],
   ['/api/update-workout', updateWorkoutHandler],
 ])

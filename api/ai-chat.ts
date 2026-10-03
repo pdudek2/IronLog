@@ -141,6 +141,13 @@ function normalizePlanRequest(raw: AiChatBody['planRequest']) {
   return { goal, daysPerWeek, experience, focus, notes, equipment }
 }
 
+// Plans currently store repetitions, not duration or distance. Keep the manual
+// catalogue intact; restrict only the exercises offered to the AI generator.
+function supportsGeneratedRepetitions(exercise: AvailableExercise): boolean {
+  return exercise.category !== 'cardio'
+    && !(exercise.source === 'global' && exercise.id === 'plank')
+}
+
 async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]> {
   try {
     const userExercisesSnap = await adminDb.collection('userExercises')
@@ -178,7 +185,7 @@ async function fetchAvailableExercises(uid: string): Promise<AvailableExercise[]
       }]
     })
 
-    return [...fromGlobal, ...fromUser]
+    return [...fromGlobal, ...fromUser].filter(supportsGeneratedRepetitions)
   } catch (error) {
     if (error instanceof ApiError) throw error
     console.error('[ai-chat exercise catalog error]', error)
@@ -274,6 +281,9 @@ function buildPlanSystemPrompt(
     'Keep catalog exercise names in their original language.',
     'Keep the JSON keys and schema unchanged, and keep exerciseId and exerciseSource tied to the supplied catalog.',
     'Create practical workout templates in JSON.',
+    'Write a concise summary in 1-2 complete sentences, aiming for at most 280 characters.',
+    'The app records sets, repetitions and weight only. Select repetition-based exercises; do not prescribe timed holds, duration or distance, including for custom exercises.',
+    'targetReps must always mean repetitions, never seconds or minutes. If a requested exercise needs timing, choose a suitable repetition-based alternative from the catalog.',
     'Respond ONLY with valid JSON: no Markdown, comments or extra text.',
     'Use only exercises from the supplied catalog and always return valid exerciseId and exerciseSource values.',
     'If you cannot determine a sensible starting weight, set targetWeight to 0.',
@@ -367,10 +377,11 @@ export function normalizeGeneratedPlan(
   request: ReturnType<typeof normalizePlanRequest>,
 ): GeneratedPlan {
   const record = asRecord(raw)
-  const catalogByKey = new Map(catalog.map((exercise) => [`${exercise.source}:${exercise.id}`, exercise]))
+  const repetitionCatalog = catalog.filter(supportsGeneratedRepetitions)
+  const catalogByKey = new Map(repetitionCatalog.map((exercise) => [`${exercise.source}:${exercise.id}`, exercise]))
   const catalogByName = new Map<string, AvailableExercise | null>()
 
-  for (const exercise of catalog) {
+  for (const exercise of repetitionCatalog) {
     const normalizedName = normalizeExerciseName(exercise.name)
     if (!normalizedName) continue
 
@@ -435,8 +446,12 @@ export function normalizeGeneratedPlan(
     ? record.name.trim().slice(0, 80)
     : fallbackName
   const summary = typeof record.summary === 'string' && record.summary.trim()
-    ? record.summary.trim().slice(0, 280)
+    ? record.summary.trim()
     : 'Plan generated from your goal, available equipment and training history.'
+
+  if (summary.length > 1000) {
+    throw new ApiError(422, 'The plan summary is too long. Try generating the plan again.')
+  }
 
   return { name, summary, days }
 }

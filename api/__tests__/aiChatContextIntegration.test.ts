@@ -586,3 +586,42 @@ describe('AI plan language prompt contract', () => {
     expect(sent.messages[1]?.content).toContain('Notes: no additional notes')
   })
 })
+
+describe('AI plan summary and repetition-only exercises', () => {
+  const request = { goal: 'strength', daysPerWeek: 1, experience: 'intermediate', equipment: [], focus: '', notes: '' }
+  const bench = { id: 'bench-press', name: 'Bench Press', source: 'global' as const, equipment: 'barbell', category: 'chest', muscles: ['chest'] }
+  const raw = { days: [{ exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global' }] }] }
+
+  it('preserves a complete summary longer than the old 280-character cutoff', () => {
+    const summary = 'Dwudniowy plan siłowy całego ciała, mieszczący się w około 45 minutach. Po przerwie zacznij od lekkich, kontrolowanych ciężarów i zwiększaj je dopiero wtedy, gdy wszystkie serie wykonasz z zapasem. Odpoczywaj 2–3 minuty przy ćwiczeniach głównych i 60–90 sekund przy ćwiczeniach uzupełniających.'
+    expect(normalizeGeneratedPlan({ ...raw, summary }, [bench], request).summary).toBe(summary)
+  })
+
+  it('rejects an excessive summary instead of publishing truncated text', () => {
+    expect(() => normalizeGeneratedPlan({ ...raw, summary: 'x'.repeat(1001) }, [bench], request))
+      .toThrow('The plan summary is too long. Try generating the plan again.')
+  })
+
+  it.each([
+    { id: 'plank', name: 'Plank', source: 'global' as const, equipment: 'bodyweight', category: 'core', muscles: ['core'] },
+    { id: 'treadmill', name: 'Treadmill', source: 'global' as const, equipment: 'machine', category: 'cardio', muscles: [] },
+    { id: 'custom-run', name: 'My run', source: 'user' as const, equipment: 'machine', category: 'cardio', muscles: [] },
+  ])('does not accept $source:$id as repetitions even if the provider returns it', (exercise) => {
+    expect(() => normalizeGeneratedPlan({ days: [{ exercises: [{ exerciseId: exercise.id, exerciseSource: exercise.source, targetReps: 20 }] }] }, [exercise], request))
+      .toThrow('The generator did not return any valid workout days.')
+  })
+
+  it('preserves a custom repetition exercise whose ID collides with global plank', () => {
+    const custom = { ...bench, id: 'plank', source: 'user' as const }
+    const plan = normalizeGeneratedPlan({ days: [{ exercises: [{ exerciseId: 'plank', exerciseSource: 'user', targetReps: 8 }] }] }, [custom], request)
+    expect(plan.days[0]?.exercises[0]).toMatchObject({ exerciseId: 'plank', exerciseSource: 'user', targetReps: 8 })
+  })
+
+  it('does not offer known timed exercises to the model', async () => {
+    const sent = await capturePlanRequest('Plan na dwa dni.')
+    const catalog = sent.messages[0]?.content.split('AVAILABLE EXERCISES')[1] ?? ''
+    expect(catalog).toContain('exerciseId=crunch |')
+    expect(catalog).not.toContain('exerciseId=plank |')
+    expect(catalog).not.toContain('category=cardio')
+  })
+})

@@ -1,3 +1,4 @@
+import { shouldSaveImportedDraft } from './coachPlan'
 import BottomNavigation, { useBottomNavigation } from './BottomNavigation'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -19,13 +20,13 @@ import { planEditorJournal } from './filePlanEditorJournal'
 const colors = { background: '#111012', surface: '#1a191c', text: '#f4f1f2', muted: '#a09aa0', accent: '#ff7182', line: 'rgba(244,241,242,0.12)' }
 const newId = () => createSessionRevision()
 
-export default function PlanEditorScreen({ targetId }: { targetId: string | null }) {
+export default function PlanEditorScreen({ targetId, saveImport }: { targetId: string | null; saveImport?: string }) {
   const { user } = useAuthRuntime()
   if (!user) return <SafeAreaView style={styles.screen}><Text style={styles.muted}>Restoring sign-in…</Text></SafeAreaView>
-  return <Editor key={`${user.uid}:${targetId ?? 'new'}`} uid={user.uid} targetId={targetId} />
+  return <Editor key={`${user.uid}:${targetId ?? 'new'}`} uid={user.uid} targetId={targetId} saveImport={saveImport} />
 }
 
-function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
+function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string | null; saveImport?: string }) {
   const active = useActiveRuntime()
   const router = useRouter()
   const navigation = useBottomNavigation()
@@ -45,6 +46,7 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
   const [storageError, setStorageError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [reloadAvailable, setReloadAvailable] = useState(false)
+  const saveLock = useRef(false)
   const [busy, setBusy] = useState(false)
   const [durable, setDurable] = useState(true)
   const [picking, setPicking] = useState(false)
@@ -138,13 +140,23 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
     return () => { cancelled = true }
   }, [uid, draft?.draftId, active.state.status, active.state.units]))
 
+  const importAttempted = useRef(false)
+  useEffect(() => {
+    if (importAttempted.current || !focused.current || !shouldSaveImportedDraft(draft, saveImport)) return
+    importAttempted.current = true
+    router.setParams({ saveImport: undefined })
+    void save()
+  }, [draft?.draftId, saveImport])
+
   async function save() {
     let current = draftRef.current
-    if (!current || busy) return
+    if (!current || saveLock.current) return
+    saveLock.current = true
     setBusy(true); setMessage(null)
     try {
       await writeRef.current
       if (storageError) throw new Error('Draft storage needs a successful retry.')
+      if (!alive.current) return
       current = draftRef.current!
       if (!current.pending) {
         const request = normalizePlanDraft(current, newId())
@@ -177,8 +189,8 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
           if (disposition === 'conflict') setReloadAvailable(true)
         } catch { /* storage error is displayed by persist */ }
       }
-      setMessage(error instanceof Error ? error.message : 'Could not save plan. Retry with the same operation.')
-    } finally { if (alive.current) setBusy(false) }
+      setMessage(error instanceof PlanRequestError ? error.message : 'Could not confirm the save. Your draft is safe. Retry save to check again.')
+    } finally { saveLock.current = false; if (alive.current) setBusy(false) }
   }
   async function discard() {
     const current = draftRef.current
@@ -220,8 +232,8 @@ function Editor({ uid, targetId }: { uid: string; targetId: string | null }) {
     <HistoryHeader onRequestAction={(_, proceed) => leave(proceed)} />
     <ActiveWorkoutReturnBar onRequestExit={leave} />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/templates'))} style={styles.headerLink}><Text style={styles.muted}>‹  Plans</Text></Pressable><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text></View>
       <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+        <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/templates'))} style={styles.headerLink}><Text style={styles.muted}>‹  Plans</Text></Pressable><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text></View>
         <Text style={styles.label}>Name</Text>
         <TextInput accessibilityLabel="Plan name" editable={!locked} maxLength={120} value={draft.name} onFocus={() => { inputFocused.current = true }} onBlur={() => { inputFocused.current = false }} onChangeText={(value) => change((current) => ({ ...current, name: value }))} placeholder="E.g. Upper / Lower 4 days" placeholderTextColor={colors.muted} style={styles.nameInput} />
         <View style={styles.selector}><ScrollView ref={dayTabs} horizontal keyboardShouldPersistTaps="handled" showsHorizontalScrollIndicator={false} style={styles.tabs} contentContainerStyle={styles.tabsContent}>{draft.days.map((item, index) => <Pressable key={item.rowId} accessibilityRole="tab" accessibilityState={{ selected: item.rowId === day.rowId }} onPress={() => change((current) => ({ ...current, selectedDayId: item.rowId }), false)} style={[styles.tab, item.rowId === day.rowId && styles.selectedTab]}><Text numberOfLines={1} style={[styles.tabText, item.rowId === day.rowId && styles.tabTextSelected]}>{item.name.trim() || `Day ${index + 1}`}</Text><Text style={styles.tabCount}>{item.exercises.length} ex. · {item.exercises.reduce((sum, exercise) => sum + (Number(exercise.sets) || 0), 0)} sets</Text></Pressable>)}</ScrollView><Pressable accessibilityRole="button" disabled={!canAddDay || locked} onPress={() => { const rowId = newId(); change((current) => ({ ...current, selectedDayId: rowId, days: [...current.days, { rowId, name: `Day ${current.days.length + 1}`, exercises: [] }] })) }} style={styles.addDay}><PlanIcon kind="plus" color={colors.text} /><Text style={styles.addDayText}>Add day</Text></Pressable></View>
@@ -244,8 +256,8 @@ function PlanIcon({ kind, color }: { kind: 'plus' | 'pencil'; color: string }) {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background, experimental_backgroundImage: 'linear-gradient(115deg, rgba(240,67,90,0.055) 0%, transparent 26%, transparent 68%, rgba(143,184,160,0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)' }, loading: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 16, padding: 24 },
-  header: { borderBottomColor: colors.line, borderBottomWidth: 1, marginHorizontal: 16, paddingTop: 6, paddingBottom: 12 }, headerLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }, title: { color: '#fff', fontFamily: 'ArchivoHeading', fontSize: 36, lineHeight: 38 },
-  content: { paddingHorizontal: 16, paddingTop: 22, paddingBottom: 44 }, label: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 }, nameInput: { minHeight: 44, marginTop: 4, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.045)', paddingHorizontal: 14, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
+  header: { borderBottomColor: colors.line, borderBottomWidth: 1, marginBottom: 22, paddingTop: 6, paddingBottom: 12 }, headerLink: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }, title: { color: '#fff', fontFamily: 'ArchivoHeading', fontSize: 36, lineHeight: 38 },
+  content: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 44 }, label: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 }, nameInput: { minHeight: 44, marginTop: 4, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.045)', paddingHorizontal: 14, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   selector: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 22, paddingBottom: 8, borderBottomColor: colors.line, borderBottomWidth: 1 }, tabs: { flex: 1 }, tabsContent: { gap: 8 }, tab: { width: 136, minHeight: 56, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8 }, selectedTab: { backgroundColor: 'rgba(244,241,242,0.075)' }, tabText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 }, tabTextSelected: { color: colors.accent }, tabCount: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 10, marginTop: 4 }, addDay: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.035)' }, addDayText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   dayHeading: { minHeight: 22, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, textButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 }, accent: { color: colors.accent, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 }, muted: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 },
   dayEditor: { paddingTop: 16 }, dayInput: { minHeight: 44, marginTop: 4, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.045)', paddingHorizontal: 14, color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 }, exercise: { paddingVertical: 12, borderBottomColor: colors.line, borderBottomWidth: 1 }, exerciseHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, exerciseNameGroup: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }, exerciseName: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, flexShrink: 1 }, mine: { color: colors.accent, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 }, remove: { minWidth: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }, fields: { flexDirection: 'row', gap: 8, marginTop: 8 }, field: { flex: 1 }, fieldLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 10, marginBottom: 6 }, numberInput: { minHeight: 44, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.045)', color: colors.text, paddingHorizontal: 12, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 14 },

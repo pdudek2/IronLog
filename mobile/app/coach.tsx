@@ -1,3 +1,4 @@
+import CoachPlanPanel from '../src/CoachPlanPanel'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { AppState, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
@@ -43,6 +44,7 @@ function Coach({ uid }: { uid: string }) {
   const [, redraw] = useState(0)
   const [controller] = useState(() => new CoachController(nativeCoachDependencies(uid), () => redraw(value => value + 1)))
   const state = controller.state
+  const [tab, setTab] = useState<'chat' | 'plan'>('chat')
   const [settings, setSettings] = useState(false)
   const [draft, setDraft] = useState('')
   const [reveal, setReveal] = useState(false)
@@ -90,7 +92,7 @@ function Coach({ uid }: { uid: string }) {
     <View style={s.grow}><Text style={s.boldLabel}>OpenRouter key</Text><Text style={s.small}>{state.validation === 'valid' ? 'Saved securely on this device.' : state.validation === 'checking' ? 'Verifying key…' : 'Needs verification.'}</Text></View>
     <Button onPress={openSettings}>Settings</Button>
   </View> : <View style={s.gate}>
-    <Text style={s.gateTitle}>Add a local OpenRouter key</Text><Text style={s.description}>Without it, you can review the conversation, but cannot send questions.</Text>
+    <Text style={s.gateTitle}>Add a local OpenRouter key</Text><Text style={s.description}>Without it, you can review the conversation, but cannot send questions or generate plans.</Text>
     <View style={s.left}><Button primary onPress={openSettings}>Set up key</Button></View>
   </View>
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} style={s.screen} edges={['top']}><StatusBar style="light" />
@@ -99,9 +101,10 @@ function Coach({ uid }: { uid: string }) {
       <View style={s.workspace}>
         <View pointerEvents="none" style={StyleSheet.absoluteFill}><Image source={grain} resizeMode="repeat" style={s.grain} /></View>
         <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-          <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text><Text style={s.subtitle}>Ask about your last session or next workout.</Text></View>
+          <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text><Text style={s.subtitle}>Ask about your last session or build a plan.</Text></View>
+          <View style={s.tabs}>{(['chat', 'plan'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => { controller.cancel(); setTab(value) }} style={[s.tab, tab === value && s.tabActive]}><Text style={[s.buttonText, tab === value && s.primaryText]}>{value === 'chat' ? 'Chat' : 'Plan'}</Text></Pressable>)}</View>
           {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
-          <View onLayout={event => { chatY.current = event.nativeEvent.layout.y }} style={[s.chat, conversation && { height: Math.max(336, height - 336) }]}>
+          <View style={tab !== 'chat' && { display: 'none' }}><View onLayout={event => { chatY.current = event.nativeEvent.layout.y }} style={[s.chat, conversation && { height: Math.max(336, height - 336) }]}>
           {conversation && <View style={s.toolbar}><Button onPress={() => { controller.reset(); nearBottom.current = true }} label="Reset conversation">Reset</Button></View>}
           {!conversation ? <View style={[s.empty, configured && { paddingTop: 0 }]}>
             <Text style={s.emptyTitle}>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</Text>
@@ -123,6 +126,7 @@ function Coach({ uid }: { uid: string }) {
             <View style={s.sendRow}><Button primary disabled={!input.trim() || !controller.canSend} onPress={() => send(input)}>{state.generation === 'streaming' ? 'Sending…' : 'Send'}</Button></View>
           </View>}
           </View>
+          </View><View style={tab !== 'plan' && { display: 'none' }}><CoachPlanPanel uid={uid} controller={controller} /></View>
           {configured && keyPanel}
         </ScrollView>
       </View>
@@ -131,6 +135,7 @@ function Coach({ uid }: { uid: string }) {
   </SafeAreaView>
 }
 const s = StyleSheet.create({
+  tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, overflow: 'hidden', borderColor: 'rgba(244,241,242,0.18)', backgroundColor: 'rgba(34,33,37,0.76)', marginBottom: 14 }, tab: { flex: 1, minHeight: 48, paddingHorizontal: 11, justifyContent: 'center' }, tabActive: { backgroundColor: 'rgba(240,67,90,0.11)' },
   screen: { flex: 1, backgroundColor: '#111012' }, grow: { flex: 1 },
   workspace: { flex: 1, experimental_backgroundImage: 'linear-gradient(120deg, rgba(240,67,90,0.018), transparent)' },
   grain: { ...StyleSheet.absoluteFill, width: '100%', height: '100%', opacity: 0.018 },

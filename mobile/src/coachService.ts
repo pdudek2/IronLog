@@ -31,7 +31,7 @@ export async function coachPost(baseUrl: string, path: 'ai-chat' | 'ai-models', 
       headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body })
   } catch { throw new Error('Could not connect to AI Coach. Check your connection and retry.') }
   if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { code?: unknown } | null
+    const payload = await boundedJson(response, signal, 16 * 1024).catch(() => null) as { code?: unknown } | null
     const code = typeof payload?.code === 'string' ? payload.code : undefined
     // Do not display arbitrary provider text: it can include request details or the key.
     const message = code === 'invalid-key'
@@ -52,4 +52,25 @@ export async function consumeCoachReply(response: Response, request: CoachReques
   }
   request.onContext(context)
   return readChatStream(response.body, { signal: request.signal, onChunk: request.onChunk })
+}
+
+// Bound error responses too: provider bodies are not trusted UI content.
+export async function boundedJson(response: Response, signal: AbortSignal, limit: number): Promise<unknown> {
+  if (!response.body || Number(response.headers.get('content-length')) > limit) throw new Error('Response too large.')
+  const reader = response.body.getReader(), decoder = new TextDecoder()
+  const cancel = () => { void reader.cancel().catch(() => undefined) }
+  signal.addEventListener('abort', cancel, { once: true })
+  let size = 0, text = ''
+  try {
+    while (true) {
+      if (signal.aborted) throw new Error('Request cancelled.')
+      const { done, value } = await reader.read()
+      if (signal.aborted) throw new Error('Request cancelled.')
+      if (done) break
+      size += value.byteLength
+      if (size > limit) throw new Error('Response too large.')
+      text += decoder.decode(value, { stream: true })
+    }
+    return JSON.parse(text + decoder.decode())
+  } finally { signal.removeEventListener('abort', cancel); cancel() }
 }

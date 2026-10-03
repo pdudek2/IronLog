@@ -8,7 +8,7 @@ IronLog records strength workouts and tracks progress over time. An active worko
 
 On iPhone, open IronLog in Safari and choose **Share → Add to Home Screen**. On Android, open it in Chrome and choose **Menu → Install app** (or **Add to Home screen**). Reopen the installed app after a release to load the latest version; offline launch is not supported.
 
-The native Android app in `mobile/` supports sign-in, active-workout editing, exercise selection, Finish/Discard with offline recovery, Minimize/Return, workout history and detail, plan creation/editing/deletion, workout start, Progress, and Coach chat with secure per-account key storage. It uses React Native with Expo Router and the existing Firebase backend. The native migration is still in progress; AI plan generation/import, Profile, the full bottom navigation and other remaining web flows are not yet available.
+The native Android app in `mobile/` supports sign-in, active-workout editing, exercise selection, Finish/Discard with offline recovery, Minimize/Return, workout history and detail, plan creation/editing/deletion, workout start, Progress, and Coach chat/plan generation with secure per-account key storage. It uses React Native with Expo Router and the existing Firebase backend. The native migration is still in progress; remaining web flows and independent acceptance gates are tracked in the canonical local PRODUCT.md.
 
 Native screens follow the mobile web layout, palette, gradients and typography within the implemented scope. Android system safe areas and font rasterization can differ. Changes accepted locally are not automatically included in the production web deployment.
 
@@ -34,7 +34,7 @@ Templates keep exercise order, targets, and notes for repeatable sessions. A tem
 
 ## AI Coach
 
-Native currently supports chat and key settings, with an entry from Home. Leaving Coach or putting the app in the background stops the reply; Retry resends the same question. Conversations are kept only in memory for the current account and screen lifetime. AI plan generation remains web-only.
+Native Coach supports Chat and Plan. Leaving Coach, switching modes or putting the app in the background stops generation. Chat Retry resends the same question; generating a plan again issues a new AI request. Conversations and generated previews stay in memory for the current account and screen lifetime. Plan import first writes a durable draft; an existing draft blocks import. Edit opens the normal editor, while Save as template uses that editor’s existing idempotent save and recovery flow. An interrupted save can be resumed from New plan without generating again.
 
 AI Coach answers questions about training and can draft a workout plan from the user's profile, readiness, recent sessions, and records. The draft can be edited before it is saved as a template.
 

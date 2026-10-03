@@ -21,6 +21,17 @@ export class PlanEditorJournal {
       return draft
     })
   }
+  installIfEmpty(uid: string, draft: PlanDraft, ownerId: string, isCurrent: () => boolean = () => true): Promise<boolean> {
+    if (draft.targetId !== null || draft.baseline !== null || draft.resolvedId !== null) throw new Error('Import must be a new plan.')
+    const key = this.key(uid, null)
+    return this.exclusive(key, async () => {
+      const current = await this.read(uid, null)
+      if (current.corrupt) throw new Error('The saved plan draft needs recovery before import.')
+      if (current.draft !== null || !isCurrent()) return false
+      await this.write(key, uid, null, current.generation + 1, draft, ownerId)
+      return true
+    })
+  }
   saveIfOwned(uid: string, draft: PlanDraft, ownerId: string, expected: { draftId: string; revision: number } | null): Promise<boolean> {
     const key = this.key(uid, draft.targetId)
     return this.exclusive(key, async () => {
@@ -45,7 +56,7 @@ export class PlanEditorJournal {
     return this.storage.write(key, (generation % 2) as 0 | 1,
       JSON.stringify({ version: 1, uid, targetId, generation, draft, ownerId }))
   }
-  private async read(uid: string, targetId: string | null): Promise<{ generation: number; draft: PlanDraft | null; ownerId: string | null }> {
+  private async read(uid: string, targetId: string | null): Promise<{ generation: number; draft: PlanDraft | null; ownerId: string | null; corrupt: boolean }> {
     const key = this.key(uid, targetId)
     const slots = await Promise.all([this.storage.read(key, 0), this.storage.read(key, 1)])
     const records: { generation: number; draft: PlanDraft | null; ownerId: string | null }[] = []
@@ -68,7 +79,7 @@ export class PlanEditorJournal {
     }
     const latest = records.sort((a, b) => b.generation - a.generation)[0]
     if (!latest && corrupt) throw new Error('The saved plan draft is damaged. Its files were preserved.')
-    return latest ?? { generation: 0, draft: null, ownerId: null }
+    return latest ? { ...latest, corrupt } : { generation: 0, draft: null, ownerId: null, corrupt: false }
   }
   private exclusive<T>(key: string, task: () => Promise<T>): Promise<T> {
     const prior = this.queues.get(key) ?? Promise.resolve()

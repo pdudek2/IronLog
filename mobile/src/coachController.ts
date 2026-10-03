@@ -1,28 +1,32 @@
+import { planRequestBody, type PlanBrief, type PlanResult, type CoachPlanRequest } from './coachPlan'
 import type { AiContextMetadata } from '../../src/lib/aiContext'
 import { CoachApiError, type CoachMessage, type CoachRequest } from './coachService'
 
 export type CoachState = {
   key: string; keyLoading: boolean; keySaving: boolean; storageError: string | null
   validation: 'none' | 'checking' | 'valid' | 'invalid' | 'unverified'; keyError: string | null
+  plan: PlanResult | null; planGeneration: 'idle' | 'generating' | 'interrupted' | 'failed'; planError: string | null
   messages: CoachMessage[]; partial: string; context?: AiContextMetadata
   generation: 'idle' | 'streaming' | 'interrupted' | 'failed'; error: string | null; questionId: number | null
 }
 export type CoachDependencies = {
   loadKey: () => Promise<string | null>; saveKey: (key: string) => Promise<void>
   validateKey: (key: string, signal: AbortSignal) => Promise<void>
+  plan?: (request: CoachPlanRequest) => Promise<PlanResult>
   reply: (request: CoachRequest) => Promise<string>
 }
 
 export class CoachController {
   state: CoachState = { key: '', keyLoading: true, keySaving: false, storageError: null,
-    validation: 'none', keyError: null, messages: [], partial: '', generation: 'idle', error: null, questionId: null }
+    validation: 'none', keyError: null, plan: null, planGeneration: 'idle', planError: null, messages: [], partial: '', generation: 'idle', error: null, questionId: null }
   private disposed = false
   private active = false
   private serial = 0
+  private lifecycle = 0
   private keyRevision = 0
   private request: AbortController | null = null
   private validation: AbortController | null = null
-  constructor(private readonly deps: CoachDependencies, private readonly publish: (state: CoachState) => void) {}
+  constructor(private readonly deps: CoachDependencies, private readonly publish: (state: CoachState) => void, private readonly planTimeoutMs = 90_000) {}
   private update(patch: Partial<CoachState>) {
     if (this.disposed) return
     this.state = { ...this.state, ...patch }
@@ -56,7 +60,7 @@ export class CoachController {
     this.setActive(false)
     this.disposed = true
     this.keyRevision++
-    this.state = { ...this.state, key: '', messages: [], partial: '', context: undefined }
+    this.state = { ...this.state, key: '', messages: [], partial: '', context: undefined, plan: null }
   }
   async saveKey(raw: string) {
     if (this.disposed || this.state.keySaving || this.state.keyLoading || this.state.storageError) return false
@@ -99,9 +103,11 @@ export class CoachController {
     } finally { if (this.validation === request) this.validation = null }
   }
   cancel() {
+    this.lifecycle++
     const pending = this.request
     this.request = null
     pending?.abort()
+    if (this.state.planGeneration === 'generating') this.update({ planGeneration: 'interrupted', planError: null })
     if (this.state.generation === 'streaming') this.update({ generation: 'interrupted', partial: '', context: undefined, error: null })
   }
   reset() {
@@ -110,7 +116,31 @@ export class CoachController {
   }
   get canSend() {
     return this.active && !this.disposed && !!this.state.key && !this.state.keySaving && !this.state.keyLoading
-      && this.state.validation !== 'invalid' && this.state.validation !== 'checking' && this.state.generation !== 'streaming'
+      && this.state.validation !== 'invalid' && this.state.validation !== 'checking' && this.state.generation !== 'streaming' && this.state.planGeneration !== 'generating'
+  }
+  captureCurrent() { const revision = this.keyRevision, lifecycle = this.lifecycle; return () => this.active && !this.disposed && revision === this.keyRevision && lifecycle === this.lifecycle }
+  clearPlan() { this.cancel(); this.update({ plan: null, planError: null, planGeneration: 'idle' }) }
+  async generatePlan(brief: PlanBrief) {
+    if (!this.canSend || !this.deps.plan) return
+    const frozen = { ...brief, equipment: [...brief.equipment] }
+    try { planRequestBody(this.state.key, frozen) } catch (error) {
+      this.update({ planError: error instanceof CoachApiError ? error.message : 'Check the workout brief.' }); return
+    }
+    const request = new AbortController()
+    this.request = request
+    const current = () => !this.disposed && this.active && this.request === request && !request.signal.aborted
+    this.update({ planGeneration: 'generating', planError: null })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<never>((_, reject) => { request.signal.addEventListener('abort', () => reject(new Error('Request cancelled.')), { once: true }); timer = setTimeout(() => reject(new CoachApiError('Plan generation timed out. Generating again may use another AI request.')), this.planTimeoutMs) })
+    try {
+      const plan = await Promise.race([this.deps.plan({ key: this.state.key, brief: frozen, signal: request.signal }), timeout])
+      if (current()) this.update({ plan, planGeneration: 'idle', planError: null })
+    } catch (error) {
+      if (current()) this.update({ planGeneration: 'failed',
+        planError: error instanceof CoachApiError ? error.message : 'The plan could not be completed. Generate again when ready.',
+        ...(error instanceof CoachApiError && error.code === 'invalid-key' ? { validation: 'invalid' as const } : {}),
+      })
+    } finally { clearTimeout(timer); request.abort(); if (this.request === request) this.request = null }
   }
   send(raw: string) {
     const content = raw.trim().slice(0, 4000)

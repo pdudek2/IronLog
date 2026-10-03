@@ -1,3 +1,4 @@
+import { consumePlanResponse, planRequestBody } from './coachPlan'
 import { fetch as expoFetch } from 'expo/fetch'
 import * as SecureStore from 'expo-secure-store'
 import { apiBaseUrl, currentIdToken } from './firebase'
@@ -26,6 +27,7 @@ export function nativeCoachDependencies(uid: string): CoachDependencies {
         throw new CoachApiError('AI Coach returned an unsupported model. Try again later.')
       }
     },
+    plan: async request => consumePlanResponse(await post('ai-chat', planRequestBody(request.key, request.brief), request.signal), request.signal),
     reply: async request => consumeCoachReply(await post('ai-chat', coachRequestBody(request.key, request.messages), request.signal), request),
   }
 }

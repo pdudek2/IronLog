@@ -1,3 +1,5 @@
+import type { WorkoutMutationGuard, WorkoutMutationState } from '../../src/shared/workoutMutation.js'
+import { parseWorkoutMutationGuard, validateMutationOperationId, workoutContentBaseline, mutationRequestHash, requireMatchingReceipt, workoutConflict, operationSuperseded } from './workoutMutationGuard.js'
 import { adminDb } from './firebaseAdmin.js'
 import type {
   DocumentReference,
@@ -118,6 +120,7 @@ export interface DeletionReviewCheckpoints {
 }
 
 export interface DeleteWorkoutReviewOptions {
+  guard?: WorkoutMutationGuard | null
   db?: Firestore
   now?: () => number
   checkpoints?: DeletionReviewCheckpoints
@@ -386,8 +389,12 @@ export async function updateFinishedWorkoutForUser(
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
   const workoutRef = database.collection('workouts').doc(workoutDocumentId)
   const tombstoneRef = database.collection('closedSessions').doc(workoutDocumentId)
+  const guard = parseWorkoutMutationGuard(input)
+  const nextWorkout = parseWorkoutUpdate(input)
+  const operationRef = guard ? database.collection('workoutMutationOperations').doc(`${userId}_${guard.operationId}`) : null
+  const requestHash = guard ? mutationRequestHash(userId, workoutDocumentId, 'update', guard, nextWorkout) : null
   const nextRevision = await database.runTransaction(async (transaction) => {
-    const [workoutSnap, tombstoneSnap] = await transaction.getAll(workoutRef, tombstoneRef)
+    const [workoutSnap, tombstoneSnap, operationSnap] = await transaction.getAll(workoutRef, tombstoneRef, ...(operationRef ? [operationRef] : []))
     let storedFence: ProjectionFence | null = null
 
     if (tombstoneSnap.exists) {
@@ -405,7 +412,12 @@ export async function updateFinishedWorkoutForUser(
     const existingWorkout = parseStoredWorkout(workoutSnap.data())
     assertOwnership(userId, existingWorkout.userId)
     assertFinishedWorkout(existingWorkout)
-    const nextWorkout = parseWorkoutUpdate(input)
+    if (operationSnap?.exists) {
+      const revision = requireMatchingReceipt(operationSnap.data()!, userId, workoutDocumentId, requestHash!)
+      if (storedFence?.projectionRevision !== revision) throw operationSuperseded()
+      return revision
+    }
+    if (guard && workoutContentBaseline(workoutDocumentId, existingWorkout) !== guard.baseline) throw workoutConflict()
 
     const initialFence: ProjectionFence = {
       projectionState: existingWorkout.materialized ? 'ready' : 'pending',
@@ -444,6 +456,9 @@ export async function updateFinishedWorkoutForUser(
       })
     }
 
+    if (operationRef) transaction.create(operationRef, {
+      userId, workoutId: workoutDocumentId, action: 'update', baseline: guard!.baseline, requestHash, projectionRevision,
+    })
     return projectionRevision
   })
 
@@ -472,8 +487,11 @@ export async function deleteFinishedWorkoutForUser(
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
   const workoutRef = database.collection('workouts').doc(workoutDocumentId)
   const tombstoneRef = database.collection('closedSessions').doc(workoutDocumentId)
+  const guard = parseWorkoutMutationGuard(options.guard)
+  const operationRef = guard ? database.collection('workoutMutationOperations').doc(`${userId}_${guard.operationId}`) : null
+  const requestHash = guard ? mutationRequestHash(userId, workoutDocumentId, 'delete', guard) : null
   const claim = await database.runTransaction(async (transaction) => {
-    const [workoutSnap, tombstoneSnap] = await transaction.getAll(workoutRef, tombstoneRef)
+    const [workoutSnap, tombstoneSnap, operationSnap] = await transaction.getAll(workoutRef, tombstoneRef, ...(operationRef ? [operationRef] : []))
     let storedFence: ProjectionFence | null = null
 
     if (tombstoneSnap.exists) {
@@ -492,6 +510,13 @@ export async function deleteFinishedWorkoutForUser(
       assertFinishedWorkout(workout)
     }
 
+    if (operationSnap?.exists) {
+      const revision = requireMatchingReceipt(operationSnap.data()!, userId, workoutDocumentId, requestHash!)
+      if (storedFence?.projectionRevision !== revision || storedFence.projectionState !== 'deleted') throw operationSuperseded()
+      return storedFence
+    }
+    if (guard && storedFence?.projectionState === 'deleted') throw workoutDeleted()
+    if (guard && workout && workoutContentBaseline(workoutDocumentId, workout) !== guard.baseline) throw workoutConflict()
     if (storedFence?.projectionState === 'deleted') {
       return {
         projectionRevision: storedFence.projectionRevision,
@@ -529,6 +554,10 @@ export async function deleteFinishedWorkoutForUser(
       })
     }
     transaction.delete(workoutRef)
+    if (operationRef) transaction.create(operationRef, {
+      userId, workoutId: workoutDocumentId, action: 'delete', baseline: guard!.baseline, requestHash,
+      projectionRevision: deletedFence.projectionRevision,
+    })
 
     return deletedFence
   })
@@ -555,10 +584,54 @@ export async function deleteFinishedWorkoutForUser(
       expectedRevision: claim.projectionRevision,
       allowedState: 'deleted',
     })
+    await database.runTransaction(async (transaction) => {
+      const tombstone = await transaction.get(tombstoneRef)
+      const fence = parseProjectionFence(tombstone.data()!)
+      if (fence?.projectionRevision !== claim.projectionRevision || fence.projectionState !== 'deleted') throw operationSuperseded()
+      transaction.update(tombstoneRef, { deletionCleanupRevision: claim.projectionRevision })
+    })
     return { status: 'deleted' }
   } catch {
     return { status: 'cleanup_pending' }
   }
+}
+
+export async function readWorkoutMutationState(
+  userId: string, workoutId: string, operationId?: string, options: { db?: Firestore } = {},
+): Promise<WorkoutMutationState> {
+  const database = options.db ?? adminDb
+  const id = validateFirestoreDocumentId(workoutId, 'workoutId')
+  const operationRef = operationId === undefined ? null : database.collection('workoutMutationOperations').doc(`${userId}_${validateMutationOperationId(operationId)}`)
+  return database.runTransaction(async (transaction) => {
+    const [workoutSnap, tombstoneSnap, operationSnap] = await transaction.getAll(
+      database.collection('workouts').doc(id), database.collection('closedSessions').doc(id), ...(operationRef ? [operationRef] : []),
+    )
+    const raw = workoutSnap.data()
+    const tombstone = tombstoneSnap.data()
+    if ((raw && raw.userId !== userId) || (tombstone && tombstone.userId !== userId)) throw workoutNotFound()
+    const fence = tombstone ? parseProjectionFence(requireOwnedDeletionTombstone(tombstone, userId, id)) : null
+    let stored: StoredWorkout | null = null
+    if (raw && fence?.projectionState !== 'deleted') {
+      try { stored = parseStoredWorkout(raw); assertFinishedWorkout(stored) }
+      catch { throw new ApiError(422, 'This workout needs repair before it can be edited.', { code: 'workout_repair_needed' }) }
+    }
+    const receipt = operationSnap?.data()
+    if (receipt && (receipt.userId !== userId || receipt.workoutId !== id)) throw new ApiError(409, 'Operation belongs to another workout.', { code: 'operation_mismatch' })
+    const operation: WorkoutMutationState['operation'] = receipt ? {
+      action: receipt.action,
+      revision: receipt.projectionRevision,
+      status: fence?.projectionRevision !== receipt.projectionRevision ? 'superseded'
+        : receipt.action === 'delete' ? (tombstone?.deletionCleanupRevision === receipt.projectionRevision ? 'complete' : 'committed')
+          : fence?.projectionState === 'ready' ? 'complete' : 'committed',
+    } : null
+    return {
+      status: stored ? 'available' : 'gone',
+      workout: stored ? { id, startedAt: stored.startedAt, finishedAt: stored.finishedAt, label: stored.label, exercises: stored.exercises, materialized: stored.materialized } : null,
+      baseline: stored ? workoutContentBaseline(id, stored) : null,
+      projection: fence?.projectionState ?? (stored ? stored.materialized ? 'ready' : 'pending' : 'absent'),
+      operation,
+    }
+  })
 }
 
 function assertOwnership(currentUserId: string, resourceUserId: string): void {

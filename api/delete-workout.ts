@@ -1,8 +1,11 @@
+import { parseWorkoutMutationGuard } from './_lib/workoutMutationGuard.js'
 import { requireUserId } from './_lib/auth.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
 import { deleteFinishedWorkoutForUser } from './_lib/workoutProjection.js'
 
 interface DeleteWorkoutBody {
+  operationId?: string
+  baseline?: string
   workoutId?: string
 }
 
@@ -21,7 +24,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    const result = await deleteFinishedWorkoutForUser(userId, body.workoutId)
+    const result = await deleteFinishedWorkoutForUser(userId, body.workoutId, { guard: parseWorkoutMutationGuard(body) })
     sendJson(res, 200, result)
   } catch (error) {
     sendApiError(res, error, { fallbackMessage: 'Could not delete the workout.' })

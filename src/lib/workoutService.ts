@@ -1,3 +1,4 @@
+import type { WorkoutMutationGuard, WorkoutMutationState } from '../shared/workoutMutation'
 import {
   type QueryDocumentSnapshot,
   type DocumentData,
@@ -130,10 +131,12 @@ export async function getWorkout(id: string): Promise<WorkoutSummary | null> {
 
 export async function updateWorkout(
   id: string,
-  data: Partial<Pick<WorkoutSummary, 'label' | 'exercises'>>
+  data: Partial<Pick<WorkoutSummary, 'label' | 'exercises'>>,
+  guard?: WorkoutMutationGuard
 ): Promise<WorkoutUpdateResult> {
   const result = await callAuthedApi<unknown>('/api/update-workout', {
     workoutId: id,
+    ...guard,
     label: data.label ?? null,
     exercises: data.exercises ?? [],
   })
@@ -141,21 +144,33 @@ export async function updateWorkout(
   return result
 }
 
-export async function deleteWorkout(id: string): Promise<WorkoutDeleteResult> {
+export async function deleteWorkout(id: string, guard?: WorkoutMutationGuard): Promise<WorkoutDeleteResult> {
   const user = auth.currentUser
   if (!user) throw new Error('No active user session.')
   const previous = readWorkoutDeleteRecovery(user.uid)
+  const frozenGuard = previous?.workoutId === id ? previous.guard : guard
   writeWorkoutDeleteRecovery(user.uid, previous?.workoutId === id
     ? previous
-    : { workoutId: id, status: 'unknown' })
+    : { workoutId: id, status: 'unknown', ...(frozenGuard ? { guard: frozenGuard } : {}) })
 
   try {
-    const result = await callAuthedApi<unknown>('/api/delete-workout', { workoutId: id }, user.uid)
+    if (previous?.guard) {
+      const state = await readWorkoutMutationState(id, previous.guard.operationId)
+      if (state.operation?.status === 'complete') {
+        clearWorkoutDeleteRecovery(user.uid, id)
+        return { status: 'deleted' }
+      }
+      if (state.operation?.status === 'superseded' || (!state.operation && state.baseline !== previous.guard.baseline)) {
+        clearWorkoutDeleteRecovery(user.uid, id)
+        throw new ApiRejectedError('Workout changed. Review it before deleting.')
+      }
+    }
+    const result = await callAuthedApi<unknown>('/api/delete-workout', { workoutId: id, ...frozenGuard }, user.uid)
     if (!isWorkoutDeleteResult(result)) throw new Error('Invalid server response.')
     if (result.status === 'deleted') {
       clearWorkoutDeleteRecovery(user.uid, id)
     } else if (readWorkoutDeleteRecovery(user.uid)?.workoutId === id) {
-      writeWorkoutDeleteRecovery(user.uid, { workoutId: id, status: 'cleanup_pending' })
+      writeWorkoutDeleteRecovery(user.uid, { workoutId: id, status: 'cleanup_pending', ...(frozenGuard ? { guard: frozenGuard } : {}) })
     }
     return result
   } catch (error) {
@@ -310,4 +325,8 @@ function isWorkoutDeleteResult(value: unknown): value is WorkoutDeleteResult {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export async function readWorkoutMutationState(workoutId: string, operationId?: string): Promise<WorkoutMutationState> {
+  return callAuthedApi<WorkoutMutationState>('/api/workout-mutation-state', { workoutId, ...(operationId ? { operationId } : {}) })
 }

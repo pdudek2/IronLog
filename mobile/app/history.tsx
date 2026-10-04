@@ -1,3 +1,4 @@
+import WorkoutDraftRecovery from '../src/WorkoutDraftRecovery'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
@@ -96,6 +97,7 @@ export default function HistoryScreen() {
       <ActiveWorkoutReturnBar />
       <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
+        <WorkoutDraftRecovery uid={user.uid} />
         <View style={styles.header}>
           <Text accessibilityRole="header" style={styles.title}>History</Text>
           <Text style={styles.subtitle}>

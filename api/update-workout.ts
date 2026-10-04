@@ -3,6 +3,8 @@ import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson
 import { updateFinishedWorkoutForUser } from './_lib/workoutProjection.js'
 
 interface UpdateWorkoutBody {
+  operationId?: string
+  baseline?: string
   workoutId?: string
   label?: string | null
   exercises?: unknown
@@ -24,6 +26,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     }
 
     const result = await updateFinishedWorkoutForUser(userId, body.workoutId, {
+      operationId: body.operationId, baseline: body.baseline,
       label: body.label,
       exercises: body.exercises,
     })

@@ -5,7 +5,7 @@ export function navigationSection(path: string): 'Home' | 'Plans' | 'Workout' | 
   if (path === '/') return 'Workout'
   if (path === '/dashboard') return 'Home'
   if (path.startsWith('/templates') || path === '/exercises' || path.startsWith('/exercises/')) return 'Plans'
-  if (path === '/progress' || path === '/history' || path.startsWith('/workout/')) return 'Progress'
+  if (path === '/progress' || path === '/history' || path.startsWith('/workout/') || path.startsWith('/workout-edit/')) return 'Progress'
   if (path === '/coach') return 'Coach'
 }
 

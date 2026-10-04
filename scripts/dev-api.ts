@@ -1,3 +1,4 @@
+import workoutMutationStateHandler from '../api/workout-mutation-state.ts'
 import { createServer } from 'node:http'
 import aiChatHandler from '../api/ai-chat.ts'
 import aiModelsHandler from '../api/ai-models.ts'
@@ -26,6 +27,7 @@ const routes = new Map<string, RouteHandler>([
   ['/api/replace-session', replaceSessionHandler],
   ['/api/create-exercise', createExerciseHandler],
   ['/api/update-workout', updateWorkoutHandler],
+  ['/api/workout-mutation-state', workoutMutationStateHandler],
 ])
 
 function applyCors(req: ApiRequest, res: ApiResponse) {

@@ -94,6 +94,20 @@ describe('templates rules', () => {
   })
 })
 
+describe('historical workout mutation receipts', () => {
+  it('denies all client receipt access, including the owner', async () => {
+    const receipt = { userId: 'alice', workoutId: 'w', action: 'delete', projectionRevision: 2 }
+    await testEnv.withSecurityRulesDisabled(async context => { await setDoc(doc(context.firestore(), 'workoutMutationOperations', 'alice_operation'), receipt) })
+    for (const uid of ['alice', 'bob']) {
+      const db = testEnv.authenticatedContext(uid).firestore()
+      await assertFails(getDoc(doc(db, 'workoutMutationOperations', 'alice_operation')))
+      await assertFails(setDoc(doc(db, 'workoutMutationOperations', `${uid}_fake`), receipt))
+      await assertFails(updateDoc(doc(db, 'workoutMutationOperations', 'alice_operation'), { projectionRevision: 99 }))
+      await assertFails(deleteDoc(doc(db, 'workoutMutationOperations', 'alice_operation')))
+    }
+  })
+})
+
 describe('exercise creation receipts', () => {
   it('rejects owner and foreign reads, creation, modification and deletion', async () => {
     const receipt = { userId: 'alice', operationId: 'operation-one', exerciseId: 'custom-one', requestHash: 'hash' }

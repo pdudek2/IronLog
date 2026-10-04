@@ -1,3 +1,5 @@
+import type { WorkoutMutationGuard } from '../shared/workoutMutation'
+import { ApiRejectedError } from '../lib/authedApi'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
@@ -8,6 +10,7 @@ import {
 } from 'lucide-react'
 import {
   getWorkout,
+  readWorkoutMutationState,
   deleteWorkout,
   updateWorkout,
   calcVolume,
@@ -164,6 +167,9 @@ export default function WorkoutDetailPage() {
   const [transientDeleteOperation, setTransientDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [saving, setSaving] = useState(false)
+  const editBaseline = useRef<string | null>(null)
+  const pendingEdit = useRef<{ guard: WorkoutMutationGuard; label: string | null; exercises: WorkoutSummary['exercises'] } | null>(null)
+  const deleteGuard = useRef<WorkoutMutationGuard | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [editedLabel, setEditedLabel] = useState('')
@@ -181,6 +187,7 @@ export default function WorkoutDetailPage() {
   const deleteScopeRef = useRef<object | null>(null)
   useEffect(() => {
     deleteScopeRef.current = {}
+    editBaseline.current = null; pendingEdit.current = null; deleteGuard.current = null
     return () => { deleteScopeRef.current = null }
   }, [user?.uid, id])
   if (transientDeleteOperation
@@ -223,15 +230,25 @@ export default function WorkoutDetailPage() {
     setReadAttempt((attempt) => attempt + 1)
   }
 
-  function handleStartEditing() {
-    if (!workout) return
-    setEditedLabel(workout.label ?? '')
-    setEditedExercises(cloneExercises(workout.exercises))
-    setIsEditing(true)
+  async function handleStartEditing() {
+    if (!workout || saving || pendingEdit.current) return
+    const scope = deleteScopeRef.current
+    setSaving(true)
+    try {
+      const state = await readWorkoutMutationState(workout.id)
+      if (scope !== deleteScopeRef.current) return
+      if (!state.workout || !state.baseline) throw new Error('Workout is no longer available.')
+      editBaseline.current = state.baseline
+      setEditedLabel(state.workout.label ?? '')
+      setEditedExercises(cloneExercises(state.workout.exercises))
+      setIsEditing(true)
+    } catch (error) { if (scope === deleteScopeRef.current) toast.error(error instanceof Error ? error.message : 'Could not open editor.') }
+    finally { if (scope === deleteScopeRef.current) setSaving(false) }
   }
 
   function handleCancelEditing() {
-    if (!workout) return
+    if (!workout || pendingEdit.current) return
+    editBaseline.current = null
     setEditedLabel(workout.label ?? '')
     setEditedExercises(cloneExercises(workout.exercises))
     setShowPicker(false)
@@ -239,6 +256,7 @@ export default function WorkoutDetailPage() {
   }
 
   function handleAddExercise(exerciseId: string, name: string, source: ExerciseSource) {
+    if (pendingEdit.current || saving) return
     setEditedExercises((prev) => [
       ...prev,
       { exerciseId, exerciseSource: source, name, sets: [{ weight: 0, reps: 0 }] },
@@ -247,10 +265,12 @@ export default function WorkoutDetailPage() {
   }
 
   function handleRemoveExercise(exerciseIndex: number) {
+    if (pendingEdit.current || saving) return
     setEditedExercises((prev) => prev.filter((_, index) => index !== exerciseIndex))
   }
 
   function handleAddSet(exerciseIndex: number) {
+    if (pendingEdit.current || saving) return
     setEditedExercises((prev) => prev.map((exercise, index) =>
       index === exerciseIndex
         ? { ...exercise, sets: [...exercise.sets, { weight: 0, reps: 0 }] }
@@ -259,6 +279,7 @@ export default function WorkoutDetailPage() {
   }
 
   function handleRemoveSet(exerciseIndex: number, setIndex: number) {
+    if (pendingEdit.current || saving) return
     setEditedExercises((prev) => prev.map((exercise, index) =>
       index === exerciseIndex
         ? { ...exercise, sets: exercise.sets.filter((_, innerIndex) => innerIndex !== setIndex) }
@@ -267,6 +288,7 @@ export default function WorkoutDetailPage() {
   }
 
   function handleSetChange(exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) {
+    if (pendingEdit.current || saving) return
     const numericValue = parseSetDraftValue(field, value)
 
     setEditedExercises((current) => current.map((exercise, currentExerciseIndex) => {
@@ -285,20 +307,31 @@ export default function WorkoutDetailPage() {
   }
 
   async function handleSave() {
-    if (!workout || saving) return
+    if (!workout || saving || !editBaseline.current) return
+    const scope = deleteScopeRef.current
     const validationError = getWorkoutEditError(editedExercises)
     if (validationError) {
       toast.error(validationError)
       return
     }
-    const nextLabel = editedLabel || null
-    const nextExercises = cloneExercises(editedExercises)
+    const nextLabel = pendingEdit.current?.label ?? (editedLabel || null)
+    const nextExercises = pendingEdit.current?.exercises ?? cloneExercises(editedExercises)
+    const isRetry = pendingEdit.current !== null
+    pendingEdit.current ??= { guard: { baseline: editBaseline.current, operationId: crypto.randomUUID() }, label: nextLabel, exercises: nextExercises }
 
     setSaving(true)
     try {
-      const result = await updateWorkout(workout.id, { label: nextLabel, exercises: nextExercises })
+      const frozen = pendingEdit.current
+      let state = isRetry ? await readWorkoutMutationState(workout.id, frozen.guard.operationId) : null
+      if (state && (!state.workout || state.operation?.status === 'superseded' || (!state.operation && state.baseline !== frozen.guard.baseline))) throw new ApiRejectedError('Workout changed. Cancel and reopen the editor.')
+      const result = state?.operation?.status === 'complete' ? { status: 'materialized' as const } : await updateWorkout(workout.id, { label: frozen.label, exercises: frozen.exercises }, frozen.guard)
+      state = await readWorkoutMutationState(workout.id, frozen.guard.operationId)
+      if (scope !== deleteScopeRef.current) return
+      if (!state.workout || state.operation?.status === 'superseded') throw new ApiRejectedError('Workout changed after saving. Cancel and reopen the editor.')
+      pendingEdit.current = null
+      editBaseline.current = null
       setWorkoutResource((current) => current.uid === user?.uid && current.workoutId === id
-        ? { ...current, workout: { ...workout, label: nextLabel, exercises: nextExercises } }
+        ? { ...current, workout: { ...workout, ...state.workout } }
         : current)
       setEditedLabel(nextLabel ?? '')
       setEditedExercises(cloneExercises(nextExercises))
@@ -308,11 +341,13 @@ export default function WorkoutDetailPage() {
         toast.success('Workout saved. Stats will be synced.')
       }
     } catch (err: unknown) {
+      if (scope !== deleteScopeRef.current) return
+      if (err instanceof ApiRejectedError) pendingEdit.current = null
       const msg = err instanceof Error ? err.message : String(err)
       console.error('[updateWorkout error]', err)
       toast.error(`Save error: ${msg}`)
     } finally {
-      setSaving(false)
+      if (scope === deleteScopeRef.current) setSaving(false)
     }
   }
 
@@ -327,7 +362,7 @@ export default function WorkoutDetailPage() {
       : 'error'
     setTransientDeleteOperation({ uid: user.uid, workoutId, status: 'pending' })
     try {
-      const result = await deleteWorkout(workoutId)
+      const result = await deleteWorkout(workoutId, deleteGuard.current ?? undefined)
       if (!isCurrent()) return
       if (result.status !== 'deleted') {
         setTransientDeleteOperation({ uid: user.uid, workoutId, status: result.status })
@@ -357,9 +392,19 @@ export default function WorkoutDetailPage() {
     void runWorkoutDelete(deleteOperation.workoutId)
   }
 
-  function handleDelete() {
-    if (persistedDeleteRecovery || deleteOperation?.status === 'pending') return
-    setConfirmDeleteOpen(true)
+  async function handleDelete() {
+    if (persistedDeleteRecovery || deleteOperation?.status === 'pending' || pendingEdit.current || saving || !workout) return
+    const scope = deleteScopeRef.current
+    setSaving(true)
+    try {
+      const state = await readWorkoutMutationState(workout.id)
+      if (scope !== deleteScopeRef.current) return
+      if (!state.workout || !state.baseline) throw new Error('Workout is no longer available.')
+      deleteGuard.current = { baseline: state.baseline, operationId: crypto.randomUUID() }
+      setWorkoutResource(current => ({ ...current, workout: state.workout }))
+      setConfirmDeleteOpen(true)
+    } catch (error) { if (scope === deleteScopeRef.current) toast.error(error instanceof Error ? error.message : 'Could not check workout.') }
+    finally { if (scope === deleteScopeRef.current) setSaving(false) }
   }
 
   function handleBack() {
@@ -449,7 +494,7 @@ export default function WorkoutDetailPage() {
     <div className="workout-detail-session-actions">
       <motion.button
         onClick={handleCancelEditing}
-        disabled={saving}
+        disabled={saving || !!pendingEdit.current}
         className="workout-detail-action workout-detail-action-secondary disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
       >
@@ -461,14 +506,14 @@ export default function WorkoutDetailPage() {
         className="workout-detail-action workout-detail-action-primary disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
       >
-        {saving ? 'Saving...' : 'Save'}
+        {saving ? 'Saving...' : pendingEdit.current ? 'Check and retry' : 'Save'}
       </motion.button>
     </div>
   ) : (
     <div className="workout-detail-session-actions">
       <motion.button
         onClick={handleStartEditing}
-        disabled={isWorkoutUnavailable}
+        disabled={isWorkoutUnavailable || saving}
         className="workout-detail-action workout-detail-action-secondary"
         whileTap={{ scale: 0.97 }}
       >
@@ -476,7 +521,7 @@ export default function WorkoutDetailPage() {
       </motion.button>
       <motion.button
         onClick={handleDelete}
-        disabled={isWorkoutUnavailable || persistedDeleteRecovery !== null}
+        disabled={isWorkoutUnavailable || saving || persistedDeleteRecovery !== null}
         aria-describedby={deleteOperation?.status === 'error' || (deleteOperation?.status === 'cleanup_pending' || deleteOperation?.status === 'unknown')
           ? deleteFeedbackId
           : undefined}
@@ -613,6 +658,7 @@ export default function WorkoutDetailPage() {
             <select
               id="workout-detail-label"
               value={editedLabel}
+              disabled={saving || !!pendingEdit.current}
               onChange={(event) => setEditedLabel(event.target.value)}
             >
               <option value="">No label</option>

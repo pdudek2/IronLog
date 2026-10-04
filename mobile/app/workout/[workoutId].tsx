@@ -1,3 +1,4 @@
+import WorkoutDraftRecovery from '../../src/WorkoutDraftRecovery'
 import { useCallback, useMemo } from 'react'
 import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -86,6 +87,7 @@ export default function SavedWorkoutScreen() {
           </Pressable>
         </View>
 
+        <WorkoutDraftRecovery uid={user.uid} workoutId={workoutId} />
         {resultIsValid && <View style={styles.resultBanner}>
           <View accessibilityElementsHidden style={styles.resultMark}><Text style={styles.check}>✓</Text></View>
           <View style={styles.resultCopy}><Text style={styles.resultTitle}>Workout saved</Text><Text style={styles.resultSubtitle}>Your completed session is ready below.</Text></View>
@@ -117,6 +119,11 @@ export default function SavedWorkoutScreen() {
           <View style={styles.sessionHead}>
             <Text style={styles.kicker}>{formatWorkoutDate(workout.startedAt)}</Text>
             <Text accessibilityRole="header" style={styles.workoutName}>{heroLabel}</Text>
+          </View>
+
+          <View style={styles.mutationActions}>
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId } })} style={styles.editAction}><Text style={[styles.retryText, { color: '#fff', textAlign: 'center' }]}>Edit workout</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId, action: 'delete' } })} style={styles.retryButton}><Text style={[styles.retryText, { color: '#f0a75a' }]}>Delete</Text></Pressable>
           </View>
 
           <View accessibilityLabel="Workout summary" style={styles.facts}>
@@ -175,6 +182,8 @@ function SummaryFact({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
+  mutationActions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-start', paddingBottom: 16 },
+  editAction: { flex: 1, minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderWidth: 1, borderColor: colors.line, borderRadius: 8 },
   screen: { backgroundColor: colors.background, flex: 1 },
   content: { flexGrow: 1, paddingBottom: 36, paddingHorizontal: 16, paddingTop: 16, experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)' },
   grain: { height: '100%', opacity: 0.024, position: 'absolute', width: '100%' },

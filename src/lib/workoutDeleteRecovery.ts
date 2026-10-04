@@ -1,10 +1,13 @@
+import type { WorkoutMutationGuard } from '../shared/workoutMutation'
 interface StoredWorkoutDeleteRecovery {
   uid: string
+  guard?: WorkoutMutationGuard
   workoutId: string
   status?: 'unknown' | 'cleanup_pending'
 }
 
 export interface WorkoutDeleteRecovery {
+  guard?: WorkoutMutationGuard
   workoutId: string
   status?: 'unknown' | 'cleanup_pending'
 }
@@ -37,7 +40,7 @@ export function readWorkoutDeleteRecovery(
   try {
     const stored = JSON.parse(raw) as unknown
     if (!isStoredWorkoutDeleteRecovery(stored) || stored.uid !== uid) return null
-    return { workoutId: stored.workoutId, ...(stored.status && { status: stored.status }) }
+    return { workoutId: stored.workoutId, ...(stored.guard ? { guard: stored.guard } : {}), ...(stored.status && { status: stored.status }) }
   } catch {
     return null
   }
@@ -70,6 +73,7 @@ function isStoredWorkoutDeleteRecovery(value: unknown): value is StoredWorkoutDe
     && value.uid.length > 0
     && typeof value.workoutId === 'string'
     && value.workoutId.length > 0
+    && (value.guard === undefined || (isRecord(value.guard) && typeof value.guard.operationId === 'string' && /^[A-Za-z0-9_-]{8,128}$/.test(value.guard.operationId) && typeof value.guard.baseline === 'string' && /^[a-f0-9]{64}$/.test(value.guard.baseline)))
     && (value.status === undefined || value.status === 'unknown' || value.status === 'cleanup_pending')
 }
 

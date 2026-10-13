@@ -493,3 +493,17 @@ test('confirmed profile refresh supersedes a late startup units read/error witho
     h.controller.dispose()
   }
 })
+
+test('a restarted timer is journaled and saved like any other draft change', async () => {
+  const h = harness()
+  await loadServer(h)
+  h.controller.refreshStart()
+  await wait()
+  const restarted = ready(h.states).session.startedAt
+  assert.ok(restarted > 1_000)
+  h.controller.retrySave()
+  await wait()
+  assert.equal(h.saves.length, 1)
+  assert.equal(h.saves[0]?.session.startedAt, restarted)
+  assert.equal(h.saves[0]?.session.sessionId, 'session-user-a')
+})

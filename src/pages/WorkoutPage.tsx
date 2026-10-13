@@ -7,6 +7,7 @@ import { useWorkoutStore, type WorkoutExercise } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { getRecentWorkouts } from '../lib/workoutService'
+import { recentExercisePicks, type RecentExercisePick } from '../shared/recentExercises'
 import { discardWorkoutLifecycle, finishWorkoutLifecycle } from '../lib/workoutLifecycle'
 import { finalizeWorkout, WorkoutClosureError } from '../lib/workoutClosureService'
 import type { WorkoutClosureIntent } from '../lib/workoutClosureIntent'
@@ -331,7 +332,7 @@ export default function WorkoutPage() {
   }, [])
 
   // Quick picks — top exercises from recent sessions, shown when live session is empty
-  const [quickPicks, setQuickPicks] = useState<Array<{ id: string; name: string; source: 'global' | 'user'; count: number }>>([])
+  const [quickPicks, setQuickPicks] = useState<RecentExercisePick[]>([])
   const activeExercises = active?.exercises ?? null
   const exerciseSnapshotByClientId = useMemo(() => {
     if (!activeExercises) return new Map<string, WorkoutExercise>()
@@ -343,21 +344,7 @@ export default function WorkoutPage() {
   useEffect(() => {
     if (!user) return
     getRecentWorkouts(user.uid, 10)
-      .then((wks) => {
-        const map = new Map<string, { id: string; name: string; source: 'global' | 'user'; count: number }>()
-        for (const w of wks) {
-          for (const ex of w.exercises) {
-            if (!ex.exerciseId) continue
-            const source: 'global' | 'user' = ex.exerciseSource === 'user' ? 'user' : 'global'
-            const key = `${source}:${ex.exerciseId}`
-            const existing = map.get(key)
-            if (existing) existing.count += 1
-            else map.set(key, { id: ex.exerciseId, name: ex.name, source, count: 1 })
-          }
-        }
-        const top = Array.from(map.values()).sort((a, b) => b.count - a.count).slice(0, 6)
-        setQuickPicks(top)
-      })
+      .then((wks) => setQuickPicks(recentExercisePicks(wks)))
       .catch(() => {})
   }, [user])
 

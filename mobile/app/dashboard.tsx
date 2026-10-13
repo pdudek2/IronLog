@@ -18,6 +18,8 @@ import { formatCompactVolume } from '../../src/shared/weightUnits'
 import { readHome, readTemplates } from '../src/firebase'
 import { deriveWorkout, formatExercisePreview, formatWorkoutDuration } from '../src/history'
 import { canShowHomeSummary, deriveHome, formatWeekRange, getGreeting } from '../src/home'
+import { publishStreak } from '../src/streak'
+import { calcStreak } from '../../src/shared/streak'
 import { readStateForKey, startRead, type ReadState } from '../src/scopedRead'
 import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../src/runtime'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
@@ -77,6 +79,7 @@ export default function DashboardScreen() {
   const data = state.status === 'ready' ? state.data : null
   const showSummary = canShowHomeSummary(state)
   const summary = useMemo(() => data && showSummary ? deriveHome(data.workouts, now) : null, [data, now, showSummary])
+  useEffect(() => { if (uid && data && showSummary) publishStreak(uid, calcStreak(data.workouts)) }, [uid, data, showSummary])
   const retry = () => setAttempt((value) => value + 1)
   const confirmedEmpty = state.status === 'ready' && !state.fromCache && data?.workouts.length === 0
   const cacheEmpty = state.status === 'ready' && state.fromCache && data?.workouts.length === 0

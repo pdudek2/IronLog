@@ -2,7 +2,7 @@ import { useOptionalLaunchRuntime } from '../src/launchRuntime'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { StatusBar } from 'expo-status-bar'
 import { useIsFocused, useRouter } from 'expo-router'
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   AccessibilityInfo,
   Animated,
@@ -31,7 +31,9 @@ import { EXERCISE_CATEGORY_COLORS, EXERCISE_CATEGORY_LABELS } from '../../src/li
 import {
   displayWeightDeltaToKg,
 } from '../../src/shared/weightUnits'
-import { login, logout, readPreviousSets, readExerciseMetadata, type AuthUser } from '../src/firebase'
+import { login, logout, readPreviousSets, readExerciseMetadata, readRecentWorkouts, type AuthUser } from '../src/firebase'
+import { recentExercisePicks } from '../../src/shared/recentExercises'
+import { getStaleSessionAgeLabel, isActiveSessionStale } from '../../src/lib/sessionDuration'
 import {
   formatElapsed,
   summarizeExercise,
@@ -500,6 +502,9 @@ function WorkoutLedger({ uid, session, units, stale, editing, rejectedEdit }: { 
   const catalog = useSessionRead(JSON.stringify([uid, sessionKey]), loadMetadata, hasCustom || picking)
   const full = session.exercises.length >= MAX_SESSION_EXERCISES
   const openPicker = () => { catalog.retry(); setPicking(true) }
+  const loadRecent = useCallback(() => readRecentWorkouts(uid, 10), [uid])
+  const recent = useSessionRead(`recent-exercises:${uid}`, loadRecent, session.exercises.length === 0)
+  const quickPicks = recent.state.status === 'ready' ? recentExercisePicks(recent.state.data) : []
   const picker = picking && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} onClose={() => setPicking(false)}
     onSelect={(id, name, source) => {
       setPicking(false)
@@ -512,6 +517,22 @@ function WorkoutLedger({ uid, session, units, stale, editing, rejectedEdit }: { 
         <PlusIcon color={colors.textStrong} /><Text style={styles.primaryActionText}>Add exercise</Text>
       </Pressable>
     </View>
+    {quickPicks.length > 0 && <View style={styles.quickStart}>
+      <Text accessibilityRole="header" style={styles.quickStartTitle}>Recently used</Text>
+      <View style={styles.quickPickList}>
+        {quickPicks.map(({ id, name, source }) => {
+          const category = exerciseCatalog.find((exercise) => exercise.id === id)?.category
+          return <Pressable key={`${source}:${id}`} accessibilityRole="button" onPress={() => setManual(editing.addExercise(id, name, source))}
+            style={({ pressed }) => [styles.quickPick, pressed && styles.setStepperPressed]}>
+            <View style={styles.quickPickCopy}>
+              <Text numberOfLines={1} style={styles.quickPickName}>{name}</Text>
+              {category && <Text style={styles.quickPickMeta}>{EXERCISE_CATEGORY_LABELS[category] ?? category}</Text>}
+            </View>
+            <Text style={styles.quickPickAction}>Add</Text>
+          </Pressable>
+        })}
+      </View>
+    </View>}
     {picker}
   </View>
   return <View style={styles.exerciseStack}>
@@ -618,7 +639,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const closureRuntime = useClosureRuntime()
   const {
     state, retry, retrySave, discardLocalChanges,
-    updateSet, adjustSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel,
+    updateSet, adjustSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, refreshStart,
   } = active
   const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
@@ -643,6 +664,17 @@ function SessionScreen({ user }: { user: AuthUser }) {
   }
 
   const session = state.status === 'ready' ? state.session : null
+  // Decided when the session or the screen comes into view, so a long workout is not interrupted mid-set.
+  const sessionId = session?.sessionId, startedAt = session?.startedAt
+  const oldSession = useMemo(() => startedAt !== undefined && isActiveSessionStale({ startedAt }), [sessionId, startedAt, isFocused])
+  const resumePrompt = oldSession && !sessionClosed
+  const restartAfterDiscard = useRef<string | null>(null)
+  useEffect(() => {
+    const discarded = restartAfterDiscard.current
+    if (!discarded || state.status !== 'empty' || closure.status !== 'ready' || completed?.action !== 'discard' || completed.sessionId !== discarded) return
+    restartAfterDiscard.current = null
+    if (isFocused) void launch?.start({ kind: 'empty' })
+  }, [state.status, closure.status, completed, isFocused, launch])
   // Closure is decided against the server's revision, so it waits for local edits to be acknowledged.
   const closable = (action: () => void) => () => {
     if (!isFocused || state.status !== 'ready' || sessionLocked) return
@@ -658,6 +690,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
     { text: 'Back', style: 'cancel' },
     { text: 'Discard workout', style: 'destructive', onPress: () => session && startClosure('discard', session) },
   ]))
+  const discardOld = closable(() => { if (session) { restartAfterDiscard.current = session.sessionId; startClosure('discard', session) } })
   const discardEmpty = () => Alert.alert('Finish without saving?', 'No sets are marked complete. The session will be discarded without saving a workout.', [
     { text: 'Back', style: 'cancel' },
     { text: 'Discard session', style: 'destructive', onPress: () => session && startClosure('discard', session) },
@@ -697,7 +730,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true, listener: navigation.onScroll })}
       >
       <GrainBackdrop scrollY={scrollY} />
-      {state.status === 'ready' && !sessionClosed ? (
+      {state.status === 'ready' && !sessionClosed && !resumePrompt ? (
         <View style={styles.lifecycleBar}>
           <View style={styles.lifecycleBarInner}>
             <Elapsed session={state.session} />
@@ -769,7 +802,18 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-        {state.status === 'ready' && !sessionClosed && (<>
+        {resumePrompt && session && (
+          <View style={styles.resumePanel}>
+            <Text style={styles.resumeEyebrow}>Active session</Text>
+            <Text accessibilityRole="header" style={styles.resumeTitle}>Resume an old session?</Text>
+            <Text style={styles.resumeCopy}>You have an active session from {getStaleSessionAgeLabel(session.startedAt)} ago. Resume your exercises with a refreshed timer, or discard the session and start again.</Text>
+            <View style={styles.resumeActions}>
+              <ActionButton label="Continue" disabled={sessionLocked} onPress={guardClosureInteraction(canEditCurrentSession, refreshStart)} />
+              <ActionButton label="Discard and start again" disabled={sessionLocked} onPress={discardOld} secondary />
+            </View>
+          </View>
+        )}
+        {state.status === 'ready' && !sessionClosed && !resumePrompt && (<>
         {replacementLocked && <View accessibilityRole="alert" style={styles.syncNotice}><Text style={styles.syncCopy}>{launch?.state.message ?? 'Replacing workout…'}</Text>{launch?.state.status !== 'starting' && <Pressable accessibilityRole="button" onPress={() => void launch?.retry()} style={styles.syncAction}><Text style={styles.syncActionText}>Check replacement</Text></Pressable>}</View>}
         <View pointerEvents={sessionLocked ? 'none' : 'auto'}>
           <View style={styles.workoutLabelsBand}>
@@ -1004,6 +1048,19 @@ const styles = StyleSheet.create({
   inlineAddExercise: { backgroundColor: colors.surfaceRaised, borderColor: colors.line, borderWidth: 1, marginTop: 16 },
   emptyWorkout: { borderBottomColor: colors.lineStrong, borderBottomWidth: 1, borderTopColor: colors.lineStrong, borderTopWidth: 1, paddingVertical: 22.4 },
   emptyWorkoutAction: { maxWidth: 320, width: '100%' },
+  resumePanel: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 8, borderWidth: 1, margin: 16, padding: 24 },
+  resumeEyebrow: { color: colors.accent, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, marginBottom: 8 },
+  resumeTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 24, lineHeight: 26.4 },
+  resumeCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, marginTop: 12 },
+  resumeActions: { gap: 12, marginTop: 24 },
+  quickStart: { marginTop: 21.6 },
+  quickStartTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.72, marginBottom: 11.2 },
+  quickPickList: { borderTopColor: colors.line, borderTopWidth: 1 },
+  quickPick: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: 1, flexDirection: 'row', gap: 16, justifyContent: 'space-between', minHeight: 57.6, paddingVertical: 12 },
+  quickPickCopy: { flexShrink: 1, gap: 2.88 },
+  quickPickName: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4 },
+  quickPickMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.84 },
+  quickPickAction: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.8 },
   labelTabs: { paddingRight: 32 },
   labelTab: { borderBottomColor: 'transparent', borderBottomWidth: 2, justifyContent: 'center', minHeight: 44, paddingHorizontal: 12 },
   labelTabActive: { borderBottomColor: colors.accent },

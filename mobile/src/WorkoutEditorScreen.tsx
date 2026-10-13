@@ -16,7 +16,7 @@ import { WorkoutEditorController } from './workoutEditorController'
 import { readWorkoutMutation, sendWorkoutMutation } from './workoutMutationNative'
 import { normalizeWorkoutDraft, workoutDraftDirty, type WorkoutDraft, type WorkoutDraftExercise } from './workoutEditor'
 import { formatWorkoutDate, formatWorkoutDuration } from './history'
-import BottomNavigation, { useBottomNavigation, type NavigationExit } from './BottomNavigation'
+import type { NavigationExit } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import ExercisePicker from './ExercisePicker'
@@ -29,7 +29,7 @@ export default function WorkoutEditorScreen({ workoutId, deleting }: { workoutId
   return user ? <Editor key={`${user.uid}:${workoutId}`} uid={user.uid} workoutId={workoutId} deleting={deleting} /> : <View style={styles.screen}><Text style={styles.muted}>Restoring sign-in…</Text></View>
 }
 function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; deleting: boolean }) {
-  const active = useActiveRuntime(), router = useRouter(), nav = useBottomNavigation(), insets = useSafeAreaInsets()
+  const active = useActiveRuntime(), router = useRouter(), insets = useSafeAreaInsets()
   const [controller] = useState(() => new WorkoutEditorController({ uid, workoutId, owner: id(), units: active.state.units, newId: id, journal: workoutEditorJournal,
     read: op => readWorkoutMutation(uid, workoutId, op), send: op => sendWorkoutMutation(uid, op) }))
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot)
@@ -87,11 +87,11 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
     change(d => ({ ...d, exercises: d.exercises.map(ex => ex.rowId === rowId ? edit(ex) : ex) }))
   }
   const locked = state.busy || !!draft?.pending
-  return <SafeAreaView edges={['top']} style={styles.screen} onFocus={nav.onFocus} onBlur={nav.onBlur}>
+  return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" /><HistoryHeader onRequestAction={(_, go) => leave(go)} /><ActiveWorkoutReturnBar onRequestExit={leave} />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
-      <ScrollView stickyHeaderIndices={[1]} onScroll={nav.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
+      <ScrollView stickyHeaderIndices={[1]} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         <View>
           <View style={{ alignSelf: 'flex-start' }}><Action title="‹  Back" onPress={() => leave(() => router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }))} /></View>
           {!draft && state.busy && <ActivityIndicator color={c.accent} />}
@@ -131,7 +131,6 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
       </ScrollView>
 
     </KeyboardAvoidingView>
-    <BottomNavigation {...nav} onRequestExit={leave} />
     {picking && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} onClose={() => setPicking(false)} onSelect={(exerciseId, name, exerciseSource) => {
       change(d => ({ ...d, exercises: [...d.exercises, { rowId: id(), exerciseId, name, exerciseSource, sets: [{ rowId: id(), weight: '0', reps: '' }] }] })); setPicking(false)
     }} />}

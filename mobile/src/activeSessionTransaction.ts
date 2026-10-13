@@ -30,5 +30,5 @@ export async function updateExistingActiveSession(
   }
   if (data.sessionRevision === requestRevision) return
   if ((data.sessionRevision ?? null) !== expectedRevision) throw new NativeActiveSessionConflictError()
-  transaction.update({ sessionId: stored.sessionId, templateId: stored.templateId, label: session.label?.trim() || null, exercises: session.exercises, sessionRevision: requestRevision, updatedAt })
+  transaction.update({ sessionId: stored.sessionId, templateId: stored.templateId, startedAt: session.startedAt, label: session.label?.trim() || null, exercises: session.exercises, sessionRevision: requestRevision, updatedAt })
 }

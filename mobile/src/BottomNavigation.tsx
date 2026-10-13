@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
-import { Keyboard, Pressable, StyleSheet, Text, View, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native'
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native'
 import { useFocusEffect, usePathname, useRouter, type Href } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
@@ -24,8 +24,9 @@ export function useBottomNavigation() {
     scroll.current = scrollNavigation(scroll.current, event.nativeEvent.contentOffset.y)
     setHidden(scroll.current.hidden)
   }, [])
+  // Focus also bubbles from buttons under a hardware keyboard or D-pad; only a text input hides the bar.
   return { onScroll, hidden, keyboard: keyboard || inputFocused,
-    onFocus: () => setInputFocused(true), onBlur: () => setInputFocused(false) }
+    onFocus: () => setInputFocused(TextInput.State.currentlyFocusedInput() != null), onBlur: () => setInputFocused(false) }
 }
 
 function Icon({ name, color }: { name: string; color: string }) {

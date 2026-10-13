@@ -48,7 +48,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
   const destination = () => draft?.pending?.action === 'delete' || state.phase === 'gone' ? '/history' as const : { pathname: '/workout/[workoutId]' as const, params: { workoutId } }
   function finishNavigation() {
     if (!focused.current || navigated.current) return
-    navigated.current = true; router.replace(destination())
+    navigated.current = true; router.dismissTo(destination())
   }
   useEffect(() => {
     if (['complete', 'gone', 'pending'].includes(state.phase)) finishNavigation()
@@ -56,7 +56,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
   useEffect(() => {
     if (!initialDelete.current || !draft || state.busy) return
     initialDelete.current = false
-    if (!draft.pending) setDialog({ title: 'Delete workout?', copy: `${draft.original.label || 'Workout'} · ${formatWorkoutDate(draft.startedAt)}\nThis removes the workout and updates your records.`, confirm: 'Delete workout', cancel: () => { if (!workoutDraftDirty(draft)) void controller.discard(); else router.replace({ pathname: '/workout/[workoutId]', params: { workoutId } }) }, run: () => { void controller.submit('delete') } })
+    if (!draft.pending) setDialog({ title: 'Delete workout?', copy: `${draft.original.label || 'Workout'} · ${formatWorkoutDate(draft.startedAt)}\nThis removes the workout and updates your records.`, confirm: 'Delete workout', cancel: () => { if (!workoutDraftDirty(draft)) void controller.discard(); else router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }) }, run: () => { void controller.submit('delete') } })
   }, [draft, state.busy])
   const leave: NavigationExit = proceed => {
     void (async () => {
@@ -73,12 +73,12 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
     focused.current = true; navigated.current = false
     if (['complete', 'gone', 'pending'].includes(controller.state.phase)) {
       navigated.current = true
-      router.replace(controller.state.draft?.pending?.action === 'delete' || controller.state.phase === 'gone' ? '/history' : { pathname: '/workout/[workoutId]', params: { workoutId } })
+      router.dismissTo(controller.state.draft?.pending?.action === 'delete' || controller.state.phase === 'gone' ? '/history' : { pathname: '/workout/[workoutId]', params: { workoutId } })
     }
     else void controller.open()
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (Keyboard.isVisible()) { Keyboard.dismiss(); return true }
-      leave(() => router.replace({ pathname: '/workout/[workoutId]', params: { workoutId } })); return true
+      leave(() => router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } })); return true
     })
     return () => { focused.current = false; subscription.remove() }
   }, [controller, workoutId]))
@@ -93,7 +93,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
       <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
       <ScrollView stickyHeaderIndices={[1]} onScroll={nav.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         <View>
-          <View style={{ alignSelf: 'flex-start' }}><Action title="‹  Back" onPress={() => leave(() => router.replace({ pathname: '/workout/[workoutId]', params: { workoutId } }))} /></View>
+          <View style={{ alignSelf: 'flex-start' }}><Action title="‹  Back" onPress={() => leave(() => router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }))} /></View>
           {!draft && state.busy && <ActivityIndicator color={c.accent} />}
           {draft && <View style={styles.heading}><Text style={styles.kicker}>{formatWorkoutDate(draft.startedAt)}</Text><Text accessibilityRole="header" style={styles.title}>{draft.label || 'Workout'}</Text></View>}
         </View>
@@ -104,7 +104,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
           {state.storageFailed ? <Action title="Retry draft" onPress={() => void controller.retryStorage()} />
             : state.phase === 'conflict' ? <Action outlined title="Discard draft" onPress={() => setDialog({ title: 'Discard this draft?', copy: 'The latest saved workout will be kept.', confirm: 'Discard draft', run: () => { void controller.discard() } })} />
               : draft ? <>
-                <Action grow outlined title={draft.pending ? 'Back to history' : 'Cancel'} disabled={state.busy} onPress={() => leave(() => router.replace(draft.pending ? '/history' : { pathname: '/workout/[workoutId]', params: { workoutId } }))} />
+                <Action grow outlined title={draft.pending ? 'Back to history' : 'Cancel'} disabled={state.busy} onPress={() => leave(() => router.dismissTo(draft.pending ? '/history' : { pathname: '/workout/[workoutId]', params: { workoutId } }))} />
                 <Action grow primary title={state.busy ? 'Saving…' : draft.pending ? 'Check and retry' : 'Save'} disabled={state.busy} onPress={() => void controller.submit(draft.pending?.action ?? 'update')} />
               </> : <Action title="Try again" disabled={state.busy} onPress={() => void controller.open()} />}
         </View>

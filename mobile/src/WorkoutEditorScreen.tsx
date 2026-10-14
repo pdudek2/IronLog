@@ -15,7 +15,7 @@ import { workoutEditorJournal } from './fileWorkoutEditorJournal'
 import { WorkoutEditorController } from './workoutEditorController'
 import { readWorkoutMutation, sendWorkoutMutation } from './workoutMutationNative'
 import { normalizeWorkoutDraft, workoutDraftDirty, type WorkoutDraft, type WorkoutDraftExercise } from './workoutEditor'
-import { formatWorkoutDate, formatWorkoutDuration } from './history'
+import { formatWorkoutDate, formatWorkoutDuration, workoutHeroLabel } from './history'
 import type { NavigationExit } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
@@ -45,10 +45,14 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
   try { if (draft) content = normalizeWorkoutDraft(draft) } catch { /* keep the last saved summary while a field is incomplete */ }
   const sets = content?.exercises.flatMap(ex => ex.sets) ?? []
   useEffect(() => () => controller.dispose(), [controller])
-  const destination = () => draft?.pending?.action === 'delete' || state.phase === 'gone' ? '/history' as const : { pathname: '/workout/[workoutId]' as const, params: { workoutId } }
+  const headingFor = (workout: { label?: string | null; exercises: { exerciseId?: string; exerciseSource: string }[] }) =>
+    workoutHeroLabel(workout.label, workout.exercises.map(ex => metadata.get(`${ex.exerciseSource}:${ex.exerciseId}`)?.category))
+  // The editor always sits on this workout's detail; web replaces it with History, so drop it too and Back cannot reopen a deleted workout.
+  const toHistory = () => { router.dismiss(); router.dismissTo('/history') }
+  const exitAfter = (toList: boolean) => toList ? toHistory() : router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } })
   function finishNavigation() {
     if (!focused.current || navigated.current) return
-    navigated.current = true; router.dismissTo(destination())
+    navigated.current = true; exitAfter(draft?.pending?.action === 'delete' || state.phase === 'gone')
   }
   useEffect(() => {
     if (['complete', 'gone', 'pending'].includes(state.phase)) finishNavigation()
@@ -56,7 +60,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
   useEffect(() => {
     if (!initialDelete.current || !draft || state.busy) return
     initialDelete.current = false
-    if (!draft.pending) setDialog({ title: 'Delete workout?', copy: `${draft.original.label || 'Workout'} · ${formatWorkoutDate(draft.startedAt)}\nThis removes the workout and updates your records.`, confirm: 'Delete workout', cancel: () => { if (!workoutDraftDirty(draft)) void controller.discard(); else router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }) }, run: () => { void controller.submit('delete') } })
+    if (!draft.pending) setDialog({ title: 'Delete workout?', copy: `${headingFor(draft.original)} · ${formatWorkoutDate(draft.startedAt)}\nThis removes the workout and updates your records.`, confirm: 'Delete workout', cancel: () => { if (!workoutDraftDirty(draft)) void controller.discard(); else router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }) }, run: () => { void controller.submit('delete') } })
   }, [draft, state.busy])
   const leave: NavigationExit = proceed => {
     void (async () => {
@@ -73,7 +77,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
     focused.current = true; navigated.current = false
     if (['complete', 'gone', 'pending'].includes(controller.state.phase)) {
       navigated.current = true
-      router.dismissTo(controller.state.draft?.pending?.action === 'delete' || controller.state.phase === 'gone' ? '/history' : { pathname: '/workout/[workoutId]', params: { workoutId } })
+      exitAfter(controller.state.draft?.pending?.action === 'delete' || controller.state.phase === 'gone')
     }
     else void controller.open()
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -95,7 +99,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
         <View>
           <View style={{ alignSelf: 'flex-start' }}><Action title="‹  Back" onPress={() => leave(() => router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }))} /></View>
           {!draft && state.busy && <ActivityIndicator color={c.accent} />}
-          {draft && <View style={styles.heading}><Text style={styles.kicker}>{formatWorkoutDate(draft.startedAt)}</Text><Text accessibilityRole="header" style={styles.title}>{draft.label || 'Workout'}</Text></View>}
+          {draft && <View style={styles.heading}><Text style={styles.kicker}>{formatWorkoutDate(draft.startedAt)}</Text><Text accessibilityRole="header" style={styles.title}>{headingFor(draft)}</Text></View>}
         </View>
       <View style={styles.dock}>
         {state.error && <Text accessibilityRole="alert" style={styles.error}>{state.error}</Text>}
@@ -104,7 +108,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
           {state.storageFailed ? <Action title="Retry draft" onPress={() => void controller.retryStorage()} />
             : state.phase === 'conflict' ? <Action outlined title="Discard draft" onPress={() => setDialog({ title: 'Discard this draft?', copy: 'The latest saved workout will be kept.', confirm: 'Discard draft', run: () => { void controller.discard() } })} />
               : draft ? <>
-                <Action grow outlined title={draft.pending ? 'Back to history' : 'Cancel'} disabled={state.busy} onPress={() => leave(() => router.dismissTo(draft.pending ? '/history' : { pathname: '/workout/[workoutId]', params: { workoutId } }))} />
+                <Action grow outlined title={draft.pending ? 'Back to history' : 'Cancel'} disabled={state.busy} onPress={() => leave(() => exitAfter(!!draft.pending))} />
                 <Action grow primary title={state.busy ? 'Saving…' : draft.pending ? 'Check and retry' : 'Save'} disabled={state.busy} onPress={() => void controller.submit(draft.pending?.action ?? 'update')} />
               </> : <Action title="Try again" disabled={state.busy} onPress={() => void controller.open()} />}
         </View>

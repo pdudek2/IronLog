@@ -1,3 +1,4 @@
+import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../../src/lib/sessionDuration'
 import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import type { ExerciseSource } from './session'
@@ -181,6 +182,15 @@ export function formatExercisePreview(exerciseNames: string[]): string {
   const visibleNames = exerciseNames.slice(0, 3)
   const hiddenCount = exerciseNames.length - visibleNames.length
   return `${visibleNames.join(' · ')}${hiddenCount > 0 ? ` · +${hiddenCount}` : ''}`
+}
+
+// Same title as the web workout page: the label, else the category most exercises belong to (first seen wins a tie).
+export function workoutHeroLabel(label: string | null | undefined, categories: (string | undefined)[]): string {
+  if (label) return label
+  const counts = new Map<string, number>()
+  for (const category of categories) if (category) counts.set(category, (counts.get(category) ?? 0) + 1)
+  const top = [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0]
+  return top ? EXERCISE_CATEGORY_LABELS[top] ?? 'Workout' : 'Workout'
 }
 
 export function workoutVolumeLabel(volumeKg: number, units: WeightUnits): string {

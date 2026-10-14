@@ -41,7 +41,8 @@ export function useWorkoutClosure(uid: string) {
   useEffect(() => {
     if (!current.completed) return
     const workoutId = controller.consumeFinishedNavigation(pathname === '/')
-    if (workoutId) router.push({ pathname: '/workout/[workoutId]', params: { workoutId } })
+    // Like web, the saved workout replaces the closed session so Back never returns to it.
+    if (workoutId) router.replace({ pathname: '/workout/[workoutId]', params: { workoutId, saved: '1' } })
   }, [controller, current.completed, pathname, router])
 
   return {

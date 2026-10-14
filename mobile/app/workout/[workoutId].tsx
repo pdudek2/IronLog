@@ -14,7 +14,7 @@ import { useSessionRead } from '../../src/useSessionRead'
 import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../../src/runtime'
 import ActiveWorkoutReturnBar from '../../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../../src/HistoryHeader'
-import { formatWorkoutDate, formatWorkoutDuration, workoutSetVolumeLabel } from '../../src/history'
+import { formatWorkoutDate, formatWorkoutDuration, workoutHeroLabel, workoutSetVolumeLabel } from '../../src/history'
 import grainTexture from '../../assets/grain.png'
 
 const colors = {
@@ -23,7 +23,7 @@ const colors = {
 }
 
 export default function SavedWorkoutScreen() {
-  const { workoutId: routeId } = useLocalSearchParams<{ workoutId: string }>()
+  const { workoutId: routeId, saved } = useLocalSearchParams<{ workoutId: string; saved?: string }>()
   const workoutId = Array.isArray(routeId) ? routeId[0] ?? '' : routeId ?? ''
   const validWorkoutId = Boolean(workoutId && !workoutId.includes('/'))
   const { user } = useAuthRuntime()
@@ -39,8 +39,11 @@ export default function SavedWorkoutScreen() {
   const metadata = useSessionRead(`history-exercises:${uid ?? ''}`, metadataLoader, Boolean(uid))
   const workout = workoutRead.state.status === 'ready' ? workoutRead.state.data : null
 
+  // Like web, only the navigation that follows Finish shows the result, and its Back leaves for Home.
+  const resultIsValid = saved === '1' && closure?.completed?.action === 'finish' && closure.completed.workoutId === workoutId
   const back = () => {
-    if (router.canGoBack()) router.back()
+    if (resultIsValid) router.dismissTo('/dashboard')
+    else if (router.canGoBack()) router.back()
     else router.replace('/history')
   }
   const retryWorkout = workoutRead.retry
@@ -51,21 +54,11 @@ export default function SavedWorkoutScreen() {
     }
     return entries
   }, [metadata.state])
-  const categoryCounts = useMemo(() => {
-    const counts = new Map<string, number>()
-    if (workout) for (const exercise of workout.exercises) {
-      if (!exercise.exerciseId) continue
-      const category = exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)?.category
-      if (category) counts.set(category, (counts.get(category) ?? 0) + 1)
-    }
-    return counts
-  }, [exerciseMap, workout])
-  const topFocus = [...categoryCounts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0]
-  const heroLabel = workout?.label ?? (topFocus ? EXERCISE_CATEGORY_LABELS[topFocus] ?? 'Workout' : 'Workout')
+  const heroLabel = workoutHeroLabel(workout?.label, workout?.exercises.map((exercise) => exercise.exerciseId
+    ? exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)?.category : undefined) ?? [])
   const totalSets = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0) ?? 0
   const totalReps = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.reduce((inner, set) => inner + set.reps, 0), 0) ?? 0
   const volume = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.reduce((inner, set) => inner + set.weight * set.reps, 0), 0) ?? 0
-  const resultIsValid = closure?.completed?.action === 'finish' && closure.completed.workoutId === workoutId
 
   if (!user) return (
     <SafeAreaView edges={['top']} style={styles.screen}>

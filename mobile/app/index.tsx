@@ -98,6 +98,8 @@ function ActionButton({ label, onPress, secondary = false, disabled = false }: {
 }
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
+// A cold start opens `/`; web sends `/` to `/dashboard`. Consumed by the first settled session screen of this app process.
+const coldStart = { landing: true }
 
 function GrainBackdrop({ scrollY }: { scrollY: Animated.Value }) {
   return (
@@ -190,6 +192,7 @@ function LoginForm() {
     setError(null)
     try {
       await login(email, password)
+      coldStart.landing = false
       router.replace('/dashboard')
     } catch (cause) {
       setError({ field: 'password', message: getAuthErrorMessage(cause, 'login') })
@@ -675,6 +678,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
     restartAfterDiscard.current = null
     if (isFocused) void launch?.start({ kind: 'empty' })
   }, [state.status, closure.status, completed, isFocused, launch])
+  // Only a server-confirmed absence with no closure result goes Home; a workout, a closure under recovery or a later visit stays here.
+  useEffect(() => {
+    if (!coldStart.landing || state.status === 'loading' || state.status === 'cache-miss' || closure.status === 'loading') return
+    coldStart.landing = false
+    if (isFocused && state.status === 'empty' && closure.status === 'ready' && !completed) router.replace('/dashboard')
+  }, [state.status, closure.status, completed, isFocused, router])
   // Closure is decided against the server's revision, so it waits for local edits to be acknowledged.
   const closable = (action: () => void) => () => {
     if (!isFocused || state.status !== 'ready' || sessionLocked) return

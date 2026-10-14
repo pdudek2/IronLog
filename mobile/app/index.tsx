@@ -98,8 +98,8 @@ function ActionButton({ label, onPress, secondary = false, disabled = false }: {
 }
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
-// A cold start opens `/`; web sends `/` to `/dashboard`. Consumed by the first settled session screen of this app process.
-const coldStart = { landing: true }
+// The discard whose result already decided where to land, so a later visit to `/` is not sent Home again.
+const handledDiscard = { sessionId: '' }
 
 function GrainBackdrop({ scrollY }: { scrollY: Animated.Value }) {
   return (
@@ -192,7 +192,6 @@ function LoginForm() {
     setError(null)
     try {
       await login(email, password)
-      coldStart.landing = false
       router.replace('/dashboard')
     } catch (cause) {
       setError({ field: 'password', message: getAuthErrorMessage(cause, 'login') })
@@ -672,16 +671,23 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const oldSession = useMemo(() => startedAt !== undefined && isActiveSessionStale({ startedAt }), [sessionId, startedAt, isFocused])
   const resumePrompt = oldSession && !sessionClosed
   const restartAfterDiscard = useRef<string | null>(null)
+  // App start (cold, or after Android Back destroyed the activity) opens a fresh `/`; web sends `/` to `/dashboard`.
+  // Every later entry to `/` arrives with a session or an unfinished closure, so only this instance's first settled state decides.
+  const landing = useRef(true)
+  // Like web, a discarded workout returns Home; "Discard and start again" from the old-session prompt starts a new one instead.
   useEffect(() => {
-    const discarded = restartAfterDiscard.current
-    if (!discarded || state.status !== 'empty' || closure.status !== 'ready' || completed?.action !== 'discard' || completed.sessionId !== discarded) return
+    if (state.status !== 'empty' || closure.status !== 'ready' || completed?.action !== 'discard' || handledDiscard.sessionId === completed.sessionId) return
+    handledDiscard.sessionId = completed.sessionId
+    const restart = restartAfterDiscard.current === completed.sessionId
     restartAfterDiscard.current = null
-    if (isFocused) void launch?.start({ kind: 'empty' })
-  }, [state.status, closure.status, completed, isFocused, launch])
+    if (!isFocused) return
+    if (restart) void launch?.start({ kind: 'empty' })
+    else router.replace('/dashboard')
+  }, [state.status, closure.status, completed, isFocused, launch, router])
   // Only a server-confirmed absence with no closure result goes Home; a workout, a closure under recovery or a later visit stays here.
   useEffect(() => {
-    if (!coldStart.landing || state.status === 'loading' || state.status === 'cache-miss' || closure.status === 'loading') return
-    coldStart.landing = false
+    if (!landing.current || state.status === 'loading' || state.status === 'cache-miss' || closure.status === 'loading') return
+    landing.current = false
     if (isFocused && state.status === 'empty' && closure.status === 'ready' && !completed) router.replace('/dashboard')
   }, [state.status, closure.status, completed, isFocused, router])
   // Closure is decided against the server's revision, so it waits for local edits to be acknowledged.

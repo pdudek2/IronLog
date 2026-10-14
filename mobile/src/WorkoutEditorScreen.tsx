@@ -20,6 +20,7 @@ import type { NavigationExit } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import ExercisePicker from './ExercisePicker'
+import { useKeyboardReveal } from './useKeyboardReveal'
 
 const c = { bg: '#111012', text: '#f4f1f2', muted: '#a09aa0', accent: '#ff7182', line: 'rgba(244,241,242,0.12)' }
 const id = createSessionRevision
@@ -30,6 +31,7 @@ export default function WorkoutEditorScreen({ workoutId, deleting }: { workoutId
 }
 function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; deleting: boolean }) {
   const active = useActiveRuntime(), router = useRouter(), insets = useSafeAreaInsets()
+  const { scroll, content: scrollContent } = useKeyboardReveal()
   const [controller] = useState(() => new WorkoutEditorController({ uid, workoutId, owner: id(), units: active.state.units, newId: id, journal: workoutEditorJournal,
     read: op => readWorkoutMutation(uid, workoutId, op), send: op => sendWorkoutMutation(uid, op) }))
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot)
@@ -95,7 +97,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
     <StatusBar style="light" /><HistoryHeader onRequestAction={(_, go) => leave(go)} /><ActiveWorkoutReturnBar onRequestExit={leave} />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
-      <ScrollView stickyHeaderIndices={[1]} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
+      <ScrollView ref={scroll} innerViewRef={scrollContent} stickyHeaderIndices={[1]} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         <View>
           <View style={{ alignSelf: 'flex-start' }}><Action title="‹  Back" onPress={() => leave(() => router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }))} /></View>
           {!draft && state.busy && <ActivityIndicator color={c.accent} />}

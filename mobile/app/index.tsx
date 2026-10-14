@@ -56,6 +56,7 @@ import { SIGNAL_PATH } from '../../src/shared/authVisual'
 import { EQUIPMENT_LABELS, focusExerciseIndex, focusSetIndex, formatPreviousSet, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
+import { useKeyboardReveal } from '../src/useKeyboardReveal'
 
 const colors = {
   background: '#111012',
@@ -634,6 +635,7 @@ function WorkoutOptionsMenu({ busy, onDiscard, onHistory, onSignOut }: { busy: b
 
 function SessionScreen({ user }: { user: AuthUser }) {
   const navigation = useBottomNavigation()
+  const { scroll, content, keyboardInset } = useKeyboardReveal()
   const scrollY = useRef(new Animated.Value(0)).current
   const isFocused = useIsFocused()
   const router = useRouter()
@@ -738,7 +740,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
   return (
     <View onFocus={navigation.onFocus} onBlur={navigation.onBlur} pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
       <Animated.ScrollView
-        contentContainerStyle={styles.sessionContent}
+        ref={scroll}
+        innerViewRef={content}
+        contentContainerStyle={[styles.sessionContent, keyboardInset > 0 && { paddingBottom: keyboardInset }]}
         keyboardShouldPersistTaps="handled"
         stickyHeaderIndices={[1]}
         scrollEventThrottle={16}

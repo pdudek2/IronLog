@@ -5,6 +5,12 @@ export interface PlanDraftSlots {
   write(key: string, slot: 0 | 1, value: string): Promise<void>
 }
 
+// An untouched draft only copies the plan as it was when the editor opened it. It is reopened from the server, as web
+// does, and does not block a Coach plan handoff.
+export function draftHasWork(draft: PlanDraft | null): boolean {
+  return !!draft && (draft.dirty || !!draft.pending || !!draft.resolvedId)
+}
+
 export class PlanEditorJournal {
   private readonly queues = new Map<string, Promise<void>>()
   constructor(private readonly storage: PlanDraftSlots) {}
@@ -17,8 +23,7 @@ export class PlanEditorJournal {
     const key = this.key(uid, targetId)
     return this.exclusive(key, async () => {
       const current = await this.read(uid, targetId)
-      // An untouched draft only copies the plan as it was when last opened; reopen from the server instead, as web does.
-      const draft = current.draft && (current.draft.dirty || current.draft.pending || current.draft.resolvedId) ? current.draft : null
+      const draft = draftHasWork(current.draft) ? current.draft : null
       await this.write(key, uid, targetId, current.generation + 1, draft, ownerId)
       return draft
     })
@@ -29,7 +34,7 @@ export class PlanEditorJournal {
     return this.exclusive(key, async () => {
       const current = await this.read(uid, null)
       if (current.corrupt) throw new Error('The saved plan draft needs recovery before import.')
-      if (current.draft !== null || !isCurrent()) return false
+      if (draftHasWork(current.draft) || !isCurrent()) return false
       await this.write(key, uid, null, current.generation + 1, draft, ownerId)
       return true
     })

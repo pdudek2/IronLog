@@ -1,8 +1,8 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { consumePlanResponse, defaultPlanBrief, generatedPlanDraft, parseGeneratedPlan, PLAN_RESPONSE_LIMIT, planRequestBody, shouldSaveImportedDraft, type PlanResult } from './coachPlan'
-import { PlanEditorJournal, type PlanDraftSlots } from './planEditorJournal'
-import { normalizePlanDraft } from './planEditor'
+import { draftHasWork, PlanEditorJournal, type PlanDraftSlots } from './planEditorJournal'
+import { newPlanDraft, normalizePlanDraft } from './planEditor'
 import { CoachController, type CoachDependencies } from './coachController'
 import { CoachApiError } from './coachService'
 
@@ -53,16 +53,22 @@ test('import is new and dirty with stable rows, source identities, exact kg thro
   assert.equal(shouldSaveImportedDraft({...draft,resolvedId:'saved'},draft.draftId),false)
   assert.equal(shouldSaveImportedDraft({...draft,pending:null},draft.draftId),false)
 })
-test('atomic import installs one owner, blocks blank/dirty/pending drafts and preserves foreign account',async()=>{
+test('atomic import installs one owner, replaces an untouched draft, blocks dirty/pending drafts and preserves foreign account',async()=>{
   const store=slots(),journal=new PlanEditorJournal(store),draft=generatedPlanDraft(result().plan,'kg',ids(),true)
   const two={...draft,draftId:'other'}
   assert.deepEqual(await Promise.all([journal.installIfEmpty('u',draft,'owner'),journal.installIfEmpty('u',two,'other')]),[true,false])
   assert.deepEqual(await journal.load('u',null),draft)
   assert.equal(await journal.saveIfOwned('u',{...draft,revision:1},'other',{draftId:draft.draftId,revision:0}),false)
   assert.equal(await journal.installIfEmpty('foreign',two,'other'),true)
-  for(const existing of [{...draft,name:'',dirty:false,pending:null},{...draft,pending:null},draft]) {
+  for(const existing of [{...draft,pending:null},draft]) {
     const j=new PlanEditorJournal(slots());await j.installIfEmpty('u',existing,'old');assert.equal(await j.installIfEmpty('u',two,'new'),false);assert.deepEqual(await j.load('u',null),existing)
+    assert.equal(draftHasWork(existing),true)
   }
+  // New plan left without typing: the import takes its place and the old editor can no longer write.
+  const untouched=newPlanDraft('blank','kg',null,()=>'row'),j=new PlanEditorJournal(slots())
+  await j.open('u',null,'editor');assert.equal(await j.saveIfOwned('u',untouched,'editor',null),true);assert.equal(draftHasWork(untouched),false)
+  assert.equal(await j.installIfEmpty('u',two,'import'),true);assert.deepEqual(await j.load('u',null),two)
+  assert.equal(await j.saveIfOwned('u',{...untouched,revision:1,dirty:true},'editor',{draftId:'blank',revision:0}),false)
 })
 test('corrupt or failed storage and stale queued import do not replace drafts',async()=>{
   const store=slots(),journal=new PlanEditorJournal(store),draft=generatedPlanDraft(result().plan,'kg',ids(),true)

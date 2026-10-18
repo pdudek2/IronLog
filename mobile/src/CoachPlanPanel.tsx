@@ -6,6 +6,7 @@ import { defaultPlanBrief, generatedPlanDraft, type PlanBrief } from './coachPla
 import type { CoachController } from './coachController'
 import { createSessionRevision, readUnits } from './firebase'
 import { planEditorJournal } from './filePlanEditorJournal'
+import { draftHasWork } from './planEditorJournal'
 
 const equipment = [['barbell', 'Barbell'], ['dumbbell', 'Dumbbells'], ['cable', 'Cable'], ['machine', 'Machines'], ['bodyweight', 'Bodyweight'], ['kettlebell', 'Kettlebell']]
 const levels = [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced']]
@@ -53,7 +54,7 @@ export default function CoachPlanPanel({ uid, controller }: { uid: string; contr
     try {
       const existing = await planEditorJournal.load(uid, null)
       if (!current() || !alive.current) return
-      if (existing) { setCollision(true); return }
+      if (draftHasWork(existing)) { setCollision(true); return }
       controller.clearPlan()
     } catch { if (current() && alive.current) setError('Could not check the saved draft. Open Plans to recover it.') }
     finally { importLock.current = false; if (alive.current) setBusy(false) }

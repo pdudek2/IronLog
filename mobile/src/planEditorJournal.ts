@@ -16,8 +16,10 @@ export class PlanEditorJournal {
   open(uid: string, targetId: string | null, ownerId: string): Promise<PlanDraft | null> {
     const key = this.key(uid, targetId)
     return this.exclusive(key, async () => {
-      const { draft, generation } = await this.read(uid, targetId)
-      await this.write(key, uid, targetId, generation + 1, draft, ownerId)
+      const current = await this.read(uid, targetId)
+      // An untouched draft only copies the plan as it was when last opened; reopen from the server instead, as web does.
+      const draft = current.draft && (current.draft.dirty || current.draft.pending || current.draft.resolvedId) ? current.draft : null
+      await this.write(key, uid, targetId, current.generation + 1, draft, ownerId)
       return draft
     })
   }

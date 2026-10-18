@@ -123,6 +123,24 @@ test('a delayed acknowledgement cannot overwrite a replacement or a reopened rev
   }
 })
 
+test('reopening loads the server plan over an untouched draft but keeps an edited one', async () => {
+  const slots = new Map<string, string>()
+  const journal = new PlanEditorJournal({
+    read: async (key, slot) => slots.get(`${key}:${slot}`) ?? null,
+    write: async (key, slot, value) => { slots.set(`${key}:${slot}`, value) },
+  })
+  const template: WorkoutTemplate = { id: 'plan-a', userId: 'alice', name: 'Before', days: [{ name: 'Day 1', exercises: [exercise('global')] }], updatedAt: 1 }
+  const untouched = newPlanDraft('draft-a', 'kg', template, () => 'row')
+  assert.equal(await journal.open('alice', 'plan-a', 'editor-a'), null)
+  assert.equal(await journal.saveIfOwned('alice', untouched, 'editor-a', null), true)
+  assert.equal(await journal.open('alice', 'plan-a', 'editor-b'), null)
+  const reloaded = newPlanDraft('draft-b', 'kg', { ...template, name: 'Renamed on web' }, () => 'row')
+  assert.equal(await journal.saveIfOwned('alice', reloaded, 'editor-b', null), true)
+  const edited = { ...reloaded, revision: 1, name: 'Mine', dirty: true }
+  assert.equal(await journal.saveIfOwned('alice', edited, 'editor-b', { draftId: 'draft-b', revision: 0 }), true)
+  assert.deepEqual(await journal.open('alice', 'plan-a', 'editor-c'), edited)
+})
+
 test('a previous owner cannot persist a late receipt, rejection, or first draft', async () => {
   const slots = new Map<string, string>()
   const journal = new PlanEditorJournal({

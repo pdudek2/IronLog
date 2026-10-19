@@ -2,4 +2,4 @@ export {
   createSessionId,
   deriveLegacySessionId,
   normalizeSessionId,
-} from '../shared/sessionIdentity'
+} from '../shared/sessionIdentity.js'

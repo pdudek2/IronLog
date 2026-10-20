@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { ApiError } from './errors.js'
+import { MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES, MAX_SET_REPS, MAX_SET_WEIGHT_KG } from '../../src/shared/workoutLimits.js'
 
 export type ExerciseSource = 'global' | 'user'
 
@@ -29,14 +30,13 @@ interface NormalizeWorkoutExercisesOptions {
   allowEmpty?: boolean
 }
 
-export const MAX_WORKOUT_EXERCISES = 20
-export const MAX_SETS_PER_EXERCISE = 20
+export const MAX_WORKOUT_EXERCISES = MAX_SESSION_EXERCISES
+export const MAX_SETS_PER_EXERCISE = MAX_DONE_SETS_PER_EXERCISE
 export const MAX_WORKOUT_LABEL_LENGTH = 120
 export const MAX_EXERCISE_NAME_LENGTH = 120
 export const MAX_EXERCISE_ID_LENGTH = 160
 export const MAX_FIRESTORE_DOCUMENT_ID_LENGTH = 160
-export const MAX_SET_WEIGHT_KG = 2_000
-export const MAX_SET_REPS = 1_000
+export { MAX_SET_REPS, MAX_SET_WEIGHT_KG }
 
 const EXERCISE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/
 const COMPATIBILITY_FINALIZE_FIELDS = new Set([

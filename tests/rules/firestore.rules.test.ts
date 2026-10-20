@@ -58,6 +58,26 @@ describe('workouts rules', () => {
   })
 })
 
+describe('reading a deleted document', () => {
+  it('reports absence to a signed-in client without exposing documents of another account', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore()
+    const bob = testEnv.authenticatedContext('bob').firestore()
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'workouts', 'alice-workout'), validWorkout('alice'))
+      await setDoc(doc(context.firestore(), 'templates', 'alice-template'), { userId: 'alice', name: 'Push', days: [] })
+    })
+
+    for (const collectionName of ['workouts', 'templates', 'userExercises']) {
+      const missing = await assertSucceeds(getDoc(doc(alice, collectionName, 'deleted-id')))
+      expect(missing.exists()).toBe(false)
+      await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), collectionName, 'deleted-id')))
+    }
+    await assertFails(getDoc(doc(bob, 'workouts', 'alice-workout')))
+    await assertFails(getDoc(doc(bob, 'templates', 'alice-template')))
+    await assertFails(getDocs(collection(bob, 'workouts')))
+  })
+})
+
 describe('templates rules', () => {
   it('denies direct writes while preserving owner read and delete', async () => {
     const aliceDb = testEnv.authenticatedContext('alice').firestore()

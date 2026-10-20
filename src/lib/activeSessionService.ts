@@ -115,8 +115,9 @@ export async function persistTemplateLaunchSession(
   uid: string,
   workout: ActiveWorkout,
   replaceExisting: boolean,
-): Promise<void> {
+): Promise<string> {
   const ref = activeSessionRef(uid)
+  const sessionRevision = crypto.randomUUID()
 
   await runTransaction(db, async (transaction) => {
     const snapshot = await transaction.get(ref)
@@ -124,8 +125,9 @@ export async function persistTemplateLaunchSession(
       throw new TemplateLaunchConflictError()
     }
 
-    transaction.set(ref, activeSessionDocument(uid, workout))
+    transaction.set(ref, activeSessionDocument(uid, workout, sessionRevision))
   })
+  return sessionRevision
 }
 
 function activeSessionDocument(

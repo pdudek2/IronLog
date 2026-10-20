@@ -20,7 +20,8 @@ export function refreshStaleActiveSession<T extends { startedAt: number }>(
 
 export function getCappedWorkoutFinishedAt(startedAt: number, now = Date.now()): number {
   if (!Number.isFinite(startedAt) || !Number.isFinite(now)) return now
-  if (now <= startedAt) return now
+  // startedAt comes from the device clock, so a fast device can start "after" the server finishes it.
+  if (now <= startedAt) return startedAt
   return Math.min(now, startedAt + MAX_ACTIVE_SESSION_AGE_MS)
 }
 

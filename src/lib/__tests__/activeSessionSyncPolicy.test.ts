@@ -164,6 +164,11 @@ describe('active session sync policy', () => {
     expect(classifyClosureFailure({ kind: 'ambiguous' })).toBe('closure_unconfirmed')
   })
 
+  it('treats a validation rejection as final instead of a retryable closure', () => {
+    expect(classifyClosureFailure({ kind: 'definitive', status: 400 })).toBe('closure_rejected')
+    expect(classifyClosureFailure({ kind: 'definitive', status: 404 })).toBe('closure_failed')
+  })
+
   it('permits stale replacement only after confirmed discard', () => {
     expect(canCreateStaleReplacement({ status: 'discarded' })).toBe(true)
     expect(canCreateStaleReplacement({ status: 'closure_unconfirmed' })).toBe(false)

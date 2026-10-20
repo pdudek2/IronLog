@@ -270,6 +270,22 @@ test('resolved server rejection writes an empty generation before releasing the 
   assert.deepEqual(await new ClosureIntentJournal(slots).load('user-a'), { status: 'empty', generation: 2 })
 })
 
+test('a rejected workout clears its intent and returns to editing instead of offering the same request again', async () => {
+  const slots = new MemorySlots()
+  const h = harness('user-a', slots)
+  await h.controller.start()
+  const sending = h.controller.startClosure('finish', session())
+  await wait()
+  h.requests[0]!.reject(new ClosureRequestError('definitive', 'Invalid set reps.', 400))
+  await sending
+  assert.equal(lastState(h.states).status, 'closure_rejected')
+  assert.deepEqual(await new ClosureIntentJournal(slots).load('user-a'), { status: 'empty', generation: 2 })
+  h.controller.dismiss()
+  assert.equal(lastState(h.states).status, 'ready')
+  assert.equal(h.controller.canEdit(), true)
+  assert.equal(h.calls.length, 1)
+})
+
 test('a failed resolved-state clear stays locked and can be retried without another API request', async () => {
   const slots = new MemorySlots()
   const h = harness('user-a', slots)

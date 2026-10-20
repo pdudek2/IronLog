@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../exerciseDetailService', () => ({ getExerciseSessions: vi.fn() }))
+vi.mock('../activeSessionBackup', () => ({ writeActiveSessionBackup: vi.fn() }))
 vi.mock('../activeSessionService', () => ({
   persistTemplateLaunchSession: vi.fn(),
   saveActiveSession: vi.fn(),
 }))
 
+import { writeActiveSessionBackup } from '../activeSessionBackup'
 import { persistTemplateLaunchSession, saveActiveSession } from '../activeSessionService'
 import { getExerciseSessions } from '../exerciseDetailService'
 import { createPersistedTemplateWorkout } from '../templateLaunchService'
@@ -55,7 +57,7 @@ describe('createPersistedTemplateWorkout', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(saveActiveSession).mockResolvedValue({ sessionRevision: 'session-revision' })
-    vi.mocked(persistTemplateLaunchSession).mockResolvedValue()
+    vi.mocked(persistTemplateLaunchSession).mockResolvedValue('launch-revision')
     vi.mocked(getExerciseSessions).mockResolvedValue([])
   })
 
@@ -85,6 +87,10 @@ describe('createPersistedTemplateWorkout', () => {
     expect(workout.exercises[0].sets[0]).toEqual({ weight: '42.5', reps: '6', done: false })
     expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, false)
     expect(saveActiveSession).not.toHaveBeenCalled()
+    expect(writeActiveSessionBackup).toHaveBeenCalledWith('user-1', workout, {
+      baseRevision: 'launch-revision',
+      unsynced: false,
+    })
   })
 
   it('falls back to template targets and forwards replacement intent', async () => {

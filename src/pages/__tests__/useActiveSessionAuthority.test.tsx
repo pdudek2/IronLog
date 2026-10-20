@@ -266,6 +266,41 @@ describe('useActiveSession snapshot authority', () => {
     expect(saveActiveSession.mock.calls[0][2]).toBe('revision-initial')
   })
 
+  it('waits for the server before editing a copy whose revision it does not know', async () => {
+    vi.useFakeTimers()
+    // Dashboard sync or a plan launch hydrated this copy; the backup belongs to an earlier session.
+    useWorkoutStore.getState().hydrateFromDoc(editableRemoteSession)
+    writeActiveSessionBackup('user-1', { ...editableRemoteSession, sessionId: 'earlier-session' }, {
+      baseRevision: 'earlier-revision', unsynced: false,
+    })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => listener.current?.({
+      session: editableRemoteSession, sessionRevision: null, fromCache: true, hasPendingWrites: false,
+    }))
+    expect(result.current.ready).toBe(false)
+
+    act(() => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-server', fromCache: false, hasPendingWrites: false,
+    }))
+    expect(result.current.ready).toBe(true)
+    act(() => useWorkoutStore.getState().updateSet(0, 0, 'reps', '7'))
+    await act(async () => { await vi.advanceTimersByTimeAsync(400) })
+    expect(saveActiveSession.mock.calls[0][2]).toBe('revision-server')
+  })
+
+  it('edits a cached copy right away when its backup carries the revision of the same session', () => {
+    useWorkoutStore.getState().hydrateFromDoc(editableRemoteSession)
+    writeActiveSessionBackup('user-1', editableRemoteSession, { baseRevision: 'revision-launch', unsynced: false })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+
+    act(() => listener.current?.({
+      session: editableRemoteSession, sessionRevision: null, fromCache: true, hasPendingWrites: true,
+    }))
+
+    expect(result.current.ready).toBe(true)
+  })
+
   it('does not let a late old-session acknowledgement rewind the replacement revision', async () => {
     vi.useFakeTimers()
     const pending = createDeferred<{ sessionRevision: string }>()
@@ -311,6 +346,19 @@ describe('useActiveSession snapshot authority', () => {
     })
     expect(saveActiveSession).toHaveBeenCalledTimes(1)
     expect(readActiveSessionBackupRecord('user-1')?.unsynced).toBe(false)
+  })
+
+  it('drops a closure the server rejected so the stored request cannot lock the workout again', async () => {
+    writeWorkoutClosureIntent('user-1', { action: 'finish', session: editableRemoteSession, createdAt: 1 })
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    expect(result.current.closureState).toBe('closure_unconfirmed')
+
+    const rejection = Object.assign(new Error('Invalid set reps.'), { kind: 'definitive', status: 400 })
+    await act(async () => { await result.current.markClosureError(rejection as never) })
+
+    expect(result.current.closureState).toBe('closure_rejected')
+    expect(result.current.closureIntent).toBeNull()
+    expect(readWorkoutClosureIntent('user-1')).toBeNull()
   })
 
   it('reports failure without unlocking an unconfirmed empty session', async () => {

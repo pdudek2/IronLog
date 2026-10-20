@@ -57,6 +57,10 @@ describe('sessionDuration', () => {
     expect(getCappedWorkoutFinishedAt(startedAt, now)).toBe(now)
   })
 
+  it('never finishes before a start recorded by a device clock that runs ahead', () => {
+    expect(getCappedWorkoutFinishedAt(500_000, 380_000)).toBe(500_000)
+  })
+
   it('formats stale session age for the confirm dialog', () => {
     const now = 3 * 86_400_000 + 2 * 60 * 60_000
 

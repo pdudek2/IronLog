@@ -334,6 +334,11 @@ export function useActiveSession(uid: string | null) {
     cancelPendingPersistence()
     const failure = classifyClosureFailure(error)
     setClosureState(failure)
+    if (failure === 'closure_rejected') {
+      // The server would reject the same session again, so it goes back to editing instead of waiting on a retry.
+      if (uid) clearWorkoutClosureIntent(uid)
+      setPendingIntent(null)
+    }
     if (
       failure === 'session_mismatch'
       || failure === 'closure_conflict'
@@ -475,8 +480,11 @@ export function useActiveSession(uid: string | null) {
     hasUnsyncedLocalChangesRef.current = Boolean(backupAtMount?.unsynced
       && (!currentAtMount || currentAtMount.sessionId === backupAtMount.session.sessionId))
     const mountedSessionId = currentAtMount?.sessionId ?? backupAtMount?.session.sessionId
+    const backupRevision = backupAtMount && backupAtMount.session.sessionId === mountedSessionId
+      ? backupAtMount.baseRevision
+      : null
     activeSessionRevisionRef.current = sessionSaveQueues.get(`${currentUid}:${mountedSessionId}`)?.revision
-      ?? { value: backupAtMount?.baseRevision ?? null }
+      ?? { value: backupRevision }
     setReady(false)
     staleSessionRef.current = null
     setStaleSession(null)
@@ -582,7 +590,10 @@ export function useActiveSession(uid: string | null) {
           authoritative,
         })
         if (!authoritative) {
-          if (!startingSessionRef.current && (current || closureIntentRef.current)) setReady(true)
+          // A cached copy becomes editable only with a known base revision. Otherwise its first edit would be saved
+          // against a revision the server never had and report a false conflict.
+          const revisionKnown = activeSessionRevisionRef.current.value !== null
+          if (!startingSessionRef.current && (closureIntentRef.current || (current && revisionKnown))) setReady(true)
           return
         }
 

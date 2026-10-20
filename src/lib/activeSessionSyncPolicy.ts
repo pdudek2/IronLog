@@ -13,6 +13,7 @@ export type ClosureFailureState =
   | 'auth_required'
   | 'closure_conflict'
   | 'closure_failed'
+  | 'closure_rejected'
   | 'closure_unconfirmed'
   | 'session_mismatch'
 
@@ -112,6 +113,7 @@ export function classifyClosureFailure({
     || status === 401
     || status === 403
   ) return 'auth_required'
+  if (status === 400) return 'closure_rejected'
   return 'closure_failed'
 }
 

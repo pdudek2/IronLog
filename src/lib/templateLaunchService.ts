@@ -1,4 +1,5 @@
 import type { ActiveWorkout } from '../store/workoutStore'
+import { writeActiveSessionBackup } from './activeSessionBackup'
 import { persistTemplateLaunchSession } from './activeSessionService'
 import { getExerciseSessions } from './exerciseDetailService'
 import {
@@ -53,6 +54,8 @@ export async function createPersistedTemplateWorkout(
 ): Promise<ActiveWorkout> {
   const history = await loadTemplateExerciseHistory(uid, template, dayIndex)
   const workout = buildActiveWorkoutFromTemplate(template, dayIndex, history, overrides)
-  await persistTemplateLaunchSession(uid, workout, replaceExisting)
+  const sessionRevision = await persistTemplateLaunchSession(uid, workout, replaceExisting)
+  // The workout screen trusts a cached copy only with a known base revision; without it the first edit conflicts.
+  writeActiveSessionBackup(uid, workout, { baseRevision: sessionRevision, unsynced: false })
   return workout
 }

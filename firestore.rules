@@ -15,6 +15,12 @@ service cloud.firestore {
       return signedIn() && resource.data.userId == currentUid();
     }
 
+    // A deleted document has no owner to check. Letting a signed-in client read the absence lets it show
+    // "not found" instead of a permission error it would retry forever.
+    function ownsOrMissing() {
+      return signedIn() && (resource == null || resource.data.userId == currentUid());
+    }
+
     function ownsNewDoc() {
       return signedIn() && request.resource.data.userId == currentUid();
     }
@@ -250,7 +256,8 @@ service cloud.firestore {
     }
 
     match /workouts/{id} {
-      allow read: if ownsDoc();
+      allow get: if ownsOrMissing();
+      allow list: if ownsDoc();
       allow create, update, delete: if false;
     }
 
@@ -290,7 +297,8 @@ service cloud.firestore {
       allow create: if ownsNewDoc()
                     && isUserExercise(request.resource.data)
                     && hasMatchingNameClaim(id, request.resource.data);
-      allow read: if ownsDoc();
+      allow get: if ownsOrMissing();
+      allow list: if ownsDoc();
       allow update: if ownsDoc()
                     && keepsOwner()
                     && isUserExercise(request.resource.data)
@@ -328,7 +336,8 @@ service cloud.firestore {
 
     match /templates/{id} {
       allow create, update: if false;
-      allow read: if ownsDoc();
+      allow get: if ownsOrMissing();
+      allow list: if ownsDoc();
       allow delete: if ownsDoc();
     }
 

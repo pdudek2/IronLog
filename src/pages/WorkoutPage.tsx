@@ -25,6 +25,7 @@ import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadServ
 import { exercises as exerciseDb } from '../data/exercises'
 import { isActiveSessionStale } from '../lib/sessionDuration'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
+import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES, MAX_SET_REPS } from '../shared/workoutLimits'
 import {
   EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
@@ -208,6 +209,7 @@ export default function WorkoutPage() {
     staleSession,
   } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
+  const [closureRejection, setClosureRejection] = useState<string | null>(null)
   const mobileAddExerciseRef = useRef<HTMLButtonElement>(null)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
@@ -263,8 +265,15 @@ export default function WorkoutPage() {
     const completesExercise = wasNotDone && currentActive?.exercises[exerciseIndex]?.sets.every(
       (set, index) => index === setIndex || set.done,
     )
-    if (wasNotDone && parseReps(currentSet.reps) <= 0) {
-      toast.error('Enter reps before marking this set as complete.')
+    if (wasNotDone && !isValidCompletedSet(currentSet)) {
+      toast.error(isValidCompletedSet({ ...currentSet, weight: '0' })
+        ? 'Weight cannot be negative or above 2000 kg (4409 lbs).'
+        : `Enter whole reps from 1 to ${MAX_SET_REPS} before marking this set as complete.`)
+      return
+    }
+    const completedSets = currentActive?.exercises[exerciseIndex]?.sets.filter((set) => set.done).length ?? 0
+    if (wasNotDone && completedSets >= MAX_DONE_SETS_PER_EXERCISE) {
+      toast.error(`An exercise can hold up to ${MAX_DONE_SETS_PER_EXERCISE} completed sets.`)
       return
     }
     toggleSetDone(exerciseIndex, setIndex)
@@ -349,6 +358,10 @@ export default function WorkoutPage() {
   }, [user])
 
   const handlePickExercise = async (id: string, name: string, source: 'global' | 'user') => {
+    if ((useWorkoutStore.getState().active?.exercises.length ?? 0) >= MAX_SESSION_EXERCISES) {
+      toast.error(`A workout can hold up to ${MAX_SESSION_EXERCISES} exercises.`)
+      return
+    }
     addExercise(id, name, source)
     const nextActive = useWorkoutStore.getState().active
     const addedExerciseIndex = (nextActive?.exercises.length ?? 0) - 1
@@ -394,7 +407,7 @@ export default function WorkoutPage() {
   }, [user, active?.exercises.length])
 
   const saving = closureState === 'submitting'
-  const closureLocked = closureState !== 'idle'
+  const closureLocked = closureState !== 'idle' && closureState !== 'closure_rejected'
 
   async function handleClosureError(error: unknown): Promise<void> {
     if (!(error instanceof WorkoutClosureError)) {
@@ -402,6 +415,7 @@ export default function WorkoutPage() {
       return
     }
     const failure = await markClosureError(error)
+    if (failure === 'closure_rejected') setClosureRejection(error.message)
     if (failure === 'active_session_changed') {
       toast.error('The session changed on another device. Check the data and finish it again.')
     }
@@ -842,6 +856,15 @@ export default function WorkoutPage() {
           >
             Sign in again
           </button>
+        </div>
+      )}
+
+      {closureState === 'closure_rejected' && (
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+          <p className="text-sm font-semibold text-white">The server did not accept this workout.</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
+            {closureRejection ?? 'Some of its data is invalid.'} Correct it and try again.
+          </p>
         </div>
       )}
 

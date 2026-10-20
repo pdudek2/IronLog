@@ -191,6 +191,40 @@ describe('workoutStore completed set validation', () => {
     expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.done).toBe(false)
   })
 
+  it('completes only sets the finish endpoint accepts', () => {
+    const sets = [['80', '8.5'], ['-20', '8'], ['2500', '5'], ['20', '1500'], ['20', '8']]
+      .map(([weight, reps]) => ({ weight, reps, done: false }))
+    useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
+      startedAt: 1,
+      exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets }],
+    })
+
+    sets.forEach((_, index) => useWorkoutStore.getState().toggleSetDone(0, index))
+
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets.map((set) => set.done))
+      .toEqual([false, false, false, false, true])
+  })
+
+  it('caps completed sets per exercise and exercises per session', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
+      startedAt: 1,
+      exercises: Array.from({ length: 20 }, (_, index) => ({
+        exerciseId: `exercise-${index}`,
+        exerciseSource: 'global' as const,
+        name: `Exercise ${index}`,
+        sets: Array.from({ length: 21 }, () => ({ weight: '20', reps: '8', done: false })),
+      })),
+    })
+
+    for (let index = 0; index < 21; index += 1) useWorkoutStore.getState().toggleSetDone(0, index)
+    useWorkoutStore.getState().addExercise('one-more', 'One more', 'global')
+
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets.filter((set) => set.done)).toHaveLength(20)
+    expect(useWorkoutStore.getState().active?.exercises).toHaveLength(20)
+  })
+
   it('normalizes invalid completed sets when restoring a session', () => {
     useWorkoutStore.getState().hydrateFromDoc({
       sessionId: 'session-1',

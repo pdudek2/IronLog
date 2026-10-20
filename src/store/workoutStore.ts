@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createSessionId } from '../lib/sessionIdentity'
+import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
 
 export type ExerciseSource = 'global' | 'user'
 
@@ -59,11 +60,6 @@ function createClientId(prefix: 'exercise' | 'set'): string {
 
 const emptySet = (): WorkoutSet => ({ clientId: createClientId('set'), weight: '', reps: '', done: false })
 
-function hasValidReps(value: string): boolean {
-  const reps = Number.parseInt(value, 10)
-  return Number.isFinite(reps) && reps > 0
-}
-
 function withClientIds(workout: ActiveWorkout): ActiveWorkout {
   return {
     ...workout,
@@ -73,7 +69,7 @@ function withClientIds(workout: ActiveWorkout): ActiveWorkout {
       sets: exercise.sets.map((set) => ({
         ...set,
         clientId: set.clientId ?? createClientId('set'),
-        done: set.done && hasValidReps(set.reps),
+        done: set.done && isValidCompletedSet(set),
       })),
     })),
   }
@@ -139,7 +135,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
 
   addExercise: (exerciseId, name, source) =>
     set((s) => {
-      if (!s.active) return s
+      if (!s.active || s.active.exercises.length >= MAX_SESSION_EXERCISES) return s
       return {
         active: {
           ...s.active,
@@ -182,11 +178,8 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
               ...ex,
               sets: ex.sets.map((st, si) => {
                 if (si !== setIndex) return st
-                return {
-                  ...st,
-                  [field]: value,
-                  done: field === 'reps' && !hasValidReps(value) ? false : st.done,
-                }
+                const next = { ...st, [field]: value }
+                return { ...next, done: next.done && isValidCompletedSet(next) }
               }),
             }
           : ex
@@ -204,8 +197,8 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
               sets: ex.sets.map((st, si) => {
                 if (si !== setIndex) return st
                 const current = parseSetNumber(st[field], field)
-                const next = Math.max(0, current + delta)
-                return { ...st, [field]: formatAdjustedSetValue(next, field) }
+                const next = { ...st, [field]: formatAdjustedSetValue(Math.max(0, current + delta), field) }
+                return { ...next, done: next.done && isValidCompletedSet(next) }
               }),
             }
           : ex
@@ -223,7 +216,8 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
               sets: ex.sets.map((st, si) => {
                 if (si !== setIndex) return st
                 if (st.done) return { ...st, done: false }
-                return hasValidReps(st.reps) ? { ...st, done: true } : st
+                const completed = ex.sets.filter((other) => other.done).length
+                return completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(st) ? { ...st, done: true } : st
               }),
             }
           : ex

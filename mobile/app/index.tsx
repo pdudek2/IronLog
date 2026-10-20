@@ -566,6 +566,7 @@ const CLOSURE_COPY: Record<ClosureNoticeStatus, { title: string; copy: string; a
   retry_storage_failed: { title: 'Could not safely save the retry.', copy: 'The earlier request may already have reached the server. Editing remains locked while its last saved copy is preserved.', action: 'Retry recovery' },
   resolution_storage_failed: { title: 'The server answered, but local recovery could not be cleared.', copy: 'Your workout stays locked until this device saves the resolved state.', action: 'Retry local recovery' },
   closure_unconfirmed: { title: 'Could not confirm session closure.', copy: 'Your workout data is preserved. Editing is locked until the server confirms the outcome.', action: 'Try again' },
+  closure_rejected: { title: 'The server did not accept this workout.', copy: 'Some set data is invalid: reps must be whole numbers from 1 to 1000 and weight between 0 and 2000 kg. Correct it and try again.', action: 'Return to editing' },
   closure_failed: { title: 'This session cannot be closed.', copy: 'The server rejected this operation. Check your connection and try again.', action: 'Try again' },
   auth_required: { title: 'Your sign-in session needs refreshing.', copy: 'Your workout data is preserved. Sign in again, then retry closing the session.', action: 'Sign in again' },
   session_mismatch: { title: 'This session is no longer active on the server.', copy: 'Could not automatically sync the session opened on another device.', action: 'Try again' },
@@ -585,7 +586,7 @@ function ClosureNotice({ closure, onRetry, onDismiss, onSignIn }: { closure: Clo
     <Text style={styles.syncTitle}>{closure.intent.action === 'finish' ? 'Saving workout…' : 'Discarding workout…'}</Text>
   </View>
   const { title, copy, action } = CLOSURE_COPY[closure.status]
-  const canDismiss = closure.status === 'active_session_changed' || closure.status === 'closure_conflict' || closure.status === 'session_mismatch'
+  const canDismiss = closure.status === 'active_session_changed' || closure.status === 'closure_conflict' || closure.status === 'session_mismatch' || closure.status === 'closure_rejected'
   const onPress = closure.status === 'auth_required' ? onSignIn : canDismiss ? onDismiss : onRetry
   return <View accessibilityRole="alert" accessibilityLiveRegion="polite" style={styles.closureNotice}>
     <Text style={styles.syncTitle}>{title}</Text>

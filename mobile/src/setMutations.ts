@@ -1,14 +1,10 @@
 import type { ActiveWorkout, WorkoutExercise, WorkoutSet } from './session'
 import { createLocalId } from './session'
+import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../../src/shared/workoutLimits'
+
+export { MAX_SESSION_EXERCISES }
 
 export type SetField = 'weight' | 'reps'
-
-function validCompletedSet(set: WorkoutSet): boolean {
-  const weight = Number(set.weight)
-  const reps = Number(set.reps)
-  return Number.isFinite(weight) && weight >= 0 && weight <= 2_000
-    && Number.isInteger(reps) && reps >= 1 && reps <= 1_000
-}
 
 function updateTarget(
   session: ActiveWorkout,
@@ -33,7 +29,7 @@ export function updateSetValue(
 ): ActiveWorkout {
   return updateTarget(session, exerciseId, setId, (set) => {
     const next = { ...set, [field]: value }
-    return { ...next, done: next.done && validCompletedSet(next) }
+    return { ...next, done: next.done && isValidCompletedSet(next) }
   })
 }
 
@@ -53,7 +49,7 @@ export function adjustSetValue(
 ): ActiveWorkout {
   return updateTarget(session, exerciseId, setId, (set) => {
     const next = { ...set, [field]: adjustedValue(set[field], field, delta) }
-    return { ...next, done: next.done && validCompletedSet(next) }
+    return { ...next, done: next.done && isValidCompletedSet(next) }
   })
 }
 
@@ -67,7 +63,7 @@ export function setSetDone(
   const completed = exercise?.sets.filter((set) => set.done && set.clientId !== setId).length ?? 0
   return updateTarget(session, exerciseId, setId, (set) => ({
     ...set,
-    done: done && completed < 20 && validCompletedSet(set),
+    done: done && completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(set),
   }))
 }
 
@@ -89,9 +85,6 @@ export function addSet(session: ActiveWorkout, exerciseId: string): ActiveWorkou
     }),
   }
 }
-
-// Firestore rules reject active sessions with more than 20 exercises.
-export const MAX_SESSION_EXERCISES = 20
 
 export function addExercise(
   session: ActiveWorkout,

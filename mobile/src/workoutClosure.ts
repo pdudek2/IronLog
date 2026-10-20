@@ -243,7 +243,9 @@ export function isClosureLocked(state: ClosureState): boolean {
   return 'locked' in state ? state.locked : state.status !== 'ready'
 }
 
-const RESOLVED_BY_RELOAD: ClosureFailureState[] = ['session_mismatch', 'closure_conflict', 'active_session_changed']
+// The server settled these requests, so the saved intent is cleared and the notice can be dismissed. A rejected
+// workout would fail the same way again, so it returns to editing instead of offering a retry.
+const RESOLVED_BY_RELOAD: ClosureFailureState[] = ['session_mismatch', 'closure_conflict', 'active_session_changed', 'closure_rejected']
 
 interface ClosureRecoveryResolution {
   intent: ClosureIntent

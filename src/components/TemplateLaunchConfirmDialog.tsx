@@ -16,8 +16,8 @@ export default function TemplateLaunchConfirmDialog({
   return (
     <ConfirmDialog
       title="Replace active session?"
-      message="Starting this template will replace the exercises and sets in your current session."
-      confirmLabel="Start template"
+      message="Starting this plan will replace the exercises and sets in your current session."
+      confirmLabel="Start plan"
       cancelLabel="Keep current session"
       onConfirm={onConfirm}
       onCancel={onCancel}

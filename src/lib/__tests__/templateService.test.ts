@@ -22,10 +22,12 @@ vi.mock('firebase/firestore', () => ({
 import {
   buildActiveWorkoutFromTemplate,
   createTemplate,
+  getTemplate,
   templateExerciseKey,
   updateTemplate,
   type WorkoutTemplate,
 } from '../templateService'
+import { templateFingerprint, type EditableTemplate } from '../../shared/templateFingerprint'
 
 function template(overrides: Partial<WorkoutTemplate> = {}): WorkoutTemplate {
   return {
@@ -114,6 +116,21 @@ describe('buildActiveWorkoutFromTemplate', () => {
       { weight: '45', reps: '6', done: false },
       { weight: '45', reps: '6', done: false },
     ])
+  })
+})
+
+describe('template reads', () => {
+  it('reads a lbs target stored in kg back without rounding it to 0.1 kg, with the raw edit baseline', async () => {
+    const stored = { userId: 'user-1', name: 'Plan', createdAt: 1, updatedAt: 2, days: [{ name: 'Day 1', exercises: [
+      { exerciseId: 'deadlift', exerciseSource: 'global', name: 'Deadlift', sets: 3, targetReps: 5, targetWeight: 61.2349 },
+    ] }] }
+    const firestore = await import('firebase/firestore')
+    vi.mocked(firestore.getDoc).mockResolvedValue({ exists: () => true, id: 'plan-1', data: () => stored } as never)
+
+    const template = await getTemplate('plan-1')
+
+    expect(template?.days[0].exercises[0].targetWeight).toBe(61.2349)
+    expect(template?.editBaseline).toBe(templateFingerprint(stored as EditableTemplate))
   })
 })
 

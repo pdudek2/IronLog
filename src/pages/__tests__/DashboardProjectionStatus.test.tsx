@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   getRecentWorkouts: vi.fn(),
   retryWorkoutMaterialization: vi.fn(),
   deleteWorkout: vi.fn(),
+  deleteGuards: [] as unknown[],
   getTemplates: vi.fn(),
   toastError: vi.fn(),
   profile: { displayName: 'Patryk', weeklyGoal: 3 },
@@ -51,7 +52,8 @@ vi.mock('../../lib/workoutService', async () => ({
   ...await vi.importActual<typeof import('../../lib/workoutService')>('../../lib/workoutService'),
   getRecentWorkouts: mocks.getRecentWorkouts,
   // Persistence belongs to the service; reproduce its resolved-result contract in this UI mock.
-  deleteWorkout: async (id: string) => {
+  deleteWorkout: async (id: string, guard?: unknown) => {
+    mocks.deleteGuards.push(guard)
     const uid = useAuthStore.getState().user!.uid
     const result = await mocks.deleteWorkout(id)
     if (result.status === 'deleted') clearWorkoutDeleteRecovery(uid, id)
@@ -59,6 +61,9 @@ vi.mock('../../lib/workoutService', async () => ({
     return result
   },
   retryWorkoutMaterialization: mocks.retryWorkoutMaterialization,
+  readWorkoutMutationState: async (id: string) => ({
+    status: 'available', baseline: 'b'.repeat(64), workout: { id }, operation: null, projection: 'ready',
+  }),
   calcStreak: () => 1,
   calcVolume: () => 400,
 }))
@@ -206,7 +211,7 @@ describe('Dashboard workout projection status', () => {
     mocks.getRecentWorkouts.mockResolvedValue([{ ...pendingWorkout, materialized: true, label }])
     render(<DashboardPage />)
     fireEvent.click(await screen.findByRole('button', { name: new RegExp(`Delete workout ${expectedName}`) }))
-    const dialog = screen.getByRole('dialog', { name: 'Delete workout?' })
+    const dialog = await screen.findByRole('dialog', { name: 'Delete workout?' })
     const date = new Date(pendingWorkout.startedAt).toLocaleDateString('en-US', {
       weekday: 'short', day: 'numeric', month: 'short',
     })
@@ -627,10 +632,12 @@ describe('Dashboard workout projection status', () => {
 
     await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2))
     fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(3))
     await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
+    // The delete carries the version seen when the dialog opened, as on the workout page.
+    expect(mocks.deleteGuards.at(-1)).toEqual({ baseline: 'b'.repeat(64), operationId: expect.any(String) })
 
     await act(async () => staleRetryRefresh.resolve([pendingWorkout]))
 
@@ -655,7 +662,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
     const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
@@ -738,7 +745,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     firstDelete.resolve({ status: 'cleanup_pending' })
     await act(async () => {
@@ -788,7 +795,7 @@ describe('Dashboard workout projection status', () => {
     const firstRender = render(<DashboardPage />)
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
     expect(screen.getByRole('button', { name: /Delete workout Pull day/ })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
@@ -819,7 +826,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
     expect(pullRow).not.toBeNull()
@@ -853,7 +860,7 @@ describe('Dashboard workout projection status', () => {
     expect(availablePullDelete).toBeEnabled()
 
     fireEvent.click(availablePullDelete)
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     await waitFor(() => {
       expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-b')
@@ -870,7 +877,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     const row = screen.getByText('Push day').closest('.dashboard-history-row')
     expect(row).not.toBeNull()
@@ -898,7 +905,7 @@ describe('Dashboard workout projection status', () => {
 
     await screen.findByText('Push day')
     fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
 
     await act(async () => {
       await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
@@ -1032,7 +1039,7 @@ describe('Dashboard workout projection status', () => {
     await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(5))
 
     fireEvent.click(screen.getByRole('button', { name: /Delete workout Workout A/ }))
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(screen.queryByText('Workout A')).not.toBeInTheDocument())
 
     await act(async () => retryWorkoutA.reject(new Error('obsolete A failed')))
@@ -1297,7 +1304,7 @@ describe('Dashboard workout projection status', () => {
     expect(await screen.findByText('Pull')).toBeInTheDocument()
     expect(screen.getByText(/Ready plan/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start workout' })).toBeEnabled()
-    expect(screen.queryByRole('button', { name: 'Start template Newest empty' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start plan Newest empty' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Other plans' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Change workout' }))

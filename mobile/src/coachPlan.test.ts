@@ -105,7 +105,7 @@ test('timeout covers never-resolving token/transport/body dependencies and does 
 
 test('plan transport maps auth, credits, rate and server failures without showing provider text',async()=>{
   const {coachPost}=await import('./coachService')
-  for(const [status,code,pattern] of [[401,undefined,/sign-in expired/],[402,undefined,/credits/],[429,undefined,/limit/],[500,undefined,/could not complete/],[403,'invalid-key',/rejected/]] as const) {
+  for(const [status,code,pattern] of [[401,undefined,/sign-in expired/],[429,undefined,/limit/],[500,undefined,/could not complete/],[403,'invalid-key',/rejected/]] as const) {
     await assert.rejects(coachPost('http://fixture','ai-chat',planRequestBody('fixture',brief()),new AbortController().signal,async()=> 'demo-token',async()=>new Response(JSON.stringify({code,error:'secret-provider-text'}),{status})),error=>error instanceof CoachApiError&&pattern.test(error.message)&&!error.message.includes('secret'))
   }
 })

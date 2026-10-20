@@ -49,6 +49,12 @@ describe('readJsonBody', () => {
       message: 'Invalid JSON in request body.',
     })
   })
+
+  it.each(['null', '[1]', '"text"'])('answers a body that is not an object (%s) with a 400', async (raw) => {
+    const req = makeRequest([raw], { 'content-type': 'application/json' })
+
+    await expect(readJsonBody(req)).rejects.toMatchObject({ status: 400, message: 'Request body must be a JSON object.' })
+  })
 })
 
 describe('sendApiError', () => {

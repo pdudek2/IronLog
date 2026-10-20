@@ -155,7 +155,7 @@ export default function SavedWorkoutScreen() {
                 </View>
                 <View accessibilityLabel={`Sets: ${exercise.name}`} style={styles.table}>
                   <View style={styles.tableHeader}>
-                    <Text style={[styles.cell, styles.indexCell, styles.headerCell]}>Streak</Text>
+                    <Text style={[styles.cell, styles.indexCell, styles.headerCell]}>Set</Text>
                     <Text style={[styles.cell, styles.headerCell]}>Weight {active.state.units}</Text>
                     <Text style={[styles.cell, styles.headerCell]}>Reps</Text>
                     <Text style={[styles.cell, styles.headerCell]}>Vol. {active.state.units}</Text>
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   feedbackRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingVertical: 15 },
   notice: { backgroundColor: colors.raised, gap: 6, marginTop: 10, padding: 14 },
   noticeTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15 },
-  retryButton: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 36, paddingHorizontal: 2 },
+  retryButton: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44, paddingHorizontal: 2 },
   retryText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   cacheNoticeRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 },
   cacheNotice: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 12 },

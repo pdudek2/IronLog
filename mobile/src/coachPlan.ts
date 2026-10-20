@@ -14,7 +14,7 @@ export const PLAN_RESPONSE_LIMIT = 128 * 1024
 export const defaultPlanBrief = (): PlanBrief => ({ goal: '', daysPerWeek: 3, experience: 'intermediate', equipment: ['barbell', 'dumbbell', 'bodyweight'], focus: '', notes: '' })
 
 export function planRequestBody(key: string, brief: PlanBrief): string {
-  if (brief.goal.trim().length < 2) throw new CoachApiError('Enter a plan goal to generate a template.')
+  if (brief.goal.trim().length < 2) throw new CoachApiError('Enter a plan goal to generate a plan.')
   if (brief.goal.length > 400 || brief.focus.length > 160 || brief.notes.length > 400
     || !Number.isInteger(brief.daysPerWeek) || brief.daysPerWeek < 2 || brief.daysPerWeek > 6
     || !['beginner', 'intermediate', 'advanced'].includes(brief.experience)

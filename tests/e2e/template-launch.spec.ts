@@ -108,7 +108,7 @@ test.describe('Template launch contract', () => {
     await page.goto('/dashboard')
 
     const launch = page.getByRole('button', {
-      name: `Start template ${REPLACE_TEMPLATE_NAME}`,
+      name: `Start plan ${REPLACE_TEMPLATE_NAME}`,
     }).first()
     await expect(launch).toBeVisible({ timeout: 15_000 })
     await launch.click()
@@ -123,7 +123,7 @@ test.describe('Template launch contract', () => {
 
     await page.goto('/dashboard')
     await launch.click()
-    await dialog.getByRole('button', { name: 'Start template' }).click()
+    await dialog.getByRole('button', { name: 'Start plan' }).click()
 
     await expect(page).toHaveURL('/workout/new', { timeout: 10_000 })
     await expect(page.getByText('Squat', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
@@ -171,7 +171,7 @@ test.describe('Template launch contract', () => {
           await expect(dialog).toBeVisible({ timeout: 5_000 })
 
           await context.setOffline(true)
-          await dialog.getByRole('button', { name: 'Start template' }).click()
+          await dialog.getByRole('button', { name: 'Start plan' }).click()
 
           const matchingCard = page.locator('article').filter({
             has: page.getByRole('heading', { name: OFFLINE_TEMPLATE_NAME, exact: true }),

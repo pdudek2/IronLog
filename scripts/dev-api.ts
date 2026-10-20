@@ -61,7 +61,7 @@ const server = createServer(async (req, res) => {
 
   if (!handler) {
     console.warn(`[dev api] 404 for ${req.method ?? 'GET'} ${pathname}`)
-    sendJson(apiRes, 404, { error: `Nie znaleziono lokalnego endpointu ${pathname}.` })
+    sendJson(apiRes, 404, { error: `Local endpoint not found: ${pathname}.` })
     return
   }
 

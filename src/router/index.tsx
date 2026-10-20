@@ -13,6 +13,7 @@ import { useProfileStore } from '../store/profileStore'
 import { ActionFeedback } from '../components/ActionFeedback'
 import { LoadingState } from '../components/ui'
 import AppLayout from '../components/AppLayout'
+import { routeTitle } from '../lib/routeTitle'
 import {
   loadChatPage,
   loadDashboardPage,
@@ -132,10 +133,17 @@ function RouteScrollReset() {
   return null
 }
 
+function RouteDocumentTitle() {
+  const { pathname } = useLocation()
+  useEffect(() => { document.title = routeTitle(pathname) }, [pathname])
+  return null
+}
+
 function RootRoute() {
   return (
     <>
       <RouteScrollReset />
+      <RouteDocumentTitle />
       <Outlet />
     </>
   )

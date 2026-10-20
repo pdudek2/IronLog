@@ -70,6 +70,11 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
           if (alive.current) { setCreateConflict(true); setError(confirmationError.message) }
           return
         }
+        if (confirmationError instanceof ExerciseNotSubmittedError) {
+          attempt.current = null
+          if (alive.current) setError(confirmationError.message)
+          return
+        }
         // Retain the operation for reconciliation.
       }
       if (!alive.current) return
@@ -80,6 +85,8 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
     } catch (nextError) {
       if (alive.current) {
         if (nextError instanceof ExerciseCreateConflictError) { setCreateConflict(true); setError(nextError.message) }
+        // The server definitely refused the earlier request, so the form is released instead of staying locked.
+        else if (nextError instanceof ExerciseNotSubmittedError) { attempt.current = null; setError(nextError.message) }
         else setError('Could not confirm the save. Check your connection and try again.')
       }
     }
@@ -100,7 +107,7 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
           <Select label="Equipment" value={input.equipment} options={equipmentOptions} getLabel={getEquipmentLabel} disabled={locked} onChange={equipment => setInput({ ...input, equipment })} />
           <View style={styles.group}><Text style={styles.label}>MUSCLE GROUPS</Text><View style={styles.chips}>{muscleOptions.map(muscle => <Pressable key={muscle} accessibilityRole="button" accessibilityState={{ selected: input.muscles.includes(muscle), disabled: locked }} disabled={locked} onPress={() => setInput({ ...input, muscles: input.muscles.includes(muscle) ? input.muscles.filter(value => value !== muscle) : [...input.muscles, muscle] })} style={[styles.chip, input.muscles.includes(muscle) && styles.selectedChip]}><Text style={[styles.chipText, input.muscles.includes(muscle) && { color: '#fff' }]}>{getMuscleLabel(muscle)}</Text></Pressable>)}</View></View>
           {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
-          <Pressable accessibilityRole="button" disabled={busy} accessibilityState={{ disabled: busy, busy }} onPress={() => createConflict ? onSaved() : void submit()} style={[styles.save, busy && { opacity: 0.5 }]}><Text style={styles.saveText}>{busy ? 'Saving…' : createConflict ? 'Close and reload library' : attempt.current ? 'Check outcome / Retry' : exercise ? 'Save changes' : 'Add exercise'}</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={busy ? 'Saving' : createConflict ? 'Close and reload library' : attempt.current ? 'Check outcome / Retry' : exercise ? 'Save changes' : 'Add exercise'} disabled={busy} accessibilityState={{ disabled: busy, busy }} onPress={() => createConflict ? onSaved() : void submit()} style={[styles.save, busy && { opacity: 0.5 }]}><Text style={styles.saveText}>{busy ? 'Saving…' : createConflict ? 'Close and reload library' : attempt.current ? 'Check outcome / Retry' : exercise ? 'Save changes' : 'Add exercise'}</Text></Pressable>
           {exercise && <Pressable accessibilityRole="button" disabled={locked} onPress={askDelete} style={styles.remove}><Text style={styles.removeText}>Remove exercise</Text></Pressable>}
         </ScrollView>
       </View>

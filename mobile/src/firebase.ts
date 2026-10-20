@@ -124,7 +124,7 @@ export async function login(email: string, password: string): Promise<void> {
 export async function currentIdToken(uid: string): Promise<string> {
   const { auth } = await getServices()
   const user = auth.currentUser
-  if (!user || user.uid !== uid) throw new Error('The signed-in account changed.')
+  if (!user || user.uid !== uid) throw Object.assign(new Error('The signed-in account changed.'), { code: 'auth/account-changed' })
   return user.getIdToken()
 }
 

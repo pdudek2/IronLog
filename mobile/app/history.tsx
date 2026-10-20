@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   searchWrap: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 12, flexDirection: 'row', minHeight: 44, paddingHorizontal: 12 },
   searchIcon: { marginRight: 6 },
   searchInput: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, minHeight: 44, paddingVertical: 0 },
-  clearSearch: { alignItems: 'center', height: 32, justifyContent: 'center', width: 32 },
+  clearSearch: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   clearText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 22, lineHeight: 26 },
   categoryScroll: { marginHorizontal: -16 },
   categoryRow: { alignItems: 'center', gap: 8, paddingHorizontal: 16 },

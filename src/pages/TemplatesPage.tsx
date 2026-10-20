@@ -55,7 +55,7 @@ export default function TemplatesPage() {
       })
       .catch(() => {
         if (cancelled) return
-        toast.error('Could not load templates.')
+        toast.error('Could not load plans.')
         setError(true)
       })
 
@@ -82,7 +82,7 @@ export default function TemplatesPage() {
       await deleteTemplate(target.id)
       setTemplates((prev) => prev.filter((template) => template.id !== target.id))
       setDeleteOperation(null)
-      toast.success('Template deleted')
+      toast.success('Plan deleted')
     } catch {
       setDeleteOperation({ target, status: 'error' })
       toast.error('Could not delete the plan.')
@@ -107,7 +107,7 @@ export default function TemplatesPage() {
   }
 
   if (loading) {
-    return <LoadingState message="Loading templates..." />
+    return <LoadingState message="Loading plans..." />
   }
 
   return (
@@ -155,7 +155,7 @@ export default function TemplatesPage() {
             initial={false}
             animate={{ opacity: 1 }}
           >
-            <p className="text-lg font-semibold text-white">Could not load templates</p>
+            <p className="text-lg font-semibold text-white">Could not load plans</p>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6" style={{ color: 'var(--muted)' }}>
               Check your connection and try again without reloading the page.
             </p>
@@ -243,7 +243,7 @@ export default function TemplatesPage() {
                     <div className="planner-template-actions">
                       <button
                         type="button"
-                        aria-label={`Edit template ${template.name}`}
+                        aria-label={`Edit plan ${template.name}`}
                         onClick={() => navigate(`/templates/${template.id}/edit`)}
                         className="planner-icon-action"
                       >
@@ -251,7 +251,7 @@ export default function TemplatesPage() {
                       </button>
                       <button
                         type="button"
-                        aria-label={`Delete template ${template.name}`}
+                        aria-label={`Delete plan ${template.name}`}
                         onClick={() => requestTemplateDelete(template)}
                         disabled={deleteOperation !== null}
                         aria-describedby={templateDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
@@ -357,9 +357,9 @@ export default function TemplatesPage() {
                             </span>
 
                             {launchable && <span className="planner-exercise-strip">
-                              {day.exercises.slice(0, 5).map((exercise) => (
+                              {day.exercises.slice(0, 5).map((exercise, exerciseIndex) => (
                                 <span
-                                  key={`${day.name}-${exercise.exerciseSource}-${exercise.exerciseId}`}
+                                  key={`${exerciseIndex}-${exercise.exerciseSource}-${exercise.exerciseId}`}
                                 >
                                   {exercise.name}
                                 </span>
@@ -386,7 +386,8 @@ export default function TemplatesPage() {
 
       {deleteTarget && (
         <ConfirmDialog
-          message={`Delete template "${deleteTarget.name}"? Ta operacja jest nieodwracalna.`}
+          title="Delete plan?"
+          message={`“${deleteTarget.name}” will be deleted. This cannot be undone.`}
           confirmLabel="Delete"
           cancelLabel="Cancel"
           onConfirm={handleDeleteConfirmed}

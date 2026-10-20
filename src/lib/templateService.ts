@@ -216,7 +216,8 @@ function clampPositiveInteger(value: unknown, fallback: number): number {
 function clampPositiveNumber(value: unknown, fallback: number): number {
   const numeric = typeof value === 'number' ? value : Number.parseFloat(String(value))
   if (!Number.isFinite(numeric)) return fallback
-  return Math.max(fallback, Math.round(numeric * 10) / 10)
+  // Four decimals, as saved: a lbs target stored in kg must read back as the same lbs value.
+  return Math.max(fallback, Math.round(numeric * 10_000) / 10_000)
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

@@ -21,6 +21,12 @@ function request() {
 }
 
 describe('template validation', () => {
+  it('rejects a day that lists the same exercise twice', () => {
+    const raw = { name: 'Plan', days: [{ name: 'Push', exercises: [exercise(), { ...exercise(), targetReps: 5 }] }] }
+    expect(() => parseSaveTemplateRequest(raw)).toThrow('A plan day cannot contain the same exercise twice.')
+    expect(parseSaveTemplateRequest({ ...raw, days: [{ name: 'Push', exercises: [exercise(), { ...exercise(), exerciseSource: 'user' }] }] }).days[0].exercises).toHaveLength(2)
+  })
+
   it('accepts and trims the complete boundary-sized template contract', () => {
     const raw = {
       id: 'template-1',

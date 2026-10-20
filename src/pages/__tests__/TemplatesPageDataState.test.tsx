@@ -85,7 +85,7 @@ describe('TemplatesPage data states', () => {
 
     render(<TemplatesPage />)
 
-    expect(await screen.findByText('Could not load templates')).toBeInTheDocument()
+    expect(await screen.findByText('Could not load plans')).toBeInTheDocument()
     expect(screen.queryByText('You have no plans yet')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Create your first plan' })).not.toBeInTheDocument()
 

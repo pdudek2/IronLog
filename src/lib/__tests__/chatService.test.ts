@@ -106,6 +106,20 @@ describe('streamChatReply', () => {
     await expect(streamChatReply(options())).rejects.toBe(aborted)
   })
 
+  it('passes the plan request signal and keeps a cancelled request distinct from a connection error', async () => {
+    const controller = new AbortController()
+    const aborted = new DOMException('Cancelled', 'AbortError')
+    const fetchMock = vi.fn().mockImplementation(() => { controller.abort(); return Promise.reject(aborted) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(generateTrainingPlan({
+      apiKey: 'sk-or-fixture-key-with-enough-length',
+      request: { goal: 'Strength', daysPerWeek: 2, experience: 'intermediate', equipment: [], focus: '', notes: '' },
+      signal: controller.signal,
+    })).rejects.toBe(aborted)
+    expect(fetchMock.mock.calls[0][1]).toMatchObject({ signal: controller.signal })
+  })
+
   it('reports limited context before reading stream chunks', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(ndjsonResponse(
       '{"type":"chunk","text":"Gotowe"}\n{"type":"done"}\n',

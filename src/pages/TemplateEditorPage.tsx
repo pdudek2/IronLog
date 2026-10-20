@@ -124,7 +124,7 @@ export default function TemplateEditorPage() {
       .then((nextTemplate) => {
         if (cancelled) return
         if (!nextTemplate) {
-          toast.error('Template not found.')
+          toast.error('Plan not found.')
           navigate('/templates', { replace: true })
           return
         }
@@ -142,7 +142,7 @@ export default function TemplateEditorPage() {
       })
       .catch(() => {
         if (!cancelled) {
-          toast.error('Could not load the template.')
+          toast.error('Could not load the plan.')
           navigate('/templates', { replace: true })
         }
       })
@@ -159,7 +159,7 @@ export default function TemplateEditorPage() {
     if (isEdit || searchParams.get('draft') !== 'ai') return
 
     if (!initialDraft) {
-      toast.message('AI draft not found. You can build a template manually.')
+      toast.message('AI draft not found. You can build a plan manually.')
       return
     }
 
@@ -242,12 +242,13 @@ export default function TemplateEditorPage() {
   }
 
   function addExerciseToDay(dayIndex: number, exerciseId: string, exerciseName: string, source: ExerciseSource) {
+    // Checked before the update: a state updater may run twice and must not show the toast itself.
+    if (days[dayIndex]?.exercises.some((exercise) => exercise.exerciseId === exerciseId && exercise.exerciseSource === source)) {
+      toast.message('This exercise is already in this day.')
+      return
+    }
     setDays((prev) => prev.map((day, index) => {
       if (index !== dayIndex) return day
-      if (day.exercises.some((exercise) => exercise.exerciseId === exerciseId && exercise.exerciseSource === source)) {
-        toast.message('This exercise is already in this day.')
-        return day
-      }
 
       return {
         ...day,
@@ -294,12 +295,12 @@ export default function TemplateEditorPage() {
 
     const trimmedName = name.trim()
     if (trimmedName.length < 2) {
-      toast.error('Template name must contain at least 2 characters.')
+      toast.error('Plan name must contain at least 2 characters.')
       return
     }
 
     if (days.every((day) => day.exercises.length === 0)) {
-      toast.error('Add at least one exercise to the template.')
+      toast.error('Add at least one exercise to the plan.')
       return
     }
 
@@ -324,11 +325,11 @@ export default function TemplateEditorPage() {
     try {
       if (isEdit && id) {
         await updateTemplate(id, payload, editBaseline ? { operationId, baseline: editBaseline } : undefined)
-        toast.success('Template updated')
+        toast.success('Plan updated')
       } else {
         await createTemplate(user.uid, payload, operationId)
         clearTemplateDraft()
-        toast.success('Template saved')
+        toast.success('Plan saved')
       }
       setSavedSnapshot(serializeDraftState(payload.name, payload.days))
       leaveGuard.reset()
@@ -638,7 +639,7 @@ export default function TemplateEditorPage() {
           title={saving ? 'Saving in progress' : 'Leave editor?'}
           message={saving
             ? 'Wait for saving to finish. You can then continue or retry saving.'
-            : 'You have unsaved template changes. Leaving now will discard them.'}
+            : 'You have unsaved plan changes. Leaving now will discard them.'}
           confirmLabel={saving ? 'Saving…' : 'Leave without saving'}
           cancelLabel="Stay"
           danger={!saving}

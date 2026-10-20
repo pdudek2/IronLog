@@ -19,6 +19,8 @@ interface AiKeyPanelProps {
   collapsed?: boolean
   onExpand?: () => void
   onCollapse?: () => void
+  // Opened from a button that then disappears, so focus moves into the panel instead of falling to the page.
+  focusKeyOnOpen?: boolean
 }
 
 function getAiErrorCode(error: unknown): string | undefined {
@@ -40,8 +42,12 @@ function AccountAiKeyPanel({
   collapsed = false,
   onExpand,
   onCollapse,
+  focusKeyOnOpen = false,
 }: AiKeyPanelProps) {
   const keyInputId = useId()
+  useEffect(() => {
+    if (focusKeyOnOpen) document.getElementById(keyInputId)?.focus()
+  }, [focusKeyOnOpen, keyInputId])
   const modelSelectId = useId()
   const modelsErrorId = useId()
   const [draft, setDraft] = useState(() => getOpenRouterApiKey())

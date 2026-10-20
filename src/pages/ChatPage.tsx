@@ -167,6 +167,10 @@ export default function ChatPage() {
   const navigate = useNavigate()
   const isDemoUser = user?.email === DEMO_EMAIL
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
+  // Leaving Coach or the plan tab stops generation; the request runs on the user's own key.
+  const planAbort = useRef<AbortController | null>(null)
+  useEffect(() => () => planAbort.current?.abort(), [])
+  useEffect(() => { if (activeTab !== 'plan') planAbort.current?.abort() }, [activeTab])
   const [keyConfiguration, setKeyConfiguration] = useState(() => ({
     uid: keyOwnerUid,
     configured: hasOpenRouterApiKey(),
@@ -178,6 +182,13 @@ export default function ChatPage() {
     setKeyConfiguration({ uid: keyOwnerUid, configured: nextConfigured })
   }, [keyOwnerUid])
   const [showConfigPanel, setShowConfigPanel] = useState(false)
+  // Closing the key panel brings focus back to the button that opened it.
+  const keyGateAction = useRef<HTMLDivElement>(null)
+  const keyPanelWasOpen = useRef(false)
+  useEffect(() => {
+    if (!showConfigPanel && keyPanelWasOpen.current) keyGateAction.current?.querySelector('button')?.focus()
+    keyPanelWasOpen.current = showConfigPanel
+  }, [showConfigPanel])
   const [messages, setMessages] = useState<ChatMessage[]>(() => (isDemoUser ? DEMO_CHAT_MESSAGES : []))
   const demoSeededRef = useRef(isDemoUser)
   const [input, setInput] = useState('')
@@ -427,9 +438,13 @@ export default function ChatPage() {
     setPlanPreview(null)
     setPlanUnavailableSources([])
     setGeneratingPlan(true)
+    planAbort.current?.abort()
+    const controller = new AbortController()
+    planAbort.current = controller
 
     try {
       const { plan, context } = await generateTrainingPlan({
+        signal: controller.signal,
         apiKey,
         request: {
           goal: planGoal,
@@ -444,14 +459,18 @@ export default function ChatPage() {
       setSelectedPreviewDay(0)
       setPlanPreview(plan)
       setPlanUnavailableSources(context.unavailableSources)
-      toast.success('Plan generated. You can save it as a template.')
+      toast.success('Plan generated. You can save it to your plans.')
     } catch (nextError) {
+      if (controller.signal.aborted) return
       const message = nextError instanceof Error ? nextError.message : 'Could not generate a plan.'
       setPlanError({ message, field: null })
       setPlanPreview(null)
       setPlanUnavailableSources([])
     } finally {
-      setGeneratingPlan(false)
+      if (planAbort.current === controller) {
+        planAbort.current = null
+        setGeneratingPlan(false)
+      }
     }
   }
 
@@ -468,7 +487,7 @@ export default function ChatPage() {
         name: planPreview.name,
         days: planPreview.days,
       }, planSaveOperation.current.operationId)
-      toast.success('Plan saved as a new template.')
+      toast.success('Plan saved to your plans.')
       setPlanPreview(null)
       setPlanUnavailableSources([])
       setPlanGoal('')
@@ -572,7 +591,7 @@ export default function ChatPage() {
                       Without it, you can review the conversation and brief, but cannot send questions or generate plans.
                     </p>
                   </div>
-                  <div className="mt-4">
+                  <div className="mt-4" ref={keyGateAction}>
                     <Button
                       type="button"
                       aria-expanded={showConfigPanel}
@@ -593,6 +612,7 @@ export default function ChatPage() {
                   onConfiguredChange={handleGateConfiguredChange}
                   onExpand={() => setShowConfigPanel(true)}
                   onCollapse={() => setShowConfigPanel(false)}
+                  focusKeyOnOpen
                 />
               </>
             )}
@@ -985,9 +1005,9 @@ export default function ChatPage() {
                           </div>
 
                           <div>
-                            {previewDay.exercises.map((exercise) => (
+                            {previewDay.exercises.map((exercise, exerciseIndex) => (
                               <div
-                                key={`${previewDay.name}:${exercise.exerciseSource}:${exercise.exerciseId}`}
+                                key={`${exerciseIndex}:${exercise.exerciseSource}:${exercise.exerciseId}`}
                                 className="coach-preview-exercise grid grid-cols-[minmax(0,1.4fr)_6rem_7rem] gap-3 px-1 py-3 text-sm"
                               >
                                 <div className="min-w-0">
@@ -1023,7 +1043,7 @@ export default function ChatPage() {
                         className="inline-flex items-center gap-2"
                       >
                         {savingPlan ? <LoaderCircle size={15} className="animate-spin" /> : <Sparkles size={15} />}
-                        {savingPlan ? 'Saving...' : 'Save as template'}
+                        {savingPlan ? 'Saving...' : 'Save plan'}
                       </Button>
 
                       <Button

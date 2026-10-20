@@ -36,7 +36,7 @@ export default function ReadinessHome({ state, controller, recommendation, templ
     {state.status === 'loading' ? <View style={styles.card}><ActivityIndicator color={color.accent} accessibilityLabel="Loading readiness" /></View>
       : state.status !== 'ready' ? <View style={styles.error} accessibilityRole="alert"><Text style={styles.title}>{state.status === 'invalid' ? 'Readiness data is invalid' : state.status === 'cached' ? 'Readiness unconfirmed' : 'Could not load readiness'}</Text><Text style={styles.copy}>{state.message}</Text><Pressable accessibilityRole="button" onPress={() => void controller.load(true)} style={styles.link}><Text style={styles.linkText}>Try again</Text></Pressable></View>
       : !state.entry ? <View style={styles.card}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Readiness · optional. Adjust today’s workout. Check in" accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)} style={[styles.summary, expanded && styles.border]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Readiness · optional. Adjust today’s workout. ${expanded ? 'Close' : 'Check in'}`} accessibilityState={{ expanded }} onPress={() => setExpanded(value => !value)} style={[styles.summary, expanded && styles.border]}>
           <View style={styles.flex}><Text style={styles.meta}>Readiness · optional</Text><Text style={styles.title}>Adjust today’s workout</Text><Text style={styles.meta}>Sleep, mood and soreness</Text></View><Text style={styles.meta}>{expanded ? 'Close' : 'Check in'}</Text>
         </Pressable>
         {expanded && state.values && <View style={styles.body}>

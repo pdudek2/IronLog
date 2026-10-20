@@ -45,6 +45,21 @@ describe('workoutStore set steppers', () => {
     expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.weight).toBe('87.5')
   })
 
+  it('keeps lbs steps exact in kg, so +2.5 and -2.5 lbs return to the start', () => {
+    const lbsStepKg = 2.5 / 2.2046226218
+    useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
+      startedAt: 1,
+      exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets: [{ weight: '61.235', reps: '5', done: false }] }],
+    })
+
+    const { adjustSet } = useWorkoutStore.getState()
+    adjustSet(0, 0, 'weight', lbsStepKg)
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.weight).toBe('62.369')
+    adjustSet(0, 0, 'weight', -lbsStepKg)
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.weight).toBe('61.235')
+  })
+
   it('accumulates rapid rep adjustments and clamps at zero', () => {
     const store = useWorkoutStore.getState()
     store.hydrateFromDoc({
@@ -246,6 +261,24 @@ describe('workoutStore completed set validation', () => {
 describe('workoutStore client IDs', () => {
   beforeEach(() => {
     useWorkoutStore.setState({ active: null })
+  })
+
+  it('keeps row ids when the same session is refreshed from the server, so inputs keep focus', () => {
+    const doc = (reps: string, sessionId = 'session-1') => ({
+      sessionId,
+      startedAt: 1,
+      exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global' as const, name: 'Bench Press', sets: [{ weight: '80', reps, done: false }] }],
+    })
+    useWorkoutStore.getState().hydrateFromDoc(doc('5'))
+    const first = useWorkoutStore.getState().active!.exercises[0]
+    useWorkoutStore.getState().hydrateFromDoc(doc('6'))
+    const refreshed = useWorkoutStore.getState().active!.exercises[0]
+    expect(refreshed.clientId).toBe(first.clientId)
+    expect(refreshed.sets[0].clientId).toBe(first.sets[0].clientId)
+    expect(refreshed.sets[0].reps).toBe('6')
+
+    useWorkoutStore.getState().hydrateFromDoc(doc('6', 'session-2'))
+    expect(useWorkoutStore.getState().active!.exercises[0].clientId).not.toBe(first.clientId)
   })
 
   it('creates client IDs for new exercises and sets', () => {

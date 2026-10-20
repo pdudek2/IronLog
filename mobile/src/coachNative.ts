@@ -23,8 +23,9 @@ export function nativeCoachDependencies(uid: string): CoachDependencies {
     validateKey: async (apiKey, signal) => {
       const response = await post('ai-models', JSON.stringify({ apiKey }), signal)
       const payload = await response.json() as { models?: { id?: unknown }[] }
-      if (!Array.isArray(payload.models) || !payload.models.some(model => model.id === 'openai/gpt-5.6-luna')) {
-        throw new CoachApiError('AI Coach returned an unsupported model. Try again later.')
+      // The server picks the model; any non-empty list proves the key works.
+      if (!Array.isArray(payload.models) || payload.models.length === 0) {
+        throw new CoachApiError('AI Coach returned no models for this key. Try again later.')
       }
     },
     plan: async request => consumePlanResponse(await post('ai-chat', planRequestBody(request.key, request.brief), request.signal), request.signal),

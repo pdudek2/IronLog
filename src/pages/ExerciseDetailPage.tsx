@@ -99,9 +99,9 @@ export default function ExerciseDetailPage() {
 
   const chronologicalSessions = useMemo(() => [...sessions].reverse(), [sessions])
   const latestVolume = sessions[0]?.totalVolume ?? 0
-  const maxVolume = sessions.length
-    ? Math.max(...sessions.map((session) => session.totalVolume), 1)
-    : 1
+  const maxVolume = sessions.length ? Math.max(...sessions.map((session) => session.totalVolume)) : 0
+  // Bars need a non-zero scale; the value shown as the maximum stays the real one (0 for bodyweight work).
+  const scaleVolume = Math.max(maxVolume, 1)
   const latestIsMaximum = latestVolume === maxVolume
 
   const userExercise = exerciseSource === 'user' && userCatalog.state.status === 'success'
@@ -283,7 +283,7 @@ export default function ExerciseDetailPage() {
                         className="exercise-detail-volume-bar"
                         style={{
                           background: accent,
-                          height: `${Math.max((session.totalVolume / maxVolume) * 100, 4)}%`,
+                          height: `${Math.max((session.totalVolume / scaleVolume) * 100, 4)}%`,
                         }}
                         initial={{ scaleY: 0 }}
                         animate={{ scaleY: 1 }}

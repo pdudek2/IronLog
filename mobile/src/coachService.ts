@@ -36,8 +36,7 @@ export async function coachPost(baseUrl: string, path: 'ai-chat' | 'ai-models', 
     // Do not display arbitrary provider text: it can include request details or the key.
     const message = code === 'invalid-key'
       ? 'OpenRouter rejected this key. Update it in settings.'
-      : response.status === 402 ? 'Your OpenRouter account needs credits.'
-        : response.status === 429 ? 'A request limit or credit limit was reached. Wait or check your OpenRouter account.'
+      : response.status === 429 ? 'A request limit or credit limit was reached. Wait or check your OpenRouter account.'
           : response.status === 401 ? 'Your sign-in expired. Sign in again.'
             : 'AI Coach could not complete the request. Try again.'
     throw new CoachApiError(message, code)

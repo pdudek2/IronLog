@@ -36,13 +36,14 @@ beforeEach(() => {
 })
 
 describe('account-owned OpenRouter API keys', () => {
-  it('never reuses an old Claude or direct OpenAI key for OpenRouter', () => {
+  it('never reuses an old Claude or direct OpenAI key for OpenRouter and removes them', () => {
     window.localStorage.setItem('ironlog.claudeApiKey:a', 'old-claude-key')
     window.localStorage.setItem('ironlog.openaiApiKey:a', 'old-openai-key')
     expect(getOpenRouterApiKey()).toBe('')
     setOpenRouterApiKey(KEY_A)
     expect(getOpenRouterApiKey()).toBe(KEY_A)
-    expect(window.localStorage.getItem('ironlog.claudeApiKey:a')).toBe('old-claude-key')
+    expect(window.localStorage.getItem('ironlog.claudeApiKey:a')).toBeNull()
+    expect(window.localStorage.getItem('ironlog.openaiApiKey:a')).toBeNull()
   })
   it('retains each owner key through A → logout → B → A and clears only the current owner', () => {
     expect(setOpenRouterApiKey(` ${KEY_A} `)).toBe(KEY_A)
@@ -125,5 +126,14 @@ describe('account-owned OpenRouter API keys', () => {
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
     account('a')
     expect(getOpenRouterApiKey()).toBe(KEY_A)
+  })
+
+  it('moves focus into the key panel and back to its button when the panel closes', async () => {
+    account('b')
+    render(<ChatPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Set up key' }))
+    await waitFor(() => expect(screen.getByLabelText('Your key')).toHaveFocus())
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Set up key' })).toHaveFocus())
   })
 })

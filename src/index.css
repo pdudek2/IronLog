@@ -1212,8 +1212,12 @@ a {
   text-wrap: balance;
 }
 
+/* A gap instead of a leading margin, so a word that wraps to its own line is not indented. */
 .auth-title-line {
-  display: block;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.26em;
 }
 
 .auth-title-line:last-child .auth-title-word:last-child .auth-title-word-inner {
@@ -1246,10 +1250,6 @@ a {
   overflow: clip;
   overflow-clip-margin: 0.32em;
   vertical-align: bottom;
-}
-
-.auth-title-word + .auth-title-word {
-  margin-left: 0.26em;
 }
 
 .auth-title-word-inner {

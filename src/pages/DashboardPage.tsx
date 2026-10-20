@@ -30,8 +30,11 @@ import { preloadRouteByPath } from '../router/pageLoaders'
 import {
   getRecentWorkouts, deleteWorkout, retryWorkoutMaterialization, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
+  readWorkoutMutationState,
 } from '../lib/workoutService'
 import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
+import { ApiRejectedError } from '../lib/authedApi'
+import type { WorkoutMutationGuard } from '../shared/workoutMutation'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
@@ -232,6 +235,8 @@ export default function DashboardPage() {
   const snapshotRequestRef = useRef(0)
   const dashboardScopeRef = useRef<{ uid: string } | null>(null)
   const materializationRetriesRef = useRef(new Map<string, Promise<void>>())
+  // Taken when the dialog opens, so a workout changed on another device meanwhile is not deleted unseen.
+  const deleteGuardRef = useRef<{ workoutId: string; guard: WorkoutMutationGuard } | null>(null)
   const templatesMountedRef = useRef(false)
   const templatesRequestRef = useRef(0)
   const requestedTemplatesUserRef = useRef<string | null>(null)
@@ -291,7 +296,7 @@ export default function DashboardPage() {
       .catch((error: unknown) => {
         if (!templatesMountedRef.current || requestId !== templatesRequestRef.current) return
         console.error('[DashboardPage] getTemplates failed', error)
-        toast.error('Could not load templates.')
+        toast.error('Could not load plans.')
         setTemplatesResource({ uid, state: { status: 'error', error } })
       })
       .finally(() => {
@@ -448,9 +453,19 @@ export default function DashboardPage() {
     setReadinessResource({ uid: user?.uid ?? null, state })
   }, [user?.uid])
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (deleteOperation) return
-    setConfirmDelete(id)
+    try {
+      const state = await readWorkoutMutationState(id)
+      if (!state.workout || !state.baseline) {
+        toast.error('Workout is no longer available.')
+        return
+      }
+      deleteGuardRef.current = { workoutId: id, guard: { baseline: state.baseline, operationId: crypto.randomUUID() } }
+      setConfirmDelete(id)
+    } catch {
+      toast.error('Could not check the workout. Try again.')
+    }
   }
 
   async function handleOpenWorkout() {
@@ -497,7 +512,8 @@ export default function DashboardPage() {
       : 'error'
     setTransientDeleteOperation({ uid: user.uid, workoutId, status: 'pending' })
     try {
-      const result = await deleteWorkout(workoutId)
+      const guard = deleteGuardRef.current?.workoutId === workoutId ? deleteGuardRef.current.guard : undefined
+      const result = await deleteWorkout(workoutId, guard)
       if (result.status !== 'deleted') {
         if (isCurrent()) setTransientDeleteOperation({ uid: user.uid, workoutId, status: result.status })
         return
@@ -507,10 +523,10 @@ export default function DashboardPage() {
       setTransientDeleteOperation(null)
       void fetchData(user.uid)
       toast.success('Workout deleted')
-    } catch {
+    } catch (error) {
       if (!isCurrent()) return
       setTransientDeleteOperation({ uid: user.uid, workoutId, status: recoveryStatus })
-      toast.error('Could not delete the workout.')
+      toast.error(error instanceof ApiRejectedError ? error.message : 'Could not delete the workout.')
     }
   }
 
@@ -1054,7 +1070,7 @@ export default function DashboardPage() {
                           disabled={launchingTemplateId !== null}
                           aria-busy={isLaunching ? 'true' : undefined}
                           aria-describedby={templateLaunchOperation?.status === 'error' ? launchErrorId : undefined}
-                          aria-label={`Start template ${template.name}`}
+                          aria-label={`Start plan ${template.name}`}
                           className="dashboard-template-tile"
                           style={{
                             opacity: isLaunching ? 0.72 : 1,
@@ -1208,7 +1224,7 @@ export default function DashboardPage() {
                               </button>
                               <motion.button
                                 type="button"
-                                onClick={() => handleDelete(workout.id)}
+                                onClick={() => { void handleDelete(workout.id) }}
                                 className="dashboard-history-delete"
                                 style={{
                                   color: 'var(--danger)',

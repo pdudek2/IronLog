@@ -60,18 +60,25 @@ function createClientId(prefix: 'exercise' | 'set'): string {
 
 const emptySet = (): WorkoutSet => ({ clientId: createClientId('set'), weight: '', reps: '', done: false })
 
-function withClientIds(workout: ActiveWorkout): ActiveWorkout {
+// Rows of the same session keep their ids (matched by position and exercise), so a save from another device does not
+// remount them and drop the focused input.
+function withClientIds(workout: ActiveWorkout, previous?: ActiveWorkout | null): ActiveWorkout {
+  const sameSession = previous?.sessionId === workout.sessionId ? previous : null
   return {
     ...workout,
-    exercises: workout.exercises.map((exercise) => ({
-      ...exercise,
-      clientId: exercise.clientId ?? createClientId('exercise'),
-      sets: exercise.sets.map((set) => ({
-        ...set,
-        clientId: set.clientId ?? createClientId('set'),
-        done: set.done && isValidCompletedSet(set),
-      })),
-    })),
+    exercises: workout.exercises.map((exercise, exerciseIndex) => {
+      const before = sameSession?.exercises[exerciseIndex]
+      const kept = before?.exerciseId === exercise.exerciseId && before.exerciseSource === exercise.exerciseSource ? before : null
+      return {
+        ...exercise,
+        clientId: exercise.clientId ?? kept?.clientId ?? createClientId('exercise'),
+        sets: exercise.sets.map((set, setIndex) => ({
+          ...set,
+          clientId: set.clientId ?? kept?.sets[setIndex]?.clientId ?? createClientId('set'),
+          done: set.done && isValidCompletedSet(set),
+        })),
+      }
+    }),
   }
 }
 
@@ -98,11 +105,9 @@ function parseSetNumber(value: string, field: 'weight' | 'reps'): number {
   return Number.isFinite(parsed) ? parsed : 0
 }
 
+// Weights keep the four decimals a lbs value needs in kg (2.5 lbs = 1.1340 kg), as native and typed input do.
 function formatAdjustedSetValue(value: number, field: 'weight' | 'reps'): string {
-  const rounded = field === 'weight'
-    ? Math.round(value * 10) / 10
-    : Math.round(value)
-  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1)
+  return String(field === 'weight' ? Math.round(value * 10_000) / 10_000 : Math.round(value))
 }
 
 export const useWorkoutStore = create<WorkoutState>()((set) => ({
@@ -114,7 +119,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
 
   hydrateFromDoc: (workout) =>
     set((state) => ({
-      active: withClientIds(workout),
+      active: withClientIds(workout, state.active),
       restTimer: state.active?.sessionId === workout.sessionId ? state.restTimer : null,
     })),
 

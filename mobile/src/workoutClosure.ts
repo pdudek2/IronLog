@@ -497,11 +497,16 @@ export async function requestClosure(intent: ClosureIntent, dependencies: Closur
   return { action: 'discard', sessionId: intent.sessionId, status: 'discarded' }
 }
 
+const SIGN_IN_REQUIRED = new Set(['auth/account-changed', 'auth/user-token-expired', 'auth/user-disabled', 'auth/user-not-found', 'auth/invalid-user-token'])
+
 async function post(dependencies: ClosureRequestDependencies, path: string, body: unknown): Promise<Record<string, unknown>> {
   let token: string
   try {
     token = await dependencies.getIdToken()
-  } catch {
+  } catch (error) {
+    // Only a missing or rejected account needs a new sign-in; a token refresh that failed offline is retried.
+    const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : ''
+    if (!SIGN_IN_REQUIRED.has(code)) throw new ClosureRequestError('ambiguous', 'Could not confirm session closure.')
     throw new ClosureRequestError('definitive', 'No active user session.', undefined, 'unauthenticated')
   }
   const controller = new AbortController()

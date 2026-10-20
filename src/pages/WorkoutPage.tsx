@@ -377,9 +377,8 @@ export default function WorkoutPage() {
       if (!last || last.bestSetWeight <= 0) return
       const state = useWorkoutStore.getState()
       if (!state.active) return
-      const idx = state.active.exercises.findIndex(
-        (ex) => ex.exerciseId === id && ex.exerciseSource === source,
-      )
+      // The same exercise can be in the session twice; the prefill belongs to the one just added.
+      const idx = state.active.exercises.findIndex((ex) => ex.clientId === addedExercise?.clientId)
       if (idx === -1) return
       const firstSet = state.active.exercises[idx].sets[0]
       if (!firstSet || firstSet.weight || firstSet.reps) return

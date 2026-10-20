@@ -14,6 +14,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const template = await saveTemplateForUser(userId, parseSaveTemplateRequest(body))
     sendJson(res, 200, { template })
   } catch (error) {
-    sendApiError(res, error, { fallbackMessage: 'Could not save the template.' })
+    sendApiError(res, error, { fallbackMessage: 'Could not save the plan.' })
   }
 }

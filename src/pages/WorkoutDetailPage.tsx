@@ -747,7 +747,7 @@ export default function WorkoutDetailPage() {
                     <table className="workout-detail-set-table" aria-label={`Sets: ${exercise.name}`}>
                       <thead>
                         <tr>
-                          <th scope="col">Streak</th>
+                          <th scope="col">Set</th>
                           <th scope="col">Weight {units}</th>
                           <th scope="col">Reps</th>
                           <th scope="col">Vol. {units}</th>

@@ -18,7 +18,7 @@ export function LaunchRuntimeProvider({ uid, children }: { uid: string; children
           <Text style={styles.copy}>Your current exercises and sets will be discarded. This cannot be undone.</Text>
           <View style={styles.actions}>
             <Pressable accessibilityRole="button" onPress={value.cancelReplacement} style={styles.cancel}><Text style={styles.cancelText}>Keep current session</Text></Pressable>
-            <Pressable accessibilityRole="button" onPress={() => value.confirmation?.confirm()} style={styles.confirm}><Text style={styles.confirmText}>Start template</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => value.confirmation?.confirm()} style={styles.confirm}><Text style={styles.confirmText}>Start plan</Text></Pressable>
           </View>
         </View>
       </View>

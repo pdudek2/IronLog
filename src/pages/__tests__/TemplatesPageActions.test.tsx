@@ -171,7 +171,7 @@ describe('TemplatesPage launch actions', () => {
     expect(within(cardFor('Plan B')).getByRole('button', {
       name: 'Edit Plan B to add exercises to Day B',
     })).toBeInTheDocument()
-    expect(within(planACard).queryByRole('button', { name: 'Start template Plan A' }))
+    expect(within(planACard).queryByRole('button', { name: 'Start plan Plan A' }))
       .not.toBeInTheDocument()
 
     const secondDayRow = within(planACard)
@@ -304,13 +304,13 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete template Plan A' }))
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete plan Plan A' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     const pending = within(cardFor('Plan A')).getByRole('status')
     expect(pending).toHaveTextContent('Deleting plan…')
     expect(cardFor('Plan A')).toBeInTheDocument()
-    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edit template Plan B' }))
+    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edit plan Plan B' }))
       .toBeEnabled()
     expect(mocks.deleteTemplate).toHaveBeenLastCalledWith('template-a')
 
@@ -348,17 +348,17 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete template Plan A' }))
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete plan Plan A' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
-    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Delete template Plan B' })
+    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Delete plan Plan B' })
     fireEvent.click(planBDelete)
     const secondConfirm = screen.queryByRole('button', { name: 'Potwierdź usunięcie' })
     if (secondConfirm) fireEvent.click(secondConfirm)
 
     expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
     expect(planBDelete).toBeDisabled()
-    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edit template Plan B' }))
+    expect(within(cardFor('Plan B')).getByRole('button', { name: 'Edit plan Plan B' }))
       .toBeEnabled()
     expect(within(cardFor('Plan A')).getByRole('status')).toHaveTextContent('Deleting plan…')
     expect(within(cardFor('Plan B')).queryByRole('status')).not.toBeInTheDocument()
@@ -372,7 +372,7 @@ describe('TemplatesPage launch actions', () => {
       expect(screen.queryByRole('heading', { name: 'Plan A' })).not.toBeInTheDocument()
     })
     const availablePlanBDelete = within(cardFor('Plan B')).getByRole('button', {
-      name: 'Delete template Plan B',
+      name: 'Delete plan Plan B',
     })
     expect(availablePlanBDelete).toBeEnabled()
 
@@ -390,7 +390,7 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete template Plan A' }))
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete plan Plan A' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     await act(async () => {
@@ -409,7 +409,7 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete template Plan A' }))
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete plan Plan A' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     await act(async () => {
@@ -417,7 +417,7 @@ describe('TemplatesPage launch actions', () => {
     })
 
     const alert = await within(cardFor('Plan A')).findByRole('alert')
-    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Delete template Plan B' })
+    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Delete plan Plan B' })
 
     expect(planBDelete).toBeDisabled()
     fireEvent.click(planBDelete)

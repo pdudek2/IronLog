@@ -803,7 +803,7 @@ describe('ProgressPage', () => {
     const selector = await screen.findByRole('combobox', { name: 'Chart exercise' })
     fireEvent.change(selector, { target: { value: 'global:row' } })
 
-    expect(screen.getByText('Chart needs 2 days with recorded weight.')).toBeInTheDocument()
+    expect(screen.getByText('Chart needs 2 more days with recorded weight.')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: '30 days' }))
     expect(selector).toHaveValue('global:bench')

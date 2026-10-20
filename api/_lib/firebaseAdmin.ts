@@ -26,6 +26,9 @@ function createCredential() {
 }
 
 function loadLocalEnvFile() {
+  // Local development only: on Vercel the environment comes from the project settings, and reading the file here
+  // would make the build tracer copy .env.local into every function.
+  if (process.env.VERCEL) return
   const envPath = resolve(process.cwd(), '.env.local')
   if (!existsSync(envPath)) return
 

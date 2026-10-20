@@ -385,6 +385,36 @@ describe('AI context response metadata', () => {
     })
   })
 
+  it('keeps only the first copy of an exercise the model repeats within a day', () => {
+    const plan = normalizeGeneratedPlan({
+      name: 'Plan',
+      days: [{ name: 'Day A', exercises: [
+        { exerciseId: 'bench-press', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 80 },
+        { exerciseId: 'bench-press', exerciseSource: 'global', sets: 3, targetReps: 8, targetWeight: 60 },
+      ] }],
+    }, [
+      { id: 'bench-press', name: 'Bench Press', source: 'global', equipment: 'barbell', category: 'chest', muscles: ['chest'] },
+    ], { goal: 'strength', daysPerWeek: 1, experience: 'intermediate', equipment: ['barbell'], focus: '', notes: '' })
+    expect(plan.days[0].exercises).toEqual([expect.objectContaining({ exerciseId: 'bench-press', targetReps: 5 })])
+  })
+
+  it('stops the upstream plan request when the client disconnects', async () => {
+    mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({ profile: null, readinessEntries: [], workouts: [], records: [] }))
+    let upstreamSignal: AbortSignal | undefined
+    vi.stubGlobal('fetch', vi.fn((_url: string, init: RequestInit) => {
+      upstreamSignal = init.signal ?? undefined
+      return new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted'))))
+    }))
+    const captured = createHandlerDoubles(validPlanBody)
+    const running = handler(captured.req, captured.res)
+    await vi.waitFor(() => expect(upstreamSignal).toBeDefined())
+
+    captured.res.emit('close')
+    await running
+
+    expect(upstreamSignal?.aborted).toBe(true)
+  })
+
   it('rejects generated plans with the wrong day count as an unusable model answer', () => {
     const thrownBy = (run: () => unknown) => { try { run() } catch (error) { return error } }
     expect(thrownBy(() => normalizeGeneratedPlan({

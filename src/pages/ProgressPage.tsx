@@ -344,7 +344,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   const firstStrength = selectedStrengthValues[0] ?? 0
   const latestStrength = selectedStrengthValues.at(-1) ?? 0
   const maxStrength = selectedStrengthValues.length ? Math.max(...selectedStrengthValues) : 0
-  const strengthDelta = latestStrength - firstStrength
+  // Stored weights have at most four decimals; rounding the difference drops float noise such as 2.2999999.
+  const strengthDelta = Math.round((latestStrength - firstStrength) * 10_000) / 10_000
   const missingStrengthSessions = Math.max(0, 3 - selectedStrengthPoints.length)
 
   const heatmapData = useMemo(
@@ -502,7 +503,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 <NumberFlow
                   value={kgToDisplayWeight(totalVolume, units)}
                   transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
-                  format={{ useGrouping: true }}
+                  format={{ useGrouping: true, maximumFractionDigits: 0 }}
                   locales="en-US"
                 />
                 <small> {units}</small>
@@ -595,7 +596,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               </div>
               <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
                 <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
-                  <AreaChart data={weeklyData} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
+                  {/* Room for "6.0k kg" on one line and for the last week label at the right edge. */}
+                  <AreaChart data={weeklyData} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
                     <defs>
                       <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.34} />
@@ -615,7 +617,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                       tick={{ fill: 'var(--muted)', fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
-                      width={52}
+                      width={66}
                     />
                     <Tooltip content={<DarkTooltip units={units} />} />
                     <Area
@@ -683,7 +685,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               ) : selectedStrengthPoints.length < 3 ? (
                 <>
                   <p className="progress-muted-copy">
-                    Chart needs {missingStrengthSessions} {pluralize(missingStrengthSessions, 'day', 'days')} with recorded weight.
+                    Chart needs {missingStrengthSessions} more {pluralize(missingStrengthSessions, 'day', 'days')} with recorded weight.
                   </p>
                   <div className="progress-session-markers" aria-label={`${selectedStrengthPoints.length} of 3 days for the chart`}>
                     {Array.from({ length: 3 }).map((_, index) => (
@@ -740,7 +742,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                     <h2>Muscle groups</h2>
                   </div>
                 </div>
-                <div style={{ height: muscleData.length * 34 + 16 }} role="img" aria-label={muscleBalanceLabel}>
+                <div style={{ height: Math.max(230, muscleData.length * 34 + 16) }} role="img" aria-label={muscleBalanceLabel}>
                   <ResponsiveContainer
                     width="100%"
                     height={Math.max(230, muscleData.length * 34 + 16)}

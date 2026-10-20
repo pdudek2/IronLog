@@ -137,7 +137,7 @@ export async function streamChatReply({
       payload?.error?.includes('Local endpoint not found')
     ) {
       throw new Error(
-        `The frontend is running locally, but the AI backend returned 404 at ${chatApiUrl}. Uruchom \`npm run dev:api\` albo \`npm run dev:all\`.`,
+        `The frontend is running locally, but the AI backend returned 404 at ${chatApiUrl}. Start it with \`npm run dev:api\` or \`npm run dev:all\`.`,
       )
     }
     throw new AiApiError(payload?.error ?? 'AI Coach returned an invalid response.', payload?.code)
@@ -161,9 +161,11 @@ export async function streamChatReply({
 export async function generateTrainingPlan({
   apiKey,
   request,
+  signal,
 }: {
   apiKey: string
   request: TrainingPlanRequest
+  signal?: AbortSignal
 }): Promise<{ plan: GeneratedTrainingPlan; context: AiContextMetadata }> {
   const idToken = await getAuthenticatedUserToken()
   const chatApiUrl = getChatApiUrl()
@@ -183,8 +185,10 @@ export async function generateTrainingPlan({
         mode: 'plan',
         planRequest: request,
       }),
+      signal,
     })
-  } catch {
+  } catch (error) {
+    if (signal?.aborted) throw error
     throw aiConnectionError(chatApiUrl)
   }
 

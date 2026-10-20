@@ -60,7 +60,7 @@ export async function readJsonBody<T>(
     }
 
     assertKnownBodySize(req.body, maxBytes)
-    return parseKnownBody(req.body) as T
+    return requireObject(parseKnownBody(req.body)) as T
   }
 
   const chunks: Buffer[] = []
@@ -85,11 +85,21 @@ export async function readJsonBody<T>(
     throw new ApiError(415, 'Content-Type must be application/json.')
   }
 
+  let parsed: unknown
   try {
-    return JSON.parse(raw) as T
+    parsed = JSON.parse(raw)
   } catch {
     throw new ApiError(400, 'Invalid JSON in request body.')
   }
+  return requireObject(parsed) as T
+}
+
+// Every endpoint reads fields from an object; `null` or an array would otherwise fail later as a 500.
+function requireObject(value: unknown): Record<string, unknown> {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new ApiError(400, 'Request body must be a JSON object.')
+  }
+  return value as Record<string, unknown>
 }
 
 export function getBearerToken(req: ApiRequest): string | null {

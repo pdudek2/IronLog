@@ -128,6 +128,14 @@ test('structured 4xx is definitive; 5xx, network and garbage stay unconfirmed', 
   }
 })
 
+test('only a missing or rejected account asks for a new sign-in when the token cannot be read', async () => {
+  const tokenFails = (error: unknown) => ({ ...requestDependencies(() => json(200, {})).dependencies, getIdToken: async () => { throw error } })
+  await assert.rejects(requestClosure(finish, tokenFails(Object.assign(new Error('offline'), { code: 'auth/network-request-failed' }))),
+    (error) => closureFailure(error) === 'closure_unconfirmed')
+  await assert.rejects(requestClosure(finish, tokenFails(Object.assign(new Error('changed'), { code: 'auth/account-changed' }))),
+    (error) => closureFailure(error) === 'auth_required')
+})
+
 test('a torn newest slot recovers the prior complete intent', async () => {
   const slots = new MemorySlots()
   const journal = new ClosureIntentJournal(slots)

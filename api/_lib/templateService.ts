@@ -61,13 +61,13 @@ export interface SavedTemplate extends SaveTemplateRequest {
 }
 
 export function parseSaveTemplateRequest(raw: unknown): SaveTemplateRequest {
-  const record = asRecord(raw, 'Invalid template payload.')
+  const record = asRecord(raw, 'Invalid plan payload.')
   assertFields(record, SAVE_FIELDS, REQUIRED_SAVE_FIELDS)
 
   const days = record.days
-  if (!Array.isArray(days)) throw badRequest('Template days must be an array.')
+  if (!Array.isArray(days)) throw badRequest('Plan days must be an array.')
   if (days.length === 0 || days.length > MAX_TEMPLATE_DAYS) {
-    throw badRequest('A template must contain between 1 and 14 days.')
+    throw badRequest('A plan must contain between 1 and 14 days.')
   }
 
   if (record.operationId !== undefined && (typeof record.operationId !== 'string' || !/^[A-Za-z0-9_-]{8,128}$/.test(record.operationId))) {
@@ -111,11 +111,11 @@ export async function saveTemplateForUser(
         return data.template as SavedTemplate
       }
       const snapshot = input.id ? await transaction.get(templateRef) : null
-      if (input.id && !snapshot?.exists) throw new ApiError(404, 'Template not found.')
+      if (input.id && !snapshot?.exists) throw new ApiError(404, 'Plan not found.')
       const stored = snapshot?.data()
-      if (input.id && stored?.userId !== userId) throw new ApiError(403, 'Template belongs to another user.')
+      if (input.id && stored?.userId !== userId) throw new ApiError(403, 'Plan belongs to another user.')
       if (input.id && templateFingerprint(stored as EditableTemplate) !== input.baseline) {
-        throw new ApiError(409, 'Template changed. Reload it before saving.')
+        throw new ApiError(409, 'Plan changed. Reload it before saving.')
       }
       const saved: SavedTemplate = {
         id: templateRef.id, userId, name: input.name,
@@ -145,10 +145,10 @@ export async function saveTemplateForUser(
   const ref = db.collection('templates').doc(input.id)
   return db.runTransaction(async (transaction) => {
     const snapshot = await transaction.get(ref)
-    if (!snapshot.exists) throw new ApiError(404, 'Template not found.')
+    if (!snapshot.exists) throw new ApiError(404, 'Plan not found.')
 
     const stored = snapshot.data()
-    if (stored?.userId !== userId) throw new ApiError(403, 'Template belongs to another user.')
+    if (stored?.userId !== userId) throw new ApiError(403, 'Plan belongs to another user.')
 
     transaction.update(ref, {
       name: input.name,
@@ -168,28 +168,31 @@ export async function saveTemplateForUser(
 }
 
 function validateDay(raw: unknown): ValidatedTemplateDay {
-  const record = asRecord(raw, 'Invalid template day.')
+  const record = asRecord(raw, 'Invalid plan day.')
   assertFields(record, DAY_FIELDS, ['name', 'exercises'])
   if (!Array.isArray(record.exercises)) throw badRequest('Day exercises must be an array.')
   if (record.exercises.length > MAX_WORKOUT_EXERCISES) {
-    throw badRequest('Too many exercises in a template day.')
+    throw badRequest('Too many exercises in a plan day.')
   }
 
+  const exercises = record.exercises.map(validateExercise)
+  const identities = new Set(exercises.map((exercise) => `${exercise.exerciseSource}:${exercise.exerciseId}`))
+  if (identities.size !== exercises.length) throw badRequest('A plan day cannot contain the same exercise twice.')
   return {
     name: validateName(record.name, 'day name', MAX_DAY_NAME_LENGTH),
-    exercises: record.exercises.map(validateExercise),
+    exercises,
   }
 }
 
 function validateExercise(raw: unknown): ValidatedTemplateExercise {
-  const record = asRecord(raw, 'Invalid template exercise.')
+  const record = asRecord(raw, 'Invalid plan exercise.')
   assertFields(record, EXERCISE_FIELDS, [...EXERCISE_FIELDS])
 
   return {
     exerciseId: validateExerciseId(record.exerciseId),
     exerciseSource: validateExerciseSource(record.exerciseSource),
     name: validateExerciseName(record.name),
-    sets: validateInteger(record.sets, 1, MAX_TEMPLATE_SETS, 'Invalid template sets.'),
+    sets: validateInteger(record.sets, 1, MAX_TEMPLATE_SETS, 'Invalid plan sets.'),
     targetReps: validateInteger(record.targetReps, 0, MAX_SET_REPS, 'Invalid target reps.'),
     targetWeight: validateNumber(record.targetWeight, 0, MAX_SET_WEIGHT_KG, 'Invalid target weight.'),
   }

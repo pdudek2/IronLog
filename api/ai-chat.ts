@@ -135,7 +135,7 @@ function normalizePlanRequest(raw: AiChatBody['planRequest']) {
     : []
 
   if (goal.length < 2) {
-    throw new ApiError(400, 'Enter a plan goal to generate a template.')
+    throw new ApiError(400, 'Enter a plan goal to generate a plan.')
   }
 
   return { goal, daysPerWeek, experience, focus, notes, equipment }
@@ -398,6 +398,8 @@ export function normalizeGeneratedPlan(
     if (!dayRecord) return []
 
     const exercisesRaw = Array.isArray(dayRecord.exercises) ? dayRecord.exercises : []
+    // A day lists each exercise once; the model sometimes repeats one, and only the first entry is kept.
+    const seen = new Set<string>()
     const exercises = exercisesRaw.flatMap((exercise) => {
       const exerciseRecord = asNullableRecord(exercise)
       if (!exerciseRecord) return []
@@ -413,6 +415,9 @@ export function normalizeGeneratedPlan(
 
       if (!matchedExercise) return []
       if (allowedEquipment.size > 0 && !allowedEquipment.has(matchedExercise.equipment)) return []
+      const identity = `${matchedExercise.source}:${matchedExercise.id}`
+      if (seen.has(identity)) return []
+      seen.add(identity)
 
       return [{
         exerciseId: matchedExercise.id,
@@ -462,8 +467,10 @@ async function generatePlan(
   context: AiUserContext,
   request: ReturnType<typeof normalizePlanRequest>,
   catalog: AvailableExercise[],
+  signal: AbortSignal,
 ): Promise<GeneratedPlan> {
   const upstream = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    signal,
     method: 'POST',
     headers: {
       'content-type': 'application/json',
@@ -654,8 +661,15 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     if (mode === 'plan') {
       const request = normalizePlanRequest(body.planRequest)
       const catalog = await fetchAvailableExercises(userId)
-      const plan = await generatePlan(apiKey, model, context, request, catalog)
-      sendJson(res, 200, { plan })
+      // A client that leaves stops the request, so the user's key is not billed for a plan nobody receives.
+      const bridge = createClientAbortBridge(req, res)
+      try {
+        const plan = await generatePlan(apiKey, model, context, request, catalog, bridge.signal)
+        bridge.markTerminal()
+        sendJson(res, 200, { plan })
+      } finally {
+        bridge.dispose()
+      }
       return
     }
 

@@ -112,7 +112,7 @@ export class ProfileController {
     this.set({ busy: false })
     if (attempt.status === 'failed' && this.definiteRejection(attempt.error)) {
       this.attempt = null
-      this.set({ pending: false, message: attempt.error instanceof ProfileNotSubmittedError ? attempt.error.message : 'Could not save. Check your connection and try again.' })
+      this.set({ pending: false, message: attempt.error instanceof ProfileNotSubmittedError ? attempt.error.message : 'The server did not accept these changes. Reload your profile and try again.' })
       return
     }
     await this.reconcile()

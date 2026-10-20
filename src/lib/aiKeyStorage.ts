@@ -13,9 +13,16 @@ export function getOpenRouterApiKey(): string {
   return storageKey ? window.localStorage.getItem(storageKey)?.trim() ?? '' : ''
 }
 
+// Keys of earlier providers are never read again; a key should not linger in the browser.
+const RETIRED_KEY_PREFIXES = ['ironlog.claudeApiKey', 'ironlog.claudeModel', 'ironlog.openaiApiKey']
+
 function getAccountKeyStorage(): string | null {
   // Legacy keys have no owner, so never adopt one for the next account.
   window.localStorage.removeItem(OPENROUTER_API_KEY_STORAGE)
+  for (let index = window.localStorage.length - 1; index >= 0; index -= 1) {
+    const key = window.localStorage.key(index)
+    if (key && RETIRED_KEY_PREFIXES.some((prefix) => key === prefix || key.startsWith(`${prefix}:`))) window.localStorage.removeItem(key)
+  }
   const { user, loading } = useAuthStore.getState()
   return !loading && user && !user.isAnonymous ? `${OPENROUTER_API_KEY_STORAGE}:${user.uid}` : null
 }

@@ -2,7 +2,7 @@ import { adminDb } from './_lib/firebaseAdmin.js'
 import { requireUserId } from './_lib/auth.js'
 import { loadAiUserContext } from './_lib/aiContextLoader.js'
 import { openrouterApiError, openrouterNetworkError } from './_lib/openrouterErrors.js'
-import { ApiError } from './_lib/errors.js'
+import { ApiError, isApiError } from './_lib/errors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
 import { RateLimitError, assertRateLimit } from './_lib/rateLimit.js'
 import {
@@ -333,12 +333,12 @@ function buildPlanUserPrompt(
 
 function readOpenRouterTextPayload(payload: unknown): string {
   const record = asRecord(payload)
-  if (record.error) throw new Error('Could not complete the plan response.')
+  if (record.error) throw badPlan('Could not complete the plan response.')
   const choice = asRecord(Array.isArray(record.choices) ? record.choices[0] : null)
-  if (choice.finish_reason !== 'stop') throw new Error('The plan response was incomplete. Try again.')
+  if (choice.finish_reason !== 'stop') throw badPlan('The plan response was incomplete. Try again.')
   const message = asRecord(choice.message)
   if (typeof message.content !== 'string' || !message.content.trim()) {
-    throw new Error('The model returned no plan content.')
+    throw badPlan('The model returned no plan content.')
   }
   return message.content.trim()
 }
@@ -361,7 +361,7 @@ function extractJsonObject(raw: string): string {
     return withoutFence.slice(firstBrace, lastBrace + 1)
   }
 
-  throw new Error('The plan generator did not return valid JSON.')
+  throw badPlan('The plan generator did not return valid JSON.')
 }
 
 function normalizeExerciseName(value: string) {
@@ -435,10 +435,10 @@ export function normalizeGeneratedPlan(
   })
 
   if (days.length === 0) {
-    throw new Error('The generator did not return any valid workout days.')
+    throw badPlan('The generator did not return any valid workout days.')
   }
   if (days.length !== request.daysPerWeek) {
-    throw new Error(`The generator returned ${days.length} days instead of ${request.daysPerWeek}. Try generating the plan again.`)
+    throw badPlan(`The generator returned ${days.length} days instead of ${request.daysPerWeek}. Try generating the plan again.`)
   }
 
   const fallbackName = request.goal.trim().length > 1 ? `Plan: ${request.goal.trim()}` : 'New plan'
@@ -494,7 +494,13 @@ async function generatePlan(
 
   const payload = await upstream.json().catch(() => null)
   const text = readOpenRouterTextPayload(payload)
-  const parsed = JSON.parse(extractJsonObject(text)) as unknown
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(extractJsonObject(text))
+  } catch (error) {
+    if (isApiError(error)) throw error
+    throw badPlan('The plan generator did not return valid JSON.')
+  }
   return normalizeGeneratedPlan(parsed, catalog, request)
 }
 
@@ -585,6 +591,11 @@ export async function streamChatReply(
   } finally {
     bridge.dispose()
   }
+}
+
+// The model answered but its plan is unusable; the request itself was fine, so it is a gateway error, not a 500.
+function badPlan(message: string): ApiError {
+  return new ApiError(502, message)
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

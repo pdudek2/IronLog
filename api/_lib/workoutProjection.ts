@@ -389,10 +389,16 @@ export async function updateFinishedWorkoutForUser(
   const workoutDocumentId = validateFirestoreDocumentId(workoutId, 'workoutId')
   const workoutRef = database.collection('workouts').doc(workoutDocumentId)
   const tombstoneRef = database.collection('closedSessions').doc(workoutDocumentId)
-  const guard = parseWorkoutMutationGuard(input)
-  const nextWorkout = parseWorkoutUpdate(input)
+  // The payload is judged only after ownership, so another account cannot probe a workout through its errors.
+  let request: { guard: WorkoutMutationGuard | null; nextWorkout: Pick<StoredWorkout, 'label' | 'exercises'> } | null = null
+  let invalidRequest: unknown = null
+  try {
+    request = { guard: parseWorkoutMutationGuard(input), nextWorkout: parseWorkoutUpdate(input) }
+  } catch (error) {
+    invalidRequest = error
+  }
+  const guard = request?.guard ?? null
   const operationRef = guard ? database.collection('workoutMutationOperations').doc(`${userId}_${guard.operationId}`) : null
-  const requestHash = guard ? mutationRequestHash(userId, workoutDocumentId, 'update', guard, nextWorkout) : null
   const nextRevision = await database.runTransaction(async (transaction) => {
     const [workoutSnap, tombstoneSnap, operationSnap] = await transaction.getAll(workoutRef, tombstoneRef, ...(operationRef ? [operationRef] : []))
     let storedFence: ProjectionFence | null = null
@@ -411,6 +417,9 @@ export async function updateFinishedWorkoutForUser(
 
     const existingWorkout = parseStoredWorkout(workoutSnap.data())
     assertOwnership(userId, existingWorkout.userId)
+    if (!request) throw invalidRequest
+    const { nextWorkout } = request
+    const requestHash = guard ? mutationRequestHash(userId, workoutDocumentId, 'update', guard, nextWorkout) : null
     assertFinishedWorkout(existingWorkout)
     if (operationSnap?.exists) {
       const revision = requireMatchingReceipt(operationSnap.data()!, userId, workoutDocumentId, requestHash!)
@@ -474,6 +483,7 @@ export async function updateFinishedWorkoutForUser(
     return { status: 'materialized' }
   } catch (error) {
     if (isApiError(error)) throw error
+    console.error('[update-workout] projection left pending', { workoutId: workoutDocumentId, error })
     return { status: 'projection_pending' }
   }
 }
@@ -591,7 +601,8 @@ export async function deleteFinishedWorkoutForUser(
       transaction.update(tombstoneRef, { deletionCleanupRevision: claim.projectionRevision })
     })
     return { status: 'deleted' }
-  } catch {
+  } catch (error) {
+    console.error('[delete-workout] cleanup left pending', { workoutId, error })
     return { status: 'cleanup_pending' }
   }
 }
@@ -666,7 +677,8 @@ function parseStoredWorkout(raw: unknown): StoredWorkout {
 }
 
 function parseWorkoutUpdate(raw: unknown): Pick<StoredWorkout, 'label' | 'exercises'> {
-  const record = asRecord(raw)
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) throw new ApiError(400, 'Invalid workout payload.')
+  const record = raw as Record<string, unknown>
 
   return {
     label: validateWorkoutLabel(record.label),

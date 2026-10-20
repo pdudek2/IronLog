@@ -168,6 +168,19 @@ describe('template saves', () => {
     }))
   })
 
+  it('sends the edit guard so a plan changed elsewhere is not overwritten', async () => {
+    const saved = template()
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ template: saved }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await updateTemplate(saved.id, { name: saved.name, days: saved.days }, { operationId: 'operation-1', baseline: 'fingerprint' })
+    await createTemplate('user-1', { name: saved.name, days: saved.days }, 'operation-2')
+
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ id: saved.id, operationId: 'operation-1', baseline: 'fingerprint' })
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toMatchObject({ operationId: 'operation-2' })
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).not.toHaveProperty('baseline')
+  })
+
   it('does not send a request when token acquisition fails', async () => {
     auth.currentUser!.getIdToken = vi.fn().mockRejectedValue(new Error('token unavailable'))
     const fetchMock = vi.fn()

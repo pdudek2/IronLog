@@ -211,7 +211,7 @@ export default function ReadinessWidget({
             {[
               { label: 'Sleep', value: entry.sleep },
               { label: 'Mood', value: entry.mood },
-              { label: 'DOMS', value: entry.soreness },
+              { label: 'Soreness', value: entry.soreness },
             ].map(({ label: l, value }) => (
               <div key={l}>
                 <p className="stat-meta">{l}</p>

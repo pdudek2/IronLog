@@ -1298,7 +1298,7 @@ export default function DashboardPage() {
       {workoutToDelete && (
         <ConfirmDialog
           title="Delete workout?"
-          message={`„${workoutTitle(workoutToDelete)}” · ${formatDate(workoutToDelete.startedAt)}. This cannot be undone.`}
+          message={`“${workoutTitle(workoutToDelete)}” · ${formatDate(workoutToDelete.startedAt)}. This cannot be undone.`}
           confirmLabel="Delete"
           danger
           onConfirm={confirmDeleteWorkout}

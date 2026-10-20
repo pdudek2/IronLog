@@ -1,11 +1,11 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Keyboard, Pressable, StyleSheet, Text, TextInput, View, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native'
 import { useFocusEffect, usePathname, useRouter, type Href } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path, Rect } from 'react-native-svg'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from './runtime'
 import { useLaunchRuntime } from './launchRuntime'
-import { navigationSection, scrollNavigation, workoutNavigationAction } from './navigation'
+import { navigationSection, scrollNavigation, tabNavigation, workoutNavigationAction } from './navigation'
 
 export type NavigationExit = (proceed: () => void | Promise<boolean>) => void
 const initialScroll = { y: 0, start: 0, direction: 0, hidden: false }
@@ -24,6 +24,13 @@ export function useBottomNavigation() {
     scroll.current = scrollNavigation(scroll.current, event.nativeEvent.contentOffset.y)
     setHidden(scroll.current.hidden)
   }, [])
+  // Input focus hides the bar ahead of the soft keyboard. When no keyboard follows (hardware keyboard, or the exercise
+  // picker closed: its input unmounts with no blur and React Native still reports it focused) the bar comes back.
+  useEffect(() => {
+    if (!inputFocused || keyboard) return
+    const timer = setTimeout(() => setInputFocused(false), 600)
+    return () => clearTimeout(timer)
+  }, [inputFocused, keyboard])
   // Focus also bubbles from buttons under a hardware keyboard or D-pad; only a text input hides the bar.
   return { onScroll, hidden, keyboard: keyboard || inputFocused,
     onFocus: () => setInputFocused(TextInput.State.currentlyFocusedInput() != null), onBlur: () => setInputFocused(false) }
@@ -83,7 +90,7 @@ export default function BottomNavigation({ hidden, keyboard, onRequestExit }: { 
     <View style={[styles.bar, { height, paddingBottom: Math.max(8, inset), transform: [{ translateY: hidden || keyboard ? height : 0 }], opacity: hidden || keyboard ? 0 : 1 }]}>
       {(['Home', 'Plans', 'Workout', 'Progress', 'Coach'] as const).map(name => name === 'Workout'
         ? <Pressable key={name} accessibilityRole="button" accessibilityLabel={action === 'resume' ? 'Resume workout' : action === 'recover' ? 'Recover workout' : 'Start new workout'} accessibilityState={{ disabled: action === 'wait', selected: section === 'Workout' }} disabled={action === 'wait'} onPress={workout} style={[styles.primary, action === 'wait' && { opacity: 0.5 }]}><Icon name={action === 'resume' ? 'resume' : 'plus'} color="#fff" /></Pressable>
-        : <Pressable key={name} accessibilityRole="tab" accessibilityLabel={name} accessibilityState={{ selected: section === name }} onPress={() => go(() => router.navigate((name === 'Home' ? '/dashboard' : name === 'Plans' ? '/templates' : name === 'Progress' ? '/progress' : '/coach') as Href))} style={[styles.tab, section === name && styles.selected]}><Icon name={name} color={section === name ? '#fff' : '#a09aa0'} /><Text style={[styles.label, section === name && { color: '#fff' }]}>{name}</Text></Pressable>)}
+        : <Pressable key={name} accessibilityRole="tab" accessibilityLabel={name} accessibilityState={{ selected: section === name }} onPress={() => go(() => { const { kind, href } = tabNavigation(pathname, name); router[kind](href as Href) })} style={[styles.tab, section === name && styles.selected]}><Icon name={name} color={section === name ? '#fff' : '#a09aa0'} /><Text style={[styles.label, section === name && { color: '#fff' }]}>{name}</Text></Pressable>)}
     </View>
   </View>
 }

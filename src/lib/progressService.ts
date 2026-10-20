@@ -2,6 +2,7 @@ import { type DocumentData, type QueryDocumentSnapshot, type QuerySnapshot, coll
 import { db } from './firebase'
 
 import { type ProgressRecordsResult, type ProgressSessionLite, type ProgressSessionsResult, type RecordSummary } from '../shared/progress'
+import { confirmedQuery } from './confirmedQuery'
 export * from '../shared/progress'
 
 function toNum(v: unknown): number {
@@ -77,7 +78,7 @@ export async function getProgressSessions(
         ),
       )
     } else {
-      snap = await getDocs(
+      snap = confirmedQuery(await getDocs(
         query(
           collection(db, 'exerciseSessions'),
           where('userId', '==', uid),
@@ -85,7 +86,7 @@ export async function getProgressSessions(
           orderBy('finishedAt', 'desc'),
           limit(currentLimit),
         ),
-      )
+      ))
     }
 
     sessions.push(...snap.docs.map((document) => normalizeProgressSession(document.id, document.data())))
@@ -120,13 +121,13 @@ export async function getRecords(uid: string): Promise<ProgressRecordsResult> {
         ),
       )
     } else {
-      snap = await getDocs(
+      snap = confirmedQuery(await getDocs(
         query(
           collection(db, 'records'),
           where('userId', '==', uid),
           limit(currentLimit),
         ),
-      )
+      ))
     }
 
     records.push(...snap.docs.map((document) => normalizeRecord(document.id, document.data())))

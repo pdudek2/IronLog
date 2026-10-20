@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { navigationSection, scrollNavigation, workoutNavigationAction } from './navigation'
+import { navigationSection, scrollNavigation, tabNavigation, workoutNavigationAction } from './navigation'
 
 test('child routes retain their navigation section and unknown routes do not invent one', () => {
   for (const path of ['/templates', '/templates/new', '/templates/abc/edit', '/exercises', '/exercises/global/squat', '/exercises/user/squat']) assert.equal(navigationSection(path), 'Plans')
@@ -25,4 +25,13 @@ test('scroll visibility tolerates jitter, restores upward and clamps overscroll'
   state = scrollNavigation(state, 54); assert.equal(state.hidden, true)
   state = scrollNavigation(state, 30); assert.equal(state.hidden, false)
   state = scrollNavigation(state, -8); assert.equal(state.y, 0); assert.equal(state.hidden, false)
+})
+
+test('tabs swap each other and Home pops back, so Back never replays the tab history', () => {
+  assert.deepEqual(tabNavigation('/dashboard', 'Plans'), { kind: 'navigate', href: '/templates' })
+  assert.deepEqual(tabNavigation('/templates', 'Progress'), { kind: 'replace', href: '/progress' })
+  assert.deepEqual(tabNavigation('/coach', 'Plans'), { kind: 'replace', href: '/templates' })
+  assert.deepEqual(tabNavigation('/progress', 'Home'), { kind: 'dismissTo', href: '/dashboard' })
+  // A child screen keeps its place under the next tab, as before.
+  assert.deepEqual(tabNavigation('/history', 'Coach'), { kind: 'navigate', href: '/coach' })
 })

@@ -567,7 +567,7 @@ const CLOSURE_COPY: Record<ClosureNoticeStatus, { title: string; copy: string; a
   resolution_storage_failed: { title: 'The server answered, but local recovery could not be cleared.', copy: 'Your workout stays locked until this device saves the resolved state.', action: 'Retry local recovery' },
   closure_unconfirmed: { title: 'Could not confirm session closure.', copy: 'Your workout data is preserved. Editing is locked until the server confirms the outcome.', action: 'Try again' },
   closure_rejected: { title: 'The server did not accept this workout.', copy: 'Some set data is invalid: reps must be whole numbers from 1 to 1000 and weight between 0 and 2000 kg. Correct it and try again.', action: 'Return to editing' },
-  closure_failed: { title: 'This session cannot be closed.', copy: 'The server rejected this operation. Check your connection and try again.', action: 'Try again' },
+  closure_failed: { title: 'This session cannot be closed.', copy: 'The server refused this request. Try again, or reopen the app to see the latest state.', action: 'Try again' },
   auth_required: { title: 'Your sign-in session needs refreshing.', copy: 'Your workout data is preserved. Sign in again, then retry closing the session.', action: 'Sign in again' },
   session_mismatch: { title: 'This session is no longer active on the server.', copy: 'Could not automatically sync the session opened on another device.', action: 'Try again' },
   closure_conflict: { title: 'The server rejected closing this session.', copy: 'This session was already closed with a different outcome, and automatic reconciliation failed.', action: 'Try again' },
@@ -699,7 +699,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
     if (state.stale || state.syncStatus !== 'saved') {
       Alert.alert('Waiting for sync', state.stale
         ? 'Reconnect to confirm the workout is still active, then try again.'
-        : 'Your latest changes are still syncing. Try again once they are saved.')
+        : state.syncStatus === 'failed' ? 'Your latest changes are not saved yet. Tap Retry in the sync notice, then try again.'
+          : state.syncStatus === 'conflict' ? 'This workout changed on another device. Resolve it in the sync notice first.'
+            : state.syncStatus === 'storage-error' ? 'This device could not store your latest changes. Retry in the sync notice first.'
+              : 'Your latest changes are still syncing. Try again once they are saved.')
       return
     }
     action()

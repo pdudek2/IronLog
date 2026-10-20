@@ -60,6 +60,11 @@ describe('ReadinessPrompt', () => {
     fireEvent.click(summary)
     expect(details).toHaveAttribute('open')
 
+    // Soreness runs the other way from sleep and mood, so each slider names both ends of its scale.
+    expect(screen.getByRole('slider', { name: 'Readiness: Soreness' }))
+      .toHaveAttribute('aria-valuetext', '3 out of 5, from 1 None to 5 Severe')
+    expect(screen.getAllByText('Severe')).toHaveLength(1)
+
     fireEvent.change(screen.getByRole('slider', { name: 'Readiness: Sleep' }), {
       target: { value: '4' },
     })

@@ -210,7 +210,7 @@ describe('Dashboard workout projection status', () => {
     const date = new Date(pendingWorkout.startedAt).toLocaleDateString('en-US', {
       weekday: 'short', day: 'numeric', month: 'short',
     })
-    expect(dialog).toHaveAccessibleDescription(`„${expectedName}” · ${date}. This cannot be undone.`)
+    expect(dialog).toHaveAccessibleDescription(`“${expectedName}” · ${date}. This cannot be undone.`)
     const cancel = within(dialog).getByRole('button', { name: 'Cancel' })
     await waitFor(() => expect(cancel).toHaveFocus())
     fireEvent.click(cancel)

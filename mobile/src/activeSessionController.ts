@@ -112,6 +112,8 @@ export class ActiveSessionController {
   private draft: SessionDraft | null = null
   private conflict: SessionConflictKind | null = null
   private failed = false
+  // Transient save retries ran out; the next server snapshot (the connection is back) starts one more bounded cycle.
+  private retryOnReconnect = false
   private saveTimer: ReturnType<typeof setTimeout> | null = null
   private saveAttempt = 0
   private saveToken = 0
@@ -392,6 +394,12 @@ export class ActiveSessionController {
 
       this.authoritative = remote
       this.cachedSession = remote
+      if (this.failed && this.retryOnReconnect) {
+        this.retryOnReconnect = false
+        this.failed = false
+        this.blockedRevision = null
+        this.saveAttempt = 0
+      }
       if (!this.draft) {
         if (remote) this.emitReady(remote, false, 'saved')
         else this.publish({ status: 'empty', session: null, units: this.units })
@@ -538,6 +546,7 @@ export class ActiveSessionController {
       } else {
         this.blockedRevision = pending.requestRevision
         this.failed = true
+        this.retryOnReconnect = this.dependencies.isTransientError(error)
         this.emitDraft('failed', false)
       }
     }))
@@ -627,6 +636,7 @@ export class ActiveSessionController {
       this.inFlightRevision = null
       this.blockedRevision = this.draft.pending?.requestRevision ?? null
       this.failed = true
+      this.retryOnReconnect = false
       this.emitDraft('failed', true)
       return
     }

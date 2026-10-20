@@ -3,12 +3,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('../exerciseDetailService', () => ({ getExerciseSessions: vi.fn() }))
 vi.mock('../activeSessionBackup', () => ({ writeActiveSessionBackup: vi.fn() }))
 vi.mock('../activeSessionService', () => ({
+  loadActiveSessionFromServer: vi.fn(),
   persistTemplateLaunchSession: vi.fn(),
   saveActiveSession: vi.fn(),
 }))
+vi.mock('../workoutClosureService', () => ({ discardWorkoutSession: vi.fn() }))
 
 import { writeActiveSessionBackup } from '../activeSessionBackup'
-import { persistTemplateLaunchSession, saveActiveSession } from '../activeSessionService'
+import { loadActiveSessionFromServer, persistTemplateLaunchSession, saveActiveSession } from '../activeSessionService'
+import { discardWorkoutSession } from '../workoutClosureService'
 import { getExerciseSessions } from '../exerciseDetailService'
 import { createPersistedTemplateWorkout } from '../templateLaunchService'
 import type { WorkoutTemplate } from '../templateService'
@@ -93,13 +96,31 @@ describe('createPersistedTemplateWorkout', () => {
     })
   })
 
-  it('falls back to template targets and forwards replacement intent', async () => {
+  it('falls back to template targets and closes the replaced session before writing the new one', async () => {
     vi.mocked(getExerciseSessions).mockRejectedValue(new Error('history unavailable'))
+    vi.mocked(loadActiveSessionFromServer).mockResolvedValue({
+      session: { sessionId: 'replaced-session', startedAt: 1, exercises: [] },
+      sessionRevision: 'revision-1',
+    })
 
     const workout = await createPersistedTemplateWorkout('user-1', templateWithTargets(), 0, true)
 
     expect(workout.exercises[0].sets[0]).toEqual({ weight: '100', reps: '5', done: false })
+    expect(discardWorkoutSession).toHaveBeenCalledWith('replaced-session')
+    expect(vi.mocked(discardWorkoutSession).mock.invocationCallOrder[0])
+      .toBeLessThan(vi.mocked(persistTemplateLaunchSession).mock.invocationCallOrder[0])
     expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, true)
+  })
+
+  it('does not write the new session when the replaced one cannot be closed', async () => {
+    vi.mocked(loadActiveSessionFromServer).mockResolvedValue({
+      session: { sessionId: 'finished-elsewhere', startedAt: 1, exercises: [] },
+      sessionRevision: 'revision-1',
+    })
+    vi.mocked(discardWorkoutSession).mockRejectedValueOnce(new Error('closure conflict'))
+
+    await expect(createPersistedTemplateWorkout('user-1', templateWithTargets(), 0, true)).rejects.toThrow('closure conflict')
+    expect(persistTemplateLaunchSession).not.toHaveBeenCalled()
   })
 
   it('preserves a user exercise source through template launch', async () => {

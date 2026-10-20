@@ -17,6 +17,7 @@ import type { ExerciseSource } from '../store/workoutStore'
 import { auth, db } from './firebase'
 import { ApiRejectedError, callAuthedApi } from './authedApi'
 import { clearWorkoutDeleteRecovery, readWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from './workoutDeleteRecovery'
+import { confirmedQuery } from './confirmedQuery'
 
 interface WorkoutSetSummary {
   weight: number
@@ -70,7 +71,7 @@ export async function getRecentWorkouts(uid: string, count = 20): Promise<Workou
     orderBy('startedAt', 'desc'),
     limit(count)
   )
-  const snap = await getDocs(q)
+  const snap = confirmedQuery(await getDocs(q))
   return snap.docs.map((docSnap) => normalizeWorkoutSummary(docSnap.id, docSnap.data()))
 }
 
@@ -98,14 +99,14 @@ export async function getWorkoutHistory(
         ),
       )
     } else {
-      snap = await getDocs(
+      snap = confirmedQuery(await getDocs(
         query(
           collection(db, 'workouts'),
           where('userId', '==', uid),
           orderBy('startedAt', 'desc'),
           limit(currentLimit),
         ),
-      )
+      ))
     }
 
     workouts.push(...snap.docs.map((docSnap) => normalizeWorkoutSummary(docSnap.id, docSnap.data())))

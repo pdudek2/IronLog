@@ -1,6 +1,7 @@
 import { collection, doc, getDoc, getDocs, limit, query, runTransaction, where } from 'firebase/firestore'
 import { db } from './firebase'
 import type { Category, Equipment, Exercise, MuscleGroup } from '../data/exercises'
+import { confirmedQuery } from './confirmedQuery'
 
 export interface UserExerciseInput {
   name: string
@@ -28,9 +29,9 @@ function duplicateNameError(name: string): Error {
 }
 
 export async function getUserExercises(uid: string): Promise<Exercise[]> {
-  const snap = await getDocs(
+  const snap = confirmedQuery(await getDocs(
     query(collection(db, 'userExercises'), where('userId', '==', uid))
-  )
+  ))
   return snap.docs.map((docSnap) => {
     const d = docSnap.data()
     return {

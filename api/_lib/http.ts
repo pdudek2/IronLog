@@ -31,6 +31,7 @@ export function sendApiError(
   error: unknown,
   { fallbackMessage, fallbackStatus = 500 }: SendApiErrorOptions,
 ): void {
+  if (!isApiError(error) || error.status >= 500) console.error('[api] request failed', error)
   if (isApiError(error)) {
     sendJson(res, error.status, error.code
       ? { error: error.message, code: error.code }

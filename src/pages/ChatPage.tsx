@@ -194,6 +194,8 @@ export default function ChatPage() {
   const [planNotes, setPlanNotes] = useState('')
   const [planEquipment, setPlanEquipment] = useState<string[]>(['barbell', 'dumbbell', 'bodyweight'])
   const [planPreview, setPlanPreview] = useState<GeneratedTrainingPlan | null>(null)
+  // Saving the same preview again reuses its operation, so a lost response cannot create the plan twice.
+  const planSaveOperation = useRef<{ plan: GeneratedTrainingPlan; operationId: string } | null>(null)
   const [planUnavailableSources, setPlanUnavailableSources] = useState<AiContextSource[]>([])
   const [planError, setPlanError] = useState<PlanErrorState | null>(null)
   const planGoalRef = useRef<HTMLInputElement>(null)
@@ -457,12 +459,15 @@ export default function ChatPage() {
     if (!user || !planPreview) return
 
     setSavingPlan(true)
+    if (planSaveOperation.current?.plan !== planPreview) {
+      planSaveOperation.current = { plan: planPreview, operationId: crypto.randomUUID() }
+    }
 
     try {
       await createTemplate(user.uid, {
         name: planPreview.name,
         days: planPreview.days,
-      })
+      }, planSaveOperation.current.operationId)
       toast.success('Plan saved as a new template.')
       setPlanPreview(null)
       setPlanUnavailableSources([])

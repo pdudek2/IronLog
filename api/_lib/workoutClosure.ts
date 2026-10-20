@@ -113,7 +113,8 @@ export async function finalizeWorkoutForUser(
   try {
     await materialize(userId, workoutId, transactionResult.projectionRevision)
     return { workoutId, status: 'materialized' }
-  } catch {
+  } catch (error) {
+    console.error('[finalize-workout] projection left pending', { workoutId, error })
     return { workoutId, status: 'projection_pending' }
   }
 }

@@ -704,6 +704,11 @@ export default function WorkoutPage() {
         aria-labelledby="workout-session-entry-title"
       >
         <h1 id="workout-session-entry-title" className="section-title">New workout</h1>
+        {activeSessionSyncStatus === 'failed' && (
+          <p role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>
+            Could not start the workout. Check your connection and try again.
+          </p>
+        )}
         <motion.button
           type="button"
           onClick={() => { void startNewSession() }}
@@ -872,7 +877,7 @@ export default function WorkoutPage() {
         <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">This session cannot be closed.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-            The server rejected this operation. Check your connection and try again.
+            The server refused this request. Try again, or reload the page to see the latest state.
           </p>
           <button
             type="button"

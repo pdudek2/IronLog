@@ -8,7 +8,7 @@ import {
   formatWorkoutDuration,
   groupWorkoutsByMonth,
   parseSavedWorkout,
-  workoutHeroLabel,
+  workoutFocusLabel,
   workoutSetVolumeLabel,
 } from './history'
 
@@ -60,9 +60,8 @@ test('history formatting stays aligned with web duration, preview, and unit conv
   assert.equal(workoutSetVolumeLabel(65, 8, 'lbs'), '1,146.4')
 })
 
-test('workout title matches the web workout page: label, else the dominant category', () => {
-  assert.equal(workoutHeroLabel('Push day', ['chest']), 'Push day')
-  assert.equal(workoutHeroLabel('', ['back', 'chest', 'chest', undefined]), 'Chest')
-  assert.equal(workoutHeroLabel(null, ['back', 'chest']), 'Back')
-  assert.equal(workoutHeroLabel(null, [undefined]), 'Workout')
+test('the focus eyebrow is the dominant category, first seen winning a tie', () => {
+  assert.equal(workoutFocusLabel(['back', 'chest', 'chest', undefined]), 'Chest')
+  assert.equal(workoutFocusLabel(['back', 'chest']), 'Back')
+  assert.equal(workoutFocusLabel([undefined]), null)
 })

@@ -9,7 +9,9 @@ import { pluralize } from '../../src/lib/pluralize'
 import type { ReadinessController, ReadinessState } from './readiness'
 
 const fields = [
-  { key: 'sleep', label: 'Sleep' }, { key: 'mood', label: 'Mood' }, { key: 'soreness', label: 'DOMS' },
+  { key: 'sleep', label: 'Sleep', low: 'Poor', high: 'Great' },
+  { key: 'mood', label: 'Mood', low: 'Bad', high: 'Great' },
+  { key: 'soreness', label: 'Soreness', low: 'None', high: 'Severe' },
 ] as const
 const color = { text: '#f4f1f2', strong: '#fff', muted: '#a09aa0', accent: '#f0435a', accentText: '#ff7182', line: 'rgba(244,241,242,0.12)' }
 const weight = (kg: number, units: 'kg' | 'lbs') => `${kgToDisplayWeight(kg, units).toLocaleString('en-US', { maximumFractionDigits: 1 })} ${units}`
@@ -38,7 +40,7 @@ export default function ReadinessHome({ state, controller, recommendation, templ
           <View style={styles.flex}><Text style={styles.meta}>Readiness · optional</Text><Text style={styles.title}>Adjust today’s workout</Text><Text style={styles.meta}>Sleep, mood and soreness</Text></View><Text style={styles.meta}>{expanded ? 'Close' : 'Check in'}</Text>
         </Pressable>
         {expanded && state.values && <View style={styles.body}>
-          {fields.map(({ key, label }) => <View key={key} style={styles.field}><View style={styles.row}><Text style={styles.fieldLabel}>{label}</Text><Text style={styles.fieldValue}>{state.values![key]}/5</Text></View><Slider accessibilityLabel={`Readiness: ${label}`} accessibilityValue={{ min: 1, max: 5, now: state.values![key], text: `${state.values![key]} out of 5` }} minimumValue={1} maximumValue={5} step={1} value={state.values![key]} disabled={blocked} minimumTrackTintColor={color.accent} maximumTrackTintColor="#37343a" thumbTintColor={color.accent} onValueChange={value => controller.change({ ...state.values!, [key]: value })} style={styles.slider} /></View>)}
+          {fields.map(({ key, label, low, high }) => <View key={key} style={styles.field}><View style={styles.row}><Text style={styles.fieldLabel}>{label}</Text><Text style={styles.fieldValue}>{state.values![key]}/5</Text></View><Slider accessibilityLabel={`Readiness: ${label}`} accessibilityValue={{ min: 1, max: 5, now: state.values![key], text: `${state.values![key]} out of 5, from 1 ${low} to 5 ${high}` }} minimumValue={1} maximumValue={5} step={1} value={state.values![key]} disabled={blocked} minimumTrackTintColor={color.accent} maximumTrackTintColor="#37343a" thumbTintColor={color.accent} onValueChange={value => controller.change({ ...state.values!, [key]: value })} style={styles.slider} /><View style={styles.row}><Text style={styles.scale}>{low}</Text><Text style={styles.scale}>{high}</Text></View></View>)}
           <Pressable accessibilityRole="button" disabled={blocked} onPress={() => void controller.save()} style={[styles.primary, blocked && styles.disabled]}><Text style={styles.primaryText}>{state.busy ? 'Saving…' : 'Save score'}</Text></Pressable>
         </View>}
       </View> : !recommendation && score ? <View style={[styles.card, styles.saved]}>
@@ -73,7 +75,7 @@ const styles = StyleSheet.create({
   summary: { minHeight: 76, paddingVertical: 14.4, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 16 }, border: { borderBottomWidth: 1, borderBottomColor: color.line },
   meta: { color: color.muted, fontSize: 11.5, fontFamily: 'InstrumentSans_600SemiBold', lineHeight: 17 }, title: { color: color.strong, fontSize: 14.4, fontFamily: 'InstrumentSans_700Bold', lineHeight: 20 },
   body: { padding: 16, gap: 12 }, field: { gap: 3 }, row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 },
-  fieldLabel: { color: color.strong, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 22 }, fieldValue: { color: color.accent, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 }, slider: { height: 36, marginHorizontal: -15 },
+  fieldLabel: { color: color.strong, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 22 }, fieldValue: { color: color.accent, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 }, slider: { height: 36, marginHorizontal: -15 }, scale: { color: color.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12 },
   primary: { minHeight: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 12, backgroundColor: '#a91f35', experimental_backgroundImage: 'linear-gradient(180deg, #c72e44 0%, #a91f35 100%)' }, primaryText: { color: color.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 }, disabled: { opacity: 0.6 },
   copy: { color: color.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 }, error: { borderRadius: 14, backgroundColor: 'rgba(240,67,90,0.1)', padding: 16, gap: 4 }, link: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start', paddingHorizontal: 4 }, linkText: { color: color.accentText, fontSize: 13, fontFamily: 'InstrumentSans_700Bold' },
   saved: { padding: 16, gap: 12 }, eyebrow: { color: color.accent, fontFamily: 'InstrumentSans_700Bold', fontSize: 11, letterSpacing: 1.2 }, savedTitle: { color: color.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 }, values: { flexDirection: 'row', gap: 8, marginTop: 12 }, track: { height: 4, borderRadius: 2, overflow: 'hidden', backgroundColor: 'rgba(255,255,255,0.06)', marginTop: 6 },

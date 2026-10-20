@@ -127,6 +127,9 @@ export function useActiveSession(uid: string | null) {
   const [staleSession, setStaleSession] = useState<{ ageLabel: string } | null>(null)
   const [closureIntent, setClosureIntent] = useState<WorkoutClosureIntent | null>(null)
   const [closureState, setClosureState] = useState<ClosureUiState>('idle')
+  // Snapshot callbacks outlive renders, so they read the current closure state from here.
+  const closureStateRef = useRef<ClosureUiState>('idle')
+  useEffect(() => { closureStateRef.current = closureState }, [closureState])
   const [activeSessionSyncStatus, setActiveSessionSyncStatus] = useState<ActiveSessionSyncStatusValue>('idle')
 
   function writeSessionBackup(currentUid: string, snapshot: ActiveWorkout, unsynced = hasUnsyncedLocalChangesRef.current) {
@@ -284,7 +287,6 @@ export function useActiveSession(uid: string | null) {
       return { status: 'failed' }
     }
 
-    setActiveSessionSyncStatus('retrying')
     const write = captureSessionWrite(
       intent.session.sessionId,
       sessionWriteGenerationRef.current,
@@ -657,7 +659,9 @@ export function useActiveSession(uid: string | null) {
             activeRef.current = pendingSnapshot
             hydrateFromDoc(pendingSnapshot)
             writeSessionBackup(currentUid, pendingSnapshot)
-            setClosureState('closure_unconfirmed')
+            // The finish request deletes the session before it answers; only a closure without a request in
+            // flight is unconfirmed.
+            if (closureStateRef.current !== 'submitting') setClosureState('closure_unconfirmed')
           }
         } else if (decision === 'clear_local') {
           hadRemoteSessionRef.current = false

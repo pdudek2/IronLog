@@ -2440,10 +2440,6 @@ a {
   outline-offset: 3px;
 }
 
-.readiness-card--prompt .readiness-scale {
-  display: none;
-}
-
 .readiness-card--prompt .readiness-slider {
   margin-top: 0.1rem;
 }

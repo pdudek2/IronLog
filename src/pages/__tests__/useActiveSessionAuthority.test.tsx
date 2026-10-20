@@ -348,6 +348,20 @@ describe('useActiveSession snapshot authority', () => {
     expect(readActiveSessionBackupRecord('user-1')?.unsynced).toBe(false)
   })
 
+  it('keeps a finish in flight as submitting when the server deletes the session before answering', async () => {
+    const { result } = renderHook(() => useActiveSession('user-1'))
+    await act(async () => listener.current?.({
+      session: editableRemoteSession, sessionRevision: 'revision-initial', fromCache: false, hasPendingWrites: false,
+    }))
+    act(() => { result.current.beginClosure('finish') })
+    await act(async () => { await result.current.prepareFinishClosure(result.current.closureIntent!) })
+    expect(result.current.activeSessionSyncStatus).toBe('idle')
+
+    await act(async () => listener.current?.({ session: null, sessionRevision: null, fromCache: false, hasPendingWrites: false }))
+
+    expect(result.current.closureState).toBe('submitting')
+  })
+
   it('drops a closure the server rejected so the stored request cannot lock the workout again', async () => {
     writeWorkoutClosureIntent('user-1', { action: 'finish', session: editableRemoteSession, createdAt: 1 })
     const { result } = renderHook(() => useActiveSession('user-1'))

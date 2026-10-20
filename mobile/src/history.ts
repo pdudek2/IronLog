@@ -184,13 +184,12 @@ export function formatExercisePreview(exerciseNames: string[]): string {
   return `${visibleNames.join(' · ')}${hiddenCount > 0 ? ` · +${hiddenCount}` : ''}`
 }
 
-// Same title as the web workout page: the label, else the category most exercises belong to (first seen wins a tie).
-export function workoutHeroLabel(label: string | null | undefined, categories: (string | undefined)[]): string {
-  if (label) return label
+// The category most exercises belong to (first seen wins a tie), shown as a small eyebrow beside the date as on web.
+export function workoutFocusLabel(categories: (string | undefined)[]): string | null {
   const counts = new Map<string, number>()
   for (const category of categories) if (category) counts.set(category, (counts.get(category) ?? 0) + 1)
   const top = [...counts.entries()].sort((left, right) => right[1] - left[1])[0]?.[0]
-  return top ? EXERCISE_CATEGORY_LABELS[top] ?? 'Workout' : 'Workout'
+  return top ? EXERCISE_CATEGORY_LABELS[top] ?? null : null
 }
 
 export function workoutVolumeLabel(volumeKg: number, units: WeightUnits): string {

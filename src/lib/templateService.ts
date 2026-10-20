@@ -10,7 +10,9 @@ import {
 import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
 import { db } from './firebase'
 import { callAuthedApi } from './authedApi'
+import { templateFingerprint, type EditableTemplate } from '../shared/templateFingerprint'
 import { createSessionId } from './sessionIdentity'
+import { confirmedQuery } from './confirmedQuery'
 
 export interface TemplateExercise {
   exerciseId: string
@@ -51,26 +53,41 @@ import { templateExerciseKey, type TemplateExerciseOverrideMap } from '../shared
 export { templateExerciseKey, type TemplateExerciseOverride, type TemplateExerciseOverrideMap } from '../shared/nextSessionRecommendation'
 
 export async function getTemplates(uid: string): Promise<WorkoutTemplate[]> {
-  const snap = await getDocs(
+  const snap = confirmedQuery(await getDocs(
     query(collection(db, 'templates'), where('userId', '==', uid)),
-  )
+  ))
 
   return snap.docs
     .map((docSnap) => normalizeTemplate(docSnap.id, docSnap.data()))
     .sort((a, b) => b.updatedAt - a.updatedAt)
 }
 
-export async function getTemplate(id: string): Promise<WorkoutTemplate | null> {
+// The server compares this fingerprint of the stored document before an edit is saved, so it is taken from the raw
+// data rather than the normalized template. null when the stored plan is too malformed to fingerprint.
+export async function getTemplate(id: string): Promise<(WorkoutTemplate & { editBaseline: string | null }) | null> {
   const snap = await getDoc(doc(db, 'templates', id))
-  return snap.exists() ? normalizeTemplate(snap.id, snap.data()) : null
+  if (!snap.exists()) return null
+  let editBaseline: string | null
+  try {
+    editBaseline = templateFingerprint(snap.data() as EditableTemplate)
+  } catch {
+    editBaseline = null
+  }
+  return { ...normalizeTemplate(snap.id, snap.data()), editBaseline }
 }
 
-export async function createTemplate(uid: string, input: TemplateInput): Promise<WorkoutTemplate> {
-  return saveTemplate(input, undefined, uid)
+// A retried save reuses its operationId, so a lost response cannot create the plan twice.
+export async function createTemplate(uid: string, input: TemplateInput, operationId?: string): Promise<WorkoutTemplate> {
+  return saveTemplate(input, undefined, uid, operationId ? { operationId } : undefined)
 }
 
-export async function updateTemplate(id: string, input: TemplateInput): Promise<void> {
-  await saveTemplate(input, id)
+// With a guard the server refuses the edit when the plan changed since it was loaded, instead of overwriting it.
+export async function updateTemplate(
+  id: string,
+  input: TemplateInput,
+  guard?: { operationId: string; baseline: string },
+): Promise<void> {
+  await saveTemplate(input, id, undefined, guard)
 }
 
 export async function deleteTemplate(id: string): Promise<void> {
@@ -136,11 +153,13 @@ async function saveTemplate(
   input: TemplateInput,
   id?: string,
   expectedUid?: string,
+  guard?: { operationId: string; baseline?: string },
 ): Promise<WorkoutTemplate> {
   const response = await callAuthedApi<unknown>('/api/save-template', {
     ...(id ? { id } : {}),
     name: input.name,
     days: input.days,
+    ...guard,
   }, expectedUid)
   const record = asRecord(response)
   const template = asNullableRecord(record.template)

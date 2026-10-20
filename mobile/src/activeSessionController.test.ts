@@ -346,7 +346,7 @@ test('a transaction conflict stops retries and keeps the durable draft', async (
   assert.equal(ready(h.states).conflict, undefined)
 })
 
-test('bounds transient retries per request and requires explicit Retry after exhaustion', async () => {
+test('bounds transient retries per request and starts one more cycle when the server is reachable again', async () => {
   const h = harness()
   const initial = await loadServer(h)
   h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
@@ -360,17 +360,37 @@ test('bounds transient retries per request and requires explicit Retry after exh
   h.saves[2]!.result.reject({ transient: true })
   await wait()
   assert.equal(ready(h.states).syncStatus, 'failed')
+  // A server snapshot means the connection is back: one more bounded cycle, and a duplicate snapshot adds nothing.
   h.listeners[0]!.next(snapshot('user-a'))
   h.listeners[0]!.next(snapshot('user-a'))
   await wait(30)
-  assert.equal(h.saves.length, 3)
-  assert.equal(ready(h.states).syncStatus, 'failed')
-  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '10')
+  assert.equal(h.saves.length, 4)
+  assert.equal(ready(h.states).syncStatus, 'saving')
+  h.saves[3]!.result.reject({ transient: true })
+  await wait(350)
+  h.saves[4]!.result.reject({ transient: true })
+  await wait(650)
+  h.saves[5]!.result.reject({ transient: true })
   await wait()
   assert.equal(ready(h.states).syncStatus, 'failed')
   h.controller.retrySave()
   await wait()
-  assert.equal(h.saves.length, 4)
+  assert.equal(h.saves.length, 7)
+})
+
+test('a permanent save failure waits for an explicit Retry even when the server is reachable', async () => {
+  const h = harness()
+  const initial = await loadServer(h)
+  h.controller.updateSet(initial.session.exercises[0]!.clientId, initial.session.exercises[0]!.sets[0]!.clientId, 'reps', '9')
+  await wait()
+  h.controller.retrySave()
+  await wait()
+  h.saves[0]!.result.reject(new Error('permission-denied'))
+  await wait()
+  assert.equal(ready(h.states).syncStatus, 'failed')
+  h.listeners[0]!.next(snapshot('user-a'))
+  await wait(30)
+  assert.equal(h.saves.length, 1)
 })
 
 test('corrupt startup is absorbing and cannot be overwritten by a queued snapshot', async () => {

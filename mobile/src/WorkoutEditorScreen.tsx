@@ -15,7 +15,8 @@ import { workoutEditorJournal } from './fileWorkoutEditorJournal'
 import { WorkoutEditorController } from './workoutEditorController'
 import { readWorkoutMutation, sendWorkoutMutation } from './workoutMutationNative'
 import { normalizeWorkoutDraft, workoutDraftDirty, type WorkoutDraft, type WorkoutDraftExercise } from './workoutEditor'
-import { formatWorkoutDate, formatWorkoutDuration, workoutHeroLabel } from './history'
+import { formatWorkoutDate, formatWorkoutDuration } from './history'
+import { workoutTitle } from '../../src/lib/workoutCopy'
 import type { NavigationExit } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
@@ -47,8 +48,7 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
   try { if (draft) content = normalizeWorkoutDraft(draft) } catch { /* keep the last saved summary while a field is incomplete */ }
   const sets = content?.exercises.flatMap(ex => ex.sets) ?? []
   useEffect(() => () => controller.dispose(), [controller])
-  const headingFor = (workout: { label?: string | null; exercises: { exerciseId?: string; exerciseSource: string }[] }) =>
-    workoutHeroLabel(workout.label, workout.exercises.map(ex => metadata.get(`${ex.exerciseSource}:${ex.exerciseId}`)?.category))
+  const headingFor = (workout: { label?: string | null; exercises: { name: string }[] }) => workoutTitle(workout)
   // The editor always sits on this workout's detail; web replaces it with History, so drop it too and Back cannot reopen a deleted workout.
   const toHistory = () => { router.dismiss(); router.dismissTo('/history') }
   const exitAfter = (toList: boolean) => toList ? toHistory() : router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } })

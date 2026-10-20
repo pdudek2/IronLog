@@ -385,8 +385,9 @@ describe('AI context response metadata', () => {
     })
   })
 
-  it('rejects generated plans with the wrong day count', () => {
-    expect(() => normalizeGeneratedPlan({
+  it('rejects generated plans with the wrong day count as an unusable model answer', () => {
+    const thrownBy = (run: () => unknown) => { try { run() } catch (error) { return error } }
+    expect(thrownBy(() => normalizeGeneratedPlan({
       name: 'Plan',
       days: [
         { name: 'Day A', exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', sets: 4, targetReps: 5, targetWeight: 80 }] },
@@ -400,7 +401,7 @@ describe('AI context response metadata', () => {
       equipment: ['barbell'],
       focus: '',
       notes: '',
-    })).toThrow('The generator returned 1 days instead of 2.')
+    }))).toMatchObject({ status: 502, message: expect.stringContaining('returned 1 days instead of 2.') })
   })
 
   it('filters exercises outside the requested equipment before accepting a plan', () => {

@@ -9,6 +9,17 @@ export function navigationSection(path: string): 'Home' | 'Plans' | 'Workout' | 
   if (path === '/coach') return 'Coach'
 }
 
+const TAB_ROUTES = { Home: '/dashboard', Plans: '/templates', Progress: '/progress', Coach: '/coach' } as const
+export type NavigationTab = keyof typeof TAB_ROUTES
+
+// Tabs switch instead of stacking, so Android Back from any tab returns to Home and then leaves the app.
+export function tabNavigation(path: string, tab: NavigationTab): { kind: 'dismissTo' | 'replace' | 'navigate'; href: string } {
+  const href = TAB_ROUTES[tab]
+  if (tab === 'Home') return { kind: 'dismissTo', href }
+  if (path === TAB_ROUTES.Plans || path === TAB_ROUTES.Progress || path === TAB_ROUTES.Coach) return { kind: 'replace', href }
+  return { kind: 'navigate', href }
+}
+
 export function workoutNavigationAction(active: ActiveSessionState['status'], closure: string, launch: LaunchState['status']): 'start' | 'resume' | 'recover' | 'wait' {
   if (closure !== 'ready') return 'recover'
   if (active === 'ready') return 'resume'

@@ -1,9 +1,9 @@
 import WorkoutDraftRecovery from '../../src/WorkoutDraftRecovery'
-import { useCallback, useMemo } from 'react'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useMemo, useRef } from 'react'
+import { ActivityIndicator, BackHandler, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import Svg, { Path } from 'react-native-svg'
 
 import { exercises as exerciseCatalog } from '../../../data/exercises'
@@ -14,7 +14,8 @@ import { useSessionRead } from '../../src/useSessionRead'
 import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../../src/runtime'
 import ActiveWorkoutReturnBar from '../../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../../src/HistoryHeader'
-import { formatWorkoutDate, formatWorkoutDuration, workoutHeroLabel, workoutSetVolumeLabel } from '../../src/history'
+import { formatWorkoutDate, formatWorkoutDuration, workoutFocusLabel, workoutSetVolumeLabel } from '../../src/history'
+import { workoutTitle } from '../../../src/lib/workoutCopy'
 import grainTexture from '../../assets/grain.png'
 
 const colors = {
@@ -46,6 +47,13 @@ export default function SavedWorkoutScreen() {
     else if (router.canGoBack()) router.back()
     else router.replace('/history')
   }
+  // After a cold start Finish replaces the only route with this screen, so Android Back would leave the app.
+  const latestBack = useRef(back)
+  latestBack.current = back
+  useFocusEffect(useCallback(() => {
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => { latestBack.current(); return true })
+    return () => subscription.remove()
+  }, []))
   const retryWorkout = workoutRead.retry
   const exerciseMap = useMemo(() => {
     const entries = new Map<string, { category?: string; equipment?: string }>(exerciseCatalog.map((exercise) => [`global:${exercise.id}`, exercise]))
@@ -54,7 +62,8 @@ export default function SavedWorkoutScreen() {
     }
     return entries
   }, [metadata.state])
-  const heroLabel = workoutHeroLabel(workout?.label, workout?.exercises.map((exercise) => exercise.exerciseId
+  const heroLabel = workout ? workoutTitle(workout) : ''
+  const focusLabel = workoutFocusLabel(workout?.exercises.map((exercise) => exercise.exerciseId
     ? exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)?.category : undefined) ?? [])
   const totalSets = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0) ?? 0
   const totalReps = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.reduce((inner, set) => inner + set.reps, 0), 0) ?? 0
@@ -110,7 +119,7 @@ export default function SavedWorkoutScreen() {
 
         {workout && <>
           <View style={styles.sessionHead}>
-            <Text style={styles.kicker}>{formatWorkoutDate(workout.startedAt)}</Text>
+            <Text style={styles.kicker}>{formatWorkoutDate(workout.startedAt)}{focusLabel ? ` · ${focusLabel}` : ''}</Text>
             <Text accessibilityRole="header" style={styles.workoutName}>{heroLabel}</Text>
           </View>
 

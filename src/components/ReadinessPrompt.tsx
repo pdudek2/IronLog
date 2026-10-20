@@ -18,7 +18,7 @@ interface SliderField {
 const FIELDS: SliderField[] = [
   { key: 'sleep',    label: 'Sleep',      lowLabel: 'Poor',    highLabel: 'Great' },
   { key: 'mood',     label: 'Mood',  lowLabel: 'Bad',      highLabel: 'Great' },
-  { key: 'soreness', label: 'DOMS',     lowLabel: 'None',     highLabel: 'Severe' },
+  { key: 'soreness', label: 'Soreness', lowLabel: 'None',     highLabel: 'Severe' },
 ]
 
 export default function ReadinessPrompt({ onSaved }: Props) {
@@ -71,7 +71,7 @@ export default function ReadinessPrompt({ onSaved }: Props) {
               <input
                 type="range"
                 aria-label={`Readiness: ${label}`}
-                aria-valuetext={`${values[key]} out of 5`}
+                aria-valuetext={`${values[key]} out of 5, from 1 ${lowLabel} to 5 ${highLabel}`}
                 min={1}
                 max={5}
                 step={1}

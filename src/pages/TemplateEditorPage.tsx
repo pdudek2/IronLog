@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react'
@@ -26,6 +26,7 @@ import {
   type WorkoutTemplate,
 } from '../lib/templateService'
 import { pluralize } from '../lib/pluralize'
+import { ApiRejectedError } from '../lib/authedApi'
 
 type DraftDay = TemplateDay & { _id: string }
 
@@ -95,6 +96,8 @@ export default function TemplateEditorPage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [template, setTemplate] = useState<WorkoutTemplate | null>(null)
+  const [editBaseline, setEditBaseline] = useState<string | null>(null)
+  const saveAttempt = useRef<{ payload: string; operationId: string } | null>(null)
   const [name, setName] = useState(() => initialDraft?.name ?? '')
   const [days, setDays] = useState<DraftDay[]>(() => (
     initialDraft?.days.length
@@ -127,6 +130,7 @@ export default function TemplateEditorPage() {
         }
 
         setTemplate(nextTemplate)
+        setEditBaseline(nextTemplate.editBaseline)
         setName(nextTemplate.name)
         const loadedDays = nextTemplate.days.length
           ? nextTemplate.days.map((day) => ({ ...day, _id: crypto.randomUUID() }))
@@ -310,12 +314,19 @@ export default function TemplateEditorPage() {
       })),
     }
 
+    // Retrying the same content reuses the operation, so a save whose response was lost is not applied twice.
+    const payloadKey = JSON.stringify(payload)
+    if (saveAttempt.current?.payload !== payloadKey) {
+      saveAttempt.current = { payload: payloadKey, operationId: crypto.randomUUID() }
+    }
+    const { operationId } = saveAttempt.current
+
     try {
       if (isEdit && id) {
-        await updateTemplate(id, payload)
+        await updateTemplate(id, payload, editBaseline ? { operationId, baseline: editBaseline } : undefined)
         toast.success('Template updated')
       } else {
-        await createTemplate(user.uid, payload)
+        await createTemplate(user.uid, payload, operationId)
         clearTemplateDraft()
         toast.success('Template saved')
       }
@@ -323,8 +334,8 @@ export default function TemplateEditorPage() {
       leaveGuard.reset()
       leaveGuard.allowNextNavigation()
       navigate('/templates')
-    } catch {
-      setSaveError('Could not save the plan.')
+    } catch (error) {
+      setSaveError(error instanceof ApiRejectedError ? error.message : 'Could not save the plan.')
       setSaving(false)
     }
   }

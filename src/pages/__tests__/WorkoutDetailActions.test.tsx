@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { createElement, type ReactNode } from 'react'
-import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
+import { createMemoryRouter, Link, Outlet, RouterProvider } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { clearWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from '../../lib/workoutDeleteRecovery'
@@ -92,15 +92,13 @@ function deferred<T>() {
 function renderPage(initialEntries: Array<string | { pathname: string; state?: unknown }> = [
   { pathname: '/workout/workout-1', state: { workoutPreview: workout } },
 ]) {
-  return render(
-    <MemoryRouter initialEntries={initialEntries}>
-      <Routes>
-        <Route path="/workout/:id" element={<WorkoutDetailPage />} />
-        <Route path="/history" element={<p>History workouts</p>} />
-        <Route path="/dashboard" element={<p>Dashboard home</p>} />
-      </Routes>
-    </MemoryRouter>,
-  )
+  // A data router, as in the app: the editor's leave guard uses useBlocker.
+  const router = createMemoryRouter([
+    { path: '/workout/:id', element: <WorkoutDetailPage /> },
+    { path: '/history', element: <p>History workouts</p> },
+    { path: '/dashboard', element: <p>Dashboard home</p> },
+  ], { initialEntries })
+  return render(<RouterProvider router={router} />)
 }
 
 describe('WorkoutDetailPage delete action', () => {
@@ -130,7 +128,7 @@ describe('WorkoutDetailPage delete action', () => {
 
   it.each([
     { label: 'Push day', expectedName: 'Push day' },
-    { label: null, expectedName: 'Chest' },
+    { label: null, expectedName: 'Wyciskanie' },
   ])('identifies the delete target $expectedName and initially focuses cancellation', async ({ label, expectedName }) => {
     mocks.getWorkout.mockResolvedValueOnce({ ...workout, label })
     mocks.readWorkoutMutationState.mockResolvedValueOnce({ status: 'available', baseline: 'a'.repeat(64), workout: { ...workout, label }, operation: null, projection: 'ready' })
@@ -141,7 +139,7 @@ describe('WorkoutDetailPage delete action', () => {
     const date = new Date(workout.startedAt).toLocaleDateString('en-US', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
     })
-    expect(dialog).toHaveAccessibleDescription(`„${expectedName}” · ${date}. This cannot be undone.`)
+    expect(dialog).toHaveAccessibleDescription(`“${expectedName}” · ${date}. This cannot be undone.`)
     const cancel = within(dialog).getByRole('button', { name: 'Cancel' })
     await waitFor(() => expect(cancel).toHaveFocus())
     fireEvent.click(cancel)
@@ -254,12 +252,11 @@ describe('WorkoutDetailPage delete action', () => {
     const oldRead = deferred<WorkoutSummary>()
     mocks.getWorkout.mockReturnValueOnce(oldRead.promise)
       .mockResolvedValueOnce({ ...workout, id: 'workout-2', label: 'Other workout' })
-    render(
-      <MemoryRouter initialEntries={['/workout/workout-1']}>
-        <Link to="/workout/workout-2">Next workout</Link>
-        <Routes><Route path="/workout/:id" element={<WorkoutDetailPage />} /></Routes>
-      </MemoryRouter>,
-    )
+    const router = createMemoryRouter([{
+      element: <><Link to="/workout/workout-2">Next workout</Link><Outlet /></>,
+      children: [{ path: '/workout/:id', element: <WorkoutDetailPage /> }],
+    }], { initialEntries: ['/workout/workout-1'] })
+    render(<RouterProvider router={router} />)
     fireEvent.click(screen.getByRole('link', { name: 'Next workout' }))
     await screen.findByRole('heading', { name: 'Other workout' })
     await act(async () => { oldRead.resolve(workout) })
@@ -511,6 +508,22 @@ describe('WorkoutDetailPage delete action', () => {
     expect(mocks.toastError).toHaveBeenCalledWith(
       'Each set must contain at least one rep.',
     )
+  })
+
+  it('asks before leaving an edit with unsaved changes', async () => {
+    renderPage()
+
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0]) })
+    fireEvent.change(screen.getByLabelText('Session type'), { target: { value: 'Pull' } })
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: /Back/ })[0]) })
+
+    const dialog = await screen.findByRole('dialog', { name: 'Leave this edit?' })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }))
+    expect(screen.getByLabelText('Session type')).toHaveValue('Pull')
+
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: /Back/ })[0]) })
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Leave this edit?' })).getByRole('button', { name: 'Discard changes' }))
+    expect(await screen.findByText('History workouts')).toBeInTheDocument()
   })
 
   it('accepts a committed update whose projection is pending', async () => {

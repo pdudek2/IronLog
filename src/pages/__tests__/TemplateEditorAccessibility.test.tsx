@@ -474,6 +474,7 @@ describe('TemplateEditorPage accessibility', () => {
       name: 'Plan zapisany',
       createdAt: 1,
       updatedAt: 2,
+      editBaseline: 'stored-fingerprint',
       days: [{
         name: 'Day siłowy',
         exercises: [{
@@ -512,6 +513,6 @@ describe('TemplateEditorPage accessibility', () => {
     expect(mocks.updateTemplate).toHaveBeenCalledOnce()
     expect(mocks.updateTemplate).toHaveBeenCalledWith('template-1', expect.objectContaining({
       name: 'Plan zapisany po zmianie',
-    }))
+    }), { operationId: expect.any(String), baseline: 'stored-fingerprint' })
   })
 })

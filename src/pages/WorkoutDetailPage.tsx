@@ -24,6 +24,7 @@ import type { ExerciseSource } from '../store/workoutStore'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
+import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { ActionFeedback } from '../components/ActionFeedback'
 import { WorkoutDetailMobileActions } from '../components/WorkoutDetailMobileActions'
 import { LoadingState } from '../components/ui'
@@ -34,6 +35,7 @@ import {
   getEquipmentLabel,
 } from '../lib/exerciseLabels'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
+import { workoutTitle } from '../lib/workoutCopy'
 import { useProfileStore } from '../store/profileStore'
 import {
   displayWeightStringToKg,
@@ -174,6 +176,10 @@ export default function WorkoutDetailPage() {
   const [showPicker, setShowPicker] = useState(false)
   const [editedLabel, setEditedLabel] = useState('')
   const [editedExercises, setEditedExercises] = useState<WorkoutSummary['exercises']>([])
+  // What the editor opened with; leaving with anything else asks first, as the plan editor does.
+  const [editOpenedWith, setEditOpenedWith] = useState<string | null>(null)
+  const editDirty = isEditing && editOpenedWith !== JSON.stringify({ label: editedLabel, exercises: editedExercises })
+  const leaveGuard = useUnsavedChangesGuard(editDirty)
   if (!ownsWorkoutResource) {
     setWorkoutResource({ uid: user?.uid ?? null, workoutId: id, status: 'loading', workout: null })
     setIsEditing(false)
@@ -241,6 +247,7 @@ export default function WorkoutDetailPage() {
       editBaseline.current = state.baseline
       setEditedLabel(state.workout.label ?? '')
       setEditedExercises(cloneExercises(state.workout.exercises))
+      setEditOpenedWith(JSON.stringify({ label: state.workout.label ?? '', exercises: state.workout.exercises }))
       setIsEditing(true)
     } catch (error) { if (scope === deleteScopeRef.current) toast.error(error instanceof Error ? error.message : 'Could not open editor.') }
     finally { if (scope === deleteScopeRef.current) setSaving(false) }
@@ -369,6 +376,7 @@ export default function WorkoutDetailPage() {
         return
       }
       setTransientDeleteOperation(null)
+      leaveGuard.allowNextNavigation()
       navigate('/history', { replace: true })
       toast.success('Workout deleted')
     } catch {
@@ -534,8 +542,9 @@ export default function WorkoutDetailPage() {
     </div>
   )
 
-  const heroLabel = displayedWorkout.label
-    ?? (topFocus ? (EXERCISE_CATEGORY_LABELS[topFocus[0]] ?? 'Workout') : 'Workout')
+  // History, Dashboard and native name a workout the same way; the main category is only a small eyebrow.
+  const heroLabel = workoutTitle(displayedWorkout)
+  const focusLabel = topFocus ? EXERCISE_CATEGORY_LABELS[topFocus[0]] : undefined
   return (
     <>
       <div className="workout-detail-page workout-detail-content">
@@ -566,7 +575,7 @@ export default function WorkoutDetailPage() {
         <header className="workout-detail-session-head">
           <div className="min-w-0">
             <p className="workout-detail-session-kicker">
-              {formatDate(displayedWorkout.startedAt)}
+              {formatDate(displayedWorkout.startedAt)}{focusLabel ? ` · ${focusLabel}` : ''}
             </p>
             <h1>{heroLabel}</h1>
           </div>
@@ -852,11 +861,23 @@ export default function WorkoutDetailPage() {
       {confirmDeleteOpen && (
         <ConfirmDialog
           title="Delete workout?"
-          message={`„${heroLabel}” · ${formatDate(displayedWorkout.startedAt)}. This cannot be undone.`}
+          message={`“${heroLabel}” · ${formatDate(displayedWorkout.startedAt)}. This cannot be undone.`}
           confirmLabel="Delete"
           danger
           onConfirm={() => { setConfirmDeleteOpen(false); doDelete() }}
           onCancel={() => setConfirmDeleteOpen(false)}
+        />
+      )}
+
+      {leaveGuard.blocked && (
+        <ConfirmDialog
+          title="Leave this edit?"
+          message="Your changes have not been saved to the workout."
+          confirmLabel="Discard changes"
+          cancelLabel="Keep editing"
+          danger
+          onConfirm={leaveGuard.proceed}
+          onCancel={leaveGuard.reset}
         />
       )}
     </>

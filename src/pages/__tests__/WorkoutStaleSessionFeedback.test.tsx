@@ -274,6 +274,15 @@ describe('WorkoutPage stale-session feedback', () => {
     expect(mocks.startNewSession).toHaveBeenCalledOnce()
   })
 
+  it('says the start failed instead of returning silently to the entry screen', () => {
+    mocks.staleSession = null
+    mocks.activeSessionSyncStatus = 'failed'
+    renderStaleSessionPage()
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Could not start the workout. Check your connection and try again.')
+    expect(screen.getByRole('button', { name: 'Start a new session' })).toBeEnabled()
+  })
+
   it('keeps recent exercises as flat source-aware add actions', async () => {
     mocks.active = {
       sessionId: 'session-empty',

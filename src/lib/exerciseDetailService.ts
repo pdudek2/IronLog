@@ -1,5 +1,6 @@
 import { collection, getDocs, limit, orderBy, query, where } from 'firebase/firestore'
 import { db } from './firebase'
+import { confirmedQuery } from './confirmedQuery'
 
 export interface ExerciseSession {
   id: string
@@ -48,7 +49,7 @@ export async function getExerciseSessions(
     orderBy('startedAt', 'desc'),
     limit(count),
   )
-  const snap = await getDocs(q)
+  const snap = confirmedQuery(await getDocs(q))
   return snap.docs.map((docSnap) => {
     const d = asRecord(docSnap.data())
     return {
@@ -83,7 +84,7 @@ export async function getExerciseRecord(
     where('exerciseSource', '==', source),
     limit(1),
   )
-  const snap = await getDocs(q)
+  const snap = confirmedQuery(await getDocs(q))
   if (snap.empty) return null
   const d = asRecord(snap.docs[0].data())
   return {

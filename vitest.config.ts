@@ -4,6 +4,8 @@ import path from 'path'
 export default defineConfig({
   test: {
     env: {
+      // Calendar tests exercise Warsaw DST boundaries; the zone must not depend on the machine running them.
+      TZ: 'Europe/Warsaw',
       VITE_FIREBASE_API_KEY: 'test-api-key',
       VITE_FIREBASE_AUTH_DOMAIN: 'test-ironlog.firebaseapp.com',
       VITE_FIREBASE_PROJECT_ID: 'test-ironlog',

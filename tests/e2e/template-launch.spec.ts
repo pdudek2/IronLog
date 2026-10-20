@@ -3,6 +3,7 @@ import { deleteTemplateByName, discardActiveSession } from './support/accountCle
 import { expectAppReady } from './support/appReady'
 import type { BrowserDiagnostic } from './support/browserDiagnostics'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
+import { waitForActiveSessionWrite } from './support/firestoreBrowserBridge'
 
 const REPLACE_TEMPLATE_NAME = '_E2E Launch Replace_'
 const OFFLINE_TEMPLATE_NAME = '_E2E Launch Offline_'
@@ -94,8 +95,7 @@ async function startFreshSessionWithExercise(page: Page, exerciseName: string): 
   await expect(picker).not.toBeVisible({ timeout: 5_000 })
   await expect(workoutExerciseRow(page, exerciseName)).toBeVisible({ timeout: 8_000 })
 
-  // Wait for the active-session debounce and Firestore write before leaving the page.
-  await page.waitForTimeout(3_000)
+  await waitForActiveSessionWrite(page, exerciseName)
 }
 
 test.describe('Template launch contract', () => {

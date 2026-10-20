@@ -1,5 +1,4 @@
 import { deriveLegacySessionId } from '../../src/shared/sessionIdentity'
-import { kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 
 export type Units = 'kg' | 'lbs'
 export type ExerciseSource = 'global' | 'user'
@@ -128,13 +127,6 @@ export function parseSessionDocument(uid: string, value: unknown): ActiveWorkout
       }
     }),
   }
-}
-
-export function formatSet(set: WorkoutSet, units: Units): string {
-  const weight = kgStringToDisplayWeight(set.weight, units)
-  const weightLabel = weight ? `${weight} ${units}` : `— ${units}`
-  const repsLabel = set.reps ? `${set.reps} reps` : '— reps'
-  return `${weightLabel} × ${repsLabel}`
 }
 
 export { summarizeExercise, formatElapsedTime as formatElapsed } from '../../src/shared/workoutDisplay'

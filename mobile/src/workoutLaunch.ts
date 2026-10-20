@@ -68,13 +68,7 @@ export function parseTemplate(id: string, uid: string, raw: unknown): WorkoutTem
   }
 }
 
-export function firstLaunchableWorkout(templates: WorkoutTemplate[]): WorkoutSelection | null {
-  for (const template of templates) {
-    const dayIndex = template.days.findIndex((day) => day.exercises.length > 0)
-    if (dayIndex >= 0) return { templateId: template.id, dayIndex }
-  }
-  return null
-}
+export { firstLaunchableWorkout } from '../../src/shared/week'
 
 export function selectedWorkout(templates: WorkoutTemplate[], selection: WorkoutSelection | null) {
   const template = templates.find((item) => item.id === selection?.templateId)

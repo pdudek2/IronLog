@@ -167,7 +167,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       activeRequestsByContext.clear()
       teardownDepthByContext.clear()
     },
-    async runInIntentionalTeardown<T>(context, action): Promise<T> {
+    async runInIntentionalTeardown<T>(context: BrowserContext, action: () => Promise<T>): Promise<T> {
       teardownDepthByContext.set(context, (teardownDepthByContext.get(context) ?? 0) + 1)
       activeRequestsByContext.get(context)?.forEach((request) => {
         intentionalNavigationRequests.add(request)
@@ -180,7 +180,11 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
         else teardownDepthByContext.delete(context)
       }
     },
-    async runExpectingDiagnostics<T>(name, predicate, action): Promise<T> {
+    async runExpectingDiagnostics<T>(
+      name: string,
+      predicate: (entry: BrowserDiagnostic) => boolean,
+      action: () => Promise<T>,
+    ): Promise<T> {
       const expectation = { name, predicate, matchCount: 0 }
       activeExpectations.push(expectation)
       let result: T

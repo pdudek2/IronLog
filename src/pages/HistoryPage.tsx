@@ -8,7 +8,6 @@ import { useAuthStore } from '../store/authStore'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { getWorkoutHistory, calcVolume, type WorkoutSummary } from '../lib/workoutService'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
-import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
 import { formatCompactVolume } from '../lib/weightUnits'
@@ -17,6 +16,7 @@ import {
   EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
+import { formatExercisePreview, formatHistoryDate, formatWorkoutDuration, groupWorkoutsByMonth } from '../shared/workoutHistory'
 
 type RangePreset = '30' | '90' | '365' | 'all'
 
@@ -27,71 +27,12 @@ const RANGE_PRESETS: Array<{ key: RangePreset; label: string; days: number | nul
   { key: 'all', label: 'All', days: null },
 ]
 
-function formatDate(ts: number): string {
-  const date = new Date(ts)
-  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  return `${weekdays[date.getDay()]}, ${date.getDate()}`
-}
-
-function formatDuration(start: number, end: number): string {
-  const cappedEnd = getCappedWorkoutFinishedAt(start, end)
-  const minutes = Math.round((cappedEnd - start) / 60_000)
-  if (minutes < 1) return '< 1 min'
-  if (minutes < 60) return `${minutes} min`
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-}
-
-function formatExercisePreview(exerciseNames: string[]): string {
-  if (exerciseNames.length === 0) return 'no exercises'
-
-  const visibleNames = exerciseNames.slice(0, 3)
-  const hiddenCount = exerciseNames.length - visibleNames.length
-
-  return `${visibleNames.join(' · ')}${hiddenCount > 0 ? ` · +${hiddenCount}` : ''}`
-}
-
 interface DerivedWorkout {
   workout: WorkoutSummary
   totalSets: number
   totalVolume: number
   categories: Set<string>
   exerciseNames: string[]
-}
-
-interface WorkoutMonthGroup {
-  key: string
-  label: string
-  workouts: DerivedWorkout[]
-}
-
-function formatMonthLabel(timestamp: number): string {
-  const label = new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    year: 'numeric',
-  }).format(timestamp)
-  return label.charAt(0).toLocaleUpperCase('en-US') + label.slice(1)
-}
-
-function groupWorkoutsByMonth(workouts: DerivedWorkout[]): WorkoutMonthGroup[] {
-  const groups: WorkoutMonthGroup[] = []
-
-  for (const item of workouts) {
-    const date = new Date(item.workout.startedAt)
-    const key = `${date.getFullYear()}-${date.getMonth()}`
-    const current = groups.at(-1)
-
-    if (current?.key === key) {
-      current.workouts.push(item)
-    } else {
-      groups.push({
-        key,
-        label: formatMonthLabel(item.workout.startedAt),
-        workouts: [item],
-      })
-    }
-  }
-
-  return groups
 }
 
 function deriveWorkout(workout: WorkoutSummary, exerciseMap: Map<string, Exercise>): DerivedWorkout {
@@ -414,8 +355,8 @@ export default function HistoryPage() {
                           <div className="history-workout-main">
                             <div className="min-w-0">
                               <div className="history-workout-meta">
-                                <span>{formatDate(workout.startedAt)}</span>
-                                <span>{formatDuration(workout.startedAt, workout.finishedAt)}</span>
+                                <span>{formatHistoryDate(workout.startedAt)}</span>
+                                <span>{formatWorkoutDuration(workout.startedAt, workout.finishedAt)}</span>
                                 <span className="history-inline-stat">{formatCompactVolume(totalVolume, units)}</span>
                                 <span className="history-inline-stat">{totalSets} {pluralize(totalSets, 'set', 'sets')}</span>
                               </div>

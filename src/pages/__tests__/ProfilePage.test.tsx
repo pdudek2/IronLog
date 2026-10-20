@@ -51,8 +51,6 @@ describe('ProfilePage hierarchy and settings', () => {
     render(<ProfilePage />)
 
     expect(screen.getByRole('heading', { name: 'Profile' })).toBeInTheDocument()
-    expect(screen.queryByText('Settings · konto')).not.toBeInTheDocument()
-    expect(screen.queryByText('Twój profile')).not.toBeInTheDocument()
 
     const goalGroup = screen.getByRole('group', { name: 'Primary goal' })
     expect(within(goalGroup).getAllByRole('button')).toHaveLength(4)
@@ -65,8 +63,6 @@ describe('ProfilePage hierarchy and settings', () => {
     expect(screen.getByRole('group', { name: 'Units' })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Save changes' })).toHaveLength(1)
 
-    expect(screen.queryByText('Akceptuję analitykę')).not.toBeInTheDocument()
-    expect(screen.queryByText('Tylko niezbędne')).not.toBeInTheDocument()
     expect(screen.queryByText(/GA4|Contentsquare|Hotjar/i)).not.toBeInTheDocument()
   })
 

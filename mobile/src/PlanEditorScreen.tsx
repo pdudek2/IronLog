@@ -112,6 +112,9 @@ function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string |
       proceed: () => { exiting.current = true; void Promise.resolve(proceed()).then((navigated) => { if (navigated === false) exiting.current = false }) },
     })
   }
+  // The Back handler outlives renders; it calls the latest leave so a storage error raised since focus is seen.
+  const latestLeave = useRef(leave)
+  latestLeave.current = leave
   useFocusEffect(useCallback(() => {
     focused.current = true
     exiting.current = false
@@ -119,7 +122,7 @@ function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string |
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (picking) { setPicking(false); return true }
       if (inputFocused.current) { Keyboard.dismiss(); inputFocused.current = false; return true }
-      leave(() => router.back()); return true
+      latestLeave.current(() => router.back()); return true
     })
     return () => { focused.current = false; subscription.remove() }
   }, [picking]))

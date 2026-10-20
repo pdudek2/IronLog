@@ -53,10 +53,6 @@ service cloud.firestore {
              && value.matches('^[A-Za-z0-9][A-Za-z0-9._:-]*$');
     }
 
-    function isExerciseSource(value) {
-      return value in ['global', 'user'];
-    }
-
     function isCategory(value) {
       return value in ['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'cardio'];
     }
@@ -74,106 +70,11 @@ service cloud.firestore {
              ]);
     }
 
-    function isFinishedSet(value) {
-      return value is map
-             && value.keys().hasOnly(['weight', 'reps'])
-             && value.keys().hasAll(['weight', 'reps'])
-             && value.weight is number
-             && value.weight >= 0
-             && value.weight <= 2000
-             && value.reps is int
-             && value.reps > 0
-             && value.reps <= 1000;
-    }
-
-    function isFinishedExercise(value) {
-      return value is map
-             && value.keys().hasOnly(['exerciseId', 'exerciseSource', 'name', 'sets'])
-             && value.keys().hasAll(['exerciseId', 'exerciseSource', 'name', 'sets'])
-             && isDocumentId(value.exerciseId)
-             && isExerciseSource(value.exerciseSource)
-             && isNonEmptyString(value.name, 120)
-             && isFinishedSets(value.sets);
-    }
-
-    function isFinishedSetAt(sets, index) {
-      return sets.size() <= index || isFinishedSet(sets[index]);
-    }
-
-    function isFinishedSets(value) {
-      return value is list
-             && value.size() > 0
-             && value.size() <= 20
-             && isFinishedSetAt(value, 0)
-             && isFinishedSetAt(value, 1)
-             && isFinishedSetAt(value, 2)
-             && isFinishedSetAt(value, 3)
-             && isFinishedSetAt(value, 4)
-             && isFinishedSetAt(value, 5)
-             && isFinishedSetAt(value, 6)
-             && isFinishedSetAt(value, 7)
-             && isFinishedSetAt(value, 8)
-             && isFinishedSetAt(value, 9)
-             && isFinishedSetAt(value, 10)
-             && isFinishedSetAt(value, 11)
-             && isFinishedSetAt(value, 12)
-             && isFinishedSetAt(value, 13)
-             && isFinishedSetAt(value, 14)
-             && isFinishedSetAt(value, 15)
-             && isFinishedSetAt(value, 16)
-             && isFinishedSetAt(value, 17)
-             && isFinishedSetAt(value, 18)
-             && isFinishedSetAt(value, 19);
-    }
-
-    function isFinishedExerciseAt(exercises, index) {
-      return exercises.size() <= index || isFinishedExercise(exercises[index]);
-    }
-
-    function isFinishedExercises(value) {
-      return value is list
-             && value.size() > 0
-             && value.size() <= 20
-             && isFinishedExerciseAt(value, 0)
-             && isFinishedExerciseAt(value, 1)
-             && isFinishedExerciseAt(value, 2)
-             && isFinishedExerciseAt(value, 3)
-             && isFinishedExerciseAt(value, 4)
-             && isFinishedExerciseAt(value, 5)
-             && isFinishedExerciseAt(value, 6)
-             && isFinishedExerciseAt(value, 7)
-             && isFinishedExerciseAt(value, 8)
-             && isFinishedExerciseAt(value, 9)
-             && isFinishedExerciseAt(value, 10)
-             && isFinishedExerciseAt(value, 11)
-             && isFinishedExerciseAt(value, 12)
-             && isFinishedExerciseAt(value, 13)
-             && isFinishedExerciseAt(value, 14)
-             && isFinishedExerciseAt(value, 15)
-             && isFinishedExerciseAt(value, 16)
-             && isFinishedExerciseAt(value, 17)
-             && isFinishedExerciseAt(value, 18)
-             && isFinishedExerciseAt(value, 19);
-    }
-
     function isActiveExercises(value) {
       // Active sessions are owner-only drafts. Their finalized payload is
       // validated by the server before it becomes workout history.
       return value is list
              && value.size() <= 20;
-    }
-
-    function isWorkoutCreate(data) {
-      return data.keys().hasOnly(['userId', 'templateId', 'startedAt', 'finishedAt', 'materialized', 'label', 'exercises'])
-             && data.keys().hasAll(['userId', 'startedAt', 'finishedAt', 'materialized', 'label', 'exercises'])
-             && data.userId == currentUid()
-             && isNullableString(data.get('templateId', null), 160)
-             && isMillis(data.startedAt)
-             && isMillis(data.finishedAt)
-             && data.finishedAt >= data.startedAt
-             && data.materialized == false
-             && isNullableString(data.label, 120)
-             && isFinishedExercises(data.exercises);
     }
 
     function hasNameClaim(data) {

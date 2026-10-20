@@ -84,8 +84,8 @@ async function captureLoginPage(page: Page, outFile: string): Promise<void> {
 async function signInForCapture(page: Page): Promise<void> {
   await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded' })
   await page.getByLabel('Email', { exact: true }).fill(QA_EMAIL)
-  await page.getByLabel('Hasło', { exact: true }).fill(QA_PASSWORD)
-  await page.getByRole('button', { name: 'Zaloguj się' }).click()
+  await page.getByLabel('Password', { exact: true }).fill(QA_PASSWORD)
+  await page.getByRole('button', { name: 'Sign in' }).click()
   await page.waitForURL(`${BASE_URL}/dashboard`, { timeout: 25_000 })
   // Firebase auth token persistence async flush
   await page.waitForTimeout(1500)
@@ -144,8 +144,8 @@ async function captureTemplateEditor(
 ): Promise<void> {
   await page.goto(`${BASE_URL}/templates`, { waitUntil: 'domcontentloaded' })
   await page.waitForTimeout(1800)
-  // Przycisk "Edytuj szablon Upper / Lower 4×" ma aria-label pasujący do nazwy templateu z seeda
-  const editButton = page.getByRole('button', { name: /Edytuj szablon Upper \/ Lower/i }).first()
+  // The "Edit plan Upper / Lower 4×" button is labelled with the seeded plan name.
+  const editButton = page.getByRole('button', { name: /Edit plan Upper \/ Lower/i }).first()
   if ((await editButton.count()) === 0) {
     throw new Error('nie znaleziono przycisku edycji templateu "Upper / Lower 4×"')
   }

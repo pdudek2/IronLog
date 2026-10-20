@@ -39,6 +39,8 @@ export default defineConfig({
   testMatch: cspMode ? '**/csp.spec.ts' : '**/*.spec.ts',
   testIgnore: [
     ...(cspMode ? [] : ['**/csp.spec.ts']),
+    // A screenshot capture script, not a test; run it with E2E_CAPTURE=true.
+    ...(process.env.E2E_CAPTURE === 'true' ? [] : ['**/diagnostic-capture.spec.ts']),
     ...(emulatorMode ? [] : [
       '**/contrast.spec.ts',
       // Mocked AI suites require the emulator-only authenticated UID bridge.
@@ -58,7 +60,8 @@ export default defineConfig({
     baseURL: webServerUrl,
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
-    trace: 'on-first-retry',
+    // Emulator runs never retry, so traces are kept for every failure instead of the first retry.
+    trace: 'retain-on-failure',
   },
 
   projects: [

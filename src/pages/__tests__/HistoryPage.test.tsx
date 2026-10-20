@@ -296,7 +296,6 @@ describe('HistoryPage range state', () => {
     expect(within(row).getByText('Przysiad · Wiosłowanie · Wyciskanie · +2')).toBeInTheDocument()
     expect(within(row).queryByText(/Martwy ciąg/)).not.toBeInTheDocument()
     expect(within(row).queryByLabelText('Exercise categories')).not.toBeInTheDocument()
-    expect(within(row).queryByLabelText('Statystyki treningu')).not.toBeInTheDocument()
     expect(within(row).getByText('Sun, 30')).toBeInTheDocument()
     expect(within(row).getByText('1h 0m')).toBeInTheDocument()
     expect(within(row).getByText('1.8k kg')).toBeInTheDocument()

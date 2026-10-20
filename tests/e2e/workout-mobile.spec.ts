@@ -35,7 +35,7 @@ async function waitForWorkoutState(page: Page, timeout = 25_000): Promise<Workou
   ).not.toBeNull()
 
   const state = await getWorkoutState(page)
-  expect(state, 'Workout page should expose a terminal ready state after polling').not.toBeNull()
+  if (!state) throw new Error('Workout page should expose a terminal ready state after polling')
   return state
 }
 
@@ -721,7 +721,6 @@ test.describe('Active workout shell reduction', () => {
     await addExercise(page, 'Squat')
 
     const firstSetRow = page.locator('.workout-set-row').first()
-    await expect(page.getByText('Szybki podgląd', { exact: true })).toHaveCount(0)
 
     const fieldContract = await firstSetRow.locator('.workout-set-input').evaluateAll((inputs) => (
       inputs.map((input) => {

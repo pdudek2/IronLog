@@ -41,11 +41,6 @@ export interface WorkoutSummary {
   exercises: WorkoutExerciseSummary[]
 }
 
-export interface SaveWorkoutResult {
-  id: string
-  materialized: boolean
-}
-
 export interface WorkoutHistoryResult {
   workouts: WorkoutSummary[]
   truncated: boolean

@@ -10,13 +10,17 @@ export class RateLimitError extends Error {
   }
 }
 
+type RateLimitWindow = Required<Pick<AssertRateLimitOptions, 'limit' | 'windowMs' | 'now'>>
+
 export interface RateLimitStore {
-  read(key: string): Promise<number[]>
-  write(key: string, timestamps: number[]): Promise<void>
-  consume?(
-    key: string,
-    options: Required<Pick<AssertRateLimitOptions, 'limit' | 'windowMs' | 'now'>>,
-  ): Promise<void>
+  consume(key: string, options: RateLimitWindow): Promise<void>
+}
+
+// Timestamps to store after this request, or a RateLimitError when the window is full.
+export function nextRateLimitTimestamps(stored: unknown, { limit, windowMs, now }: RateLimitWindow): number[] {
+  const recent = normalizeTimestamps(stored, now, windowMs)
+  if (recent.length >= limit) throw buildRateLimitError(recent, now, windowMs)
+  return [...recent, now]
 }
 
 interface AssertRateLimitOptions {
@@ -28,42 +32,16 @@ interface AssertRateLimitOptions {
 }
 
 class FirestoreRateLimitStore implements RateLimitStore {
-  async read(key: string): Promise<number[]> {
-    const { adminDb } = await import('./firebaseAdmin.js')
-    const snap = await adminDb.collection('aiRateLimits').doc(documentIdForKey(key)).get()
-    const timestamps = snap.exists ? snap.data()?.timestamps : null
-    return Array.isArray(timestamps) ? timestamps.flatMap((value) => Number.isFinite(value) ? [Number(value)] : []) : []
-  }
-
-  async write(key: string, timestamps: number[]): Promise<void> {
-    const { adminDb } = await import('./firebaseAdmin.js')
-    await adminDb.collection('aiRateLimits').doc(documentIdForKey(key)).set({
-      keyHash: documentIdForKey(key),
-      timestamps,
-      updatedAt: Date.now(),
-    }, { merge: true })
-  }
-
-  async consume(
-    key: string,
-    options: Required<Pick<AssertRateLimitOptions, 'limit' | 'windowMs' | 'now'>>,
-  ): Promise<void> {
+  async consume(key: string, options: RateLimitWindow): Promise<void> {
     const { adminDb } = await import('./firebaseAdmin.js')
     const ref = adminDb.collection('aiRateLimits').doc(documentIdForKey(key))
 
     await adminDb.runTransaction(async (transaction) => {
       const snap = await transaction.get(ref)
-      const stored = snap.exists ? snap.data()?.timestamps : null
-      const recent = normalizeTimestamps(stored, options.now, options.windowMs)
-
-      if (recent.length >= options.limit) {
-        throw buildRateLimitError(recent, options.now, options.windowMs)
-      }
-
-      recent.push(options.now)
+      const timestamps = nextRateLimitTimestamps(snap.exists ? snap.data()?.timestamps : null, options)
       transaction.set(ref, {
         keyHash: documentIdForKey(key),
-        timestamps: recent,
+        timestamps,
         updatedAt: options.now,
         windowMs: options.windowMs,
       }, { merge: true })
@@ -80,21 +58,7 @@ export async function assertRateLimit({
   now = Date.now(),
   store = defaultStore,
 }: AssertRateLimitOptions): Promise<void> {
-  const options = { limit, windowMs, now }
-
-  if (store.consume) {
-    await store.consume(key, options)
-    return
-  }
-
-  const recent = normalizeTimestamps(await store.read(key), now, windowMs)
-
-  if (recent.length >= limit) {
-    throw buildRateLimitError(recent, now, windowMs)
-  }
-
-  recent.push(now)
-  await store.write(key, recent)
+  await store.consume(key, { limit, windowMs, now })
 }
 
 function normalizeTimestamps(raw: unknown, now: number, windowMs: number): number[] {

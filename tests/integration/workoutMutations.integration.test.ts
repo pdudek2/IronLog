@@ -11,7 +11,7 @@ async function seed() {
   const id = randomUUID(); ids.push(id)
   await db.collection('workouts').doc(id).set({ userId: uid, startedAt: 100, finishedAt: 200, label: 'Original', materialized: false, exercises })
   const state = await readWorkoutMutationState(uid, id, undefined, { db })
-  if (state.status !== 'available') throw new Error('Missing snapshot')
+  if (state.status !== 'available' || !state.baseline) throw new Error('Missing snapshot')
   return { id, baseline: state.baseline }
 }
 const failProjection = async () => { throw new Error('injected unavailable projection') }

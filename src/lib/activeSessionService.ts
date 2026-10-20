@@ -1,4 +1,4 @@
-import { deleteDoc, doc, getDocFromServer, onSnapshot, runTransaction, type Unsubscribe } from 'firebase/firestore'
+import { doc, getDocFromServer, onSnapshot, runTransaction, type Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
 import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
 import { normalizeSessionId } from './sessionIdentity'
@@ -146,10 +146,6 @@ function activeSessionDocument(
     exercises: persistableWorkout.exercises,
     updatedAt: Date.now(),
   }
-}
-
-export async function deleteActiveSession(uid: string): Promise<void> {
-  await deleteDoc(activeSessionRef(uid))
 }
 
 export function hasActiveSessionWork(

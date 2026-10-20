@@ -413,11 +413,11 @@ test.describe('Chat UI', () => {
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(1)
   })
 
-  test('aborts on Reset and ignores late assistant text', async ({ page }) => {
+  // The mock cancels its pending frames on abort, so a late chunk is covered by ChatPageStreamLifecycle unit tests.
+  test('aborts the stream on Reset and clears the conversation', async ({ page }) => {
     await openChatWithMock(page, [{
       frames: [
         { delayMs: 20, frame: { type: 'chunk', text: 'Częściowa response' } },
-        { delayMs: 250, frame: { type: 'chunk', text: 'Spóźniony tekst' } },
       ],
       holdOpen: true,
     }])
@@ -431,7 +431,5 @@ test.describe('Chat UI', () => {
       .getByText('Ask a question or choose a shortcut.', { exact: true })).toBeVisible()
     await expect(page.getByText(QUESTION, { exact: true })).toHaveCount(0)
     await expect(page.getByText('Częściowa response', { exact: true })).toHaveCount(0)
-    await page.waitForTimeout(350)
-    await expect(page.getByText('Spóźniony tekst', { exact: true })).toHaveCount(0)
   })
 })

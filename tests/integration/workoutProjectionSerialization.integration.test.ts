@@ -183,7 +183,7 @@ async function readDeletionState(workoutId: string) {
       .map((document) => ({ id: document.id, ...document.data() }))
       .sort((left, right) => left.id.localeCompare(right.id)),
     records: records.docs
-      .map((document) => ({ id: document.id, ...document.data() }))
+      .map((document): Record<string, unknown> & { id: string } => ({ id: document.id, ...document.data() }))
       .sort((left, right) => left.id.localeCompare(right.id)),
   }
 }

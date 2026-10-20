@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import type {
   CachedActiveSessionWrite,
   EmulatorTestBridge,
@@ -35,4 +35,17 @@ export async function setFirestoreNetworkEnabled(
   await page.evaluate((nextEnabled) => (
     window.__ironlogEmulatorTestBridge as EmulatorTestBridge
   ).setFirestoreNetworkEnabled(nextEnabled), enabled)
+}
+
+// Waits until the active session with this exercise has left the local write queue instead of sleeping. Live runs
+// have no emulator bridge, so they keep a fixed wait for the debounce and the server write.
+export async function waitForActiveSessionWrite(page: Page, exerciseName: string): Promise<void> {
+  if (!await page.evaluate(() => Boolean(window.__ironlogEmulatorTestBridge))) {
+    await page.waitForTimeout(3_000)
+    return
+  }
+  await expect.poll(async () => {
+    const write = await readCachedActiveSessionWrite(page)
+    return write.exists && !write.hasPendingWrites && write.exerciseNames.includes(exerciseName)
+  }, { timeout: 10_000 }).toBe(true)
 }

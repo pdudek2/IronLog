@@ -25,10 +25,6 @@ export async function getReadiness(
   }
 }
 
-export function getTodayReadiness(uid: string): Promise<ReadinessEntry | null> {
-  return getReadiness(uid, todayKey())
-}
-
 export async function saveReadiness(
   uid: string,
   values: Pick<ReadinessEntry, 'sleep' | 'mood' | 'soreness'>,

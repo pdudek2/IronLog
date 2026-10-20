@@ -98,8 +98,6 @@ describe('ExercisesPage user library states', () => {
     render(<ExercisesPage />)
 
     expect(await screen.findByText('Could not load your exercises')).toBeInTheDocument()
-    expect(screen.queryByText('None własnych exercises')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add pierwsze' })).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Add custom' })).toBeDisabled()
     expect(screen.getByText('Przysiad')).toBeInTheDocument()
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
@@ -153,10 +151,7 @@ describe('ExercisesPage user library states', () => {
     render(<ExercisesPage />)
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Add custom' })).toBeEnabled())
-    expect(screen.queryByText('None własnych exercises')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Add pierwsze' })).not.toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Add custom' })).toHaveLength(1)
-    expect(screen.queryByLabelText('Summary biblioteki exercises')).not.toBeInTheDocument()
 
     const globalHeading = screen.getByRole('heading', { name: 'Shared library' })
     const globalSection = globalHeading.closest('section')

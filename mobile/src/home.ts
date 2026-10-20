@@ -2,6 +2,7 @@ import { getCappedWorkoutFinishedAt } from '../../src/lib/sessionDuration'
 import type { SavedWorkout } from './history'
 import { deriveWorkout } from './history'
 import type { ReadState } from './scopedRead'
+import { WEEK_LABELS, addLocalDays, formatWeekRange, getGreeting, getWeekDates } from '../../src/shared/week'
 
 export interface HomeProfile {
   displayName: string
@@ -23,39 +24,7 @@ export function parseHomeProfile(uid: string, value: unknown): HomeProfile {
   return { displayName: profile.displayName.trim(), weeklyGoal: profile.weeklyGoal as number, units: profile.units }
 }
 
-export const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
-
-export function addLocalDays(date: Date, days: number): Date {
-  const next = new Date(date)
-  next.setDate(next.getDate() + days)
-  return next
-}
-
-export function getWeekDates(now: Date): Date[] {
-  const monday = new Date(now)
-  monday.setHours(0, 0, 0, 0)
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7))
-  return Array.from({ length: 7 }, (_, index) => addLocalDays(monday, index))
-}
-
-export function formatWeekRange(dates: Date[]): string {
-  const start = dates[0]
-  const end = dates[6]
-  if (!start || !end) return ''
-  const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
-  const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
-  return start.getMonth() === end.getMonth()
-    ? `${startMonth} ${start.getDate()}–${end.getDate()}`
-    : `${startMonth} ${start.getDate()} – ${endMonth} ${end.getDate()}`
-}
-
-export function getGreeting(now: Date): string {
-  const hour = now.getHours()
-  if (hour < 6) return 'Good night'
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Hello'
-  return 'Good evening'
-}
+export { WEEK_LABELS, addLocalDays, formatWeekRange, getGreeting, getWeekDates }
 
 export function deriveHome(workouts: SavedWorkout[], now: Date) {
   const dates = getWeekDates(now)

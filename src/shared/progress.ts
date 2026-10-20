@@ -1,4 +1,5 @@
 import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
+import { addLocalDays } from './week'
 
 export const PROGRESS_MUSCLE_COLORS: Record<string, string> = {
   chest: '#D97B91', shoulders: '#A898C8', triceps: '#C38B73', back: '#9BB7C8', biceps: '#76ADB1',
@@ -74,12 +75,6 @@ function getWeekMonday(date: Date): Date {
   const day = d.getDay()
   d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
   return d
-}
-
-function addLocalDays(date: Date, days: number): Date {
-  const next = new Date(date.getTime())
-  next.setDate(next.getDate() + days)
-  return next
 }
 
 // ── Aggregations (pure, client-side) ─────────────────────────────────────────

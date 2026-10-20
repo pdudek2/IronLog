@@ -31,7 +31,7 @@ async function client(name: string) {
   return { app, firestore, uid: user.uid }
 }
 
-function active(uid: string, sessionId: string, revision: string): ActiveWorkout {
+function active(sessionId: string, revision: string): ActiveWorkout {
   return {
     sessionId, sessionRevision: revision, startedAt: Date.now() - 60_000, templateId: null, label: 'Adapter',
     exercises: [{ clientId: 'exercise-a', exerciseId: 'squat', exerciseSource: 'global', name: 'Squat', custom: 'kept',
@@ -58,7 +58,7 @@ async function main() {
   adminDb.settings({ host: '127.0.0.1:8080', ssl: false })
   const sessionId = `${runId}-session`
   const initialRevision = `${runId}-revision-1`
-  const workout = active(owner.uid, sessionId, initialRevision)
+  const workout = active(sessionId, initialRevision)
   const reference = doc(owner.firestore, 'activeSessions', owner.uid)
 
   try {

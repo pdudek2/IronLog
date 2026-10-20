@@ -58,6 +58,38 @@ describe('workouts rules', () => {
   })
 })
 
+describe('server-written collections', () => {
+  it.each(['records', 'exerciseSessions', 'chatMessages'])(
+    '%s: the owner can read, nobody else can, and no client can write', async (collectionName) => {
+      const alice = testEnv.authenticatedContext('alice').firestore()
+      const bob = testEnv.authenticatedContext('bob').firestore()
+      await testEnv.withSecurityRulesDisabled(async (context) => {
+        await setDoc(doc(context.firestore(), collectionName, 'doc-1'), { userId: 'alice', value: 1 })
+      })
+
+      await assertSucceeds(getDoc(doc(alice, collectionName, 'doc-1')))
+      await assertSucceeds(getDocs(query(collection(alice, collectionName), where('userId', '==', 'alice'))))
+      await assertFails(getDoc(doc(bob, collectionName, 'doc-1')))
+      await assertFails(setDoc(doc(alice, collectionName, 'doc-2'), { userId: 'alice', value: 2 }))
+      await assertFails(updateDoc(doc(alice, collectionName, 'doc-1'), { value: 3 }))
+      await assertFails(deleteDoc(doc(alice, collectionName, 'doc-1')))
+    })
+
+  it('keeps AI usage counters invisible and the exercise catalogue read-only', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore()
+    await testEnv.withSecurityRulesDisabled(async (context) => {
+      await setDoc(doc(context.firestore(), 'dailyAiUsage', 'alice_2026-10-20'), { userId: 'alice', count: 1 })
+      await setDoc(doc(context.firestore(), 'exercises', 'bench-press'), { name: 'Bench Press' })
+    })
+
+    await assertFails(getDoc(doc(alice, 'dailyAiUsage', 'alice_2026-10-20')))
+    await assertFails(setDoc(doc(alice, 'dailyAiUsage', 'alice_2026-10-21'), { userId: 'alice', count: 1 }))
+    await assertSucceeds(getDoc(doc(alice, 'exercises', 'bench-press')))
+    await assertFails(getDoc(doc(testEnv.unauthenticatedContext().firestore(), 'exercises', 'bench-press')))
+    await assertFails(setDoc(doc(alice, 'exercises', 'squat'), { name: 'Squat' }))
+  })
+})
+
 describe('reading a deleted document', () => {
   it('reports absence to a signed-in client without exposing documents of another account', async () => {
     const alice = testEnv.authenticatedContext('alice').firestore()
@@ -562,13 +594,14 @@ async function seedClosedSession(sessionId: string) {
   })
 }
 
-async function loadUserExerciseService(database: Firestore) {
+// rules-unit-testing returns the compat Firestore, which the modular SDK accepts at runtime.
+async function loadUserExerciseService(database: Firestore | ReturnType<ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore']>) {
   vi.resetModules()
   vi.doMock('../../src/lib/firebase', () => ({ db: database }))
   return import('../../src/lib/userExercisesService')
 }
 
-async function loadActiveSessionService(database: Firestore) {
+async function loadActiveSessionService(database: Firestore | ReturnType<ReturnType<RulesTestEnvironment['authenticatedContext']>['firestore']>) {
   vi.resetModules()
   vi.doMock('../../src/lib/firebase', () => ({ db: database }))
   return import('../../src/lib/activeSessionService')

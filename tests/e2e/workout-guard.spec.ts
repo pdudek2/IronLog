@@ -1,6 +1,7 @@
 import { test, expect, type Page } from './fixtures'
 import { discardActiveSession, openWorkoutDiscardDialog } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
+import { waitForActiveSessionWrite } from './support/firestoreBrowserBridge'
 
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
@@ -86,9 +87,7 @@ async function startFreshSession(page: Page): Promise<string> {
   // Wait for exercise to appear in workout UI (confirms Zustand state update)
   await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 8_000 })
 
-  // Wait for Firestore debounce (400ms) + server write to commit before navigating away.
-  // Uses 3s because fresh test contexts have no IndexedDB cache — write must reach server.
-  await page.waitForTimeout(3_000)
+  await waitForActiveSessionWrite(page, exerciseName)
 
   return exerciseName
 }

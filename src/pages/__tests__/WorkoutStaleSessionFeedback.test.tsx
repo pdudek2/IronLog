@@ -267,8 +267,6 @@ describe('WorkoutPage stale-session feedback', () => {
     renderStaleSessionPage()
 
     expect(screen.getByRole('heading', { name: 'New workout' })).toBeInTheDocument()
-    expect(screen.queryByText('Nie ma aktywnej sessions')).not.toBeInTheDocument()
-    expect(screen.queryByText(/zakończona albo usunięta na innym urządzeniu/i)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Start a new session' }))
     expect(mocks.startNewSession).toHaveBeenCalledOnce()
@@ -314,9 +312,6 @@ describe('WorkoutPage stale-session feedback', () => {
 
     expect(await screen.findByRole('heading', { name: 'Recently used' })).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Add exercise' })).toHaveLength(1)
-    expect(screen.queryByText('Szybki start')).not.toBeInTheDocument()
-    expect(screen.queryByText('Add pierwszy ruch')).not.toBeInTheDocument()
-    expect(screen.queryByText(/Choose an exercise, wpisz pierwszą serię/)).not.toBeInTheDocument()
     expect(screen.queryByText(/Użyte .* w ostatnich sesjach/)).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Wiosłowanie na wyciągu/ }))

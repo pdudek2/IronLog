@@ -1,15 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { RateLimitError, assertRateLimit, type RateLimitStore } from '../rateLimit'
+import { RateLimitError, assertRateLimit, nextRateLimitTimestamps, type RateLimitStore } from '../rateLimit'
 
+// The same window arithmetic the Firestore transaction runs, over an in-memory bucket.
 class MemoryRateLimitStore implements RateLimitStore {
   buckets = new Map<string, number[]>()
 
-  async read(key: string): Promise<number[]> {
-    return this.buckets.get(key) ?? []
-  }
-
-  async write(key: string, timestamps: number[]): Promise<void> {
-    this.buckets.set(key, timestamps)
+  async consume(key: string, options: Parameters<RateLimitStore['consume']>[1]): Promise<void> {
+    this.buckets.set(key, nextRateLimitTimestamps(this.buckets.get(key), options))
   }
 }
 

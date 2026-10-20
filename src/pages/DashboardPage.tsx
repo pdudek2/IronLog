@@ -49,6 +49,7 @@ import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore } from '../store/workoutStore'
 import type { DataState } from '../types/dataState'
 import { formatCompactVolume } from '../lib/weightUnits'
+import { WEEK_LABELS, addLocalDays, firstLaunchableWorkout, formatWeekRange, getGreeting, getWeekDates } from '../shared/week'
 
 interface TemplatesResource {
   uid: string | null
@@ -73,16 +74,7 @@ interface WorkoutSelectionResource {
   unavailable: boolean
 }
 
-const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
-
-function firstLaunchableWorkout(templates: WorkoutTemplate[]): WorkoutSelectionKey | null {
-  for (const template of templates) {
-    const dayIndex = template.days.findIndex((day) => day.exercises.length > 0)
-    if (dayIndex >= 0) return { templateId: template.id, dayIndex }
-  }
-  return null
-}
 
 function resolveWorkoutSelection(
   templates: WorkoutTemplate[],
@@ -119,48 +111,10 @@ function formatDuration(start: number, end: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
-function formatWeekRange(dates: Date[]): string {
-  if (!dates.length) return ''
-  const start = dates[0]
-  const end = dates[dates.length - 1]
-  const sameMonth = start.getMonth() === end.getMonth()
-  const startMonth = start.toLocaleDateString('en-US', { month: 'short' })
-  const endMonth = end.toLocaleDateString('en-US', { month: 'short' })
-  return sameMonth
-    ? `${startMonth} ${start.getDate()}–${end.getDate()}`
-    : `${startMonth} ${start.getDate()} – ${endMonth} ${end.getDate()}`
-}
-
-function getWeekDates(): Date[] {
-  const today = new Date()
-  const monday = new Date(today)
-  monday.setHours(0, 0, 0, 0)
-  monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
-  return Array.from({ length: 7 }, (_, index) => {
-    const date = new Date(monday)
-    date.setDate(monday.getDate() + index)
-    return date
-  })
-}
-
 function isSameDay(a: Date, b: Date): boolean {
   return a.getFullYear() === b.getFullYear()
     && a.getMonth() === b.getMonth()
     && a.getDate() === b.getDate()
-}
-
-function addLocalDays(date: Date, days: number): Date {
-  const next = new Date(date.getTime())
-  next.setDate(next.getDate() + days)
-  return next
-}
-
-function getGreeting(): string {
-  const hour = new Date().getHours()
-  if (hour < 6) return 'Good night'
-  if (hour < 12) return 'Good morning'
-  if (hour < 18) return 'Hello'
-  return 'Good evening'
 }
 
 function fadeUp(delay: number) {
@@ -568,7 +522,7 @@ export default function DashboardPage() {
 
   const weeklyGoal = profile?.weeklyGoal ?? 3
   const remainingWeeklySessions = Math.max(weeklyGoal - weeklyDone, 0)
-  const weekDates = getWeekDates()
+  const weekDates = getWeekDates(new Date())
   const today = new Date()
   const recentWorkouts = workouts.slice(0, 4)
   const orphanedDeleteOperation = deleteOperation
@@ -738,7 +692,7 @@ export default function DashboardPage() {
             <p className="dashboard-home-date">
               {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
-            <p className="dashboard-home-greeting">{getGreeting()},</p>
+            <p className="dashboard-home-greeting">{getGreeting(new Date())},</p>
             <h1 className="dashboard-home-title">
               {profile?.displayName ?? 'athlete'}
             </h1>

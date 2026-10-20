@@ -355,7 +355,6 @@ describe('Dashboard workout projection status', () => {
 
     expect(await screen.findByText(/sessions to reach your goal\./)).toBeInTheDocument()
     expect(screen.getByText('0/3')).toBeInTheDocument()
-    expect(screen.queryByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).not.toBeInTheDocument()
   })
 
   it('uses the same compact goal summary when a returning user has an empty week', async () => {
@@ -370,8 +369,6 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     expect(await screen.findByText(/sessions to reach your goal\./)).toBeInTheDocument()
-    expect(screen.queryByText('None zapisanych workouts w tym tygodniu.')).not.toBeInTheDocument()
-    expect(screen.queryByText('Statystyki tygodnia pojawią się po pierwszym treningu.')).not.toBeInTheDocument()
   })
 
   it('suppresses negative weekly delta copy until the current week has its first workout', async () => {

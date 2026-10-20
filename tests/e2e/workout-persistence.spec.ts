@@ -1,6 +1,7 @@
 import { test, expect, type Page } from './fixtures'
 import { discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
+import { waitForActiveSessionWrite } from './support/firestoreBrowserBridge'
 
 function workoutExerciseEntry(page: Page, exerciseName: string) {
   return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
@@ -45,9 +46,7 @@ test.describe('Workout persistence', () => {
     // Exercise name appears in the workout card header
     await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 5_000 })
 
-    // Wait for Firestore debounce (400ms) + server round-trip to complete.
-    // Uses 3s because fresh test contexts have no IndexedDB cache — write must reach server.
-    await page.waitForTimeout(3_000)
+    await waitForActiveSessionWrite(page, exerciseName)
 
     await page.screenshot({ path: 'test-results/workout-before-reload.png' })
 

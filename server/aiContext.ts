@@ -1,4 +1,5 @@
 import { pluralize } from '../src/lib/pluralize.js'
+import { computeReadinessScore } from '../src/shared/readiness.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const MONTH_WINDOW_DAYS = 30
@@ -170,7 +171,8 @@ export function buildAiUserContext({
 
   const readiness = latestReadiness
     ? {
-        ...computeReadinessScore(latestReadiness),
+        score: computeReadinessScore(latestReadiness).score,
+        label: computeReadinessScore(latestReadiness).label,
         date: String(latestReadiness.date ?? ''),
       }
     : null
@@ -474,15 +476,6 @@ function calendarDayNumber(value: string | undefined): number | null {
   ) return null
 
   return Math.floor(timestamp / DAY_MS)
-}
-
-function computeReadinessScore(entry: { sleep: number; mood: number; soreness: number }) {
-  const raw = entry.sleep * 0.4 + entry.mood * 0.3 + (6 - entry.soreness) * 0.3
-  const score = Math.round(((raw - 1) / 4) * 100)
-
-  if (score >= 70) return { score, label: 'Ready' }
-  if (score >= 40) return { score, label: 'Moderate' }
-  return { score, label: 'Rest' }
 }
 
 function readOptionalString(value: unknown): string | null {

@@ -5,7 +5,6 @@ import { deriveLegacySessionId } from '../../src/shared/sessionIdentity'
 import {
   SessionDataError,
   formatElapsed,
-  formatSet,
   parseSessionDocument,
   summarizeExercise,
 } from './session'
@@ -35,7 +34,6 @@ test('parses identity, source, revision, set values, and units without exposing 
   assert.equal(parsed.sessionRevision, 'revision-a')
   assert.equal(parsed.exercises[0]?.exerciseId, 'bench-press')
   assert.equal(parsed.exercises[0]?.exerciseSource, 'user')
-  assert.equal(formatSet(parsed.exercises[0]!.sets[0]!, 'lbs'), '143.3 lbs × 8 reps')
 })
 
 test('preserves supported legacy identity, source, and done semantics', () => {

@@ -42,7 +42,8 @@ test('Home changes the selected day without launching and then starts that exact
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
   const uid = await page.evaluate(async () => {
-    const { auth } = await import('/src/lib/firebase.ts')
+    const firebaseModule = '/src/lib/firebase.ts'
+    const { auth } = await import(/* @vite-ignore */ firebaseModule) as typeof import('../../src/lib/firebase')
     if (!auth.currentUser) throw new Error('Missing authenticated user')
     return auth.currentUser.uid
   })
@@ -86,7 +87,8 @@ test('Home rejects a plan deleted after its selection loaded', async ({ page, cl
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
   const uid = await page.evaluate(async () => {
-    const { auth } = await import('/src/lib/firebase.ts')
+    const firebaseModule = '/src/lib/firebase.ts'
+    const { auth } = await import(/* @vite-ignore */ firebaseModule) as typeof import('../../src/lib/firebase')
     if (!auth.currentUser) throw new Error('Missing authenticated user')
     return auth.currentUser.uid
   })

@@ -14,10 +14,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   try {
     const userId = await requireUserId(req)
     const body = await readJsonBody<unknown>(req, { maxBytes: MAX_FINALIZE_BODY_BYTES })
-    const result = await finalizeWorkoutForUser(userId, parseFinalizeWorkoutRequest(body, {
-      requireRevision: true,
-      allowLegacyFields: false,
-    }))
+    const result = await finalizeWorkoutForUser(userId, parseFinalizeWorkoutRequest(body))
     sendJson(res, 200, result)
   } catch (error) {
     sendApiError(res, error, {

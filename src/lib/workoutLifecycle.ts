@@ -10,7 +10,6 @@ import {
   type DiscardWorkoutResult,
   type FinalizeWorkoutResult,
 } from './workoutClosureService'
-import type { SaveWorkoutResult } from './workoutService'
 import { canCreateStaleReplacement } from './activeSessionSyncPolicy'
 
 export interface ClosureUnconfirmedResult {
@@ -38,61 +37,15 @@ interface DiscardStaleSessionDependencies extends DiscardWorkoutDependencies {
   persistReplacement(workout: ActiveWorkout): Promise<void>
 }
 
-interface LegacyFinishWorkoutDependencies {
-  saveWorkout(): Promise<SaveWorkoutResult>
-  clearWorkout(): void
-  clearSession(): Promise<void>
-}
-
-interface LegacyDiscardWorkoutDependencies {
-  clearWorkout(): void
-  clearSession(): Promise<void>
-}
-
-interface LegacyDiscardStaleSessionDependencies {
-  clearLocal(): void
-  deleteRemote(): Promise<void>
-  startReplacement(): ActiveWorkout | null
-  persistReplacement(workout: ActiveWorkout): Promise<void>
-}
-
-interface LegacyCleanupOutcome {
-  sessionCleanup: 'confirmed' | 'unconfirmed'
-  cleanupError?: unknown
-}
-
-export function finishWorkoutLifecycle(
-  dependencies: FinishWorkoutDependencies,
-): Promise<FinalizeWorkoutResult | ClosureUnconfirmedResult>
-export function finishWorkoutLifecycle(
-  dependencies: LegacyFinishWorkoutDependencies,
-): Promise<LegacyCleanupOutcome & { workout: SaveWorkoutResult }>
 export async function finishWorkoutLifecycle(
-  dependencies: FinishWorkoutDependencies | LegacyFinishWorkoutDependencies,
-): Promise<FinalizeWorkoutResult | ClosureUnconfirmedResult | (LegacyCleanupOutcome & { workout: SaveWorkoutResult })> {
-  if (!('uid' in dependencies)) {
-    const workout = await dependencies.saveWorkout()
-    dependencies.clearWorkout()
-    return { workout, ...await confirmLegacyCleanup(dependencies.clearSession) }
-  }
-
+  dependencies: FinishWorkoutDependencies,
+): Promise<FinalizeWorkoutResult | ClosureUnconfirmedResult> {
   return runClosure('finish', dependencies, dependencies.request, dependencies.sessionRevision)
 }
 
-export function discardWorkoutLifecycle(
-  dependencies: DiscardWorkoutDependencies,
-): Promise<DiscardWorkoutResult | ClosureUnconfirmedResult>
-export function discardWorkoutLifecycle(
-  dependencies: LegacyDiscardWorkoutDependencies,
-): Promise<LegacyCleanupOutcome>
 export async function discardWorkoutLifecycle(
-  dependencies: DiscardWorkoutDependencies | LegacyDiscardWorkoutDependencies,
-): Promise<DiscardWorkoutResult | ClosureUnconfirmedResult | LegacyCleanupOutcome> {
-  if (!('uid' in dependencies)) {
-    dependencies.clearWorkout()
-    return confirmLegacyCleanup(dependencies.clearSession)
-  }
-
+  dependencies: DiscardWorkoutDependencies,
+): Promise<DiscardWorkoutResult | ClosureUnconfirmedResult> {
   return runClosure(
     'discard',
     dependencies,
@@ -100,27 +53,9 @@ export async function discardWorkoutLifecycle(
   )
 }
 
-export function discardStaleSessionLifecycle(
-  dependencies: DiscardStaleSessionDependencies,
-): Promise<(DiscardWorkoutResult & { replacement: ActiveWorkout | null }) | (ClosureUnconfirmedResult & { replacement: null })>
-export function discardStaleSessionLifecycle(
-  dependencies: LegacyDiscardStaleSessionDependencies,
-): Promise<LegacyCleanupOutcome & { replacement: ActiveWorkout | null }>
 export async function discardStaleSessionLifecycle(
-  dependencies: DiscardStaleSessionDependencies | LegacyDiscardStaleSessionDependencies,
-): Promise<
-  | (DiscardWorkoutResult & { replacement: ActiveWorkout | null })
-  | (ClosureUnconfirmedResult & { replacement: null })
-  | (LegacyCleanupOutcome & { replacement: ActiveWorkout | null })
-> {
-  if (!('uid' in dependencies)) {
-    dependencies.clearLocal()
-    const cleanup = await confirmLegacyCleanup(dependencies.deleteRemote)
-    const replacement = dependencies.startReplacement()
-    if (replacement) await dependencies.persistReplacement(replacement)
-    return { ...cleanup, replacement }
-  }
-
+  dependencies: DiscardStaleSessionDependencies,
+): Promise<(DiscardWorkoutResult & { replacement: ActiveWorkout | null }) | (ClosureUnconfirmedResult & { replacement: null })> {
   const result = await runClosure(
     'discard',
     dependencies,
@@ -168,11 +103,3 @@ async function runClosure<T>(
   return result
 }
 
-async function confirmLegacyCleanup(action: () => Promise<void>): Promise<LegacyCleanupOutcome> {
-  try {
-    await action()
-    return { sessionCleanup: 'confirmed' }
-  } catch (cleanupError) {
-    return { sessionCleanup: 'unconfirmed', cleanupError }
-  }
-}

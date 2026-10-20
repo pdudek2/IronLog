@@ -1,80 +1,27 @@
-import { Directory, File, Paths } from 'expo-file-system'
+import { File } from 'expo-file-system'
 
-import { TwoSlotSessionJournal, type JournalSlotStorage } from './sessionJournal'
-import { ClosureIntentJournal, type ClosureIntentStorage } from './workoutClosure'
-import { LaunchJournal, type LaunchStorage } from './launchJournal'
+import { fileSlots } from './fileSlots'
+import { TwoSlotSessionJournal } from './sessionJournal'
+import { ClosureIntentJournal } from './workoutClosure'
+import { LaunchJournal } from './launchJournal'
 
-class FileJournalStorage implements JournalSlotStorage {
-  private readonly directory = new Directory(Paths.document, 'session-journal')
+export const sessionJournal = new TwoSlotSessionJournal(fileSlots('session-journal'))
 
-  private file(uid: string, slot: 0 | 1): File {
-    return new File(this.directory, `${encodeURIComponent(uid)}.${slot}.json`)
-  }
+const closureSlots = fileSlots('closure-intent')
+// The single-file format from before the two slots; a device may still hold one, so it is read and then cleared.
+const legacyClosureFile = (uid: string) => new File(closureSlots.directory, `${encodeURIComponent(uid)}.json`)
 
-  async read(uid: string, slot: 0 | 1): Promise<string | null> {
-    const file = this.file(uid, slot)
-    return file.exists ? file.text() : null
-  }
-
-  async write(uid: string, slot: 0 | 1, value: string): Promise<void> {
-    if (!this.directory.exists) this.directory.create({ idempotent: true, intermediates: true })
-    const file = this.file(uid, slot)
-    if (!file.exists) file.create({ intermediates: true })
-    file.write(value)
-  }
-}
-
-export const sessionJournal = new TwoSlotSessionJournal(new FileJournalStorage())
-
-class FileClosureIntentStorage implements ClosureIntentStorage {
-  private readonly directory = new Directory(Paths.document, 'closure-intent')
-
-  private file(uid: string, slot: 0 | 1): File {
-    return new File(this.directory, `${encodeURIComponent(uid)}.${slot}.json`)
-  }
-
-  private legacyFile(uid: string): File {
-    return new File(this.directory, `${encodeURIComponent(uid)}.json`)
-  }
-
-  async read(uid: string, slot: 0 | 1): Promise<string | null> {
-    const file = this.file(uid, slot)
-    return file.exists ? file.text() : null
-  }
-
-  async write(uid: string, slot: 0 | 1, value: string): Promise<void> {
-    if (!this.directory.exists) this.directory.create({ idempotent: true, intermediates: true })
-    const file = this.file(uid, slot)
-    if (!file.exists) file.create({ intermediates: true })
-    file.write(value)
-  }
-
+export const closureIntentStorage = new ClosureIntentJournal({
+  read: closureSlots.read,
+  write: closureSlots.write,
   async readLegacy(uid: string): Promise<string | null> {
-    const file = this.legacyFile(uid)
+    const file = legacyClosureFile(uid)
     return file.exists ? file.text() : null
-  }
-
+  },
   async clearLegacy(uid: string): Promise<void> {
-    const file = this.legacyFile(uid)
+    const file = legacyClosureFile(uid)
     if (file.exists) file.delete()
-  }
-}
+  },
+})
 
-export const closureIntentStorage = new ClosureIntentJournal(new FileClosureIntentStorage())
-
-class FileLaunchStorage implements LaunchStorage {
-  private readonly directory = new Directory(Paths.document, 'launch-attempt')
-  private file(uid: string, slot: 0 | 1): File { return new File(this.directory, `${encodeURIComponent(uid)}.${slot}.json`) }
-  async read(uid: string, slot: 0 | 1): Promise<string | null> {
-    const file = this.file(uid, slot)
-    return file.exists ? file.text() : null
-  }
-  async write(uid: string, slot: 0 | 1, value: string): Promise<void> {
-    if (!this.directory.exists) this.directory.create({ idempotent: true, intermediates: true })
-    const file = this.file(uid, slot)
-    if (!file.exists) file.create({ intermediates: true })
-    file.write(value)
-  }
-}
-
-export const launchJournal = new LaunchJournal(new FileLaunchStorage())
+export const launchJournal = new LaunchJournal(fileSlots('launch-attempt'))

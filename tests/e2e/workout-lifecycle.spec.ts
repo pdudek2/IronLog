@@ -5,7 +5,7 @@ import {
   type ObservedContextFactory,
   type Page,
 } from './fixtures'
-import { expectAppReady } from './support/appReady'
+import { expectAppReady, type AppReadyRoute } from './support/appReady'
 import { openWorkoutDiscardDialog } from './support/accountCleanup'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
 import {
@@ -40,7 +40,7 @@ const RESPONSE_TIMEOUT_MS = 20_000
 async function openWorkoutClient(
   observedContextFactory: ObservedContextFactory,
   storageState: Awaited<ReturnType<BrowserContext['storageState']>>,
-  path = '/workout/new',
+  path: AppReadyRoute = '/workout/new',
 ) {
   const context = await observedContextFactory.newContext({ storageState })
   const page = await context.newPage()

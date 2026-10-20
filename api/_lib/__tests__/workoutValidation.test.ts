@@ -21,16 +21,6 @@ const validExercise = {
   ],
 }
 
-const legacyFinalizeBody = {
-  sessionId: 'session-1',
-  sessionRevision: '00000000-0000-4000-8000-000000000001',
-  templateId: 'attacker-template',
-  startedAt: 1,
-  finishedAt: 2,
-  label: 'Client value must be ignored',
-  exercises: [validExercise],
-}
-
 const activeDraft = {
   userId: 'user-1',
   sessionId: 'session-1',
@@ -126,34 +116,17 @@ describe('buildExerciseSessionDocumentId', () => {
 })
 
 describe('parseFinalizeWorkoutRequest', () => {
-  it('returns only the closure identity from a compatibility request', () => {
-    expect(parseFinalizeWorkoutRequest(legacyFinalizeBody)).toEqual({
+  it('returns the closure identity and requires the revision the client saw', () => {
+    expect(parseFinalizeWorkoutRequest({ sessionId: 'session-1', sessionRevision: '00000000-0000-4000-8000-000000000001' })).toEqual({
       sessionId: 'session-1',
       sessionRevision: '00000000-0000-4000-8000-000000000001',
     })
+    expect(() => parseFinalizeWorkoutRequest({ sessionId: 'session-1' })).toThrow('Missing sessionRevision field.')
   })
 
-  it('accepts an unfenced legacy request only in compatibility mode', () => {
-    expect(parseFinalizeWorkoutRequest({ ...legacyFinalizeBody, sessionRevision: undefined }))
-      .toEqual({ sessionId: 'session-1' })
-    expect(() => parseFinalizeWorkoutRequest({ sessionId: 'session-1' }, { requireRevision: true }))
-      .toThrow('Missing sessionRevision field.')
-  })
-
-  it('requires a revision and rejects legacy fields in strict mode', () => {
-    expect(() => parseFinalizeWorkoutRequest({ sessionId: 'session-1' }, { requireRevision: true }))
-      .toThrow('Missing sessionRevision field.')
-    expect(() => parseFinalizeWorkoutRequest({
-      sessionId: 'session-1',
-      sessionRevision: 'revision-1',
-      exercises: [],
-    }, { requireRevision: true, allowLegacyFields: false }))
-      .toThrow('Unexpected field exercises.')
-  })
-
-  it.each(['userId', 'materialized', 'closedAt'])('rejects request-supplied %s', (field) => {
-    expect(() => parseFinalizeWorkoutRequest({ ...legacyFinalizeBody, [field]: field === 'materialized' ? true : 'value' }))
-      .toThrow(`Unexpected field ${field}.`)
+  it.each(['exercises', 'label', 'userId', 'materialized', 'closedAt'])('rejects request-supplied %s', (field) => {
+    const body = { sessionId: 'session-1', sessionRevision: 'revision-1', [field]: field === 'materialized' ? true : 'value' }
+    expect(() => parseFinalizeWorkoutRequest(body)).toThrow(`Unexpected field ${field}.`)
   })
 })
 

@@ -27,14 +27,12 @@ const config: ExpoConfig = {
   scheme: 'ironlog-dev',
   version: '0.1.0',
   orientation: 'portrait',
-  newArchEnabled: true,
   plugins: [
     'expo-router',
     'expo-font',
     'expo-secure-store',
     '@react-native-firebase/app',
     '@react-native-firebase/auth',
-    ...(backend === 'emulator' ? [allowEmulatorCleartext] : []),
   ],
   experiments: {
     typedRoutes: true,
@@ -50,4 +48,4 @@ const config: ExpoConfig = {
   },
 }
 
-export default config
+export default backend === 'emulator' ? allowEmulatorCleartext(config) : config

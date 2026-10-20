@@ -97,10 +97,7 @@ describe('workout closure handlers', () => {
 
     expect(captured.status()).toBe(200)
     expect(captured.body()).toEqual({ workoutId: 'session-1', status: 'materialized' })
-    expect(mocks.parseFinalizeWorkoutRequest).toHaveBeenCalledWith(
-      { sessionId: 'session-1', label: 'ignored' },
-      { requireRevision: true, allowLegacyFields: false },
-    )
+    expect(mocks.parseFinalizeWorkoutRequest).toHaveBeenCalledWith({ sessionId: 'session-1', label: 'ignored' })
     expect(mocks.finalizeWorkoutForUser).toHaveBeenCalledWith('user-1', parsed)
   })
 

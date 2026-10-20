@@ -39,47 +39,23 @@ export const MAX_FIRESTORE_DOCUMENT_ID_LENGTH = 160
 export { MAX_SET_REPS, MAX_SET_WEIGHT_KG }
 
 const EXERCISE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/
-const COMPATIBILITY_FINALIZE_FIELDS = new Set([
-  'sessionId',
-  'sessionRevision',
-  'templateId',
-  'startedAt',
-  'finishedAt',
-  'label',
-  'exercises',
-])
-const STRICT_FINALIZE_FIELDS = new Set(['sessionId', 'sessionRevision'])
+// Finish names the session and the revision it saw; the workout itself is read from the stored active session.
+const FINALIZE_FIELDS = new Set(['sessionId', 'sessionRevision'])
 
 export interface FinalizeWorkoutRequest {
   sessionId: string
+  // Always present from the HTTP parser; server-side callers may finalize without the fence.
   sessionRevision?: string
 }
 
-interface ParseFinalizeWorkoutRequestOptions {
-  requireRevision?: boolean
-  allowLegacyFields?: boolean
-}
-
-export function parseFinalizeWorkoutRequest(
-  raw: unknown,
-  options: ParseFinalizeWorkoutRequestOptions = {},
-): FinalizeWorkoutRequest {
+export function parseFinalizeWorkoutRequest(raw: unknown): FinalizeWorkoutRequest {
   const record = asRecord(raw, 'Invalid workout payload.')
-  const allowedFields = options.allowLegacyFields === false
-    ? STRICT_FINALIZE_FIELDS
-    : COMPATIBILITY_FINALIZE_FIELDS
   for (const field of Object.keys(record)) {
-    if (!allowedFields.has(field)) throw badRequest(`Unexpected field ${field}.`)
+    if (!FINALIZE_FIELDS.has(field)) throw badRequest(`Unexpected field ${field}.`)
   }
-
-  const sessionId = validateFirestoreDocumentId(record.sessionId, 'sessionId')
-  if (record.sessionRevision === undefined || record.sessionRevision === null) {
-    if (options.requireRevision) throw badRequest('Missing sessionRevision field.')
-    return { sessionId }
-  }
-
+  if (record.sessionRevision === undefined || record.sessionRevision === null) throw badRequest('Missing sessionRevision field.')
   return {
-    sessionId,
+    sessionId: validateFirestoreDocumentId(record.sessionId, 'sessionId'),
     sessionRevision: validateFirestoreDocumentId(record.sessionRevision, 'sessionRevision'),
   }
 }

@@ -206,7 +206,8 @@ export default function TemplatesPage() {
           <div className="template-board planner-template-board">
             {templates.map((template, index) => {
               const expanded = expandedTemplateId === template.id
-              const showStructure = shortPlanList || expanded
+              const singleDay = template.days.length === 1
+              const showStructure = shortPlanList || singleDay || expanded
               const structureId = `template-structure-${template.id}`
               const templateLaunchOperation = launchOperation?.target.template.id === template.id
                 ? launchOperation
@@ -265,7 +266,7 @@ export default function TemplatesPage() {
                       >
                         <Trash2 size={14} />
                       </button>
-                      {!shortPlanList && (
+                      {!shortPlanList && !singleDay && (
                         <button
                           type="button"
                           onClick={() => setExpandedTemplateId((current) => current === template.id ? null : template.id)}

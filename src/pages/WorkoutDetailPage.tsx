@@ -798,6 +798,7 @@ export default function WorkoutDetailPage() {
                               displayWeightStringToKg(event.target.value, units),
                             )}
                             placeholder="0"
+                            onFocus={(event) => event.currentTarget.select()}
                             aria-label={`Weight, ${exercise.name}, set ${setIndex + 1}, ${units}`}
                           />
                           <input
@@ -808,6 +809,7 @@ export default function WorkoutDetailPage() {
                             value={set.reps === 0 ? '' : set.reps}
                             onChange={(event) => handleSetChange(exerciseIndex, setIndex, 'reps', event.target.value)}
                             placeholder="0"
+                            onFocus={(event) => event.currentTarget.select()}
                             aria-invalid={showEditErrors && set.reps <= 0 ? true : undefined}
                             aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
                           />

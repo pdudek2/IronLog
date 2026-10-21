@@ -251,6 +251,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                     'weight',
                     displayWeightStringToKg(event.target.value, units),
                   )}
+                  onFocus={(event) => event.currentTarget.select()}
                   aria-label={`Weight, ${exercise.name}, set ${setIndex + 1}, ${units}`}
                   className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                 />
@@ -260,6 +261,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   placeholder="0"
                   value={set.reps}
                   onChange={(event) => onUpdateSet(exerciseIndex, setIndex, 'reps', event.target.value)}
+                  onFocus={(event) => event.currentTarget.select()}
                   aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
                   className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
                 />

@@ -89,6 +89,8 @@ export default function DashboardScreen() {
   const maxVolume = Math.max(...(summary?.days.map((day) => day.volume) ?? []), 1)
   const templatesState = readStateForKey(uid ?? '', templatesResult)
   const templates = templatesState.status === 'ready' ? templatesState.data : []
+  // A new account has nothing to start from a plan, so an empty workout is the main action.
+  const noPlans = templatesState.status === 'ready' && !templatesState.fromCache && templates.length === 0
   const chosen = selection?.uid === uid && !selection.unavailable ? selectedWorkout(templates, selection.target) : null
   const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
   const launchState = launch?.state.status ?? 'loading'
@@ -151,7 +153,7 @@ export default function DashboardScreen() {
             </View> : !chosen ? <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text>{templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>}</View> : null}
             {templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
             {templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
-            <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.emptyStart, starting && styles.disabled]}><Icon name="plus" size={15} /><Text style={styles.emptyStartText}>Start empty workout</Text></Pressable>
+            <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[noPlans ? [styles.planPrimary, styles.emptyStartPrimary] : styles.emptyStart, starting && styles.disabled]}><Icon name="plus" size={15} color={noPlans ? colors.textStrong : colors.muted} /><Text style={noPlans ? styles.planPrimaryText : styles.emptyStartText}>Start empty workout</Text></Pressable>
           </View>}
         </View>}
         {canOfferStart && <View>
@@ -245,6 +247,7 @@ const styles = StyleSheet.create({
   planEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },
   emptyStart: { alignSelf: 'flex-start', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingHorizontal: 6 },
+  emptyStartPrimary: { alignSelf: 'flex-start', marginTop: 12 },
   emptyStartText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   launchFeedback: { gap: 4 }, disabled: { opacity: 0.65 },
   week: { paddingVertical: 26 }, sectionHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 18 }, historyHead: { alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 16 },

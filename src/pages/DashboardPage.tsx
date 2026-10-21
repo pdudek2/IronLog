@@ -534,6 +534,8 @@ export default function DashboardPage() {
       ? templatesResource.state
       : { status: 'loading' }
   const templates = templatesState.status === 'success' ? templatesState.data : []
+  // A new account has nothing to start from a plan, so an empty workout is the main action.
+  const noPlans = templatesState.status === 'success' && templates.length === 0
   const recentTemplates = templates.slice(0, 3)
   const selectedWorkout = workoutSelection.uid === user?.uid
     ? resolveWorkoutSelection(templates, workoutSelection.target)
@@ -761,7 +763,7 @@ export default function DashboardPage() {
                   type="button"
                   onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
                   disabled={openingWorkout}
-                  className="dashboard-ad-hoc-action"
+                  className={`dashboard-ad-hoc-action${noPlans ? ' dashboard-ad-hoc-action--primary' : ''}`}
                 >
                   <Plus size={15} aria-hidden="true" />
                   {openingWorkout ? 'Opening workout…' : 'Start empty workout'}
@@ -977,7 +979,7 @@ export default function DashboardPage() {
                   <p className="text-sm" style={{ color: 'var(--muted)' }}>No saved plans</p>
                   <motion.button
                     onClick={() => navigate('/templates/new')}
-                    className="dashboard-inline-primary"
+                    className="dashboard-inline-primary dashboard-inline-primary--quiet"
                     whileTap={{ scale: 0.97 }}
                   >
                     Create your first plan

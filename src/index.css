@@ -8800,6 +8800,16 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   color: var(--text-strong);
 }
 
+.dashboard-ad-hoc-action--primary {
+  padding: 0 1rem;
+  background: var(--primary-gradient);
+  color: var(--accent-foreground);
+}
+
+.dashboard-ad-hoc-action--primary:hover:not(:disabled) {
+  color: var(--accent-foreground);
+}
+
 @media (max-width: 520px) {
   .dashboard-planned-start {
     display: grid;
@@ -8976,6 +8986,12 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   margin-top: 1rem;
   background: var(--primary-gradient);
   color: var(--accent-foreground);
+}
+
+.dashboard-inline-primary--quiet {
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--text-strong);
 }
 
 .dashboard-inline-state {

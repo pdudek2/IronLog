@@ -342,6 +342,7 @@ function SetValueInput({ value, units, field, label, done, rejectedEdit, onChang
     onFocus={() => { focused.current = true }}
     placeholder="0"
     placeholderTextColor={colors.mutedSoft}
+    selectTextOnFocus
     selectionColor={colors.accentText}
     style={[styles.setInput, done && styles.setInputDone]}
     value={text}

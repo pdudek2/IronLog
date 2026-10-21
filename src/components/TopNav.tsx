@@ -21,7 +21,7 @@ const NAV_ITEMS: Array<{
   to: string
   match?: (path: string) => boolean
 }> = [
-  { key: 'dashboard', label: 'Start', icon: LayoutDashboard, to: '/dashboard' },
+  { key: 'dashboard', label: 'Home', icon: LayoutDashboard, to: '/dashboard' },
   { key: 'history', label: 'History', icon: History, to: '/history', match: (p) => p.startsWith('/history') },
   { key: 'progress', label: 'Progress', icon: TrendingUp, to: '/progress', match: (p) => p.startsWith('/progress') },
   { key: 'templates', label: 'Plans', icon: Layers3, to: '/templates', match: (p) => p.startsWith('/templates') },
@@ -98,7 +98,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             </motion.button>
           )}
 
-          <motion.button
+          {path !== '/workout/new' && <motion.button
             type="button"
             className="top-nav-cta"
             onClick={() => {
@@ -112,7 +112,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           >
             <Plus size={15} strokeWidth={2.4} />
             <span>{hasActiveSession ? 'Resume workout' : 'New workout'}</span>
-          </motion.button>
+          </motion.button>}
 
           <button
             type="button"

@@ -35,7 +35,7 @@ test.describe('Protected application shell', () => {
       ? 'Bottom navigation'
       : 'Main navigation'
     await expect(page.getByRole('navigation', { name: navigationName })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Back to dashboard' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Back to Home' })).toBeVisible()
 
     const geometry = await page.locator('.not-found-page').evaluate((element) => {
       const actionBox = element.querySelector('a')?.getBoundingClientRect()

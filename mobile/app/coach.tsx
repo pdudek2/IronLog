@@ -14,6 +14,7 @@ import { CoachController } from '../src/coachController'
 import { nativeCoachDependencies } from '../src/coachNative'
 import { markdownBlocks, markdownInline } from '../src/coachMarkdown'
 import type { AiContextMetadata } from '../../src/lib/aiContext'
+import { colors, primaryGradient } from '../src/theme'
 
 const prompts = ['Analyze my last week of training.', 'What should I focus on in my next upper body workout?', 'Does my readiness suggest a harder or lighter session today?']
 export default function CoachScreen() {
@@ -25,7 +26,7 @@ function Button({ children, onPress, disabled = false, primary = false, label }:
 }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled}
     onPress={onPress} style={[s.button, primary && s.primary, disabled && s.disabled]}>
-    {typeof children === 'string' ? <View style={s.buttonContent}>{(children === 'Send' || children === 'Sending…' || label === 'Reset conversation') && <Svg width={14} height={14} viewBox="0 0 24 24"><Path d={label === 'Reset conversation' ? 'M3 10a9 9 0 1 1 1 7M3 4v6h6' : 'm22 2-7 20-4-9-9-4 20-7ZM22 2 11 13'} fill="none" stroke={primary ? '#fff' : '#a09aa0'} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></Svg>}<Text style={[s.buttonText, primary && s.primaryText]}>{children}</Text></View> : children}
+    {typeof children === 'string' ? <View style={s.buttonContent}>{(children === 'Send' || children === 'Sending…' || label === 'Reset conversation') && <Svg width={14} height={14} viewBox="0 0 24 24"><Path d={label === 'Reset conversation' ? 'M3 10a9 9 0 1 1 1 7M3 4v6h6' : 'm22 2-7 20-4-9-9-4 20-7ZM22 2 11 13'} fill="none" stroke={primary ? colors.textStrong : colors.muted} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></Svg>}<Text style={[s.buttonText, primary && s.primaryText]}>{children}</Text></View> : children}
   </Pressable>
 }
 function Markdown({ content }: { content: string }) {
@@ -76,13 +77,13 @@ function Coach({ uid }: { uid: string }) {
   const keyPanel = settings ? <View style={s.settings}>
     <View style={s.row}><Text style={s.settingsTitle}>OpenRouter key</Text><Button onPress={() => { setSettings(false); setDraft(''); setReveal(false) }}>{state.key ? 'Collapse' : 'Cancel'}</Button></View>
     <Text style={s.label}>Your key</Text>
-    <TextInput accessibilityLabel="Your OpenRouter key" value={draft} onChangeText={setDraft} secureTextEntry={!reveal} selectionColor="#ff7182"
+    <TextInput accessibilityLabel="Your OpenRouter key" value={draft} onChangeText={setDraft} secureTextEntry={!reveal} selectionColor={colors.accentText}
       editable={!state.keyLoading && !state.keySaving && !state.storageError} autoCorrect={false} autoCapitalize="none" autoComplete="off" maxLength={4096}
-      placeholder="Paste OpenRouter API key" placeholderTextColor="#8f8990" style={s.keyInput} />
+      placeholder="Paste OpenRouter API key" placeholderTextColor={colors.mutedSoft} style={s.keyInput} />
     <View style={s.row}>
-      <Button label={reveal ? 'Hide key' : 'Show key'} onPress={() => setReveal(!reveal)}><Svg width={18} height={18} viewBox="0 0 24 24"><Path d={reveal ? 'M3 3l18 18M10 10a3 3 0 0 0 4 4M9.9 4.2C10.6 4.1 11.3 4 12 4c7 0 10 8 10 8a18 18 0 0 1-4 5M6.5 6.5C3.5 8.7 2 12 2 12s3 8 10 8c2 0 3.6-.5 5-1.3' : 'M2 12s3-8 10-8 10 8 10 8-3 8-10 8S2 12 2 12Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z'} fill="none" stroke="#a09aa0" strokeWidth={1.6} /></Svg></Button>
+      <Button label={reveal ? 'Hide key' : 'Show key'} onPress={() => setReveal(!reveal)}><Svg width={18} height={18} viewBox="0 0 24 24"><Path d={reveal ? 'M3 3l18 18M10 10a3 3 0 0 0 4 4M9.9 4.2C10.6 4.1 11.3 4 12 4c7 0 10 8 10 8a18 18 0 0 1-4 5M6.5 6.5C3.5 8.7 2 12 2 12s3 8 10 8c2 0 3.6-.5 5-1.3' : 'M2 12s3-8 10-8 10 8 10 8-3 8-10 8S2 12 2 12Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z'} fill="none" stroke={colors.muted} strokeWidth={1.6} /></Svg></Button>
       <View style={s.grow}><Button primary disabled={state.keySaving || state.keyLoading || !!state.storageError || !draft.trim()} onPress={() => void saveKey(draft)}>{state.keySaving ? 'Saving…' : state.key ? 'Update key' : 'Save key'}</Button></View>
-      <Button label="Remove locally stored key" disabled={!state.key || state.keySaving || state.keyLoading || !!state.storageError} onPress={() => void saveKey('')}><Svg width={17} height={17} viewBox="0 0 24 24"><Path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" fill="none" stroke="#a09aa0" strokeWidth={1.6} /></Svg></Button>
+      <Button label="Remove locally stored key" disabled={!state.key || state.keySaving || state.keyLoading || !!state.storageError} onPress={() => void saveKey('')}><Svg width={17} height={17} viewBox="0 0 24 24"><Path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" fill="none" stroke={colors.muted} strokeWidth={1.6} /></Svg></Button>
     </View>
     <Text style={s.small}>Stored locally · sent through IronLog to OpenRouter only for each request.</Text>
     {!!state.key && <View style={s.model}><Text style={s.boldLabel}>OpenRouter model</Text><Text style={s.body}>{state.validation === 'checking' ? 'Verifying key…' : state.validation === 'valid' ? 'GPT-5.6 Luna · Max reasoning' : 'Saved on device · needs verification'}</Text>
@@ -92,7 +93,7 @@ function Coach({ uid }: { uid: string }) {
     <View style={s.grow}><Text style={s.boldLabel}>OpenRouter key</Text><Text style={s.small}>{state.validation === 'valid' ? 'Saved securely on this device.' : state.validation === 'checking' ? 'Verifying key…' : 'Needs verification.'}</Text></View>
     <Button onPress={openSettings}>Settings</Button>
   </View> : <View style={s.gate}>
-    <Text style={s.gateTitle}>Add a local OpenRouter key</Text><Text style={s.description}>Without it, you can review the conversation, but cannot send questions or generate plans.</Text>
+    <Text style={s.gateTitle}>Add a local OpenRouter key</Text><Text style={s.description}>Coach needs it to answer questions and generate plans.</Text>
     <View style={s.left}><Button primary onPress={openSettings}>Set up key</Button></View>
   </View>
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} style={s.screen} edges={['top']}><StatusBar style="light" />
@@ -102,7 +103,7 @@ function Coach({ uid }: { uid: string }) {
         <View pointerEvents="none" style={StyleSheet.absoluteFill}><Image source={grain} resizeMode="repeat" style={s.grain} /></View>
         <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
           <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text><Text style={s.subtitle}>Ask about your last session or build a plan.</Text></View>
-          <View style={s.tabs}>{(['chat', 'plan'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => { if (value === tab) return; controller.cancel(); setTab(value) }} style={[s.tab, tab === value && s.tabActive]}><Text style={[s.buttonText, tab === value && s.primaryText]}>{value === 'chat' ? 'Chat' : 'Plan'}</Text></Pressable>)}</View>
+          <View style={s.tabs}>{(['chat', 'plan'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => { if (value === tab) return; controller.cancel(); setTab(value) }} style={[s.tab, tab === value && s.tabActive]}><Text style={[s.buttonText, tab === value && { color: colors.accentText }]}>{value === 'chat' ? 'Chat' : 'Plan'}</Text></Pressable>)}</View>
           {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
           <View style={tab !== 'chat' && { display: 'none' }}><View onLayout={event => { chatY.current = event.nativeEvent.layout.y }} style={[s.chat, conversation && { height: Math.max(336, height - 336) }]}>
           {conversation && <View style={s.toolbar}><Button onPress={() => { controller.reset(); nearBottom.current = true }} label="Reset conversation">Reset</Button></View>}
@@ -120,9 +121,9 @@ function Coach({ uid }: { uid: string }) {
           </ScrollView>}
           {['failed', 'interrupted'].includes(state.generation) && <View style={s.feedback}><Text accessibilityRole="alert" style={state.error ? s.error : s.description}>{state.error ?? 'Generation stopped.'}</Text><Button disabled={!controller.canSend} onPress={() => { nearBottom.current = true; controller.retry() }}>Retry AI response</Button></View>}
           {configured && <View style={s.composer} onLayout={event => { composerY.current = event.nativeEvent.layout.y + chatY.current }}>
-            <TextInput accessibilityLabel="Message to AI Coach" selectionColor="#ff7182" multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming'}
+            <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.accentText} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming'}
               onFocus={() => { composerFocused.current = true }} onBlur={() => { composerFocused.current = false }}
-              placeholder="Ask about progress or your last session" placeholderTextColor="#8f8990" style={s.composerInput} textAlignVertical="top" />
+              placeholder="Ask about progress or your last session" placeholderTextColor={colors.mutedSoft} style={s.composerInput} textAlignVertical="top" />
             <View style={s.sendRow}><Button primary disabled={!input.trim() || !controller.canSend} onPress={() => send(input)}>{state.generation === 'streaming' ? 'Sending…' : 'Send'}</Button></View>
           </View>}
           </View>
@@ -135,38 +136,38 @@ function Coach({ uid }: { uid: string }) {
   </SafeAreaView>
 }
 const s = StyleSheet.create({
-  tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, overflow: 'hidden', borderColor: 'rgba(244,241,242,0.18)', backgroundColor: 'rgba(34,33,37,0.76)', marginBottom: 14 }, tab: { flex: 1, minHeight: 48, paddingHorizontal: 11, justifyContent: 'center' }, tabActive: { backgroundColor: 'rgba(240,67,90,0.11)' },
-  screen: { flex: 1, backgroundColor: '#111012' }, grow: { flex: 1 },
+  tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, overflow: 'hidden', borderColor: 'rgba(244,241,242,0.18)', backgroundColor: 'rgba(34,33,37,0.76)', marginBottom: 14 }, tab: { flex: 1, minHeight: 48, paddingHorizontal: 11, justifyContent: 'center' }, tabActive: { backgroundColor: colors.choiceSelected },
+  screen: { flex: 1, backgroundColor: colors.background }, grow: { flex: 1 },
   workspace: { flex: 1, experimental_backgroundImage: 'linear-gradient(120deg, rgba(240,67,90,0.018), transparent)' },
   grain: { ...StyleSheet.absoluteFill, width: '100%', height: '100%', opacity: 0.018 },
   content: { padding: 16, paddingBottom: 20 }, heading: { paddingTop: 16, paddingBottom: 5.6, gap: 5.6, marginBottom: 14 },
-  title: { fontFamily: 'ArchivoHeading', fontSize: 42.4, lineHeight: 47.5, color: '#fff', letterSpacing: -1.27 },
-  subtitle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 23, color: '#a09aa0' },
-  body: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: '#f4f1f2' },
-  description: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: '#a09aa0' },
-  small: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 18.1, color: '#a09aa0' },
+  title: { fontFamily: 'ArchivoHeading', fontSize: 42.4, lineHeight: 47.5, color: colors.textStrong, letterSpacing: -1.27 },
+  subtitle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 23, color: colors.muted },
+  body: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.text },
+  description: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.muted },
+  small: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 18.1, color: colors.muted },
   gate: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244,241,242,0.18)', paddingVertical: 12.8, gap: 2 },
-  gateTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 15.04, lineHeight: 23, color: '#fff' },
+  gateTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 15.04, lineHeight: 23, color: colors.textStrong },
   left: { alignItems: 'flex-start', marginTop: 7.6 },
-  buttonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 }, button: { borderWidth: 1, borderColor: 'rgba(244,241,242,0.12)', backgroundColor: 'rgba(255,255,255,0.032)', minHeight: 44, minWidth: 44, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
-  buttonText: { fontFamily: 'InstrumentSans_700Bold', fontSize: 13, color: '#a09aa0' }, primaryText: { color: '#fff' },
-  primary: { borderColor: 'transparent', backgroundColor: '#c22b41', experimental_backgroundImage: 'linear-gradient(180deg,#c92d44,#aa1f35)' }, disabled: { opacity: 0.45 },
-  empty: { paddingTop: 16, paddingBottom: 0, gap: 10.4 }, emptyTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, lineHeight: 24, color: '#fff' },
-  prompts: { borderTopWidth: 1, borderColor: 'rgba(244,241,242,0.12)' }, prompt: { minHeight: 46.4, borderBottomWidth: 1, borderColor: 'rgba(244,241,242,0.12)', paddingVertical: 11.2, justifyContent: 'center' }, promptText: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 17, color: '#fff' },
+  buttonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 }, button: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', minHeight: 44, minWidth: 44, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
+  buttonText: { fontFamily: 'InstrumentSans_700Bold', fontSize: 13, color: colors.muted }, primaryText: { color: colors.textStrong },
+  primary: { borderColor: 'transparent', backgroundColor: '#c22b41', experimental_backgroundImage: primaryGradient }, disabled: { opacity: 0.45 },
+  empty: { paddingTop: 16, paddingBottom: 0, gap: 10.4 }, emptyTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, lineHeight: 24, color: colors.textStrong },
+  prompts: { borderTopWidth: 1, borderColor: colors.line }, prompt: { minHeight: 46.4, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: 11.2, justifyContent: 'center' }, promptText: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 17, color: colors.textStrong },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   settings: { backgroundColor: 'rgba(34,33,37,0.46)', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244,241,242,0.18)', padding: 14.4, gap: 12 },
-  settingsTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 20, color: '#fff', flexShrink: 1 },
-  label: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, color: '#a09aa0' },
-  keyInput: { borderWidth: 1, borderColor: 'rgba(244,241,242,0.12)', minHeight: 44, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', color: '#fff', fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
-  boldLabel: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 24, color: '#fff' }, model: { gap: 8, borderTopWidth: 1, borderColor: 'rgba(244,241,242,0.12)', paddingTop: 12 },
+  settingsTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 20, color: colors.textStrong, flexShrink: 1 },
+  label: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, color: colors.muted },
+  keyInput: { borderWidth: 1, borderColor: colors.line, minHeight: 44, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', color: colors.textStrong, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
+  boldLabel: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 24, color: colors.textStrong }, model: { gap: 8, borderTopWidth: 1, borderColor: colors.line, paddingTop: 12 },
   collapsed: { paddingVertical: 14.4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244,241,242,0.18)', flexDirection: 'row', alignItems: 'center', gap: 8 },
   chat: { paddingVertical: 12.8, marginTop: 0, marginBottom: 16 }, toolbar: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 },
-  messages: { gap: 12.8 }, message: { borderWidth: 1, borderColor: 'rgba(244,241,242,0.12)', backgroundColor: 'rgba(255,255,255,0.032)', paddingVertical: 14.4, paddingHorizontal: 16, borderRadius: 0 },
+  messages: { gap: 12.8 }, message: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', paddingVertical: 14.4, paddingHorizontal: 16, borderRadius: 0 },
   userMessage: { alignSelf: 'flex-end', maxWidth: '100%', borderColor: 'rgba(240,67,90,0.26)', experimental_backgroundImage: 'linear-gradient(135deg,rgba(240,67,90,0.15),rgba(240,67,90,0.06))' },
-  role: { fontFamily: 'InstrumentSans_700Bold', fontSize: 10.88, lineHeight: 16.3, letterSpacing: 0.87, color: '#a09aa0', marginBottom: 5.6 }, userRole: { color: '#ff7182' },
+  role: { fontFamily: 'InstrumentSans_700Bold', fontSize: 11, lineHeight: 16.3, letterSpacing: 0.87, color: colors.muted, marginBottom: 5.6 }, userRole: { color: colors.accentText },
   markdownHeading: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16.8, lineHeight: 24 }, bold: { fontFamily: 'InstrumentSans_700Bold' }, italic: { fontStyle: 'italic' }, code: { fontFamily: 'SplineSansMono_600SemiBold', backgroundColor: 'rgba(255,255,255,0.07)', fontSize: 13 },
-  context: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, color: '#a09aa0', marginTop: 8 },
-  feedback: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: 'rgba(244,241,242,0.12)', gap: 8 }, error: { fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20, color: '#ff7182' },
+  context: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: 8 },
+  feedback: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: colors.line, gap: 8 }, error: { fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20, color: colors.accentText },
   composer: { paddingTop: 11.2, gap: 9.6 },
-  composerInput: { minHeight: 65.34, maxHeight: 112, paddingHorizontal: 12, paddingVertical: 11.5, borderWidth: 1, borderRadius: 0, borderColor: 'rgba(244,241,242,0.12)', backgroundColor: 'rgba(255,255,255,0.035)', fontFamily: 'InstrumentSans_400Regular', fontSize: 13.44, lineHeight: 20, color: '#fff' }, sendRow: { alignItems: 'flex-end' },
+  composerInput: { minHeight: 65.34, maxHeight: 112, paddingHorizontal: 12, paddingVertical: 11.5, borderWidth: 1, borderRadius: 0, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.035)', fontFamily: 'InstrumentSans_400Regular', fontSize: 13.44, lineHeight: 20, color: colors.textStrong }, sendRow: { alignItems: 'flex-end' },
 })

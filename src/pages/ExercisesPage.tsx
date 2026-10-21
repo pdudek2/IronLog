@@ -512,7 +512,7 @@ export default function ExercisesPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
-          <h1>Library</h1>
+          <h1>Exercises</h1>
         </motion.div>
 
         <div className="exercise-command-panel">

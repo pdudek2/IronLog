@@ -7,6 +7,7 @@ import type { CoachController } from './coachController'
 import { createSessionRevision, readUnits } from './firebase'
 import { planEditorJournal } from './filePlanEditorJournal'
 import { draftHasWork } from './planEditorJournal'
+import { colors, primaryGradient } from './theme'
 
 const equipment = [['barbell', 'Barbell'], ['dumbbell', 'Dumbbells'], ['cable', 'Cable'], ['machine', 'Machines'], ['bodyweight', 'Bodyweight'], ['kettlebell', 'Kettlebell']]
 const levels = [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced']]
@@ -64,12 +65,12 @@ export default function CoachPlanPanel({ uid, controller }: { uid: string; contr
   return <View>
     <View style={s.section}>
       <Text accessibilityRole="header" style={s.heading}>Workout brief</Text>
-      <View style={s.field}><Text style={s.label}>Plan goal</Text><TextInput selectionColor="#ff7182" ref={goal} accessibilityLabel="Plan goal" style={s.input} placeholder="E.g. upper/lower strength plan" placeholderTextColor="#8f8990" value={brief.goal} onChangeText={v => { change('goal', v); setGoalError(false) }} maxLength={400} editable={!disabled} />{goalError && <Text accessibilityRole="alert" style={s.error}>Enter a plan goal to generate a template.</Text>}</View>
+      <View style={s.field}><Text style={s.label}>Plan goal</Text><TextInput selectionColor={colors.accentText} ref={goal} accessibilityLabel="Plan goal" style={s.input} placeholder="E.g. upper/lower strength plan" placeholderTextColor={colors.mutedSoft} value={brief.goal} onChangeText={v => { change('goal', v); setGoalError(false) }} maxLength={400} editable={!disabled} />{goalError && <Text accessibilityRole="alert" style={s.error}>Enter a plan goal to generate a template.</Text>}</View>
       <View style={s.field}><Text style={s.label}>Days per week</Text><View style={s.chips}>{[2,3,4,5,6].map(value => <Chip key={value} active={brief.daysPerWeek === value} disabled={disabled} onPress={() => change('daysPerWeek', value)}>{value} days</Chip>)}</View></View>
       <View style={s.field}><Text style={s.label}>Level</Text><View style={s.levels}>{levels.map(([value, label]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: brief.experience === value, disabled }} disabled={disabled} onPress={() => change('experience', value)} style={[s.level, brief.experience === value && s.levelActive]}><Text style={[s.choice, brief.experience === value && s.selected]}>{label}</Text></Pressable>)}</View></View>
       <View style={s.field}><Text style={s.label}>Available equipment</Text><View style={s.chips}>{equipment.map(([value,label]) => <Chip key={value} active={brief.equipment.includes(value)} disabled={disabled} onPress={() => change('equipment', brief.equipment.includes(value) ? brief.equipment.filter(item => item !== value) : [...brief.equipment, value])}>{label}</Chip>)}</View></View>
-      <View style={s.field}><Text style={s.label}>Focus</Text><TextInput selectionColor="#ff7182" accessibilityLabel="Plan focus" style={s.input} placeholder="E.g. bench press and back" placeholderTextColor="#8f8990" value={brief.focus} onChangeText={v => change('focus',v)} maxLength={160} editable={!disabled} /></View>
-      <View style={s.field}><Text style={s.label}>Additional notes</Text><TextInput selectionColor="#ff7182" accessibilityLabel="Additional notes" style={[s.input, s.notes]} textAlignVertical="top" multiline placeholder="E.g. 60 min, no deadlifts" placeholderTextColor="#8f8990" value={brief.notes} onChangeText={v => change('notes',v)} maxLength={400} editable={!disabled} /></View>
+      <View style={s.field}><Text style={s.label}>Focus</Text><TextInput selectionColor={colors.accentText} accessibilityLabel="Plan focus" style={s.input} placeholder="E.g. bench press and back" placeholderTextColor={colors.mutedSoft} value={brief.focus} onChangeText={v => change('focus',v)} maxLength={160} editable={!disabled} /></View>
+      <View style={s.field}><Text style={s.label}>Additional notes</Text><TextInput selectionColor={colors.accentText} accessibilityLabel="Additional notes" style={[s.input, s.notes]} textAlignVertical="top" multiline placeholder="E.g. 60 min, no deadlifts" placeholderTextColor={colors.mutedSoft} value={brief.notes} onChangeText={v => change('notes',v)} maxLength={400} editable={!disabled} /></View>
       {!!planError && <Text accessibilityRole="alert" style={s.error}>{planError}</Text>}
       {planGeneration === 'interrupted' && <Text style={s.muted}>Generation stopped. Generate again when ready.</Text>}
       <View style={s.actions}><Text style={s.muted}>Coach adds your profile, history and exercise library to the brief.</Text><Action primary disabled={!controller.canSend || disabled} onPress={() => { if (brief.goal.trim().length < 2) { setGoalError(true); goal.current?.focus(); return } setGoalError(false); void controller.generatePlan(brief) }}>{generating ? 'Generating plan…' : 'Generate plan'}</Action></View>
@@ -98,18 +99,18 @@ function Action({ children, onPress, disabled = false, primary = false }: { chil
 }
 const s = StyleSheet.create({
   section: { borderTopWidth:1,borderColor:'rgba(244,241,242,0.18)',paddingVertical:16,gap:16 },
-  heading: { fontFamily:'InstrumentSans_700Bold',fontSize:21.12,lineHeight:24,color:'#fff' },
-  field: { gap:9 }, label: { fontFamily:'InstrumentSans_600SemiBold',fontSize:12,lineHeight:18,color:'#a09aa0' },
-  input: { borderWidth:1,borderColor:'rgba(244,241,242,0.12)',backgroundColor:'rgba(255,255,255,0.043)',borderRadius:0,paddingHorizontal:15.2,paddingVertical:13.6,minHeight:51.2,fontFamily:'InstrumentSans_400Regular',fontSize:14.72,color:'#fff' },
+  heading: { fontFamily:'InstrumentSans_700Bold',fontSize:21.12,lineHeight:24,color:colors.textStrong },
+  field: { gap:9 }, label: { fontFamily:'InstrumentSans_600SemiBold',fontSize:12,lineHeight:18,color:colors.muted },
+  input: { borderWidth:1,borderColor:colors.line,backgroundColor:'rgba(255,255,255,0.043)',borderRadius:0,paddingHorizontal:15.2,paddingVertical:13.6,minHeight:51.2,fontFamily:'InstrumentSans_400Regular',fontSize:14.72,color:colors.textStrong },
   notes: { minHeight:104 }, chips: { flexDirection:'row',flexWrap:'wrap',gap:8 },
-  chip: { borderWidth:1,borderColor:'rgba(244,241,242,0.12)',backgroundColor:'rgba(255,255,255,0.03)',borderRadius:999,minHeight:44,paddingHorizontal:12,paddingVertical:8,justifyContent:'center' },
+  chip: { borderWidth:1,borderColor:colors.line,backgroundColor:'rgba(255,255,255,0.03)',borderRadius:999,minHeight:44,paddingHorizontal:12,paddingVertical:8,justifyContent:'center' },
   chipActive: { backgroundColor:'rgba(244,241,242,0.075)',borderColor:'rgba(240,67,90,0.24)' },
-  choice: { fontFamily:'InstrumentSans_700Bold',fontSize:13.76,color:'#a09aa0' }, selected: { color:'#fff' },accent: { color:'#ff7182' },
-  levels: { borderWidth:1,borderColor:'rgba(244,241,242,0.12)',borderRadius:8,overflow:'hidden' },
-  level: { minHeight:44,paddingHorizontal:13,paddingVertical:11,backgroundColor:'#222125',borderLeftWidth:3,borderLeftColor:'transparent' },levelActive: { backgroundColor:'rgba(244,241,242,0.075)',borderLeftColor:'#ff7182' },
-  muted: { fontFamily:'InstrumentSans_400Regular',fontSize:14,lineHeight:24,color:'#a09aa0' },error: { fontFamily:'InstrumentSans_400Regular',fontSize:13,lineHeight:20,color:'#ff7182' },
-  actions: { gap:12,alignItems:'flex-start' },action: { minHeight:44,paddingHorizontal:13,paddingVertical:11,borderRadius:8,borderWidth:1,borderColor:'rgba(244,241,242,0.12)',alignItems:'center',justifyContent:'center',alignSelf:'flex-start' },
-  primary: { backgroundColor:'#c22b41',borderColor:'transparent',experimental_backgroundImage:'linear-gradient(180deg,#c92d44,#aa1f35)' },disabled: { opacity:0.45 },
-  table: { borderTopWidth:1,borderColor:'rgba(244,241,242,0.12)' },tableRow: { flexDirection:'row',gap:8,paddingVertical:12,borderBottomWidth:1,borderColor:'rgba(244,241,242,0.12)' },name: { flex:1 },reps: { width:76,textAlign:'right' },weight: { width:60,textAlign:'right' },
-  exercise: { fontFamily:'InstrumentSans_600SemiBold',fontSize:14,lineHeight:21,color:'#fff' },source: { fontFamily:'InstrumentSans_400Regular',fontSize:12,lineHeight:18,color:'#a09aa0',marginTop:4 },
+  choice: { fontFamily:'InstrumentSans_700Bold',fontSize:13.76,color:colors.muted }, selected: { color:colors.textStrong },accent: { color:colors.accentText },
+  levels: { borderWidth:1,borderColor:colors.line,borderRadius:8,overflow:'hidden' },
+  level: { minHeight:44,paddingHorizontal:13,paddingVertical:11,backgroundColor:'#222125',borderLeftWidth:3,borderLeftColor:'transparent' },levelActive: { backgroundColor:'rgba(244,241,242,0.075)',borderLeftColor:colors.accentText },
+  muted: { fontFamily:'InstrumentSans_400Regular',fontSize:14,lineHeight:24,color:colors.muted },error: { fontFamily:'InstrumentSans_400Regular',fontSize:13,lineHeight:20,color:colors.accentText },
+  actions: { gap:12,alignItems:'flex-start' },action: { minHeight:44,paddingHorizontal:13,paddingVertical:11,borderRadius:8,borderWidth:1,borderColor:colors.line,alignItems:'center',justifyContent:'center',alignSelf:'flex-start' },
+  primary: { backgroundColor:'#c22b41',borderColor:'transparent',experimental_backgroundImage:primaryGradient },disabled: { opacity:0.45 },
+  table: { borderTopWidth:1,borderColor:colors.line },tableRow: { flexDirection:'row',gap:8,paddingVertical:12,borderBottomWidth:1,borderColor:colors.line },name: { flex:1 },reps: { width:76,textAlign:'right' },weight: { width:60,textAlign:'right' },
+  exercise: { fontFamily:'InstrumentSans_600SemiBold',fontSize:14,lineHeight:21,color:colors.textStrong },source: { fontFamily:'InstrumentSans_400Regular',fontSize:12,lineHeight:18,color:colors.muted,marginTop:4 },
 })

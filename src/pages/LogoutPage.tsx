@@ -37,7 +37,7 @@ export default function LogoutPage() {
             className="planner-primary-action mt-5 w-full"
             onClick={() => navigate('/dashboard', { replace: true })}
           >
-            Back to dashboard
+            Back to Home
           </button>
         </section>
       </div>

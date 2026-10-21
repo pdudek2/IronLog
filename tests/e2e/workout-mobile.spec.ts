@@ -415,7 +415,6 @@ test.describe('Active workout shell reduction', () => {
     await goToFreshWorkout(page)
 
     await expect(page.locator('.top-nav')).not.toBeVisible()
-    expect(await visibleCount(page.locator('.session-quick-link'))).toBe(0)
     await expect(page.getByRole('navigation', { name: 'Bottom navigation' })).toBeVisible()
 
     await addExercise(page, 'Squat')

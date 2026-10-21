@@ -16,7 +16,7 @@ describe('exerciseLabels', () => {
 
   it('formats picker metadata without raw English ids', () => {
     expect(formatExerciseMeta('barbell', ['chest', 'triceps', 'shoulders'])).toBe(
-      'Barbell · Chest, Triceps, Shoulders',
+      'Chest, Triceps, Shoulders · Barbell',
     )
   })
 

@@ -27,6 +27,8 @@ import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import grainTexture from '../assets/grain.png'
+import { colors, pageBackground } from '../src/theme'
+import { Icon } from '../src/icons'
 
 const RANGES: Array<{ key: HistoryRange; label: string }> = [
   { key: '30', label: '30 days' },
@@ -35,10 +37,6 @@ const RANGES: Array<{ key: HistoryRange; label: string }> = [
   { key: 'all', label: 'All' },
 ]
 
-const colors = {
-  background: '#111012', surface: '#1a191c', raised: '#211f23', line: 'rgba(244, 241, 242, 0.1)',
-  text: '#f4f1f2', strong: '#ffffff', muted: '#a09aa0', mutedSoft: '#8f8990', accent: '#f0435a', accentText: '#ff7182', warning: '#f0a75a',
-}
 
 export default function HistoryScreen() {
   const { user } = useAuthRuntime()
@@ -161,7 +159,7 @@ export default function HistoryScreen() {
               <View style={styles.searchWrap}>
                 <Svg accessibilityElementsHidden height={14} width={14} style={styles.searchIcon} viewBox="0 0 24 24"><Circle cx={10.8} cy={10.8} r={6.3} fill="none" stroke={colors.mutedSoft} strokeWidth={2} /><Path d="m16 16 4.3 4.3" fill="none" stroke={colors.mutedSoft} strokeLinecap="round" strokeWidth={2} /></Svg>
                 <TextInput accessibilityLabel="Search workout history" onChangeText={setSearch} placeholder="Search workouts or exercises..." placeholderTextColor={colors.mutedSoft} returnKeyType="search" style={styles.searchInput} value={search} />
-                {search.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearch('')} style={styles.clearSearch}><Text style={styles.clearText}>×</Text></Pressable>}
+                {search.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearch('')} style={styles.clearSearch}><Icon name="close" size={18} /></Pressable>}
               </View>
               {availableCategories.length > 0 && (
                 <View>
@@ -225,16 +223,16 @@ function EmptyState({ title, copy, action, onPress }: { title: string; copy: str
 
 const styles = StyleSheet.create({
   screen: { backgroundColor: colors.background, flex: 1 },
-  content: { flexGrow: 1, paddingBottom: 32, paddingHorizontal: 16, paddingTop: 32, experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)' },
+  content: { flexGrow: 1, paddingBottom: 32, paddingHorizontal: 16, paddingTop: 32, experimental_backgroundImage: pageBackground },
   grain: { height: '100%', opacity: 0.024, position: 'absolute', width: '100%' },
   grainImage: { height: '100%', width: '100%' },
   header: { borderBottomColor: 'rgba(244, 241, 242, 0.09)', borderBottomWidth: StyleSheet.hairlineWidth, paddingBottom: 14, paddingTop: 13 },
-  title: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 38.4, lineHeight: 38 },
+  title: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 38.4, lineHeight: 38 },
   subtitle: { color: 'rgba(244, 241, 242, 0.7)', fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 21.6, marginTop: 10 },
   filters: { gap: 9, paddingBottom: 14, paddingTop: 12 },
   rangeRow: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 12, flexDirection: 'row', gap: 2, padding: 3 },
   rangeButton: { alignItems: 'center', borderRadius: 9, flex: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 3 },
-  rangeSelected: { backgroundColor: 'rgba(240, 67, 90, 0.16)' },
+  rangeSelected: { backgroundColor: colors.choiceSelected },
   rangeLabel: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },
   rangeLabelSelected: { color: colors.accentText },
   searchWrap: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 12, flexDirection: 'row', minHeight: 44, paddingHorizontal: 12 },
@@ -249,18 +247,18 @@ const styles = StyleSheet.create({
   monthList: { gap: 24, marginTop: 12, width: '100%' },
   monthGroup: { minWidth: 0 },
   monthHeading: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 9 },
-  monthTitle: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 18 },
+  monthTitle: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 18 },
   monthCount: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   workoutList: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth },
   workoutRow: { backgroundColor: 'transparent', borderBottomColor: 'rgba(244, 241, 242, 0.1)', borderBottomWidth: StyleSheet.hairlineWidth, minHeight: 76 },
   workoutMain: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 14 },
   workoutCopy: { flex: 1, minWidth: 0 },
   workoutMetaText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 16 },
-  workoutTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16.3, lineHeight: 19.3, marginTop: 4 },
+  workoutTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16.3, lineHeight: 19.3, marginTop: 4 },
   exercisePreview: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 17.5, marginTop: 4 },
   loading: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingVertical: 20 },
-  errorNotice: { backgroundColor: colors.raised, gap: 7, marginBottom: 10, padding: 14 },
-  errorTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
+  errorNotice: { backgroundColor: colors.surfaceRaised, gap: 7, marginBottom: 10, padding: 14 },
+  errorTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
   mutedText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20 },
   cacheNoticeRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
   cacheNotice: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 12 },
@@ -269,7 +267,7 @@ const styles = StyleSheet.create({
   retryText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   limitNotice: { backgroundColor: colors.surface, borderRadius: 12, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19, marginBottom: 8, padding: 12 },
   emptyState: { alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 40, textAlign: 'center' },
-  emptyTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16, textAlign: 'center' },
+  emptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16, textAlign: 'center' },
   actionButton: { alignItems: 'center', backgroundColor: 'rgba(240, 67, 90, 0.12)', borderRadius: 12, justifyContent: 'center', marginTop: 8, minHeight: 44, paddingHorizontal: 16 },
   actionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   feedbackText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', margin: 20 },

@@ -4,7 +4,7 @@ import NumberFlow from '@number-flow/react'
 import { AlertCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
-  Area, AreaChart, CartesianGrid, Cell,
+  CartesianGrid, Cell,
   Line, LineChart,
   Bar, BarChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
@@ -471,12 +471,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               >
                 View history
               </Link>
-              {(!hasSessionSnapshot || uniqueWorkouts === 0) && (
-                <p>
-                  {!hasSessionSnapshot
-                    ? (refreshing ? 'Loading progress' : 'Workout data is temporarily unavailable.')
-                    : 'No workouts in this date range.'}
-                </p>
+              {!hasSessionSnapshot && (
+                <p>{refreshing ? 'Loading progress' : 'Workout data is temporarily unavailable.'}</p>
               )}
             </div>
 
@@ -495,7 +491,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             </div>
           </motion.div>
 
-          {hasSessionSnapshot && !showRangeEmpty && (
+          {hasSessionSnapshot && !showRangeEmpty && !showEmptyState && (
           <div className="progress-summary-grid" role="group" aria-label={`Summary: ${rangeDays} days`}>
             <div className="progress-volume-tile" role="group" aria-label="Volume">
               <span>Volume</span>
@@ -597,13 +593,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
                 <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
                   {/* Room for "6.0k kg" on one line and for the last week label at the right edge. */}
-                  <AreaChart data={weeklyData} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
-                    <defs>
-                      <linearGradient id="volGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--accent)" stopOpacity={0.34} />
-                        <stop offset="95%" stopColor="var(--accent)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
+                  <BarChart data={weeklyData} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
                     <XAxis
                       dataKey="weekLabel"
@@ -619,17 +609,10 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                       tickLine={false}
                       width={66}
                     />
-                    <Tooltip content={<DarkTooltip units={units} />} />
-                    <Area
-                      type="monotone"
-                      dataKey="volume"
-                      stroke="var(--accent)"
-                      strokeWidth={2.4}
-                      fill="url(#volGrad)"
-                      dot={false}
-                      activeDot={{ r: 4.5, fill: 'var(--accent)', stroke: 'rgba(255,255,255,0.75)', strokeWidth: 1 }}
-                    />
-                  </AreaChart>
+                    <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(244,241,242,0.05)' }} />
+                    {/* Weekly buckets are discrete, so bars rather than a curve between weeks. */}
+                    <Bar dataKey="volume" fill="var(--accent)" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                  </BarChart>
                 </ResponsiveContainer>
               </div>
             </motion.section>

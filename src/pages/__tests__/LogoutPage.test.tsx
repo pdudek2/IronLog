@@ -45,7 +45,7 @@ describe('LogoutPage', () => {
     const router = renderLogoutPage()
 
     expect(await screen.findByRole('heading', { name: 'Could not sign out' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Back to dashboard' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to Home' }))
 
     expect(await screen.findByText('Panel główny')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/dashboard')

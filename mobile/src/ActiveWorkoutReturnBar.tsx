@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg'
 
 import { formatElapsed } from './session'
 import { useActiveRuntime, useClosureRuntime } from './runtime'
+import { colors } from './theme'
 
 export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExit?: NavigationExit } = {}) {
   const { state } = useActiveRuntime()
@@ -31,7 +32,7 @@ export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExi
 
   return (
     <View accessibilityLabel="Active workout" style={styles.bar}>
-      <Svg accessibilityElementsHidden height={17} width={17} viewBox="0 0 24 24" fill="none" stroke="#ff7182" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2}>
+      <Svg accessibilityElementsHidden height={17} width={17} viewBox="0 0 24 24" fill="none" stroke={colors.accentText} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2}>
         <Path d="M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z" />
         <Path d="m2.5 21.5 1.4-1.4" /><Path d="m20.1 3.9 1.4-1.4" />
         <Path d="M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z" />
@@ -46,7 +47,7 @@ export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExi
       </Text>
       <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => onRequestExit ? onRequestExit(() => router.dismissTo('/')) : router.dismissTo('/')} style={styles.returnButton}>
         <Text style={styles.returnText}>Return</Text>
-        <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke="#ff7182" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg>
+        <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.accentText} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg>
       </Pressable>
     </View>
   )
@@ -58,9 +59,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', gap: 10, minHeight: 58, paddingHorizontal: 16, paddingVertical: 6,
   },
   copy: { flex: 1, minWidth: 0 },
-  title: { color: '#f4f1f2', fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5, lineHeight: 15 },
-  label: { color: '#a09aa0', fontFamily: 'InstrumentSans_400Regular', fontSize: 11, marginTop: 2 },
-  elapsed: { color: '#f4f1f2', fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12, fontVariant: ['tabular-nums'] },
+  title: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5, lineHeight: 15 },
+  label: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11, marginTop: 2 },
+  elapsed: { color: colors.text, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12, fontVariant: ['tabular-nums'] },
   returnButton: { alignItems: 'center', flexDirection: 'row', gap: 2, justifyContent: 'center', minHeight: 44, paddingHorizontal: 4 },
-  returnText: { color: '#ff7182', fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
+  returnText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
 })

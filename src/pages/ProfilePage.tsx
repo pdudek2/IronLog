@@ -105,9 +105,8 @@ export default function ProfilePage() {
                     aria-pressed={primaryGoal === g.value}
                     className="min-h-12 border-0 px-3 py-3 text-left text-sm font-semibold"
                     style={{
-                      background: primaryGoal === g.value ? 'var(--accent-soft)' : 'var(--surface-muted)',
-                      color: primaryGoal === g.value ? 'var(--text-strong)' : 'var(--muted)',
-                      boxShadow: primaryGoal === g.value ? 'inset 3px 0 0 var(--accent)' : 'none',
+                      background: primaryGoal === g.value ? 'var(--choice-selected-bg)' : 'var(--surface-muted)',
+                      color: primaryGoal === g.value ? 'var(--accent-text)' : 'var(--muted)',
                     }}
                   >
                     {g.label}

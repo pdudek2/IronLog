@@ -588,7 +588,7 @@ export default function ChatPage() {
                   <div>
                     <strong>Add a local OpenRouter key</strong>
                     <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      Without it, you can review the conversation and brief, but cannot send questions or generate plans.
+                      Coach needs it to answer questions and generate plans.
                     </p>
                   </div>
                   <div className="mt-4" ref={keyGateAction}>

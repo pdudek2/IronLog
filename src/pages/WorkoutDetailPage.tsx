@@ -173,6 +173,7 @@ export default function WorkoutDetailPage() {
   const pendingEdit = useRef<{ guard: WorkoutMutationGuard; label: string | null; exercises: WorkoutSummary['exercises'] } | null>(null)
   const deleteGuard = useRef<WorkoutMutationGuard | null>(null)
   const [isEditing, setIsEditing] = useState(false)
+  const [showEditErrors, setShowEditErrors] = useState(false)
   const [showPicker, setShowPicker] = useState(false)
   const [editedLabel, setEditedLabel] = useState('')
   const [editedExercises, setEditedExercises] = useState<WorkoutSummary['exercises']>([])
@@ -248,6 +249,7 @@ export default function WorkoutDetailPage() {
       setEditedLabel(state.workout.label ?? '')
       setEditedExercises(cloneExercises(state.workout.exercises))
       setEditOpenedWith(JSON.stringify({ label: state.workout.label ?? '', exercises: state.workout.exercises }))
+      setShowEditErrors(false)
       setIsEditing(true)
     } catch (error) { if (scope === deleteScopeRef.current) toast.error(error instanceof Error ? error.message : 'Could not open editor.') }
     finally { if (scope === deleteScopeRef.current) setSaving(false) }
@@ -319,6 +321,9 @@ export default function WorkoutDetailPage() {
     const validationError = getWorkoutEditError(editedExercises)
     if (validationError) {
       toast.error(validationError)
+      setShowEditErrors(true)
+      // Take the user to the first set that blocks saving.
+      requestAnimationFrame(() => document.querySelector<HTMLInputElement>('.workout-detail-set-editor-row input[aria-invalid="true"]')?.focus())
       return
     }
     const nextLabel = pendingEdit.current?.label ?? (editedLabel || null)
@@ -560,7 +565,7 @@ export default function WorkoutDetailPage() {
           {workoutResult ? 'Back to Home' : 'Back'}
         </motion.button>
 
-        {workoutResult && (
+        {workoutResult && !isEditing && (
           <section className="workout-result-confirmation" aria-labelledby="workout-result-title">
             <span className="workout-result-confirmation-icon" aria-hidden="true">
               <Check size={18} strokeWidth={2.5} />
@@ -690,7 +695,7 @@ export default function WorkoutDetailPage() {
               ? (EXERCISE_CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category)
               : null
             const equipmentLabel = exerciseData?.equipment
-              ? getEquipmentLabel(exerciseData.equipment).toLocaleLowerCase('en-US')
+              ? getEquipmentLabel(exerciseData.equipment)
               : null
             const exerciseReps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
             const exerciseHeadingId = `workout-exercise-${exerciseIndex}`
@@ -803,6 +808,7 @@ export default function WorkoutDetailPage() {
                             value={set.reps === 0 ? '' : set.reps}
                             onChange={(event) => handleSetChange(exerciseIndex, setIndex, 'reps', event.target.value)}
                             placeholder="0"
+                            aria-invalid={showEditErrors && set.reps <= 0 ? true : undefined}
                             aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
                           />
                           <span className="hidden lg:block">

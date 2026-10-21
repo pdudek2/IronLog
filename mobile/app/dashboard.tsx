@@ -26,13 +26,11 @@ import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
 import { firstLaunchableWorkout, selectedWorkout, validateTemplateOverrides, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
+import { colors, pageBackground, primaryGradient } from '../src/theme'
+import { Icon } from '../src/icons'
 
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
 type TemplateData = WorkoutTemplate[]
-const colors = {
-  background: '#111012', surface: '#1a191c', text: '#f4f1f2', strong: '#fff', muted: '#a09aa0',
-  mutedSoft: '#8f8990', accent: '#f0435a', accentText: '#ff7182', line: 'rgba(244,241,242,0.12)',
-}
 
 export default function DashboardScreen() {
   const { user } = useAuthRuntime()
@@ -150,10 +148,10 @@ export default function DashboardScreen() {
                 <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.planPrimary, starting && styles.disabled]}><Text style={styles.planPrimaryText}>{starting ? 'Starting…' : 'Start workout'}</Text><PlayIcon /></Pressable>
                 <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>
               </View>
-            </View> : !chosen ? <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text>{templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>}</View> : null}
+            </View> : !chosen ? <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text>{templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>}</View> : null}
             {templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
             {templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
-            <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.emptyStart, starting && styles.disabled]}><Text style={styles.emptyStartText}>＋  Start empty workout</Text></Pressable>
+            <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.emptyStart, starting && styles.disabled]}><Icon name="plus" size={15} /><Text style={styles.emptyStartText}>Start empty workout</Text></Pressable>
           </View>}
         </View>}
         {canOfferStart && <View>
@@ -170,7 +168,7 @@ export default function DashboardScreen() {
         {showSummary && <View style={styles.week}>
           <View style={styles.sectionHead}>
             <Text accessibilityRole="header" style={styles.sectionTitle}>This week</Text>
-            <View style={styles.range}><Text style={styles.rangeDate}>{summary && formatWeekRange(summary.dates)}</Text><Text style={styles.mutedSmall}>{summary?.volumeDelta === null ? 'no comparison' : `${summary?.volumeDelta && summary.volumeDelta >= 0 ? '+' : ''}${summary?.volumeDelta}% vs last week`}</Text></View>
+            <View style={styles.range}><Text style={styles.rangeDate}>{summary && formatWeekRange(summary.dates)}</Text>{summary && summary.volumeDelta !== null && <Text style={styles.mutedSmall}>{`${summary.volumeDelta >= 0 ? '+' : ''}${summary.volumeDelta}% vs last week`}</Text>}</View>
           </View>
           {summary?.weeklyDone === 0 ? <View style={styles.weekEmpty}>
             <View style={styles.emptySummary}><View style={styles.flex}><Text style={styles.statLabel}>Weekly goal</Text><Text style={styles.muted}>{remaining} {pluralize(remaining, 'session', 'sessions')} to reach your goal.</Text></View><Text style={styles.goalCount}>0/{goal}</Text></View>
@@ -191,7 +189,7 @@ export default function DashboardScreen() {
           </>}
         </View>}
         <View style={styles.history}>
-          <View style={[styles.sectionHead, styles.historyHead]}><Text accessibilityRole="header" style={styles.sectionTitle}>{recent.length ? 'Recent workouts' : 'History'}</Text><Pressable accessibilityRole="button" onPress={() => router.navigate('/history')} style={styles.historyLink}><Text style={styles.historyLinkText}>View history</Text><Chevron /></Pressable></View>
+          <View style={[styles.sectionHead, styles.historyHead]}><Text accessibilityRole="header" style={styles.sectionTitle}>Recent workouts</Text><Pressable accessibilityRole="button" onPress={() => router.navigate('/history')} style={styles.historyLink}><Text style={styles.historyLinkText}>View history</Text><Chevron /></Pressable></View>
           {confirmedEmpty && <Text style={styles.emptyCopy}>Your first saved workout will appear here.</Text>}
           {recent.map((workout) => {
             const metrics = deriveWorkout(workout, new Map())
@@ -209,7 +207,7 @@ export default function DashboardScreen() {
     </ScrollView>
     <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
-        <View style={styles.pickerHead}><View><Text style={styles.planMeta}>From your plans</Text><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Text style={styles.changeText}>×</Text></Pressable></View>
+        <View style={styles.pickerHead}><View><Text style={styles.planMeta}>From your plans</Text><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Icon name="close" size={18} color={colors.textStrong} /></Pressable></View>
         <ScrollView style={styles.pickerPlans}>{templates.map((template) => <View key={template.id} style={styles.pickerPlan}><Text accessibilityRole="header" style={styles.pickerPlanTitle}>{template.name}</Text>{template.days.map((day, index) => { const enabled = day.exercises.length > 0; const selected = pickerDraft?.templateId === template.id && pickerDraft.dayIndex === index; return <Pressable key={`${template.id}:${index}`} accessibilityRole="button" accessibilityLabel={enabled ? `Select ${day.name} from plan ${template.name}` : `${day.name} from plan ${template.name}, no exercises`} accessibilityState={{ selected, disabled: !enabled }} disabled={!enabled} onPress={() => setPickerDraft({ templateId: template.id, dayIndex: index })} style={[styles.pickerDay, selected && styles.pickerDaySelected, !enabled && styles.disabled]}><Text style={styles.pickerDayName}>{day.name}</Text><Text style={styles.planMeta}>{enabled ? `${day.exercises.length} ${pluralize(day.exercises.length, 'exercise', 'exercises')}` : 'No exercises'}</Text></Pressable> })}</View>)}</ScrollView>
         <View style={styles.pickerActions}><Pressable accessibilityRole="button" onPress={() => setPickerOpen(false)} style={styles.pickerCancel}><Text style={styles.changeText}>Cancel</Text></Pressable><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.planPrimaryText}>Choose workout</Text></Pressable></View>
       </View></View>
@@ -219,59 +217,59 @@ export default function DashboardScreen() {
 }
 
 function Chevron() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.muted} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" /></Svg> }
-function PlayIcon() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m8 5 11 7-11 7z" fill="none" stroke={colors.strong} strokeWidth={2.3} strokeLinejoin="round" /></Svg> }
+function PlayIcon() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m8 5 11 7-11 7z" fill="none" stroke={colors.textStrong} strokeWidth={2.3} strokeLinejoin="round" /></Svg> }
 function Metric({ label, value }: { label: string; value: string }) { return <View style={styles.metric}><Text style={styles.statLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View> }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingTop: 26.4, paddingHorizontal: 16, paddingBottom: 28, experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)' }, flex: { flex: 1 },
+  screen: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingTop: 26.4, paddingHorizontal: 16, paddingBottom: 28, experimental_backgroundImage: pageBackground }, flex: { flex: 1 },
   grain: { ...StyleSheet.absoluteFill, opacity: 0.024 }, grainImage: { width: '100%', height: '100%' },
-  notice: { alignItems: 'flex-start', gap: 12, paddingVertical: 32 }, noticeTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 17 },
+  notice: { alignItems: 'flex-start', gap: 12, paddingVertical: 32 }, noticeTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 17 },
   muted: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19 }, mutedSmall: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.5, lineHeight: 16 },
   retry: { minHeight: 44, justifyContent: 'center' }, actionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   cacheRow: { alignItems: 'flex-start', gap: 4, paddingTop: 10 },
   hero: { borderBottomColor: colors.line, borderBottomWidth: 1, paddingTop: 8, paddingBottom: 24 },
   date: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, marginBottom: 12 },
   greeting: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, marginBottom: 7 },
-  name: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 32, lineHeight: 35 },
+  name: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 32, lineHeight: 35 },
   last: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 12 },
   startStack: { gap: 12, marginTop: 24 },
-  planCard: { minHeight: 88, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 16, backgroundColor: '#211f23', experimental_backgroundImage: 'linear-gradient(135deg, rgba(240, 67, 90, 0.14), transparent 62%)' },
+  planCard: { minHeight: 88, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 16, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: 'linear-gradient(135deg, rgba(240, 67, 90, 0.14), transparent 62%)' },
   planCopy: { gap: 2 }, planMeta: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.5 },
-  planDay: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 20, lineHeight: 22, marginVertical: 2 },
+  planDay: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 20, lineHeight: 22, marginVertical: 2 },
   planActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  planPrimary: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 12, backgroundColor: '#a91f35', boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)', experimental_backgroundImage: 'linear-gradient(180deg, #c72e44 0%, #a91f35 100%)' },
-  planPrimaryText: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
+  planPrimary: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 12, backgroundColor: colors.primaryEnd, boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)', experimental_backgroundImage: primaryGradient },
+  planPrimaryText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
   changeButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  changeText: { color: colors.strong, fontFamily: 'InstrumentSans_500Medium', fontSize: 12.5 },
-  planEmpty: { borderRadius: 14, backgroundColor: '#211f23', gap: 4, paddingHorizontal: 16, paddingVertical: 14 },
-  planEmptyTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  changeText: { color: colors.textStrong, fontFamily: 'InstrumentSans_500Medium', fontSize: 12.5 },
+  planEmpty: { borderRadius: 14, backgroundColor: colors.surfaceRaised, gap: 4, paddingHorizontal: 16, paddingVertical: 14 },
+  planEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },
-  emptyStart: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', paddingHorizontal: 6 },
+  emptyStart: { alignSelf: 'flex-start', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingHorizontal: 6 },
   emptyStartText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   launchFeedback: { gap: 4 }, disabled: { opacity: 0.65 },
   week: { paddingVertical: 26 }, sectionHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 18 }, historyHead: { alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 16 },
-  sectionTitle: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 24, lineHeight: 26.4 }, range: { alignItems: 'flex-end' }, rangeDate: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  sectionTitle: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 24, lineHeight: 26.4 }, range: { alignItems: 'flex-end' }, rangeDate: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   weekEmpty: { gap: 14 }, emptySummary: { flexDirection: 'row', gap: 16 }, statLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.5 },
-  goalCount: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 26 }, emptyDays: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 14, overflow: 'hidden' },
-  emptyDay: { flex: 1, alignItems: 'center', gap: 2.88, paddingVertical: 10.4 }, todayDay: { backgroundColor: 'rgba(244,241,242,0.075)', borderRadius: 8 }, emptyDayLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 }, dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_700Bold', fontSize: 10.5 }, todayLabel: { color: colors.accentText }, dayValue: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
+  goalCount: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 26 }, emptyDays: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 14, overflow: 'hidden' },
+  emptyDay: { flex: 1, alignItems: 'center', gap: 2.88, paddingVertical: 10.4 }, todayDay: { backgroundColor: 'rgba(244,241,242,0.075)', borderRadius: 8 }, emptyDayLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 }, dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 }, todayLabel: { color: colors.accentText }, dayValue: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   chart: { backgroundColor: colors.surface, borderRadius: 8, padding: 16 }, chartHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10, marginBottom: 18 },
-  volume: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 34, lineHeight: 37, marginTop: 7 }, count: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, textAlign: 'right' },
-  bars: { flexDirection: 'row', gap: 5, height: 162.8, paddingTop: 8 }, barCell: { flex: 1, alignItems: 'center', gap: 6.72 }, barTrack: { height: 108.8, width: '100%', backgroundColor: 'rgba(255,255,255,0.025)', borderRadius: 5.6, justifyContent: 'flex-end', overflow: 'hidden' }, barFill: { width: '100%', borderTopLeftRadius: 5.6, borderTopRightRadius: 5.6 }, barValue: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 10.5 },
-  signals: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }, signal: { width: '50%', paddingVertical: 10, paddingRight: 8 }, signalValue: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 3, marginBottom: 3 },
+  volume: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 34, lineHeight: 37, marginTop: 7 }, count: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, textAlign: 'right' },
+  bars: { flexDirection: 'row', gap: 5, height: 162.8, paddingTop: 8 }, barCell: { flex: 1, alignItems: 'center', gap: 6.72 }, barTrack: { height: 108.8, width: '100%', backgroundColor: 'rgba(255,255,255,0.025)', borderRadius: 5.6, justifyContent: 'flex-end', overflow: 'hidden' }, barFill: { width: '100%', borderTopLeftRadius: 5.6, borderTopRightRadius: 5.6 }, barValue: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11 },
+  signals: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }, signal: { width: '50%', paddingVertical: 10, paddingRight: 8 }, signalValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 3, marginBottom: 3 },
   history: { borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 26 }, historyLink: { alignItems: 'center', flexDirection: 'row', gap: 5.6, minHeight: 44, paddingHorizontal: 12 }, historyLinkText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 }, emptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, paddingVertical: 14 },
-  workoutRow: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 16 }, setCount: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 }, workoutName: { color: colors.strong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, marginTop: 8, marginBottom: 8 }, pending: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginTop: 8 }, exercisePreview: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 10 },
-  metrics: { flexDirection: 'row', marginTop: 12 }, metric: { flex: 1, paddingVertical: 8 }, metricValue: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 5 },
+  workoutRow: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 16 }, setCount: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 }, workoutName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, marginTop: 8, marginBottom: 8 }, pending: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginTop: 8 }, exercisePreview: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 10 },
+  metrics: { flexDirection: 'row', marginTop: 12 }, metric: { flex: 1, paddingVertical: 8 }, metricValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 5 },
   pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(11,10,12,0.82)' },
-  pickerDialog: { maxHeight: '88%', backgroundColor: '#211f23' },
+  pickerDialog: { maxHeight: '88%', backgroundColor: colors.surfaceRaised },
   pickerHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 16, borderBottomWidth: 1, borderBottomColor: colors.line },
-  pickerTitle: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 23, marginTop: 3 },
+  pickerTitle: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 23, marginTop: 3 },
   pickerClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   pickerPlans: { paddingHorizontal: 16 }, pickerPlan: { paddingVertical: 16, borderBottomColor: colors.line, borderBottomWidth: 1, gap: 7 },
-  pickerPlanTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, marginBottom: 3 },
+  pickerPlanTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, marginBottom: 3 },
   pickerDay: { minHeight: 52, borderColor: colors.line, borderWidth: 1, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12, gap: 2 },
   pickerDaySelected: { borderColor: 'rgba(240,67,90,0.55)', backgroundColor: 'rgba(244,241,242,0.075)' },
-  pickerDayName: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  pickerDayName: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   pickerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 16, borderTopColor: colors.line, borderTopWidth: 1 },
   pickerCancel: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  pickerChoose: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: 8, backgroundColor: '#a91f35', boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)', experimental_backgroundImage: 'linear-gradient(180deg, #c72e44 0%, #a91f35 100%)' },
+  pickerChoose: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: 8, backgroundColor: colors.primaryEnd, boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)', experimental_backgroundImage: primaryGradient },
 })

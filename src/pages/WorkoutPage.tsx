@@ -45,7 +45,7 @@ interface LabelChipsProps {
 
 function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) {
   return (
-    <div className={`workout-label-chips flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
+    <div role="group" aria-label="Session type" className={`workout-label-chips flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
       {WORKOUT_LABELS.map((label) => {
         const isActive = activeLabel === label
         return (
@@ -1078,6 +1078,9 @@ export default function WorkoutPage() {
           </div>
 
           <div className="workout-mobile-label-row lg:hidden">
+            <p className="mb-2 text-xs uppercase" style={{ color: 'var(--muted)' }}>
+              Session type
+            </p>
             <LabelChips
               activeLabel={active.label ?? ''}
               onToggle={(label) => setLabel(active.label === label ? '' : label)}
@@ -1158,7 +1161,7 @@ export default function WorkoutPage() {
                           hintKey={hintKey}
                           isCollapsible={isCollapsible}
                           isExpanded={isExpanded}
-                          isFocusedExercise={exerciseIndex === focusedIndex}
+                          isFocusedExercise={exerciseIndex === focusedIndex && active.exercises.length > 1}
                           suggestion={suggestions[hintKey] ?? null}
                           units={units}
                           userId={user?.uid}

@@ -12,7 +12,7 @@ describe('NotFoundPage', () => {
     )
 
     expect(screen.getByRole('heading', { name: 'Page not found' })).toBeVisible()
-    expect(screen.getByRole('link', { name: 'Back to dashboard' })).toHaveAttribute('href', '/dashboard')
+    expect(screen.getByRole('link', { name: 'Back to Home' })).toHaveAttribute('href', '/dashboard')
     expect(container.querySelector('.surface-panel')).toBeNull()
   })
 

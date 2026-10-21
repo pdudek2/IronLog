@@ -6,7 +6,6 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'rea
 import {
   AccessibilityInfo,
   Animated,
-  Alert,
   Easing,
   ActivityIndicator,
   AppState,
@@ -57,22 +56,9 @@ import { EQUIPMENT_LABELS, focusExerciseIndex, focusSetIndex, formatPreviousSet,
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
 import { useKeyboardReveal } from '../src/useKeyboardReveal'
-
-const colors = {
-  background: '#111012',
-  surface: '#1a191c',
-  surfaceRaised: '#211f23',
-  line: 'rgba(244, 241, 242, 0.12)',
-  lineStrong: 'rgba(244, 241, 242, 0.20)',
-  text: '#f4f1f2',
-  textStrong: '#ffffff',
-  muted: '#a09aa0',
-  mutedSoft: '#8f8990',
-  accent: '#f0435a',
-  accentText: '#ff7182',
-  recovery: '#8fb8a0',
-  warning: '#f0a75a',
-}
+import { colors, pageBackground, primaryGradient } from '../src/theme'
+import { showDialog } from '../src/dialog'
+import HistoryHeader from '../src/HistoryHeader'
 
 function ActionButton({ label, onPress, secondary = false, disabled = false }: {
   label: string
@@ -149,13 +135,13 @@ function SignalBackdrop({ focused }: { focused: boolean }) {
       <Svg onLayout={() => requestAnimationFrame(() => setLength(path.current?.getTotalLength() ?? 0))} height="100%" preserveAspectRatio="none" viewBox="0 0 1200 240" width="100%">
         <Defs>
           <LinearGradient id="auth-signal-stroke" x1="0" x2="0" y1="46" y2="196" gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor="#ff7182" />
-            <Stop offset="0.52" stopColor="#f0435a" />
-            <Stop offset="1" stopColor="#8fb8a0" />
+            <Stop offset="0" stopColor={colors.accentText} />
+            <Stop offset="0.52" stopColor={colors.accent} />
+            <Stop offset="1" stopColor={colors.recovery} />
           </LinearGradient>
           <LinearGradient id="auth-signal-fill" x1="0" x2="0" y1="46" y2="240" gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor="#f0435a" stopOpacity="0.15" />
-            <Stop offset="1" stopColor="#f0435a" stopOpacity="0" />
+            <Stop offset="0" stopColor={colors.accent} stopOpacity="0.15" />
+            <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
           </LinearGradient>
         </Defs>
         <Path d={`${SIGNAL_PATH}V240H-20Z`} fill="url(#auth-signal-fill)" opacity="0.72" />
@@ -182,6 +168,13 @@ function LoginForm() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<{ field: 'email' | 'password'; message: string } | null>(null)
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
+  // KeyboardAvoidingView already shrinks the form; scrolling to its end keeps Sign in above the keyboard too.
+  const { scroll, keyboardInset } = useKeyboardReveal()
+  useEffect(() => {
+    if (!keyboardInset) return
+    const timer = setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50)
+    return () => clearTimeout(timer)
+  }, [keyboardInset, scroll])
 
   const submit = async () => {
     if (busy) return
@@ -204,6 +197,7 @@ function LoginForm() {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.flex, styles.loginShell]}>
       <ScrollView
+        ref={scroll}
         automaticallyAdjustKeyboardInsets
         contentContainerStyle={styles.loginContent}
         keyboardShouldPersistTaps="handled"
@@ -222,8 +216,8 @@ function LoginForm() {
           {fontScale !== 1 ? <Text style={styles.heroAccent}>rhythm.</Text> : <Svg height={34.496} width={160} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
             <Defs>
               <LinearGradient id="rhythm" x1="-160%" x2="100%" y1="0%" y2="100%">
-                <Stop offset="0" stopColor="#ff7182" /><Stop offset="0.38" stopColor="#ff7182" />
-                <Stop offset="0.49" stopColor="#fff7f8" /><Stop offset="0.60" stopColor="#ff7182" />
+                <Stop offset="0" stopColor={colors.accentText} /><Stop offset="0.38" stopColor={colors.accentText} />
+                <Stop offset="0.49" stopColor="#fff7f8" /><Stop offset="0.60" stopColor={colors.accentText} />
                 <Stop offset="1" stopColor="#d83a50" />
               </LinearGradient>
             </Defs>
@@ -302,20 +296,6 @@ function Elapsed({ session }: { session: ActiveWorkout }) {
   return <Text accessibilityLabel={`Elapsed time ${formatElapsed(session.startedAt, now)}`} style={styles.elapsed}>{formatElapsed(session.startedAt, now)}</Text>
 }
 
-function SignOutButton({ busy, onPress }: { busy: boolean; onPress: () => void }) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel="Sign out"
-      disabled={busy}
-      hitSlop={8}
-      onPress={onPress}
-      style={({ pressed }) => [styles.signOutButton, busy && styles.buttonDisabled, pressed && styles.buttonPressed]}
-    >
-      <Text style={styles.signOutButtonText}>{busy ? 'Signing out…' : 'Sign out'}</Text>
-    </Pressable>
-  )
-}
 
 function SetValueInput({ value, units, field, label, done, rejectedEdit, onChange }: {
   value: string
@@ -421,7 +401,7 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
   </>
   const remove = () => {
     if (!exerciseHasEnteredSets(exercise)) return editing.removeExercise(exercise.clientId)
-    Alert.alert('Remove exercise?', 'This will remove the exercise and its sets from the active session.', [
+    showDialog('Remove exercise?', 'This will remove the exercise and its sets from the active session.', [
       { text: 'Keep', style: 'cancel' },
       { text: 'Remove exercise', style: 'destructive', onPress: () => editing.removeExercise(exercise.clientId) },
     ])
@@ -451,7 +431,8 @@ function ExerciseLedger({ uid, sessionKey, exercise, expanded, collapsible, unit
       {exercise.sets.map((set, index) => {
         const previous = history.state.status === 'ready' ? history.state.data[index] : undefined
         const previousText = history.state.status === 'ready' && (previous || !history.state.fromCache)
-          ? formatPreviousSet(previous, units) : history.state.status === 'error' ? '?' : '…'
+          // A cached copy without this set cannot say whether it existed: unknown, not loading.
+          ? formatPreviousSet(previous, units) : history.state.status === 'loading' ? '…' : '?'
         const current = !set.done && index === currentSet
         return <Fragment key={set.clientId}><View style={styles.setGrid}>
           <Pressable accessibilityRole="button" accessibilityLabel={`${set.done ? 'Unmark' : 'Mark'} set ${index + 1} for ${exercise.name}`}
@@ -623,8 +604,8 @@ function WorkoutOptionsMenu({ busy, onDiscard, onHistory, onSignOut }: { busy: b
         <Pressable accessibilityRole="menuitem" disabled={busy} onPress={choose(onDiscard)} style={({ pressed }) => [styles.optionsItem, pressed && styles.optionsItemPressed]}>
           <Text style={styles.optionsItemText}>Discard workout</Text>
         </Pressable>
-        <Pressable accessibilityRole="menuitem" onPress={choose(onHistory)} style={({ pressed }) => [styles.optionsItem, pressed && styles.optionsItemPressed]}>
-          <Text style={styles.optionsItemText}>History</Text>
+        <Pressable accessibilityRole="menuitem" onPress={choose(onHistory)} style={({ pressed }) => [styles.optionsItem, pressed && styles.pickerPressed]}>
+          <Text style={[styles.optionsItemText, styles.optionsItemNeutral]}>History</Text>
         </Pressable>
         <Pressable accessibilityRole="menuitem" onPress={choose(onSignOut)} style={({ pressed }) => [styles.optionsItem, pressed && styles.pickerPressed]}>
           <Text style={[styles.optionsItemText, styles.optionsItemNeutral]}>Sign out</Text>
@@ -646,7 +627,6 @@ function SessionScreen({ user }: { user: AuthUser }) {
     state, retry, retrySave, discardLocalChanges,
     updateSet, adjustSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, refreshStart,
   } = active
-  const [signingOut, setSigningOut] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
   const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
   const sessionClosed = state.status === 'ready' && completed?.action === 'finish'
@@ -657,14 +637,11 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const canEditCurrentSession = () => !sessionClosed && !replacementLocked && canEditClosure()
 
   const doLogout = async () => {
-    setSigningOut(true)
     setLogoutError(null)
     try {
       await logout()
     } catch {
       setLogoutError('Could not sign out. Check your connection and try again.')
-    } finally {
-      setSigningOut(false)
     }
   }
 
@@ -697,7 +674,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const closable = (action: () => void) => () => {
     if (!isFocused || state.status !== 'ready' || sessionLocked) return
     if (state.stale || state.syncStatus !== 'saved') {
-      Alert.alert('Waiting for sync', state.stale
+      showDialog('Waiting for sync', state.stale
         ? 'Reconnect to confirm the workout is still active, then try again.'
         : state.syncStatus === 'failed' ? 'Your latest changes are not saved yet. Tap Retry in the sync notice, then try again.'
           : state.syncStatus === 'conflict' ? 'This workout changed on another device. Resolve it in the sync notice first.'
@@ -707,12 +684,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
     }
     action()
   }
-  const discard = closable(() => Alert.alert('Discard workout?', 'All data from this session will be lost.', [
+  const discard = closable(() => showDialog('Discard workout?', 'All data from this session will be lost.', [
     { text: 'Back', style: 'cancel' },
     { text: 'Discard workout', style: 'destructive', onPress: () => session && startClosure('discard', session) },
   ]))
   const discardOld = closable(() => { if (session) { restartAfterDiscard.current = session.sessionId; startClosure('discard', session) } })
-  const discardEmpty = () => Alert.alert('Finish without saving?', 'No sets are marked complete. The session will be discarded without saving a workout.', [
+  const discardEmpty = () => showDialog('Finish without saving?', 'No sets are marked complete. The session will be discarded without saving a workout.', [
     { text: 'Back', style: 'cancel' },
     { text: 'Discard session', style: 'destructive', onPress: () => session && startClosure('discard', session) },
   ])
@@ -721,18 +698,18 @@ function SessionScreen({ user }: { user: AuthUser }) {
     const sets = session.exercises.flatMap((exercise) => exercise.sets)
     if (!sets.some((set) => set.done)) return discardEmpty()
     if (!session.sessionRevision) {
-      Alert.alert('Waiting for sync', 'This workout has not been saved from this app yet. Change any set, then try again.')
+      showDialog('Waiting for sync', 'This workout has not been saved from this app yet. Change any set, then try again.')
       return
     }
     const unfinished = sets.filter((set) => !set.done).length
     if (unfinished === 0) return startClosure('finish', session)
-    Alert.alert('Finish workout?', `Unfinished sets: ${unfinished}. Only completed sets will be saved.`, [
+    showDialog('Finish workout?', `Unfinished sets: ${unfinished}. Only completed sets will be saved.`, [
       { text: 'Continue workout', style: 'cancel' },
       { text: 'Save completed sets', onPress: () => startClosure('finish', session) },
     ])
   })
 
-  const confirmDiscardLocal = () => Alert.alert(
+  const confirmDiscardLocal = () => showDialog(
     'Use latest workout?',
     'Your edits saved on this device will be discarded.',
     [
@@ -770,15 +747,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
           </View>
         </View>
       ) : (
-        <View style={styles.lifecycleBar}>
-          <View style={styles.lifecycleBarInner}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Open Home" onPress={() => router.navigate('/dashboard')} style={styles.sessionBrand}>
-            <View style={styles.brandMarkSmall}><Text style={styles.brandMarkTextSmall}>IL</Text></View>
-            <Text style={styles.brandNameSmall}>IronLog</Text>
-          </Pressable>
-          <SignOutButton busy={signingOut} onPress={() => void doLogout()} />
-          </View>
-        </View>
+        <HistoryHeader />
       )}
       {logoutError && <Text accessibilityLiveRegion="polite" style={styles.logoutError}>{logoutError}</Text>}
 
@@ -839,10 +808,11 @@ function SessionScreen({ user }: { user: AuthUser }) {
         {state.status === 'ready' && !sessionClosed && !resumePrompt && (<>
         {replacementLocked && <View accessibilityRole="alert" style={styles.syncNotice}><Text style={styles.syncCopy}>{launch?.state.message ?? 'Replacing workout…'}</Text>{launch?.state.status !== 'starting' && <Pressable accessibilityRole="button" onPress={() => void launch?.retry()} style={styles.syncAction}><Text style={styles.syncActionText}>Check replacement</Text></Pressable>}</View>}
         <View pointerEvents={sessionLocked ? 'none' : 'auto'}>
+          <Text style={styles.workoutLabelsTitle}>SESSION TYPE</Text>
           <View style={styles.workoutLabelsBand}>
             <LabelTabs active={state.session.label ?? ''} onToggle={guardClosureInteraction(canEditCurrentSession, (label) => setLabel(state.session.label === label ? '' : label))} />
           </View>
-          <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' ? 'Saved on device' : ''}</Text>
+          <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' && !state.stale ? 'Saved on device' : ''}</Text>
           {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
             <View style={styles.staleNotice}>
               <Text style={styles.staleTitle}>Saved on this device</Text>
@@ -959,9 +929,9 @@ const styles = StyleSheet.create({
   omittedAuthActionSpace: { height: 49 },
   button: { alignItems: 'center', borderRadius: 8, justifyContent: 'center', minHeight: 48, marginTop: 15, paddingHorizontal: 18 },
   buttonPrimary: {
-    backgroundColor: '#a91f35',
+    backgroundColor: colors.primaryEnd,
     boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)',
-    experimental_backgroundImage: 'linear-gradient(180deg, #c72e44 0%, #a91f35 100%)',
+    experimental_backgroundImage: primaryGradient,
   },
   buttonSecondary: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderWidth: 1, minWidth: 140 },
   buttonDisabled: { opacity: 0.55 },
@@ -972,22 +942,17 @@ const styles = StyleSheet.create({
   sessionContent: {
     flexGrow: 1,
     paddingBottom: 128,
-    experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)',
+    experimental_backgroundImage: pageBackground,
   },
   sessionShell: { flex: 1, backgroundColor: colors.background },
   lifecycleBar: { backgroundColor: '#0d0b0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 69, zIndex: 4 },
   lifecycleBarInner: { alignItems: 'center', flexDirection: 'row', height: 69, paddingHorizontal: 16 },
-  sessionBrand: { alignItems: 'center', flexDirection: 'row' },
-  brandMarkSmall: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', borderColor: colors.lineStrong, borderRadius: 5, borderWidth: 1, height: 32, justifyContent: 'center', marginRight: 10, width: 32 },
-  brandMarkTextSmall: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 11 },
-  brandNameSmall: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15 },
-  signOutButton: { alignItems: 'center', justifyContent: 'center', marginLeft: 'auto', minHeight: 44, paddingHorizontal: 6 },
-  signOutButtonText: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },
   logoutError: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 19, paddingHorizontal: 16, paddingVertical: 10 },
   centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 420, paddingHorizontal: 20, gap: 12 },
   stateTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 22, textAlign: 'center' },
   stateCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
   elapsed: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20, lineHeight: 28, fontVariant: ['tabular-nums'] },
+  workoutLabelsTitle: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, letterSpacing: 0.4, paddingHorizontal: 16, paddingTop: 10 },
   workoutLabelsBand: { flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 16, height: 52 },
   syncInline: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, lineHeight: 18, height: 18, textAlign: 'right', paddingHorizontal: 16 },
   previewCopy: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, textAlign: 'center', paddingVertical: 8 },
@@ -995,7 +960,7 @@ const styles = StyleSheet.create({
   lookupAction: { minHeight: 44, justifyContent: 'center' },
   setCellDone: { opacity: 0.7 },
   signalFocused: { opacity: 0.28, transform: [{ translateX: -9.6 }, { translateY: -5.6 }, { rotate: '-3deg' }, { scaleY: 1.08 }] },
-  staleNotice: { backgroundColor: colors.surface, borderColor: colors.accent, borderWidth: 1, borderRadius: 16, marginHorizontal: 16, marginTop: 14, paddingHorizontal: 12, paddingVertical: 10 },
+  staleNotice: { backgroundColor: colors.surface, borderColor: colors.lineStrong, borderWidth: 1, borderRadius: 16, marginHorizontal: 16, marginTop: 14, paddingHorizontal: 12, paddingVertical: 10 },
   staleTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
   staleCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 3 },
   syncNotice: { borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, marginHorizontal: 16, paddingHorizontal: 4, paddingVertical: 10 },
@@ -1053,7 +1018,7 @@ const styles = StyleSheet.create({
   finishButton: { alignItems: 'center', borderRadius: 12, justifyContent: 'center', marginLeft: 8, minHeight: 44, paddingHorizontal: 20 },
   minimizeButton: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 44, paddingHorizontal: 2 },
   minimizeText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
-  minimizeHint: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 10 },
+  minimizeHint: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11 },
   finishButtonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
   optionsTrigger: { alignItems: 'center', borderRadius: 8, height: 44, justifyContent: 'center', width: 44 },
   optionsMenu: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderRadius: 8, borderWidth: 1, boxShadow: '0 12px 32px rgba(0, 0, 0, 0.42)', padding: 5.6, position: 'absolute', right: 16 },

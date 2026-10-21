@@ -8,8 +8,7 @@ import { EXERCISE_CATEGORY_LABELS, formatExerciseMeta } from '../../src/lib/exer
 import { pluralize } from '../../src/lib/pluralize'
 import type { ExerciseSource } from './session'
 import type { ExerciseMetadata, ReadState } from './scopedRead'
-
-const colors = { textStrong: '#fff', muted: '#a09aa0', mutedSoft: '#8f8990', accent: '#f0435a', accentText: '#ff7182', line: 'rgba(244, 241, 242, 0.12)' }
+import { colors } from './theme'
 
 const PICKER_CATEGORIES: { value: Category | 'all'; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -96,7 +95,7 @@ export default function ExercisePicker({ userExercises, onRetryUserExercises, on
 }
 
 const styles = StyleSheet.create({
-  pickerShell: { backgroundColor: '#151316', flex: 1 },
+  pickerShell: { backgroundColor: colors.backgroundElevated, flex: 1 },
   lookupAction: { minHeight: 44, justifyContent: 'center' },
   syncActionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   pickerHead: { gap: 12, paddingBottom: 13.6, paddingHorizontal: 16 },
@@ -120,7 +119,7 @@ const styles = StyleSheet.create({
   pickerResult: { borderBottomColor: colors.line, borderBottomWidth: 1, gap: 4.5, justifyContent: 'center', minHeight: 58.4, paddingVertical: 11.5 },
   pickerResultMain: { alignItems: 'baseline', flexDirection: 'row', gap: 8.8 },
   pickerResultName: { color: colors.textStrong, flexShrink: 1, fontFamily: 'InstrumentSans_700Bold', fontSize: 16, lineHeight: 20 },
-  pickerMine: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 10.56 },
+  pickerMine: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 },
   pickerEmpty: { alignItems: 'center', gap: 5.6, justifyContent: 'center', minHeight: 208 },
   pickerEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
   pickerEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13.12, textAlign: 'center' },

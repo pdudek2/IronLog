@@ -59,5 +59,5 @@ export function getMuscleLabel(muscle: string): string {
 
 export function formatExerciseMeta(equipment: string, muscles: string[]): string {
   const labels = muscles.map(getMuscleLabel)
-  return [getEquipmentLabel(equipment), labels.join(', ')].filter(Boolean).join(' · ')
+  return [labels.join(', '), getEquipmentLabel(equipment)].filter(Boolean).join(' · ')
 }

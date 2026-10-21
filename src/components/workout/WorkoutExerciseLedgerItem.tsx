@@ -108,7 +108,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   return (
     <motion.div
       className="workout-exercise-card"
-      data-active={isFocusedExercise}
       data-expanded={isExpanded}
       style={{ '--exercise-accent': exerciseAccent } as React.CSSProperties}
       initial={{ opacity: 0, y: 16 }}
@@ -147,7 +146,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
           </button>
         ) : (
           <div className="min-w-0">
-          {(categoryLabel || equipmentLabel) && (
+          {(categoryLabel || equipmentLabel || isFocusedExercise) && (
             <p className="workout-exercise-meta">
               {categoryLabel && (
                 <span style={{ color: exerciseAccent }}>
@@ -156,6 +155,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
               )}
               {categoryLabel && equipmentLabel && ' · '}
               {equipmentLabel}
+              {isFocusedExercise && <span className="workout-exercise-next">{(categoryLabel || equipmentLabel) && ' · '}Up next</span>}
             </p>
           )}
           <p className="mt-1.5 text-lg font-semibold text-white">{exercise.name}</p>

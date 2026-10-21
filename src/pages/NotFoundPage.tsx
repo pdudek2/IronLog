@@ -9,7 +9,7 @@ export default function NotFoundPage() {
         <p>
           The page you are looking for does not exist or has moved.
         </p>
-        <Link to="/dashboard" className="planner-primary-action">Back to dashboard</Link>
+        <Link to="/dashboard" className="planner-primary-action">Back to Home</Link>
       </div>
     </section>
   )

@@ -742,7 +742,7 @@ export default function DashboardPage() {
                           ? 'Plans unavailable'
                           : workoutSelection.unavailable
                             ? 'Workout no longer available'
-                            : 'No workouts in your plans'}
+                            : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}
                     </strong>
                     <span>
                       {workoutSelection.unavailable
@@ -845,11 +845,9 @@ export default function DashboardPage() {
                   </div>
                   <div className="dashboard-range-chip">
                     <span>{formatWeekRange(weekDates)}</span>
-                    <small>
-                      {weeklyVolumeDelta === null
-                        ? 'no comparison'
-                        : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs last week`}
-                    </small>
+                    {weeklyVolumeDelta !== null && (
+                      <small>{`${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs last week`}</small>
+                    )}
                   </div>
                 </div>
 
@@ -1079,7 +1077,7 @@ export default function DashboardPage() {
           <div className="dashboard-section-head">
             <div>
               <h2 className="section-title">
-                {recentWorkouts.length > 0 ? 'Recent workouts' : 'History'}
+                Recent workouts
               </h2>
             </div>
             <button

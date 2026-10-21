@@ -16,6 +16,10 @@ import {
 } from '../lib/templateService'
 import { pluralize } from '../lib/pluralize'
 
+function countPlanExercises(template: { days: { exercises: unknown[] }[] }): number {
+  return template.days.reduce((sum, day) => sum + day.exercises.length, 0)
+}
+
 interface TemplateDeleteOperation {
   target: WorkoutTemplate
   status: 'pending' | 'error'
@@ -237,7 +241,9 @@ export default function TemplatesPage() {
                       <h2>
                         {template.name}
                       </h2>
-                      {template.days.length > 1 && <p>{template.days.length} days</p>}
+                      <p>
+                        {template.days.length} {pluralize(template.days.length, 'day', 'days')} · {countPlanExercises(template)} {pluralize(countPlanExercises(template), 'exercise', 'exercises')}
+                      </p>
                     </div>
 
                     <div className="planner-template-actions">

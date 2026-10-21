@@ -387,8 +387,7 @@ describe('Dashboard workout projection status', () => {
 
     expect(await screen.findByText('3 sessions to reach your goal.')).toBeInTheDocument()
     expect(screen.getByText('0/3')).toBeInTheDocument()
-    expect(screen.getByText('no comparison')).toBeInTheDocument()
-    expect(screen.queryByText(/-100% vs last week/)).not.toBeInTheDocument()
+    expect(screen.queryByText(/vs last week/)).not.toBeInTheDocument()
   })
 
   it('keeps the full local Sunday in the current week across the autumn DST change', async () => {

@@ -17,11 +17,8 @@ import HistoryHeader from '../../src/HistoryHeader'
 import { formatWorkoutDate, formatWorkoutDuration, workoutFocusLabel, workoutSetVolumeLabel } from '../../src/history'
 import { workoutTitle } from '../../../src/lib/workoutCopy'
 import grainTexture from '../../assets/grain.png'
-
-const colors = {
-  background: '#111012', surface: '#1a191c', raised: '#211f23', line: 'rgba(244, 241, 242, 0.12)',
-  text: '#f4f1f2', strong: '#ffffff', muted: '#a09aa0', mutedSoft: '#8f8990', accent: '#f0435a', accentText: '#ff7182', recovery: '#8fb8a0',
-}
+import { colors, pageBackground } from '../../src/theme'
+import { Icon } from '../../src/icons'
 
 export default function SavedWorkoutScreen() {
   const { workoutId: routeId, saved } = useLocalSearchParams<{ workoutId: string; saved?: string }>()
@@ -85,13 +82,13 @@ export default function SavedWorkoutScreen() {
         <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
         <View style={styles.navRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={back} style={styles.backButton}>
-            <Svg accessibilityElementsHidden height={16} width={16} viewBox="0 0 24 24"><Path d="m12 19-7-7 7-7" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><Path d="M19 12H5" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg><Text style={styles.backText}>Back</Text>
+            <Svg accessibilityElementsHidden height={16} width={16} viewBox="0 0 24 24"><Path d="m12 19-7-7 7-7" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><Path d="M19 12H5" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg><Text style={styles.backText}>{resultIsValid ? 'Back to Home' : 'Back'}</Text>
           </Pressable>
         </View>
 
         <WorkoutDraftRecovery uid={user.uid} workoutId={workoutId} />
         {resultIsValid && <View style={styles.resultBanner}>
-          <View accessibilityElementsHidden style={styles.resultMark}><Text style={styles.check}>✓</Text></View>
+          <View accessibilityElementsHidden style={styles.resultMark}><Icon name="check" size={18} color={colors.recovery} /></View>
           <View style={styles.resultCopy}><Text style={styles.resultTitle}>Workout saved</Text><Text style={styles.resultSubtitle}>Your completed session is ready below.</Text></View>
         </View>}
 
@@ -124,8 +121,8 @@ export default function SavedWorkoutScreen() {
           </View>
 
           <View style={styles.mutationActions}>
-            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId } })} style={styles.editAction}><Text style={[styles.retryText, { color: '#fff', textAlign: 'center' }]}>Edit workout</Text></Pressable>
-            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId, action: 'delete' } })} style={styles.retryButton}><Text style={[styles.retryText, { color: '#f0a75a' }]}>Delete</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId } })} style={styles.editAction}><Text style={[styles.retryText, { color: colors.textStrong, textAlign: 'center' }]}>Edit workout</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId, action: 'delete' } })} style={styles.retryButton}><Text style={[styles.retryText, { color: colors.warning }]}>Delete</Text></Pressable>
           </View>
 
           <View accessibilityLabel="Workout summary" style={styles.facts}>
@@ -140,9 +137,9 @@ export default function SavedWorkoutScreen() {
           <View style={styles.exerciseList}>
             {workout.exercises.map((exercise, index) => {
               const exerciseData = exercise.exerciseId ? exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`) : undefined
-              const accent = EXERCISE_CATEGORY_COLORS[exerciseData?.category ?? ''] ?? '#A09AA0'
+              const accent = EXERCISE_CATEGORY_COLORS[exerciseData?.category ?? ''] ?? colors.muted
               const category = exerciseData?.category ? EXERCISE_CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category : null
-              const equipment = exerciseData?.equipment ? getEquipmentLabel(exerciseData.equipment).toLocaleLowerCase('en-US') : null
+              const equipment = exerciseData?.equipment ? getEquipmentLabel(exerciseData.equipment) : null
               const reps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
               return <View key={`${exercise.exerciseSource}:${exercise.exerciseId ?? exercise.name}:${index}`} style={styles.exercisePanel}>
                 <View style={styles.exerciseHead}>
@@ -187,31 +184,31 @@ const styles = StyleSheet.create({
   mutationActions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-start', paddingBottom: 16 },
   editAction: { flex: 1, minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderWidth: 1, borderColor: colors.line, borderRadius: 8 },
   screen: { backgroundColor: colors.background, flex: 1 },
-  content: { flexGrow: 1, paddingBottom: 36, paddingHorizontal: 16, paddingTop: 16, experimental_backgroundImage: 'linear-gradient(115deg, rgba(240, 67, 90, 0.055) 0%, transparent 26%, transparent 68%, rgba(143, 184, 160, 0.065) 100%), linear-gradient(180deg, #0b0a0c 0%, #111012 42%, #0d0c0e 100%)' },
+  content: { flexGrow: 1, paddingBottom: 36, paddingHorizontal: 16, paddingTop: 16, experimental_backgroundImage: pageBackground },
   grain: { height: '100%', opacity: 0.024, position: 'absolute', width: '100%' },
   grainImage: { height: '100%', width: '100%' },
   navRow: { alignItems: 'center', flexDirection: 'row', minHeight: 44 },
   backButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 5, minHeight: 40, paddingHorizontal: 1 },
   backText: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
-  resultBanner: { alignItems: 'center', backgroundColor: 'rgba(240, 67, 90, 0.08)', borderColor: 'rgba(240, 67, 90, 0.3)', borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 12, marginBottom: 10, marginTop: 4, padding: 14 },
-  resultMark: { alignItems: 'center', backgroundColor: 'rgba(240, 67, 90, 0.16)', borderRadius: 50, height: 36, justifyContent: 'center', width: 36 },
+  resultBanner: { alignItems: 'center', backgroundColor: 'rgba(143, 184, 160, 0.08)', borderColor: 'rgba(143, 184, 160, 0.3)', borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 12, marginBottom: 10, marginTop: 4, padding: 14 },
+  resultMark: { alignItems: 'center', backgroundColor: 'rgba(143, 184, 160, 0.13)', borderRadius: 50, height: 36, justifyContent: 'center', width: 36 },
   check: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 18 },
   resultCopy: { flex: 1 },
-  resultTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
+  resultTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
   resultSubtitle: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 2 },
   sessionHead: { paddingBottom: 22, paddingTop: 18 },
   kicker: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginBottom: 9 },
-  workoutName: { color: colors.strong, fontFamily: 'ArchivoHeading', fontSize: 34, lineHeight: 34 },
-  facts: { backgroundColor: '#151316', borderBottomColor: 'rgba(244, 241, 242, 0.2)', borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(244, 241, 242, 0.2)', borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginHorizontal: -16, paddingHorizontal: 16 },
+  workoutName: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 34, lineHeight: 34 },
+  facts: { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.lineStrong, borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: colors.lineStrong, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginHorizontal: -16, paddingHorizontal: 16 },
   fact: { flex: 1, minWidth: 0, paddingVertical: 15 },
   factLabel: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginBottom: 6 },
-  factValue: { color: colors.strong, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 16, letterSpacing: -0.4 },
+  factValue: { color: colors.textStrong, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 16, letterSpacing: -0.4 },
   projectionStatus: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 9 },
   exerciseList: { minWidth: 0 },
   exercisePanel: { paddingBottom: 19, paddingTop: 30 },
   exerciseHead: { marginBottom: 20 },
   exerciseTitleRow: { alignItems: 'baseline', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-  exerciseName: { color: colors.strong, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 21, letterSpacing: -0.35, lineHeight: 25 },
+  exerciseName: { color: colors.textStrong, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 21, letterSpacing: -0.35, lineHeight: 25 },
   sequence: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 },
   taxonomy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19, marginTop: 6 },
   exerciseTotals: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, marginTop: 15 },
@@ -225,8 +222,8 @@ const styles = StyleSheet.create({
   indexCell: { flex: 0, width: 54, paddingLeft: 16, paddingRight: 0, textAlign: 'left' },
   setIndex: { color: colors.recovery },
   feedbackRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingVertical: 15 },
-  notice: { backgroundColor: colors.raised, gap: 6, marginTop: 10, padding: 14 },
-  noticeTitle: { color: colors.strong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15 },
+  notice: { backgroundColor: colors.surfaceRaised, gap: 6, marginTop: 10, padding: 14 },
+  noticeTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15 },
   retryButton: { alignSelf: 'flex-start', justifyContent: 'center', minHeight: 44, paddingHorizontal: 2 },
   retryText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   cacheNoticeRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingTop: 10 },

@@ -132,7 +132,6 @@ export function useTemplateWorkoutLaunch(
       if (!isCurrentLaunch(generation)) return
       setLaunchOperation(null)
       hydrateFromDoc(workout)
-      toast.success(`Plan “${currentTarget.template.name}” ready to start`)
       navigate('/workout/new')
     } catch (error) {
       if (!isCurrentLaunch(generation)) return

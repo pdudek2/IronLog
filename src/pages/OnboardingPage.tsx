@@ -108,7 +108,7 @@ export default function OnboardingPage() {
             <label htmlFor="onboarding-weekly-goal" className="text-xs font-medium" style={{ color: 'var(--muted)' }}>
               Workouts per week
             </label>
-            <output htmlFor="onboarding-weekly-goal" className="text-sm font-bold" style={{ color: 'var(--accent)' }}>
+            <output htmlFor="onboarding-weekly-goal" className="text-sm font-bold" style={{ color: 'var(--accent-text)' }}>
               {weeklyGoal}
             </output>
           </div>
@@ -121,7 +121,7 @@ export default function OnboardingPage() {
             value={weeklyGoal}
             onChange={(e) => setWeeklyGoal(Number(e.target.value))}
             aria-valuetext={`${weeklyGoal} out of 7`}
-            className="w-full accent-[var(--accent)]"
+            className="readiness-slider w-full"
           />
           <div className="flex justify-between text-xs" style={{ color: 'var(--muted)' }}>
             <span>1</span><span>7</span>

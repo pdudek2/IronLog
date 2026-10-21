@@ -13,6 +13,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import ArchivoHero from '../assets/fonts/ArchivoHero.ttf'
 import ArchivoHeading from '../assets/fonts/ArchivoHeading.ttf'
 import { ActiveRuntimeProvider, AuthRuntimeProvider, ClosureRuntimeProvider, useAuthRuntime } from '../src/runtime'
+import { DialogHost } from '../src/dialog'
 import { LaunchRuntimeProvider } from '../src/launchRuntime'
 import { ReadinessRuntimeProvider } from '../src/readinessRuntime'
 
@@ -41,6 +42,7 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <AuthRuntimeProvider>
         <RootStack />
+        <DialogHost />
       </AuthRuntimeProvider>
     </SafeAreaProvider>
   )

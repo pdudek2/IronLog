@@ -1,4 +1,3 @@
-import { Alert } from 'react-native'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { usePathname, useRouter } from 'expo-router'
 
@@ -10,6 +9,7 @@ import {
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from './runtime'
 import { WorkoutLaunchController, type LaunchState, type LaunchTarget } from './workoutLaunchController'
 import { shouldOpenLaunchResult } from './workoutLaunch'
+import { showDialog } from './dialog'
 
 const initial: LaunchState = { status: 'loading' }
 
@@ -63,14 +63,14 @@ export function useWorkoutLaunch(uid: string) {
     initiatingPath.current = current.current.pathname
     const value = current.current.active.state
     if (target.kind !== 'template' || value.status !== 'ready') return controller.launch(target, canStart)
-    if (!canReplace()) { Alert.alert('Waiting for sync', 'Reconnect and wait for your changes to be saved before replacing this workout.'); return Promise.resolve() }
+    if (!canReplace()) { showDialog('Waiting for sync', 'Reconnect and wait for your changes to be saved before replacing this workout.'); return Promise.resolve() }
     const replaces = { sessionId: value.session.sessionId, sessionRevision: value.session.sessionRevision! }
     const path = current.current.pathname
     setConfirmation({ uid, path, confirm: () => {
       setConfirmation(null)
       const fresh = current.current.active.state
       if (current.current.pathname !== path || !canReplace() || fresh.status !== 'ready' || fresh.session.sessionId !== replaces.sessionId || fresh.session.sessionRevision !== replaces.sessionRevision) {
-        Alert.alert('Workout changed', 'Review your current workout before replacing it.'); return
+        showDialog('Workout changed', 'Review your current workout before replacing it.'); return
       }
       void controller.launch({ ...target, replaces }, () => canReplace() && current.current.pathname === path)
     } })

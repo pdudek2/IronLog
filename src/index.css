@@ -5888,9 +5888,12 @@ a {
     font-size: 0;
   }
 
+  /* Actions move under the title when they do not fit beside it, so "Plans" never breaks mid-word. */
   .plans-header {
-    grid-template-columns: minmax(0, 1fr) auto;
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
     gap: 0.5rem;
   }
 
@@ -5902,6 +5905,7 @@ a {
 
   .plans-header h1 {
     margin-top: 0;
+    overflow-wrap: normal;
   }
 
   .plans-exercises-link {

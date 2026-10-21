@@ -69,7 +69,7 @@ test.describe('Templates CRUD', () => {
     const savedCard = page.getByRole('article').filter({
       has: page.getByRole('heading', { name: TEST_TEMPLATE_NAME, exact: true }),
     })
-    await expect(savedCard.getByText('3 days', { exact: true })).toBeVisible()
+    await expect(savedCard.getByText(/^3 days · \d+ exercises?$/)).toBeVisible()
     await expect(savedCard.getByText('Lower strength', { exact: true })).toBeVisible()
     await expect(savedCard.getByText('Upper', { exact: true })).toBeVisible()
     await expect(savedCard.getByText('Recovery', { exact: true })).toBeVisible()

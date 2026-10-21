@@ -33,7 +33,7 @@ export function usePassiveActiveSessionSync(uid: string | undefined, enabled = t
       // together with its revision, unless this device still holds edits the server has not saved.
       if (session && (decision === 'accept_remote' || (decision === 'keep_local' && authoritative && !localEdits))) {
         hydrateFromDoc(session)
-        writeActiveSessionBackup(uid, session, { baseRevision: sessionRevision ?? null, unsynced: false })
+        if (!localEdits) writeActiveSessionBackup(uid, session, { baseRevision: sessionRevision ?? null, unsynced: false })
       }
       if (decision === 'clear_local') {
         clearActiveSessionBackup(uid)

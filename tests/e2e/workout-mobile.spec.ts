@@ -285,7 +285,7 @@ test.describe('Active workout shell reduction', () => {
 
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
-    await page.getByRole('button', { name: 'Mark set 1 exercise Squat' }).click()
+    await page.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
 
     await expect(page.locator('.rest-timer-bar')).toHaveCount(1)
     expect(await page.evaluate(() => (
@@ -352,7 +352,7 @@ test.describe('Active workout shell reduction', () => {
     await addExercise(page, 'Squat')
 
     const firstSetRow = page.locator('.workout-set-row').first()
-    const doneButton = page.getByRole('button', { name: 'Mark set 1 exercise Squat' })
+    const doneButton = page.getByRole('button', { name: 'Mark set 1 for Squat' })
     await firstSetRow.locator('input').nth(0).fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
     await doneButton.click()
@@ -466,7 +466,10 @@ test.describe('Active workout shell reduction', () => {
     const discardItem = menu.getByRole('menuitem', { name: 'Discard workout' })
     await expect(discardItem).toHaveCSS('color', 'rgb(240, 167, 90)')
     await discardItem.click()
-    await expect(page.getByRole('dialog', { name: 'Discard workout?' })).toBeVisible()
+    const dialog = page.getByRole('dialog', { name: 'Discard workout?' })
+    await expect(dialog).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
   })
 
   test('mobile workout keeps the first set visible and a single add action after adding an exercise', async ({ page, cleanup }, testInfo) => {
@@ -528,7 +531,7 @@ test.describe('Active workout shell reduction', () => {
 
     await addExercise(page, 'Squat')
 
-    const doneButton = page.getByRole('button', { name: 'Mark set 1 exercise Squat' })
+    const doneButton = page.getByRole('button', { name: 'Mark set 1 for Squat' })
     const removeSetButton = page.getByRole('button', { name: 'Remove set 1' })
     const actionBar = page.locator('.workout-mobile-action-bar')
 
@@ -585,7 +588,7 @@ test.describe('Active workout shell reduction', () => {
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
     await doneButton.click()
-    await expect(page.getByRole('button', { name: 'Unmark set 1 exercise Squat' })).toHaveCSS('color', 'rgb(143, 184, 160)')
+    await expect(page.getByRole('button', { name: 'Unmark set 1 for Squat' })).toHaveCSS('color', 'rgb(143, 184, 160)')
 
     const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar .tabular-nums').innerText()
     const addRestButton = actionBar.getByRole('button', { name: 'Add 30 seconds' })
@@ -643,7 +646,7 @@ test.describe('Active workout shell reduction', () => {
     const weightInput = firstSetRow.locator('input').nth(0)
     await weightInput.fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
-    await firstSetRow.getByRole('button', { name: 'Mark set 1 exercise Squat' }).click()
+    await firstSetRow.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
 
     const actionBar = page.locator('.workout-mobile-action-bar')
     const skipRestButton = actionBar.getByRole('button', { name: 'Skip rest' })
@@ -746,7 +749,7 @@ test.describe('Active workout shell reduction', () => {
 
     await firstSetRow.locator('input').nth(0).fill('60')
     await firstSetRow.locator('input').nth(1).fill('8')
-    await firstSetRow.getByRole('button', { name: 'Mark set 1 exercise Squat' }).click()
+    await firstSetRow.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
 
     const restTimerBar = page.locator('.rest-timer-bar')
     await expect(restTimerBar).toHaveCount(1)

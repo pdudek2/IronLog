@@ -26,4 +26,6 @@ export function isExpectedFirestoreOfflineDiagnostic(entry: BrowserDiagnostic): 
   )
     || entry.message === '[useTemplateWorkoutLaunch] confirmed launch failed FirebaseError: Connection failed.'
     || entry.message === '[useTemplateWorkoutLaunch] confirmed launch failed FirebaseError: Failed to get document because the client is offline.'
+    // An empty answer from the offline cache is reported as unknown data (src/lib/confirmedQuery.ts).
+    || entry.message.includes('Error: No connection. This data is not saved on this device yet.')
 }

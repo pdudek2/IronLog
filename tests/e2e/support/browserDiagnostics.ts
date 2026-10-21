@@ -26,6 +26,13 @@ export function isBlockingRequestFailure(
   intentionalNavigationOrTeardown = false,
 ): boolean {
   if (resourceType === 'document' && errorText === 'net::ERR_ABORTED') return false
+  // The SDK aborts its own listen channel whenever listeners change (React StrictMode subscribes, unsubscribes
+  // and resubscribes on mount in development); that loses no data, unlike an aborted write channel.
+  if (
+    errorText === 'net::ERR_ABORTED'
+    && (resourceType === 'fetch' || resourceType === 'xhr')
+    && /^http:\/\/127\.0\.0\.1:8080\/google\.firestore\.v1\.Firestore\/Listen\/channel\?/.test(url)
+  ) return false
 
   const isEmulatorFirestoreChannel = (resourceType === 'fetch' || resourceType === 'xhr')
     && /^http:\/\/127\.0\.0\.1:8080\/google\.firestore\.v1\.Firestore\/(?:Listen|Write)\/channel\?/.test(url)

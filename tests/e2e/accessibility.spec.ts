@@ -44,7 +44,7 @@ test.describe('Phase 3 navigation accessibility', () => {
     await expectAppReady(page, '/profile')
 
     const nav = page.locator('nav.bottom-nav')
-    const start = nav.locator('button[aria-label="Start"]')
+    const start = nav.locator('button[aria-label="Home"]')
     await expect(nav).not.toHaveAttribute('aria-hidden', 'true')
 
     await page.getByLabel('Name').focus()
@@ -68,7 +68,7 @@ test.describe('Phase 3 navigation accessibility', () => {
 
     const main = page.getByRole('main')
     const nav = page.locator('nav.bottom-nav')
-    const start = nav.locator('button[aria-label="Start"]')
+    const start = nav.locator('button[aria-label="Home"]')
 
     await start.focus()
     await page.mouse.wheel(0, 600)

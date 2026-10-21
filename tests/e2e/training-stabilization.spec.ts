@@ -124,7 +124,7 @@ test.describe('training stabilization', () => {
     await finish.click()
     dialog = page.getByRole('dialog', { name: 'Finish workout?' })
     await dialog.getByRole('button', { name: 'Save completed sets' }).click()
-    await page.waitForURL('/dashboard', { timeout: 20_000 })
+    await page.waitForURL(`/workout/${sessionId}`, { timeout: 20_000 })
 
     const workout = await readLifecycleWorkout(sessionId)
     expect(workout?.exercises?.[0]?.sets).toEqual([{ weight: 60, reps: 8 }])

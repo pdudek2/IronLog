@@ -15,6 +15,8 @@ function isExpectedTemplateLaunchOfflineDiagnostic(entry: BrowserDiagnostic): bo
   if (entry.kind === 'console' && (
     entry.message === '[useTemplateWorkoutLaunch] launch failed FirebaseError: Connection failed.'
     || entry.message === '[useTemplateWorkoutLaunch] launch failed FirebaseError: Failed to get document because the client is offline.'
+    // Launch revalidates the plan on the server first, which fails offline.
+    || entry.message.startsWith('[useTemplateWorkoutLaunch] launch failed FirebaseError: Failed to get document from server.')
   )) return true
 
   return entry.kind === 'requestfailed'
@@ -177,7 +179,7 @@ test.describe('Template launch contract', () => {
             has: page.getByRole('heading', { name: OFFLINE_TEMPLATE_NAME, exact: true }),
           })
           await expect(matchingCard.getByRole('alert')).toHaveText(
-            /Nie udało się uruchomić planu\./,
+            /Could not start the plan\./,
             { timeout: 15_000 },
           )
           await expect(page).toHaveURL('/templates')

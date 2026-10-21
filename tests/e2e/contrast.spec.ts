@@ -132,7 +132,7 @@ test.describe('Contrast contracts', () => {
     await expectAppReady(page, '/dashboard')
 
     const helperText = page.locator('.dashboard-week-bar-cell small').first()
-    const primaryCta = page.locator('button.dashboard-planned-start-primary').first()
+    const primaryCta = page.locator('button.dashboard-planned-start-primary, button.dashboard-ad-hoc-action--primary').first()
     await expect(helperText).toBeVisible()
     await expect(primaryCta).toBeVisible()
     await expect(primaryCta).toBeEnabled()

@@ -6,6 +6,13 @@ import { expectAppReady } from './support/appReady'
 
 const TEMPLATE_NAME = '_E2E Home Workout Choice_'
 
+// Another spec may have saved today's readiness on this account; Home then shows the readiness card
+// instead of the planned workout these tests select from.
+async function clearReadiness(adminApp: ReturnType<typeof initializeApp>, uid: string) {
+  const entries = await getFirestore(adminApp).collection('readiness').where('userId', '==', uid).get()
+  await Promise.all(entries.docs.map((entry) => entry.ref.delete()))
+}
+
 const draft = {
   name: TEMPLATE_NAME,
   days: [
@@ -49,6 +56,7 @@ test('Home changes the selected day without launching and then starts that exact
   })
   const adminApp = getApps().find((app) => app.name === 'home-workout-selection')
     ?? initializeApp({ projectId: 'demo-ironlog' }, 'home-workout-selection')
+  await clearReadiness(adminApp, uid)
   const now = Date.now()
   await getFirestore(adminApp).collection('templates').add({
     ...draft,
@@ -81,6 +89,7 @@ test('Home changes the selected day without launching and then starts that exact
 })
 
 test('Home rejects a plan deleted after its selection loaded', async ({ page, cleanup }, testInfo) => {
+  cleanup.add('delete stale Home workout choice template', () => deleteTemplateByName(page, `${TEMPLATE_NAME} stale`))
   cleanup.add('discard active session', () => discardActiveSession(page))
   await discardActiveSession(page)
 
@@ -94,6 +103,7 @@ test('Home rejects a plan deleted after its selection loaded', async ({ page, cl
   })
   const adminApp = getApps().find((app) => app.name === 'home-workout-selection')
     ?? initializeApp({ projectId: 'demo-ironlog' }, 'home-workout-selection')
+  await clearReadiness(adminApp, uid)
   const now = Date.now()
   const templateRef = await getFirestore(adminApp).collection('templates').add({
     ...draft,

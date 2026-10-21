@@ -723,7 +723,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         })
         await seedLifecycleActiveSession({ sessionId: newSessionId, label: 'Phase 1 offline new' })
         const clientC = await openWorkoutClient(observedContextFactory, storageState, '/dashboard')
-        await expect(clientC.page.getByText('Active session: Phase 1 offline new • 1 exercise', { exact: true })).toBeVisible({
+        await expect(clientC.page.getByRole('region', { name: 'Active workout' }).getByText('Phase 1 offline new', { exact: true })).toBeVisible({
           timeout: RESPONSE_TIMEOUT_MS,
         })
         await setFirestoreNetworkEnabled(clientB.page, true)

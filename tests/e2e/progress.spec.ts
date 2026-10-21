@@ -164,7 +164,7 @@ test.describe('Progress analytics', () => {
     const strengthPanel = page.locator('.progress-panel').filter({
       has: page.getByRole('heading', { name: 'Weight progression' }),
     })
-    await expect(strengthPanel.getByText('Chart needs 2 days with recorded weight.')).toBeVisible()
+    await expect(strengthPanel.getByText('Chart needs 2 more days with recorded weight.')).toBeVisible()
     await expect(strengthPanel.getByLabel('1 of 3 days for the chart')).toBeVisible()
     await expect(strengthPanel.locator('.recharts-line')).toHaveCount(0)
     await expect(page.getByLabel('Selected exercise trend')).toHaveCount(0)

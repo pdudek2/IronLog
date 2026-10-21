@@ -55,4 +55,15 @@ describe('usePassiveActiveSessionSync', () => {
     expect(useWorkoutStore.getState().active?.exercises[0].sets[0].reps).toBe('5')
     expect(readActiveSessionBackupRecord('user-1')).toMatchObject({ baseRevision: 'revision-1', unsynced: true })
   })
+
+  it('keeps unsaved edits in the backup after a reload empties the store', () => {
+    writeActiveSessionBackup('user-1', session('7'), { baseRevision: 'revision-1', unsynced: true })
+    useWorkoutStore.getState().clearWorkout()
+    renderHook(() => usePassiveActiveSessionSync('user-1'))
+
+    act(() => listener.current?.({ session: session('5'), sessionRevision: 'revision-1', fromCache: false, hasPendingWrites: false }))
+
+    expect(readActiveSessionBackupRecord('user-1')).toMatchObject({ baseRevision: 'revision-1', unsynced: true })
+    expect(readActiveSessionBackupRecord('user-1')?.session.exercises[0].sets[0].reps).toBe('7')
+  })
 })

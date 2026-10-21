@@ -26,13 +26,15 @@ describe('browser diagnostics classification', () => {
     expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED')).toBe(true)
   })
 
-  it('ignores only aborted emulator Firestore channels in an intentional navigation or teardown window', () => {
+  it('ignores aborted emulator listen channels, and aborted write channels only in a navigation or teardown window', () => {
     const writeChannelUrl = 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8'
     const listenChannelUrl = 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Listen/channel?VER=8'
 
     expect(isBlockingRequestFailure('xhr', 'net::ERR_ABORTED', writeChannelUrl)).toBe(true)
     expect(isBlockingRequestFailure('xhr', 'net::ERR_ABORTED', writeChannelUrl, false)).toBe(true)
     expect(isBlockingRequestFailure('xhr', 'net::ERR_ABORTED', writeChannelUrl, true)).toBe(false)
+    expect(isBlockingRequestFailure('xhr', 'net::ERR_ABORTED', listenChannelUrl)).toBe(false)
+    expect(isBlockingRequestFailure('xhr', 'net::ERR_FAILED', listenChannelUrl)).toBe(true)
     expect(isBlockingRequestFailure('xhr', 'net::ERR_ABORTED', listenChannelUrl, true)).toBe(false)
     expect(isBlockingRequestFailure('fetch', 'net::ERR_ABORTED', writeChannelUrl, true)).toBe(false)
     expect(isBlockingRequestFailure('fetch', 'net::ERR_ABORTED', listenChannelUrl, true)).toBe(false)
@@ -199,7 +201,7 @@ describe('browser diagnostics controller', () => {
     } as Request
     const unrelatedRequest = {
       ...request,
-      url: () => 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Listen/channel?VER=8',
+      url: () => 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8&RID=2',
     } as Request
 
     const controller = createBrowserDiagnosticsController()
@@ -227,7 +229,7 @@ describe('browser diagnostics controller', () => {
         kind: 'requestfailed',
         message: 'net::ERR_ABORTED',
         method: 'GET',
-        url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Listen/channel?VER=8',
+        url: 'http://127.0.0.1:8080/google.firestore.v1.Firestore/Write/channel?VER=8&RID=2',
         blocking: true,
       },
     ])

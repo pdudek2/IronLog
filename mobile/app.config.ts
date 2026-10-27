@@ -19,7 +19,7 @@ const allowEmulatorCleartext: ConfigPlugin = (expoConfig) => withAndroidManifest
 })
 
 const apiBaseUrl = process.env.IRONLOG_MOBILE_API_URL
-  ?? (backend === 'emulator' ? `http://${emulatorHost}:3000` : 'https://ironlog-coach.vercel.app')
+  ?? (backend === 'emulator' ? `http://${emulatorHost}:3000` : 'https://getshear.vercel.app')
 
 const config: ExpoConfig = {
   name: 'SHEAR Dev',

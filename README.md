@@ -4,7 +4,7 @@ _Formerly IronLog._
 
 SHEAR records strength workouts and tracks progress over time. An active workout stores sets, reps, weight, and rest time. Once finished, its data appears in the training history, progress charts, and personal records.
 
-[Open SHEAR](https://ironlog-coach.vercel.app/login)
+[Open SHEAR](https://getshear.vercel.app/login)
 
 ## Install on a phone
 

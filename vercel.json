@@ -26,6 +26,14 @@
       ]
     }
   ],
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "ironlog-coach.vercel.app" }],
+      "destination": "https://getshear.vercel.app/$1",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",

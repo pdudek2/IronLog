@@ -1,12 +1,14 @@
-# IronLog
+# SHEAR
 
-IronLog records strength workouts and tracks progress over time. An active workout stores sets, reps, weight, and rest time. Once finished, its data appears in the training history, progress charts, and personal records.
+_Formerly IronLog._
 
-[Open IronLog](https://ironlog-coach.vercel.app/login)
+SHEAR records strength workouts and tracks progress over time. An active workout stores sets, reps, weight, and rest time. Once finished, its data appears in the training history, progress charts, and personal records.
+
+[Open SHEAR](https://ironlog-coach.vercel.app/login)
 
 ## Install on a phone
 
-On iPhone, open IronLog in Safari and choose **Share → Add to Home Screen**. On Android, open it in Chrome and choose **Menu → Install app** (or **Add to Home screen**). Reopen the installed app after a release to load the latest version; offline launch is not supported.
+On iPhone, open SHEAR in Safari and choose **Share → Add to Home Screen**. On Android, open it in Chrome and choose **Menu → Install app** (or **Add to Home screen**). Reopen the installed app after a release to load the latest version; offline launch is not supported.
 
 The native Android app in `mobile/` supports sign-in, active-workout editing, exercise selection, Finish/Discard with offline recovery, Minimize/Return, workout history and detail, plan creation/editing/deletion, workout start, Progress, and Coach chat/plan generation with secure per-account key storage. It uses React Native with Expo Router and the existing Firebase backend. The native migration is still in progress; remaining web flows and independent acceptance gates are tracked in the canonical local PRODUCT.md.
 
@@ -16,7 +18,7 @@ The native waveform reuses the web path and one-shot trace timings, responds to 
 
 ## Training
 
-Start an empty workout or use a saved template. IronLog shows the previous result for each exercise, keeps the active session available after a refresh, and includes a rest timer between sets.
+Start an empty workout or use a saved template. SHEAR shows the previous result for each exercise, keeps the active session available after a refresh, and includes a rest timer between sets.
 
 Before training, a short readiness check records sleep, energy, stress, and soreness.
 
@@ -28,7 +30,7 @@ Weights are stored in kilograms. The display unit can be changed to pounds in th
 
 ## Exercises and templates
 
-IronLog includes a built-in exercise catalog. Custom exercises are stored separately from it.
+SHEAR includes a built-in exercise catalog. Custom exercises are stored separately from it.
 
 Templates keep exercise order, targets, and notes for repeatable sessions. A template can be edited later or used as the starting point for a new workout.
 
@@ -38,7 +40,7 @@ Native Coach supports Chat and Plan. Leaving Coach, switching modes or putting t
 
 AI Coach answers questions about training and can draft a workout plan from the user's profile, readiness, recent sessions, and records. The draft can be edited before it is saved as a template.
 
-The integration uses the user's own OpenRouter API key. The key stays in local browser storage on web or platform secure storage on native, scoped to the authenticated Firebase user, and is sent to the server only for the current request. IronLog does not store it in the training database. Both chat and plan generation use `openai/gpt-5.6-luna` with `reasoning.effort: max`; the server fixes the model and does not fall back to another model. Add the key in Coach settings. Older Claude keys are not reused.
+The integration uses the user's own OpenRouter API key. The key stays in local browser storage on web or platform secure storage on native, scoped to the authenticated Firebase user, and is sent to the server only for the current request. SHEAR does not store it in the training database. Both chat and plan generation use `openai/gpt-5.6-luna` with `reasoning.effort: max`; the server fixes the model and does not fall back to another model. Add the key in Coach settings. Older Claude keys are not reused.
 
 ## Local development
 

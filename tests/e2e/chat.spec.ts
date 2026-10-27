@@ -68,7 +68,7 @@ test.describe('Chat UI', () => {
     await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
 
     await expect(page.getByPlaceholder('Paste OpenRouter API key')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByText('Stored locally · sent through IronLog to OpenRouter only for each request.', { exact: true }))
+    await expect(page.getByText('Stored locally · sent through SHEAR to OpenRouter only for each request.', { exact: true }))
       .toBeVisible({ timeout: 5_000 })
 
     await expect(page.getByRole('button', { name: 'Remove locally stored key' }))

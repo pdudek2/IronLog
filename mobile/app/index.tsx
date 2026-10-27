@@ -205,10 +205,10 @@ function LoginForm() {
         <SignalBackdrop focused={focusedField !== null} />
         <View style={styles.brandRow}>
           <View style={styles.brandMark}>
-            <Text style={styles.brandMarkText}>IL</Text>
+            <Text style={styles.brandMarkText}>S</Text>
             <View style={styles.brandDot} />
           </View>
-          <Text style={styles.brandName}>IronLog</Text>
+          <Text style={styles.brandName}>SHEAR</Text>
         </View>
         <View accessible accessibilityRole="header" accessibilityLabel="Find your training rhythm.">
           <Text style={styles.hero}>Find your{`\n`}training</Text>

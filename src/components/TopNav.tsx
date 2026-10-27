@@ -51,12 +51,12 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           type="button"
           className="top-nav-brand"
           onClick={() => go('/dashboard')}
-          aria-label="IronLog — home"
+          aria-label="SHEAR — home"
         >
           <span className="top-nav-brand-mark" aria-hidden="true">
-            IL
+            S
           </span>
-          <span className="hidden sm:inline">IronLog</span>
+          <span className="hidden sm:inline">SHEAR</span>
         </button>
 
         <nav className="top-nav-links" aria-label="Main navigation">

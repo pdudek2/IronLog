@@ -34,8 +34,8 @@ describe('installable web app assets', () => {
     }
 
     expect(manifest).toMatchObject({
-      name: 'IronLog',
-      short_name: 'IronLog',
+      name: 'SHEAR',
+      short_name: 'SHEAR',
       id: '/',
       start_url: '/dashboard',
       scope: '/',

@@ -169,7 +169,7 @@ function AccountAiKeyPanel({
         <div className="min-w-0">
           <h2 className="text-xl font-bold text-white">OpenRouter key</h2>
           <p className="ai-key-panel-description mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-            Your key is stored locally in this browser. AI requests send it through the IronLog server to OpenRouter; IronLog does not store it in the database.
+            Your key is stored locally in this browser. AI requests send it through the SHEAR server to OpenRouter; SHEAR does not store it in the database.
           </p>
         </div>
 
@@ -227,7 +227,7 @@ function AccountAiKeyPanel({
 
         <p className="ai-key-local-note">
           <ShieldCheck size={14} aria-hidden="true" />
-          Stored locally · sent through IronLog to OpenRouter only for each request.
+          Stored locally · sent through SHEAR to OpenRouter only for each request.
         </p>
 
         {hasSavedKey && (

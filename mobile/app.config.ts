@@ -22,7 +22,7 @@ const apiBaseUrl = process.env.IRONLOG_MOBILE_API_URL
   ?? (backend === 'emulator' ? `http://${emulatorHost}:3000` : 'https://ironlog-coach.vercel.app')
 
 const config: ExpoConfig = {
-  name: 'IronLog Dev',
+  name: 'SHEAR Dev',
   slug: 'ironlog-mobile',
   scheme: 'ironlog-dev',
   version: '0.1.0',

@@ -39,9 +39,9 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
       <header className="auth-instrument-header">
         <div className="auth-instrument-brand">
           <span className="auth-instrument-mark">
-            IL
+            S
           </span>
-          <span>IronLog</span>
+          <span>SHEAR</span>
         </div>
       </header>
 

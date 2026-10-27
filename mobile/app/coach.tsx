@@ -85,7 +85,7 @@ function Coach({ uid }: { uid: string }) {
       <View style={s.grow}><Button primary disabled={state.keySaving || state.keyLoading || !!state.storageError || !draft.trim()} onPress={() => void saveKey(draft)}>{state.keySaving ? 'Saving…' : state.key ? 'Update key' : 'Save key'}</Button></View>
       <Button label="Remove locally stored key" disabled={!state.key || state.keySaving || state.keyLoading || !!state.storageError} onPress={() => void saveKey('')}><Svg width={17} height={17} viewBox="0 0 24 24"><Path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" fill="none" stroke={colors.muted} strokeWidth={1.6} /></Svg></Button>
     </View>
-    <Text style={s.small}>Stored locally · sent through IronLog to OpenRouter only for each request.</Text>
+    <Text style={s.small}>Stored locally · sent through SHEAR to OpenRouter only for each request.</Text>
     {!!state.key && <View style={s.model}><Text style={s.boldLabel}>OpenRouter model</Text><Text style={s.body}>{state.validation === 'checking' ? 'Verifying key…' : state.validation === 'valid' ? 'GPT-5.6 Luna · Max reasoning' : 'Saved on device · needs verification'}</Text>
       {state.validation === 'unverified' && <Button onPress={() => void controller.verify()}>Retry verification</Button>}</View>}
     {state.keyError && <Text accessibilityRole="alert" style={s.error}>{state.keyError}</Text>}

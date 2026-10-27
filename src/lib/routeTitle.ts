@@ -19,5 +19,5 @@ const TITLES: Array<[RegExp, string]> = [
 // Browser history, tabs and screen readers tell pages apart by their title.
 export function routeTitle(pathname: string): string {
   const page = TITLES.find(([pattern]) => pattern.test(pathname))?.[1] ?? 'Page not found'
-  return `${page} · IronLog`
+  return `${page} · SHEAR`
 }

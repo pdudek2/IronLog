@@ -33,7 +33,7 @@ export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (
 
   return <View style={styles.header}>
     <Pressable accessibilityRole="button" accessibilityLabel="Open Home" hitSlop={6} onPress={() => onRequestAction ? onRequestAction('home', () => router.replace('/dashboard')) : router.navigate('/dashboard')} style={styles.brand}>
-      <Text style={styles.brandText}>IL</Text>
+      <Text style={styles.brandText}>S</Text>
       <View style={styles.brandDot} />
     </Pressable>
     <View style={styles.actions}>

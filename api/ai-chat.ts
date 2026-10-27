@@ -204,7 +204,7 @@ function buildSystemPrompt(context: AiUserContext): string {
   const sections = buildChatContextSections(context)
 
   return [
-    'You are the AI Coach in IronLog.',
+    'You are the AI Coach in SHEAR.',
     'Be specific, supportive and concise.',
     'For chat responses, use the language of the latest substantive user message.',
     'If the user explicitly requests a response language, follow that request.',
@@ -274,7 +274,7 @@ function buildPlanSystemPrompt(
     .join('\n')
 
   return [
-    'You generate workout plans for IronLog. Use the user\'s free-text Notes as the language cue for plan names, day names, summaries and explanations.',
+    'You generate workout plans for SHEAR. Use the user\'s free-text Notes as the language cue for plan names, day names, summaries and explanations.',
     'Honor an explicit response-language request in Notes. Otherwise infer the language from usable Notes; if Notes are empty, only a placeholder, or no language can be inferred, write in English.',
     'Do not use the goal, focus, equipment, structured context, English instructions or catalog text as a language cue.',
     'Preserve exercise names from the supplied catalog.',

@@ -127,7 +127,7 @@ test('primary mobile controls expose at least 44px hit areas', async ({ page }, 
   await expect(page.getByRole('slider', { name: 'Readiness: Sleep' })).toBeVisible()
 
   const controls = [
-    page.getByRole('button', { name: 'IronLog — home' }),
+    page.getByRole('button', { name: 'SHEAR — home' }),
     page.getByRole('slider', { name: 'Readiness: Sleep' }),
   ]
 

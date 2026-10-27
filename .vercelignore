@@ -17,7 +17,7 @@ playwright-report/
 .playwright/
 .playwright-cli/
 .playwright-mcp/
-tests/e2e/.auth/
+tests/
 .env.local
 .env.test
 *.log

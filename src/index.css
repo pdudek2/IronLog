@@ -910,9 +910,10 @@ a {
     0 18px 44px rgba(0, 0, 0, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
   color: var(--text-strong);
-  font-family: var(--font-display);
-  font-size: 0.82rem;
-  font-weight: 820;
+}
+
+.puls-loader svg {
+  width: 1.6rem;
 }
 
 .puls-loader::before {
@@ -923,19 +924,6 @@ a {
   border: 1px solid rgba(255, 113, 130, 0.12);
   opacity: 0;
   animation: puls-loader-ring 1.8s ease-out infinite;
-}
-
-.puls-loader::after {
-  content: "";
-  position: absolute;
-  right: 0.48rem;
-  bottom: 0.48rem;
-  width: 0.34rem;
-  height: 0.34rem;
-  border-radius: 50%;
-  background: var(--puls-effort-text);
-  box-shadow: 0 0 18px rgba(255, 113, 130, 0.58);
-  animation: auth-live-breathe 2.4s ease-in-out infinite;
 }
 
 /* ── Auth entry: living training signal ─────────────────────────────── */
@@ -1032,7 +1020,6 @@ a {
 }
 
 .auth-instrument-mark {
-  position: relative;
   display: inline-flex;
   width: 2.25rem;
   height: 2.25rem;
@@ -1047,24 +1034,12 @@ a {
     0 4px 8px rgba(0, 0, 0, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.16);
   color: var(--text-strong);
-  font-family: var(--font-display);
-  font-size: 0.78rem;
-  font-weight: 800;
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
 }
 
-.auth-instrument-mark::after {
-  content: "";
-  position: absolute;
-  right: 0.42rem;
-  bottom: 0.42rem;
-  width: 0.32rem;
-  height: 0.32rem;
-  border-radius: 50%;
-  background: var(--puls-effort-text);
-  box-shadow: 0 0 18px rgba(255, 113, 130, 0.55);
-  animation: auth-live-breathe 3.6s ease-in-out infinite;
+.auth-instrument-mark svg {
+  width: 1.3rem;
 }
 
 .auth-instrument-main {
@@ -1364,17 +1339,6 @@ a {
   }
 }
 
-@keyframes auth-live-breathe {
-  0%, 100% {
-    opacity: 0.54;
-    transform: scale(0.92);
-  }
-
-  50% {
-    opacity: 0.92;
-    transform: scale(1);
-  }
-}
 
 @keyframes auth-rhythm-live {
   0%, 28%, 100% {
@@ -1571,7 +1535,6 @@ a {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .auth-instrument-mark::after,
   .auth-signal-area,
   .auth-signal-trace,
   .auth-title-word-inner,
@@ -1657,7 +1620,6 @@ a {
 }
 
 .top-nav-brand-mark {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1672,21 +1634,10 @@ a {
     0 12px 30px rgba(0, 0, 0, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.13);
   color: var(--text-strong);
-  font-family: var(--font-display);
-  font-size: 0.72rem;
-  font-weight: 820;
 }
 
-.top-nav-brand-mark::after {
-  content: "";
-  position: absolute;
-  right: 0.34rem;
-  bottom: 0.34rem;
-  width: 0.28rem;
-  height: 0.28rem;
-  border-radius: 50%;
-  background: var(--puls-effort-text);
-  box-shadow: 0 0 14px rgba(255, 113, 130, 0.55);
+.top-nav-brand-mark svg {
+  width: 1.15rem;
 }
 
 .top-nav-links {

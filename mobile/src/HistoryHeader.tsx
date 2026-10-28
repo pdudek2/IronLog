@@ -8,6 +8,7 @@ import { useAuthRuntime } from './runtime'
 import { useStreak } from './streak'
 import { colors } from './theme'
 import { showDialog } from './dialog'
+import { BrandMark } from './icons'
 
 export type HeaderAction = 'home' | 'plans' | 'progress' | 'profile' | 'signOut'
 
@@ -33,8 +34,7 @@ export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (
 
   return <View style={styles.header}>
     <Pressable accessibilityRole="button" accessibilityLabel="Open Home" hitSlop={6} onPress={() => onRequestAction ? onRequestAction('home', () => router.replace('/dashboard')) : router.navigate('/dashboard')} style={styles.brand}>
-      <Text style={styles.brandText}>S</Text>
-      <View style={styles.brandDot} />
+      <BrandMark width={18} />
     </Pressable>
     <View style={styles.actions}>
     {streak > 0 && <Pressable accessibilityRole="button" accessibilityLabel={`Workout streak ${streak} ${streak === 1 ? 'day' : 'days'}`} onPress={() => onRequestAction ? onRequestAction('progress', () => router.navigate('/progress')) : router.navigate('/progress')} style={styles.streakTarget}><View style={styles.streak}>
@@ -58,8 +58,6 @@ export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (
 const styles = StyleSheet.create({
   header: { alignItems: 'center', backgroundColor: '#0d0c0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', height: 64, justifyContent: 'space-between', paddingHorizontal: 16 },
   brand: { alignItems: 'center', backgroundColor: 'rgba(17,16,18,0.76)', borderColor: 'rgba(244, 241, 242, 0.18)', borderRadius: 8, borderWidth: 1, height: 32, justifyContent: 'center', width: 32, experimental_backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.045))' },
-  brandText: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 12 },
-  brandDot: { backgroundColor: colors.accentText, borderRadius: 2, bottom: 4, height: 4, position: 'absolute', right: 4, width: 4 },
   selected: { backgroundColor: 'rgba(244,241,242,0.075)', borderRadius: 8 },
   signOut: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   streakTarget: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },

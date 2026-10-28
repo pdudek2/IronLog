@@ -59,6 +59,7 @@ import { useKeyboardReveal } from '../src/useKeyboardReveal'
 import { colors, pageBackground, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
+import { BrandMark } from '../src/icons'
 
 function ActionButton({ label, onPress, secondary = false, disabled = false }: {
   label: string
@@ -205,8 +206,7 @@ function LoginForm() {
         <SignalBackdrop focused={focusedField !== null} />
         <View style={styles.brandRow}>
           <View style={styles.brandMark}>
-            <Text style={styles.brandMarkText}>S</Text>
-            <View style={styles.brandDot} />
+            <BrandMark width={21} />
           </View>
           <Text style={styles.brandName}>SHEAR</Text>
         </View>
@@ -896,8 +896,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 36,
   },
-  brandMarkText: { color: colors.textStrong, fontFamily: 'Archivo_800ExtraBold', fontSize: 13 },
-  brandDot: { backgroundColor: colors.accent, borderRadius: 2, bottom: 7, height: 4, position: 'absolute', right: 7, width: 4 },
   brandName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15, marginLeft: 12 },
   hero: { color: colors.textStrong, fontFamily: 'ArchivoHero', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.496 },
   heroAccent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 35.2, letterSpacing: -1.584, lineHeight: 34.496, marginLeft: 9.152 },

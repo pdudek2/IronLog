@@ -1,12 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- SHEAR app icon master. One 400x480 block cut above its middle; the top part slid 35% to the right.
+       Outer corners chamfered, cut corners square, red = the exposed shear plane. Full-bleed: platforms apply their own mask.
+       PNGs are rendered from this file by scripts/render-icons.mjs, which uses the #background and #mark groups. -->
   <defs>
-    <linearGradient id="surface" x1="512" y1="144" x2="512" y2="880" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#2e2b30" />
-      <stop offset="1" stop-color="#1a191c" />
-    </linearGradient>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b191d"/><stop offset=".6" stop-color="#111012"/><stop offset="1" stop-color="#0a090b"/></linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f1f2" stop-opacity=".07"/><stop offset=".32" stop-color="#f4f1f2" stop-opacity="0"/></linearGradient>
+    <radialGradient id="halo" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#f4f1f2" stop-opacity=".10"/><stop offset="1" stop-color="#f4f1f2" stop-opacity="0"/></radialGradient>
+    <linearGradient id="steelU" gradientUnits="userSpaceOnUse" x1="382" y1="272" x2="782" y2="487"><stop offset="0" stop-color="#faf8fb"/><stop offset=".5" stop-color="#dedae1"/><stop offset="1" stop-color="#aaa5b0"/></linearGradient>
+    <linearGradient id="steelL" gradientUnits="userSpaceOnUse" x1="242" y1="507" x2="642" y2="752"><stop offset="0" stop-color="#ebe7ee"/><stop offset=".5" stop-color="#cbc6cf"/><stop offset="1" stop-color="#96909c"/></linearGradient>
+    <linearGradient id="cut" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7182"/><stop offset=".5" stop-color="#f0435a"/><stop offset="1" stop-color="#b8263c"/></linearGradient>
   </defs>
-  <rect width="1024" height="1024" fill="#111012" />
-  <rect x="144" y="144" width="736" height="736" rx="176" fill="url(#surface)" stroke="#524e55" stroke-width="18" />
-  <text x="512" y="630" fill="#ffffff" font-family="Archivo, Arial, sans-serif" font-size="360" font-weight="800" text-anchor="middle">IL</text>
-  <circle cx="730" cy="735" r="52" fill="#ff7182" />
+
+  <g id="background">
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+    <rect width="1024" height="1024" fill="url(#sheen)"/>
+    <circle cx="512" cy="512" r="380" fill="url(#halo)"/>
+  </g>
+
+  <g id="mark">
+    <path d="M382 487 V328 L438 272 H726 L782 328 V487 Z" fill="url(#steelU)"/>
+    <path d="M383.5 330 L438.5 274 H725.5 L780.5 329" fill="none" stroke="#ffffff" stroke-opacity=".8" stroke-width="3"/>
+    <rect x="382" y="487" width="260" height="20" fill="url(#cut)"/>
+    <path d="M242 507 H642 V696 L586 752 H298 L242 696 Z" fill="url(#steelL)"/>
+    <path d="M642 508.5 H382" fill="none" stroke="#ffffff" stroke-opacity=".35" stroke-width="3"/>
+    <path d="M382 508.5 H242" fill="none" stroke="#ffffff" stroke-opacity=".7" stroke-width="3"/>
+  </g>
 </svg>

@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import BrandMark from './BrandMark'
 
 interface AuthShellProps {
   title: string
@@ -39,7 +40,7 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
       <header className="auth-instrument-header">
         <div className="auth-instrument-brand">
           <span className="auth-instrument-mark">
-            S
+            <BrandMark />
           </span>
           <span>SHEAR</span>
         </div>

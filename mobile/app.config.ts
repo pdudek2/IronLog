@@ -27,6 +27,8 @@ const config: ExpoConfig = {
   scheme: 'ironlog-dev',
   version: '0.1.0',
   orientation: 'portrait',
+  // Rendered from public/app-icon-source.svg by scripts/render-icons.mjs.
+  icon: './assets/icon.png',
   plugins: [
     'expo-router',
     'expo-font',
@@ -40,6 +42,10 @@ const config: ExpoConfig = {
   android: {
     package: 'com.pdudek2.ironlog.dev',
     googleServicesFile: process.env.IRONLOG_GOOGLE_SERVICES_FILE ?? './config/google-services.json',
+    adaptiveIcon: {
+      foregroundImage: './assets/adaptive-icon-foreground.png',
+      backgroundImage: './assets/adaptive-icon-background.png',
+    },
   },
   extra: {
     firebaseBackend: backend,

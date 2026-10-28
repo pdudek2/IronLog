@@ -1,6 +1,7 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
+import BrandMark from './BrandMark'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { useAuthStore } from '../store/authStore'
@@ -54,7 +55,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
           aria-label="SHEAR — home"
         >
           <span className="top-nav-brand-mark" aria-hidden="true">
-            S
+            <BrandMark />
           </span>
           <span className="hidden sm:inline">SHEAR</span>
         </button>

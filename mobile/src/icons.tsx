@@ -1,4 +1,5 @@
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Path, Rect } from 'react-native-svg'
+import { BRAND_MARK } from '../../src/shared/brandMark'
 import { colors } from './theme'
 
 // Lucide-style strokes for the places that used text glyphs (⌄ ⌃ × ✓ ‹ › ＋).
@@ -15,5 +16,14 @@ const paths = {
 export function Icon({ name, size = 16, color = colors.muted }: { name: keyof typeof paths; size?: number; color?: string }) {
   return <Svg accessibilityElementsHidden importantForAccessibility="no" width={size} height={size} viewBox="0 0 24 24">
     <Path d={paths[name]} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+}
+
+// The SHEAR mark, same geometry as the web header and the app icon.
+export function BrandMark({ width = 20 }: { width?: number }) {
+  return <Svg accessibilityElementsHidden importantForAccessibility="no" width={width} height={width * 480 / 540} viewBox={BRAND_MARK.viewBox}>
+    <Path d={BRAND_MARK.upper} fill={colors.textStrong} />
+    <Rect {...BRAND_MARK.cut} fill={colors.accent} />
+    <Path d={BRAND_MARK.lower} fill={colors.textStrong} />
   </Svg>
 }

@@ -1,6 +1,7 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import BottomNav from './BottomNav'
+import BrandMark from './BrandMark'
 import MobileInteractionProvider from './MobileInteractionProvider'
 import TopNav from './TopNav'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
@@ -39,7 +40,7 @@ function PageFallback() {
   return (
     <div className="flex min-h-[50dvh] items-center justify-center">
       <div className="puls-loader" aria-hidden="true">
-        <span>S</span>
+        <BrandMark />
       </div>
     </div>
   )

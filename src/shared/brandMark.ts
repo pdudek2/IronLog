@@ -10,17 +10,38 @@ export const BRAND_MARK = {
 type Bezier = readonly [number, number, number, number]
 const LINEAR: Bezier = [0, 0, 1, 1]
 
-// Stick-slip, the motion of shear: the block starts whole, strains under static friction, then slips to rest.
+// The slip, the motion of shear: the block holds whole, then the upper part slides smoothly to rest.
 // `offsets` move the upper part in mark units (-140 puts it directly over the lower part), `times` are ms,
-// `ease` holds one cubic-bezier per segment. Tremor amplitudes read as 1-2 px at 24-48 px wide.
+// `ease` holds one cubic-bezier per segment. `cover` is the opacity of the block-coloured fill over the seam:
+// the cut fades in red as the slide starts. `red` keeps the red seam fully on whenever the cover is not opaque,
+// and off under an opaque cover, so its antialiased edge leaves no red fringe on the whole block.
+export type SlipTrack = {
+  times: readonly number[]
+  offsets: readonly number[]
+  ease: readonly Bezier[]
+  cover: { times: readonly number[]; opacity: readonly number[] }
+  red: { times: readonly number[]; opacity: readonly number[] }
+}
+
+const SLIDE: Bezier = [0.16, 1, 0.3, 1]
+const SLIDE_BACK: Bezier = [0.65, 0, 0.35, 1]
+
 export const BRAND_MARK_SLIP = {
-  times: [0, 40, 80, 120, 160, 200, 320, 440],
-  offsets: [-140, -120, -158, -118, -162, -140, 16, 0],
-  ease: [LINEAR, LINEAR, LINEAR, LINEAR, LINEAR, [0.25, 1, 0.5, 1] as Bezier, [0.45, 0, 0.55, 1] as Bezier],
-  // The cut turns red only once the slip starts; until then the seam is filled like the block.
-  slipAt: 200,
-  // Loaders rest on the finished mark this long before playing again.
-  loopPause: 1100,
+  once: {
+    times: [0, 350, 800],
+    offsets: [-140, -140, 0],
+    ease: [LINEAR, SLIDE],
+    cover: { times: [0, 350, 450, 800], opacity: [1, 1, 0, 0] },
+    red: { times: [0, 350, 351, 800], opacity: [0, 0, 1, 1] },
+  } satisfies SlipTrack,
+  // Loaders play the same slip, rest on the finished mark, fade the cut out while sliding back whole, and hold.
+  loop: {
+    times: [0, 350, 800, 1900, 2350, 2600],
+    offsets: [-140, -140, 0, 0, -140, -140],
+    ease: [LINEAR, SLIDE, LINEAR, SLIDE_BACK, LINEAR],
+    cover: { times: [0, 350, 450, 1900, 2050, 2600], opacity: [1, 1, 0, 0, 1, 1] },
+    red: { times: [0, 350, 351, 2049, 2050, 2600], opacity: [0, 0, 1, 1, 0, 0] },
+  } satisfies SlipTrack,
   // The seam is as wide as the upper part and moves with it; clipped to the lower part's span it is their overlap.
   seam: { x: 382, y: 479, width: 400, height: 36 },
   clip: { x: 242, width: 400 },

@@ -34,13 +34,14 @@ export const BRAND_MARK_SLIP = {
     cover: { times: [0, 350, 450, 800], opacity: [1, 1, 0, 0] },
     red: { times: [0, 350, 351, 800], opacity: [0, 0, 1, 1] },
   } satisfies SlipTrack,
-  // Loaders play the same slip, rest on the finished mark, fade the cut out while sliding back whole, and hold.
+  // Loaders start on the finished mark, so a quick load shows the plain mark; a longer one rests, fades the cut out
+  // while sliding back whole, holds, and plays the same slip.
   loop: {
-    times: [0, 350, 800, 1900, 2350, 2600],
-    offsets: [-140, -140, 0, 0, -140, -140],
-    ease: [LINEAR, SLIDE, LINEAR, SLIDE_BACK, LINEAR],
-    cover: { times: [0, 350, 450, 1900, 2050, 2600], opacity: [1, 1, 0, 0, 1, 1] },
-    red: { times: [0, 350, 351, 2049, 2050, 2600], opacity: [0, 0, 1, 1, 0, 0] },
+    times: [0, 1100, 1550, 2150, 2600],
+    offsets: [0, 0, -140, -140, 0],
+    ease: [LINEAR, SLIDE_BACK, LINEAR, SLIDE],
+    cover: { times: [0, 1100, 1250, 2150, 2250, 2600], opacity: [0, 0, 1, 1, 0, 0] },
+    red: { times: [0, 1249, 1250, 2150, 2151, 2600], opacity: [1, 1, 0, 0, 1, 1] },
   } satisfies SlipTrack,
   // The seam is as wide as the upper part and moves with it; clipped to the lower part's span it is their overlap.
   seam: { x: 382, y: 479, width: 400, height: 36 },

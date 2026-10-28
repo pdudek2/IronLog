@@ -18,18 +18,18 @@ test('slip frames hit every keyframe in order', () => {
   }
 })
 
-test('the loop plays the single slip first and comes back whole', () => {
+test('the loop starts on the finished mark and ends with the single slip', () => {
   const { once, loop } = BRAND_MARK_SLIP
-  once.times.forEach((ms, index) => {
-    assert.equal(loop.times[index], ms)
-    assert.equal(loop.offsets[index], once.offsets[index])
-  })
-  assert.equal(loop.offsets[0], -140)
-  assert.equal(loop.offsets[loop.offsets.length - 1], -140)
+  // A load shorter than the first rest shows the plain mark: slid, cut in red.
+  assert.equal(loop.offsets[0], 0)
+  assert.equal(loop.cover.opacity[0], 0)
+  assert.equal(loop.red.opacity[0], 1)
+  assert.equal(loop.offsets[loop.offsets.length - 1], 0)
+  const last = loop.times.length - 1
+  assert.equal(loop.times[last] - loop.times[last - 1], once.times[once.times.length - 1] - once.times[once.times.length - 2])
+  assert.deepEqual(loop.ease[loop.ease.length - 1], once.ease[once.ease.length - 1])
+  assert.equal(loop.offsets[last - 1], once.offsets[once.offsets.length - 2])
   assert.equal(once.offsets[once.offsets.length - 1], 0)
-  // The cut is hidden while the block is whole and shown once it rests slid.
-  assert.equal(loop.cover.opacity[0], 1)
-  assert.equal(loop.cover.opacity[loop.cover.opacity.length - 1], 1)
   assert.equal(once.cover.opacity[once.cover.opacity.length - 1], 0)
 })
 

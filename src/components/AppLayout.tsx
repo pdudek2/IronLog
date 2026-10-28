@@ -1,7 +1,6 @@
 import { Suspense, useEffect, useRef } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import BottomNav from './BottomNav'
-import BrandMark from './BrandMark'
 import MobileInteractionProvider from './MobileInteractionProvider'
 import TopNav from './TopNav'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
@@ -36,14 +35,9 @@ function isWorkoutFocusShell(path: string): boolean {
   return path.startsWith('/workout/new')
 }
 
+// Route code loads fast; the page's own skeleton covers its data load.
 function PageFallback() {
-  return (
-    <div className="flex min-h-[50dvh] items-center justify-center">
-      <div className="puls-loader" aria-hidden="true">
-        <BrandMark slip="loop" />
-      </div>
-    </div>
-  )
+  return <div className="min-h-[50dvh]" aria-busy="true" />
 }
 
 export default function AppLayout() {

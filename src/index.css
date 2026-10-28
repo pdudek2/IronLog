@@ -3957,6 +3957,28 @@ a {
   100% { background-position: -100% 0; }
 }
 
+/* Page loading skeletons (PageSkeleton): blocks appear after 200 ms so quick loads go straight to content. */
+.skeleton-bone {
+  display: block;
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--surface-muted), var(--border), var(--surface-muted));
+  background-size: 200% 100%;
+  animation:
+    skeleton-bone-in 160ms ease-out 200ms both,
+    progress-skeleton-pulse 1.4s ease-in-out 200ms infinite;
+}
+
+@keyframes skeleton-bone-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-bone {
+    animation: none;
+  }
+}
+
 .progress-panel {
   position: relative;
   overflow: hidden;

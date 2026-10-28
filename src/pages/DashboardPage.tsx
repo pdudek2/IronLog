@@ -17,7 +17,7 @@ import { ActionFeedback } from '../components/ActionFeedback'
 import WorkoutProjectionStatus, {
   type ProjectionRetryState,
 } from '../components/workout/WorkoutProjectionStatus'
-import { Button, LoadingState } from '../components/ui'
+import { Bone, Button, PageSkeleton } from '../components/ui'
 import {
   getTemplates,
   type TemplateExerciseOverrideMap,
@@ -123,6 +123,35 @@ function fadeUp(delay: number) {
     animate: { opacity: 1, y: 0 },
     transition: { delay: delay > 0 ? 0.04 : 0, duration: 0.22 },
   }
+}
+
+function DashboardLoadingSkeleton() {
+  return (
+    <PageSkeleton label="Loading dashboard..." className="dashboard-page">
+      <section className="dashboard-home">
+        <div className="dashboard-home-copy">
+          <Bone width="9.5rem" height="0.75rem" style={{ marginBottom: '1rem' }} />
+          <Bone width="7rem" height="1rem" style={{ marginBottom: '0.6rem' }} />
+          <Bone width="min(17rem, 75%)" height="2.6rem" />
+          <Bone width="min(16rem, 70%)" height="0.95rem" style={{ marginTop: '1.25rem' }} />
+          <div className="dashboard-home-action-stack" style={{ marginTop: '1.15rem' }}>
+            <Bone height="7rem" style={{ borderRadius: 'var(--radius-xl)' }} />
+            <Bone width="10rem" height="1rem" />
+          </div>
+        </div>
+        <div className="dashboard-home-panel">
+          <Bone height="5.75rem" style={{ borderRadius: 'var(--radius-xl)' }} />
+        </div>
+      </section>
+      <div className="dashboard-week-panel">
+        <div className="dashboard-panel-head">
+          <Bone width="8rem" height="1.6rem" />
+          <Bone width="6.5rem" height="1rem" />
+        </div>
+        <Bone height="9rem" style={{ borderRadius: 'var(--radius-xl)' }} />
+      </div>
+    </PageSkeleton>
+  )
 }
 
 export default function DashboardPage() {
@@ -517,7 +546,7 @@ export default function DashboardPage() {
   }
 
   if (!dashboardReady && !!user) {
-    return <LoadingState message="Loading dashboard..." />
+    return <DashboardLoadingSkeleton />
   }
 
   const weeklyGoal = profile?.weeklyGoal ?? 3

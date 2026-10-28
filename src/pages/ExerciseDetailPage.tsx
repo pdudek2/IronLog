@@ -19,7 +19,7 @@ import { pluralize } from '../lib/pluralize'
 import { useAuthStore } from '../store/authStore'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { ActionFeedback } from '../components/ActionFeedback'
-import { Button, LoadingState } from '../components/ui'
+import { Bone, Button, PageSkeleton } from '../components/ui'
 import { useProfileStore } from '../store/profileStore'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
 
@@ -29,6 +29,26 @@ function formatDate(ts: number): string {
     day: 'numeric',
     month: 'short',
   })
+}
+
+function ExerciseDetailLoadingSkeleton() {
+  return (
+    <PageSkeleton label="Loading exercise..." className="exercise-detail-page">
+      <section className="hero-editorial">
+        <div className="flex flex-col gap-5">
+          <div style={{ display: 'grid', gap: '0.55rem' }}>
+            <Bone width="7rem" height="0.75rem" />
+            <Bone width="12rem" height="0.75rem" />
+          </div>
+          <Bone width="min(18rem, 80%)" height="2.8rem" />
+        </div>
+        <Bone width="min(22rem, 90%)" height="0.95rem" style={{ marginTop: '1.5rem' }} />
+      </section>
+      <div className="space-y-5">
+        <Bone height="15rem" style={{ borderRadius: 'var(--radius-xl)' }} />
+      </div>
+    </PageSkeleton>
+  )
 }
 
 export default function ExerciseDetailPage() {
@@ -120,7 +140,7 @@ export default function ExerciseDetailPage() {
   )
 
   if ((!skipHistoryLoad && loading) || userCatalogLoading) {
-    return <LoadingState message="Loading exercise..." />
+    return <ExerciseDetailLoadingSkeleton />
   }
 
   if (!skipHistoryLoad && loadError) {

@@ -20,7 +20,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery'
 import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
-import { LoadingState } from '../components/ui'
+import { Bone, PageSkeleton } from '../components/ui'
 import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
 import { exercises as exerciseDb } from '../data/exercises'
 import { isActiveSessionStale } from '../lib/sessionDuration'
@@ -171,6 +171,19 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
 }
 function getExerciseClientId(exercise: WorkoutExercise, exerciseIndex: number): string {
   return exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`
+}
+
+function WorkoutLoadingSkeleton() {
+  return (
+    <PageSkeleton label="Preparing workout...">
+      <div style={{ display: 'grid', gap: '0.85rem', paddingTop: '1rem' }}>
+        <Bone width="10rem" height="1.6rem" />
+        <Bone width="min(15rem, 70%)" height="2.75rem" />
+        <Bone height="10rem" style={{ marginTop: '0.75rem', borderRadius: 'var(--radius-xl)' }} />
+        <Bone height="10rem" style={{ borderRadius: 'var(--radius-xl)' }} />
+      </div>
+    </PageSkeleton>
+  )
 }
 
 export default function WorkoutPage() {
@@ -656,7 +669,7 @@ export default function WorkoutPage() {
         </div>
       )
     }
-    return <LoadingState message="Preparing workout..." />
+    return <WorkoutLoadingSkeleton />
   }
 
   if (staleSession) {

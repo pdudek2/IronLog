@@ -754,7 +754,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
       {state.status === 'loading' && (
         <View accessibilityLiveRegion="polite" style={styles.centerState}>
-          <View style={[styles.brandMark, styles.loaderMark]}><BrandMark width={26} slip="loop" /></View>
+          <View style={[styles.brandMark, styles.loaderMark]}><BrandMark width={26} /></View>
           <Text style={styles.stateTitle}>Checking your session…</Text>
         </View>
       )}
@@ -866,7 +866,7 @@ export default function IndexScreen() {
         </View>
       ) : user === undefined ? (
         <View style={styles.centerState}>
-          <View style={[styles.brandMark, styles.loaderMark]}><BrandMark width={26} slip="loop" /></View>
+          <View style={[styles.brandMark, styles.loaderMark]}><BrandMark width={26} /></View>
           <Text style={styles.stateTitle}>Restoring sign-in…</Text>
         </View>
       ) : user ? <SessionScreen key={user.uid} user={user} /> : <LoginForm />}

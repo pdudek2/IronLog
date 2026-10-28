@@ -24,25 +24,13 @@ export type SlipTrack = {
 }
 
 const SLIDE: Bezier = [0.16, 1, 0.3, 1]
-const SLIDE_BACK: Bezier = [0.65, 0, 0.35, 1]
 
 export const BRAND_MARK_SLIP = {
-  once: {
-    times: [0, 350, 800],
-    offsets: [-140, -140, 0],
-    ease: [LINEAR, SLIDE],
-    cover: { times: [0, 350, 450, 800], opacity: [1, 1, 0, 0] },
-    red: { times: [0, 350, 351, 800], opacity: [0, 0, 1, 1] },
-  } satisfies SlipTrack,
-  // Loaders start on the finished mark, so a quick load shows the plain mark; a longer one rests, fades the cut out
-  // while sliding back whole, holds, and plays the same slip.
-  loop: {
-    times: [0, 1100, 1550, 2150, 2600],
-    offsets: [0, 0, -140, -140, 0],
-    ease: [LINEAR, SLIDE_BACK, LINEAR, SLIDE],
-    cover: { times: [0, 1100, 1250, 2150, 2250, 2600], opacity: [0, 0, 1, 1, 0, 0] },
-    red: { times: [0, 1249, 1250, 2150, 2151, 2600], opacity: [1, 1, 0, 0, 1, 1] },
-  } satisfies SlipTrack,
+  times: [0, 350, 800],
+  offsets: [-140, -140, 0],
+  ease: [LINEAR, SLIDE],
+  cover: { times: [0, 350, 450, 800], opacity: [1, 1, 0, 0] },
+  red: { times: [0, 350, 351, 800], opacity: [0, 0, 1, 1] },
   // The seam is as wide as the upper part and moves with it; clipped to the lower part's span it is their overlap.
   seam: { x: 382, y: 479, width: 400, height: 36 },
   clip: { x: 242, width: 400 },

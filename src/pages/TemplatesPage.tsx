@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
 import { ActionFeedback } from '../components/ActionFeedback'
-import { Button, LoadingState } from '../components/ui'
+import { Bone, Button, PageSkeleton } from '../components/ui'
 import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { useAuthStore } from '../store/authStore'
 import {
@@ -23,6 +23,29 @@ function countPlanExercises(template: { days: { exercises: unknown[] }[] }): num
 interface TemplateDeleteOperation {
   target: WorkoutTemplate
   status: 'pending' | 'error'
+}
+
+function TemplatesLoadingSkeleton() {
+  return (
+    <PageSkeleton label="Loading plans..." className="workbench-page">
+      <section className="planner-header plans-header">
+        <div className="plans-header-title">
+          <h1>Plans</h1>
+        </div>
+        <div className="planner-header-actions">
+          <Bone width="5.5rem" height="2.75rem" />
+          <Bone width="7.5rem" height="2.75rem" />
+        </div>
+      </section>
+      {[0, 1].map((plan) => (
+        <div key={plan} style={{ display: 'grid', gap: '0.6rem', paddingBlock: '1.25rem', borderBottom: '1px solid var(--border)' }}>
+          <Bone width="min(16rem, 65%)" height="1.3rem" />
+          <Bone width="8rem" height="0.75rem" />
+          <Bone height="10rem" style={{ marginTop: '0.4rem', borderRadius: 'var(--radius-xl)' }} />
+        </div>
+      ))}
+    </PageSkeleton>
+  )
 }
 
 export default function TemplatesPage() {
@@ -111,7 +134,7 @@ export default function TemplatesPage() {
   }
 
   if (loading) {
-    return <LoadingState message="Loading plans..." />
+    return <TemplatesLoadingSkeleton />
   }
 
   return (

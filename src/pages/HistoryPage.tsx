@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { LoadingState } from '../components/ui'
+import { Bone, PageSkeleton } from '../components/ui'
 import { ActionFeedback } from '../components/ActionFeedback'
 import { useAuthStore } from '../store/authStore'
 import { useUserExercises } from '../hooks/useUserExercises'
@@ -56,6 +56,39 @@ function deriveWorkout(workout: WorkoutSummary, exerciseMap: Map<string, Exercis
     categories,
     exerciseNames,
   }
+}
+
+function HistoryLoadingSkeleton() {
+  return (
+    <PageSkeleton label="Loading history..." className="history-page workbench-page">
+      <header className="history-page-header">
+        <h1>History</h1>
+        <Bone width="9rem" height="0.95rem" style={{ marginTop: '0.85rem' }} />
+      </header>
+      <div className="history-control-panel">
+        <div className="history-filter-row">
+          <Bone className="history-range-row" height="3.125rem" style={{ minWidth: 'min(19rem, 100%)', borderRadius: '0.75rem' }} />
+          <Bone className="history-search" height="2.75rem" style={{ borderRadius: '0.75rem' }} />
+        </div>
+      </div>
+      <div className="history-month-list">
+        <section className="history-month-group">
+          <div className="history-month-heading">
+            <Bone width="8.5rem" height="1.15rem" />
+          </div>
+          <div className="history-workout-list">
+            {[0, 1, 2].map((row) => (
+              <div key={row} style={{ display: 'grid', gap: '0.5rem', padding: '0.82rem 0.95rem', borderTop: row ? '1px solid var(--border)' : undefined }}>
+                <Bone width="12rem" height="0.7rem" />
+                <Bone width="min(15rem, 70%)" height="1.1rem" />
+                <Bone width="9rem" height="0.75rem" />
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    </PageSkeleton>
+  )
 }
 
 export default function HistoryPage() {
@@ -171,7 +204,7 @@ export default function HistoryPage() {
   const showRangeEmpty = workouts.length > 0 && filtered.length === 0 && !hasActiveFilters
   const showFilterEmpty = filtered.length === 0 && hasActiveFilters
 
-  if (loading && workouts.length === 0) return <LoadingState message="Loading history..." />
+  if (loading && workouts.length === 0) return <HistoryLoadingSkeleton />
 
   return (
     <div className="history-page workbench-page">

@@ -27,7 +27,7 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { ActionFeedback } from '../components/ActionFeedback'
 import { WorkoutDetailMobileActions } from '../components/WorkoutDetailMobileActions'
-import { LoadingState } from '../components/ui'
+import { Bone, PageSkeleton } from '../components/ui'
 import {
   DEFAULT_EXERCISE_CATEGORY_COLOR,
   EXERCISE_CATEGORY_COLORS,
@@ -133,6 +133,38 @@ function getWorkoutEditError(exercises: WorkoutSummary['exercises']): string | n
     return 'Each set must contain at least one rep.'
   }
   return null
+}
+
+function WorkoutDetailLoadingSkeleton() {
+  return (
+    <PageSkeleton label="Loading workout..." className="workout-detail-page workout-detail-content">
+      <Bone width="4rem" height="1rem" style={{ marginBlock: '0.875rem' }} />
+      <div className="workout-detail-session-head">
+        <div className="min-w-0">
+          <Bone width="11rem" height="0.8rem" style={{ marginBottom: '0.75rem' }} />
+          <Bone width="min(17rem, 80%)" height="2.4rem" />
+        </div>
+        <div className="workout-detail-desktop-actions">
+          <Bone width="10rem" height="2.75rem" />
+        </div>
+      </div>
+      <div className="lg:hidden" style={{ maxWidth: '24rem', marginBottom: '1.5rem' }}>
+        <Bone height="2.75rem" />
+      </div>
+      <div className="workout-summary-panel workout-detail-session-facts">
+        {[0, 1, 2, 3].map((fact) => (
+          <div key={fact} style={{ display: 'grid', gap: '0.5rem' }}>
+            <Bone width="3rem" height="0.7rem" />
+            <Bone width="4rem" height="1.2rem" />
+          </div>
+        ))}
+      </div>
+      <div className="workout-exercise-list" style={{ paddingTop: '1.5rem' }}>
+        <Bone width="min(14rem, 70%)" height="1.4rem" style={{ marginBottom: '1rem' }} />
+        <Bone height="9rem" />
+      </div>
+    </PageSkeleton>
+  )
 }
 
 export default function WorkoutDetailPage() {
@@ -433,7 +465,7 @@ export default function WorkoutDetailPage() {
   }
 
   if (!workout && !deleteOperation && readStatus === 'loading') {
-    return <LoadingState message="Loading workout..." />
+    return <WorkoutDetailLoadingSkeleton />
   }
 
   if (!workout) {

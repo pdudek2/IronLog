@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateSaveDock, { type TemplateSaveState } from '../components/TemplateSaveDock'
-import { LoadingState } from '../components/ui'
+import { Bone, PageSkeleton } from '../components/ui'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { useAuthStore } from '../store/authStore'
@@ -78,6 +78,39 @@ function normalizeTemplateExercise(exercise: TemplateExercise): TemplateExercise
     targetReps: Math.max(0, Math.trunc(exercise.targetReps) || 0),
     targetWeight: Math.max(0, Number.isFinite(exercise.targetWeight) ? exercise.targetWeight : 0),
   }
+}
+
+function TemplateEditorLoadingSkeleton({ title }: { title: string }) {
+  return (
+    <PageSkeleton label="Loading editor...">
+      <section className="planner-header template-editor-header">
+        <span className="template-editor-back">
+          <ChevronLeft size={16} aria-hidden="true" />
+          Plans
+        </span>
+        <div className="template-editor-heading">
+          <h1>{title}</h1>
+        </div>
+      </section>
+      <div className="template-editor-form">
+        <div className="template-editor-layout">
+          <div className="template-editor-main" style={{ display: 'grid', gap: '0.75rem' }}>
+            <Bone width="3rem" height="0.75rem" />
+            <Bone height="2.75rem" />
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+              <Bone width="7rem" height="2.9rem" />
+              <Bone width="7rem" height="2.9rem" />
+            </div>
+            <Bone width="5rem" height="0.75rem" style={{ marginTop: '0.75rem' }} />
+            <Bone height="2.75rem" style={{ maxWidth: '22rem' }} />
+            {[0, 1].map((row) => (
+              <Bone key={row} height="4.5rem" style={{ marginTop: '0.5rem' }} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </PageSkeleton>
+  )
 }
 
 export default function TemplateEditorPage() {
@@ -347,7 +380,7 @@ export default function TemplateEditorPage() {
   }
 
   if (loading) {
-    return <LoadingState message="Loading editor..." />
+    return <TemplateEditorLoadingSkeleton title={isEdit ? 'Edit plan' : 'New plan'} />
   }
 
   return (

@@ -8,10 +8,10 @@ interface LoadingStateProps {
 function LoadingPanel({ message }: { message: string }) {
   return (
     <div className="w-full max-w-sm px-6 py-8 text-center">
-      <div className="puls-loader mx-auto mb-3" aria-hidden="true">
-        <BrandMark slip="loop" />
+      <div className="puls-loader mx-auto" aria-hidden="true">
+        <BrandMark />
       </div>
-      <p className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>{message}</p>
+      <p className="sr-only" role="status">{message}</p>
     </div>
   )
 }

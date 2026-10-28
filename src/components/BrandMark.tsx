@@ -2,11 +2,12 @@ import { useId } from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { BRAND_MARK, BRAND_MARK_SLIP } from '../shared/brandMark'
 
-const { seam, clip } = BRAND_MARK_SLIP
+const { times, offsets, ease, cover, red, seam, clip } = BRAND_MARK_SLIP
+const end = times[times.length - 1]
 
 // Halves take the parent's text colour; the cut is the accent.
-// `slip` plays the slip once, or on repeat for loaders; reduced motion keeps the static mark.
-export default function BrandMark({ className, slip }: { className?: string; slip?: 'once' | 'loop' }) {
+// `slip` plays the slip once, for a moment like a new record; reduced motion keeps the static mark.
+export default function BrandMark({ className, slip = false }: { className?: string; slip?: boolean }) {
   const reduceMotion = useReducedMotion()
   const clipId = useId()
 
@@ -20,18 +21,15 @@ export default function BrandMark({ className, slip }: { className?: string; sli
     )
   }
 
-  const { times, offsets, ease, cover, red } = BRAND_MARK_SLIP[slip]
-  const end = times[times.length - 1]
-  const repeat = slip === 'loop' ? { repeat: Infinity } : {}
   const slide = {
     initial: { x: offsets[0] },
     animate: { x: [...offsets] },
-    transition: { duration: end / 1000, times: times.map((ms) => ms / end), ease: [...ease], ...repeat },
+    transition: { duration: end / 1000, times: times.map((ms) => ms / end), ease: [...ease] },
   }
-  const fade = (track: typeof cover) => ({
+  const fade = (track: { times: readonly number[]; opacity: readonly number[] }) => ({
     initial: { opacity: track.opacity[0] },
     animate: { opacity: [...track.opacity] },
-    transition: { duration: end / 1000, times: track.times.map((ms) => ms / end), ease: 'linear' as const, ...repeat },
+    transition: { duration: end / 1000, times: track.times.map((ms) => ms / end), ease: 'linear' as const },
   })
   const seamCover = fade(cover)
   const seamRed = fade(red)

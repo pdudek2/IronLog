@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { AccessibilityInfo, Animated, Easing, View } from 'react-native'
 import Svg, { Path, Rect } from 'react-native-svg'
 import { BRAND_MARK, BRAND_MARK_SLIP } from '../../src/shared/brandMark'
@@ -23,9 +23,9 @@ export function Icon({ name, size = 16, color = colors.muted }: { name: keyof ty
 }
 
 // The SHEAR mark, same geometry as the web header and the app icon.
-// `slip` plays the slip once, or on repeat for loaders; reduced motion keeps the static mark.
-export function BrandMark({ width = 20, slip }: { width?: number; slip?: 'once' | 'loop' }) {
-  if (slip) return <SlipBrandMark width={width} slip={slip} />
+// `slip` plays the slip once, for a moment like a new record; reduced motion keeps the static mark.
+export function BrandMark({ width = 20, slip = false }: { width?: number; slip?: boolean }) {
+  if (slip) return <SlipBrandMark width={width} />
   return <Svg accessibilityElementsHidden importantForAccessibility="no" width={width} height={width * 480 / 540} viewBox={BRAND_MARK.viewBox}>
     <Path d={BRAND_MARK.upper} fill={colors.textStrong} />
     <Rect {...BRAND_MARK.cut} fill={colors.accent} />
@@ -33,15 +33,14 @@ export function BrandMark({ width = 20, slip }: { width?: number; slip?: 'once' 
   </Svg>
 }
 
-const { seam, clip } = BRAND_MARK_SLIP
+const { times, cover, red, seam, clip } = BRAND_MARK_SLIP
+const duration = times[times.length - 1]
+const frames = slipFrames(BRAND_MARK_SLIP, Easing.bezier)
 
 // Stacked layers so the native driver can move them: SVG props would need the JS thread, which is busy at startup.
-function SlipBrandMark({ width, slip }: { width: number; slip: 'once' | 'loop' }) {
+function SlipBrandMark({ width }: { width: number }) {
   const [reduced, setReduced] = useState<boolean | null>(null)
   const progress = useRef(new Animated.Value(0)).current
-  const track = BRAND_MARK_SLIP[slip]
-  const duration = track.times[track.times.length - 1]
-  const frames = useMemo(() => slipFrames(track, Easing.bezier), [track])
   useEffect(() => {
     let mounted = true
     void AccessibilityInfo.isReduceMotionEnabled().then((value) => { if (mounted) setReduced(value) })
@@ -50,20 +49,19 @@ function SlipBrandMark({ width, slip }: { width: number; slip: 'once' | 'loop' }
   }, [])
   useEffect(() => {
     if (reduced !== false) return
-    const timing = Animated.timing(progress, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })
-    const animation = slip === 'loop' ? Animated.loop(timing) : timing
+    const animation = Animated.timing(progress, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })
     animation.start()
     return () => animation.stop()
-  }, [reduced, slip, duration, progress])
+  }, [reduced, progress])
 
   if (reduced) return <BrandMark width={width} />
   const scale = width / 540
   const height = width * 480 / 540
   const layer = { position: 'absolute', left: 0, top: 0, width, height } as const
   const slide = { transform: [{ translateX: progress.interpolate({ inputRange: frames.inputRange, outputRange: frames.outputRange.map((offset) => offset * scale) }) }] }
-  const fade = ({ times, opacity }: typeof track.cover) => ({ opacity: progress.interpolate({ inputRange: times.map((ms) => ms / duration), outputRange: [...opacity] }) })
-  const seamCover = fade(track.cover)
-  const seamRed = fade(track.red)
+  const fade = (track: { times: readonly number[]; opacity: readonly number[] }) => ({ opacity: progress.interpolate({ inputRange: track.times.map((ms) => ms / duration), outputRange: [...track.opacity] }) })
+  const seamCover = fade(cover)
+  const seamRed = fade(red)
   const layerSvg = (children: React.ReactNode) => <Svg width={width} height={height} viewBox={BRAND_MARK.viewBox}>{children}</Svg>
   return <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width, height }}>
     <View style={layer}>{layerSvg(<Path d={BRAND_MARK.lower} fill={colors.textStrong} />)}</View>

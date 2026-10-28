@@ -40,7 +40,7 @@ function PageFallback() {
   return (
     <div className="flex min-h-[50dvh] items-center justify-center">
       <div className="puls-loader" aria-hidden="true">
-        <BrandMark />
+        <BrandMark slip="loop" />
       </div>
     </div>
   )

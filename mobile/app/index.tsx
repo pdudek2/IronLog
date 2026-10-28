@@ -754,7 +754,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
       {state.status === 'loading' && (
         <View accessibilityLiveRegion="polite" style={styles.centerState}>
-          <ActivityIndicator color={colors.accent} />
+          <View style={[styles.brandMark, styles.loaderMark]}><BrandMark width={26} slip="loop" /></View>
           <Text style={styles.stateTitle}>Checking your session…</Text>
         </View>
       )}
@@ -866,7 +866,7 @@ export default function IndexScreen() {
         </View>
       ) : user === undefined ? (
         <View style={styles.centerState}>
-          <ActivityIndicator color={colors.accent} />
+          <View style={[styles.brandMark, styles.loaderMark]}><BrandMark width={26} slip="loop" /></View>
           <Text style={styles.stateTitle}>Restoring sign-in…</Text>
         </View>
       ) : user ? <SessionScreen key={user.uid} user={user} /> : <LoginForm />}
@@ -896,6 +896,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 36,
   },
+  // Same box as the web loader (.puls-loader).
+  loaderMark: { height: 44, width: 44 },
   brandName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15, marginLeft: 12 },
   hero: { color: colors.textStrong, fontFamily: 'ArchivoHero', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.496 },
   heroAccent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 35.2, letterSpacing: -1.584, lineHeight: 34.496, marginLeft: 9.152 },

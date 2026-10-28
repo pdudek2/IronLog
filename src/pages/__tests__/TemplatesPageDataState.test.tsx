@@ -45,6 +45,7 @@ vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: mocks.toastError },
 }))
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => true,
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
   motion: new Proxy({}, {
     get: (_target, tag: string | symbol) => {

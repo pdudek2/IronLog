@@ -34,6 +34,7 @@ vi.mock('react-router-dom', async () => {
 })
 
 vi.mock('framer-motion', () => ({
+  useReducedMotion: () => true,
   motion: {
     div: ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
       delete props.initial

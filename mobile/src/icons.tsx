@@ -1,5 +1,8 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { AccessibilityInfo, Animated, Easing, View } from 'react-native'
 import Svg, { Path, Rect } from 'react-native-svg'
-import { BRAND_MARK } from '../../src/shared/brandMark'
+import { BRAND_MARK, BRAND_MARK_SLIP } from '../../src/shared/brandMark'
+import { slipFrames } from './brandSlip'
 import { colors } from './theme'
 
 // Lucide-style strokes for the places that used text glyphs (⌄ ⌃ × ✓ ‹ › ＋).
@@ -20,10 +23,56 @@ export function Icon({ name, size = 16, color = colors.muted }: { name: keyof ty
 }
 
 // The SHEAR mark, same geometry as the web header and the app icon.
-export function BrandMark({ width = 20 }: { width?: number }) {
+// `slip` plays the stick-slip once, or on repeat for loaders; reduced motion keeps the static mark.
+export function BrandMark({ width = 20, slip }: { width?: number; slip?: 'once' | 'loop' }) {
+  if (slip) return <SlipBrandMark width={width} slip={slip} />
   return <Svg accessibilityElementsHidden importantForAccessibility="no" width={width} height={width * 480 / 540} viewBox={BRAND_MARK.viewBox}>
     <Path d={BRAND_MARK.upper} fill={colors.textStrong} />
     <Rect {...BRAND_MARK.cut} fill={colors.accent} />
     <Path d={BRAND_MARK.lower} fill={colors.textStrong} />
   </Svg>
+}
+
+const { times, loopPause, slipAt, seam, clip } = BRAND_MARK_SLIP
+const slipEnd = times[times.length - 1]
+
+// Stacked layers so the native driver can move them: SVG props would need the JS thread, which is busy at startup.
+function SlipBrandMark({ width, slip }: { width: number; slip: 'once' | 'loop' }) {
+  const [reduced, setReduced] = useState<boolean | null>(null)
+  const progress = useRef(new Animated.Value(0)).current
+  const duration = slip === 'loop' ? slipEnd + loopPause : slipEnd
+  const frames = useMemo(() => slipFrames(duration, Easing.bezier), [duration])
+  useEffect(() => {
+    let mounted = true
+    void AccessibilityInfo.isReduceMotionEnabled().then((value) => { if (mounted) setReduced(value) })
+    const subscription = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced)
+    return () => { mounted = false; subscription.remove() }
+  }, [])
+  useEffect(() => {
+    if (reduced !== false) return
+    const timing = Animated.timing(progress, { toValue: 1, duration, easing: Easing.linear, useNativeDriver: true })
+    const animation = slip === 'loop' ? Animated.loop(timing) : timing
+    animation.start()
+    return () => animation.stop()
+  }, [reduced, slip, duration, progress])
+
+  if (reduced) return <BrandMark width={width} />
+  const scale = width / 540
+  const height = width * 480 / 540
+  const layer = { position: 'absolute', left: 0, top: 0, width, height } as const
+  const slide = { transform: [{ translateX: progress.interpolate({ inputRange: frames.inputRange, outputRange: frames.outputRange.map((offset) => offset * scale) }) }] }
+  const seamCover = { opacity: progress.interpolate({ inputRange: [0, slipAt / duration, (slipAt + 1) / duration, 1], outputRange: [1, 1, 0, 0] }) }
+  const layerSvg = (children: React.ReactNode) => <Svg width={width} height={height} viewBox={BRAND_MARK.viewBox}>{children}</Svg>
+  return <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ width, height }}>
+    <View style={layer}>{layerSvg(<Path d={BRAND_MARK.lower} fill={colors.textStrong} />)}</View>
+    {/* The seam moves with the upper part; clipped to the lower part's span (which starts at the left edge) it is their overlap. */}
+    <View style={{ ...layer, overflow: 'hidden', width: clip.width * scale }}>
+      <Animated.View style={[layer, slide]}>
+        {layerSvg(<Rect {...seam} fill={colors.accent} />)}
+        {/* Overlaps the halves by half a seam so the whole block shows no antialiased hairline. */}
+        <Animated.View style={[layer, seamCover]}>{layerSvg(<Rect x={seam.x} y={seam.y - seam.height / 2} width={seam.width} height={seam.height * 2} fill={colors.textStrong} />)}</Animated.View>
+      </Animated.View>
+    </View>
+    <Animated.View style={[layer, slide]}>{layerSvg(<Path d={BRAND_MARK.upper} fill={colors.textStrong} />)}</Animated.View>
+  </View>
 }

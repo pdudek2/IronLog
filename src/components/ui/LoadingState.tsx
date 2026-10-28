@@ -1,3 +1,5 @@
+import BrandMark from '../BrandMark'
+
 interface LoadingStateProps {
   message?: string
   fullScreen?: boolean
@@ -7,7 +9,7 @@ function LoadingPanel({ message }: { message: string }) {
   return (
     <div className="w-full max-w-sm px-6 py-8 text-center">
       <div className="puls-loader mx-auto mb-3" aria-hidden="true">
-        <span>IL</span>
+        <BrandMark slip="loop" />
       </div>
       <p className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>{message}</p>
     </div>

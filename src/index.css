@@ -895,7 +895,6 @@ a {
 }
 
 .puls-loader {
-  position: relative;
   display: inline-flex;
   width: 2.75rem;
   height: 2.75rem;
@@ -914,16 +913,6 @@ a {
 
 .puls-loader svg {
   width: 1.6rem;
-}
-
-.puls-loader::before {
-  content: "";
-  position: absolute;
-  inset: -0.45rem;
-  border-radius: var(--radius-lg);
-  border: 1px solid rgba(255, 113, 130, 0.12);
-  opacity: 0;
-  animation: puls-loader-ring 1.8s ease-out infinite;
 }
 
 /* ── Auth entry: living training signal ─────────────────────────────── */
@@ -1385,22 +1374,6 @@ a {
 
   to {
     background-position: 150% 0;
-  }
-}
-
-@keyframes puls-loader-ring {
-  0% {
-    transform: scale(0.92);
-    opacity: 0;
-  }
-
-  35% {
-    opacity: 1;
-  }
-
-  100% {
-    transform: scale(1.18);
-    opacity: 0;
   }
 }
 

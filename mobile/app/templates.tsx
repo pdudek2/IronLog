@@ -16,7 +16,7 @@ import { useLaunchRuntime } from '../src/launchRuntime'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import { readStateForKey, startRead, type ReadState } from '../src/scopedRead'
 import type { WorkoutTemplate } from '../src/workoutLaunch'
-import { colors, pageBackground, primaryGradient } from '../src/theme'
+import { colors, pageBackground, pageTitle, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import { Icon as LineIcon } from '../src/icons'
 
@@ -108,7 +108,7 @@ function Plans({ uid }: { uid: string }) {
     <HistoryHeader />
     <ActiveWorkoutReturnBar />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
-      <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <View accessibilityLabel={`${plans.length} ${pluralize(plans.length, 'plan', 'plans')}`} style={styles.summary}><Text style={styles.countNumber}>{plans.length}</Text><Text style={styles.count}>{pluralize(plans.length, 'plan', 'plans')}</Text></View>}</View><View style={styles.headerActions}><Pressable accessibilityRole="button" onPress={() => router.navigate('/exercises')} style={styles.exercisesLink}><Text style={styles.copy}>Exercises</Text></Pressable><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><LineIcon name="plus" size={15} color={colors.onPrimary} /><Text style={styles.newPlanText}>New plan</Text></Pressable></View></View>
+      <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <Text style={styles.count}>{plans.length} {pluralize(plans.length, 'plan', 'plans')}</Text>}</View><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><LineIcon name="plus" size={15} color={colors.text} /><Text style={styles.newPlanText}>New plan</Text></Pressable></View>
       {saved === '1' && <Text accessibilityLiveRegion="polite" style={styles.savedNotice}>Plan saved</Text>}
       {feedback && !feedbackPlan && launchFeedback}
       {launch.state.status === 'loading' && <Text style={styles.noticeCopy}>Checking workout start…</Text>}
@@ -116,24 +116,27 @@ function Plans({ uid }: { uid: string }) {
       {state.status === 'error' && <View accessibilityRole="alert" style={styles.status}><Text style={styles.statusTitle}>Could not load plans</Text><Text style={[styles.copy, styles.statusCopy]}>Check your connection and try again.</Text><Pressable accessibilityRole="button" onPress={retryRead} style={styles.readRetry}><Text style={styles.readRetryText}>Try again</Text></Pressable></View>}
       {state.status === 'ready' && state.fromCache && <View accessibilityRole="alert" style={styles.cache}><Text style={styles.copy}>{plans.length ? 'Showing plans saved on this device. Starting requires a connection.' : 'Could not confirm your saved plans. This device has no copy to check offline.'}</Text><Pressable accessibilityRole="button" onPress={retryRead} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable></View>}
       {state.status === 'ready' && !state.fromCache && plans.length === 0 && <View style={styles.empty}><Text accessibilityRole="header" style={styles.emptyTitle}>You have no plans yet</Text><Text style={styles.emptyCopy}>A plan stores your days, exercises and sets. Create your first plan to get started.</Text></View>}
-      {plans.length > 0 && <View style={styles.board}>{plans.map((plan, planIndex) => {
+      {plans.length > 0 && <View style={styles.board}>{plans.map((plan) => {
         // A one-day plan has nothing to choose, so its Start is always visible.
         const single = plan.days.length === 1
         const open = shortList || single || (expanded.uid === uid && expanded.id === plan.id)
         const exerciseCount = plan.days.reduce((sum, day) => sum + day.exercises.length, 0)
-        return <View key={plan.id} style={[styles.plan, planIndex < plans.length - 1 && styles.planDivider]}>
-          <View style={styles.planHead}><View style={styles.planTitleCopy}><Text accessibilityRole="header" numberOfLines={2} style={styles.planTitle}>{plan.name}</Text><Text style={styles.daysCount}>{plan.days.length} {pluralize(plan.days.length, 'day', 'days')} · {exerciseCount} {pluralize(exerciseCount, 'exercise', 'exercises')}</Text></View><View style={styles.planActions}><Pressable accessibilityRole="button" accessibilityLabel={`Edit plan ${plan.name}`} disabled={!!planAction} onPress={() => router.navigate(`/templates/${plan.id}/edit`)} style={styles.planAction}><Icon kind="edit" color={colors.textStrong} /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete plan ${plan.name}`} disabled={!!planAction} onPress={() => void askDelete(plan)} style={styles.planAction}><Icon kind="delete" color={colors.warning} /></Pressable>{!shortList && !single && <Pressable accessibilityRole="button" accessibilityLabel={`${open ? 'Collapse' : 'Structure'} ${plan.name}`} accessibilityState={{ expanded: open }} onPress={() => setExpanded({ uid, id: open ? null : plan.id })} style={styles.structure}><Icon kind={open ? 'up' : 'down'} color={colors.muted} /></Pressable>}</View></View>
+        return <View key={plan.id} style={styles.plan}>
+          <View style={styles.planHead}><View style={styles.planTitleCopy}><Text accessibilityRole="header" numberOfLines={2} style={styles.planTitle}>{plan.name}</Text><Text style={styles.daysCount}>{plan.days.length} {pluralize(plan.days.length, 'day', 'days')} · {exerciseCount} {pluralize(exerciseCount, 'exercise', 'exercises')}</Text></View><View style={styles.planActions}><Pressable accessibilityRole="button" accessibilityLabel={`Edit plan ${plan.name}`} disabled={!!planAction} onPress={() => router.navigate(`/templates/${plan.id}/edit`)} style={styles.planAction}><Icon kind="edit" color={colors.muted} /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete plan ${plan.name}`} disabled={!!planAction} onPress={() => void askDelete(plan)} style={styles.planAction}><Icon kind="delete" color={colors.muted} /></Pressable>{!shortList && !single && <Pressable accessibilityRole="button" accessibilityLabel={`${open ? 'Collapse' : 'Structure'} ${plan.name}`} accessibilityState={{ expanded: open }} onPress={() => setExpanded({ uid, id: open ? null : plan.id })} style={styles.structure}><Icon kind={open ? 'up' : 'down'} color={colors.muted} /></Pressable>}</View></View>
           {planAction?.id === plan.id && <View accessibilityRole="alert" style={styles.feedback}><Text style={styles.copy}>{planAction.status === 'checking' ? 'Checking plan…' : planAction.status === 'deleting' ? 'Deleting plan…' : planAction.error}</Text>{planAction.status === 'error' && <Pressable accessibilityRole="button" onPress={() => { void askDelete(plan, true) }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
           {feedback && feedbackPlan?.id === plan.id && launchFeedback}
           {open && <View style={styles.days}>{plan.days.map((day, dayIndex) => {
             const pending = starting && launch.state.selection?.templateId === plan.id && launch.state.selection.dayIndex === dayIndex
-            return <View key={`${plan.id}:${dayIndex}`} style={[styles.day, dayIndex < plan.days.length - 1 && styles.dayDivider]}>
-              <View style={styles.dayHead}><View style={styles.dayCopy}><Text style={styles.dayTitle}>{day.name}</Text><Text style={styles.exerciseCount}>{day.exercises.length ? `${day.exercises.length} ${pluralize(day.exercises.length, 'exercise', 'exercises')}` : 'No exercises'}</Text></View>{day.exercises.length > 0 ? <Pressable accessibilityRole="button" accessibilityLabel={`Start day ${day.name} from plan ${plan.name}`} accessibilityState={{ disabled: !canStart, busy: pending }} disabled={!canStart} onPress={() => void launch.start({ kind: 'template', selection: { templateId: plan.id, dayIndex }, snapshot: plan })} style={[styles.start, !canStart && styles.disabled]}><Text style={styles.startText}>{pending ? 'Starting…' : 'Start'}</Text>{!pending && <Icon kind="play" color={colors.accentText} />}</Pressable> : <Pressable accessibilityRole="button" accessibilityLabel={`Edit empty day ${day.name} in plan ${plan.name}`} onPress={() => router.navigate(`/templates/${plan.id}/edit`)} style={styles.start}><Text style={styles.startText}>Edit</Text></Pressable>}</View>
-              {day.exercises.length > 0 && <View style={styles.preview}>{day.exercises.slice(0, 5).map((exercise, index) => <View key={index} style={styles.previewItem}>{index > 0 && <Text style={styles.previewText}>·</Text>}<Text style={styles.previewName}>{exercise.name}</Text></View>)}{day.exercises.length > 5 && <View style={styles.previewItem}><Text style={styles.previewText}>·</Text><Text style={styles.previewName}>+{day.exercises.length - 5}</Text></View>}</View>}
+            return <View key={`${plan.id}:${dayIndex}`} style={styles.day}>
+              <View style={styles.dayHead}><Pressable accessibilityRole="button" accessibilityLabel={`Open ${day.name} in ${plan.name}`} onPress={() => router.navigate(`/templates/${plan.id}/edit`)} style={styles.dayCopy}><Text style={styles.dayTitle}>{day.name}</Text><Text style={styles.exerciseCount}>{day.exercises.length ? `${day.exercises.length} ${pluralize(day.exercises.length, 'exercise', 'exercises')}` : 'No exercises'}</Text></Pressable>{day.exercises.length > 0 ? <Pressable accessibilityRole="button" accessibilityLabel={`Start day ${day.name} from plan ${plan.name}`} accessibilityState={{ disabled: !canStart, busy: pending }} disabled={!canStart} onPress={() => void launch.start({ kind: 'template', selection: { templateId: plan.id, dayIndex }, snapshot: plan })} style={[styles.start, !canStart && styles.disabled]}><Text style={styles.startText}>{pending ? 'Starting…' : 'Start'}</Text></Pressable> : <Pressable accessibilityRole="button" accessibilityLabel={`Edit empty day ${day.name} in plan ${plan.name}`} onPress={() => router.navigate(`/templates/${plan.id}/edit`)} style={styles.start}><Text style={styles.startText}>Edit</Text></Pressable>}</View>
             </View>
           })}</View>}
         </View>
       })}</View>}
+      <View style={styles.tools}>
+        <Pressable accessibilityRole="button" onPress={() => router.navigate('/exercises')} style={styles.tool}><Text style={styles.toolText}>Exercises</Text><LineIcon name="chevron-right" /></Pressable>
+        <Pressable accessibilityRole="button" onPress={() => router.navigate('/coach')} style={styles.tool}><Text style={styles.toolText}>Generate a plan with Coach</Text><LineIcon name="chevron-right" /></Pressable>
+      </View>
     </ScrollView>
   <BottomNavigation {...navigation} />
   </SafeAreaView>
@@ -148,27 +151,28 @@ const styles = StyleSheet.create({
   savedNotice: { color: colors.recovery, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, paddingTop: 12 },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, experimental_backgroundImage: pageBackground },
-    heading: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, borderBottomColor: 'rgba(244, 238, 232,0.11)', borderBottomWidth: 1, paddingTop: 16, paddingBottom: 16 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 1 }, exercisesLink: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 7.2 },
-  newPlan: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#d9cfc2', experimental_backgroundImage: primaryGradient }, newPlanText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
-  title: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 38.4, lineHeight: 37.632, marginTop: 6.08 },
-  summary: { flexDirection: 'row', alignItems: 'baseline', gap: 4.8 }, count: { includeFontPadding: false, lineHeight: 12.672, color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.52 }, countNumber: { includeFontPadding: false, lineHeight: 15.656, color: colors.textStrong, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 14.08 },
-  board: { marginTop: 7.2 }, plan: { padding: 0 }, planDivider: { borderBottomColor: colors.line, borderBottomWidth: 1 },
-  planHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 4, paddingTop: 14.4, paddingBottom: 10 }, planTitleCopy: { flex: 1, minWidth: 0 },
-  planActions: { flexDirection: 'row', gap: 2 }, planAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  planTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20.8, lineHeight: 23.3 }, daysCount: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 18.72, marginTop: 7.2 },
+    heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingBottom: 8 },
+  
+  newPlan: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'center' }, newPlanText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  title: pageTitle,
+  count: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, marginTop: 2 }, 
+  board: { marginTop: 4 }, plan: { paddingBottom: 12 }, 
+  planHead: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 12, paddingBottom: 4 }, planTitleCopy: { flex: 1, minWidth: 0 },
+  planActions: { flexDirection: 'row' }, planAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  planTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 18 }, daysCount: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 2 },
   structure: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  days: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 14, paddingVertical: 7.2, paddingHorizontal: 16, marginBottom: 20 },
-  day: { paddingVertical: 14.4 }, dayDivider: { borderBottomColor: 'rgba(244, 238, 232,0.1)', borderBottomWidth: 1 },
-  dayHead: { minHeight: 44, flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12.8 }, dayCopy: { flex: 1, minWidth: 0, gap: 2.88 },
-  dayTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.72, lineHeight: 22.08 }, exerciseCount: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.52, lineHeight: 17.28 },
-  start: { flexDirection: 'row', minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', gap: 5.6 }, startText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.52 }, disabled: { opacity: 0.62 },
-  preview: { flexDirection: 'row', flexWrap: 'wrap', gap: 5.6, marginTop: 12 }, previewItem: { flexDirection: 'row', gap: 5.6, maxWidth: '100%' }, previewText: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.84, lineHeight: 17.76 }, previewName: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.84, lineHeight: 17.76, flexShrink: 1 },
+  days: { gap: 2 },
+  day: { }, 
+  dayHead: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, dayCopy: { flex: 1, minWidth: 0, minHeight: 56, justifyContent: 'center', gap: 2 },
+  dayTitle: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 16, lineHeight: 21 }, exerciseCount: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18 },
+  start: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.choiceSelected }, startText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 }, disabled: { opacity: 0.62 },
+  
+  tools: { marginTop: 8 }, tool: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, toolText: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 },
   copy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 22 },
   status: { alignItems: 'flex-start', paddingVertical: 24 }, loading: { alignItems: 'center', gap: 12 }, statusCopy: { lineHeight: 24, marginTop: 8 }, statusTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, lineHeight: 28 },
   readRetry: { minHeight: 45, minWidth: 192, marginTop: 24, paddingHorizontal: 16, borderRadius: 8, boxShadow: '0 12px 28px rgba(244, 238, 232, 0.12)', alignItems: 'center', justifyContent: 'center', backgroundColor: '#d9cfc2', experimental_backgroundImage: primaryGradient }, readRetryText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   retry: { minHeight: 44, justifyContent: 'center' }, actionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   cache: { gap: 4, paddingVertical: 16 }, feedback: { gap: 4, paddingBottom: 16, paddingTop: 12 },
   activeCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18, marginTop: 16 }, noticeCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, marginTop: 12 },
-  empty: { paddingVertical: 17.6, marginTop: 7.2, borderBottomWidth: 1, borderBottomColor: colors.line }, emptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 21.6, lineHeight: 23.3 }, emptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14.08, lineHeight: 21.8, marginTop: 10.4 },
+  empty: { paddingVertical: 16, marginTop: 4 }, emptyTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 20, lineHeight: 26 }, emptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14.08, lineHeight: 21.8, marginTop: 10.4 },
 })

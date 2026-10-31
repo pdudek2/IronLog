@@ -28,6 +28,9 @@ export const colors = {
   steel: palette.steel,
 } as const
 
+// One title scale across the top-level screens, as on the web.
+export const pageTitle = { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 28, lineHeight: 31, letterSpacing: -0.67 } as const
+
 export const primaryGradient = `linear-gradient(180deg, ${colors.primaryStart} 0%, ${colors.primaryEnd} 100%)`
 // The web body background.
 export const pageBackground = `linear-gradient(180deg, ${palette.backgroundDeep} 0%, ${palette.background} 42%, ${palette.backgroundBottom} 100%)`

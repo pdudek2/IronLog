@@ -36,7 +36,7 @@ export default function SavedWorkoutScreen() {
   const metadata = useSessionRead(`history-exercises:${uid ?? ''}`, metadataLoader, Boolean(uid))
   const workout = workoutRead.state.status === 'ready' ? workoutRead.state.data : null
 
-  // Like web, only the navigation that follows Finish shows the result, and its Back leaves for Home.
+  // Like web, only the navigation that follows Finish shows the result, and its Back leaves for Train.
   const resultIsValid = saved === '1' && closure?.completed?.action === 'finish' && closure.completed.workoutId === workoutId
   const back = () => {
     if (resultIsValid) router.dismissTo('/dashboard')
@@ -80,7 +80,7 @@ export default function SavedWorkoutScreen() {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.navRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={back} style={styles.backButton}>
-            <Svg accessibilityElementsHidden height={16} width={16} viewBox="0 0 24 24"><Path d="m12 19-7-7 7-7" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><Path d="M19 12H5" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg><Text style={styles.backText}>{resultIsValid ? 'Back to Home' : 'Back'}</Text>
+            <Svg accessibilityElementsHidden height={16} width={16} viewBox="0 0 24 24"><Path d="m12 19-7-7 7-7" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><Path d="M19 12H5" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg><Text style={styles.backText}>{resultIsValid ? 'Back to Train' : 'Back'}</Text>
           </Pressable>
         </View>
 
@@ -180,7 +180,7 @@ function SummaryFact({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   mutationActions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-start', paddingBottom: 16 },
-  editAction: { flex: 1, minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderWidth: 1, borderColor: colors.line, borderRadius: 8 },
+  editAction: { flex: 1, minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 12, backgroundColor: colors.choiceSelected },
   screen: { backgroundColor: colors.background, flex: 1 },
   content: { flexGrow: 1, paddingBottom: 36, paddingHorizontal: 16, paddingTop: 16, experimental_backgroundImage: pageBackground },
       navRow: { alignItems: 'center', flexDirection: 'row', minHeight: 44 },
@@ -192,31 +192,31 @@ const styles = StyleSheet.create({
   resultCopy: { flex: 1 },
   resultTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
   resultSubtitle: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 2 },
-  sessionHead: { paddingBottom: 22, paddingTop: 18 },
-  kicker: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginBottom: 9 },
-  workoutName: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 34, lineHeight: 34 },
-  facts: { backgroundColor: colors.backgroundElevated, borderBottomColor: colors.lineStrong, borderBottomWidth: StyleSheet.hairlineWidth, borderTopColor: colors.lineStrong, borderTopWidth: StyleSheet.hairlineWidth, flexDirection: 'row', marginHorizontal: -16, paddingHorizontal: 16 },
-  fact: { flex: 1, minWidth: 0, paddingVertical: 15 },
-  factLabel: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginBottom: 6 },
-  factValue: { color: colors.textStrong, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 16, letterSpacing: -0.4 },
+  sessionHead: { paddingBottom: 12, paddingTop: 8 },
+  kicker: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginBottom: 4 },
+  workoutName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 28, lineHeight: 31, letterSpacing: -0.67 },
+  facts: { flexDirection: 'row' },
+  fact: { flex: 1, minWidth: 0, paddingVertical: 8 },
+  factLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginBottom: 2 },
+  factValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18 },
   projectionStatus: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 9 },
   exerciseList: { minWidth: 0 },
-  exercisePanel: { paddingBottom: 19, paddingTop: 30 },
-  exerciseHead: { marginBottom: 20 },
+  exercisePanel: { paddingBottom: 8, paddingTop: 16 },
+  exerciseHead: { marginBottom: 4 },
   exerciseTitleRow: { alignItems: 'baseline', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-  exerciseName: { color: colors.textStrong, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 21, letterSpacing: -0.35, lineHeight: 25 },
-  sequence: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 },
-  taxonomy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19, marginTop: 6 },
-  exerciseTotals: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, marginTop: 15 },
+  exerciseName: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 21 },
+  sequence: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 },
+  taxonomy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 2 },
+  exerciseTotals: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginTop: 2 },
   exerciseReps: { color: colors.muted },
-  table: { marginHorizontal: -16 },
-  tableHeader: { alignItems: 'center', flexDirection: 'row', minHeight: 46 },
-  tableRow: { alignItems: 'center', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', minHeight: 46 },
-  tableRowShaded: { backgroundColor: 'rgba(255,255,255,0.035)' },
-  cell: { color: colors.text, flex: 1, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 13, fontVariant: ['tabular-nums'], textAlign: 'right', paddingRight: 16 },
-  headerCell: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12 },
-  indexCell: { flex: 0, width: 54, paddingLeft: 16, paddingRight: 0, textAlign: 'left' },
-  setIndex: { color: colors.recovery },
+  table: { marginHorizontal: 0 },
+  tableHeader: { alignItems: 'center', flexDirection: 'row', minHeight: 32 },
+  tableRow: { alignItems: 'center', flexDirection: 'row', minHeight: 36 },
+  tableRowShaded: { },
+  cell: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'], textAlign: 'right' },
+  headerCell: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 },
+  indexCell: { flex: 0, width: 44, textAlign: 'left' },
+  setIndex: { color: colors.muted },
   feedbackRow: { alignItems: 'center', flexDirection: 'row', gap: 10, paddingVertical: 15 },
   notice: { backgroundColor: colors.surfaceRaised, gap: 6, marginTop: 10, padding: 14 },
   noticeTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15 },

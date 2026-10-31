@@ -1,5 +1,5 @@
 import type { Exercise } from '../../data/exercises'
-import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel, getMuscleLabel } from '../../src/lib/exerciseLabels'
+import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../../src/lib/exerciseLabels'
 import { parsePreviousSets } from './scopedRead'
 import { parseProgressRecord } from './progressData'
 import type { ExerciseSource } from './session'
@@ -14,10 +14,6 @@ export function filterExercises<T extends { name: string; category: string; equi
     && (category === 'all' || exercise.category === category) && (equipment === 'all' || exercise.equipment === equipment))
 }
 
-export function exerciseRowMuscles(exercise: Exercise): string {
-  const muscles = exercise.muscles.map(getMuscleLabel).filter(label => label !== EXERCISE_CATEGORY_LABELS[exercise.category])
-  return [...muscles.slice(0, 2), ...(muscles.length > 2 ? [`+${muscles.length - 2}`] : [])].join(' · ')
-}
 export function exerciseTaxonomy(exercise: Exercise): string { return `${EXERCISE_CATEGORY_LABELS[exercise.category]} · ${getEquipmentLabel(exercise.equipment)}` }
 
 export async function exerciseClaimId(uid: string, name: string, sha256: (value: string) => Promise<string>): Promise<string> {

@@ -4,7 +4,6 @@ import {
   InstrumentSans_600SemiBold,
   InstrumentSans_700Bold,
 } from '@expo-google-fonts/instrument-sans'
-import { SplineSansMono_600SemiBold } from '@expo-google-fonts/spline-sans-mono'
 import { useFonts } from 'expo-font'
 import { SplashScreen, Stack, usePathname, useRouter } from 'expo-router'
 import { useEffect } from 'react'
@@ -22,7 +21,6 @@ export default function RootLayout() {
     InstrumentSans_500Medium,
     InstrumentSans_600SemiBold,
     InstrumentSans_700Bold,
-    SplineSansMono_600SemiBold,
   })
 
   useEffect(() => {

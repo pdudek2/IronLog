@@ -63,7 +63,7 @@ const styles = StyleSheet.create({
   copy: { flex: 1, minWidth: 0 },
   title: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5, lineHeight: 15 },
   label: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11, marginTop: 2 },
-  elapsed: { color: colors.text, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12, fontVariant: ['tabular-nums'] },
+  elapsed: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, fontVariant: ['tabular-nums'] },
   returnButton: { alignItems: 'center', flexDirection: 'row', gap: 2, justifyContent: 'center', minHeight: 44, paddingHorizontal: 4 },
   returnText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
 })

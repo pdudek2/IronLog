@@ -1,12 +1,11 @@
 import CoachPlanPanel from '../src/CoachPlanPanel'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AppState, Image, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { AppState, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import grain from '../assets/grain.png'
 import { useAuthRuntime } from '../src/runtime'
 import HistoryHeader from '../src/HistoryHeader'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
@@ -14,7 +13,8 @@ import { CoachController } from '../src/coachController'
 import { nativeCoachDependencies } from '../src/coachNative'
 import { markdownBlocks, markdownInline } from '../src/coachMarkdown'
 import type { AiContextMetadata } from '../../src/lib/aiContext'
-import { colors, primaryGradient } from '../src/theme'
+import { colors, pageTitle, primaryGradient } from '../src/theme'
+import { Icon } from '../src/icons'
 
 const prompts = ['Analyze my last week of training.', 'What should I focus on in my next upper body workout?', 'Does my readiness suggest a harder or lighter session today?']
 export default function CoachScreen() {
@@ -100,7 +100,6 @@ function Coach({ uid }: { uid: string }) {
     <HistoryHeader /><ActiveWorkoutReturnBar />
     <KeyboardAvoidingView style={s.grow} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={s.workspace}>
-        <View pointerEvents="none" style={StyleSheet.absoluteFill}><Image source={grain} resizeMode="repeat" style={s.grain} /></View>
         <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
           <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text><Text style={s.subtitle}>Ask about your last session or build a plan.</Text></View>
           <View style={s.tabs}>{(['chat', 'plan'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => { if (value === tab) return; controller.cancel(); setTab(value) }} style={[s.tab, tab === value && s.tabActive]}><Text style={[s.buttonText, tab === value && { color: colors.accentText }]}>{value === 'chat' ? 'Chat' : 'Plan'}</Text></Pressable>)}</View>
@@ -110,7 +109,7 @@ function Coach({ uid }: { uid: string }) {
           {!conversation ? <View style={[s.empty, configured && { paddingTop: 0 }]}>
             <Text style={s.emptyTitle}>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</Text>
             <Text style={s.small}>{configured ? 'Ask about your week, next workout, readiness or an exercise plateau.' : 'Your analysis and follow-up questions will appear here.'}</Text>
-            {configured && <View style={s.prompts}>{prompts.map(prompt => <Pressable accessibilityRole="button" disabled={!controller.canSend} accessibilityState={{ disabled: !controller.canSend }} key={prompt} onPress={() => send(prompt)} style={[s.prompt, !controller.canSend && s.disabled]}><Text style={s.promptText}>{prompt}</Text></Pressable>)}</View>}
+            {configured && <View style={s.prompts}>{prompts.map(prompt => <Pressable accessibilityRole="button" disabled={!controller.canSend} accessibilityState={{ disabled: !controller.canSend }} key={prompt} onPress={() => send(prompt)} style={[s.prompt, !controller.canSend && s.disabled]}><Text style={s.promptText}>{prompt}</Text><Icon name="chevron-right" size={16} /></Pressable>)}</View>}
           </View> : <ScrollView ref={scroll} style={s.grow} nestedScrollEnabled contentContainerStyle={s.messages} keyboardShouldPersistTaps="handled"
             onScroll={({ nativeEvent: e }) => { nearBottom.current = e.contentSize.height - e.layoutMeasurement.height - e.contentOffset.y < 96 }} scrollEventThrottle={32}
             onContentSizeChange={() => { if (nearBottom.current) scroll.current?.scrollToEnd({ animated: false }) }}>
@@ -136,24 +135,24 @@ function Coach({ uid }: { uid: string }) {
   </SafeAreaView>
 }
 const s = StyleSheet.create({
-  tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, overflow: 'hidden', borderColor: 'rgba(244, 238, 232,0.18)', backgroundColor: 'rgba(38, 33, 30,0.76)', marginBottom: 14 }, tab: { flex: 1, minHeight: 48, paddingHorizontal: 11, justifyContent: 'center' }, tabActive: { backgroundColor: colors.choiceSelected },
+  tabs: { flexDirection: 'row', alignSelf: 'flex-start', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', marginBottom: 14 }, tab: { minHeight: 44, paddingHorizontal: 18, justifyContent: 'center', borderRadius: 9 }, tabActive: { backgroundColor: colors.choiceSelected },
   screen: { flex: 1, backgroundColor: colors.background }, grow: { flex: 1 },
-  workspace: { flex: 1, experimental_backgroundImage: 'linear-gradient(120deg, rgba(244, 238, 232, 0.011), transparent)' },
-  grain: { ...StyleSheet.absoluteFill, width: '100%', height: '100%', opacity: 0.018 },
-  content: { padding: 16, paddingBottom: 20 }, heading: { paddingTop: 16, paddingBottom: 5.6, gap: 5.6, marginBottom: 14 },
-  title: { fontFamily: 'InstrumentSans_700Bold', fontSize: 42.4, lineHeight: 47.5, color: colors.textStrong, letterSpacing: -1.27 },
-  subtitle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 23, color: colors.muted },
+  workspace: { flex: 1 },
+  
+  content: { padding: 16, paddingBottom: 20 }, heading: { paddingTop: 0, paddingBottom: 0, gap: 6, marginBottom: 14 },
+  title: pageTitle,
+  subtitle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, color: colors.muted },
   body: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.text },
   description: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.muted },
   small: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 18.1, color: colors.muted },
-  gate: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', paddingVertical: 12.8, gap: 2 },
-  gateTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 15.04, lineHeight: 23, color: colors.textStrong },
+  gate: { paddingVertical: 8, gap: 2 },
+  gateTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 23, color: colors.text },
   left: { alignItems: 'flex-start', marginTop: 7.6 },
   buttonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 }, button: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', minHeight: 44, minWidth: 44, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   buttonText: { fontFamily: 'InstrumentSans_700Bold', fontSize: 13, color: colors.muted }, primaryText: { color: colors.onPrimary },
   primary: { borderColor: 'transparent', backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient }, disabled: { opacity: 0.45 },
-  empty: { paddingTop: 16, paddingBottom: 0, gap: 10.4 }, emptyTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, lineHeight: 24, color: colors.textStrong },
-  prompts: { borderTopWidth: 1, borderColor: colors.line }, prompt: { minHeight: 46.4, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: 11.2, justifyContent: 'center' }, promptText: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 17, color: colors.textStrong },
+  empty: { paddingTop: 16, paddingBottom: 0, gap: 8 }, emptyTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 20, lineHeight: 26, letterSpacing: -0.32, color: colors.text },
+  prompts: { gap: 2 }, prompt: { minHeight: 48, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, promptText: { flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 20, color: colors.text },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   settings: { backgroundColor: 'rgba(38, 33, 30,0.46)', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', padding: 14.4, gap: 12 },
   settingsTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 20, color: colors.textStrong, flexShrink: 1 },
@@ -165,9 +164,9 @@ const s = StyleSheet.create({
   messages: { gap: 12.8 }, message: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', paddingVertical: 14.4, paddingHorizontal: 16, borderRadius: 0 },
   userMessage: { alignSelf: 'flex-end', maxWidth: '100%', borderColor: 'rgba(244, 238, 232, 0.156)', experimental_backgroundImage: 'linear-gradient(135deg,rgba(244, 238, 232, 0.09),rgba(244, 238, 232, 0.036))' },
   role: { fontFamily: 'InstrumentSans_700Bold', fontSize: 11, lineHeight: 16.3, letterSpacing: 0.87, color: colors.muted, marginBottom: 5.6 }, userRole: { color: colors.accentText },
-  markdownHeading: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16.8, lineHeight: 24 }, bold: { fontFamily: 'InstrumentSans_700Bold' }, italic: { fontStyle: 'italic' }, code: { fontFamily: 'SplineSansMono_600SemiBold', backgroundColor: 'rgba(255,255,255,0.07)', fontSize: 13 },
+  markdownHeading: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16.8, lineHeight: 24 }, bold: { fontFamily: 'InstrumentSans_700Bold' }, italic: { fontStyle: 'italic' }, code: { fontFamily: 'InstrumentSans_600SemiBold', backgroundColor: 'rgba(255,255,255,0.07)', fontSize: 13 },
   context: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: 8 },
   feedback: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: colors.line, gap: 8 }, error: { fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20, color: colors.accentText },
   composer: { paddingTop: 11.2, gap: 9.6 },
-  composerInput: { minHeight: 65.34, maxHeight: 112, paddingHorizontal: 12, paddingVertical: 11.5, borderWidth: 1, borderRadius: 0, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.035)', fontFamily: 'InstrumentSans_400Regular', fontSize: 13.44, lineHeight: 20, color: colors.textStrong }, sendRow: { alignItems: 'flex-end' },
+  composerInput: { minHeight: 50, maxHeight: 112, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07)', fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 20, color: colors.textStrong }, sendRow: { alignItems: 'flex-end' },
 })

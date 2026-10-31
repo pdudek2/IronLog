@@ -21,6 +21,11 @@ function workoutTerminalState(page: Page): Locator {
     .first()
 }
 
+// Train's ad-hoc start: the main button without a plan, the "Empty workout" link with one.
+export function emptyWorkoutEntry(page: Page): Locator {
+  return page.getByRole('button', { name: /^(?:Start empty workout|Empty workout)$/ }).first()
+}
+
 export async function expectAppReady(
   page: Page,
   route: AppReadyRoute,
@@ -41,7 +46,7 @@ export async function expectAppReady(
       await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible({ timeout })
       return
     case '/dashboard':
-      await expect(page.getByRole('button', { name: /^(?:Start new workout|Resume workout)$/ }).first()).toBeVisible({ timeout })
+      await expect(page.locator('.train-days')).toBeVisible({ timeout })
       await expect(page.getByText('Could not load the dashboard', { exact: true })).toHaveCount(0)
       return
     case '/history':

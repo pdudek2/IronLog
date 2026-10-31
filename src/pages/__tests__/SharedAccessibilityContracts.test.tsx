@@ -205,7 +205,7 @@ describe('shared accessibility contracts', () => {
     expect(onConfirm).not.toHaveBeenCalled()
   })
 
-  it('labels shell workout entry actions when no active work exists', () => {
+  it('offers no shell workout entry when no active work exists', () => {
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <MobileInteractionProvider>
@@ -215,15 +215,18 @@ describe('shared accessibility contracts', () => {
       </MemoryRouter>,
     )
 
-    const workoutActions = screen.getAllByRole('button', { name: 'Start new workout' })
-    expect(workoutActions).toHaveLength(2)
-    expect(workoutActions[0]).toHaveTextContent('New workout')
+    expect(screen.queryByRole('button', { name: /^(?:Start new workout|New workout|Resume workout)$/ }))
+      .not.toBeInTheDocument()
   })
 
   it.each([
-    ['/exercises', 'Plans'],
-    ['/history', 'Progress'],
-  ])('keeps five ordered mobile actions and one active parent on %s', (route, activeLabel) => {
+    ['/dashboard', 'Train'],
+    ['/templates', 'Train'],
+    ['/exercises', 'Train'],
+    ['/history', 'History'],
+    ['/progress', 'Progress'],
+    ['/chat', 'Coach'],
+  ])('keeps four ordered mobile actions and one active parent on %s', (route, activeLabel) => {
     render(
       <MemoryRouter initialEntries={[route]}>
         <MobileInteractionProvider>
@@ -235,9 +238,8 @@ describe('shared accessibility contracts', () => {
     const nav = screen.getByRole('navigation', { name: 'Bottom navigation' })
     const actions = Array.from(nav.querySelectorAll('button'))
     expect(actions.map((action) => action.getAttribute('aria-label'))).toEqual([
-      'Home',
-      'Plans',
-      'Start new workout',
+      'Train',
+      'History',
       'Progress',
       'Coach',
     ])
@@ -245,24 +247,30 @@ describe('shared accessibility contracts', () => {
       .toEqual([screen.getByRole('button', { name: activeLabel })])
   })
 
-  it.each([0, 1])('marks shell workout action %i as an explicit start', (actionIndex) => {
+  it('resumes from the shell without marking an explicit start', () => {
+    useWorkoutStore.setState({
+      active: {
+        sessionId: 'active-session',
+        startedAt: 1,
+        exercises: [],
+      },
+    })
+
     render(
       <MemoryRouter initialEntries={['/dashboard']}>
         <MobileInteractionProvider>
           <TopNav />
-          <BottomNav />
           <WorkoutStartIntentProbe />
         </MobileInteractionProvider>
       </MemoryRouter>,
     )
 
-    const workoutActions = screen.getAllByRole('button', { name: 'Start new workout' })
-    fireEvent.click(workoutActions[actionIndex])
+    fireEvent.click(screen.getByRole('button', { name: 'Resume workout' }))
 
-    expect(screen.getByTestId('workout-start-intent')).toHaveTextContent('start')
+    expect(screen.getByTestId('workout-start-intent')).toHaveTextContent('idle')
   })
 
-  it('labels shell workout entry actions as resume for an explicitly started empty session', () => {
+  it('labels the shell workout entry as resume for an explicitly started empty session', () => {
     useWorkoutStore.setState({
       active: {
         sessionId: 'active-session',
@@ -281,13 +289,23 @@ describe('shared accessibility contracts', () => {
     )
 
     const workoutActions = screen.getAllByRole('button', { name: 'Resume workout' })
-    expect(workoutActions).toHaveLength(2)
+    expect(workoutActions).toHaveLength(1)
     expect(workoutActions[0]).toHaveTextContent('Resume workout')
   })
 
-  it('gives workout detail actions exclusive ownership of the mobile bottom area', () => {
+  it.each([
+    '/workout/completed-session',
+    '/workout/new',
+  ])('gives workout actions exclusive ownership of the mobile bottom area on %s', (route) => {
+    useWorkoutStore.setState({
+      active: {
+        sessionId: 'active-session',
+        startedAt: 1,
+        exercises: [],
+      },
+    })
     const { container } = render(
-      <MemoryRouter initialEntries={['/workout/completed-session']}>
+      <MemoryRouter initialEntries={[route]}>
         <MobileInteractionProvider>
           <BottomNav />
         </MobileInteractionProvider>
@@ -297,6 +315,18 @@ describe('shared accessibility contracts', () => {
     const nav = container.querySelector('nav[aria-label="Bottom navigation"]')
     expect(nav).toHaveAttribute('aria-hidden', 'true')
     expect(nav).toHaveAttribute('inert')
+  })
+
+  it('keeps mobile navigation on the workout route when no session is open', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/workout/new']}>
+        <MobileInteractionProvider>
+          <BottomNav />
+        </MobileInteractionProvider>
+      </MemoryRouter>,
+    )
+
+    expect(container.querySelector('nav[aria-label="Bottom navigation"]')).not.toHaveAttribute('aria-hidden')
   })
 
   it('hides mobile navigation on deliberate downward scroll and restores it on upward scroll', async () => {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Dumbbell, LayoutDashboard, Layers3, Plus, Sparkles, TrendingUp } from 'lucide-react'
+import { Dumbbell, History, MessageSquare, TrendingUp } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
@@ -42,14 +42,13 @@ export default function BottomNav() {
   const location = useLocation()
   const navigate = useNavigate()
   const { inputFocused } = useMobileInteraction()
-  const active = useWorkoutStore((state) => state.active)
+  const hasActiveSession = useWorkoutStore((state) => state.active !== null)
   const [scrollHidden, setScrollHidden] = useState(false)
   const navRef = useRef<HTMLElement>(null)
 
   const path = location.pathname
   const workoutActive = path.startsWith('/workout/new')
   const workoutDetail = path.startsWith('/workout/') && !workoutActive
-  const hasActiveSession = active !== null
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
   useEffect(() => {
@@ -102,7 +101,8 @@ export default function BottomNav() {
     }
   }, [inputFocused, workoutDetail])
 
-  const navHidden = workoutDetail || inputFocused || scrollHidden
+  // With no session /workout/new is a resting page, so the bar stays as the way out.
+  const navHidden = (workoutActive && hasActiveSession) || workoutDetail || inputFocused || scrollHidden
 
   useEffect(() => {
     if (!navHidden) return
@@ -129,54 +129,31 @@ export default function BottomNav() {
     >
       <div className="bottom-nav-panel flex w-full items-center gap-1">
         <NavBtn
-          icon={<LayoutDashboard size={20} />}
-          label="Home"
-          active={path === '/dashboard'}
+          icon={<Dumbbell size={20} />}
+          label="Train"
+          active={path === '/dashboard' || path.startsWith('/templates') || path.startsWith('/exercises')}
           preloadTo="/dashboard"
           onClick={() => go('/dashboard')}
         />
 
         <NavBtn
-          icon={<Layers3 size={20} />}
-          label="Plans"
-          active={path.startsWith('/templates') || path.startsWith('/exercises')}
-          preloadTo="/templates"
-          onClick={() => go('/templates')}
+          icon={<History size={20} />}
+          label="History"
+          active={path.startsWith('/history')}
+          preloadTo="/history"
+          onClick={() => go('/history')}
         />
-
-        <motion.button
-          type="button"
-          onClick={() => {
-            if (hasActiveSession) go('/workout/new')
-            else navigateWithAppTransition(navigate, '/workout/new', { state: { startNew: true } })
-          }}
-          onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
-          onFocus={() => { void preloadRouteByPath('/workout/new') }}
-          className="bottom-nav-primary-action mobile-touch-target flex h-11 w-11 flex-none items-center justify-center rounded-[var(--radius-lg)]"
-          style={{
-            background: 'var(--primary-gradient)',
-            color: 'var(--accent-foreground)',
-          }}
-          whileTap={{ scale: 0.88 }}
-          whileHover={{ scale: 1.06 }}
-          aria-current={workoutActive ? 'page' : undefined}
-          aria-label={hasActiveSession ? 'Resume workout' : 'Start new workout'}
-        >
-          {hasActiveSession
-            ? <Dumbbell size={22} strokeWidth={2.5} />
-            : <Plus size={22} strokeWidth={2.5} />}
-        </motion.button>
 
         <NavBtn
           icon={<TrendingUp size={20} />}
           label="Progress"
-          active={path.startsWith('/progress') || path.startsWith('/history')}
+          active={path.startsWith('/progress')}
           preloadTo="/progress"
           onClick={() => go('/progress')}
         />
 
         <NavBtn
-          icon={<Sparkles size={20} />}
+          icon={<MessageSquare size={20} />}
           label="Coach"
           active={path.startsWith('/chat')}
           preloadTo="/chat"

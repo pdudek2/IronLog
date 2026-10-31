@@ -11,13 +11,13 @@ async function openCoach(page: Page, projectName: string) {
   const navigation = page.getByRole('navigation', {
     name: projectName === 'mobile' ? 'Bottom navigation' : 'Main navigation',
   })
-  await navigation.getByRole('button', {
-    name: projectName === 'mobile' ? 'Coach' : 'AI Coach', exact: true,
-  }).click()
+  await navigation.getByRole('button', { name: 'Coach', exact: true }).click()
   await expectAppReady(page, '/chat')
 }
 
 async function logout(page: Page) {
+  await page.getByRole('button', { name: 'Profile', exact: true }).click()
+  await expectAppReady(page, '/profile')
   await page.getByRole('button', { name: 'Sign out', exact: true }).click()
   await expectAppReady(page, '/login')
 }

@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures'
 import { expectAppReady } from './support/appReady'
+import { cleanupWorkoutLifecycleState, seedLifecycleActiveSession } from './support/workoutLifecycleEmulator'
 
 // Pages to smoke-test: [name, path]
 const PAGES = [
@@ -20,7 +21,7 @@ for (const [name, route] of PAGES) {
 }
 
 // Bottom nav is lg:hidden — only visible on mobile viewports
-test('mobile nav shows five usable primary items at 360px and 390px', async ({ page, isMobile }, testInfo) => {
+test('mobile nav shows four usable primary items at 360px and 390px', async ({ page, isMobile }, testInfo) => {
   test.skip(!isMobile, 'BottomNav is lg:hidden — only visible on mobile viewports')
 
   await page.goto('/dashboard')
@@ -29,13 +30,10 @@ test('mobile nav shows five usable primary items at 360px and 390px', async ({ p
   const nav = page.getByLabel('Bottom navigation')
   await expect(nav).toBeVisible()
 
-  for (const label of ['Home', 'Plans', 'Progress', 'Coach']) {
+  for (const label of ['Train', 'History', 'Progress', 'Coach']) {
     await expect(nav.getByRole('button', { name: label, exact: true })).toBeVisible()
   }
-  await expect(nav.getByRole('button', {
-    name: /^(?:Start new workout|Resume workout)$/,
-  })).toBeVisible()
-  await expect(nav.getByRole('button')).toHaveCount(5)
+  await expect(nav.getByRole('button')).toHaveCount(4)
 
   for (const width of [360, 390]) {
     await page.setViewportSize({ width, height: 800 })
@@ -51,13 +49,21 @@ test('mobile nav shows five usable primary items at 360px and 390px', async ({ p
   }
 })
 
-test('desktop nav shows an approved workout entry label', async ({ page }, testInfo) => {
+test('desktop nav shows Resume workout only during an active session', async ({ page, cleanup }, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop', 'TopNav is the desktop workout entry')
+  test.skip(process.env.E2E_BACKEND !== 'emulator', 'emulator-only active session fixture')
+  cleanup.add('remove active session fixture', cleanupWorkoutLifecycleState)
+  await cleanupWorkoutLifecycleState()
 
   await page.goto('/dashboard')
-  await expect(page.locator('header.top-nav')
-    .getByRole('button', { name: /^(?:Start new workout|Resume workout)$/ }))
-    .toHaveText(/^(?:New workout|Resume workout)$/)
+  await expectAppReady(page, '/dashboard')
+  const workoutEntry = page.locator('header.top-nav .top-nav-cta')
+  await expect(workoutEntry).toHaveCount(0)
+
+  await seedLifecycleActiveSession({ sessionId: 'phase-1-top-nav-resume', label: 'Phase 1 top nav resume' })
+  await page.reload()
+  await expectAppReady(page, '/dashboard')
+  await expect(workoutEntry).toHaveText('Resume workout')
 })
 
 test('bottom nav active state updates on navigation', async ({ page, isMobile }) => {
@@ -68,29 +74,33 @@ test('bottom nav active state updates on navigation', async ({ page, isMobile })
 
   await page.getByRole('button', { name: 'View history', exact: true }).click()
   await page.waitForURL('/history')
-  await expect(nav.getByRole('button', { name: 'Progress', exact: true })).toHaveAttribute('aria-current', 'page')
-  await nav.getByRole('button', { name: 'Home', exact: true }).click()
+  await expect(nav.getByRole('button', { name: 'History', exact: true })).toHaveAttribute('aria-current', 'page')
+  await nav.getByRole('button', { name: 'Train', exact: true }).click()
   await page.waitForURL('/dashboard')
 
   // Navigate to Progress
   await nav.getByRole('button', { name: 'Progress', exact: true }).click()
   await page.waitForURL('/progress')
 
-  // Navigate to Templates
-  await nav.getByRole('button', { name: 'Plans', exact: true }).click()
+  // Navigate to Templates through Train
+  await nav.getByRole('button', { name: 'Train', exact: true }).click()
+  await page.waitForURL('/dashboard')
+  await page.getByRole('button', { name: 'Plans', exact: true }).click()
   await page.waitForURL('/templates')
+  await expect(nav.locator('[aria-current="page"]')).toHaveCount(1)
+  await expect(nav.getByRole('button', { name: 'Train', exact: true })).toHaveAttribute('aria-current', 'page')
 
   // Navigate to Exercises
   await page.getByRole('link', { name: 'Exercises', exact: true }).click()
   await page.waitForURL('/exercises')
   await expect(nav.locator('[aria-current="page"]')).toHaveCount(1)
-  await expect(nav.getByRole('button', { name: 'Plans', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(nav.getByRole('button', { name: 'Train', exact: true })).toHaveAttribute('aria-current', 'page')
 
   await nav.getByRole('button', { name: 'Progress', exact: true }).click()
   await page.getByRole('link', { name: 'View history', exact: true }).click()
   await page.waitForURL('/history')
   await expect(nav.locator('[aria-current="page"]')).toHaveCount(1)
-  await expect(nav.getByRole('button', { name: 'Progress', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(nav.getByRole('button', { name: 'History', exact: true })).toHaveAttribute('aria-current', 'page')
 })
 
 test('page shell settles to a single element after load', async ({ page }) => {

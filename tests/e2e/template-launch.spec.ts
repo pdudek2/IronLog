@@ -154,12 +154,10 @@ test.describe('Template launch contract', () => {
     await expect(launch).toBeVisible({ timeout: 15_000 })
 
     await startFreshSessionWithExercise(page, 'Bench Press')
-    const bottomNav = page.getByRole('navigation', { name: 'Bottom navigation' })
-    const topNav = page.getByRole('navigation', { name: 'Main navigation' })
-    const plansNav = (await bottomNav.isVisible())
-      ? bottomNav.getByRole('button', { name: 'Plans', exact: true })
-      : topNav.getByRole('button', { name: 'Plans', exact: true })
-    await plansNav.click()
+    const minimize = page.getByRole('button', { name: 'Minimize workout' })
+    if (await minimize.isVisible()) await minimize.click()
+    else await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button', { name: 'Train', exact: true }).click()
+    await page.getByRole('button', { name: 'Plans', exact: true }).click()
     await expectAppReady(page, '/templates')
     await expect(launch).toBeVisible({ timeout: 15_000 })
 

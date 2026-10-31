@@ -5,7 +5,7 @@ import {
   type ObservedContextFactory,
   type Page,
 } from './fixtures'
-import { expectAppReady, type AppReadyRoute } from './support/appReady'
+import { emptyWorkoutEntry, expectAppReady, type AppReadyRoute } from './support/appReady'
 import { openWorkoutDiscardDialog } from './support/accountCleanup'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
 import {
@@ -79,7 +79,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     await page.goto('/dashboard')
     await expectAppReady(page, '/dashboard')
-    await page.getByRole('button', { name: 'Start new workout' }).first().click()
+    await emptyWorkoutEntry(page).click()
     await expectAppReady(page, '/workout/new')
     const started = await waitForSettledLifecycleActiveSession((session) => (
       session !== null && session.exercises.length === 0 && !session.label
@@ -90,8 +90,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expect(page).toHaveURL('/dashboard')
     const returnBar = page.getByRole('region', { name: 'Active workout' })
     await expect(returnBar).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Resume workout' }).first()).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Start new workout' })).toHaveCount(0)
+    await expect(emptyWorkoutEntry(page)).toHaveCount(0)
 
     await returnBar.getByRole('button', { name: 'Return to workout' }).click()
     await expectAppReady(page, '/workout/new')
@@ -146,7 +145,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expect(returnBar).toContainText('Workout in progress')
     await expect(returnBar).toContainText('Phase 1 browse and return with a deliberately long label')
 
-    await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('button', { name: 'Plans' }).click()
+    await page.getByRole('button', { name: 'Plans', exact: true }).click()
     await expect(page).toHaveURL('/templates')
     await expect(returnBar).toBeVisible()
     await page.getByRole('link', { name: 'Exercises' }).click()
@@ -215,7 +214,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       label: 'Phase 1 browse and return with a deliberately long label',
     })
     await expect(returnBar).not.toBeVisible()
-    await expect(page.getByRole('button', { name: 'Start new workout' }).first()).toBeVisible()
+    await expect(emptyWorkoutEntry(page)).toBeVisible()
   })
 
   test('mobile shows every set from the previous workout beside the active ledger', async ({
@@ -246,7 +245,6 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     const { page } = await openWorkoutClient(observedContextFactory, await context.storageState())
     expect(page.viewportSize()).toEqual(viewport)
     expect(page.viewportSize()!.width).toBeLessThan(1024)
-    await expect(page.getByRole('navigation', { name: 'Bottom navigation' })).toBeVisible()
     const addSet = page.getByRole('button', { name: 'Add set' })
     for (let index = 0; index < 4; index += 1) await addSet.click()
 

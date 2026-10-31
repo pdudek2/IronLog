@@ -296,20 +296,12 @@ test.describe('Active workout shell reduction', () => {
     await page.evaluate(() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
     })
-    const navigation = page.getByRole('navigation', { name: 'Bottom navigation' })
-    await expect(navigation).toBeVisible()
-    await expect(navigation).not.toHaveAttribute('aria-hidden', 'true')
-    await expect.poll(() => navigation.evaluate((element) => (
-      element.getBoundingClientRect().bottom <= window.innerHeight
-    ))).toBe(true)
+    await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
     const fixedUiGeometry = await page.evaluate(() => {
-      const navigation = document.querySelector<HTMLElement>('nav.bottom-nav')
       const restTimer = document.querySelector<HTMLElement>('.workout-mobile-action-bar')
-      const navigationBox = navigation?.getBoundingClientRect()
       const restTimerBox = restTimer?.getBoundingClientRect()
       return {
         viewportHeight: window.innerHeight,
-        navigation: navigationBox && { top: navigationBox.top, bottom: navigationBox.bottom },
         restTimer: restTimerBox && {
           top: restTimerBox.top,
           bottom: restTimerBox.bottom,
@@ -320,9 +312,7 @@ test.describe('Active workout shell reduction', () => {
         },
       }
     })
-    expect(fixedUiGeometry.navigation?.top).toBeGreaterThanOrEqual(0)
-    expect(fixedUiGeometry.navigation?.bottom).toBeLessThanOrEqual(fixedUiGeometry.viewportHeight)
-    expect(fixedUiGeometry.restTimer?.bottom).toBeLessThanOrEqual(fixedUiGeometry.navigation!.top)
+    expect(fixedUiGeometry.restTimer?.bottom).toBeLessThanOrEqual(fixedUiGeometry.viewportHeight)
     expect(fixedUiGeometry.restTimer?.height).toBeLessThanOrEqual(84)
     expect(fixedUiGeometry.restTimer?.surfacePadding).toBe(0)
     await page.setViewportSize({ width: 390, height: 844 })
@@ -361,7 +351,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(actionBar).toBeVisible({ timeout: 10_000 })
     await expect(actionBar).toHaveAttribute('data-variant', 'full')
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
-    await expect(page.locator('nav.bottom-nav')).not.toHaveAttribute('aria-hidden', 'true')
+    await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
 
     const dockGeometry = await page.evaluate(() => {
       const pageShell = document.querySelector<HTMLElement>('.page-shell')
@@ -407,7 +397,7 @@ test.describe('Active workout shell reduction', () => {
     expect(dockGeometry.finalActionBottom).toBeLessThanOrEqual(dockGeometry.restTimerTop! - 8)
   })
 
-  test('mobile workout keeps the compact shell and normal app navigation', async ({ page, cleanup }, testInfo) => {
+  test('mobile workout keeps the compact shell and leaves through Minimize', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
@@ -415,7 +405,7 @@ test.describe('Active workout shell reduction', () => {
     await goToFreshWorkout(page)
 
     await expect(page.locator('.top-nav')).not.toBeVisible()
-    await expect(page.getByRole('navigation', { name: 'Bottom navigation' })).toBeVisible()
+    await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
 
     await addExercise(page, 'Squat')
     const expectedSession = await readLocalActiveSessionRecovery(page)
@@ -423,8 +413,8 @@ test.describe('Active workout shell reduction', () => {
     expect(expectedSession.exerciseNames).toEqual(['Squat'])
     expect(expectedSession.reps).toBe('')
 
-    await page.getByRole('button', { name: 'Plans', exact: true }).click()
-    await expect(page).toHaveURL('/templates')
+    await page.getByRole('button', { name: 'Minimize workout' }).click()
+    await expect(page).toHaveURL('/dashboard')
 
     await expect.poll(
       () => readCachedActiveSessionWrite(page),
@@ -602,20 +592,17 @@ test.describe('Active workout shell reduction', () => {
     await expect(actionBar).not.toContainText(sessionTimerText)
     await expect(actionBar.getByRole('button', { name: 'Add exercise', exact: true })).toHaveCount(0)
 
-    const bottomNavigation = page.getByRole('navigation', { name: 'Bottom navigation' })
     await page.evaluate(() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
       window.scrollTo(0, 0)
     })
-    await expect(bottomNavigation).toBeVisible()
+    await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
     const actionBarBox = await actionBar.boundingBox()
-    const bottomNavigationBox = await page.locator('.bottom-nav').boundingBox()
     expect(actionBarBox, 'Rest timer should have a bounding box').not.toBeNull()
-    expect(bottomNavigationBox, 'Bottom navigation should have a bounding box').not.toBeNull()
     expect(
       actionBarBox!.y + actionBarBox!.height,
-      'Rest timer should end above the bottom navigation',
-    ).toBeLessThanOrEqual(bottomNavigationBox!.y)
+      'Rest timer should end inside the viewport',
+    ).toBeLessThanOrEqual(page.viewportSize()!.height)
 
     await expect.poll(
       () => readCachedActiveSessionWrite(page),

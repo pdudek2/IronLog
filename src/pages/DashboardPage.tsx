@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import {
   ChevronRight,
   Play,
-  Plus,
   Trash2,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -48,8 +47,9 @@ import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore } from '../store/workoutStore'
 import type { DataState } from '../types/dataState'
-import { formatCompactVolume } from '../lib/weightUnits'
-import { WEEK_LABELS, addLocalDays, firstLaunchableWorkout, formatWeekRange, getGreeting, getWeekDates } from '../shared/week'
+import { formatCompactVolume, kgStringToDisplayWeight } from '../lib/weightUnits'
+import { workoutCover } from '../shared/workoutCover'
+import { WEEK_LABELS, addLocalDays, firstLaunchableWorkout, getGreeting, getWeekDates } from '../shared/week'
 
 interface TemplatesResource {
   uid: string | null
@@ -550,7 +550,6 @@ export default function DashboardPage() {
   }
 
   const weeklyGoal = profile?.weeklyGoal ?? 3
-  const remainingWeeklySessions = Math.max(weeklyGoal - weeklyDone, 0)
   const weekDates = getWeekDates(new Date())
   const today = new Date()
   const recentWorkouts = workouts.slice(0, 4)
@@ -574,7 +573,6 @@ export default function DashboardPage() {
   const quickTemplateDay = quickTemplateDayIndex >= 0
     ? quickTemplate?.days[quickTemplateDayIndex] ?? null
     : null
-  const quickTemplateExerciseCount = quickTemplateDay?.exercises.length ?? 0
   const secondaryTemplates = hasActiveSession
     ? recentTemplates
     : recentTemplates.filter((template) => template.id !== quickTemplate?.id)
@@ -643,23 +641,8 @@ export default function DashboardPage() {
   }
   const weekStart = weekDates[0]?.getTime() ?? 0
   const weekEnd = addLocalDays(weekDates[6] ?? new Date(weekStart), 1).getTime()
-  const previousWeekStart = addLocalDays(weekDates[0] ?? new Date(weekStart), -7).getTime()
-  const previousWeekEnd = weekStart
   const weeklyWorkouts = workouts.filter((workout) => workout.startedAt >= weekStart && workout.startedAt < weekEnd)
-  const previousWeekWorkouts = workouts.filter((workout) => workout.startedAt >= previousWeekStart && workout.startedAt < previousWeekEnd)
   const weeklyVolume = weeklyWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
-  const previousWeeklyVolume = previousWeekWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
-  const previousWeeklyDone = previousWeekWorkouts.length
-  const avgMinutes = weeklyWorkouts.length
-    ? Math.round(weeklyWorkouts.reduce((sum, workout) => (
-      sum + (getCappedWorkoutFinishedAt(workout.startedAt, workout.finishedAt) - workout.startedAt)
-    ), 0) / weeklyWorkouts.length / 60_000)
-    : 0
-  const avgVolumePerSession = weeklyWorkouts.length ? Math.round(weeklyVolume / weeklyWorkouts.length) : 0
-  const weeklySessionsDelta = weeklyDone - previousWeeklyDone
-  const weeklyVolumeDelta = previousWeeklyVolume > 0 && weeklyWorkouts.length > 0
-    ? Math.round(((weeklyVolume - previousWeeklyVolume) / previousWeeklyVolume) * 100)
-    : null
   const weekDailyStats = weekDates.map((date, index) => {
     const dayStart = date.getTime()
     const dayEnd = addLocalDays(date, 1).getTime()
@@ -677,150 +660,161 @@ export default function DashboardPage() {
       isToday: isSameDay(date, today),
     }
   })
-  const maxDayVolume = Math.max(...weekDailyStats.map((day) => day.volume), 1)
-  const activeDays = weekDailyStats.filter((day) => day.workouts > 0).length
-  const peakDay = [...weekDailyStats].sort((a, b) => b.volume - a.volume)[0]
   const latestWorkout = recentWorkouts[0] ?? null
   const supportLine = !hasActiveSession && latestWorkout
     ? `Last: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
     : null
-  const weeklySummaryRows = [
-    {
-      label: 'Weekly goal',
-      value: `${weeklyDone}/${weeklyGoal}`,
-      copy: weeklyDone >= weeklyGoal
-        ? 'Goal reached.'
-        : `${remainingWeeklySessions} ${pluralize(remainingWeeklySessions, 'session', 'sessions')} to reach this week’s goal.`,
-    },
-    {
-      label: 'Schedule',
-      value: `${activeDays}/7 days`,
-      copy: weeklySessionsDelta >= 0
-        ? `${weeklySessionsDelta === 0 ? 'No change' : `+${weeklySessionsDelta}`} compared with last week`
-        : `${weeklySessionsDelta} compared with last week`,
-    },
-    {
-      label: 'Strong day',
-      value: peakDay?.volume ? `${peakDay.label}` : 'None',
-      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume, units)} • ${peakDay.sets} ${pluralize(peakDay.sets, 'set', 'sets')}` : 'No workouts this week',
-    },
-    {
-      label: 'Average session',
-      value: avgMinutes ? `${avgMinutes} min` : '—',
-      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession, units)} per workout` : 'No average this week',
-    },
-  ]
 
   return (
     <div className="dashboard-page">
-        <section className={`dashboard-home${showTodayRecommendation ? ' dashboard-home--today' : ''}`}>
+        <section className="train-hero">
           <motion.div
-            className="dashboard-home-copy"
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
+            className="train-cover"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.22 }}
           >
-            <p className="dashboard-home-date">
-              {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
-            </p>
-            <p className="dashboard-home-greeting">{getGreeting(new Date())},</p>
-            <h1 className="dashboard-home-title">
-              {profile?.displayName ?? 'athlete'}
-            </h1>
-            {supportLine && <p className="dashboard-home-copyline">{supportLine}</p>}
-
-            {!hasActiveSession && <div className="dashboard-home-action-stack">
-              <div className="dashboard-home-actions">
-                {quickTemplate && quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
-                  <div className="dashboard-planned-start">
-                    <span className="dashboard-planned-start-copy">
-                      <small>From your plans · {quickTemplate.name}</small>
-                      <strong>{quickTemplateDay.name}</strong>
-                      <span>
-                        {quickTemplateExerciseCount} {pluralize(quickTemplateExerciseCount, 'exercise', 'exercises')}
-                      </span>
-                    </span>
-                    <div className="dashboard-planned-start-actions">
-                      <button
-                        type="button"
-                        onClick={() => launchSelectedWorkout()}
-                        disabled={launchingTemplateId !== null}
-                        aria-busy={quickTemplateLaunchOperation?.status === 'pending' ? 'true' : undefined}
-                        aria-describedby={quickTemplateLaunchOperation?.status === 'error'
-                          ? quickTemplateLaunchErrorId
-                          : undefined}
-                        className="dashboard-planned-start-primary"
-                      >
-                        {quickTemplateLaunchOperation?.status === 'pending' ? 'Starting…' : 'Start workout'}
-                        <Play size={15} strokeWidth={2.3} aria-hidden="true" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setWorkoutPickerOpen(true)}
-                        disabled={launchingTemplateId !== null}
-                        className="dashboard-planned-start-change"
-                      >
-                        Change workout
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="dashboard-workout-choice-empty">
-                    <strong>
-                      {templatesState.status === 'loading'
-                        ? 'Loading plans…'
-                        : templatesState.status === 'error'
-                          ? 'Plans unavailable'
-                          : workoutSelection.unavailable
-                            ? 'Workout no longer available'
-                            : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}
-                    </strong>
-                    <span>
-                      {workoutSelection.unavailable
-                        ? 'Choose another workout before starting.'
-                        : 'You can still start an empty workout.'}
-                    </span>
-                    {templatesState.status === 'success' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && (
-                      <button type="button" className="dashboard-planned-start-change" onClick={() => setWorkoutPickerOpen(true)}>
-                        Change workout
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
-                  disabled={openingWorkout}
-                  className={`dashboard-ad-hoc-action${noPlans ? ' dashboard-ad-hoc-action--primary' : ''}`}
-                >
-                  <Plus size={15} aria-hidden="true" />
-                  {openingWorkout ? 'Opening workout…' : 'Start empty workout'}
-                </button>
-              </div>
-
-              {!showTodayRecommendation
-                && quickTemplateLaunchOperation?.status === 'error'
-                && quickTemplateLaunchErrorId && (
-                <ActionFeedback
-                  id={quickTemplateLaunchErrorId}
-                  status="error"
-                  message={quickTemplateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
-                  onRetry={() => { void retryTemplateLaunch() }}
-                  onDismiss={dismissTemplateLaunchError}
-                  className="dashboard-quick-plan-feedback"
-                />
-              )}
-            </div>}
+            <img src={`/covers/${workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)}.jpg`} alt="" />
+            <div className="train-cover-copy">
+              <p className="train-date">
+                {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+              </p>
+              <h1 className="train-title">
+                {quickTemplateDay?.name ?? `${getGreeting(new Date())}, ${profile?.displayName ?? 'athlete'}`}
+              </h1>
+              {quickTemplate && quickTemplateDay
+                ? <p className="train-meta">{quickTemplate.name} · Day {quickTemplateDayIndex + 1} of {quickTemplate.days.length}</p>
+                : supportLine && <p className="train-meta">{supportLine}</p>}
+            </div>
           </motion.div>
 
-          {!hasActiveSession && (
-            <motion.aside
-              className="dashboard-home-panel"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.08, duration: 0.28, ease: [0.2, 0.8, 0.2, 1] }}
-            >
+          <div className="train-plan">
+            {quickTemplateDay && quickTemplateHasExercises ? (
+              <div className="train-exercises">
+                {quickTemplateDay.exercises.map((exercise) => (
+                  <button
+                    key={`${exercise.exerciseSource}:${exercise.exerciseId}`}
+                    type="button"
+                    className="train-exercise"
+                    onClick={() => navigate(`/exercises/${exercise.exerciseSource}/${exercise.exerciseId}`)}
+                  >
+                    <span>{exercise.name}</span>
+                    <span>
+                      {exercise.sets} × {exercise.targetReps}
+                      {exercise.targetWeight > 0 && (
+                        <>
+                          {' · '}
+                          <b>{kgStringToDisplayWeight(String(exercise.targetWeight), units)} {units}</b>
+                        </>
+                      )}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : !hasActiveSession && (
+              <div className="dashboard-workout-choice-empty">
+                <strong>
+                  {templatesState.status === 'loading'
+                    ? 'Loading plans…'
+                    : templatesState.status === 'error'
+                      ? 'Plans unavailable'
+                      : workoutSelection.unavailable
+                        ? 'Workout no longer available'
+                        : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}
+                </strong>
+                <span>
+                  {workoutSelection.unavailable
+                    ? 'Choose another workout before starting.'
+                    : 'You can still start an empty workout.'}
+                </span>
+              </div>
+            )}
+
+            <div className="train-links">
+              <button type="button" className="train-link" onClick={() => navigate('/templates')}>Plans</button>
+              {!hasActiveSession && templatesState.status === 'success' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && (
+                <button
+                  type="button"
+                  className="train-link dashboard-planned-start-change"
+                  onClick={() => setWorkoutPickerOpen(true)}
+                  disabled={launchingTemplateId !== null}
+                >
+                  Change workout
+                </button>
+              )}
+              {!hasActiveSession && !noPlans && (
+                <button
+                  type="button"
+                  className="train-link dashboard-ad-hoc-action"
+                  onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                  disabled={openingWorkout}
+                >
+                  {openingWorkout ? 'Opening workout…' : 'Empty workout'}
+                </button>
+              )}
+            </div>
+
+            {!showTodayRecommendation
+              && quickTemplateLaunchOperation?.status === 'error'
+              && quickTemplateLaunchErrorId && (
+              <ActionFeedback
+                id={quickTemplateLaunchErrorId}
+                status="error"
+                message={quickTemplateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
+                onRetry={() => { void retryTemplateLaunch() }}
+                onDismiss={dismissTemplateLaunchError}
+                className="dashboard-quick-plan-feedback"
+              />
+            )}
+
+            {!hasActiveSession && (
+              <div className="train-start">
+                {quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
+                  <button
+                    type="button"
+                    onClick={() => launchSelectedWorkout()}
+                    disabled={launchingTemplateId !== null}
+                    aria-busy={quickTemplateLaunchOperation?.status === 'pending' ? 'true' : undefined}
+                    aria-describedby={quickTemplateLaunchOperation?.status === 'error'
+                      ? quickTemplateLaunchErrorId
+                      : undefined}
+                    className="dashboard-planned-start-primary"
+                  >
+                    {quickTemplateLaunchOperation?.status === 'pending' ? 'Starting…' : `Start ${quickTemplateDay.name}`}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                    disabled={openingWorkout}
+                    className="dashboard-ad-hoc-action--primary"
+                  >
+                    {openingWorkout ? 'Opening workout…' : 'Start empty workout'}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="train-side">
+            <motion.div className="train-week" {...fadeUp(0.09)}>
+              <div className="train-week-head">
+                <h2>This week</h2>
+                <span>
+                  {weeklyDone} of {weeklyGoal}
+                  {weeklyVolume > 0 && ` · ${formatCompactVolume(weeklyVolume, units)}`}
+                </span>
+              </div>
+              <div className="train-days" aria-label="Days of the current week">
+                {weekDailyStats.map((day) => (
+                  <span key={day.label} data-done={day.workouts > 0} data-today={day.isToday} title={day.label}>
+                    {day.label.charAt(0)}
+                  </span>
+                ))}
+              </div>
+            </motion.div>
+
+            {!hasActiveSession && (
               <ReadinessWidget
                 onStateChange={handleReadinessStateChange}
                 renderSaved={(entry) => (
@@ -845,21 +839,21 @@ export default function DashboardPage() {
                     : null
                 )}
               />
+            )}
 
-              {showTodayRecommendation
-                && quickTemplateLaunchOperation?.status === 'error'
-                && quickTemplateLaunchErrorId && (
-                <ActionFeedback
-                  id={quickTemplateLaunchErrorId}
-                  status="error"
-                  message={quickTemplateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
-                  onRetry={() => { void retryTemplateLaunch() }}
-                  onDismiss={dismissTemplateLaunchError}
-                  className="dashboard-quick-plan-feedback"
-                />
-              )}
-            </motion.aside>
-          )}
+            {showTodayRecommendation
+              && quickTemplateLaunchOperation?.status === 'error'
+              && quickTemplateLaunchErrorId && (
+              <ActionFeedback
+                id={quickTemplateLaunchErrorId}
+                status="error"
+                message={quickTemplateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
+                onRetry={() => { void retryTemplateLaunch() }}
+                onDismiss={dismissTemplateLaunchError}
+                className="dashboard-quick-plan-feedback"
+              />
+            )}
+          </div>
         </section>
 
         <motion.div
@@ -868,111 +862,6 @@ export default function DashboardPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.12, duration: 0.25 }}
         >
-            <section className="dashboard-overview-grid">
-              <motion.div className="dashboard-week-panel" {...fadeUp(0.09)}>
-                <div className="dashboard-panel-head">
-                  <div>
-                    <h2 className="section-title">This week</h2>
-                  </div>
-                  <div className="dashboard-range-chip">
-                    <span>{formatWeekRange(weekDates)}</span>
-                    {weeklyVolumeDelta !== null && (
-                      <small>{`${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs last week`}</small>
-                    )}
-                  </div>
-                </div>
-
-                {weeklyWorkouts.length === 0 ? (
-                  <div className="dashboard-week-empty">
-                    <div className="dashboard-week-empty-summary">
-                      <div>
-                        <p className="stat-meta">Weekly goal</p>
-                        <p className="dashboard-week-empty-copy">
-                          {remainingWeeklySessions} {pluralize(remainingWeeklySessions, 'session', 'sessions')} to reach your goal.
-                        </p>
-                      </div>
-                      <strong>{weeklyDone}/{weeklyGoal}</strong>
-                    </div>
-
-                    <div className="dashboard-week-empty-days" aria-label="Days of the current week">
-                      {weekDailyStats.map((day) => (
-                        <span key={day.label} data-today={day.isToday}>
-                          <strong>{day.label}</strong>
-                          <small>{day.date.getDate()}</small>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="dashboard-week-board">
-                  <div className="dashboard-week-chart">
-                    <div className="dashboard-week-chart-head">
-                      <div>
-                        <p className="stat-meta">Weekly volume</p>
-                        <p className="dashboard-week-total">{formatCompactVolume(weeklyVolume, units)}</p>
-                      </div>
-                      <div className="dashboard-week-count">
-                        <strong>{weeklyDone}/{weeklyGoal}</strong>
-                        <span>sessions / goal</span>
-                      </div>
-                    </div>
-
-                    <div className="dashboard-week-bars">
-                      {weekDailyStats.map((day, index) => {
-                        const heightPct = day.volume > 0 ? Math.max(18, Math.round((day.volume / maxDayVolume) * 100)) : 8
-                        return (
-                          <div key={day.label} className="dashboard-week-bar-cell" data-today={day.isToday} data-active={day.volume > 0}>
-                            <div className="dashboard-week-bar-track">
-                              <motion.i
-                                style={{ height: `${heightPct}%` }}
-                                initial={{ opacity: 0, y: 12 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: 0.05 * index, duration: 0.22 }}
-                              />
-                            </div>
-                            <span>{day.label}</span>
-                            <small>{day.volume > 0 ? formatCompactVolume(day.volume, units).replace(` ${units}`, '') : '—'}</small>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="dashboard-week-side">
-                    <div className="dashboard-week-cta">
-                      <button
-                        type="button"
-                        onClick={() => navigate('/progress')}
-                        className="puls-link-button mobile-touch-target px-0 py-0 text-sm font-semibold"
-                      >
-                        View progress
-                        <ChevronRight size={15} strokeWidth={2.3} />
-                      </button>
-                    </div>
-
-                    <div className="dashboard-signal-list">
-                      {weeklySummaryRows.map(({ label, value, copy }, index) => (
-                        <motion.div
-                          key={label}
-                          className="dashboard-signal-row"
-                          initial={{ opacity: 0, x: 12 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.06 + index * 0.04, duration: 0.2 }}
-                        >
-                          <div>
-                            <span>{label}</span>
-                            <strong>{value}</strong>
-                            <small>{copy}</small>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                  </div>
-                )}
-              </motion.div>
-            </section>
-
             {showPlansStrip && <section className="dashboard-plan-strip">
               <div className="dashboard-section-head">
                 <div>

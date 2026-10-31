@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ProfilePage from '../ProfilePage'
@@ -48,7 +49,7 @@ beforeEach(() => {
 
 describe('ProfilePage hierarchy and settings', () => {
   it('renders one concise settings hierarchy without duplicated account copy', () => {
-    render(<ProfilePage />)
+    render(<ProfilePage />, { wrapper: MemoryRouter })
 
     expect(screen.getByRole('heading', { name: 'Profile' })).toBeInTheDocument()
 
@@ -67,7 +68,7 @@ describe('ProfilePage hierarchy and settings', () => {
   })
 
   it('saves the selected settings and leaves success feedback to the toast', async () => {
-    render(<ProfilePage />)
+    render(<ProfilePage />, { wrapper: MemoryRouter })
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: '  Anna  ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Strength' }))
@@ -96,7 +97,7 @@ describe('ProfilePage hierarchy and settings', () => {
   })
 
   it('keeps validation and save failures explicit', async () => {
-    render(<ProfilePage />)
+    render(<ProfilePage />, { wrapper: MemoryRouter })
 
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: '   ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))

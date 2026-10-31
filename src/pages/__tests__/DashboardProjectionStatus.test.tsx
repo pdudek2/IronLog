@@ -354,8 +354,8 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText(/sessions to reach your goal\./)).toBeInTheDocument()
-    expect(screen.getByText('0/3')).toBeInTheDocument()
+    expect(await screen.findByText('0 of 3')).toBeInTheDocument()
+    expect(screen.getByLabelText('Days of the current week').children).toHaveLength(7)
   })
 
   it('uses the same compact goal summary when a returning user has an empty week', async () => {
@@ -369,7 +369,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText(/sessions to reach your goal\./)).toBeInTheDocument()
+    expect(await screen.findByText('0 of 3')).toBeInTheDocument()
   })
 
   it('suppresses negative weekly delta copy until the current week has its first workout', async () => {
@@ -386,8 +386,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('3 sessions to reach your goal.')).toBeInTheDocument()
-    expect(screen.getByText('0/3')).toBeInTheDocument()
+    expect(await screen.findByText('0 of 3')).toBeInTheDocument()
     expect(screen.queryByText(/vs last week/)).not.toBeInTheDocument()
   })
 
@@ -418,15 +417,16 @@ describe('Dashboard workout projection status', () => {
         view = render(<DashboardPage />)
       })
 
-      expect(screen.getByText('800 kg')).toBeInTheDocument()
-      expect(screen.getByText('2/7 days')).toBeInTheDocument()
+      expect(screen.getByText('2 of 3 · 800 kg')).toBeInTheDocument()
+      const doneDays = screen.getByLabelText('Days of the current week').querySelectorAll('[data-done="true"]')
+      expect(Array.from(doneDays, (day) => day.getAttribute('title'))).toEqual(['Sat', 'Sun'])
     } finally {
       view?.unmount()
       vi.useRealTimers()
     }
   })
 
-  it('uses English set-count forms in the peak-day summary', async () => {
+  it('uses English set-count forms in the recent workout row', async () => {
     const now = Date.now()
     mocks.getRecentWorkouts.mockResolvedValue([{
       ...pendingWorkout,
@@ -437,11 +437,11 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('400 kg • 1 set')).toBeInTheDocument()
-    expect(screen.queryByText('400 kg • 1 sets')).not.toBeInTheDocument()
+    expect(await screen.findByText('1 set')).toBeInTheDocument()
+    expect(screen.queryByText('1 sets')).not.toBeInTheDocument()
   })
 
-  it('uses the English plural set-count form in the peak-day summary', async () => {
+  it('uses the English plural set-count form in the recent workout row', async () => {
     const now = Date.now()
     mocks.getRecentWorkouts.mockResolvedValue([{
       ...pendingWorkout,
@@ -459,7 +459,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('400 kg • 2 sets')).toBeInTheDocument()
+    expect(await screen.findByText('2 sets')).toBeInTheDocument()
   })
 
   it('keeps the dashboard shell aligned when remote work appears and disappears', async () => {
@@ -476,10 +476,9 @@ describe('Dashboard workout projection status', () => {
     )
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Start new workout' }))
-        .toHaveLength(2)
       expect(screen.getByRole('button', { name: 'Start empty workout' })).toBeInTheDocument()
     })
+    expect(screen.queryByRole('button', { name: 'Resume workout' })).not.toBeInTheDocument()
 
     act(() => {
       mocks.activeSessionListener?.({
@@ -493,8 +492,9 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Resume workout' })).toHaveLength(2)
+      expect(screen.getAllByRole('button', { name: 'Resume workout' })).toHaveLength(1)
     })
+    expect(screen.queryByRole('button', { name: 'Start empty workout' })).not.toBeInTheDocument()
     expect(useWorkoutStore.getState().active?.sessionId).toBe('remote-session')
 
     act(() => {
@@ -502,9 +502,9 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Start new workout' })).toHaveLength(2)
       expect(screen.getByRole('button', { name: 'Start empty workout' })).toBeInTheDocument()
     })
+    expect(screen.queryByRole('button', { name: 'Resume workout' })).not.toBeInTheDocument()
     expect(useWorkoutStore.getState().active).toBeNull()
   })
 
@@ -568,9 +568,9 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    await screen.findByRole('heading', { name: 'Patryk' })
+    await screen.findByRole('heading', { name: /, Patryk$/ })
     expect(screen.queryByRole('button', { name: 'Resume workout' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Start new workout' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /empty workout/i })).not.toBeInTheDocument()
     expect(screen.queryByText(/Active session/)).not.toBeInTheDocument()
   })
 
@@ -1090,8 +1090,8 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByRole('button', { name: 'Start workout' })).toBeInTheDocument()
-    expect(screen.getByText('Upper')).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Start Upper' })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Upper' })).toBeInTheDocument()
     expect(screen.getByText(/Upper \/ Lower/)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Plans' })).not.toBeInTheDocument()
     expect(screen.queryByText('No saved plans')).not.toBeInTheDocument()
@@ -1124,7 +1124,7 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    const start = await screen.findByRole('button', { name: 'Start workout' })
+    const start = await screen.findByRole('button', { name: 'Start Lower A' })
     fireEvent.click(start)
 
     expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
@@ -1135,7 +1135,7 @@ describe('Dashboard workout projection status', () => {
     expect(screen.queryByRole('heading', { name: 'Plans' })).not.toBeInTheDocument()
   })
 
-  it('chooses a non-first day without launching until Start workout is pressed', async () => {
+  it('chooses a non-first day without launching until Start is pressed', async () => {
     const template = {
       id: 'template-1',
       userId: 'user-1',
@@ -1183,7 +1183,7 @@ describe('Dashboard workout projection status', () => {
     fireEvent.click(within(picker).getByRole('button', { name: 'Choose workout' }))
 
     expect(screen.getByText('Lower A')).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Start workout' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start Lower A' }))
     expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
       template,
       1,
@@ -1247,7 +1247,7 @@ describe('Dashboard workout projection status', () => {
     fireEvent.click(within(picker).getByRole('button', { name: 'Choose workout' }))
 
     template.days[1].exercises = []
-    fireEvent.click(screen.getByRole('button', { name: 'Start workout' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Start Lower A' }))
 
     expect(mocks.requestTemplateLaunch).not.toHaveBeenCalled()
     expect(screen.getByText('Workout no longer available')).toBeInTheDocument()
@@ -1273,12 +1273,12 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    await screen.findByRole('button', { name: 'Start workout' })
+    await screen.findByRole('button', { name: 'Start Upper A' })
     act(() => mocks.targetUnavailable?.({ template, dayIndex: 0 }, []))
 
     expect(await screen.findByText('Workout no longer available')).toBeInTheDocument()
     expect(screen.getByText('Choose another workout before starting.')).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Start workout' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Start Upper A' })).not.toBeInTheDocument()
   })
 
   it('skips an empty newest plan when choosing the documented default', async () => {
@@ -1300,7 +1300,7 @@ describe('Dashboard workout projection status', () => {
 
     expect(await screen.findByText('Pull')).toBeInTheDocument()
     expect(screen.getByText(/Ready plan/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start workout' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Start Pull' })).toBeEnabled()
     expect(screen.queryByRole('button', { name: 'Start plan Newest empty' })).not.toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Other plans' })).not.toBeInTheDocument()
 
@@ -1340,12 +1340,8 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    await screen.findByRole('region', { name: 'Today’s workout' })
-    await waitFor(() => {
-      expect(screen.getByRole('region', { name: 'Today’s workout' }).closest('.dashboard-home'))
-        .toHaveClass('dashboard-home--today')
-    })
-    const recommendation = screen.getByRole('region', { name: 'Today’s workout' })
+    const recommendation = await screen.findByRole('region', { name: 'Today’s workout' })
+    expect(recommendation.closest('.train-side')).toBeInTheDocument()
     const startRecommendation = within(recommendation).getByRole('button', { name: 'Start Upper A' })
     expect(startRecommendation).toBeEnabled()
     fireEvent.click(startRecommendation)

@@ -30,7 +30,8 @@ test('offline edit survives a full reload through Dashboard and can finish', asy
     await page.goto('/dashboard')
     await expectAppReady(page, '/dashboard')
   })
-  await page.getByRole('button', { name: 'Resume workout' }).first().click()
+  // Desktop reaches TopNav first; below lg that button is hidden and the return bar carries it.
+  await page.getByRole('button', { name: /^(?:Resume workout|Return to workout)$/ }).first().click()
   await expect(page.getByLabel(repsLabel)).toHaveValue('7')
   await expect.poll(serverReps, { timeout: 20_000 }).toBe('7')
   await expect(page.getByText('The session changed on another device.', { exact: true })).not.toBeVisible()
@@ -50,12 +51,13 @@ test('navigation before debounce saves the last edit and resumes without a false
     const input = document.querySelector<HTMLInputElement>(`input[aria-label="${label}"]`)!
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '9')
     input.dispatchEvent(new Event('input', { bubbles: true }))
-    const progress = [...document.querySelectorAll<HTMLButtonElement>('nav button')]
-      .find((element) => (element.getAttribute('aria-label') === 'Progress' || element.textContent?.trim() === 'Progress')
+    // The mobile bar is inert here, so mobile leaves through Minimize and desktop through TopNav.
+    const leave = [...document.querySelectorAll<HTMLButtonElement>('nav:not([inert]) button, button[aria-label="Minimize workout"]')]
+      .find((element) => (element.getAttribute('aria-label') === 'Minimize workout' || element.textContent?.trim() === 'Progress')
         && element.getBoundingClientRect().width > 0)!
-    progress.click()
+    leave.click()
   }, repsLabel)
-  await expect(page).toHaveURL(/\/progress$/)
+  await expect(page).toHaveURL(testInfo.project.name === 'mobile' ? '/dashboard' : '/progress')
   await expect.poll(serverReps, { timeout: 20_000 }).toBe('9')
   await page.goto('/workout/new')
   await expect(page.getByLabel(repsLabel)).toHaveValue('9')

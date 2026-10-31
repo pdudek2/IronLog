@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import type * as React from 'react'
 import { toast } from 'sonner'
@@ -15,6 +16,7 @@ const GOALS: { value: PrimaryGoal; label: string }[] = [
 ]
 
 export default function ProfilePage() {
+  const navigate = useNavigate()
   const { user } = useAuthStore()
   const { profile, setProfile } = useProfileStore()
 
@@ -180,6 +182,10 @@ export default function ProfilePage() {
               </Button>
             </div>
           </form>
+
+          <button type="button" className="profile-sign-out" onClick={() => navigate('/logout')}>
+            Sign out
+          </button>
         </section>
       </div>
     </div>

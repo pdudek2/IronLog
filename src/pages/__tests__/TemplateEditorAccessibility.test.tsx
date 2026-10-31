@@ -143,7 +143,7 @@ function renderEditor(initialEntry = '/templates/new?draft=ai') {
         { path: '/templates/new', element: <TemplateEditorPage /> },
         { path: '/templates/:id/edit', element: <TemplateEditorPage /> },
         { path: '/templates', element: <p>Lista plans</p> },
-        { path: '/logout', element: <p>Trasa wylogowania</p> },
+        { path: '/profile', element: <p>Trasa profilu</p> },
       ],
     },
   ], { initialEntries: [initialEntry] })
@@ -362,12 +362,12 @@ describe('TemplateEditorPage accessibility', () => {
     expect(screen.getByRole('button', { name: 'Leave without saving' })).toBeEnabled()
   })
 
-  it('keeps a dirty draft when logout is cancelled', async () => {
+  it('keeps a dirty draft when leaving for Sign out on Profile is cancelled', async () => {
     const router = renderEditor()
     const name = await screen.findByRole('textbox', { name: 'Name' })
     fireEvent.change(name, { target: { value: 'Upper / Lower zmieniony' } })
 
-    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Leave editor?' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Stay' }))
@@ -396,18 +396,18 @@ describe('TemplateEditorPage accessibility', () => {
     expect(await screen.findByText('Lista plans')).toBeInTheDocument()
   })
 
-  it('keeps logout blocked during save and lets save success win', async () => {
+  it('keeps Sign out on Profile blocked during save and lets save success win', async () => {
     let resolveSave!: () => void
-    let settleLogoutPreload!: () => void
-    const logoutPreload = new Promise<void>((resolve) => { settleLogoutPreload = resolve })
+    let settleProfilePreload!: () => void
+    const profilePreload = new Promise<void>((resolve) => { settleProfilePreload = resolve })
     mocks.createTemplate.mockReturnValue(new Promise((resolve) => { resolveSave = () => resolve(undefined) }))
     mocks.preloadRouteByPath.mockImplementation((path: string) => (
-      path === '/logout' ? logoutPreload : Promise.resolve()
+      path === '/profile' ? profilePreload : Promise.resolve()
     ))
     const router = renderEditor()
 
     fireEvent.click(await screen.findByRole('button', { name: 'Save plan' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Sign out' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Profile' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Saving in progress' })
     expect(within(dialog).getByRole('button', { name: 'Saving…' })).toBeDisabled()
@@ -417,7 +417,7 @@ describe('TemplateEditorPage accessibility', () => {
     expect(await screen.findByText('Lista plans')).toBeInTheDocument()
     await waitFor(() => expect(router.state.location.pathname).toBe('/templates'))
 
-    settleLogoutPreload()
+    settleProfilePreload()
     await Promise.resolve()
     await Promise.resolve()
 

@@ -8321,20 +8321,27 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-mobile-action-bar:not([data-v
 
 .bottom-nav-panel {
   max-width: 44rem;
-  padding: 0.4rem 0.5rem 0;
+  padding: 0.3rem;
+  border-radius: 1.2rem;
+  background: linear-gradient(180deg, var(--surface-3), var(--surface-2));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 14px 30px -12px rgba(0, 0, 0, 0.8);
 }
 
 .bottom-nav {
-  padding-inline: max(0.25rem, env(safe-area-inset-left, 0px)) max(0.25rem, env(safe-area-inset-right, 0px));
-  border-top: 1px solid var(--border);
-  background: rgba(15, 13, 12, 0.98);
-  box-shadow: 0 -12px 28px rgba(0, 0, 0, 0.2);
+  padding-inline: max(0.875rem, env(safe-area-inset-left, 0px)) max(0.875rem, env(safe-area-inset-right, 0px));
+  padding-top: 1.25rem;
+  background: linear-gradient(180deg, transparent, var(--bg) 42%);
+  pointer-events: none;
+}
+
+.bottom-nav-panel {
+  pointer-events: auto;
 }
 
 .bottom-nav-button {
-  min-height: 3rem;
+  min-height: 3.25rem;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: 0.875rem;
   transition:
     background-color 160ms ease,
     color 160ms ease;
@@ -10449,4 +10456,234 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   .progress-volume-tile strong {
     font-size: 1.7rem;
   }
+}
+
+/* Train */
+.train-hero {
+  display: grid;
+  gap: 1.125rem;
+}
+
+.train-cover {
+  position: relative;
+  height: 15.5rem;
+  margin: -1.25rem -1rem 0;
+  overflow: hidden;
+}
+
+.train-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 100% 45%;
+}
+
+.train-cover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--bg) 72%, transparent) 72%, var(--bg) 100%);
+}
+
+.train-cover-copy {
+  position: absolute;
+  z-index: 1;
+  inset: auto 1.25rem 0.25rem;
+}
+
+.train-date,
+.train-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.train-title {
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 2.25rem;
+  line-height: 1.1;
+  font-weight: 650;
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+}
+
+.train-plan {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.train-exercise {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  width: 100%;
+  min-height: 2.5rem;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.train-exercise span:last-child {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.train-exercise b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.train-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+}
+
+.train-link {
+  min-height: 2.75rem;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.train-start {
+  position: sticky;
+  z-index: 20;
+  bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+  order: 10;
+  margin-top: 0.5rem;
+}
+
+.train-start button {
+  width: 100%;
+  height: 3.25rem;
+  border: 0;
+  border-radius: 0.9375rem;
+  background: var(--primary-gradient);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35);
+  color: var(--accent-foreground);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.train-start button:disabled {
+  opacity: 0.6;
+}
+
+.train-side {
+  display: grid;
+  gap: 1.125rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.train-week-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.train-week-head h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.train-week-head span {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.train-days {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.375rem;
+  margin-top: 0.625rem;
+}
+
+.train-days span {
+  display: grid;
+  place-items: center;
+  height: 2.125rem;
+  border-radius: 0.625rem;
+  color: var(--muted-soft);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.train-days span[data-done="true"] {
+  background: var(--selected-bg);
+  color: var(--text);
+}
+
+.train-days span[data-today="true"] {
+  box-shadow: inset 0 0 0 1.5px var(--text);
+  color: var(--text);
+  font-weight: 600;
+}
+
+@media (min-width: 1024px) {
+  .train-hero {
+    grid-template-columns: minmax(0, 40rem) 23.75rem;
+    gap: 2rem 4.5rem;
+    justify-content: center;
+  }
+
+  .train-cover {
+    grid-column: 1;
+    height: 18.75rem;
+    margin: 0;
+    border-radius: 1.25rem;
+  }
+
+  .train-cover-copy {
+    inset: auto 1.75rem 1.375rem;
+  }
+
+  .train-title {
+    font-size: 2.625rem;
+  }
+
+  .train-plan {
+    grid-column: 1;
+  }
+
+  .train-side {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .train-start {
+    position: static;
+    width: 14.5rem;
+    order: 0;
+  }
+}
+
+.profile-sign-out {
+  display: block;
+  min-height: 2.75rem;
+  margin-top: 0.75rem;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
 }

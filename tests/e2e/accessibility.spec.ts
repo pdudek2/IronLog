@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from './fixtures'
 import { expectAppReady } from './support/appReady'
+import { cleanupWorkoutLifecycleState, seedLifecycleActiveSession } from './support/workoutLifecycleEmulator'
 
 const PHASE_3_AXE_RULES = [
   'aria-allowed-attr',
@@ -44,7 +45,7 @@ test.describe('Phase 3 navigation accessibility', () => {
     await expectAppReady(page, '/profile')
 
     const nav = page.locator('nav.bottom-nav')
-    const start = nav.locator('button[aria-label="Home"]')
+    const start = nav.locator('button[aria-label="Train"]')
     await expect(nav).not.toHaveAttribute('aria-hidden', 'true')
 
     await page.getByLabel('Name').focus()
@@ -68,7 +69,7 @@ test.describe('Phase 3 navigation accessibility', () => {
 
     const main = page.getByRole('main')
     const nav = page.locator('nav.bottom-nav')
-    const start = nav.locator('button[aria-label="Home"]')
+    const start = nav.locator('button[aria-label="Train"]')
 
     await start.focus()
     await page.mouse.wheel(0, 600)
@@ -92,14 +93,14 @@ test.describe('Phase 3 navigation accessibility', () => {
     await expect(page.getByRole('button', { name: 'Profile' })).toHaveAttribute('aria-current', 'page')
   })
 
-  test('mobile workout action communicates the current page', async ({ page }, testInfo) => {
+  test('mobile navigation leaves the focus order on the workout screen', async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile workout navigation contract')
 
     await page.goto('/workout/new')
     await expectAppReady(page, '/workout/new', 25_000)
-    await expect(page.locator('nav.bottom-nav').getByRole('button', {
-      name: /^(?:Start new workout|Resume workout)$/,
-    })).toHaveAttribute('aria-current', 'page')
+    const nav = page.locator('nav.bottom-nav')
+    await expect(nav).toHaveAttribute('aria-hidden', 'true')
+    await expect.poll(() => nav.evaluate((element) => (element as HTMLElement).inert)).toBe(true)
   })
 })
 
@@ -143,16 +144,29 @@ test('desktop top navigation actions expose at least 44px hit areas', async ({ p
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
 
-  const controls = [
-    ...await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button').all(),
-    page.getByRole('button', { name: /^(?:Start new workout|Resume workout)$/ }),
-  ]
+  const controls = await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('button').all()
 
   for (const control of controls) {
     await expect(control).toBeVisible()
     const box = await control.boundingBox()
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
   }
+})
+
+test('desktop Resume workout exposes at least a 44px hit area', async ({ page, cleanup }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop-only hit-area contract')
+  test.skip(process.env.E2E_BACKEND !== 'emulator', 'emulator-only active session fixture')
+  cleanup.add('remove active session fixture', cleanupWorkoutLifecycleState)
+  await cleanupWorkoutLifecycleState()
+  await seedLifecycleActiveSession({ sessionId: 'phase-1-resume-hit-area', label: 'Phase 1 resume hit area' })
+
+  await page.goto('/dashboard')
+  await expectAppReady(page, '/dashboard')
+
+  const resume = page.getByRole('button', { name: 'Resume workout', exact: true })
+  await expect(resume).toBeVisible()
+  const box = await resume.boundingBox()
+  expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
 })
 
 test.describe('Phase 3 targeted Axe smoke', () => {

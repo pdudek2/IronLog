@@ -1,0 +1,132 @@
+<canvas id="c"></canvas>
+<script id="fs" type="x-shader">#version 300 es
+precision highp float;
+out vec4 o;
+uniform vec2 res; uniform float seed;
+uniform vec3 camPos, camTarget; uniform float focus, aperture, fov;
+uniform vec3 plates[8]; uniform int nP; uniform float sleeveEnd, shaftCut;
+const float AX=.225; // bar height: a 450 mm plate standing on the floor
+uint rs;
+float rnd(){ rs=rs*747796405u+2891336453u; uint w=((rs>>((rs>>28u)+4u))^rs)*277803737u; return float((w>>22u)^w)/4294967295.; }
+float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }
+float vn(vec2 p){ vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f); return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y); }
+float fbm(vec2 p){ float a=.5,s=0.; for(int i=0;i<5;i++){ s+=a*vn(p); p=p*2.03+7.1; a*=.5; } return s; }
+float sdr(vec2 p, vec2 b, float r){ vec2 q=abs(p)-b+r; return length(max(q,vec2(0)))+min(max(q.x,q.y),0.)-r; }
+float plate(vec2 c, float t, float R){
+  float a=sdr(c-vec2(0.,R*.5+.012), vec2(t*.5,R*.5-.012+.012), .0055);
+  if(R>.15){ float rec=sdr(vec2(abs(c.x)-(t*.5+.001), c.y-(R*.5+.03)), vec2(.0032,R*.5-.062), .0025); a=max(a,-rec); }
+  float boss=sdr(vec2(abs(c.x)-(t*.5), c.y-.058), vec2(.0016,.018), .0012); a=min(a,boss);
+  return max(a,.0258-c.y);
+}
+vec2 bar(vec3 p){ return vec2(p.x, length(vec2(p.y-AX,p.z))); }
+// material: 0 floor, 1 plate, 2 sleeve, 3 shaft, 4 collar
+float mapM(vec3 p, out int m){
+  vec2 q=bar(p); float d=p.y; m=0;
+  if(q.y<.26 && q.x>-1.9 && q.x<.6){
+    for(int i=0;i<nP;i++){ float e=plate(q-vec2(plates[i].x,0.),plates[i].y,plates[i].z); if(e<d){d=e;m=1;} }
+    float s=sdr(q-vec2((sleeveEnd-.12)*.5,0.),vec2((sleeveEnd+.12)*.5,.0249),.0035); if(s<d){d=s;m=2;}
+    float k=sdr(q-vec2(-.46,0.),vec2(.34,.0139),.001); if(k<d){d=k;m=3;}
+    float c=sdr(q-vec2(-.135,0.),vec2(.017,.0385),.003); if(c<d){d=c;m=4;}
+    float l=sdr(q-vec2(plates[nP-1].x+plates[nP-1].y*.5+.016,0.),vec2(.016,.0405),.004); if(l<d){d=l;m=4;}
+    float w=sdr(q-vec2(plates[nP-1].x+plates[nP-1].y*.5+.035,0.),vec2(.003,.033),.0015); if(w<d){d=w;m=4;}
+  } else d=min(d,max(length(q-vec2(clamp(q.x,-1.9,.6),0.))-.26,0.)+.02);
+  return d;
+}
+float map(vec3 p){ int m; return mapM(p,m); }
+vec3 nrm(vec3 p){ vec2 e=vec2(.00035,0); return normalize(vec3(map(p+e.xyy)-map(p-e.xyy),map(p+e.yxy)-map(p-e.yxy),map(p+e.yyx)-map(p-e.yyx))); }
+float march(vec3 ro, vec3 rd, float mx){ float t=.002; for(int i=0;i<150;i++){ float d=map(ro+rd*t); if(d<.00022) return t; t+=d*.92; if(t>mx) break; } return -1.; }
+// one warm lamp, one low oxblood rim, a dim fill
+uniform vec3 L0,L0u,L0v,E0,L1,L1u,L1v,E1;
+float rect(vec3 ro, vec3 rd, vec3 c, vec3 u, vec3 v){ vec3 n=normalize(cross(u,v)); float dn=dot(rd,n); if(abs(dn)<1e-4) return -1.; float t=dot(c-ro,n)/dn; if(t<0.) return -1.; vec3 q=ro+rd*t-c; float a=dot(q,u)/dot(u,u), b=dot(q,v)/dot(v,v); return (a>-.5&&a<.5&&b>-.5&&b<.5)?t:-1.; }
+uniform vec3 glowDir, glowC, glowW; vec3 bg(vec3 rd){ float g=pow(max(dot(rd,normalize(glowDir)),0.),26.); float w=pow(max(dot(rd,normalize(glowDir+vec3(0,.16,0))),0.),5.); return vec3(.0042,.003,.0034)+glowC*g+glowW*w; }
+vec3 env(vec3 ro, vec3 rd, bool lamps){ vec3 c=bg(rd); if(lamps){ c+=vec3(.5,.36,.28)*smoothstep(.15,.95,rd.y)*.1; c+=vec3(1.,.74,.56)*2.6*exp(-pow((rd.z-.12)/.07,2.))*smoothstep(.05,.3,rd.y); if(rect(ro,rd,L0,L0u,L0v)>0.) c+=E0; if(rect(ro,rd,L1,L1u,L1v)>0.) c+=E1; } return c; }
+void surf(vec3 p, vec3 gn, int m, out vec3 alb, out float rough, out float metal, out vec3 n){
+  n=gn; vec2 q=bar(p); float ang=atan(p.z,p.y-AX);
+  if(m==0){ float s=fbm(p.xz*46.); float sp=step(.86,vn(p.xz*420.)); alb=mix(vec3(.02,.017,.018),vec3(.05,.043,.044),s)+sp*.01; rough=.2+.34*s; metal=0.; float dx=fbm(p.xz*190.)-.5, dz=fbm(p.zx*190.+3.)-.5; n=normalize(n+vec3(dx,0,dz)*.11); }
+  else if(m==1){
+    float r=q.y; float micro=fbm(vec2(ang*r*150.,q.x*150.)); float big=fbm(vec2(ang*6.,r*16.)+q.x*9.);
+    float wr=smoothstep(.56,.76,big+.2*micro)*smoothstep(.05,.0,abs(fract(0.)+0.));
+    float edge=smoothstep(.0,.004,.0);
+    alb=vec3(.024,.021,.022)*(.8+.5*micro); rough=.3+.16*micro; metal=0.;
+    float nearRim=smoothstep(.2195,.2245,r); float wear=smoothstep(.56,.68,fbm(vec2(ang*30.,q.x*150.)))*nearRim;
+    alb=mix(alb,vec3(.085,.08,.08),wear); rough=mix(rough,.4,wear);
+    float chalk=smoothstep(.58,.8,fbm(vec2(ang*2.3,r*11.)+vec2(q.x*4.,1.)))*.075*smoothstep(.45,.75,micro); alb+=chalk*vec3(.5,.48,.47);
+    if(r<.0508){ alb=vec3(.8,.78,.76); metal=1.; rough=.13+.07*fbm(vec2(r*700.,ang*2.)); }
+    float e=.0009; float a=fbm(vec2(ang*r*210.,q.x*210.)),b=fbm(vec2(ang*r*210.+3.,q.x*210.+3.)); n=normalize(n+(vec3(a,b,a*b*2.)-.5)*.035); if(r>.06&&r<.2) { float lathe=sin(r*1300.+vn(vec2(r*90.,ang))*3.); n=normalize(n+vec3(0.,normalize(vec2(p.y-AX,p.z))*lathe*.018)); }
+  }
+  else if(m==2){ alb=vec3(.72,.70,.68); metal=1.; rough=.1+.07*fbm(vec2(q.x*520.,ang*4.)); float s=fbm(vec2(q.x*900.,ang*3.))-.5; n=normalize(n+vec3(s*.02,0,0)); }
+  else if(m==3){ alb=vec3(.58,.56,.54); metal=1.; rough=.34; vec2 k=vec2(ang*.014+q.x,ang*.014-q.x)*760.; float kn=abs(sin(k.x))*abs(sin(k.y)); n=normalize(n+normalize(vec3(cos(k.x)*sign(sin(k.x)),0.,cos(k.y)*sign(sin(k.y))))*(.34*(1.-kn))); }
+  else { alb=vec3(.035,.033,.034); metal=0.; rough=.34; }
+}
+vec3 ggx(vec3 n, float a){ float u=rnd(),v=rnd(); float ct=sqrt((1.-u)/(1.+(a*a-1.)*u)), st=sqrt(1.-ct*ct), ph=6.2832*v; vec3 t=normalize(abs(n.y)<.9?cross(n,vec3(0,1,0)):cross(n,vec3(1,0,0))), b=cross(n,t); return normalize(t*st*cos(ph)+b*st*sin(ph)+n*ct); }
+vec3 cosd(vec3 n){ float u=rnd(),v=rnd(); float r=sqrt(u), ph=6.2832*v; vec3 t=normalize(abs(n.y)<.9?cross(n,vec3(0,1,0)):cross(n,vec3(1,0,0))), b=cross(n,t); return normalize(t*r*cos(ph)+b*r*sin(ph)+n*sqrt(1.-u)); }
+vec3 nee(vec3 p, vec3 n, vec3 c, vec3 u, vec3 v, vec3 E){ vec3 s=c+u*(rnd()-.5)+v*(rnd()-.5); vec3 w=s-p; float d=length(w); w/=d; float nl=dot(n,w); if(nl<=0.) return vec3(0); vec3 ln=normalize(cross(u,v)); float cl=abs(dot(ln,w)); if(march(p+n*.0012,w,d-.01)>0.) return vec3(0); return E*nl*cl*length(cross(u,v))/(d*d)/3.1416; }
+vec3 trace(vec3 ro, vec3 rd){
+  vec3 L=vec3(0),T=vec3(1); bool lamps=false;
+  for(int b=0;b<4;b++){
+    float t=march(ro,rd,7.);
+    if(t<0.){ L+=T*env(ro,rd,lamps); break; }
+    vec3 p=ro+rd*t, gn=nrm(p); int m; mapM(p,m);
+    vec3 alb,n; float rough,metal; surf(p,gn,m,alb,rough,metal,n);
+    if(dot(n,rd)>0.) n=gn;
+    vec3 f0=mix(vec3(.045),alb,metal); float nv=max(dot(n,-rd),0.); vec3 F=f0+(1.-f0)*pow(1.-nv,5.);
+    float ps=clamp(dot(F,vec3(.33)),.12,.92);
+    if(metal<.5){ L+=T*(1.-F)*alb*(nee(p,n,L0,L0u,L0v,E0)+nee(p,n,L1,L1u,L1v,E1)); }
+    vec3 fog=vec3(.0052,.0036,.0040); float f=exp(-t*.2); if(b==0) { L+=T*(1.-f)*fog; T*=f; }
+    if(rnd()<ps){ vec3 h=ggx(n,max(rough*rough,.004)); vec3 nd=reflect(rd,h); if(dot(nd,gn)<=0.) break; rd=nd; T*=F/ps; lamps=true; }
+    else { if(metal>.5) break; rd=cosd(n); T*=alb*(1.-F)/(1.-ps); lamps=false; }
+    ro=p+gn*.0012;
+    float mx=max(T.r,max(T.g,T.b)); if(b>1){ if(rnd()>mx) break; T/=mx; }
+  }
+  return L;
+}
+void main(){
+  rs=uint(gl_FragCoord.x)*1973u+uint(gl_FragCoord.y)*9277u+uint(seed)*26699u+1u;
+  vec2 px=(gl_FragCoord.xy+vec2(rnd(),rnd())-.5*res)/res.y;
+  vec3 f=normalize(camTarget-camPos), r=normalize(cross(f,vec3(0,1,0))), u=cross(r,f);
+  vec3 rd=normalize(f+(px.x*r+px.y*u)*fov), fp=camPos+rd*focus;
+  float a=rnd()*6.2832, ra=sqrt(rnd())*aperture; vec3 ro=camPos+(r*cos(a)+u*sin(a))*ra;
+  o=vec4(min(trace(ro,normalize(fp-ro)),vec3(4.)),1.);
+}
+</script>
+<script id="post" type="x-shader">#version 300 es
+precision highp float; out vec4 o; uniform sampler2D t; uniform vec2 res; uniform float n, exposure; uniform vec3 ground, grade;
+float h(vec2 p){ return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453); }
+vec3 aces(vec3 x){ return clamp(x*(2.51*x+.03)/(x*(2.43*x+.59)+.14),0.,1.); }
+void main(){ vec2 uv=gl_FragCoord.xy/res; vec3 c=texture(t,uv).rgb/n*exposure;
+  vec3 b=vec3(0); for(int i=0;i<8;i++){ float a=float(i)*.785; b+=texture(t,uv+vec2(cos(a),sin(a)*res.x/res.y)*.006).rgb/n; } c+=max(b/8.-.6,vec3(0))*.1*exposure;
+  float v=1.-.42*pow(length((uv-.5)*vec2(1.1,1.)),2.2)*2.; c*=v; c=aces(c); c=pow(c,vec3(1./2.2)); c=mix(c,c*c*(3.-2.*c),.6);
+  float l=dot(c,vec3(.3,.6,.1)); c=mix(vec3(l)*grade,c,.82); vec3 g=ground*.72; c=g+c*(1.-g);
+  c+=(h(gl_FragCoord.xy+.5)-.5)*.022; o=vec4(c,1.); }
+</script>
+<script>
+const vs = `#version 300 es
+void main(){ vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2); gl_Position=vec4(p*2.-1.,0,1); }`
+const cv = document.getElementById('c'), gl = cv.getContext('webgl2', { antialias: false, preserveDrawingBuffer: true, powerPreference: 'high-performance' })
+const prog = (fs) => { const p = gl.createProgram(); for (const [ty, src] of [[gl.VERTEX_SHADER, vs], [gl.FRAGMENT_SHADER, fs]]) { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); gl.attachShader(p, s) } gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return p }
+window.info = () => { const e = gl.getExtension('WEBGL_debug_renderer_info'); return { r: e && gl.getParameter(e.UNMASKED_RENDERER_WEBGL), fb: !!gl.getExtension('EXT_color_buffer_float'), blend: !!gl.getExtension('EXT_float_blend') } }
+window.render = async (S) => {
+  const { w, h, spp } = S; cv.width = w; cv.height = h
+  gl.getExtension('EXT_color_buffer_float'); gl.getExtension('EXT_float_blend')
+  const P = prog(document.getElementById('fs').textContent), Q = prog(document.getElementById('post').textContent)
+  const tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, w, h, 0, gl.RGBA, gl.FLOAT, null)
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v)
+  const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0)
+  gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.viewport(0, 0, w, h); gl.useProgram(P)
+  const U = (n) => gl.getUniformLocation(P, n)
+  gl.uniform2f(U('res'), w, h); gl.uniform3fv(U('camPos'), S.cam); gl.uniform3fv(U('camTarget'), S.tgt); gl.uniform1f(U('focus'), S.focus); gl.uniform1f(U('aperture'), S.ap); gl.uniform1f(U('fov'), S.fov)
+  gl.uniform1i(U('nP'), S.plates.length); gl.uniform3fv(U('plates'), S.plates.flat()); gl.uniform1f(U('sleeveEnd'), S.sleeveEnd); gl.uniform3fv(U('glowDir'), S.glowDir); gl.uniform3fv(U('glowC'), S.glowC); gl.uniform3fv(U('glowW'), S.glowW); for (const k of ['L0','L0u','L0v','E0','L1','L1u','L1v','E1']) gl.uniform3fv(U(k), S[k])
+  gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.enable(gl.SCISSOR_TEST)
+  const T = 192, t0 = performance.now()
+  for (let s = 0; s < spp; s++) {
+    gl.uniform1f(U('seed'), s + 1)
+    for (let y = 0; y < h; y += T) { for (let x = 0; x < w; x += T) { gl.scissor(x, y, T, T); gl.drawArrays(gl.TRIANGLES, 0, 3) } gl.flush() }
+    gl.finish(); await new Promise((r) => setTimeout(r, 0))
+    if (s % 16 === 0) console.log('spp', s, Math.round(performance.now() - t0))
+  }
+  gl.disable(gl.BLEND); gl.disable(gl.SCISSOR_TEST); gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.useProgram(Q)
+  gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(gl.getUniformLocation(Q, 't'), 0); gl.uniform2f(gl.getUniformLocation(Q, 'res'), w, h); gl.uniform1f(gl.getUniformLocation(Q, 'n'), spp); gl.uniform1f(gl.getUniformLocation(Q, 'exposure'), S.exposure); gl.uniform3fv(gl.getUniformLocation(Q, 'ground'), S.ground); gl.uniform3fv(gl.getUniformLocation(Q, 'grade'), S.grade)
+  gl.drawArrays(gl.TRIANGLES, 0, 3)
+  return cv.toDataURL('image/png')
+}
+</script>

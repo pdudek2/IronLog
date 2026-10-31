@@ -17,7 +17,7 @@ async function openDashboard(page: Page) {
 }
 
 test.describe('Dashboard regressions', () => {
-  test('exposes 44px dashboard streak and progress targets at 320px', async ({ page, cleanup }, testInfo) => {
+  test('exposes a 44px dashboard streak target at 320px', async ({ page, cleanup }, testInfo) => {
     test.skip(!emulatorMode, 'emulator-only deterministic fixture')
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only geometry contract')
     await page.setViewportSize({ width: 320, height: 844 })
@@ -29,7 +29,6 @@ test.describe('Dashboard regressions', () => {
 
     for (const control of [
       page.getByRole('button', { name: /Workout streak/ }),
-      page.getByRole('button', { name: 'View progress' }),
     ]) {
       const box = await control.boundingBox()
       expect(box).not.toBeNull()
@@ -38,12 +37,13 @@ test.describe('Dashboard regressions', () => {
     }
   })
 
-  test('renders one weekly analysis sheet without removed weekly surfaces', async ({ page }) => {
+  test('renders one week summary without removed weekly surfaces', async ({ page }) => {
     await openDashboard(page)
 
     await expect(page.locator('.dashboard-metric-strip')).toHaveCount(0)
     await expect(page.locator('.dashboard-week-pulse')).toHaveCount(0)
-    await expect(page.locator('.dashboard-overview-grid:visible')).toHaveCount(1)
+    await expect(page.locator('.dashboard-overview-grid')).toHaveCount(0)
+    await expect(page.locator('.train-days:visible')).toHaveCount(1)
   })
 
   test('labels recent workout set counts instead of relying on category color', async ({ page, cleanup }) => {

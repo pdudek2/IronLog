@@ -81,7 +81,7 @@ test('Home changes the selected day without launching and then starts that exact
   await picker.getByRole('button', { name: 'Choose workout' }).click()
   await expect(page.getByText('Pull second', { exact: true }).first()).toBeVisible()
 
-  await page.getByRole('button', { name: 'Start workout' }).click()
+  await page.getByRole('button', { name: 'Start Pull second' }).click()
   await expect(page).toHaveURL('/workout/new', { timeout: 15_000 })
   await expect(page.getByRole('region', { name: 'Active session: Pull second' })).toBeVisible()
   await expect(page.getByText('Barbell Row', { exact: true }).first()).toBeVisible()
@@ -117,11 +117,11 @@ test('Home rejects a plan deleted after its selection loaded', async ({ page, cl
   await expect(page.getByText('Upper first', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
 
   await templateRef.delete()
-  await page.getByRole('button', { name: 'Start workout' }).click()
+  await page.getByRole('button', { name: 'Start Upper first' }).click()
 
   await expect(page).toHaveURL('/dashboard')
   await expect(page.getByText('Workout no longer available', { exact: true })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Start workout' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Start Upper first' })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Start empty workout' })).toBeVisible()
   await page.screenshot({ path: `output/home-plans/deleted-target-${testInfo.project.name}.png` })
 })

@@ -1,6 +1,6 @@
 import { test, expect, type Page } from './fixtures'
 import { discardActiveSession, openWorkoutDiscardDialog } from './support/accountCleanup'
-import { expectAppReady } from './support/appReady'
+import { emptyWorkoutEntry, expectAppReady } from './support/appReady'
 import { waitForActiveSessionWrite } from './support/firestoreBrowserBridge'
 
 async function waitForWorkoutState(page: Page): Promise<void> {
@@ -141,10 +141,7 @@ test.describe('Workout navigation guard', () => {
       await confirmDiscard.click()
       await page.waitForURL('/dashboard', { timeout: 10_000 })
       await expect(page).toHaveURL('/dashboard')
-      await expect(page.getByRole('button', {
-        name: 'Start new workout',
-        exact: true,
-      }).first()).toBeVisible({ timeout: 10_000 })
+      await expect(emptyWorkoutEntry(page)).toBeVisible({ timeout: 10_000 })
     })
     discardCompleted = true
   })

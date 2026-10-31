@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Dumbbell, Flame, History, LayoutDashboard, Layers3, LogOut, Plus, Sparkles, TrendingUp, User } from 'lucide-react'
+import { Dumbbell, Flame, History, MessageSquare, TrendingUp, User } from 'lucide-react'
 import BrandMark from './BrandMark'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
@@ -18,16 +18,14 @@ interface TopNavProps {
 const NAV_ITEMS: Array<{
   key: AppSection
   label: string
-  icon: typeof LayoutDashboard
+  icon: typeof Dumbbell
   to: string
   match?: (path: string) => boolean
 }> = [
-  { key: 'dashboard', label: 'Home', icon: LayoutDashboard, to: '/dashboard' },
+  { key: 'dashboard', label: 'Train', icon: Dumbbell, to: '/dashboard', match: (p) => p === '/dashboard' || p.startsWith('/templates') || p.startsWith('/exercises') },
   { key: 'history', label: 'History', icon: History, to: '/history', match: (p) => p.startsWith('/history') },
   { key: 'progress', label: 'Progress', icon: TrendingUp, to: '/progress', match: (p) => p.startsWith('/progress') },
-  { key: 'templates', label: 'Plans', icon: Layers3, to: '/templates', match: (p) => p.startsWith('/templates') },
-  { key: 'exercises', label: 'Exercises', icon: Dumbbell, to: '/exercises', match: (p) => p.startsWith('/exercises') },
-  { key: 'chat', label: 'AI Coach', icon: Sparkles, to: '/chat', match: (p) => p.startsWith('/chat') },
+  { key: 'chat', label: 'Coach', icon: MessageSquare, to: '/chat', match: (p) => p.startsWith('/chat') },
 ]
 
 export default function TopNav({ current, streak: streakProp }: TopNavProps) {
@@ -41,7 +39,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
   const hasActiveSession = active !== null
 
   const isActive = (item: (typeof NAV_ITEMS)[number]) =>
-    current ? current === item.key : item.match ? item.match(path) : path === item.to
+    item.match ? item.match(path) : path === item.to
 
   const go = (to: string) => navigateWithAppTransition(navigate, to)
 
@@ -99,20 +97,15 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             </motion.button>
           )}
 
-          {path !== '/workout/new' && <motion.button
+          {hasActiveSession && path !== '/workout/new' && <motion.button
             type="button"
             className="top-nav-cta"
-            onClick={() => {
-              if (hasActiveSession) go('/workout/new')
-              else navigateWithAppTransition(navigate, '/workout/new', { state: { startNew: true } })
-            }}
+            onClick={() => go('/workout/new')}
             onPointerEnter={() => { void preloadRouteByPath('/workout/new') }}
             onFocus={() => { void preloadRouteByPath('/workout/new') }}
             whileTap={{ scale: 0.97 }}
-            aria-label={hasActiveSession ? 'Resume workout' : 'Start new workout'}
           >
-            <Plus size={15} strokeWidth={2.4} />
-            <span>{hasActiveSession ? 'Resume workout' : 'New workout'}</span>
+            <span>Resume workout</span>
           </motion.button>}
 
           <button
@@ -129,15 +122,6 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             <User size={16} />
           </button>
 
-          <button
-            type="button"
-            className="top-nav-icon-btn inline-flex"
-            onClick={() => go('/logout')}
-            aria-label="Sign out"
-            title="Sign out"
-          >
-            <LogOut size={15} />
-          </button>
         </div>
       </div>
     </header>

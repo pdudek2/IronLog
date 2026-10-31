@@ -9,6 +9,7 @@ import {
   Easing,
   ActivityIndicator,
   AppState,
+  BackHandler,
   Image,
   KeyboardAvoidingView,
   Modal,
@@ -340,7 +341,7 @@ function SetValueInput({ value, units, field, label, done, rejectedEdit, onChang
     placeholder="0"
     placeholderTextColor={colors.mutedSoft}
     selectTextOnFocus
-    selectionColor={colors.accentText}
+    selectionColor={colors.lineStrong}
     style={large ? styles.panelInput : [styles.setInput, done && styles.setInputDone]}
     value={text}
   />
@@ -807,6 +808,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
     const exercise = liveSession?.exercises.find(({ clientId }) => clientId === exerciseId)
     if (exercise?.sets.every((set) => set.done || set.clientId === setId)) setManualExercise(null)
   })
+  const liveSessionId = liveSession?.sessionId
+  useEffect(() => {
+    if (!isFocused || !liveSessionId) return
+    const back = BackHandler.addEventListener('hardwareBackPress', () => { router.navigate('/dashboard'); return true })
+    return () => back.remove()
+  }, [isFocused, liveSessionId, router])
   // The keyboard lifts the panel, which would then cover a row being edited further up the list.
   const panelVisible = panelExercise && !sessionLocked && (keyboardInset === 0 || panelInputFocused)
   const panelEditing: EditingActions = {
@@ -951,7 +958,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </>)}
       </Animated.ScrollView>
       {panelVisible && <SetPanel exercise={panelExercise} setIndex={panelSetIndex} units={state.status === 'ready' ? state.units : 'kg'} onInputFocus={setPanelInputFocused}
-        rejectedEdit={rejectedEditState} inset={keyboardInset || insets.bottom + 14} finishing={closure?.status === 'submitting'}
+        rejectedEdit={rejectedEditState} inset={Math.max(keyboardInset, insets.bottom + 14)} finishing={closure?.status === 'submitting'}
         nextName={nextExerciseIndex >= 0 ? liveSession?.exercises[nextExerciseIndex]?.name ?? null : null}
         editing={panelEditing}
         rest={currentRest && <RestBar rest={currentRest} undoLabel={undoSet?.done ? `Undo set ${undoSetIndex + 1}` : undefined}

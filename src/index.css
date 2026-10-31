@@ -38,7 +38,9 @@
   --top-nav-height: calc(64px + env(safe-area-inset-top, 0px));
   --input-bg: rgba(255, 255, 255, 0.045);
   --focus-ring: rgba(244, 238, 232, 0.3);
-  --primary-gradient: linear-gradient(180deg, var(--puls-bone) 0%, var(--puls-bone) 100%);
+  --primary-start: var(--puls-bone);
+  --primary-end: var(--puls-bone);
+  --primary-gradient: linear-gradient(180deg, var(--primary-start) 0%, var(--primary-end) 100%);
   --success-gradient: var(--primary-gradient);
   --card-glow: 0 18px 48px rgba(0, 0, 0, 0.34);
   --shadow-panel: 0 22px 58px rgba(0, 0, 0, 0.38);

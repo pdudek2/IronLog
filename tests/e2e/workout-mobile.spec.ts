@@ -266,7 +266,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.locator('.workout-section-head')).not.toBeVisible()
     await expect(page.locator('.workout-mobile-lifecycle-bar')).toHaveCSS(
       'background-color',
-      'rgb(11, 10, 12)',
+      'rgb(13, 11, 10)',
     )
     const readyLayout = await page.evaluate(() => {
       const ledger = document.querySelector<HTMLElement>('.workout-exercise-ledger')
@@ -588,7 +588,7 @@ test.describe('Active workout shell reduction', () => {
     await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
     await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
     await doneButton.click()
-    await expect(page.getByRole('button', { name: 'Unmark set 1 for Squat' })).toHaveCSS('color', 'rgb(143, 184, 160)')
+    await expect(page.getByRole('button', { name: 'Unmark set 1 for Squat' })).toHaveCSS('color', 'rgb(239, 231, 220)')
 
     const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar .tabular-nums').innerText()
     const addRestButton = actionBar.getByRole('button', { name: 'Add 30 seconds' })

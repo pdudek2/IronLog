@@ -12,6 +12,7 @@ import {
   getWorkout,
   readWorkoutMutationState,
   deleteWorkout,
+  retryWorkoutMaterialization,
   updateWorkout,
   calcVolume,
   type WorkoutSummary,
@@ -27,6 +28,9 @@ import ConfirmDialog from '../components/ConfirmDialog'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { ActionFeedback } from '../components/ActionFeedback'
 import { WorkoutDetailMobileActions } from '../components/WorkoutDetailMobileActions'
+import WorkoutProjectionStatus, {
+  type ProjectionRetryState,
+} from '../components/workout/WorkoutProjectionStatus'
 import { Bone, PageSkeleton } from '../components/ui'
 import {
   DEFAULT_EXERCISE_CATEGORY_COLOR,
@@ -200,6 +204,7 @@ export default function WorkoutDetailPage() {
   } = useUserExercises(user?.uid ?? null)
   const [transientDeleteOperation, setTransientDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [projectionRetry, setProjectionRetry] = useState<ProjectionRetryState>('idle')
   const [saving, setSaving] = useState(false)
   const editBaseline = useRef<string | null>(null)
   const pendingEdit = useRef<{ guard: WorkoutMutationGuard; label: string | null; exercises: WorkoutSummary['exercises'] } | null>(null)
@@ -218,6 +223,7 @@ export default function WorkoutDetailPage() {
     setIsEditing(false)
     setShowPicker(false)
     setConfirmDeleteOpen(false)
+    setProjectionRetry('idle')
   }
   useEffect(() => {
     if (!workoutResult) return
@@ -235,6 +241,7 @@ export default function WorkoutDetailPage() {
   }
   const persistedDeleteRecovery = user?.uid ? readWorkoutDeleteRecovery(user.uid) : null
   const persistedDeleteWorkoutId = persistedDeleteRecovery?.workoutId
+  const otherDeleteRecoveryId = persistedDeleteWorkoutId !== id ? persistedDeleteWorkoutId : undefined
   const deleteOperation = (transientDeleteOperation?.uid === user?.uid ? transientDeleteOperation : null)
     ?? (
       user && persistedDeleteWorkoutId && persistedDeleteWorkoutId === id
@@ -416,14 +423,14 @@ export default function WorkoutDetailPage() {
       leaveGuard.allowNextNavigation()
       navigate('/history', { replace: true })
       toast.success('Workout deleted')
-    } catch {
+    } catch (error) {
       if (!isCurrent()) return
       setTransientDeleteOperation((current) => (
         current?.workoutId === workoutId
           ? { uid: user.uid, workoutId, status: recoveryStatus }
           : current
       ))
-      toast.error('Could not delete the workout.')
+      toast.error(error instanceof ApiRejectedError ? error.message : 'Could not delete the workout.')
     }
   }
 
@@ -450,6 +457,28 @@ export default function WorkoutDetailPage() {
       setConfirmDeleteOpen(true)
     } catch (error) { if (scope === deleteScopeRef.current) toast.error(error instanceof Error ? error.message : 'Could not check workout.') }
     finally { if (scope === deleteScopeRef.current) setSaving(false) }
+  }
+
+  async function handleProjectionRetry() {
+    if (!workout || projectionRetry === 'retrying') return
+    const scope = deleteScopeRef.current
+    setProjectionRetry('retrying')
+    try {
+      await retryWorkoutMaterialization(workout.id)
+      if (scope !== deleteScopeRef.current) return
+      const refreshed = await getWorkout(workout.id)
+      if (scope !== deleteScopeRef.current) return
+      if (!refreshed?.materialized) {
+        setProjectionRetry('failed')
+        return
+      }
+      setProjectionRetry('idle')
+      setWorkoutResource((current) => current.workout
+        ? { ...current, workout: { ...current.workout, materialized: true } }
+        : current)
+    } catch {
+      if (scope === deleteScopeRef.current) setProjectionRetry('failed')
+    }
   }
 
   function handleBack() {
@@ -634,16 +663,16 @@ export default function WorkoutDetailPage() {
 
         <WorkoutDetailMobileActions>
           <motion.div
-            className={`workout-detail-mobile-action-panel${deleteOperation ? ' has-feedback' : ''}`}
+            className={`workout-detail-mobile-action-panel${deleteOperation || otherDeleteRecoveryId ? ' has-feedback' : ''}`}
             initial={false}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
           >
-            {persistedDeleteRecovery && persistedDeleteRecovery.workoutId !== id && (
+            {otherDeleteRecoveryId && (
               <p className="mb-3 text-sm" style={{ color: 'var(--muted)' }}>
                 The previous workout deletion needs to be retried.{' '}
-                <button type="button" onClick={() => navigate('/dashboard')} className="underline" style={{ color: 'var(--accent)' }}>
-                  Go to recovery on the dashboard
+                <button type="button" onClick={() => navigate(`/workout/${otherDeleteRecoveryId}`)} className="underline" style={{ color: 'var(--accent)' }}>
+                  Go to recovery
                 </button>
               </p>
             )}
@@ -692,10 +721,11 @@ export default function WorkoutDetailPage() {
           </div>
         </dl>
 
-        {!displayedWorkout.materialized && (
-          <p className="workout-result-projection-status" role="status">
-            Stats are still syncing.
-          </p>
+        {!displayedWorkout.materialized && !isWorkoutUnavailable && (
+          <WorkoutProjectionStatus
+            state={projectionRetry}
+            onRetry={() => void handleProjectionRetry()}
+          />
         )}
 
         {isEditing && (

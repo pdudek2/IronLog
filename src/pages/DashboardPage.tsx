@@ -1,21 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
-import {
-  ChevronRight,
-  Play,
-  Trash2,
-} from 'lucide-react'
+import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
 import NextSessionCard from '../components/NextSessionCard'
-import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
 import WorkoutPickerDialog, { type WorkoutSelectionKey } from '../components/WorkoutPickerDialog'
 import { ActionFeedback } from '../components/ActionFeedback'
-import WorkoutProjectionStatus, {
-  type ProjectionRetryState,
-} from '../components/workout/WorkoutProjectionStatus'
 import { Bone, Button, PageSkeleton } from '../components/ui'
 import {
   getTemplates,
@@ -27,21 +18,12 @@ import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { usePassiveActiveSessionSync } from '../hooks/usePassiveActiveSessionSync'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import {
-  getRecentWorkouts, deleteWorkout, retryWorkoutMaterialization, countWeeklyWorkouts,
+  getRecentWorkouts, retryWorkoutMaterialization, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
-  readWorkoutMutationState,
 } from '../lib/workoutService'
-import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
-import { ApiRejectedError } from '../lib/authedApi'
-import type { WorkoutMutationGuard } from '../shared/workoutMutation'
 import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
 import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
-import {
-  DEFAULT_EXERCISE_CATEGORY_COLOR,
-  EXERCISE_CATEGORY_COLORS,
-} from '../lib/exerciseLabels'
-import { exercises as exerciseDb } from '../data/exercises'
 import { useAuthStore } from '../store/authStore'
 import { useDashboardStore } from '../store/dashboardStore'
 import { useProfileStore } from '../store/profileStore'
@@ -56,12 +38,6 @@ interface TemplatesResource {
   state: DataState<WorkoutTemplate[]>
 }
 
-interface WorkoutDeleteOperation {
-  workoutId: string
-  uid: string
-  status: 'pending' | 'cleanup_pending' | 'unknown' | 'error'
-}
-
 interface ReadinessResource {
   uid: string | null
   state: DataState<ReadinessEntry | null>
@@ -73,8 +49,6 @@ interface WorkoutSelectionResource {
   target: WorkoutSelectionKey | null
   unavailable: boolean
 }
-
-const exerciseMap = new Map(exerciseDb.map((exercise) => [exercise.id, exercise]))
 
 function resolveWorkoutSelection(
   templates: WorkoutTemplate[],
@@ -88,27 +62,12 @@ function resolveWorkoutSelection(
     : null
 }
 
-function workoutAccent(workout: WorkoutSummary): string {
-  const firstExercise = workout.exercises[0]
-  if (!firstExercise?.exerciseId) return DEFAULT_EXERCISE_CATEGORY_COLOR
-  const category = exerciseMap.get(firstExercise.exerciseId)?.category
-  return EXERCISE_CATEGORY_COLORS[category ?? ''] ?? DEFAULT_EXERCISE_CATEGORY_COLOR
-}
-
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('en-US', {
     weekday: 'short',
     day: 'numeric',
     month: 'short',
   })
-}
-
-function formatDuration(start: number, end: number): string {
-  const cappedEnd = getCappedWorkoutFinishedAt(start, end)
-  const minutes = Math.round((cappedEnd - start) / 60_000)
-  if (minutes < 1) return '< 1 min'
-  if (minutes < 60) return `${minutes} min`
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
 function isSameDay(a: Date, b: Date): boolean {
@@ -172,10 +131,7 @@ export default function DashboardPage() {
   const workouts = ownsSnapshot ? snapshotWorkouts : []
   const weeklyDone = ownsSnapshot ? snapshotWeeklyDone : 0
   const dashboardReady = ownsSnapshot && snapshotReady
-  const [transientDeleteOperation, setTransientDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [openingWorkout, setOpeningWorkout] = useState(false)
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
-  const workoutToDelete = workouts.find((workout) => workout.id === confirmDelete)
   const [templatesResource, setTemplatesResource] = useState<TemplatesResource>({
     uid: user?.uid ?? null,
     state: { status: 'loading' },
@@ -213,27 +169,14 @@ export default function DashboardPage() {
   })
   const [dashboardError, setDashboardError] = useState(false)
   const [dashboardLoadAttempt, setDashboardLoadAttempt] = useState(0)
-  const [projectionRetryStates, setProjectionRetryStates] = useState<Record<string, ProjectionRetryState>>({})
   const workoutsRef = useRef<WorkoutSummary[]>([])
   const snapshotRequestRef = useRef(0)
   const dashboardScopeRef = useRef<{ uid: string } | null>(null)
   const materializationRetriesRef = useRef(new Map<string, Promise<void>>())
-  // Taken when the dialog opens, so a workout changed on another device meanwhile is not deleted unseen.
-  const deleteGuardRef = useRef<{ workoutId: string; guard: WorkoutMutationGuard } | null>(null)
   const templatesMountedRef = useRef(false)
   const templatesRequestRef = useRef(0)
   const requestedTemplatesUserRef = useRef<string | null>(null)
   const inFlightTemplatesUserRef = useRef<string | null>(null)
-  if (transientDeleteOperation && transientDeleteOperation.uid !== user?.uid) {
-    setTransientDeleteOperation(null)
-  }
-  const persistedDeleteRecovery = user?.uid ? readWorkoutDeleteRecovery(user.uid) : null
-  const deleteOperation = (transientDeleteOperation?.uid === user?.uid ? transientDeleteOperation : null)
-    ?? (
-      user && persistedDeleteRecovery
-        ? { uid: user.uid, workoutId: persistedDeleteRecovery.workoutId, status: persistedDeleteRecovery.status ?? 'cleanup_pending' as const }
-        : null
-    )
 
   useEffect(() => {
     dashboardScopeRef.current = user?.uid ? { uid: user.uid } : null
@@ -302,29 +245,6 @@ export default function DashboardPage() {
     return retry
   }, [])
 
-  const markProjectionRetriesFailed = useCallback((workoutIds: string[]) => {
-    const pendingIds = new Set(
-      workoutsRef.current
-        .filter((workout) => !workout.materialized)
-        .map((workout) => workout.id),
-    )
-    const failedIds = workoutIds.filter((workoutId) => pendingIds.has(workoutId))
-    if (failedIds.length === 0) return
-    setProjectionRetryStates((current) => ({
-      ...current,
-      ...Object.fromEntries(failedIds.map((workoutId) => [workoutId, 'failed'])),
-    }))
-  }, [])
-
-  const setDashboardSnapshot = useCallback((uid: string, all: WorkoutSummary[]) => {
-    if (!setSnapshot(uid, {
-      workouts: all,
-      weeklyDone: countWeeklyWorkouts(all),
-      streak: calcStreak(all),
-    })) return
-    workoutsRef.current = all
-  }, [setSnapshot])
-
   const refreshDashboardSnapshot = useCallback(async (uid: string): Promise<WorkoutSummary[] | null> => {
     const isCurrent = captureDashboardScope(uid)
     if (!isCurrent()) return null
@@ -338,19 +258,13 @@ export default function DashboardPage() {
     }
     if (!isCurrent() || requestId !== snapshotRequestRef.current) return null
 
-    setDashboardSnapshot(uid, all)
-    setProjectionRetryStates((current) => {
-      const pendingIds = new Set(
-        all.filter((workout) => !workout.materialized).map((workout) => workout.id),
-      )
-      const next: Record<string, ProjectionRetryState> = {}
-      Object.entries(current).forEach(([workoutId, state]) => {
-        if (pendingIds.has(workoutId)) next[workoutId] = state
-      })
-      return next
-    })
+    if (setSnapshot(uid, {
+      workouts: all,
+      weeklyDone: countWeeklyWorkouts(all),
+      streak: calcStreak(all),
+    })) workoutsRef.current = all
     return all
-  }, [captureDashboardScope, setDashboardSnapshot])
+  }, [captureDashboardScope, setSnapshot])
 
   const retryPendingProjections = useCallback(async (
     uid: string,
@@ -361,34 +275,13 @@ export default function DashboardPage() {
     const pending = all.filter((workout) => !workout.materialized)
     if (pending.length === 0) return
 
-    setProjectionRetryStates((current) => ({
-      ...current,
-      ...Object.fromEntries(pending.map((workout) => [workout.id, 'retrying'])),
-    }))
-
     const results = await Promise.allSettled(
       pending.map((workout) => retryProjectionOnce(workout.id)),
     )
 
-    if (!isCurrent()) return
-    const fulfilledIds = pending.flatMap((workout, index) => (
-      results[index]?.status === 'fulfilled' ? [workout.id] : []
-    ))
-    const rejectedIds = pending.flatMap((workout, index) => (
-      results[index]?.status === 'rejected' ? [workout.id] : []
-    ))
-    markProjectionRetriesFailed(rejectedIds)
-
-    if (fulfilledIds.length > 0) {
-      try {
-        const refreshed = await refreshDashboardSnapshot(uid)
-        if (!refreshed || !isCurrent()) return
-        markProjectionRetriesFailed(fulfilledIds)
-      } catch {
-        if (isCurrent()) markProjectionRetriesFailed(fulfilledIds)
-      }
-    }
-  }, [captureDashboardScope, markProjectionRetriesFailed, refreshDashboardSnapshot, retryProjectionOnce])
+    if (!isCurrent() || !results.some((result) => result.status === 'fulfilled')) return
+    await refreshDashboardSnapshot(uid).catch(() => undefined)
+  }, [captureDashboardScope, refreshDashboardSnapshot, retryProjectionOnce])
 
   const fetchData = useCallback(async (uid: string) => {
     const isCurrent = captureDashboardScope(uid)
@@ -436,21 +329,6 @@ export default function DashboardPage() {
     setReadinessResource({ uid: user?.uid ?? null, state })
   }, [user?.uid])
 
-  async function handleDelete(id: string) {
-    if (deleteOperation) return
-    try {
-      const state = await readWorkoutMutationState(id)
-      if (!state.workout || !state.baseline) {
-        toast.error('Workout is no longer available.')
-        return
-      }
-      deleteGuardRef.current = { workoutId: id, guard: { baseline: state.baseline, operationId: crypto.randomUUID() } }
-      setConfirmDelete(id)
-    } catch {
-      toast.error('Could not check the workout. Try again.')
-    }
-  }
-
   async function handleOpenWorkout() {
     if (openingWorkout) return
     setOpeningWorkout(true)
@@ -461,68 +339,6 @@ export default function DashboardPage() {
       else navigate('/workout/new', { state: { startNew: true } })
       setOpeningWorkout(false)
     }
-  }
-
-  function openWorkout(workout: WorkoutSummary) {
-    navigate(`/workout/${workout.id}`, {
-      state: { workoutPreview: workout },
-    })
-  }
-
-  async function handleProjectionRetry(workoutId: string) {
-    if (!user || projectionRetryStates[workoutId] === 'retrying') return
-    const isCurrent = captureDashboardScope(user.uid)
-    if (!isCurrent()) return
-    setProjectionRetryStates((current) => ({ ...current, [workoutId]: 'retrying' }))
-    try {
-      await retryProjectionOnce(workoutId)
-      if (!isCurrent()) return
-      const refreshed = await refreshDashboardSnapshot(user.uid)
-      if (!refreshed || !isCurrent()) return
-      markProjectionRetriesFailed([workoutId])
-    } catch {
-      if (isCurrent()) markProjectionRetriesFailed([workoutId])
-    }
-  }
-
-  async function runWorkoutDelete(workoutId: string) {
-    if (!user) return
-    const isCurrent = captureDashboardScope(user.uid)
-    if (!isCurrent()) return
-    const recoveryStatus = deleteOperation?.workoutId === workoutId
-      && (deleteOperation.status === 'cleanup_pending' || deleteOperation.status === 'unknown')
-      ? deleteOperation.status
-      : 'error'
-    setTransientDeleteOperation({ uid: user.uid, workoutId, status: 'pending' })
-    try {
-      const guard = deleteGuardRef.current?.workoutId === workoutId ? deleteGuardRef.current.guard : undefined
-      const result = await deleteWorkout(workoutId, guard)
-      if (result.status !== 'deleted') {
-        if (isCurrent()) setTransientDeleteOperation({ uid: user.uid, workoutId, status: result.status })
-        return
-      }
-      if (!isCurrent()) return
-      setDashboardSnapshot(user.uid, workoutsRef.current.filter((workout) => workout.id !== workoutId))
-      setTransientDeleteOperation(null)
-      void fetchData(user.uid)
-      toast.success('Workout deleted')
-    } catch (error) {
-      if (!isCurrent()) return
-      setTransientDeleteOperation({ uid: user.uid, workoutId, status: recoveryStatus })
-      toast.error(error instanceof ApiRejectedError ? error.message : 'Could not delete the workout.')
-    }
-  }
-
-  function confirmDeleteWorkout() {
-    if (!confirmDelete || deleteOperation) return
-    const workoutId = confirmDelete
-    setConfirmDelete(null)
-    void runWorkoutDelete(workoutId)
-  }
-
-  function retryWorkoutDelete() {
-    if (!deleteOperation || deleteOperation.status === 'pending') return
-    void runWorkoutDelete(deleteOperation.workoutId)
   }
 
   if (dashboardError && !dashboardReady) {
@@ -552,11 +368,6 @@ export default function DashboardPage() {
   const weeklyGoal = profile?.weeklyGoal ?? 3
   const weekDates = getWeekDates(new Date())
   const today = new Date()
-  const recentWorkouts = workouts.slice(0, 4)
-  const orphanedDeleteOperation = deleteOperation
-    && !recentWorkouts.some((workout) => workout.id === deleteOperation.workoutId)
-    ? deleteOperation
-    : null
   const templatesState: DataState<WorkoutTemplate[]> =
     templatesResource.uid === user?.uid
       ? templatesResource.state
@@ -564,7 +375,6 @@ export default function DashboardPage() {
   const templates = templatesState.status === 'success' ? templatesState.data : []
   // A new account has nothing to start from a plan, so an empty workout is the main action.
   const noPlans = templatesState.status === 'success' && templates.length === 0
-  const recentTemplates = templates.slice(0, 3)
   const selectedWorkout = workoutSelection.uid === user?.uid
     ? resolveWorkoutSelection(templates, workoutSelection.target)
     : null
@@ -573,9 +383,6 @@ export default function DashboardPage() {
   const quickTemplateDay = quickTemplateDayIndex >= 0
     ? quickTemplate?.days[quickTemplateDayIndex] ?? null
     : null
-  const secondaryTemplates = hasActiveSession
-    ? recentTemplates
-    : recentTemplates.filter((template) => template.id !== quickTemplate?.id)
   const quickTemplateRequestKey = quickTemplate
     ? `dashboard:${quickTemplate.id}:selection:${quickTemplateDayIndex}`
     : null
@@ -595,11 +402,6 @@ export default function DashboardPage() {
     && quickTemplateHasExercises
     && readinessState.status === 'success'
     && readinessState.data !== null
-  const showPlansStrip = templatesState.status !== 'success'
-    || recentTemplates.length === 0
-    || quickTemplate === null
-    || hasActiveSession
-
   function handleRetryTemplates() {
     if (!user) return
     requestedTemplatesUserRef.current = user.uid
@@ -675,7 +477,7 @@ export default function DashboardPage() {
   })
   const activeDays = weekDailyStats.filter((day) => day.workouts > 0).length
   const peakDay = [...weekDailyStats].sort((a, b) => b.volume - a.volume)[0]
-  const latestWorkout = recentWorkouts[0] ?? null
+  const latestWorkout = workouts[0] ?? null
   const supportLine = !hasActiveSession && latestWorkout
     ? `Last: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
     : null
@@ -766,6 +568,11 @@ export default function DashboardPage() {
                     ? 'Choose another workout before starting.'
                     : 'You can still start an empty workout.'}
                 </span>
+                {templatesState.status === 'error' && (
+                  <button type="button" className="dashboard-planned-start-change" onClick={handleRetryTemplates}>
+                    Try again
+                  </button>
+                )}
               </div>
             )}
 
@@ -906,344 +713,6 @@ export default function DashboardPage() {
             )}
           </div>
         </section>
-
-        <motion.div
-          className="dashboard-main-flow"
-          initial={{ opacity: 0, y: 14 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12, duration: 0.25 }}
-        >
-            {showPlansStrip && <section className="dashboard-plan-strip">
-              <div className="dashboard-section-head">
-                <div>
-                  <h2 className="section-title">
-                    {recentTemplates.length === 0 ? 'Plans' : hasActiveSession ? 'Plans' : 'Other plans'}
-                  </h2>
-                </div>
-                <motion.button
-                  onClick={() => navigate('/templates')}
-                  className="dashboard-section-action"
-                  whileTap={{ scale: 0.97 }}
-                >
-                  Open plans
-                </motion.button>
-              </div>
-
-              {templatesState.status === 'loading' ? (
-                <div className="dashboard-inline-state">
-                  <p className="text-sm font-semibold text-white">Loading plans...</p>
-                </div>
-              ) : templatesState.status === 'error' ? (
-                <div className="dashboard-inline-state" role="alert">
-                  <p className="text-sm font-semibold text-white">Could not load plans</p>
-                  <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                    Check your connection and try again.
-                  </p>
-                  <Button type="button" className="mt-5" onClick={handleRetryTemplates}>
-                    Try again
-                  </Button>
-                </div>
-              ) : recentTemplates.length === 0 ? (
-                <div className="dashboard-inline-state">
-                  <p className="text-sm" style={{ color: 'var(--muted)' }}>No saved plans</p>
-                  <motion.button
-                    onClick={() => navigate('/templates/new')}
-                    className="dashboard-inline-primary dashboard-inline-primary--quiet"
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    Create your first plan
-                  </motion.button>
-                </div>
-              ) : (
-                <div className="dashboard-template-row">
-                  {secondaryTemplates.map((template) => {
-                    const exerciseCount = template.days.reduce((sum, day) => sum + day.exercises.length, 0)
-                    const dayIndex = template.days.findIndex((day) => day.exercises.length > 0)
-                    if (dayIndex < 0) {
-                      return (
-                        <div key={template.id} className="dashboard-template-launch-item dashboard-template-tile">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-white">{template.name}</p>
-                              <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>No exercises</p>
-                            </div>
-                            <button
-                              type="button"
-                              className="dashboard-planned-start-change"
-                              aria-label={`Edit plan ${template.name}`}
-                              onClick={() => navigate(`/templates/${template.id}/edit`)}
-                            >
-                              Edit plan
-                            </button>
-                          </div>
-                        </div>
-                      )
-                    }
-                    const requestKey = `dashboard:${template.id}:primary`
-                    const templateLaunchOperation = launchOperation?.target.requestKey === requestKey
-                      ? launchOperation
-                      : null
-                    const isLaunching = templateLaunchOperation?.status === 'pending'
-                    const launchErrorId = `dashboard-template-launch-error-${template.id}`
-                    return (
-                      <div key={template.id} className="dashboard-template-launch-item">
-                        <motion.button
-                          type="button"
-                          onClick={() => { void requestTemplateLaunch(template, dayIndex, requestKey) }}
-                          disabled={launchingTemplateId !== null}
-                          aria-busy={isLaunching ? 'true' : undefined}
-                          aria-describedby={templateLaunchOperation?.status === 'error' ? launchErrorId : undefined}
-                          aria-label={`Start plan ${template.name}`}
-                          className="dashboard-template-tile"
-                          style={{
-                            opacity: isLaunching ? 0.72 : 1,
-                          }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-white truncate">{template.name}</p>
-                              <p className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>
-                                {template.days.length} {template.days.length === 1 ? 'day' : 'days'} • {exerciseCount} {exerciseCount === 1 ? 'exercise' : 'exercises'}
-                              </p>
-                            </div>
-                            {isLaunching ? (
-                              <span className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>
-                                Starting…
-                              </span>
-                            ) : (
-                              <Play size={15} style={{ color: 'var(--accent)' }} />
-                            )}
-                          </div>
-                          <div className="dashboard-template-days">
-                            {template.days.slice(0, 3).map((day, index) => (
-                              <span
-                                key={`${template.id}-${index}`}
-                                className="dashboard-template-day"
-                              >
-                                {day.name}
-                              </span>
-                            ))}
-                          </div>
-                        </motion.button>
-                        {templateLaunchOperation?.status === 'error' && (
-                          <ActionFeedback
-                            id={launchErrorId}
-                            status="error"
-                            message={templateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
-                            onRetry={() => { void retryTemplateLaunch() }}
-                            onDismiss={dismissTemplateLaunchError}
-                            className="dashboard-template-feedback"
-                          />
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </section>}
-        </motion.div>
-
-        <section className="dashboard-history-section">
-          <div className="dashboard-section-head">
-            <div>
-              <h2 className="section-title">
-                Recent workouts
-              </h2>
-            </div>
-            <button
-              type="button"
-              onClick={() => navigate('/history')}
-              className="puls-link-button mobile-touch-target px-3 py-2 text-sm font-medium whitespace-nowrap"
-            >
-              View history
-              <ChevronRight size={15} strokeWidth={2.3} />
-            </button>
-          </div>
-
-          {orphanedDeleteOperation && (
-            <ActionFeedback
-              status={orphanedDeleteOperation.status === 'pending' ? 'pending' : 'error'}
-              message={orphanedDeleteOperation.status === 'pending'
-                ? 'Deleting workout…'
-                : orphanedDeleteOperation.status === 'cleanup_pending'
-                  ? 'Workout deleted. Could not refresh stats.'
-                  : 'Could not confirm workout deletion. Retry deletion.'}
-              onRetry={orphanedDeleteOperation.status !== 'pending' ? retryWorkoutDelete : undefined}
-              className="dashboard-workout-delete-feedback mb-4"
-            />
-          )}
-
-          <AnimatePresence mode="popLayout">
-            {recentWorkouts.length === 0 ? (
-                  <motion.div
-                    key="empty"
-                    className="dashboard-inline-state dashboard-inline-state--compact"
-                    initial={false}
-                    animate={{ opacity: 1 }}
-                  >
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      Your first saved workout will appear here.
-                    </p>
-                  </motion.div>
-            ) : (
-              <div className="dashboard-history-list">
-                {recentWorkouts.map((workout) => {
-                      const accent = workoutAccent(workout)
-                      const volume = calcVolume(workout)
-                      const totalSets = workout.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
-                      const totalExercises = workout.exercises.length
-                      const workoutDeleteOperation = deleteOperation?.workoutId === workout.id
-                        ? deleteOperation
-                        : null
-                      const isDeleting = workoutDeleteOperation?.status === 'pending'
-                      const isWorkoutUnavailable = isDeleting || (workoutDeleteOperation?.status === 'cleanup_pending' || workoutDeleteOperation?.status === 'unknown')
-                      const deleteFeedbackId = `dashboard-workout-delete-feedback-${workout.id}`
-
-                      return (
-                        <motion.div
-                          key={workout.id}
-                          className="dashboard-history-row"
-                          style={{
-                            '--workout-accent': accent,
-                          } as React.CSSProperties}
-                          initial={false}
-                          animate={{ opacity: 1, x: 0 }}
-                          exit={{ opacity: 0, x: -30, height: 0, marginBottom: 0 }}
-                          transition={{ duration: 0.22 }}
-                          whileHover={{ y: -2 }}
-                          aria-busy={isDeleting ? 'true' : undefined}
-                          aria-describedby={workoutDeleteOperation?.status === 'error'
-                            || (workoutDeleteOperation?.status === 'cleanup_pending' || workoutDeleteOperation?.status === 'unknown')
-                            ? deleteFeedbackId
-                            : undefined}
-                        >
-                          <div className="dashboard-history-main">
-                            <div className="dashboard-history-controls">
-                              <button
-                                type="button"
-                                onClick={() => openWorkout(workout)}
-                                className="dashboard-history-open"
-                                disabled={isWorkoutUnavailable}
-                                aria-label={`Open workout ${workoutTitle(workout)} on ${formatDate(workout.startedAt)}`}
-                              >
-                                <div className="min-w-0">
-                                  <div className="flex items-center gap-2 flex-wrap">
-                                    <span
-                                      className="dashboard-history-set"
-                                    >
-                                      {totalSets} {pluralize(totalSets, 'set', 'sets')}
-                                    </span>
-                                  </div>
-                                  <p className="mt-2 text-lg font-semibold text-white truncate">
-                                    {workoutTitle(workout)}
-                                  </p>
-                                  <div className="mt-2 flex items-center gap-2 flex-wrap">
-                                    <span className="text-xs" style={{ color: 'var(--muted)' }}>
-                                      {formatDate(workout.startedAt)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </button>
-                              <motion.button
-                                type="button"
-                                onClick={() => { void handleDelete(workout.id) }}
-                                className="dashboard-history-delete"
-                                style={{
-                                  color: 'var(--danger)',
-                                  opacity: 0.72,
-                                }}
-                                whileHover={{ opacity: 1 }}
-                                whileTap={{ scale: 0.85 }}
-                                disabled={deleteOperation !== null}
-                                aria-describedby={workoutDeleteOperation?.status === 'error'
-                                  || (workoutDeleteOperation?.status === 'cleanup_pending' || workoutDeleteOperation?.status === 'unknown')
-                                  ? deleteFeedbackId
-                                  : undefined}
-                                aria-label={`Delete workout ${workoutTitle(workout)} on ${formatDate(workout.startedAt)}`}
-                              >
-                                <Trash2 size={13} />
-                              </motion.button>
-                            </div>
-
-                            {workoutDeleteOperation && (
-                              <ActionFeedback
-                                id={deleteFeedbackId}
-                                status={workoutDeleteOperation.status === 'pending' ? 'pending' : 'error'}
-                                message={workoutDeleteOperation.status === 'pending'
-                                  ? 'Deleting workout…'
-                                  : workoutDeleteOperation.status === 'cleanup_pending'
-                                    ? 'Workout deleted. Could not refresh stats.'
-                                    : workoutDeleteOperation.status === 'unknown'
-                                      ? 'Could not confirm workout deletion. Retry deletion.'
-                                      : 'Could not delete the workout.'}
-                                onRetry={workoutDeleteOperation.status !== 'pending'
-                                  ? retryWorkoutDelete
-                                  : undefined}
-                                onDismiss={workoutDeleteOperation.status === 'error'
-                                  ? () => setTransientDeleteOperation(null)
-                                  : undefined}
-                                className="dashboard-workout-delete-feedback"
-                              />
-                            )}
-
-                            {!workout.materialized && !isWorkoutUnavailable && (
-                              <WorkoutProjectionStatus
-                                state={projectionRetryStates[workout.id] ?? 'idle'}
-                                onRetry={() => void handleProjectionRetry(workout.id)}
-                              />
-                            )}
-
-                            {workoutTitle(workout) !== workout.exercises.map((exercise) => exercise.name.trim()).join(' + ') && (
-                              <div className="dashboard-history-exercises">
-                                {workout.exercises.slice(0, 3).map((exercise, index) => (
-                                  <span
-                                    key={`${workout.id}-${exercise.exerciseSource ?? 'global'}-${exercise.exerciseId ?? exercise.name}-${index}`}
-                                  >
-                                    {exercise.name}
-                                  </span>
-                                ))}
-                                {workout.exercises.length > 3 && (
-                                  <span>
-                                    +{workout.exercises.length - 3}
-                                  </span>
-                                )}
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="dashboard-history-metrics">
-                            <div>
-                              <span>Volume</span>
-                              <strong>{formatCompactVolume(volume, units)}</strong>
-                            </div>
-                            <div>
-                              <span>Exercises</span>
-                              <strong>{totalExercises}</strong>
-                            </div>
-                            <div>
-                              <span>Time</span>
-                              <strong>{formatDuration(workout.startedAt, workout.finishedAt)}</strong>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )
-                })}
-              </div>
-            )}
-          </AnimatePresence>
-        </section>
-
-      {workoutToDelete && (
-        <ConfirmDialog
-          title="Delete workout?"
-          message={`“${workoutTitle(workoutToDelete)}” · ${formatDate(workoutToDelete.startedAt)}. This cannot be undone.`}
-          confirmLabel="Delete"
-          danger
-          onConfirm={confirmDeleteWorkout}
-          onCancel={() => setConfirmDelete(null)}
-        />
-      )}
 
       {workoutPickerOpen && templatesState.status === 'success' && (
         <WorkoutPickerDialog

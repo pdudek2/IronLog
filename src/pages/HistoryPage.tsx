@@ -7,6 +7,7 @@ import { ActionFeedback } from '../components/ActionFeedback'
 import { useAuthStore } from '../store/authStore'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { getWorkoutHistory, calcVolume, type WorkoutSummary } from '../lib/workoutService'
+import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
@@ -200,6 +201,8 @@ export default function HistoryPage() {
     [filtered],
   )
   const hasActiveFilters = Boolean(searchText.trim() || activeCategory)
+  // A committed delete has already left this list, so recovery has to be reachable from here.
+  const deleteRecovery = user ? readWorkoutDeleteRecovery(user.uid) : null
   const showRangeEmpty = workouts.length > 0 && filtered.length === 0 && !hasActiveFilters
   const showFilterEmpty = filtered.length === 0 && hasActiveFilters
 
@@ -223,6 +226,20 @@ export default function HistoryPage() {
       </header>
 
       <section className="history-control-panel" aria-label="History filters">
+        {deleteRecovery && (
+          <div className="history-limit-notice">
+            The previous workout deletion needs to be retried.{' '}
+            <button
+              type="button"
+              onClick={() => navigate(`/workout/${deleteRecovery.workoutId}`)}
+              className="underline"
+              style={{ color: 'var(--accent)' }}
+            >
+              Go to recovery
+            </button>
+          </div>
+        )}
+
         {historyTruncated && (
           <div className="history-limit-notice">
             History is limited to your 2,000 most recent workouts to keep this view responsive.
@@ -376,7 +393,7 @@ export default function HistoryPage() {
                         <button
                           key={workout.id}
                           type="button"
-                          onClick={() => navigate(`/workout/${workout.id}`)}
+                          onClick={() => navigate(`/workout/${workout.id}`, { state: { workoutPreview: workout } })}
                           className="history-workout-row"
                         >
                           <div className="history-workout-main">

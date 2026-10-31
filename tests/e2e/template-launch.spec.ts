@@ -101,17 +101,18 @@ async function startFreshSessionWithExercise(page: Page, exerciseName: string): 
 }
 
 test.describe('Template launch contract', () => {
-  test('cancel keeps the current session and confirm replaces it from dashboard', async ({ page, cleanup }) => {
+  test('cancel keeps the current session and confirm replaces it from plans', async ({ page, cleanup }) => {
     cleanup.add('delete replace template', () => deleteTemplateByName(page, REPLACE_TEMPLATE_NAME))
     cleanup.add('discard active session', () => discardActiveSession(page))
     await createLaunchTemplate(page, REPLACE_TEMPLATE_NAME)
 
     await startFreshSessionWithExercise(page, 'Bench Press')
-    await page.goto('/dashboard')
+    await page.goto('/templates')
 
     const launch = page.getByRole('button', {
-      name: `Start plan ${REPLACE_TEMPLATE_NAME}`,
-    }).first()
+      name: `Start day Day 1 from template ${REPLACE_TEMPLATE_NAME}`,
+      exact: true,
+    })
     await expect(launch).toBeVisible({ timeout: 15_000 })
     await launch.click()
 
@@ -123,7 +124,7 @@ test.describe('Template launch contract', () => {
     await expect(page.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
     await expect(page.getByText('Squat', { exact: true })).toHaveCount(0)
 
-    await page.goto('/dashboard')
+    await page.goto('/templates')
     await launch.click()
     await dialog.getByRole('button', { name: 'Start plan' }).click()
 

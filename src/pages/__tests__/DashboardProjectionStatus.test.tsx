@@ -8,7 +8,6 @@ import BottomNav from '../../components/BottomNav'
 import MobileInteractionProvider from '../../components/MobileInteractionProvider'
 import TopNav from '../../components/TopNav'
 import { readActiveSessionBackup, writeActiveSessionBackup } from '../../lib/activeSessionBackup'
-import { clearWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from '../../lib/workoutDeleteRecovery'
 import type { WorkoutSummary } from '../../lib/workoutService'
 import { useAuthStore } from '../../store/authStore'
 import { useDashboardStore } from '../../store/dashboardStore'
@@ -18,8 +17,6 @@ import DashboardPage from '../DashboardPage'
 const mocks = vi.hoisted(() => ({
   getRecentWorkouts: vi.fn(),
   retryWorkoutMaterialization: vi.fn(),
-  deleteWorkout: vi.fn(),
-  deleteGuards: [] as unknown[],
   getTemplates: vi.fn(),
   toastError: vi.fn(),
   profile: { displayName: 'Patryk', weeklyGoal: 3 },
@@ -51,19 +48,7 @@ vi.mock('../../store/profileStore', () => ({
 vi.mock('../../lib/workoutService', async () => ({
   ...await vi.importActual<typeof import('../../lib/workoutService')>('../../lib/workoutService'),
   getRecentWorkouts: mocks.getRecentWorkouts,
-  // Persistence belongs to the service; reproduce its resolved-result contract in this UI mock.
-  deleteWorkout: async (id: string, guard?: unknown) => {
-    mocks.deleteGuards.push(guard)
-    const uid = useAuthStore.getState().user!.uid
-    const result = await mocks.deleteWorkout(id)
-    if (result.status === 'deleted') clearWorkoutDeleteRecovery(uid, id)
-    else writeWorkoutDeleteRecovery(uid, { workoutId: id, status: result.status })
-    return result
-  },
   retryWorkoutMaterialization: mocks.retryWorkoutMaterialization,
-  readWorkoutMutationState: async (id: string) => ({
-    status: 'available', baseline: 'b'.repeat(64), workout: { id }, operation: null, projection: 'ready',
-  }),
   calcStreak: () => 1,
   calcVolume: () => 400,
 }))
@@ -187,7 +172,6 @@ describe('Dashboard workout projection status', () => {
   beforeEach(() => {
     mocks.getRecentWorkouts.mockReset()
     mocks.retryWorkoutMaterialization.mockReset()
-    mocks.deleteWorkout.mockReset()
     mocks.getTemplates.mockReset()
     mocks.getTemplates.mockResolvedValue([])
     mocks.toastError.mockReset()
@@ -205,25 +189,6 @@ describe('Dashboard workout projection status', () => {
     useWorkoutStore.getState().clearWorkout()
   })
 
-  it.each([
-    { label: 'Push day', expectedName: 'Push day' },
-    { label: null, expectedName: 'Wyciskanie' },
-  ])('identifies the delete target $expectedName and initially focuses cancellation', async ({ label, expectedName }) => {
-    mocks.getRecentWorkouts.mockResolvedValue([{ ...pendingWorkout, materialized: true, label }])
-    render(<DashboardPage />)
-    fireEvent.click(await screen.findByRole('button', { name: new RegExp(`Delete workout ${expectedName}`) }))
-    const dialog = await screen.findByRole('dialog', { name: 'Delete workout?' })
-    const date = new Date(pendingWorkout.startedAt).toLocaleDateString('en-US', {
-      weekday: 'short', day: 'numeric', month: 'short',
-    })
-    expect(dialog).toHaveAccessibleDescription(`“${expectedName}” · ${date}. This cannot be undone.`)
-    const cancel = within(dialog).getByRole('button', { name: 'Cancel' })
-    await waitFor(() => expect(cancel).toHaveFocus())
-    fireEvent.click(cancel)
-    expect(screen.queryByRole('dialog', { name: 'Delete workout?' })).not.toBeInTheDocument()
-    expect(mocks.deleteWorkout).not.toHaveBeenCalled()
-  })
-
   it('accepts a delayed same-account snapshot and keeps it cached on remount', async () => {
     const request = deferred<WorkoutSummary[]>()
     const workout = { ...pendingWorkout, materialized: true }
@@ -232,13 +197,13 @@ describe('Dashboard workout projection status', () => {
     await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledWith('user-1', 50))
 
     await act(async () => request.resolve([workout]))
-    expect(await screen.findByText('Push day')).toBeInTheDocument()
+    expect(await screen.findByText(/Last: Push day/)).toBeInTheDocument()
     expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-1', ready: true, workouts: [workout] })
     first.unmount()
 
     mocks.getRecentWorkouts.mockReturnValueOnce(deferred<WorkoutSummary[]>().promise)
     render(<DashboardPage />)
-    expect(screen.getByText('Push day')).toBeInTheDocument()
+    expect(screen.getByText(/Last: Push day/)).toBeInTheDocument()
   })
 
   it.each(['success', 'failure'] as const)('ignores an initial account A %s after unmount and login B', async (outcome) => {
@@ -259,13 +224,13 @@ describe('Dashboard workout projection status', () => {
       else requestA.reject(new Error('late A failure'))
     })
     expect(useDashboardStore.getState()).toMatchObject({ uid: null, ready: false, workouts: [] })
-    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Push day/)).not.toBeInTheDocument()
     expect(mocks.toastError).not.toHaveBeenCalled()
     expect(mocks.retryWorkoutMaterialization).not.toHaveBeenCalled()
 
     const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Account B workout', materialized: true }
     await act(async () => requestB.resolve([workoutB]))
-    expect(await screen.findByText('Account B workout')).toBeInTheDocument()
+    expect(await screen.findByText(/Last: Account B workout/)).toBeInTheDocument()
     expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-2', workouts: [workoutB] })
   })
 
@@ -277,7 +242,7 @@ describe('Dashboard workout projection status', () => {
     act(() => useAuthStore.getState().setUser({ uid: 'user-2' } as User))
     render(<MemoryRouter><TopNav /><DashboardPage /></MemoryRouter>)
 
-    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
+    expect(screen.queryByText(/Push day/)).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Workout streak 8 days' })).not.toBeInTheDocument()
     expect(useDashboardStore.getState().setSnapshot('user-1', {
       workouts: [pendingWorkout], weeklyDone: 9, streak: 9,
@@ -299,15 +264,14 @@ describe('Dashboard workout projection status', () => {
       useDashboardStore.getState().clearSnapshot()
       useAuthStore.getState().setUser({ uid: 'user-2' } as User)
     })
-    expect(await screen.findByText('Account B workout')).toBeInTheDocument()
+    expect(await screen.findByText(/Last: Account B workout/)).toBeInTheDocument()
     await act(async () => {
       if (outcome === 'success') retryA.resolve()
       else retryA.reject(new Error('late A retry failure'))
     })
     expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2)
     expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-2', workouts: [workoutB] })
-    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Retry sync' })).not.toBeInTheDocument()
+    expect(screen.queryByText(/Push day/)).not.toBeInTheDocument()
   })
 
   it('ignores an in-flight retry refresh after unmount and B has loaded', async () => {
@@ -326,27 +290,10 @@ describe('Dashboard workout projection status', () => {
       useAuthStore.getState().setUser({ uid: 'user-2' } as User)
     })
     render(<DashboardPage />)
-    expect(await screen.findByText('Account B workout')).toBeInTheDocument()
+    expect(await screen.findByText(/Last: Account B workout/)).toBeInTheDocument()
     await act(async () => refreshA.resolve([{ ...pendingWorkout, materialized: true }]))
     expect(useDashboardStore.getState()).toMatchObject({ uid: 'user-2', workouts: [workoutB] })
-    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
-  })
-
-  it.each(['success', 'failure'] as const)('ignores a manual projection retry %s after unmount', async (outcome) => {
-    const retry = deferred<void>()
-    mocks.getRecentWorkouts.mockResolvedValue([pendingWorkout])
-    mocks.retryWorkoutMaterialization.mockRejectedValueOnce(new Error('automatic failure')).mockReturnValueOnce(retry.promise)
-    const page = render(<DashboardPage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Retry sync' }))
-    await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(2))
-    page.unmount()
-    useDashboardStore.getState().clearSnapshot()
-    await act(async () => {
-      if (outcome === 'success') retry.resolve()
-      else retry.reject(new Error('late manual failure'))
-    })
-    expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(1)
-    expect(useDashboardStore.getState()).toMatchObject({ uid: null, ready: false, workouts: [] })
+    expect(screen.queryByText(/Push day/)).not.toBeInTheDocument()
   })
 
   it('keeps the empty week summary compact for a new account', async () => {
@@ -424,42 +371,6 @@ describe('Dashboard workout projection status', () => {
       view?.unmount()
       vi.useRealTimers()
     }
-  })
-
-  it('uses English set-count forms in the recent workout row', async () => {
-    const now = Date.now()
-    mocks.getRecentWorkouts.mockResolvedValue([{
-      ...pendingWorkout,
-      startedAt: now - 60_000,
-      finishedAt: now,
-      materialized: true,
-    }])
-
-    render(<DashboardPage />)
-
-    expect(await screen.findByText('1 set')).toBeInTheDocument()
-    expect(screen.queryByText('1 sets')).not.toBeInTheDocument()
-  })
-
-  it('uses the English plural set-count form in the recent workout row', async () => {
-    const now = Date.now()
-    mocks.getRecentWorkouts.mockResolvedValue([{
-      ...pendingWorkout,
-      startedAt: now - 60_000,
-      finishedAt: now,
-      materialized: true,
-      exercises: [{
-        ...pendingWorkout.exercises[0],
-        sets: [
-          ...pendingWorkout.exercises[0].sets,
-          { weight: 80, reps: 5 },
-        ],
-      }],
-    }])
-
-    render(<DashboardPage />)
-
-    expect(await screen.findByText('2 sets')).toBeInTheDocument()
   })
 
   it('keeps the dashboard shell aligned when remote work appears and disappears', async () => {
@@ -574,37 +485,26 @@ describe('Dashboard workout projection status', () => {
     expect(screen.queryByText(/Active session/)).not.toBeInTheDocument()
   })
 
-  it('keeps pending feedback visible and recovers one workout after a failed automatic retry', async () => {
-    const manualRetry = deferred<void>()
+  it('retries a pending workout on reconnect after a failed automatic retry', async () => {
     mocks.getRecentWorkouts
       .mockResolvedValueOnce([pendingWorkout])
       .mockResolvedValueOnce([{ ...pendingWorkout, materialized: true }])
     mocks.retryWorkoutMaterialization
       .mockRejectedValueOnce(new Error('automatic retry failed'))
-      .mockReturnValueOnce(manualRetry.promise)
+      .mockResolvedValueOnce(undefined)
 
     render(<DashboardPage />)
 
-    await screen.findByText('Stats are waiting to sync.')
+    await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(1))
     expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(1)
-    expect(screen.getByText('Stats are waiting to sync.')).toBeInTheDocument()
-    const retryButton = await screen.findByRole('button', { name: 'Retry sync' })
 
-    fireEvent.click(retryButton)
+    await act(async () => window.dispatchEvent(new Event('online')))
 
-    const syncingButton = screen.getByRole('button', { name: 'Syncing…' })
-    expect(syncingButton).toBeDisabled()
-
-    await act(async () => manualRetry.resolve())
-
-    await waitFor(() => {
-      expect(screen.queryByText('Stats are waiting to sync.')).not.toBeInTheDocument()
-    })
+    await waitFor(() => expect(useDashboardStore.getState().workouts[0]?.materialized).toBe(true))
     expect(mocks.retryWorkoutMaterialization).toHaveBeenNthCalledWith(2, 'workout-pending')
-    expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2)
   })
 
-  it('keeps manual recovery available when materialization succeeds but snapshot refresh fails', async () => {
+  it('keeps the snapshot when the refresh after a successful retry fails', async () => {
     mocks.getRecentWorkouts
       .mockResolvedValueOnce([pendingWorkout])
       .mockRejectedValueOnce(new Error('refresh unavailable'))
@@ -612,316 +512,28 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByRole('button', { name: 'Retry sync' })).toBeInTheDocument()
-    expect(screen.getByText('Stats are waiting to sync.')).toBeInTheDocument()
+    await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2))
+    expect(useDashboardStore.getState().workouts).toEqual([pendingWorkout])
+    expect(screen.queryByText('Could not load the dashboard')).not.toBeInTheDocument()
   })
 
-  it('does not let an older retry refresh restore a workout after deletion', async () => {
+  it('does not let an older retry refresh overwrite a newer snapshot', async () => {
     const staleRetryRefresh = deferred<WorkoutSummary[]>()
     mocks.getRecentWorkouts
       .mockResolvedValueOnce([pendingWorkout])
       .mockReturnValueOnce(staleRetryRefresh.promise)
       .mockResolvedValueOnce([])
     mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
-    mocks.deleteWorkout.mockResolvedValue({ status: 'deleted' })
 
     render(<DashboardPage />)
 
     await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(2))
-    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-
-    await waitFor(() => expect(mocks.getRecentWorkouts).toHaveBeenCalledTimes(3))
-    await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
-    // The delete carries the version seen when the dialog opened, as on the workout page.
-    expect(mocks.deleteGuards.at(-1)).toEqual({ baseline: 'b'.repeat(64), operationId: expect.any(String) })
+    await act(async () => window.dispatchEvent(new Event('online')))
+    await waitFor(() => expect(useDashboardStore.getState().workouts).toEqual([]))
 
     await act(async () => staleRetryRefresh.resolve([pendingWorkout]))
 
-    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
-  })
-
-  it('keeps a cleanup-pending deletion attached to its workout until retry succeeds', async () => {
-    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
-    const firstDelete = deferred<{ status: 'cleanup_pending' }>()
-    const failedCleanupRetry = deferred<{ status: 'deleted' }>()
-    const retryDelete = deferred<{ status: 'deleted' }>()
-    mocks.getRecentWorkouts
-      .mockResolvedValueOnce([pendingWorkout, workoutB])
-      .mockResolvedValueOnce([workoutB])
-    mocks.retryWorkoutMaterialization.mockRejectedValue(new Error('projection unavailable'))
-    mocks.deleteWorkout
-      .mockReturnValueOnce(firstDelete.promise)
-      .mockReturnValueOnce(failedCleanupRetry.promise)
-      .mockReturnValueOnce(retryDelete.promise)
-
-    render(<DashboardPage />)
-
-    await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-
-    const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
-    const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
-    expect(pushRow).not.toBeNull()
-    expect(pullRow).not.toBeNull()
-    expect(within(pushRow as HTMLElement).getByText('Deleting workout…')).toBeInTheDocument()
-    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Open workout Pull day/ }))
-      .toBeEnabled()
-    expect(mocks.deleteWorkout).toHaveBeenLastCalledWith('workout-pending')
-
-    firstDelete.resolve({ status: 'cleanup_pending' })
-    await act(async () => {
-      await firstDelete.promise
-    })
-
-    const failedPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
-    expect(failedPushRow).not.toBeNull()
-    const alert = await within(failedPushRow as HTMLElement).findByRole('alert')
-    expect(alert).toHaveTextContent('Workout deleted. Could not refresh stats.')
-    expect(screen.getByText('Push day')).toBeInTheDocument()
-    expect(within(failedPushRow as HTMLElement).getByRole('button', { name: /Open workout Push day/ }))
-      .toBeDisabled()
-    expect(within(failedPushRow as HTMLElement).getByRole('button', { name: /Delete workout Push day/ }))
-      .toBeDisabled()
-    expect(within(failedPushRow as HTMLElement).queryByText('Stats are waiting to sync.'))
-      .not.toBeInTheDocument()
-
-    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
-
-    const retryingPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
-    expect(retryingPushRow).not.toBeNull()
-    expect(within(retryingPushRow as HTMLElement).getByRole('status')).toHaveTextContent('Deleting workout…')
-    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
-
-    failedCleanupRetry.reject(new Error('offline'))
-    await act(async () => {
-      await failedCleanupRetry.promise.catch(() => undefined)
-    })
-
-    const failedRetryPushRow = screen.getByText('Push day').closest('.dashboard-history-row')
-    expect(failedRetryPushRow).not.toBeNull()
-    const retryAlert = within(failedRetryPushRow as HTMLElement).getByRole('alert')
-    expect(retryAlert).toHaveTextContent('Workout deleted. Could not refresh stats.')
-    expect(within(failedRetryPushRow as HTMLElement).queryByRole('button', { name: 'Close' }))
-      .not.toBeInTheDocument()
-    expect(within(failedRetryPushRow as HTMLElement).getByRole('button', { name: /Open workout Push day/ }))
-      .toBeDisabled()
-    expect(within(failedRetryPushRow as HTMLElement).getByRole('button', { name: /Delete workout Push day/ }))
-      .toBeDisabled()
-    expect(within(failedRetryPushRow as HTMLElement).queryByText('Stats are waiting to sync.'))
-      .not.toBeInTheDocument()
-
-    fireEvent.click(within(retryAlert).getByRole('button', { name: 'Try again' }))
-    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(3, 'workout-pending')
-
-    retryDelete.resolve({ status: 'deleted' })
-    await act(async () => {
-      await retryDelete.promise
-    })
-
-    await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
-    expect(screen.getByText('Pull day')).toBeInTheDocument()
-  })
-
-  it('restores committed delete recovery after reload when the workout row is gone', async () => {
-    const firstDelete = deferred<{ status: 'cleanup_pending' }>()
-    const repeatedCleanupPending = deferred<{ status: 'cleanup_pending' }>()
-    const retryDelete = deferred<{ status: 'deleted' }>()
-    mocks.getRecentWorkouts
-      .mockResolvedValueOnce([pendingWorkout])
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([])
-    mocks.retryWorkoutMaterialization.mockRejectedValue(new Error('projection unavailable'))
-    mocks.deleteWorkout
-      .mockReturnValueOnce(firstDelete.promise)
-      .mockReturnValueOnce(repeatedCleanupPending.promise)
-      .mockReturnValueOnce(retryDelete.promise)
-
-    const firstRender = render(<DashboardPage />)
-
-    await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-
-    firstDelete.resolve({ status: 'cleanup_pending' })
-    await act(async () => {
-      await firstDelete.promise
-    })
-
-    firstRender.unmount()
-    render(<DashboardPage />)
-
-    expect(await screen.findByRole('alert')).toHaveTextContent('Workout deleted. Could not refresh stats.')
-    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
-    await waitFor(() => {
-      expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
-    })
-
-    repeatedCleanupPending.resolve({ status: 'cleanup_pending' })
-    await act(async () => {
-      await repeatedCleanupPending.promise
-    })
-
-    expect(screen.getByRole('alert')).toHaveTextContent('Workout deleted. Could not refresh stats.')
-    expect(screen.queryByText('Push day')).not.toBeInTheDocument()
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
-    await waitFor(() => {
-      expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(3, 'workout-pending')
-    })
-
-    retryDelete.resolve({ status: 'deleted' })
-    await act(async () => {
-      await retryDelete.promise
-    })
-
-    await waitFor(() => {
-      expect(screen.queryByRole('alert')).not.toBeInTheDocument()
-    })
-  })
-
-  it('restores an unknown delete after reload without its row and retries only that workout', async () => {
-    const otherWorkout = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
-    mocks.getRecentWorkouts
-      .mockResolvedValueOnce([{ ...pendingWorkout, materialized: true }, otherWorkout])
-      .mockResolvedValue([otherWorkout])
-    mocks.deleteWorkout.mockResolvedValueOnce({ status: 'unknown' }).mockResolvedValueOnce({ status: 'deleted' })
-    const firstRender = render(<DashboardPage />)
-    await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-    expect(await screen.findByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
-    expect(screen.getByRole('button', { name: /Delete workout Pull day/ })).toBeDisabled()
-    expect(screen.queryByRole('button', { name: 'Close' })).not.toBeInTheDocument()
-    firstRender.unmount()
-    render(<DashboardPage />)
-    await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
-    expect(screen.getByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
-    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
-    expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-pending')
-    expect(screen.getByRole('button', { name: /Delete workout Pull day/ })).toBeEnabled()
-  })
-
-  it('keeps the pending delete owner when another workout delete is attempted', async () => {
-    const workoutA = { ...pendingWorkout, materialized: true }
-    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
-    const firstDelete = deferred<{ status: 'deleted' }>()
-    mocks.getRecentWorkouts
-      .mockResolvedValueOnce([workoutA, workoutB])
-      .mockResolvedValueOnce([workoutB])
-      .mockResolvedValueOnce([])
-    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
-    mocks.deleteWorkout
-      .mockReturnValueOnce(firstDelete.promise)
-      .mockResolvedValueOnce({ status: 'deleted' })
-
-    render(<DashboardPage />)
-
-    await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-
-    const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
-    expect(pullRow).not.toBeNull()
-    const pullDelete = within(pullRow as HTMLElement).getByRole('button', {
-      name: /Delete workout Pull day/,
-    })
-    fireEvent.click(pullDelete)
-    const secondConfirm = screen.queryByRole('button', { name: 'Delete' })
-    if (secondConfirm) fireEvent.click(secondConfirm)
-
-    const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
-    expect(pushRow).not.toBeNull()
-    expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
-    expect(pullDelete).toBeDisabled()
-    expect(within(pullRow as HTMLElement).getByRole('button', { name: /Open workout Pull day/ }))
-      .toBeEnabled()
-    expect(within(pushRow as HTMLElement).getByRole('status')).toHaveTextContent('Deleting workout…')
-    expect(within(pullRow as HTMLElement).queryByRole('status')).not.toBeInTheDocument()
-
-    firstDelete.resolve({ status: 'deleted' })
-    await act(async () => {
-      await firstDelete.promise
-    })
-
-    await waitFor(() => expect(screen.queryByText('Push day')).not.toBeInTheDocument())
-    const availablePullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
-    expect(availablePullRow).not.toBeNull()
-    const availablePullDelete = within(availablePullRow as HTMLElement).getByRole('button', {
-      name: /Delete workout Pull day/,
-    })
-    expect(availablePullDelete).toBeEnabled()
-
-    fireEvent.click(availablePullDelete)
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-
-    await waitFor(() => {
-      expect(mocks.deleteWorkout).toHaveBeenNthCalledWith(2, 'workout-b')
-      expect(screen.queryByText('Pull day')).not.toBeInTheDocument()
-    })
-  })
-
-  it('dismisses workout deletion feedback without removing the row', async () => {
-    mocks.getRecentWorkouts.mockResolvedValueOnce([{ ...pendingWorkout, materialized: true }])
-    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
-    mocks.deleteWorkout.mockRejectedValueOnce(new Error('offline'))
-
-    render(<DashboardPage />)
-
-    await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-
-    const row = screen.getByText('Push day').closest('.dashboard-history-row')
-    expect(row).not.toBeNull()
-    await act(async () => {
-      await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
-    })
-    const failedRow = screen.getByText('Push day').closest('.dashboard-history-row')
-    expect(failedRow).not.toBeNull()
-    const alert = await within(failedRow as HTMLElement).findByRole('alert')
-    fireEvent.click(within(alert).getByRole('button', { name: 'Close' }))
-
-    expect(within(failedRow as HTMLElement).queryByRole('alert')).not.toBeInTheDocument()
-    expect(screen.getByText('Push day')).toBeInTheDocument()
-    expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
-  })
-
-  it('keeps an unresolved workout A delete error when workout B delete is attempted', async () => {
-    const workoutA = { ...pendingWorkout, materialized: true }
-    const workoutB = { ...pendingWorkout, id: 'workout-b', label: 'Pull day', materialized: true }
-    mocks.getRecentWorkouts.mockResolvedValueOnce([workoutA, workoutB])
-    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
-    mocks.deleteWorkout.mockRejectedValueOnce(new Error('offline'))
-
-    render(<DashboardPage />)
-
-    await screen.findByText('Push day')
-    fireEvent.click(screen.getByRole('button', { name: /Delete workout Push day/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-
-    await act(async () => {
-      await expect(mocks.deleteWorkout.mock.results[0]?.value).rejects.toThrow('offline')
-    })
-
-    const pushRow = screen.getByText('Push day').closest('.dashboard-history-row')
-    const pullRow = screen.getByText('Pull day').closest('.dashboard-history-row')
-    expect(pushRow).not.toBeNull()
-    expect(pullRow).not.toBeNull()
-    const alert = await within(pushRow as HTMLElement).findByRole('alert')
-    const pullDelete = within(pullRow as HTMLElement).getByRole('button', {
-      name: /Delete workout Pull day/,
-    })
-
-    expect(pullDelete).toBeDisabled()
-    fireEvent.click(pullDelete)
-    expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument()
-    expect(within(pushRow as HTMLElement).getByRole('alert')).toBe(alert)
-    expect(mocks.deleteWorkout).toHaveBeenCalledTimes(1)
+    expect(useDashboardStore.getState().workouts).toEqual([])
   })
 
   it('deduplicates concurrent automatic retries and releases the workout after completion', async () => {
@@ -947,107 +559,6 @@ describe('Dashboard workout projection status', () => {
     await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(2))
   })
 
-  it('forgets retry state for a workout absent from an authoritative snapshot', async () => {
-    const pendingWorkoutA = { ...pendingWorkout, id: 'workout-a', label: 'Workout A' }
-    const pendingWorkoutB = { ...pendingWorkout, id: 'workout-b', label: 'Workout B' }
-    const pendingWorkoutC = { ...pendingWorkout, id: 'workout-c', label: 'Workout C' }
-
-    mocks.getRecentWorkouts
-      .mockResolvedValueOnce([pendingWorkoutA, pendingWorkoutB, pendingWorkoutC])
-      .mockResolvedValueOnce([
-        { ...pendingWorkoutB, materialized: true },
-        pendingWorkoutC,
-      ])
-      .mockResolvedValueOnce([
-        pendingWorkoutA,
-        { ...pendingWorkoutB, materialized: true },
-        { ...pendingWorkoutC, materialized: true },
-      ])
-    mocks.retryWorkoutMaterialization
-      .mockRejectedValueOnce(new Error('automatic A failed'))
-      .mockRejectedValueOnce(new Error('automatic B failed'))
-      .mockRejectedValueOnce(new Error('automatic C failed'))
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce(undefined)
-
-    render(<DashboardPage />)
-
-    await screen.findAllByRole('button', { name: 'Retry sync' })
-    const workoutBRow = screen.getByText('Workout B').closest('.dashboard-history-row')
-    expect(workoutBRow).not.toBeNull()
-    const retryWorkoutB = within(workoutBRow as HTMLElement).getByRole('button', {
-      name: 'Retry sync',
-    })
-    fireEvent.click(retryWorkoutB)
-
-    await waitFor(() => expect(screen.queryByText('Workout A')).not.toBeInTheDocument())
-    const workoutCRow = screen.getByText('Workout C').closest('.dashboard-history-row')
-    expect(workoutCRow).not.toBeNull()
-    fireEvent.click(within(workoutCRow as HTMLElement).getByRole('button', { name: 'Retry sync' }))
-
-    const returnedWorkoutARow = (await screen.findByText('Workout A')).closest('.dashboard-history-row')
-    expect(returnedWorkoutARow).not.toBeNull()
-    expect(within(returnedWorkoutARow as HTMLElement).queryByRole('button', {
-      name: 'Retry sync',
-    })).not.toBeInTheDocument()
-  })
-
-  it('does not restore failed state when an obsolete retry rejects after removal', async () => {
-    const pendingWorkoutA = { ...pendingWorkout, id: 'workout-a', label: 'Workout A' }
-    const pendingWorkoutB = { ...pendingWorkout, id: 'workout-b', label: 'Workout B' }
-    const pendingWorkoutC = { ...pendingWorkout, id: 'workout-c', label: 'Workout C' }
-    const retryWorkoutA = deferred<void>()
-
-    mocks.getRecentWorkouts
-      .mockResolvedValueOnce([pendingWorkoutB, pendingWorkoutC])
-      .mockResolvedValueOnce([
-        pendingWorkoutA,
-        { ...pendingWorkoutB, materialized: true },
-        pendingWorkoutC,
-      ])
-      .mockResolvedValueOnce([
-        { ...pendingWorkoutB, materialized: true },
-        { ...pendingWorkoutC, materialized: true },
-      ])
-      .mockResolvedValueOnce([
-        pendingWorkoutA,
-        { ...pendingWorkoutB, materialized: true },
-        { ...pendingWorkoutC, materialized: true },
-      ])
-    mocks.retryWorkoutMaterialization
-      .mockRejectedValueOnce(new Error('automatic B failed'))
-      .mockRejectedValueOnce(new Error('automatic C failed'))
-      .mockResolvedValueOnce(undefined)
-      .mockReturnValueOnce(retryWorkoutA.promise)
-      .mockResolvedValueOnce(undefined)
-    mocks.deleteWorkout.mockResolvedValue({ status: 'deleted' })
-
-    render(<DashboardPage />)
-
-    await screen.findAllByRole('button', { name: 'Retry sync' })
-    const workoutBRow = screen.getByText('Workout B').closest('.dashboard-history-row')
-    expect(workoutBRow).not.toBeNull()
-    fireEvent.click(within(workoutBRow as HTMLElement).getByRole('button', {
-      name: 'Retry sync',
-    }))
-
-    await screen.findByText('Workout A')
-    await act(async () => window.dispatchEvent(new Event('online')))
-    await waitFor(() => expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledTimes(5))
-
-    fireEvent.click(screen.getByRole('button', { name: /Delete workout Workout A/ }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }))
-    await waitFor(() => expect(screen.queryByText('Workout A')).not.toBeInTheDocument())
-
-    await act(async () => retryWorkoutA.reject(new Error('obsolete A failed')))
-
-    const returnedWorkoutARow = (await screen.findByText('Workout A')).closest('.dashboard-history-row')
-    expect(returnedWorkoutARow).not.toBeNull()
-    expect(within(returnedWorkoutARow as HTMLElement).queryByRole('button', {
-      name: 'Retry sync',
-    })).not.toBeInTheDocument()
-  })
-
   it('shows a persistent template error and reaches the empty state only after retry succeeds', async () => {
     mocks.getRecentWorkouts.mockResolvedValue([])
     mocks.getTemplates
@@ -1056,14 +567,12 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    expect(await screen.findByText('Could not load plans')).toBeInTheDocument()
-    expect(screen.queryByText('No saved plans')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Create your first plan' })).not.toBeInTheDocument()
+    expect(await screen.findByText('Plans unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('No plans yet')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByText('No saved plans')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Create your first plan' })).toBeInTheDocument()
+    expect(await screen.findByText('No plans yet')).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
   })
 
@@ -1094,7 +603,7 @@ describe('Dashboard workout projection status', () => {
     expect(screen.getByRole('heading', { name: 'Upper' })).toBeInTheDocument()
     expect(screen.getByText(/Upper \/ Lower/)).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Plans' })).not.toBeInTheDocument()
-    expect(screen.queryByText('No saved plans')).not.toBeInTheDocument()
+    expect(screen.queryByText('No plans yet')).not.toBeInTheDocument()
   })
 
   it('uses the first launchable day when the first saved day is empty', async () => {
@@ -1301,8 +810,6 @@ describe('Dashboard workout projection status', () => {
     expect(await screen.findByText('Pull')).toBeInTheDocument()
     expect(screen.getByText(/Ready plan/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Start Pull' })).toBeEnabled()
-    expect(screen.queryByRole('button', { name: 'Start plan Newest empty' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('heading', { name: 'Other plans' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Change workout' }))
     const picker = screen.getByRole('dialog', { name: 'Choose a workout' })
@@ -1394,10 +901,10 @@ describe('Dashboard workout projection status', () => {
     act(() => useAuthStore.getState().setUser({ uid: 'user-2' } as User))
     rerender(<DashboardPage />)
 
-    await screen.findByText('No saved plans')
+    await screen.findByText('No plans yet')
     await act(async () => obsoleteRequest.reject(new Error('obsolete templates failure')))
 
-    expect(screen.getByText('No saved plans')).toBeInTheDocument()
+    expect(screen.getByText('No plans yet')).toBeInTheDocument()
     expect(mocks.toastError).not.toHaveBeenCalled()
     expect(consoleError).not.toHaveBeenCalled()
     consoleError.mockRestore()

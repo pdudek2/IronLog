@@ -100,7 +100,7 @@ test.describe('Protected application shell', () => {
 
     await page.goto('/dashboard')
     await expect(page).toHaveURL('/dashboard', { timeout: 15_000 })
-    await expect(page.getByRole('heading', { name: /^(Recent workouts|History)$/ })).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('heading', { name: 'This week' })).toBeVisible({ timeout: 15_000 })
     await page.waitForTimeout(500)
 
     expect(progressRequests).toHaveLength(0)

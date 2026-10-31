@@ -478,7 +478,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     expect(await readLifecycleClosedSession(sessionId)).toMatchObject({ outcome: 'discarded' })
   })
 
-  test('projection_pending reflects committed closure and remains visible on dashboard', async ({
+  test('projection_pending reflects committed closure and stays retryable on the workout page', async ({
     context,
     cleanup,
     expectedBrowserDiagnostics,
@@ -514,12 +514,13 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       async () => {
         await finishWorkout(page, sessionId)
         await expect(page.getByRole('heading', { name: 'Workout saved' })).toBeVisible()
-        await expect(page.getByText('Stats are still syncing.', { exact: true })).toBeVisible()
+        await expect(page.getByText('Stats are waiting to sync.', { exact: true })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Retry sync' })).toBeVisible()
         await page.getByRole('button', { name: 'Back to Home' }).click()
         await expectAppReady(page, '/dashboard')
-        const row = page.locator('.dashboard-history-row').filter({ hasText: 'Phase 1 projection pending' })
-        await expect(row).toContainText('Stats are waiting to sync.')
-        await expect(row.getByRole('button', { name: 'Retry sync' })).toBeVisible()
+        await page.goto(`/workout/${sessionId}`)
+        await expect(page.getByText('Stats are waiting to sync.', { exact: true })).toBeVisible()
+        await expect(page.getByRole('button', { name: 'Retry sync' })).toBeVisible()
       },
     )
     expect(await readLifecycleWorkout(sessionId)).toMatchObject({ materialized: false })
@@ -527,7 +528,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     expect(await readLifecycleActiveSession()).toBeNull()
   })
 
-  test('failed dashboard materialization offers retry and later success clears the failure', async ({
+  test('failed workout materialization offers retry and later success clears the failure', async ({
     context,
     cleanup,
     expectedBrowserDiagnostics,
@@ -541,10 +542,10 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       materialized: false,
       label: 'Phase 1 projection retry',
     })
-    const dashboardContext = await observedContextFactory.newContext({
+    const detailContext = await observedContextFactory.newContext({
       storageState: await context.storageState(),
     })
-    const page = await dashboardContext.newPage()
+    const page = await detailContext.newPage()
     let attempts = 0
     await page.route('**/api/materialize-workout', async (route) => {
       attempts += 1
@@ -560,18 +561,20 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       await route.fulfill({ response })
     })
 
-    const row = page.locator('.dashboard-history-row').filter({ hasText: 'Phase 1 projection retry' })
+    const pending = page.getByText('Stats are waiting to sync.', { exact: true })
+    const retry = page.getByRole('button', { name: 'Retry sync' })
+    await page.goto(`/workout/${sessionId}`)
+    await expect(pending).toBeVisible()
     await expectedBrowserDiagnostics.during(
       'intentional Phase 1 first projection failure',
       isExpectedWorkoutLifecycleProjectionDiagnostic,
       async () => {
-        await page.goto('/dashboard')
-        await expectAppReady(page, '/dashboard')
-        await expect(row).toContainText('Automatic sync failed.')
+        await retry.click()
+        await expect(page.getByText('Sync failed.', { exact: true })).toBeVisible()
       },
     )
-    await row.getByRole('button', { name: 'Retry sync' }).click()
-    await expect(row.getByText('Stats are waiting to sync.')).not.toBeVisible()
+    await retry.click()
+    await expect(pending).not.toBeVisible()
     expect(await readLifecycleWorkout(sessionId)).toMatchObject({ materialized: true })
     expect(await readLifecycleExerciseSessions(sessionId)).toHaveLength(1)
     expect(await readLifecycleRecords()).toHaveLength(1)
@@ -772,7 +775,29 @@ test('exercise confirmation cannot delete a remotely rehydrated exercise', async
 })
 
 
-for (const source of ['dashboard', 'detail'] as const) {
+test('delete action on the workout page opens its dialog in place when activated with Enter', async ({ page, cleanup }, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop', 'desktop deterministic keyboard contract')
+  cleanup.add('remove keyboard delete fixture', cleanupWorkoutLifecycleState)
+  await cleanupWorkoutLifecycleState()
+  const sessionId = phase1Id('keyboard-delete')
+  await seedLifecycleWorkout({ sessionId, materialized: true, label: 'Phase 1 keyboard delete' })
+  const routePath = `/workout/${sessionId}`
+  await page.goto(routePath)
+
+  const deleteButton = page.getByRole('button', { name: 'Delete workout', exact: true })
+  await expect(deleteButton).toBeVisible()
+  await deleteButton.focus()
+  await expect(deleteButton).toBeFocused()
+  await page.keyboard.press('Enter')
+
+  const confirmDialog = page.getByRole('dialog', { name: 'Delete workout?' })
+  await expect(confirmDialog).toBeVisible()
+  await expect(page).toHaveURL(routePath)
+  await confirmDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await expect(confirmDialog).not.toBeVisible()
+})
+
+for (const source of ['history', 'detail'] as const) {
   test(`lost delete acknowledgement survives ${source} reload and retries idempotently`, async ({ page, cleanup, expectedBrowserDiagnostics }, testInfo) => {
     cleanup.add('remove delete recovery fixture', cleanupWorkoutLifecycleState)
     await cleanupWorkoutLifecycleState()
@@ -786,14 +811,10 @@ for (const source of ['dashboard', 'detail'] as const) {
       expect(response.ok()).toBe(true)
       await route.abort('failed')
     })
-    const routePath = source === 'dashboard' ? '/dashboard' : `/workout/${sessionId}`
+    const routePath = `/workout/${sessionId}`
     await page.goto(routePath)
     await expect(page).toHaveURL(routePath)
-    if (source === 'dashboard') await expectAppReady(page, '/dashboard')
-    const remove = source === 'dashboard'
-      ? page.getByRole('button', { name: /Delete workout Phase 1 delete acknowledgement/ })
-      : page.getByRole('button', { name: 'Delete workout', exact: true })
-    await remove.click()
+    await page.getByRole('button', { name: 'Delete workout', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Delete workout?' })).toContainText('Phase 1 delete acknowledgement')
     await page.getByRole('dialog').screenshot({ path: testInfo.outputPath(`delete-${source}-confirmation.png`) })
     const failedRequest = page.waitForEvent('requestfailed', (request) => new URL(request.url()).pathname === '/api/delete-workout')
@@ -804,11 +825,21 @@ for (const source of ['dashboard', 'detail'] as const) {
       await expect(page.getByText(unknown, { exact: true })).toBeVisible()
     })
     expect(await readLifecycleWorkout(sessionId)).toBeNull()
-    await page.reload()
+    if (source === 'history') {
+      await page.goto('/history')
+      await expectAppReady(page, '/history')
+      await page.reload()
+      await page.getByRole('button', { name: 'Go to recovery', exact: true }).click()
+      await expect(page).toHaveURL(routePath)
+    } else {
+      await page.reload()
+    }
     await expect(page.getByText(unknown, { exact: true })).toBeVisible()
     await page.screenshot({ path: testInfo.outputPath(`delete-${source}-recovery.png`), fullPage: true })
     await page.getByRole('button', { name: 'Try again' }).click()
     await expect(page.getByText(unknown, { exact: true })).not.toBeVisible()
+    await expect(page).toHaveURL('/history')
+    await expect(page.getByRole('button', { name: 'Go to recovery', exact: true })).toHaveCount(0)
     expect(await readLifecycleWorkout(sessionId)).toBeNull()
     expect(await readLifecycleExerciseSessions(sessionId)).toHaveLength(0)
     await expect.poll(() => page.evaluate(() => Object.keys(localStorage).filter((key) => key.startsWith('ironlog:workout-delete-recovery:')))).toEqual([])

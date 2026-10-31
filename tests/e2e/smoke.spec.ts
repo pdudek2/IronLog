@@ -26,7 +26,7 @@ test('mobile nav shows four usable primary items at 360px and 390px', async ({ p
 
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
-  await expect(page.getByRole('heading', { name: /^(Recent workouts|History)$/ })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'This week' })).toBeVisible()
   const nav = page.getByLabel('Bottom navigation')
   await expect(nav).toBeVisible()
 
@@ -72,7 +72,7 @@ test('bottom nav active state updates on navigation', async ({ page, isMobile })
   await page.goto('/dashboard')
   const nav = page.getByLabel('Bottom navigation')
 
-  await page.getByRole('button', { name: 'View history', exact: true }).click()
+  await nav.getByRole('button', { name: 'History', exact: true }).click()
   await page.waitForURL('/history')
   await expect(nav.getByRole('button', { name: 'History', exact: true })).toHaveAttribute('aria-current', 'page')
   await nav.getByRole('button', { name: 'Train', exact: true }).click()

@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { writeWorkoutDeleteRecovery } from '../../lib/workoutDeleteRecovery'
 import HistoryPage from '../HistoryPage'
 import { useProfileStore } from '../../store/profileStore'
 
@@ -56,6 +57,7 @@ describe('HistoryPage range state', () => {
     mocks.toastError.mockReset()
     mocks.user = { uid: 'user-1' }
     mocks.getUserExercises.mockResolvedValue([])
+    localStorage.clear()
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
     useProfileStore.getState().setProfile('user-1', {
       displayName: 'Tester', weeklyGoal: 3, primaryGoal: 'strength', units: 'kg', createdAt: 1,
@@ -299,6 +301,59 @@ describe('HistoryPage range state', () => {
     expect(within(row).getByText('1h 0m')).toBeInTheDocument()
     expect(within(row).getByText('1.8k kg')).toBeInTheDocument()
     expect(within(row).getByText('5 sets')).toBeInTheDocument()
+  })
+
+  it.each([
+    { sets: 1, expected: '1 set' },
+    { sets: 2, expected: '2 sets' },
+  ])('uses the English form $expected in the workout row', async ({ sets, expected }) => {
+    const startedAt = Date.now() - 3_600_000
+    mocks.getWorkoutHistory.mockResolvedValue({
+      workouts: [{
+        id: 'set-count', startedAt, finishedAt: startedAt + 60_000, materialized: true, label: 'Push day',
+        exercises: [{ name: 'Bench', sets: Array.from({ length: sets }, () => ({ weight: 80, reps: 5 })) }],
+      }],
+      truncated: false,
+    })
+
+    render(<HistoryPage />)
+
+    const row = await screen.findByRole('button', { name: /Push day/ })
+    expect(within(row).getByText(expected)).toBeInTheDocument()
+  })
+
+  it('opens a workout with its row as the preview', async () => {
+    const startedAt = Date.now() - 3_600_000
+    const workout = {
+      id: 'preview-row', startedAt, finishedAt: startedAt + 60_000, materialized: true, label: 'Push day',
+      exercises: [{ name: 'Bench', sets: [{ weight: 80, reps: 5 }] }],
+    }
+    mocks.getWorkoutHistory.mockResolvedValue({ workouts: [workout], truncated: false })
+
+    render(<HistoryPage />)
+    fireEvent.click(await screen.findByRole('button', { name: /Push day/ }))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/workout/preview-row', { state: { workoutPreview: workout } })
+  })
+
+  it('leads to an interrupted delete even when its workout has left the list', async () => {
+    writeWorkoutDeleteRecovery('user-1', { workoutId: 'deleted-workout', status: 'cleanup_pending' })
+    mocks.getWorkoutHistory.mockResolvedValue({ workouts: [], truncated: false })
+
+    render(<HistoryPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Go to recovery' }))
+
+    expect(mocks.navigate).toHaveBeenCalledWith('/workout/deleted-workout')
+  })
+
+  it('shows no delete recovery for another account', async () => {
+    writeWorkoutDeleteRecovery('user-2', { workoutId: 'other-account-workout', status: 'unknown' })
+    mocks.getWorkoutHistory.mockResolvedValue({ workouts: [], truncated: false })
+
+    render(<HistoryPage />)
+
+    await screen.findByText('Your history is empty')
+    expect(screen.queryByRole('button', { name: 'Go to recovery' })).not.toBeInTheDocument()
   })
 
   it('presents aggregate workout volume in the preferred units', async () => {

@@ -43,6 +43,30 @@ test.describe('History and list workbenches', () => {
       .toBeVisible()
   })
 
+  test('labels workout set counts instead of relying on category color', async ({ page }) => {
+    await seedLifecycleWorkout({
+      sessionId: 'phase-1-history-labeled-sets',
+      materialized: true,
+      label: 'Phase 1 history labeled sets',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [
+          { weight: 80, reps: 5 },
+          { weight: 80, reps: 5 },
+        ],
+      }],
+    })
+
+    await page.goto('/history')
+    await expectAppReady(page, '/history')
+    const workoutRow = page.locator('.history-workout-row').filter({
+      hasText: 'Phase 1 history labeled sets',
+    })
+    await expect(workoutRow).toContainText('2 sets')
+  })
+
   test('keeps workbench routes bounded without horizontal overflow', async ({ page }, testInfo) => {
     await page.setViewportSize(testInfo.project.name === 'desktop'
       ? { width: 1440, height: 900 }

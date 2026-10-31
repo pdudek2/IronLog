@@ -13,7 +13,7 @@ const emulatorMode = process.env.E2E_BACKEND === 'emulator'
 async function openDashboard(page: Page) {
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
-  await expect(page.getByRole('heading', { name: /^(Recent workouts|History)$/ })).toBeVisible({ timeout: 15_000 })
+  await expect(page.getByRole('heading', { name: 'This week' })).toBeVisible({ timeout: 15_000 })
 }
 
 test.describe('Dashboard regressions', () => {
@@ -46,62 +46,17 @@ test.describe('Dashboard regressions', () => {
     await expect(page.locator('.train-days:visible')).toHaveCount(1)
   })
 
-  test('labels recent workout set counts instead of relying on category color', async ({ page, cleanup }) => {
+  test('leaves workout and plan lists to History and Plans', async ({ page, cleanup }) => {
     test.skip(!emulatorMode, 'emulator-only deterministic fixture')
-    const sessionId = 'phase-1-dashboard-labeled-sets'
-    cleanup.add('remove labeled-set workout', () => deleteLifecycleWorkout(sessionId))
+    const sessionId = 'phase-1-dashboard-no-lists'
+    cleanup.add('remove no-lists workout', () => deleteLifecycleWorkout(sessionId))
     await deleteLifecycleWorkout(sessionId)
-    await seedLifecycleWorkout({
-      sessionId,
-      materialized: true,
-      label: 'Phase 1 dashboard labeled sets',
-      exercises: [{
-        exerciseId: 'bench-press',
-        exerciseSource: 'global',
-        name: 'Bench Press',
-        sets: [
-          { weight: 80, reps: 5 },
-          { weight: 80, reps: 5 },
-        ],
-      }],
-    })
+    await seedLifecycleWorkout({ sessionId, materialized: true, label: 'Phase 1 no lists' })
     await openDashboard(page)
 
-    const workoutRow = page.locator('.dashboard-history-row').filter({
-      hasText: 'Phase 1 dashboard labeled sets',
-    })
-    await expect(workoutRow.locator('.dashboard-history-set')).toHaveText('2 sets')
-  })
-
-  test('delete action on recent workout stays on dashboard when activated with Enter', async ({
-    page,
-    cleanup,
-  }, testInfo) => {
-    test.skip(!emulatorMode, 'emulator-only deterministic fixture')
-    test.skip(testInfo.project.name !== 'desktop', 'desktop deterministic keyboard contract')
-    const sessionId = 'phase-1-dashboard-keyboard-delete'
-    cleanup.add('remove dashboard keyboard workout', () => deleteLifecycleWorkout(sessionId))
-    await deleteLifecycleWorkout(sessionId)
-    await seedLifecycleWorkout({
-      sessionId,
-      materialized: true,
-      label: 'Phase 1 dashboard keyboard delete',
-    })
-    await openDashboard(page)
-
-    const deleteButton = page.getByRole('button', {
-      name: /Delete workout Phase 1 dashboard keyboard delete/,
-    })
-    await expect(deleteButton).toBeVisible()
-    await deleteButton.focus()
-    await expect(deleteButton).toBeFocused()
-    await page.keyboard.press('Enter')
-
-    const confirmDialog = page.getByRole('dialog', { name: 'Delete workout?' })
-    await expect(confirmDialog).toBeVisible()
-    await expect(page).toHaveURL('/dashboard')
-    await confirmDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
-    await expect(confirmDialog).not.toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Recent workouts' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: /^(Plans|Other plans)$/ })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /^Delete workout/ })).toHaveCount(0)
   })
 
   test('opens the compact next-session plan with Start before Edit on mobile', async ({ page, cleanup }, testInfo) => {

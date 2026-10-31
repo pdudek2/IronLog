@@ -3,6 +3,7 @@ import { createElement, type ReactNode } from 'react'
 import { createMemoryRouter, Link, Outlet, RouterProvider } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { ApiRejectedError } from '../../lib/authedApi'
 import { clearWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from '../../lib/workoutDeleteRecovery'
 import type { WorkoutSummary } from '../../lib/workoutService'
 import WorkoutDetailPage from '../WorkoutDetailPage'
@@ -28,6 +29,8 @@ const mocks = vi.hoisted(() => ({
   getWorkout: vi.fn(),
   readWorkoutMutationState: vi.fn(),
   deleteWorkout: vi.fn(),
+  deleteGuards: [] as unknown[],
+  retryWorkoutMaterialization: vi.fn(),
   updateWorkout: vi.fn(),
   getUserExercises: vi.fn(),
   toastSuccess: vi.fn(),
@@ -41,13 +44,15 @@ vi.mock('../../lib/workoutService', async () => {
     getWorkout: mocks.getWorkout,
     readWorkoutMutationState: mocks.readWorkoutMutationState,
     // Persistence belongs to the service; reproduce its resolved-result contract in this UI mock.
-    deleteWorkout: async (id: string) => {
+    deleteWorkout: async (id: string, guard?: unknown) => {
+      mocks.deleteGuards.push(guard)
       const uid = useAuthStore.getState().user!.uid
       const result = await mocks.deleteWorkout(id)
       if (result.status === 'deleted') clearWorkoutDeleteRecovery(uid, id)
       else writeWorkoutDeleteRecovery(uid, { workoutId: id, status: result.status })
       return result
     },
+    retryWorkoutMaterialization: mocks.retryWorkoutMaterialization,
     updateWorkout: mocks.updateWorkout,
   }
 })
@@ -115,6 +120,9 @@ describe('WorkoutDetailPage delete action', () => {
         operation: operationId ? { action: 'update', status: 'complete', revision: 2 } : null }
     })
     mocks.deleteWorkout.mockReset()
+    mocks.deleteGuards.length = 0
+    mocks.retryWorkoutMaterialization.mockReset()
+    mocks.retryWorkoutMaterialization.mockResolvedValue(undefined)
     mocks.updateWorkout.mockReset()
     mocks.updateWorkout.mockResolvedValue({ status: 'materialized' })
     mocks.getUserExercises.mockReset()
@@ -183,8 +191,74 @@ describe('WorkoutDetailPage delete action', () => {
     }])
 
     expect(await screen.findByRole('heading', { name: 'Workout saved' })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent('Stats are still syncing.')
+    expect(screen.getByRole('status')).toHaveTextContent('Stats are waiting to sync.')
     expect(screen.getByText('400 kg')).toBeInTheDocument()
+  })
+
+  it('retries a pending projection and clears the status once stats are synced', async () => {
+    const retry = deferred<void>()
+    mocks.retryWorkoutMaterialization.mockReturnValueOnce(retry.promise)
+    mocks.getWorkout
+      .mockResolvedValueOnce({ ...workout, materialized: false })
+      .mockResolvedValueOnce(workout)
+    renderPage(['/workout/workout-1'])
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry sync' }))
+    expect(screen.getByRole('button', { name: 'Syncing…' })).toBeDisabled()
+    await act(async () => retry.resolve())
+
+    await waitFor(() => expect(screen.queryByText('Stats are waiting to sync.')).not.toBeInTheDocument())
+    expect(mocks.retryWorkoutMaterialization).toHaveBeenCalledWith('workout-1')
+  })
+
+  it.each([
+    ['the sync request fails', () => mocks.retryWorkoutMaterialization.mockRejectedValueOnce(new Error('503'))],
+    ['the workout cannot be re-read', () => mocks.getWorkout.mockRejectedValueOnce(new Error('offline'))],
+    ['stats are still pending', () => mocks.getWorkout.mockResolvedValueOnce({ ...workout, materialized: false })],
+  ])('keeps manual sync available when %s', async (_case, arrange) => {
+    mocks.getWorkout.mockResolvedValueOnce({ ...workout, materialized: false })
+    arrange()
+    renderPage(['/workout/workout-1'])
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry sync' }))
+
+    expect(await screen.findByText('Sync failed.')).toBeInTheDocument()
+    expect(screen.getByText('Stats are waiting to sync.')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry sync' })).toBeEnabled()
+  })
+
+  it.each(['success', 'failure'] as const)('ignores a projection retry %s after leaving the workout', async (outcome) => {
+    const retry = deferred<void>()
+    mocks.retryWorkoutMaterialization.mockReturnValueOnce(retry.promise)
+    mocks.getWorkout
+      .mockResolvedValueOnce({ ...workout, materialized: false })
+      .mockResolvedValueOnce({ ...workout, id: 'workout-2', label: 'Other workout', materialized: false })
+    const router = createMemoryRouter([{
+      element: <><Link to="/workout/workout-2">Next workout</Link><Outlet /></>,
+      children: [{ path: '/workout/:id', element: <WorkoutDetailPage /> }],
+    }], { initialEntries: ['/workout/workout-1'] })
+    render(<RouterProvider router={router} />)
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Retry sync' }))
+    fireEvent.click(screen.getByRole('link', { name: 'Next workout' }))
+    await screen.findByRole('heading', { name: 'Other workout' })
+    await act(async () => {
+      if (outcome === 'success') retry.resolve()
+      else retry.reject(new Error('late failure'))
+    })
+
+    expect(mocks.getWorkout).toHaveBeenCalledTimes(2)
+    expect(screen.queryByText('Sync failed.')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry sync' })).toBeEnabled()
+  })
+
+  it('hides manual sync while the workout has an unresolved deletion', async () => {
+    writeWorkoutDeleteRecovery('user-1', { workoutId: 'workout-1', status: 'cleanup_pending' })
+    mocks.getWorkout.mockResolvedValueOnce({ ...workout, materialized: false })
+    renderPage(['/workout/workout-1'])
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Workout deleted. Could not refresh stats.')
+    expect(screen.queryByRole('button', { name: 'Retry sync' })).not.toBeInTheDocument()
   })
 
   it('keeps confirmed save success distinct from a failed summary read and retries only the read', async () => {
@@ -277,6 +351,28 @@ describe('WorkoutDetailPage delete action', () => {
     await act(async () => { oldRead.reject(new Error('old account request failed')) })
     expect(screen.getByText('Workout not found.')).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+  })
+
+  it('deletes against the version seen when the dialog opened', async () => {
+    mocks.deleteWorkout.mockResolvedValueOnce({ status: 'deleted' })
+    renderPage()
+
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await screen.findByText('History workouts')
+    expect(mocks.deleteGuards).toEqual([{ baseline: 'a'.repeat(64), operationId: expect.any(String) }])
+  })
+
+  it('shows the server reason when a delete is rejected', async () => {
+    const reason = 'Workout changed. Review it before deleting.'
+    mocks.deleteWorkout.mockRejectedValueOnce(new ApiRejectedError(reason))
+    renderPage()
+
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
+
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(reason))
   })
 
   it('keeps the workout visible after failure and retries the exact deletion before navigating', async () => {
@@ -487,13 +583,23 @@ describe('WorkoutDetailPage delete action', () => {
     expect(screen.queryByText('Deleting workout…')).not.toBeInTheDocument()
   })
 
-  it('blocks another deletion while a different workout has unresolved recovery', async () => {
+  it('blocks another deletion and leads to the workout with unresolved recovery', async () => {
     writeWorkoutDeleteRecovery('user-1', { workoutId: 'other-workout', status: 'unknown' })
     renderPage()
     await waitFor(() => expect(mocks.getWorkout).toHaveBeenCalled())
     screen.getAllByRole('button', { name: 'Delete workout' }).forEach((button) => expect(button).toBeDisabled())
-    expect(screen.getByRole('button', { name: 'Go to recovery on the dashboard' })).toBeInTheDocument()
     expect(mocks.deleteWorkout).not.toHaveBeenCalled()
+    // Without this class the panel, and so the notice, is hidden from 1024 px.
+    expect(document.querySelector('.workout-detail-mobile-action-panel')).toHaveClass('has-feedback')
+
+    mocks.getWorkout.mockResolvedValueOnce(null)
+    mocks.deleteWorkout.mockResolvedValueOnce({ status: 'deleted' })
+    fireEvent.click(screen.getByRole('button', { name: 'Go to recovery' }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await screen.findByText('History workouts')
+    expect(mocks.deleteWorkout).toHaveBeenCalledWith('other-workout')
   })
 
   it('does not save a set after its repetitions are cleared', async () => {

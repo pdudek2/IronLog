@@ -14,19 +14,17 @@ export default function WorkoutProjectionStatus({
       <p>Stats are waiting to sync.</p>
       {state === 'failed' && (
         <p className="workout-projection-status-error">
-          Automatic sync failed.
+          Sync failed.
         </p>
       )}
-      {state !== 'idle' && (
-        <button
-          type="button"
-          className="workout-projection-retry"
-          onClick={onRetry}
-          disabled={state === 'retrying'}
-        >
-          {state === 'retrying' ? 'Syncing…' : 'Retry sync'}
-        </button>
-      )}
+      <button
+        type="button"
+        className="workout-projection-retry"
+        onClick={onRetry}
+        disabled={state === 'retrying'}
+      >
+        {state === 'retrying' ? 'Syncing…' : 'Retry sync'}
+      </button>
     </div>
   )
 }

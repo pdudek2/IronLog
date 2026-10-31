@@ -51,8 +51,8 @@ export function ConfirmDialog({ title, message, buttons, onRequestClose }: { tit
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(8,7,9,0.76)' },
-  panel: { width: '100%', maxWidth: 384, padding: 24, borderRadius: 14, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: 'linear-gradient(180deg, rgba(33,31,35,0.9), rgba(26,25,28,0.94))', borderWidth: 1, borderColor: colors.lineStrong },
+  overlay: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', paddingHorizontal: 16, backgroundColor: 'rgba(13, 11, 10,0.76)' },
+  panel: { width: '100%', maxWidth: 384, padding: 24, borderRadius: 14, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: 'linear-gradient(180deg, rgba(38, 33, 30,0.9), rgba(28, 24, 22,0.94))', borderWidth: 1, borderColor: colors.lineStrong },
   title: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 23, marginBottom: 8 },
   copy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 22 },
   actions: { flexDirection: 'row', gap: 12, marginTop: 24 },
@@ -66,6 +66,6 @@ const styles = StyleSheet.create({
   buttonText: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, textAlign: 'center' },
   cancelText: { color: colors.muted },
   neutralText: { color: colors.text },
-  primaryText: { color: colors.textStrong },
+  primaryText: { color: colors.onPrimary },
   dangerText: { color: colors.warningForeground },
 })

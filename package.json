@@ -16,6 +16,7 @@
     "preview": "vite preview",
     "seed:demo": "tsx scripts/seed-demo.ts",
     "mockups": "tsx scripts/capture-mockups.ts",
+    "tokens": "tsx scripts/generate-palette.ts",
     "test:unit": "vitest run",
     "test:rules": "firebase emulators:exec --only firestore --project demo-ironlog \"vitest run --config vitest.rules.config.ts\"",
     "test:integration:workout": "FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 firebase emulators:exec --only firestore --project demo-ironlog \"vitest run --config vitest.workout-integration.config.ts\"",

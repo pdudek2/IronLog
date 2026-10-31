@@ -148,10 +148,10 @@ function SignalBackdrop({ focused }: { focused: boolean }) {
         <Path d={`${SIGNAL_PATH}V240H-20Z`} fill="url(#auth-signal-fill)" opacity="0.72" />
         <Path ref={path} d={SIGNAL_PATH} fill="none" stroke="url(#auth-signal-stroke)" strokeWidth="3" opacity="0.62" />
         {length > 0 && !reduced && <>
-          <AnimatedPath d={SIGNAL_PATH} fill="none" stroke="rgba(240,67,90,0.52)" strokeWidth={9} strokeLinecap="round"
+          <AnimatedPath d={SIGNAL_PATH} fill="none" stroke="rgba(244, 238, 232, 0.312)" strokeWidth={9} strokeLinecap="round"
             strokeDasharray={[length * 0.11, length * 0.89]} strokeDashoffset={echo.interpolate({ inputRange: [0, 1], outputRange: [length, 0] })}
             opacity={traceOpacity(echo, focused ? 0.42 : 0.32)} />
-          <AnimatedPath d={SIGNAL_PATH} fill="none" stroke="rgba(255,244,246,0.94)" strokeWidth={4} strokeLinecap="round"
+          <AnimatedPath d={SIGNAL_PATH} fill="none" stroke="rgba(244, 238, 232,0.94)" strokeWidth={4} strokeLinecap="round"
             strokeDasharray={[length * 0.075, length * 0.925]} strokeDashoffset={lead.interpolate({ inputRange: [0, 1], outputRange: [length, 0] })}
             opacity={traceOpacity(lead, focused ? 1 : 0.92)} />
         </>}
@@ -217,8 +217,8 @@ function LoginForm() {
             <Defs>
               <LinearGradient id="rhythm" x1="-160%" x2="100%" y1="0%" y2="100%">
                 <Stop offset="0" stopColor={colors.accentText} /><Stop offset="0.38" stopColor={colors.accentText} />
-                <Stop offset="0.49" stopColor="#fff7f8" /><Stop offset="0.60" stopColor={colors.accentText} />
-                <Stop offset="1" stopColor="#d83a50" />
+                <Stop offset="0.49" stopColor="#fbf7f2" /><Stop offset="0.60" stopColor={colors.accentText} />
+                <Stop offset="1" stopColor="#f4eee8" />
               </LinearGradient>
             </Defs>
             <SvgText x={9.152} y={28.4} fill="url(#rhythm)" fontFamily="InstrumentSans_700Bold" fontSize={35.2} letterSpacing={-1.584}>rhythm.</SvgText>
@@ -499,7 +499,7 @@ function WorkoutLedger({ uid, session, units, stale, editing, rejectedEdit }: { 
     <View accessibilityLabel="No exercises yet" style={styles.emptyWorkout}>
       <Pressable accessibilityRole="button" accessibilityLabel="Add exercise" onPress={openPicker}
         style={({ pressed }) => [styles.primaryAction, styles.buttonPrimary, styles.emptyWorkoutAction, pressed && styles.buttonPressed]}>
-        <PlusIcon color={colors.textStrong} /><Text style={styles.primaryActionText}>Add exercise</Text>
+        <PlusIcon color={colors.onPrimary} /><Text style={styles.primaryActionText}>Add exercise</Text>
       </Pressable>
     </View>
     {quickPicks.length > 0 && <View style={styles.quickStart}>
@@ -531,7 +531,7 @@ function WorkoutLedger({ uid, session, units, stale, editing, rejectedEdit }: { 
       onToggle={() => setManual(identity(exercise, index) === expandedId ? '' : identity(exercise, index))} />)}
     <Pressable accessibilityRole="button" accessibilityLabel="Add exercise" accessibilityState={{ disabled: full }} disabled={full} onPress={openPicker}
       style={({ pressed }) => [styles.primaryAction, styles.inlineAddExercise, full && styles.buttonDisabled, pressed && styles.setStepperPressed]}>
-      <PlusIcon color={colors.textStrong} /><Text style={styles.primaryActionText}>Add exercise</Text>
+      <PlusIcon color={colors.onPrimary} /><Text style={styles.primaryActionText}>Add exercise</Text>
     </Pressable>
     {full && <Text style={styles.previewCopy}>Sessions hold up to {MAX_SESSION_EXERCISES} exercises.</Text>}
     {picker}
@@ -574,7 +574,7 @@ function ClosureNotice({ closure, onRetry, onDismiss, onSignIn }: { closure: Clo
     <Text style={styles.syncTitle}>{title}</Text>
     <Text style={styles.syncCopy}>{copy}</Text>
     <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [styles.closureAction, styles.buttonPrimary, pressed && styles.buttonPressed]}>
-      <Text style={styles.closureActionText}>{action}</Text>
+      <Text style={styles.buttonText}>{action}</Text>
     </Pressable>
     {closure.status === 'intent_storage_failed' && <Pressable accessibilityRole="button" onPress={onDismiss} style={styles.closureAction}>
       <Text style={styles.syncActionText}>Return to editing</Text>
@@ -878,7 +878,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   loginShell: {
-    experimental_backgroundImage: 'radial-gradient(ellipse 672px 544px at 12% 12%, rgba(240, 67, 90, 0.14), transparent 72%), radial-gradient(ellipse 736px 608px at 86% 78%, rgba(143, 184, 160, 0.11), transparent 74%), linear-gradient(122deg, #181114 0%, #0b0a0c 52%, #080d0b 100%)',
+    experimental_backgroundImage: 'radial-gradient(ellipse 672px 544px at 12% 12%, rgba(244, 238, 232, 0.084), transparent 72%), radial-gradient(ellipse 736px 608px at 86% 78%, rgba(244, 238, 232, 0.066), transparent 74%), linear-gradient(122deg, #181412 0%, #0d0b0a 52%, #0f0d0c 100%)',
   },
   loginContent: { flexGrow: 1, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 20, position: 'relative' },
   grainBackdrop: { height: '100%', opacity: 0.024, width: '100%' },
@@ -886,8 +886,8 @@ const styles = StyleSheet.create({
   brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 18.4 },
   brandMark: {
     alignItems: 'center',
-    backgroundColor: 'rgba(17, 16, 18, 0.68)',
-    borderColor: 'rgba(244, 241, 242, 0.18)',
+    backgroundColor: 'rgba(20, 17, 16, 0.68)',
+    borderColor: 'rgba(244, 238, 232, 0.18)',
     borderRadius: 8,
     borderWidth: 1,
     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.24), inset 0 1px 0 rgba(255, 255, 255, 0.16)',
@@ -898,20 +898,20 @@ const styles = StyleSheet.create({
   },
   // Same box as the web loader (.puls-loader).
   loaderMark: { height: 44, width: 44 },
-  brandName: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 15, marginLeft: 12 },
-  hero: { color: colors.textStrong, fontFamily: 'ArchivoHero', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.496 },
+  brandName: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginLeft: 12 },
+  hero: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.496 },
   heroAccent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 35.2, letterSpacing: -1.584, lineHeight: 34.496, marginLeft: 9.152 },
-  lead: { color: 'rgba(244, 241, 242, 0.7)', fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 22.3, marginTop: 12 },
+  lead: { color: 'rgba(244, 238, 232, 0.7)', fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 22.3, marginTop: 12 },
   formDivider: { backgroundColor: colors.lineStrong, height: 1, marginBottom: 20, marginTop: 20 },
-  formDividerFocused: { backgroundColor: 'rgba(255, 113, 130, 0.5)' },
-  formTitle: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 29.6, lineHeight: 29.6 },
+  formDividerFocused: { backgroundColor: 'rgba(244, 238, 232, 0.5)' },
+  formTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 29.6, lineHeight: 29.6 },
   form: { marginTop: 51.84 },
   label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, lineHeight: 16, marginBottom: 4 },
   passwordLabel: { marginTop: 16 },
   inputSurface: {
-    backgroundColor: 'rgba(8, 7, 9, 0.16)',
+    backgroundColor: 'rgba(13, 11, 10, 0.16)',
     experimental_backgroundImage: 'linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03))',
-    borderColor: 'rgba(244, 241, 242, 0.13)',
+    borderColor: 'rgba(244, 238, 232, 0.13)',
     borderRadius: 8,
     borderWidth: 1,
     boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.075), 0 1px 0 rgba(255, 255, 255, 0.035)',
@@ -925,19 +925,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
-  inputFocused: { borderColor: colors.accentText, boxShadow: '0 0 0 3px rgba(240, 67, 90, 0.24)' },
+  inputFocused: { borderColor: colors.accentText, boxShadow: '0 0 0 3px rgba(244, 238, 232, 0.144)' },
   loginError: { color: colors.warning, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 4 },
   omittedAuthActionSpace: { height: 49 },
   button: { alignItems: 'center', borderRadius: 8, justifyContent: 'center', minHeight: 48, marginTop: 15, paddingHorizontal: 18 },
   buttonPrimary: {
     backgroundColor: colors.primaryEnd,
-    boxShadow: '0 6px 8px rgba(240, 67, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.18)',
+    boxShadow: '0 6px 8px rgba(244, 238, 232, 0.108), inset 0 1px 0 rgba(255, 255, 255, 0.18)',
     experimental_backgroundImage: primaryGradient,
   },
   buttonSecondary: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderWidth: 1, minWidth: 140 },
   buttonDisabled: { opacity: 0.55 },
   buttonPressed: { opacity: 0.82 },
-  buttonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  buttonText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   buttonSecondaryText: { color: colors.text },
   error: { color: colors.accent, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, lineHeight: 20, marginTop: 6 },
   sessionContent: {
@@ -946,11 +946,11 @@ const styles = StyleSheet.create({
     experimental_backgroundImage: pageBackground,
   },
   sessionShell: { flex: 1, backgroundColor: colors.background },
-  lifecycleBar: { backgroundColor: '#0d0b0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 69, zIndex: 4 },
+  lifecycleBar: { backgroundColor: '#0f0d0c', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 69, zIndex: 4 },
   lifecycleBarInner: { alignItems: 'center', flexDirection: 'row', height: 69, paddingHorizontal: 16 },
   logoutError: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 19, paddingHorizontal: 16, paddingVertical: 10 },
   centerState: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 420, paddingHorizontal: 20, gap: 12 },
-  stateTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 22, textAlign: 'center' },
+  stateTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 22, textAlign: 'center' },
   stateCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, textAlign: 'center' },
   elapsed: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20, lineHeight: 28, fontVariant: ['tabular-nums'] },
   workoutLabelsTitle: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, letterSpacing: 0.4, paddingHorizontal: 16, paddingTop: 10 },
@@ -1009,9 +1009,9 @@ const styles = StyleSheet.create({
   setStepperRow: { backgroundColor: 'rgba(255,255,255,0.024)', borderRadius: 12, flexDirection: 'row', height: 44, marginTop: 8, overflow: 'hidden' },
   setStepperButton: { alignItems: 'center', flex: 1, justifyContent: 'center', minHeight: 44 },
   setStepperSeparator: { borderLeftColor: colors.line, borderLeftWidth: 1 },
-  setStepperPressed: { backgroundColor: 'rgba(240,67,90,0.12)', opacity: 0.9 },
+  setStepperPressed: { backgroundColor: 'rgba(244, 238, 232, 0.072)', opacity: 0.9 },
   setStepperText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
-  addSetButton: { alignItems: 'center', backgroundColor: 'rgba(33,31,35,0.76)', borderRadius: 8, justifyContent: 'center', minHeight: 44, marginTop: 4 },
+  addSetButton: { alignItems: 'center', backgroundColor: 'rgba(38, 33, 30,0.76)', borderRadius: 8, justifyContent: 'center', minHeight: 44, marginTop: 4 },
   addSetContent: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' },
   addSetText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
   omittedSetAdjustmentsSpace: { height: 52 },
@@ -1020,7 +1020,7 @@ const styles = StyleSheet.create({
   minimizeButton: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 44, paddingHorizontal: 2 },
   minimizeText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   minimizeHint: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11 },
-  finishButtonText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
+  finishButtonText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
   optionsTrigger: { alignItems: 'center', borderRadius: 8, height: 44, justifyContent: 'center', width: 44 },
   optionsMenu: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderRadius: 8, borderWidth: 1, boxShadow: '0 12px 32px rgba(0, 0, 0, 0.42)', padding: 5.6, position: 'absolute', right: 16 },
   optionsItem: { borderRadius: 5, justifyContent: 'center', minHeight: 44, paddingHorizontal: 13.6, paddingVertical: 10.4 },
@@ -1033,13 +1033,13 @@ const styles = StyleSheet.create({
   omittedWorkoutActionsSpace: { height: 49 },
   // .workout-primary-action: full width, 3rem tall, 0.9rem/700.
   primaryAction: { alignItems: 'center', borderRadius: 8, flexDirection: 'row', gap: 8, justifyContent: 'center', minHeight: 48 },
-  primaryActionText: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4, lineHeight: 20 },
+  primaryActionText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4, lineHeight: 20 },
   inlineAddExercise: { backgroundColor: colors.surfaceRaised, borderColor: colors.line, borderWidth: 1, marginTop: 16 },
   emptyWorkout: { borderBottomColor: colors.lineStrong, borderBottomWidth: 1, borderTopColor: colors.lineStrong, borderTopWidth: 1, paddingVertical: 22.4 },
   emptyWorkoutAction: { maxWidth: 320, width: '100%' },
   resumePanel: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: 8, borderWidth: 1, margin: 16, padding: 24 },
   resumeEyebrow: { color: colors.accent, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, marginBottom: 8 },
-  resumeTitle: { color: colors.textStrong, fontFamily: 'Archivo_700Bold', fontSize: 24, lineHeight: 26.4 },
+  resumeTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 24, lineHeight: 26.4 },
   resumeCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, marginTop: 12 },
   resumeActions: { gap: 12, marginTop: 24 },
   quickStart: { marginTop: 21.6 },

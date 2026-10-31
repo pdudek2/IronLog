@@ -19,7 +19,6 @@
     "test:emulator:exercises": "node --import ./integration/exercise-sdk-shims/register.mjs --import tsx integration/exerciseCatalogue.emulator.ts"
   },
   "dependencies": {
-    "@expo-google-fonts/archivo": "^0.4.2",
     "@expo-google-fonts/instrument-sans": "^0.4.2",
     "@expo-google-fonts/spline-sans-mono": "^0.4.2",
     "@react-native-community/slider": "^5.2.0",

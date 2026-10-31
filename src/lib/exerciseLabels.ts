@@ -1,15 +1,15 @@
 import type { Equipment, MuscleGroup } from '../data/exercises'
 
-export const DEFAULT_EXERCISE_CATEGORY_COLOR = '#A09AA0'
+export const DEFAULT_EXERCISE_CATEGORY_COLOR = '#A89F98'
 
 export const EXERCISE_CATEGORY_COLORS: Readonly<Record<string, string>> = {
-  chest: '#D97B91',
-  back: '#9BB7C8',
-  legs: '#D6A06F',
-  shoulders: '#A898C8',
-  arms: '#C38B73',
-  core: '#A7A0B5',
-  cardio: '#76ADB1',
+  chest: '#C9BDB0',
+  back: '#B3A99F',
+  legs: '#D8CDBF',
+  shoulders: '#AFA59C',
+  arms: '#BDB0A2',
+  core: '#9C928A',
+  cardio: '#8F857C',
 }
 
 export const EXERCISE_CATEGORY_LABELS: Readonly<Record<string, string>> = {

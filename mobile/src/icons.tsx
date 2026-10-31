@@ -28,7 +28,7 @@ export function BrandMark({ width = 20, slip = false }: { width?: number; slip?:
   if (slip) return <SlipBrandMark width={width} />
   return <Svg accessibilityElementsHidden importantForAccessibility="no" width={width} height={width * 480 / 540} viewBox={BRAND_MARK.viewBox}>
     <Path d={BRAND_MARK.upper} fill={colors.textStrong} />
-    <Rect {...BRAND_MARK.cut} fill={colors.accent} />
+    <Rect {...BRAND_MARK.cut} fill={colors.seam} />
     <Path d={BRAND_MARK.lower} fill={colors.textStrong} />
   </Svg>
 }
@@ -68,7 +68,7 @@ function SlipBrandMark({ width }: { width: number }) {
     {/* The seam moves with the upper part; clipped to the lower part's span (which starts at the left edge) it is their overlap. */}
     <View style={{ ...layer, overflow: 'hidden', width: clip.width * scale }}>
       <Animated.View style={[layer, slide]}>
-        <Animated.View style={[layer, seamRed]}>{layerSvg(<Rect {...seam} fill={colors.accent} />)}</Animated.View>
+        <Animated.View style={[layer, seamRed]}>{layerSvg(<Rect {...seam} fill={colors.seam} />)}</Animated.View>
         {/* Overlaps the halves by half a seam so the whole block shows no antialiased hairline. */}
         <Animated.View style={[layer, seamCover]}>{layerSvg(<Rect x={seam.x} y={seam.y - seam.height / 2} width={seam.width} height={seam.height * 2} fill={colors.textStrong} />)}</Animated.View>
       </Animated.View>

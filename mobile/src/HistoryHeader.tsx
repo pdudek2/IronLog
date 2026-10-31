@@ -56,12 +56,12 @@ export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (
 }
 
 const styles = StyleSheet.create({
-  header: { alignItems: 'center', backgroundColor: '#0d0c0e', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', height: 64, justifyContent: 'space-between', paddingHorizontal: 16 },
-  brand: { alignItems: 'center', backgroundColor: 'rgba(17,16,18,0.76)', borderColor: 'rgba(244, 241, 242, 0.18)', borderRadius: 8, borderWidth: 1, height: 32, justifyContent: 'center', width: 32, experimental_backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.045))' },
-  selected: { backgroundColor: 'rgba(244,241,242,0.075)', borderRadius: 8 },
+  header: { alignItems: 'center', backgroundColor: '#0f0d0c', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, flexDirection: 'row', height: 64, justifyContent: 'space-between', paddingHorizontal: 16 },
+  brand: { alignItems: 'center', backgroundColor: 'rgba(20, 17, 16,0.76)', borderColor: 'rgba(244, 238, 232, 0.18)', borderRadius: 8, borderWidth: 1, height: 32, justifyContent: 'center', width: 32, experimental_backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.13), rgba(255,255,255,0.045))' },
+  selected: { backgroundColor: 'rgba(244, 238, 232,0.075)', borderRadius: 8 },
   signOut: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   streakTarget: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
-  streak: { alignItems: 'center', backgroundColor: 'rgba(143, 184, 160, 0.13)', borderColor: 'rgba(143, 184, 160, 0.24)', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: 6.4, paddingVertical: 5, paddingLeft: 8.8, paddingRight: 12 },
+  streak: { alignItems: 'center', backgroundColor: 'rgba(244, 238, 232, 0.078)', borderColor: 'rgba(244, 238, 232, 0.144)', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: 6.4, paddingVertical: 5, paddingLeft: 8.8, paddingRight: 12 },
   streakText: { color: colors.recovery, fontFamily: 'InstrumentSans_700Bold', fontSize: 13, fontVariant: ['tabular-nums'] },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 })

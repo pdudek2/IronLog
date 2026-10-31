@@ -15,7 +15,7 @@ export default function BrandMark({ className, slip = false }: { className?: str
     return (
       <svg className={className} viewBox={BRAND_MARK.viewBox} aria-hidden="true" focusable="false">
         <path d={BRAND_MARK.upper} fill="currentColor" />
-        <rect {...BRAND_MARK.cut} style={{ fill: 'var(--accent)' }} />
+        <rect {...BRAND_MARK.cut} style={{ fill: 'var(--seam)' }} />
         <path d={BRAND_MARK.lower} fill="currentColor" />
       </svg>
     )
@@ -42,7 +42,7 @@ export default function BrandMark({ className, slip = false }: { className?: str
       <path d={BRAND_MARK.lower} fill="currentColor" />
       <g clipPath={`url(#${clipId})`}>
         <motion.g {...slide}>
-          <motion.rect {...seam} style={{ fill: 'var(--accent)' }} {...seamRed} />
+          <motion.rect {...seam} style={{ fill: 'var(--seam)' }} {...seamRed} />
           {/* Overlaps the halves by half a seam so the whole block shows no antialiased hairline. */}
           <motion.rect x={seam.x} y={seam.y - seam.height / 2} width={seam.width} height={seam.height * 2} fill="currentColor" {...seamCover} />
         </motion.g>

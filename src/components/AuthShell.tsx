@@ -21,13 +21,12 @@ export default function AuthShell({ title, subtitle, children }: AuthShellProps)
         <svg viewBox="0 0 1200 240" preserveAspectRatio="none" focusable="false">
           <defs>
             <linearGradient id="auth-signal-stroke" x1="0" y1="46" x2="0" y2="196" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stopColor="#ff7182" />
-              <stop offset="0.52" stopColor="#f0435a" />
-              <stop offset="1" stopColor="#8fb8a0" />
+              <stop offset="0" stopColor="#efe7dc" />
+              <stop offset="1" stopColor="#a89f98" />
             </linearGradient>
             <linearGradient id="auth-signal-fill" x1="0" y1="46" x2="0" y2="240" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stopColor="#f0435a" stopOpacity="0.15" />
-              <stop offset="1" stopColor="#f0435a" stopOpacity="0" />
+              <stop offset="0" stopColor="#efe7dc" stopOpacity="0.1" />
+              <stop offset="1" stopColor="#efe7dc" stopOpacity="0" />
             </linearGradient>
           </defs>
           <path className="auth-signal-area" d={`${SIGNAL_PATH}V240H-20Z`} fill="url(#auth-signal-fill)" />

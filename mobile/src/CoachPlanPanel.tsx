@@ -98,19 +98,19 @@ function Action({ children, onPress, disabled = false, primary = false }: { chil
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[s.action,primary && s.primary,disabled && s.disabled]}><Text style={[s.choice,primary && s.selected]}>{children}</Text></Pressable>
 }
 const s = StyleSheet.create({
-  section: { borderTopWidth:1,borderColor:'rgba(244,241,242,0.18)',paddingVertical:16,gap:16 },
+  section: { borderTopWidth:1,borderColor:'rgba(244, 238, 232,0.18)',paddingVertical:16,gap:16 },
   heading: { fontFamily:'InstrumentSans_700Bold',fontSize:21.12,lineHeight:24,color:colors.textStrong },
   field: { gap:9 }, label: { fontFamily:'InstrumentSans_600SemiBold',fontSize:12,lineHeight:18,color:colors.muted },
   input: { borderWidth:1,borderColor:colors.line,backgroundColor:'rgba(255,255,255,0.043)',borderRadius:0,paddingHorizontal:15.2,paddingVertical:13.6,minHeight:51.2,fontFamily:'InstrumentSans_400Regular',fontSize:14.72,color:colors.textStrong },
   notes: { minHeight:104 }, chips: { flexDirection:'row',flexWrap:'wrap',gap:8 },
   chip: { borderWidth:1,borderColor:colors.line,backgroundColor:'rgba(255,255,255,0.03)',borderRadius:999,minHeight:44,paddingHorizontal:12,paddingVertical:8,justifyContent:'center' },
-  chipActive: { backgroundColor:'rgba(244,241,242,0.075)',borderColor:'rgba(240,67,90,0.24)' },
-  choice: { fontFamily:'InstrumentSans_700Bold',fontSize:13.76,color:colors.muted }, selected: { color:colors.textStrong },accent: { color:colors.accentText },
+  chipActive: { backgroundColor:'rgba(244, 238, 232,0.075)',borderColor:'rgba(244, 238, 232, 0.144)' },
+  choice: { fontFamily:'InstrumentSans_700Bold',fontSize:13.76,color:colors.muted }, selected: { color: colors.onPrimary },accent: { color:colors.accentText },
   levels: { borderWidth:1,borderColor:colors.line,borderRadius:8,overflow:'hidden' },
-  level: { minHeight:44,paddingHorizontal:13,paddingVertical:11,backgroundColor:'#222125',borderLeftWidth:3,borderLeftColor:'transparent' },levelActive: { backgroundColor:'rgba(244,241,242,0.075)',borderLeftColor:colors.accentText },
+  level: { minHeight:44,paddingHorizontal:13,paddingVertical:11,backgroundColor:'#26211e',borderLeftWidth:3,borderLeftColor:'transparent' },levelActive: { backgroundColor:'rgba(244, 238, 232,0.075)',borderLeftColor:colors.accentText },
   muted: { fontFamily:'InstrumentSans_400Regular',fontSize:14,lineHeight:24,color:colors.muted },error: { fontFamily:'InstrumentSans_400Regular',fontSize:13,lineHeight:20,color:colors.accentText },
   actions: { gap:12,alignItems:'flex-start' },action: { minHeight:44,paddingHorizontal:13,paddingVertical:11,borderRadius:8,borderWidth:1,borderColor:colors.line,alignItems:'center',justifyContent:'center',alignSelf:'flex-start' },
-  primary: { backgroundColor:'#c22b41',borderColor:'transparent',experimental_backgroundImage:primaryGradient },disabled: { opacity:0.45 },
+  primary: { backgroundColor:colors.primaryEnd,borderColor:'transparent',experimental_backgroundImage:primaryGradient },disabled: { opacity:0.45 },
   table: { borderTopWidth:1,borderColor:colors.line },tableRow: { flexDirection:'row',gap:8,paddingVertical:12,borderBottomWidth:1,borderColor:colors.line },name: { flex:1 },reps: { width:76,textAlign:'right' },weight: { width:60,textAlign:'right' },
   exercise: { fontFamily:'InstrumentSans_600SemiBold',fontSize:14,lineHeight:21,color:colors.textStrong },source: { fontFamily:'InstrumentSans_400Regular',fontSize:12,lineHeight:18,color:colors.muted,marginTop:4 },
 })

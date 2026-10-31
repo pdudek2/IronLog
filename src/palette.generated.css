@@ -1,0 +1,21 @@
+/* Generated from src/shared/palette.ts by `npm run tokens`. Do not edit. */
+:root {
+  --puls-black: #141110;
+  --puls-black-deep: #0d0b0a;
+  --puls-black-bottom: #0f0d0c;
+  --bg-elevated: #181412;
+  --puls-surface-1: #1c1816;
+  --puls-surface-2: #26211e;
+  --puls-surface-3: #322c28;
+  --puls-bone: #efe7dc;
+  --puls-ink: #1b1613;
+  --seam: #f0435a;
+  --text: #f4eee8;
+  --text-strong: #fbf7f2;
+  --muted: #a89f98;
+  --muted-soft: #94897f;
+  --border: rgba(244, 238, 232, 0.12);
+  --border-strong: rgba(244, 238, 232, 0.2);
+  --puls-warning: #f0a75a;
+  --puls-steel: #8a94a6;
+}

@@ -22,11 +22,11 @@ describe('exerciseLabels', () => {
 
   it('keeps category identity colors distinct from semantic state colors', () => {
     const categoryColors = Object.values(EXERCISE_CATEGORY_COLORS).map((color) => color.toUpperCase())
-    const semanticStateColors = ['#F0435A', '#8FB8A0', '#F0A75A']
+    const semanticStateColors = ['#F0435A', '#F0A75A']
 
     expect(EXERCISE_CATEGORY_LABELS.chest).toBe('Chest')
     expect(new Set(categoryColors).size).toBe(categoryColors.length)
     expect(categoryColors.filter((color) => semanticStateColors.includes(color))).toEqual([])
-    expect(DEFAULT_EXERCISE_CATEGORY_COLOR).toBe('#A09AA0')
+    expect(DEFAULT_EXERCISE_CATEGORY_COLOR).toBe('#A89F98')
   })
 })

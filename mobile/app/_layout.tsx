@@ -1,4 +1,3 @@
-import { Archivo_700Bold, Archivo_800ExtraBold } from '@expo-google-fonts/archivo'
 import {
   InstrumentSans_400Regular,
   InstrumentSans_500Medium,
@@ -10,8 +9,6 @@ import { useFonts } from 'expo-font'
 import { SplashScreen, Stack, usePathname, useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import ArchivoHero from '../assets/fonts/ArchivoHero.ttf'
-import ArchivoHeading from '../assets/fonts/ArchivoHeading.ttf'
 import { ActiveRuntimeProvider, AuthRuntimeProvider, ClosureRuntimeProvider, useAuthRuntime } from '../src/runtime'
 import { DialogHost } from '../src/dialog'
 import { LaunchRuntimeProvider } from '../src/launchRuntime'
@@ -21,10 +18,6 @@ void SplashScreen.preventAutoHideAsync()
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    ArchivoHero,
-    ArchivoHeading,
-    Archivo_700Bold,
-    Archivo_800ExtraBold,
     InstrumentSans_400Regular,
     InstrumentSans_500Medium,
     InstrumentSans_600SemiBold,

@@ -47,7 +47,7 @@ export default function ConfirmDialog({
         {/* Backdrop */}
         <div
           className="absolute inset-0"
-          style={{ background: 'rgba(8, 7, 9, 0.76)', backdropFilter: 'blur(8px)' }}
+          style={{ background: 'rgba(13, 11, 10, 0.76)', backdropFilter: 'blur(8px)' }}
         />
 
         {/* Panel */}

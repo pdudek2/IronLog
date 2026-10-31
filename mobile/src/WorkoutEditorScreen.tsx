@@ -159,7 +159,7 @@ const styles = StyleSheet.create({
   grain: { height: '100%', opacity: .024, position: 'absolute', width: '100%' }, grainImage: { height: '100%', width: '100%' },
   facts: { flexDirection: 'row', backgroundColor: colors.backgroundElevated, marginHorizontal: -16, paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, marginBottom: 24 }, fact: { flex: 1, minWidth: 0, paddingVertical: 15 }, factValue: { color: colors.textStrong, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 16, letterSpacing: -.4 },
   heading: { paddingTop: 18, paddingBottom: 22, marginBottom: 0 },
-  title: { color: colors.textStrong, fontFamily: 'ArchivoHeading', fontSize: 34, lineHeight: 36, marginTop: 9 },
+  title: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 34, lineHeight: 36, marginTop: 9 },
   kicker: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },
   label: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, marginBottom: 8 },
   input: { minHeight: 44, color: colors.textStrong, backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: colors.line, borderRadius: 8, textAlign: 'center', fontFamily: 'SplineSansMono_600SemiBold', fontSize: 13, padding: 6 },
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 48, gap: 6, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: colors.line },
   tableHead: { backgroundColor: colors.surfaceRaised, minHeight: 38, marginTop: 8 },
   index: { width: 20, textAlign: 'center' }, cell: { flex: 1, textAlign: 'center' }, remove: { width: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }, setNumber: { color: colors.recovery, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 },
-  action: { minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', gap: 4, justifyContent: 'center', alignItems: 'center', borderRadius: 8 }, outline: { borderWidth: 1, borderColor: colors.line }, primary: { backgroundColor: '#bd203b' }, actionText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
+  action: { minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', gap: 4, justifyContent: 'center', alignItems: 'center', borderRadius: 8 }, outline: { borderWidth: 1, borderColor: colors.line }, primary: { backgroundColor: '#d9cfc2' }, actionText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   dock: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28, marginHorizontal: -16, backgroundColor: colors.background, gap: 8 }, actions: { flexDirection: 'row', gap: 8 }, error: { color: '#ffbd7a', fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   backdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.7)' }, dialog: { backgroundColor: colors.surfaceRaised, borderRadius: 12, padding: 20, gap: 16 },
 })

@@ -90,15 +90,15 @@ export default function BottomNavigation({ hidden, keyboard, onRequestExit }: { 
     accessibilityElementsHidden={hidden || keyboard} importantForAccessibility={hidden || keyboard ? 'no-hide-descendants' : 'auto'}>
     <View style={[styles.bar, { height, paddingBottom: Math.max(8, inset), transform: [{ translateY: hidden || keyboard ? height : 0 }], opacity: hidden || keyboard ? 0 : 1 }]}>
       {(['Home', 'Plans', 'Workout', 'Progress', 'Coach'] as const).map(name => name === 'Workout'
-        ? <Pressable key={name} accessibilityRole="button" accessibilityLabel={action === 'resume' ? 'Resume workout' : action === 'recover' ? 'Recover workout' : 'Start new workout'} accessibilityState={{ disabled: action === 'wait', selected: section === 'Workout' }} disabled={action === 'wait'} onPress={workout} style={[styles.primary, action === 'wait' && { opacity: 0.5 }]}><Icon name={action === 'resume' ? 'resume' : 'plus'} color={colors.textStrong} /></Pressable>
+        ? <Pressable key={name} accessibilityRole="button" accessibilityLabel={action === 'resume' ? 'Resume workout' : action === 'recover' ? 'Recover workout' : 'Start new workout'} accessibilityState={{ disabled: action === 'wait', selected: section === 'Workout' }} disabled={action === 'wait'} onPress={workout} style={[styles.primary, action === 'wait' && { opacity: 0.5 }]}><Icon name={action === 'resume' ? 'resume' : 'plus'} color={colors.onPrimary} /></Pressable>
         : <Pressable key={name} accessibilityRole="tab" accessibilityLabel={name} accessibilityState={{ selected: section === name }} onPress={() => go(() => { const { kind, href } = tabNavigation(pathname, name); router[kind](href as Href) })} style={[styles.tab, section === name && styles.selected]}><Icon name={name} color={section === name ? colors.textStrong : colors.muted} /><Text style={[styles.label, section === name && { color: colors.textStrong }]}>{name}</Text></Pressable>)}
     </View>
   </View>
 }
 const styles = StyleSheet.create({
-  bar: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: 'rgba(15,14,16,0.98)', flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 6.4, paddingHorizontal: 8 },
+  bar: { position: 'absolute', bottom: 0, left: 0, right: 0, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: 'rgba(15, 13, 12,0.98)', flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 6.4, paddingHorizontal: 8 },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 8, overflow: 'hidden' },
-  selected: { backgroundColor: 'rgba(244,241,242,0.075)' },
+  selected: { backgroundColor: 'rgba(244, 238, 232,0.075)' },
   label: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 16, includeFontPadding: false, color: colors.muted },
-  primary: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#b5213a', experimental_backgroundImage: primaryGradient },
+  primary: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#d9cfc2', experimental_backgroundImage: primaryGradient },
 })

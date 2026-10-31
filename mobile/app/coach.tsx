@@ -26,7 +26,7 @@ function Button({ children, onPress, disabled = false, primary = false, label }:
 }) {
   return <Pressable accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} disabled={disabled}
     onPress={onPress} style={[s.button, primary && s.primary, disabled && s.disabled]}>
-    {typeof children === 'string' ? <View style={s.buttonContent}>{(children === 'Send' || children === 'Sending…' || label === 'Reset conversation') && <Svg width={14} height={14} viewBox="0 0 24 24"><Path d={label === 'Reset conversation' ? 'M3 10a9 9 0 1 1 1 7M3 4v6h6' : 'm22 2-7 20-4-9-9-4 20-7ZM22 2 11 13'} fill="none" stroke={primary ? colors.textStrong : colors.muted} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></Svg>}<Text style={[s.buttonText, primary && s.primaryText]}>{children}</Text></View> : children}
+    {typeof children === 'string' ? <View style={s.buttonContent}>{(children === 'Send' || children === 'Sending…' || label === 'Reset conversation') && <Svg width={14} height={14} viewBox="0 0 24 24"><Path d={label === 'Reset conversation' ? 'M3 10a9 9 0 1 1 1 7M3 4v6h6' : 'm22 2-7 20-4-9-9-4 20-7ZM22 2 11 13'} fill="none" stroke={primary ? colors.onPrimary : colors.muted} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round" /></Svg>}<Text style={[s.buttonText, primary && s.primaryText]}>{children}</Text></View> : children}
   </Pressable>
 }
 function Markdown({ content }: { content: string }) {
@@ -136,34 +136,34 @@ function Coach({ uid }: { uid: string }) {
   </SafeAreaView>
 }
 const s = StyleSheet.create({
-  tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, overflow: 'hidden', borderColor: 'rgba(244,241,242,0.18)', backgroundColor: 'rgba(34,33,37,0.76)', marginBottom: 14 }, tab: { flex: 1, minHeight: 48, paddingHorizontal: 11, justifyContent: 'center' }, tabActive: { backgroundColor: colors.choiceSelected },
+  tabs: { flexDirection: 'row', borderWidth: 1, borderRadius: 8, overflow: 'hidden', borderColor: 'rgba(244, 238, 232,0.18)', backgroundColor: 'rgba(38, 33, 30,0.76)', marginBottom: 14 }, tab: { flex: 1, minHeight: 48, paddingHorizontal: 11, justifyContent: 'center' }, tabActive: { backgroundColor: colors.choiceSelected },
   screen: { flex: 1, backgroundColor: colors.background }, grow: { flex: 1 },
-  workspace: { flex: 1, experimental_backgroundImage: 'linear-gradient(120deg, rgba(240,67,90,0.018), transparent)' },
+  workspace: { flex: 1, experimental_backgroundImage: 'linear-gradient(120deg, rgba(244, 238, 232, 0.011), transparent)' },
   grain: { ...StyleSheet.absoluteFill, width: '100%', height: '100%', opacity: 0.018 },
   content: { padding: 16, paddingBottom: 20 }, heading: { paddingTop: 16, paddingBottom: 5.6, gap: 5.6, marginBottom: 14 },
-  title: { fontFamily: 'ArchivoHeading', fontSize: 42.4, lineHeight: 47.5, color: colors.textStrong, letterSpacing: -1.27 },
+  title: { fontFamily: 'InstrumentSans_700Bold', fontSize: 42.4, lineHeight: 47.5, color: colors.textStrong, letterSpacing: -1.27 },
   subtitle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 23, color: colors.muted },
   body: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.text },
   description: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.muted },
   small: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 18.1, color: colors.muted },
-  gate: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244,241,242,0.18)', paddingVertical: 12.8, gap: 2 },
+  gate: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', paddingVertical: 12.8, gap: 2 },
   gateTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 15.04, lineHeight: 23, color: colors.textStrong },
   left: { alignItems: 'flex-start', marginTop: 7.6 },
   buttonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 }, button: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', minHeight: 44, minWidth: 44, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
-  buttonText: { fontFamily: 'InstrumentSans_700Bold', fontSize: 13, color: colors.muted }, primaryText: { color: colors.textStrong },
-  primary: { borderColor: 'transparent', backgroundColor: '#c22b41', experimental_backgroundImage: primaryGradient }, disabled: { opacity: 0.45 },
+  buttonText: { fontFamily: 'InstrumentSans_700Bold', fontSize: 13, color: colors.muted }, primaryText: { color: colors.onPrimary },
+  primary: { borderColor: 'transparent', backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient }, disabled: { opacity: 0.45 },
   empty: { paddingTop: 16, paddingBottom: 0, gap: 10.4 }, emptyTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16, lineHeight: 24, color: colors.textStrong },
   prompts: { borderTopWidth: 1, borderColor: colors.line }, prompt: { minHeight: 46.4, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: 11.2, justifyContent: 'center' }, promptText: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 17, color: colors.textStrong },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  settings: { backgroundColor: 'rgba(34,33,37,0.46)', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244,241,242,0.18)', padding: 14.4, gap: 12 },
+  settings: { backgroundColor: 'rgba(38, 33, 30,0.46)', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', padding: 14.4, gap: 12 },
   settingsTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 20, color: colors.textStrong, flexShrink: 1 },
   label: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, color: colors.muted },
   keyInput: { borderWidth: 1, borderColor: colors.line, minHeight: 44, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', color: colors.textStrong, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   boldLabel: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 24, color: colors.textStrong }, model: { gap: 8, borderTopWidth: 1, borderColor: colors.line, paddingTop: 12 },
-  collapsed: { paddingVertical: 14.4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244,241,242,0.18)', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  collapsed: { paddingVertical: 14.4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', flexDirection: 'row', alignItems: 'center', gap: 8 },
   chat: { paddingVertical: 12.8, marginTop: 0, marginBottom: 16 }, toolbar: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 },
   messages: { gap: 12.8 }, message: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', paddingVertical: 14.4, paddingHorizontal: 16, borderRadius: 0 },
-  userMessage: { alignSelf: 'flex-end', maxWidth: '100%', borderColor: 'rgba(240,67,90,0.26)', experimental_backgroundImage: 'linear-gradient(135deg,rgba(240,67,90,0.15),rgba(240,67,90,0.06))' },
+  userMessage: { alignSelf: 'flex-end', maxWidth: '100%', borderColor: 'rgba(244, 238, 232, 0.156)', experimental_backgroundImage: 'linear-gradient(135deg,rgba(244, 238, 232, 0.09),rgba(244, 238, 232, 0.036))' },
   role: { fontFamily: 'InstrumentSans_700Bold', fontSize: 11, lineHeight: 16.3, letterSpacing: 0.87, color: colors.muted, marginBottom: 5.6 }, userRole: { color: colors.accentText },
   markdownHeading: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16.8, lineHeight: 24 }, bold: { fontFamily: 'InstrumentSans_700Bold' }, italic: { fontStyle: 'italic' }, code: { fontFamily: 'SplineSansMono_600SemiBold', backgroundColor: 'rgba(255,255,255,0.07)', fontSize: 13 },
   context: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: 8 },

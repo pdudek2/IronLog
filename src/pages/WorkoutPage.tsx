@@ -998,9 +998,7 @@ export default function WorkoutPage() {
                     className="workout-progress-fill"
                     style={{
                       width: `${Math.max(totalSets ? completionPct : 12, totalSets ? 12 : 0)}%`,
-                      background: completionPct >= 100
-                        ? 'linear-gradient(90deg, var(--success) 0%, #6f9d83 100%)'
-                        : 'linear-gradient(90deg, var(--accent) 0%, var(--accent-text) 100%)',
+                      background: completionPct >= 100 ? 'var(--text)' : 'var(--seam)',
                     }}
                   />
                 </div>

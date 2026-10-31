@@ -129,7 +129,7 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
   return (
     <div
       className="fixed inset-0 z-50 px-0 py-0 sm:px-6 sm:py-6"
-      style={{ background: 'rgba(5,6,20,0.74)', backdropFilter: 'blur(10px)' }}
+      style={{ background: 'rgba(8, 6, 5,0.74)', backdropFilter: 'blur(10px)' }}
       onClick={onClose}
     >
       <div

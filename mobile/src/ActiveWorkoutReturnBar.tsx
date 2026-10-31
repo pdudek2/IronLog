@@ -55,7 +55,7 @@ export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExi
 
 const styles = StyleSheet.create({
   bar: {
-    alignItems: 'center', backgroundColor: 'rgba(20, 18, 21, 0.97)', borderBottomColor: 'rgba(240, 67, 90, 0.35)', borderBottomWidth: 1,
+    alignItems: 'center', backgroundColor: 'rgba(20, 17, 16, 0.97)', borderBottomColor: 'rgba(244, 238, 232, 0.21)', borderBottomWidth: 1,
     flexDirection: 'row', gap: 10, minHeight: 58, paddingHorizontal: 16, paddingVertical: 6,
   },
   copy: { flex: 1, minWidth: 0 },

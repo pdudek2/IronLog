@@ -70,7 +70,7 @@ const config: ExpoConfig = {
   android: {
     // The dev app keeps its id so the installed emulator build still updates beside the release app.
     package: production ? 'com.pdudek2.shear' : 'com.pdudek2.ironlog.dev',
-    versionCode: 1,
+    versionCode: Number(process.env.IRONLOG_MOBILE_VERSION_CODE ?? 1),
     googleServicesFile: process.env.IRONLOG_GOOGLE_SERVICES_FILE ?? './config/google-services.json',
     adaptiveIcon: {
       foregroundImage: './assets/adaptive-icon-foreground.png',

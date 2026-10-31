@@ -180,7 +180,6 @@ describe('TemplatesPage launch actions', () => {
       .closest('.planner-day-row')
     expect(secondDayRow).toHaveTextContent('Day A2')
     expect(secondDayRow).toHaveTextContent('1 exercise')
-    expect(secondDayRow).toHaveTextContent('Bench Press')
   })
 
   it('launches the selected day with its exact template, index and request key', async () => {
@@ -430,7 +429,7 @@ describe('TemplatesPage launch actions', () => {
   it('shows structure immediately when the library has at most two plans', async () => {
     await renderPage()
 
-    expect(within(cardFor('Plan A')).getByText('Squat')).toBeInTheDocument()
+    expect(within(cardFor('Plan A')).getByText('Day A')).toBeInTheDocument()
     expect(within(cardFor('Plan A')).queryByRole('button', { name: 'Structure' }))
       .not.toBeInTheDocument()
   })
@@ -447,11 +446,11 @@ describe('TemplatesPage launch actions', () => {
     await renderPage()
 
     const card = cardFor('Plan A')
-    expect(within(card).queryByText('Squat')).not.toBeInTheDocument()
+    expect(within(card).queryByText('Day A')).not.toBeInTheDocument()
     fireEvent.click(within(card).getByRole('button', { name: 'Structure' }))
     await waitFor(() => {
       const expandedCard = cardFor('Plan A')
-      expect(within(expandedCard).getByText('Squat')).toBeInTheDocument()
+      expect(within(expandedCard).getByText('Day A')).toBeInTheDocument()
       expect(within(expandedCard).getByRole('button', { name: 'Collapse' }))
         .toHaveAttribute('aria-expanded', 'true')
     })

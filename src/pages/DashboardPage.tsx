@@ -641,8 +641,21 @@ export default function DashboardPage() {
   }
   const weekStart = weekDates[0]?.getTime() ?? 0
   const weekEnd = addLocalDays(weekDates[6] ?? new Date(weekStart), 1).getTime()
+  const previousWeekStart = addLocalDays(weekDates[0] ?? new Date(weekStart), -7).getTime()
   const weeklyWorkouts = workouts.filter((workout) => workout.startedAt >= weekStart && workout.startedAt < weekEnd)
+  const previousWeekWorkouts = workouts.filter((workout) => workout.startedAt >= previousWeekStart && workout.startedAt < weekStart)
   const weeklyVolume = weeklyWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
+  const previousWeeklyVolume = previousWeekWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
+  const avgMinutes = weeklyWorkouts.length
+    ? Math.round(weeklyWorkouts.reduce((sum, workout) => (
+      sum + (getCappedWorkoutFinishedAt(workout.startedAt, workout.finishedAt) - workout.startedAt)
+    ), 0) / weeklyWorkouts.length / 60_000)
+    : 0
+  const avgVolumePerSession = weeklyWorkouts.length ? Math.round(weeklyVolume / weeklyWorkouts.length) : 0
+  const weeklySessionsDelta = weeklyDone - previousWeekWorkouts.length
+  const weeklyVolumeDelta = previousWeeklyVolume > 0 && weeklyWorkouts.length > 0
+    ? Math.round(((weeklyVolume - previousWeeklyVolume) / previousWeeklyVolume) * 100)
+    : null
   const weekDailyStats = weekDates.map((date, index) => {
     const dayStart = date.getTime()
     const dayEnd = addLocalDays(date, 1).getTime()
@@ -660,10 +673,36 @@ export default function DashboardPage() {
       isToday: isSameDay(date, today),
     }
   })
+  const activeDays = weekDailyStats.filter((day) => day.workouts > 0).length
+  const peakDay = [...weekDailyStats].sort((a, b) => b.volume - a.volume)[0]
   const latestWorkout = recentWorkouts[0] ?? null
   const supportLine = !hasActiveSession && latestWorkout
     ? `Last: ${workoutTitle(latestWorkout)} · ${formatDate(latestWorkout.startedAt)}`
     : null
+  const weekDetails = [
+    {
+      label: 'Schedule',
+      value: `${activeDays}/7 days`,
+      copy: weeklySessionsDelta >= 0
+        ? `${weeklySessionsDelta === 0 ? 'No change' : `+${weeklySessionsDelta}`} compared with last week`
+        : `${weeklySessionsDelta} compared with last week`,
+    },
+    {
+      label: 'Strong day',
+      value: peakDay?.volume ? peakDay.label : 'None',
+      copy: peakDay?.volume ? `${formatCompactVolume(peakDay.volume, units)} • ${peakDay.sets} ${pluralize(peakDay.sets, 'set', 'sets')}` : 'No workouts this week',
+    },
+    {
+      label: 'Average session',
+      value: avgMinutes ? `${avgMinutes} min` : '—',
+      copy: avgVolumePerSession ? `${formatCompactVolume(avgVolumePerSession, units)} per workout` : 'No average this week',
+    },
+    {
+      label: 'Volume',
+      value: formatCompactVolume(weeklyVolume, units),
+      copy: weeklyVolumeDelta === null ? 'No change data yet' : `${weeklyVolumeDelta >= 0 ? '+' : ''}${weeklyVolumeDelta}% vs last week`,
+    },
+  ]
 
   return (
     <div className="dashboard-page">
@@ -812,6 +851,18 @@ export default function DashboardPage() {
                   </span>
                 ))}
               </div>
+              <details className="train-week-more">
+                <summary>Week details</summary>
+                <dl>
+                  {weekDetails.map((detail) => (
+                    <div key={detail.label}>
+                      <dt>{detail.label}</dt>
+                      <dd>{detail.value}</dd>
+                      <dd>{detail.copy}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </details>
             </motion.div>
 
             {!hasActiveSession && (

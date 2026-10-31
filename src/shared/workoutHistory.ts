@@ -35,9 +35,3 @@ export function formatWorkoutDuration(start: number, end: number): string {
   return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
 }
 
-export function formatExercisePreview(exerciseNames: string[]): string {
-  if (exerciseNames.length === 0) return 'no exercises'
-  const visibleNames = exerciseNames.slice(0, 3)
-  const hiddenCount = exerciseNames.length - visibleNames.length
-  return `${visibleNames.join(' · ')}${hiddenCount > 0 ? ` · +${hiddenCount}` : ''}`
-}

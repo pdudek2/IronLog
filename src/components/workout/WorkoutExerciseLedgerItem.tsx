@@ -7,10 +7,8 @@ import type { OverloadSuggestion } from '../../lib/overloadService'
 import { getExerciseSessions, type ExerciseSession } from '../../lib/exerciseDetailService'
 import type { Units } from '../../lib/userProfile'
 import {
-  displayWeightDeltaToKg,
   displayWeightStringToKg,
   kgStringToDisplayWeight,
-  kgToDisplayWeight,
 } from '../../lib/weightUnits'
 
 import { exerciseMetrics, formatPreviousSet } from '../../shared/workoutDisplay'
@@ -22,6 +20,7 @@ interface WorkoutExerciseLedgerItemProps {
   exerciseAccent: string
   exerciseClientId: string
   exerciseIndex: number
+  exerciseCount: number
   fallbackExercise: WorkoutExercise | null
   categoryLabel?: string
   equipmentLabel?: string
@@ -35,7 +34,6 @@ interface WorkoutExerciseLedgerItemProps {
   units: Units
   userId?: string
   onAddSet: (exerciseIndex: number, button: HTMLButtonElement) => void
-  onAdjustSet: (exerciseIndex: number, setIndex: number, field: SetField, delta: number) => void
   onApplySuggestion: (exerciseIndex: number, hintKey: string, weight: number) => void
   onDismissSuggestion: (hintKey: string) => void
   onExpandExercise: (exerciseClientId: string) => void
@@ -55,6 +53,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   exerciseAccent,
   exerciseClientId,
   exerciseIndex,
+  exerciseCount,
   fallbackExercise,
   categoryLabel,
   equipmentLabel,
@@ -68,7 +67,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   units,
   userId,
   onAddSet,
-  onAdjustSet,
   onApplySuggestion,
   onDismissSuggestion,
   onExpandExercise,
@@ -102,7 +100,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
 
   if (!exercise) return null
 
-  const { volumeKg: exerciseVolume, completed: exerciseCompleted, maxKg: bestSet } = exerciseMetrics(exercise.sets)
+  const { volumeKg: exerciseVolume, completed: exerciseCompleted } = exerciseMetrics(exercise.sets)
   const exerciseComplete = exercise.sets.length > 0 && exerciseCompleted === exercise.sets.length
 
   return (
@@ -126,6 +124,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
             aria-label={`${isExpanded ? 'Collapse' : 'Expand'} exercise ${exercise.name}`}
           >
             <span className="min-w-0 text-left">
+              {isExpanded && <span className="workout-exercise-position">Exercise {exerciseIndex + 1} of {exerciseCount}</span>}
               {(categoryLabel || equipmentLabel) && (
                 <span className="workout-exercise-meta block">
                   {categoryLabel && (
@@ -174,21 +173,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
       </div>
 
       <div id={`workout-exercise-body-${exerciseIndex}`} className="workout-exercise-body">
-      <div className="workout-exercise-ledger" aria-label={`Exercise summary ${exercise.name}`}>
-        <div>
-          <span>Progress</span>
-          <strong className="tabular-nums">{exerciseCompleted}/{exercise.sets.length}</strong>
-        </div>
-        <div>
-          <span>Volume</span>
-          <strong className="tabular-nums">{formatCompactVolume(exerciseVolume, units)}</strong>
-        </div>
-        <div>
-          <span>Max</span>
-          <strong className="tabular-nums">{bestSet ? `${kgToDisplayWeight(bestSet, units)} ${units}` : '—'}</strong>
-        </div>
-      </div>
-
       {suggestion && !hintDismissed && !exerciseComplete && (
         <OverloadHint
           suggestion={suggestion}
@@ -200,7 +184,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
 
       <div className="workout-set-header">
         <span aria-hidden="true" />
-        <span>Prev.</span>
+        <span>Last</span>
         <span>{units}</span>
         <span>Reps</span>
         <span />
@@ -240,31 +224,39 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                 >
                   {formatPreviousSet(previousSet, units)}
                 </span>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  placeholder="0"
-                  value={kgStringToDisplayWeight(set.weight, units)}
-                  onChange={(event) => onUpdateSet(
-                    exerciseIndex,
-                    setIndex,
-                    'weight',
-                    displayWeightStringToKg(event.target.value, units),
-                  )}
-                  onFocus={(event) => event.currentTarget.select()}
-                  aria-label={`Weight, ${exercise.name}, set ${setIndex + 1}, ${units}`}
-                  className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
-                />
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="0"
-                  value={set.reps}
-                  onChange={(event) => onUpdateSet(exerciseIndex, setIndex, 'reps', event.target.value)}
-                  onFocus={(event) => event.currentTarget.select()}
-                  aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
-                  className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
-                />
+                {showSetControls ? (
+                  <span className="workout-set-now tabular-nums">
+                    {kgStringToDisplayWeight(set.weight, units) || 0} × {set.reps || 0}
+                  </span>
+                ) : (
+                  <>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={kgStringToDisplayWeight(set.weight, units)}
+                      onChange={(event) => onUpdateSet(
+                        exerciseIndex,
+                        setIndex,
+                        'weight',
+                        displayWeightStringToKg(event.target.value, units),
+                      )}
+                      onFocus={(event) => event.currentTarget.select()}
+                      aria-label={`Weight, ${exercise.name}, set ${setIndex + 1}, ${units}`}
+                      className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
+                    />
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      placeholder="0"
+                      value={set.reps}
+                      onChange={(event) => onUpdateSet(exerciseIndex, setIndex, 'reps', event.target.value)}
+                      onFocus={(event) => event.currentTarget.select()}
+                      aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
+                      className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
+                    />
+                  </>
+                )}
                 <button
                   type="button"
                   onClick={() => onRemoveSet(exerciseIndex, setIndex)}
@@ -275,35 +267,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                   <X size={15} />
                 </button>
               </div>
-              {showSetControls && (
-                <div
-                  className="set-stepper-row sm:hidden mt-2 grid grid-cols-4 gap-1.5"
-                  role="group"
-                  aria-label={`Quick set adjustments ${setIndex + 1}`}
-                >
-                  {[
-                    { label: `−2.5 ${units}`, delta: -2.5, field: 'weight' as const },
-                    { label: `+2.5 ${units}`, delta: 2.5, field: 'weight' as const },
-                    { label: '−1 rep', delta: -1, field: 'reps' as const },
-                    { label: '+1 rep', delta: +1, field: 'reps' as const },
-                  ].map(({ label, delta, field }) => (
-                    <button
-                      key={label}
-                      type="button"
-                      onClick={() => onAdjustSet(
-                        exerciseIndex,
-                        setIndex,
-                        field,
-                        field === 'weight' ? displayWeightDeltaToKg(delta, units) : delta,
-                      )}
-                      className="set-stepper-btn"
-                      aria-label={`Adjust ${field === 'weight' ? 'weight' : 'reps'} by ${delta}`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           )
         })}

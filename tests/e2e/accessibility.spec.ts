@@ -93,8 +93,13 @@ test.describe('Phase 3 navigation accessibility', () => {
     await expect(page.getByRole('button', { name: 'Profile' })).toHaveAttribute('aria-current', 'page')
   })
 
-  test('mobile navigation leaves the focus order on the workout screen', async ({ page }, testInfo) => {
+  test('mobile navigation leaves the focus order on the workout screen', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile workout navigation contract')
+    test.skip(process.env.E2E_BACKEND !== 'emulator', 'emulator-only active session fixture')
+    // Without an active session /workout/new is a resting page and keeps the bar as the way out.
+    cleanup.add('remove active session fixture', cleanupWorkoutLifecycleState)
+    await cleanupWorkoutLifecycleState()
+    await seedLifecycleActiveSession({ sessionId: 'phase-1-nav-focus-order', label: 'Phase 1 nav focus order' })
 
     await page.goto('/workout/new')
     await expectAppReady(page, '/workout/new', 25_000)

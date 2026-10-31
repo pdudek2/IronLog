@@ -293,7 +293,6 @@ describe('HistoryPage range state', () => {
 
     const row = await screen.findByRole('button', { name: /Pełne ciało/i })
 
-    expect(within(row).getByText('Przysiad · Wiosłowanie · Wyciskanie · +2')).toBeInTheDocument()
     expect(within(row).queryByText(/Martwy ciąg/)).not.toBeInTheDocument()
     expect(within(row).queryByLabelText('Exercise categories')).not.toBeInTheDocument()
     expect(within(row).getByText('Sun, 30')).toBeInTheDocument()

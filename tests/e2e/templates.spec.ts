@@ -73,8 +73,6 @@ test.describe('Templates CRUD', () => {
     await expect(savedCard.getByText('Lower strength', { exact: true })).toBeVisible()
     await expect(savedCard.getByText('Upper', { exact: true })).toBeVisible()
     await expect(savedCard.getByText('Recovery', { exact: true })).toBeVisible()
-    await expect(savedCard.getByText('Squat', { exact: true })).toBeVisible()
-    await expect(savedCard.getByText('Bench Press', { exact: true })).toBeVisible()
 
     const dayLaunch = page.getByRole('button', {
       name: `Start day Lower strength from template ${TEST_TEMPLATE_NAME}`,

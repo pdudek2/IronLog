@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
 import { AlertCircle } from 'lucide-react'
-import { Link } from 'react-router-dom'
 import {
   CartesianGrid, Cell,
   Line, LineChart,
@@ -465,12 +464,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
           >
             <div>
               <h1>Progress</h1>
-              <Link
-                to="/history"
-                className="puls-link-button mobile-touch-target py-2 text-sm font-medium"
-              >
-                View history
-              </Link>
               {!hasSessionSnapshot && (
                 <p>{refreshing ? 'Loading progress' : 'Workout data is temporarily unavailable.'}</p>
               )}
@@ -517,16 +510,14 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 {
                   label: 'Sessions',
                   value: uniqueWorkouts,
-                  meta: 'in range',
                   delta: hasPreviousPeriod ? periodComparison.sessionsDelta : undefined,
                 },
                 {
                   label: 'Avg. / session',
                   value: formatVolume(periodComparison.currentAvgVolume, units),
-                  meta: 'in range',
                   delta: hasPreviousPeriod ? periodComparison.avgVolumeDelta : undefined,
                 },
-                { label: 'Exercises', value: uniqueExerciseCount, meta: 'in range' },
+                { label: 'Exercises', value: uniqueExerciseCount },
                 {
                   label: 'Records',
                   value: recordsLoadedOnce ? records.length : '—',
@@ -540,12 +531,14 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                   <span>{item.label}</span>
                   <div>
                     <strong>{item.value}</strong>
-                    <small
-                      className={item.delta === undefined ? undefined : 'progress-metric-delta'}
-                      data-trend={item.delta === undefined ? undefined : item.delta >= 0 ? 'up' : 'down'}
-                    >
-                      {item.delta === undefined ? item.meta : formatDelta(item.delta)}
-                    </small>
+                    {(item.delta !== undefined || item.meta) && (
+                      <small
+                        className={item.delta === undefined ? undefined : 'progress-metric-delta'}
+                        data-trend={item.delta === undefined ? undefined : item.delta >= 0 ? 'up' : 'down'}
+                      >
+                        {item.delta === undefined ? item.meta : formatDelta(item.delta)}
+                      </small>
+                    )}
                   </div>
                 </div>
               ))}
@@ -600,7 +593,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                       tick={{ fill: 'var(--muted)', fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
-                      interval={rangeDays === 30 ? 0 : rangeDays === 90 ? 1 : 7}
+                      interval="preserveStartEnd"
+                      minTickGap={24}
                     />
                     <YAxis
                       tickFormatter={(v) => formatVolume(Number(v), units)}
@@ -755,10 +749,10 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                       />
                       <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
                       <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                        {muscleData.map((entry, index) => (
+                        {muscleData.map((entry) => (
                           <Cell
                             key={entry.muscle}
-                            fill={MUSCLE_COLORS[entry.muscle] ?? `rgba(240,67,90,${Math.max(0.4, 1 - index * 0.1)})`}
+                            fill={MUSCLE_COLORS[entry.muscle] ?? 'var(--muted)'}
                           />
                         ))}
                       </Bar>

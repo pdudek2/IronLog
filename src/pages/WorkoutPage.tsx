@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Ellipsis, Plus, Timer, X } from 'lucide-react'
+import { ChevronDown, Ellipsis, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
+import { pluralize } from '../lib/pluralize'
 import { getRecentWorkouts } from '../lib/workoutService'
 import { recentExercisePicks, type RecentExercisePick } from '../shared/recentExercises'
 import { discardWorkoutLifecycle, finishWorkoutLifecycle } from '../lib/workoutLifecycle'
@@ -24,6 +25,8 @@ import { Bone, PageSkeleton } from '../components/ui'
 import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
 import { exercises as exerciseDb } from '../data/exercises'
 import { isActiveSessionStale } from '../lib/sessionDuration'
+import WorkoutSetPanel from '../components/workout/WorkoutSetPanel'
+import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
 import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES, MAX_SET_REPS } from '../shared/workoutLimits'
 import {
@@ -74,9 +77,11 @@ interface RestTimerBarProps {
   onAddTime: (deltaSec: number) => void
   onSkip: () => void
   variant?: 'full' | 'compact'
+  undoLabel?: string
+  onUndo?: () => void
 }
 
-function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBarProps) {
+function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', undoLabel, onUndo }: RestTimerBarProps) {
   const [now, setNow] = useState(() => Date.now())
   const firedRef = useRef(false)
   const onSkipRef = useRef(onSkip)
@@ -121,14 +126,13 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
         <div className="rest-timer-progress-fill" style={{ width: `${restProgress * 100}%` }} />
       </div>
       <div className="rest-timer-content">
-        <Timer size={16} strokeWidth={2.2} className="flex-none" />
         <div className="rest-timer-label">
           {restRemainingMs === 0 ? (
             <span>Ready — time for the next set</span>
           ) : (
             <>
               <span style={{ color: 'var(--muted)' }}>Rest</span>
-              <span className="tabular-nums font-bold ml-2">
+              <span className="rest-timer-value tabular-nums">
                 {Math.floor(restRemainingSec / 60)}:{String(restRemainingSec % 60).padStart(2, '0')}
               </span>
             </>
@@ -136,6 +140,11 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
         </div>
         {restRemainingMs > 0 ? (
           <>
+            {undoLabel && onUndo && (
+              <button type="button" onClick={onUndo} className="rest-timer-action">
+                {undoLabel}
+              </button>
+            )}
             {variant === 'full' && (
               <button
                 type="button"
@@ -143,16 +152,16 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full' }: RestTimerBa
                 className="rest-timer-action"
                 aria-label="Add 30 seconds"
               >
-                +30s
+                +30 s
               </button>
             )}
             <button
               type="button"
               onClick={onSkip}
-              className="rest-timer-action rest-timer-action--icon"
+              className="rest-timer-action"
               aria-label="Skip rest"
             >
-              <X size={14} />
+              Skip
             </button>
           </>
         ) : (
@@ -226,6 +235,7 @@ export default function WorkoutPage() {
   const mobileAddExerciseRef = useRef<HTMLButtonElement>(null)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
+  const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setIndex: number } | null>(null)
   const [manualExpandedExerciseClientId, setManualExpandedExerciseClientId] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
@@ -292,6 +302,8 @@ export default function WorkoutPage() {
     toggleSetDone(exerciseIndex, setIndex)
     if (wasNotDone) {
       useWorkoutStore.getState().startRestTimer(90)
+      const exercise = currentActive?.exercises[exerciseIndex]
+      if (exercise) setLastLogged({ exerciseId: getExerciseClientId(exercise, exerciseIndex), setIndex })
       if (completesExercise) setManualExpandedExerciseClientId(null)
       if ('vibrate' in navigator) navigator.vibrate(12)
     } else {
@@ -777,6 +789,48 @@ export default function WorkoutPage() {
     ? manualExpandedExerciseClientId || null
     : defaultExpandedExerciseClientId
   const showExerciseStack = active.exercises.length > 0 || keepExerciseStackMounted
+  const expandedIndex = active.exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === expandedExerciseClientId)
+  const panelIndex = expandedIndex >= 0 ? expandedIndex : focusedIndex
+  const panelExercise = panelIndex >= 0 ? active.exercises[panelIndex] ?? null : null
+  const panelSetIndex = panelExercise ? panelExercise.sets.findIndex((set) => !set.done) : -1
+  const undoExerciseIndex = lastLogged
+    ? active.exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === lastLogged.exerciseId)
+    : -1
+  const undoSet = lastLogged ? active.exercises[undoExerciseIndex]?.sets[lastLogged.setIndex] : undefined
+  const nextExerciseIndex = active.exercises.findIndex((exercise, index) => index !== panelIndex && exercise.sets.some((set) => !set.done))
+  const setPanel = panelExercise && (
+    <WorkoutSetPanel
+      exerciseIndex={panelIndex}
+      exerciseName={panelExercise.name}
+      set={panelSetIndex >= 0 ? panelExercise.sets[panelSetIndex] ?? null : null}
+      setIndex={panelSetIndex}
+      setCount={panelExercise.sets.length}
+      units={units}
+      nextExercise={nextExerciseIndex >= 0
+        ? { index: nextExerciseIndex, name: active.exercises[nextExerciseIndex]?.name ?? '' }
+        : null}
+      finishing={saving}
+      rest={rest !== null ? (
+        <RestTimerBar
+          rest={rest}
+          onAddTime={handleAddRestTime}
+          onSkip={handleSkipRest}
+          variant={isDesktop ? 'full' : mobileRestVariant}
+          undoLabel={undoSet?.done ? `Undo set ${lastLogged!.setIndex + 1}` : undefined}
+          onUndo={() => handleToggleSet(undoExerciseIndex, lastLogged!.setIndex)}
+        />
+      ) : null}
+      onAdjustSet={handleAdjustSet}
+      onUpdateSet={handleUpdateSet}
+      onToggleSet={handleToggleSet}
+      onGoToExercise={(index) => {
+        const exercise = active.exercises[index]
+        if (exercise) setManualExpandedExerciseClientId(getExerciseClientId(exercise, index))
+      }}
+      onFinish={handleFinish}
+    />
+  )
+
   return (
     <div
       className="workout-focus-shell"
@@ -1007,30 +1061,12 @@ export default function WorkoutPage() {
                 </p>
               </div>
 
-              <AnimatePresence initial={false}>
-                {rest !== null && (
-                  <RestTimerBar rest={rest} onAddTime={handleAddRestTime} onSkip={handleSkipRest} />
-                )}
-              </AnimatePresence>
+              {setPanel}
 
-              <div className="workout-side-metrics">
-                <div className="workout-micro-card">
-                  <p className="stat-meta">Exercises</p>
-                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{totalExercises}</p>
-                </div>
-                <div className="workout-micro-card">
-                  <p className="stat-meta">Sets</p>
-                  <p className="mt-2 text-2xl font-semibold text-white tabular-nums">{completedSets}/{totalSets}</p>
-                </div>
-                <div className="workout-micro-card">
-                  <p className="stat-meta">Volume</p>
-                  <p className="mt-2 text-xl font-semibold text-white tabular-nums">{formatCompactVolume(totalVolume, units)}</p>
-                </div>
-                <div className="workout-micro-card">
-                  <p className="stat-meta">Heaviest set</p>
-                  <p className="mt-2 text-xl font-semibold text-white tabular-nums">{strongestSet ? `${kgToDisplayWeight(strongestSet, units)} ${units}` : '—'}</p>
-                </div>
-              </div>
+              <p className="workout-side-summary tabular-nums">
+                {active.exercises.length} {pluralize(active.exercises.length, 'exercise', 'exercises')} · {completedSets}/{totalSets} sets · {formatCompactVolume(totalVolume, units)}
+                {strongestSet ? ` · heaviest ${kgToDisplayWeight(strongestSet, units)} ${units}` : ''}
+              </p>
 
               <div>
                 <p className="mb-3 text-xs uppercase" style={{ color: 'var(--muted)' }}>
@@ -1078,26 +1114,17 @@ export default function WorkoutPage() {
           </aside>
         )}
 
-        <div className={`min-w-0 ${rest ? 'pb-36' : 'pb-20'} lg:pb-0`}>
-          <div className="workout-section-head">
-            <div>
-              <p className="eyebrow" style={{ color: 'var(--muted)' }}>
-                Exercises
-              </p>
-              <h2 className="mt-2 text-2xl font-bold text-white">Current exercises</h2>
-            </div>
+        <div className="workout-session-list min-w-0">
+          <div className="workout-band" aria-hidden="true">
+            <img src={`/covers/${workoutCover(activeLabel)}.jpg`} alt="" />
           </div>
-
-          <div className="workout-mobile-label-row lg:hidden">
-            <p className="mb-2 text-xs uppercase" style={{ color: 'var(--muted)' }}>
-              Session type
-            </p>
-            <LabelChips
-              activeLabel={active.label ?? ''}
-              onToggle={(label) => setLabel(active.label === label ? '' : label)}
-            />
+          <div className="workout-segs" aria-hidden="true">
+            {active.exercises.map((exercise, index) => (
+              <i key={getExerciseClientId(exercise, index)} data-current={index === panelIndex}>
+                <b style={{ width: `${exercise.sets.length ? exercise.sets.filter((set) => set.done).length / exercise.sets.length * 100 : 0}%` }} />
+              </i>
+            ))}
           </div>
-
           <div className="flex flex-col gap-4">
             {active.exercises.length === 0 && !keepExerciseStackMounted && (
               <>
@@ -1149,6 +1176,7 @@ export default function WorkoutPage() {
             {showExerciseStack && (
               <>
                 <div className="workout-exercise-stack">
+                  {active.exercises.length > 1 && <h3 className="workout-up-next">Up next</h3>}
                   <AnimatePresence onExitComplete={() => setKeepExerciseStackMounted(false)}>
                     {active.exercises.map((exercise, exerciseIndex) => {
                       const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
@@ -1164,6 +1192,7 @@ export default function WorkoutPage() {
                           exerciseAccent={EXERCISE_CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'}
                           exerciseClientId={exerciseClientId}
                           exerciseIndex={exerciseIndex}
+                          exerciseCount={active.exercises.length}
                           fallbackExercise={exerciseSnapshotByClientId.get(exerciseClientId) ?? exercise}
                           categoryLabel={exerciseMeta?.category ? (EXERCISE_CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
                           equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
@@ -1177,7 +1206,6 @@ export default function WorkoutPage() {
                           units={units}
                           userId={user?.uid}
                           onAddSet={handleAddSet}
-                          onAdjustSet={handleAdjustSet}
                           onApplySuggestion={handleApplySuggestion}
                           onDismissSuggestion={handleDismissSuggestion}
                           onExpandExercise={(clientId) => setManualExpandedExerciseClientId(
@@ -1209,26 +1237,20 @@ export default function WorkoutPage() {
               </>
             )}
           </div>
+
+          <div className="workout-mobile-label-row lg:hidden">
+            <p className="mb-2 text-xs uppercase" style={{ color: 'var(--muted)' }}>
+              Session type
+            </p>
+            <LabelChips
+              activeLabel={active.label ?? ''}
+              onToggle={(label) => setLabel(active.label === label ? '' : label)}
+            />
+          </div>
         </div>
       </div>
 
-      {!isDesktop && rest !== null && (
-        <div
-          className="workout-mobile-action-bar fixed left-0 right-0 flex justify-center px-4 lg:hidden"
-          data-variant={mobileRestVariant}
-        >
-          <div className="surface-panel w-full max-w-sm rounded-[var(--radius-xl)] p-3">
-            <AnimatePresence initial={false}>
-              <RestTimerBar
-                rest={rest}
-                onAddTime={handleAddRestTime}
-                onSkip={handleSkipRest}
-                variant={mobileRestVariant}
-              />
-            </AnimatePresence>
-          </div>
-        </div>
-      )}
+      {!isDesktop && setPanel}
 
       {showPicker && (
         <ExercisePicker

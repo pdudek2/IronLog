@@ -99,7 +99,7 @@ test.describe('training stabilization', () => {
     await page.getByLabel('Weight, Phase 1 Bench Press, set 2, kg').first().fill('60')
     await page.getByLabel('Reps, Phase 1 Bench Press, set 2').first().fill('8')
 
-    const finish = page.getByRole('button', { name: 'Finish' })
+    const finish = page.getByRole('button', { name: 'Finish', exact: true })
     await finish.click()
     let dialog = page.getByRole('dialog', { name: 'Finish workout?' })
     await expect(dialog).toContainText('Unfinished sets: 1. Only completed sets will be saved.')

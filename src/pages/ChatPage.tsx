@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type * as React from 'react'
-import { Bot, LoaderCircle, RotateCcw, Send, Sparkles } from 'lucide-react'
+import { ChevronRight, LoaderCircle, RotateCcw, Send } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -24,12 +24,6 @@ const STARTER_PROMPTS = [
   'What should I focus on in my next upper body workout?',
   'Does my readiness suggest a harder or lighter session today?',
 ]
-
-const STARTER_PROMPT_LABELS: Record<string, string> = {
-  'Analyze my last week of training.': 'Summarize my week',
-  'What should I focus on in my next upper body workout?': 'Next upper body',
-  'Does my readiness suggest a harder or lighter session today?': 'Readiness today',
-}
 
 const MISSING_PLAN_KEY_MESSAGE = 'Add a OpenRouter API key to unlock the plan generator.'
 
@@ -643,9 +637,6 @@ export default function ChatPage() {
                     {messages.length === 0 && !streamText ? (
                       <div className="coach-empty-thread">
                         <div>
-                          <div className="coach-empty-icon">
-                            <Bot size={24} />
-                          </div>
                           <p>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</p>
                           <span>
                             {configured
@@ -665,8 +656,8 @@ export default function ChatPage() {
                                 className="coach-prompt-button"
                                 aria-label={prompt}
                               >
-                                <span className="coach-prompt-full">{prompt}</span>
-                                <span className="coach-prompt-short">{STARTER_PROMPT_LABELS[prompt] ?? prompt}</span>
+                                {prompt}
+                                <ChevronRight size={16} aria-hidden="true" />
                               </button>
                             ))}
                           </div>
@@ -925,7 +916,7 @@ export default function ChatPage() {
                       disabled={!configured || generatingPlan}
                       className="inline-flex items-center gap-2"
                     >
-                      {generatingPlan ? <LoaderCircle size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                      {generatingPlan && <LoaderCircle size={15} className="animate-spin" />}
                       {generatingPlan ? 'Generating plan...' : 'Generate plan'}
                     </Button>
                   </div>
@@ -1042,7 +1033,7 @@ export default function ChatPage() {
                         disabled={!user || savingPlan}
                         className="inline-flex items-center gap-2"
                       >
-                        {savingPlan ? <LoaderCircle size={15} className="animate-spin" /> : <Sparkles size={15} />}
+                        {savingPlan && <LoaderCircle size={15} className="animate-spin" />}
                         {savingPlan ? 'Saving...' : 'Save plan'}
                       </Button>
 
@@ -1076,7 +1067,6 @@ export default function ChatPage() {
             {activeTab === 'plan' && planPreview && (
               <section className="coach-context-panel">
                 <div className="coach-context-head">
-                  <Sparkles size={16} />
                   <p>Plan context</p>
                 </div>
                 <div className="coach-context-list">

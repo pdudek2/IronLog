@@ -51,6 +51,16 @@ async function visibleCount(locator: Locator): Promise<number> {
   }).length)
 }
 
+function currentSetPanel(page: Page): Locator {
+  return page.getByRole('region', { name: 'Current set' })
+}
+
+async function fillCurrentSet(page: Page, weight: string, reps: string): Promise<void> {
+  const panel = currentSetPanel(page)
+  await panel.getByRole('spinbutton', { name: /^Weight,/ }).fill(weight)
+  await panel.getByRole('spinbutton', { name: /^Reps,/ }).fill(reps)
+}
+
 async function expectMinHitArea(locator: Locator, label: string) {
   const box = await locator.boundingBox()
   expect(box, `${label} should be visible`).not.toBeNull()
@@ -67,7 +77,8 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
   expect(box!.x + box!.width, `${label} right edge`).toBeLessThanOrEqual(viewport!.width)
 
   const lifecycleBar = page.locator('.workout-mobile-lifecycle-bar')
-  const actionBar = page.locator('.workout-mobile-action-bar[data-variant]')
+  const panel = page.locator('.workout-set-panel')
+  const insidePanel = await locator.evaluate((element) => element.closest('.workout-set-panel') !== null)
   let visibleTop = 0
   let visibleBottom = viewport!.height
 
@@ -77,17 +88,10 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
     visibleTop = Math.max(visibleTop, Math.ceil(lifecycleBox!.y + lifecycleBox!.height))
   }
 
-  if (await actionBar.isVisible().catch(() => false)) {
-    const actionBarBox = await actionBar.boundingBox()
-    expect(actionBarBox, 'Action bar should have a bounding box when visible').not.toBeNull()
-    const variant = await actionBar.getAttribute('data-variant')
-    if (variant === 'compact') {
-      visibleTop = Math.max(visibleTop, Math.ceil(actionBarBox!.y + actionBarBox!.height))
-    } else if (variant === 'full') {
-      visibleBottom = Math.min(visibleBottom, Math.floor(actionBarBox!.y))
-    } else {
-      throw new Error(`Unexpected workout action bar variant: ${variant}`)
-    }
+  if (!insidePanel && await panel.isVisible().catch(() => false)) {
+    const panelBox = await panel.boundingBox()
+    expect(panelBox, 'Set panel should have a bounding box when visible').not.toBeNull()
+    visibleBottom = Math.min(visibleBottom, Math.floor(panelBox!.y))
   }
 
   expect(box!.y, `${label} top edge`).toBeGreaterThanOrEqual(visibleTop)
@@ -233,7 +237,7 @@ test.describe('Active workout shell reduction', () => {
     await goToFreshWorkout(page)
     await addExercise(page, 'Squat')
 
-    const labels = page.locator('.workout-set-header span, .workout-set-previous')
+    const labels = page.locator('.workout-set-header span, .workout-set-previous, .workout-set-num small')
     expect(await labels.count()).toBeGreaterThan(0)
     for (const label of await labels.all()) {
       const size = await label.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))
@@ -263,31 +267,27 @@ test.describe('Active workout shell reduction', () => {
     await expect(exerciseCard.locator('.workout-exercise-meta span')).toBeVisible()
 
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
-    await expect(page.locator('.workout-section-head')).not.toBeVisible()
     await expect(page.locator('.workout-mobile-lifecycle-bar')).toHaveCSS(
       'background-color',
       'rgb(13, 11, 10)',
     )
     const readyLayout = await page.evaluate(() => {
-      const ledger = document.querySelector<HTMLElement>('.workout-exercise-ledger')
       const sessionGrid = document.querySelector<HTMLElement>('.workout-session-grid')
       return {
-        ledgerHeight: ledger?.getBoundingClientRect().height,
         maxScroll: document.documentElement.scrollHeight - window.innerHeight,
         sessionGridBottomPadding: sessionGrid
           ? Number.parseFloat(window.getComputedStyle(sessionGrid).paddingBottom)
           : undefined,
       }
     })
-    expect(readyLayout.ledgerHeight).toBeLessThanOrEqual(52)
     expect(readyLayout.maxScroll).toBeLessThanOrEqual(1)
     expect(readyLayout.sessionGridBottomPadding).toBeLessThanOrEqual(1)
 
-    await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
-    await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
+    await fillCurrentSet(page, '60', '8')
     await page.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
 
     await expect(page.locator('.rest-timer-bar')).toHaveCount(1)
+    await expect(currentSetPanel(page).locator('.rest-timer-bar')).toHaveCount(1)
     expect(await page.evaluate(() => (
       document.documentElement.scrollWidth - document.documentElement.clientWidth
     ))).toBe(0)
@@ -298,23 +298,20 @@ test.describe('Active workout shell reduction', () => {
     })
     await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
     const fixedUiGeometry = await page.evaluate(() => {
-      const restTimer = document.querySelector<HTMLElement>('.workout-mobile-action-bar')
-      const restTimerBox = restTimer?.getBoundingClientRect()
+      const panel = document.querySelector<HTMLElement>('.workout-set-panel')
+      const restTimer = document.querySelector<HTMLElement>('.rest-timer-bar')
       return {
         viewportHeight: window.innerHeight,
-        restTimer: restTimerBox && {
-          top: restTimerBox.top,
-          bottom: restTimerBox.bottom,
-          height: restTimerBox.height,
-          surfacePadding: restTimer
-            ? Number.parseFloat(window.getComputedStyle(restTimer.firstElementChild as HTMLElement).padding)
-            : undefined,
-        },
+        panelBottom: panel?.getBoundingClientRect().bottom,
+        restTimerHeight: restTimer?.getBoundingClientRect().height,
+        restTimerPadding: restTimer
+          ? Number.parseFloat(window.getComputedStyle(restTimer).padding)
+          : undefined,
       }
     })
-    expect(fixedUiGeometry.restTimer?.bottom).toBeLessThanOrEqual(fixedUiGeometry.viewportHeight)
-    expect(fixedUiGeometry.restTimer?.height).toBeLessThanOrEqual(84)
-    expect(fixedUiGeometry.restTimer?.surfacePadding).toBe(0)
+    expect(fixedUiGeometry.panelBottom).toBeLessThanOrEqual(fixedUiGeometry.viewportHeight)
+    expect(fixedUiGeometry.restTimerHeight).toBeLessThanOrEqual(84)
+    expect(fixedUiGeometry.restTimerPadding).toBe(0)
     await page.setViewportSize({ width: 390, height: 844 })
     await addExercise(page, 'Bench Press')
     const exerciseCards = page.locator('.workout-exercise-card')
@@ -331,6 +328,9 @@ test.describe('Active workout shell reduction', () => {
     await activeWeightInput.evaluate((element) => element.scrollIntoView({ block: 'center' }))
     await expectFullyInViewport(page, activeWeightInput, 'Expanded exercise weight input')
 
+    await currentSetPanel(page).getByRole('button', { name: 'Go to Bench Press' }).click()
+    await expect(page.getByRole('button', { name: 'Collapse exercise Bench Press' })).toHaveAttribute('aria-expanded', 'true')
+    await expect(currentSetPanel(page).getByRole('button', { name: /^Log set 1 for Bench Press/ })).toBeVisible()
   })
 
   test('mobile full rest timer keeps the final workout action above an opaque dock', async ({ page, cleanup }, testInfo) => {
@@ -341,60 +341,45 @@ test.describe('Active workout shell reduction', () => {
     await goToFreshWorkout(page)
     await addExercise(page, 'Squat')
 
-    const firstSetRow = page.locator('.workout-set-row').first()
-    const doneButton = page.getByRole('button', { name: 'Mark set 1 for Squat' })
-    await firstSetRow.locator('input').nth(0).fill('60')
-    await firstSetRow.locator('input').nth(1).fill('8')
-    await doneButton.click()
+    // A second set keeps the panel at full height: rest timer, inputs and Log set.
+    await page.getByRole('button', { name: /Add set/i }).click()
+    await fillCurrentSet(page, '60', '8')
+    await page.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
 
-    const actionBar = page.locator('.workout-mobile-action-bar')
-    await expect(actionBar).toBeVisible({ timeout: 10_000 })
-    await expect(actionBar).toHaveAttribute('data-variant', 'full')
+    const restTimer = currentSetPanel(page).locator('.rest-timer-bar')
+    await expect(restTimer).toBeVisible({ timeout: 10_000 })
+    await expect(restTimer).toHaveAttribute('data-variant', 'full')
+    await expect(currentSetPanel(page).getByRole('button', { name: 'Log set 2 for Squat' })).toBeVisible()
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
     await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
 
     const dockGeometry = await page.evaluate(() => {
-      const pageShell = document.querySelector<HTMLElement>('.page-shell')
-      const sessionGrid = document.querySelector<HTMLElement>('.workout-session-grid')
+      const bottomPadding = (selector: string) => {
+        const element = document.querySelector<HTMLElement>(selector)
+        return element ? Number.parseFloat(window.getComputedStyle(element).paddingBottom) : 0
+      }
       const finalAction = document.querySelector<HTMLElement>('.workout-mobile-inline-add')
-      const actionBar = document.querySelector<HTMLElement>('.workout-mobile-action-bar')
-      const restTimer = document.querySelector<HTMLElement>('.rest-timer-bar')
-      const navigation = document.querySelector<HTMLElement>('nav.bottom-nav')
+      const panel = document.querySelector<HTMLElement>('.workout-set-panel')
       const finalActionBox = finalAction?.getBoundingClientRect()
-      const actionBarBox = actionBar?.getBoundingClientRect()
-      const navigationBox = navigation?.getBoundingClientRect()
+      const panelBox = panel?.getBoundingClientRect()
       return {
-        actionBarBottom: actionBarBox?.bottom,
-        actionBarHeight: actionBarBox?.height,
+        contentBottomPadding: bottomPadding('.page-shell')
+          + bottomPadding('.workout-session-grid')
+          + bottomPadding('.workout-session-list'),
         finalActionBottom: finalActionBox?.bottom,
-        navigationHeight: navigationBox?.height,
-        pageShellBottomPadding: pageShell
-          ? Number.parseFloat(window.getComputedStyle(pageShell).paddingBottom)
-          : undefined,
-        expectedRestTimerBackground: (() => {
-          const probe = document.createElement('div')
-          probe.style.background = 'color-mix(in srgb, var(--accent) 8%, var(--bg-elevated))'
-          document.body.append(probe)
-          const background = window.getComputedStyle(probe).backgroundColor
-          probe.remove()
-          return background
-        })(),
-        restTimerBackground: restTimer
-          ? window.getComputedStyle(restTimer).backgroundColor
-          : undefined,
-        restTimerTop: actionBarBox?.top,
-        sessionGridBottomPadding: sessionGrid
-          ? Number.parseFloat(window.getComputedStyle(sessionGrid).paddingBottom)
-          : undefined,
+        panelBackground: panel ? window.getComputedStyle(panel).backgroundImage : undefined,
+        panelBottom: panelBox?.bottom,
+        panelHeight: panelBox?.height,
+        panelTop: panelBox?.top,
         viewportHeight: window.innerHeight,
       }
     })
 
-    expect(dockGeometry.restTimerBackground).toBe(dockGeometry.expectedRestTimerBackground)
-    expect(dockGeometry.pageShellBottomPadding! + dockGeometry.sessionGridBottomPadding!).toBeGreaterThanOrEqual(
-      dockGeometry.actionBarHeight! + dockGeometry.navigationHeight! + 16,
-    )
-    expect(dockGeometry.finalActionBottom).toBeLessThanOrEqual(dockGeometry.restTimerTop! - 8)
+    expect(dockGeometry.panelBackground).not.toBe('none')
+    expect(dockGeometry.panelBackground).not.toMatch(/rgba|transparent/)
+    expect(dockGeometry.panelBottom).toBeLessThanOrEqual(dockGeometry.viewportHeight)
+    expect(dockGeometry.contentBottomPadding).toBeGreaterThanOrEqual(dockGeometry.panelHeight! + 16)
+    expect(dockGeometry.finalActionBottom).toBeLessThanOrEqual(dockGeometry.panelTop! - 8)
   })
 
   test('mobile workout keeps the compact shell and leaves through Minimize', async ({ page, cleanup }, testInfo) => {
@@ -473,8 +458,11 @@ test.describe('Active workout shell reduction', () => {
 
     expect(await visibleCount(page.getByRole('button', { name: 'Add exercise', exact: true }))).toBe(1)
     await expect(page.locator('.workout-set-row').first()).toBeVisible()
-    await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(0), 'First weight input')
-    await expectFullyInViewport(page, page.locator('.workout-set-row').first().locator('input').nth(1), 'First reps input')
+    await expectFullyInViewport(page, page.locator('.workout-set-now').first(), 'First set row')
+    const panel = currentSetPanel(page)
+    await expectFullyInViewport(page, panel.getByRole('spinbutton', { name: 'Weight, Squat, set 1, kg' }), 'First weight input')
+    await expectFullyInViewport(page, panel.getByRole('spinbutton', { name: 'Reps, Squat, set 1' }), 'First reps input')
+    await expectFullyInViewport(page, panel.getByRole('button', { name: 'Log set 1 for Squat' }), 'Log set button')
 
   })
 
@@ -495,8 +483,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.getByRole('dialog', { name: 'Remove set?' })).toHaveCount(0)
 
     const populatedSet = setRows.first()
-    await populatedSet.locator('input').nth(0).fill('60')
-    await populatedSet.locator('input').nth(1).fill('8')
+    await fillCurrentSet(page, '60', '8')
     await populatedSet.getByRole('button', { name: 'Remove set 1' }).click()
 
     const confirmDialog = page.getByRole('dialog', { name: 'Remove set?' })
@@ -523,50 +510,41 @@ test.describe('Active workout shell reduction', () => {
 
     const doneButton = page.getByRole('button', { name: 'Mark set 1 for Squat' })
     const removeSetButton = page.getByRole('button', { name: 'Remove set 1' })
-    const actionBar = page.locator('.workout-mobile-action-bar')
+    const panel = currentSetPanel(page)
+    const restTimer = page.locator('.rest-timer-bar')
 
     await expectMinHitArea(doneButton, 'Done button')
     await expectMinHitArea(removeSetButton, 'Remove set button')
-    await expect(actionBar).toHaveCount(0)
+    await expect(restTimer).toHaveCount(0)
 
     await expect(page.getByRole('button', { name: /Add set/i })).toBeVisible()
     await page.getByRole('button', { name: /Add set/i }).click()
 
-    const visibleStepperRows = page.locator('.set-stepper-row:visible')
-    await expect(visibleStepperRows).toHaveCount(1)
+    const setRows = page.locator('.workout-set-row')
+    await expect(page.locator('.workout-set-row[data-current]')).toHaveCount(1)
+    await expect(setRows.first().locator('.workout-set-now')).toHaveCount(1)
+    await expect(setRows.first().locator('input')).toHaveCount(0)
+    await expect(setRows.nth(1).locator('.workout-set-now')).toHaveCount(0)
+    await expect(setRows.nth(1).locator('.workout-set-input')).toHaveCount(2)
+    await expect(panel.getByRole('spinbutton')).toHaveCount(2)
 
-    const visibleStepperButtons = page.locator('.set-stepper-row:visible .set-stepper-btn')
-    await expect(visibleStepperButtons).toHaveCount(4)
-
-    for (const [index, label] of ['Weight down stepper', 'Weight up stepper', 'Reps down stepper', 'Reps up stepper'].entries()) {
-      await expectMinHitArea(visibleStepperButtons.nth(index), label)
+    const steppers = panel.locator('.workout-set-step')
+    await expect(steppers).toHaveCount(4)
+    for (const label of ['Adjust weight by -2.5', 'Adjust weight by 2.5', 'Adjust reps by -1', 'Adjust reps by 1']) {
+      await expectMinHitArea(panel.getByRole('button', { name: label, exact: true }), label)
     }
 
-    const flatSetContract = await page.locator('.workout-set-row').first().evaluate((row) => {
-      const input = row.querySelector<HTMLInputElement>('.workout-set-input')
-      const stepperRow = row.querySelector<HTMLElement>('.set-stepper-row')
-      const stepper = row.querySelector<HTMLElement>('.set-stepper-btn')
-      if (!input || !stepperRow || !stepper) throw new Error('Expected active set controls')
-
+    const flatSetContract = await setRows.nth(1).locator('.workout-set-input').first().evaluate((input) => {
       const inputStyle = window.getComputedStyle(input)
-      const rowStyle = window.getComputedStyle(stepperRow)
-      const stepperStyle = window.getComputedStyle(stepper)
-
       return {
         inputBackground: inputStyle.backgroundColor,
         inputRadius: inputStyle.borderTopLeftRadius,
-        rowTopBorder: rowStyle.borderTopWidth,
-        stepperBackground: stepperStyle.backgroundColor,
-        stepperRadius: stepperStyle.borderTopLeftRadius,
       }
     })
 
     expect(flatSetContract).toEqual({
       inputBackground: 'rgba(0, 0, 0, 0)',
       inputRadius: '0px',
-      rowTopBorder: '0px',
-      stepperBackground: 'rgba(0, 0, 0, 0)',
-      stepperRadius: '0px',
     })
 
     await page.locator('.workout-label-chips > button').first().click()
@@ -575,33 +553,42 @@ test.describe('Active workout shell reduction', () => {
     await expect(activeLabel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
     await expect(activeLabel).toHaveCSS('border-radius', '0px')
 
-    await page.locator('.workout-set-row').first().locator('input').nth(0).fill('60')
-    await page.locator('.workout-set-row').first().locator('input').nth(1).fill('8')
-    await doneButton.click()
+    await fillCurrentSet(page, '60', '8')
+    const weightInput = panel.getByRole('spinbutton', { name: 'Weight, Squat, set 1, kg' })
+    const repsInput = panel.getByRole('spinbutton', { name: 'Reps, Squat, set 1' })
+    await panel.getByRole('button', { name: 'Adjust weight by 2.5', exact: true }).click()
+    await expect(weightInput).toHaveValue('62.5')
+    await panel.getByRole('button', { name: 'Adjust weight by -2.5', exact: true }).click()
+    await expect(weightInput).toHaveValue('60')
+    await panel.getByRole('button', { name: 'Adjust reps by 1', exact: true }).click()
+    await expect(repsInput).toHaveValue('9')
+    await panel.getByRole('button', { name: 'Adjust reps by -1', exact: true }).click()
+    await expect(repsInput).toHaveValue('8')
+    await panel.getByRole('button', { name: 'Log set 1 for Squat' }).click()
     await expect(page.getByRole('button', { name: 'Unmark set 1 for Squat' })).toHaveCSS('color', 'rgb(239, 231, 220)')
 
     const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar .tabular-nums').innerText()
-    const addRestButton = actionBar.getByRole('button', { name: 'Add 30 seconds' })
-    const skipRestButton = actionBar.getByRole('button', { name: 'Skip rest' })
-    await expect(actionBar).toBeVisible()
-    await expect(addRestButton).toBeVisible()
-    await expect(skipRestButton).toBeVisible()
+    const addRestButton = panel.getByRole('button', { name: 'Add 30 seconds' })
+    const skipRestButton = panel.getByRole('button', { name: 'Skip rest' })
+    await expect(restTimer).toBeVisible()
+    await expect(addRestButton).toHaveText('+30 s')
+    await expect(skipRestButton).toHaveText('Skip')
     await expectMinHitArea(addRestButton, 'Add rest time button')
     await expectMinHitArea(skipRestButton, 'Skip rest button')
     await addRestButton.click()
-    await expect(actionBar).not.toContainText(sessionTimerText)
-    await expect(actionBar.getByRole('button', { name: 'Add exercise', exact: true })).toHaveCount(0)
+    await expect(restTimer).not.toContainText(sessionTimerText)
+    await expect(panel.getByRole('button', { name: 'Add exercise', exact: true })).toHaveCount(0)
 
     await page.evaluate(() => {
       if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
       window.scrollTo(0, 0)
     })
     await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
-    const actionBarBox = await actionBar.boundingBox()
-    expect(actionBarBox, 'Rest timer should have a bounding box').not.toBeNull()
+    const panelBox = await panel.boundingBox()
+    expect(panelBox, 'Set panel should have a bounding box').not.toBeNull()
     expect(
-      actionBarBox!.y + actionBarBox!.height,
-      'Rest timer should end inside the viewport',
+      panelBox!.y + panelBox!.height,
+      'Set panel should end inside the viewport',
     ).toBeLessThanOrEqual(page.viewportSize()!.height)
 
     await expect.poll(
@@ -614,6 +601,12 @@ test.describe('Active workout shell reduction', () => {
       reps: '8',
     })
 
+    const undoButton = panel.getByRole('button', { name: 'Undo set 1' })
+    await expectMinHitArea(undoButton, 'Undo set button')
+    await undoButton.click()
+    await expect(doneButton).toBeVisible()
+    await expect(restTimer).toHaveCount(0)
+    await expect(panel.getByRole('button', { name: 'Log set 1 for Squat' })).toBeVisible()
   })
 
   test('mobile compact rest timer scrolls only the focused workout set input', async ({ page, cleanup }, testInfo) => {
@@ -629,22 +622,25 @@ test.describe('Active workout shell reduction', () => {
     expect(initialWrite.sessionId, 'Active session should expose its stable session ID').not.toBeNull()
     const sessionId = initialWrite.sessionId
 
+    // A second set keeps the panel at full height while the logged row is edited.
+    await page.getByRole('button', { name: /Add set/i }).click()
     const firstSetRow = page.locator('.workout-set-row').first()
-    const weightInput = firstSetRow.locator('input').nth(0)
-    await weightInput.fill('60')
-    await firstSetRow.locator('input').nth(1).fill('8')
+    await fillCurrentSet(page, '60', '8')
     await firstSetRow.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
 
-    const actionBar = page.locator('.workout-mobile-action-bar')
-    const skipRestButton = actionBar.getByRole('button', { name: 'Skip rest' })
-    await expect(actionBar).toHaveAttribute('data-variant', 'full')
+    // A logged set keeps its row inputs; the scroll effect only covers row inputs.
+    const weightInput = firstSetRow.locator('input').nth(0)
+    const panel = currentSetPanel(page)
+    const restTimer = panel.locator('.rest-timer-bar')
+    const skipRestButton = restTimer.getByRole('button', { name: 'Skip rest' })
+    await expect(restTimer).toHaveAttribute('data-variant', 'full')
     await installScrollIntoViewSpy(page)
 
     await weightInput.focus()
     await page.setViewportSize({ width: 390, height: 500 })
-    await expect(actionBar).toHaveAttribute('data-variant', 'compact')
+    await expect(restTimer).toHaveAttribute('data-variant', 'compact')
     await expect(skipRestButton).toBeVisible()
-    await expect(actionBar.getByRole('button', { name: 'Add 30 seconds' })).toHaveCount(0)
+    await expect(restTimer.getByRole('button', { name: 'Add 30 seconds' })).toHaveCount(0)
     await expect.poll(async () => (await readScrollIntoViewCalls(page)).length).toBeGreaterThan(0)
     const focusedInputScrollCalls = await readScrollIntoViewCalls(page)
     expect(focusedInputScrollCalls).toEqual(
@@ -652,14 +648,7 @@ test.describe('Active workout shell reduction', () => {
     )
     expect(focusedInputScrollCalls.filter(({ tagName }) => tagName === 'BODY' || tagName === 'BUTTON')).toEqual([])
 
-    const compactActionBarBox = await actionBar.boundingBox()
-    const focusedInputBox = await weightInput.boundingBox()
-    expect(compactActionBarBox, 'Compact rest timer should have a bounding box').not.toBeNull()
-    expect(focusedInputBox, 'Focused workout input should have a bounding box').not.toBeNull()
-    expect(focusedInputBox!.y).toBeGreaterThanOrEqual(
-      compactActionBarBox!.y + compactActionBarBox!.height,
-    )
-    expect(focusedInputBox!.y + focusedInputBox!.height).toBeLessThanOrEqual(500)
+    await expectFullyInViewport(page, weightInput, 'Focused workout input')
 
     await weightInput.blur()
     await expect(page.locator('html')).not.toHaveAttribute('data-mobile-input-focused', '')
@@ -668,7 +657,7 @@ test.describe('Active workout shell reduction', () => {
     }))
     await clearScrollIntoViewCalls(page)
     await setVisualViewportBottomInset(page, 120)
-    await expect(actionBar).toHaveAttribute('data-variant', 'compact')
+    await expect(restTimer).toHaveAttribute('data-variant', 'compact')
     expect(await readScrollIntoViewCalls(page)).toEqual([])
 
     await skipRestButton.focus()
@@ -678,11 +667,11 @@ test.describe('Active workout shell reduction', () => {
     await skipRestButton.blur()
     await restoreVisualViewportHeight(page)
     await page.setViewportSize({ width: 390, height: 844 })
-    await expect(actionBar).toHaveAttribute('data-variant', 'full')
-    await expect(actionBar.getByRole('button', { name: 'Add 30 seconds' })).toBeVisible()
+    await expect(restTimer).toHaveAttribute('data-variant', 'full')
+    await expect(restTimer.getByRole('button', { name: 'Add 30 seconds' })).toBeVisible()
 
     await skipRestButton.click()
-    await expect(actionBar).toHaveCount(0)
+    await expect(restTimer).toHaveCount(0)
 
     await expect.poll(
       () => readCachedActiveSessionWrite(page),
@@ -696,6 +685,31 @@ test.describe('Active workout shell reduction', () => {
     })
   })
 
+  test('mobile keyboard keeps the current set input and Log set above it', async ({ page, cleanup }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
+    cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await goToFreshWorkout(page)
+    await addExercise(page, 'Squat')
+
+    const panel = currentSetPanel(page)
+    const weightInput = panel.getByRole('spinbutton', { name: 'Weight, Squat, set 1, kg' })
+    await weightInput.focus()
+    await setVisualViewportBottomInset(page, 300)
+
+    // Fails until .workout-set-panel follows --mobile-viewport-bottom-inset, as the old rest bar did.
+    const keyboardTop = 844 - 300
+    await expect.poll(async () => {
+      const box = await panel.getByRole('button', { name: 'Log set 1 for Squat' }).boundingBox()
+      return box ? box.y + box.height : Number.POSITIVE_INFINITY
+    }).toBeLessThanOrEqual(keyboardTop)
+    const inputBox = await weightInput.boundingBox()
+    expect(inputBox!.y + inputBox!.height).toBeLessThanOrEqual(keyboardTop)
+
+    await restoreVisualViewportHeight(page)
+  })
+
   test('desktop workout keeps shell chrome visible, mounts one rest timer, and preserves the remove exit contract', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'desktop', 'desktop-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
@@ -705,13 +719,15 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
     await expect(page.locator('.top-nav')).toBeVisible()
     await expect(page.locator('aside .workout-control-panel')).toBeVisible()
-    await expect(page.getByRole('heading', { name: 'Current exercises' })).toBeVisible()
 
     await addExercise(page, 'Squat')
+    await page.getByRole('button', { name: /Add set/i }).click()
+    await expect(page.locator('aside').getByRole('region', { name: 'Current set' })).toBeVisible()
 
     const firstSetRow = page.locator('.workout-set-row').first()
+    const pendingSetRow = page.locator('.workout-set-row').nth(1)
 
-    const fieldContract = await firstSetRow.locator('.workout-set-input').evaluateAll((inputs) => (
+    const fieldContract = await pendingSetRow.locator('.workout-set-input').evaluateAll((inputs) => (
       inputs.map((input) => {
         const box = input.getBoundingClientRect()
         const style = getComputedStyle(input)
@@ -734,12 +750,14 @@ test.describe('Active workout shell reduction', () => {
       expect(field.radius).toBe('0px')
     }
 
-    await firstSetRow.locator('input').nth(0).fill('60')
-    await firstSetRow.locator('input').nth(1).fill('8')
+    await fillCurrentSet(page, '60', '8')
     await firstSetRow.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
 
     const restTimerBar = page.locator('.rest-timer-bar')
     await expect(restTimerBar).toHaveCount(1)
+    await expect(page.locator('aside .rest-timer-bar')).toHaveCount(1)
+    await expect(page.locator('.workout-side-summary')).toContainText('1/2 sets')
+    await expect(page.locator('.workout-side-summary')).toContainText('heaviest 60 kg')
     await page.getByRole('button', { name: 'Skip rest' }).click()
     await expect(restTimerBar).toHaveCount(0)
 

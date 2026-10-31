@@ -50,7 +50,7 @@ async function openWorkoutClient(
 }
 
 async function finishWorkout(page: Page, workoutId: string): Promise<void> {
-  await page.getByRole('button', { name: 'Finish' }).click()
+  await page.getByRole('button', { name: 'Finish', exact: true }).click()
   await page.waitForURL(`/workout/${workoutId}`, { timeout: RESPONSE_TIMEOUT_MS })
 }
 
@@ -154,7 +154,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('button', { name: 'Progress' }).click()
     await expect(page).toHaveURL('/progress')
-    await page.getByRole('link', { name: 'View history' }).click()
+    await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('button', { name: 'History' }).click()
     await expect(page).toHaveURL('/history')
     await page.getByRole('button', { name: /Phase 1 browse history detail/ }).click()
     await expect(page).toHaveURL(`/workout/${historyId}`)
@@ -375,7 +375,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       'intentional Phase 1 finalize acknowledgement loss',
       isExpectedWorkoutLifecycleAckLossDiagnostic,
       async () => {
-        await page.getByRole('button', { name: 'Finish' }).click()
+        await page.getByRole('button', { name: 'Finish', exact: true }).click()
         await expect(page.getByRole('alert')).toContainText('Could not confirm session closure.')
         await failedRequest
         await expect.poll(() => browserDiagnostics.some((entry) => (

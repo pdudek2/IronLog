@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronUp, Pencil, Play, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
@@ -146,26 +146,17 @@ export default function TemplatesPage() {
           {templates.length > 0 && (
             <div className="planner-mini-stats" aria-label="Plan summary">
               <span>
-                <strong>{templates.length}</strong>
-                {' '}
-                {pluralize(templates.length, 'plan', 'plans')}
+                {templates.length} {pluralize(templates.length, 'plan', 'plans')}
               </span>
             </div>
           )}
         </div>
 
         <div className="planner-header-actions">
-          <Link
-            to="/exercises"
-            className="planner-secondary-action plans-exercises-link mobile-touch-target"
-          >
-            Exercises
-          </Link>
-
           <motion.button
             type="button"
             onClick={() => navigate('/templates/new')}
-            className="planner-primary-action"
+            className={!error && templates.length === 0 ? 'planner-primary-action' : 'plans-new'}
             whileTap={{ scale: 0.97 }}
           >
             <Plus size={16} />
@@ -352,14 +343,19 @@ export default function TemplatesPage() {
                             className="planner-day-row"
                           >
                             <span className="planner-day-row-head">
-                              <span>
+                              <button
+                                type="button"
+                                className="planner-day-open"
+                                aria-label={`Open ${day.name} in ${template.name}`}
+                                onClick={() => navigate(`/templates/${template.id}/edit`)}
+                              >
                                 <strong className="planner-day-row-title">{day.name}</strong>
                                 <small>
                                   {launchable
                                     ? `${day.exercises.length} ${day.exercises.length === 1 ? 'exercise' : 'exercises'}`
                                     : 'No exercises'}
                                 </small>
-                              </span>
+                              </button>
 
                               {launchable ? (
                                 <button
@@ -372,7 +368,6 @@ export default function TemplatesPage() {
                                   className="planner-day-start"
                                 >
                                   {isLaunchingControl(requestKey) ? 'Starting…' : 'Start'}
-                                  {!isLaunchingControl(requestKey) && <Play size={15} aria-hidden="true" />}
                                 </button>
                               ) : (
                                 <button
@@ -386,20 +381,6 @@ export default function TemplatesPage() {
                               )}
                             </span>
 
-                            {launchable && <span className="planner-exercise-strip">
-                              {day.exercises.slice(0, 5).map((exercise, exerciseIndex) => (
-                                <span
-                                  key={`${exerciseIndex}-${exercise.exerciseSource}-${exercise.exerciseId}`}
-                                >
-                                  {exercise.name}
-                                </span>
-                              ))}
-                              {day.exercises.length > 5 && (
-                                <span>
-                                  +{day.exercises.length - 5}
-                                </span>
-                              )}
-                            </span>}
                           </motion.div>
                           )
                         })}
@@ -412,6 +393,11 @@ export default function TemplatesPage() {
           </div>
         )}
         </AnimatePresence>
+
+        <nav className="plans-links" aria-label="Plan tools">
+          <Link to="/exercises">Exercises<ChevronRight size={16} aria-hidden="true" /></Link>
+          <Link to="/chat">Generate a plan with Coach<ChevronRight size={16} aria-hidden="true" /></Link>
+        </nav>
       </div>
 
       {deleteTarget && (

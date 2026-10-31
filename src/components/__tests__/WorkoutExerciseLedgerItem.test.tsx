@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { useWorkoutStore } from '../../store/workoutStore'
@@ -14,7 +14,6 @@ vi.mock('../../lib/exerciseDetailService', () => ({
 
 const callbacks = {
   onAddSet: vi.fn(),
-  onAdjustSet: vi.fn(),
   onApplySuggestion: vi.fn(),
   onDismissSuggestion: vi.fn(),
   onExpandExercise: vi.fn(),
@@ -54,8 +53,9 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         exerciseAccent="#fff"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
+        exerciseCount={3}
         fallbackExercise={null}
-        focusSetIndex={0}
+        focusSetIndex={1}
         hintDismissed
         hintKey="global:bench-press"
         isCollapsible
@@ -118,6 +118,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         exerciseAccent="#f0435a"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
+        exerciseCount={3}
         fallbackExercise={null}
         focusSetIndex={1}
         hintDismissed
@@ -135,7 +136,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     expect(await screen.findByLabelText('Previous set result 1')).toHaveTextContent('496×12')
     expect(screen.getByLabelText('Previous set result 2')).toHaveTextContent('176.4×8')
     expect(screen.getByLabelText('Previous set result 3')).toHaveTextContent('—')
-    expect(screen.getByText('Prev.')).toBeInTheDocument()
+    expect(screen.getByText('Last')).toBeInTheDocument()
     expect(screen.queryByText('Vol.')).not.toBeInTheDocument()
     expect(mocks.getExerciseSessions).toHaveBeenCalledWith('user-1', 'bench-press', 'global', 1)
   })
@@ -158,6 +159,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         exerciseAccent="#fff"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
+        exerciseCount={3}
         fallbackExercise={null}
         focusSetIndex={0}
         hintDismissed
@@ -174,15 +176,15 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     expect(screen.getByRole('spinbutton', {
       name: 'Weight, Bench Press, set 1, kg',
     })).toHaveValue(82.25)
-    expect(screen.getByText('82.25 kg')).toBeInTheDocument()
   })
 
-  it('groups quick adjustments for the focused set and preserves callback values', () => {
+  it('shows the current set read-only and leaves editing to the set panel', () => {
     render(
       <WorkoutExerciseLedgerItem
         exerciseAccent="#f0435a"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
+        exerciseCount={3}
         fallbackExercise={null}
         focusSetIndex={0}
         hintDismissed
@@ -191,19 +193,17 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         isExpanded
         isFocusedExercise
         suggestion={null}
-        units="kg"
+        units="lbs"
         {...callbacks}
       />,
     )
 
-    const adjustments = screen.getByRole('group', {
-      name: 'Quick set adjustments 1',
-    })
-    fireEvent.click(within(adjustments).getByRole('button', { name: /by 2.5/ }))
-    fireEvent.click(within(adjustments).getByRole('button', { name: /by 1/ }))
+    expect(screen.getByText('132.3 × 8')).toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+    expect(screen.getByText('Exercise 1 of 3')).toBeInTheDocument()
 
-    expect(callbacks.onAdjustSet).toHaveBeenNthCalledWith(1, 0, 0, 'weight', 2.5)
-    expect(callbacks.onAdjustSet).toHaveBeenNthCalledWith(2, 0, 0, 'reps', 1)
+    fireEvent.click(screen.getByRole('button', { name: 'Mark set 1 for Bench Press' }))
+    expect(callbacks.onToggleSet).toHaveBeenCalledWith(0, 0)
   })
 
   it('lets a compact exercise request expansion without hiding its identity', () => {
@@ -212,6 +212,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         exerciseAccent="#f0435a"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
+        exerciseCount={3}
         fallbackExercise={null}
         focusSetIndex={0}
         hintDismissed
@@ -248,6 +249,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
         exerciseAccent="#f0435a"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
+        exerciseCount={3}
         fallbackExercise={null}
         focusSetIndex={0}
         hintDismissed={false}

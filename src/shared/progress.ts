@@ -1,17 +1,18 @@
 import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
 import { addLocalDays } from './week'
 
-export const PROGRESS_MUSCLE_COLORS: Record<string, string> = {
-  chest: '#D97B91', shoulders: '#A898C8', triceps: '#C38B73', back: '#9BB7C8', biceps: '#76ADB1',
-  forearms: '#A7A0B5', quads: '#D6A06F', hamstrings: '#C09172', glutes: '#B78568', calves: '#C3A477', core: '#918A9D',
-}
+const MUSCLE_KEYS = ['chest', 'shoulders', 'triceps', 'back', 'biceps', 'forearms', 'quads', 'hamstrings', 'glutes', 'calves', 'core']
+export const PROGRESS_MUSCLE_COLORS: Record<string, string> = Object.fromEntries(MUSCLE_KEYS.map((key) => [key, '#a89f98']))
 export const PROGRESS_MUSCLE_LABELS: Record<string, string> = {
   chest: 'Chest', back: 'Back', shoulders: 'Shoulders', biceps: 'Biceps', triceps: 'Triceps', quads: 'Quads',
   hamstrings: 'Hamstrings', glutes: 'Glutes', core: 'Core', calves: 'Calves', forearms: 'Forearms',
 }
 export const PROGRESS_HEATMAP_COLORS = [
-  'rgba(255,255,255,0.04)', 'rgba(240,67,90,0.15)', 'rgba(240,67,90,0.35)',
-  'rgba(240,67,90,0.6)', 'rgba(240,67,90,0.9)',
+  'rgba(244, 238, 232, 0.06)',
+  'rgba(239, 231, 220, 0.22)',
+  'rgba(239, 231, 220, 0.42)',
+  'rgba(239, 231, 220, 0.66)',
+  '#efe7dc',
 ]
 
 export function formatProgressVolume(volumeKg: number, units: WeightUnits): string {

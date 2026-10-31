@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -13,10 +13,9 @@ import { workoutTitle } from '../lib/workoutCopy'
 import { formatCompactVolume } from '../lib/weightUnits'
 import { useProfileStore } from '../store/profileStore'
 import {
-  EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
-import { formatExercisePreview, formatHistoryDate, formatWorkoutDuration, groupWorkoutsByMonth } from '../shared/workoutHistory'
+import { formatHistoryDate, formatWorkoutDuration, groupWorkoutsByMonth } from '../shared/workoutHistory'
 
 type RangePreset = '30' | '90' | '365' | 'all'
 
@@ -285,7 +284,6 @@ export default function HistoryPage() {
             <div className="history-category-filter-row" role="group" aria-labelledby="history-category-filter-label">
               {availableCategories.map((cat) => {
                 const active = activeCategory === cat
-                const color = EXERCISE_CATEGORY_COLORS[cat] ?? 'var(--accent)'
                 return (
                   <button
                     key={cat}
@@ -294,7 +292,6 @@ export default function HistoryPage() {
                     className="history-category-filter-button mobile-touch-target px-3 py-1 text-xs font-semibold"
                     data-active={active}
                     aria-pressed={active}
-                    style={{ '--history-filter-accent': color } as CSSProperties}
                   >
                     {EXERCISE_CATEGORY_LABELS[cat] ?? cat}
                   </button>
@@ -374,29 +371,23 @@ export default function HistoryPage() {
                     </span>
                   </div>
                   <div className="history-workout-list">
-                    {group.workouts.map(({ workout, totalSets, totalVolume, categories, exerciseNames }) => {
-                      const accentCategory = categories.values().next().value ?? ''
-
+                    {group.workouts.map(({ workout, totalSets, totalVolume }) => {
                       return (
                         <button
                           key={workout.id}
                           type="button"
                           onClick={() => navigate(`/workout/${workout.id}`)}
                           className="history-workout-row"
-                          style={{ '--workout-accent': EXERCISE_CATEGORY_COLORS[accentCategory] ?? 'var(--accent)' } as CSSProperties}
                         >
                           <div className="history-workout-main">
                             <div className="min-w-0">
+                              <h3>{workoutTitle(workout)}</h3>
                               <div className="history-workout-meta">
                                 <span>{formatHistoryDate(workout.startedAt)}</span>
                                 <span>{formatWorkoutDuration(workout.startedAt, workout.finishedAt)}</span>
                                 <span className="history-inline-stat">{formatCompactVolume(totalVolume, units)}</span>
                                 <span className="history-inline-stat">{totalSets} {pluralize(totalSets, 'set', 'sets')}</span>
                               </div>
-                              <h3>{workoutTitle(workout)}</h3>
-                              {workoutTitle(workout) !== exerciseNames.map((name) => name.trim()).join(' + ') && (
-                                <p>{formatExercisePreview(exerciseNames)}</p>
-                              )}
                             </div>
                             <ChevronRight size={18} className="history-workout-arrow" aria-hidden="true" />
                           </div>

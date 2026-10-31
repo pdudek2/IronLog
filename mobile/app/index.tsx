@@ -291,7 +291,7 @@ function Elapsed({ session }: { session: ActiveWorkout }) {
 }
 
 
-function SetValueInput({ value, units, field, label, done, rejectedEdit, onChange, large = false }: {
+function SetValueInput({ value, units, field, label, done, rejectedEdit, onChange, large = false, onFocusChange }: {
   value: string
   units: Units
   field: 'weight' | 'reps'
@@ -300,6 +300,7 @@ function SetValueInput({ value, units, field, label, done, rejectedEdit, onChang
   rejectedEdit: object | null
   onChange: (value: string) => void
   large?: boolean
+  onFocusChange?: (focused: boolean) => void
 }) {
   const displayed = storedValueToSetInput(value, field, units)
   const [text, setText] = useState(displayed)
@@ -326,6 +327,7 @@ function SetValueInput({ value, units, field, label, done, rejectedEdit, onChang
     keyboardType={field === 'weight' ? 'decimal-pad' : 'number-pad'}
     onBlur={() => {
       focused.current = false
+      onFocusChange?.(false)
       if (pendingSubmissions.current.length === 0) setText(displayed)
     }}
     onChangeText={(next) => {
@@ -334,7 +336,7 @@ function SetValueInput({ value, units, field, label, done, rejectedEdit, onChang
       pendingSubmissions.current.push(canonical)
       onChange(canonical)
     }}
-    onFocus={() => { focused.current = true }}
+    onFocus={() => { focused.current = true; onFocusChange?.(true) }}
     placeholder="0"
     placeholderTextColor={colors.mutedSoft}
     selectTextOnFocus
@@ -563,9 +565,9 @@ function SetStepper({ label, step, onStep }: { label: string; step: number; onSt
     style={({ pressed }) => [styles.panelStep, pressed && styles.setStepperPressed]}><Text style={styles.panelStepText}>{step > 0 ? `+${step}` : `−${-step}`}</Text></Pressable>
 }
 
-function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inset, nextName, finishing, onLog, onNext, onFinish }: {
+function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inset, nextName, finishing, onInputFocus, onLog, onNext, onFinish }: {
   exercise: WorkoutExercise; setIndex: number; units: Units; rejectedEdit: object | null; editing: EditingActions; rest: React.ReactNode; inset: number
-  nextName: string | null; finishing: boolean; onLog: () => void; onNext: () => void; onFinish: () => void
+  nextName: string | null; finishing: boolean; onInputFocus: (focused: boolean) => void; onLog: () => void; onNext: () => void; onFinish: () => void
 }) {
   const set = setIndex >= 0 ? exercise.sets[setIndex] : undefined
   const number = setIndex + 1
@@ -576,14 +578,14 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
     {set && <View style={styles.panelNums}>
       <View style={styles.panelNum}>
         <SetStepper label="weight" step={-2.5} onStep={() => adjust('weight', displayWeightDeltaToKg(-2.5, units))} />
-        <View style={styles.panelValue}><SetValueInput large rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight" done={false}
+        <View style={styles.panelValue}><SetValueInput large onFocusChange={onInputFocus} rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight" done={false}
           label={`Weight, ${exercise.name}, set ${number}, ${units}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'weight', value)} /><Text style={styles.panelUnit}>{units}</Text></View>
         <SetStepper label="weight" step={2.5} onStep={() => adjust('weight', displayWeightDeltaToKg(2.5, units))} />
       </View>
       <View style={styles.panelDivider} />
       <View style={styles.panelNum}>
         <SetStepper label="reps" step={-1} onStep={() => adjust('reps', -1)} />
-        <View style={styles.panelValue}><SetValueInput large rejectedEdit={rejectedEdit} value={set.reps} units={units} field="reps" done={false}
+        <View style={styles.panelValue}><SetValueInput large onFocusChange={onInputFocus} rejectedEdit={rejectedEdit} value={set.reps} units={units} field="reps" done={false}
           label={`Reps, ${exercise.name}, set ${number}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'reps', value)} /><Text style={styles.panelUnit}>reps</Text></View>
         <SetStepper label="reps" step={1} onStep={() => adjust('reps', 1)} />
       </View>
@@ -688,6 +690,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const [manualExercise, setManualExercise] = useState<{ sessionId: string; id: string } | null>(null)
   const [rest, setRest] = useState(lastRest)
   const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setId: string } | null>(null)
+  const [panelInputFocused, setPanelInputFocused] = useState(false)
   const changeRest = (next: Rest | null) => { lastRest = next; setRest(next) }
   const insets = useSafeAreaInsets()
   const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
@@ -801,6 +804,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
     const exercise = liveSession?.exercises.find(({ clientId }) => clientId === exerciseId)
     if (exercise?.sets.every((set) => set.done || set.clientId === setId)) setManualExercise(null)
   })
+  // The keyboard lifts the panel, which would then cover a row being edited further up the list.
+  const panelVisible = panelExercise && (keyboardInset === 0 || panelInputFocused)
   const panelEditing: EditingActions = {
     updateSet: guardClosureInteraction(canEditCurrentSession, updateSet),
     adjustSet: guardClosureInteraction(canEditCurrentSession, adjustSet),
@@ -817,9 +822,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
       <Animated.ScrollView
         ref={scroll}
         innerViewRef={content}
-        contentContainerStyle={[styles.sessionContent, panelExercise && styles.sessionContentPanel]}
+        contentContainerStyle={[styles.sessionContent, panelVisible ? styles.sessionContentPanel : keyboardInset > 0 && { paddingBottom: keyboardInset }]}
         keyboardShouldPersistTaps="handled"
-        stickyHeaderIndices={[1]}
+        stickyHeaderIndices={[0]}
         scrollEventThrottle={16}
         onScroll={navigation.onScroll}
       >
@@ -942,7 +947,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
         </>)}
       </Animated.ScrollView>
-      {panelExercise && <SetPanel exercise={panelExercise} setIndex={panelSetIndex} units={state.status === 'ready' ? state.units : 'kg'}
+      {panelVisible && <SetPanel exercise={panelExercise} setIndex={panelSetIndex} units={state.status === 'ready' ? state.units : 'kg'} onInputFocus={setPanelInputFocused}
         rejectedEdit={rejectedEditState} inset={keyboardInset || insets.bottom + 14} finishing={closure?.status === 'submitting'}
         nextName={nextExerciseIndex >= 0 ? liveSession?.exercises[nextExerciseIndex]?.name ?? null : null}
         editing={panelEditing}

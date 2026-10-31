@@ -2,7 +2,7 @@ import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import type { ExerciseSource } from './session'
 import type { WorkoutMonthGroup as MonthGroup } from '../../src/shared/workoutHistory'
-export { formatExercisePreview, formatHistoryDate, formatWorkoutDuration, groupWorkoutsByMonth } from '../../src/shared/workoutHistory'
+export { formatHistoryDate, formatWorkoutDuration, groupWorkoutsByMonth } from '../../src/shared/workoutHistory'
 export type WorkoutMonthGroup = MonthGroup<DerivedWorkout>
 
 export interface SavedWorkoutSet {

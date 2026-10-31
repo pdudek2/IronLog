@@ -28,7 +28,9 @@ export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExi
 
   const justFinished = session && closure.completed
     && (closure.completed.action === 'finish' ? closure.completed.workoutId : closure.completed.sessionId) === session.sessionId
-  if (!session || justFinished || pathname === '/') return null
+  // Without the session a failed closure has no other way back to the workout screen, where it is resolved.
+  const unresolved = closure.closure.status !== 'ready' && closure.closure.status !== 'loading'
+  if (justFinished || pathname === '/' || (!session && !unresolved)) return null
 
   return (
     <View accessibilityLabel="Active workout" style={styles.bar}>
@@ -39,12 +41,12 @@ export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExi
         <Path d="m9.6 14.4 4.8-4.8" />
       </Svg>
       <View style={styles.copy}>
-        <Text style={styles.title}>Workout in progress</Text>
-        {session.label?.trim() ? <Text numberOfLines={1} style={styles.label}>{session.label}</Text> : null}
+        <Text style={styles.title}>{session ? 'Workout in progress' : 'Workout needs attention'}</Text>
+        {session?.label?.trim() ? <Text numberOfLines={1} style={styles.label}>{session.label}</Text> : null}
       </View>
-      <Text accessibilityLabel={`Elapsed time ${formatElapsed(session.startedAt, now)}`} style={styles.elapsed}>
+      {session && <Text accessibilityLabel={`Elapsed time ${formatElapsed(session.startedAt, now)}`} style={styles.elapsed}>
         {formatElapsed(session.startedAt, now)}
-      </Text>
+      </Text>}
       <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => onRequestExit ? onRequestExit(() => router.dismissTo('/')) : router.dismissTo('/')} style={styles.returnButton}>
         <Text style={styles.returnText}>Return</Text>
         <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.accentText} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg>

@@ -1,10 +1,9 @@
 import { WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
-import grainTexture from '../assets/grain.png'
 import { formatCompactVolume } from '../../src/shared/weightUnits'
 import { exercises as exerciseCatalog } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, EXERCISE_CATEGORY_COLORS, getEquipmentLabel } from '../../src/lib/exerciseLabels'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ActivityIndicator, BackHandler, Image, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, BackHandler, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
@@ -98,7 +97,6 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" /><HistoryHeader onRequestAction={(_, go) => leave(go)} /><ActiveWorkoutReturnBar onRequestExit={leave} />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
       <ScrollView ref={scroll} innerViewRef={scrollContent} stickyHeaderIndices={[1]} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         <View>
           <View style={{ alignSelf: 'flex-start' }}><Action icon="chevron-left" title="Back" onPress={() => leave(() => router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }))} /></View>
@@ -156,8 +154,7 @@ function Action({ title, onPress, disabled, primary, outlined, grow, icon }: { t
 }
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background }, content: { padding: 16, paddingBottom: 32, experimental_backgroundImage: pageBackground },
-  grain: { height: '100%', opacity: .024, position: 'absolute', width: '100%' }, grainImage: { height: '100%', width: '100%' },
-  facts: { flexDirection: 'row', backgroundColor: colors.backgroundElevated, marginHorizontal: -16, paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, marginBottom: 24 }, fact: { flex: 1, minWidth: 0, paddingVertical: 15 }, factValue: { color: colors.textStrong, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 16, letterSpacing: -.4 },
+    facts: { flexDirection: 'row', backgroundColor: colors.backgroundElevated, marginHorizontal: -16, paddingHorizontal: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, marginBottom: 24 }, fact: { flex: 1, minWidth: 0, paddingVertical: 15 }, factValue: { color: colors.textStrong, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 16, letterSpacing: -.4 },
   heading: { paddingTop: 18, paddingBottom: 22, marginBottom: 0 },
   title: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 34, lineHeight: 36, marginTop: 9 },
   kicker: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },

@@ -1,23 +1,22 @@
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native'
+import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import Svg, { Path } from 'react-native-svg'
 
 import ReadinessHome from '../src/ReadinessHome'
 import { useReadinessRuntime } from '../src/readinessRuntime'
 import { buildNextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
 import { recommendationHistory } from '../src/readiness'
 
-import grainTexture from '../assets/grain.png'
+import { covers } from '../src/covers'
 import { pluralize } from '../../src/lib/pluralize'
 import { workoutTitle } from '../../src/lib/workoutCopy'
-import { formatCompactVolume } from '../../src/shared/weightUnits'
+import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
+import { workoutCover } from '../../src/shared/workoutCover'
 import { readHome, readTemplates } from '../src/firebase'
-import { deriveWorkout, formatExercisePreview, formatWorkoutDuration } from '../src/history'
-import { canShowHomeSummary, deriveHome, formatWeekRange, getGreeting } from '../src/home'
+import { canShowHomeSummary, deriveHome, getGreeting } from '../src/home'
 import { publishStreak } from '../src/streak'
 import { calcStreak } from '../../src/shared/streak'
 import { readStateForKey, startRead, type ReadState } from '../src/scopedRead'
@@ -26,7 +25,7 @@ import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
 import { firstLaunchableWorkout, selectedWorkout, validateTemplateOverrides, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
-import { colors, pageBackground, primaryGradient } from '../src/theme'
+import { colors, primaryGradient } from '../src/theme'
 import { Icon } from '../src/icons'
 
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
@@ -41,7 +40,6 @@ export default function DashboardScreen() {
   const readiness = useReadinessRuntime()
   const router = useRouter()
   const navigation = useBottomNavigation()
-  const { width } = useWindowDimensions()
   const uid = user?.uid ?? null
   const [result, setResult] = useState<{ key: string; state: ReadState<HomeData> } | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -51,6 +49,7 @@ export default function DashboardScreen() {
   const [selection, setSelection] = useState<{ uid: string; target: WorkoutSelection | null; unavailable: boolean } | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
+  const [weekOpen, setWeekOpen] = useState(false)
   const key = `home:${uid ?? ''}`
   const completion = completed ? `${completed.action}:${completed.action === 'finish' ? completed.workoutId : completed.sessionId}` : ''
 
@@ -79,14 +78,10 @@ export default function DashboardScreen() {
   const summary = useMemo(() => data && showSummary ? deriveHome(data.workouts, now) : null, [data, now, showSummary])
   useEffect(() => { if (uid && data && showSummary) publishStreak(uid, calcStreak(data.workouts)) }, [uid, data, showSummary])
   const retry = () => setAttempt((value) => value + 1)
-  const confirmedEmpty = state.status === 'ready' && !state.fromCache && data?.workouts.length === 0
   const cacheEmpty = state.status === 'ready' && state.fromCache && data?.workouts.length === 0
   const recent = summary?.recent ?? []
   const goal = data?.profile.weeklyGoal ?? 3
   const units = data?.profile.units ?? 'kg'
-  const remaining = Math.max(goal - (summary?.weeklyDone ?? 0), 0)
-  const peak = summary?.peakDay
-  const maxVolume = Math.max(...(summary?.days.map((day) => day.volume) ?? []), 1)
   const templatesState = readStateForKey(uid ?? '', templatesResult)
   const templates = templatesState.status === 'ready' ? templatesState.data : []
   // A new account has nothing to start from a plan, so an empty workout is the main action.
@@ -126,7 +121,6 @@ export default function DashboardScreen() {
     <HistoryHeader />
     <ActiveWorkoutReturnBar />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
-      <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
       {state.status === 'loading' && <View style={styles.notice}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading dashboard…</Text></View>}
       {state.status === 'error' && <View accessibilityRole="alert" style={styles.notice}>
         <Text style={styles.noticeTitle}>Could not load the dashboard</Text>
@@ -134,31 +128,48 @@ export default function DashboardScreen() {
         <Pressable accessibilityRole="button" onPress={retry} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>
       </View>}
       {data && <>
+        <View style={styles.cover}>
+          <Image accessibilityElementsHidden source={covers[workoutCover(chosen?.day.name ?? chosen?.template.name)]} style={styles.coverImage} />
+          <View pointerEvents="none" style={styles.coverFade} />
+          <View style={styles.coverCopy}>
+            <Text style={styles.coverMeta}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
+            <Text accessibilityRole="header" style={styles.coverTitle}>{chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
+            {chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
+              : active.state.status === 'empty' && recent[0] && <Text style={styles.coverMeta}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
+          </View>
+        </View>
         {state.status === 'ready' && state.fromCache && <View accessibilityRole="alert" style={styles.cacheRow}>
           <Text style={styles.muted}>{cacheEmpty ? 'Could not confirm your saved workouts. This device has no copy to check offline.' : 'Showing data saved on this device.'}</Text>
           <Pressable accessibilityRole="button" onPress={retry} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>
         </View>}
-        {!recommendation && <View style={styles.hero}>
-          <Text style={styles.date}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
-          <Text style={styles.greeting}>{getGreeting(now)},</Text>
-          <Text accessibilityRole="header" style={styles.name}>{data.profile.displayName}</Text>
-          {active.state.status === 'empty' && recent[0] && <Text style={styles.last}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
-          {canOfferStart && <View style={styles.startStack}>
-            {chosen ? <View style={styles.planCard}>
-              <View style={styles.planCopy}><Text style={styles.planMeta}>From your plans · {chosen.template.name}</Text><Text style={styles.planDay}>{chosen.day.name}</Text><Text style={styles.planMeta}>{chosen.day.exercises.length} {pluralize(chosen.day.exercises.length, 'exercise', 'exercises')}</Text></View>
-              <View style={styles.planActions}>
-                <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.planPrimary, starting && styles.disabled]}><Text style={styles.planPrimaryText}>{starting ? 'Starting…' : 'Start workout'}</Text><PlayIcon /></Pressable>
-                <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>
-              </View>
-            </View> : !chosen ? <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text>{templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.changeButton}><Text style={styles.changeText}>Change workout</Text></Pressable>}</View> : null}
-            {templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
-            {templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
-            <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[noPlans ? [styles.planPrimary, styles.emptyStartPrimary] : styles.emptyStart, starting && styles.disabled]}><Icon name="plus" size={15} color={noPlans ? colors.textStrong : colors.muted} /><Text style={noPlans ? styles.planPrimaryText : styles.emptyStartText}>Start empty workout</Text></Pressable>
-          </View>}
-        </View>}
+        <View style={styles.plan}>
+          {chosen && !recommendation && chosen.day.exercises.map((exercise, index) => <Pressable key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercises/[source]/[id]', params: { source: exercise.exerciseSource, id: exercise.exerciseId } })} style={styles.exercise}>
+            <Text numberOfLines={1} style={styles.exerciseName}>{exercise.name}</Text>
+            <Text style={styles.exerciseMeta}>{exercise.sets} × {exercise.targetReps}{exercise.targetWeight > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(exercise.targetWeight), units)} {units}</Text></>}</Text>
+          </Pressable>)}
+          {canOfferStart && !chosen && <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text></View>}
+          {canOfferStart && templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
+          {canOfferStart && templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
+          <View style={styles.links}>
+            <Pressable accessibilityRole="button" onPress={() => router.navigate('/templates')} style={styles.link}><Text style={styles.linkText}>Plans</Text></Pressable>
+            {canOfferStart && templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.link}><Text style={styles.linkText}>Change workout</Text></Pressable>}
+            {canOfferStart && !noPlans && <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={styles.link}><Text style={styles.linkText}>Empty workout</Text></Pressable>}
+          </View>
+        </View>
         {canOfferStart && <View>
             {launchState === 'loading' && <Text style={styles.planEmptyCopy}>Checking workout start…</Text>}
             {(launchState === 'retry' || launchState === 'unavailable' || launchState === 'corrupt') && <View accessibilityRole="alert" style={styles.launchFeedback}><Text style={styles.planEmptyCopy}>{launch?.state.message ?? 'Could not start workout.'}</Text>{launchState !== 'corrupt' && <Pressable accessibilityRole="button" onPress={() => { if (launchState === 'unavailable') { launch?.dismissUnavailable(); setSelection({ uid: uid!, target: null, unavailable: true }); setTemplatesAttempt((value) => value + 1) } else void launch?.retry() }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
+        </View>}
+        {showSummary && summary && <View style={styles.week}>
+          <View style={styles.weekHead}><Text accessibilityRole="header" style={styles.weekTitle}>This week</Text><Text style={styles.weekMeta}>{summary.weeklyDone} of {goal}{summary.weeklyVolume > 0 ? ` · ${formatCompactVolume(summary.weeklyVolume, units)}` : ''}</Text></View>
+          <View accessibilityLabel="Days of the current week" style={styles.days}>{summary.days.map((day) => <View key={day.label} style={[styles.day, day.workouts > 0 && styles.dayDone, day.isToday && styles.dayToday]}><Text style={[styles.dayLabel, (day.workouts > 0 || day.isToday) && styles.dayLabelOn]}>{day.label.charAt(0)}</Text></View>)}</View>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: weekOpen }} onPress={() => setWeekOpen((open) => !open)} style={styles.link}><Text style={styles.linkText}>Week details</Text></Pressable>
+          {weekOpen && <View style={styles.signals}>{[
+            ['Schedule', `${summary.activeDays}/7 days`, `${summary.sessionsDelta > 0 ? '+' : ''}${summary.sessionsDelta === 0 ? 'No change' : summary.sessionsDelta} compared with last week`],
+            ['Strong day', summary.peakDay?.volume ? summary.peakDay.label : 'None', summary.peakDay?.volume ? `${formatCompactVolume(summary.peakDay.volume, units)} • ${summary.peakDay.sets} ${pluralize(summary.peakDay.sets, 'set', 'sets')}` : 'No workouts this week'],
+            ['Average session', summary.averageMinutes ? `${summary.averageMinutes} min` : '—', summary.averageVolume ? `${formatCompactVolume(summary.averageVolume, units)} per workout` : 'No average this week'],
+            ['Volume', formatCompactVolume(summary.weeklyVolume, units), summary.volumeDelta === null ? 'No change data yet' : `${summary.volumeDelta >= 0 ? '+' : ''}${summary.volumeDelta}% vs last week`],
+          ].map(([label, value, copy]) => <View key={label} style={styles.signal}><Text style={styles.signalLabel}>{label}</Text><Text style={styles.signalValue}>{value}</Text><Text style={styles.signalCopy}>{copy}</Text></View>)}</View>}
         </View>}
         {active.state.status === 'empty' && readiness && <ReadinessHome state={readiness.state} controller={readiness.controller}
           recommendation={recommendation} templateName={chosen?.template.name ?? ''} units={units}
@@ -167,46 +178,13 @@ export default function DashboardScreen() {
           onEdit={() => { if (chosen) router.push({ pathname: '/templates/[id]/edit', params: { id: chosen.template.id } }) }}
           prerequisiteMessage={readinessEntry && chosen && !recommendation ? state.status === 'loading' || templatesState.status === 'loading' ? 'Loading recommendation…' : 'Could not confirm recommendation data. You can still start the selected workout.' : null}
           onRetry={() => { retry(); setTemplatesAttempt(value => value + 1) }} />}
-        {showSummary && <View style={styles.week}>
-          <View style={styles.sectionHead}>
-            <Text accessibilityRole="header" style={styles.sectionTitle}>This week</Text>
-            <View style={styles.range}><Text style={styles.rangeDate}>{summary && formatWeekRange(summary.dates)}</Text>{summary && summary.volumeDelta !== null && <Text style={styles.mutedSmall}>{`${summary.volumeDelta >= 0 ? '+' : ''}${summary.volumeDelta}% vs last week`}</Text>}</View>
-          </View>
-          {summary?.weeklyDone === 0 ? <View style={styles.weekEmpty}>
-            <View style={styles.emptySummary}><View style={styles.flex}><Text style={styles.statLabel}>Weekly goal</Text><Text style={styles.muted}>{remaining} {pluralize(remaining, 'session', 'sessions')} to reach your goal.</Text></View><Text style={styles.goalCount}>0/{goal}</Text></View>
-            <View style={styles.emptyDays}>{summary.days.map((day) => <View key={day.label} style={[styles.emptyDay, day.isToday && styles.todayDay]}><Text style={[styles.emptyDayLabel, day.isToday && styles.todayLabel]}>{day.label}</Text><Text style={[styles.dayValue, day.isToday && styles.todayLabel]}>{day.date.getDate()}</Text></View>)}</View>
-          </View> : summary && <>
-            <View style={styles.chart}>
-              <View style={styles.chartHead}><View><Text style={styles.statLabel}>Weekly volume</Text><Text style={styles.volume}>{formatCompactVolume(summary.weeklyVolume, units)}</Text></View><View><Text style={styles.count}>{summary.weeklyDone}/{goal}</Text><Text style={styles.mutedSmall}>sessions / goal</Text></View></View>
-              <View style={styles.bars}>{summary.days.map((day) => <View key={day.label} style={styles.barCell}><View style={styles.barTrack}><View style={[styles.barFill, { height: `${day.volume > 0 ? Math.max(18, Math.round(day.volume / maxVolume * 100)) : 8}%`, backgroundColor: day.volume > 0 ? undefined : 'rgba(255,255,255,0.035)', experimental_backgroundImage: day.isToday ? 'linear-gradient(180deg, rgba(244, 238, 232, 0.576) 0%, rgba(244, 238, 232, 0.12) 100%)' : day.volume > 0 ? 'linear-gradient(180deg, rgba(244, 238, 232, 0.54) 0%, rgba(244, 238, 232, 0.096) 100%)' : undefined }]} /></View><Text style={[styles.dayLabel, day.isToday && styles.todayLabel]}>{day.label}</Text><Text style={styles.barValue}>{day.volume > 0 ? formatCompactVolume(day.volume, units).replace(` ${units}`, '') : '—'}</Text></View>)}</View>
-            </View>
-            <View style={styles.signals}>
-              {[
-                ['Weekly goal', `${summary.weeklyDone}/${goal}`, summary.weeklyDone >= goal ? 'Goal reached.' : `${remaining} ${pluralize(remaining, 'session', 'sessions')} to reach this week’s goal.`],
-                ['Schedule', `${summary.activeDays}/7 days`, `${summary.sessionsDelta > 0 ? '+' : ''}${summary.sessionsDelta === 0 ? 'No change' : summary.sessionsDelta} compared with last week`],
-                ['Strong day', peak?.volume ? peak.label : 'None', peak?.volume ? `${formatCompactVolume(peak.volume, units)} • ${peak.sets} ${pluralize(peak.sets, 'set', 'sets')}` : 'No workouts this week'],
-                ['Average session', summary.averageMinutes ? `${summary.averageMinutes} min` : '—', summary.averageVolume ? `${formatCompactVolume(summary.averageVolume, units)} per workout` : 'No average this week'],
-              ].map(([label, value, copy]) => <View key={label} style={styles.signal}><Text style={styles.statLabel}>{label}</Text><Text style={styles.signalValue}>{value}</Text>{width > 520 && <Text style={styles.mutedSmall}>{copy}</Text>}</View>)}
-            </View>
-          </>}
-        </View>}
-        <View style={styles.history}>
-          <View style={[styles.sectionHead, styles.historyHead]}><Text accessibilityRole="header" style={styles.sectionTitle}>Recent workouts</Text><Pressable accessibilityRole="button" onPress={() => router.navigate('/history')} style={styles.historyLink}><Text style={styles.historyLinkText}>View history</Text><Chevron /></Pressable></View>
-          {confirmedEmpty && <Text style={styles.emptyCopy}>Your first saved workout will appear here.</Text>}
-          {recent.map((workout) => {
-            const metrics = deriveWorkout(workout, new Map())
-            return <Pressable key={workout.id} accessibilityRole="button" accessibilityLabel={`Open workout ${workoutTitle(workout)}`} onPress={() => router.push({ pathname: '/workout/[workoutId]', params: { workoutId: workout.id } })} style={styles.workoutRow}>
-              <Text style={styles.setCount}>{metrics.totalSets} {pluralize(metrics.totalSets, 'set', 'sets')}</Text>
-              <Text numberOfLines={2} style={styles.workoutName}>{workoutTitle(workout)}</Text>
-              <Text style={styles.mutedSmall}>{new Date(workout.startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>
-              {!workout.materialized && <Text style={styles.pending}>Workout saved. Stats are still processing.</Text>}
-              {workoutTitle(workout) !== workout.exercises.map((exercise) => exercise.name.trim()).join(' + ') && <Text numberOfLines={2} style={styles.exercisePreview}>{formatExercisePreview(workout.exercises.map((exercise) => exercise.name))}</Text>}
-              <View style={styles.metrics}><Metric label="Volume" value={formatCompactVolume(metrics.totalVolume, units)} /><Metric label="Exercises" value={String(workout.exercises.length)} /><Metric label="Time" value={formatWorkoutDuration(workout.startedAt, workout.finishedAt)} /></View>
-            </Pressable>
-          })}
-        </View>
       </>}
     </ScrollView>
+    {data && canOfferStart && !recommendation && <View style={styles.startBar}>
+      {chosen
+        ? <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : `Start ${chosen.day.name}`}</Text></Pressable>
+        : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
+    </View>}
     <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
         <View style={styles.pickerHead}><View><Text style={styles.planMeta}>From your plans</Text><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Icon name="close" size={18} color={colors.textStrong} /></Pressable></View>
@@ -218,50 +196,29 @@ export default function DashboardScreen() {
   </SafeAreaView>
 }
 
-function Chevron() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.muted} strokeWidth={2.3} strokeLinecap="round" strokeLinejoin="round" /></Svg> }
-function PlayIcon() { return <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m8 5 11 7-11 7z" fill="none" stroke={colors.textStrong} strokeWidth={2.3} strokeLinejoin="round" /></Svg> }
-function Metric({ label, value }: { label: string; value: string }) { return <View style={styles.metric}><Text style={styles.statLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View> }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingTop: 26.4, paddingHorizontal: 16, paddingBottom: 28, experimental_backgroundImage: pageBackground }, flex: { flex: 1 },
-  grain: { ...StyleSheet.absoluteFill, opacity: 0.024 }, grainImage: { width: '100%', height: '100%' },
+  screen: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingTop: 26.4, paddingHorizontal: 16, paddingBottom: 28 },
   notice: { alignItems: 'flex-start', gap: 12, paddingVertical: 32 }, noticeTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 17 },
-  muted: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19 }, mutedSmall: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.5, lineHeight: 16 },
+  muted: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19 },
   retry: { minHeight: 44, justifyContent: 'center' }, actionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
-  cacheRow: { alignItems: 'flex-start', gap: 4, paddingTop: 10 },
-  hero: { borderBottomColor: colors.line, borderBottomWidth: 1, paddingTop: 8, paddingBottom: 24 },
-  date: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, marginBottom: 12 },
-  greeting: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 16, marginBottom: 7 },
-  name: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 32, lineHeight: 35 },
-  last: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 12 },
-  startStack: { gap: 12, marginTop: 24 },
-  planCard: { minHeight: 88, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, gap: 16, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: 'linear-gradient(135deg, rgba(244, 238, 232, 0.084), transparent 62%)' },
-  planCopy: { gap: 2 }, planMeta: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.5 },
-  planDay: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 20, lineHeight: 22, marginVertical: 2 },
-  planActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  planPrimary: { minHeight: 44, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 8, paddingHorizontal: 12, backgroundColor: colors.primaryEnd, boxShadow: '0 6px 8px rgba(244, 238, 232, 0.108), inset 0 1px 0 rgba(255, 255, 255, 0.18)', experimental_backgroundImage: primaryGradient },
-  planPrimaryText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
-  changeButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  changeText: { color: colors.textStrong, fontFamily: 'InstrumentSans_500Medium', fontSize: 12.5 },
-  planEmpty: { borderRadius: 14, backgroundColor: colors.surfaceRaised, gap: 4, paddingHorizontal: 16, paddingVertical: 14 },
-  planEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  cacheRow: { alignItems: 'flex-start', gap: 4, paddingTop: 14 },
+  cover: { height: 248, marginTop: -26.4, marginHorizontal: -16, overflow: 'hidden' }, coverImage: { ...StyleSheet.absoluteFill, width: '100%', height: '100%', resizeMode: 'cover' },
+  coverFade: { ...StyleSheet.absoluteFill, experimental_backgroundImage: `linear-gradient(180deg, transparent 40%, ${colors.background}b8 72%, ${colors.background} 100%)` },
+  coverCopy: { position: 'absolute', left: 16, right: 16, bottom: 4 }, coverMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20 },
+  coverTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 36, lineHeight: 40, letterSpacing: -1 },
+  plan: { gap: 4, marginTop: 18 }, exercise: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40 },
+  exerciseName: { flex: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 }, exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] }, exerciseWeight: { color: colors.text, fontFamily: 'InstrumentSans_500Medium' },
+  links: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20 }, link: { minHeight: 44, justifyContent: 'center' }, linkText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
+  planEmpty: { gap: 4, paddingVertical: 8 }, planEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },
-  emptyStart: { alignSelf: 'flex-start', minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingHorizontal: 6 },
-  emptyStartPrimary: { alignSelf: 'flex-start', marginTop: 12 },
-  emptyStartText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   launchFeedback: { gap: 4 }, disabled: { opacity: 0.65 },
-  week: { paddingVertical: 26 }, sectionHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, marginBottom: 18 }, historyHead: { alignItems: 'flex-end', flexWrap: 'wrap', gap: 16, marginBottom: 16 },
-  sectionTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 24, lineHeight: 26.4 }, range: { alignItems: 'flex-end' }, rangeDate: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
-  weekEmpty: { gap: 14 }, emptySummary: { flexDirection: 'row', gap: 16 }, statLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.5 },
-  goalCount: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 26 }, emptyDays: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 14, overflow: 'hidden' },
-  emptyDay: { flex: 1, alignItems: 'center', gap: 2.88, paddingVertical: 10.4 }, todayDay: { backgroundColor: 'rgba(244, 238, 232,0.075)', borderRadius: 8 }, emptyDayLabel: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 }, dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 }, todayLabel: { color: colors.accentText }, dayValue: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
-  chart: { backgroundColor: colors.surface, borderRadius: 8, padding: 16 }, chartHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', gap: 10, marginBottom: 18 },
-  volume: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 34, lineHeight: 37, marginTop: 7 }, count: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, textAlign: 'right' },
-  bars: { flexDirection: 'row', gap: 5, height: 162.8, paddingTop: 8 }, barCell: { flex: 1, alignItems: 'center', gap: 6.72 }, barTrack: { height: 108.8, width: '100%', backgroundColor: 'rgba(255,255,255,0.025)', borderRadius: 5.6, justifyContent: 'flex-end', overflow: 'hidden' }, barFill: { width: '100%', borderTopLeftRadius: 5.6, borderTopRightRadius: 5.6 }, barValue: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11 },
-  signals: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }, signal: { width: '50%', paddingVertical: 10, paddingRight: 8 }, signalValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 3, marginBottom: 3 },
-  history: { borderTopColor: colors.line, borderTopWidth: 1, paddingTop: 26 }, historyLink: { alignItems: 'center', flexDirection: 'row', gap: 5.6, minHeight: 44, paddingHorizontal: 12 }, historyLinkText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 }, emptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, paddingVertical: 14 },
-  workoutRow: { borderTopColor: colors.line, borderTopWidth: 1, paddingVertical: 16 }, setCount: { color: colors.muted, fontFamily: 'SplineSansMono_600SemiBold', fontSize: 12 }, workoutName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, marginTop: 8, marginBottom: 8 }, pending: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginTop: 8 }, exercisePreview: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 10 },
-  metrics: { flexDirection: 'row', marginTop: 12 }, metric: { flex: 1, paddingVertical: 8 }, metricValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginTop: 5 },
+  startBar: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 2 }, start: { height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35)' }, startText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
+  week: { paddingTop: 18, paddingBottom: 26 }, weekHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }, weekTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 }, weekMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] },
+  days: { flexDirection: 'row', gap: 6, marginTop: 10 }, day: { flex: 1, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 10 }, dayDone: { backgroundColor: colors.choiceSelected }, dayToday: { borderColor: colors.text, borderWidth: 1.5 },
+  dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 }, dayLabelOn: { color: colors.text },
+  signals: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 }, signal: { width: '50%', paddingRight: 12 }, signalLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, signalValue: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, fontVariant: ['tabular-nums'] }, signalCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 16 },
+  planMeta: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.5 }, changeText: { color: colors.textStrong, fontFamily: 'InstrumentSans_500Medium', fontSize: 12.5 }, planPrimaryText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
   pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(13, 11, 10,0.82)' },
   pickerDialog: { maxHeight: '88%', backgroundColor: colors.surfaceRaised },
   pickerHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 16, borderBottomWidth: 1, borderBottomColor: colors.line },

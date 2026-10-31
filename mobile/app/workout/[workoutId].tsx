@@ -1,6 +1,6 @@
 import WorkoutDraftRecovery from '../../src/WorkoutDraftRecovery'
 import { useCallback, useMemo, useRef } from 'react'
-import { ActivityIndicator, BackHandler, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
@@ -16,7 +16,6 @@ import ActiveWorkoutReturnBar from '../../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../../src/HistoryHeader'
 import { formatWorkoutDate, formatWorkoutDuration, workoutFocusLabel, workoutSetVolumeLabel } from '../../src/history'
 import { workoutTitle } from '../../../src/lib/workoutCopy'
-import grainTexture from '../../assets/grain.png'
 import { colors, pageBackground } from '../../src/theme'
 import { Icon } from '../../src/icons'
 
@@ -79,7 +78,6 @@ export default function SavedWorkoutScreen() {
       <HistoryHeader />
       <ActiveWorkoutReturnBar />
       <ScrollView contentContainerStyle={styles.content}>
-        <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
         <View style={styles.navRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={back} style={styles.backButton}>
             <Svg accessibilityElementsHidden height={16} width={16} viewBox="0 0 24 24"><Path d="m12 19-7-7 7-7" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><Path d="M19 12H5" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg><Text style={styles.backText}>{resultIsValid ? 'Back to Home' : 'Back'}</Text>
@@ -185,9 +183,7 @@ const styles = StyleSheet.create({
   editAction: { flex: 1, minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderWidth: 1, borderColor: colors.line, borderRadius: 8 },
   screen: { backgroundColor: colors.background, flex: 1 },
   content: { flexGrow: 1, paddingBottom: 36, paddingHorizontal: 16, paddingTop: 16, experimental_backgroundImage: pageBackground },
-  grain: { height: '100%', opacity: 0.024, position: 'absolute', width: '100%' },
-  grainImage: { height: '100%', width: '100%' },
-  navRow: { alignItems: 'center', flexDirection: 'row', minHeight: 44 },
+      navRow: { alignItems: 'center', flexDirection: 'row', minHeight: 44 },
   backButton: { alignItems: 'center', alignSelf: 'flex-start', flexDirection: 'row', gap: 5, minHeight: 40, paddingHorizontal: 1 },
   backText: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
   resultBanner: { alignItems: 'center', backgroundColor: 'rgba(244, 238, 232, 0.048)', borderColor: 'rgba(244, 238, 232, 0.18)', borderRadius: 8, borderWidth: StyleSheet.hairlineWidth, flexDirection: 'row', gap: 12, marginBottom: 10, marginTop: 4, padding: 14 },

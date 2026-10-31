@@ -1,12 +1,11 @@
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
-import grainTexture from '../assets/grain.png'
 import { pluralize } from '../../src/lib/pluralize'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
@@ -109,7 +108,6 @@ function Plans({ uid }: { uid: string }) {
     <HistoryHeader />
     <ActiveWorkoutReturnBar />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
-      <View pointerEvents="none" style={styles.grain}><Image accessibilityElementsHidden resizeMode="repeat" source={grainTexture} style={styles.grainImage} /></View>
       <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <View accessibilityLabel={`${plans.length} ${pluralize(plans.length, 'plan', 'plans')}`} style={styles.summary}><Text style={styles.countNumber}>{plans.length}</Text><Text style={styles.count}>{pluralize(plans.length, 'plan', 'plans')}</Text></View>}</View><View style={styles.headerActions}><Pressable accessibilityRole="button" onPress={() => router.navigate('/exercises')} style={styles.exercisesLink}><Text style={styles.copy}>Exercises</Text></Pressable><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><LineIcon name="plus" size={15} color={colors.onPrimary} /><Text style={styles.newPlanText}>New plan</Text></Pressable></View></View>
       {saved === '1' && <Text accessibilityLiveRegion="polite" style={styles.savedNotice}>Plan saved</Text>}
       {feedback && !feedbackPlan && launchFeedback}
@@ -150,8 +148,7 @@ const styles = StyleSheet.create({
   savedNotice: { color: colors.recovery, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, paddingTop: 12 },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, experimental_backgroundImage: pageBackground },
-  grain: { ...StyleSheet.absoluteFill, opacity: 0.024 }, grainImage: { width: '100%', height: '100%' },
-  heading: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, borderBottomColor: 'rgba(244, 238, 232,0.11)', borderBottomWidth: 1, paddingTop: 16, paddingBottom: 16 },
+    heading: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, borderBottomColor: 'rgba(244, 238, 232,0.11)', borderBottomWidth: 1, paddingTop: 16, paddingBottom: 16 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap', justifyContent: 'flex-end', flexShrink: 1 }, exercisesLink: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 7.2 },
   newPlan: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 8, backgroundColor: '#d9cfc2', experimental_backgroundImage: primaryGradient }, newPlanText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   title: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 38.4, lineHeight: 37.632, marginTop: 6.08 },

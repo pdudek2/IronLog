@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar'
 import HistoryHeader from '../src/HistoryHeader'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import BottomNavigation, { useBottomNavigation, type NavigationExit } from '../src/BottomNavigation'
-import { readProfile, saveProfile } from '../src/firebase'
+import { logout, readProfile, saveProfile } from '../src/firebase'
 import { ProfileController, profileGoals, type ProfileState } from '../src/profile'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import { colors, primaryGradient } from '../src/theme'
@@ -27,6 +27,7 @@ function Profile({ uid }: { uid: string }) {
   const [state, setState] = useState<ProfileState | null>(null)
   const [controller] = useState(() => new ProfileController(uid, { read: readProfile, write: saveProfile,
     applyUnits: (owner, units) => runtime.current.refreshUnits(owner, units) }, setState))
+  const [signingOut, setSigningOut] = useState(false)
   const navigation = useBottomNavigation()
   const insets = useSafeAreaInsets()
   const focused = useRef(false)
@@ -64,6 +65,19 @@ function Profile({ uid }: { uid: string }) {
     })
     return () => { focused.current = false; controller.suspendRead(); back.remove() }
   }, [controller]))
+  const signOut = async () => {
+    if (signingOut) return false
+    setSigningOut(true)
+    try {
+      await logout()
+      router.replace('/')
+      return true
+    } catch {
+      showDialog('Could not sign out', 'Check your connection and try again.')
+      setSigningOut(false)
+      return false
+    }
+  }
   const current = state ?? controller.state
   const input = current.input
   const locked = current.status !== 'ready' || current.busy || current.pending
@@ -83,6 +97,7 @@ function Profile({ uid }: { uid: string }) {
             <View style={styles.section}><View style={styles.weekHeading}><Text style={styles.label}>Workouts per week</Text><Text accessibilityLiveRegion="polite" style={styles.weekValue}>{input.weeklyGoal} {input.weeklyGoal === 1 ? 'workout' : 'workouts'}</Text></View><Slider accessibilityLabel="Workouts per week" accessibilityValue={{ min: 1, max: 7, now: Math.min(7, input.weeklyGoal), text: `${input.weeklyGoal} saved workouts; choose 1 to 7` }} disabled={locked} minimumValue={1} maximumValue={7} step={1} value={Math.min(7, input.weeklyGoal)} onValueChange={weeklyGoal => controller.change({ weeklyGoal })} minimumTrackTintColor="rgba(255,255,255,0.08)" maximumTrackTintColor="rgba(255,255,255,0.08)" thumbTintColor={colors.accent} style={styles.slider} /><View style={styles.bounds} accessible={false}><Text style={styles.bound}>1</Text><Text style={styles.bound}>7</Text></View><Text style={styles.unitsLabel}>Units</Text><View style={styles.units}>{(['kg', 'lbs'] as const).map(units => <Pressable key={units} accessibilityRole="button" accessibilityLabel={units} accessibilityState={{ selected: input.units === units, disabled: locked }} disabled={locked} onPress={() => controller.change({ units })} style={[styles.unit, units === 'lbs' && styles.unitBorder, input.units === units && styles.selectedUnit]}><Text style={[styles.unitText, input.units === units && styles.selectedText]}>{units}</Text></Pressable>)}</View></View>
             <View style={styles.saveSection}><Pressable accessibilityRole="button" accessibilityLabel={current.busy ? 'Saving' : current.pending ? 'Check save outcome' : 'Save changes'} accessibilityState={{ disabled: current.busy || current.status !== 'ready', busy: current.busy }} disabled={current.busy || current.status !== 'ready'} onPress={() => void submit()} style={[styles.save, (current.busy || current.status !== 'ready') && styles.disabled]}><Text style={styles.saveText}>{current.busy ? 'Saving…' : current.pending ? 'Check save outcome' : 'Save changes'}</Text></Pressable>{current.message && <Text accessibilityRole={current.message === 'Profile saved' ? undefined : 'alert'} accessibilityLiveRegion="polite" style={current.message === 'Profile saved' ? styles.success : styles.error}>{current.message}</Text>}{current.status !== 'ready' && <Pressable accessibilityRole="button" onPress={() => void controller.load(true)} style={styles.retry}><Text style={styles.accent}>Retry</Text></Pressable>}</View>
           </View>}
+        <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => leave(signOut)} style={styles.signOut}><Text style={styles.signOutText}>Sign out</Text></Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
     <BottomNavigation {...navigation} onRequestExit={leave} />
@@ -101,5 +116,6 @@ const styles = StyleSheet.create({
   weekHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }, weekValue: { color: colors.accentText, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20 }, slider: { height: 44, marginVertical: -10, marginHorizontal: -8 }, bounds: { flexDirection: 'row', justifyContent: 'space-between' }, bound: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 16 }, unitsLabel: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20, marginTop: 20, marginBottom: 8 },
   units: { width: 224, borderColor: border, borderWidth: 1, borderRadius: 8, overflow: 'hidden', flexDirection: 'row', backgroundColor: 'rgba(38, 33, 30,0.72)' }, unit: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center' }, unitBorder: { borderLeftColor: border, borderLeftWidth: 1 }, selectedUnit: { backgroundColor: colors.choiceSelected }, unitText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4 },
   saveSection: { paddingTop: 20, gap: 12 }, save: { minHeight: 45, alignItems: 'center', justifyContent: 'center', borderRadius: 8, backgroundColor: '#d9cfc2', experimental_backgroundImage: primaryGradient }, saveText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 }, disabled: { opacity: 0.55 },
+  signOut: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginTop: 12 }, signOutText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   loading: { marginTop: 32, gap: 12 }, error: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 18 }, success: { color: colors.recovery, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 }, retry: { minHeight: 44, justifyContent: 'center' }, accent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 }, muted: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
 })

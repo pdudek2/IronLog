@@ -1,22 +1,13 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { navigationSection, scrollNavigation, tabNavigation, workoutNavigationAction } from './navigation'
+import { navigationSection, scrollNavigation, tabNavigation } from './navigation'
 
 test('child routes retain their navigation section and unknown routes do not invent one', () => {
-  for (const path of ['/templates', '/templates/new', '/templates/abc/edit', '/exercises', '/exercises/global/squat', '/exercises/user/squat']) assert.equal(navigationSection(path), 'Plans')
-  for (const path of ['/progress', '/history', '/workout/abc']) assert.equal(navigationSection(path), 'Progress')
-  assert.equal(navigationSection('/'), 'Workout')
+  for (const path of ['/dashboard', '/templates', '/templates/new', '/templates/abc/edit', '/exercises', '/exercises/global/squat', '/exercises/user/squat']) assert.equal(navigationSection(path), 'Train')
+  for (const path of ['/history', '/workout/abc', '/workout-edit/abc']) assert.equal(navigationSection(path), 'History')
+  assert.equal(navigationSection('/progress'), 'Progress')
   assert.equal(navigationSection('/coach'), 'Coach')
-  assert.equal(navigationSection('/profile'), undefined)
-})
-test('central action resumes existing work and never starts from uncertainty', () => {
-  assert.equal(workoutNavigationAction('ready', 'ready', 'retry'), 'resume')
-  assert.equal(workoutNavigationAction('empty', 'ready', 'ready'), 'start')
-  assert.equal(workoutNavigationAction('empty', 'ready', 'unavailable'), 'start')
-  for (const state of ['loading', 'cache-miss', 'error'] as const) assert.equal(workoutNavigationAction(state, 'ready', 'ready'), 'wait')
-  for (const state of ['retry', 'corrupt'] as const) assert.equal(workoutNavigationAction('empty', 'ready', state), 'recover')
-  for (const state of ['loading', 'starting'] as const) assert.equal(workoutNavigationAction('empty', 'ready', state), 'wait')
-  for (const state of ['loading', 'pending', 'failed']) assert.equal(workoutNavigationAction('empty', state, 'ready'), 'recover')
+  for (const path of ['/', '/profile']) assert.equal(navigationSection(path), undefined)
 })
 test('scroll visibility tolerates jitter, restores upward and clamps overscroll', () => {
   let state = { y: 0, start: 0, direction: 0, hidden: false }
@@ -27,11 +18,12 @@ test('scroll visibility tolerates jitter, restores upward and clamps overscroll'
   state = scrollNavigation(state, -8); assert.equal(state.y, 0); assert.equal(state.hidden, false)
 })
 
-test('tabs swap each other and Home pops back, so Back never replays the tab history', () => {
-  assert.deepEqual(tabNavigation('/dashboard', 'Plans'), { kind: 'navigate', href: '/templates' })
-  assert.deepEqual(tabNavigation('/templates', 'Progress'), { kind: 'replace', href: '/progress' })
-  assert.deepEqual(tabNavigation('/coach', 'Plans'), { kind: 'replace', href: '/templates' })
-  assert.deepEqual(tabNavigation('/progress', 'Home'), { kind: 'dismissTo', href: '/dashboard' })
+test('tabs swap each other and Train pops back, so Back never replays the tab history', () => {
+  assert.deepEqual(tabNavigation('/dashboard', 'History'), { kind: 'navigate', href: '/history' })
+  assert.deepEqual(tabNavigation('/history', 'Progress'), { kind: 'replace', href: '/progress' })
+  assert.deepEqual(tabNavigation('/coach', 'History'), { kind: 'replace', href: '/history' })
+  assert.deepEqual(tabNavigation('/progress', 'Train'), { kind: 'dismissTo', href: '/dashboard' })
+  assert.deepEqual(tabNavigation('/', 'Train'), { kind: 'replace', href: '/dashboard' })
   // A child screen keeps its place under the next tab, as before.
-  assert.deepEqual(tabNavigation('/history', 'Coach'), { kind: 'navigate', href: '/coach' })
+  assert.deepEqual(tabNavigation('/templates', 'Coach'), { kind: 'navigate', href: '/coach' })
 })

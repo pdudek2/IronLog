@@ -12,6 +12,16 @@ dist
 dist-ssr
 *.local
 
+# Local secrets and Firebase client config
+.env
+.env.*
+!.env.example
+!.env.test.example
+serviceAccount*.json
+*firebase-adminsdk*.json
+google-services.json
+GoogleService-Info.plist
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -31,7 +41,6 @@ playwright-report/
 .playwright/
 .playwright-cli/
 tests/e2e/.auth/
-.env.test
 
 # Mockup screenshots (regenerate with `npm run mockups`)
 mockups/
@@ -47,12 +56,11 @@ CLAUDE.md
 /PRODUCT.md
 /coverage/
 
-# Expo native client (generated projects, local Firebase config, and evidence)
+# Expo native client (generated projects and evidence)
 /mobile/node_modules/
 /mobile/.expo/
 /mobile/android/
 /mobile/ios/
-/mobile/config/google-services.json
 /mobile/test-results/
 /mobile/artifacts/
 

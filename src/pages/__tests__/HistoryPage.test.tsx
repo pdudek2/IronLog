@@ -333,7 +333,7 @@ describe('HistoryPage range state', () => {
     render(<HistoryPage />)
     fireEvent.click(await screen.findByRole('button', { name: /Push day/ }))
 
-    expect(mocks.navigate).toHaveBeenCalledWith('/workout/preview-row', { state: { workoutPreview: workout } })
+    expect(mocks.navigate).toHaveBeenCalledWith('/workout/preview-row', { state: { workoutPreview: workout, previewUid: 'user-1' } })
   })
 
   it('leads to an interrupted delete even when its workout has left the list', async () => {

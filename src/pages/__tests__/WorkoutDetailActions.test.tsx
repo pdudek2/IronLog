@@ -96,7 +96,7 @@ function deferred<T>() {
 }
 
 function renderPage(initialEntries: Array<string | { pathname: string; state?: unknown }> = [
-  { pathname: '/workout/workout-1', state: { workoutPreview: workout } },
+  { pathname: '/workout/workout-1', state: { workoutPreview: workout, previewUid: 'user-1' } },
 ]) {
   // A data router, as in the app: the editor's leave guard uses useBlocker.
   const router = createMemoryRouter([
@@ -662,11 +662,22 @@ describe('WorkoutDetailPage delete action', () => {
     { origin: '/history', expected: 'History workouts' },
   ])('returns to the $origin route through the Back action', async ({ origin, expected }) => {
     window.history.pushState({}, '', '/workout-detail-origin')
-    renderPage([origin, { pathname: '/workout/workout-1', state: { workoutPreview: workout } }])
+    renderPage([origin, { pathname: '/workout/workout-1', state: { workoutPreview: workout, previewUid: 'user-1' } }])
 
     fireEvent.click(screen.getByRole('button', { name: 'Back' }))
 
     expect(await screen.findByText(expected)).toBeInTheDocument()
+  })
+
+  it('does not open a preview left in history by another account', async () => {
+    mocks.getWorkout.mockReturnValue(new Promise(() => undefined))
+
+    const foreign = renderPage([{ pathname: '/workout/workout-1', state: { workoutPreview: workout, previewUid: 'user-2' } }])
+    expect(screen.queryByText(workout.exercises[0]!.name)).not.toBeInTheDocument()
+    foreign.unmount()
+
+    renderPage([{ pathname: '/workout/workout-1', state: { workoutPreview: workout, previewUid: 'user-1' } }])
+    expect(screen.getByText(workout.exercises[0]!.name)).toBeInTheDocument()
   })
 
   it('uses history as the Back fallback on a direct workout URL', async () => {

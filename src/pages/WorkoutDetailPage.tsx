@@ -94,11 +94,12 @@ function cloneExercises(exercises: WorkoutSummary['exercises']): WorkoutSummary[
   }))
 }
 
-function readWorkoutPreview(state: unknown, workoutId: string | undefined): WorkoutSummary | null {
+// History state survives sign-out in the same tab, so a preview only opens for the account that wrote it.
+function readWorkoutPreview(state: unknown, workoutId: string | undefined, uid: string | undefined): WorkoutSummary | null {
   if (!state || typeof state !== 'object' || Array.isArray(state)) return null
 
-  const preview = (state as { workoutPreview?: WorkoutSummary }).workoutPreview
-  if (!preview || preview.id !== workoutId) return null
+  const { workoutPreview: preview, previewUid } = state as { workoutPreview?: WorkoutSummary; previewUid?: string }
+  if (!preview || preview.id !== workoutId || !uid || previewUid !== uid) return null
 
   return preview
 }
@@ -177,7 +178,7 @@ export default function WorkoutDetailPage() {
   const navigate = useNavigate()
   const { user } = useAuthStore()
   const units = useProfileStore((state) => state.profile?.units ?? 'kg')
-  const previewWorkout = readWorkoutPreview(location.state, id)
+  const previewWorkout = readWorkoutPreview(location.state, id, user?.uid)
   const [workoutResultScope, setWorkoutResultScope] = useState(() => ({
     workoutId: id,
     result: readWorkoutResult(location.state, id),

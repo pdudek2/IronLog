@@ -393,7 +393,7 @@ export default function HistoryPage() {
                         <button
                           key={workout.id}
                           type="button"
-                          onClick={() => navigate(`/workout/${workout.id}`, { state: { workoutPreview: workout } })}
+                          onClick={() => navigate(`/workout/${workout.id}`, { state: { workoutPreview: workout, previewUid: user?.uid } })}
                           className="history-workout-row"
                         >
                           <div className="history-workout-main">

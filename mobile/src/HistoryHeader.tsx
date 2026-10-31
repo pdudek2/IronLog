@@ -15,7 +15,7 @@ export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (
   const streak = useStreak(useAuthRuntime().user?.uid)
 
   return <View style={styles.header}>
-    <Pressable accessibilityRole="button" accessibilityLabel="Open Home" hitSlop={6} onPress={() => onRequestAction ? onRequestAction('home', () => router.replace('/dashboard')) : router.navigate('/dashboard')} style={styles.brand}>
+    <Pressable accessibilityRole="button" accessibilityLabel="Open Train" hitSlop={6} onPress={() => onRequestAction ? onRequestAction('home', () => router.replace('/dashboard')) : router.navigate('/dashboard')} style={styles.brand}>
       <BrandMark width={18} />
     </Pressable>
     <View style={styles.actions}>

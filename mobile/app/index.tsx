@@ -58,7 +58,7 @@ import ExercisePicker from '../src/ExercisePicker'
 import { useKeyboardReveal } from '../src/useKeyboardReveal'
 import { covers } from '../src/covers'
 import { workoutCover } from '../../src/shared/workoutCover'
-import { colors, pageBackground, primaryGradient } from '../src/theme'
+import { colors, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
 import { BrandMark } from '../src/icons'
@@ -432,7 +432,10 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, expanded, 
               : <Text style={[styles.setToggle, current && styles.setToggleCurrent]}>{index + 1}</Text>}
           </Pressable>
           <Text numberOfLines={1} accessibilityLabel={`Previous set result ${index + 1}: ${previousText}`} style={[styles.setCellMuted, styles.setPreviousColumn]}>{previousText}</Text>
-          {current ? <Text style={styles.setNow}>{storedValueToSetInput(set.weight, 'weight', units) || 0} × {set.reps || 0}</Text> : <>
+          {current ? <>
+            <Text style={[styles.setNow, styles.weightInputColumn]}>{storedValueToSetInput(set.weight, 'weight', units) || 0}</Text>
+            <Text style={[styles.setNow, styles.repsInputColumn]}>{set.reps || 0}</Text>
+          </> : <>
           <View style={styles.weightInputColumn}><SetValueInput rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight" done={set.done}
             label={`Weight, ${exercise.name}, set ${index + 1}, ${units}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'weight', value)} /></View>
           <View style={styles.repsInputColumn}><SetValueInput rejectedEdit={rejectedEdit} value={set.reps} units={units} field="reps" done={set.done}
@@ -805,7 +808,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
     if (exercise?.sets.every((set) => set.done || set.clientId === setId)) setManualExercise(null)
   })
   // The keyboard lifts the panel, which would then cover a row being edited further up the list.
-  const panelVisible = panelExercise && (keyboardInset === 0 || panelInputFocused)
+  const panelVisible = panelExercise && !sessionLocked && (keyboardInset === 0 || panelInputFocused)
   const panelEditing: EditingActions = {
     updateSet: guardClosureInteraction(canEditCurrentSession, updateSet),
     adjustSet: guardClosureInteraction(canEditCurrentSession, adjustSet),
@@ -929,10 +932,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
           </View>}
 
           {state.session.exercises.length > 0 && <View style={styles.sessionTop}>
-            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.band}>
+            {closure.status === 'ready' && <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.band}>
               <Image source={covers[workoutCover(state.session.label)]} style={styles.bandImage} />
               <View style={styles.bandFade} />
-            </View>
+            </View>}
             <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.segs}>{state.session.exercises.map((exercise, index) => {
               const done = exercise.sets.filter((set) => set.done).length
               return <View key={exerciseIdentity(exercise, index)} style={[styles.seg, index === panelIndex && styles.segCurrent]}><View style={[styles.segFill, { width: `${exercise.sets.length ? done / exercise.sets.length * 100 : 0}%` }]} /></View>
@@ -1051,7 +1054,6 @@ const styles = StyleSheet.create({
   sessionContent: {
     flexGrow: 1,
     paddingBottom: 128,
-    experimental_backgroundImage: pageBackground,
   },
   sessionShell: { flex: 1, backgroundColor: colors.background },
   lifecycleBar: { backgroundColor: '#0f0d0c', borderBottomColor: colors.line, borderBottomWidth: StyleSheet.hairlineWidth, height: 69, zIndex: 4 },
@@ -1093,7 +1095,7 @@ const styles = StyleSheet.create({
   upNext: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, marginBottom: 4, marginTop: 12 },
   addExerciseText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
   setRowCurrent: { backgroundColor: 'rgba(244, 238, 232, 0.1)', borderRadius: 11 },
-  setNow: { color: colors.textStrong, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, fontVariant: ['tabular-nums'], textAlign: 'center' },
+  setNow: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, fontVariant: ['tabular-nums'], textAlign: 'center' },
   sessionTop: { paddingHorizontal: 16, paddingTop: 10 },
   band: { height: 176, left: 0, position: 'absolute', right: 0, top: -64 },
   bandImage: { height: '100%', opacity: 0.7, resizeMode: 'cover', width: '100%' },

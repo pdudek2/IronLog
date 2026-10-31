@@ -120,7 +120,7 @@ export default function SavedWorkoutScreen() {
 
           <View style={styles.mutationActions}>
             <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId } })} style={styles.editAction}><Text style={[styles.retryText, { color: colors.textStrong, textAlign: 'center' }]}>Edit workout</Text></Pressable>
-            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId, action: 'delete' } })} style={styles.retryButton}><Text style={[styles.retryText, { color: colors.warning }]}>Delete</Text></Pressable>
+            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId, action: 'delete' } })} style={styles.retryButton}><Text style={[styles.retryText, { color: colors.muted }]}>Delete</Text></Pressable>
           </View>
 
           <View accessibilityLabel="Workout summary" style={styles.facts}>

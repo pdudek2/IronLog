@@ -65,7 +65,7 @@ export default function BottomNavigation({ hidden, keyboard, onRequestExit }: { 
     else void guarded()
   }
   const height = 58 + Math.max(10, inset) + 8
-  return <View style={{ height: keyboard ? 0 : height }} pointerEvents={hidden || keyboard ? 'none' : 'auto'}
+  return <View style={{ height: keyboard || hidden ? 0 : height }} pointerEvents={hidden || keyboard ? 'none' : 'auto'}
     accessibilityElementsHidden={hidden || keyboard} importantForAccessibility={hidden || keyboard ? 'no-hide-descendants' : 'auto'}>
     <View style={[styles.bar, { bottom: Math.max(10, inset), transform: [{ translateY: hidden || keyboard ? height : 0 }], opacity: hidden || keyboard ? 0 : 1 }]}>
       {(Object.keys(TABS) as NavigationTab[]).map(name => <Pressable key={name} accessibilityRole="tab" accessibilityLabel={name} accessibilityState={{ selected: section === name }} onPress={() => go(() => { const { kind, href } = tabNavigation(pathname, name); router[kind](href as Href) })} style={[styles.tab, section === name && styles.selected]}><Icon name={name} color={section === name ? colors.textStrong : colors.muted} /><Text style={[styles.label, section === name && { color: colors.textStrong }]}>{name}</Text></Pressable>)}

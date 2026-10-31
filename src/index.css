@@ -1610,11 +1610,11 @@ a {
   gap: 0.4rem;
   padding: 0.35rem 0.75rem 0.35rem 0.55rem;
   border-radius: var(--radius-pill);
-  background: var(--success-soft);
-  border: 1px solid var(--success-soft-strong);
-  color: var(--success);
+  background: var(--surface-muted);
+  border: 0;
+  color: var(--muted);
   font-size: 0.8125rem;
-  font-weight: 700;
+  font-weight: 600;
   letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
@@ -1774,8 +1774,7 @@ a {
 
 .readiness-card {
   border: 0;
-  border-radius: var(--radius-xl);
-  background: var(--surface-muted);
+  background: none;
   box-shadow: none;
 }
 
@@ -1793,11 +1792,11 @@ a {
 }
 
 .readiness-card:not(.readiness-card--prompt) {
-  padding: 1rem;
+  padding: 0.25rem 0;
 }
 
 .readiness-card--loading {
-  background: var(--surface-muted);
+  background: none;
 }
 
 .readiness-card--error {
@@ -1836,13 +1835,12 @@ a {
 
 .readiness-summary {
   display: flex;
-  min-height: 4.75rem;
+  min-height: 3rem;
   cursor: pointer;
   list-style: none;
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  padding: 0.9rem 1rem;
 }
 
 .readiness-summary::-webkit-details-marker {
@@ -1856,25 +1854,26 @@ a {
 }
 
 .readiness-summary > div > span,
-.readiness-summary small,
-.readiness-summary-action {
+.readiness-summary small {
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 680;
+  font-size: 0.8125rem;
+}
+
+.readiness-summary > div > span {
+  display: none;
 }
 
 .readiness-summary strong {
-  color: var(--text-strong);
-  font-size: 0.9rem;
-  font-weight: 740;
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-weight: 400;
 }
 
 .readiness-summary-action {
   flex: none;
-}
-
-.readiness-card--prompt[open] .readiness-summary {
-  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .readiness-summary:focus-visible {
@@ -1883,7 +1882,7 @@ a {
 }
 
 .readiness-prompt-body {
-  padding: 0.9rem 1rem 1rem;
+  padding: 0.5rem 0 0;
 }
 
 @media (min-width: 1024px) {
@@ -2777,14 +2776,14 @@ a {
 }
 
 .workout-detail-action-secondary {
-  border: 1px solid var(--border-strong);
+  border: 0;
+  background: var(--selected-bg);
   background: transparent;
   color: var(--text-strong);
 }
 
 .workout-detail-action-secondary:hover {
-  border-color: color-mix(in srgb, var(--text) 34%, transparent);
-  background: var(--surface-muted);
+  background: var(--selected-bg);
 }
 
 .workout-detail-action-primary {
@@ -6262,8 +6261,9 @@ a {
 .coach-field input,
 .coach-field textarea {
   width: 100%;
-  border: 1px solid var(--border);
-  background: var(--input-bg);
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--surface-muted);
   padding: 0.85rem 0.95rem;
   color: var(--text-strong);
   font-size: 0.92rem;
@@ -6295,8 +6295,7 @@ a {
 
 .coach-field input:focus,
 .coach-field textarea:focus {
-  border-color: rgba(244, 238, 232, 0.252);
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.32);
+  box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .coach-composer-input:disabled {
@@ -6338,28 +6337,45 @@ a {
 
 .coach-choice-stack {
   display: grid;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--border);
-  gap: 1px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  border-radius: 0.75rem;
+  background: var(--surface-muted);
 }
 
 .coach-choice-option {
   min-width: 0;
+  min-height: 2.75rem;
   border: 0;
-  background: var(--surface-2);
-  padding: 0.7rem 0.8rem;
+  border-radius: 0.5625rem;
+  background: none;
   color: var(--muted);
-  font-size: 0.86rem;
-  font-weight: 700;
-  text-align: left;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .coach-choice-option[aria-pressed="true"] {
-  background: var(--accent-soft);
-  box-shadow: inset 3px 0 0 var(--accent);
-  color: var(--text-strong);
+  background: var(--selected-bg);
+  color: var(--text);
+}
+
+.coach-chip {
+  min-height: 2.75rem;
+  border: 0;
+  border-radius: 0.625rem;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--border);
+  padding-inline: 0.75rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.coach-chip[aria-pressed="true"] {
+  background: var(--selected-bg);
+  box-shadow: none;
+  color: var(--text);
 }
 
 .coach-preview-stats {
@@ -6912,18 +6928,21 @@ a {
   appearance: none;
   width: 22px;
   height: 22px;
+  margin-top: -8px;
+  border: 0;
   border-radius: 50%;
   background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
   cursor: pointer;
-  border: 2px solid rgba(0, 0, 0, 0.3);
 }
 .readiness-slider::-moz-range-thumb {
   width: 22px;
   height: 22px;
+  border: 0;
   border-radius: 50%;
   background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
   cursor: pointer;
-  border: 2px solid rgba(0, 0, 0, 0.3);
 }
 
 /* ──────────────────────────────────────────────────────────────────
@@ -7052,9 +7071,9 @@ a {
 
 .workout-detail-mobile-actions[data-placement='fixed'] .workout-detail-mobile-action-panel {
   padding: 0.5rem;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  background: var(--bg-elevated);
+  border: 0;
+  border-radius: 1.2rem;
+  background: linear-gradient(180deg, var(--surface-3), var(--surface-2));
   box-shadow: var(--shadow-panel);
 }
 
@@ -8550,6 +8569,17 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   height: 100%;
   object-fit: cover;
   object-position: 100% 45%;
+  animation: train-cover-in 240ms ease-out both;
+}
+
+@keyframes train-cover-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .train-cover img {
+    animation: none;
+  }
 }
 
 .train-cover::after {

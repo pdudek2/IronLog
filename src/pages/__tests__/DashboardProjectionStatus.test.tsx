@@ -9,6 +9,7 @@ import MobileInteractionProvider from '../../components/MobileInteractionProvide
 import TopNav from '../../components/TopNav'
 import { readActiveSessionBackup, writeActiveSessionBackup } from '../../lib/activeSessionBackup'
 import type { WorkoutSummary } from '../../lib/workoutService'
+import type { WorkoutTemplate } from '../../lib/templateService'
 import { useAuthStore } from '../../store/authStore'
 import { useDashboardStore } from '../../store/dashboardStore'
 import { useWorkoutStore, type ActiveWorkout } from '../../store/workoutStore'
@@ -202,6 +203,7 @@ describe('Dashboard workout projection status', () => {
     first.unmount()
 
     mocks.getRecentWorkouts.mockReturnValueOnce(deferred<WorkoutSummary[]>().promise)
+    mocks.getTemplates.mockReturnValueOnce(deferred<WorkoutTemplate[]>().promise)
     render(<DashboardPage />)
     expect(screen.getByText(/Last: Push day/)).toBeInTheDocument()
   })

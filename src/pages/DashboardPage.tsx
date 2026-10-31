@@ -84,32 +84,27 @@ function fadeUp(delay: number) {
   }
 }
 
+// Decoded before Train renders, so a cover never pops in behind its title.
+for (const cover of ['push', 'pull', 'legs', 'plan']) new Image().src = `/covers/${cover}.jpg`
+
 function DashboardLoadingSkeleton() {
   return (
     <PageSkeleton label="Loading dashboard..." className="dashboard-page">
-      <section className="dashboard-home">
-        <div className="dashboard-home-copy">
-          <Bone width="9.5rem" height="0.75rem" style={{ marginBottom: '1rem' }} />
-          <Bone width="7rem" height="1rem" style={{ marginBottom: '0.6rem' }} />
-          <Bone width="min(17rem, 75%)" height="2.6rem" />
-          <Bone width="min(16rem, 70%)" height="0.95rem" style={{ marginTop: '1.25rem' }} />
-          <div className="dashboard-home-action-stack" style={{ marginTop: '1.15rem' }}>
-            <Bone height="7rem" style={{ borderRadius: 'var(--radius-xl)' }} />
-            <Bone width="10rem" height="1rem" />
-          </div>
-        </div>
-        <div className="dashboard-home-panel">
-          <Bone height="5.75rem" style={{ borderRadius: 'var(--radius-xl)' }} />
+      <section className="train-hero">
+        <div className="train-cover" />
+        <div className="train-plan">
+          <TrainPlanBones />
         </div>
       </section>
-      <div className="dashboard-week-panel">
-        <div className="dashboard-panel-head">
-          <Bone width="8rem" height="1.6rem" />
-          <Bone width="6.5rem" height="1rem" />
-        </div>
-        <Bone height="9rem" style={{ borderRadius: 'var(--radius-xl)' }} />
-      </div>
     </PageSkeleton>
+  )
+}
+
+function TrainPlanBones() {
+  return (
+    <div className="train-exercises" aria-hidden="true">
+      {[0, 1, 2, 3, 4].map((row) => <Bone key={row} height="1rem" style={{ margin: '0.75rem 0' }} />)}
+    </div>
   )
 }
 
@@ -132,14 +127,19 @@ export default function DashboardPage() {
   const weeklyDone = ownsSnapshot ? snapshotWeeklyDone : 0
   const dashboardReady = ownsSnapshot && snapshotReady
   const [openingWorkout, setOpeningWorkout] = useState(false)
+  // The last plans keep Train still on return; loadTemplates refreshes them behind it.
+  const [cachedPlans] = useState(() => {
+    const plans = useDashboardStore.getState().plans
+    return plans?.uid === user?.uid ? plans : null
+  })
   const [templatesResource, setTemplatesResource] = useState<TemplatesResource>({
     uid: user?.uid ?? null,
-    state: { status: 'loading' },
+    state: cachedPlans ? { status: 'success', data: cachedPlans.templates } : { status: 'loading' },
   })
   const [workoutSelection, setWorkoutSelection] = useState<WorkoutSelectionResource>({
-    uid: null,
-    initialized: false,
-    target: null,
+    uid: cachedPlans?.uid ?? null,
+    initialized: cachedPlans !== null,
+    target: cachedPlans ? firstLaunchableWorkout(cachedPlans.templates) : null,
     unavailable: false,
   })
   const [workoutPickerOpen, setWorkoutPickerOpen] = useState(false)
@@ -206,6 +206,7 @@ export default function DashboardPage() {
       .then((data) => {
         if (!templatesMountedRef.current || requestId !== templatesRequestRef.current) return
         setTemplatesResource({ uid, state: { status: 'success', data } })
+        useDashboardStore.getState().setPlans(uid, data)
         setWorkoutSelection((current) => {
           if (current.uid !== uid || !current.initialized) {
             return {
@@ -375,6 +376,7 @@ export default function DashboardPage() {
   const templates = templatesState.status === 'success' ? templatesState.data : []
   // A new account has nothing to start from a plan, so an empty workout is the main action.
   const noPlans = templatesState.status === 'success' && templates.length === 0
+  const plansLoading = templatesState.status === 'loading' && !hasActiveSession
   const selectedWorkout = workoutSelection.uid === user?.uid
     ? resolveWorkoutSelection(templates, workoutSelection.target)
     : null
@@ -515,22 +517,26 @@ export default function DashboardPage() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.22 }}
           >
-            <img src={`/covers/${workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)}.jpg`} alt="" />
+            {!plansLoading && <img src={`/covers/${workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)}.jpg`} alt="" />}
             <div className="train-cover-copy">
               <p className="train-date">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
               </p>
               <h1 className="train-title">
-                {quickTemplateDay?.name ?? `${getGreeting(new Date())}, ${profile?.displayName ?? 'athlete'}`}
+                {plansLoading
+                  ? <Bone width="9rem" height="2.25rem" />
+                  : quickTemplateDay?.name ?? `${getGreeting(new Date())}, ${profile?.displayName ?? 'athlete'}`}
               </h1>
-              {quickTemplate && quickTemplateDay
+              {plansLoading
+                ? <Bone width="11rem" height="0.875rem" />
+                : quickTemplate && quickTemplateDay
                 ? <p className="train-meta">{quickTemplate.name} · Day {quickTemplateDayIndex + 1} of {quickTemplate.days.length}</p>
                 : supportLine && <p className="train-meta">{supportLine}</p>}
             </div>
           </motion.div>
 
           <div className="train-plan">
-            {quickTemplateDay && quickTemplateHasExercises ? (
+            {plansLoading ? <TrainPlanBones /> : quickTemplateDay && quickTemplateHasExercises ? (
               <div className="train-exercises">
                 {quickTemplateDay.exercises.map((exercise) => (
                   <button
@@ -555,9 +561,7 @@ export default function DashboardPage() {
             ) : !hasActiveSession && (
               <div className="dashboard-workout-choice-empty">
                 <strong>
-                  {templatesState.status === 'loading'
-                    ? 'Loading plans…'
-                    : templatesState.status === 'error'
+                  {templatesState.status === 'error'
                       ? 'Plans unavailable'
                       : workoutSelection.unavailable
                         ? 'Workout no longer available'
@@ -615,7 +619,7 @@ export default function DashboardPage() {
 
             {!hasActiveSession && (
               <div className="train-start">
-                {quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
+                {plansLoading ? <Bone height="3.25rem" style={{ borderRadius: '0.9375rem' }} /> : quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
                   <button
                     type="button"
                     onClick={() => launchSelectedWorkout()}

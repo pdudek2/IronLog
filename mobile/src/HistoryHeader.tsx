@@ -20,7 +20,7 @@ export default function HistoryHeader({ onRequestAction }: { onRequestAction?: (
     </Pressable>
     <View style={styles.actions}>
     {streak > 0 && <Pressable accessibilityRole="button" accessibilityLabel={`Workout streak ${streak} ${streak === 1 ? 'day' : 'days'}`} onPress={() => onRequestAction ? onRequestAction('progress', () => router.navigate('/progress')) : router.navigate('/progress')} style={styles.streakTarget}><View style={styles.streak}>
-      <Svg accessibilityElementsHidden height={13} width={13} viewBox="0 0 24 24" fill="none" stroke={colors.recovery} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round"><Path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" /></Svg>
+      <Svg accessibilityElementsHidden height={13} width={13} viewBox="0 0 24 24" fill="none" stroke={colors.muted} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round"><Path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4" /></Svg>
       <Text style={styles.streakText}>{streak}</Text>
     </View></Pressable>}
     <Pressable accessibilityRole="button" accessibilityLabel="Profile" accessibilityState={{ selected: pathname === '/profile' }} onPress={() => onRequestAction ? onRequestAction('profile', () => router.navigate('/profile')) : router.navigate('/profile')} style={[styles.iconButton, pathname === '/profile' && styles.selected]}>
@@ -36,7 +36,7 @@ const styles = StyleSheet.create({
   selected: { backgroundColor: 'rgba(244, 238, 232,0.075)', borderRadius: 8 },
   iconButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   streakTarget: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
-  streak: { alignItems: 'center', backgroundColor: 'rgba(244, 238, 232, 0.078)', borderColor: 'rgba(244, 238, 232, 0.144)', borderRadius: 999, borderWidth: 1, flexDirection: 'row', gap: 6.4, paddingVertical: 5, paddingLeft: 8.8, paddingRight: 12 },
-  streakText: { color: colors.recovery, fontFamily: 'InstrumentSans_700Bold', fontSize: 13, fontVariant: ['tabular-nums'] },
+  streak: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.035)', borderRadius: 999, flexDirection: 'row', gap: 6.4, paddingVertical: 5, paddingLeft: 8.8, paddingRight: 12 },
+  streakText: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, fontVariant: ['tabular-nums'] },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
 })

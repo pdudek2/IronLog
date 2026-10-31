@@ -88,6 +88,7 @@ export default function DashboardScreen() {
   const noPlans = templatesState.status === 'ready' && !templatesState.fromCache && templates.length === 0
   const chosen = selection?.uid === uid && !selection.unavailable ? selectedWorkout(templates, selection.target) : null
   const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
+  const plansPending = active.state.status === 'loading' || (canOfferStart && templatesState.status === 'loading')
   const launchState = launch?.state.status ?? 'loading'
   const starting = launchState === 'starting'
   const readinessEntry = readiness?.state.status === 'ready' ? readiness.state.entry : null
@@ -129,12 +130,12 @@ export default function DashboardScreen() {
       </View>}
       {data && <>
         <View style={styles.cover}>
-          <Image accessibilityElementsHidden source={covers[workoutCover(chosen?.day.name ?? chosen?.template.name)]} style={styles.coverImage} />
+          {!plansPending && <Image accessibilityElementsHidden source={covers[workoutCover(chosen?.day.name ?? chosen?.template.name)]} style={styles.coverImage} />}
           <View pointerEvents="none" style={styles.coverFade} />
           <View style={styles.coverCopy}>
             <Text style={styles.coverMeta}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
-            <Text accessibilityRole="header" style={styles.coverTitle}>{chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
-            {chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
+            <Text accessibilityRole="header" style={styles.coverTitle}>{plansPending ? ' ' : chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
+            {plansPending ? <Text style={styles.coverMeta}> </Text> : chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
               : active.state.status === 'empty' && recent[0] && <Text style={styles.coverMeta}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
           </View>
         </View>
@@ -143,11 +144,12 @@ export default function DashboardScreen() {
           <Pressable accessibilityRole="button" onPress={retry} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>
         </View>}
         <View style={styles.plan}>
+          {plansPending && <View style={styles.planPending} />}
           {chosen && !recommendation && chosen.day.exercises.map((exercise, index) => <Pressable key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercises/[source]/[id]', params: { source: exercise.exerciseSource, id: exercise.exerciseId } })} style={styles.exercise}>
             <Text numberOfLines={1} style={styles.exerciseName}>{exercise.name}</Text>
             <Text style={styles.exerciseMeta}>{exercise.sets} × {exercise.targetReps}{exercise.targetWeight > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(exercise.targetWeight), units)} {units}</Text></>}</Text>
           </Pressable>)}
-          {canOfferStart && !chosen && <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text></View>}
+          {canOfferStart && !chosen && !plansPending && <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text></View>}
           {canOfferStart && templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
           {canOfferStart && templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
           <View style={styles.links}>
@@ -180,8 +182,8 @@ export default function DashboardScreen() {
           onRetry={() => { retry(); setTemplatesAttempt(value => value + 1) }} />}
       </>}
     </ScrollView>
-    {data && canOfferStart && !recommendation && <View style={styles.startBar}>
-      {chosen
+    {data && (canOfferStart || plansPending) && !recommendation && <View style={styles.startBar}>
+      {plansPending ? <View style={styles.startPending} /> : chosen
         ? <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : `Start ${chosen.day.name}`}</Text></Pressable>
         : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
     </View>}
@@ -209,6 +211,7 @@ const styles = StyleSheet.create({
   coverTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 36, lineHeight: 40, letterSpacing: -1 },
   plan: { gap: 4, marginTop: 18 }, exercise: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40 },
   exerciseName: { flex: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 }, exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] }, exerciseWeight: { color: colors.text, fontFamily: 'InstrumentSans_500Medium' },
+  planPending: { height: 216 }, startPending: { height: 52 },
   links: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20 }, link: { minHeight: 44, justifyContent: 'center' }, linkText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
   planEmpty: { gap: 4, paddingVertical: 8 }, planEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },

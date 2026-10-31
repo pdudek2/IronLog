@@ -55,10 +55,7 @@ export default function ProfilePage() {
 
   return (
     <div className="workbench-page">
-      <header
-        className="pt-4 pb-5 sm:pt-6 sm:pb-6"
-        style={{ borderBottom: '1px solid var(--border)' }}
-      >
+      <header className="pt-1">
         <h1 id="profile-title" className="page-title">Profile</h1>
       </header>
 
@@ -66,8 +63,7 @@ export default function ProfilePage() {
         <section className="profile-form-panel" aria-labelledby="profile-title">
           <form onSubmit={handleSubmit} className="flex flex-col">
             <div
-              className="flex flex-col gap-2 border-b py-5 sm:py-6"
-              style={{ borderColor: 'var(--border)' }}
+              className="flex flex-col gap-2 py-4"
             >
               <label htmlFor="profile-display-name" className="text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
                 Name
@@ -85,19 +81,13 @@ export default function ProfilePage() {
             </div>
 
             <fieldset
-              className="m-0 min-w-0 border-0 border-b py-5 sm:py-6"
-              style={{ borderColor: 'var(--border)' }}
+              className="m-0 min-w-0 border-0 py-4"
             >
               <legend className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
                 Primary goal
               </legend>
               <div
-                className="grid grid-cols-2 gap-px overflow-hidden"
-                style={{
-                  border: '1px solid var(--border)',
-                  borderRadius: 'var(--radius-md)',
-                  background: 'var(--border)',
-                }}
+                className="profile-goal-grid"
               >
                 {GOALS.map((g) => (
                   <button
@@ -105,11 +95,7 @@ export default function ProfilePage() {
                     type="button"
                     onClick={() => setPrimaryGoal(g.value)}
                     aria-pressed={primaryGoal === g.value}
-                    className="min-h-12 border-0 px-3 py-3 text-left text-sm font-semibold"
-                    style={{
-                      background: primaryGoal === g.value ? 'var(--choice-selected-bg)' : 'var(--surface-muted)',
-                      color: primaryGoal === g.value ? 'var(--accent-text)' : 'var(--muted)',
-                    }}
+                    className="profile-goal-choice"
                   >
                     {g.label}
                   </button>
@@ -118,8 +104,7 @@ export default function ProfilePage() {
             </fieldset>
 
             <div
-              className="grid gap-5 border-b py-5 sm:grid-cols-[minmax(0,1fr)_14rem] sm:gap-8 sm:py-6"
-              style={{ borderColor: 'var(--border)' }}
+              className="grid gap-5 py-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:gap-8"
             >
               <div className="flex min-w-0 flex-col gap-2">
                 <div className="flex items-baseline justify-between gap-4">

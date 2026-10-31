@@ -47,7 +47,7 @@ test.describe('History and list workbenches', () => {
     await seedLifecycleWorkout({
       sessionId: 'phase-1-history-labeled-sets',
       materialized: true,
-      label: 'Phase 1 history labeled sets',
+      label: 'Phase 1 labeled sets',
       exercises: [{
         exerciseId: 'bench-press',
         exerciseSource: 'global',
@@ -62,7 +62,7 @@ test.describe('History and list workbenches', () => {
     await page.goto('/history')
     await expectAppReady(page, '/history')
     const workoutRow = page.locator('.history-workout-row').filter({
-      hasText: 'Phase 1 history labeled sets',
+      hasText: 'Phase 1 labeled sets',
     })
     await expect(workoutRow).toContainText('2 sets')
   })

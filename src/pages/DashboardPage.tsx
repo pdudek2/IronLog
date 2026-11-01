@@ -30,7 +30,8 @@ import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore } from '../store/workoutStore'
 import type { DataState } from '../types/dataState'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../lib/weightUnits'
-import { workoutCover } from '../shared/workoutCover'
+import { TrainCoverMedia } from '../components/TrainCoverMedia'
+import { WORKOUT_COVERS, workoutCover } from '../shared/workoutCover'
 import { WEEK_LABELS, addLocalDays, firstLaunchableWorkout, getGreeting, getWeekDates } from '../shared/week'
 
 interface TemplatesResource {
@@ -85,7 +86,7 @@ function fadeUp(delay: number) {
 }
 
 // Decoded before Train renders, so a cover never pops in behind its title.
-for (const cover of ['push', 'pull', 'legs', 'plan']) new Image().src = `/covers/${cover}.jpg`
+for (const cover of WORKOUT_COVERS) for (const file of [cover, `${cover}-start`]) new Image().src = `/covers/${file}.jpg`
 
 function DashboardLoadingSkeleton() {
   return (
@@ -508,6 +509,8 @@ export default function DashboardPage() {
     },
   ]
 
+  const coverName = workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)
+
   return (
     <div className="dashboard-page">
         <section className="train-hero">
@@ -517,7 +520,7 @@ export default function DashboardPage() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.22 }}
           >
-            {!plansLoading && <img src={`/covers/${workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)}.jpg`} alt="" />}
+            {!plansLoading && <TrainCoverMedia key={coverName} cover={coverName} />}
             <div className="train-cover-copy">
               <p className="train-date">
                 {new Date().toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}

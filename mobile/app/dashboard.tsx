@@ -1,6 +1,6 @@
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -10,7 +10,7 @@ import { useReadinessRuntime } from '../src/readinessRuntime'
 import { buildNextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
 import { recommendationHistory } from '../src/readiness'
 
-import { covers } from '../src/covers'
+import { TrainCoverMedia } from '../src/TrainCoverMedia'
 import { pluralize } from '../../src/lib/pluralize'
 import { workoutTitle } from '../../src/lib/workoutCopy'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
@@ -87,6 +87,7 @@ export default function DashboardScreen() {
   // A new account has nothing to start from a plan, so an empty workout is the main action.
   const noPlans = templatesState.status === 'ready' && !templatesState.fromCache && templates.length === 0
   const chosen = selection?.uid === uid && !selection.unavailable ? selectedWorkout(templates, selection.target) : null
+  const coverName = workoutCover(chosen?.day.name ?? chosen?.template.name)
   const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
   const plansPending = active.state.status === 'loading' || (canOfferStart && templatesState.status === 'loading')
   const launchState = launch?.state.status ?? 'loading'
@@ -130,7 +131,7 @@ export default function DashboardScreen() {
       </View>}
       {data && <>
         <View style={styles.cover}>
-          {!plansPending && <Image accessibilityElementsHidden source={covers[workoutCover(chosen?.day.name ?? chosen?.template.name)]} style={styles.coverImage} />}
+          {!plansPending && <TrainCoverMedia key={coverName} cover={coverName} />}
           <View pointerEvents="none" style={styles.coverFade} />
           <View style={styles.coverCopy}>
             <Text style={styles.coverMeta}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
@@ -205,7 +206,7 @@ const styles = StyleSheet.create({
   muted: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19 },
   retry: { minHeight: 44, justifyContent: 'center' }, actionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   cacheRow: { alignItems: 'flex-start', gap: 4, paddingTop: 14 },
-  cover: { height: 248, marginTop: -26.4, marginHorizontal: -16, overflow: 'hidden' }, coverImage: { ...StyleSheet.absoluteFill, width: '100%', height: '100%', resizeMode: 'cover' },
+  cover: { height: 248, marginTop: -26.4, marginHorizontal: -16, overflow: 'hidden' },
   coverFade: { ...StyleSheet.absoluteFill, experimental_backgroundImage: `linear-gradient(180deg, transparent 40%, ${colors.background}b8 72%, ${colors.background} 100%)` },
   coverCopy: { position: 'absolute', left: 16, right: 16, bottom: 4 }, coverMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20 },
   coverTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 36, lineHeight: 40, letterSpacing: -1 },

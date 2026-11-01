@@ -8562,7 +8562,8 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   overflow: hidden;
 }
 
-.train-cover img {
+.train-cover img,
+.train-cover video {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -8577,7 +8578,8 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .train-cover img {
+  .train-cover img,
+  .train-cover video {
     animation: none;
   }
 }

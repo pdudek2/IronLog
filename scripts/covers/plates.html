@@ -5,6 +5,10 @@ out vec4 o;
 uniform vec2 res; uniform float seed;
 uniform vec3 camPos, camTarget; uniform float focus, aperture, fov;
 uniform vec3 plates[8]; uniform int nP; uniform float sleeveEnd, shaftCut;
+uniform int kind; uniform float clampL;
+uniform mat3 uM; uniform vec3 uC,uC0; uniform float sY[5];
+vec3 mv(vec3 p){ return uM*(p-uC)+uC0; }
+bool gHit=false; int gS=0;
 const float AX=.225; // bar height: a 450 mm plate standing on the floor
 uint rs;
 float rnd(){ rs=rs*747796405u+2891336453u; uint w=((rs>>((rs>>28u)+4u))^rs)*277803737u; return float((w>>22u)^w)/4294967295.; }
@@ -19,17 +23,41 @@ float plate(vec2 c, float t, float R){
   return max(a,.0258-c.y);
 }
 vec2 bar(vec3 p){ return vec2(p.x, length(vec2(p.y-AX,p.z))); }
-// material: 0 floor, 1 plate, 2 sleeve, 3 shaft, 4 collar
+float smin(float a,float b,float k){ float h=clamp(.5+.5*(b-a)/k,0.,1.); return mix(b,a,h)-k*h*(1.-h); }
+mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
+float dumbbell(vec3 p, vec3 c, float a, out int m){
+  vec3 e=p-c; e.xz=rot(a)*e.xz; vec2 q=vec2(e.x,length(e.yz));
+  float h=sdr(vec2(abs(q.x)-.185,q.y),vec2(.062,.092),.007); m=5;
+  float g=sdr(q,vec2(.13,.0165),.002); if(g<h){h=g;m=3;}
+  float k=sdr(vec2(abs(q.x)-.118,q.y),vec2(.008,.03),.002); if(k<h){h=k;m=2;}
+  return h;
+}
+float kettle(vec3 p, vec3 c){
+  vec3 e=p-c; float b=length(e-vec3(0,.115,0))-.118; b=max(b,.012-e.y);
+  vec2 h=vec2(length(vec2(e.x,(e.y-.255)*1.15))-.068,e.z); float t=length(h)-.0145; t=max(t,.165-e.y);
+  float a=smin(b,t,.028); return a;
+}
+float stack(vec3 p, vec3 c){
+  vec3 e=p-c; vec2 q=vec2(length(e.xz),e.y); float d=1e3, y=0.;
+  float T[5]=float[5](.056,.056,.046,.036,.03); float R[5]=float[5](.225,.225,.225,.2,.17);
+  for(int i=0;i<5;i++){ float s=sdr(vec2(q.x-(R[i]+.026)*.5,q.y-(y+T[i]*.5+sY[i])),vec2((R[i]-.026)*.5,T[i]*.5-.0006),.0045); if(s<d){d=s;gS=i;} y+=T[i]; }
+  return d;
+}
+// material: 0 floor, 1 plate, 2 sleeve, 3 shaft, 4 collar, 5 cast iron
 float mapM(vec3 p, out int m){
   vec2 q=bar(p); float d=p.y; m=0;
-  if(q.y<.26 && q.x>-1.9 && q.x<.6){
+  gHit=false; if(kind==1){ int a; float x=dumbbell(mv(p),vec3(.02,.092,.02),.62,a); if(x<d){d=x;m=a;gHit=true;} x=dumbbell(p,vec3(-.1,.092,.33),.5,a); if(x<d){d=x;m=a;gHit=false;} return d; }
+  if(kind==2){ float x=kettle(mv(p),vec3(.05,0,0)); if(x<d){d=x;m=5;gHit=true;} return d; }
+  if(kind==4){ float x=plate(bar(mv(p)),plates[0].y,plates[0].z); if(x<d){d=x;m=1;gHit=true;} return d; }
+  if(kind==3){ float x=stack(p,vec3(.05,0,0)); if(x<d){d=x;m=5;} return d; }
+  if(q.y<.26 && q.x>-1.9 && q.x<1.5){
     for(int i=0;i<nP;i++){ float e=plate(q-vec2(plates[i].x,0.),plates[i].y,plates[i].z); if(e<d){d=e;m=1;} }
     float s=sdr(q-vec2((sleeveEnd-.12)*.5,0.),vec2((sleeveEnd+.12)*.5,.0249),.0035); if(s<d){d=s;m=2;}
     float k=sdr(q-vec2(-.46,0.),vec2(.34,.0139),.001); if(k<d){d=k;m=3;}
     float c=sdr(q-vec2(-.135,0.),vec2(.017,.0385),.003); if(c<d){d=c;m=4;}
     float l=sdr(q-vec2(plates[nP-1].x+plates[nP-1].y*.5+.016,0.),vec2(.016,.0405),.004); if(l<d){d=l;m=4;}
     float w=sdr(q-vec2(plates[nP-1].x+plates[nP-1].y*.5+.035,0.),vec2(.003,.033),.0015); if(w<d){d=w;m=4;}
-  } else d=min(d,max(length(q-vec2(clamp(q.x,-1.9,.6),0.))-.26,0.)+.02);
+  } else d=min(d,max(length(q-vec2(clamp(q.x,-1.9,1.5),0.))-.26,0.)+.02);
   return d;
 }
 float map(vec3 p){ int m; return mapM(p,m); }
@@ -41,7 +69,7 @@ float rect(vec3 ro, vec3 rd, vec3 c, vec3 u, vec3 v){ vec3 n=normalize(cross(u,v
 uniform vec3 glowDir, glowC, glowW; vec3 bg(vec3 rd){ float g=pow(max(dot(rd,normalize(glowDir)),0.),26.); float w=pow(max(dot(rd,normalize(glowDir+vec3(0,.16,0))),0.),5.); return vec3(.0042,.003,.0034)+glowC*g+glowW*w; }
 vec3 env(vec3 ro, vec3 rd, bool lamps){ vec3 c=bg(rd); if(lamps){ c+=vec3(.5,.36,.28)*smoothstep(.15,.95,rd.y)*.1; c+=vec3(1.,.74,.56)*2.6*exp(-pow((rd.z-.12)/.07,2.))*smoothstep(.05,.3,rd.y); if(rect(ro,rd,L0,L0u,L0v)>0.) c+=E0; if(rect(ro,rd,L1,L1u,L1v)>0.) c+=E1; } return c; }
 void surf(vec3 p, vec3 gn, int m, out vec3 alb, out float rough, out float metal, out vec3 n){
-  n=gn; vec2 q=bar(p); float ang=atan(p.z,p.y-AX);
+  n=gn; if(gHit) p=mv(p); if(kind==3&&m==5) p.y-=sY[gS]; vec2 q=bar(p); float ang=atan(p.z,p.y-AX);
   if(m==0){ float s=fbm(p.xz*46.); float sp=step(.86,vn(p.xz*420.)); alb=mix(vec3(.02,.017,.018),vec3(.05,.043,.044),s)+sp*.01; rough=.2+.34*s; metal=0.; float dx=fbm(p.xz*190.)-.5, dz=fbm(p.zx*190.+3.)-.5; n=normalize(n+vec3(dx,0,dz)*.11); }
   else if(m==1){
     float r=q.y; float micro=fbm(vec2(ang*r*150.,q.x*150.)); float big=fbm(vec2(ang*6.,r*16.)+q.x*9.);
@@ -51,9 +79,10 @@ void surf(vec3 p, vec3 gn, int m, out vec3 alb, out float rough, out float metal
     float nearRim=smoothstep(.2195,.2245,r); float wear=smoothstep(.56,.68,fbm(vec2(ang*30.,q.x*150.)))*nearRim;
     alb=mix(alb,vec3(.085,.08,.08),wear); rough=mix(rough,.4,wear);
     float chalk=smoothstep(.58,.8,fbm(vec2(ang*2.3,r*11.)+vec2(q.x*4.,1.)))*.075*smoothstep(.45,.75,micro); alb+=chalk*vec3(.5,.48,.47);
-    if(r<.0508){ alb=vec3(.8,.78,.76); metal=1.; rough=.13+.07*fbm(vec2(r*700.,ang*2.)); }
+    if((kind==0||kind==4)&&r<.0508){ alb=vec3(.8,.78,.76); metal=1.; rough=.13+.07*fbm(vec2(r*700.,ang*2.)); }
     float e=.0009; float a=fbm(vec2(ang*r*210.,q.x*210.)),b=fbm(vec2(ang*r*210.+3.,q.x*210.+3.)); n=normalize(n+(vec3(a,b,a*b*2.)-.5)*.035); if(r>.06&&r<.2) { float lathe=sin(r*1300.+vn(vec2(r*90.,ang))*3.); n=normalize(n+vec3(0.,normalize(vec2(p.y-AX,p.z))*lathe*.018)); }
   }
+  else if(m==5){ float mi=fbm(p.xy*170.+p.z*91.); alb=vec3(.03,.027,.027)*(.75+.6*mi); rough=.32+.2*mi; metal=0.; float a=fbm(p.yz*240.),b=fbm(p.xz*240.+5.); n=normalize(n+(vec3(a,b,a*b*2.)-.5)*.05); }
   else if(m==2){ alb=vec3(.72,.70,.68); metal=1.; rough=.1+.07*fbm(vec2(q.x*520.,ang*4.)); float s=fbm(vec2(q.x*900.,ang*3.))-.5; n=normalize(n+vec3(s*.02,0,0)); }
   else if(m==3){ alb=vec3(.58,.56,.54); metal=1.; rough=.34; vec2 k=vec2(ang*.014+q.x,ang*.014-q.x)*760.; float kn=abs(sin(k.x))*abs(sin(k.y)); n=normalize(n+normalize(vec3(cos(k.x)*sign(sin(k.x)),0.,cos(k.y)*sign(sin(k.y))))*(.34*(1.-kn))); }
   else { alb=vec3(.035,.033,.034); metal=0.; rough=.34; }
@@ -86,7 +115,7 @@ void main(){
   vec3 f=normalize(camTarget-camPos), r=normalize(cross(f,vec3(0,1,0))), u=cross(r,f);
   vec3 rd=normalize(f+(px.x*r+px.y*u)*fov), fp=camPos+rd*focus;
   float a=rnd()*6.2832, ra=sqrt(rnd())*aperture; vec3 ro=camPos+(r*cos(a)+u*sin(a))*ra;
-  o=vec4(min(trace(ro,normalize(fp-ro)),vec3(4.)),1.);
+  o=vec4(min(trace(ro,normalize(fp-ro)),vec3(clampL)),1.);
 }
 </script>
 <script id="post" type="x-shader">#version 300 es
@@ -114,7 +143,7 @@ window.render = async (S) => {
   const fb = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex, 0)
   gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT); gl.viewport(0, 0, w, h); gl.useProgram(P)
   const U = (n) => gl.getUniformLocation(P, n)
-  gl.uniform2f(U('res'), w, h); gl.uniform3fv(U('camPos'), S.cam); gl.uniform3fv(U('camTarget'), S.tgt); gl.uniform1f(U('focus'), S.focus); gl.uniform1f(U('aperture'), S.ap); gl.uniform1f(U('fov'), S.fov)
+  gl.uniform2f(U('res'), w, h); gl.uniform1i(U('kind'), S.kind||0); gl.uniform1f(U('clampL'), S.clampL ?? 4); gl.uniformMatrix3fv(U('uM'), true, (S.uM ?? [1,0,0,0,1,0,0,0,1])); gl.uniform3fv(U('uC'), S.uC ?? [0,0,0]); gl.uniform3fv(U('uC0'), S.uC0 ?? S.uC ?? [0,0,0]); gl.uniform1fv(U('sY[0]'), S.sY ?? [0,0,0,0,0]); gl.uniform3fv(U('camPos'), S.cam); gl.uniform3fv(U('camTarget'), S.tgt); gl.uniform1f(U('focus'), S.focus); gl.uniform1f(U('aperture'), S.ap); gl.uniform1f(U('fov'), S.fov)
   gl.uniform1i(U('nP'), S.plates.length); gl.uniform3fv(U('plates'), S.plates.flat()); gl.uniform1f(U('sleeveEnd'), S.sleeveEnd); gl.uniform3fv(U('glowDir'), S.glowDir); gl.uniform3fv(U('glowC'), S.glowC); gl.uniform3fv(U('glowW'), S.glowW); for (const k of ['L0','L0u','L0v','E0','L1','L1u','L1v','E1']) gl.uniform3fv(U(k), S[k])
   gl.enable(gl.BLEND); gl.blendFunc(gl.ONE, gl.ONE); gl.enable(gl.SCISSOR_TEST)
   const T = 192, t0 = performance.now()

@@ -599,8 +599,9 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expect(repsB).toHaveValue('5')
 
     const conflictMessage = 'The session changed on another device.'
-    await expectedBrowserDiagnostics.during(
-      'expected active-session CAS rejection',
+    // The loser either reads the new revision and conflicts locally, or races the commit and gets a 400.
+    await expectedBrowserDiagnostics.allowing(
+      'possible active-session CAS rejection',
       (entry) => entry.kind === 'console'
         && entry.message.includes('400 (Bad Request)')
         && entry.url?.includes('/documents:commit') === true,

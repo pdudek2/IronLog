@@ -20,6 +20,7 @@ export interface BrowserDiagnosticsController {
     name: string,
     predicate: (entry: BrowserDiagnostic) => boolean,
     action: () => Promise<T>,
+    options?: { required?: boolean },
   ): Promise<T>
 }
 
@@ -184,6 +185,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
       name: string,
       predicate: (entry: BrowserDiagnostic) => boolean,
       action: () => Promise<T>,
+      { required = true }: { required?: boolean } = {},
     ): Promise<T> {
       const expectation = { name, predicate, matchCount: 0 }
       activeExpectations.push(expectation)
@@ -194,7 +196,7 @@ export function createBrowserDiagnosticsController(): BrowserDiagnosticsControll
         const index = activeExpectations.lastIndexOf(expectation)
         if (index >= 0) activeExpectations.splice(index, 1)
       }
-      if (expectation.matchCount === 0) {
+      if (required && expectation.matchCount === 0) {
         throw new Error(`Expected browser diagnostics were not observed: ${name}`)
       }
       return result

@@ -618,4 +618,14 @@ describe('browser diagnostics controller', () => {
       async () => undefined,
     )).rejects.toThrow('missing expected failure')
   })
+
+  it('accepts an optional expectation that observed nothing', async () => {
+    const controller = createBrowserDiagnosticsController()
+    await expect(controller.runExpectingDiagnostics(
+      'possible failure',
+      () => true,
+      async () => 'done',
+      { required: false },
+    )).resolves.toBe('done')
+  })
 })

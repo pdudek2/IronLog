@@ -28,6 +28,11 @@ export interface ExpectedBrowserDiagnostics {
     predicate: (entry: BrowserDiagnostic) => boolean,
     action: () => Promise<T>,
   ): Promise<T>
+  allowing<T>(
+    name: string,
+    predicate: (entry: BrowserDiagnostic) => boolean,
+    action: () => Promise<T>,
+  ): Promise<T>
 }
 
 interface IronLogFixtures {
@@ -73,6 +78,12 @@ export const test = base.extend<IronLogFixtures>({
         name,
         predicate,
         action,
+      ),
+      allowing: (name, predicate, action) => diagnosticsController.runExpectingDiagnostics(
+        name,
+        predicate,
+        action,
+        { required: false },
       ),
     })
   },

@@ -4,9 +4,11 @@ import type { WorkoutCover } from '../shared/workoutCover'
 
 const PLAYED_KEY = 'ironlog:train-cover-played'
 
-const playedToken = (cover: WorkoutCover) => `${new Date().toDateString()}:${cover}`
+export type TrainCover = WorkoutCover | 'week'
 
-function playedToday(cover: WorkoutCover) {
+const playedToken = (cover: TrainCover) => `${new Date().toDateString()}:${cover}`
+
+function playedToday(cover: TrainCover) {
   try {
     return localStorage.getItem(PLAYED_KEY) === playedToken(cover)
   } catch {
@@ -14,7 +16,7 @@ function playedToday(cover: WorkoutCover) {
   }
 }
 
-function markPlayed(cover: WorkoutCover) {
+function markPlayed(cover: TrainCover) {
   try {
     localStorage.setItem(PLAYED_KEY, playedToken(cover))
   } catch {
@@ -23,10 +25,10 @@ function markPlayed(cover: WorkoutCover) {
 }
 
 // The poster is the clip's first frame and the clip ends on the still, so nothing rewinds on screen.
-export function TrainCoverMedia({ cover }: { cover: WorkoutCover }) {
+export function TrainCoverMedia({ cover }: { cover: TrainCover }) {
   const reduceMotion = useReducedMotion()
   const loop = cover === 'upper'
-  const [still, setStill] = useState(() => !loop && playedToday(cover))
+  const [still, setStill] = useState(() => cover === 'week' || (!loop && playedToday(cover)))
 
   if (reduceMotion || still) return <img src={`/covers/${cover}.jpg`} alt="" />
 

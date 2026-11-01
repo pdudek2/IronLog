@@ -1,6 +1,8 @@
 // Calendar and launch helpers that Home shows the same way on web and native.
 export const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
+export const weekdayLabel = (timestamp: number) => WEEK_LABELS[(new Date(timestamp).getDay() + 6) % 7]!
+
 export function addLocalDays(date: Date, days: number): Date {
   const next = new Date(date.getTime())
   next.setDate(next.getDate() + days)

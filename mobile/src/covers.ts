@@ -13,7 +13,8 @@ import push from '../assets/covers/push.jpg'
 import upperClip from '../assets/covers/upper.mp4'
 import upperStart from '../assets/covers/upper-start.jpg'
 import upper from '../assets/covers/upper.jpg'
+import week from '../assets/covers/week.jpg'
 
-export const covers = { legs, plan, pull, push, upper }
+export const covers = { legs, plan, pull, push, upper, week }
 export const coverStarts = { legs: legsStart, plan: planStart, pull: pullStart, push: pushStart, upper: upperStart }
 export const coverClips = { legs: legsClip, plan: planClip, pull: pullClip, push: pushClip, upper: upperClip }

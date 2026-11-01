@@ -11,6 +11,9 @@ import { buildNextSessionRecommendation } from '../../src/shared/nextSessionReco
 import { recommendationHistory } from '../src/readiness'
 
 import { TrainCoverMedia } from '../src/TrainCoverMedia'
+import { deriveWorkout } from '../src/history'
+import { latestRecord, recordLine } from '../../src/shared/workoutMoments'
+import { weekdayLabel } from '../../src/shared/week'
 import { pluralize } from '../../src/lib/pluralize'
 import { workoutTitle } from '../../src/lib/workoutCopy'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
@@ -49,6 +52,7 @@ export default function DashboardScreen() {
   const [selection, setSelection] = useState<{ uid: string; target: WorkoutSelection | null; unavailable: boolean } | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
+  const [picked, setPicked] = useState(false)
   const [weekOpen, setWeekOpen] = useState(false)
   const key = `home:${uid ?? ''}`
   const completion = completed ? `${completed.action}:${completed.action === 'finish' ? completed.workoutId : completed.sessionId}` : ''
@@ -87,9 +91,12 @@ export default function DashboardScreen() {
   // A new account has nothing to start from a plan, so an empty workout is the main action.
   const noPlans = templatesState.status === 'ready' && !templatesState.fromCache && templates.length === 0
   const chosen = selection?.uid === uid && !selection.unavailable ? selectedWorkout(templates, selection.target) : null
-  const coverName = workoutCover(chosen?.day.name ?? chosen?.template.name)
   const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
   const plansPending = active.state.status === 'loading' || (canOfferStart && templatesState.status === 'loading')
+  // Picking a workout means the next session matters more than the finished week.
+  const weekClosed = Boolean(summary) && !plansPending && canOfferStart && !picked && (summary?.weeklyDone ?? 0) >= goal
+  const coverName = weekClosed ? 'week' : workoutCover(chosen?.day.name ?? chosen?.template.name)
+  const record = data ? latestRecord(data.workouts, now.getTime()) : null
   const launchState = launch?.state.status ?? 'loading'
   const starting = launchState === 'starting'
   const readinessEntry = readiness?.state.status === 'ready' ? readiness.state.entry : null
@@ -135,18 +142,24 @@ export default function DashboardScreen() {
           <View pointerEvents="none" style={styles.coverFade} />
           <View style={styles.coverCopy}>
             <Text style={styles.coverMeta}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
-            <Text accessibilityRole="header" style={styles.coverTitle}>{plansPending ? ' ' : chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
-            {plansPending ? <Text style={styles.coverMeta}> </Text> : chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
+            <Text accessibilityRole="header" style={styles.coverTitle}>{plansPending ? ' ' : weekClosed ? 'Week done' : chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
+            {plansPending ? <Text style={styles.coverMeta}> </Text> : weekClosed ? <Text style={styles.coverMeta}>{summary?.weeklyDone} of {goal} workouts · {formatCompactVolume(summary?.weeklyVolume ?? 0, units)}</Text> : chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
               : active.state.status === 'empty' && recent[0] && <Text style={styles.coverMeta}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
           </View>
+          {record && <View pointerEvents="none" style={styles.coverSeam} />}
         </View>
         {state.status === 'ready' && state.fromCache && <View accessibilityRole="alert" style={styles.cacheRow}>
           <Text style={styles.muted}>{cacheEmpty ? 'Could not confirm your saved workouts. This device has no copy to check offline.' : 'Showing data saved on this device.'}</Text>
           <Pressable accessibilityRole="button" onPress={retry} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>
         </View>}
         <View style={styles.plan}>
+          {record && <Text style={styles.record}>{recordLine(record, now, (kg) => `${kgStringToDisplayWeight(String(kg), units)} ${units}`)}</Text>}
           {plansPending && <View style={styles.planPending} />}
-          {chosen && !recommendation && chosen.day.exercises.map((exercise, index) => <Pressable key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercises/[source]/[id]', params: { source: exercise.exerciseSource, id: exercise.exerciseId } })} style={styles.exercise}>
+          {weekClosed && [...(summary?.weekly ?? [])].reverse().map((workout) => <Pressable key={workout.id} accessibilityRole="button" onPress={() => router.push({ pathname: '/workout/[workoutId]', params: { workoutId: workout.id } })} style={styles.exercise}>
+            <Text numberOfLines={1} style={styles.exerciseName}>{weekdayLabel(workout.startedAt)} · {workoutTitle(workout)}</Text>
+            <Text style={styles.exerciseMeta}>{formatCompactVolume(deriveWorkout(workout, new Map()).totalVolume, units)}</Text>
+          </Pressable>)}
+          {!weekClosed && chosen && !recommendation && chosen.day.exercises.map((exercise, index) => <Pressable key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercises/[source]/[id]', params: { source: exercise.exerciseSource, id: exercise.exerciseId } })} style={styles.exercise}>
             <Text numberOfLines={1} style={styles.exerciseName}>{exercise.name}</Text>
             <Text style={styles.exerciseMeta}>{exercise.sets} × {exercise.targetReps}{exercise.targetWeight > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(exercise.targetWeight), units)} {units}</Text></>}</Text>
           </Pressable>)}
@@ -192,7 +205,7 @@ export default function DashboardScreen() {
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
         <View style={styles.pickerHead}><View><Text style={styles.planMeta}>From your plans</Text><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Icon name="close" size={18} color={colors.textStrong} /></Pressable></View>
         <ScrollView style={styles.pickerPlans}>{templates.map((template) => <View key={template.id} style={styles.pickerPlan}><Text accessibilityRole="header" style={styles.pickerPlanTitle}>{template.name}</Text>{template.days.map((day, index) => { const enabled = day.exercises.length > 0; const selected = pickerDraft?.templateId === template.id && pickerDraft.dayIndex === index; return <Pressable key={`${template.id}:${index}`} accessibilityRole="button" accessibilityLabel={enabled ? `Select ${day.name} from plan ${template.name}` : `${day.name} from plan ${template.name}, no exercises`} accessibilityState={{ selected, disabled: !enabled }} disabled={!enabled} onPress={() => setPickerDraft({ templateId: template.id, dayIndex: index })} style={[styles.pickerDay, selected && styles.pickerDaySelected, !enabled && styles.disabled]}><Text style={styles.pickerDayName}>{day.name}</Text><Text style={styles.planMeta}>{enabled ? `${day.exercises.length} ${pluralize(day.exercises.length, 'exercise', 'exercises')}` : 'No exercises'}</Text></Pressable> })}</View>)}</ScrollView>
-        <View style={styles.pickerActions}><Pressable accessibilityRole="button" onPress={() => setPickerOpen(false)} style={styles.pickerCancel}><Text style={styles.changeText}>Cancel</Text></Pressable><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.planPrimaryText}>Choose workout</Text></Pressable></View>
+        <View style={styles.pickerActions}><Pressable accessibilityRole="button" onPress={() => setPickerOpen(false)} style={styles.pickerCancel}><Text style={styles.changeText}>Cancel</Text></Pressable><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPicked(true); setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.planPrimaryText}>Choose workout</Text></Pressable></View>
       </View></View>
     </Modal>
   <BottomNavigation {...navigation} />
@@ -207,6 +220,8 @@ const styles = StyleSheet.create({
   retry: { minHeight: 44, justifyContent: 'center' }, actionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
   cacheRow: { alignItems: 'flex-start', gap: 4, paddingTop: 14 },
   cover: { height: 248, marginTop: -26.4, marginHorizontal: -16, overflow: 'hidden' },
+  coverSeam: { position: 'absolute', left: 16, right: 16, bottom: 0, height: 2.5, backgroundColor: colors.seam },
+  record: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, marginBottom: 4 },
   coverFade: { ...StyleSheet.absoluteFill, experimental_backgroundImage: `linear-gradient(180deg, transparent 40%, ${colors.background}b8 72%, ${colors.background} 100%)` },
   coverCopy: { position: 'absolute', left: 16, right: 16, bottom: 4 }, coverMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20 },
   coverTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 36, lineHeight: 40, letterSpacing: -1 },

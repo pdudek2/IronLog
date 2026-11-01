@@ -8591,6 +8591,68 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   background: linear-gradient(180deg, transparent 40%, color-mix(in srgb, var(--bg) 72%, transparent) 72%, var(--bg) 100%);
 }
 
+.train-record-seam {
+  position: absolute;
+  z-index: 1;
+  inset: auto 1rem 0;
+  height: 2.5px;
+  background: var(--seam);
+}
+
+.train-record {
+  margin: 0 0 0.5rem;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.workout-steps {
+  display: grid;
+  gap: 0.5rem;
+  min-height: 7.5rem;
+  margin-bottom: 1rem;
+}
+
+.workout-steps-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  font-weight: 500;
+}
+
+.workout-steps-head span:last-child {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.workout-steps-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.1875rem;
+  height: 3.5rem;
+}
+
+.workout-steps-bars i {
+  flex: 1;
+  min-width: 0;
+  border-radius: 0.1875rem 0.1875rem 0 0;
+  background: var(--surface-3);
+}
+
+.workout-steps-bars i[data-current] {
+  background: linear-gradient(180deg, var(--puls-bone), color-mix(in srgb, var(--puls-bone) 45%, transparent));
+}
+
+.workout-steps-bars i[data-record] {
+  border-top: 2.5px solid var(--seam);
+}
+
+.workout-steps-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
 .train-cover-copy {
   position: absolute;
   z-index: 1;
@@ -8803,6 +8865,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
   .train-cover-copy {
     inset: auto 1.75rem 1.375rem;
+  }
+
+  .train-record-seam {
+    inset: auto 1.75rem 0;
   }
 
   .train-title {

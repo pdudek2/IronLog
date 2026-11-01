@@ -32,6 +32,7 @@ import WorkoutProjectionStatus, {
   type ProjectionRetryState,
 } from '../components/workout/WorkoutProjectionStatus'
 import { Bone, PageSkeleton } from '../components/ui'
+import { WorkoutSteps } from '../components/WorkoutSteps'
 import {
   DEFAULT_EXERCISE_CATEGORY_COLOR,
   EXERCISE_CATEGORY_COLORS,
@@ -702,6 +703,8 @@ export default function WorkoutDetailPage() {
             </div>
           </motion.div>
         </WorkoutDetailMobileActions>
+
+        {user && !isEditing && <WorkoutSteps uid={user.uid} workout={displayedWorkout} units={units} />}
 
         <dl className="workout-summary-panel workout-detail-session-facts" aria-label="Workout summary">
           <div>

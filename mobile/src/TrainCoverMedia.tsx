@@ -8,9 +8,11 @@ import type { WorkoutCover } from '../../src/shared/workoutCover'
 import { coverClips, covers, coverStarts } from './covers'
 
 const playedFile = new File(Paths.document, 'train-cover-played.txt')
-const playedToken = (cover: WorkoutCover) => `${new Date().toDateString()}:${cover}`
+type TrainCover = WorkoutCover | 'week'
 
-async function playedToday(cover: WorkoutCover) {
+const playedToken = (cover: TrainCover) => `${new Date().toDateString()}:${cover}`
+
+async function playedToday(cover: TrainCover) {
   try {
     return playedFile.exists && await playedFile.text() === playedToken(cover)
   } catch {
@@ -18,7 +20,7 @@ async function playedToday(cover: WorkoutCover) {
   }
 }
 
-function markPlayed(cover: WorkoutCover) {
+function markPlayed(cover: TrainCover) {
   try {
     if (!playedFile.exists) playedFile.create()
     playedFile.write(playedToken(cover))
@@ -73,18 +75,18 @@ function CoverClip({ cover, onFail }: { cover: WorkoutCover, onFail: () => void 
 }
 
 // The clip opens on its first frame and ends on the still, so nothing rewinds on screen.
-export function TrainCoverMedia({ cover }: { cover: WorkoutCover }) {
+export function TrainCoverMedia({ cover }: { cover: TrainCover }) {
   const [mode, setMode] = useState<'clip' | 'still' | null>(null)
 
   useEffect(() => {
     let mounted = true
     void Promise.all([AccessibilityInfo.isReduceMotionEnabled(), playedToday(cover)]).then(([reduced, played]) => {
-      if (mounted) setMode(reduced || (played && cover !== 'upper') ? 'still' : 'clip')
+      if (mounted) setMode(reduced || cover === 'week' || (played && cover !== 'upper') ? 'still' : 'clip')
     })
     return () => { mounted = false }
   }, [cover])
 
-  if (mode === 'clip') return <CoverClip cover={cover} onFail={() => setMode('still')} />
+  if (mode === 'clip' && cover !== 'week') return <CoverClip cover={cover} onFail={() => setMode('still')} />
   if (mode === 'still') return <Image accessibilityElementsHidden source={covers[cover]} resizeMode="cover" style={styles.fill} />
   return null
 }

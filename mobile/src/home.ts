@@ -49,7 +49,7 @@ export function deriveHome(workouts: SavedWorkout[], now: Date) {
     }
   })
   return {
-    dates, days, weeklyDone: weekly.length, weeklyVolume,
+    dates, days, weekly, weeklyDone: weekly.length, weeklyVolume,
     activeDays: days.filter((day) => day.workouts > 0).length,
     peakDay: days.reduce<(typeof days)[number] | null>((peak, day) => !peak || day.volume > peak.volume ? day : peak, null),
     averageMinutes: weekly.length ? Math.round(weekly.reduce((sum, workout) => sum + getCappedWorkoutFinishedAt(workout.startedAt, workout.finishedAt) - workout.startedAt, 0) / weekly.length / 60_000) : 0,

@@ -18,6 +18,7 @@ import { formatWorkoutDate, formatWorkoutDuration, workoutFocusLabel, workoutSet
 import { workoutTitle } from '../../../src/lib/workoutCopy'
 import { colors, pageBackground } from '../../src/theme'
 import { Icon } from '../../src/icons'
+import { WorkoutSteps } from '../../src/WorkoutSteps'
 
 export default function SavedWorkoutScreen() {
   const { workoutId: routeId, saved } = useLocalSearchParams<{ workoutId: string; saved?: string }>()
@@ -122,6 +123,8 @@ export default function SavedWorkoutScreen() {
             <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId } })} style={styles.editAction}><Text style={[styles.retryText, { color: colors.textStrong, textAlign: 'center' }]}>Edit workout</Text></Pressable>
             <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId, action: 'delete' } })} style={styles.retryButton}><Text style={[styles.retryText, { color: colors.muted }]}>Delete</Text></Pressable>
           </View>
+
+          {uid && <WorkoutSteps uid={uid} workout={workout} units={active.state.units} />}
 
           <View accessibilityLabel="Workout summary" style={styles.facts}>
             <SummaryFact label="Time" value={formatWorkoutDuration(workout.startedAt, workout.finishedAt)} />

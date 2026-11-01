@@ -1,3 +1,4 @@
+import type { StepSession } from '../../src/shared/workoutMoments'
 import type { LaunchAttempt } from './launchJournal'
 import { ReplacementRejectedError } from './workoutLaunchController'
 import { getApp, getApps, initializeApp, type FirebaseApp } from '@react-native-firebase/app'
@@ -376,6 +377,22 @@ export async function readPreviousSets(uid: string, exerciseId: string, source: 
     where('exerciseSource', '==', source), orderBy('startedAt', 'desc'), limit(1)))
   return {
     data: snapshot.empty ? [] : parsePreviousSets(snapshot.docs[0]!.data(), uid, exerciseId, source),
+    fromCache: snapshot.metadata.fromCache,
+  }
+}
+
+export async function readExerciseSteps(uid: string, exerciseId: string, source: ExerciseSource): Promise<ReadResult<StepSession[]>> {
+  const { firestore } = await getServices()
+  const snapshot = await getDocs(query(collection(firestore, 'exerciseSessions'),
+    where('userId', '==', uid), where('exerciseId', '==', exerciseId),
+    where('exerciseSource', '==', source), orderBy('startedAt', 'desc'), limit(40)))
+  return {
+    data: snapshot.docs.flatMap((document) => {
+      const { workoutId, startedAt, bestSetWeight } = document.data()
+      return typeof workoutId === 'string' && typeof startedAt === 'number' && typeof bestSetWeight === 'number'
+        ? [{ workoutId, startedAt, bestSetWeight }]
+        : []
+    }),
     fromCache: snapshot.metadata.fromCache,
   }
 }

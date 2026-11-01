@@ -31,8 +31,9 @@ import { useWorkoutStore } from '../store/workoutStore'
 import type { DataState } from '../types/dataState'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../lib/weightUnits'
 import { TrainCoverMedia } from '../components/TrainCoverMedia'
+import { latestRecord, recordLine } from '../shared/workoutMoments'
 import { WORKOUT_COVERS, workoutCover } from '../shared/workoutCover'
-import { WEEK_LABELS, addLocalDays, firstLaunchableWorkout, getGreeting, getWeekDates } from '../shared/week'
+import { WEEK_LABELS, addLocalDays, firstLaunchableWorkout, getGreeting, getWeekDates, weekdayLabel } from '../shared/week'
 
 interface TemplatesResource {
   uid: string | null
@@ -86,7 +87,7 @@ function fadeUp(delay: number) {
 }
 
 // Decoded before Train renders, so a cover never pops in behind its title.
-for (const cover of WORKOUT_COVERS) for (const file of [cover, `${cover}-start`]) new Image().src = `/covers/${file}.jpg`
+for (const file of ['week', ...WORKOUT_COVERS.flatMap((cover) => [cover, `${cover}-start`])]) new Image().src = `/covers/${file}.jpg`
 
 function DashboardLoadingSkeleton() {
   return (
@@ -144,6 +145,7 @@ export default function DashboardPage() {
     unavailable: false,
   })
   const [workoutPickerOpen, setWorkoutPickerOpen] = useState(false)
+  const [workoutPicked, setWorkoutPicked] = useState(false)
   const {
     pendingLaunch,
     launchOperation,
@@ -421,6 +423,7 @@ export default function DashboardPage() {
       target: selection,
       unavailable: false,
     })
+    setWorkoutPicked(true)
     setWorkoutPickerOpen(false)
   }
 
@@ -509,7 +512,10 @@ export default function DashboardPage() {
     },
   ]
 
-  const coverName = workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)
+  // Picking a workout means the next session matters more than the finished week.
+  const weekClosed = !plansLoading && !hasActiveSession && !workoutPicked && weeklyDone >= weeklyGoal
+  const coverName = weekClosed ? 'week' : workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)
+  const record = latestRecord(workouts, today.getTime())
 
   return (
     <div className="dashboard-page">
@@ -528,18 +534,42 @@ export default function DashboardPage() {
               <h1 className="train-title">
                 {plansLoading
                   ? <Bone width="9rem" height="2.25rem" />
-                  : quickTemplateDay?.name ?? `${getGreeting(new Date())}, ${profile?.displayName ?? 'athlete'}`}
+                  : weekClosed
+                    ? 'Week done'
+                    : quickTemplateDay?.name ?? `${getGreeting(new Date())}, ${profile?.displayName ?? 'athlete'}`}
               </h1>
               {plansLoading
                 ? <Bone width="11rem" height="0.875rem" />
+                : weekClosed
+                ? <p className="train-meta">{weeklyDone} of {weeklyGoal} workouts · {formatCompactVolume(weeklyVolume, units)}</p>
                 : quickTemplate && quickTemplateDay
                 ? <p className="train-meta">{quickTemplate.name} · Day {quickTemplateDayIndex + 1} of {quickTemplate.days.length}</p>
                 : supportLine && <p className="train-meta">{supportLine}</p>}
             </div>
+            {record && <i className="train-record-seam" aria-hidden="true" />}
           </motion.div>
 
           <div className="train-plan">
-            {plansLoading ? <TrainPlanBones /> : quickTemplateDay && quickTemplateHasExercises ? (
+            {record && (
+              <p className="train-record">
+                {recordLine(record, today, (kg) => `${kgStringToDisplayWeight(String(kg), units)} ${units}`)}
+              </p>
+            )}
+            {plansLoading ? <TrainPlanBones /> : weekClosed ? (
+              <div className="train-exercises">
+                {[...weeklyWorkouts].reverse().map((workout) => (
+                  <button
+                    key={workout.id}
+                    type="button"
+                    className="train-exercise"
+                    onClick={() => navigate(`/workout/${workout.id}`)}
+                  >
+                    <span>{weekdayLabel(workout.startedAt)} · {workoutTitle(workout)}</span>
+                    <span>{formatCompactVolume(calcVolume(workout), units)}</span>
+                  </button>
+                ))}
+              </div>
+            ) : quickTemplateDay && quickTemplateHasExercises ? (
               <div className="train-exercises">
                 {quickTemplateDay.exercises.map((exercise) => (
                   <button

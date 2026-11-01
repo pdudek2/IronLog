@@ -4,8 +4,8 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { chromium } from 'playwright'
 
-// node scripts/covers/render.mjs [push pull legs upper plan]
-// Writes <cover>.mp4, <cover>-start.jpg and <cover>.jpg to public/covers and mobile/assets/covers.
+// node scripts/covers/render.mjs [push pull legs upper plan week]
+// Writes <cover>.mp4, <cover>-start.jpg and <cover>.jpg to public/covers and mobile/assets/covers (week is a still only).
 // Needs ffmpeg and a GPU; all five take about 30 minutes.
 
 // [kg, thickness m, radius m] per competition plate
@@ -67,6 +67,8 @@ const covers = {
   plan: { scene: { kind: 4, plates: [[0, .035, .225]], cam: [.56, .42, -.7], tgt: [.2, -.03, .1], focus: .86, ap: .008, fov: .74, ...dim }, frames: 300, fps: 60, sim: () => wobbleSim(300, 60, 4.2, .62), pose: (f, F, S, A) => {
     const [a, phi] = A[f], R = .237, t = S.plates[0][1], N = [Math.sin(a) * Math.cos(phi), Math.cos(a), Math.sin(a) * Math.sin(phi)], b1 = norm(cross(N, [0, 0, 1])), b2 = cross(N, b1), psi = phi * -.04, c = Math.cos(psi), s = Math.sin(psi)
     F.uM = [...N, ...b1.map((v, i) => v * c + b2[i] * s), ...b1.map((v, i) => -v * s + b2[i] * c)]; F.uC = [.12, R * Math.sin(a) + t / 2 * Math.cos(a), .06]; F.uC0 = [0, .225, 0] } },
+  // Still only: the closed week
+  week: { scene: { kind: 3, cam: [.34, .78, -.44], tgt: [.17, .05, .08], focus: .9, ap: .007, fov: .62, ...dim }, still: true },
 }
 
 const b = await chromium.launch({ headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-gpu-rasterization'] })
@@ -89,14 +91,16 @@ const dir = mkdtempSync(join(tmpdir(), 'shear-covers-'))
 for (const name of process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(covers)) {
   const C = covers[name], S = { ...base, ...C.scene }, A = C.sim?.(), t0 = Date.now(), frames = join(dir, name)
   mkdirSync(frames)
-  const posed = (f) => { const F = { ...S }; C.pose(f, F, S, A); return F }
-  for (let f = 0; f < C.frames; f++) await frame(posed(f), 780, 160, join(frames, `${String(f).padStart(3, '0')}.png`))
-  await frame(posed(C.loop ? 0 : C.frames - 1), 1170, 900, join(dir, 'still.png'))
+  const posed = (f) => { const F = { ...S }; C.pose?.(f, F, S, A); return F }
+  for (let f = 0; f < (C.frames ?? 0); f++) await frame(posed(f), 780, 160, join(frames, `${String(f).padStart(3, '0')}.png`))
+  await frame(posed(C.loop || C.still ? 0 : C.frames - 1), 1170, 900, join(dir, 'still.png'))
   const out = (file) => join(dir, file)
-  ffmpeg('-framerate', String(C.fps), '-i', join(frames, '%03d.png'), '-vf', `${video},hqdn3d=1:1:3:3`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-preset', 'slow', '-movflags', '+faststart', out(`${name}.mp4`))
-  ffmpeg('-i', join(frames, '000.png'), '-vf', video, '-q:v', '3', out(`${name}-start.jpg`))
+  if (!C.still) {
+    ffmpeg('-framerate', String(C.fps), '-i', join(frames, '%03d.png'), '-vf', `${video},hqdn3d=1:1:3:3`, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-preset', 'slow', '-movflags', '+faststart', out(`${name}.mp4`))
+    ffmpeg('-i', join(frames, '000.png'), '-vf', video, '-q:v', '3', out(`${name}-start.jpg`))
+  }
   ffmpeg('-i', out('still.png'), '-vf', 'eq=gamma=1.09', '-q:v', '3', out(`${name}.jpg`))
-  for (const d of outDirs) { mkdirSync(d, { recursive: true }); for (const file of [`${name}.mp4`, `${name}-start.jpg`, `${name}.jpg`]) copyFileSync(out(file), join(d, file)) }
+  for (const d of outDirs) { mkdirSync(d, { recursive: true }); for (const file of C.still ? [`${name}.jpg`] : [`${name}.mp4`, `${name}-start.jpg`, `${name}.jpg`]) copyFileSync(out(file), join(d, file)) }
   console.log('done', name, Date.now() - t0)
 }
 rmSync(dir, { recursive: true })

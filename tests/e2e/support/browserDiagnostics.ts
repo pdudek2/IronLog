@@ -42,6 +42,8 @@ export function isBlockingRequestFailure(
     && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/assets\/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\.js(?:\?.*)?$/.test(url)
   const isTrustedGoogleFont = resourceType === 'font'
     && /^https:\/\/fonts\.gstatic\.com\//.test(url)
+  const isLocalCover = (resourceType === 'image' || resourceType === 'media')
+    && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/covers\//.test(url)
 
   return !(
     intentionalNavigationOrTeardown
@@ -51,6 +53,7 @@ export function isBlockingRequestFailure(
       || isLocalViteSourceModule
       || isLocalViteProductionChunk
       || isTrustedGoogleFont
+      || isLocalCover
     )
   )
 }

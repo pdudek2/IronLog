@@ -67,6 +67,16 @@ describe('browser diagnostics classification', () => {
     expect(isBlockingRequestFailure('script', 'net::ERR_ABORTED', 'https://example.com/assets/app-abcdefgh.js', true)).toBe(true)
   })
 
+  it('ignores aborted local covers only during intentional navigation or teardown', () => {
+    const cover = 'http://localhost:5174/covers/push-start.jpg'
+
+    expect(isBlockingRequestFailure('image', 'net::ERR_ABORTED', cover, true)).toBe(false)
+    expect(isBlockingRequestFailure('media', 'net::ERR_ABORTED', 'http://localhost:5174/covers/push.mp4', true)).toBe(false)
+    expect(isBlockingRequestFailure('image', 'net::ERR_ABORTED', cover)).toBe(true)
+    expect(isBlockingRequestFailure('image', 'net::ERR_FAILED', cover, true)).toBe(true)
+    expect(isBlockingRequestFailure('image', 'net::ERR_ABORTED', 'https://example.com/covers/push.jpg', true)).toBe(true)
+  })
+
   it('ignores only aborted fonts.gstatic.com font requests during intentional navigation or teardown', () => {
     const googleFontUrl = 'https://fonts.gstatic.com/s/urbanist/v17/L0x5DF02iFML4hGCyMqlbSnbfM3k.woff2'
 

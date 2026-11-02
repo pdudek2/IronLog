@@ -259,7 +259,7 @@ describe('shared accessibility contracts', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
+      <MemoryRouter initialEntries={['/history']}>
         <MobileInteractionProvider>
           <TopNav />
           <WorkoutStartIntentProbe />
@@ -282,7 +282,7 @@ describe('shared accessibility contracts', () => {
     })
 
     render(
-      <MemoryRouter initialEntries={['/dashboard']}>
+      <MemoryRouter initialEntries={['/history']}>
         <MobileInteractionProvider>
           <TopNav />
           <BottomNav />

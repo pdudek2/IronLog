@@ -62,7 +62,7 @@ export default function LoginPage() {
     <AuthShell
       title="Sign in"
       subtitle={(
-        <Link to="/register" className="auth-account-link transition-opacity hover:opacity-80">
+        <Link to="/register" className="auth-account-link">
           Create account
         </Link>
       )}

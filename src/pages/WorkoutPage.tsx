@@ -36,7 +36,7 @@ import {
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
-import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, upNextQueue } from '../shared/workoutDisplay'
+import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
 
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
 
@@ -77,11 +77,12 @@ interface RestTimerBarProps {
   onAddTime: (deltaSec: number) => void
   onSkip: () => void
   variant?: 'full' | 'compact'
+  label: string
   undoLabel?: string
   onUndo?: () => void
 }
 
-function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', undoLabel, onUndo }: RestTimerBarProps) {
+function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', label, undoLabel, onUndo }: RestTimerBarProps) {
   const [now, setNow] = useState(() => Date.now())
   const firedRef = useRef(false)
   const onSkipRef = useRef(onSkip)
@@ -131,7 +132,7 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', undoLabel, on
             <span>Ready — time for the next set</span>
           ) : (
             <>
-              <span style={{ color: 'var(--muted)' }}>Rest</span>
+              <span style={{ color: 'var(--muted)' }}>{label}</span>
               <span className="rest-timer-value tabular-nums">
                 {Math.floor(restRemainingSec / 60)}:{String(restRemainingSec % 60).padStart(2, '0')}
               </span>
@@ -778,11 +779,12 @@ export default function WorkoutPage() {
     setLastLogged((logged) => logged && { ...logged, draw: false })
     window.scrollTo({ top: 0 })
   }
+  const panelSet = (currentSetIndex >= 0 ? panelExercise?.sets[currentSetIndex] : null) ?? null
   const setPanel = panelExercise && (
     <WorkoutSetPanel
       exerciseIndex={panelIndex}
       exerciseName={panelExercise.name}
-      set={currentSetIndex >= 0 ? panelExercise.sets[currentSetIndex] ?? null : null}
+      set={panelSet}
       setIndex={currentSetIndex}
       setCount={panelExercise.sets.length}
       units={units}
@@ -797,6 +799,7 @@ export default function WorkoutPage() {
           onAddTime={handleAddRestTime}
           onSkip={handleSkipRest}
           variant={isDesktop ? 'full' : mobileRestVariant}
+          label={setPanelRestLabel(panelSet, currentSetIndex)}
           undoLabel={undoSet?.done ? `Undo set ${lastLogged!.setIndex + 1}` : undefined}
           onUndo={() => handleToggleSet(undoExerciseIndex, lastLogged!.setIndex)}
         />

@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import WorkoutSetPanel from '../workout/WorkoutSetPanel'
+import { setPanelRestLabel } from '../../shared/workoutDisplay'
 
 const handlers = () => ({
   onAdjustSet: vi.fn(),
@@ -45,6 +46,10 @@ describe('WorkoutSetPanel', () => {
     const on = handlers()
     const { rerender } = render(<WorkoutSetPanel {...base} {...on} setIndex={0} set={{ weight: '80', reps: '6', done: true }} />)
 
+    expect(screen.getByText('Editing set 1')).toBeInTheDocument()
+    expect(setPanelRestLabel({ done: true }, 0)).toBe('Editing set 1')
+    expect(setPanelRestLabel({ done: false }, 1)).toBe('Set 2 rest')
+    expect(setPanelRestLabel(null, -1)).toBe('Rest')
     fireEvent.change(screen.getByRole('spinbutton', { name: 'Weight, Bench Press, set 1, kg' }), { target: { value: '82.5' } })
     expect(on.onUpdateSet).toHaveBeenCalledWith(1, 0, 'weight', '82.5')
     expect(screen.queryByRole('button', { name: /Log set/ })).not.toBeInTheDocument()

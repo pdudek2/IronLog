@@ -7,6 +7,7 @@ import {
   aggregateMuscleBalance,
   aggregatePeriodComparison,
   aggregateStrengthProgression,
+  defaultStrengthKey,
   aggregateWeeklyVolume,
   type ProgressSessionLite,
 } from '../progressService'
@@ -212,6 +213,17 @@ describe('snapshot anchors', () => {
 })
 
 // ─── aggregateStrengthProgression ───────────────────────────────────────────
+
+describe('defaultStrengthKey', () => {
+  it('prefers the most logged main lift over an isolation exercise', () => {
+    expect(defaultStrengthKey([{ key: 'global:barbell-curl' }, { key: 'user:press' }, { key: 'global:bench-press' }])).toBe('global:bench-press')
+  })
+
+  it('falls back to the most logged exercise, or nothing', () => {
+    expect(defaultStrengthKey([{ key: 'global:barbell-curl' }, { key: 'user:press' }])).toBe('global:barbell-curl')
+    expect(defaultStrengthKey([])).toBeNull()
+  })
+})
 
 describe('aggregateStrengthProgression', () => {
   it('returns every weighted exercise ordered by frequency with source-aware keys', () => {

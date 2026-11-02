@@ -512,9 +512,11 @@ export default function TemplateEditorPage() {
                   {selectedDay.exercises.length > 0 && (
                     <div className="template-exercise-columns" aria-hidden="true">
                       <span>Exercise</span>
-                      <span>Sets</span>
-                      <span>Reps</span>
-                      <span>Weight ({units})</span>
+                      <div>
+                        <span>Sets</span>
+                        <span>Reps</span>
+                        <span>Weight ({units})</span>
+                      </div>
                     </div>
                   )}
                   {selectedDay.exercises.map((exercise, exerciseIndex) => (

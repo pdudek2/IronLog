@@ -63,6 +63,10 @@ test('desktop nav shows Resume workout only during an active session', async ({ 
   await seedLifecycleActiveSession({ sessionId: 'phase-1-top-nav-resume', label: 'Phase 1 top nav resume' })
   await page.reload()
   await expectAppReady(page, '/dashboard')
+  await expect(workoutEntry).toHaveCount(0)
+
+  await page.goto('/history')
+  await expectAppReady(page, '/history')
   await expect(workoutEntry).toHaveText('Resume workout')
 })
 

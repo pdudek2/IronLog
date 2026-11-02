@@ -7,6 +7,7 @@ import {
   displayWeightStringToKg,
   kgStringToDisplayWeight,
 } from '../../lib/weightUnits'
+import { setPanelStatus } from '../../shared/workoutDisplay'
 
 interface WorkoutSetPanelProps {
   exerciseIndex: number
@@ -59,7 +60,7 @@ export default function WorkoutSetPanel({
     <section className="workout-set-panel" aria-label="Current set">
       {rest ?? (
         <div className="workout-set-panel-status">
-          <strong>{set ? `Set ${setNumber} of ${setCount}` : 'All sets done'}</strong>
+          <strong>{setPanelStatus(set, setIndex, setCount)}</strong>
         </div>
       )}
 
@@ -99,7 +100,7 @@ export default function WorkoutSetPanel({
             </div>
           </div>
           {set.done ? (
-            <button type="button" className="workout-set-panel-action" onClick={onClearSelection}>
+            <button type="button" className="workout-set-panel-action" data-quiet onClick={onClearSelection}>
               {openSetIndex >= 0 ? `Back to set ${openSetIndex + 1}` : 'Done'}
             </button>
           ) : (

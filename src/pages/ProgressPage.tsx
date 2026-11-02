@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
 import NumberFlow from '@number-flow/react'
-import { AlertCircle } from 'lucide-react'
+import { AlertCircle, ChevronDown } from 'lucide-react'
 import {
   CartesianGrid, Cell,
   Area, AreaChart,
@@ -17,6 +17,7 @@ import {
   aggregatePeriodComparison,
   aggregateStrengthProgression,
   aggregateWeeklyVolume,
+  defaultStrengthKey,
   formatProgressVolume as formatVolume,
   strengthChartScale,
   strengthDeltaLabel,
@@ -313,7 +314,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   }
   const effectiveStrengthKey = strengthData.series.some(({ key }) => key === selectedStrengthKey)
     ? selectedStrengthKey
-    : strengthData.series[0]?.key ?? null
+    : defaultStrengthKey(strengthData.series)
   const selectedStrengthSeries = strengthData.series.find(({ key }) => key === effectiveStrengthKey) ?? null
   const selectedStrengthPoints = effectiveStrengthKey
     ? strengthData.data.filter((point) => Number(point[effectiveStrengthKey] ?? 0) > 0)
@@ -492,7 +493,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 <>
                   {stats.filter((item) => item.label === 'Sessions' || item.label === 'Records').map(renderStat)}
                   <details className="progress-more-stats">
-                    <summary>More stats</summary>
+                    <summary>More stats<ChevronDown size={14} aria-hidden="true" /></summary>
                     <div>{stats.filter((item) => item.label !== 'Sessions' && item.label !== 'Records').map(renderStat)}</div>
                   </details>
                 </>

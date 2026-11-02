@@ -97,7 +97,7 @@ export default function TopNav({ current, streak: streakProp }: TopNavProps) {
             </motion.button>
           )}
 
-          {hasActiveSession && path !== '/workout/new' && <motion.button
+          {hasActiveSession && path !== '/workout/new' && path !== '/dashboard' && <motion.button
             type="button"
             className="top-nav-cta"
             onClick={() => go('/workout/new')}

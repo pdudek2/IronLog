@@ -114,7 +114,7 @@ export default function HistoryScreen() {
                       ? 'You have no saved workouts yet.'
                       : `${filtered.length} ${pluralize(filtered.length, 'session', 'sessions')} · ${workoutVolumeLabel(totalVolume, active.state.units)}${history.state.status === 'ready' && history.state.data.truncated ? ' · latest 2,000' : ''}`}
           </Text>
-            {workouts.length > 0 && <Pressable accessibilityRole="button" onPress={() => setCalendarOpen(true)} hitSlop={8} style={styles.calendarLink}><Text style={styles.calendarLinkText}>Calendar</Text></Pressable>}
+            {workouts.length > 0 && <Pressable accessibilityRole="button" onPress={() => setCalendarOpen(true)} hitSlop={8} style={styles.calendarLink}><Text style={styles.calendarLinkText}>Calendar</Text><Icon name="chevron-right" size={14} color={colors.text} /></Pressable>}
           </View>
         </View>
 
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
   subtitle: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, marginTop: 6 },
   filters: { gap: 10, paddingBottom: 14 },
   subtitleRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' }, subtitleText: { flex: 1 },
-  calendarLink: { justifyContent: 'center', minHeight: 44 }, calendarLinkText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
+  calendarLink: { alignItems: 'center', columnGap: 2, flexDirection: 'row', minHeight: 44 }, calendarLinkText: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   calendarNav: { flexDirection: 'row', justifyContent: 'flex-end', marginRight: -12, marginTop: -8 }, calendarNavButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 }, calendarNavDisabled: { opacity: 0.35 },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' }, calendarCell: { alignItems: 'center', height: 48, justifyContent: 'center', width: '14.28%' },
   calendarWeekday: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5 },

@@ -51,7 +51,7 @@ import {
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { SIGNAL_PATH } from '../../src/shared/authVisual'
-import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, setPairLabel, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
 import { useKeyboardReveal } from '../src/useKeyboardReveal'
@@ -580,7 +580,7 @@ type Rest = { sessionId: string; startedAt: number; totalSec: number }
 // shortcut: lives only in memory, so a killed app forgets the rest; move it to the session journal if testers miss it.
 let lastRest: Rest | null = null
 
-function RestBar({ rest, undoLabel, onUndo, onAddTime, onSkip }: { rest: Rest; undoLabel?: string; onUndo: () => void; onAddTime: (seconds: number) => void; onSkip: () => void }) {
+function RestBar({ rest, label, undoLabel, onUndo, onAddTime, onSkip }: { rest: Rest; label: string; undoLabel?: string; onUndo: () => void; onAddTime: (seconds: number) => void; onSkip: () => void }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 250)
@@ -600,7 +600,7 @@ function RestBar({ rest, undoLabel, onUndo, onAddTime, onSkip }: { rest: Rest; u
   return <View accessibilityRole="timer" accessibilityLiveRegion={finished ? 'polite' : 'none'} style={styles.panelStatus}>
     <View style={styles.restTrack}><View style={[styles.restFill, { width: `${remainingMs / (rest.totalSec * 1000) * 100}%` }]} /></View>
     {finished ? <Text style={styles.panelStatusText}>Ready — time for the next set</Text> : <>
-      <Text style={styles.restLabel}>Rest</Text>
+      <Text style={styles.restLabel}>{label}</Text>
       <Text style={styles.restValue}>{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</Text>
     </>}
     <View style={styles.flex} />
@@ -625,7 +625,7 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
   const openSet = exercise.sets.findIndex(({ done }) => !done)
   const action = set?.done ? openSet >= 0 ? `Back to set ${openSet + 1}` : 'Done' : set ? 'Log set' : nextName ? `Go to ${nextName}` : finishing ? 'Finishing…' : 'Finish workout'
   return <View accessibilityLabel="Current set" style={[styles.panel, { paddingBottom: inset }]}>
-    {rest ?? <View style={styles.panelStatus}><Text style={styles.panelStatusText}>{set ? `Set ${number} of ${exercise.sets.length}` : 'All sets done'}</Text></View>}
+    {rest ?? <View style={styles.panelStatus}><Text style={styles.panelStatusText}>{setPanelStatus(set, setIndex, exercise.sets.length)}</Text></View>}
     {set && <View style={styles.panelNums}>
       <View style={styles.panelNum}>
         <SetStepper label="weight" step={-2.5} onStep={() => adjust('weight', displayWeightDeltaToKg(-2.5, units))} />
@@ -642,8 +642,8 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
       </View>
     </View>}
     <Pressable accessibilityRole="button" accessibilityLabel={set && !set.done ? `Log set ${number} for ${exercise.name}` : action} disabled={!set && !nextName && finishing}
-      onPress={set?.done ? onClearSelection : set ? onLog : nextName ? onNext : onFinish} style={({ pressed }) => [styles.panelAction, !set && !nextName && finishing && styles.buttonDisabled, pressed && styles.buttonPressed]}>
-      <Text style={styles.panelActionText}>{action}</Text>
+      onPress={set?.done ? onClearSelection : set ? onLog : nextName ? onNext : onFinish} style={({ pressed }) => [styles.panelAction, set?.done && styles.panelActionQuiet, !set && !nextName && finishing && styles.buttonDisabled, pressed && styles.buttonPressed]}>
+      <Text style={[styles.panelActionText, set?.done && styles.panelActionQuietText]}>{action}</Text>
     </Pressable>
   </View>
 }
@@ -993,7 +993,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         rejectedEdit={rejectedEditState} inset={Math.max(keyboardInset, insets.bottom + 14)} finishing={closure?.status === 'submitting'}
         nextName={nextExerciseIndex >= 0 ? liveSession?.exercises[nextExerciseIndex]?.name ?? null : null}
         editing={panelEditing}
-        rest={currentRest && <RestBar rest={currentRest} undoLabel={undoSet?.done ? `Undo set ${undoSetIndex + 1}` : undefined}
+        rest={currentRest && <RestBar rest={currentRest} label={setPanelRestLabel(panelExercise.sets[currentSetIndex], currentSetIndex)} undoLabel={undoSet?.done ? `Undo set ${undoSetIndex + 1}` : undefined}
           onUndo={() => { if (undoExercise && undoSet) toggleSet(undoExercise.clientId, undoSet.clientId, false) }}
           onAddTime={(seconds) => changeRest({ ...currentRest, totalSec: currentRest.totalSec + seconds })} onSkip={() => changeRest(null)} />}
         onLog={() => { const set = panelExercise.sets[currentSetIndex]; if (set) toggleSet(panelExercise.clientId, set.clientId, true) }}
@@ -1193,6 +1193,8 @@ const styles = StyleSheet.create({
   panelStepText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, fontVariant: ['tabular-nums'] },
   panelAction: { alignItems: 'center', backgroundColor: colors.primaryEnd, borderRadius: 15, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35)', experimental_backgroundImage: primaryGradient, height: 52, justifyContent: 'center' },
   panelActionText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
+  panelActionQuiet: { backgroundColor: 'rgba(255, 255, 255, 0.09)', boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)', experimental_backgroundImage: 'none' },
+  panelActionQuietText: { color: colors.text },
   restTrack: { height: 2, left: 6, position: 'absolute', right: 6, top: -6 },
   restFill: { backgroundColor: colors.seam, height: '100%' },
   restLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, marginRight: 8 },

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
 import NextSessionCard from '../components/NextSessionCard'
@@ -10,6 +11,9 @@ import { ActionFeedback } from '../components/ActionFeedback'
 import { Bone, Button, PageSkeleton } from '../components/ui'
 import {
   getTemplates,
+  templateExerciseKey,
+  type TemplateExercise,
+  type TemplateExerciseHistoryMap,
   type TemplateExerciseOverrideMap,
   type WorkoutTemplate,
 } from '../lib/templateService'
@@ -30,9 +34,12 @@ import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore } from '../store/workoutStore'
 import type { DataState } from '../types/dataState'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../lib/weightUnits'
+import type { Units } from '../lib/userProfile'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 import { TrainCoverMedia } from '../components/TrainCoverMedia'
 import { latestRecord, recordLine } from '../shared/workoutMoments'
+import { templateStartWeight } from '../shared/workoutDisplay'
+import { loadTemplateExerciseHistory } from '../lib/templateLaunchService'
 import { WORKOUT_COVERS, workoutCover } from '../shared/workoutCover'
 import { WEEK_LABELS, addLocalDays, firstLaunchableWorkout, getGreeting, getWeekDates, weekdayLabel } from '../shared/week'
 
@@ -107,6 +114,51 @@ function TrainPlanBones() {
   return (
     <div className="train-exercises" aria-hidden="true">
       {[0, 1, 2, 3, 4].map((row) => <Bone key={row} height="1rem" style={{ margin: '0.75rem 0' }} />)}
+    </div>
+  )
+}
+
+function TrainExercises({ uid, template, dayIndex, units, onOpen }: {
+  uid: string
+  template: WorkoutTemplate
+  dayIndex: number
+  units: Units
+  onOpen: (exercise: TemplateExercise) => void
+}) {
+  const [best, setBest] = useState<TemplateExerciseHistoryMap | null>(null)
+
+  useEffect(() => {
+    let current = true
+    void loadTemplateExerciseHistory(uid, template, dayIndex).then((history) => {
+      if (current) setBest(history)
+    })
+    return () => { current = false }
+  }, [uid, template, dayIndex])
+
+  return (
+    <div className="train-exercises">
+      {template.days[dayIndex]?.exercises.map((exercise) => {
+        const weight = best ? templateStartWeight(exercise, best.get(templateExerciseKey(exercise.exerciseId, exercise.exerciseSource))) : 0
+        return (
+          <button
+            key={`${exercise.exerciseSource}:${exercise.exerciseId}`}
+            type="button"
+            className="train-exercise"
+            onClick={() => onOpen(exercise)}
+          >
+            <span>{exercise.name}</span>
+            <span>
+              {exercise.sets} × {exercise.targetReps}
+              {weight > 0 && (
+                <>
+                  {' · '}
+                  <b>{kgStringToDisplayWeight(String(weight), units)} {units}</b>
+                </>
+              )}
+            </span>
+          </button>
+        )
+      })}
     </div>
   )
 }
@@ -571,28 +623,15 @@ export default function DashboardPage() {
                   </button>
                 ))}
               </div>
-            ) : quickTemplateDay && quickTemplateHasExercises ? (
-              <div className="train-exercises">
-                {quickTemplateDay.exercises.map((exercise) => (
-                  <button
-                    key={`${exercise.exerciseSource}:${exercise.exerciseId}`}
-                    type="button"
-                    className="train-exercise"
-                    onClick={() => navigate(`/exercises/${exercise.exerciseSource}/${exercise.exerciseId}`)}
-                  >
-                    <span>{exercise.name}</span>
-                    <span>
-                      {exercise.sets} × {exercise.targetReps}
-                      {exercise.targetWeight > 0 && (
-                        <>
-                          {' · '}
-                          <b>{kgStringToDisplayWeight(String(exercise.targetWeight), units)} {units}</b>
-                        </>
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
+            ) : user && quickTemplate && quickTemplateHasExercises ? (
+              <TrainExercises
+                key={quickTemplateRequestKey}
+                uid={user.uid}
+                template={quickTemplate}
+                dayIndex={quickTemplateDayIndex}
+                units={units}
+                onOpen={(exercise) => navigate(`/exercises/${exercise.exerciseSource}/${exercise.exerciseId}`)}
+              />
             ) : !hasActiveSession && (
               <div className="dashboard-workout-choice-empty">
                 <strong>
@@ -711,7 +750,7 @@ export default function DashboardPage() {
                 ))}
               </div>
               <details className="train-week-more">
-                <summary>Week details</summary>
+                <summary>Week details<ChevronDown size={14} aria-hidden="true" /></summary>
                 <dl>
                   {weekDetails.map((detail) => (
                     <div key={detail.label}>

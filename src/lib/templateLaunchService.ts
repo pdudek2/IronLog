@@ -11,7 +11,7 @@ import {
   type WorkoutTemplate,
 } from './templateService'
 
-async function loadTemplateExerciseHistory(
+export async function loadTemplateExerciseHistory(
   uid: string,
   template: WorkoutTemplate,
   dayIndex: number,

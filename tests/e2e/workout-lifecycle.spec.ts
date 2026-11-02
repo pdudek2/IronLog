@@ -135,7 +135,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await page.getByRole('button', { name: 'Unmark set 1 for Phase 1 Bench Press' }).click()
     await reps.fill('6')
     await page.getByRole('button', { name: 'Mark set 1 for Phase 1 Bench Press' }).click()
-    await expect(page.locator('.rest-timer-bar')).toContainText('Rest')
+    await expect(page.locator('.rest-timer-bar')).toContainText(/rest/i)
     await waitForSettledLifecycleActiveSession((session) => (
       session?.sessionId === sessionId && session.exercises[0]?.sets[0]?.reps === '6'
     ))
@@ -170,7 +170,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expect(page).toHaveURL('/workout/new')
     await selectSet(page, 1)
     await expect(reps).toHaveValue('6')
-    await expect(page.locator('.rest-timer-bar')).toContainText('Rest')
+    await expect(page.locator('.rest-timer-bar')).toContainText('Editing set 1')
 
     expect(await readLifecycleActiveSession()).toMatchObject({
       sessionId,
@@ -190,7 +190,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         await returnBar.getByRole('button', { name: 'Return to workout' }).click()
         await selectSet(page, 1)
         await expect(reps).toHaveValue('7')
-        await expect(page.locator('.rest-timer-bar')).toContainText('Rest')
+        await expect(page.locator('.rest-timer-bar')).toContainText('Editing set 1')
         await setFirestoreNetworkEnabled(page, true)
       },
     )

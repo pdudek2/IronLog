@@ -1,4 +1,5 @@
 import { createLocalId, parseSessionDocument, type ActiveWorkout, type ExerciseSource } from './session'
+import { templateStartWeight } from '../../src/shared/workoutDisplay'
 import type { TemplateExerciseOverrideMap } from '../../src/shared/nextSessionRecommendation'
 
 export interface TemplateExercise {
@@ -101,7 +102,7 @@ export function buildTemplateSession(template: WorkoutTemplate, dayIndex: number
     exercises: day.exercises.map((exercise) => {
       const best = history.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)
       const override = overrides?.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)
-      const weightValue = override?.weight ?? (best && best.bestSetWeight > 0 ? best.bestSetWeight : exercise.targetWeight)
+      const weightValue = override?.weight ?? templateStartWeight(exercise, best)
       const repsValue = override?.reps ?? (best && best.bestSetReps > 0 ? best.bestSetReps : exercise.targetReps)
       return {
         clientId: createLocalId('exercise'), exerciseId: exercise.exerciseId, exerciseSource: exercise.exerciseSource, name: exercise.name,

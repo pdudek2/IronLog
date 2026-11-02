@@ -92,3 +92,16 @@ export function formatElapsedTime(startedAt: number, now = Date.now()): string {
     : `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+export function templateStartWeight(exercise: { targetWeight: number }, best?: { bestSetWeight: number } | null): number {
+  return best && best.bestSetWeight > 0 ? best.bestSetWeight : exercise.targetWeight
+}
+
+export function setPanelStatus(set: { done: boolean } | null | undefined, setIndex: number, setCount: number): string {
+  if (!set) return 'All sets done'
+  return set.done ? `Editing set ${setIndex + 1}` : `Set ${setIndex + 1} of ${setCount}`
+}
+
+export function setPanelRestLabel(set: { done: boolean } | null | undefined, setIndex: number): string {
+  if (!set) return 'Rest'
+  return set.done ? `Editing set ${setIndex + 1}` : `Set ${setIndex + 1} rest`
+}

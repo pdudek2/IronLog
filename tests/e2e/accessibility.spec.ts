@@ -165,8 +165,8 @@ test('desktop Resume workout exposes at least a 44px hit area', async ({ page, c
   await cleanupWorkoutLifecycleState()
   await seedLifecycleActiveSession({ sessionId: 'phase-1-resume-hit-area', label: 'Phase 1 resume hit area' })
 
-  await page.goto('/dashboard')
-  await expectAppReady(page, '/dashboard')
+  await page.goto('/history')
+  await expectAppReady(page, '/history')
 
   const resume = page.getByRole('button', { name: 'Resume workout', exact: true })
   await expect(resume).toBeVisible()

@@ -229,7 +229,10 @@ export default function HistoryPage() {
               : `${filtered.length} ${pluralize(filtered.length, 'session', 'sessions')} · ${formatCompactVolume(totalVolumeInRange, units)}${historyTruncated ? ' · latest 2,000' : ''}`}
           </p>
           {workouts.length > 0 && (
-            <button type="button" className="history-calendar-link" onClick={() => setCalendarOpen(true)}>Calendar</button>
+            <button type="button" className="history-calendar-link" onClick={() => setCalendarOpen(true)}>
+              Calendar
+              <ChevronRight size={14} aria-hidden="true" />
+            </button>
           )}
         </div>
       </header>

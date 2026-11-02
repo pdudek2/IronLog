@@ -18,7 +18,8 @@ import { pluralize } from '../../src/lib/pluralize'
 import { workoutTitle } from '../../src/lib/workoutCopy'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 import { workoutCover } from '../../src/shared/workoutCover'
-import { readHome, readTemplates } from '../src/firebase'
+import { readHome, readTemplateBestSet, readTemplates } from '../src/firebase'
+import { templateStartWeight } from '../../src/shared/workoutDisplay'
 import { canShowHomeSummary, deriveHome, getGreeting } from '../src/home'
 import { publishStreak } from '../src/streak'
 import { calcStreak } from '../../src/shared/streak'
@@ -27,7 +28,7 @@ import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../
 import { ResumeButton } from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
-import { firstLaunchableWorkout, selectedWorkout, validateTemplateOverrides, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
+import { firstLaunchableWorkout, selectedWorkout, validateTemplateOverrides, type BestSet, type TemplateExercise, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
 import { colors, primaryGradient } from '../src/theme'
 import { Icon } from '../src/icons'
 
@@ -49,6 +50,7 @@ export default function DashboardScreen() {
   const [now, setNow] = useState(() => new Date())
   const [templatesResult, setTemplatesResult] = useState<{ key: string; state: ReadState<TemplateData> } | null>(null)
   const [templatesAttempt, setTemplatesAttempt] = useState(0)
+  const [startBest, setStartBest] = useState<{ day: WorkoutTemplate['days'][number]; best: Map<string, BestSet | null> } | null>(null)
   const [selection, setSelection] = useState<{ uid: string; target: WorkoutSelection | null; unavailable: boolean } | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
@@ -91,6 +93,20 @@ export default function DashboardScreen() {
   // A new account has nothing to start from a plan, so an empty workout is the main action.
   const noPlans = templatesState.status === 'ready' && !templatesState.fromCache && templates.length === 0
   const chosen = selection?.uid === uid && !selection.unavailable ? selectedWorkout(templates, selection.target) : null
+  const chosenTemplate = chosen?.template
+  const chosenDay = chosen?.day
+  useEffect(() => {
+    if (!uid || !chosenTemplate || !chosenDay) return
+    let current = true
+    void Promise.all(chosenDay.exercises.map(async ({ exerciseId, exerciseSource }) => (
+      [`${exerciseSource}:${exerciseId}`, await readTemplateBestSet(uid, exerciseId, exerciseSource).catch(() => null)] as const
+    ))).then((entries) => { if (current) setStartBest({ day: chosenDay, best: new Map(entries) }) })
+    return () => { current = false }
+  }, [uid, chosenTemplate, chosenDay])
+  const chosenBest = startBest?.day === chosenDay ? startBest?.best : null
+  const startWeightOf = (exercise: TemplateExercise) => chosenBest
+    ? templateStartWeight(exercise, chosenBest.get(`${exercise.exerciseSource}:${exercise.exerciseId}`))
+    : 0
   const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
   const plansPending = active.state.status === 'loading' || (canOfferStart && templatesState.status === 'loading')
   // Picking a workout means the next session matters more than the finished week.
@@ -160,7 +176,7 @@ export default function DashboardScreen() {
           </Pressable>)}
           {!weekClosed && chosen && !recommendation && chosen.day.exercises.map((exercise, index) => <Pressable key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercises/[source]/[id]', params: { source: exercise.exerciseSource, id: exercise.exerciseId } })} style={styles.exercise}>
             <Text numberOfLines={1} style={styles.exerciseName}>{exercise.name}</Text>
-            <Text style={styles.exerciseMeta}>{exercise.sets} × {exercise.targetReps}{exercise.targetWeight > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(exercise.targetWeight), units)} {units}</Text></>}</Text>
+            <Text style={styles.exerciseMeta}>{exercise.sets} × {exercise.targetReps}{startWeightOf(exercise) > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(startWeightOf(exercise)), units)} {units}</Text></>}</Text>
           </Pressable>)}
           {canOfferStart && !chosen && !plansPending && <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text></View>}
           {canOfferStart && templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
@@ -178,7 +194,7 @@ export default function DashboardScreen() {
         {showSummary && summary && <View style={styles.week}>
           <View style={styles.weekHead}><Text accessibilityRole="header" style={styles.weekTitle}>This week</Text><Text style={styles.weekMeta}>{summary.weeklyDone} of {goal}{summary.weeklyVolume > 0 ? ` · ${formatCompactVolume(summary.weeklyVolume, units)}` : ''}</Text></View>
           <View accessibilityLabel="Days of the current week" style={styles.days}>{summary.days.map((day) => <View key={day.label} style={[styles.day, day.workouts > 0 && styles.dayDone, day.isToday && styles.dayToday]}><Text style={[styles.dayLabel, (day.workouts > 0 || day.isToday) && styles.dayLabelOn]}>{day.label.charAt(0)}</Text></View>)}</View>
-          <Pressable accessibilityRole="button" accessibilityState={{ expanded: weekOpen }} onPress={() => setWeekOpen((open) => !open)} style={styles.link}><Text style={styles.linkText}>Week details</Text></Pressable>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: weekOpen }} onPress={() => setWeekOpen((open) => !open)} style={styles.weekLink}><Text style={styles.linkText}>Week details</Text><Icon name={weekOpen ? 'chevron-up' : 'chevron-down'} size={14} color={colors.text} /></Pressable>
           {weekOpen && <View style={styles.signals}>{[
             ['Schedule', `${summary.activeDays}/7 days`, `${summary.sessionsDelta > 0 ? '+' : ''}${summary.sessionsDelta === 0 ? 'No change' : summary.sessionsDelta} compared with last week`],
             ['Strong day', summary.peakDay?.volume ? summary.peakDay.label : 'None', summary.peakDay?.volume ? `${formatCompactVolume(summary.peakDay.volume, units)} • ${summary.peakDay.sets} ${pluralize(summary.peakDay.sets, 'set', 'sets')}` : 'No workouts this week'],
@@ -228,7 +244,7 @@ const styles = StyleSheet.create({
   plan: { gap: 4, marginTop: 18 }, exercise: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40 },
   exerciseName: { flex: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 }, exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] }, exerciseWeight: { color: colors.text, fontFamily: 'InstrumentSans_500Medium' },
   planPending: { height: 216 }, startPending: { height: 52 },
-  links: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20 }, link: { minHeight: 44, justifyContent: 'center' }, linkText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
+  links: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20 }, link: { minHeight: 44, justifyContent: 'center' }, weekLink: { alignItems: 'center', columnGap: 4, flexDirection: 'row', minHeight: 44 }, linkText: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
   planEmpty: { gap: 4, paddingVertical: 8 }, planEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },
   launchFeedback: { gap: 4 }, disabled: { opacity: 0.65 },

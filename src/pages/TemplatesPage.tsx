@@ -27,7 +27,7 @@ interface TemplateDeleteOperation {
 
 function TemplatesLoadingSkeleton() {
   return (
-    <PageSkeleton label="Loading plans..." className="workbench-page">
+    <PageSkeleton label="Loading plans..." className="workbench-page plans-page">
       <section className="planner-header plans-header">
         <div className="plans-header-title">
           <h1>Plans</h1>
@@ -139,7 +139,7 @@ export default function TemplatesPage() {
 
   return (
     <>
-      <div className="workbench-page">
+      <div className="workbench-page plans-page">
         <section className="planner-header plans-header">
         <div className="plans-header-title">
           <h1>Plans</h1>

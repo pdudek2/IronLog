@@ -1,3 +1,4 @@
+import { exercises, type Category } from '../../data/exercises'
 import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
 import { addLocalDays } from './week'
 
@@ -231,6 +232,15 @@ export interface StrengthSeries {
 }
 
 const SERIES_COLORS = ['#efe7dc', '#a89f98', '#c9bdb0', '#7f766f', '#5f5751']
+
+const MAIN_LIFT_CATEGORIES: Category[] = ['chest', 'back', 'legs', 'shoulders']
+const MAIN_LIFT_KEYS = new Set(exercises
+  .filter(({ category, equipment }) => equipment === 'barbell' && MAIN_LIFT_CATEGORIES.includes(category))
+  .map(({ id }) => `global:${id}`))
+
+export function defaultStrengthKey(series: { key: string }[]): string | null {
+  return (series.find(({ key }) => MAIN_LIFT_KEYS.has(key)) ?? series[0])?.key ?? null
+}
 
 export function aggregateStrengthProgression(
   sessions: ProgressSessionLite[],

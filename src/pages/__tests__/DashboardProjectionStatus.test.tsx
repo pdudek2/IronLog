@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   getRecentWorkouts: vi.fn(),
   retryWorkoutMaterialization: vi.fn(),
   getTemplates: vi.fn(),
+  loadTemplateExerciseHistory: vi.fn(async () => new Map()),
   toastError: vi.fn(),
   profile: { displayName: 'Patryk', weeklyGoal: 3 },
   navigate: vi.fn(),
@@ -57,6 +58,10 @@ vi.mock('../../lib/workoutService', async () => ({
 vi.mock('../../lib/templateService', () => ({
   getTemplates: mocks.getTemplates,
   templateExerciseKey: (exerciseId: string, source: string) => `${source}:${exerciseId}`,
+}))
+
+vi.mock('../../lib/templateLaunchService', () => ({
+  loadTemplateExerciseHistory: mocks.loadTemplateExerciseHistory,
 }))
 
 vi.mock('../../hooks/useTemplateWorkoutLaunch', () => ({
@@ -405,7 +410,7 @@ describe('Dashboard workout projection status', () => {
     })
 
     await waitFor(() => {
-      expect(screen.getAllByRole('button', { name: 'Resume workout' })).toHaveLength(1)
+      expect(screen.getAllByRole('button', { name: 'Return to workout' })).toHaveLength(1)
     })
     expect(screen.queryByRole('button', { name: 'Start empty workout' })).not.toBeInTheDocument()
     expect(useWorkoutStore.getState().active?.sessionId).toBe('remote-session')
@@ -699,6 +704,32 @@ describe('Dashboard workout projection status', () => {
       1,
       'dashboard:template-1:selection:1',
     )
+  })
+
+  it('lists the weight the session will start from instead of the plan target', async () => {
+    const template = {
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Upper',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [{
+        name: 'Upper A',
+        exercises: [
+          { exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 3, targetReps: 8, targetWeight: 80 },
+          { exerciseId: 'row', exerciseSource: 'global' as const, name: 'Barbell Row', sets: 3, targetReps: 8, targetWeight: 60 },
+        ],
+      }],
+    }
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([template])
+    mocks.loadTemplateExerciseHistory.mockResolvedValueOnce(new Map([['global:bench', { bestSetWeight: 86.25, bestSetReps: 6 }]]))
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('86.25 kg')).toBeInTheDocument()
+    expect(screen.queryByText('80 kg')).not.toBeInTheDocument()
+    expect(screen.getByText('60 kg')).toBeInTheDocument()
   })
 
   it('cancels a draft workout choice and keeps the original selection', async () => {

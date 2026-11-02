@@ -12,6 +12,7 @@ import { db } from './firebase'
 import { callAuthedApi } from './authedApi'
 import { templateFingerprint, type EditableTemplate } from '../shared/templateFingerprint'
 import { createSessionId } from './sessionIdentity'
+import { templateStartWeight } from '../shared/workoutDisplay'
 import { confirmedQuery } from './confirmedQuery'
 
 export interface TemplateExercise {
@@ -115,7 +116,7 @@ export function buildActiveWorkoutFromTemplate(
       const history = historyByExercise.get(key)
       const override = overridesByExercise.get(key)
       const weightValue = override?.weight
-        ?? (history && history.bestSetWeight > 0 ? history.bestSetWeight : exercise.targetWeight)
+        ?? templateStartWeight(exercise, history)
       const repsValue = override?.reps
         ?? (history && history.bestSetReps > 0 ? history.bestSetReps : exercise.targetReps)
       const weight = weightValue > 0 ? String(weightValue) : ''

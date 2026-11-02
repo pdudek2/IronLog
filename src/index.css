@@ -1484,7 +1484,7 @@ a {
   }
 }
 
-body:has(.bottom-nav .active-workout-return-bar) .page-shell {
+body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found-page)) {
   padding-bottom: 11.5rem;
 }
 

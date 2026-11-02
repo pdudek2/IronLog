@@ -6,8 +6,9 @@ import { openLargeTemplateDraft } from './support/templateDraft'
 async function expectMinHitArea(locator: Locator, label: string) {
   const box = await locator.boundingBox()
   expect(box, `${label} should be visible`).not.toBeNull()
-  expect(box!.width, `${label} width`).toBeGreaterThanOrEqual(44)
-  expect(box!.height, `${label} height`).toBeGreaterThanOrEqual(44)
+  // Mobile emulation scales layout, so an exact 44px box can read as 43.9999.
+  expect(Math.round(box!.width * 100) / 100, `${label} width`).toBeGreaterThanOrEqual(44)
+  expect(Math.round(box!.height * 100) / 100, `${label} height`).toBeGreaterThanOrEqual(44)
 }
 
 test.describe('Phase 4 mobile ergonomics', () => {

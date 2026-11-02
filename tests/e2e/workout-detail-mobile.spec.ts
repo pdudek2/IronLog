@@ -87,6 +87,7 @@ test('mobile workout actions adapt between inline content and the fixed viewport
   expect(await countVisibleFocusableButtons(allButtons, 'Edit workout')).toBe(1)
   expect(await countVisibleFocusableButtons(allButtons, 'Delete')).toBe(1)
 
+  for (const row of await page.locator('.workout-exercise-row').all()) await row.click()
   await anchor.scrollIntoViewIfNeeded()
   await expect(actions).toHaveAttribute('data-placement', 'inline')
   const distancePastTop = await anchor.evaluate((element) => (

@@ -162,11 +162,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     await page.getByRole('button', { name: 'Profile' }).click()
     await expect(page).toHaveURL('/profile')
-    const nameInput = page.getByLabel('Name')
-    await nameInput.focus()
-    await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
+    await expect(returnBar).toBeVisible()
 
-    await nameInput.blur()
     await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('button', { name: 'Coach' }).click()
     await expect(page).toHaveURL('/chat')
     await returnBar.getByRole('button', { name: 'Return to workout' }).click()

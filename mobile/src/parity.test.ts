@@ -19,7 +19,7 @@ test('shared rules keep Max, focus and history faithful beyond the screenshot fi
   assert.equal(focusSetIndex([done, open, open]), 1)
   assert.equal(EQUIPMENT_LABELS.bodyweight, 'BW')
   assert.equal(EQUIPMENT_LABELS.kettlebell, 'KB')
-  assert.equal(formatPreviousSet({ weight: 65, reps: 8 }, 'lbs'), '143.3×8')
+  assert.equal(formatPreviousSet({ weight: 65, reps: 8 }, 'lbs'), '143.3 × 8')
   assert.equal(formatPreviousSet(undefined, 'kg'), '—')
   assert.equal(getAuthErrorMessage({ code: 'auth/too-many-requests' }, 'login'), 'Too many attempts. Wait a moment and try again.')
 })
@@ -81,7 +81,7 @@ test('the month calendar pairs each day with its newest workout and starts weeks
 
 test('history validates owner/source and row order instead of manufacturing missing values', () => {
   const data = { userId: 'a', exerciseId: 'same-id', exerciseSource: 'user', sets: [{ weight: 65, reps: 8 }, { weight: 60, reps: 10 }] }
-  assert.equal(formatPreviousSet(parsePreviousSets(data, 'a', 'same-id', 'user')[1], 'kg'), '60×10')
+  assert.equal(formatPreviousSet(parsePreviousSets(data, 'a', 'same-id', 'user')[1], 'kg'), '60 × 10')
   assert.throws(() => parsePreviousSets(data, 'b', 'same-id', 'user'))
   assert.throws(() => parsePreviousSets(data, 'a', 'same-id', 'global'))
   assert.throws(() => parsePreviousSets({ ...data, sets: [{ weight: 'bad', reps: 8 }] }, 'a', 'same-id', 'user'))

@@ -69,7 +69,7 @@ export function trainingSinceLabel(createdAt: number): string {
   return `Training since ${new Date(createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
 }
 export function formatPreviousSet(set: { weight: number; reps: number } | undefined, units: WeightUnits): string {
-  return set ? `${kgToDisplayWeight(set.weight, units)}×${set.reps}` : '—'
+  return set ? `${kgToDisplayWeight(set.weight, units)} × ${set.reps}` : '—'
 }
 
 export const WORKOUT_LABELS = ['Push', 'Pull', 'Legs', 'Upper Body', 'Lower Body', 'Full Body', 'Back & Biceps', 'Chest & Triceps', 'Cardio', 'Crossfit', 'Mobility'] as const

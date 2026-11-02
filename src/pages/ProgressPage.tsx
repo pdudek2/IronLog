@@ -18,6 +18,7 @@ import {
   aggregateStrengthProgression,
   aggregateWeeklyVolume,
   defaultStrengthKey,
+  withoutLeadingEmptyWeeks,
   formatProgressVolume as formatVolume,
   strengthChartScale,
   strengthDeltaLabel,
@@ -293,7 +294,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   }, [sessions, rangeDays, fetchedAt])
 
   const weeklyData = useMemo(
-    () => aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : rangeDays === 90 ? 13 : 53, fetchedAt),
+    () => withoutLeadingEmptyWeeks(aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : rangeDays === 90 ? 13 : 53, fetchedAt)),
     [currentSessions, rangeDays, fetchedAt],
   )
 
@@ -635,7 +636,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 <div>
                   <h2>Weekly volume</h2>
                 </div>
-                <span>{rangeDays === 30 ? '5 weeks' : rangeDays === 90 ? '13 weeks' : '53 weeks'}</span>
+                <span>{weeklyData.length} {weeklyData.length === 1 ? 'week' : 'weeks'}</span>
               </div>
               <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
                 <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>

@@ -242,8 +242,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     const previousSets = page.locator('.workout-set-previous')
     await expect(previousSets).toHaveCount(5)
-    await expect(previousSets.first()).toHaveText('80×8')
-    await expect(previousSets.last()).toHaveText('70×12')
+    await expect(previousSets.first()).toHaveText('80 × 8')
+    await expect(previousSets.last()).toHaveText('70 × 12')
     await expect(page.locator('.workout-previous-session')).toHaveCount(0)
     await page.screenshot({ path: testInfo.outputPath('inline-previous-mobile.png'), fullPage: true })
   })
@@ -275,7 +275,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
 
     const previousSets = page.locator('.workout-set-previous')
     await expect(previousSets).toHaveCount(3)
-    await expect(previousSets).toHaveText(['77.5×8', '75×10', '70×12'])
+    await expect(previousSets).toHaveText(['77.5 × 8', '75 × 10', '70 × 12'])
     await selectSet(page, 1)
     expect(await currentWeight.evaluate((element) => element.getBoundingClientRect().bottom <= window.innerHeight)).toBe(true)
   })

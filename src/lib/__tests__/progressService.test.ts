@@ -8,6 +8,7 @@ import {
   aggregatePeriodComparison,
   aggregateStrengthProgression,
   defaultStrengthKey,
+  withoutLeadingEmptyWeeks,
   aggregateWeeklyVolume,
   type ProgressSessionLite,
 } from '../progressService'
@@ -213,6 +214,18 @@ describe('snapshot anchors', () => {
 })
 
 // ─── aggregateStrengthProgression ───────────────────────────────────────────
+
+describe('withoutLeadingEmptyWeeks', () => {
+  const week = (volume: number) => ({ weekStart: 0, weekLabel: '', volume, sessions: volume > 0 ? 1 : 0 })
+
+  it('starts at the first trained week and keeps later gaps', () => {
+    expect(withoutLeadingEmptyWeeks([week(0), week(0), week(5), week(0), week(7)]).map(({ volume }) => volume)).toEqual([5, 0, 7])
+  })
+
+  it('keeps every week when nothing was trained', () => {
+    expect(withoutLeadingEmptyWeeks([week(0), week(0)])).toHaveLength(2)
+  })
+})
 
 describe('defaultStrengthKey', () => {
   it('prefers the most logged main lift over an isolation exercise', () => {

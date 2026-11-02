@@ -119,8 +119,8 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       />,
     )
 
-    expect(await screen.findByRole('button', { name: /^Edit set 1: last 496×12/ })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /^Edit set 2: last 176.4×8/ })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: /^Edit set 1: last 496 × 12/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Edit set 2: last 176.4 × 8/ })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /^Edit set 3: last —/ })).toBeInTheDocument()
     expect(screen.getByText('Last')).toBeInTheDocument()
     expect(screen.queryByText('Vol.')).not.toBeInTheDocument()

@@ -9,7 +9,7 @@ import { pluralize } from '../../src/lib/pluralize'
 import { kgToDisplayWeight } from '../../src/shared/weightUnits'
 import {
   PROGRESS_MUSCLE_LABELS, aggregateMuscleBalance, aggregatePeriodComparison,
-  aggregateStrengthProgression, aggregateWeeklyVolume, defaultStrengthKey, formatProgressVolume, strengthDeltaLabel,
+  aggregateStrengthProgression, aggregateWeeklyVolume, defaultStrengthKey, formatProgressVolume, strengthDeltaLabel, withoutLeadingEmptyWeeks,
   type RecordSummary,
 } from '../../src/shared/progress'
 import HistoryHeader from '../src/HistoryHeader'
@@ -60,7 +60,7 @@ function ProgressContent({ uid }: { uid: string }) {
   const fetchedAt = coverage ? snapshot?.sessions?.fetchedAt ?? 0 : 0
   const records = snapshot?.records?.records ?? []
   const currentSessions = useMemo(() => sessions.filter((session) => session.finishedAt >= fetchedAt - rangeDays * 86_400_000), [sessions, fetchedAt, rangeDays])
-  const weekly = useMemo(() => aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : rangeDays === 90 ? 13 : 53, fetchedAt), [currentSessions, rangeDays, fetchedAt])
+  const weekly = useMemo(() => withoutLeadingEmptyWeeks(aggregateWeeklyVolume(currentSessions, rangeDays === 30 ? 5 : rangeDays === 90 ? 13 : 53, fetchedAt)), [currentSessions, rangeDays, fetchedAt])
   const muscles = useMemo(() => aggregateMuscleBalance(currentSessions), [currentSessions])
   const comparison = useMemo(() => aggregatePeriodComparison(sessions, rangeDays, fetchedAt), [sessions, rangeDays, fetchedAt])
   const strength = useMemo(() => aggregateStrengthProgression(currentSessions), [currentSessions])
@@ -132,7 +132,7 @@ function ProgressContent({ uid }: { uid: string }) {
             : strengthPoints.length < 3 ? <><Text style={styles.muted}>Chart needs {3 - strengthPoints.length} more {pluralize(3 - strengthPoints.length, 'day', 'days')} with recorded weight.</Text><View accessibilityLabel={`${strengthPoints.length} of 3 days for the chart`} style={styles.markers}>{[0, 1, 2].map((index) => <View key={index} style={[styles.marker, index < strengthPoints.length && styles.markerActive]} />)}</View></>
               : <><View style={styles.strengthInsight}><Text accessibilityLiveRegion="polite" style={styles.strengthLatest}>{inspectedIndex === null ? 'Latest' : `${strengthPoints[inspectedIndex]?.date} ·`} {kgToDisplayWeight(shownStrength, units)} {units}</Text><Text style={styles.strengthDelta}>{strengthDeltaLabel(strengthValues[0] ?? 0, shownStrength, strengthPoints[0]?.date ?? '', units)} · max. {kgToDisplayWeight(Math.max(...strengthValues), units)} {units}</Text></View><StrengthChart points={strengthPoints} keyName={selectedStrengthKey!} units={units} width={chartWidth} onInspect={(index) => setInspected({ key: selectedStrengthKey!, index })} /></>}
         </View>
-        <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Weekly volume</Text><Text style={styles.panelBadge}>{rangeDays === 30 ? '5' : rangeDays === 90 ? '13' : '53'} weeks</Text></View><WeeklyVolumeChart points={weekly} units={units} width={chartWidth} /></View>
+        <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Weekly volume</Text><Text style={styles.panelBadge}>{weekly.length} {weekly.length === 1 ? 'week' : 'weeks'}</Text></View><WeeklyVolumeChart points={weekly} units={units} width={chartWidth} /></View>
         {muscles.length > 0 && <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Muscle groups</Text></View><MuscleBars points={muscles} /></View>}
       </View>}
 

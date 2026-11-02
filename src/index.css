@@ -7176,13 +7176,12 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   display: grid;
   min-height: 9rem;
   grid-auto-flow: column;
-  grid-auto-columns: 2rem;
+  grid-auto-columns: minmax(2.75rem, 5rem);
   overflow-x: auto;
   padding-bottom: 0.5rem;
   scrollbar-width: thin;
   align-items: end;
   gap: clamp(0.4rem, 2vw, 0.75rem);
-  max-width: 32rem;
 }
 
 .exercise-detail-volume-column {
@@ -7204,7 +7203,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   width: 100%;
   min-height: 0.25rem;
   border-radius: 0.25rem 0.25rem 0 0;
-  opacity: 0.7;
   transform-origin: bottom;
 }
 
@@ -8187,6 +8185,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .train-link {
   min-height: 2.75rem;
+  padding: 0;
   border: 0;
   background: none;
   color: var(--text);

@@ -118,6 +118,11 @@ export function aggregateWeeklyVolume(
   return [...buckets.values()]
 }
 
+export function withoutLeadingEmptyWeeks(points: WeeklyPoint[]): WeeklyPoint[] {
+  const first = points.findIndex(({ volume }) => volume > 0)
+  return first > 0 ? points.slice(first) : points
+}
+
 export function aggregateMuscleBalance(
   sessions: ProgressSessionLite[],
   topN = 8,

@@ -303,7 +303,7 @@ export default function ExerciseDetailPage() {
                         aria-hidden="true"
                         className="exercise-detail-volume-bar"
                         style={{
-                          background: accent,
+                          background: 'var(--accent)',
                           height: `${Math.max((session.totalVolume / scaleVolume) * 100, 4)}%`,
                         }}
                         initial={{ scaleY: 0 }}
@@ -312,7 +312,7 @@ export default function ExerciseDetailPage() {
                       />
                     </div>
                     <span>
-                      {new Date(session.startedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'numeric' })}
+                      {new Date(session.startedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
                 ))}

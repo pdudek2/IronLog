@@ -11,11 +11,25 @@ test('child routes retain their navigation section and unknown routes do not inv
 })
 test('scroll visibility tolerates jitter, restores upward and clamps overscroll', () => {
   let state = { y: 0, start: 0, direction: 0, hidden: false }
-  for (const y of [25, 40, 55]) state = scrollNavigation(state, y)
+  for (const y of [25, 40, 55]) state = scrollNavigation(state, y, 1000, 90)
   assert.equal(state.hidden, true)
-  state = scrollNavigation(state, 54); assert.equal(state.hidden, true)
-  state = scrollNavigation(state, 30); assert.equal(state.hidden, false)
-  state = scrollNavigation(state, -8); assert.equal(state.y, 0); assert.equal(state.hidden, false)
+  state = scrollNavigation(state, 54, 1000, 90); assert.equal(state.hidden, true)
+  state = scrollNavigation(state, 30, 1000, 90); assert.equal(state.hidden, false)
+  state = scrollNavigation(state, -8, 1000, 90); assert.equal(state.y, 0); assert.equal(state.hidden, false)
+})
+test('hiding the bar grows the viewport, and that pull back from the end does not bring the bar back', () => {
+  const bar = 90
+  let state = { y: 0, start: 0, direction: 0, hidden: false }
+  for (const y of [40, 120]) state = scrollNavigation(state, y, 164, bar)
+  assert.equal(state.hidden, true)
+  state = scrollNavigation(state, 74, 74, bar); assert.equal(state.y, 74); assert.equal(state.hidden, true)
+  state = scrollNavigation(state, 60, 74, bar); assert.equal(state.hidden, true)
+  state = scrollNavigation(state, 45, 74, bar); assert.equal(state.hidden, false)
+})
+test('the bar stays when hiding it would leave the page nothing to scroll', () => {
+  let state = { y: 0, start: 0, direction: 0, hidden: false }
+  for (const y of [30, 60]) state = scrollNavigation(state, y, 100, 90)
+  assert.equal(state.hidden, false)
 })
 
 test('tabs swap each other and Train pops back, so Back never replays the tab history', () => {

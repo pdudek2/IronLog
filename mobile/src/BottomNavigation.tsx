@@ -4,7 +4,7 @@ import { useFocusEffect, usePathname, useRouter, type Href } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { useAuthRuntime } from './runtime'
-import { navigationSection, scrollNavigation, tabNavigation, type NavigationTab } from './navigation'
+import { navigationBarHeight, navigationSection, scrollNavigation, tabNavigation, type NavigationTab } from './navigation'
 import { colors } from './theme'
 
 export type NavigationExit = (proceed: () => void | Promise<boolean>) => void
@@ -14,6 +14,7 @@ export function useBottomNavigation() {
   const [inputFocused, setInputFocused] = useState(false)
   const [hidden, setHidden] = useState(false)
   const scroll = useRef(initialScroll)
+  const inset = useSafeAreaInsets().bottom
   useFocusEffect(useCallback(() => {
     scroll.current = initialScroll; setHidden(false); setInputFocused(false); setKeyboard(Keyboard.isVisible())
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true))
@@ -21,9 +22,10 @@ export function useBottomNavigation() {
     return () => { show.remove(); hide.remove() }
   }, []))
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    scroll.current = scrollNavigation(scroll.current, event.nativeEvent.contentOffset.y)
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
+    scroll.current = scrollNavigation(scroll.current, contentOffset.y, contentSize.height - layoutMeasurement.height, navigationBarHeight(inset))
     setHidden(scroll.current.hidden)
-  }, [])
+  }, [inset])
   // Input focus hides the bar ahead of the soft keyboard. When no keyboard follows (hardware keyboard, or the exercise
   // picker closed: its input unmounts with no blur and React Native still reports it focused) the bar comes back.
   useEffect(() => {
@@ -64,7 +66,7 @@ export default function BottomNavigation({ hidden, keyboard, onRequestExit }: { 
     if (onRequestExit) onRequestExit(guarded)
     else void guarded()
   }
-  const height = 58 + Math.max(10, inset) + 8
+  const height = navigationBarHeight(inset)
   return <View style={{ height: keyboard || hidden ? 0 : height }} pointerEvents={hidden || keyboard ? 'none' : 'auto'}
     accessibilityElementsHidden={hidden || keyboard} importantForAccessibility={hidden || keyboard ? 'no-hide-descendants' : 'auto'}>
     <View style={[styles.bar, { bottom: Math.max(10, inset), transform: [{ translateY: hidden || keyboard ? height : 0 }], opacity: hidden || keyboard ? 0 : 1 }]}>

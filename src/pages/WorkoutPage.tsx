@@ -999,6 +999,9 @@ export default function WorkoutPage() {
             <div className="workout-desktop-bar">
               <ElapsedSessionTimer startedAt={active.startedAt} className="workout-desktop-time" />
               <span className="workout-desktop-label">{activeLabel}</span>
+              {totalSets > 0 && (
+                <span className="workout-desktop-sets">{completedSets} of {totalSets} {pluralize(totalSets, 'set', 'sets')}</span>
+              )}
               <button
                 type="button"
                 className="workout-desktop-options"

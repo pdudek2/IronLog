@@ -665,6 +665,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.locator('.workout-set-row').nth(1)).toHaveAttribute('data-current', 'true')
     await expect(inlinePanel).toBeVisible()
     await expect(page.getByRole('button', { name: 'Log set 2 for Squat' })).toBeFocused()
+    await expect(page.locator('.workout-desktop-bar')).toContainText('1 of 2 sets')
 
     const restTimerBar = page.locator('.rest-timer-bar')
     await expect(restTimerBar).toHaveCount(1)

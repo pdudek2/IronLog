@@ -8572,13 +8572,14 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 }
 
 .exercise-picker-search input,
-.exercise-picker-search input:focus {
+.exercise-picker-search input:focus,
+.exercise-picker-search input:focus-visible {
   flex: 1;
   min-width: 0;
   padding: 0;
   border: 0;
   background: transparent;
-  box-shadow: none;
+  box-shadow: none !important;
   color: var(--text);
   font-size: 0.90625rem;
   outline: none;
@@ -8994,6 +8995,18 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   white-space: nowrap;
 }
 
+.workout-desktop-sets {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.workout-desktop-sets::before {
+  content: '·';
+  margin-right: 0.625rem;
+}
+
 .workout-desktop-options {
   display: grid;
   flex: none;
@@ -9060,6 +9073,19 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     box-shadow: none;
   }
 
+  .workout-set-panel .rest-timer-progress {
+    right: 1rem;
+    left: 1rem;
+  }
+
+  .workout-set-panel .rest-timer-content {
+    padding-right: 0;
+  }
+
+  .workout-set-panel .rest-timer-action:last-child {
+    padding-right: 0;
+  }
+
   .workout-set-row[data-current="true"] {
     border-radius: 0.6875rem 0.6875rem 0 0;
   }
@@ -9113,6 +9139,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 
   .bottom-sheet[data-tall] {
+    max-width: 36rem;
     height: min(82dvh, 42rem);
     padding-bottom: 0;
   }

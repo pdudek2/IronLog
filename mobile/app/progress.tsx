@@ -76,7 +76,6 @@ function ProgressContent({ uid }: { uid: string }) {
   const uniqueWorkouts = new Set(currentSessions.map((session) => session.workoutId)).size
   const uniqueExercises = new Set(currentSessions.map((session) => `${session.exerciseSource}:${session.exerciseId}`)).size
   const topMuscle = muscles[0]
-  const topRecord = records[0]
   const hasPrevious = comparison.previousSessions > 0
   const rangeEmpty = coverage && currentSessions.length === 0 && !(sessions.length === 0 && records.length === 0 && !!snapshot?.records && !snapshot.sessionsError && !snapshot.recordsError)
   const empty = coverage && !rangeEmpty && sessions.length === 0 && records.length === 0 && !!snapshot?.records && !snapshot.sessionsError && !snapshot.recordsError

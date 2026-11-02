@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { motion, useDragControls, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useDialogA11y } from '../hooks/useDialogA11y'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { SHEET_DRAG_ELASTIC, SHEET_SPRING, shouldDismissSheet } from '../shared/sheetMotion'
 
 interface BottomSheetProps {
@@ -17,7 +18,12 @@ export default function BottomSheet({ title, onClose, tall = false, initialFocus
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const drag = useDragControls()
-  const transition = useReducedMotion() ? { duration: 0 } : { type: 'spring' as const, ...SHEET_SPRING }
+  const centred = useMediaQuery('(min-width: 1024px)')
+  const hidden = centred ? { opacity: 0, y: 12 } : { y: '100%' }
+  const reduced = useReducedMotion()
+  const transition = reduced
+    ? { duration: 0 }
+    : centred ? { duration: 0.18, ease: 'easeOut' as const } : { type: 'spring' as const, ...SHEET_SPRING }
 
   useDialogA11y({ containerRef: panelRef, onClose, initialFocusRef })
 
@@ -39,11 +45,11 @@ export default function BottomSheet({ title, onClose, tall = false, initialFocus
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        initial={{ y: '100%' }}
-        animate={{ y: 0 }}
-        exit={{ y: '100%' }}
+        initial={hidden}
+        animate={{ opacity: 1, y: 0 }}
+        exit={hidden}
         transition={transition}
-        drag="y"
+        drag={centred ? false : 'y'}
         dragControls={drag}
         dragListener={false}
         dragConstraints={{ top: 0, bottom: 0 }}

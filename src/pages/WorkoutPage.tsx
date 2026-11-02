@@ -46,9 +46,9 @@ interface LabelChipsProps {
   className?: string
 }
 
-function LabelChips({ activeLabel, onToggle, className = '' }: LabelChipsProps) {
+function LabelChips({ activeLabel, onToggle }: LabelChipsProps) {
   return (
-    <div role="group" aria-label="Session type" className={`workout-label-chips flex gap-1.5 overflow-x-auto no-scrollbar ${className}`}>
+    <div role="group" aria-label="Session type" className="workout-label-chips flex gap-1.5 overflow-x-auto no-scrollbar">
       {WORKOUT_LABELS.map((label) => {
         const isActive = activeLabel === label
         return (
@@ -232,7 +232,7 @@ export default function WorkoutPage() {
   } = useActiveSession(user?.uid ?? null)
   const [showPicker, setShowPicker] = useState(false)
   const [closureRejection, setClosureRejection] = useState<string | null>(null)
-  const mobileAddExerciseRef = useRef<HTMLButtonElement>(null)
+  const addExerciseRef = useRef<HTMLButtonElement>(null)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
   const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setIndex: number; draw: boolean } | null>(null)
@@ -736,7 +736,6 @@ export default function WorkoutPage() {
 
   const units = profile?.units ?? 'kg'
   const exerciseCatalog = new Map([...exerciseDb, ...userExercises].map((exercise) => [exercise.id, exercise]))
-  const totalExercises = active.exercises.length
   const totalSets = active.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
   const unfinishedSets = active.exercises.reduce((sum, exercise) => (
     sum + exercise.sets.filter((set) => !set.done).length
@@ -755,15 +754,7 @@ export default function WorkoutPage() {
     ), 0)
     return Math.max(top, next)
   }, 0)
-  const completionPct = totalSets > 0 ? Math.round((completedSets / totalSets) * 100) : 0
   const activeLabel = active.label?.trim() || 'Session in progress'
-  const sessionSignal = totalExercises === 0
-    ? 'Add your first exercise to start a session.'
-    : completedSets === 0
-      ? 'Your first sets are ahead. Start with your main lift for the day.'
-      : completionPct >= 100
-        ? 'All sets are marked complete. Finish the session or add more sets.'
-        : `${completedSets} of ${totalSets} sets completed.`
 
   const focusedIndex = focusExerciseIndex(active.exercises)
   const manualIndex = active.exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === manualExerciseClientId)
@@ -1000,92 +991,31 @@ export default function WorkoutPage() {
 
       <div className="workout-session-grid">
 
-        {/* ── Desktop sidebar only ─────────────────── */}
-        {isDesktop && (
-          <aside className="hidden lg:block desktop-sticky">
-            <div className="workout-control-panel">
-              <p className="eyebrow mb-4" style={{ color: 'var(--accent)' }}>
-                Active session
-              </p>
-
-              <div className="workout-time-card">
-                <p className="stat-meta mb-2">Session time</p>
-                <div className="flex items-end justify-between gap-3">
-                  <ElapsedSessionTimer startedAt={active.startedAt} className="workout-time-value" />
-                  <span
-                    className="workout-live-pill"
-                  >
-                    {activeLabel}
-                  </span>
-                </div>
-                <div className="workout-progress-track">
-                  <div
-                    className="workout-progress-fill"
-                    style={{
-                      width: `${Math.max(totalSets ? completionPct : 12, totalSets ? 12 : 0)}%`,
-                      background: completionPct >= 100 ? 'var(--text)' : 'var(--seam)',
-                    }}
-                  />
-                </div>
-                <p className="mt-3 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                  {sessionSignal}
-                </p>
-              </div>
-
-              {setPanel}
-
-              <p className="workout-side-summary tabular-nums">
-                {active.exercises.length} {pluralize(active.exercises.length, 'exercise', 'exercises')} · {completedSets}/{totalSets} sets · {formatCompactVolume(totalVolume, units)}
-                {strongestSet ? ` · heaviest ${kgToDisplayWeight(strongestSet, units)} ${units}` : ''}
-              </p>
-
-              <div>
-                <p className="mb-3 text-xs uppercase" style={{ color: 'var(--muted)' }}>
-                  Session type
-                </p>
-                <LabelChips
-                  activeLabel={active.label ?? ''}
-                  onToggle={(label) => setLabel(active.label === label ? '' : label)}
-                  className="workout-label-chips--desktop"
-                />
-              </div>
-
-              <div className="mt-5">
-                <motion.button
-                  onClick={() => setShowPicker(true)}
-                  className="workout-primary-action mb-3"
-                  style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <Plus size={16} strokeWidth={2.4} />
-                  <span>Add exercise</span>
-                </motion.button>
-                <div className="grid grid-cols-2 gap-2">
-                  <motion.button
-                    onClick={handleDiscard}
-                    className="rounded-[var(--radius-lg)] py-3 text-sm font-semibold"
-                    style={{ background: 'rgba(255,255,255,0.04)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    Cancel
-                  </motion.button>
-                  <motion.button
-                    onClick={handleFinish}
-                    disabled={saving}
-                    className="rounded-[var(--radius-lg)] py-3 text-sm font-bold"
-                    style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)', opacity: saving ? 0.6 : 1 }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    {saving ? '...' : 'Finish'}
-                  </motion.button>
-                </div>
-              </div>
-            </div>
-          </aside>
-        )}
-
         <div className="workout-session-list min-w-0">
+          {isDesktop && (
+            <div className="workout-desktop-bar">
+              <ElapsedSessionTimer startedAt={active.startedAt} className="workout-desktop-time" />
+              <span className="workout-desktop-label">{activeLabel}</span>
+              <button
+                type="button"
+                className="workout-desktop-options"
+                onClick={() => setSessionSheet('options')}
+                aria-label="More workout options"
+                aria-haspopup="dialog"
+              >
+                <Ellipsis size={20} aria-hidden="true" />
+              </button>
+              <motion.button
+                type="button"
+                className="workout-desktop-finish"
+                onClick={handleFinish}
+                disabled={saving}
+                whileTap={{ scale: 0.97 }}
+              >
+                {saving ? '...' : 'Finish'}
+              </motion.button>
+            </div>
+          )}
           <div className="workout-band" aria-hidden="true">
             <img src={`/covers/${workoutCover(activeLabel)}.jpg`} alt="" />
           </div>
@@ -1101,7 +1031,7 @@ export default function WorkoutPage() {
               <>
                 <section className="workout-empty-state" aria-label="No exercises yet">
                   <motion.button
-                    ref={mobileAddExerciseRef}
+                    ref={addExerciseRef}
                     type="button"
                     onClick={() => setShowPicker(true)}
                     className="workout-primary-action"
@@ -1161,6 +1091,7 @@ export default function WorkoutPage() {
                           categoryLabel={exerciseMeta?.category ? (EXERCISE_CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
                           equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
                           panelSetIndex={currentSetIndex}
+                          inlinePanel={isDesktop ? setPanel : undefined}
                           hintDismissed={dismissedHints.has(hintKey)}
                           hintKey={hintKey}
                           suggestion={suggestions[hintKey] ?? null}
@@ -1198,6 +1129,12 @@ export default function WorkoutPage() {
                       )
                     })}
                   </section>
+                )}
+                {isDesktop && (
+                  <button ref={addExerciseRef} type="button" className="workout-desktop-add-exercise" onClick={() => setShowPicker(true)}>
+                    <Plus size={15} strokeWidth={2.4} aria-hidden="true" />
+                    Add exercise
+                  </button>
                 )}
               </>
             )}
@@ -1248,6 +1185,12 @@ export default function WorkoutPage() {
                     <span>All exercises</span>
                   </button>
                 )}
+                {isDesktop && (
+                  <p className="workout-options-summary tabular-nums">
+                    {active.exercises.length} {pluralize(active.exercises.length, 'exercise', 'exercises')} · {completedSets}/{totalSets} sets · {formatCompactVolume(totalVolume, units)}
+                    {strongestSet ? ` · heaviest ${kgToDisplayWeight(strongestSet, units)} ${units}` : ''}
+                  </p>
+                )}
                 <p className="bottom-sheet-label">Session type</p>
                 <LabelChips
                   activeLabel={active.label ?? ''}
@@ -1268,7 +1211,7 @@ export default function WorkoutPage() {
         onSelect={(id, name, source) => {
           setShowPicker(false)
           void handlePickExercise(id, name, source)
-          window.requestAnimationFrame(() => mobileAddExerciseRef.current?.focus())
+          window.requestAnimationFrame(() => addExerciseRef.current?.focus())
         }}
         onClose={() => setShowPicker(false)}
         userExercisesState={userExercisesState}

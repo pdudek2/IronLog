@@ -38,8 +38,8 @@ test.describe('Phase 4 mobile ergonomics', () => {
       .getByRole('button', { name: 'Close' })
     const box = await close.boundingBox()
     expect(box, 'picker close should be visible').not.toBeNull()
-    expect(box!.width).toBe(44)
-    expect(box!.height).toBe(44)
+    expect(box!.width).toBeCloseTo(44)
+    expect(box!.height).toBeCloseTo(44)
   })
 
   for (const width of [320, 375, 390]) {

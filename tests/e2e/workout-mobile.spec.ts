@@ -652,22 +652,27 @@ test.describe('Active workout shell reduction', () => {
 
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
     await expect(page.locator('.top-nav')).toBeVisible()
-    await expect(page.locator('aside .workout-control-panel')).toBeVisible()
+    await expect(page.locator('.workout-desktop-bar')).toBeVisible()
 
     await addExercise(page, 'Squat')
     await page.getByRole('button', { name: /Add set/i }).click()
-    await expect(page.locator('aside').getByRole('region', { name: 'Current set' })).toBeVisible()
-
-    const firstSetRow = page.locator('.workout-set-row').first()
+    const inlinePanel = page.locator('.workout-set-row[data-current="true"] + div').getByRole('region', { name: 'Current set' })
+    await expect(inlinePanel).toBeVisible()
 
     await fillCurrentSet(page, '60', '8')
-    await firstSetRow.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
+    await page.getByRole('button', { name: 'Log set 1 for Squat' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.locator('.workout-set-row').nth(1)).toHaveAttribute('data-current', 'true')
+    await expect(inlinePanel).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Log set 2 for Squat' })).toBeFocused()
 
     const restTimerBar = page.locator('.rest-timer-bar')
     await expect(restTimerBar).toHaveCount(1)
-    await expect(page.locator('aside .rest-timer-bar')).toHaveCount(1)
-    await expect(page.locator('.workout-side-summary')).toContainText('1/2 sets')
-    await expect(page.locator('.workout-side-summary')).toContainText('heaviest 60 kg')
+    await expect(page.locator('.workout-set-list .rest-timer-bar')).toHaveCount(1)
+    await page.getByRole('button', { name: 'More workout options' }).click()
+    await expect(page.locator('.workout-options-summary')).toContainText('1/2 sets')
+    await expect(page.locator('.workout-options-summary')).toContainText('heaviest 60 kg')
+    await page.getByRole('button', { name: 'Close' }).click()
     await page.getByRole('button', { name: 'Skip rest' }).click()
     await expect(restTimerBar).toHaveCount(0)
 

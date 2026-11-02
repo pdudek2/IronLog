@@ -64,7 +64,7 @@ export default function WorkoutSetPanel({
       )}
 
       {set ? (
-        <>
+        <div className="workout-set-panel-row">
           <div className="workout-set-panel-nums">
             <div className="workout-set-num">
               <Stepper label="weight" step={-2.5} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'weight', displayWeightDeltaToKg(delta, units))} />
@@ -112,7 +112,7 @@ export default function WorkoutSetPanel({
               Log set
             </button>
           )}
-        </>
+        </div>
       ) : nextExercise ? (
         <button type="button" className="workout-set-panel-action" onClick={() => onGoToExercise(nextExercise.index)}>
           Go to {nextExercise.name}

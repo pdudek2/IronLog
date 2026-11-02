@@ -17,6 +17,7 @@ interface WorkoutExerciseLedgerItemProps {
   categoryLabel?: string
   equipmentLabel?: string
   panelSetIndex: number
+  inlinePanel?: React.ReactNode
   hintDismissed: boolean
   hintKey: string
   suggestion: OverloadSuggestion | null
@@ -75,6 +76,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   categoryLabel,
   equipmentLabel,
   panelSetIndex,
+  inlinePanel,
   hintDismissed,
   onOpenOverview,
   drawnSetIndex,
@@ -117,6 +119,55 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
 
   const { completed: exerciseCompleted } = exerciseMetrics(exercise.sets)
   const exerciseComplete = exercise.sets.length > 0 && exerciseCompleted === exercise.sets.length
+
+  const setRows = exercise.sets.map((set, setIndex) => (
+    <div
+      key={set.clientId ?? setIndex}
+      className="workout-set-row"
+      data-done={set.done || undefined}
+      data-current={setIndex === panelSetIndex || undefined}
+    >
+      <motion.button
+        type="button"
+        onClick={() => onToggleSet(exerciseIndex, setIndex)}
+        className="workout-set-toggle"
+        whileTap={{ scale: 0.9 }}
+        animate={set.done ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+        transition={{ duration: 0.25 }}
+        aria-label={set.done
+          ? `Unmark set ${setIndex + 1} for ${exercise.name}`
+          : `Mark set ${setIndex + 1} for ${exercise.name}`}
+      >
+        {set.done ? <SetTick draw={drawnSetIndex === setIndex} /> : setIndex + 1}
+      </motion.button>
+      <button
+        type="button"
+        className="workout-set-values tabular-nums"
+        onClick={() => onSelectSet(setIndex)}
+        aria-pressed={setIndex === panelSetIndex}
+        aria-label={`Edit set ${setIndex + 1}: last ${formatPreviousSet(previousSets[setIndex], units)}, today ${setPairLabel(set, units)}`}
+      >
+        <span className="workout-set-previous">{formatPreviousSet(previousSets[setIndex], units)}</span>
+        <span className="workout-set-today">{setPairLabel(set, units)}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onRemoveSet(exerciseIndex, setIndex)}
+        className="workout-set-remove"
+        style={{ color: 'var(--muted-soft)' }}
+        aria-label={`Remove set ${setIndex + 1}`}
+      >
+        <X size={15} />
+      </button>
+    </div>
+  ))
+  if (inlinePanel) {
+    setRows.splice(panelSetIndex < 0 ? setRows.length : panelSetIndex + 1, 0, (
+      <motion.div key="set-panel" layout="position" transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}>
+        {inlinePanel}
+      </motion.div>
+    ))
+  }
 
   return (
     <motion.div
@@ -169,49 +220,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         <span />
       </div>
 
-      <div className="workout-set-list">
-        {exercise.sets.map((set, setIndex) => (
-          <div
-            key={set.clientId ?? setIndex}
-            className="workout-set-row"
-            data-done={set.done || undefined}
-            data-current={setIndex === panelSetIndex || undefined}
-          >
-            <motion.button
-              type="button"
-              onClick={() => onToggleSet(exerciseIndex, setIndex)}
-              className="workout-set-toggle"
-              whileTap={{ scale: 0.9 }}
-              animate={set.done ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-              transition={{ duration: 0.25 }}
-              aria-label={set.done
-                ? `Unmark set ${setIndex + 1} for ${exercise.name}`
-                : `Mark set ${setIndex + 1} for ${exercise.name}`}
-            >
-              {set.done ? <SetTick draw={drawnSetIndex === setIndex} /> : setIndex + 1}
-            </motion.button>
-            <button
-              type="button"
-              className="workout-set-values tabular-nums"
-              onClick={() => onSelectSet(setIndex)}
-              aria-pressed={setIndex === panelSetIndex}
-              aria-label={`Edit set ${setIndex + 1}: last ${formatPreviousSet(previousSets[setIndex], units)}, today ${setPairLabel(set, units)}`}
-            >
-              <span className="workout-set-previous">{formatPreviousSet(previousSets[setIndex], units)}</span>
-              <span className="workout-set-today">{setPairLabel(set, units)}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onRemoveSet(exerciseIndex, setIndex)}
-              className="workout-set-remove"
-              style={{ color: 'var(--muted-soft)' }}
-              aria-label={`Remove set ${setIndex + 1}`}
-            >
-              <X size={15} />
-            </button>
-          </div>
-        ))}
-      </div>
+      <div className="workout-set-list">{setRows}</div>
 
       <button
         type="button"

@@ -205,6 +205,27 @@ export function aggregatePeriodComparison(
 
 // ── Strength Progression ────────────────────────────────────────────────────
 
+// Lifts move a few percent at a time, so the axis follows the data instead of starting at 0.
+export function strengthChartScale(values: number[], tickCount = 3): { ticks: number[]; lo: number; hi: number } {
+  if (!values.length) return { ticks: [0, 1], lo: 0, hi: 1 }
+  const least = Math.min(...values)
+  const most = Math.max(...values)
+  const [min, max] = least === most ? [Math.max(0, least - 2.5), most + 2.5] : [least, most]
+  const rough = (max - min) / (tickCount - 1)
+  const magnitude = 10 ** Math.floor(Math.log10(rough))
+  const step = [1, 2, 2.5, 5, 10].find((candidate) => candidate * magnitude >= rough)! * magnitude
+  const lo = Math.floor(min / step) * step
+  const hi = Math.ceil(max / step) * step
+  const ticks = Array.from({ length: Math.round((hi - lo) / step) + 1 }, (_, index) => Math.round((lo + index * step) * 10_000) / 10_000)
+  return { ticks, lo: ticks[0]!, hi: ticks.at(-1)! }
+}
+
+export function strengthDeltaLabel(firstKg: number, latestKg: number, firstDate: string, units: WeightUnits): string {
+  const delta = Math.round((latestKg - firstKg) * 10_000) / 10_000
+  if (!delta) return `No change since ${firstDate}`
+  return `${delta > 0 ? '+' : '−'}${kgToDisplayWeight(Math.abs(delta), units)} ${units} since ${firstDate}`
+}
+
 export interface StrengthPoint {
   date: string
   timestamp: number

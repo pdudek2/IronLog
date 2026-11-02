@@ -9,7 +9,7 @@ import { pluralize } from '../../src/lib/pluralize'
 import { kgToDisplayWeight } from '../../src/shared/weightUnits'
 import {
   PROGRESS_MUSCLE_LABELS, aggregateActivityHeatmap, aggregateMuscleBalance, aggregatePeriodComparison,
-  aggregateStrengthProgression, aggregateWeeklyVolume, formatProgressVolume,
+  aggregateStrengthProgression, aggregateWeeklyVolume, formatProgressVolume, strengthDeltaLabel,
   type RecordSummary,
 } from '../../src/shared/progress'
 import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
@@ -42,6 +42,7 @@ function ProgressContent({ uid }: { uid: string }) {
   const [loading, setLoading] = useState(true)
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null)
   const [strengthKey, setStrengthKey] = useState<string | null>(null)
+  const [inspected, setInspected] = useState<{ key: string; index: number } | null>(null)
   const [calendarDate, setCalendarDate] = useState<string | null>(null)
   const [picker, setPicker] = useState<'strength' | 'calendar' | null>(null)
   const [recordsPage, setRecordsPage] = useState<number | null>(null)
@@ -69,7 +70,8 @@ function ProgressContent({ uid }: { uid: string }) {
   const selectedStrength = strength.series.find((series) => series.key === selectedStrengthKey)
   const strengthPoints = selectedStrengthKey ? strength.data.filter((point) => Number(point[selectedStrengthKey] ?? 0) > 0) : []
   const strengthValues = strengthPoints.map((point) => Number(point[selectedStrengthKey!] ?? 0))
-  const strengthDelta = (strengthValues.at(-1) ?? 0) - (strengthValues[0] ?? 0)
+  const inspectedIndex = inspected?.key === selectedStrengthKey && inspected.index < strengthValues.length ? inspected.index : null
+  const shownStrength = strengthValues[inspectedIndex ?? strengthValues.length - 1] ?? 0
   const heatmap = useMemo(() => aggregateActivityHeatmap(currentSessions, 12, fetchedAt), [currentSessions, fetchedAt])
   const activeDays = heatmap.filter((cell) => cell.date && cell.volume > 0).sort((a, b) => b.date.localeCompare(a.date))
   const selectedDate = activeDays.some((cell) => cell.date === calendarDate) ? calendarDate : activeDays[0]?.date ?? null
@@ -137,7 +139,7 @@ function ProgressContent({ uid }: { uid: string }) {
           </View>}
           {!selectedStrength ? <Text style={styles.muted}>No recorded weights above 0 {units} in this range. Add a set weight to see progression.</Text>
             : strengthPoints.length < 3 ? <><Text style={styles.muted}>Chart needs {3 - strengthPoints.length} more {pluralize(3 - strengthPoints.length, 'day', 'days')} with recorded weight.</Text><View accessibilityLabel={`${strengthPoints.length} of 3 days for the chart`} style={styles.markers}>{[0, 1, 2].map((index) => <View key={index} style={[styles.marker, index < strengthPoints.length && styles.markerActive]} />)}</View></>
-              : <><View style={styles.strengthInsight}><Text style={styles.strengthLatest}>Latest {kgToDisplayWeight(strengthValues.at(-1) ?? 0, units)} {units}</Text><Text style={styles.strengthDelta}>{strengthDelta === 0 ? 'No change from the first in this range' : `${strengthDelta > 0 ? '+' : ''}${kgToDisplayWeight(strengthDelta, units)} ${units} compared with the first in this range}`} · max. {kgToDisplayWeight(Math.max(...strengthValues), units)} {units}</Text></View><StrengthChart points={strengthPoints} keyName={selectedStrengthKey!} units={units} width={chartWidth} /></>}
+              : <><View style={styles.strengthInsight}><Text accessibilityLiveRegion="polite" style={styles.strengthLatest}>{inspectedIndex === null ? 'Latest' : `${strengthPoints[inspectedIndex]?.date} ·`} {kgToDisplayWeight(shownStrength, units)} {units}</Text><Text style={styles.strengthDelta}>{strengthDeltaLabel(strengthValues[0] ?? 0, shownStrength, strengthPoints[0]?.date ?? '', units)} · max. {kgToDisplayWeight(Math.max(...strengthValues), units)} {units}</Text></View><StrengthChart points={strengthPoints} keyName={selectedStrengthKey!} units={units} width={chartWidth} onInspect={(index) => setInspected({ key: selectedStrengthKey!, index })} /></>}
         </View>
         {muscles.length > 0 && <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Muscle groups</Text></View><MuscleBars points={muscles} /></View>}
         <View style={[styles.panel, styles.lastPanel]}>

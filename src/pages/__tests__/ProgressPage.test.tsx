@@ -60,16 +60,14 @@ vi.mock('@number-flow/react', () => ({
 
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  AreaChart: () => <div data-testid="area-chart" />,
-  LineChart: ({ children }: { children?: ReactNode }) => <div data-testid="line-chart">{children}</div>,
+  AreaChart: ({ children }: { children?: ReactNode }) => <div data-testid="area-chart">{children}</div>,
   BarChart: () => <div data-testid="bar-chart" />,
-  Area: () => null,
+  Area: ({ dataKey, name }: { dataKey?: string; name?: string }) => (
+    <span data-testid="strength-line" data-data-key={dataKey} data-name={name} />
+  ),
   Bar: () => null,
   CartesianGrid: () => null,
   Cell: () => null,
-  Line: ({ dataKey, name }: { dataKey?: string; name?: string }) => (
-    <span data-testid="strength-line" data-data-key={dataKey} data-name={name} />
-  ),
   Tooltip: () => null,
   XAxis: () => null,
   YAxis: () => null,
@@ -720,7 +718,7 @@ describe('ProgressPage', () => {
     expect(screen.getByTestId('strength-line')).toHaveAttribute('data-data-key', 'global:bench')
     expect(screen.getByRole('img', { name: /Weight progression for 1 exercise\./ })).toBeInTheDocument()
     expect(screen.getByText('Latest 80 kg')).toBeInTheDocument()
-    expect(screen.getByText('+10 kg compared with the first in this range')).toBeInTheDocument()
+    expect(screen.getByText(/^\+10 kg since /)).toBeInTheDocument()
 
     fireEvent.change(selector, { target: { value: 'user:row' } })
 

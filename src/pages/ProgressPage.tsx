@@ -4,7 +4,7 @@ import NumberFlow from '@number-flow/react'
 import { AlertCircle } from 'lucide-react'
 import {
   CartesianGrid, Cell,
-  Line, LineChart,
+  Area, AreaChart,
   Bar, BarChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
@@ -19,6 +19,8 @@ import {
   aggregateStrengthProgression,
   aggregateWeeklyVolume,
   formatProgressVolume as formatVolume,
+  strengthChartScale,
+  strengthDeltaLabel,
   PROGRESS_MUSCLE_COLORS as MUSCLE_COLORS,
   PROGRESS_MUSCLE_LABELS as MUSCLE_LABELS,
   PROGRESS_HEATMAP_COLORS as HEATMAP_COLORS,
@@ -340,11 +342,11 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   const selectedStrengthValues = effectiveStrengthKey
     ? selectedStrengthPoints.map((point) => Number(point[effectiveStrengthKey] ?? 0))
     : []
+  const strengthScale = strengthChartScale(selectedStrengthValues)
   const firstStrength = selectedStrengthValues[0] ?? 0
   const latestStrength = selectedStrengthValues.at(-1) ?? 0
   const maxStrength = selectedStrengthValues.length ? Math.max(...selectedStrengthValues) : 0
   // Stored weights have at most four decimals; rounding the difference drops float noise such as 2.2999999.
-  const strengthDelta = Math.round((latestStrength - firstStrength) * 10_000) / 10_000
   const missingStrengthSessions = Math.max(0, 3 - selectedStrengthPoints.length)
 
   const heatmapData = useMemo(
@@ -645,11 +647,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                   </div>
                   <p>
                     <span>
-                      {strengthDelta > 0
-                        ? `+${kgToDisplayWeight(strengthDelta, units)} ${units} compared with the first in this range`
-                        : strengthDelta < 0
-                          ? `${kgToDisplayWeight(strengthDelta, units)} ${units} compared with the first in this range`
-                          : 'No change from the first in this range'}
+                      {strengthDeltaLabel(firstStrength, latestStrength, selectedStrengthPoints[0]?.date ?? '', units)}
                     </span>
                     {' · '}max. {kgToDisplayWeight(maxStrength, units)} {units}
                   </p>
@@ -673,7 +671,13 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               ) : (
                 <div className="progress-chart-frame progress-chart-frame--strength" role="img" aria-label={strengthProgressionLabel}>
                   <ResponsiveContainer width="100%" aspect={2.05} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
-                    <LineChart data={selectedStrengthPoints} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
+                    <AreaChart data={selectedStrengthPoints} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
+                      <defs>
+                        <linearGradient id="strength-fade" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0" stopColor="var(--accent)" stopOpacity={0.16} />
+                          <stop offset="1" stopColor="var(--accent)" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
                       <XAxis
                         dataKey="date"
@@ -689,19 +693,22 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                         tickFormatter={(value) => String(kgToDisplayWeight(Number(value), units))}
                         unit={` ${units}`}
                         width={56}
+                        domain={[strengthScale.lo, strengthScale.hi]}
+                        ticks={strengthScale.ticks}
                       />
                       <Tooltip content={<DarkTooltip units={units} />} />
                       {selectedStrengthSeries && (
-                        <Line
+                        <Area
                           type="monotone"
                           dataKey={selectedStrengthSeries.key}
                           name={selectedStrengthSeries.exerciseName}
                           stroke="var(--accent)"
                           strokeWidth={2.35}
+                          fill="url(#strength-fade)"
                           dot={{ r: 3, fill: 'var(--accent)', strokeWidth: 0 }}
                         />
                       )}
-                    </LineChart>
+                    </AreaChart>
                   </ResponsiveContainer>
                 </div>
               )}

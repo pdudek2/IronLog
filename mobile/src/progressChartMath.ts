@@ -24,9 +24,9 @@ export function progressChartLabelIndices(count: number, kind: 'volume' | 'weigh
   return Array.from({ length: Math.ceil(count / stride) }, (_, index) => index * stride).filter((index) => index < count)
 }
 
-export function progressMonotonePath(values: number[], width: number, height: number, maximum: number): string {
+export function progressMonotonePath(values: number[], width: number, height: number, maximum: number, minimum = 0): string {
   if (!values.length) return ''
-  const points = values.map((value, index) => ({ x: progressChartX(index, values.length, width), y: height * (1 - value / maximum) }))
+  const points = values.map((value, index) => ({ x: progressChartX(index, values.length, width), y: height * (1 - (value - minimum) / (maximum - minimum)) }))
   if (points.length === 1) return `M${points[0]!.x},${points[0]!.y}`
   const slopes = points.slice(1).map((point, index) => (point.y - points[index]!.y) / (point.x - points[index]!.x))
   const tangent = points.map((_, index) => {

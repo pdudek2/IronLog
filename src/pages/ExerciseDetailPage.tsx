@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { estimatedOneRepMax } from '../shared/workoutDisplay'
 import { motion } from 'framer-motion'
 import { ChevronDown } from 'lucide-react'
 import { exercises as globalExercises } from '../data/exercises'
@@ -217,11 +218,15 @@ export default function ExerciseDetailPage() {
             />
           )}
 
+          <div>
+            <h1 className="hero-editorial-name">{exercise?.name ?? record?.exerciseName ?? id}</h1>
+          </div>
+
           {taxonomy.length > 0 && (
             <div className="exercise-detail-classification">
               <div className="exercise-detail-taxonomy">
-                {taxonomy.map((label, index) => (
-                  <span key={label} style={index === 0 ? { color: accent } : undefined}>
+                {taxonomy.map((label) => (
+                  <span key={label}>
                     {label}
                   </span>
                 ))}
@@ -235,10 +240,6 @@ export default function ExerciseDetailPage() {
             </div>
           )}
 
-          <div>
-            <h1 className="hero-editorial-name">{exercise?.name ?? record?.exerciseName ?? id}</h1>
-          </div>
-
           <p className="hero-editorial-sub">
             {allTimeSessions > 0
               ? `${allTimeSessions} ${pluralize(allTimeSessions, 'session', 'sessions')} total${sessions.length > 0 && allTimeSessions > sessions.length ? ` · ${sessions.length} most recent below` : ''}`
@@ -248,16 +249,16 @@ export default function ExerciseDetailPage() {
           {record && (
             <dl className="exercise-detail-records">
               <div>
-                <dt>Max weight</dt>
-                <dd>
-                  {kgToDisplayWeight(record.maxWeight, units)} <span className="text-base" style={{ color: 'var(--muted)' }}>{units}</span>
-                </dd>
+                <dt>best set</dt>
+                <dd>{kgToDisplayWeight(record.maxWeight, units)} {units}</dd>
               </div>
               <div>
-                <dt>Reps at record weight</dt>
-                <dd>
-                  {record.maxReps}
-                </dd>
+                <dt>estimated max</dt>
+                <dd>{kgToDisplayWeight(estimatedOneRepMax(record.maxWeight, record.maxReps), units)} {units}</dd>
+              </div>
+              <div>
+                <dt>reps at best</dt>
+                <dd>{record.maxReps}</dd>
               </div>
             </dl>
           )}

@@ -7,6 +7,10 @@ import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { Button, Input } from '../components/ui'
 import { pluralize } from '../lib/pluralize'
+import { getRecentWorkouts } from '../lib/workoutService'
+import { getRecords } from '../lib/progressService'
+import { calcStreak } from '../shared/streak'
+import { trainingSinceLabel } from '../shared/workoutDisplay'
 
 const GOALS: { value: PrimaryGoal; label: string }[] = [
   { value: 'strength', label: 'Strength' },
@@ -14,6 +18,8 @@ const GOALS: { value: PrimaryGoal; label: string }[] = [
   { value: 'endurance', label: 'Endurance' },
   { value: 'weight_loss', label: 'Fat loss' },
 ]
+
+const STATS_WORKOUTS = 50
 
 export default function ProfilePage() {
   const navigate = useNavigate()
@@ -26,6 +32,8 @@ export default function ProfilePage() {
   const [units, setUnits] = useState<Units>(profile?.units ?? 'kg')
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState('')
+  const [stats, setStats] = useState<{ workouts: string; records: string; streak: string } | null>(null)
+  const uid = user?.uid
 
   useEffect(() => {
     if (!profile) return
@@ -34,6 +42,22 @@ export default function ProfilePage() {
     setWeeklyGoal(profile.weeklyGoal ?? 3)
     setUnits(profile.units ?? 'kg')
   }, [profile])
+
+  useEffect(() => {
+    if (!uid) return
+    let live = true
+    Promise.all([getRecentWorkouts(uid, STATS_WORKOUTS), getRecords(uid)])
+      .then(([workouts, { records }]) => {
+        if (!live) return
+        setStats({
+          workouts: workouts.length >= STATS_WORKOUTS ? `${STATS_WORKOUTS}+` : String(workouts.length),
+          records: String(records.length),
+          streak: String(calcStreak(workouts)),
+        })
+      })
+      .catch(() => {})
+    return () => { live = false }
+  }, [uid])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -55,9 +79,22 @@ export default function ProfilePage() {
 
   return (
     <div className="workbench-page">
-      <header className="pt-1">
-        <h1 id="profile-title" className="page-title">Profile</h1>
+      <header className="profile-head">
+        <span className="profile-avatar" aria-hidden="true">{(profile?.displayName ?? '?').charAt(0).toUpperCase()}</span>
+        <div>
+          <h1 id="profile-title" className="progress-visually-hidden">Profile</h1>
+          <p className="profile-name">{profile?.displayName ?? ' '}</p>
+          {profile?.createdAt ? <p className="profile-since">{trainingSinceLabel(profile.createdAt)}</p> : null}
+        </div>
       </header>
+
+      {stats && (
+        <dl className="profile-stats" aria-label="Training summary">
+          <div><dt>workouts</dt><dd>{stats.workouts}</dd></div>
+          <div><dt>records</dt><dd>{stats.records}</dd></div>
+          <div><dt>day streak</dt><dd>{stats.streak}</dd></div>
+        </dl>
+      )}
 
       <div className="profile-settings-shell" style={{ maxWidth: '42rem' }}>
         <section className="profile-form-panel" aria-labelledby="profile-title">

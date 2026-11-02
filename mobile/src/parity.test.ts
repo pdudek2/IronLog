@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { exerciseMetrics, exerciseSummaryLabel, exerciseTargetLabel, focusExerciseIndex, focusSetIndex, formatPreviousSet, panelSetIndex, setPairLabel, upNextQueue, EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
+import { estimatedOneRepMax, exerciseMetrics, exerciseSummaryLabel, exerciseTargetLabel, focusExerciseIndex, focusSetIndex, formatPreviousSet, panelSetIndex, setPairLabel, upNextQueue, EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { overloadHintLabel } from '../../src/shared/nextSessionRecommendation'
 import { shouldDismissSheet } from '../../src/shared/sheetMotion'
@@ -36,6 +36,7 @@ test('the session shows one exercise: the queue, the target and the panel set ag
   assert.equal(exerciseSummaryLabel([{ weight: 80, reps: 8 }, { weight: 90, reps: 5 }, { weight: 90, reps: 6 }], 'kg'), '3 sets · 90 × 6')
   assert.equal(exerciseSummaryLabel([{ weight: 0, reps: 12 }], 'kg'), '1 set · 12 reps')
   assert.equal(exerciseSummaryLabel([], 'kg'), '0 sets')
+  assert.equal(estimatedOneRepMax(90, 5), 105)
   assert.equal(setPairLabel({ weight: '51.25', reps: '8' }, 'kg'), '51.25 × 8')
   assert.equal(setPairLabel({ weight: '', reps: '' }, 'kg'), '0 × 0')
   const sets = [{ clientId: 'a', done: true }, { clientId: 'b', done: false }, { clientId: 'c', done: false }]

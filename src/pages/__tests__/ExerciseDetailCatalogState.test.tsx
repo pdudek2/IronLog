@@ -93,7 +93,7 @@ it('keeps sessions and records visible while user exercise metadata is retryable
 
   expect(await screen.findByRole('heading', { name: 'Wiosłowanie custom' })).toBeInTheDocument()
   expect(screen.getByText('Day siły')).toBeInTheDocument()
-  expect(screen.getByText('Max weight')).toBeInTheDocument()
+  expect(screen.getByText('best set')).toBeInTheDocument()
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Could not load this exercise name and category. History and records are still available.',
   )
@@ -155,7 +155,7 @@ it('uses the record total when recent session rows are unavailable', async () =>
 
   expect(await screen.findByText('4 sessions total')).toBeInTheDocument()
   expect(screen.queryByText(/No history/)).not.toBeInTheDocument()
-  expect(screen.getByText('Max weight')).toBeInTheDocument()
+  expect(screen.getByText('best set')).toBeInTheDocument()
 })
 
 it('shows volume metrics and chronological bar labels without hover', async () => {

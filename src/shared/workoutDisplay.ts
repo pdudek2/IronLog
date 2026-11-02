@@ -59,6 +59,12 @@ export function exerciseSummaryLabel(sets: { weight: number; reps: number }[], u
   if (!best) return count
   return `${count} · ${best.weight > 0 ? `${kgToDisplayWeight(best.weight, units)} × ${best.reps}` : `${best.reps} reps`}`
 }
+export function estimatedOneRepMax(weight: number, reps: number): number {
+  return Math.round(weight * (1 + reps / 30))
+}
+export function trainingSinceLabel(createdAt: number): string {
+  return `Training since ${new Date(createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+}
 export function formatPreviousSet(set: { weight: number; reps: number } | undefined, units: WeightUnits): string {
   return set ? `${kgToDisplayWeight(set.weight, units)}×${set.reps}` : '—'
 }

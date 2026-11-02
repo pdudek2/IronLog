@@ -216,7 +216,7 @@ describe('ProgressPage', () => {
     expect(within(volume).getByText('Last 90 days')).toBeInTheDocument()
     expect(within(sessions).getByText('5')).toBeInTheDocument()
     expect(within(average).getByText('450 kg')).toBeInTheDocument()
-    expect(within(summary).getAllByRole('group')).toHaveLength(6)
+    expect(within(summary).getAllByRole('group')).toHaveLength(7)
     for (const name of ['Volume', 'Sessions', 'Avg. / session', 'Exercises', 'Records', 'Muscle group']) {
       expect(within(summary).getAllByRole('group', { name })).toHaveLength(1)
     }

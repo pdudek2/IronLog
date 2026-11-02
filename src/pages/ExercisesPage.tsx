@@ -1,9 +1,12 @@
-import React, { useId, useRef, useState } from 'react'
+import React, { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { ChevronRight, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
+import { useProfileStore } from '../store/profileStore'
+import { getRecords } from '../lib/progressService'
+import { kgToDisplayWeight } from '../lib/weightUnits'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
 import {
   createUserExercise,
@@ -291,13 +294,14 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
 // ─── Exercise Card ────────────────────────────────────────────────────────────
 
 interface CardProps {
+  bestSet?: string
   exercise: Exercise
   isUser: boolean
   onEdit?: () => void
   onNavigate: () => void
 }
 
-function ExerciseCard({ exercise, isUser, onEdit, onNavigate }: CardProps) {
+function ExerciseCard({ exercise, isUser, bestSet, onEdit, onNavigate }: CardProps) {
   const categoryLabel = CATEGORY_LABELS[exercise.category]
   const labeledMuscles = exercise.muscles.filter(
     (muscle) => Boolean(MUSCLE_LABELS[muscle]) && MUSCLE_LABELS[muscle] !== categoryLabel,
@@ -326,6 +330,7 @@ function ExerciseCard({ exercise, isUser, onEdit, onNavigate }: CardProps) {
       </button>
 
       <div className="exercise-library-row-controls">
+        {bestSet && <span className="exercise-library-best tabular-nums">{bestSet}</span>}
         {isUser && (
           <button
             type="button"
@@ -408,10 +413,27 @@ export default function ExercisesPage() {
     retry: handleRetryUserExercises,
     updateExercises,
   } = useUserExercises(user?.uid ?? null)
+  const [bestSets, setBestSets] = useState<Map<string, number>>(new Map())
   const [formExercise, setFormExercise] = useState<Exercise | null>(null)
   const [showForm, setShowForm] = useState(false)
   const [confirmDeleteExercise, setConfirmDeleteExercise] = useState<Exercise | null>(null)
   const currentUid = user?.uid ?? null
+  const units = useProfileStore((state) => state.profile?.units) ?? 'kg'
+  const bestSetLabel = (source: 'global' | 'user', id: string) => {
+    const weight = bestSets.get(`${source}:${id}`)
+    return weight ? `${kgToDisplayWeight(weight, units)} ${units}` : undefined
+  }
+
+  useEffect(() => {
+    if (!currentUid) return
+    let live = true
+    getRecords(currentUid)
+      .then(({ records }) => {
+        if (live) setBestSets(new Map(records.map((record) => [`${record.exerciseSource}:${record.exerciseId}`, record.maxWeight])))
+      })
+      .catch(() => {})
+    return () => { live = false }
+  }, [currentUid])
   const [interactionUid, setInteractionUid] = useState(currentUid)
 
   if (interactionUid !== currentUid) {
@@ -627,6 +649,7 @@ export default function ExercisesPage() {
                     transition={{ duration: 0.2 }}
                   >
                     <ExerciseCard
+                      bestSet={bestSetLabel('user', ex.id)}
                       exercise={ex}
                       isUser
                       onEdit={() => openEditForm(ex)}
@@ -659,7 +682,7 @@ export default function ExercisesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.18 }}
                   >
-                    <ExerciseCard exercise={ex} isUser={false} onNavigate={() => navigate(`/exercises/global/${ex.id}`)} />
+                    <ExerciseCard exercise={ex} isUser={false} bestSet={bestSetLabel('global', ex.id)} onNavigate={() => navigate(`/exercises/global/${ex.id}`)} />
                   </motion.div>
                 ))}
               </AnimatePresence>

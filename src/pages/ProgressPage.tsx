@@ -507,8 +507,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               )}
             </div>
 
-            <div className="progress-signal-rail">
-              {[
+            {(() => {
+              const stats: { label: string; value: string | number; delta?: number; meta?: string }[] = [
                 {
                   label: 'Sessions',
                   value: uniqueWorkouts,
@@ -528,7 +528,8 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                     : 'unavailable',
                 },
                 { label: 'Muscle group', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${pluralize(topMuscle.count, 'entry', 'entries')}` : 'no data' },
-              ].map((item) => (
+              ]
+              const renderStat = (item: (typeof stats)[number]) => (
                 <div key={item.label} className="progress-signal-row" role="group" aria-label={item.label}>
                   <span>{item.label}</span>
                   <div>
@@ -543,8 +544,17 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                     )}
                   </div>
                 </div>
-              ))}
-            </div>
+              )
+              return (
+                <>
+                  {stats.filter((item) => item.label === 'Sessions' || item.label === 'Records').map(renderStat)}
+                  <details className="progress-more-stats">
+                    <summary>More stats</summary>
+                    <div>{stats.filter((item) => item.label !== 'Sessions' && item.label !== 'Records').map(renderStat)}</div>
+                  </details>
+                </>
+              )
+            })()}
           </div>
 
           )}
@@ -573,53 +583,11 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
         {hasSessionSnapshot && currentSessions.length > 0 && (
           <>
           <div className="progress-analysis-grid">
-            <motion.section
-              className="progress-panel progress-panel--wide"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.05, duration: 0.2 }}
-            >
-              <div className="progress-panel-head">
-                <div>
-                  <h2>Weekly volume</h2>
-                </div>
-                <span>{rangeDays === 30 ? '5 weeks' : rangeDays === 90 ? '13 weeks' : '53 weeks'}</span>
-              </div>
-              <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
-                <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
-                  {/* Room for "6.0k kg" on one line and for the last week label at the right edge. */}
-                  <BarChart data={weeklyData} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
-                    <XAxis
-                      dataKey="weekLabel"
-                      tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      interval="preserveStartEnd"
-                      minTickGap={24}
-                    />
-                    <YAxis
-                      tickFormatter={(v) => formatVolume(Number(v), units)}
-                      tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                      axisLine={false}
-                      tickLine={false}
-                      width={66}
-                    />
-                    <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(244,241,242,0.05)' }} />
-                    {/* Weekly buckets are discrete, so bars rather than a curve between weeks. */}
-                    <Bar dataKey="volume" fill="var(--accent)" radius={[3, 3, 0, 0]} maxBarSize={28} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </motion.section>
-
             <section
               className={`progress-panel ${!selectedStrengthSeries || selectedStrengthPoints.length < 3 ? 'progress-panel--compact' : 'progress-panel--wide'}`}
             >
               <div className="progress-panel-head progress-panel-head--strength">
-                <div>
-                  <h2>Weight progression</h2>
-                </div>
+                <h2 className="progress-visually-hidden">Weight progression</h2>
                 {selectedStrengthSeries && (
                   <label className="progress-strength-picker">
                     <span>Exercise</span>
@@ -713,6 +681,46 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 </div>
               )}
             </section>
+            <motion.section
+              className="progress-panel progress-panel--wide"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05, duration: 0.2 }}
+            >
+              <div className="progress-panel-head">
+                <div>
+                  <h2>Weekly volume</h2>
+                </div>
+                <span>{rangeDays === 30 ? '5 weeks' : rangeDays === 90 ? '13 weeks' : '53 weeks'}</span>
+              </div>
+              <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
+                <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
+                  {/* Room for "6.0k kg" on one line and for the last week label at the right edge. */}
+                  <BarChart data={weeklyData} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
+                    <XAxis
+                      dataKey="weekLabel"
+                      tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      interval="preserveStartEnd"
+                      minTickGap={24}
+                    />
+                    <YAxis
+                      tickFormatter={(v) => formatVolume(Number(v), units)}
+                      tick={{ fill: 'var(--muted)', fontSize: 12 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={66}
+                    />
+                    <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(244,241,242,0.05)' }} />
+                    {/* Weekly buckets are discrete, so bars rather than a curve between weeks. */}
+                    <Bar dataKey="volume" fill="var(--accent)" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.section>
+
 
             {muscleData.length > 0 && (
               <motion.section

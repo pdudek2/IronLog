@@ -6,11 +6,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import HistoryHeader from '../src/HistoryHeader'
 import BottomNavigation, { useBottomNavigation, type NavigationExit } from '../src/BottomNavigation'
-import { logout, readProfile, saveProfile } from '../src/firebase'
+import { logout, readProfile, readProgressRecords, readRecentWorkouts, saveProfile } from '../src/firebase'
+import { calcStreak } from '../../src/shared/streak'
+import { trainingSinceLabel } from '../../src/shared/workoutDisplay'
 import { ProfileController, profileGoals, type ProfileState } from '../src/profile'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import { colors, pageTitle, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
+
+const STATS_WORKOUTS = 50
 
 export default function ProfileScreen() {
   const { user } = useAuthRuntime()
@@ -77,6 +81,21 @@ function Profile({ uid }: { uid: string }) {
       return false
     }
   }
+  const [stats, setStats] = useState<{ workouts: string; records: string; streak: string } | null>(null)
+  const [createdAt, setCreatedAt] = useState<number | null>(null)
+  useEffect(() => {
+    let live = true
+    void Promise.all([readRecentWorkouts(uid, STATS_WORKOUTS), readProgressRecords(uid), readProfile(uid)]).then(([workouts, records, profile]) => {
+      if (!live) return
+      setCreatedAt(profile.data?.createdAt ?? null)
+      setStats({
+        workouts: workouts.data.length >= STATS_WORKOUTS ? `${STATS_WORKOUTS}+` : String(workouts.data.length),
+        records: String(records.data.records.length),
+        streak: String(calcStreak(workouts.data)),
+      })
+    }).catch(() => undefined)
+    return () => { live = false }
+  }, [uid])
   const current = state ?? controller.state
   const input = current.input
   const locked = current.status !== 'ready' || current.busy || current.pending
@@ -86,7 +105,18 @@ function Profile({ uid }: { uid: string }) {
     <HistoryHeader onRequestAction={(action, proceed) => { if (action !== 'profile') leave(proceed) }} />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView ref={scroll} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingBottom: Math.max(32, insets.bottom) }]}>
-        <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>Profile</Text></View>
+        <View style={styles.head}>
+          <View style={styles.avatar}><Text style={styles.avatarText}>{(input?.displayName || '?').charAt(0).toUpperCase()}</Text></View>
+          <View style={styles.headCopy}>
+            <Text accessibilityRole="header" accessibilityLabel="Profile" numberOfLines={1} style={styles.title}>{input?.displayName || 'Profile'}</Text>
+            {createdAt ? <Text style={styles.since}>{trainingSinceLabel(createdAt)}</Text> : null}
+          </View>
+        </View>
+        {stats && <View accessibilityLabel="Training summary" style={styles.stats}>
+          {[['workouts', stats.workouts], ['records', stats.records], ['day streak', stats.streak]].map(([label, value]) => <View key={label} style={styles.stat}>
+            <Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text>
+          </View>)}
+        </View>}
         {current.status === 'loading' ? <ActivityIndicator color={colors.accentText} style={styles.loading} />
           : !input ? <View style={styles.loading}><Text accessibilityRole="alert" style={styles.error}>{current.status === 'missing' ? 'Profile setup is missing. Retry or return to Train.' : current.message}</Text><Pressable accessibilityRole="button" onPress={() => void controller.load(true)} style={styles.retry}><Text style={styles.accent}>Retry</Text></Pressable><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/dashboard'))} style={styles.retry}><Text style={styles.muted}>Back to Home</Text></Pressable></View>
           : <View style={styles.form}>
@@ -105,7 +135,13 @@ function Profile({ uid }: { uid: string }) {
 const border = colors.line
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background }, page: { paddingHorizontal: 16, paddingTop: 16 },
-  heading: { paddingBottom: 4 }, title: pageTitle,
+  head: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingBottom: 4 }, headCopy: { flex: 1, minWidth: 0 }, title: pageTitle,
+  avatar: { alignItems: 'center', backgroundColor: colors.choiceSelected, borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
+  avatarText: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18 },
+  since: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
+  stats: { flexDirection: 'row', paddingTop: 16 }, stat: { flex: 1 },
+  statValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, fontVariant: ['tabular-nums'] },
+  statLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, marginTop: 1 },
   form: { paddingTop: 8 }, goalSection: { paddingVertical: 8 }, section: { paddingVertical: 12, gap: 0 },
   label: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20 },
   input: { height: 46, marginTop: 8, borderColor: border, borderWidth: 1, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', color: colors.textStrong, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, paddingHorizontal: 16 }, invalidInput: { borderColor: colors.warning },

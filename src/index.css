@@ -3191,74 +3191,86 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell {
 .progress-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem 0.75rem;
+  gap: 0.25rem 0.75rem;
+  padding-bottom: 1rem;
 }
 
 .progress-volume-tile,
 .progress-signal-row {
   display: flex;
-  flex-direction: column;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
   min-width: 0;
-}
-
-.progress-signal-row > div {
-  display: contents;
-}
-
-.progress-volume-tile strong,
-.progress-signal-row strong {
-  order: -1;
-}
-
-.progress-signal-row small {
-  order: 1;
+  gap: 0.125rem;
 }
 
 .progress-volume-tile span,
-.progress-signal-row span {
+.progress-signal-row > span {
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: 0.78125rem;
 }
 
 .progress-volume-tile strong,
 .progress-signal-row strong {
-  overflow: hidden;
+  display: block;
   color: var(--text-strong);
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
-  line-height: 1.25;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 .progress-volume-tile small {
   color: var(--muted);
-  font-size: 0.8125rem;
-  font-weight: 400;
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .progress-volume-tile p {
   display: none;
-  margin: 0;
 }
 
 .progress-volume-tile p.progress-metric-delta {
   display: block;
 }
 
-.progress-signal-rail {
-  display: contents;
-}
-
-.progress-signal-row small,
-.progress-metric-delta {
+.progress-volume-tile p.progress-metric-delta,
+.progress-signal-row small {
   overflow: hidden;
   color: var(--muted);
   font-size: 0.75rem;
-  line-height: 1.3;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.progress-summary-grid > .progress-signal-row small:not(.progress-metric-delta) {
+  display: none;
+}
+
+.progress-more-stats {
+  grid-column: 1 / -1;
+}
+
+.progress-more-stats summary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.progress-more-stats summary::-webkit-details-marker {
+  display: none;
+}
+
+.progress-more-stats > div {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding-bottom: 0.25rem;
 }
 
 .progress-analysis-grid {
@@ -3303,8 +3315,11 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell {
 }
 
 .progress-strength-picker > span {
-  color: var(--muted);
-  font-size: 0.8125rem;
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
 }
 
 .progress-strength-picker select {
@@ -3320,24 +3335,25 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell {
 }
 
 .progress-strength-insight {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.35rem 0 0.15rem;
-  border: 0;
-  background: transparent;
-}
-
-.progress-strength-insight div {
   display: grid;
-  gap: 0.28rem;
+  gap: 0.125rem;
+  padding-bottom: 0.5rem;
 }
 
-.progress-strength-insight span,
+.progress-strength-insight strong {
+  display: block;
+  color: var(--text-strong);
+  font-size: 1.875rem;
+  font-weight: 650;
+  letter-spacing: -0.026em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
 .progress-strength-insight p {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.875rem;
+  text-align: left;
 }
 
 .progress-strength-insight strong {
@@ -3643,18 +3659,8 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell {
     justify-items: start;
   }
 
-  .progress-panel-head--strength,
-  .progress-strength-insight {
-    align-items: stretch;
-    flex-direction: column;
-  }
-
   .progress-strength-picker {
     width: 100%;
-  }
-
-  .progress-strength-insight p {
-    text-align: left;
   }
 
 }
@@ -4934,6 +4940,11 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell {
   display: flex;
   align-items: center;
   gap: 0.15rem;
+}
+
+.exercise-library-best {
+  color: var(--muted);
+  font-size: 0.84375rem;
 }
 
 .exercise-library-open {
@@ -7108,30 +7119,75 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   gap: 0.35rem;
 }
 
-.exercise-detail-records {
+.exercise-detail-records,
+.profile-stats {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem 1.5rem;
-  margin: 0.5rem 0 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0.25rem 0 0;
 }
 
-.exercise-detail-records > div {
+.exercise-detail-records > div,
+.profile-stats > div {
+  display: flex;
   min-width: 0;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 0.125rem;
 }
 
-.exercise-detail-records dt {
+.exercise-detail-records dt,
+.profile-stats dt {
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: 0.78125rem;
 }
 
-.exercise-detail-records dd {
-  margin: 0.3rem 0 0;
+.exercise-detail-records dd,
+.profile-stats dd {
+  margin: 0;
   overflow-wrap: anywhere;
   color: var(--text-strong);
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
+}
+
+.profile-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.25rem;
+}
+
+.profile-avatar {
+  display: grid;
+  flex: none;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--selected-bg);
+  color: var(--text-strong);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.profile-name {
+  color: var(--text-strong);
+  font-size: 1.75rem;
+  font-weight: 650;
+  letter-spacing: -0.024em;
+  line-height: 1.15;
+}
+
+.profile-since {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.profile-stats {
+  margin-block: 1rem 0.5rem;
 }
 
 .exercise-detail-panel {

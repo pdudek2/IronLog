@@ -1,6 +1,5 @@
 import { shouldSaveImportedDraft } from './coachPlan'
 import BottomNavigation, { useBottomNavigation } from './BottomNavigation'
-import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, BackHandler, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
@@ -236,7 +235,6 @@ function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string |
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader onRequestAction={(_, proceed) => leave(proceed)} />
-    <ActiveWorkoutReturnBar onRequestExit={leave} />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/templates'))} style={[styles.headerLink, styles.headerLinkRow]}><Icon name="chevron-left" /><Text style={styles.muted}>Plans</Text></Pressable><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text></View>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Dumbbell } from 'lucide-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useAuthStore } from '../store/authStore'
@@ -26,24 +25,21 @@ export default function ActiveWorkoutReturnBar() {
 
   if (
     location.pathname.startsWith('/workout/new')
+    // Train offers Resume as its main button instead.
+    || location.pathname.startsWith('/dashboard')
     || !uid
     || !active
   ) return null
 
   return (
     <section className="active-workout-return-bar" role="region" aria-label="Active workout">
-      <div className="active-workout-return-inner">
-        <Dumbbell size={17} strokeWidth={2.2} aria-hidden="true" />
-        <div className="active-workout-return-copy">
-          <strong>Workout in progress</strong>
-          {active.label?.trim() && <span title={active.label}>{active.label}</span>}
-        </div>
+      <p>
+        <span title={active.label ?? undefined}>{active.label?.trim() || 'Workout'}</span>
         <ElapsedSessionTimer startedAt={active.startedAt} className="active-workout-return-time" />
-        <button type="button" onClick={() => navigate('/workout/new')} aria-label="Return to workout">
-          <span>Return</span>
-          <ChevronRight size={15} aria-hidden="true" />
-        </button>
-      </div>
+      </p>
+      <button type="button" onClick={() => navigate('/workout/new')} aria-label="Return to workout">
+        Return
+      </button>
     </section>
   )
 }

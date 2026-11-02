@@ -8,7 +8,7 @@ import { colors } from './theme'
 
 type Close = (after?: () => void) => void
 
-export function BottomSheet({ title, onClose, children }: { title: string; onClose: () => void; children: (close: Close) => ReactNode }) {
+export function BottomSheet({ title, onClose, tall = false, children }: { title: string; onClose: () => void; tall?: boolean; children: (close: Close) => ReactNode }) {
   const insets = useSafeAreaInsets()
   const { height: screen } = useWindowDimensions()
   const y = useRef(new Animated.Value(screen)).current
@@ -55,7 +55,7 @@ export function BottomSheet({ title, onClose, children }: { title: string; onClo
           motion.current.reduced = reduced
           moveTo(0, 0)
         })
-      }} style={[styles.sheet, { paddingBottom: Math.max(28, insets.bottom + 12), transform: [{ translateY: y }] }]}>
+      }} style={[styles.sheet, tall ? { height: screen * 0.82 } : { paddingBottom: Math.max(28, insets.bottom + 12) }, { transform: [{ translateY: y }] }]}>
         <View {...drag.panHandlers} style={styles.grab}>
           <View style={styles.handle} />
           <Text accessibilityRole="header" numberOfLines={1} style={styles.title}>{title}</Text>
@@ -63,7 +63,8 @@ export function BottomSheet({ title, onClose, children }: { title: string; onClo
         <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={() => dismiss()} style={({ pressed }) => [styles.close, pressed && styles.pressed]}>
           <Icon name="close" size={18} />
         </Pressable>
-        <ScrollView keyboardShouldPersistTaps="handled" style={[styles.body, { maxHeight: screen * 0.7 }]}>{children((after) => dismiss(0, after))}</ScrollView>
+        {tall ? <View style={styles.tallBody}>{children((after) => dismiss(0, after))}</View>
+          : <ScrollView keyboardShouldPersistTaps="handled" style={[styles.body, { maxHeight: screen * 0.7 }]}>{children((after) => dismiss(0, after))}</ScrollView>}
       </Animated.View>
     </View>
   </Modal>
@@ -79,4 +80,5 @@ const styles = StyleSheet.create({
   close: { alignItems: 'center', height: 44, justifyContent: 'center', position: 'absolute', right: 8, top: 14, width: 44 },
   pressed: { opacity: 0.6 },
   body: { flexGrow: 0 },
+  tallBody: { flex: 1 },
 })

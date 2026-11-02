@@ -45,7 +45,6 @@ describe('ActiveWorkoutReturnBar', () => {
     renderBar()
 
     const region = screen.getByRole('region', { name: 'Active workout' })
-    expect(region).toHaveTextContent('Workout in progress')
     expect(region).toHaveTextContent(activeSession.label!)
     expect(region).toHaveTextContent('05:05')
     expect(region).not.toHaveTextContent(/saved|cloud/i)

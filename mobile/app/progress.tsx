@@ -12,7 +12,6 @@ import {
   aggregateStrengthProgression, aggregateWeeklyVolume, formatProgressVolume, strengthDeltaLabel,
   type RecordSummary,
 } from '../../src/shared/progress'
-import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { ActivityCalendar, ActivityCalendarScale, MuscleBars, StrengthChart, WeeklyVolumeChart } from '../src/ProgressCharts'
 import { readProgressRecords, readProgressSessions, readRecentProgressWorkouts, retryProgressMaterialization } from '../src/firebase'
@@ -106,7 +105,6 @@ function ProgressContent({ uid }: { uid: string }) {
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ActiveWorkoutReturnBar />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>Progress</Text>

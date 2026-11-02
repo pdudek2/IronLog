@@ -58,16 +58,19 @@ vi.mock('sonner', () => ({
   toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }))
 vi.mock('framer-motion', () => ({
+  useDragControls: () => ({ start: () => {} }),
+  useReducedMotion: () => true,
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
   motion: new Proxy({}, {
-    get: (_target, tag: string | symbol) => {
+    get: (target: Record<string, unknown>, tag: string | symbol) => {
       if (typeof tag !== 'string') return undefined
-      return ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
+      return target[tag] ??= ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
         delete props.initial
         delete props.animate
         delete props.exit
         delete props.transition
         delete props.whileTap
+        for (const key of Object.keys(props)) if (/^(drag|onDrag)/.test(key)) delete props[key]
         return createElement(tag, props, children)
       }
     },
@@ -273,7 +276,7 @@ describe('ExercisesPage user library states', () => {
 
   it('exposes the selected category in the exercise picker', () => {
     render(
-      <ExercisePicker
+      <ExercisePicker open
         onSelect={vi.fn()}
         onClose={vi.fn()}
         userExercisesState={{ status: 'success', data: [] }}
@@ -298,7 +301,7 @@ describe('ExercisesPage user library states', () => {
     const onRetry = vi.fn()
 
     render(
-      <ExercisePicker
+      <ExercisePicker open
         onSelect={onSelect}
         onClose={vi.fn()}
         userExercisesState={{ status: 'error', error: new Error('offline') }}

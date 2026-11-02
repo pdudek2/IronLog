@@ -1,4 +1,4 @@
-import { useId, useRef, type ReactNode } from 'react'
+import { useId, useRef, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, useDragControls, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
@@ -8,16 +8,18 @@ import { SHEET_DRAG_ELASTIC, SHEET_SPRING, shouldDismissSheet } from '../shared/
 interface BottomSheetProps {
   title: string
   onClose: () => void
+  tall?: boolean
+  initialFocusRef?: RefObject<HTMLElement | null>
   children: ReactNode
 }
 
-export default function BottomSheet({ title, onClose, children }: BottomSheetProps) {
+export default function BottomSheet({ title, onClose, tall = false, initialFocusRef, children }: BottomSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const drag = useDragControls()
   const transition = useReducedMotion() ? { duration: 0 } : { type: 'spring' as const, ...SHEET_SPRING }
 
-  useDialogA11y({ containerRef: panelRef, onClose })
+  useDialogA11y({ containerRef: panelRef, onClose, initialFocusRef })
 
   return createPortal(
     <div className="bottom-sheet-layer">
@@ -32,6 +34,7 @@ export default function BottomSheet({ title, onClose, children }: BottomSheetPro
       <motion.div
         ref={panelRef}
         className="bottom-sheet"
+        data-tall={tall || undefined}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}

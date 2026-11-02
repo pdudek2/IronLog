@@ -6,6 +6,7 @@ import type { ReactNode } from 'react'
 import { navigateWithAppTransition } from '../lib/viewTransitions'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import { useWorkoutStore } from '../store/workoutStore'
+import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import { useMobileInteraction } from './MobileInteractionProvider'
 
 const SCROLL_DIRECTION_THRESHOLD = 24
@@ -118,7 +119,7 @@ export default function BottomNav() {
       aria-label="Bottom navigation"
       aria-hidden={navHidden ? true : undefined}
       inert={navHidden}
-      className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex justify-center lg:hidden"
+      className="bottom-nav fixed bottom-0 left-0 right-0 z-50 flex flex-col items-center lg:hidden"
       style={{
         paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom, 0px))',
         transform: navHidden ? 'translateY(calc(100% + env(safe-area-inset-bottom, 0px) + 1rem))' : 'translateY(0)',
@@ -127,6 +128,7 @@ export default function BottomNav() {
         transition: 'transform 220ms ease, opacity 180ms ease',
       }}
     >
+      {!workoutDetail && <ActiveWorkoutReturnBar />}
       <div className="bottom-nav-panel flex w-full items-center gap-1">
         <NavBtn
           icon={<Dumbbell size={20} />}

@@ -24,7 +24,7 @@ import { publishStreak } from '../src/streak'
 import { calcStreak } from '../../src/shared/streak'
 import { readStateForKey, startRead, type ReadState } from '../src/scopedRead'
 import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../src/runtime'
-import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
+import { ResumeButton } from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
 import { firstLaunchableWorkout, selectedWorkout, validateTemplateOverrides, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
@@ -95,7 +95,7 @@ export default function DashboardScreen() {
   const plansPending = active.state.status === 'loading' || (canOfferStart && templatesState.status === 'loading')
   // Picking a workout means the next session matters more than the finished week.
   const weekClosed = Boolean(summary) && !plansPending && canOfferStart && !picked && (summary?.weeklyDone ?? 0) >= goal
-  const coverName = weekClosed ? 'week' : workoutCover(chosen?.day.name ?? chosen?.template.name)
+  const coverName = active.state.status === 'ready' ? workoutCover(active.state.session.label) : weekClosed ? 'week' : workoutCover(chosen?.day.name ?? chosen?.template.name)
   const record = data ? latestRecord(data.workouts, now.getTime()) : null
   const launchState = launch?.state.status ?? 'loading'
   const starting = launchState === 'starting'
@@ -128,7 +128,6 @@ export default function DashboardScreen() {
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ActiveWorkoutReturnBar />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
       {state.status === 'loading' && <View style={styles.notice}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading dashboard…</Text></View>}
       {state.status === 'error' && <View accessibilityRole="alert" style={styles.notice}>
@@ -142,7 +141,7 @@ export default function DashboardScreen() {
           <View pointerEvents="none" style={styles.coverFade} />
           <View style={styles.coverCopy}>
             <Text style={styles.coverMeta}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
-            <Text accessibilityRole="header" style={styles.coverTitle}>{plansPending ? ' ' : weekClosed ? 'Week done' : chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
+            <Text accessibilityRole="header" style={styles.coverTitle}>{plansPending ? ' ' : active.state.status === 'ready' ? active.state.session.label?.trim() || 'Workout' : weekClosed ? 'Week done' : chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
             {plansPending ? <Text style={styles.coverMeta}> </Text> : weekClosed ? <Text style={styles.coverMeta}>{summary?.weeklyDone} of {goal} workouts · {formatCompactVolume(summary?.weeklyVolume ?? 0, units)}</Text> : chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
               : active.state.status === 'empty' && recent[0] && <Text style={styles.coverMeta}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
           </View>
@@ -196,6 +195,7 @@ export default function DashboardScreen() {
           onRetry={() => { retry(); setTemplatesAttempt(value => value + 1) }} />}
       </>}
     </ScrollView>
+    {data && active.state.status === 'ready' && <View style={styles.startBar}><ResumeButton /></View>}
     {data && (canOfferStart || plansPending) && !recommendation && <View style={styles.startBar}>
       {plansPending ? <View style={styles.startPending} /> : chosen
         ? <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : `Start ${chosen.day.name}`}</Text></Pressable>

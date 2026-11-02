@@ -3,6 +3,7 @@ import { Keyboard, Pressable, StyleSheet, Text, TextInput, View, type NativeSynt
 import { useFocusEffect, usePathname, useRouter, type Href } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
+import ActiveWorkoutReturnBar, { useReturnBar } from './ActiveWorkoutReturnBar'
 import { useAuthRuntime } from './runtime'
 import { navigationBarHeight, navigationSection, scrollNavigation, tabNavigation, type NavigationTab } from './navigation'
 import { colors } from './theme'
@@ -66,15 +67,19 @@ export default function BottomNavigation({ hidden, keyboard, onRequestExit }: { 
     if (onRequestExit) onRequestExit(guarded)
     else void guarded()
   }
+  const { visible: returning } = useReturnBar()
   const height = navigationBarHeight(inset)
-  return <View style={{ height: keyboard || hidden ? 0 : height }} pointerEvents={hidden || keyboard ? 'none' : 'auto'}
+  return <View style={{ height: keyboard || hidden ? 0 : height + (returning ? RETURN_ROW_HEIGHT : 0) }} pointerEvents={hidden || keyboard ? 'none' : 'auto'}
     accessibilityElementsHidden={hidden || keyboard} importantForAccessibility={hidden || keyboard ? 'no-hide-descendants' : 'auto'}>
+    {returning && !keyboard && !hidden && <View style={[styles.returnRow, { bottom: Math.max(10, inset) + 66 }]}><ActiveWorkoutReturnBar onRequestExit={onRequestExit} /></View>}
     <View style={[styles.bar, { bottom: Math.max(10, inset), transform: [{ translateY: hidden || keyboard ? height : 0 }], opacity: hidden || keyboard ? 0 : 1 }]}>
       {(Object.keys(TABS) as NavigationTab[]).map(name => <Pressable key={name} accessibilityRole="tab" accessibilityLabel={name} accessibilityState={{ selected: section === name }} onPress={() => go(() => { const { kind, href } = tabNavigation(pathname, name); router[kind](href as Href) })} style={[styles.tab, section === name && styles.selected]}><Icon name={name} color={section === name ? colors.textStrong : colors.muted} /><Text style={[styles.label, section === name && { color: colors.textStrong }]}>{name}</Text></Pressable>)}
     </View>
   </View>
 }
+const RETURN_ROW_HEIGHT = 58
 const styles = StyleSheet.create({
+  returnRow: { left: 14, position: 'absolute', right: 14 },
   bar: { position: 'absolute', left: 14, right: 14, height: 58, flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4.8, borderRadius: 19.2, backgroundColor: colors.surfaceHigh, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 14px 30px -12px rgba(0, 0, 0, 0.8)' },
   tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 14, overflow: 'hidden' },
   selected: { backgroundColor: colors.choiceSelected },

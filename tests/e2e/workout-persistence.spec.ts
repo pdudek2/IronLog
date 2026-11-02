@@ -30,18 +30,18 @@ test.describe('Workout persistence', () => {
 
     // Open exercise picker
     await addExBtn.click()
-    await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('dialog', { name: 'Add exercise' })).toBeVisible({ timeout: 5_000 })
 
     // Search and select first matching exercise
-    await page.getByPlaceholder('Search exercises...').fill('Bench Press')
+    await page.getByPlaceholder('Search exercises').fill('Bench Press')
     const firstResult = page.getByRole('dialog').locator('button').filter({ hasText: /bench press/i }).first()
     await expect(firstResult).toBeVisible({ timeout: 5_000 })
-    // Get just the exercise name (first <p> in button, not full textContent which includes equipment)
-    const exerciseName = (await firstResult.locator('p').first().textContent())?.trim() ?? 'Bench Press'
+    // Get just the exercise name (first <span> in button, not full textContent which includes equipment)
+    const exerciseName = (await firstResult.locator('span').first().textContent())?.trim() ?? 'Bench Press'
     await firstResult.click()
 
     // Picker should close
-    await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).not.toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('dialog', { name: 'Add exercise' })).not.toBeVisible({ timeout: 5_000 })
 
     // Exercise name appears in the workout card header
     await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 5_000 })

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from './fixtures'
 import { deleteTemplateByName, discardActiveSession } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
+import { openExercisePicker } from './support/workoutActions'
 import type { BrowserDiagnostic } from './support/browserDiagnostics'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
 import { waitForActiveSessionWrite } from './support/firestoreBrowserBridge'
@@ -37,15 +38,6 @@ function workoutExerciseRow(page: Page, exerciseName: string) {
   return page.locator('.workout-exercise-card').filter({ hasText: exerciseName }).first()
 }
 
-async function openExercisePicker(page: Page): Promise<void> {
-  const addExerciseButton = page.getByRole('button', { name: 'Add exercise', exact: true }).first()
-  await addExerciseButton.scrollIntoViewIfNeeded()
-  await expect(addExerciseButton).toBeVisible({ timeout: 15_000 })
-  await expect(addExerciseButton).toBeEnabled()
-  await addExerciseButton.evaluate((element) => element.scrollIntoView({ block: 'center', inline: 'nearest' }))
-  await addExerciseButton.click()
-}
-
 async function waitForWorkoutState(page: Page): Promise<void> {
   await Promise.race([
     page.getByRole('button', { name: 'Discard and start again' }).waitFor({ state: 'visible', timeout: 25_000 }),
@@ -62,9 +54,9 @@ async function createLaunchTemplate(page: Page, templateName: string): Promise<v
   await page.getByPlaceholder('E.g. Upper / Lower 4 days').fill(templateName)
   await openExercisePicker(page)
 
-  const picker = page.getByRole('dialog', { name: /Choose an exercise/i })
+  const picker = page.getByRole('dialog', { name: 'Add exercise' })
   await expect(picker).toBeVisible({ timeout: 5_000 })
-  await page.getByPlaceholder('Search exercises...').fill('Squat')
+  await page.getByPlaceholder('Search exercises').fill('Squat')
   const squat = picker.locator('button').filter({ hasText: /squat/i }).first()
   await expect(squat).toBeVisible({ timeout: 5_000 })
   await squat.click()
@@ -88,9 +80,9 @@ async function startFreshSessionWithExercise(page: Page, exerciseName: string): 
 
   await openExercisePicker(page)
 
-  const picker = page.getByRole('dialog', { name: /Choose an exercise/i })
+  const picker = page.getByRole('dialog', { name: 'Add exercise' })
   await expect(picker).toBeVisible({ timeout: 5_000 })
-  await page.getByPlaceholder('Search exercises...').fill(exerciseName)
+  await page.getByPlaceholder('Search exercises').fill(exerciseName)
   const exercise = picker.locator('button').filter({ hasText: new RegExp(exerciseName, 'i') }).first()
   await expect(exercise).toBeVisible({ timeout: 5_000 })
   await exercise.click()

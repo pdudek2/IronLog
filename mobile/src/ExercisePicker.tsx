@@ -1,11 +1,12 @@
-import { useState } from 'react'
-import { FlatList, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { FlatList, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
-import { searchExercises, type Category } from '../../data/exercises'
-import { EXERCISE_CATEGORY_LABELS, formatExerciseMeta } from '../../src/lib/exerciseLabels'
-import { pluralize } from '../../src/lib/pluralize'
+import { exercises as exerciseDb, searchExercises, type Category } from '../../data/exercises'
+import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../../src/lib/exerciseLabels'
+import type { RecentExercisePick } from '../../src/shared/recentExercises'
+import { BottomSheet } from './BottomSheet'
 import type { ExerciseSource } from './session'
 import type { ExerciseMetadata, ReadState } from './scopedRead'
 import { colors } from './theme'
@@ -15,10 +16,11 @@ const PICKER_CATEGORIES: { value: Category | 'all'; label: string }[] = [
   ...(['chest', 'back', 'legs', 'shoulders', 'arms', 'core', 'cardio'] as const).map((value) => ({ value, label: EXERCISE_CATEGORY_LABELS[value] ?? value })),
 ]
 
-type PickerResult = { id: string; name: string; source: ExerciseSource; equipment: string; muscles: string[] }
+type PickerResult = { id: string; name: string; category: string; equipment: string; source: ExerciseSource }
 
-export default function ExercisePicker({ userExercises, onRetryUserExercises, onSelect, onClose }: {
+export default function ExercisePicker({ userExercises, recent = [], onRetryUserExercises, onSelect, onClose }: {
   userExercises: ReadState<ExerciseMetadata[]>
+  recent?: RecentExercisePick[]
   onRetryUserExercises: () => void
   onSelect: (id: string, name: string, source: ExerciseSource) => void
   onClose: () => void
@@ -26,8 +28,14 @@ export default function ExercisePicker({ userExercises, onRetryUserExercises, on
   const insets = useSafeAreaInsets()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
-  const [searchFocused, setSearchFocused] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', (event) => setKeyboardHeight(event.endCoordinates.height))
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0))
+    return () => { shown.remove(); hidden.remove() }
+  }, [])
   const q = query.toLowerCase()
+  const filtered = q !== '' || category !== 'all'
   // Matches web ordering: the user's own exercises first, then the shared library.
   const results: PickerResult[] = [
     ...(userExercises.status === 'ready' ? userExercises.data : [])
@@ -35,90 +43,77 @@ export default function ExercisePicker({ userExercises, onRetryUserExercises, on
       .map((exercise) => ({ ...exercise, source: 'user' as const })),
     ...searchExercises(query, category === 'all' ? undefined : category).map((exercise) => ({ ...exercise, source: 'global' as const })),
   ]
-  return <Modal animationType="fade" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent visible>
-    <View style={[styles.pickerShell, { paddingTop: Math.max(12.8, insets.top) }]}>
-      <View style={styles.pickerHead}>
-        <View style={styles.pickerTitleRow}>
-          <View style={styles.pickerTitleGroup}>
-            <Text accessibilityRole="header" style={styles.pickerTitle}>Choose an exercise</Text>
-            <Text style={styles.pickerMeta}>{results.length} {pluralize(results.length, 'result', 'results')}</Text>
-          </View>
-          <Pressable accessibilityRole="button" accessibilityLabel="Close exercise picker" onPress={onClose}
-            style={({ pressed }) => [styles.pickerClose, pressed && styles.pickerPressed]}>
-            <Svg width={17} height={17} viewBox="0 0 24 24"><Path d="m18 6-12 12M6 6l12 12" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" /></Svg>
-          </Pressable>
-        </View>
-        <View style={[styles.pickerSearch, searchFocused && styles.pickerSearchFocused]}>
-          <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="m21 21-4.34-4.34M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
-          <TextInput accessibilityLabel="Search exercises" autoFocus onBlur={() => setSearchFocused(false)} onChangeText={setQuery}
-            onFocus={() => setSearchFocused(true)} placeholder="Search exercises..." placeholderTextColor={colors.mutedSoft}
-            returnKeyType="search" selectionColor={colors.accentText} style={styles.pickerSearchInput} value={query} />
-        </View>
+  const recentRows = filtered ? [] : recent.flatMap((pick) => {
+    const exercise = pick.source === 'user' && userExercises.status === 'ready'
+      ? userExercises.data.find(({ id }) => id === pick.id) : exerciseDb.find(({ id }) => id === pick.id)
+    return exercise ? [{ ...exercise, name: pick.name, source: pick.source }] : []
+  })
+  return <BottomSheet tall title="Add exercise" onClose={onClose}>{(close) => {
+    const row = (item: PickerResult) => <Pressable key={`${item.source}-${item.id}`} accessibilityRole="button" accessibilityLabel={`${item.name}${item.source === 'user' ? ', mine' : ''}`}
+      onPress={() => close(() => onSelect(item.id, item.name, item.source))} style={({ pressed }) => [styles.pickerResult, pressed && styles.pickerPressed]}>
+      <View style={styles.pickerResultMain}>
+        <Text numberOfLines={1} style={styles.pickerResultName}>{item.name}</Text>
+        {item.source === 'user' && <Text style={styles.pickerMine}>mine</Text>}
       </View>
-      <View style={styles.pickerCategoriesBar}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.pickerCategories}
-          accessibilityLabel="Exercise category">
-          {PICKER_CATEGORIES.map(({ value, label }) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: category === value }}
-            onPress={() => setCategory(value)} style={({ pressed }) => [styles.pickerCategory, pressed && styles.pickerPressed]}>
-            <Text style={[styles.pickerCategoryText, category === value && styles.pickerCategoryTextActive]}>{label}</Text>
-            {category === value && <View style={styles.pickerCategoryUnderline} />}
-          </Pressable>)}
-        </ScrollView>
+      <Text numberOfLines={1} style={styles.pickerMeta}>{[EXERCISE_CATEGORY_LABELS[item.category], getEquipmentLabel(item.equipment)].filter(Boolean).join(' · ')}</Text>
+    </Pressable>
+    return <>
+      <View style={styles.pickerSearch}>
+        <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="m21 21-4.34-4.34M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
+        <TextInput accessibilityLabel="Search exercises" onChangeText={setQuery} placeholder="Search exercises" placeholderTextColor={colors.mutedSoft}
+          returnKeyType="search" selectionColor={colors.accentText} style={styles.pickerSearchInput} value={query} />
       </View>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={styles.pickerCategoriesBar} contentContainerStyle={styles.pickerCategories}
+        accessibilityLabel="Exercise category">
+        {PICKER_CATEGORIES.map(({ value, label }) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: category === value }}
+          onPress={() => setCategory(value)} style={({ pressed }) => [styles.pickerCategory, category === value && styles.pickerCategoryActive, pressed && styles.pickerPressed]}>
+          <Text style={[styles.pickerCategoryText, category === value && styles.pickerCategoryTextActive]}>{label}</Text>
+        </Pressable>)}
+      </ScrollView>
       <FlatList
+        style={styles.flex}
         data={results}
         keyExtractor={(item) => `${item.source}-${item.id}`}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={[styles.pickerList, { paddingBottom: Math.max(12, insets.bottom) }]}
-        ListHeaderComponent={userExercises.status === 'loading'
-          ? <Text accessibilityLiveRegion="polite" style={styles.pickerFeedback}>Loading your exercises…</Text>
-          : userExercises.status === 'error'
-            ? <Pressable accessibilityRole="button" onPress={onRetryUserExercises} style={styles.lookupAction}>
-              <Text style={styles.pickerFeedback}>Could not load your exercises. The shared library is still available. <Text style={styles.syncActionText}>Retry</Text></Text>
-            </Pressable>
-            : null}
+        contentContainerStyle={{ paddingBottom: Math.max(16, insets.bottom + 8) + keyboardHeight }}
+        ListHeaderComponent={<>
+          {userExercises.status === 'loading' && <Text accessibilityLiveRegion="polite" style={styles.pickerFeedback}>Loading your exercises…</Text>}
+          {userExercises.status === 'error' && <Pressable accessibilityRole="button" onPress={onRetryUserExercises} style={styles.lookupAction}>
+            <Text style={styles.pickerFeedback}>Could not load your exercises. The shared library is still available. <Text style={styles.syncActionText}>Retry</Text></Text>
+          </Pressable>}
+          {recentRows.length > 0 && <Text accessibilityRole="header" style={styles.pickerGroup}>Recently used</Text>}
+          {recentRows.map(row)}
+          {results.length > 0 && <Text accessibilityRole="header" style={styles.pickerGroup}>{filtered ? `${results.length} found` : 'All exercises'}</Text>}
+        </>}
         ListEmptyComponent={userExercises.status === 'ready' ? <View style={styles.pickerEmpty}>
           <Text style={styles.pickerEmptyTitle}>No results</Text>
           <Text style={styles.pickerEmptyCopy}>Change your search or choose another category.</Text>
         </View> : null}
-        renderItem={({ item }) => <Pressable accessibilityRole="button" accessibilityLabel={`${item.name}${item.source === 'user' ? ', mine' : ''}`}
-          onPress={() => onSelect(item.id, item.name, item.source)} style={({ pressed }) => [styles.pickerResult, pressed && styles.pickerPressed]}>
-          <View style={styles.pickerResultMain}>
-            <Text numberOfLines={1} style={styles.pickerResultName}>{item.name}</Text>
-            {item.source === 'user' && <Text style={styles.pickerMine}>mine</Text>}
-          </View>
-          <Text style={styles.pickerMeta}>{formatExerciseMeta(item.equipment, item.muscles)}</Text>
-        </Pressable>}
+        renderItem={({ item }) => row(item)}
       />
-    </View>
-  </Modal>
+    </>
+  }}</BottomSheet>
 }
 
 const styles = StyleSheet.create({
-  pickerShell: { backgroundColor: colors.backgroundElevated, flex: 1 },
+  flex: { flex: 1 },
   lookupAction: { minHeight: 44, justifyContent: 'center' },
   syncActionText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
-  pickerHead: { gap: 12, paddingBottom: 13.6, paddingHorizontal: 16 },
-  pickerTitleRow: { alignItems: 'center', flexDirection: 'row', gap: 16, justifyContent: 'space-between' },
-  pickerTitleGroup: { alignItems: 'baseline', flexDirection: 'row', flexShrink: 1, gap: 10.4 },
-  pickerTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 18.4 },
-  pickerMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.52, lineHeight: 17 },
-  pickerClose: { alignItems: 'center', borderRadius: 8, height: 44, justifyContent: 'center', width: 44 },
-  pickerPressed: { backgroundColor: 'rgba(255, 255, 255, 0.035)' },
-  pickerSearch: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.045)', borderRadius: 8, flexDirection: 'row', gap: 9.6, minHeight: 44, paddingHorizontal: 12 },
-  pickerSearchFocused: { boxShadow: '0 0 0 2px rgba(244, 238, 232, 0.144)' },
-  pickerSearchInput: { color: colors.textStrong, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, minHeight: 44, padding: 0 },
-  pickerCategoriesBar: { borderBottomColor: colors.line, borderBottomWidth: 1 },
-  pickerCategories: { paddingLeft: 16, paddingRight: 48 },
-  pickerCategory: { justifyContent: 'center', minHeight: 44, paddingHorizontal: 10.4 },
-  pickerCategoryText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 11.84, lineHeight: 18 },
-  pickerCategoryTextActive: { color: colors.textStrong },
-  pickerCategoryUnderline: { backgroundColor: colors.accent, bottom: -1, height: 2, left: 10.4, position: 'absolute', right: 10.4 },
-  pickerList: { paddingHorizontal: 16 },
+  pickerMeta: { color: colors.muted, flexShrink: 0, fontFamily: 'InstrumentSans_400Regular', fontSize: 13.5, fontVariant: ['tabular-nums'] },
+  pickerPressed: { opacity: 0.6 },
+  pickerSearch: { alignItems: 'center', backgroundColor: 'rgba(244, 238, 232, 0.08)', borderRadius: 12, flexDirection: 'row', gap: 8, height: 42, paddingHorizontal: 12 },
+  pickerSearchInput: { color: colors.textStrong, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14.5, padding: 0 },
+  pickerCategoriesBar: { flexGrow: 0, marginRight: -20, marginTop: 10 },
+  pickerCategories: { gap: 6, paddingRight: 20 },
+  pickerCategory: { alignItems: 'center', borderColor: colors.line, borderRadius: 10, borderWidth: 1, height: 44, justifyContent: 'center', paddingHorizontal: 12 },
+  pickerCategoryActive: { backgroundColor: 'rgba(244, 238, 232, 0.08)', borderColor: 'transparent' },
+  pickerCategoryText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13.5 },
+  pickerCategoryTextActive: { color: colors.text },
   pickerFeedback: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, paddingVertical: 10 },
-  pickerResult: { borderBottomColor: colors.line, borderBottomWidth: 1, gap: 4.5, justifyContent: 'center', minHeight: 58.4, paddingVertical: 11.5 },
-  pickerResultMain: { alignItems: 'baseline', flexDirection: 'row', gap: 8.8 },
-  pickerResultName: { color: colors.textStrong, flexShrink: 1, fontFamily: 'InstrumentSans_700Bold', fontSize: 16, lineHeight: 20 },
+  pickerGroup: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginBottom: 2, marginTop: 12 },
+  pickerResult: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', minHeight: 44 },
+  pickerResultMain: { alignItems: 'baseline', flex: 1, flexDirection: 'row', gap: 8.8 },
+  pickerResultName: { color: colors.text, flexShrink: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 },
   pickerMine: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 11 },
   pickerEmpty: { alignItems: 'center', gap: 5.6, justifyContent: 'center', minHeight: 208 },
   pickerEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },

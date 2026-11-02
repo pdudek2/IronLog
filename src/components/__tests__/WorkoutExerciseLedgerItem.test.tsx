@@ -18,11 +18,10 @@ const callbacks = {
   onDismissSuggestion: vi.fn(),
   onOpenOverview: vi.fn(),
   drawnSetIndex: null,
-  onExpandExercise: vi.fn(),
   onRemoveExercise: vi.fn(),
   onRemoveSet: vi.fn(),
+  onSelectSet: vi.fn(),
   onToggleSet: vi.fn(),
-  onUpdateSet: vi.fn(),
 }
 
 describe('WorkoutExerciseLedgerItem weight units', () => {
@@ -49,38 +48,27 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
     })
   })
 
-  it('shows pounds in the input while sending kilograms back to the workout store boundary', () => {
+  it('shows the stored kilograms in the display unit and hands editing to the panel', () => {
     render(
       <WorkoutExerciseLedgerItem
-        exerciseAccent="#fff"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
         exerciseCount={3}
         fallbackExercise={null}
-        focusSetIndex={1}
+        panelSetIndex={1}
         hintDismissed
         hintKey="global:bench-press"
-        isCollapsible
-        isExpanded
-        isFocusedExercise
         suggestion={null}
         units="lbs"
         {...callbacks}
       />,
     )
 
-    const weightInput = screen.getByRole('spinbutton', {
-      name: 'Weight, Bench Press, set 1, lbs',
-    })
+    expect(screen.getByText('132.3 × 8')).toBeInTheDocument()
+    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
 
-    expect(weightInput).toHaveValue(132.3)
-    expect(screen.getByRole('button', {
-      name: 'Mark set 1 for Bench Press',
-    })).toBeInTheDocument()
-
-    fireEvent.change(weightInput, { target: { value: '100' } })
-
-    expect(callbacks.onUpdateSet).toHaveBeenCalledWith(0, 0, 'weight', '45.3592')
+    fireEvent.click(screen.getByRole('button', { name: /^Edit set 1/ }))
+    expect(callbacks.onSelectSet).toHaveBeenCalledWith(0)
   })
 
   it('aligns previous results with their set rows and leaves missing history neutral', async () => {
@@ -117,17 +105,13 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
 
     render(
       <WorkoutExerciseLedgerItem
-        exerciseAccent="#f0435a"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
         exerciseCount={3}
         fallbackExercise={null}
-        focusSetIndex={1}
+        panelSetIndex={1}
         hintDismissed
         hintKey="global:bench-press"
-        isCollapsible
-        isExpanded
-        isFocusedExercise
         suggestion={null}
         units="lbs"
         userId="user-1"
@@ -135,9 +119,9 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       />,
     )
 
-    expect(await screen.findByLabelText('Previous set result 1')).toHaveTextContent('496×12')
-    expect(screen.getByLabelText('Previous set result 2')).toHaveTextContent('176.4×8')
-    expect(screen.getByLabelText('Previous set result 3')).toHaveTextContent('—')
+    expect(await screen.findByRole('button', { name: /^Edit set 1: last 496×12/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Edit set 2: last 176.4×8/ })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Edit set 3: last —/ })).toBeInTheDocument()
     expect(screen.getByText('Last')).toBeInTheDocument()
     expect(screen.queryByText('Vol.')).not.toBeInTheDocument()
     expect(mocks.getExerciseSessions).toHaveBeenCalledWith('user-1', 'bench-press', 'global', 1)
@@ -158,83 +142,43 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
 
     render(
       <WorkoutExerciseLedgerItem
-        exerciseAccent="#fff"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
         exerciseCount={3}
         fallbackExercise={null}
-        focusSetIndex={0}
+        panelSetIndex={0}
         hintDismissed
         hintKey="global:bench-press"
-        isCollapsible
-        isExpanded
-        isFocusedExercise
         suggestion={null}
         units="kg"
         {...callbacks}
       />,
     )
 
-    expect(screen.getByRole('spinbutton', {
-      name: 'Weight, Bench Press, set 1, kg',
-    })).toHaveValue(82.25)
+    expect(screen.getByText('82.25 × 8')).toBeInTheDocument()
   })
 
-  it('shows the current set read-only and leaves editing to the set panel', () => {
+  it('marks the panel set and keeps the tick for logging directly', () => {
     render(
       <WorkoutExerciseLedgerItem
-        exerciseAccent="#f0435a"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
         exerciseCount={3}
         fallbackExercise={null}
-        focusSetIndex={0}
+        panelSetIndex={0}
         hintDismissed
         hintKey="global:bench-press"
-        isCollapsible
-        isExpanded
-        isFocusedExercise
         suggestion={null}
         units="lbs"
         {...callbacks}
       />,
     )
 
-    expect(screen.getByText('132.3 × 8')).toBeInTheDocument()
-    expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^Edit set 1/ })).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByText('Exercise 1 of 3')).toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Mark set 1 for Bench Press' }))
     expect(callbacks.onToggleSet).toHaveBeenCalledWith(0, 0)
-  })
-
-  it('lets a compact exercise request expansion without hiding its identity', () => {
-    render(
-      <WorkoutExerciseLedgerItem
-        exerciseAccent="#f0435a"
-        exerciseClientId="exercise-1"
-        exerciseIndex={0}
-        exerciseCount={3}
-        fallbackExercise={null}
-        focusSetIndex={0}
-        hintDismissed
-        hintKey="global:bench-press"
-        isCollapsible
-        isExpanded={false}
-        isFocusedExercise={false}
-        suggestion={null}
-        units="kg"
-        {...callbacks}
-      />,
-    )
-
-    const expandButton = screen.getByRole('button', { name: 'Expand exercise Bench Press' })
-    expect(expandButton).toHaveAttribute('aria-expanded', 'false')
-
-    fireEvent.click(expandButton)
-
-    expect(callbacks.onExpandExercise).toHaveBeenCalledWith('exercise-1')
-    expect(screen.getByText('Bench Press')).toBeInTheDocument()
   })
 
   it('hides an overload suggestion after every set is completed', () => {
@@ -248,17 +192,13 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
 
     render(
       <WorkoutExerciseLedgerItem
-        exerciseAccent="#f0435a"
         exerciseClientId="exercise-1"
         exerciseIndex={0}
         exerciseCount={3}
         fallbackExercise={null}
-        focusSetIndex={0}
+        panelSetIndex={0}
         hintDismissed={false}
         hintKey="global:bench-press"
-        isCollapsible
-        isExpanded
-        isFocusedExercise
         suggestion={suggestion}
         units="kg"
         {...callbacks}

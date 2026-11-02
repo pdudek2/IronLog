@@ -1,6 +1,7 @@
 import { test, expect, type Locator, type Page } from './fixtures'
 import { discardActiveSession, openWorkoutDiscardDialog } from './support/accountCleanup'
 import { expectAppReady } from './support/appReady'
+import { openExercisePicker } from './support/workoutActions'
 import {
   readCachedActiveSessionWrite,
   readLocalActiveSessionRecovery,
@@ -98,39 +99,6 @@ async function expectFullyInViewport(page: Page, locator: Locator, label: string
   expect(box!.y + box!.height, `${label} bottom edge`).toBeLessThanOrEqual(visibleBottom)
 }
 
-interface ScrollIntoViewCall {
-  tagName: string
-  insideWorkoutSetRow: boolean
-}
-
-async function installScrollIntoViewSpy(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const testWindow = window as typeof window & { __workoutScrollIntoViewCalls: ScrollIntoViewCall[] }
-    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView
-    testWindow.__workoutScrollIntoViewCalls = []
-    HTMLElement.prototype.scrollIntoView = function (options?: boolean | ScrollIntoViewOptions) {
-      testWindow.__workoutScrollIntoViewCalls.push({
-        tagName: this.tagName,
-        insideWorkoutSetRow: this.matches('.workout-focus-shell .workout-set-row input'),
-      })
-      originalScrollIntoView.call(this, options)
-    }
-  })
-}
-
-async function readScrollIntoViewCalls(page: Page): Promise<ScrollIntoViewCall[]> {
-  return page.evaluate(() => (
-    window as typeof window & { __workoutScrollIntoViewCalls: ScrollIntoViewCall[] }
-  ).__workoutScrollIntoViewCalls)
-}
-
-async function clearScrollIntoViewCalls(page: Page): Promise<void> {
-  await page.evaluate(() => {
-    const testWindow = window as typeof window & { __workoutScrollIntoViewCalls: ScrollIntoViewCall[] }
-    testWindow.__workoutScrollIntoViewCalls = []
-  })
-}
-
 async function setVisualViewportBottomInset(page: Page, bottomInset: number): Promise<void> {
   await page.evaluate((inset) => {
     const viewport = window.visualViewport
@@ -215,16 +183,16 @@ async function goToFreshWorkout(page: Page): Promise<void> {
 }
 
 async function addExercise(page: Page, search: string): Promise<void> {
-  await page.getByRole('button', { name: 'Add exercise', exact: true }).first().click()
-  const picker = page.getByRole('dialog', { name: /Choose an exercise/i })
+  await openExercisePicker(page)
+  const picker = page.getByRole('dialog', { name: 'Add exercise' })
   await expect(picker).toBeVisible({ timeout: 5_000 })
-  await page.getByPlaceholder('Search exercises...').fill(search)
+  await page.getByPlaceholder('Search exercises').fill(search)
   const result = picker.locator('button').filter({ hasText: new RegExp(search, 'i') }).first()
   await expect(result).toBeVisible({ timeout: 5_000 })
   await result.click()
   await expect(picker).not.toBeVisible({ timeout: 5_000 })
-  await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).toHaveCount(0, { timeout: 5_000 })
-  await expect(page.locator('.exercise-picker-overlay')).toHaveCount(0, { timeout: 5_000 })
+  await expect(page.getByRole('dialog', { name: 'Add exercise' })).toHaveCount(0, { timeout: 5_000 })
+  await expect(page.locator('.bottom-sheet')).toHaveCount(0, { timeout: 5_000 })
 }
 
 test.describe('Active workout shell reduction', () => {
@@ -264,7 +232,7 @@ test.describe('Active workout shell reduction', () => {
     })
     expect(exerciseIndicatorLayout.sideIndicator).toBe('none')
     expect(exerciseIndicatorLayout.headerInset).toBeLessThanOrEqual(1)
-    await expect(exerciseCard.locator('.workout-exercise-meta span')).toBeVisible()
+    await expect(exerciseCard.locator('.workout-exercise-meta')).toBeVisible()
 
     await expect(page.getByTestId('elapsed-session-timer')).toHaveCount(1)
     await expect(page.locator('.workout-mobile-lifecycle-bar')).toHaveCSS(
@@ -314,22 +282,19 @@ test.describe('Active workout shell reduction', () => {
     expect(fixedUiGeometry.restTimerPadding).toBe(0)
     await page.setViewportSize({ width: 390, height: 844 })
     await addExercise(page, 'Bench Press')
-    const exerciseCards = page.locator('.workout-exercise-card')
-    await expect(exerciseCards).toHaveCount(2)
-    await expect(page.locator('.workout-exercise-toggle[aria-expanded="true"]')).toHaveCount(1)
-    await expect(exerciseCards.first().locator('.workout-exercise-body')).not.toBeVisible()
-    await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).toHaveCount(0)
+    const onlyCard = page.locator('.workout-exercise-card')
+    await expect(onlyCard).toHaveCount(1)
+    await expect(onlyCard).toContainText('Bench Press')
+    await expect(page.getByRole('dialog', { name: 'Add exercise' })).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Expand exercise Squat' }).click()
-    await expect(page.getByRole('button', { name: 'Collapse exercise Squat' })).toHaveAttribute('aria-expanded', 'true')
-    await expect(exerciseCards.nth(1).locator('.workout-exercise-body')).not.toBeVisible()
-
-    const activeWeightInput = exerciseCards.first().locator('input').first()
-    await activeWeightInput.evaluate((element) => element.scrollIntoView({ block: 'center' }))
-    await expectFullyInViewport(page, activeWeightInput, 'Expanded exercise weight input')
+    await page.getByRole('button', { name: /^Exercise 2 of 2/ }).click()
+    await page.getByRole('dialog', { name: 'This workout' }).getByRole('button', { name: /^Squat/ }).click()
+    await expect(onlyCard).toHaveCount(1)
+    await expect(onlyCard).toContainText('Squat')
+    await expect(page.getByRole('region', { name: 'Up next' }).getByRole('button')).toHaveCount(1)
 
     await currentSetPanel(page).getByRole('button', { name: 'Go to Bench Press' }).click()
-    await expect(page.getByRole('button', { name: 'Collapse exercise Bench Press' })).toHaveAttribute('aria-expanded', 'true')
+    await expect(onlyCard).toContainText('Bench Press')
     await expect(currentSetPanel(page).getByRole('button', { name: /^Log set 1 for Bench Press/ })).toBeVisible()
   })
 
@@ -358,7 +323,7 @@ test.describe('Active workout shell reduction', () => {
         const element = document.querySelector<HTMLElement>(selector)
         return element ? Number.parseFloat(window.getComputedStyle(element).paddingBottom) : 0
       }
-      const finalAction = document.querySelector<HTMLElement>('.workout-mobile-inline-add')
+      const finalAction = document.querySelector<HTMLElement>('.workout-add-set')
       const panel = document.querySelector<HTMLElement>('.workout-set-panel')
       const finalActionBox = finalAction?.getBoundingClientRect()
       const panelBox = panel?.getBoundingClientRect()
@@ -447,7 +412,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(dialog).toHaveCount(0)
   })
 
-  test('mobile workout keeps the first set visible and a single add action after adding an exercise', async ({ page, cleanup }, testInfo) => {
+  test('mobile workout keeps the first set and its panel visible after adding an exercise', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
@@ -456,9 +421,9 @@ test.describe('Active workout shell reduction', () => {
 
     await addExercise(page, 'Squat')
 
-    expect(await visibleCount(page.getByRole('button', { name: 'Add exercise', exact: true }))).toBe(1)
+    expect(await visibleCount(page.getByRole('button', { name: 'Add exercise', exact: true }))).toBe(0)
     await expect(page.locator('.workout-set-row').first()).toBeVisible()
-    await expectFullyInViewport(page, page.locator('.workout-set-now').first(), 'First set row')
+    await expectFullyInViewport(page, page.locator('.workout-set-row[data-current] .workout-set-today'), 'First set row')
     const panel = currentSetPanel(page)
     await expectFullyInViewport(page, panel.getByRole('spinbutton', { name: 'Weight, Squat, set 1, kg' }), 'First weight input')
     await expectFullyInViewport(page, panel.getByRole('spinbutton', { name: 'Reps, Squat, set 1' }), 'First reps input')
@@ -520,12 +485,8 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.getByRole('button', { name: /Add set/i })).toBeVisible()
     await page.getByRole('button', { name: /Add set/i }).click()
 
-    const setRows = page.locator('.workout-set-row')
     await expect(page.locator('.workout-set-row[data-current]')).toHaveCount(1)
-    await expect(setRows.first().locator('.workout-set-now')).toHaveCount(1)
-    await expect(setRows.first().locator('input')).toHaveCount(0)
-    await expect(setRows.nth(1).locator('.workout-set-now')).toHaveCount(0)
-    await expect(setRows.nth(1).locator('.workout-set-input')).toHaveCount(2)
+    await expect(page.locator('.workout-set-row input')).toHaveCount(0)
     await expect(panel.getByRole('spinbutton')).toHaveCount(2)
 
     const steppers = panel.locator('.workout-set-step')
@@ -533,19 +494,6 @@ test.describe('Active workout shell reduction', () => {
     for (const label of ['Adjust weight by -2.5', 'Adjust weight by 2.5', 'Adjust reps by -1', 'Adjust reps by 1']) {
       await expectMinHitArea(panel.getByRole('button', { name: label, exact: true }), label)
     }
-
-    const flatSetContract = await setRows.nth(1).locator('.workout-set-input').first().evaluate((input) => {
-      const inputStyle = window.getComputedStyle(input)
-      return {
-        inputBackground: inputStyle.backgroundColor,
-        inputRadius: inputStyle.borderTopLeftRadius,
-      }
-    })
-
-    expect(flatSetContract).toEqual({
-      inputBackground: 'rgba(0, 0, 0, 0)',
-      inputRadius: '0px',
-    })
 
     await page.getByRole('button', { name: 'More workout options' }).click()
     const options = page.getByRole('dialog', { name: 'Workout options' })
@@ -613,7 +561,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(panel.getByRole('button', { name: 'Log set 1 for Squat' })).toBeVisible()
   })
 
-  test('mobile compact rest timer scrolls only the focused workout set input', async ({ page, cleanup }, testInfo) => {
+  test('mobile rest timer compacts with the viewport and keeps the logged set', async ({ page, cleanup }, testInfo) => {
     test.skip(testInfo.project.name !== 'mobile', 'mobile-only contract')
     cleanup.add('discard active session', () => discardActiveSessionAfterFontsSettle(page))
 
@@ -626,49 +574,31 @@ test.describe('Active workout shell reduction', () => {
     expect(initialWrite.sessionId, 'Active session should expose its stable session ID').not.toBeNull()
     const sessionId = initialWrite.sessionId
 
-    // A second set keeps the panel at full height while the logged row is edited.
+    // A second set keeps the panel at full height.
     await page.getByRole('button', { name: /Add set/i }).click()
     const firstSetRow = page.locator('.workout-set-row').first()
     await fillCurrentSet(page, '60', '8')
     await firstSetRow.getByRole('button', { name: 'Mark set 1 for Squat' }).click()
 
-    // A logged set keeps its row inputs; the scroll effect only covers row inputs.
-    const weightInput = firstSetRow.locator('input').nth(0)
     const panel = currentSetPanel(page)
     const restTimer = panel.locator('.rest-timer-bar')
     const skipRestButton = restTimer.getByRole('button', { name: 'Skip rest' })
     await expect(restTimer).toHaveAttribute('data-variant', 'full')
-    await installScrollIntoViewSpy(page)
 
+    const weightInput = panel.getByRole('spinbutton', { name: /^Weight,/ })
     await weightInput.focus()
     await page.setViewportSize({ width: 390, height: 500 })
     await expect(restTimer).toHaveAttribute('data-variant', 'compact')
     await expect(skipRestButton).toBeVisible()
     await expect(restTimer.getByRole('button', { name: 'Add 30 seconds' })).toHaveCount(0)
-    await expect.poll(async () => (await readScrollIntoViewCalls(page)).length).toBeGreaterThan(0)
-    const focusedInputScrollCalls = await readScrollIntoViewCalls(page)
-    expect(focusedInputScrollCalls).toEqual(
-      expect.arrayContaining([{ tagName: 'INPUT', insideWorkoutSetRow: true }]),
-    )
-    expect(focusedInputScrollCalls.filter(({ tagName }) => tagName === 'BODY' || tagName === 'BUTTON')).toEqual([])
-
-    await expectFullyInViewport(page, weightInput, 'Focused workout input')
-
     await weightInput.blur()
+
     await expect(page.locator('html')).not.toHaveAttribute('data-mobile-input-focused', '')
     await page.evaluate(() => new Promise<void>((resolve) => {
       window.requestAnimationFrame(() => window.requestAnimationFrame(() => resolve()))
     }))
-    await clearScrollIntoViewCalls(page)
     await setVisualViewportBottomInset(page, 120)
     await expect(restTimer).toHaveAttribute('data-variant', 'compact')
-    expect(await readScrollIntoViewCalls(page)).toEqual([])
-
-    await skipRestButton.focus()
-    await setVisualViewportBottomInset(page, 121)
-    expect(await readScrollIntoViewCalls(page)).toEqual([])
-
-    await skipRestButton.blur()
     await restoreVisualViewportHeight(page)
     await page.setViewportSize({ width: 390, height: 844 })
     await expect(restTimer).toHaveAttribute('data-variant', 'full')
@@ -729,30 +659,6 @@ test.describe('Active workout shell reduction', () => {
     await expect(page.locator('aside').getByRole('region', { name: 'Current set' })).toBeVisible()
 
     const firstSetRow = page.locator('.workout-set-row').first()
-    const pendingSetRow = page.locator('.workout-set-row').nth(1)
-
-    const fieldContract = await pendingSetRow.locator('.workout-set-input').evaluateAll((inputs) => (
-      inputs.map((input) => {
-        const box = input.getBoundingClientRect()
-        const style = getComputedStyle(input)
-        return {
-          width: box.width,
-          background: style.backgroundColor,
-          borderTop: style.borderTopWidth,
-          borderBottomColor: style.borderBottomColor,
-          radius: style.borderTopLeftRadius,
-        }
-      })
-    ))
-
-    expect(fieldContract).toHaveLength(2)
-    for (const field of fieldContract) {
-      expect(field.width).toBeLessThanOrEqual(144)
-      expect(field.background).toBe('rgba(0, 0, 0, 0)')
-      expect(field.borderTop).toBe('0px')
-      expect(field.borderBottomColor).not.toBe('rgba(0, 0, 0, 0)')
-      expect(field.radius).toBe('0px')
-    }
 
     await fillCurrentSet(page, '60', '8')
     await firstSetRow.getByRole('button', { name: 'Mark set 1 for Squat' }).click()

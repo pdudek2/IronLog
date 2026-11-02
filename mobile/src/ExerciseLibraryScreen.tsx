@@ -14,7 +14,6 @@ import { readExerciseDetail } from './nativeExercises'
 import { useAuthRuntime } from './runtime'
 import { readStateForKey, startRead, type ReadResult, type ReadState } from './scopedRead'
 import type { ExerciseSource } from './session'
-import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import BottomNavigation, { useBottomNavigation } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ExerciseForm from './ExerciseForm'
@@ -32,7 +31,7 @@ function useFocusedRead<T>(key: string, load: () => Promise<ReadResult<T>>, enab
 
 function Frame({ children, navigation }: { children: ReactNode; navigation: ReturnType<typeof useBottomNavigation> }) {
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
-    <StatusBar style="light" /><HistoryHeader /><ActiveWorkoutReturnBar />
+    <StatusBar style="light" /><HistoryHeader />
     <View style={styles.body}>{children}</View>
     <BottomNavigation {...navigation} />
   </SafeAreaView>

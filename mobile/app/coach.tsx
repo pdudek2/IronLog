@@ -8,7 +8,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 import { useAuthRuntime } from '../src/runtime'
 import HistoryHeader from '../src/HistoryHeader'
-import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import { CoachController } from '../src/coachController'
 import { nativeCoachDependencies } from '../src/coachNative'
 import { markdownBlocks, markdownInline } from '../src/coachMarkdown'
@@ -97,7 +96,7 @@ function Coach({ uid }: { uid: string }) {
     <View style={s.left}><Button primary onPress={openSettings}>Set up key</Button></View>
   </View>
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} style={s.screen} edges={['top']}><StatusBar style="light" />
-    <HistoryHeader /><ActiveWorkoutReturnBar />
+    <HistoryHeader />
     <KeyboardAvoidingView style={s.grow} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={s.workspace}>
         <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">

@@ -30,6 +30,7 @@ import { useProfileStore } from '../store/profileStore'
 import { useWorkoutStore } from '../store/workoutStore'
 import type { DataState } from '../types/dataState'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../lib/weightUnits'
+import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 import { TrainCoverMedia } from '../components/TrainCoverMedia'
 import { latestRecord, recordLine } from '../shared/workoutMoments'
 import { WORKOUT_COVERS, workoutCover } from '../shared/workoutCover'
@@ -514,7 +515,8 @@ export default function DashboardPage() {
 
   // Picking a workout means the next session matters more than the finished week.
   const weekClosed = !plansLoading && !hasActiveSession && !workoutPicked && weeklyDone >= weeklyGoal
-  const coverName = weekClosed ? 'week' : workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)
+  const sessionLabel = active ? active.label?.trim() || 'Workout' : null
+  const coverName = active ? workoutCover(active.label) : weekClosed ? 'week' : workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)
   const record = latestRecord(workouts, today.getTime())
 
   return (
@@ -534,13 +536,13 @@ export default function DashboardPage() {
               <h1 className="train-title">
                 {plansLoading
                   ? <Bone width="9rem" height="2.25rem" />
-                  : weekClosed
+                  : sessionLabel ?? (weekClosed
                     ? 'Week done'
-                    : quickTemplateDay?.name ?? `${getGreeting(new Date())}, ${profile?.displayName ?? 'athlete'}`}
+                    : quickTemplateDay?.name ?? `${getGreeting(new Date())}, ${profile?.displayName ?? 'athlete'}`)}
               </h1>
               {plansLoading
                 ? <Bone width="11rem" height="0.875rem" />
-                : weekClosed
+                : active ? null : weekClosed
                 ? <p className="train-meta">{weeklyDone} of {weeklyGoal} workouts · {formatCompactVolume(weeklyVolume, units)}</p>
                 : quickTemplate && quickTemplateDay
                 ? <p className="train-meta">{quickTemplate.name} · Day {quickTemplateDayIndex + 1} of {quickTemplate.days.length}</p>
@@ -648,6 +650,19 @@ export default function DashboardPage() {
                 onDismiss={dismissTemplateLaunchError}
                 className="dashboard-quick-plan-feedback"
               />
+            )}
+
+            {active && (
+              <section className="train-start" role="region" aria-label="Active workout">
+                <button
+                  type="button"
+                  onClick={() => navigate('/workout/new')}
+                  className="dashboard-planned-start-primary"
+                  aria-label="Return to workout"
+                >
+                  Resume <span>{sessionLabel}</span> · <ElapsedSessionTimer startedAt={active.startedAt} className="tabular-nums" />
+                </button>
+              </section>
             )}
 
             {!hasActiveSession && (

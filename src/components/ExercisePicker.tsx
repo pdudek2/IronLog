@@ -1,12 +1,13 @@
-import { useId, useRef, useState } from 'react'
-import { Search, X } from 'lucide-react'
-import { searchExercises, type Category, type Exercise } from '../data/exercises'
+import { useRef, useState } from 'react'
+import { AnimatePresence } from 'framer-motion'
+import { Search } from 'lucide-react'
+import { exercises as exerciseDb, searchExercises, type Category, type Exercise } from '../data/exercises'
 import type { ExerciseSource } from '../store/workoutStore'
-import { useDialogA11y } from '../hooks/useDialogA11y'
-import { pluralize } from '../lib/pluralize'
-import { formatExerciseMeta } from '../lib/exerciseLabels'
+import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../lib/exerciseLabels'
+import type { RecentExercisePick } from '../shared/recentExercises'
 import type { DataState } from '../types/dataState'
 import { ActionFeedback } from './ActionFeedback'
+import BottomSheet from './BottomSheet'
 
 const CATEGORIES: { value: Category | 'all'; label: string }[] = [
   { value: 'all',       label: 'All' },
@@ -22,23 +23,35 @@ const CATEGORIES: { value: Category | 'all'; label: string }[] = [
 type SearchResult = Exercise & { source: ExerciseSource }
 
 interface Props {
+  open: boolean
   onSelect: (exerciseId: string, name: string, source: ExerciseSource) => void
   onClose: () => void
   userExercisesState: DataState<Exercise[]>
   onRetryUserExercises: () => void
+  recent?: RecentExercisePick[]
 }
 
-export default function ExercisePicker({
-  onSelect,
-  onClose,
-  userExercisesState,
-  onRetryUserExercises,
-}: Props) {
+function ResultRow({ exercise, onSelect }: { exercise: SearchResult; onSelect: Props['onSelect'] }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(exercise.id, exercise.name, exercise.source)}
+      className="exercise-picker-result"
+      data-source={exercise.source}
+    >
+      <span>{exercise.name}</span>
+      {exercise.source === 'user' && <em>mine</em>}
+      <small>{[EXERCISE_CATEGORY_LABELS[exercise.category], getEquipmentLabel(exercise.equipment)].filter(Boolean).join(' · ')}</small>
+    </button>
+  )
+}
+
+function PickerBody({ onSelect, onClose, userExercisesState, onRetryUserExercises, recent = [] }: Omit<Props, 'open'>) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
-  const dialogRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const titleId = useId()
+  // On a phone the keyboard would cover the list before anything is chosen.
+  const touch = window.matchMedia?.('(hover: none)').matches
 
   const globalResults: SearchResult[] = searchExercises(query, category === 'all' ? undefined : category)
     .map((ex) => ({ ...ex, source: 'global' as const }))
@@ -56,124 +69,77 @@ export default function ExercisePicker({
     .map((ex) => ({ ...ex, source: 'user' as const }))
 
   const results = [...userResults, ...globalResults]
-
-  useDialogA11y({
-    containerRef: dialogRef,
-    onClose,
-    initialFocusRef: searchInputRef,
+  const filtered = q !== '' || category !== 'all'
+  const recentResults: SearchResult[] = filtered ? [] : recent.flatMap((pick) => {
+    const exercise = (pick.source === 'user' ? userExercises : exerciseDb).find(({ id }) => id === pick.id)
+    return exercise ? [{ ...exercise, name: pick.name, source: pick.source }] : []
   })
 
   return (
-    <div
-      className="exercise-picker-overlay fixed inset-0 z-50 px-0 py-0 sm:px-6 sm:py-6"
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        className="exercise-picker-dialog flex h-[100dvh] w-full flex-col overflow-hidden sm:mx-auto sm:h-[min(44rem,calc(100dvh-3rem))] sm:max-w-3xl"
-        onClick={(event) => event.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        tabIndex={-1}
-      >
-        <div className="exercise-picker-head">
-          <div className="exercise-picker-title-row">
-            <div>
-              <p id={titleId}>Choose an exercise</p>
-              <span>{results.length} {pluralize(results.length, 'result', 'results')}</span>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="exercise-picker-close mobile-touch-target"
-              aria-label="Close exercise picker"
-            >
-              <X size={17} />
-            </button>
-          </div>
+    <BottomSheet title="Add exercise" tall onClose={onClose} initialFocusRef={touch ? undefined : searchInputRef}>
+      <label className="exercise-picker-search">
+        <Search size={16} aria-hidden="true" />
+        <input
+          ref={searchInputRef}
+          type="text"
+          placeholder="Search exercises"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search exercises"
+        />
+      </label>
 
-          <label className="exercise-picker-search">
-            <Search size={16} aria-hidden="true" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder="Search exercises..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label="Search exercises"
-            />
-          </label>
-        </div>
-
-        <div
-          className="exercise-picker-categories no-scrollbar"
-          role="group"
-          aria-label="Exercise category"
-        >
-          {CATEGORIES.map((c) => (
-            <button
-              key={c.value}
-              type="button"
-              onClick={() => setCategory(c.value)}
-              aria-pressed={category === c.value}
-              className="exercise-picker-category mobile-touch-target"
-            >
-              {c.label}
-            </button>
-          ))}
-        </div>
-
-        <div
-          className="exercise-picker-scroll flex-1 overflow-y-auto"
-          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
-        >
-          {userExercisesState.status === 'loading' && (
-            <ActionFeedback
-              status="pending"
-              message="Loading your exercises…"
-              className="mx-2 mb-2 sm:mx-1"
-            />
-          )}
-          {userExercisesState.status === 'error' && (
-            <ActionFeedback
-              status="error"
-              message="Could not load your exercises. The shared library is still available."
-              onRetry={onRetryUserExercises}
-              className="mx-2 mb-2 sm:mx-1"
-            />
-          )}
-          {userExercisesState.status === 'success' && results.length === 0 ? (
-            <div className="exercise-picker-empty">
-              <strong>No results</strong>
-              <p>Change your search or choose another category.</p>
-            </div>
-          ) : results.length > 0 ? (
-            <div className="exercise-picker-results">
-              {results.map((ex) => (
-                <button
-                  key={`${ex.source}-${ex.id}`}
-                  onClick={() => onSelect(ex.id, ex.name, ex.source)}
-                  className="exercise-picker-result w-full text-left"
-                  data-source={ex.source}
-                >
-                  <div className="exercise-picker-result-main">
-                    <p>{ex.name}</p>
-                    {ex.source === 'user' && (
-                      <span>
-                        mine
-                      </span>
-                    )}
-                  </div>
-                  <p className="exercise-picker-result-meta">
-                    {formatExerciseMeta(ex.equipment, ex.muscles)}
-                  </p>
-                </button>
-              ))}
-            </div>
-          ) : null}
-        </div>
+      <div className="exercise-picker-categories no-scrollbar" role="group" aria-label="Exercise category">
+        {CATEGORIES.map((c) => (
+          <button
+            key={c.value}
+            type="button"
+            onClick={() => setCategory(c.value)}
+            aria-pressed={category === c.value}
+            className="exercise-picker-category"
+          >
+            {c.label}
+          </button>
+        ))}
       </div>
-    </div>
+
+      <div className="exercise-picker-scroll">
+        {userExercisesState.status === 'loading' && (
+          <ActionFeedback status="pending" message="Loading your exercises…" />
+        )}
+        {userExercisesState.status === 'error' && (
+          <ActionFeedback
+            status="error"
+            message="Could not load your exercises. The shared library is still available."
+            onRetry={onRetryUserExercises}
+          />
+        )}
+        {recentResults.length > 0 && (
+          <>
+            <p className="exercise-picker-group">Recently used</p>
+            {recentResults.map((exercise) => (
+              <ResultRow key={`recent-${exercise.source}-${exercise.id}`} exercise={exercise} onSelect={onSelect} />
+            ))}
+          </>
+        )}
+        {results.length > 0 ? (
+          <>
+            <p className="exercise-picker-group">{filtered ? `${results.length} found` : 'All exercises'}</p>
+            {results.map((exercise) => (
+              <ResultRow key={`${exercise.source}-${exercise.id}`} exercise={exercise} onSelect={onSelect} />
+            ))}
+          </>
+        ) : userExercisesState.status === 'success' ? (
+          <div className="exercise-picker-empty">
+            <strong>No results</strong>
+            <p>Change your search or choose another category.</p>
+          </div>
+        ) : null}
+      </div>
+    </BottomSheet>
   )
+}
+
+export default function ExercisePicker({ open, ...props }: Props) {
+  return <AnimatePresence>{open && <PickerBody key="exercise-picker" {...props} />}</AnimatePresence>
 }

@@ -6,6 +6,7 @@ const handlers = () => ({
   onAdjustSet: vi.fn(),
   onUpdateSet: vi.fn(),
   onToggleSet: vi.fn(),
+  onClearSelection: vi.fn(),
   onGoToExercise: vi.fn(),
   onFinish: vi.fn(),
 })
@@ -17,11 +18,27 @@ const base = {
   setCount: 4,
   units: 'kg' as const,
   rest: null,
+  openSetIndex: 2,
   nextExercise: null,
   finishing: false,
 }
 
 describe('WorkoutSetPanel', () => {
+  it('edits a done set without logging it and returns to the open set', () => {
+    const on = handlers()
+    const { rerender } = render(<WorkoutSetPanel {...base} {...on} setIndex={0} set={{ weight: '80', reps: '6', done: true }} />)
+
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Weight, Bench Press, set 1, kg' }), { target: { value: '82.5' } })
+    expect(on.onUpdateSet).toHaveBeenCalledWith(1, 0, 'weight', '82.5')
+    expect(screen.queryByRole('button', { name: /Log set/ })).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Back to set 3' }))
+    expect(on.onClearSelection).toHaveBeenCalled()
+
+    rerender(<WorkoutSetPanel {...base} {...on} openSetIndex={-1} setIndex={0} set={{ weight: '80', reps: '6', done: true }} />)
+    expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument()
+  })
+
   it('logs the current set and steps its weight and reps', () => {
     const on = handlers()
     render(<WorkoutSetPanel {...base} {...on} set={{ weight: '80', reps: '6', done: false }} />)

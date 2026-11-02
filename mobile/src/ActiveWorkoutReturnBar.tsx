@@ -2,21 +2,13 @@ import type { NavigationExit } from './BottomNavigation'
 import { useEffect, useState } from 'react'
 import { AppState, Pressable, StyleSheet, Text, View } from 'react-native'
 import { usePathname, useRouter } from 'expo-router'
-import Svg, { Path } from 'react-native-svg'
 
 import { formatElapsed } from './session'
 import { useActiveRuntime, useClosureRuntime } from './runtime'
 import { colors } from './theme'
 
-export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExit?: NavigationExit } = {}) {
-  const { state } = useActiveRuntime()
-  const closure = useClosureRuntime()
-  const pathname = usePathname()
-  const router = useRouter()
+function useElapsed(startedAt: number | undefined) {
   const [now, setNow] = useState(Date.now())
-  const session = state.status === 'ready' ? state.session : null
-  const startedAt = session?.startedAt
-
   useEffect(() => {
     if (startedAt === undefined) return
     const interval = setInterval(() => setNow(Date.now()), 1_000)
@@ -25,45 +17,60 @@ export default function ActiveWorkoutReturnBar({ onRequestExit }: { onRequestExi
     })
     return () => { clearInterval(interval); lifecycle.remove() }
   }, [startedAt])
+  return startedAt === undefined ? '' : formatElapsed(startedAt, now)
+}
 
+export function useReturnBar() {
+  const { state } = useActiveRuntime()
+  const closure = useClosureRuntime()
+  const pathname = usePathname()
+  const session = state.status === 'ready' ? state.session : null
   const justFinished = session && closure.completed
     && (closure.completed.action === 'finish' ? closure.completed.workoutId : closure.completed.sessionId) === session.sessionId
   // Without the session a failed closure has no other way back to the workout screen, where it is resolved.
   const unresolved = closure.closure.status !== 'ready' && closure.closure.status !== 'loading'
-  if (justFinished || pathname === '/' || (!session && !unresolved)) return null
+  // Train offers Resume as its main button instead.
+  const hidden = justFinished || pathname === '/' || (session && pathname === '/dashboard') || (!session && !unresolved)
+  return { session: justFinished ? null : session, visible: !hidden }
+}
 
-  return (
-    <View accessibilityLabel="Active workout" style={styles.bar}>
-      <Svg accessibilityElementsHidden height={17} width={17} viewBox="0 0 24 24" fill="none" stroke={colors.accentText} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2}>
-        <Path d="M17.596 12.768a2 2 0 1 0 2.829-2.829l-1.768-1.767a2 2 0 0 0 2.828-2.829l-2.828-2.828a2 2 0 0 0-2.829 2.828l-1.767-1.768a2 2 0 1 0-2.829 2.829z" />
-        <Path d="m2.5 21.5 1.4-1.4" /><Path d="m20.1 3.9 1.4-1.4" />
-        <Path d="M5.343 21.485a2 2 0 1 0 2.829-2.828l1.767 1.768a2 2 0 1 0 2.829-2.829l-6.364-6.364a2 2 0 1 0-2.829 2.829l1.768 1.767a2 2 0 0 0-2.828 2.829z" />
-        <Path d="m9.6 14.4 4.8-4.8" />
-      </Svg>
-      <View style={styles.copy}>
-        <Text style={styles.title}>{session ? 'Workout in progress' : 'Workout needs attention'}</Text>
-        {session?.label?.trim() ? <Text numberOfLines={1} style={styles.label}>{session.label}</Text> : null}
-      </View>
-      {session && <Text accessibilityLabel={`Elapsed time ${formatElapsed(session.startedAt, now)}`} style={styles.elapsed}>
-        {formatElapsed(session.startedAt, now)}
-      </Text>}
-      <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => onRequestExit ? onRequestExit(() => router.dismissTo('/')) : router.dismissTo('/')} style={styles.returnButton}>
-        <Text style={styles.returnText}>Return</Text>
-        <Svg accessibilityElementsHidden height={15} width={15} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.accentText} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg>
-      </Pressable>
-    </View>
-  )
+export function ResumeButton() {
+  const { session } = useReturnBar()
+  const router = useRouter()
+  const elapsed = useElapsed(session?.startedAt)
+  if (!session) return null
+  return <Pressable accessibilityRole="button" accessibilityLabel={`Return to workout, ${elapsed}`} onPress={() => router.dismissTo('/')}
+    style={({ pressed }) => [styles.resume, pressed && styles.pressed]}>
+    <Text numberOfLines={1} style={styles.resumeText}>Resume {session.label?.trim() || 'workout'} · {elapsed}</Text>
+  </Pressable>
+}
+
+export default function ActiveWorkoutReturnBar({ onRequestExit, top = false }: { onRequestExit?: NavigationExit; top?: boolean } = {}) {
+  const { session, visible } = useReturnBar()
+  const router = useRouter()
+  const elapsed = useElapsed(session?.startedAt)
+  if (!visible) return null
+  const back = () => router.dismissTo('/')
+  return <View accessibilityLabel="Active workout" style={[styles.bar, top && styles.barTop]}>
+    <Text numberOfLines={1} style={styles.title}>{session ? session.label?.trim() || 'Workout' : 'Workout needs attention'} {session && <Text style={styles.elapsed}>{elapsed}</Text>}</Text>
+    <Pressable accessibilityRole="button" accessibilityLabel="Return to workout" onPress={() => onRequestExit ? onRequestExit(back) : back()}
+      style={({ pressed }) => [styles.returnButton, pressed && styles.pressed]}>
+      <Text style={styles.returnText}>Return</Text>
+    </Pressable>
+  </View>
 }
 
 const styles = StyleSheet.create({
   bar: {
-    alignItems: 'center', backgroundColor: 'rgba(20, 17, 16, 0.97)', borderBottomColor: 'rgba(244, 238, 232, 0.21)', borderBottomWidth: 1,
-    flexDirection: 'row', gap: 10, minHeight: 58, paddingHorizontal: 16, paddingVertical: 6,
+    alignItems: 'center', borderRadius: 16, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07)', experimental_backgroundImage: 'linear-gradient(180deg, ' + colors.surfaceRaised + ', ' + colors.surface + ')',
+    flexDirection: 'row', gap: 12, height: 50, justifyContent: 'space-between', paddingLeft: 16, paddingRight: 6,
   },
-  copy: { flex: 1, minWidth: 0 },
-  title: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5, lineHeight: 15 },
-  label: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11, marginTop: 2 },
-  elapsed: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, fontVariant: ['tabular-nums'] },
-  returnButton: { alignItems: 'center', flexDirection: 'row', gap: 2, justifyContent: 'center', minHeight: 44, paddingHorizontal: 4 },
-  returnText: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
+  barTop: { marginHorizontal: 14, marginTop: 8 },
+  title: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_500Medium', fontSize: 14.5 },
+  elapsed: { color: colors.muted, fontVariant: ['tabular-nums'] },
+  returnButton: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 12, height: 38, justifyContent: 'center', paddingHorizontal: 14 },
+  returnText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  pressed: { opacity: 0.7 },
+  resume: { alignItems: 'center', backgroundColor: colors.accent, borderRadius: 15, height: 52, justifyContent: 'center', paddingHorizontal: 16 },
+  resumeText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, fontVariant: ['tabular-nums'] },
 })

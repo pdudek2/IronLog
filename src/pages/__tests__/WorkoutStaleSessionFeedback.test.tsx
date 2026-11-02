@@ -870,7 +870,8 @@ describe('WorkoutPage exercise removal identity', () => {
       }))
       mocks.active = { sessionId: 'original', startedAt: Date.now(), templateId: null, exercises }
       renderStaleSessionPage()
-      fireEvent.click(screen.getByRole('button', { name: 'Remove exercise 1' }))
+      fireEvent.click(screen.getByRole('button', { name: /^y/ }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove exercise 1' }))
       await screen.findByRole('dialog', { name: 'Remove exercise?' })
       mocks.active = {
         ...mocks.active!,

@@ -7,7 +7,6 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
 import { pluralize } from '../../src/lib/pluralize'
-import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { deletePlanIfUnchanged, readTemplateFromServer, readTemplates } from '../src/firebase'
 import { inspectPlanForDelete, reconcilePlanAction, type PlanAction } from '../src/planDeleteFlow'
@@ -106,7 +105,6 @@ function Plans({ uid }: { uid: string }) {
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ActiveWorkoutReturnBar />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
       <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <Text style={styles.count}>{plans.length} {pluralize(plans.length, 'plan', 'plans')}</Text>}</View><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><LineIcon name="plus" size={15} color={colors.text} /><Text style={styles.newPlanText}>New plan</Text></Pressable></View>
       {saved === '1' && <Text accessibilityLiveRegion="polite" style={styles.savedNotice}>Plan saved</Text>}

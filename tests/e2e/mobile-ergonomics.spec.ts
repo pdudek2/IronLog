@@ -33,8 +33,8 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await openLargeTemplateDraft(page)
     await page.getByRole('button', { name: 'Add exercise' }).first().click()
 
-    const close = page.getByRole('dialog', { name: /Choose an exercise/ })
-      .getByRole('button', { name: 'Close exercise picker' })
+    const close = page.getByRole('dialog', { name: 'Add exercise' })
+      .getByRole('button', { name: 'Close' })
     const box = await close.boundingBox()
     expect(box, 'picker close should be visible').not.toBeNull()
     expect(box!.width).toBe(44)
@@ -122,8 +122,8 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await expectMinHitArea(page.getByRole('button', { name: /Remove exercise Bench Press/ }).first(), 'template delete')
 
     await page.getByRole('button', { name: 'Add exercise' }).first().click()
-    const picker = page.getByRole('dialog', { name: /Choose an exercise/ })
-    await expectMinHitArea(picker.getByRole('button', { name: 'Close exercise picker' }), 'picker close')
+    const picker = page.getByRole('dialog', { name: 'Add exercise' })
+    await expectMinHitArea(picker.getByRole('button', { name: 'Close' }), 'picker close')
     await expectMinHitArea(picker.getByRole('button', { name: 'All' }), 'picker category')
   })
 

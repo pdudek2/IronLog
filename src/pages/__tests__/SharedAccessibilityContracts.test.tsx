@@ -12,17 +12,19 @@ import { useDialogA11y } from '../../hooks/useDialogA11y'
 import { useWorkoutStore } from '../../store/workoutStore'
 
 vi.mock('framer-motion', () => ({
+  useDragControls: () => ({ start: () => {} }),
   useReducedMotion: () => true,
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
   motion: new Proxy({}, {
-    get: (_target, tag: string | symbol) => {
+    get: (target: Record<string, unknown>, tag: string | symbol) => {
       if (typeof tag !== 'string') return undefined
-      return ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
+      return target[tag] ??= ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
         delete props.initial
         delete props.animate
         delete props.exit
         delete props.transition
         delete props.whileTap
+        for (const key of Object.keys(props)) if (/^(drag|onDrag)/.test(key)) delete props[key]
         return createElement(tag, props, children)
       }
     },
@@ -56,7 +58,7 @@ function ExercisePickerHarness() {
     <>
       <button type="button" onClick={() => setOpen(true)}>Add exercise</button>
       {open && (
-        <ExercisePicker
+        <ExercisePicker open
           onSelect={() => setOpen(false)}
           onClose={() => setOpen(false)}
           userExercisesState={{ status: 'success', data: [] }}
@@ -172,7 +174,7 @@ describe('shared accessibility contracts', () => {
     expect(search).toHaveFocus()
     const results = await screen.findAllByRole('button', { name: /Bench Press/i })
     const result = results[0]
-    const close = screen.getByRole('button', { name: 'Close exercise picker' })
+    const close = screen.getByRole('button', { name: 'Close' })
 
     close.focus()
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })

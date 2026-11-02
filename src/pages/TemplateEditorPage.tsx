@@ -658,14 +658,13 @@ export default function TemplateEditorPage() {
         />
       </form>
 
-      {pickerDayIndex !== null && (
-        <ExercisePicker
-          userExercisesState={userExercisesState}
-          onRetryUserExercises={retryUserExercises}
-          onClose={() => setPickerDayIndex(null)}
-          onSelect={(exerciseId, exerciseName, source) => addExerciseToDay(pickerDayIndex, exerciseId, exerciseName, source)}
-        />
-      )}
+      <ExercisePicker
+        open={pickerDayIndex !== null}
+        userExercisesState={userExercisesState}
+        onRetryUserExercises={retryUserExercises}
+        onClose={() => setPickerDayIndex(null)}
+        onSelect={(exerciseId, exerciseName, source) => { if (pickerDayIndex !== null) addExerciseToDay(pickerDayIndex, exerciseId, exerciseName, source) }}
+      />
 
       {leaveGuard.blocked && (
         <ConfirmDialog

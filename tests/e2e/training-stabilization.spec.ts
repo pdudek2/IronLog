@@ -1,4 +1,5 @@
 import { test, expect, type Page } from './fixtures'
+import { selectSet } from './support/workoutActions'
 import { expectAppReady } from './support/appReady'
 import {
   cleanupWorkoutLifecycleState,
@@ -51,7 +52,8 @@ test.describe('training stabilization', () => {
     await cleanupWorkoutLifecycleState()
   })
 
-  test('exercise picker focus settles for empty and populated sessions', async ({ page }) => {
+  test('exercise picker focus settles for empty and populated sessions', async ({ page }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop', 'phones keep the keyboard closed until the search is tapped')
     await page.goto('/workout/new')
     await expectAppReady(page, '/workout/new', 25_000)
     await page.getByRole('button', { name: 'Start a new session' }).click()
@@ -60,7 +62,7 @@ test.describe('training stabilization', () => {
     await expect(addExercise).toBeVisible({ timeout: 15_000 })
     await addExercise.click()
 
-    const picker = page.getByRole('dialog', { name: /Choose an exercise/i })
+    const picker = page.getByRole('dialog', { name: 'Add exercise' })
     const search = picker.getByRole('textbox', { name: 'Search exercises' })
     await expect(search).toBeFocused()
     expect(await countFocusEvents(page)).toBe(0)
@@ -92,10 +94,12 @@ test.describe('training stabilization', () => {
 
     const firstWeight = page.getByLabel('Weight, Phase 1 Bench Press, set 1, kg').first()
     const firstReps = page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()
+    await selectSet(page, 1)
     await expect(firstWeight).toHaveValue('80')
     await firstWeight.fill('60')
     await firstReps.fill('8')
     await page.getByRole('button', { name: 'Add set' }).click()
+    await selectSet(page, 2)
     await page.getByLabel('Weight, Phase 1 Bench Press, set 2, kg').first().fill('60')
     await page.getByLabel('Reps, Phase 1 Bench Press, set 2').first().fill('8')
 

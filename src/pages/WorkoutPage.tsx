@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, Ellipsis, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Ellipsis, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -31,13 +31,12 @@ import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
 import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES, MAX_SET_REPS } from '../shared/workoutLimits'
 import {
-  EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
-import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, focusExerciseIndex, focusSetIndex } from '../shared/workoutDisplay'
+import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, upNextQueue } from '../shared/workoutDisplay'
 
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
 
@@ -210,7 +209,7 @@ export default function WorkoutPage() {
   const routeState = location.state as { startNew?: unknown } | null
   const shouldStartFromRoute = routeState?.startNew === true
   const isDesktop = useMediaQuery('(min-width: 1024px)')
-  const { compactFixedUi, visualViewportHeight } = useMobileInteraction()
+  const { compactFixedUi } = useMobileInteraction()
   const mobileRestVariant = compactFixedUi ? 'compact' : 'full'
 
   const {
@@ -236,8 +235,9 @@ export default function WorkoutPage() {
   const mobileAddExerciseRef = useRef<HTMLButtonElement>(null)
   const [handlingStaleSession, setHandlingStaleSession] = useState(false)
   const [keepExerciseStackMounted, setKeepExerciseStackMounted] = useState(false)
-  const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setIndex: number } | null>(null)
-  const [manualExpandedExerciseClientId, setManualExpandedExerciseClientId] = useState<string | null>(null)
+  const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setIndex: number; draw: boolean } | null>(null)
+  const [manualExerciseClientId, setManualExerciseClientId] = useState<string | null>(null)
+  const [selectedSet, setSelectedSet] = useState<{ exerciseId: string; setId: string } | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const [sessionSheet, setSessionSheet] = useState<'overview' | 'options' | null>(null)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
@@ -263,26 +263,6 @@ export default function WorkoutPage() {
     if (!active) void startNewSession()
   }, [active, location.pathname, navigate, ready, shouldStartFromRoute, startNewSession])
 
-  useEffect(() => {
-    if (isDesktop || !compactFixedUi || rest === null) return
-    let settledFrame: number | null = null
-    const layoutFrame = window.requestAnimationFrame(() => {
-      settledFrame = window.requestAnimationFrame(() => {
-        const activeElement = document.activeElement
-        if (
-          activeElement instanceof HTMLInputElement
-          && activeElement.matches('.workout-focus-shell .workout-set-row input')
-        ) {
-          activeElement.scrollIntoView({ block: 'nearest' })
-        }
-      })
-    })
-    return () => {
-      window.cancelAnimationFrame(layoutFrame)
-      if (settledFrame !== null) window.cancelAnimationFrame(settledFrame)
-    }
-  }, [compactFixedUi, isDesktop, rest, visualViewportHeight])
-
   const handleToggleSet = useCallback((exerciseIndex: number, setIndex: number) => {
     const { active: currentActive, toggleSetDone } = useWorkoutStore.getState()
     const currentSet = currentActive?.exercises[exerciseIndex]?.sets[setIndex]
@@ -305,8 +285,13 @@ export default function WorkoutPage() {
     if (wasNotDone) {
       useWorkoutStore.getState().startRestTimer(90)
       const exercise = currentActive?.exercises[exerciseIndex]
-      if (exercise) setLastLogged({ exerciseId: getExerciseClientId(exercise, exerciseIndex), setIndex })
-      if (completesExercise) setManualExpandedExerciseClientId(null)
+      if (exercise) {
+        const exerciseId = getExerciseClientId(exercise, exerciseIndex)
+        setLastLogged({ exerciseId, setIndex, draw: true })
+        // The next exercise waits for "Go to", so the logged set and Undo stay on screen.
+        if (completesExercise) setManualExerciseClientId(exerciseId)
+      }
+      setSelectedSet(null)
       if ('vibrate' in navigator) navigator.vibrate(12)
     } else {
       useWorkoutStore.getState().clearRestTimer()
@@ -394,7 +379,8 @@ export default function WorkoutPage() {
     const addedExerciseIndex = (nextActive?.exercises.length ?? 0) - 1
     const addedExercise = nextActive?.exercises[addedExerciseIndex]
     if (addedExercise) {
-      setManualExpandedExerciseClientId(getExerciseClientId(addedExercise, addedExerciseIndex))
+      setManualExerciseClientId(getExerciseClientId(addedExercise, addedExerciseIndex))
+      setSelectedSet(null)
     }
     if (!user) return
     fetchSuggestion(id, source, user.uid)
@@ -780,34 +766,36 @@ export default function WorkoutPage() {
         : `${completedSets} of ${totalSets} sets completed.`
 
   const focusedIndex = focusExerciseIndex(active.exercises)
-  const focusExercise = focusedIndex >= 0 ? active.exercises[focusedIndex] : null
-  const defaultExpandedExerciseClientId = focusExercise
-    ? getExerciseClientId(focusExercise, focusedIndex)
-    : null
-  const manualExpandedExerciseExists = manualExpandedExerciseClientId === '' || active.exercises.some(
-    (exercise, exerciseIndex) => getExerciseClientId(exercise, exerciseIndex) === manualExpandedExerciseClientId,
-  )
-  const expandedExerciseClientId = manualExpandedExerciseExists
-    ? manualExpandedExerciseClientId || null
-    : defaultExpandedExerciseClientId
+  const manualIndex = active.exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === manualExerciseClientId)
   const showExerciseStack = active.exercises.length > 0 || keepExerciseStackMounted
-  const expandedIndex = active.exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === expandedExerciseClientId)
-  const panelIndex = expandedIndex >= 0 ? expandedIndex : focusedIndex
+  const panelIndex = manualIndex >= 0 ? manualIndex : focusedIndex
   const panelExercise = panelIndex >= 0 ? active.exercises[panelIndex] ?? null : null
-  const panelSetIndex = panelExercise ? panelExercise.sets.findIndex((set) => !set.done) : -1
+  const currentExerciseClientId = panelExercise ? getExerciseClientId(panelExercise, panelIndex) : null
+  const selectedSetId = selectedSet?.exerciseId === currentExerciseClientId ? selectedSet?.setId ?? null : null
+  const currentSetIndex = panelExercise ? panelSetIndex(panelExercise.sets, selectedSetId) : -1
   const undoExerciseIndex = lastLogged
     ? active.exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === lastLogged.exerciseId)
     : -1
   const undoSet = lastLogged ? active.exercises[undoExerciseIndex]?.sets[lastLogged.setIndex] : undefined
-  const nextExerciseIndex = active.exercises.findIndex((exercise, index) => index !== panelIndex && exercise.sets.some((set) => !set.done))
+  const queue = upNextQueue(active.exercises, panelIndex)
+  const nextExerciseIndex = queue[0] ?? -1
+  const goToExercise = (index: number) => {
+    const exercise = active.exercises[index]
+    if (!exercise) return
+    setManualExerciseClientId(getExerciseClientId(exercise, index))
+    setSelectedSet(null)
+    setLastLogged((logged) => logged && { ...logged, draw: false })
+    window.scrollTo({ top: 0 })
+  }
   const setPanel = panelExercise && (
     <WorkoutSetPanel
       exerciseIndex={panelIndex}
       exerciseName={panelExercise.name}
-      set={panelSetIndex >= 0 ? panelExercise.sets[panelSetIndex] ?? null : null}
-      setIndex={panelSetIndex}
+      set={currentSetIndex >= 0 ? panelExercise.sets[currentSetIndex] ?? null : null}
+      setIndex={currentSetIndex}
       setCount={panelExercise.sets.length}
       units={units}
+      openSetIndex={panelExercise.sets.findIndex((set) => !set.done)}
       nextExercise={nextExerciseIndex >= 0
         ? { index: nextExerciseIndex, name: active.exercises[nextExerciseIndex]?.name ?? '' }
         : null}
@@ -825,10 +813,8 @@ export default function WorkoutPage() {
       onAdjustSet={handleAdjustSet}
       onUpdateSet={handleUpdateSet}
       onToggleSet={handleToggleSet}
-      onGoToExercise={(index) => {
-        const exercise = active.exercises[index]
-        if (exercise) setManualExpandedExerciseClientId(getExerciseClientId(exercise, index))
-      }}
+      onClearSelection={() => setSelectedSet(null)}
+      onGoToExercise={goToExercise}
       onFinish={handleFinish}
     />
   )
@@ -1161,32 +1147,22 @@ export default function WorkoutPage() {
             {showExerciseStack && (
               <>
                 <div className="workout-exercise-stack">
-                  {active.exercises.length > 1 && <h3 className="workout-up-next">Up next</h3>}
-                  <AnimatePresence onExitComplete={() => setKeepExerciseStackMounted(false)}>
-                    {active.exercises.map((exercise, exerciseIndex) => {
-                      const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
-                      const exerciseClientId = getExerciseClientId(exercise, exerciseIndex)
-                      const hintKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
-                      const exerciseFocusSetIndex = focusSetIndex(exercise.sets)
-                      const isCollapsible = active.exercises.length > 1
-                      const isExpanded = !isCollapsible || exerciseClientId === expandedExerciseClientId
-
+                  <AnimatePresence mode="wait" initial={false} onExitComplete={() => setKeepExerciseStackMounted(false)}>
+                    {panelExercise && currentExerciseClientId && (() => {
+                      const exerciseMeta = exerciseCatalog.get(panelExercise.exerciseId)
+                      const hintKey = `${panelExercise.exerciseSource}:${panelExercise.exerciseId}`
                       return (
                         <WorkoutExerciseLedgerItem
-                          key={exerciseClientId}
-                          exerciseAccent={EXERCISE_CATEGORY_COLORS[exerciseMeta?.category ?? ''] ?? 'var(--accent)'}
-                          exerciseClientId={exerciseClientId}
-                          exerciseIndex={exerciseIndex}
+                          key={currentExerciseClientId}
+                          exerciseClientId={currentExerciseClientId}
+                          exerciseIndex={panelIndex}
                           exerciseCount={active.exercises.length}
-                          fallbackExercise={exerciseSnapshotByClientId.get(exerciseClientId) ?? exercise}
+                          fallbackExercise={exerciseSnapshotByClientId.get(currentExerciseClientId) ?? panelExercise}
                           categoryLabel={exerciseMeta?.category ? (EXERCISE_CATEGORY_LABELS[exerciseMeta.category] ?? exerciseMeta.category) : undefined}
                           equipmentLabel={exerciseMeta?.equipment ? (EQUIPMENT_LABELS[exerciseMeta.equipment] ?? exerciseMeta.equipment) : undefined}
-                          focusSetIndex={exerciseFocusSetIndex}
+                          panelSetIndex={currentSetIndex}
                           hintDismissed={dismissedHints.has(hintKey)}
                           hintKey={hintKey}
-                          isCollapsible={isCollapsible}
-                          isExpanded={isExpanded}
-                          isFocusedExercise={exerciseIndex === focusedIndex && active.exercises.length > 1}
                           suggestion={suggestions[hintKey] ?? null}
                           units={units}
                           userId={user?.uid}
@@ -1194,32 +1170,34 @@ export default function WorkoutPage() {
                           onApplySuggestion={handleApplySuggestion}
                           onDismissSuggestion={handleDismissSuggestion}
                           onOpenOverview={() => setSessionSheet('overview')}
-                          drawnSetIndex={lastLogged?.exerciseId === exerciseClientId ? lastLogged.setIndex : null}
-                          onExpandExercise={(clientId) => setManualExpandedExerciseClientId(
-                            clientId === expandedExerciseClientId ? '' : clientId,
-                          )}
+                          drawnSetIndex={lastLogged?.draw && lastLogged.exerciseId === currentExerciseClientId ? lastLogged.setIndex : null}
                           onRemoveExercise={handleRemoveExercise}
                           onRemoveSet={handleRemoveSet}
+                          onSelectSet={(setIndex) => {
+                            const set = panelExercise.sets[setIndex]
+                            if (set) setSelectedSet({ exerciseId: currentExerciseClientId, setId: set.clientId ?? String(setIndex) })
+                          }}
                           onToggleSet={handleToggleSet}
-                          onUpdateSet={handleUpdateSet}
                         />
                       )
-                    })}
+                    })()}
                   </AnimatePresence>
                 </div>
 
-                {active.exercises.length > 0 && (
-                  <motion.button
-                    ref={mobileAddExerciseRef}
-                    type="button"
-                    onClick={() => setShowPicker(true)}
-                    className="workout-primary-action workout-mobile-inline-add"
-                    style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <Plus size={16} strokeWidth={2.4} />
-                    <span>Add exercise</span>
-                  </motion.button>
+                {queue.length > 0 && (
+                  <section className="workout-up-next" aria-labelledby="workout-up-next-title">
+                    <h3 id="workout-up-next-title">Up next</h3>
+                    {queue.map((index) => {
+                      const exercise = active.exercises[index]!
+                      return (
+                        <button key={getExerciseClientId(exercise, index)} type="button" onClick={() => goToExercise(index)}>
+                          <span>{exercise.name}</span>
+                          <small className="tabular-nums">{exerciseTargetLabel(exercise.sets, units)}</small>
+                          <ChevronRight size={16} aria-hidden="true" />
+                        </button>
+                      )
+                    })}
+                  </section>
                 )}
               </>
             )}
@@ -1246,8 +1224,8 @@ export default function WorkoutPage() {
                       key={clientId}
                       type="button"
                       className="bottom-sheet-row"
-                      aria-current={clientId === expandedExerciseClientId}
-                      onClick={() => { setManualExpandedExerciseClientId(clientId); setSessionSheet(null) }}
+                      aria-current={clientId === currentExerciseClientId}
+                      onClick={() => { goToExercise(exerciseIndex); setSessionSheet(null) }}
                     >
                       <span>{exercise.name}</span>
                       <small className="tabular-nums">{exercise.sets.filter((set) => set.done).length} of {exercise.sets.length}</small>
@@ -1284,18 +1262,18 @@ export default function WorkoutPage() {
         )}
       </AnimatePresence>
 
-      {showPicker && (
-        <ExercisePicker
-          onSelect={(id, name, source) => {
-            setShowPicker(false)
-            void handlePickExercise(id, name, source)
-            window.requestAnimationFrame(() => mobileAddExerciseRef.current?.focus())
-          }}
-          onClose={() => setShowPicker(false)}
-          userExercisesState={userExercisesState}
-          onRetryUserExercises={retryUserExercises}
-        />
-      )}
+      <ExercisePicker
+        open={showPicker}
+        recent={quickPicks}
+        onSelect={(id, name, source) => {
+          setShowPicker(false)
+          void handlePickExercise(id, name, source)
+          window.requestAnimationFrame(() => mobileAddExerciseRef.current?.focus())
+        }}
+        onClose={() => setShowPicker(false)}
+        userExercisesState={userExercisesState}
+        onRetryUserExercises={retryUserExercises}
+      />
 
       {confirmDiscard && (
         <ConfirmDialog

@@ -923,14 +923,13 @@ export default function WorkoutDetailPage() {
           </motion.button>
         )}
       </div>
-      {showPicker && (
-        <ExercisePicker
-          onSelect={handleAddExercise}
-          onClose={() => setShowPicker(false)}
-          userExercisesState={userExercisesState}
-          onRetryUserExercises={retryUserExercises}
-        />
-      )}
+      <ExercisePicker
+        open={showPicker}
+        onSelect={handleAddExercise}
+        onClose={() => setShowPicker(false)}
+        userExercisesState={userExercisesState}
+        onRetryUserExercises={retryUserExercises}
+      />
 
       {confirmDeleteOpen && (
         <ConfirmDialog

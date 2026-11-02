@@ -5,7 +5,6 @@ import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import HistoryHeader from '../src/HistoryHeader'
-import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import BottomNavigation, { useBottomNavigation, type NavigationExit } from '../src/BottomNavigation'
 import { logout, readProfile, saveProfile } from '../src/firebase'
 import { ProfileController, profileGoals, type ProfileState } from '../src/profile'
@@ -85,7 +84,6 @@ function Profile({ uid }: { uid: string }) {
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader onRequestAction={(action, proceed) => { if (action !== 'profile') leave(proceed) }} />
-    <ActiveWorkoutReturnBar onRequestExit={leave} />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView ref={scroll} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingBottom: Math.max(32, insets.bottom) }]}>
         <View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>Profile</Text></View>

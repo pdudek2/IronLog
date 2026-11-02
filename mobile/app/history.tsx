@@ -23,7 +23,6 @@ import {
 } from '../src/history'
 import { useSessionRead } from '../src/useSessionRead'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
-import ActiveWorkoutReturnBar from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { colors } from '../src/theme'
 import { Icon } from '../src/icons'
@@ -90,7 +89,6 @@ export default function HistoryScreen() {
     <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
       <StatusBar style="light" />
       <HistoryHeader />
-      <ActiveWorkoutReturnBar />
       <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <WorkoutDraftRecovery uid={user.uid} />
         <View style={styles.header}>

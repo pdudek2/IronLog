@@ -6,30 +6,19 @@ import { useWorkoutStore, type WorkoutExercise } from '../../store/workoutStore'
 import type { OverloadSuggestion } from '../../lib/overloadService'
 import { getExerciseSessions, type ExerciseSession } from '../../lib/exerciseDetailService'
 import type { Units } from '../../lib/userProfile'
-import {
-  displayWeightStringToKg,
-  kgStringToDisplayWeight,
-} from '../../lib/weightUnits'
 
-import { exerciseMetrics, formatPreviousSet } from '../../shared/workoutDisplay'
-import { formatCompactVolume } from '../../shared/weightUnits'
-
-type SetField = 'weight' | 'reps'
+import { exerciseMetrics, formatPreviousSet, setPairLabel } from '../../shared/workoutDisplay'
 
 interface WorkoutExerciseLedgerItemProps {
-  exerciseAccent: string
   exerciseClientId: string
   exerciseIndex: number
   exerciseCount: number
   fallbackExercise: WorkoutExercise | null
   categoryLabel?: string
   equipmentLabel?: string
-  focusSetIndex: number
+  panelSetIndex: number
   hintDismissed: boolean
   hintKey: string
-  isCollapsible: boolean
-  isExpanded: boolean
-  isFocusedExercise: boolean
   suggestion: OverloadSuggestion | null
   units: Units
   userId?: string
@@ -38,11 +27,10 @@ interface WorkoutExerciseLedgerItemProps {
   onDismissSuggestion: (hintKey: string) => void
   onOpenOverview: () => void
   drawnSetIndex: number | null
-  onExpandExercise: (exerciseClientId: string) => void
   onRemoveExercise: (exerciseIndex: number) => void
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void
+  onSelectSet: (setIndex: number) => void
   onToggleSet: (exerciseIndex: number, setIndex: number) => void
-  onUpdateSet: (exerciseIndex: number, setIndex: number, field: SetField, value: string) => void
 }
 
 function selectExerciseByIdentity(state: ReturnType<typeof useWorkoutStore.getState>, exerciseIndex: number, exerciseClientId: string): WorkoutExercise | null {
@@ -80,32 +68,27 @@ function SetTick({ draw }: { draw: boolean }) {
 }
 
 const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem({
-  exerciseAccent,
   exerciseClientId,
   exerciseIndex,
   exerciseCount,
   fallbackExercise,
   categoryLabel,
   equipmentLabel,
-  focusSetIndex,
+  panelSetIndex,
   hintDismissed,
   onOpenOverview,
   drawnSetIndex,
   hintKey,
-  isCollapsible,
-  isExpanded,
-  isFocusedExercise,
   suggestion,
   units,
   userId,
   onAddSet,
   onApplySuggestion,
   onDismissSuggestion,
-  onExpandExercise,
   onRemoveExercise,
   onRemoveSet,
+  onSelectSet,
   onToggleSet,
-  onUpdateSet,
 }: WorkoutExerciseLedgerItemProps) {
   const liveExercise = useWorkoutStore((state) => selectExerciseByIdentity(state, exerciseIndex, exerciseClientId))
   // AnimatePresence keeps exiting children mounted after the selector loses the exercise.
@@ -117,7 +100,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   React.useEffect(() => {
     let active = true
     setPreviousSets([])
-    if (!userId || !isExpanded || !historyExerciseId || !historyExerciseSource) return () => { active = false }
+    if (!userId || !historyExerciseId || !historyExerciseSource) return () => { active = false }
 
     getExerciseSessions(userId, historyExerciseId, historyExerciseSource, 1)
       .then(([session]) => {
@@ -128,75 +111,36 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
       })
 
     return () => { active = false }
-  }, [historyExerciseId, historyExerciseSource, isExpanded, userId])
+  }, [historyExerciseId, historyExerciseSource, userId])
 
   if (!exercise) return null
 
-  const { volumeKg: exerciseVolume, completed: exerciseCompleted } = exerciseMetrics(exercise.sets)
+  const { completed: exerciseCompleted } = exerciseMetrics(exercise.sets)
   const exerciseComplete = exercise.sets.length > 0 && exerciseCompleted === exercise.sets.length
 
   return (
     <motion.div
       className="workout-exercise-card"
-      data-expanded={isExpanded}
-      style={{ '--exercise-accent': exerciseAccent } as React.CSSProperties}
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
+      exit={{ opacity: 0, transition: { duration: 0.1 } }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
     >
-      {isCollapsible && isExpanded && (
-        <button type="button" className="workout-exercise-position" aria-haspopup="dialog" onClick={onOpenOverview}>
-          Exercise {exerciseIndex + 1} of {exerciseCount}
-          <ChevronDown size={14} aria-hidden="true" />
-        </button>
-      )}
-      <div className="workout-exercise-head mb-4 flex items-start justify-between gap-2">
-        {isCollapsible ? (
-          <button
-            type="button"
-            className="workout-exercise-toggle"
-            onClick={() => onExpandExercise(exerciseClientId)}
-            aria-expanded={isExpanded}
-            aria-controls={`workout-exercise-body-${exerciseIndex}`}
-            aria-label={`${isExpanded ? 'Collapse' : 'Expand'} exercise ${exercise.name}`}
-          >
-            <span className="min-w-0 text-left">
-              {(categoryLabel || equipmentLabel) && (
-                <span className="workout-exercise-meta block">
-                  {categoryLabel && (
-                    <span style={{ color: exerciseAccent }}>
-                      {categoryLabel}
-                    </span>
-                  )}
-                  {categoryLabel && equipmentLabel && ' · '}
-                  {equipmentLabel}
-                </span>
-              )}
-              <span className="workout-exercise-name mt-1.5 block text-lg font-semibold text-white">{exercise.name}</span>
-              <span className="workout-exercise-compact-summary tabular-nums">
-                {exerciseCompleted}/{exercise.sets.length} sets · {formatCompactVolume(exerciseVolume, units)}
-              </span>
-            </span>
-            <ChevronDown className="workout-exercise-chevron" size={18} aria-hidden="true" />
-          </button>
-        ) : (
-          <div className="min-w-0">
-          {(categoryLabel || equipmentLabel || isFocusedExercise) && (
+      <button type="button" className="workout-exercise-position" aria-haspopup="dialog" onClick={onOpenOverview}>
+        Exercise {exerciseIndex + 1} of {exerciseCount}
+        <ChevronDown size={14} aria-hidden="true" />
+      </button>
+      <div className="workout-exercise-head">
+        <div className="min-w-0">
+          <h2 className="workout-exercise-name">{exercise.name}</h2>
+          {(categoryLabel || equipmentLabel) && (
             <p className="workout-exercise-meta">
-              {categoryLabel && (
-                <span style={{ color: exerciseAccent }}>
-                  {categoryLabel}
-                </span>
-              )}
+              {categoryLabel}
               {categoryLabel && equipmentLabel && ' · '}
               {equipmentLabel}
-              {isFocusedExercise && <span className="workout-exercise-next">{(categoryLabel || equipmentLabel) && ' · '}Up next</span>}
             </p>
           )}
-          <p className="mt-1.5 text-lg font-semibold text-white">{exercise.name}</p>
-          </div>
-        )}
+        </div>
         <button
           type="button"
           onClick={() => onRemoveExercise(exerciseIndex)}
@@ -209,7 +153,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
         </button>
       </div>
 
-      <div id={`workout-exercise-body-${exerciseIndex}`} className="workout-exercise-body">
       {suggestion && !hintDismissed && !exerciseComplete && (
         <OverloadHint
           suggestion={suggestion}
@@ -220,93 +163,54 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
       )}
 
       <div className="workout-set-header">
-        <span aria-hidden="true" />
+        <span>Set</span>
         <span>Last</span>
-        <span>{units}</span>
-        <span>Reps</span>
+        <span>Today</span>
         <span />
       </div>
 
       <div className="workout-set-list">
-        {exercise.sets.map((set, setIndex) => {
-          const showSetControls = !set.done
-            && isExpanded
-            && setIndex === focusSetIndex
-          const previousSet = previousSets[setIndex]
-
-          return (
-            <div
-              key={set.clientId ?? setIndex}
-              className="workout-set-row"
-              data-done={set.done || undefined}
-              data-current={showSetControls || undefined}
+        {exercise.sets.map((set, setIndex) => (
+          <div
+            key={set.clientId ?? setIndex}
+            className="workout-set-row"
+            data-done={set.done || undefined}
+            data-current={setIndex === panelSetIndex || undefined}
+          >
+            <motion.button
+              type="button"
+              onClick={() => onToggleSet(exerciseIndex, setIndex)}
+              className="workout-set-toggle"
+              whileTap={{ scale: 0.9 }}
+              animate={set.done ? { scale: [1, 1.08, 1] } : { scale: 1 }}
+              transition={{ duration: 0.25 }}
+              aria-label={set.done
+                ? `Unmark set ${setIndex + 1} for ${exercise.name}`
+                : `Mark set ${setIndex + 1} for ${exercise.name}`}
             >
-              <div className="workout-set-grid">
-                <motion.button
-                  type="button"
-                  onClick={() => onToggleSet(exerciseIndex, setIndex)}
-                  className="workout-set-toggle"
-                  whileTap={{ scale: 0.9 }}
-                  animate={set.done ? { scale: [1, 1.08, 1] } : { scale: 1 }}
-                  transition={{ duration: 0.25 }}
-                  aria-label={set.done
-                    ? `Unmark set ${setIndex + 1} for ${exercise.name}`
-                    : `Mark set ${setIndex + 1} for ${exercise.name}`}
-                >
-                  {set.done ? <SetTick draw={drawnSetIndex === setIndex} /> : setIndex + 1}
-                </motion.button>
-                <span
-                  className="workout-set-previous tabular-nums"
-                  aria-label={`Previous set result ${setIndex + 1}`}
-                >
-                  {formatPreviousSet(previousSet, units)}
-                </span>
-                {showSetControls ? (
-                  <span className="workout-set-now tabular-nums">
-                    {kgStringToDisplayWeight(set.weight, units) || 0} × {set.reps || 0}
-                  </span>
-                ) : (
-                  <>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      placeholder="0"
-                      value={kgStringToDisplayWeight(set.weight, units)}
-                      onChange={(event) => onUpdateSet(
-                        exerciseIndex,
-                        setIndex,
-                        'weight',
-                        displayWeightStringToKg(event.target.value, units),
-                      )}
-                      onFocus={(event) => event.currentTarget.select()}
-                      aria-label={`Weight, ${exercise.name}, set ${setIndex + 1}, ${units}`}
-                      className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
-                    />
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      placeholder="0"
-                      value={set.reps}
-                      onChange={(event) => onUpdateSet(exerciseIndex, setIndex, 'reps', event.target.value)}
-                      onFocus={(event) => event.currentTarget.select()}
-                      aria-label={`Reps, ${exercise.name}, set ${setIndex + 1}`}
-                      className={`workout-set-input ${set.done ? 'opacity-70' : ''}`}
-                    />
-                  </>
-                )}
-                <button
-                  type="button"
-                  onClick={() => onRemoveSet(exerciseIndex, setIndex)}
-                  className="workout-set-remove"
-                  style={{ color: 'var(--muted-soft)' }}
-                  aria-label={`Remove set ${setIndex + 1}`}
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            </div>
-          )
-        })}
+              {set.done ? <SetTick draw={drawnSetIndex === setIndex} /> : setIndex + 1}
+            </motion.button>
+            <button
+              type="button"
+              className="workout-set-values tabular-nums"
+              onClick={() => onSelectSet(setIndex)}
+              aria-pressed={setIndex === panelSetIndex}
+              aria-label={`Edit set ${setIndex + 1}: last ${formatPreviousSet(previousSets[setIndex], units)}, today ${setPairLabel(set, units)}`}
+            >
+              <span className="workout-set-previous">{formatPreviousSet(previousSets[setIndex], units)}</span>
+              <span className="workout-set-today">{setPairLabel(set, units)}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onRemoveSet(exerciseIndex, setIndex)}
+              className="workout-set-remove"
+              style={{ color: 'var(--muted-soft)' }}
+              aria-label={`Remove set ${setIndex + 1}`}
+            >
+              <X size={15} />
+            </button>
+          </div>
+        ))}
       </div>
 
       <button
@@ -319,7 +223,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
           Add set
         </span>
       </button>
-      </div>
     </motion.div>
   )
 })

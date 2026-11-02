@@ -74,15 +74,15 @@ async function startFreshSession(page: Page): Promise<string> {
 
   // Add one exercise to make the session meaningful
   await addExBtn.click()
-  await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).toBeVisible()
-  await page.getByPlaceholder('Search exercises...').fill('Squat')
-  const firstResult = page.getByRole('dialog').filter({ hasText: 'Choose an exercise' }).locator('button').filter({ hasText: /squat/i }).first()
+  await expect(page.getByRole('dialog', { name: 'Add exercise' })).toBeVisible()
+  await page.getByPlaceholder('Search exercises').fill('Squat')
+  const firstResult = page.getByRole('dialog', { name: 'Add exercise' }).locator('button').filter({ hasText: /squat/i }).first()
   await expect(firstResult).toBeVisible({ timeout: 5_000 })
   // Get just the exercise name text (not full textContent which includes equipment)
-  const exerciseName = (await firstResult.locator('p').first().textContent())?.trim() ?? 'Squat'
+  const exerciseName = (await firstResult.locator('span').first().textContent())?.trim() ?? 'Squat'
   await firstResult.click()
   // Wait for picker to fully exit DOM (not just be invisible — Framer Motion keeps it during animation)
-  await expect(page.getByRole('dialog', { name: /Choose an exercise/i })).not.toBeVisible({ timeout: 5_000 })
+  await expect(page.getByRole('dialog', { name: 'Add exercise' })).not.toBeVisible({ timeout: 5_000 })
 
   // Wait for exercise to appear in workout UI (confirms Zustand state update)
   await expect(workoutExerciseEntry(page, exerciseName)).toBeVisible({ timeout: 8_000 })

@@ -481,10 +481,9 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    await screen.findByRole('heading', { name: /, Patryk$/ })
-    expect(screen.queryByRole('button', { name: 'Resume workout' })).not.toBeInTheDocument()
+    await screen.findByRole('heading', { name: 'Workout' })
+    expect(screen.getByRole('button', { name: 'Return to workout' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /empty workout/i })).not.toBeInTheDocument()
-    expect(screen.queryByText(/Active session/)).not.toBeInTheDocument()
   })
 
   it('retries a pending workout on reconnect after a failed automatic retry', async () => {

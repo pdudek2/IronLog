@@ -15,11 +15,13 @@ interface WorkoutSetPanelProps {
   setCount: number
   units: Units
   rest: ReactNode
+  openSetIndex: number
   nextExercise: { index: number; name: string } | null
   finishing: boolean
   onAdjustSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', delta: number) => void
   onUpdateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void
   onToggleSet: (exerciseIndex: number, setIndex: number) => void
+  onClearSelection: () => void
   onGoToExercise: (exerciseIndex: number) => void
   onFinish: () => void
 }
@@ -40,11 +42,13 @@ export default function WorkoutSetPanel({
   setCount,
   units,
   rest,
+  openSetIndex,
   nextExercise,
   finishing,
   onAdjustSet,
   onUpdateSet,
   onToggleSet,
+  onClearSelection,
   onGoToExercise,
   onFinish,
 }: WorkoutSetPanelProps) {
@@ -95,14 +99,20 @@ export default function WorkoutSetPanel({
               <Stepper label="reps" step={1} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'reps', delta)} />
             </div>
           </div>
-          <button
-            type="button"
-            className="workout-set-panel-action"
-            onClick={() => onToggleSet(exerciseIndex, setIndex)}
-            aria-label={`Log set ${setNumber} for ${exerciseName}`}
-          >
-            Log set
-          </button>
+          {set.done ? (
+            <button type="button" className="workout-set-panel-action" onClick={onClearSelection}>
+              {openSetIndex >= 0 ? `Back to set ${openSetIndex + 1}` : 'Done'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="workout-set-panel-action"
+              onClick={() => onToggleSet(exerciseIndex, setIndex)}
+              aria-label={`Log set ${setNumber} for ${exerciseName}`}
+            >
+              Log set
+            </button>
+          )}
         </>
       ) : nextExercise ? (
         <button type="button" className="workout-set-panel-action" onClick={() => onGoToExercise(nextExercise.index)}>

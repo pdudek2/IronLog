@@ -62,7 +62,8 @@ export default function AppLayout() {
         <div className={workoutFocusShell ? 'top-nav-workout-mobile-shell' : undefined}>
           <TopNav current={section} />
         </div>
-        <ActiveWorkoutReturnBar />
+        {/* Workout detail hides the tab bar, so the way back to the session moves up here. */}
+        {location.pathname.startsWith('/workout/') && <ActiveWorkoutReturnBar />}
       </div>
       <main ref={mainRef} className="page-shell" tabIndex={-1}>
         <div className="page-container">

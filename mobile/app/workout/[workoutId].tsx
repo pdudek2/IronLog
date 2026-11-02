@@ -1,5 +1,5 @@
 import WorkoutDraftRecovery from '../../src/WorkoutDraftRecovery'
-import { useCallback, useMemo, useRef } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, BackHandler, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
@@ -7,7 +7,8 @@ import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import Svg, { Path } from 'react-native-svg'
 
 import { exercises as exerciseCatalog } from '../../../data/exercises'
-import { EXERCISE_CATEGORY_COLORS, EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../../../src/lib/exerciseLabels'
+import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../../../src/lib/exerciseLabels'
+import { exerciseSummaryLabel } from '../../../src/shared/workoutDisplay'
 import { formatCompactVolume, kgToDisplayWeight } from '../../../src/shared/weightUnits'
 import { readExerciseMetadata, readSavedWorkout } from '../../src/firebase'
 import { useSessionRead } from '../../src/useSessionRead'
@@ -59,6 +60,7 @@ export default function SavedWorkoutScreen() {
     }
     return entries
   }, [metadata.state])
+  const [openExercises, setOpenExercises] = useState<number[]>([])
   const heroLabel = workout ? workoutTitle(workout) : ''
   const focusLabel = workoutFocusLabel(workout?.exercises.map((exercise) => exercise.exerciseId
     ? exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)?.category : undefined) ?? [])
@@ -77,7 +79,7 @@ export default function SavedWorkoutScreen() {
     <SafeAreaView edges={['top']} style={styles.screen}>
       <StatusBar style="light" />
       <HistoryHeader />
-      <ActiveWorkoutReturnBar />
+      <ActiveWorkoutReturnBar top />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.navRow}>
           <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={back} style={styles.backButton}>
@@ -115,8 +117,8 @@ export default function SavedWorkoutScreen() {
 
         {workout && <>
           <View style={styles.sessionHead}>
-            <Text style={styles.kicker}>{formatWorkoutDate(workout.startedAt)}{focusLabel ? ` · ${focusLabel}` : ''}</Text>
             <Text accessibilityRole="header" style={styles.workoutName}>{heroLabel}</Text>
+            <Text style={styles.kicker}>{formatWorkoutDate(workout.startedAt)}{focusLabel ? ` · ${focusLabel}` : ''}</Text>
           </View>
 
           <View style={styles.mutationActions}>
@@ -138,20 +140,20 @@ export default function SavedWorkoutScreen() {
           <View style={styles.exerciseList}>
             {workout.exercises.map((exercise, index) => {
               const exerciseData = exercise.exerciseId ? exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`) : undefined
-              const accent = EXERCISE_CATEGORY_COLORS[exerciseData?.category ?? ''] ?? colors.muted
               const category = exerciseData?.category ? EXERCISE_CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category : null
               const equipment = exerciseData?.equipment ? getEquipmentLabel(exerciseData.equipment) : null
-              const reps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
+              const open = openExercises.includes(index)
               return <View key={`${exercise.exerciseSource}:${exercise.exerciseId ?? exercise.name}:${index}`} style={styles.exercisePanel}>
-                <View style={styles.exerciseHead}>
-                  <View style={styles.exerciseTitleRow}>
-                    <Text accessibilityRole="header" style={styles.exerciseName}>{exercise.name}</Text>
-                    <Text style={styles.sequence}>{index + 1} / {workout.exercises.length}</Text>
+                <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={`${exercise.name}, ${exerciseSummaryLabel(exercise.sets, active.state.units)}`}
+                  onPress={() => setOpenExercises(open ? openExercises.filter((item) => item !== index) : [...openExercises, index])} style={styles.exerciseRow}>
+                  <View style={styles.exerciseRowCopy}>
+                    <Text style={styles.exerciseName}>{exercise.name}</Text>
+                    {(category || equipment) && <Text style={styles.taxonomy}>{category}{category && equipment ? ' · ' : ''}{equipment}</Text>}
                   </View>
-                  {(category || equipment) && <Text style={styles.taxonomy}>{category ? <Text style={{ color: accent }}>{category}</Text> : null}{category && equipment ? ' · ' : ''}{equipment}</Text>}
-                  <Text style={styles.exerciseTotals}>{exercise.sets.length} {exercise.sets.length === 1 ? 'set' : 'sets'}<Text style={styles.exerciseReps}> · {reps} reps</Text></Text>
-                </View>
-                <View accessibilityLabel={`Sets: ${exercise.name}`} style={styles.table}>
+                  <Text style={styles.exerciseTotals}>{exerciseSummaryLabel(exercise.sets, active.state.units)}</Text>
+                  <View style={open ? styles.chevronOpen : undefined}><Icon name="chevron-down" size={16} /></View>
+                </Pressable>
+                {open && <View accessibilityLabel={`Sets: ${exercise.name}`} style={styles.table}>
                   <View style={styles.tableHeader}>
                     <Text style={[styles.cell, styles.indexCell, styles.headerCell]}>Set</Text>
                     <Text style={[styles.cell, styles.headerCell]}>Weight {active.state.units}</Text>
@@ -164,7 +166,7 @@ export default function SavedWorkoutScreen() {
                     <Text style={styles.cell}>{set.reps}</Text>
                     <Text style={styles.cell}>{workoutSetVolumeLabel(set.weight, set.reps, active.state.units)}</Text>
                   </View>)}
-                </View>
+                </View>}
               </View>
             })}
           </View>
@@ -176,8 +178,8 @@ export default function SavedWorkoutScreen() {
 
 function SummaryFact({ label, value }: { label: string; value: string }) {
   return <View style={styles.fact}>
-    <Text style={styles.factLabel}>{label}</Text>
     <Text numberOfLines={1} style={styles.factValue}>{value}</Text>
+    <Text style={styles.factLabel}>{label.toLowerCase()}</Text>
   </View>
 }
 
@@ -196,22 +198,21 @@ const styles = StyleSheet.create({
   resultTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
   resultSubtitle: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 2 },
   sessionHead: { paddingBottom: 12, paddingTop: 8 },
-  kicker: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginBottom: 4 },
+  kicker: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, marginTop: 4 },
   workoutName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 28, lineHeight: 31, letterSpacing: -0.67 },
   facts: { flexDirection: 'row' },
   fact: { flex: 1, minWidth: 0, paddingVertical: 8 },
-  factLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginBottom: 2 },
+  factLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, marginTop: 1 },
   factValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18 },
   projectionStatus: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 9 },
   exerciseList: { minWidth: 0 },
-  exercisePanel: { paddingBottom: 8, paddingTop: 16 },
-  exerciseHead: { marginBottom: 4 },
-  exerciseTitleRow: { alignItems: 'baseline', flexDirection: 'row', gap: 8, justifyContent: 'space-between' },
-  exerciseName: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 21 },
-  sequence: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 },
-  taxonomy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 2 },
-  exerciseTotals: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginTop: 2 },
-  exerciseReps: { color: colors.muted },
+  exercisePanel: { paddingVertical: 2 },
+  exerciseRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 56 },
+  exerciseRowCopy: { flex: 1, minWidth: 0 },
+  exerciseName: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 15, lineHeight: 20 },
+  taxonomy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 1 },
+  exerciseTotals: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] },
+  chevronOpen: { transform: [{ rotate: '180deg' }] },
   table: { marginHorizontal: 0 },
   tableHeader: { alignItems: 'center', flexDirection: 'row', minHeight: 32 },
   tableRow: { alignItems: 'center', flexDirection: 'row', minHeight: 36 },

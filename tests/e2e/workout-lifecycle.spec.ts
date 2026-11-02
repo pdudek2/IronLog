@@ -7,6 +7,7 @@ import {
 } from './fixtures'
 import { emptyWorkoutEntry, expectAppReady, type AppReadyRoute } from './support/appReady'
 import { openWorkoutDiscardDialog } from './support/accountCleanup'
+import { selectSet } from './support/workoutActions'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
 import {
   readCachedActiveSessionWrite,
@@ -142,8 +143,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await page.getByRole('button', { name: 'Minimize workout' }).click()
     await expect(page).toHaveURL('/dashboard')
     const returnBar = page.getByRole('region', { name: 'Active workout' })
-    await expect(returnBar).toContainText('Workout in progress')
-    await expect(returnBar).toContainText('Phase 1 browse and return with a deliberately long label')
+    await expect(returnBar).toContainText('Resume Phase 1 browse and return with a deliberately long label')
 
     await page.getByRole('button', { name: 'Plans', exact: true }).click()
     await expect(page).toHaveURL('/templates')
@@ -164,20 +164,14 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     await expect(page).toHaveURL('/profile')
     const nameInput = page.getByLabel('Name')
     await nameInput.focus()
-    await expect(returnBar).toBeVisible()
-    expect(await page.evaluate(() => {
-      const bar = document.querySelector('.active-workout-return-bar')
-      const input = document.activeElement
-      return bar instanceof HTMLElement
-        && input instanceof HTMLElement
-        && bar.getBoundingClientRect().bottom <= input.getBoundingClientRect().top
-    })).toBe(true)
+    await expect(page.locator('nav.bottom-nav')).toHaveAttribute('aria-hidden', 'true')
 
     await nameInput.blur()
     await page.getByRole('navigation', { name: 'Bottom navigation' }).getByRole('button', { name: 'Coach' }).click()
     await expect(page).toHaveURL('/chat')
     await returnBar.getByRole('button', { name: 'Return to workout' }).click()
     await expect(page).toHaveURL('/workout/new')
+    await selectSet(page, 1)
     await expect(reps).toHaveValue('6')
     await expect(page.locator('.rest-timer-bar')).toContainText('Rest')
 
@@ -197,6 +191,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
         await expect(returnBar).toBeVisible()
         await expect(returnBar).not.toContainText(/saved|cloud/i)
         await returnBar.getByRole('button', { name: 'Return to workout' }).click()
+        await selectSet(page, 1)
         await expect(reps).toHaveValue('7')
         await expect(page.locator('.rest-timer-bar')).toContainText('Rest')
         await setFirestoreNetworkEnabled(page, true)
@@ -284,6 +279,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     const previousSets = page.locator('.workout-set-previous')
     await expect(previousSets).toHaveCount(3)
     await expect(previousSets).toHaveText(['77.5×8', '75×10', '70×12'])
+    await selectSet(page, 1)
     expect(await currentWeight.evaluate((element) => element.getBoundingClientRect().bottom <= window.innerHeight)).toBe(true)
   })
 
@@ -595,6 +591,8 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
     const clientB = await openWorkoutClient(observedContextFactory, storageState)
     const repsA = clientA.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()
     const repsB = clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()
+    await selectSet(clientA.page, 1)
+    await selectSet(clientB.page, 1)
     await expect(repsA).toHaveValue('5')
     await expect(repsB).toHaveValue('5')
 
@@ -648,6 +646,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
           && entry.url?.includes('/documents:commit') === true),
       async () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
+        await selectSet(clientB.page, 1)
         await clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first().fill('6')
         await expect(clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()).toHaveValue('6')
         expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
@@ -712,6 +711,7 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
           && entry.url?.includes('/documents:commit') === true),
       async () => {
         await setFirestoreNetworkEnabled(clientB.page, false)
+        await selectSet(clientB.page, 1)
         await clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first().fill('6')
         expect(await readLocalActiveSessionRecovery(clientB.page)).toEqual({
           sessionId: oldSessionId,
@@ -741,7 +741,11 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
           exerciseNames: ['Phase 1 Bench Press'],
           reps: '5',
         })
-        await expect(clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()).toHaveValue('5')
+        // The replaced session arrives with new set identities, so select once it has settled.
+        await expect(async () => {
+          await selectSet(clientB.page, 1)
+          await expect(clientB.page.getByLabel('Reps, Phase 1 Bench Press, set 1').first()).toHaveValue('5', { timeout: 500 })
+        }).toPass()
         await clientC.context.close()
         await clientB.context.close()
         await clientA.context.close()
@@ -767,10 +771,10 @@ test('exercise confirmation cannot delete a remotely rehydrated exercise', async
   const dialog = page.getByRole('dialog', { name: 'Remove exercise?' })
   await expect(dialog).toBeVisible()
   await seedLifecycleActiveSession({ sessionId, reps: '9' })
-  await expect.poll(() => page.getByLabel('Reps, Phase 1 Bench Press, set 1').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(['9'])
+  await expect(page.locator('.workout-set-today')).toHaveText(/× 9$/)
   await dialog.getByRole('button', { name: 'Remove exercise', exact: true }).click()
   await expect(dialog).not.toBeVisible()
-  await expect.poll(() => page.getByLabel('Reps, Phase 1 Bench Press, set 1').evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value))).toEqual(['9'])
+  await expect(page.locator('.workout-set-today')).toHaveText(/× 9$/)
   expect((await readLifecycleActiveSession())?.exercises).toHaveLength(1)
   await page.screenshot({ path: testInfo.outputPath('exercise-removal-identity.png'), fullPage: true })
 })

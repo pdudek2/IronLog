@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures'
+import { selectSet } from './support/workoutActions'
 import { expectAppReady } from './support/appReady'
-import { readLocalActiveSessionRecovery, setFirestoreNetworkEnabled } from './support/firestoreBrowserBridge'
+import { readCachedActiveSessionWrite, readLocalActiveSessionRecovery, setFirestoreNetworkEnabled } from './support/firestoreBrowserBridge'
 import { isExpectedFirestoreOfflineDiagnostic } from './support/offlineDiagnostics'
 import {
   cleanupWorkoutLifecycleState, closeWorkoutLifecycleEmulator,
@@ -20,6 +21,7 @@ test.beforeEach(async ({ cleanup }) => {
 test('offline edit survives a full reload through Dashboard and can finish', async ({ page, expectedBrowserDiagnostics }, testInfo) => {
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new')
+  await selectSet(page, 1)
   await expect(page.getByLabel(repsLabel)).toHaveValue('5')
   await expectedBrowserDiagnostics.during('intentional offline recovery', isExpectedFirestoreOfflineDiagnostic, async () => {
     await setFirestoreNetworkEnabled(page, false)
@@ -32,6 +34,7 @@ test('offline edit survives a full reload through Dashboard and can finish', asy
   })
   // Desktop reaches TopNav first; below lg that button is hidden and the return bar carries it.
   await page.getByRole('button', { name: /^(?:Resume workout|Return to workout)$/ }).first().click()
+  await selectSet(page, 1)
   await expect(page.getByLabel(repsLabel)).toHaveValue('7')
   await expect.poll(serverReps, { timeout: 20_000 }).toBe('7')
   await expect(page.getByText('The session changed on another device.', { exact: true })).not.toBeVisible()
@@ -45,6 +48,7 @@ test('offline edit survives a full reload through Dashboard and can finish', asy
 test('navigation before debounce saves the last edit and resumes without a false conflict', async ({ page }, testInfo) => {
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new')
+  await selectSet(page, 1)
   await expect(page.getByLabel(repsLabel)).toHaveValue('5')
   // Dispatch the edit and normal client navigation in one browser task, below the 400ms debounce.
   await page.evaluate((label) => {
@@ -59,7 +63,10 @@ test('navigation before debounce saves the last edit and resumes without a false
   }, repsLabel)
   await expect(page).toHaveURL(testInfo.project.name === 'mobile' ? '/dashboard' : '/progress')
   await expect.poll(serverReps, { timeout: 20_000 }).toBe('9')
+  // The server can hold the write before the browser hears back; leaving then would abort the commit.
+  await expect.poll(() => readCachedActiveSessionWrite(page)).toMatchObject({ hasPendingWrites: false })
   await page.goto('/workout/new')
+  await selectSet(page, 1)
   await expect(page.getByLabel(repsLabel)).toHaveValue('9')
   await expect(page.getByText('The session changed on another device.', { exact: true })).not.toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('navigation-recovered.png'), fullPage: true })

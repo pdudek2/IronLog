@@ -32,6 +32,33 @@ export function focusSetIndex(sets: Pick<DisplaySet, 'done'>[]): number {
   const next = sets.findIndex((set) => !set.done)
   return next >= 0 ? next : Math.max(sets.length - 1, 0)
 }
+export function upNextQueue(exercises: { sets: Pick<DisplaySet, 'done'>[] }[], currentIndex: number): number[] {
+  const order = [...exercises.keys()]
+  return [...order.slice(currentIndex + 1), ...order.slice(0, Math.max(currentIndex, 0))]
+    .filter((index) => exercises[index]!.sets.some((set) => !set.done))
+}
+export function panelSetIndex(sets: { clientId?: string; done: boolean }[], selectedSetId: string | null): number {
+  const selected = selectedSetId === null ? -1 : sets.findIndex((set, index) => (set.clientId ?? String(index)) === selectedSetId)
+  return selected >= 0 ? selected : sets.findIndex((set) => !set.done)
+}
+export function setPairLabel(set: Pick<DisplaySet, 'weight' | 'reps'>, units: WeightUnits): string {
+  return `${kgToDisplayWeight(parseWeight(set.weight), units)} × ${parseReps(set.reps)}`
+}
+export function exerciseTargetLabel(sets: DisplaySet[], units: WeightUnits): string {
+  const next = sets.find((set) => !set.done) ?? sets[0]
+  const reps = parseReps(next?.reps ?? '')
+  const weight = parseWeight(next?.weight ?? '')
+  const volume = reps > 0 ? `${sets.length} × ${reps}` : `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
+  return weight > 0 ? `${volume} · ${kgToDisplayWeight(weight, units)} ${units}` : volume
+}
+export function exerciseSummaryLabel(sets: { weight: number; reps: number }[], units: WeightUnits): string {
+  const count = `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
+  const best = sets.reduce<{ weight: number; reps: number } | null>((top, set) => (
+    !top || set.weight > top.weight || (set.weight === top.weight && set.reps > top.reps) ? set : top
+  ), null)
+  if (!best) return count
+  return `${count} · ${best.weight > 0 ? `${kgToDisplayWeight(best.weight, units)} × ${best.reps}` : `${best.reps} reps`}`
+}
 export function formatPreviousSet(set: { weight: number; reps: number } | undefined, units: WeightUnits): string {
   return set ? `${kgToDisplayWeight(set.weight, units)}×${set.reps}` : '—'
 }

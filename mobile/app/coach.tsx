@@ -6,7 +6,10 @@ import { useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
-import { useAuthRuntime } from '../src/runtime'
+import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
+import { readRecentWorkouts } from '../src/firebase'
+import type { SavedWorkout } from '../src/history'
+import { lastWorkoutRead } from '../../src/shared/lastWorkoutRead'
 import HistoryHeader from '../src/HistoryHeader'
 import { CoachController } from '../src/coachController'
 import { nativeCoachDependencies } from '../src/coachNative'
@@ -45,6 +48,14 @@ function Coach({ uid }: { uid: string }) {
   const [controller] = useState(() => new CoachController(nativeCoachDependencies(uid), () => redraw(value => value + 1)))
   const state = controller.state
   const [tab, setTab] = useState<'chat' | 'plan'>('chat')
+  const units = useActiveRuntime().state.units
+  const [lastWorkout, setLastWorkout] = useState<SavedWorkout | null>(null)
+  useEffect(() => {
+    let live = true
+    void readRecentWorkouts(uid, 1).then(({ data }) => { if (live) setLastWorkout(data[0] ?? null) }).catch(() => undefined)
+    return () => { live = false }
+  }, [uid])
+  const read = lastWorkout ? lastWorkoutRead(lastWorkout, units) : null
   const [settings, setSettings] = useState(false)
   const [draft, setDraft] = useState('')
   const [reveal, setReveal] = useState(false)
@@ -100,15 +111,20 @@ function Coach({ uid }: { uid: string }) {
     <KeyboardAvoidingView style={s.grow} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={s.workspace}>
         <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-          <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text><Text style={s.subtitle}>Ask about your last session or build a plan.</Text></View>
+          <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text></View>
           <View style={s.tabs}>{(['chat', 'plan'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => { if (value === tab) return; controller.cancel(); setTab(value) }} style={[s.tab, tab === value && s.tabActive]}><Text style={[s.buttonText, tab === value && { color: colors.accentText }]}>{value === 'chat' ? 'Chat' : 'Plan'}</Text></Pressable>)}</View>
+          {read && tab === 'chat' && !conversation && <View style={s.read}>
+            <Text style={s.readEyebrow}>{read.eyebrow}</Text>
+            <Text accessibilityRole="header" style={s.readTitle}>{read.title}</Text>
+            <Text style={s.body}>{read.body}</Text>
+          </View>}
           {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
           <View style={tab !== 'chat' && { display: 'none' }}><View onLayout={event => { chatY.current = event.nativeEvent.layout.y }} style={[s.chat, conversation && { height: Math.max(336, height - 336) }]}>
           {conversation && <View style={s.toolbar}><Button onPress={() => { controller.reset(); nearBottom.current = true }} label="Reset conversation">Reset</Button></View>}
           {!conversation ? <View style={[s.empty, configured && { paddingTop: 0 }]}>
-            <Text style={s.emptyTitle}>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</Text>
-            <Text style={s.small}>{configured ? 'Ask about your week, next workout, readiness or an exercise plateau.' : 'Your analysis and follow-up questions will appear here.'}</Text>
-            {configured && <View style={s.prompts}>{prompts.map(prompt => <Pressable accessibilityRole="button" disabled={!controller.canSend} accessibilityState={{ disabled: !controller.canSend }} key={prompt} onPress={() => send(prompt)} style={[s.prompt, !controller.canSend && s.disabled]}><Text style={s.promptText}>{prompt}</Text><Icon name="chevron-right" size={16} /></Pressable>)}</View>}
+            {!read && <Text style={s.emptyTitle}>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</Text>}
+            {!read && <Text style={s.small}>{configured ? 'Ask about your week, next workout, readiness or an exercise plateau.' : 'Your analysis and follow-up questions will appear here.'}</Text>}
+            {configured && <View style={s.prompts}><Text accessibilityRole="header" style={s.nextTitle}>Next</Text>{prompts.map(prompt => <Pressable accessibilityRole="button" disabled={!controller.canSend} accessibilityState={{ disabled: !controller.canSend }} key={prompt} onPress={() => send(prompt)} style={[s.prompt, !controller.canSend && s.disabled]}><Text style={s.promptText}>{prompt}</Text><Icon name="chevron-right" size={16} /></Pressable>)}</View>}
           </View> : <ScrollView ref={scroll} style={s.grow} nestedScrollEnabled contentContainerStyle={s.messages} keyboardShouldPersistTaps="handled"
             onScroll={({ nativeEvent: e }) => { nearBottom.current = e.contentSize.height - e.layoutMeasurement.height - e.contentOffset.y < 96 }} scrollEventThrottle={32}
             onContentSizeChange={() => { if (nearBottom.current) scroll.current?.scrollToEnd({ animated: false }) }}>
@@ -140,6 +156,10 @@ const s = StyleSheet.create({
   
   content: { padding: 16, paddingBottom: 20 }, heading: { paddingTop: 0, paddingBottom: 0, gap: 6, marginBottom: 14 },
   title: pageTitle,
+  nextTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  read: { gap: 4, paddingBottom: 18, paddingTop: 4 },
+  readEyebrow: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
+  readTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 22, letterSpacing: -0.44, lineHeight: 27 },
   subtitle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, color: colors.muted },
   body: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.text },
   description: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.muted },

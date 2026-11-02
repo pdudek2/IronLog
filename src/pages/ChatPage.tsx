@@ -18,6 +18,9 @@ import {
   type GeneratedTrainingPlan,
 } from '../lib/chatService'
 import { useAuthStore } from '../store/authStore'
+import { useProfileStore } from '../store/profileStore'
+import { getRecentWorkouts, type WorkoutSummary } from '../lib/workoutService'
+import { lastWorkoutRead } from '../shared/lastWorkoutRead'
 
 const STARTER_PROMPTS = [
   'Analyze my last week of training.',
@@ -157,6 +160,20 @@ function ContextAvailabilityNotice({
 
 export default function ChatPage() {
   const { user, loading } = useAuthStore()
+  const units = useProfileStore((state) => state.profile?.units) ?? 'kg'
+  const [lastWorkout, setLastWorkout] = useState<WorkoutSummary | null>(null)
+  const coachUid = user?.uid
+
+  useEffect(() => {
+    if (!coachUid) return
+    let live = true
+    getRecentWorkouts(coachUid, 1)
+      .then(([workout]) => { if (live) setLastWorkout(workout ?? null) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [coachUid])
+
+  const read = lastWorkout ? lastWorkoutRead(lastWorkout, units) : null
   const keyOwnerUid = !loading && !user?.isAnonymous ? user?.uid ?? null : null
   const navigate = useNavigate()
   const isDemoUser = user?.email === DEMO_EMAIL
@@ -535,7 +552,6 @@ export default function ChatPage() {
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
           <h1>Coach</h1>
-          <p>Ask about your last session or build a plan.</p>
         </motion.div>
       </section>
 
@@ -576,6 +592,14 @@ export default function ChatPage() {
           data-has-rail={configured || Boolean(planPreview)}
         >
           <div className="coach-main-flow">
+            {read && activeTab === 'chat' && !hasConversation && (
+              <section className="coach-read">
+                <p>{read.eyebrow}</p>
+                <h2>{read.title}</h2>
+                <p>{read.body}</p>
+              </section>
+            )}
+
             {!configured && !showConfigPanel && (
               <>
                 <section className="coach-key-gate">
@@ -636,17 +660,20 @@ export default function ChatPage() {
                   >
                     {messages.length === 0 && !streamText ? (
                       <div className="coach-empty-thread">
-                        <div>
-                          <p>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</p>
-                          <span>
-                            {configured
-                              ? 'Ask about your week, next workout, readiness or an exercise plateau.'
-                              : 'Your analysis and follow-up questions will appear here.'}
-                          </span>
-                        </div>
+                        {!read && (
+                          <div>
+                            <p>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</p>
+                            <span>
+                              {configured
+                                ? 'Ask about your week, next workout, readiness or an exercise plateau.'
+                                : 'Your analysis and follow-up questions will appear here.'}
+                            </span>
+                          </div>
+                        )}
 
                         {configured && (
                           <div className="coach-empty-prompts">
+                            <h2>Next</h2>
                             {STARTER_PROMPTS.map((prompt) => (
                               <button
                                 key={prompt}

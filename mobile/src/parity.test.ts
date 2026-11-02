@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { estimatedOneRepMax, exerciseMetrics, exerciseSummaryLabel, exerciseTargetLabel, focusExerciseIndex, focusSetIndex, formatPreviousSet, panelSetIndex, setPairLabel, upNextQueue, EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
+import { lastWorkoutRead } from '../../src/shared/lastWorkoutRead'
+import { monthCalendar } from '../../src/shared/monthCalendar'
 import { overloadHintLabel } from '../../src/shared/nextSessionRecommendation'
 import { shouldDismissSheet } from '../../src/shared/sheetMotion'
 import { parseExerciseHistory, parsePreviousSets, startRead, readStateForKey, type ReadState, type ReadResult } from './scopedRead'
@@ -46,6 +48,35 @@ test('the session shows one exercise: the queue, the target and the panel set ag
   assert.equal(panelSetIndex(sets, 'gone'), 1)
   assert.equal(panelSetIndex([{ done: true }], '0'), 0)
   assert.equal(panelSetIndex([{ clientId: 'a', done: true }], null), -1)
+})
+
+test('the Coach read states only what the last workout recorded', () => {
+  const read = lastWorkoutRead({ label: 'Push', startedAt: new Date(2026, 10, 2, 12).getTime(), exercises: [
+    { name: 'Bench Press', sets: [{ weight: 90, reps: 6 }, { weight: 90, reps: 5 }] },
+    { name: 'Row', sets: [{ weight: 60, reps: 10 }] },
+  ] }, 'kg')
+  assert.equal(read.eyebrow, 'Last workout · Push, Mon 2')
+  assert.equal(read.title, 'Bench Press: 90 kg × 6')
+  assert.match(read.body, /^3 sets across 2 exercises, /)
+  assert.equal(lastWorkoutRead({ startedAt: 0, exercises: [] }, 'kg').title, 'Workout')
+})
+
+test('the month calendar pairs each day with its newest workout and starts weeks on Monday', () => {
+  const now = new Date(2026, 10, 18, 12)
+  const calendar = monthCalendar(0, [
+    { id: 'old', startedAt: new Date(2026, 10, 2, 8).getTime() },
+    { id: 'new', startedAt: new Date(2026, 10, 2, 18).getTime() },
+    { id: 'october', startedAt: new Date(2026, 9, 30, 8).getTime() },
+  ], now)
+  assert.equal(calendar.label, 'November 2026')
+  assert.equal(calendar.leadingBlanks, 6)
+  assert.equal(calendar.days.length, 30)
+  assert.equal(calendar.days[1]?.workoutId, 'new')
+  assert.equal(calendar.days[17]?.today, true)
+  const previous = monthCalendar(-1, [{ id: 'october', startedAt: new Date(2026, 9, 30, 8).getTime() }], now)
+  assert.equal(previous.label, 'October 2026')
+  assert.equal(previous.days[29]?.workoutId, 'october')
+  assert.equal(previous.days.some(({ today }) => today), false)
 })
 
 test('history validates owner/source and row order instead of manufacturing missing values', () => {

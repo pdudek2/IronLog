@@ -113,7 +113,7 @@ test.describe('Progress analytics', () => {
     )
   })
 
-  test('keeps records readable and exposes any rendered heatmap summary without hover', async ({ page }) => {
+  test('keeps records readable without hover', async ({ page }) => {
     await useHistoricalSessionClock(page)
     await gotoProgressReady(page)
 
@@ -131,10 +131,6 @@ test.describe('Progress analytics', () => {
       await expectNoHorizontalOverflow(rows.nth(index), viewport!.width)
     }
 
-    const heatmapSummary = page.locator('.progress-heatmap-summary')
-    await heatmapSummary.scrollIntoViewIfNeeded()
-    await expect(heatmapSummary).toBeVisible()
-    await expect(heatmapSummary).not.toBeEmpty()
 
     await page.screenshot({ path: 'test-results/progress-records.png', fullPage: true })
   })
@@ -179,7 +175,7 @@ test.describe('Progress analytics', () => {
     await expect(page.getByLabel('Selected exercise trend')).toHaveCount(0)
   })
 
-  test('mobile content exposes the strength selector and heatmap inspector without overflow', async ({ page }) => {
+  test('mobile content exposes the strength selector without overflow', async ({ page }) => {
     test.skip((page.viewportSize()?.width ?? 0) >= 1024, 'Mobile geometry is covered by the mobile project.')
 
     await useHistoricalSessionClock(page)
@@ -213,12 +209,6 @@ test.describe('Progress analytics', () => {
       expect((await strengthPicker.boundingBox())!.height).toBeGreaterThanOrEqual(44)
       await expectNoHorizontalOverflow(strengthPicker, width)
 
-      const heatmapPicker = page.getByRole('combobox', { name: 'View calendar day' })
-      await expect(heatmapPicker).toBeVisible()
-      expect((await heatmapPicker.boundingBox())!.height).toBeGreaterThanOrEqual(44)
-      await expectNoHorizontalOverflow(heatmapPicker, width)
-      await heatmapPicker.selectOption({ index: 1 })
-      await expect(page.locator('.progress-heatmap-inspector [role="status"]')).not.toBeEmpty()
 
       await clearNavigation(page.locator('.progress-records'))
       expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0)

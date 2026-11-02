@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronRight, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
+import { AnimatePresence } from 'framer-motion'
 import { Bone, PageSkeleton } from '../components/ui'
+import HistoryCalendarSheet from '../components/HistoryCalendarSheet'
 import { ActionFeedback } from '../components/ActionFeedback'
 import { useAuthStore } from '../store/authStore'
 import { useUserExercises } from '../hooks/useUserExercises'
@@ -11,6 +13,7 @@ import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
+import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume } from '../lib/weightUnits'
 import { useProfileStore } from '../store/profileStore'
 import {
@@ -99,6 +102,7 @@ export default function HistoryPage() {
   const [workouts, setWorkouts] = useState<WorkoutSummary[]>([])
   const [rangePreset, setRangePreset] = useState<RangePreset>('90')
   const [searchText, setSearchText] = useState('')
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
   const [loadError, setLoadError] = useState(false)
   const [rangeAnchorMs, setRangeAnchorMs] = useState(() => Date.now())
@@ -212,17 +216,22 @@ export default function HistoryPage() {
     <div className="history-page workbench-page">
       <header className="history-page-header">
         <h1>History</h1>
-        <p>
-          {loadError && workouts.length === 0
-            ? 'Could not load workout history.'
-            : showFilterEmpty
-            ? 'No workouts match these filters.'
-            : showRangeEmpty
-            ? 'No workouts in this date range.'
-            : filtered.length === 0
-            ? 'You have no saved workouts yet.'
-            : `${filtered.length} ${pluralize(filtered.length, 'session', 'sessions')} · ${formatCompactVolume(totalVolumeInRange, units)}${historyTruncated ? ' · latest 2,000' : ''}`}
-        </p>
+        <div className="history-subtitle-row">
+          <p>
+            {loadError && workouts.length === 0
+              ? 'Could not load workout history.'
+              : showFilterEmpty
+              ? 'No workouts match these filters.'
+              : showRangeEmpty
+              ? 'No workouts in this date range.'
+              : filtered.length === 0
+              ? 'You have no saved workouts yet.'
+              : `${filtered.length} ${pluralize(filtered.length, 'session', 'sessions')} · ${formatCompactVolume(totalVolumeInRange, units)}${historyTruncated ? ' · latest 2,000' : ''}`}
+          </p>
+          {workouts.length > 0 && (
+            <button type="button" className="history-calendar-link" onClick={() => setCalendarOpen(true)}>Calendar</button>
+          )}
+        </div>
       </header>
 
       <section className="history-control-panel" aria-label="History filters">
@@ -397,6 +406,7 @@ export default function HistoryPage() {
                           className="history-workout-row"
                         >
                           <div className="history-workout-main">
+                            <img className="history-workout-thumb" src={`/covers/${workoutCover(workout.label)}.jpg`} alt="" loading="lazy" />
                             <div className="min-w-0">
                               <h3>{workoutTitle(workout)}</h3>
                               <div className="history-workout-meta">
@@ -418,6 +428,16 @@ export default function HistoryPage() {
           </div>
         )}
       </div>
+      <AnimatePresence>
+        {calendarOpen && (
+          <HistoryCalendarSheet
+            key="history-calendar"
+            workouts={workouts}
+            onOpenWorkout={(workoutId) => navigate(`/workout/${workoutId}`)}
+            onClose={() => setCalendarOpen(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

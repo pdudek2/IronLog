@@ -8,12 +8,12 @@ import { StatusBar } from 'expo-status-bar'
 import { pluralize } from '../../src/lib/pluralize'
 import { kgToDisplayWeight } from '../../src/shared/weightUnits'
 import {
-  PROGRESS_MUSCLE_LABELS, aggregateActivityHeatmap, aggregateMuscleBalance, aggregatePeriodComparison,
+  PROGRESS_MUSCLE_LABELS, aggregateMuscleBalance, aggregatePeriodComparison,
   aggregateStrengthProgression, aggregateWeeklyVolume, formatProgressVolume, strengthDeltaLabel,
   type RecordSummary,
 } from '../../src/shared/progress'
 import HistoryHeader from '../src/HistoryHeader'
-import { ActivityCalendar, ActivityCalendarScale, MuscleBars, StrengthChart, WeeklyVolumeChart } from '../src/ProgressCharts'
+import { MuscleBars, StrengthChart, WeeklyVolumeChart } from '../src/ProgressCharts'
 import { readProgressRecords, readProgressSessions, readRecentProgressWorkouts, retryProgressMaterialization } from '../src/firebase'
 import { loadProgressData, mergeProgressSnapshot, startProgressRead, type ProgressSnapshot } from '../src/progressData'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
@@ -22,7 +22,6 @@ import { Icon } from '../src/icons'
 
 const ranges = [{ label: '30 days', days: 30 }, { label: '90 days', days: 90 }, { label: 'Year', days: 365 }]
 const formatDate = (timestamp: number) => new Date(timestamp).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-const formatCalendarDate = (date: string) => formatDate(Date.parse(`${date}T12:00:00`))
 const formatDelta = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(0)}% vs previous`
 
 export default function ProgressScreen() {
@@ -43,7 +42,6 @@ function ProgressContent({ uid }: { uid: string }) {
   const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null)
   const [strengthKey, setStrengthKey] = useState<string | null>(null)
   const [inspected, setInspected] = useState<{ key: string; index: number } | null>(null)
-  const [calendarDate, setCalendarDate] = useState<string | null>(null)
   const [picker, setPicker] = useState<'strength' | 'calendar' | null>(null)
   const [recordsPage, setRecordsPage] = useState<number | null>(null)
 
@@ -72,10 +70,6 @@ function ProgressContent({ uid }: { uid: string }) {
   const strengthValues = strengthPoints.map((point) => Number(point[selectedStrengthKey!] ?? 0))
   const inspectedIndex = inspected?.key === selectedStrengthKey && inspected.index < strengthValues.length ? inspected.index : null
   const shownStrength = strengthValues[inspectedIndex ?? strengthValues.length - 1] ?? 0
-  const heatmap = useMemo(() => aggregateActivityHeatmap(currentSessions, 12, fetchedAt), [currentSessions, fetchedAt])
-  const activeDays = heatmap.filter((cell) => cell.date && cell.volume > 0).sort((a, b) => b.date.localeCompare(a.date))
-  const selectedDate = activeDays.some((cell) => cell.date === calendarDate) ? calendarDate : activeDays[0]?.date ?? null
-  const selectedDay = activeDays.find((cell) => cell.date === selectedDate)
   const exerciseNames = new Map<string, number>()
   strength.series.forEach((series) => exerciseNames.set(series.exerciseName, (exerciseNames.get(series.exerciseName) ?? 0) + 1))
   const totalVolume = currentSessions.reduce((sum, session) => sum + session.totalVolume, 0)
@@ -101,7 +95,6 @@ function ProgressContent({ uid }: { uid: string }) {
     ...(snapshot?.records?.truncated ? ['The record list is limited to 1,000 entries.'] : []),
   ]
   const chartWidth = Math.max(280, width - 58)
-  const heatmapPeak = activeDays.reduce<(typeof activeDays)[number] | null>((best, cell) => !best || cell.volume > best.volume ? cell : best, null)
 
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
@@ -119,7 +112,7 @@ function ProgressContent({ uid }: { uid: string }) {
       {coverage && !rangeEmpty && !empty && <View accessibilityLabel={`Summary: ${rangeDays} days`} style={styles.summary}>
         <View style={styles.summaryCell}><View style={styles.volumeValue}><Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7} style={styles.volumeAmount}>{kgToDisplayWeight(totalVolume, units).toLocaleString('en-US')}</Text><Text style={styles.volumeUnit}>{units}</Text></View><Text style={styles.volumeLabel}>Volume</Text>{hasPrevious && <Text style={[styles.volumeDelta, styles.delta, comparison.volumeDelta < 0 && styles.down]}>{formatDelta(comparison.volumeDelta)}</Text>}</View>
         <SummaryCell label="Sessions" value={String(uniqueWorkouts)} meta={hasPrevious ? formatDelta(comparison.sessionsDelta) : 'in range'} delta={hasPrevious ? comparison.sessionsDelta : null} />
-        <SummaryCell label="Records" value={snapshot?.records ? String(records.length) : '—'} meta={snapshot?.records ? topRecord?.exerciseName ?? 'no records' : 'unavailable'} />
+        <SummaryCell label="Records" value={snapshot?.records ? String(records.length) : '—'} meta="in range" />
         <Pressable accessibilityRole="button" accessibilityState={{ expanded: moreStats }} onPress={() => setMoreStats(!moreStats)} style={styles.moreStats}><Text style={styles.moreStatsText}>{moreStats ? 'Less stats' : 'More stats'}</Text></Pressable>
         {moreStats && <>
           <SummaryCell label="Avg. / session" value={formatProgressVolume(comparison.currentAvgVolume, units)} meta={hasPrevious ? formatDelta(comparison.avgVolumeDelta) : 'in range'} delta={hasPrevious ? comparison.avgVolumeDelta : null} />
@@ -142,19 +135,6 @@ function ProgressContent({ uid }: { uid: string }) {
         </View>
         <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Weekly volume</Text><Text style={styles.panelBadge}>{rangeDays === 30 ? '5' : rangeDays === 90 ? '13' : '53'} weeks</Text></View><WeeklyVolumeChart points={weekly} units={units} width={chartWidth} /></View>
         {muscles.length > 0 && <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Muscle groups</Text></View><MuscleBars points={muscles} /></View>}
-        <View style={[styles.panel, styles.lastPanel]}>
-          <View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Calendar</Text></View>
-          <ActivityCalendar cells={heatmap} selectedDate={selectedDate} onSelect={setCalendarDate} units={units} />
-          {heatmapPeak && <Text style={styles.calendarSummary}>{activeDays.length} {pluralize(activeDays.length, 'active day', 'active days')} · strongest day {formatCalendarDate(heatmapPeak.date)} · {formatProgressVolume(heatmapPeak.volume, units)}</Text>}
-          {activeDays.length > 0 && <View style={styles.dayInspector}>
-            <View style={styles.dayPickerGroup}>
-              <Text style={styles.selectHint}>View day</Text>
-              <Pressable accessibilityRole="button" accessibilityLabel="View calendar day" onPress={() => setPicker('calendar')} style={styles.daySelect}><Text style={styles.selectValue}>{selectedDate ? formatCalendarDate(selectedDate) : ''}</Text><Icon name="chevron-down" /></Pressable>
-            </View>
-            <Text accessibilityLiveRegion="polite" style={styles.dayValue}>{selectedDay ? `${formatCalendarDate(selectedDay.date)} · ${formatProgressVolume(selectedDay.volume, units)}` : ''}</Text>
-          </View>}
-          <ActivityCalendarScale />
-        </View>
       </View>}
 
       {rangeEmpty && <View style={styles.empty}><Text style={styles.emptyTitle}>No workouts in this date range</Text><Text style={styles.muted}>Earlier sessions and records are still saved.</Text>{rangeDays < 365 && <Pressable accessibilityRole="button" onPress={() => setRangeDays(365)} style={styles.emptyAction}><Text style={styles.link}>Show year</Text></Pressable>}</View>}
@@ -162,7 +142,6 @@ function ProgressContent({ uid }: { uid: string }) {
       {empty && <View style={styles.empty}><Text style={styles.emptyTitle}>No data</Text><Text style={styles.muted}>Complete a few workouts to see charts and records.</Text></View>}
     </ScrollView>
     <ChoiceModal visible={picker === 'strength'} title="Exercise" options={strength.series.map((series) => ({ key: series.key, label: `${series.exerciseName}${(exerciseNames.get(series.exerciseName) ?? 0) > 1 ? ` · ${series.key.startsWith('user:') ? 'mine' : 'shared'}` : ''}` }))} selected={selectedStrengthKey} onSelect={(key) => { setStrengthKey(key); setPicker(null) }} onClose={() => setPicker(null)} />
-    <ChoiceModal visible={picker === 'calendar'} title="View day" options={activeDays.map((day) => ({ key: day.date, label: `${formatCalendarDate(day.date)} · ${formatProgressVolume(day.volume, units)}` }))} selected={selectedDate} onSelect={(date) => { setCalendarDate(date); setPicker(null) }} onClose={() => setPicker(null)} />
   <BottomNavigation {...navigation} />
   </SafeAreaView>
 }

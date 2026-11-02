@@ -7,14 +7,6 @@ export const PROGRESS_MUSCLE_LABELS: Record<string, string> = {
   chest: 'Chest', back: 'Back', shoulders: 'Shoulders', biceps: 'Biceps', triceps: 'Triceps', quads: 'Quads',
   hamstrings: 'Hamstrings', glutes: 'Glutes', core: 'Core', calves: 'Calves', forearms: 'Forearms',
 }
-export const PROGRESS_HEATMAP_COLORS = [
-  'rgba(244, 238, 232, 0.06)',
-  'rgba(239, 231, 220, 0.22)',
-  'rgba(239, 231, 220, 0.42)',
-  'rgba(239, 231, 220, 0.66)',
-  '#efe7dc',
-]
-
 export function formatProgressVolume(volumeKg: number, units: WeightUnits): string {
   const volume = kgToDisplayWeight(volumeKg, units)
   if (volume >= 1_000_000) return `${(volume / 1_000_000).toFixed(1)}M ${units}`
@@ -316,64 +308,3 @@ export function aggregateStrengthProgression(
 }
 
 // ── Activity Heatmap ────────────────────────────────────────────────────────
-
-export interface HeatmapDay {
-  date: string
-  dayOfWeek: number   // 0=pon, 6=niedz
-  weekIndex: number
-  volume: number
-  level: 0 | 1 | 2 | 3 | 4
-}
-
-export function aggregateActivityHeatmap(
-  sessions: ProgressSessionLite[],
-  weeks = 12,
-  anchorMs = Date.now(),
-): HeatmapDay[] {
-  // Wygeneruj grid: weeks tygodni × 7 dni
-  const now = new Date(anchorMs)
-  const startMonday = getWeekMonday(now)
-  startMonday.setDate(startMonday.getDate() - (weeks - 1) * 7)
-
-  const grid: HeatmapDay[] = []
-  const volumeByDate = new Map<string, number>()
-
-  // Zsumuj wolumen per dzień
-  for (const s of sessions) {
-    const d = new Date(s.finishedAt)
-    const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-    volumeByDate.set(dateKey, (volumeByDate.get(dateKey) ?? 0) + s.totalVolume)
-  }
-
-  // Wygeneruj komórki gridu
-  for (let w = 0; w < weeks; w++) {
-    for (let d = 0; d < 7; d++) {
-      const cellDate = addLocalDays(startMonday, w * 7 + d)
-      if (cellDate > now) {
-        grid.push({ date: '', dayOfWeek: d, weekIndex: w, volume: 0, level: 0 })
-        continue
-      }
-      const dateKey = `${cellDate.getFullYear()}-${String(cellDate.getMonth() + 1).padStart(2, '0')}-${String(cellDate.getDate()).padStart(2, '0')}`
-      const volume = volumeByDate.get(dateKey) ?? 0
-      grid.push({ date: dateKey, dayOfWeek: d, weekIndex: w, volume, level: 0 })
-    }
-  }
-
-  // Oblicz kwantyle z niepustych dni
-  const nonZero = grid.filter((c) => c.volume > 0).map((c) => c.volume).sort((a, b) => a - b)
-  if (nonZero.length > 0) {
-    const p25 = nonZero[Math.floor(nonZero.length * 0.25)] ?? 0
-    const p50 = nonZero[Math.floor(nonZero.length * 0.5)] ?? 0
-    const p75 = nonZero[Math.floor(nonZero.length * 0.75)] ?? 0
-
-    for (const cell of grid) {
-      if (cell.volume <= 0) { cell.level = 0; continue }
-      if (cell.volume <= p25) { cell.level = 1; continue }
-      if (cell.volume <= p50) { cell.level = 2; continue }
-      if (cell.volume <= p75) { cell.level = 3; continue }
-      cell.level = 4
-    }
-  }
-
-  return grid
-}

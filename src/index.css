@@ -2369,6 +2369,84 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell {
   outline-offset: -2px;
 }
 
+.history-workout-main > .min-w-0 {
+  flex: 1;
+  text-align: left;
+}
+
+.history-workout-thumb {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.75rem;
+  object-fit: cover;
+}
+
+.history-subtitle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.history-calendar-link {
+  flex: none;
+  min-height: 2.75rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.history-calendar-nav {
+  position: absolute;
+  top: 0.9rem;
+  right: 3.25rem;
+  display: flex;
+}
+
+.history-calendar-nav button {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  color: var(--muted);
+}
+
+.history-calendar-nav button:disabled {
+  opacity: 0.35;
+}
+
+.history-calendar {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  justify-items: center;
+  gap: 0.25rem;
+  padding-block: 0.25rem 0.5rem;
+}
+
+.history-calendar span {
+  color: var(--muted);
+  font-size: 0.78125rem;
+}
+
+.history-calendar button {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.875rem;
+  background: var(--selected-bg);
+  color: var(--text-strong);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-calendar button:disabled {
+  background: none;
+  color: var(--muted);
+}
+
+.history-calendar button[data-today] {
+  box-shadow: inset 0 0 0 1.5px var(--text);
+}
+
 .history-workout-main {
   display: flex;
   min-width: 0;
@@ -3403,111 +3481,7 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell {
   box-shadow: 0 0 18px rgba(0, 0, 0, 0.32);
 }
 
-.progress-heatmap {
-  display: grid;
-  flex: 1;
-  align-content: center;
-  gap: 0.25rem;
-  min-width: 0;
-}
-
-.progress-heatmap-months {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: 0.22rem;
-  margin: 0 0 0.4rem 1.62rem;
-}
-
-.progress-heatmap-months span {
-  min-width: 0;
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1;
-}
-
-.progress-heatmap-row {
-  display: grid;
-  grid-template-columns: 1.4rem repeat(12, minmax(0, 1fr));
-  gap: 0.22rem;
-  align-items: center;
-}
-
-.progress-heatmap-row span {
-  color: var(--muted);
-  font-size: 0.6875rem;
-  text-align: right;
-}
-
-.progress-heatmap-row i {
-  display: block;
-  aspect-ratio: 1;
-  min-width: 0.55rem;
-  border-radius: 0.18rem;
-}
-
-.progress-heatmap-scale {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.32rem;
-  margin-top: 0.8rem;
-}
-
-.progress-heatmap-summary {
-  margin: 0.8rem 0 0;
-  color: var(--muted);
-  font-size: 0.72rem;
-  line-height: 1.4;
-}
-
-.progress-heatmap-inspector {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 0.75rem;
-  margin-top: 0.8rem;
-}
-
-.progress-heatmap-inspector label {
-  display: grid;
-  gap: 0.3rem;
-  min-width: 0;
-}
-
 .progress-heatmap-inspector label > span,
-.progress-heatmap-inspector p {
-  color: var(--muted);
-  font-size: 0.75rem;
-}
-
-.progress-heatmap-picker {
-  min-height: 2.75rem;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-xs);
-  background: var(--bg-elevated);
-  color: var(--text-strong);
-  padding: 0 0.7rem;
-  font: inherit;
-  font-size: 0.82rem;
-}
-
-.progress-heatmap-inspector p {
-  margin: 0 0 0.75rem;
-  line-height: 1.4;
-  text-align: right;
-}
-
-.progress-heatmap-scale span {
-  color: var(--muted);
-  font-size: 0.6875rem;
-}
-
-.progress-heatmap-scale i {
-  width: 0.72rem;
-  height: 0.72rem;
-  border-radius: 0.15rem;
-}
-
 .progress-records {
   position: relative;
   display: grid;
@@ -5708,6 +5682,37 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell {
 .coach-thread--empty {
   height: auto;
   min-height: 0;
+}
+
+.coach-read {
+  display: grid;
+  gap: 0.25rem;
+  padding-block: 0.5rem 1.25rem;
+}
+
+.coach-read p:first-child {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.coach-read h2 {
+  color: var(--text-strong);
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.coach-read p:last-child {
+  color: var(--text);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+}
+
+.coach-empty-prompts h2 {
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .coach-empty-thread {

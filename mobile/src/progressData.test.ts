@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 
-import { aggregateActivityHeatmap, aggregatePeriodComparison, aggregateStrengthProgression, formatProgressVolume, type ProgressSessionLite, type RecordSummary } from '../../src/shared/progress'
+import { aggregatePeriodComparison, aggregateStrengthProgression, formatProgressVolume, type ProgressSessionLite, type RecordSummary } from '../../src/shared/progress'
 import { loadProgressData, mergeProgressSnapshot, parseProgressRecord, parseProgressSession, startProgressRead, type ProgressLoadResult } from './progressData'
 
 const now = new Date('2026-09-28T12:00:00Z').getTime()
@@ -86,8 +86,5 @@ test('shared calculations keep source-aware days, zero weights, boundaries, and 
   assert.equal(comparison.previousSessions, 1)
   const strength = aggregateStrengthProgression([current, sameId, zero])
   assert.deepEqual(strength.series.map((item) => item.key).sort(), ['global:bench', 'user:bench'])
-  const heatmap = aggregateActivityHeatmap([current, sameId], 12, now)
-  assert.equal(heatmap.length, 84)
-  assert.equal(heatmap.filter((cell) => cell.volume > 0).length, 1)
   assert.equal(formatProgressVolume(1000, 'lbs'), '2.2k lbs')
 })

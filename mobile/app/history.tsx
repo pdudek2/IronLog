@@ -1,7 +1,7 @@
 import WorkoutDraftRecovery from '../src/WorkoutDraftRecovery'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { useRouter } from 'expo-router'
@@ -24,6 +24,10 @@ import {
 import { useSessionRead } from '../src/useSessionRead'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import HistoryHeader from '../src/HistoryHeader'
+import { BottomSheet } from '../src/BottomSheet'
+import { covers } from '../src/covers'
+import { monthCalendar } from '../../src/shared/monthCalendar'
+import { workoutCover } from '../../src/shared/workoutCover'
 import { colors } from '../src/theme'
 import { Icon } from '../src/icons'
 
@@ -48,6 +52,7 @@ export default function HistoryScreen() {
   const [range, setRange] = useState<HistoryRange>('90')
   const [rangeAnchorMs, setRangeAnchorMs] = useState(() => Date.now())
   const [search, setSearch] = useState('')
+  const [calendarOpen, setCalendarOpen] = useState(false)
   const [category, setCategory] = useState<string | null>(null)
   const historyStatus = history.state.status
 
@@ -93,7 +98,8 @@ export default function HistoryScreen() {
         <WorkoutDraftRecovery uid={user.uid} />
         <View style={styles.header}>
           <Text accessibilityRole="header" style={styles.title}>History</Text>
-          <Text style={styles.subtitle}>
+          <View style={styles.subtitleRow}>
+          <Text style={[styles.subtitle, styles.subtitleText]}>
             {history.state.status === 'loading'
               ? 'Loading history…'
               : history.state.status === 'error'
@@ -108,6 +114,8 @@ export default function HistoryScreen() {
                       ? 'You have no saved workouts yet.'
                       : `${filtered.length} ${pluralize(filtered.length, 'session', 'sessions')} · ${workoutVolumeLabel(totalVolume, active.state.units)}${history.state.status === 'ready' && history.state.data.truncated ? ' · latest 2,000' : ''}`}
           </Text>
+            {workouts.length > 0 && <Pressable accessibilityRole="button" onPress={() => setCalendarOpen(true)} hitSlop={8} style={styles.calendarLink}><Text style={styles.calendarLinkText}>Calendar</Text></Pressable>}
+          </View>
         </View>
 
         {history.state.status === 'loading' && <View style={styles.loading}><ActivityIndicator color={colors.accent} /><Text style={styles.mutedText}>Loading history…</Text></View>}
@@ -185,6 +193,7 @@ export default function HistoryScreen() {
                       {group.workouts.map(({ workout, totalSets, totalVolume }) => {
                         return <Pressable key={workout.id} accessibilityRole="button" accessibilityLabel={`${workoutTitle(workout)}, ${formatHistoryDate(workout.startedAt)}`} onPress={() => router.push({ pathname: '/workout/[workoutId]', params: { workoutId: workout.id } })} style={styles.workoutRow}>
                           <View style={styles.workoutMain}>
+                            <Image source={covers[workoutCover(workout.label)]} style={styles.workoutThumb} />
                             <View style={styles.workoutCopy}>
                               <Text numberOfLines={2} style={styles.workoutTitle}>{workoutTitle(workout)}</Text>
                               <Text style={styles.workoutMetaText}>{formatHistoryDate(workout.startedAt)} · {formatWorkoutDuration(workout.startedAt, workout.finishedAt)} · {workoutVolumeLabel(totalVolume, active.state.units)} · {totalSets} {pluralize(totalSets, 'set', 'sets')}</Text>
@@ -201,9 +210,32 @@ export default function HistoryScreen() {
           </>
         )}
       </ScrollView>
+    {calendarOpen && <CalendarSheet workouts={workouts} onClose={() => setCalendarOpen(false)}
+      onOpenWorkout={(workoutId) => router.push({ pathname: '/workout/[workoutId]', params: { workoutId } })} />}
     <BottomNavigation {...navigation} />
   </SafeAreaView>
   )
+}
+
+function CalendarSheet({ workouts, onOpenWorkout, onClose }: { workouts: { id: string; startedAt: number }[]; onOpenWorkout: (workoutId: string) => void; onClose: () => void }) {
+  const [offset, setOffset] = useState(0)
+  const { label, leadingBlanks, days } = monthCalendar(offset, workouts)
+  return <BottomSheet title={label} onClose={onClose}>{(close) => <View>
+    <View style={styles.calendarNav}>
+      <Pressable accessibilityRole="button" accessibilityLabel="Previous month" onPress={() => setOffset(offset - 1)} style={styles.calendarNavButton}><Icon name="chevron-left" size={18} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Next month" accessibilityState={{ disabled: offset === 0 }} disabled={offset === 0} onPress={() => setOffset(offset + 1)} style={[styles.calendarNavButton, offset === 0 && styles.calendarNavDisabled]}><Icon name="chevron-right" size={18} /></Pressable>
+    </View>
+    <View style={styles.calendarGrid}>
+      {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => <View key={index} style={styles.calendarCell}><Text style={styles.calendarWeekday}>{day}</Text></View>)}
+      {Array.from({ length: leadingBlanks }, (_, index) => <View key={index} style={styles.calendarCell} />)}
+      {days.map(({ day, today, workoutId }) => <View key={day} style={styles.calendarCell}>
+        <Pressable accessibilityRole="button" accessibilityLabel={workoutId ? `Open workout from ${label.split(' ')[0]} ${day}` : `${day}`} disabled={!workoutId}
+          onPress={() => close(() => { if (workoutId) onOpenWorkout(workoutId) })} style={[styles.calendarDay, workoutId !== null && styles.calendarDayActive, today && styles.calendarDayToday]}>
+          <Text style={[styles.calendarDayText, workoutId !== null && styles.calendarDayTextActive]}>{day}</Text>
+        </Pressable>
+      </View>)}
+    </View>
+  </View>}</BottomSheet>
 }
 
 function EmptyState({ title, copy, action, onPress }: { title: string; copy: string; action: string; onPress: () => void }) {
@@ -221,6 +253,14 @@ const styles = StyleSheet.create({
   title: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 28, lineHeight: 31, letterSpacing: -0.67 },
   subtitle: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, marginTop: 6 },
   filters: { gap: 10, paddingBottom: 14 },
+  subtitleRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' }, subtitleText: { flex: 1 },
+  calendarLink: { justifyContent: 'center', minHeight: 44 }, calendarLinkText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
+  calendarNav: { flexDirection: 'row', position: 'absolute', right: 32, top: -52, zIndex: 1 }, calendarNavButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 }, calendarNavDisabled: { opacity: 0.35 },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' }, calendarCell: { alignItems: 'center', height: 48, justifyContent: 'center', width: '14.28%' },
+  calendarWeekday: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5 },
+  calendarDay: { alignItems: 'center', borderRadius: 14, height: 44, justifyContent: 'center', width: 44 }, calendarDayActive: { backgroundColor: colors.choiceSelected }, calendarDayToday: { borderColor: colors.text, borderWidth: 1.5 },
+  calendarDayText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] }, calendarDayTextActive: { color: colors.textStrong },
+  workoutThumb: { borderRadius: 12, height: 44, width: 44 },
   rangeRow: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 12, flexDirection: 'row', gap: 2, padding: 3 },
   rangeButton: { alignItems: 'center', borderRadius: 9, flex: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 3 },
   rangeSelected: { backgroundColor: colors.choiceSelected },

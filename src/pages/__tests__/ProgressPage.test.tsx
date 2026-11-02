@@ -805,34 +805,6 @@ describe('ProgressPage', () => {
     expect(selector).toHaveValue('global:bench')
   })
 
-  it('exposes a visible heatmap summary', async () => {
-    mockLoadProgressData.mockResolvedValue(successfulLoad({
-      sessions: [
-        session('global-1', 3, { finishedAt: new Date(2026, 6, 7, 12).getTime() }),
-        session('user-1', 2, { exerciseSource: 'user' }),
-        session('global-2', 1),
-      ],
-    }))
-
-    render(<ProgressPage />)
-
-    expect(await screen.findByText(
-      /3 active days · strongest day Jul 7 · 1\.0k kg/i,
-    )).toBeInTheDocument()
-    expect(screen.getByRole('img', {
-      name: /Highest day: Jul 7, 1\.0k kg\./i,
-    })).toBeInTheDocument()
-    expect(screen.getByTitle('Jul 7: 1.0k kg')).toBeInTheDocument()
-    expect(screen.queryByText(/najmocniejszy day 2026-/i)).not.toBeInTheDocument()
-
-    const dayPicker = screen.getByRole('combobox', { name: 'View calendar day' })
-    expect(dayPicker).toHaveClass('progress-heatmap-picker')
-    expect(screen.getByLabelText('Calendar months')).not.toBeEmptyDOMElement()
-
-    fireEvent.change(dayPicker, { target: { value: '2026-07-07' } })
-    expect(screen.getByRole('status')).toHaveTextContent('Jul 7 · 1.0k kg')
-  })
-
   it('uses singular and plural forms in the muscle balance accessible summary', async () => {
     mockLoadProgressData.mockResolvedValue(successfulLoad({
       sessions: [

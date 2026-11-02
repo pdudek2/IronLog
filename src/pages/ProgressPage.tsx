@@ -13,7 +13,6 @@ import { Button } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import { loadProgressData } from '../lib/progressLoadService'
 import {
-  aggregateActivityHeatmap,
   aggregateMuscleBalance,
   aggregatePeriodComparison,
   aggregateStrengthProgression,
@@ -23,8 +22,6 @@ import {
   strengthDeltaLabel,
   PROGRESS_MUSCLE_COLORS as MUSCLE_COLORS,
   PROGRESS_MUSCLE_LABELS as MUSCLE_LABELS,
-  PROGRESS_HEATMAP_COLORS as HEATMAP_COLORS,
-  type HeatmapDay,
   type MuscleBalancePoint,
   type ProgressSessionLite,
   type RecordSummary,
@@ -43,7 +40,6 @@ const RANGE_OPTIONS = [
   { label: 'Year', days: 365 },
 ]
 
-const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const EMPTY_SESSIONS: ProgressSessionLite[] = []
 const EMPTY_RECORDS: RecordSummary[] = []
 const DEFAULT_VISIBLE_REMAINING_RECORDS = 5
@@ -55,11 +51,6 @@ function formatDelta(delta: number): string {
 
 function formatDate(ts: number): string {
   return new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })
-}
-
-function formatHeatmapDate(date: string): string {
-  const timestamp = Date.parse(`${date}T12:00:00`)
-  return Number.isFinite(timestamp) ? formatDate(timestamp) : date
 }
 
 function summarizeWeeklyVolume(data: WeeklyPoint[], units: Units): string {
@@ -104,17 +95,6 @@ function summarizeMuscleBalance(data: MuscleBalancePoint[]): string {
   const muscleName = MUSCLE_LABELS[top.muscle] ?? top.muscle
 
   return `Muscle group balance. Most trained group: ${muscleName}, ${top.count} ${pluralize(top.count, 'entry', 'entries')}. Total ${total} ${pluralize(total, 'entry', 'entries')} in this view.`
-}
-
-function summarizeActivityHeatmap(data: HeatmapDay[], units: Units): string {
-  const activeDays = data.filter((cell) => cell.volume > 0)
-  if (activeDays.length === 0) return 'Workout calendar: no active days in this date range.'
-
-  const first = activeDays[0]
-  if (!first) return 'Workout calendar: no active days in this date range.'
-  const peak = activeDays.reduce((top, cell) => cell.volume > top.volume ? cell : top, first)
-
-  return `Workout calendar for the last 12 weeks. Active days: ${activeDays.length}. Highest day: ${formatHeatmapDate(peak.date)}, ${formatVolume(peak.volume, units)}.`
 }
 
 interface DarkTooltipProps {
@@ -218,7 +198,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   const [freshnessUncertain, setFreshnessUncertain] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [selectedStrengthKey, setSelectedStrengthKey] = useState<string | null>(null)
-  const [selectedHeatmapDate, setSelectedHeatmapDate] = useState<string | null>(null)
   const [recordsPage, setRecordsPage] = useState<number | null>(null)
 
   function handleRangeChange(days: number) {
@@ -349,30 +328,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
   // Stored weights have at most four decimals; rounding the difference drops float noise such as 2.2999999.
   const missingStrengthSessions = Math.max(0, 3 - selectedStrengthPoints.length)
 
-  const heatmapData = useMemo(
-    () => aggregateActivityHeatmap(currentSessions, 12, fetchedAt),
-    [currentSessions, fetchedAt],
-  )
-  const activeHeatmapDays = useMemo(
-    () => heatmapData.filter((cell) => cell.date && cell.volume > 0).sort((a, b) => b.date.localeCompare(a.date)),
-    [heatmapData],
-  )
-  const effectiveHeatmapDate = activeHeatmapDays.some(({ date }) => date === selectedHeatmapDate)
-    ? selectedHeatmapDate
-    : activeHeatmapDays[0]?.date ?? null
-  const selectedHeatmapDay = activeHeatmapDays.find(({ date }) => date === effectiveHeatmapDate) ?? null
-  const heatmapMonthLabels = Array.from({ length: 12 }, (_, weekIndex) => {
-    const monday = heatmapData.find((cell) => cell.weekIndex === weekIndex && cell.dayOfWeek === 0 && cell.date)
-    if (!monday) return ''
-    const month = new Date(`${monday.date}T12:00:00`).toLocaleDateString('en-US', { month: 'short' })
-    const previous = weekIndex > 0
-      ? heatmapData.find((cell) => cell.weekIndex === weekIndex - 1 && cell.dayOfWeek === 0 && cell.date)
-      : null
-    const previousMonth = previous
-      ? new Date(`${previous.date}T12:00:00`).toLocaleDateString('en-US', { month: 'short' })
-      : ''
-    return weekIndex === 0 || month !== previousMonth ? month : ''
-  })
   const weeklyVolumeLabel = useMemo(() => summarizeWeeklyVolume(weeklyData, units), [weeklyData, units])
   const strengthProgressionLabel = summarizeStrengthProgression(
     selectedStrengthPoints,
@@ -380,18 +335,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
     units,
   )
   const muscleBalanceLabel = useMemo(() => summarizeMuscleBalance(muscleData), [muscleData])
-  const activityHeatmapLabel = useMemo(() => summarizeActivityHeatmap(heatmapData, units), [heatmapData, units])
-  const activityHeatmapSummary = useMemo(() => {
-    const activeDays = heatmapData.filter((cell) => cell.volume > 0)
-    const peak = activeDays.reduce<HeatmapDay | null>(
-      (top, cell) => !top || cell.volume > top.volume ? cell : top,
-      null,
-    )
-    if (!peak) return ''
-
-    return `${activeDays.length} ${pluralize(activeDays.length, 'active day', 'active days')} · strongest day ${formatHeatmapDate(peak.date)} · ${formatVolume(peak.volume, units)}`
-  }, [heatmapData, units])
-
   const totalVolume = useMemo(
     () => currentSessions.reduce((sum, s) => sum + s.totalVolume, 0),
     [currentSessions],
@@ -773,81 +716,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                       </Bar>
                     </BarChart>
                   </ResponsiveContainer>
-                </div>
-              </motion.section>
-            )}
-
-            {currentSessions.length > 0 && (
-              <motion.section
-                className="progress-panel progress-panel--compact"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.12, duration: 0.2 }}
-              >
-                <div className="progress-panel-head">
-                  <div>
-                    <h2>Calendar</h2>
-                  </div>
-                </div>
-                <div className="progress-heatmap-months" aria-label="Calendar months">
-                  {heatmapMonthLabels.map((month, weekIndex) => (
-                    <span key={weekIndex}>{month}</span>
-                  ))}
-                </div>
-                <div className="progress-heatmap" role="img" aria-label={activityHeatmapLabel}>
-                  {DAY_LABELS.map((day, dayIdx) => (
-                    <div key={day} className="progress-heatmap-row">
-                      <span>{dayIdx % 2 === 0 ? day : ''}</span>
-                      {Array.from({ length: 12 }, (_, weekIdx) => {
-                        const cell = heatmapData.find((c) => c.dayOfWeek === dayIdx && c.weekIndex === weekIdx)
-                        return (
-                          <i
-                            key={weekIdx}
-                            title={cell?.date && cell.volume > 0
-                              ? `${formatHeatmapDate(cell.date)}: ${formatVolume(cell.volume, units)}`
-                              : cell?.date
-                                ? formatHeatmapDate(cell.date)
-                                : ''}
-                            style={{ background: HEATMAP_COLORS[cell?.level ?? 0] }}
-                          />
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
-                {activityHeatmapSummary && (
-                  <p className="progress-heatmap-summary">{activityHeatmapSummary}</p>
-                )}
-                {activeHeatmapDays.length > 0 && (
-                  <div className="progress-heatmap-inspector">
-                    <label>
-                      <span>View day</span>
-                      <select
-                        className="progress-heatmap-picker"
-                        aria-label="View calendar day"
-                        value={effectiveHeatmapDate ?? ''}
-                        onChange={(event) => setSelectedHeatmapDate(event.target.value)}
-                      >
-                        {activeHeatmapDays.map((day) => (
-                          <option key={day.date} value={day.date}>
-                            {formatHeatmapDate(day.date)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {selectedHeatmapDay && (
-                      <p role="status">
-                        {formatHeatmapDate(selectedHeatmapDay.date)} · {formatVolume(selectedHeatmapDay.volume, units)}
-                      </p>
-                    )}
-                  </div>
-                )}
-                <div className="progress-heatmap-scale">
-                  <span>Less</span>
-                  {HEATMAP_COLORS.map((color) => (
-                    <i key={color} style={{ background: color }} />
-                  ))}
-                  <span>More</span>
                 </div>
               </motion.section>
             )}

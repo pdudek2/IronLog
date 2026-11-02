@@ -561,7 +561,7 @@ export default function WorkoutPage() {
   }
 
   const handleApplySuggestion = useCallback((exerciseIndex: number, hintKey: string, weight: number) => {
-    useWorkoutStore.getState().updateSet(exerciseIndex, 0, 'weight', String(weight))
+    useWorkoutStore.getState().applyOverload(exerciseIndex, weight)
     setDismissedHints((prev) => {
       const next = new Set(prev)
       next.add(hintKey)

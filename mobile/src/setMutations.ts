@@ -1,6 +1,7 @@
 import type { ActiveWorkout, WorkoutExercise, WorkoutSet } from './session'
 import { createLocalId } from './session'
 import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../../src/shared/workoutLimits'
+import { applyOverloadWeight } from '../../src/shared/nextSessionRecommendation'
 
 export { MAX_SESSION_EXERCISES }
 
@@ -31,6 +32,15 @@ export function updateSetValue(
     const next = { ...set, [field]: value }
     return { ...next, done: next.done && isValidCompletedSet(next) }
   })
+}
+
+export function applyOverload(session: ActiveWorkout, exerciseId: string, weightKg: number): ActiveWorkout {
+  return {
+    ...session,
+    exercises: session.exercises.map((exercise) => exercise.clientId === exerciseId
+      ? { ...exercise, sets: applyOverloadWeight(exercise.sets, weightKg) }
+      : exercise),
+  }
 }
 
 function adjustedValue(value: string, field: SetField, delta: number): string {

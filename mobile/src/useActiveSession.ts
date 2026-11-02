@@ -52,6 +52,7 @@ export function useActiveSession(uid: string | null) {
     discardLocalChanges: () => controller.discardLocalChanges(),
     updateSet: controller.updateSet.bind(controller),
     adjustSet: controller.adjustSet.bind(controller),
+    applyOverload: controller.applyOverload.bind(controller),
     setDone: controller.setDone.bind(controller),
     addSet: controller.addSet.bind(controller),
     removeSet: controller.removeSet.bind(controller),

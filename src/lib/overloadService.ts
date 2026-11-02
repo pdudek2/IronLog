@@ -3,7 +3,7 @@ import { db } from './firebase'
 import type { ExerciseSource } from '../store/workoutStore'
 
 import { buildOverloadSuggestion, type OverloadSuggestion } from '../shared/nextSessionRecommendation'
-export { buildOverloadSuggestion, type OverloadHistoryEntry, type OverloadSuggestion, type OverloadReason } from '../shared/nextSessionRecommendation'
+export { buildOverloadSuggestion, overloadHintLabel, type OverloadHistoryEntry, type OverloadSuggestion, type OverloadReason } from '../shared/nextSessionRecommendation'
 
 export async function suggestNextSession(
   uid: string,

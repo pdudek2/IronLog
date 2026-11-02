@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion'
-import { TrendingDown, TrendingUp, Minus, X } from 'lucide-react'
-import type { OverloadSuggestion } from '../lib/overloadService'
+import { X } from 'lucide-react'
+import { overloadHintLabel, type OverloadSuggestion } from '../lib/overloadService'
 import type { Units } from '../lib/userProfile'
-import { kgToDisplayWeight } from '../lib/weightUnits'
 
 interface Props {
   suggestion: OverloadSuggestion
@@ -11,66 +10,31 @@ interface Props {
   onDismiss: () => void
 }
 
-const REASON_LABEL: Record<string, string> = {
-  progressive: 'Progression',
-  deload_gap:  'Deload — long break',
-  maintain:    'Keep weight',
-}
-
 export default function OverloadHint({ suggestion, units, onApply, onDismiss }: Props) {
-  const { suggestedWeight, delta, reason } = suggestion
-
-  const Icon =
-    delta > 0 ? TrendingUp :
-    delta < 0 ? TrendingDown :
-    Minus
-
-  const trend =
-    delta > 0 ? 'up' :
-    delta < 0 ? 'down' :
-    'flat'
-
-  const deltaLabel =
-    delta > 0 ? `+${kgToDisplayWeight(delta, units)} ${units}` :
-    delta < 0 ? `${kgToDisplayWeight(delta, units)} ${units}` :
-    '±0'
-
   return (
     <motion.div
       className="overload-hint"
-      data-trend={trend}
       initial={{ opacity: 0, y: -6 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.18 }}
     >
-      <div className="overload-hint-main">
-        <span className="overload-hint-icon" aria-hidden="true">
-          <Icon size={14} />
-        </span>
-        <div className="overload-hint-copy">
-          <span>
-            {REASON_LABEL[reason]} <small>{deltaLabel}</small>
-          </span>
-          <strong className="tabular-nums">{kgToDisplayWeight(suggestedWeight, units)} {units}</strong>
-        </div>
-      </div>
-
-      <div className="overload-hint-actions">
-        <button
-          onClick={() => onApply(suggestedWeight)}
-          className="overload-hint-apply"
-        >
-          Apply
-        </button>
-        <button
-          onClick={onDismiss}
-          aria-label="Dismiss suggestion"
-          className="overload-hint-dismiss"
-        >
-          <X size={14} />
-        </button>
-      </div>
+      <span className="overload-hint-copy">{overloadHintLabel(suggestion, units)}</span>
+      <button
+        type="button"
+        onClick={() => onApply(suggestion.suggestedWeight)}
+        className="overload-hint-apply"
+      >
+        Apply
+      </button>
+      <button
+        type="button"
+        onClick={onDismiss}
+        aria-label="Dismiss suggestion"
+        className="overload-hint-dismiss"
+      >
+        <X size={14} />
+      </button>
     </motion.div>
   )
 }

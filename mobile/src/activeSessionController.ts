@@ -7,6 +7,7 @@ import {
   setLabel,
   setSetDone,
   updateSetValue,
+  applyOverload,
   type SetField,
 } from './setMutations'
 import {
@@ -287,6 +288,10 @@ export class ActiveSessionController {
 
   adjustSet(exerciseId: string, setId: string, field: SetField, delta: number): void {
     this.mutate((session) => adjustSetValue(session, exerciseId, setId, field, delta))
+  }
+
+  applyOverload(exerciseId: string, weightKg: number): void {
+    this.mutate((session) => applyOverload(session, exerciseId, weightKg))
   }
 
   setDone(exerciseId: string, setId: string, done: boolean): void {

@@ -28,7 +28,7 @@ import type { ReadinessEntry } from '../../src/shared/readiness'
 
 import type { SubscribeToSession } from './activeSessionController'
 import { parseSessionDocument, type ActiveWorkout, type Units, type ExerciseSource } from './session'
-import { parsePreviousSets, type ExerciseMetadata, type ReadResult } from './scopedRead'
+import { parseExerciseHistory, type ExerciseMetadata, type ReadResult } from './scopedRead'
 import { parseSavedWorkout, type SavedWorkout } from './history'
 import { parseHomeProfile, type HomeProfile } from './home'
 import { parseCatalogueExercise } from './exerciseCatalogue'
@@ -370,13 +370,13 @@ export async function claimNewActiveSession(uid: string, candidate: ActiveWorkou
   }, uid, candidate, Math.max(Date.now(), candidate.startedAt)))
 }
 
-export async function readPreviousSets(uid: string, exerciseId: string, source: ExerciseSource) {
+export async function readExerciseHistory(uid: string, exerciseId: string, source: ExerciseSource) {
   const { firestore } = await getServices()
   const snapshot = await getDocs(query(collection(firestore, 'exerciseSessions'),
     where('userId', '==', uid), where('exerciseId', '==', exerciseId),
-    where('exerciseSource', '==', source), orderBy('startedAt', 'desc'), limit(1)))
+    where('exerciseSource', '==', source), orderBy('startedAt', 'desc'), limit(3)))
   return {
-    data: snapshot.empty ? [] : parsePreviousSets(snapshot.docs[0]!.data(), uid, exerciseId, source),
+    data: parseExerciseHistory(snapshot.docs.map((document) => document.data()), uid, exerciseId, source),
     fromCache: snapshot.metadata.fromCache,
   }
 }

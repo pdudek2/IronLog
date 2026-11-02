@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { exerciseMetrics, focusExerciseIndex, focusSetIndex, formatPreviousSet, EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { parsePreviousSets, startRead, readStateForKey, type ReadState, type ReadResult } from './scopedRead'
+import { overloadHintLabel } from '../../src/shared/nextSessionRecommendation'
+import { parseExerciseHistory, parsePreviousSets, startRead, readStateForKey, type ReadState, type ReadResult } from './scopedRead'
 
 const flush = () => new Promise((resolve) => setImmediate(resolve))
 test('shared rules keep Max, focus and history faithful beyond the screenshot fixture', () => {
@@ -26,6 +27,20 @@ test('history validates owner/source and row order instead of manufacturing miss
   assert.throws(() => parsePreviousSets(data, 'b', 'same-id', 'user'))
   assert.throws(() => parsePreviousSets(data, 'a', 'same-id', 'global'))
   assert.throws(() => parsePreviousSets({ ...data, sets: [{ weight: 'bad', reps: 8 }] }, 'a', 'same-id', 'user'))
+})
+
+test('the last session fills Last, and three sessions earn the same suggestion as web', () => {
+  const now = 1_000_000_000_000
+  const session = (bestSetWeight: number, daysAgo: number) => ({ userId: 'a', exerciseId: 'bench', exerciseSource: 'global', bestSetWeight, finishedAt: now - daysAgo * 86_400_000, sets: [{ weight: bestSetWeight, reps: 6 }] })
+  const fresh = parseExerciseHistory([session(85, 2), session(82.5, 9), session(80, 16)], 'a', 'bench', 'global', now)
+  assert.deepEqual(fresh.sets, [{ weight: 85, reps: 6 }])
+  assert.equal(fresh.suggestion?.suggestedWeight, 87.5)
+  assert.equal(overloadHintLabel(fresh.suggestion!, 'kg'), 'Suggested +2.5 kg')
+  const stale = parseExerciseHistory([session(85, 30), session(82.5, 37), session(80, 44)], 'a', 'bench', 'global', now)
+  assert.equal(overloadHintLabel(stale.suggestion!, 'kg'), 'Long break: suggested −2.5 kg')
+  assert.equal(parseExerciseHistory([session(85, 2)], 'a', 'bench', 'global', now).suggestion, null)
+  assert.equal(parseExerciseHistory([session(88.75, 2), session(86.25, 9), session(85, 16)], 'a', 'bench', 'global', now).suggestion?.suggestedWeight, 91.25)
+  assert.deepEqual(parseExerciseHistory([], 'a', 'bench', 'global', now), { sets: [], suggestion: null })
 })
 
 test('auxiliary reads mask old identities and reject late completion after disposal', async () => {

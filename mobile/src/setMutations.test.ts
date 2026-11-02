@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { displayWeightDeltaToKg, displayWeightStringToKg, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 import {
-  addExercise, addSet, adjustSetValue, exerciseHasEnteredSets, MAX_SESSION_EXERCISES,
+  addExercise, addSet, adjustSetValue, applyOverload, exerciseHasEnteredSets, MAX_SESSION_EXERCISES,
   removeExercise, removeSet, setLabel, setSetDone, updateSetValue,
 } from './setMutations'
 import type { ActiveWorkout } from './session'
@@ -88,4 +88,17 @@ test('label is trimmed and a blank label clears the field', () => {
   const labelled = setLabel(workout(), ' Push ')
   assert.equal(labelled.label, 'Push')
   assert.equal('label' in setLabel(labelled, ''), false)
+})
+
+test('an applied suggestion changes every open set and leaves finished sets as logged', () => {
+  const session = {
+    exercises: [{ clientId: 'bench', sets: [
+      { clientId: 'a', weight: '85', reps: '6', done: true },
+      { clientId: 'b', weight: '85', reps: '6', done: false },
+      { clientId: 'c', weight: '', reps: '', done: false },
+    ] }, { clientId: 'row', sets: [{ clientId: 'd', weight: '60', reps: '8', done: false }] }],
+  } as unknown as ActiveWorkout
+  const next = applyOverload(session, 'bench', 87.5)
+  assert.deepEqual(next.exercises[0]!.sets.map((set) => set.weight), ['85', '87.5', '87.5'])
+  assert.equal(next.exercises[1]!.sets[0]!.weight, '60')
 })

@@ -1,4 +1,5 @@
 import { computeReadinessScore, type ReadinessEntry } from './readiness'
+import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
 
 type ExerciseSource = 'global' | 'user'
 export interface RecommendationTemplate {
@@ -16,7 +17,7 @@ export function templateExerciseKey(exerciseId: string, source: ExerciseSource):
 export type OverloadReason = 'progressive' | 'deload_gap' | 'maintain'
 
 export interface OverloadSuggestion {
-  suggestedWeight: number  // zaokrąglone do 0.5
+  suggestedWeight: number  // zaokrąglone do 0.25
   delta: number            // -2.5 | 0 | +2.5
   reason: OverloadReason
   lastWeight: number
@@ -30,8 +31,8 @@ export interface OverloadHistoryEntry {
   finishedAt: number
 }
 
-function roundToHalf(value: number): number {
-  return Math.max(0, Math.round(value * 2) / 2)
+function roundToQuarter(value: number): number {
+  return Math.max(0, Math.round(value * 4) / 4)
 }
 
 export function buildOverloadSuggestion(
@@ -45,7 +46,7 @@ export function buildOverloadSuggestion(
 
   if (now - latest.finishedAt > THREE_WEEKS_MS) {
     return {
-      suggestedWeight: roundToHalf(latest.bestSetWeight - 2.5),
+      suggestedWeight: roundToQuarter(latest.bestSetWeight - 2.5),
       delta: -2.5,
       reason: 'deload_gap',
       lastWeight: latest.bestSetWeight,
@@ -54,12 +55,21 @@ export function buildOverloadSuggestion(
   }
 
   return {
-    suggestedWeight: roundToHalf(latest.bestSetWeight + 2.5),
+    suggestedWeight: roundToQuarter(latest.bestSetWeight + 2.5),
     delta: 2.5,
     reason: 'progressive',
     lastWeight: latest.bestSetWeight,
     basedOnSessions: history.length,
   }
+}
+
+export function overloadHintLabel({ delta, reason }: Pick<OverloadSuggestion, 'delta' | 'reason'>, units: WeightUnits): string {
+  const amount = `${delta > 0 ? '+' : '−'}${kgToDisplayWeight(Math.abs(delta), units)} ${units}`
+  return reason === 'deload_gap' ? `Long break: suggested ${amount}` : `Suggested ${amount}`
+}
+
+export function applyOverloadWeight<T extends { weight: string; done: boolean }>(sets: T[], weightKg: number): T[] {
+  return sets.map((set) => (set.done ? set : { ...set, weight: String(weightKg) }))
 }
 
 export interface NextSessionExercise {

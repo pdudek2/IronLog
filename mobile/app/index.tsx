@@ -31,7 +31,7 @@ import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import {
   displayWeightDeltaToKg,
 } from '../../src/shared/weightUnits'
-import { login, logout, readPreviousSets, readExerciseMetadata, readRecentWorkouts, type AuthUser } from '../src/firebase'
+import { login, logout, readExerciseHistory, readExerciseMetadata, readRecentWorkouts, type AuthUser } from '../src/firebase'
 import { recentExercisePicks } from '../../src/shared/recentExercises'
 import { getStaleSessionAgeLabel, isActiveSessionStale } from '../../src/lib/sessionDuration'
 import {
@@ -58,11 +58,12 @@ import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runt
 import ExercisePicker from '../src/ExercisePicker'
 import { useKeyboardReveal } from '../src/useKeyboardReveal'
 import { covers } from '../src/covers'
+import { overloadHintLabel } from '../../src/shared/nextSessionRecommendation'
 import { workoutCover } from '../../src/shared/workoutCover'
 import { colors, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
-import { BrandMark } from '../src/icons'
+import { BrandMark, Icon } from '../src/icons'
 
 function ActionButton({ label, onPress, secondary = false, disabled = false }: {
   label: string
@@ -350,6 +351,7 @@ function SetValueInput({ value, units, field, label, done, rejectedEdit, onChang
 interface EditingActions {
   updateSet(exerciseId: string, setId: string, field: 'weight' | 'reps', value: string): void
   adjustSet(exerciseId: string, setId: string, field: 'weight' | 'reps', delta: number): void
+  applyOverload(exerciseId: string, weightKg: number): void
   setDone(exerciseId: string, setId: string, done: boolean): void
   addSet(exerciseId: string): void
   removeSet(exerciseId: string, setId: string): void
@@ -377,11 +379,13 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, expanded, 
   units: Units; metadata: ExerciseMetadata | undefined; onToggle: () => void; editing: EditingActions; rejectedEdit: object | null
 }) {
   const summary = summarizeExercise(exercise, units)
-  const load = useCallback(() => readPreviousSets(uid, exercise.exerciseId, exercise.exerciseSource), [uid, exercise.exerciseId, exercise.exerciseSource])
+  const load = useCallback(() => readExerciseHistory(uid, exercise.exerciseId, exercise.exerciseSource), [uid, exercise.exerciseId, exercise.exerciseSource])
   const history = useSessionRead(JSON.stringify([uid, sessionKey, exercise.exerciseSource, exercise.exerciseId]), load, expanded)
   const category = metadata ? EXERCISE_CATEGORY_LABELS[metadata.category] : undefined
   const equipment = metadata ? EQUIPMENT_LABELS[metadata.equipment] : undefined
   const currentSet = focusSetIndex(exercise.sets)
+  const [hintClosed, setHintClosed] = useState(false)
+  const suggestion = history.state.status === 'ready' && !hintClosed && exercise.sets.some((set) => !set.done) ? history.state.data.suggestion : null
   const heading = <>
     {expanded ? <View style={styles.flex}>
       <Text style={styles.exercisePosition}>Exercise {position} of {count}</Text>
@@ -416,12 +420,19 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, expanded, 
     </Pressable>}
     </View>
     {expanded && <View>
+      {suggestion && <View style={styles.hint}>
+        <Text style={styles.hintText}>{overloadHintLabel(suggestion, units)}</Text>
+        <Pressable accessibilityRole="button" onPress={() => { editing.applyOverload(exercise.clientId, suggestion.suggestedWeight); setHintClosed(true) }}
+          style={({ pressed }) => [styles.hintApply, pressed && styles.headingPressed]}><Text style={styles.hintApplyText}>Apply</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss suggestion" onPress={() => setHintClosed(true)}
+          style={({ pressed }) => [styles.hintClose, pressed && styles.headingPressed]}><Icon name="close" size={16} /></Pressable>
+      </View>}
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.setGrid, styles.setHeaderGrid]}>
         <View style={styles.setToggleColumn} /><Text style={[styles.setHeaderCell, styles.setPreviousColumn]}>Last</Text><Text style={[styles.setHeaderCell, styles.setWeightColumn]}>{units}</Text>
         <Text style={[styles.setHeaderCell, styles.setRepsColumn]}>Reps</Text><View style={styles.setTrailingColumn} />
       </View>
       {exercise.sets.map((set, index) => {
-        const previous = history.state.status === 'ready' ? history.state.data[index] : undefined
+        const previous = history.state.status === 'ready' ? history.state.data.sets[index] : undefined
         const previousText = history.state.status === 'ready' && (previous || !history.state.fromCache)
           // A cached copy without this set cannot say whether it existed: unknown, not loading.
           ? formatPreviousSet(previous, units) : history.state.status === 'loading' ? '…' : '?'
@@ -688,7 +699,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const closureRuntime = useClosureRuntime()
   const {
     state, retry, retrySave, discardLocalChanges,
-    updateSet, adjustSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, refreshStart,
+    updateSet, adjustSet, applyOverload, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, refreshStart,
   } = active
   const [logoutError, setLogoutError] = useState<string | null>(null)
   const [manualExercise, setManualExercise] = useState<{ sessionId: string; id: string } | null>(null)
@@ -819,6 +830,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const panelEditing: EditingActions = {
     updateSet: guardClosureInteraction(canEditCurrentSession, updateSet),
     adjustSet: guardClosureInteraction(canEditCurrentSession, adjustSet),
+    applyOverload: guardClosureInteraction(canEditCurrentSession, applyOverload),
     setDone: toggleSet,
     addSet: guardClosureInteraction(canEditCurrentSession, addSet),
     removeSet: guardClosureInteraction(canEditCurrentSession, removeSet),
@@ -1099,6 +1111,11 @@ const styles = StyleSheet.create({
   exercisePosition: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20 },
   collapsedRow: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
   collapsedName: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 },
+  hint: { alignItems: 'center', flexDirection: 'row', gap: 4, marginTop: 4, minHeight: 44 },
+  hintText: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
+  hintApply: { backgroundColor: colors.choiceSelected, borderRadius: 10, height: 36, justifyContent: 'center', paddingHorizontal: 13 },
+  hintApplyText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  hintClose: { alignItems: 'center', height: 44, justifyContent: 'center', marginRight: -12, width: 44 },
   upNext: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, marginBottom: 4, marginTop: 12 },
   addExerciseText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
   setRowCurrent: { backgroundColor: 'rgba(244, 238, 232, 0.1)', borderRadius: 11 },

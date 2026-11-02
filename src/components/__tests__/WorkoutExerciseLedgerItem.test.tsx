@@ -263,7 +263,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       />,
     )
 
-    expect(screen.getByText(/Deload — long break/)).toBeInTheDocument()
+    expect(screen.getByText('Long break: suggested −2.5 kg')).toBeInTheDocument()
 
     const active = useWorkoutStore.getState().active
     if (!active) throw new Error('Expected an active workout fixture.')
@@ -279,6 +279,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       })
     })
 
-    expect(screen.queryByText(/Deload — long break/)).not.toBeInTheDocument()
+    expect(screen.queryByText('Long break: suggested −2.5 kg')).not.toBeInTheDocument()
   })
 })

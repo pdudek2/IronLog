@@ -83,6 +83,25 @@ describe('workoutStore set steppers', () => {
     expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.reps).toBe('0')
   })
 
+  it('applies a suggestion to open sets without rewriting finished ones', () => {
+    useWorkoutStore.setState({ active: {
+      sessionId: 'session-1',
+      startedAt: 100,
+      exercises: [{
+        exerciseId: 'bench-press',
+        name: 'Bench Press',
+        exerciseSource: 'global',
+        sets: [
+          { weight: '85', reps: '6', done: true },
+          { weight: '85', reps: '6', done: false },
+          { weight: '85', reps: '6', done: false },
+        ],
+      }],
+    } } as never)
+    useWorkoutStore.getState().applyOverload(0, 87.5)
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets.map((set) => set.weight)).toEqual(['85', '87.5', '87.5'])
+  })
+
   it('replaces only the touched exercise object when updating a set', () => {
     useWorkoutStore.getState().hydrateFromDoc({
       sessionId: 'session-1',

@@ -51,11 +51,14 @@ export function exerciseTargetLabel(sets: DisplaySet[], units: WeightUnits): str
   const volume = reps > 0 ? `${sets.length} × ${reps}` : `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
   return weight > 0 ? `${volume} · ${kgToDisplayWeight(weight, units)} ${units}` : volume
 }
-export function exerciseSummaryLabel(sets: { weight: number; reps: number }[], units: WeightUnits): string {
-  const count = `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
-  const best = sets.reduce<{ weight: number; reps: number } | null>((top, set) => (
+export function bestSet<T extends { weight: number; reps: number }>(sets: T[]): T | null {
+  return sets.reduce<T | null>((top, set) => (
     !top || set.weight > top.weight || (set.weight === top.weight && set.reps > top.reps) ? set : top
   ), null)
+}
+export function exerciseSummaryLabel(sets: { weight: number; reps: number }[], units: WeightUnits): string {
+  const count = `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
+  const best = bestSet(sets)
   if (!best) return count
   return `${count} · ${best.weight > 0 ? `${kgToDisplayWeight(best.weight, units)} × ${best.reps}` : `${best.reps} reps`}`
 }

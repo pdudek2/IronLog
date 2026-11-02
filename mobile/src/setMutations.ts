@@ -43,6 +43,17 @@ export function applyOverload(session: ActiveWorkout, exerciseId: string, weight
   }
 }
 
+export function prefillFirstSet(session: ActiveWorkout, exerciseId: string, weightKg: number, reps: number): ActiveWorkout {
+  return {
+    ...session,
+    exercises: session.exercises.map((exercise) => {
+      const first = exercise.sets[0]
+      if (exercise.clientId !== exerciseId || !first || first.weight || first.reps) return exercise
+      return { ...exercise, sets: [{ ...first, weight: String(weightKg), reps: reps > 0 ? String(reps) : '' }, ...exercise.sets.slice(1)] }
+    }),
+  }
+}
+
 function adjustedValue(value: string, field: SetField, delta: number): string {
   const parsed = field === 'weight' ? Number.parseFloat(value) : Number.parseInt(value, 10)
   const adjusted = Math.max(0, (Number.isFinite(parsed) ? parsed : 0) + delta)

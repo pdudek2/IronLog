@@ -697,7 +697,7 @@ describe('WorkoutDetailPage delete action', () => {
     fireEvent.click(screen.getByRole('button', { name: /Wyciskanie/ }))
     expect(screen.getByRole('cell', { name: '176.4' })).toBeInTheDocument()
     await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0]) })
-    expect(screen.getByRole('spinbutton', { name: 'Weight, Wyciskanie, set 1, lbs' })).toHaveValue(176.4)
+    expect(screen.getByRole('spinbutton', { name: 'Weight, Wyciskanie, set 1, lbs' })).toHaveValue('176.4')
     fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
 
     await waitFor(() => expect(mocks.updateWorkout).toHaveBeenCalledOnce())
@@ -718,7 +718,7 @@ describe('WorkoutDetailPage delete action', () => {
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith('Save error: offline'))
     expect(mocks.updateWorkout.mock.calls[0]?.[1].exercises[0].sets[0].weight).toBeCloseTo(45.3592, 4)
-    expect(weightInput).toHaveValue(100)
+    expect(weightInput).toHaveValue('100')
     expect(screen.getAllByRole('button', { name: 'Cancel' })[0]).toBeDisabled()
     mocks.readWorkoutMutationState.mockResolvedValueOnce({ status: 'available', baseline: 'a'.repeat(64), workout, operation: null, projection: 'ready' })
     fireEvent.click(screen.getAllByRole('button', { name: 'Check and retry' })[0])

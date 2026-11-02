@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { WorkoutSet } from '../../store/workoutStore'
 import type { Units } from '../../lib/userProfile'
+import WeightInput from './WeightInput'
 import {
   displayWeightDeltaToKg,
   displayWeightStringToKg,
@@ -68,12 +69,10 @@ export default function WorkoutSetPanel({
             <div className="workout-set-num">
               <Stepper label="weight" step={-2.5} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'weight', displayWeightDeltaToKg(delta, units))} />
               <label>
-                <input
-                  type="number"
-                  inputMode="decimal"
+                <WeightInput
                   placeholder="0"
                   value={kgStringToDisplayWeight(set.weight, units)}
-                  onChange={(event) => onUpdateSet(exerciseIndex, setIndex, 'weight', displayWeightStringToKg(event.target.value, units))}
+                  onValueChange={(value) => onUpdateSet(exerciseIndex, setIndex, 'weight', displayWeightStringToKg(value, units))}
                   onFocus={(event) => event.currentTarget.select()}
                   aria-label={`Weight, ${exerciseName}, set ${setNumber}, ${units}`}
                 />

@@ -8,6 +8,7 @@ import {
   setSetDone,
   updateSetValue,
   applyOverload,
+  prefillFirstSet,
   type SetField,
 } from './setMutations'
 import {
@@ -292,6 +293,10 @@ export class ActiveSessionController {
 
   applyOverload(exerciseId: string, weightKg: number): void {
     this.mutate((session) => applyOverload(session, exerciseId, weightKg))
+  }
+
+  prefillFirstSet(exerciseId: string, weightKg: number, reps: number): void {
+    this.mutate((session) => prefillFirstSet(session, exerciseId, weightKg, reps))
   }
 
   setDone(exerciseId: string, setId: string, done: boolean): void {

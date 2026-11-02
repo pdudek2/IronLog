@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { displayWeightDeltaToKg, displayWeightStringToKg, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 import {
-  addExercise, addSet, adjustSetValue, applyOverload, exerciseHasEnteredSets, MAX_SESSION_EXERCISES,
+  addExercise, addSet, adjustSetValue, applyOverload, exerciseHasEnteredSets, MAX_SESSION_EXERCISES, prefillFirstSet,
   removeExercise, removeSet, setLabel, setSetDone, updateSetValue,
 } from './setMutations'
 import type { ActiveWorkout } from './session'
@@ -101,4 +101,18 @@ test('an applied suggestion changes every open set and leaves finished sets as l
   const next = applyOverload(session, 'bench', 87.5)
   assert.deepEqual(next.exercises[0]!.sets.map((set) => set.weight), ['85', '87.5', '87.5'])
   assert.equal(next.exercises[1]!.sets[0]!.weight, '60')
+})
+
+test('prefill fills only an untouched first set of the added exercise', () => {
+  const session = {
+    exercises: [
+      { clientId: 'new', sets: [{ clientId: 'a', weight: '', reps: '', done: false }] },
+      { clientId: 'typed', sets: [{ clientId: 'b', weight: '', reps: '8', done: false }] },
+    ],
+  } as unknown as ActiveWorkout
+  const next = prefillFirstSet(session, 'new', 82.5, 6)
+  assert.deepEqual(next.exercises[0]!.sets[0], { clientId: 'a', weight: '82.5', reps: '6', done: false })
+  assert.equal(next.exercises[1]!.sets[0]!.weight, '')
+  assert.equal(prefillFirstSet(session, 'typed', 82.5, 6).exercises[1]!.sets[0]!.weight, '')
+  assert.equal(prefillFirstSet(session, 'new', 82.5, 0).exercises[0]!.sets[0]!.reps, '')
 })

@@ -24,6 +24,23 @@ const base = {
 }
 
 describe('WorkoutSetPanel', () => {
+  it('takes a decimal comma, keeps a half-typed value and follows the steppers', () => {
+    const on = handlers()
+    const { rerender } = render(<WorkoutSetPanel {...base} {...on} set={{ weight: '90', reps: '6', done: false }} />)
+    const weight = screen.getByRole('spinbutton', { name: 'Weight, Bench Press, set 3, kg' })
+
+    fireEvent.change(weight, { target: { value: '90,' } })
+    expect(on.onUpdateSet).toHaveBeenLastCalledWith(1, 2, 'weight', '90.')
+    rerender(<WorkoutSetPanel {...base} {...on} set={{ weight: '90.', reps: '6', done: false }} />)
+    expect(weight).toHaveValue('90.')
+
+    fireEvent.change(weight, { target: { value: '90,25kg' } })
+    expect(on.onUpdateSet).toHaveBeenLastCalledWith(1, 2, 'weight', '90.25')
+
+    rerender(<WorkoutSetPanel {...base} {...on} set={{ weight: '92.5', reps: '6', done: false }} />)
+    expect(weight).toHaveValue('92.5')
+  })
+
   it('edits a done set without logging it and returns to the open set', () => {
     const on = handlers()
     const { rerender } = render(<WorkoutSetPanel {...base} {...on} setIndex={0} set={{ weight: '80', reps: '6', done: true }} />)
@@ -62,7 +79,7 @@ describe('WorkoutSetPanel', () => {
     render(<WorkoutSetPanel {...base} {...on} units="lbs" set={{ weight: '60', reps: '6', done: false }} />)
 
     const weightInput = screen.getByRole('spinbutton', { name: 'Weight, Bench Press, set 3, lbs' })
-    expect(weightInput).toHaveValue(132.3)
+    expect(weightInput).toHaveValue('132.3')
     fireEvent.change(weightInput, { target: { value: '100' } })
     expect(on.onUpdateSet).toHaveBeenCalledWith(1, 2, 'weight', '45.3592')
 
@@ -78,7 +95,7 @@ describe('WorkoutSetPanel', () => {
   it('keeps the entered kilogram precision', () => {
     render(<WorkoutSetPanel {...base} {...handlers()} set={{ weight: '82.25', reps: '6', done: false }} />)
 
-    expect(screen.getByRole('spinbutton', { name: 'Weight, Bench Press, set 3, kg' })).toHaveValue(82.25)
+    expect(screen.getByRole('spinbutton', { name: 'Weight, Bench Press, set 3, kg' })).toHaveValue('82.25')
   })
 
   it('offers the next exercise when this one is done', () => {

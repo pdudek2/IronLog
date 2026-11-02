@@ -51,7 +51,7 @@ import {
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { SIGNAL_PATH } from '../../src/shared/authVisual'
-import { EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, setPairLabel, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, setPairLabel, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
 import { useKeyboardReveal } from '../src/useKeyboardReveal'
@@ -347,6 +347,7 @@ interface EditingActions {
   updateSet(exerciseId: string, setId: string, field: 'weight' | 'reps', value: string): void
   adjustSet(exerciseId: string, setId: string, field: 'weight' | 'reps', delta: number): void
   applyOverload(exerciseId: string, weightKg: number): void
+  prefillFirstSet(exerciseId: string, weightKg: number, reps: number): void
   setDone(exerciseId: string, setId: string, done: boolean): void
   addSet(exerciseId: string): void
   removeSet(exerciseId: string, setId: string): void
@@ -512,10 +513,19 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
   const loadRecent = useCallback(() => readRecentWorkouts(uid, 10), [uid])
   const recent = useSessionRead(`recent-exercises:${uid}`, loadRecent, session.exercises.length === 0 || picking)
   const quickPicks = recent.state.status === 'ready' ? recentExercisePicks(recent.state.data) : []
+  const addAndPrefill = (id: string, name: string, source: ExerciseSource) => {
+    const added = editing.addExercise(id, name, source)
+    if (!added) return
+    onGoTo(added)
+    void readExerciseHistory(uid, id, source).then(({ data }) => {
+      const best = bestSet(data.sets)
+      if (best && best.weight > 0) editing.prefillFirstSet(added, best.weight, best.reps)
+    }).catch(() => undefined)
+  }
   const picker = picking && <ExercisePicker userExercises={catalog.state} recent={quickPicks} onRetryUserExercises={catalog.retry} onClose={() => onPicking(false)}
     onSelect={(id, name, source) => {
       onPicking(false)
-      onGoTo(editing.addExercise(id, name, source))
+      addAndPrefill(id, name, source)
     }} />
   if (session.exercises.length === 0) return <View style={styles.exerciseStack}>
     <View accessibilityLabel="No exercises yet" style={styles.emptyWorkout}>
@@ -529,7 +539,7 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
       <View style={styles.quickPickList}>
         {quickPicks.map(({ id, name, source }) => {
           const category = exerciseCatalog.find((exercise) => exercise.id === id)?.category
-          return <Pressable key={`${source}:${id}`} accessibilityRole="button" onPress={() => onGoTo(editing.addExercise(id, name, source))}
+          return <Pressable key={`${source}:${id}`} accessibilityRole="button" onPress={() => addAndPrefill(id, name, source)}
             style={({ pressed }) => [styles.quickPick, pressed && styles.setStepperPressed]}>
             <View style={styles.quickPickCopy}>
               <Text numberOfLines={1} style={styles.quickPickName}>{name}</Text>
@@ -697,7 +707,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const closureRuntime = useClosureRuntime()
   const {
     state, retry, retrySave, discardLocalChanges,
-    updateSet, adjustSet, applyOverload, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, refreshStart,
+    updateSet, adjustSet, applyOverload, prefillFirstSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, refreshStart,
   } = active
   const [sheet, setSheet] = useState<'overview' | 'options' | null>(null)
   const [picking, setPicking] = useState(false)
@@ -838,6 +848,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
     updateSet: guardClosureInteraction(canEditCurrentSession, updateSet),
     adjustSet: guardClosureInteraction(canEditCurrentSession, adjustSet),
     applyOverload: guardClosureInteraction(canEditCurrentSession, applyOverload),
+    prefillFirstSet: guardClosureInteraction(canEditCurrentSession, prefillFirstSet),
     setDone: toggleSet,
     addSet: guardClosureInteraction(canEditCurrentSession, addSet),
     removeSet: guardClosureInteraction(canEditCurrentSession, removeSet),

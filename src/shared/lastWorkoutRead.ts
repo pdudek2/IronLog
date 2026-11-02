@@ -1,4 +1,5 @@
 import { workoutTitle } from '../lib/workoutCopy'
+import { bestSet } from './workoutDisplay'
 import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from './weightUnits'
 
 interface ReadWorkout {
@@ -11,9 +12,7 @@ export function lastWorkoutRead(workout: ReadWorkout, units: WeightUnits) {
   const started = new Date(workout.startedAt)
   const day = `${started.toLocaleDateString('en-US', { weekday: 'short' })} ${started.getDate()}`
   const sets = workout.exercises.flatMap(({ name, sets: exerciseSets }) => exerciseSets.map((set) => ({ ...set, name })))
-  const top = sets.reduce<(typeof sets)[number] | null>((best, set) => (
-    !best || set.weight > best.weight || (set.weight === best.weight && set.reps > best.reps) ? set : best
-  ), null)
+  const top = bestSet(sets)
   const volume = sets.reduce((sum, set) => sum + set.weight * set.reps, 0)
   return {
     eyebrow: `Last workout · ${workoutTitle(workout)}, ${day}`,

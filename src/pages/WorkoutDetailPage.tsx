@@ -26,6 +26,7 @@ import { useUserExercises } from '../hooks/useUserExercises'
 import type { ExerciseSource } from '../store/workoutStore'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
+import WeightInput from '../components/workout/WeightInput'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
 import { ActionFeedback } from '../components/ActionFeedback'
@@ -846,17 +847,13 @@ export default function WorkoutDetailPage() {
                           className={`workout-detail-set-editor-row grid ${mobileEditGrid} gap-1.5`}
                         >
                           <span className="workout-detail-set-index">{setIndex + 1}</span>
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            step="any"
-                            min="0"
-                            value={set.weight === 0 ? '' : kgToDisplayWeight(set.weight, units)}
-                            onChange={(event) => handleSetChange(
+                          <WeightInput
+                            value={set.weight === 0 ? '' : String(kgToDisplayWeight(set.weight, units))}
+                            onValueChange={(value) => handleSetChange(
                               exerciseIndex,
                               setIndex,
                               'weight',
-                              displayWeightStringToKg(event.target.value, units),
+                              displayWeightStringToKg(value, units),
                             )}
                             placeholder="0"
                             onFocus={(event) => event.currentTarget.select()}

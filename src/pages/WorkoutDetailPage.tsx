@@ -1,11 +1,13 @@
 import type { WorkoutMutationGuard } from '../shared/workoutMutation'
 import { ApiRejectedError } from '../lib/authedApi'
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
+import { exerciseSummaryLabel } from '../shared/workoutDisplay'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft,
   Check,
+  ChevronDown,
   X,
 } from 'lucide-react'
 import {
@@ -34,8 +36,6 @@ import WorkoutProjectionStatus, {
 import { Bone, PageSkeleton } from '../components/ui'
 import { WorkoutSteps } from '../components/WorkoutSteps'
 import {
-  DEFAULT_EXERCISE_CATEGORY_COLOR,
-  EXERCISE_CATEGORY_COLORS,
   EXERCISE_CATEGORY_LABELS,
   getEquipmentLabel,
 } from '../lib/exerciseLabels'
@@ -218,6 +218,7 @@ export default function WorkoutDetailPage() {
   const [editedExercises, setEditedExercises] = useState<WorkoutSummary['exercises']>([])
   // What the editor opened with; leaving with anything else asks first, as the plan editor does.
   const [editOpenedWith, setEditOpenedWith] = useState<string | null>(null)
+  const [openExercises, setOpenExercises] = useState<number[]>([])
   const editDirty = isEditing && editOpenedWith !== JSON.stringify({ label: editedLabel, exercises: editedExercises })
   const leaveGuard = useUnsavedChangesGuard(editDirty)
   if (!ownsWorkoutResource) {
@@ -642,10 +643,10 @@ export default function WorkoutDetailPage() {
 
         <header className="workout-detail-session-head">
           <div className="min-w-0">
+            <h1>{heroLabel}</h1>
             <p className="workout-detail-session-kicker">
               {formatDate(displayedWorkout.startedAt)}{focusLabel ? ` · ${focusLabel}` : ''}
             </p>
-            <h1>{heroLabel}</h1>
           </div>
           <div className="workout-detail-desktop-actions" role="group" aria-label="Workout actions">
             {actionButtons}
@@ -755,66 +756,60 @@ export default function WorkoutDetailPage() {
         <div className="workout-exercise-list">
           {displayedWorkout.exercises.map((exercise, exerciseIndex) => {
             const exerciseData = exerciseCatalog.get(exercise.exerciseId ?? '') ?? exerciseMap.get(exercise.exerciseId ?? '')
-            const exerciseColor = EXERCISE_CATEGORY_COLORS[exerciseData?.category ?? '']
-              ?? DEFAULT_EXERCISE_CATEGORY_COLOR
             const categoryLabel = exerciseData?.category
               ? (EXERCISE_CATEGORY_LABELS[exerciseData.category] ?? exerciseData.category)
               : null
             const equipmentLabel = exerciseData?.equipment
               ? getEquipmentLabel(exerciseData.equipment)
               : null
-            const exerciseReps = exercise.sets.reduce((sum, set) => sum + set.reps, 0)
             const exerciseHeadingId = `workout-exercise-${exerciseIndex}`
+            const exerciseOpen = openExercises.includes(exerciseIndex)
+            const taxonomy = [categoryLabel, equipmentLabel].filter(Boolean).join(' · ')
 
             return (
               <motion.section
                 key={`${exercise.exerciseSource ?? 'global'}-${exercise.exerciseId ?? exercise.name}-${exerciseIndex}`}
                 className="workout-exercise-panel"
-                style={{ '--exercise-accent': exerciseColor } as CSSProperties}
                 aria-labelledby={exerciseHeadingId}
                 initial={false}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.18 }}
               >
-                <header className="workout-exercise-header">
-                  <div className="workout-exercise-title-row">
-                    <h2 id={exerciseHeadingId}>{exercise.name}</h2>
-                    <div className="workout-exercise-tools">
-                      <span
-                        className="workout-exercise-sequence"
-                        aria-label={`Exercise ${exerciseIndex + 1} of ${displayedWorkout.exercises.length}`}
+                {isEditing ? (
+                  <header className="workout-exercise-header">
+                    <div className="workout-exercise-title-row">
+                      <h2 id={exerciseHeadingId}>{exercise.name}</h2>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExercise(exerciseIndex)}
+                        className="workout-exercise-remove mobile-touch-target"
+                        aria-label={`Remove exercise ${exercise.name}`}
                       >
-                        {exerciseIndex + 1} / {displayedWorkout.exercises.length}
-                      </span>
-                      {isEditing && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExercise(exerciseIndex)}
-                          className="workout-exercise-remove mobile-touch-target"
-                          aria-label={`Remove exercise ${exercise.name}`}
-                        >
-                          Delete
-                        </button>
-                      )}
+                        Delete
+                      </button>
                     </div>
-                  </div>
-
-                  {(categoryLabel || equipmentLabel) && (
-                    <p className="workout-exercise-taxonomy">
-                      {categoryLabel && <strong>{categoryLabel}</strong>}
-                      {categoryLabel && equipmentLabel && <span aria-hidden="true"> · </span>}
-                      {equipmentLabel}
-                    </p>
-                  )}
-
-                  <p className="workout-exercise-totals">
-                    {exercise.sets.length} {exercise.sets.length === 1 ? 'set' : 'sets'}
-                    <span>{exerciseReps} reps</span>
-                  </p>
-                </header>
+                    {taxonomy && <p className="workout-exercise-taxonomy">{taxonomy}</p>}
+                  </header>
+                ) : (
+                  <button
+                    type="button"
+                    className="workout-exercise-row"
+                    aria-expanded={exerciseOpen}
+                    onClick={() => setOpenExercises(exerciseOpen
+                      ? openExercises.filter((index) => index !== exerciseIndex)
+                      : [...openExercises, exerciseIndex])}
+                  >
+                    <span>
+                      <strong id={exerciseHeadingId}>{exercise.name}</strong>
+                      {taxonomy && <small>{taxonomy}</small>}
+                    </span>
+                    <span className="workout-exercise-row-value tabular-nums">{exerciseSummaryLabel(exercise.sets, units)}</span>
+                    <ChevronDown size={16} aria-hidden="true" />
+                  </button>
+                )}
 
                 <div className="workout-exercise-body">
-                  {!isEditing ? (
+                  {!isEditing ? exerciseOpen && (
                     <table className="workout-detail-set-table" aria-label={`Sets: ${exercise.name}`}>
                       <thead>
                         <tr>

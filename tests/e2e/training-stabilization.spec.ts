@@ -175,6 +175,7 @@ test.describe('training stabilization', () => {
     await expect(historyRow).toContainText('1.1k lbs')
     await historyRow.click()
 
+    await page.locator('.workout-exercise-row').first().click()
     const detailTable = page.getByRole('table', { name: 'Sets: Bench Press' })
     await expect(detailTable.getByRole('columnheader', { name: 'Weight lbs' })).toBeVisible()
     await expect(detailTable.getByRole('cell', { name: '143.3' })).toBeVisible()
@@ -206,6 +207,7 @@ test.describe('training stabilization', () => {
 
     await setProfileUnits(page, 'kg')
     await page.goto(`/workout/${sessionId}`)
+    await page.locator('.workout-exercise-row').first().click()
     await expect(page.getByRole('table', { name: 'Sets: Bench Press' }).getByRole('columnheader', { name: 'Weight kg' })).toBeVisible()
   })
 })

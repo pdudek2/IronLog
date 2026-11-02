@@ -694,6 +694,7 @@ describe('WorkoutDetailPage delete action', () => {
     })
     renderPage()
 
+    fireEvent.click(screen.getByRole('button', { name: /Wyciskanie/ }))
     expect(screen.getByRole('cell', { name: '176.4' })).toBeInTheDocument()
     await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0]) })
     expect(screen.getByRole('spinbutton', { name: 'Weight, Wyciskanie, set 1, lbs' })).toHaveValue(176.4)

@@ -3,6 +3,7 @@ import test from 'node:test'
 import { exerciseMetrics, focusExerciseIndex, focusSetIndex, formatPreviousSet, EQUIPMENT_LABELS } from '../../src/shared/workoutDisplay'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { overloadHintLabel } from '../../src/shared/nextSessionRecommendation'
+import { shouldDismissSheet } from '../../src/shared/sheetMotion'
 import { parseExerciseHistory, parsePreviousSets, startRead, readStateForKey, type ReadState, type ReadResult } from './scopedRead'
 
 const flush = () => new Promise((resolve) => setImmediate(resolve))
@@ -41,6 +42,13 @@ test('the last session fills Last, and three sessions earn the same suggestion a
   assert.equal(parseExerciseHistory([session(85, 2)], 'a', 'bench', 'global', now).suggestion, null)
   assert.equal(parseExerciseHistory([session(88.75, 2), session(86.25, 9), session(85, 16)], 'a', 'bench', 'global', now).suggestion?.suggestedWeight, 91.25)
   assert.deepEqual(parseExerciseHistory([], 'a', 'bench', 'global', now), { sets: [], suggestion: null })
+})
+
+test('a sheet closes on a long or fast pull and springs back otherwise', () => {
+  assert.equal(shouldDismissSheet(97, 0), true)
+  assert.equal(shouldDismissSheet(40, 501), true)
+  assert.equal(shouldDismissSheet(96, 500), false)
+  assert.equal(shouldDismissSheet(-200, -900), false)
 })
 
 test('auxiliary reads mask old identities and reject late completion after disposal', async () => {

@@ -20,6 +20,7 @@ import { ActionFeedback } from '../components/ActionFeedback'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
 import ExercisePicker from '../components/ExercisePicker'
+import BottomSheet from '../components/BottomSheet'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Bone, PageSkeleton } from '../components/ui'
 import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
@@ -238,6 +239,7 @@ export default function WorkoutPage() {
   const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setIndex: number } | null>(null)
   const [manualExpandedExerciseClientId, setManualExpandedExerciseClientId] = useState<string | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const [sessionSheet, setSessionSheet] = useState<'overview' | 'options' | null>(null)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [pendingFinish, setPendingFinish] = useState<{ uid: string; sessionId: string } | null>(null)
   const pendingFinishMatches = pendingFinish !== null
@@ -991,29 +993,12 @@ export default function WorkoutPage() {
           <button
             type="button"
             className="workout-mobile-options-trigger"
-            popoverTarget="workout-mobile-options"
+            onClick={() => setSessionSheet('options')}
             aria-label="More workout options"
-            aria-haspopup="menu"
+            aria-haspopup="dialog"
           >
             <Ellipsis size={20} aria-hidden="true" />
           </button>
-          <div
-            id="workout-mobile-options"
-            className="workout-mobile-options-menu"
-            popover="auto"
-            role="menu"
-            aria-label="Workout options"
-          >
-            <button
-              type="button"
-              role="menuitem"
-              popoverTarget="workout-mobile-options"
-              popoverTargetAction="hide"
-              onClick={handleDiscard}
-            >
-              Discard workout
-            </button>
-          </div>
           <motion.button
             type="button"
             onClick={handleFinish}
@@ -1208,6 +1193,8 @@ export default function WorkoutPage() {
                           onAddSet={handleAddSet}
                           onApplySuggestion={handleApplySuggestion}
                           onDismissSuggestion={handleDismissSuggestion}
+                          onOpenOverview={() => setSessionSheet('overview')}
+                          drawnSetIndex={lastLogged?.exerciseId === exerciseClientId ? lastLogged.setIndex : null}
                           onExpandExercise={(clientId) => setManualExpandedExerciseClientId(
                             clientId === expandedExerciseClientId ? '' : clientId,
                           )}
@@ -1238,19 +1225,64 @@ export default function WorkoutPage() {
             )}
           </div>
 
-          <div className="workout-mobile-label-row lg:hidden">
-            <p className="mb-2 text-xs uppercase" style={{ color: 'var(--muted)' }}>
-              Session type
-            </p>
-            <LabelChips
-              activeLabel={active.label ?? ''}
-              onToggle={(label) => setLabel(active.label === label ? '' : label)}
-            />
-          </div>
         </div>
       </div>
 
       {!isDesktop && setPanel}
+
+      <AnimatePresence>
+        {sessionSheet && (
+          <BottomSheet
+            key="session-sheet"
+            title={sessionSheet === 'overview' ? active.label || 'This workout' : 'Workout options'}
+            onClose={() => setSessionSheet(null)}
+          >
+            {sessionSheet === 'overview' ? (
+              <>
+                {active.exercises.map((exercise, exerciseIndex) => {
+                  const clientId = getExerciseClientId(exercise, exerciseIndex)
+                  return (
+                    <button
+                      key={clientId}
+                      type="button"
+                      className="bottom-sheet-row"
+                      aria-current={clientId === expandedExerciseClientId}
+                      onClick={() => { setManualExpandedExerciseClientId(clientId); setSessionSheet(null) }}
+                    >
+                      <span>{exercise.name}</span>
+                      <small className="tabular-nums">{exercise.sets.filter((set) => set.done).length} of {exercise.sets.length}</small>
+                    </button>
+                  )
+                })}
+                <button type="button" className="bottom-sheet-row" onClick={() => { setSessionSheet(null); setShowPicker(true) }}>
+                  <span>Add exercise</span>
+                  <Plus size={16} aria-hidden="true" />
+                </button>
+              </>
+            ) : (
+              <>
+                <button type="button" className="bottom-sheet-row" onClick={() => { setSessionSheet(null); setShowPicker(true) }}>
+                  <span>Add exercise</span>
+                  <Plus size={16} aria-hidden="true" />
+                </button>
+                {active.exercises.length > 0 && (
+                  <button type="button" className="bottom-sheet-row" onClick={() => setSessionSheet('overview')}>
+                    <span>All exercises</span>
+                  </button>
+                )}
+                <p className="bottom-sheet-label">Session type</p>
+                <LabelChips
+                  activeLabel={active.label ?? ''}
+                  onToggle={(label) => setLabel(active.label === label ? '' : label)}
+                />
+                <button type="button" className="bottom-sheet-row" data-tone="warning" onClick={() => { setSessionSheet(null); handleDiscard() }}>
+                  <span>Discard workout</span>
+                </button>
+              </>
+            )}
+          </BottomSheet>
+        )}
+      </AnimatePresence>
 
       {showPicker && (
         <ExercisePicker

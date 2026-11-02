@@ -38,9 +38,9 @@ export async function openWorkoutDiscardDialog(page: Page): Promise<Locator> {
   const mobileOptions = page.getByRole('button', { name: 'More workout options' })
   if (await mobileOptions.isVisible().catch(() => false)) {
     await mobileOptions.click()
-    const menu = page.getByRole('menu', { name: 'Workout options' })
-    await expect(menu).toBeVisible()
-    await menu.getByRole('menuitem', { name: 'Discard workout' }).click()
+    const sheet = page.getByRole('dialog', { name: 'Workout options' })
+    await expect(sheet).toBeVisible()
+    await sheet.getByRole('button', { name: 'Discard workout' }).click()
   } else {
     await page.getByRole('button', { name: 'Cancel', exact: true }).first().click()
   }

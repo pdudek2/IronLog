@@ -145,12 +145,12 @@ test.describe('Progress analytics', () => {
 
     const picker = page.getByRole('combobox', { name: 'Chart exercise' })
     await expect(picker).toHaveValue(/bench/)
-    await expect(page.locator('.recharts-line')).toHaveCount(1)
+    await expect(page.locator('.recharts-area')).toHaveCount(1)
     await expect(picker.locator('option:checked')).toHaveText('Phase 7 Bench Press')
     await expect(page.getByLabel('Selected exercise trend')).toContainText('Latest 80 kg')
 
     await picker.selectOption({ label: 'Phase 7 Squat' })
-    await expect(page.locator('.recharts-line')).toHaveCount(1)
+    await expect(page.locator('.recharts-area')).toHaveCount(1)
     await expect(page.getByLabel('Selected exercise trend')).toContainText('Latest 110 kg')
   })
 
@@ -166,7 +166,7 @@ test.describe('Progress analytics', () => {
     })
     await expect(strengthPanel.getByText('Chart needs 2 more days with recorded weight.')).toBeVisible()
     await expect(strengthPanel.getByLabel('1 of 3 days for the chart')).toBeVisible()
-    await expect(strengthPanel.locator('.recharts-line')).toHaveCount(0)
+    await expect(strengthPanel.locator('.recharts-area')).toHaveCount(0)
     await expect(page.getByLabel('Selected exercise trend')).toHaveCount(0)
   })
 

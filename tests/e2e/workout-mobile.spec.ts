@@ -436,9 +436,9 @@ test.describe('Active workout shell reduction', () => {
     await expectMinHitArea(optionsButton, 'Workout options')
     await optionsButton.click()
 
-    const menu = page.getByRole('menu', { name: 'Workout options' })
-    await expect(menu).toBeVisible()
-    const discardItem = menu.getByRole('menuitem', { name: 'Discard workout' })
+    const sheet = page.getByRole('dialog', { name: 'Workout options' })
+    await expect(sheet).toBeVisible()
+    const discardItem = sheet.getByRole('button', { name: 'Discard workout' })
     await expect(discardItem).toHaveCSS('color', 'rgb(240, 167, 90)')
     await discardItem.click()
     const dialog = page.getByRole('dialog', { name: 'Discard workout?' })
@@ -547,11 +547,15 @@ test.describe('Active workout shell reduction', () => {
       inputRadius: '0px',
     })
 
-    await page.locator('.workout-label-chips > button').first().click()
-    const activeLabel = page.locator('.workout-label-chips > button[aria-pressed="true"]')
+    await page.getByRole('button', { name: 'More workout options' }).click()
+    const options = page.getByRole('dialog', { name: 'Workout options' })
+    await options.locator('.workout-label-chips > button').first().click()
+    const activeLabel = options.locator('.workout-label-chips > button[aria-pressed="true"]')
     await expect(activeLabel).toHaveCount(1)
     await expect(activeLabel).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)')
     await expect(activeLabel).toHaveCSS('border-radius', '0px')
+    await options.getByRole('button', { name: 'Close' }).click()
+    await expect(options).toHaveCount(0)
 
     await fillCurrentSet(page, '60', '8')
     const weightInput = panel.getByRole('spinbutton', { name: 'Weight, Squat, set 1, kg' })

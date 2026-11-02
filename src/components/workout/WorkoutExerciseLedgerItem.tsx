@@ -1,5 +1,5 @@
 import React from 'react'
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Check, ChevronDown, Plus, Trash2, X } from 'lucide-react'
 import OverloadHint from '../OverloadHint'
 import { useWorkoutStore, type WorkoutExercise } from '../../store/workoutStore'
@@ -36,6 +36,8 @@ interface WorkoutExerciseLedgerItemProps {
   onAddSet: (exerciseIndex: number, button: HTMLButtonElement) => void
   onApplySuggestion: (exerciseIndex: number, hintKey: string, weight: number) => void
   onDismissSuggestion: (hintKey: string) => void
+  onOpenOverview: () => void
+  drawnSetIndex: number | null
   onExpandExercise: (exerciseClientId: string) => void
   onRemoveExercise: (exerciseIndex: number) => void
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void
@@ -49,6 +51,34 @@ function selectExerciseByIdentity(state: ReturnType<typeof useWorkoutStore.getSt
   return state.active?.exercises.find((exercise) => exercise.clientId === exerciseClientId) ?? null
 }
 
+function SetTick({ draw }: { draw: boolean }) {
+  const reduced = useReducedMotion()
+  if (!draw || reduced) return <Check size={16} />
+  return (
+    <motion.svg
+      width={16}
+      height={16}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      initial={{ scale: 0.6, opacity: 0 }}
+      animate={{ scale: [0.6, 1.18, 1], opacity: 1 }}
+      transition={{ scale: { duration: 0.36, ease: [0.16, 1, 0.3, 1] }, opacity: { duration: 0.12 } }}
+    >
+      <motion.path
+        d="M20 6 9 17l-5-5"
+        initial={{ pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        transition={{ duration: 0.28, ease: [0.65, 0, 0.35, 1] }}
+      />
+    </motion.svg>
+  )
+}
+
 const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem({
   exerciseAccent,
   exerciseClientId,
@@ -59,6 +89,8 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   equipmentLabel,
   focusSetIndex,
   hintDismissed,
+  onOpenOverview,
+  drawnSetIndex,
   hintKey,
   isCollapsible,
   isExpanded,
@@ -113,6 +145,12 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.3, ease: 'easeOut' }}
     >
+      {isCollapsible && isExpanded && (
+        <button type="button" className="workout-exercise-position" aria-haspopup="dialog" onClick={onOpenOverview}>
+          Exercise {exerciseIndex + 1} of {exerciseCount}
+          <ChevronDown size={14} aria-hidden="true" />
+        </button>
+      )}
       <div className="workout-exercise-head mb-4 flex items-start justify-between gap-2">
         {isCollapsible ? (
           <button
@@ -124,7 +162,6 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
             aria-label={`${isExpanded ? 'Collapse' : 'Expand'} exercise ${exercise.name}`}
           >
             <span className="min-w-0 text-left">
-              {isExpanded && <span className="workout-exercise-position">Exercise {exerciseIndex + 1} of {exerciseCount}</span>}
               {(categoryLabel || equipmentLabel) && (
                 <span className="workout-exercise-meta block">
                   {categoryLabel && (
@@ -216,7 +253,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
                     ? `Unmark set ${setIndex + 1} for ${exercise.name}`
                     : `Mark set ${setIndex + 1} for ${exercise.name}`}
                 >
-                  {set.done ? <Check size={16} /> : setIndex + 1}
+                  {set.done ? <SetTick draw={drawnSetIndex === setIndex} /> : setIndex + 1}
                 </motion.button>
                 <span
                   className="workout-set-previous tabular-nums"

@@ -191,6 +191,14 @@ test.describe('Phase 4 mobile ergonomics', () => {
     if (await startSession.isVisible().catch(() => false)) {
       await startSession.click()
     }
-    await expectMinHitArea(page.getByRole('button', { name: 'Push', exact: true }), 'workout type')
+    const finish = await page.getByRole('button', { name: 'Finish' }).boundingBox()
+    expect((finish?.x ?? 0) + (finish?.width ?? 0)).toBeLessThanOrEqual(320)
+    await page.getByRole('button', { name: 'More workout options' }).click()
+    await expectMinHitArea(
+      page.getByRole('dialog', { name: 'Workout options' }).getByRole('button', { name: 'Push', exact: true }),
+      'workout type',
+    )
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'Workout options' })).toHaveCount(0)
   })
 })

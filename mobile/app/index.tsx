@@ -19,11 +19,10 @@ import {
   Text,
   TextInput,
   Vibration,
-  useWindowDimensions,
   View,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import Svg, { Circle, Defs, LinearGradient, Path, Stop, Text as SvgText } from 'react-native-svg'
+import Svg, { Circle, Path } from 'react-native-svg'
 
 import { exercises as exerciseCatalog } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
@@ -50,7 +49,6 @@ import {
   storedValueToSetInput,
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { SIGNAL_PATH } from '../../src/shared/authVisual'
 import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
@@ -92,72 +90,8 @@ const AnimatedPath = Animated.createAnimatedComponent(Path)
 // The discard whose result already decided where to land, so a later visit to `/` is not sent Home again.
 const handledDiscard = { sessionId: '' }
 
-function SignalBackdrop({ focused }: { focused: boolean }) {
-  const path = useRef<Path>(null)
-  const [length, setLength] = useState(0)
-  const [reduced, setReduced] = useState(true)
-  const [active, setActive] = useState(AppState.currentState === 'active')
-  const lead = useRef(new Animated.Value(0)).current
-  const echo = useRef(new Animated.Value(0)).current
-  useEffect(() => {
-    let mounted = true
-    void AccessibilityInfo.isReduceMotionEnabled().then((value) => { if (mounted) setReduced(value) })
-    const accessibility = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduced)
-    const lifecycle = AppState.addEventListener('change', (state) => setActive(state === 'active'))
-    return () => { mounted = false; accessibility.remove(); lifecycle.remove() }
-  }, [])
-  useEffect(() => {
-    lead.setValue(0)
-    echo.setValue(0)
-    if (reduced || !active || !length) return
-    const duration = focused ? 2400 : 5400
-    const animation = Animated.parallel([
-      Animated.timing(lead, { toValue: 1, delay: focused ? 80 : 480, duration, easing: Easing.linear, useNativeDriver: false }),
-      Animated.timing(echo, { toValue: 1, delay: focused ? 0 : 360, duration, easing: Easing.linear, useNativeDriver: false }),
-    ])
-    animation.start()
-    return () => animation.stop()
-  }, [focused, reduced, active, length, lead, echo])
-  const traceOpacity = (value: Animated.Value, peak: number) => value.interpolate({
-    inputRange: [0, focused ? 0.12 : 0.10, focused ? 0.76 : 0.72, 1], outputRange: [0, peak, peak, 0],
-  })
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      pointerEvents="none"
-      style={[styles.signalBackdrop, focused && { opacity: 0.28 }, focused && !reduced && styles.signalFocused]}
-    >
-      <Svg onLayout={() => requestAnimationFrame(() => setLength(path.current?.getTotalLength() ?? 0))} height="100%" preserveAspectRatio="none" viewBox="0 0 1200 240" width="100%">
-        <Defs>
-          <LinearGradient id="auth-signal-stroke" x1="0" x2="0" y1="46" y2="196" gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor={colors.accentText} />
-            <Stop offset="0.52" stopColor={colors.accent} />
-            <Stop offset="1" stopColor={colors.recovery} />
-          </LinearGradient>
-          <LinearGradient id="auth-signal-fill" x1="0" x2="0" y1="46" y2="240" gradientUnits="userSpaceOnUse">
-            <Stop offset="0" stopColor={colors.accent} stopOpacity="0.15" />
-            <Stop offset="1" stopColor={colors.accent} stopOpacity="0" />
-          </LinearGradient>
-        </Defs>
-        <Path d={`${SIGNAL_PATH}V240H-20Z`} fill="url(#auth-signal-fill)" opacity="0.72" />
-        <Path ref={path} d={SIGNAL_PATH} fill="none" stroke="url(#auth-signal-stroke)" strokeWidth="3" opacity="0.62" />
-        {length > 0 && !reduced && <>
-          <AnimatedPath d={SIGNAL_PATH} fill="none" stroke="rgba(244, 238, 232, 0.312)" strokeWidth={9} strokeLinecap="round"
-            strokeDasharray={[length * 0.11, length * 0.89]} strokeDashoffset={echo.interpolate({ inputRange: [0, 1], outputRange: [length, 0] })}
-            opacity={traceOpacity(echo, focused ? 0.42 : 0.32)} />
-          <AnimatedPath d={SIGNAL_PATH} fill="none" stroke="rgba(244, 238, 232,0.94)" strokeWidth={4} strokeLinecap="round"
-            strokeDasharray={[length * 0.075, length * 0.925]} strokeDashoffset={lead.interpolate({ inputRange: [0, 1], outputRange: [length, 0] })}
-            opacity={traceOpacity(lead, focused ? 1 : 0.92)} />
-        </>}
-      </Svg>
-    </View>
-  )
-}
-
 function LoginForm() {
   const router = useRouter()
-  const { fontScale } = useWindowDimensions()
   const passwordInput = useRef<TextInput>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -198,30 +132,21 @@ function LoginForm() {
         contentContainerStyle={styles.loginContent}
         keyboardShouldPersistTaps="handled"
       >
-        <SignalBackdrop focused={focusedField !== null} />
-        <View style={styles.brandRow}>
-          <View style={styles.brandMark}>
-            <BrandMark width={21} />
+        <View style={styles.loginCover}>
+          <Image source={covers.push} style={styles.loginCoverImage} />
+          <View pointerEvents="none" style={styles.loginCoverFade} />
+          <View style={styles.loginBrand}>
+            <View style={styles.brandMark}>
+              <BrandMark width={21} />
+            </View>
+            <Text style={styles.brandName}>SHEAR</Text>
           </View>
-          <Text style={styles.brandName}>SHEAR</Text>
+          <View style={styles.loginCoverCopy}>
+            <Text accessibilityRole="header" style={styles.loginTitle}>Sign in</Text>
+            <Text style={styles.loginLead}>Every set builds on the last.</Text>
+          </View>
+          <View pointerEvents="none" style={styles.loginSeam} />
         </View>
-        <View accessible accessibilityRole="header" accessibilityLabel="Find your training rhythm.">
-          <Text style={styles.hero}>Find your{`\n`}training</Text>
-          {/* Native Text preserves Android's nonlinear accessibility scaling; SVG does not. */}
-          {fontScale !== 1 ? <Text style={styles.heroAccent}>rhythm.</Text> : <Svg height={34.496} width={160} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-            <Defs>
-              <LinearGradient id="rhythm" x1="-160%" x2="100%" y1="0%" y2="100%">
-                <Stop offset="0" stopColor={colors.accentText} /><Stop offset="0.38" stopColor={colors.accentText} />
-                <Stop offset="0.49" stopColor="#fbf7f2" /><Stop offset="0.60" stopColor={colors.accentText} />
-                <Stop offset="1" stopColor="#f4eee8" />
-              </LinearGradient>
-            </Defs>
-            <SvgText x={9.152} y={28.4} fill="url(#rhythm)" fontFamily="InstrumentSans_700Bold" fontSize={35.2} letterSpacing={-1.584}>rhythm.</SvgText>
-          </Svg>}
-        </View>
-        <Text style={styles.lead}>Every set builds on the last.</Text>
-        <View style={[styles.formDivider, focusedField !== null && styles.formDividerFocused]} />
-        <Text accessibilityRole="header" style={styles.formTitle}>Sign in</Text>
         <View style={styles.form}>
           <Text style={styles.label}>Email</Text>
           <View style={[styles.inputSurface, focusedField === 'email' && styles.inputFocused]}>
@@ -1059,12 +984,16 @@ export default function IndexScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
-  loginShell: {
-    experimental_backgroundImage: 'radial-gradient(ellipse 672px 544px at 12% 12%, rgba(244, 238, 232, 0.084), transparent 72%), radial-gradient(ellipse 736px 608px at 86% 78%, rgba(244, 238, 232, 0.066), transparent 74%), linear-gradient(122deg, #181412 0%, #0d0b0a 52%, #0f0d0c 100%)',
-  },
-  loginContent: { flexGrow: 1, paddingBottom: 24, paddingHorizontal: 16, paddingTop: 20, position: 'relative' },
-    signalBackdrop: { height: 288, left: '-6%', opacity: 0.2, overflow: 'hidden', position: 'absolute', top: 544, transform: [{ rotate: '-4deg' }, { scaleY: 1.02 }], width: '112%' },
-  brandRow: { alignItems: 'center', flexDirection: 'row', marginBottom: 18.4 },
+  loginShell: { backgroundColor: colors.background },
+  loginContent: { flexGrow: 1, paddingBottom: 24, paddingHorizontal: 16 },
+  loginCover: { height: 304, marginHorizontal: -16, overflow: 'hidden' },
+  loginCoverImage: { height: '100%', resizeMode: 'cover', width: '100%' },
+  loginCoverFade: { ...StyleSheet.absoluteFill, experimental_backgroundImage: `linear-gradient(180deg, transparent 40%, ${colors.background}b8 72%, ${colors.background} 100%)` },
+  loginBrand: { alignItems: 'center', flexDirection: 'row', left: 16, position: 'absolute', top: 16 },
+  loginCoverCopy: { bottom: 16, left: 16, position: 'absolute', right: 16 },
+  loginTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 36, lineHeight: 40, letterSpacing: -1 },
+  loginLead: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 4 },
+  loginSeam: { backgroundColor: colors.seam, bottom: 0, height: 2.5, left: 16, position: 'absolute', right: 16 },
   brandMark: {
     alignItems: 'center',
     backgroundColor: 'rgba(20, 17, 16, 0.68)',
@@ -1080,22 +1009,15 @@ const styles = StyleSheet.create({
   // Same box as the web loader (.puls-loader).
   loaderMark: { height: 44, width: 44 },
   brandName: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 15, marginLeft: 12 },
-  hero: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 35.2, letterSpacing: 0, lineHeight: 34.496 },
-  heroAccent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 35.2, letterSpacing: -1.584, lineHeight: 34.496, marginLeft: 9.152 },
-  lead: { color: 'rgba(244, 238, 232, 0.7)', fontFamily: 'InstrumentSans_400Regular', fontSize: 14.4, lineHeight: 22.3, marginTop: 12 },
-  formDivider: { backgroundColor: colors.lineStrong, height: 1, marginBottom: 20, marginTop: 20 },
-  formDividerFocused: { backgroundColor: 'rgba(244, 238, 232, 0.5)' },
-  formTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 29.6, lineHeight: 29.6 },
-  form: { marginTop: 51.84 },
+  form: { marginTop: 24 },
   label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, lineHeight: 16, marginBottom: 4 },
   passwordLabel: { marginTop: 16 },
   inputSurface: {
-    backgroundColor: 'rgba(13, 11, 10, 0.16)',
-    experimental_backgroundImage: 'linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.03))',
-    borderColor: 'rgba(244, 238, 232, 0.13)',
+    backgroundColor: 'rgba(255, 255, 255, 0.045)',
+    borderColor: colors.line,
     borderRadius: 8,
     borderWidth: 1,
-    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.075), 0 1px 0 rgba(255, 255, 255, 0.035)',
+    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.03)',
   },
   input: {
     color: colors.text,
@@ -1145,7 +1067,6 @@ const styles = StyleSheet.create({
   lookupText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   lookupAction: { minHeight: 44, justifyContent: 'center' },
   setCellDone: { opacity: 0.7 },
-  signalFocused: { opacity: 0.28, transform: [{ translateX: -9.6 }, { translateY: -5.6 }, { rotate: '-3deg' }, { scaleY: 1.08 }] },
   staleNotice: { backgroundColor: colors.surface, borderColor: colors.lineStrong, borderWidth: 1, borderRadius: 16, marginHorizontal: 16, marginTop: 14, paddingHorizontal: 12, paddingVertical: 10 },
   staleTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
   staleCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, marginTop: 3 },

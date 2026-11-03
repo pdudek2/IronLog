@@ -1,3 +1,4 @@
+export const loadLandingPage = () => import('../pages/LandingPage')
 export const loadLoginPage = () => import('../pages/LoginPage')
 export const loadLogoutPage = () => import('../pages/LogoutPage')
 export const loadRegisterPage = () => import('../pages/RegisterPage')

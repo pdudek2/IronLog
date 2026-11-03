@@ -8,7 +8,7 @@ function isProgressPageModule(url: string): boolean {
 }
 
 test.describe('Protected application shell', () => {
-  test('routes authenticated and anonymous root visits through the private boundary', async ({
+  test('sends signed-in root visits to the app and anonymous ones to the landing', async ({
     page,
     observedContextFactory,
   }) => {
@@ -20,6 +20,8 @@ test.describe('Protected application shell', () => {
     })
     const anonymousPage = await anonymousContext.newPage()
     await anonymousPage.goto('/')
+    await expect(anonymousPage.getByRole('heading', { name: 'Train with a plan. Keep every set.' })).toBeVisible({ timeout: 15_000 })
+    await anonymousPage.goto('/dashboard')
     await expect(anonymousPage).toHaveURL('/login', { timeout: 15_000 })
   })
 

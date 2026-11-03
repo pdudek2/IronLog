@@ -20,6 +20,7 @@ import {
   loadExerciseDetailPage,
   loadExercisesPage,
   loadHistoryPage,
+  loadLandingPage,
   loadLoginPage,
   loadLogoutPage,
   loadNotFoundPage,
@@ -33,6 +34,7 @@ import {
   loadWorkoutPage,
 } from './pageLoaders'
 
+const LandingPage = lazy(loadLandingPage)
 const LoginPage = lazy(loadLoginPage)
 const LogoutPage = lazy(loadLogoutPage)
 const RegisterPage = lazy(loadRegisterPage)
@@ -152,13 +154,13 @@ function RootRoute() {
 const router = createBrowserRouter(createRoutesFromElements(
   <Route element={<RootRoute />}>
     <Route element={<PublicRouteOutlet />}>
+      <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
     </Route>
     <Route element={<PrivateRouteOutlet />}>
       <Route path="/logout" element={<LogoutRoute />} />
       <Route element={<ProfileRouteOutlet />}>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />

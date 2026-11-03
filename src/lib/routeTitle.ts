@@ -1,4 +1,5 @@
 const TITLES: Array<[RegExp, string]> = [
+  [/^\/$/, 'Strength training log'],
   [/^\/login$/, 'Sign in'],
   [/^\/register$/, 'Create account'],
   [/^\/onboarding$/, 'Welcome'],

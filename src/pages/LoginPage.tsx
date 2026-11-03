@@ -61,11 +61,7 @@ export default function LoginPage() {
   return (
     <AuthShell
       title="Sign in"
-      subtitle={(
-        <Link to="/register" className="auth-account-link">
-          Create account
-        </Link>
-      )}
+      subtitle="Every set builds on the last."
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-describedby={describedBy}>
         <div className="flex flex-col gap-1">
@@ -114,9 +110,12 @@ export default function LoginPage() {
 
         {resetNotice && <p id="login-reset-notice" role="status" className="text-sm" style={{ color: 'var(--success)' }}>{resetNotice}</p>}
 
-        <Button type="submit" loading={loading} disabled={resetLoading} className="auth-instrument-submit mt-2 w-full">
+        <Button type="submit" loading={loading} disabled={resetLoading} className="auth-submit mt-2 w-full">
           Sign in
         </Button>
+        <Link to="/register" className="auth-alt">
+          Create account
+        </Link>
       </form>
     </AuthShell>
   )

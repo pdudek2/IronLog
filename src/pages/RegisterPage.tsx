@@ -27,11 +27,7 @@ export default function RegisterPage() {
   return (
     <AuthShell
       title="Create account"
-      subtitle={(
-        <Link to="/login" className="auth-account-link transition-opacity hover:opacity-80">
-          Back to sign in
-        </Link>
-      )}
+      subtitle="Plans, sessions and progress in one log."
     >
       <form onSubmit={handleSubmit} className="flex flex-col gap-4" aria-describedby={error ? 'register-form-error' : undefined}>
         <div className="flex flex-col gap-1">
@@ -67,9 +63,12 @@ export default function RegisterPage() {
 
         {error && <p id="register-form-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
 
-        <Button type="submit" loading={loading} className="auth-instrument-submit mt-2 w-full">
+        <Button type="submit" loading={loading} className="auth-submit mt-2 w-full">
           Sign up
         </Button>
+        <Link to="/login" className="auth-alt">
+          Back to sign in
+        </Link>
       </form>
     </AuthShell>
   )

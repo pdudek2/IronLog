@@ -8,26 +8,33 @@ interface AuthShellProps {
   children: ReactNode
 }
 
+export function BrandLink() {
+  return (
+    <Link to="/" className="auth-brand">
+      <span className="auth-brand-mark">
+        <BrandMark />
+      </span>
+      SHEAR
+    </Link>
+  )
+}
+
 export default function AuthShell({ title, subtitle, children }: AuthShellProps) {
   return (
     <div className="auth-shell">
-      <div className="auth-cover">
-        <img src="/covers/push.jpg" alt="" />
-        <Link to="/" className="auth-brand">
-          <span className="auth-brand-mark">
-            <BrandMark />
-          </span>
-          SHEAR
-        </Link>
-        <div className="auth-cover-copy">
-          <h1>{title}</h1>
-          <p>{subtitle}</p>
-        </div>
-        <i className="auth-seam" aria-hidden="true" />
-      </div>
+      <header className="landing-bar">
+        <BrandLink />
+      </header>
 
       <main className="auth-main">
-        {children}
+        <div className="auth-head">
+          <h1>{title}</h1>
+          <p>{subtitle}</p>
+          <i className="auth-seam" aria-hidden="true" />
+        </div>
+        <div className="auth-panel">
+          {children}
+        </div>
       </main>
     </div>
   )

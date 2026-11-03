@@ -69,7 +69,7 @@ export default function LandingDemo() {
   const current = selected ?? openSetIndex
   const panelSet = sets[current] ?? null
   const restLeft = restEndsAt === null ? 0 : Math.max(0, restEndsAt - now)
-  const doneWeights = sets.filter((set) => set.done).map((set) => Number(set.weight))
+  const doneWeights = sets.filter((set) => set.done).map((set) => Number(set.weight)).filter((weight) => weight > 0)
   const today = doneWeights.length ? Math.max(...doneWeights) : null
 
   useEffect(() => {

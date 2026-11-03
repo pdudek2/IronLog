@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { ChevronRight, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronRight, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { getRecords } from '../lib/progressService'
@@ -118,58 +118,27 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
     }
   }
 
-  const selectStyle = {
-    background: 'var(--input-bg)',
-    border: '1px solid var(--border)',
-    color: 'var(--text)',
-    borderRadius: '0.75rem',
-    padding: '0.5rem 0.75rem',
-    width: '100%',
-    fontSize: '0.875rem',
-    appearance: 'none' as const,
-  }
-
   return (
-    <div
-      className="fixed inset-0 z-50 px-0 py-0 sm:px-6 sm:py-6"
-      style={{ background: 'rgba(8, 6, 5,0.74)', backdropFilter: 'blur(10px)' }}
-      onClick={onClose}
-    >
+    <div className="exercise-form-layer" onClick={onClose}>
       <div
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className="surface-panel flex flex-col overflow-hidden rounded-t-[var(--radius-xl)] sm:mx-auto sm:rounded-[var(--radius-xl)] sm:max-w-lg"
-        style={{ maxHeight: '90dvh', marginTop: 'auto' }}
+        className="exercise-form"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div
-          className="flex items-center gap-3 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top,0px))] sm:px-5 sm:pt-4"
-          style={{ borderBottom: '1px solid var(--border)' }}
-        >
-          <button
-            onClick={onClose}
-            className="mobile-touch-target flex h-8 w-8 flex-none items-center justify-center rounded-[var(--radius-md)] transition-opacity hover:opacity-70"
-            style={{ color: 'var(--muted)' }}
-            aria-label="Close form"
-          >
-            <X size={16} />
+        <header className="exercise-form-head">
+          <h2 id={titleId}>{mode === 'edit' ? 'Edit custom exercise' : 'Add custom exercise'}</h2>
+          <button type="button" onClick={onClose} aria-label="Close form">
+            <X size={18} aria-hidden="true" />
           </button>
-          <p id={titleId} className="text-sm font-semibold text-white">
-            {mode === 'edit' ? 'Edit custom exercise' : 'Add custom exercise'}
-          </p>
-        </div>
+        </header>
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-5 sm:px-5 space-y-5">
-          {/* Name */}
-          <div>
-            <label htmlFor={nameInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Name *
-            </label>
+        <form onSubmit={handleSubmit} className="exercise-form-body">
+          <div className="exercise-form-field">
+            <label htmlFor={nameInputId}>Name</label>
             <input
               id={nameInputId}
               ref={nameInputRef}
@@ -183,108 +152,72 @@ function CreateExerciseForm({ mode, initialValue, onSubmit, onDelete, onClose }:
               aria-describedby={error?.field === 'name' ? errorId : undefined}
               placeholder="E.g. Banded Pull-apart"
               maxLength={60}
-              style={{
-                background: 'var(--input-bg)',
-                border: '1px solid var(--border)',
-                color: 'var(--text)',
-                borderRadius: '0.75rem',
-                padding: '0.5rem 0.75rem',
-                width: '100%',
-                fontSize: '0.875rem',
-              }}
             />
             {error?.field === 'name' && (
-              <p id={errorId} role="alert" className="mt-2 text-xs" style={{ color: 'var(--danger)' }}>
-                {error.message}
-              </p>
+              <p id={errorId} role="alert" className="exercise-form-error">{error.message}</p>
             )}
           </div>
 
-          {/* Category */}
-          <div>
-            <label htmlFor={categoryInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Exercise category
-            </label>
-            <select id={categoryInputId} value={category} onChange={(e) => setCategory(e.target.value as Category)} style={selectStyle}>
-              {(Object.keys(CATEGORY_LABELS) as (Category | 'all')[])
-                .filter((c) => c !== 'all')
-                .map((c) => (
-                  <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
-                ))}
-            </select>
+          <div className="exercise-form-pair">
+            <div className="exercise-form-field">
+              <label htmlFor={categoryInputId}>Category</label>
+              <span className="exercise-form-select">
+                <select id={categoryInputId} value={category} onChange={(e) => setCategory(e.target.value as Category)}>
+                  {(Object.keys(CATEGORY_LABELS) as (Category | 'all')[])
+                    .filter((c) => c !== 'all')
+                    .map((c) => (
+                      <option key={c} value={c}>{CATEGORY_LABELS[c]}</option>
+                    ))}
+                </select>
+                <ChevronDown size={14} aria-hidden="true" />
+              </span>
+            </div>
+            <div className="exercise-form-field">
+              <label htmlFor={equipmentInputId}>Equipment</label>
+              <span className="exercise-form-select">
+                <select id={equipmentInputId} value={equipment} onChange={(e) => setEquipment(e.target.value as Equipment)}>
+                  {(Object.keys(EQUIPMENT_LABELS) as (Equipment | 'all')[])
+                    .filter((eq) => eq !== 'all')
+                    .map((eq) => (
+                      <option key={eq} value={eq}>{EQUIPMENT_LABELS[eq]}</option>
+                    ))}
+                </select>
+                <ChevronDown size={14} aria-hidden="true" />
+              </span>
+            </div>
           </div>
 
-          {/* Equipment */}
-          <div>
-            <label htmlFor={equipmentInputId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Equipment
-            </label>
-            <select id={equipmentInputId} value={equipment} onChange={(e) => setEquipment(e.target.value as Equipment)} style={selectStyle}>
-              {(Object.keys(EQUIPMENT_LABELS) as (Equipment | 'all')[])
-                .filter((eq) => eq !== 'all')
-                .map((eq) => (
-                  <option key={eq} value={eq}>{EQUIPMENT_LABELS[eq]}</option>
-                ))}
-            </select>
-          </div>
-
-          {/* Muscles */}
-          <div>
-            <p id={musclesGroupId} className="block text-xs font-semibold mb-2 uppercase" style={{ color: 'var(--muted)' }}>
-              Muscle groups
-            </p>
-            <div className="flex flex-wrap gap-2" role="group" aria-labelledby={musclesGroupId}>
-              {MUSCLE_OPTIONS.map((m) => {
-                const active = muscles.includes(m)
-                return (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => toggleMuscle(m)}
-                    aria-pressed={active}
-                    className="mobile-touch-target px-3 py-1.5 rounded-full text-xs font-medium transition-colors"
-                    style={{
-                      background: active ? 'var(--accent-soft)' : 'rgba(255,255,255,0.03)',
-                      color: active ? 'var(--text-strong)' : 'var(--muted)',
-                      border: `1px solid ${active ? 'var(--accent-soft-strong)' : 'var(--border)'}`,
-                    }}
-                  >
-                    {MUSCLE_LABELS[m]}
-                  </button>
-                )
-              })}
+          <div className="exercise-form-field">
+            <p id={musclesGroupId}>Muscle groups</p>
+            <div className="exercise-form-chips" role="group" aria-labelledby={musclesGroupId}>
+              {MUSCLE_OPTIONS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => toggleMuscle(m)}
+                  aria-pressed={muscles.includes(m)}
+                >
+                  {MUSCLE_LABELS[m]}
+                </button>
+              ))}
             </div>
           </div>
 
           {error && error.field === null && (
-            <p id={errorId} role="alert" className="text-xs" style={{ color: 'var(--danger)' }}>
-              {error.message}
-            </p>
+            <p id={errorId} role="alert" className="exercise-form-error">{error.message}</p>
           )}
 
-          <motion.button
-            type="submit"
-            disabled={saving}
-            className="w-full rounded-[var(--radius-lg)] py-3.5 text-sm font-semibold disabled:opacity-50"
-            style={{
-              background: 'var(--primary-gradient)',
-              color: 'var(--accent-foreground)',
-            }}
-            whileTap={{ scale: 0.97 }}
-          >
-            {saving ? 'Saving...' : mode === 'edit' ? 'Save changes' : 'Add exercise'}
-          </motion.button>
-
-          {onDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="exercise-form-delete mobile-touch-target"
-            >
-              <Trash2 size={15} aria-hidden="true" />
-              Remove exercise
-            </button>
-          )}
+          <div className="exercise-form-foot">
+            <motion.button type="submit" disabled={saving} className="dialog-action" whileTap={{ scale: 0.97 }}>
+              {saving ? 'Saving...' : mode === 'edit' ? 'Save changes' : 'Add exercise'}
+            </motion.button>
+            {onDelete && (
+              <button type="button" onClick={onDelete} className="exercise-form-delete mobile-touch-target">
+                <Trash2 size={15} aria-hidden="true" />
+                Remove exercise
+              </button>
+            )}
+          </div>
         </form>
       </div>
     </div>

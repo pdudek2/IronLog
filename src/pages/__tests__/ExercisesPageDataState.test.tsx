@@ -210,7 +210,7 @@ describe('ExercisesPage user library states', () => {
     ).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Add custom' }))
     const dialog = screen.getByRole('dialog', { name: 'Add custom exercise' })
-    const name = within(dialog).getByRole('textbox', { name: 'Name *' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name' })
     const muscles = within(dialog).getByRole('group', { name: 'Muscle groups' })
     const chest = within(muscles).getByRole('button', { name: 'Chest' })
 
@@ -239,7 +239,7 @@ describe('ExercisesPage user library states', () => {
     ).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Add custom' }))
     const dialog = screen.getByRole('dialog', { name: 'Add custom exercise' })
-    const name = within(dialog).getByRole('textbox', { name: 'Name *' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name' })
     fireEvent.change(name, { target: { value: 'Exercise testowe' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add exercise' }))
 
@@ -264,13 +264,13 @@ describe('ExercisesPage user library states', () => {
     ).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: 'Add custom' }))
     const dialog = screen.getByRole('dialog', { name: 'Add custom exercise' })
-    const name = within(dialog).getByRole('textbox', { name: 'Name *' })
+    const name = within(dialog).getByRole('textbox', { name: 'Name' })
     fireEvent.change(name, { target: { value: 'Concurrent Curl' } })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Add exercise' }))
 
     expect(await within(dialog).findByRole('alert'))
       .toHaveTextContent('Exercise o nazwie "Concurrent Curl" już istnieje.')
-    expect(within(dialog).getByRole('textbox', { name: 'Name *' }))
+    expect(within(dialog).getByRole('textbox', { name: 'Name' }))
       .toHaveValue('Concurrent Curl')
   })
 

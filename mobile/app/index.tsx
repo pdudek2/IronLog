@@ -366,14 +366,14 @@ function SheetAddExercise({ session, onPress }: { session: ActiveWorkout; onPres
   </Pressable>
 }
 
-function LabelTabs({ active, onToggle }: { active: string; onToggle: (label: string) => void }) {
-  return <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={styles.flex} contentContainerStyle={styles.labelTabs}>
+function LabelChips({ active, onToggle }: { active: string; onToggle: (label: string) => void }) {
+  return <View style={styles.labelChips}>
     {WORKOUT_LABELS.map((label) => <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: active === label }}
       accessibilityLabel={`Session type ${label}`} onPress={() => onToggle(label)}
-      style={({ pressed }) => [styles.labelTab, active === label && styles.labelTabActive, pressed && styles.headingPressed]}>
-      <Text style={[styles.labelTabText, active === label && styles.labelTabTextActive]}>{label}</Text>
+      style={({ pressed }) => [styles.labelChip, active === label && styles.labelChipActive, pressed && styles.headingPressed]}>
+      <Text style={[styles.labelChipText, active === label && styles.labelChipTextActive]}>{label}</Text>
     </Pressable>)}
-  </ScrollView>
+  </View>
 }
 
 
@@ -1014,14 +1014,13 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </> : <>
           <SheetAddExercise session={liveSession} onPress={() => close(() => setPicking(true))} />
           {liveSession.exercises.length > 0 && <Pressable accessibilityRole="button" onPress={() => setSheet('overview')} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
-            <Text style={styles.sheetRowText}>All exercises</Text>
+            <Text style={styles.sheetRowText}>All exercises</Text><Icon name="chevron-right" size={16} />
           </Pressable>}
           <Text style={styles.sheetLabel}>Session type</Text>
-          <View style={styles.sheetLabels}>
-            <LabelTabs active={liveSession.label ?? ''} onToggle={guardClosureInteraction(canEditCurrentSession, (label) => setLabel(liveSession.label === label ? '' : label))} />
-          </View>
+          <LabelChips active={liveSession.label ?? ''} onToggle={guardClosureInteraction(canEditCurrentSession, (label) => setLabel(liveSession.label === label ? '' : label))} />
+          <View style={styles.sheetRule} />
           <Pressable accessibilityRole="button" disabled={locked} onPress={() => close(discard)} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
-            <Text style={styles.sheetRowWarning}>Discard workout</Text>
+            <Text style={styles.sheetRowQuiet}>Discard workout</Text><Icon name="trash" size={16} />
           </Pressable>
         </>}
       </BottomSheet>}
@@ -1132,9 +1131,9 @@ const styles = StyleSheet.create({
   sheetRowText: { color: colors.text, flexShrink: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 15.5 },
   sheetRowCurrent: { fontFamily: 'InstrumentSans_600SemiBold' },
   sheetRowMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13.5, fontVariant: ['tabular-nums'] },
-  sheetRowWarning: { color: colors.warning, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 15.5 },
+  sheetRowQuiet: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15.5 },
+  sheetRule: { height: 1, marginHorizontal: -20, marginTop: 12, marginBottom: 4, backgroundColor: 'rgba(255, 255, 255, 0.07)' },
   sheetLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13.5, paddingTop: 8 },
-  sheetLabels: { flexDirection: 'row', height: 52, marginHorizontal: -20, paddingLeft: 20 },
   syncInline: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, lineHeight: 18, height: 18, textAlign: 'right', paddingHorizontal: 16 },
   previewCopy: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, textAlign: 'center', paddingVertical: 8 },
   lookupText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
@@ -1253,11 +1252,11 @@ const styles = StyleSheet.create({
   quickPickName: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4 },
   quickPickMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.84 },
   quickPickAction: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.8 },
-  labelTabs: { paddingRight: 32 },
-  labelTab: { borderBottomColor: 'transparent', borderBottomWidth: 2, justifyContent: 'center', minHeight: 44, paddingHorizontal: 12 },
-  labelTabActive: { borderBottomColor: colors.accent },
-  labelTabText: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, lineHeight: 18 },
-  labelTabTextActive: { color: colors.accentText },
+  labelChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingTop: 6 },
+  labelChip: { justifyContent: 'center', minHeight: 44, paddingHorizontal: 13, borderRadius: 11, backgroundColor: 'rgba(255, 255, 255, 0.055)' },
+  labelChipActive: { backgroundColor: 'rgba(255, 255, 255, 0.17)' },
+  labelChipText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
+  labelChipTextActive: { color: colors.textStrong },
   pickerPressed: { backgroundColor: 'rgba(255, 255, 255, 0.035)' },
 
 })

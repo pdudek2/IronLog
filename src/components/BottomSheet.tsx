@@ -9,12 +9,13 @@ import { SHEET_DRAG_ELASTIC, SHEET_SPRING, shouldDismissSheet } from '../shared/
 interface BottomSheetProps {
   title: string
   onClose: () => void
+  description?: ReactNode
   tall?: boolean
   initialFocusRef?: RefObject<HTMLElement | null>
   children: ReactNode
 }
 
-export default function BottomSheet({ title, onClose, tall = false, initialFocusRef, children }: BottomSheetProps) {
+export default function BottomSheet({ title, description, onClose, tall = false, initialFocusRef, children }: BottomSheetProps) {
   const panelRef = useRef<HTMLDivElement>(null)
   const titleId = useId()
   const drag = useDragControls()
@@ -59,6 +60,7 @@ export default function BottomSheet({ title, onClose, tall = false, initialFocus
       >
         <div className="bottom-sheet-grab" onPointerDown={(event) => drag.start(event)}>
           <h2 id={titleId}>{title}</h2>
+          {description && <p>{description}</p>}
         </div>
         <button type="button" className="bottom-sheet-close" aria-label="Close" onClick={onClose}>
           <X size={18} aria-hidden="true" />

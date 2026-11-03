@@ -203,6 +203,7 @@ export default function TemplateEditorPage() {
     () => days.reduce((sum, day) => sum + day.exercises.length, 0),
     [days],
   )
+  const totalSets = days.reduce((sum, day) => sum + day.exercises.reduce((daySum, exercise) => daySum + exercise.sets, 0), 0)
   const selectedDayIndex = Math.max(0, days.findIndex((day) => day._id === selectedDayId))
   const selectedDay = days[selectedDayIndex]
   const currentSnapshot = useMemo(() => serializeDraftState(name, days), [name, days])
@@ -397,6 +398,9 @@ export default function TemplateEditorPage() {
 
         <div className="template-editor-heading">
           <h1>{isEdit ? 'Edit plan' : 'New plan'}</h1>
+          <p className="template-editor-summary tabular-nums">
+            {days.length} {pluralize(days.length, 'day', 'days')} · {totalExercises} {pluralize(totalExercises, 'exercise', 'exercises')} · {totalSets} {pluralize(totalSets, 'set', 'sets')}
+          </p>
         </div>
       </section>
 
@@ -633,22 +637,6 @@ export default function TemplateEditorPage() {
             </div>
           </div>
 
-          <aside className="desktop-sticky hidden xl:block template-editor-side">
-            <div className="template-editor-summary">
-              <p className="planner-kicker">Summary</p>
-              <div className="template-editor-summary-grid">
-                <div>
-                  <span>Days</span>
-                  <strong>{days.length}</strong>
-                </div>
-                <div>
-                  <span>Exercises</span>
-                  <strong>{totalExercises}</strong>
-                </div>
-              </div>
-
-            </div>
-          </aside>
         </div>
 
         <TemplateSaveDock

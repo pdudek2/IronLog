@@ -44,20 +44,12 @@ export default function ConfirmDialog({
         exit={{ opacity: 0 }}
         onClick={onCancel}
       >
-        {/* Backdrop */}
-        <div
-          className="absolute inset-0"
-          style={{ background: 'rgba(13, 11, 10, 0.76)', backdropFilter: 'blur(8px)' }}
-        />
+        <div className="absolute inset-0" style={{ background: 'rgba(13, 11, 10, 0.6)' }} />
 
-        {/* Panel */}
         <motion.div
           ref={dialogRef}
-          className="surface-panel relative z-10 w-full max-w-sm rounded-[var(--radius-xl)] p-6"
-          style={{
-            border: '1px solid var(--border-strong)',
-            boxShadow: 'var(--shadow-panel)',
-          }}
+          className="confirm-dialog"
+          data-danger={danger || undefined}
           initial={{ y: 40, opacity: 0, scale: 0.96 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 20, opacity: 0, scale: 0.96 }}
@@ -69,40 +61,18 @@ export default function ConfirmDialog({
           aria-describedby={descriptionId}
           tabIndex={-1}
         >
-          <p id={titleId} className="mb-2 text-base font-semibold" style={{ color: 'var(--text-strong)' }}>
-            {title}
-          </p>
-          <p
-            id={descriptionId}
-            className="mb-6 text-sm leading-relaxed"
-            style={{ color: 'var(--muted)' }}
-          >
-            {message}
-          </p>
-
-          <div className="flex gap-3">
-            <button
-              ref={cancelButtonRef}
-              onClick={onCancel}
-              className="min-h-11 flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold transition-opacity hover:opacity-80"
-              style={{
-                background: 'var(--surface-muted)',
-                border: '1px solid var(--border)',
-                color: 'var(--muted)',
-              }}
-            >
+          <h2 id={titleId}>{title}</h2>
+          <p id={descriptionId}>{message}</p>
+          <div className="confirm-dialog-actions">
+            <button ref={cancelButtonRef} type="button" className="dialog-action" data-quiet onClick={onCancel}>
               {cancelLabel}
             </button>
             <motion.button
               type="button"
+              className="dialog-action"
               onClick={onConfirm}
               disabled={confirmDisabled}
-              className="min-h-11 flex-1 rounded-[var(--radius-md)] py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-55"
-              style={{
-                background: danger ? 'var(--danger)' : 'var(--primary-gradient)',
-                color: danger ? 'var(--danger-foreground)' : 'var(--accent-foreground)',
-              }}
-              whileTap={confirmDisabled ? undefined : { scale: 0.95 }}
+              whileTap={confirmDisabled ? undefined : { scale: 0.97 }}
             >
               {confirmLabel}
             </motion.button>

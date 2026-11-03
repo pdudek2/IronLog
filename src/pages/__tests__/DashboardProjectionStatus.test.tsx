@@ -695,7 +695,7 @@ describe('Dashboard workout projection status', () => {
     }))
 
     expect(mocks.requestTemplateLaunch).not.toHaveBeenCalled()
-    fireEvent.click(within(picker).getByRole('button', { name: 'Choose workout' }))
+    fireEvent.click(within(picker).getByRole('button', { name: 'Choose Lower A' }))
 
     expect(screen.getByText('Lower A')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Start Lower A' }))
@@ -755,7 +755,7 @@ describe('Dashboard workout projection status', () => {
     fireEvent.click(within(picker).getByRole('button', {
       name: 'Select Lower A from plan Upper / Lower',
     }))
-    fireEvent.click(within(picker).getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(within(picker).getByRole('button', { name: 'Close workout picker' }))
 
     expect(screen.getByText('Upper A')).toBeInTheDocument()
     expect(screen.queryByText('Lower A')).not.toBeInTheDocument()
@@ -785,7 +785,7 @@ describe('Dashboard workout projection status', () => {
     fireEvent.click(within(picker).getByRole('button', {
       name: 'Select Lower A from plan Upper / Lower',
     }))
-    fireEvent.click(within(picker).getByRole('button', { name: 'Choose workout' }))
+    fireEvent.click(within(picker).getByRole('button', { name: 'Choose Lower A' }))
 
     template.days[1].exercises = []
     fireEvent.click(screen.getByRole('button', { name: 'Start Lower A' }))

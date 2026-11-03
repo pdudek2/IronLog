@@ -583,7 +583,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 </>
               ) : (
                 <div className="progress-chart-frame progress-chart-frame--strength" role="img" aria-label={strengthProgressionLabel}>
-                  <ResponsiveContainer width="100%" aspect={2.05} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
+                  <ResponsiveContainer width="100%" aspect={1.75} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
                     <AreaChart data={selectedStrengthPoints} margin={{ top: 12, right: 10, left: 0, bottom: 8 }}>
                       <defs>
                         <linearGradient id="strength-fade" x1="0" y1="0" x2="0" y2="1">
@@ -591,12 +591,13 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                           <stop offset="1" stopColor="var(--accent)" stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
+                      <CartesianGrid stroke="rgba(244,241,242,0.05)" vertical={false} />
                       <XAxis
                         dataKey="date"
                         tick={{ fill: 'var(--muted)', fontSize: 12 }}
                         axisLine={false}
                         tickLine={false}
+                        tickMargin={10}
                         interval="preserveStartEnd"
                       />
                       <YAxis
@@ -616,9 +617,10 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                           dataKey={selectedStrengthSeries.key}
                           name={selectedStrengthSeries.exerciseName}
                           stroke="var(--accent)"
-                          strokeWidth={2.35}
+                          strokeWidth={2}
                           fill="url(#strength-fade)"
-                          dot={{ r: 3, fill: 'var(--accent)', strokeWidth: 0 }}
+                          dot={{ r: 2.5, fill: 'var(--accent)', strokeWidth: 0 }}
+                          activeDot={{ r: 4.5, fill: 'var(--accent)', strokeWidth: 0 }}
                         />
                       )}
                     </AreaChart>
@@ -626,6 +628,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 </div>
               )}
             </section>
+            <div className="progress-analysis-side">
             <motion.section
               className="progress-panel progress-panel--wide"
               initial={{ opacity: 0, y: 8 }}
@@ -636,13 +639,16 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 <div>
                   <h2>Weekly volume</h2>
                 </div>
-                <span>{weeklyData.length} {weeklyData.length === 1 ? 'week' : 'weeks'}</span>
+                <span className="tabular-nums">
+                  {weeklyData.length} {weeklyData.length === 1 ? 'week' : 'weeks'}
+                  {weeklyData.length > 0 && ` · ${formatVolume(weeklyData.at(-1)?.volume ?? 0, units)} this week`}
+                </span>
               </div>
               <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
                 <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
                   {/* Room for "6.0k kg" on one line and for the last week label at the right edge. */}
                   <BarChart data={weeklyData} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" vertical={false} />
+                    <CartesianGrid stroke="rgba(244,241,242,0.05)" vertical={false} />
                     <XAxis
                       dataKey="weekLabel"
                       tick={{ fill: 'var(--muted)', fontSize: 12 }}
@@ -660,7 +666,11 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                     />
                     <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(244,241,242,0.05)' }} />
                     {/* Weekly buckets are discrete, so bars rather than a curve between weeks. */}
-                    <Bar dataKey="volume" fill="var(--accent)" radius={[3, 3, 0, 0]} maxBarSize={28} />
+                    <Bar dataKey="volume" radius={[4, 4, 0, 0]} maxBarSize={28}>
+                      {weeklyData.map((week, index) => (
+                        <Cell key={week.weekLabel} fill={index === weeklyData.length - 1 ? 'var(--accent)' : 'rgba(239,232,223,0.22)'} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -678,49 +688,20 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                   <div>
                     <h2>Muscle groups</h2>
                   </div>
+                  <span>entries</span>
                 </div>
-                <div style={{ height: Math.max(230, muscleData.length * 34 + 16) }} role="img" aria-label={muscleBalanceLabel}>
-                  <ResponsiveContainer
-                    width="100%"
-                    height={Math.max(230, muscleData.length * 34 + 16)}
-                    minWidth={1}
-                    initialDimension={{ width: 1, height: 1 }}
-                  >
-                    <BarChart
-                      data={muscleData}
-                      layout="vertical"
-                      margin={{ top: 0, right: 12, left: 0, bottom: 0 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(244,241,242,0.085)" horizontal={false} />
-                      <XAxis
-                        type="number"
-                        tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        type="category"
-                        dataKey="muscle"
-                        width={86}
-                        tick={{ fill: 'var(--muted)', fontSize: 12 }}
-                        axisLine={false}
-                        tickLine={false}
-                        tickFormatter={(v: string) => MUSCLE_LABELS[v] ?? v}
-                      />
-                      <Tooltip content={<DarkTooltip units={units} />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
-                      <Bar dataKey="count" radius={[0, 4, 4, 0]} maxBarSize={18}>
-                        {muscleData.map((entry) => (
-                          <Cell
-                            key={entry.muscle}
-                            fill={MUSCLE_COLORS[entry.muscle] ?? 'var(--muted)'}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="progress-muscle-list" role="img" aria-label={muscleBalanceLabel}>
+                  {muscleData.map((entry) => (
+                    <div key={entry.muscle} className="progress-muscle-row">
+                      <span>{MUSCLE_LABELS[entry.muscle] ?? entry.muscle}</span>
+                      <i><b style={{ width: `${(entry.count / (muscleData[0]?.count || 1)) * 100}%` }} /></i>
+                      <strong className="tabular-nums">{entry.count}</strong>
+                    </div>
+                  ))}
                 </div>
               </motion.section>
             )}
+            </div>
           </div>
           </>
         )}

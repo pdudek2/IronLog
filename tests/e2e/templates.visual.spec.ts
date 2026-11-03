@@ -70,7 +70,7 @@ test('new template editor empty state', async ({ page }, testInfo) => {
     })
   } else {
     await expect(headerStats).toHaveCount(0)
-    await expect(summary).toBeHidden()
+    await expect(summary).toBeVisible()
   }
 
   await expect(page).toHaveScreenshot('template-editor-empty.png', {

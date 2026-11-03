@@ -1,8 +1,8 @@
 import { useRef, useState } from 'react'
-import { X } from 'lucide-react'
+import { Check, X } from 'lucide-react'
 import { useDialogA11y } from '../hooks/useDialogA11y'
 import type { WorkoutTemplate } from '../lib/templateService'
-import { pluralize } from '../lib/pluralize'
+import { exerciseSummary } from '../shared/workoutDisplay'
 
 export interface WorkoutSelectionKey {
   templateId: string
@@ -28,6 +28,7 @@ export default function WorkoutPickerDialog({
   const dialogRef = useRef<HTMLDivElement>(null)
   const initialFocusRef = useRef<HTMLButtonElement>(null)
   useDialogA11y({ containerRef: dialogRef, onClose: onCancel, initialFocusRef })
+  const draftDay = draft ? templates.find((template) => template.id === draft.templateId)?.days[draft.dayIndex] : undefined
 
   return (
     <div className="workout-picker-overlay" role="presentation">
@@ -39,10 +40,7 @@ export default function WorkoutPickerDialog({
         aria-labelledby="workout-picker-title"
       >
         <header className="workout-picker-head">
-          <div>
-            <p>From your plans</p>
-            <h2 id="workout-picker-title">Choose a workout</h2>
-          </div>
+          <h2 id="workout-picker-title">Choose a workout</h2>
           <button type="button" onClick={onCancel} aria-label="Close workout picker">
             <X size={18} aria-hidden="true" />
           </button>
@@ -69,10 +67,11 @@ export default function WorkoutPickerDialog({
                       disabled={!launchable}
                       onClick={() => setDraft({ templateId: template.id, dayIndex })}
                     >
-                      <strong>{day.name}</strong>
-                      <span>{launchable
-                        ? `${day.exercises.length} ${pluralize(day.exercises.length, 'exercise', 'exercises')}`
-                        : 'No exercises'}</span>
+                      <span>
+                        <strong>{day.name}</strong>
+                        <small>{launchable ? exerciseSummary(day.exercises.map((exercise) => exercise.name)) : 'No exercises'}</small>
+                      </span>
+                      {chosen && <Check size={16} aria-hidden="true" />}
                     </button>
                   )
                 })}
@@ -92,14 +91,13 @@ export default function WorkoutPickerDialog({
         </div>
 
         <footer className="workout-picker-actions">
-          <button type="button" className="planner-secondary-action" onClick={onCancel}>Cancel</button>
           <button
             type="button"
-            className="planner-primary-action"
+            className="dialog-action"
             disabled={!draft}
             onClick={() => draft && onChoose(draft)}
           >
-            Choose workout
+            {draftDay ? `Choose ${draftDay.name}` : 'Choose workout'}
           </button>
         </footer>
       </div>

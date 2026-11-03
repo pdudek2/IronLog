@@ -105,3 +105,7 @@ export function setPanelRestLabel(set: { done: boolean } | null | undefined, set
   if (!set) return 'Rest'
   return set.done ? `Editing set ${setIndex + 1}` : `Set ${setIndex + 1} rest`
 }
+
+export function exerciseSummary(names: string[]): string {
+  return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ')
+}

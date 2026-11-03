@@ -72,13 +72,13 @@ test('Home changes the selected day without launching and then starts that exact
   await changeWorkout.click()
   let picker = page.getByRole('dialog', { name: 'Choose a workout' })
   await picker.getByRole('button', { name: `Select Pull second from plan ${TEMPLATE_NAME}` }).click()
-  await picker.getByRole('button', { name: 'Cancel' }).click()
+  await picker.getByRole('button', { name: 'Close workout picker' }).click()
   await expect(page.getByText('Upper first', { exact: true }).first()).toBeVisible()
 
   await changeWorkout.click()
   picker = page.getByRole('dialog', { name: 'Choose a workout' })
   await picker.getByRole('button', { name: `Select Pull second from plan ${TEMPLATE_NAME}` }).click()
-  await picker.getByRole('button', { name: 'Choose workout' }).click()
+  await picker.getByRole('button', { name: 'Choose Pull second' }).click()
   await expect(page.getByText('Pull second', { exact: true }).first()).toBeVisible()
 
   await page.getByRole('button', { name: 'Start Pull second' }).click()

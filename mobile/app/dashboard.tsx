@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import ReadinessHome from '../src/ReadinessHome'
 import { useReadinessRuntime } from '../src/readinessRuntime'
@@ -19,7 +19,7 @@ import { workoutTitle } from '../../src/lib/workoutCopy'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 import { workoutCover } from '../../src/shared/workoutCover'
 import { readHome, readTemplateBestSet, readTemplates } from '../src/firebase'
-import { templateStartWeight } from '../../src/shared/workoutDisplay'
+import { exerciseSummary, templateStartWeight } from '../../src/shared/workoutDisplay'
 import { canShowHomeSummary, deriveHome, getGreeting } from '../src/home'
 import { publishStreak } from '../src/streak'
 import { calcStreak } from '../../src/shared/streak'
@@ -54,6 +54,7 @@ export default function DashboardScreen() {
   const [selection, setSelection] = useState<{ uid: string; target: WorkoutSelection | null; unavailable: boolean } | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
+  const insets = useSafeAreaInsets()
   const [picked, setPicked] = useState(false)
   const [weekOpen, setWeekOpen] = useState(false)
   const key = `home:${uid ?? ''}`
@@ -90,6 +91,7 @@ export default function DashboardScreen() {
   const units = data?.profile.units ?? 'kg'
   const templatesState = readStateForKey(uid ?? '', templatesResult)
   const templates = templatesState.status === 'ready' ? templatesState.data : []
+  const pickerDraftDay = pickerDraft ? templates.find((template) => template.id === pickerDraft.templateId)?.days[pickerDraft.dayIndex] : undefined
   // A new account has nothing to start from a plan, so an empty workout is the main action.
   const noPlans = templatesState.status === 'ready' && !templatesState.fromCache && templates.length === 0
   const chosen = selection?.uid === uid && !selection.unavailable ? selectedWorkout(templates, selection.target) : null
@@ -219,9 +221,9 @@ export default function DashboardScreen() {
     </View>}
     <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
-        <View style={styles.pickerHead}><View><Text style={styles.planMeta}>From your plans</Text><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Icon name="close" size={18} color={colors.textStrong} /></Pressable></View>
-        <ScrollView style={styles.pickerPlans}>{templates.map((template) => <View key={template.id} style={styles.pickerPlan}><Text accessibilityRole="header" style={styles.pickerPlanTitle}>{template.name}</Text>{template.days.map((day, index) => { const enabled = day.exercises.length > 0; const selected = pickerDraft?.templateId === template.id && pickerDraft.dayIndex === index; return <Pressable key={`${template.id}:${index}`} accessibilityRole="button" accessibilityLabel={enabled ? `Select ${day.name} from plan ${template.name}` : `${day.name} from plan ${template.name}, no exercises`} accessibilityState={{ selected, disabled: !enabled }} disabled={!enabled} onPress={() => setPickerDraft({ templateId: template.id, dayIndex: index })} style={[styles.pickerDay, selected && styles.pickerDaySelected, !enabled && styles.disabled]}><Text style={styles.pickerDayName}>{day.name}</Text><Text style={styles.planMeta}>{enabled ? `${day.exercises.length} ${pluralize(day.exercises.length, 'exercise', 'exercises')}` : 'No exercises'}</Text></Pressable> })}</View>)}</ScrollView>
-        <View style={styles.pickerActions}><Pressable accessibilityRole="button" onPress={() => setPickerOpen(false)} style={styles.pickerCancel}><Text style={styles.changeText}>Cancel</Text></Pressable><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPicked(true); setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.planPrimaryText}>Choose workout</Text></Pressable></View>
+        <View style={styles.pickerHead}><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Icon name="close" size={18} color={colors.muted} /></Pressable></View>
+        <ScrollView style={styles.pickerPlans}>{templates.map((template) => <View key={template.id} style={styles.pickerPlan}><Text accessibilityRole="header" style={styles.pickerPlanTitle}>{template.name}</Text>{template.days.map((day, index) => { const enabled = day.exercises.length > 0; const selected = pickerDraft?.templateId === template.id && pickerDraft.dayIndex === index; return <Pressable key={`${template.id}:${index}`} accessibilityRole="button" accessibilityLabel={enabled ? `Select ${day.name} from plan ${template.name}` : `${day.name} from plan ${template.name}, no exercises`} accessibilityState={{ selected, disabled: !enabled }} disabled={!enabled} onPress={() => setPickerDraft({ templateId: template.id, dayIndex: index })} style={[styles.pickerDay, selected && styles.pickerDaySelected, !enabled && styles.disabled]}><View style={styles.pickerDayCopy}><Text style={styles.pickerDayName}>{day.name}</Text><Text numberOfLines={1} style={styles.pickerDayMeta}>{enabled ? exerciseSummary(day.exercises.map((exercise) => exercise.name)) : 'No exercises'}</Text></View>{selected && <Icon name="check" size={16} color={colors.textStrong} />}</Pressable> })}</View>)}</ScrollView>
+        <View style={[styles.pickerActions, { paddingBottom: Math.max(20, insets.bottom + 12) }]}><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPicked(true); setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.pickerChooseText}>{pickerDraftDay ? `Choose ${pickerDraftDay.name}` : 'Choose workout'}</Text></Pressable></View>
       </View></View>
     </Modal>
   <BottomNavigation {...navigation} />
@@ -254,17 +256,19 @@ const styles = StyleSheet.create({
   dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 }, dayLabelOn: { color: colors.text },
   signals: { flexDirection: 'row', flexWrap: 'wrap', rowGap: 16 }, signal: { width: '50%', paddingRight: 12 }, signalLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 }, signalValue: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, fontVariant: ['tabular-nums'] }, signalCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 16 },
   planMeta: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11.5 }, changeText: { color: colors.textStrong, fontFamily: 'InstrumentSans_500Medium', fontSize: 12.5 }, planPrimaryText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.5 },
-  pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(13, 11, 10,0.82)' },
-  pickerDialog: { maxHeight: '88%', backgroundColor: colors.surfaceRaised },
-  pickerHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 16, borderBottomWidth: 1, borderBottomColor: colors.line },
-  pickerTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 23, marginTop: 3 },
-  pickerClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  pickerPlans: { paddingHorizontal: 16 }, pickerPlan: { paddingVertical: 16, borderBottomColor: colors.line, borderBottomWidth: 1, gap: 7 },
-  pickerPlanTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, marginBottom: 3 },
-  pickerDay: { minHeight: 52, borderColor: colors.line, borderWidth: 1, borderRadius: 8, paddingVertical: 10, paddingHorizontal: 12, gap: 2 },
-  pickerDaySelected: { borderColor: 'rgba(244, 238, 232, 0.33)', backgroundColor: 'rgba(244, 238, 232,0.075)' },
-  pickerDayName: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
-  pickerActions: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16, padding: 16, borderTopColor: colors.line, borderTopWidth: 1 },
-  pickerCancel: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44 },
-  pickerChoose: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: 44, borderRadius: 8, backgroundColor: colors.primaryEnd, boxShadow: '0 6px 8px rgba(244, 238, 232, 0.108), inset 0 1px 0 rgba(255, 255, 255, 0.18)', experimental_backgroundImage: primaryGradient },
+  pickerOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(13, 11, 10, 0.6)' },
+  pickerDialog: { maxHeight: '88%', borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.08)' },
+  pickerHead: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 8 },
+  pickerTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 19, lineHeight: 25, letterSpacing: -0.2 },
+  pickerClose: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', marginTop: -10, marginRight: -10 },
+  pickerPlans: { paddingHorizontal: 20 }, pickerPlan: { paddingVertical: 8, gap: 2 },
+  pickerPlanTitle: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, marginBottom: 4 },
+  pickerDay: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, marginHorizontal: -10, borderRadius: 12, paddingVertical: 8, paddingHorizontal: 10 },
+  pickerDaySelected: { backgroundColor: 'rgba(255, 255, 255, 0.08)' },
+  pickerDayCopy: { flex: 1, minWidth: 0 },
+  pickerDayName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 21 },
+  pickerDayMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18 },
+  pickerActions: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20 },
+  pickerChooseText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
+  pickerChoose: { alignItems: 'center', justifyContent: 'center', minHeight: 52, borderRadius: 15, backgroundColor: colors.primaryEnd, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35)', experimental_backgroundImage: primaryGradient },
 })

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 
-import { PROGRESS_MUSCLE_COLORS, PROGRESS_MUSCLE_LABELS, formatProgressVolume, strengthChartScale, type MuscleBalancePoint, type StrengthPoint, type WeeklyPoint } from '../../src/shared/progress'
+import { PROGRESS_MUSCLE_LABELS, formatProgressVolume, strengthChartScale, type MuscleBalancePoint, type StrengthPoint, type WeeklyPoint } from '../../src/shared/progress'
 import { kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import { progressChartLabelIndices, progressChartTicks, progressChartValue, progressChartX, progressMonotonePath } from './progressChartMath'
 import { colors } from './theme'
@@ -14,7 +14,7 @@ function Chart({ values, labels, units, width, kind, summary, onInspect }: { val
   const [selected, setSelected] = useState<number | null>(null)
   const axisWidth = kind === 'volume' ? 52 : 56
   const plotWidth = Math.max(120, width - axisWidth - 10)
-  const svgHeight = width / (kind === 'volume' ? 2.15 : 2.05)
+  const svgHeight = width / (kind === 'volume' ? 2.15 : 1.75)
   const frameHeight = Math.max(160, svgHeight)
   const plotHeight = svgHeight - 50 // Recharts: top 12, bottom 8, X axis 30.
   const ticks = kind === 'weight' ? [...strengthChartScale(values).ticks].reverse() : progressChartTicks(values, plotWidth >= 260 ? 5 : 3)
@@ -42,14 +42,14 @@ function Chart({ values, labels, units, width, kind, summary, onInspect }: { val
         <Svg width={plotWidth} height={svgHeight} viewBox={`0 0 ${plotWidth} ${svgHeight}`}>
           <Defs><LinearGradient id="strengthFade" x1="0" y1="0" x2="0" y2="1"><Stop offset="0" stopColor={accent} stopOpacity={0.16} /><Stop offset="1" stopColor={accent} stopOpacity={0} /></LinearGradient></Defs>
           <G y={12}>
-          {ticks.filter((_, index) => kind !== 'weight' || svgHeight >= 165 || index % 2 === 0).map((tick) => <Line key={tick} x1="0" x2={plotWidth} y1={yAt(tick)} y2={yAt(tick)} stroke="rgba(244, 238, 232,0.085)" strokeDasharray="3,3" />)}
+          {ticks.filter((_, index) => kind !== 'weight' || svgHeight >= 165 || index % 2 === 0).map((tick) => <Line key={tick} x1="0" x2={plotWidth} y1={yAt(tick)} y2={yAt(tick)} stroke="rgba(244, 238, 232, 0.05)" />)}
           {bars ? values.map((value, index) => {
             const barWidth = Math.min(28, band * 0.6), height = plotHeight * value / upper
-            return <Rect key={index} x={xAt(index) - barWidth / 2} y={plotHeight - height} width={barWidth} height={height} rx={2} fill={accent} opacity={selected === null || selected === index ? 1 : 0.55} />
-          }) : path ? <><Path d={`${path} L${plotWidth},${plotHeight} L0,${plotHeight} Z`} fill="url(#strengthFade)" /><Path d={path} fill="none" stroke={accent} strokeWidth={2.4} /></> : null}
+            return <Rect key={index} x={xAt(index) - barWidth / 2} y={plotHeight - height} width={barWidth} height={height} rx={4} fill={index === values.length - 1 ? accent : 'rgba(239, 232, 223, 0.22)'} opacity={selected === null || selected === index ? 1 : 0.55} />
+          }) : path ? <><Path d={`${path} L${plotWidth},${plotHeight} L0,${plotHeight} Z`} fill="url(#strengthFade)" /><Path d={path} fill="none" stroke={accent} strokeWidth={2} /></> : null}
           {kind === 'weight' && values.map((value, index) => {
             const x = progressChartX(index, values.length, plotWidth)
-            return <Circle key={index} cx={x} cy={yAt(value)} r={3} fill={accent} />
+            return <Circle key={index} cx={x} cy={yAt(value)} r={2.5} fill={accent} />
           })}
           {!bars && selected !== null && selectedValue != null && <>
             <Line x1={progressChartX(selected, values.length, plotWidth)} x2={progressChartX(selected, values.length, plotWidth)} y1={0} y2={plotHeight} stroke="rgba(244, 238, 232,0.3)" />
@@ -78,17 +78,12 @@ export function StrengthChart({ points, keyName, units, width, onInspect }: { po
 
 export function MuscleBars({ points }: { points: MuscleBalancePoint[] }) {
   const maximum = Math.max(1, ...points.map((point) => point.count))
-  const ticks = progressChartTicks([maximum], 5).reverse()
-  const upper = ticks.at(-1)!
-  const [selected, setSelected] = useState<string | null>(null)
-  return <View accessibilityLabel="Muscle group balance" style={styles.bars}>
-    <View pointerEvents="none" style={styles.muscleGrid}>{ticks.map((tick) => <View key={tick} style={[styles.muscleGridLine, { left: `${tick / upper * 100}%` }]} />)}</View>
-    {points.map((point) => <Pressable key={point.muscle} accessibilityRole="button" accessibilityLabel={`${PROGRESS_MUSCLE_LABELS[point.muscle] ?? point.muscle}: ${point.count} entries`} onPress={() => setSelected(point.muscle)} style={styles.barRow}>
-    <Text numberOfLines={1} style={styles.barLabel}>{PROGRESS_MUSCLE_LABELS[point.muscle] ?? point.muscle}</Text>
-    <View style={styles.barTrack}><View style={[styles.bar, { width: `${point.count / upper * 100}%`, backgroundColor: PROGRESS_MUSCLE_COLORS[point.muscle] ?? accent }]} /></View>
-  </Pressable>)}
-    <View style={styles.muscleAxis}>{ticks.map((tick) => <Text key={tick} style={[styles.axis, styles.muscleTick, { left: `${tick / upper * 100}%` }]}>{tick}</Text>)}</View>
-    {selected && <Text accessibilityLiveRegion="polite" style={styles.inspection}>{PROGRESS_MUSCLE_LABELS[selected] ?? selected}: {points.find((point) => point.muscle === selected)?.count ?? 0} entries</Text>}
+  return <View accessibilityLabel="Muscle group balance">
+    {points.map((point) => <View key={point.muscle} accessible accessibilityLabel={`${PROGRESS_MUSCLE_LABELS[point.muscle] ?? point.muscle}: ${point.count} entries`} style={styles.barRow}>
+      <Text numberOfLines={1} style={styles.barLabel}>{PROGRESS_MUSCLE_LABELS[point.muscle] ?? point.muscle}</Text>
+      <View style={styles.barTrack}><View style={[styles.bar, { width: `${point.count / maximum * 100}%` }]} /></View>
+      <Text style={styles.barCount}>{point.count}</Text>
+    </View>)}
   </View>
 }
 
@@ -96,5 +91,5 @@ export function MuscleBars({ points }: { points: MuscleBalancePoint[] }) {
 const styles = StyleSheet.create({
   chartRow: { flexDirection: 'row', alignItems: 'stretch' }, yLabels: { position: 'relative' }, axis: { color: muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11 }, yTick: { position: 'absolute', right: 7, width: 45, textAlign: 'right' },
   xLabels: { position: 'absolute', height: 18 }, xTick: { position: 'absolute', width: 40, textAlign: 'center' }, inspection: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, marginTop: 10 },
-  bars: { position: 'relative' }, muscleGrid: { position: 'absolute', left: 86, right: 0, top: 0, bottom: 20 }, muscleGridLine: { position: 'absolute', top: 0, bottom: 0, width: 1, borderLeftColor: 'rgba(244, 238, 232,0.085)', borderLeftWidth: 1, borderStyle: 'dashed' }, barRow: { flexDirection: 'row', alignItems: 'center', height: 34 }, barLabel: { width: 86, paddingRight: 7, color: muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11, textAlign: 'right' }, barTrack: { flex: 1, height: 18 }, bar: { height: 18, borderTopRightRadius: 4, borderBottomRightRadius: 4 }, muscleAxis: { position: 'relative', height: 20, marginLeft: 86 }, muscleTick: { position: 'absolute', width: 22, marginLeft: -11, textAlign: 'center' },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 30 }, barLabel: { width: 96, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 }, barTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: 'rgba(255, 255, 255, 0.07)' }, bar: { height: 4, borderRadius: 2, backgroundColor: 'rgba(239, 232, 223, 0.7)' }, barCount: { width: 32, color: muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, textAlign: 'right', fontVariant: ['tabular-nums'] },
 })

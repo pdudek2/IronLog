@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronRight, Ellipsis, Plus } from 'lucide-react'
+import { ChevronDown, ChevronRight, Ellipsis, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -1156,6 +1156,12 @@ export default function WorkoutPage() {
           <BottomSheet
             key="session-sheet"
             title={sessionSheet === 'overview' ? active.label || 'This workout' : 'Workout options'}
+            description={sessionSheet === 'options' && isDesktop ? (
+              <span className="workout-options-summary tabular-nums">
+                {active.exercises.length} {pluralize(active.exercises.length, 'exercise', 'exercises')} · {completedSets}/{totalSets} sets · {formatCompactVolume(totalVolume, units)}
+                {strongestSet ? ` · heaviest ${kgToDisplayWeight(strongestSet, units)} ${units}` : ''}
+              </span>
+            ) : undefined}
             onClose={() => setSessionSheet(null)}
           >
             {sessionSheet === 'overview' ? (
@@ -1189,21 +1195,18 @@ export default function WorkoutPage() {
                 {active.exercises.length > 0 && (
                   <button type="button" className="bottom-sheet-row" onClick={() => setSessionSheet('overview')}>
                     <span>All exercises</span>
+                    <ChevronRight size={16} aria-hidden="true" />
                   </button>
-                )}
-                {isDesktop && (
-                  <p className="workout-options-summary tabular-nums">
-                    {active.exercises.length} {pluralize(active.exercises.length, 'exercise', 'exercises')} · {completedSets}/{totalSets} sets · {formatCompactVolume(totalVolume, units)}
-                    {strongestSet ? ` · heaviest ${kgToDisplayWeight(strongestSet, units)} ${units}` : ''}
-                  </p>
                 )}
                 <p className="bottom-sheet-label">Session type</p>
                 <LabelChips
                   activeLabel={active.label ?? ''}
                   onToggle={(label) => setLabel(active.label === label ? '' : label)}
                 />
-                <button type="button" className="bottom-sheet-row" data-tone="warning" onClick={() => { setSessionSheet(null); handleDiscard() }}>
+                <hr className="bottom-sheet-rule" />
+                <button type="button" className="bottom-sheet-row" data-quiet onClick={() => { setSessionSheet(null); handleDiscard() }}>
                   <span>Discard workout</span>
+                  <Trash2 size={16} aria-hidden="true" />
                 </button>
               </>
             )}

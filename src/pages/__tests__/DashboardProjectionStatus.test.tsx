@@ -483,12 +483,25 @@ describe('Dashboard workout projection status', () => {
       },
     })
     mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([{
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'Other plan',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [{
+        name: 'Push',
+        exercises: [{ exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 3, targetReps: 8, targetWeight: 60 }],
+      }],
+    }])
 
     render(<DashboardPage />)
 
     await screen.findByRole('heading', { name: 'Workout' })
     expect(screen.getByRole('button', { name: 'Return to workout' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /empty workout/i })).not.toBeInTheDocument()
+    await waitFor(() => expect(mocks.getTemplates).toHaveBeenCalled())
+    expect(screen.queryByText('Bench Press')).not.toBeInTheDocument()
   })
 
   it('retries a pending workout on reconnect after a failed automatic retry', async () => {
@@ -648,6 +661,26 @@ describe('Dashboard workout projection status', () => {
       'dashboard:template-1:selection:1',
     )
     expect(screen.queryByRole('heading', { name: 'Plans' })).not.toBeInTheDocument()
+  })
+
+  it('offers the first plan after cached plans were empty', async () => {
+    useDashboardStore.getState().setPlans('user-1', [])
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([{
+      id: 'template-1',
+      userId: 'user-1',
+      name: 'First plan',
+      createdAt: 1,
+      updatedAt: 2,
+      days: [{
+        name: 'Upper A',
+        exercises: [{ exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 3, targetReps: 8, targetWeight: 60 }],
+      }],
+    }])
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByRole('button', { name: 'Start Upper A' })).toBeInTheDocument()
   })
 
   it('chooses a non-first day without launching until Start is pressed', async () => {

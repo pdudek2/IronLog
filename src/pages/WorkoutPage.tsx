@@ -29,7 +29,7 @@ import { isActiveSessionStale } from '../lib/sessionDuration'
 import WorkoutSetPanel from '../components/workout/WorkoutSetPanel'
 import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
-import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES, MAX_SET_REPS } from '../shared/workoutLimits'
+import { completedSetError, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
 import {
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
@@ -271,15 +271,10 @@ export default function WorkoutPage() {
     const completesExercise = wasNotDone && currentActive?.exercises[exerciseIndex]?.sets.every(
       (set, index) => index === setIndex || set.done,
     )
-    if (wasNotDone && !isValidCompletedSet(currentSet)) {
-      toast.error(isValidCompletedSet({ ...currentSet, weight: '0' })
-        ? 'Weight cannot be negative or above 2000 kg (4409 lbs).'
-        : `Enter whole reps from 1 to ${MAX_SET_REPS} before marking this set as complete.`)
-      return
-    }
     const completedSets = currentActive?.exercises[exerciseIndex]?.sets.filter((set) => set.done).length ?? 0
-    if (wasNotDone && completedSets >= MAX_DONE_SETS_PER_EXERCISE) {
-      toast.error(`An exercise can hold up to ${MAX_DONE_SETS_PER_EXERCISE} completed sets.`)
+    const error = wasNotDone ? completedSetError(currentSet, completedSets) : null
+    if (error) {
+      toast.error(error)
       return
     }
     toggleSetDone(exerciseIndex, setIndex)

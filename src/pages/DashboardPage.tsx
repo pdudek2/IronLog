@@ -193,7 +193,7 @@ export default function DashboardPage() {
   })
   const [workoutSelection, setWorkoutSelection] = useState<WorkoutSelectionResource>({
     uid: cachedPlans?.uid ?? null,
-    initialized: cachedPlans !== null,
+    initialized: false,
     target: cachedPlans ? firstLaunchableWorkout(cachedPlans.templates) : null,
     unavailable: false,
   })
@@ -623,7 +623,7 @@ export default function DashboardPage() {
                   </button>
                 ))}
               </div>
-            ) : user && quickTemplate && quickTemplateHasExercises ? (
+            ) : !hasActiveSession && user && quickTemplate && quickTemplateHasExercises ? (
               <TrainExercises
                 key={quickTemplateRequestKey}
                 uid={user.uid}

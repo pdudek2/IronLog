@@ -1,6 +1,6 @@
 import type { ActiveWorkout, WorkoutExercise, WorkoutSet } from './session'
 import { createLocalId } from './session'
-import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../../src/shared/workoutLimits'
+import { completedSetError, isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../../src/shared/workoutLimits'
 import { applyOverloadWeight } from '../../src/shared/nextSessionRecommendation'
 
 export { MAX_SESSION_EXERCISES }
@@ -72,6 +72,13 @@ export function adjustSetValue(
     const next = { ...set, [field]: adjustedValue(set[field], field, delta) }
     return { ...next, done: next.done && isValidCompletedSet(next) }
   })
+}
+
+export function setDoneError(session: ActiveWorkout, exerciseId: string, setId: string): string | null {
+  const exercise = session.exercises.find((candidate) => candidate.clientId === exerciseId)
+  const set = exercise?.sets.find((candidate) => candidate.clientId === setId)
+  if (!exercise || !set || set.done) return null
+  return completedSetError(set, exercise.sets.filter((candidate) => candidate.done).length)
 }
 
 export function setSetDone(

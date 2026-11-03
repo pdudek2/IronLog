@@ -4,7 +4,7 @@ import test from 'node:test'
 import { displayWeightDeltaToKg, displayWeightStringToKg, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 import {
   addExercise, addSet, adjustSetValue, applyOverload, exerciseHasEnteredSets, MAX_SESSION_EXERCISES, prefillFirstSet,
-  removeExercise, removeSet, setLabel, setSetDone, updateSetValue,
+  removeExercise, removeSet, setDoneError, setLabel, setSetDone, updateSetValue,
 } from './setMutations'
 import type { ActiveWorkout } from './session'
 
@@ -47,6 +47,12 @@ test('completion enforces finalizer bounds and invalid reps unmark a set', () =>
     clientId: `set-${index}`, weight: '10', reps: '1', done: index < 20,
   }))
   assert.equal(setSetDone(full, 'exercise-a', 'set-20', true).exercises[0]?.sets[20]?.done, false)
+
+  assert.equal(setDoneError(workout(), 'exercise-a', 'set-a'), null)
+  const noReps = updateSetValue(workout(), 'exercise-a', 'set-a', 'reps', '')
+  assert.match(setDoneError(noReps, 'exercise-a', 'set-a') ?? '', /^Enter whole reps/)
+  assert.match(setDoneError(tooHeavy, 'exercise-a', 'set-a') ?? '', /^Weight cannot/)
+  assert.match(setDoneError(full, 'exercise-a', 'set-20') ?? '', /up to 20 completed sets/)
 })
 
 test('append copies the last nonblank values, remove may leave zero sets, and adjustments clamp at zero', () => {

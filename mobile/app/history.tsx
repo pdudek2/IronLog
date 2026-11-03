@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   filters: { gap: 10, paddingBottom: 14 },
   subtitleRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' }, subtitleText: { flex: 1 },
   calendarLink: { alignItems: 'center', columnGap: 2, flexDirection: 'row', minHeight: 44 }, calendarLinkText: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
-  calendarNav: { flexDirection: 'row', justifyContent: 'flex-end', marginRight: -12, marginTop: -8 }, calendarNavButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 }, calendarNavDisabled: { opacity: 0.35 },
+  calendarNav: { flexDirection: 'row', justifyContent: 'flex-end' }, calendarNavButton: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 }, calendarNavDisabled: { opacity: 0.35 },
   calendarGrid: { flexDirection: 'row', flexWrap: 'wrap' }, calendarCell: { alignItems: 'center', height: 48, justifyContent: 'center', width: '14.28%' },
   calendarWeekday: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5 },
   calendarDay: { alignItems: 'center', borderRadius: 14, height: 44, justifyContent: 'center', width: 44 }, calendarDayActive: { backgroundColor: colors.choiceSelected }, calendarDayToday: { borderColor: colors.text, borderWidth: 1.5 },

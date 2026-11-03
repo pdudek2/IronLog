@@ -15,6 +15,10 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
     .filter((element) => !element.hasAttribute('disabled') && !element.getAttribute('aria-hidden'))
 }
 
+// A closing dialog can unmount after the next one opens (exit animations), so the lock is counted, not saved per dialog.
+let scrollLocks = 0
+let unlockedOverflow = ''
+
 interface UseDialogA11yOptions {
   containerRef: RefObject<HTMLElement | null>
   onClose: () => void
@@ -36,7 +40,8 @@ export function useDialogA11y({
     const previousActiveElement = document.activeElement instanceof HTMLElement
       ? document.activeElement
       : null
-    const previousOverflow = document.body.style.overflow
+    if (scrollLocks === 0) unlockedOverflow = document.body.style.overflow
+    scrollLocks += 1
     document.body.style.overflow = 'hidden'
 
     const focusInitialElement = () => {
@@ -85,8 +90,10 @@ export function useDialogA11y({
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
-      document.body.style.overflow = previousOverflow
-      previousActiveElement?.focus?.()
+      scrollLocks -= 1
+      if (scrollLocks === 0) document.body.style.overflow = unlockedOverflow
+      const focusLeftBehind = !document.activeElement || document.activeElement === document.body || dialogElement.contains(document.activeElement)
+      if (focusLeftBehind) previousActiveElement?.focus?.()
     }
   }, [containerRef, initialFocusRef])
 }

@@ -55,6 +55,8 @@ export default function DashboardScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
   const insets = useSafeAreaInsets()
+  // With the tab bar scrolled away the bar sits on the screen edge, under the gesture area.
+  const startBarInset = navigation.hidden ? { paddingBottom: Math.max(2, insets.bottom + 8) } : null
   const [picked, setPicked] = useState(false)
   const [weekOpen, setWeekOpen] = useState(false)
   const key = `home:${uid ?? ''}`
@@ -213,8 +215,8 @@ export default function DashboardScreen() {
           onRetry={() => { retry(); setTemplatesAttempt(value => value + 1) }} />}
       </>}
     </ScrollView>
-    {data && active.state.status === 'ready' && <View style={styles.startBar}><ResumeButton /></View>}
-    {data && (canOfferStart || plansPending) && !recommendation && <View style={styles.startBar}>
+    {data && active.state.status === 'ready' && <View style={[styles.startBar, startBarInset]}><ResumeButton /></View>}
+    {data && (canOfferStart || plansPending) && !recommendation && <View style={[styles.startBar, startBarInset]}>
       {plansPending ? <View style={styles.startPending} /> : chosen
         ? <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={() => selection?.target && void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template })} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : `Start ${chosen.day.name}`}</Text></Pressable>
         : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
@@ -243,7 +245,7 @@ const styles = StyleSheet.create({
   coverFade: { ...StyleSheet.absoluteFill, experimental_backgroundImage: `linear-gradient(180deg, transparent 40%, ${colors.background}b8 72%, ${colors.background} 100%)` },
   coverCopy: { position: 'absolute', left: 16, right: 16, bottom: 4 }, coverMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20 },
   coverTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 36, lineHeight: 40, letterSpacing: -1 },
-  plan: { gap: 4, marginTop: 18 }, exercise: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 40 },
+  plan: { gap: 4, marginTop: 18 }, exercise: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 44 },
   exerciseName: { flex: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 }, exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] }, exerciseWeight: { color: colors.text, fontFamily: 'InstrumentSans_500Medium' },
   planPending: { height: 216 }, startPending: { height: 52 },
   links: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20 }, link: { minHeight: 44, justifyContent: 'center' }, weekLink: { alignItems: 'center', columnGap: 4, flexDirection: 'row', minHeight: 44 }, linkText: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },

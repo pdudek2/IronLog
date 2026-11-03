@@ -13,7 +13,8 @@ interface WeightInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, '
 export default function WeightInput({ value, onValueChange, onBlur, ...props }: WeightInputProps) {
   const [draft, setDraft] = useState<string | null>(null)
   // A half-typed "90." stays on screen while it still means the stored value; steppers replace it.
-  const showDraft = draft !== null && (Number.parseFloat(draft) === Number.parseFloat(value) || (draft === '' && value === ''))
+  // Some callers show 0 as an empty field, so "0." must still count as the stored value.
+  const showDraft = draft !== null && (Number.parseFloat(draft) || 0) === (Number.parseFloat(value) || 0)
 
   return (
     <input

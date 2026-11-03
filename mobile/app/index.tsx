@@ -43,7 +43,7 @@ import {
 import { useSessionRead } from '../src/useSessionRead'
 import type { ClosureState } from '../src/useWorkoutClosure'
 import type { ExerciseMetadata } from '../src/scopedRead'
-import { exerciseHasEnteredSets, MAX_SESSION_EXERCISES } from '../src/setMutations'
+import { exerciseHasEnteredSets, MAX_SESSION_EXERCISES, setDoneError } from '../src/setMutations'
 import {
   reconcileSetInputSubmissions,
   setInputToStoredValue,
@@ -478,7 +478,11 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, met
             <Text numberOfLines={1} style={[styles.setCellMuted, styles.setValue]}>{previousText}</Text>
             <Text numberOfLines={1} style={[styles.setToday, styles.setValue, set.done && styles.setTodayDone, current && styles.setTodayCurrent]}>{today}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${index + 1}`} onPress={() => editing.removeSet(exercise.clientId, set.clientId)} style={[styles.setTrailingColumn, styles.setTouchTarget]}>
+          <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${index + 1}`} onPress={() => {
+            const remove = () => editing.removeSet(exercise.clientId, set.clientId)
+            if (!set.done && !set.weight.trim() && !set.reps.trim()) { remove(); return }
+            showDialog('Remove set?', 'This set contains data or is marked complete.', [{ text: 'Keep', style: 'cancel' }, { text: 'Remove set', style: 'destructive', onPress: remove }])
+          }} style={[styles.setTrailingColumn, styles.setTouchTarget]}>
             <Svg width={15} height={15} viewBox="0 0 24 24" style={{ alignSelf: 'center' }}><Path d="m18 6-12 12M6 6l12 12" fill="none" stroke={colors.mutedSoft} strokeWidth={2} strokeLinecap="round" /></Svg>
           </Pressable>
         </View>
@@ -828,6 +832,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const nextExerciseIndex = liveSession ? upNextQueue(liveSession.exercises, panelIndex)[0] ?? -1 : -1
   const currentRest = rest && rest.sessionId === liveSession?.sessionId ? rest : null
   const toggleSet = guardClosureInteraction(canEditCurrentSession, (exerciseId: string, setId: string, done: boolean) => {
+    const error = done && liveSession ? setDoneError(liveSession, exerciseId, setId) : null
+    if (error) { showDialog('Set not logged', error); return }
     setDone(exerciseId, setId, done)
     if (!done) { changeRest(null); return }
     if (liveSession) changeRest({ sessionId: liveSession.sessionId, startedAt: Date.now(), totalSec: REST_SECONDS })

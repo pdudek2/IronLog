@@ -136,32 +136,36 @@ vi.mock('../../components/MobileInteractionProvider', () => ({
 }))
 vi.mock('../../router/pageLoaders', () => ({ preloadRouteByPath: vi.fn() }))
 vi.mock('../../components/ExercisePicker', () => ({ default: () => null }))
-vi.mock('../../components/workout/WorkoutExerciseLedgerItem', () => ({
-  default: ({ exerciseIndex, onRemoveExercise }: { exerciseIndex: number; onRemoveExercise(index: number): void }) => (
-    <button onClick={() => onRemoveExercise(exerciseIndex)}>Remove exercise {exerciseIndex}</button>
-  ),
-}))
+vi.mock('../../components/workout/WorkoutExerciseLedgerItem', () => ({ default: () => null }))
 
 vi.mock('sonner', () => ({
   toast: { error: mocks.toastError, success: mocks.toastSuccess },
 }))
 
-vi.mock('framer-motion', () => ({
+vi.mock('framer-motion', () => {
+  // One component per tag: a fresh function per access would remount every motion subtree on each render.
+  const components = new Map<string, (props: { children?: ReactNode } & Record<string, unknown>) => ReactNode>()
+  return {
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
   motion: new Proxy({}, {
     get: (_target, tag: string | symbol) => {
       if (typeof tag !== 'string') return undefined
-      return ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
+      if (!components.has(tag)) components.set(tag, ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
         delete props.initial
         delete props.animate
         delete props.exit
         delete props.transition
         delete props.whileTap
+        for (const key of ['drag', 'dragControls', 'dragListener', 'dragConstraints', 'dragElastic', 'dragMomentum', 'onDragEnd']) delete props[key]
         return createElement(tag, props, children)
-      }
+      })
+      return components.get(tag)
     },
   }),
-}))
+  useDragControls: () => ({ start: () => undefined }),
+  useReducedMotion: () => true,
+  }
+})
 
 function renderStaleSessionPage() {
   return render(
@@ -871,7 +875,8 @@ describe('WorkoutPage exercise removal identity', () => {
       mocks.active = { sessionId: 'original', startedAt: Date.now(), templateId: null, exercises }
       renderStaleSessionPage()
       fireEvent.click(screen.getByRole('button', { name: /^y/ }))
-      fireEvent.click(await screen.findByRole('button', { name: 'Remove exercise 1' }))
+      fireEvent.click(screen.getByRole('button', { name: 'More workout options' }))
+      fireEvent.click(await screen.findByRole('button', { name: 'Remove exercise y' }))
       await screen.findByRole('dialog', { name: 'Remove exercise?' })
       mocks.active = {
         ...mocks.active!,

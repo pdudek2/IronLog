@@ -78,11 +78,9 @@ interface RestTimerBarProps {
   onSkip: () => void
   variant?: 'full' | 'compact'
   label: string
-  undoLabel?: string
-  onUndo?: () => void
 }
 
-function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', label, undoLabel, onUndo }: RestTimerBarProps) {
+function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', label }: RestTimerBarProps) {
   const [now, setNow] = useState(() => Date.now())
   const firedRef = useRef(false)
   const onSkipRef = useRef(onSkip)
@@ -141,11 +139,6 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', label, undoLa
         </div>
         {restRemainingMs > 0 ? (
           <>
-            {undoLabel && onUndo && (
-              <button type="button" onClick={onUndo} className="rest-timer-action">
-                {undoLabel}
-              </button>
-            )}
             {variant === 'full' && (
               <button
                 type="button"
@@ -760,10 +753,6 @@ export default function WorkoutPage() {
   const currentExerciseClientId = panelExercise ? getExerciseClientId(panelExercise, panelIndex) : null
   const selectedSetId = selectedSet?.exerciseId === currentExerciseClientId ? selectedSet?.setId ?? null : null
   const currentSetIndex = panelExercise ? panelSetIndex(panelExercise.sets, selectedSetId) : -1
-  const undoExerciseIndex = lastLogged
-    ? active.exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === lastLogged.exerciseId)
-    : -1
-  const undoSet = lastLogged ? active.exercises[undoExerciseIndex]?.sets[lastLogged.setIndex] : undefined
   const queue = upNextQueue(active.exercises, panelIndex)
   const nextExerciseIndex = queue[0] ?? -1
   const goToExercise = (index: number) => {
@@ -795,8 +784,6 @@ export default function WorkoutPage() {
           onSkip={handleSkipRest}
           variant={isDesktop ? 'full' : mobileRestVariant}
           label={setPanelRestLabel(panelSet, currentSetIndex)}
-          undoLabel={undoSet?.done ? `Undo set ${lastLogged!.setIndex + 1}` : undefined}
-          onUndo={() => handleToggleSet(undoExerciseIndex, lastLogged!.setIndex)}
         />
       ) : null}
       onAdjustSet={handleAdjustSet}
@@ -979,7 +966,7 @@ export default function WorkoutPage() {
             onClick={handleFinish}
             disabled={saving}
             className="flex-none rounded-xl px-5 text-sm font-bold min-h-11"
-            style={{ background: 'var(--primary-gradient)', color: 'var(--accent-foreground)' }}
+            style={{ background: 'var(--surface-2)', color: 'var(--text)' }}
             whileTap={{ scale: 0.93 }}
           >
             {saving ? '...' : 'Finish'}
@@ -1103,7 +1090,6 @@ export default function WorkoutPage() {
                           onDismissSuggestion={handleDismissSuggestion}
                           onOpenOverview={() => setSessionSheet('overview')}
                           drawnSetIndex={lastLogged?.draw && lastLogged.exerciseId === currentExerciseClientId ? lastLogged.setIndex : null}
-                          onRemoveExercise={handleRemoveExercise}
                           onRemoveSet={handleRemoveSet}
                           onSelectSet={(setIndex) => {
                             const set = panelExercise.sets[setIndex]
@@ -1199,6 +1185,18 @@ export default function WorkoutPage() {
                   onToggle={(label) => setLabel(active.label === label ? '' : label)}
                 />
                 <hr className="bottom-sheet-rule" />
+                {panelExercise && (
+                  <button
+                    type="button"
+                    className="bottom-sheet-row"
+                    data-quiet
+                    onClick={() => { setSessionSheet(null); handleRemoveExercise(panelIndex) }}
+                    aria-label={`Remove exercise ${panelExercise.name}`}
+                  >
+                    <span>Remove {panelExercise.name}</span>
+                    <Trash2 size={16} aria-hidden="true" />
+                  </button>
+                )}
                 <button type="button" className="bottom-sheet-row" data-quiet onClick={() => { setSessionSheet(null); handleDiscard() }}>
                   <span>Discard workout</span>
                   <Trash2 size={16} aria-hidden="true" />

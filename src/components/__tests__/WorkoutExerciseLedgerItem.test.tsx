@@ -18,7 +18,6 @@ const callbacks = {
   onDismissSuggestion: vi.fn(),
   onOpenOverview: vi.fn(),
   drawnSetIndex: null,
-  onRemoveExercise: vi.fn(),
   onRemoveSet: vi.fn(),
   onSelectSet: vi.fn(),
   onToggleSet: vi.fn(),

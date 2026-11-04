@@ -764,6 +764,7 @@ test('exercise confirmation cannot delete a remotely rehydrated exercise', async
   await seedLifecycleActiveSession({ sessionId })
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new')
+  await page.getByRole('button', { name: 'More workout options' }).first().click()
   await page.getByRole('button', { name: 'Remove exercise Phase 1 Bench Press' }).click()
   const dialog = page.getByRole('dialog', { name: 'Remove exercise?' })
   await expect(dialog).toBeVisible()

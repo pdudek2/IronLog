@@ -380,7 +380,7 @@ test.describe('Active workout shell reduction', () => {
 
     await page.goto('/workout/new')
     await expect.poll(
-      () => page.getByRole('button', { name: 'Remove exercise Squat' }).count(),
+      () => page.getByRole('heading', { name: 'Squat' }).count(),
       { message: 'Squat should remain in the active session after route navigation' },
     ).toBeGreaterThan(0)
 
@@ -443,6 +443,7 @@ test.describe('Active workout shell reduction', () => {
     await page.getByRole('button', { name: /Add set/i }).click()
     await expect(setRows).toHaveCount(2)
 
+    await page.getByRole('button', { name: /^Edit set 2/ }).click()
     await page.getByRole('button', { name: 'Remove set 2' }).click()
     await expect(setRows).toHaveCount(1)
     await expect(page.getByRole('dialog', { name: 'Remove set?' })).toHaveCount(0)
@@ -553,8 +554,9 @@ test.describe('Active workout shell reduction', () => {
       reps: '8',
     })
 
-    const undoButton = panel.getByRole('button', { name: 'Undo set 1' })
-    await expectMinHitArea(undoButton, 'Undo set button')
+    // A second tap on the logged set's tick is the undo.
+    const undoButton = page.getByRole('button', { name: 'Unmark set 1 for Squat' })
+    await expectMinHitArea(undoButton, 'Logged set tick')
     await undoButton.click()
     await expect(doneButton).toBeVisible()
     await expect(restTimer).toHaveCount(0)
@@ -677,6 +679,7 @@ test.describe('Active workout shell reduction', () => {
     await page.getByRole('button', { name: 'Skip rest' }).click()
     await expect(restTimerBar).toHaveCount(0)
 
+    await page.getByRole('button', { name: 'More workout options' }).click()
     const removeExerciseButton = page.getByRole('button', { name: 'Remove exercise Squat' })
     await removeExerciseButton.click()
 
@@ -684,8 +687,7 @@ test.describe('Active workout shell reduction', () => {
     await expect(confirmDialog).toBeVisible({ timeout: 5_000 })
     await confirmDialog.getByRole('button', { name: 'Remove exercise' }).click()
 
-    await expect(removeExerciseButton).toHaveCount(1)
-    await expect(removeExerciseButton).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Squat' })).toHaveCount(0)
     const emptyState = page.locator('.workout-empty-state')
     await expect(emptyState).toBeVisible()
     await expect(page.locator('.workout-empty-rhythm')).toHaveCount(0)

@@ -59,7 +59,7 @@ export default function WorkoutSetPanel({
   return (
     <section className="workout-set-panel" aria-label="Current set">
       {rest ?? (
-        <div className="workout-set-panel-status">
+        <div className="workout-set-panel-status" data-plain={(set && !set.done) || undefined}>
           <strong>{setPanelStatus(set, setIndex, setCount)}</strong>
         </div>
       )}

@@ -4927,13 +4927,17 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
 }
 
 .workout-set-today {
-  color: var(--muted);
+  color: var(--muted-soft);
   font-size: 0.9375rem;
   font-weight: 500;
 }
 
 .workout-set-row[data-done] .workout-set-today {
   color: var(--text);
+}
+
+.workout-set-row:not([data-current]) .workout-set-remove {
+  visibility: hidden;
 }
 
 .workout-set-row[data-current] .workout-set-today {
@@ -4985,12 +4989,21 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
 }
 
 .overload-hint-apply {
-  min-height: 2.25rem;
+  position: relative;
+  isolation: isolate;
+  min-height: 2.75rem;
   padding: 0 0.8rem;
-  border-radius: var(--radius-sm);
-  background: rgba(244, 238, 232, 0.1);
   color: var(--text-strong);
   font-weight: 600;
+}
+
+.overload-hint-apply::before {
+  content: '';
+  position: absolute;
+  inset: 0.25rem 0;
+  z-index: -1;
+  border-radius: var(--radius-sm);
+  background: rgba(244, 238, 232, 0.1);
 }
 
 .overload-hint-dismiss {
@@ -6112,6 +6125,7 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   transition: background-color 120ms ease, transform 120ms ease;
   touch-action: manipulation;
 }
+
 
 .rest-timer-action:active {
   transform: scale(0.95);
@@ -7678,8 +7692,8 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 .workout-focus-shell .workout-add-set {
   border-top: 0;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--surface-2) 76%, transparent);
-  color: var(--text);
+  background: none;
+  color: var(--muted);
 }
 
 .workout-focus-shell .workout-add-set:active {
@@ -9108,5 +9122,30 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
   .bottom-sheet-grab::before {
     display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .workout-set-header,
+  .workout-set-row {
+    grid-template-columns: 2.75rem 11rem minmax(0, 1fr) 2.75rem;
+  }
+
+  .workout-set-values {
+    grid-template-columns: 11rem minmax(0, 1fr);
+  }
+
+  .workout-set-list .workout-set-panel-status[data-plain] {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .workout-set-num {
+    grid-template-columns: 3.25rem minmax(0, 1fr) 3.25rem;
+  }
+
+  .workout-set-step {
+    height: 3.25rem;
   }
 }

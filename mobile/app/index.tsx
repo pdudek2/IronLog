@@ -439,6 +439,8 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
   const readiness = useSessionRead(JSON.stringify(['readiness', uid, sessionKey]), loadReadiness)
   const lowReadiness = readiness.state.status === 'ready' && readiness.state.data !== null && computeReadinessScore(readiness.state.data).tone === 'low'
   const targetOf = (exercise: WorkoutExercise): ProgressionInput['target'] | undefined => {
+    // A raise must not flash before today's readiness arrives.
+    if (readiness.state.status === 'loading') return undefined
     if (!session.templateId) return null
     if (templates.state.status === 'loading') return undefined
     const template = templates.state.status === 'ready' ? templates.state.data.find(({ id }) => id === session.templateId) : null

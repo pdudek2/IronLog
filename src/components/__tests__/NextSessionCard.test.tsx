@@ -82,7 +82,7 @@ describe('NextSessionCard', () => {
     fireEvent.click(within(summary).getByRole('button', { name: 'Start Upper A' }))
     expect(onStart).toHaveBeenCalledTimes(1)
     expect([...onStart.mock.calls[0][0]]).toEqual([
-      ['global:bench', { sets: 4, weight: 72.5, reps: 9 }],
+      ['global:bench', { sets: 4, weight: 72.5, reps: 8 }],
       ['global:row', { sets: 4, weight: 65, reps: 8 }],
       ['global:ohp', { sets: 2, weight: 40, reps: 10 }],
       ['global:pulldown', { sets: 2, weight: 50, reps: 12 }],

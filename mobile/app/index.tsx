@@ -339,13 +339,6 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, met
   const equipment = metadata ? EQUIPMENT_LABELS[metadata.equipment] : undefined
   const [hintClosed, setHintClosed] = useState(false)
   const suggestion = history.state.status === 'ready' && !hintClosed && exercise.sets.some((set) => !set.done) ? history.state.data.suggestion : null
-  const remove = () => {
-    if (!exerciseHasEnteredSets(exercise)) return editing.removeExercise(exercise.clientId)
-    showDialog('Remove exercise?', 'This will remove the exercise and its sets from the active session.', [
-      { text: 'Keep', style: 'cancel' },
-      { text: 'Remove exercise', style: 'destructive', onPress: () => editing.removeExercise(exercise.clientId) },
-    ])
-  }
   return <View style={styles.exerciseCard}>
     <Pressable accessibilityRole="button" accessibilityLabel={`Exercise ${position} of ${count}, open workout overview`} onPress={onOverview}
       style={({ pressed }) => [styles.exercisePositionRow, pressed && styles.headingPressed]}>
@@ -359,16 +352,11 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, met
           {(category || equipment) && <Text style={styles.exerciseMeta}>{category}{category && equipment ? ' · ' : ''}{equipment}</Text>}
         </View>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Remove exercise ${exercise.name}`} hitSlop={4} onPress={remove}
-        style={({ pressed }) => [styles.deleteExercise, pressed && styles.headingPressed]}>
-        <Svg width={14} height={14} viewBox="0 0 24 24"><Path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2M10 11v6M14 11v6" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
-        <Text style={styles.deleteExerciseLabel}>Delete</Text>
-      </Pressable>
     </View>
     <View>
       {suggestion && <View style={styles.hint}>
         <Text style={styles.hintText}>{overloadHintLabel(suggestion, units)}</Text>
-        <Pressable accessibilityRole="button" onPress={() => { editing.applyOverload(exercise.clientId, suggestion.suggestedWeight); setHintClosed(true) }}
+        <Pressable accessibilityRole="button" hitSlop={{ top: 4, bottom: 4 }} onPress={() => { editing.applyOverload(exercise.clientId, suggestion.suggestedWeight); setHintClosed(true) }}
           style={({ pressed }) => [styles.hintApply, pressed && styles.headingPressed]}><Text style={styles.hintApplyText}>Apply</Text></Pressable>
         <Pressable accessibilityRole="button" accessibilityLabel="Dismiss suggestion" onPress={() => setHintClosed(true)}
           style={({ pressed }) => [styles.hintClose, pressed && styles.headingPressed]}><Icon name="close" size={16} /></Pressable>
@@ -397,20 +385,20 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, met
             <Text numberOfLines={1} style={[styles.setCellMuted, styles.setValue]}>{previousText}</Text>
             <Text numberOfLines={1} style={[styles.setToday, styles.setValue, set.done && styles.setTodayDone, current && styles.setTodayCurrent]}>{today}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${index + 1}`} onPress={() => {
+          {current ? <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${index + 1}`} onPress={() => {
             const remove = () => editing.removeSet(exercise.clientId, set.clientId)
             if (!set.done && !set.weight.trim() && !set.reps.trim()) { remove(); return }
             showDialog('Remove set?', 'This set contains data or is marked complete.', [{ text: 'Keep', style: 'cancel' }, { text: 'Remove set', style: 'destructive', onPress: remove }])
           }} style={[styles.setTrailingColumn, styles.setTouchTarget]}>
             <Svg width={15} height={15} viewBox="0 0 24 24" style={{ alignSelf: 'center' }}><Path d="m18 6-12 12M6 6l12 12" fill="none" stroke={colors.mutedSoft} strokeWidth={2} strokeLinecap="round" /></Svg>
-          </Pressable>
+          </Pressable> : <View style={styles.setTrailingColumn} />}
         </View>
       })}
       {history.state.status === 'error' && <Pressable accessibilityRole="button" onPress={history.retry} style={styles.lookupAction}><Text style={styles.lookupText}>History unavailable · Retry</Text></Pressable>}
       {history.state.status === 'ready' && history.state.fromCache && <Text style={styles.lookupText}>History saved on this device · reconnect to refresh</Text>}
       <Pressable accessibilityRole="button" accessibilityLabel={`Add set to ${exercise.name}`} onPress={() => editing.addSet(exercise.clientId)}
         style={({ pressed }) => [styles.addSetButton, pressed && styles.setStepperPressed]}><View style={styles.addSetContent}>
-          <Svg width={15} height={15} viewBox="0 0 24 24"><Path d="M12 5v14M5 12h14" fill="none" stroke={colors.text} strokeWidth={2.4} strokeLinecap="round" /></Svg>
+          <Svg width={15} height={15} viewBox="0 0 24 24"><Path d="M12 5v14M5 12h14" fill="none" stroke={colors.muted} strokeWidth={2.4} strokeLinecap="round" /></Svg>
           <Text style={styles.addSetText}>Add set</Text>
         </View></Pressable>
     </View>
@@ -503,7 +491,7 @@ type Rest = { sessionId: string; startedAt: number; totalSec: number }
 // shortcut: lives only in memory, so a killed app forgets the rest; move it to the session journal if testers miss it.
 let lastRest: Rest | null = null
 
-function RestBar({ rest, label, undoLabel, onUndo, onAddTime, onSkip }: { rest: Rest; label: string; undoLabel?: string; onUndo: () => void; onAddTime: (seconds: number) => void; onSkip: () => void }) {
+function RestBar({ rest, label, onAddTime, onSkip }: { rest: Rest; label: string; onAddTime: (seconds: number) => void; onSkip: () => void }) {
   const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 250)
@@ -527,7 +515,6 @@ function RestBar({ rest, label, undoLabel, onUndo, onAddTime, onSkip }: { rest: 
       <Text style={styles.restValue}>{Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, '0')}</Text>
     </>}
     <View style={styles.flex} />
-    {undoLabel && <Pressable accessibilityRole="button" onPress={onUndo} style={styles.restAction}><Text style={styles.restActionText}>{undoLabel}</Text></Pressable>}
     {!finished && <Pressable accessibilityRole="button" accessibilityLabel="Add 30 seconds" onPress={() => onAddTime(30)} style={styles.restAction}><Text style={styles.restActionText}>+30 s</Text></Pressable>}
     <Pressable accessibilityRole="button" accessibilityLabel="Skip rest" onPress={onSkip} style={styles.restAction}><Text style={styles.restActionText}>Skip</Text></Pressable>
   </View>
@@ -698,6 +685,13 @@ function SessionScreen({ user }: { user: AuthUser }) {
     }
     action()
   }
+  const removePanelExercise = (exercise: WorkoutExercise) => {
+    if (!exerciseHasEnteredSets(exercise)) return panelEditing.removeExercise(exercise.clientId)
+    showDialog('Remove exercise?', 'This will remove the exercise and its sets from the active session.', [
+      { text: 'Keep', style: 'cancel' },
+      { text: 'Remove exercise', style: 'destructive', onPress: () => panelEditing.removeExercise(exercise.clientId) },
+    ])
+  }
   const discard = closable(() => showDialog('Discard workout?', 'All data from this session will be lost.', [
     { text: 'Back', style: 'cancel' },
     { text: 'Discard workout', style: 'destructive', onPress: () => session && startClosure('discard', session) },
@@ -745,9 +739,6 @@ function SessionScreen({ user }: { user: AuthUser }) {
     scroll.current?.scrollTo({ y: 0, animated: false })
   }
   const currentSetIndex = panelExercise ? panelSetIndex(panelExercise.sets, selectedSet?.exerciseId === currentId ? selectedSet?.setId ?? null : null) : -1
-  const undoExercise = lastLogged ? liveSession?.exercises.find(({ clientId }) => clientId === lastLogged.exerciseId) : undefined
-  const undoSetIndex = undoExercise ? undoExercise.sets.findIndex(({ clientId }) => clientId === lastLogged?.setId) : -1
-  const undoSet = undoExercise?.sets[undoSetIndex]
   const nextExerciseIndex = liveSession ? upNextQueue(liveSession.exercises, panelIndex)[0] ?? -1 : -1
   const currentRest = rest && rest.sessionId === liveSession?.sessionId ? rest : null
   const toggleSet = guardClosureInteraction(canEditCurrentSession, (exerciseId: string, setId: string, done: boolean) => {
@@ -810,7 +801,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
               </Svg>
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Finish workout" disabled={locked} onPress={finish}
-              style={({ pressed }) => [styles.finishButton, styles.buttonPrimary, locked && styles.buttonDisabled, pressed && styles.buttonPressed]}>
+              style={({ pressed }) => [styles.finishButton, locked && styles.buttonDisabled, pressed && styles.buttonPressed]}>
               <Text style={styles.finishButtonText}>{closure?.status === 'submitting' ? '...' : 'Finish'}</Text>
             </Pressable>
           </View>
@@ -918,8 +909,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         rejectedEdit={rejectedEditState} inset={Math.max(keyboardInset, insets.bottom + 14)} finishing={closure?.status === 'submitting'}
         nextName={nextExerciseIndex >= 0 ? liveSession?.exercises[nextExerciseIndex]?.name ?? null : null}
         editing={panelEditing}
-        rest={currentRest && <RestBar rest={currentRest} label={setPanelRestLabel(panelExercise.sets[currentSetIndex], currentSetIndex)} undoLabel={undoSet?.done ? `Undo set ${undoSetIndex + 1}` : undefined}
-          onUndo={() => { if (undoExercise && undoSet) toggleSet(undoExercise.clientId, undoSet.clientId, false) }}
+        rest={currentRest && <RestBar rest={currentRest} label={setPanelRestLabel(panelExercise.sets[currentSetIndex], currentSetIndex)}
           onAddTime={(seconds) => changeRest({ ...currentRest, totalSec: currentRest.totalSec + seconds })} onSkip={() => changeRest(null)} />}
         onLog={() => { const set = panelExercise.sets[currentSetIndex]; if (set) toggleSet(panelExercise.clientId, set.clientId, true) }}
         onClearSelection={() => setSelectedSet(null)}
@@ -944,6 +934,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
           <Text style={styles.sheetLabel}>Session type</Text>
           <LabelChips active={liveSession.label ?? ''} onToggle={guardClosureInteraction(canEditCurrentSession, (label) => setLabel(liveSession.label === label ? '' : label))} />
           <View style={styles.sheetRule} />
+          {panelExercise && <Pressable accessibilityRole="button" accessibilityLabel={`Remove exercise ${panelExercise.name}`} disabled={locked}
+            onPress={() => close(() => removePanelExercise(panelExercise))} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
+            <Text style={styles.sheetRowQuiet}>Remove {panelExercise.name}</Text><Icon name="trash" size={16} />
+          </Pressable>}
           <Pressable accessibilityRole="button" disabled={locked} onPress={() => close(discard)} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
             <Text style={styles.sheetRowQuiet}>Discard workout</Text><Icon name="trash" size={16} />
           </Pressable>
@@ -1070,9 +1064,6 @@ const styles = StyleSheet.create({
   exerciseCard: { paddingBottom: 4 },
   exerciseHeadRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
   exerciseHeading: { flex: 1, flexDirection: 'row', minHeight: 44 },
-  // .workout-danger-action: 0.4rem 0.65rem padding, 0.76rem/700, muted.
-  deleteExercise: { alignItems: 'center', flexDirection: 'row', gap: 5.6, justifyContent: 'center', minHeight: 44, paddingHorizontal: 10.4 },
-  deleteExerciseLabel: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },
   headingPressed: { opacity: 0.72 },
   exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 2 },
   exerciseName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 30, lineHeight: 34, letterSpacing: -0.78 },
@@ -1106,7 +1097,7 @@ const styles = StyleSheet.create({
   panelValue: { alignItems: 'center', flex: 1, minWidth: 0 },
   panelInput: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 21, fontVariant: ['tabular-nums'], letterSpacing: -0.42, minWidth: 0, padding: 0, textAlign: 'center', width: '100%' },
   panelUnit: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12 },
-  panelStep: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.09)', borderRadius: 12, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)', height: 44, justifyContent: 'center', width: 44 },
+  panelStep: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.09)', borderRadius: 12, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)', height: 52, justifyContent: 'center', width: 48 },
   panelStepText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, fontVariant: ['tabular-nums'] },
   panelAction: { alignItems: 'center', backgroundColor: colors.primaryEnd, borderRadius: 15, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35)', experimental_backgroundImage: primaryGradient, height: 52, justifyContent: 'center' },
   panelActionText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
@@ -1123,7 +1114,7 @@ const styles = StyleSheet.create({
   setHeaderCentered: { textAlign: 'center' },
   setValues: { alignItems: 'center', flex: 2, flexDirection: 'row', minHeight: 44 },
   setValue: { flex: 1, minWidth: 0 },
-  setToday: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 15, fontVariant: ['tabular-nums'] },
+  setToday: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_500Medium', fontSize: 15, fontVariant: ['tabular-nums'] },
   setTodayDone: { color: colors.text },
   setTodayCurrent: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold' },
   setToggleColumn: { width: 44, flexShrink: 0 },
@@ -1137,16 +1128,16 @@ const styles = StyleSheet.create({
   setCellValue: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'], lineHeight: 44, textAlign: 'center' },
   setCellCurrent: { borderBottomColor: colors.lineStrong, borderBottomWidth: StyleSheet.hairlineWidth },
   setStepperPressed: { backgroundColor: 'rgba(244, 238, 232, 0.072)', opacity: 0.9 },
-  addSetButton: { alignItems: 'center', backgroundColor: 'rgba(38, 33, 30,0.76)', borderRadius: 8, justifyContent: 'center', minHeight: 44, marginTop: 4 },
+  addSetButton: { alignItems: 'center', borderRadius: 8, justifyContent: 'center', minHeight: 44, marginTop: 4 },
   addSetContent: { alignItems: 'center', flexDirection: 'row', gap: 8, justifyContent: 'center' },
-  addSetText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
+  addSetText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12, lineHeight: 18 },
   omittedSetAdjustmentsSpace: { height: 52 },
   // Web: rounded-xl px-5 text-sm font-bold min-h-11 with the primary gradient.
-  finishButton: { alignItems: 'center', borderRadius: 12, justifyContent: 'center', marginLeft: 8, minHeight: 44, paddingHorizontal: 20 },
+  finishButton: { alignItems: 'center', backgroundColor: colors.surfaceRaised, borderRadius: 12, justifyContent: 'center', marginLeft: 8, minHeight: 44, paddingHorizontal: 20 },
   minimizeButton: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 44, paddingHorizontal: 2 },
   minimizeText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
   minimizeHint: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11 },
-  finishButtonText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
+  finishButtonText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
   optionsTrigger: { alignItems: 'center', borderRadius: 8, height: 44, justifyContent: 'center', width: 44 },
   closureNotice: { backgroundColor: colors.surface, borderColor: colors.warning, borderRadius: 16, borderWidth: 1, gap: 4, marginHorizontal: 16, marginTop: 14, padding: 16 },
   closureAction: { alignItems: 'center', alignSelf: 'flex-start', borderRadius: 8, justifyContent: 'center', marginTop: 8, minHeight: 44, paddingHorizontal: 16 },

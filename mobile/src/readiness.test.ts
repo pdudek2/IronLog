@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildNextSessionRecommendation, buildOverloadSuggestion } from '../../src/shared/nextSessionRecommendation'
+import { buildNextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
 import { computeReadinessScore, todayKey, type ReadinessEntry } from '../../src/shared/readiness'
 import { fixtures, plan, workouts, NOW, readiness } from '../../src/shared/__fixtures__/readiness'
 import { parseReadiness, ReadinessController, ReadinessDataError, recommendationHistory, type ReadinessState } from './readiness'
@@ -19,17 +19,16 @@ for (const fixture of fixtures) test(`shared ${fixture.tone} fixture uses source
   assert.ok(kgToDisplayWeight(canonical, 'lbs') > canonical)
   assert.equal(result.overrides.get('global:same')?.weight, canonical)
 })
-test('shared no-history, score thresholds and strict 21-day gap boundary', () => {
+test('shared no-history, score thresholds and the break boundary', () => {
   assert.deepEqual(buildNextSessionRecommendation(plan, 0, readiness(fixtures[2].values), [], NOW).exercises.map(e => e.weight), [70,25,60,10])
   assert.equal(computeReadinessScore({ sleep: 2, mood: 3, soreness: 3 }).tone, 'mid')
   assert.equal(computeReadinessScore({ sleep: 5, mood: 3, soreness: 3 }).score, 70)
   assert.equal(computeReadinessScore({ sleep: 5, mood: 3, soreness: 3 }).tone, 'high')
-  const history = [0,1,2].map(() => ({ bestSetWeight: 72.5, finishedAt: NOW - 21 * 86_400_000 }))
-  assert.equal(buildOverloadSuggestion(history, NOW)?.suggestedWeight, 75)
-  assert.equal(buildOverloadSuggestion(history, NOW + 1)?.suggestedWeight, 70)
-  const stale = workouts.map(w => ({ ...w, finishedAt: NOW - 22 * 86_400_000 }))
-  assert.equal(buildNextSessionRecommendation(plan, 0, readiness(fixtures[0].values), stale, NOW).exercises[0]?.weight, 70)
-  assert.equal(buildOverloadSuggestion(history.slice(0,2), NOW), null)
+  const high = readiness(fixtures[2].values)
+  const at = (days: number) => buildNextSessionRecommendation(plan, 0, high, workouts.map(w => ({ ...w, finishedAt: NOW - days * 86_400_000 })), NOW).exercises[0]?.weight
+  assert.equal(at(14), 75)
+  assert.equal(at(15), 72.5)
+  assert.equal(at(40), 70)
 })
 test('strict parsing rejects owner/date/invalid values/timestamps; local midnight is not UTC', () => {
   const entry = readiness(fixtures[1].values)

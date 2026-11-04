@@ -181,13 +181,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
   })
 
   it('hides an overload suggestion after every set is completed', () => {
-    const suggestion = {
-      suggestedWeight: 57.5,
-      delta: -2.5,
-      reason: 'deload_gap' as const,
-      lastWeight: 60,
-      basedOnSessions: 3,
-    }
+    const suggestion = { label: 'Long break: first set is a test at −2.5 kg', weight: 57.5 }
 
     render(
       <WorkoutExerciseLedgerItem
@@ -204,7 +198,7 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       />,
     )
 
-    expect(screen.getByText('Long break: suggested −2.5 kg')).toBeInTheDocument()
+    expect(screen.getByText('Long break: first set is a test at −2.5 kg')).toBeInTheDocument()
 
     const active = useWorkoutStore.getState().active
     if (!active) throw new Error('Expected an active workout fixture.')
@@ -220,6 +214,6 @@ describe('WorkoutExerciseLedgerItem weight units', () => {
       })
     })
 
-    expect(screen.queryByText('Long break: suggested −2.5 kg')).not.toBeInTheDocument()
+    expect(screen.queryByText('Long break: first set is a test at −2.5 kg')).not.toBeInTheDocument()
   })
 })

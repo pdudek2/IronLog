@@ -58,7 +58,7 @@ const recentWorkouts: WorkoutSummary[] = [
         { weight: 70, reps: 10 },
       ],
     },
-    { exerciseId: 'row', exerciseSource: 'global', name: 'Barbell Row', sets: [{ weight: 67.5, reps: 8 }] },
+    { exerciseId: 'row', exerciseSource: 'global', name: 'Barbell Row', sets: [67.5, 67.5, 67.5, 67.5].map((weight) => ({ weight, reps: 10 })) },
   ]),
   workout('row-2', NOW - 3 * 86_400_000, [
     { exerciseId: 'row', exerciseSource: 'global', name: 'Barbell Row', sets: [{ weight: 67.5, reps: 8 }] },
@@ -69,7 +69,7 @@ const recentWorkouts: WorkoutSummary[] = [
 ]
 
 describe('buildNextSessionRecommendation', () => {
-  it('applies progression and trims the final two exercises for mid readiness', () => {
+  it('raises a lift that reached the top of its range, holds an ambiguous one and trims the final two for mid readiness', () => {
     const recommendation = buildNextSessionRecommendation(
       template,
       0,
@@ -93,7 +93,7 @@ describe('buildNextSessionRecommendation', () => {
       { sets: 2, weight: 10, weightDelta: 0, setsDelta: -1 },
     ])
     expect([...recommendation.overrides]).toEqual([
-      ['global:bench', { sets: 4, weight: 72.5, reps: 6 }],
+      ['global:bench', { sets: 4, weight: 72.5, reps: 8 }],
       ['global:row', { sets: 4, weight: 70, reps: 8 }],
       ['global:ohp', { sets: 3, weight: 40, reps: 10 }],
       ['global:pulldown', { sets: 2, weight: 50, reps: 12 }],
@@ -101,7 +101,7 @@ describe('buildNextSessionRecommendation', () => {
     ])
   })
 
-  it('keeps the latest weight and trims every exercise for low readiness', () => {
+  it('holds the weight at the top of the range and trims every exercise for low readiness', () => {
     const recommendation = buildNextSessionRecommendation(
       template,
       0,
@@ -120,7 +120,7 @@ describe('buildNextSessionRecommendation', () => {
     expect(recommendation.overrides.get('global:row')).toEqual({
       sets: 3,
       weight: 67.5,
-      reps: 8,
+      reps: 10,
     })
     expect([...recommendation.overrides.values()]).toHaveLength(5)
   })

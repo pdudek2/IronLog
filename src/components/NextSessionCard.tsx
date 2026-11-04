@@ -68,7 +68,9 @@ export default function NextSessionCard({
     dayIndex,
     readiness,
     workouts,
-  ), [dayIndex, readiness, template, workouts])
+    undefined,
+    units,
+  ), [dayIndex, readiness, template, workouts, units])
 
   function closePopover() {
     const popover = popoverRef.current

@@ -117,8 +117,8 @@ export function buildActiveWorkoutFromTemplate(
       const override = overridesByExercise.get(key)
       const weightValue = override?.weight
         ?? templateStartWeight(exercise, history)
-      const repsValue = override?.reps
-        ?? (history && history.bestSetReps > 0 ? history.bestSetReps : exercise.targetReps)
+      // The plan's target, not last time's best: the progression hint asks for more when it is due.
+      const repsValue = override?.reps ?? exercise.targetReps
       const weight = weightValue > 0 ? String(weightValue) : ''
       const reps = repsValue > 0 ? String(repsValue) : ''
       const setCount = Math.max(1, Math.round(override?.sets ?? exercise.sets))

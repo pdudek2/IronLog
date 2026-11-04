@@ -1,16 +1,14 @@
 import { motion } from 'framer-motion'
 import { X } from 'lucide-react'
-import { overloadHintLabel, type OverloadSuggestion } from '../lib/overloadService'
-import type { Units } from '../lib/userProfile'
+import type { SessionHint } from '../shared/progression'
 
 interface Props {
-  suggestion: OverloadSuggestion
-  units: Units
-  onApply: (weight: number) => void
+  hint: SessionHint
+  onApply: () => void
   onDismiss: () => void
 }
 
-export default function OverloadHint({ suggestion, units, onApply, onDismiss }: Props) {
+export default function OverloadHint({ hint, onApply, onDismiss }: Props) {
   return (
     <motion.div
       className="overload-hint"
@@ -19,14 +17,16 @@ export default function OverloadHint({ suggestion, units, onApply, onDismiss }: 
       exit={{ opacity: 0, y: -6 }}
       transition={{ duration: 0.18 }}
     >
-      <span className="overload-hint-copy">{overloadHintLabel(suggestion, units)}</span>
-      <button
-        type="button"
-        onClick={() => onApply(suggestion.suggestedWeight)}
-        className="overload-hint-apply"
-      >
-        Apply
-      </button>
+      <span className="overload-hint-copy">{hint.label}</span>
+      {(hint.weight !== undefined || hint.reps !== undefined) && (
+        <button
+          type="button"
+          onClick={onApply}
+          className="overload-hint-apply"
+        >
+          Apply
+        </button>
+      )}
       <button
         type="button"
         onClick={onDismiss}

@@ -1,5 +1,7 @@
 import { computeReadinessScore, type ReadinessEntry } from './readiness'
-import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
+import { exercises as exerciseCatalogue } from '../../data/exercises'
+import { buildProgression, type ProgressionSession } from './progression'
+import type { WeightUnits } from './weightUnits'
 
 type ExerciseSource = 'global' | 'user'
 export interface RecommendationTemplate {
@@ -14,62 +16,12 @@ export interface TemplateExerciseOverride { sets?: number; weight?: number; reps
 export type TemplateExerciseOverrideMap = ReadonlyMap<string, TemplateExerciseOverride>
 export function templateExerciseKey(exerciseId: string, source: ExerciseSource): string { return `${source}:${exerciseId}` }
 
-export type OverloadReason = 'progressive' | 'deload_gap' | 'maintain'
-
-export interface OverloadSuggestion {
-  suggestedWeight: number  // zaokrąglone do 0.25
-  delta: number            // -2.5 | 0 | +2.5
-  reason: OverloadReason
-  lastWeight: number
-  basedOnSessions: number
-}
-
-const THREE_WEEKS_MS = 21 * 24 * 60 * 60 * 1000
-
-export interface OverloadHistoryEntry {
-  bestSetWeight: number
-  finishedAt: number
-}
-
-function roundToQuarter(value: number): number {
-  return Math.max(0, Math.round(value * 4) / 4)
-}
-
-export function buildOverloadSuggestion(
-  history: OverloadHistoryEntry[],
-  now = Date.now(),
-): OverloadSuggestion | null {
-  if (history.length < 3) return null
-
-  const latest = history[0]
-  if (!latest || latest.bestSetWeight <= 0) return null
-
-  if (now - latest.finishedAt > THREE_WEEKS_MS) {
-    return {
-      suggestedWeight: roundToQuarter(latest.bestSetWeight - 2.5),
-      delta: -2.5,
-      reason: 'deload_gap',
-      lastWeight: latest.bestSetWeight,
-      basedOnSessions: history.length,
-    }
-  }
-
-  return {
-    suggestedWeight: roundToQuarter(latest.bestSetWeight + 2.5),
-    delta: 2.5,
-    reason: 'progressive',
-    lastWeight: latest.bestSetWeight,
-    basedOnSessions: history.length,
-  }
-}
-
-export function overloadHintLabel({ delta, reason }: Pick<OverloadSuggestion, 'delta' | 'reason'>, units: WeightUnits): string {
-  const amount = `${delta > 0 ? '+' : '−'}${kgToDisplayWeight(Math.abs(delta), units)} ${units}`
-  return reason === 'deload_gap' ? `Long break: suggested ${amount}` : `Suggested ${amount}`
-}
-
-export function applyOverloadWeight<T extends { weight: string; done: boolean }>(sets: T[], weightKg: number): T[] {
-  return sets.map((set) => (set.done ? set : { ...set, weight: String(weightKg) }))
+export function applyOverload<T extends { weight: string; reps: string; done: boolean }>(sets: T[], values: { weight?: number; reps?: number }): T[] {
+  return sets.map((set) => (set.done ? set : {
+    ...set,
+    ...(values.weight !== undefined ? { weight: String(values.weight) } : {}),
+    ...(values.reps !== undefined ? { reps: String(values.reps) } : {}),
+  }))
 }
 
 export interface NextSessionExercise {
@@ -92,45 +44,24 @@ export interface NextSessionRecommendation {
   overrides: TemplateExerciseOverrideMap
 }
 
-interface ExerciseHistoryEntry extends OverloadHistoryEntry {
-  bestSetReps: number
-}
-
-function matchesExercise(
-  exercise: RecommendationWorkout['exercises'][number],
-  exerciseId: string,
-  exerciseSource: ExerciseSource,
-): boolean {
-  return exercise.exerciseId === exerciseId
-    && (exercise.exerciseSource ?? 'global') === exerciseSource
-}
-
-function exerciseHistory(
+// Repeated entries of one exercise in a workout count as one session, as in workoutProjection.
+function exerciseProgressionSessions(
   workouts: RecommendationWorkout[],
   exerciseId: string,
   exerciseSource: ExerciseSource,
-): ExerciseHistoryEntry[] {
-  return [...workouts]
-    .sort((a, b) => b.finishedAt - a.finishedAt)
-    .flatMap((workout) => {
-      const exercise = workout.exercises.find((item) => (
-        matchesExercise(item, exerciseId, exerciseSource)
-      ))
-      if (!exercise) return []
-      const bestSet = exercise.sets.reduce((best, set) => (
-        !best
-        || set.weight > best.weight
-        || (set.weight === best.weight && set.reps > best.reps)
-          ? set
-          : best
-      ), exercise.sets[0])
+): ProgressionSession[] {
+  return workouts.flatMap((workout) => {
+    const sets = workout.exercises
+      .filter((exercise) => exercise.exerciseId === exerciseId && (exercise.exerciseSource ?? 'global') === exerciseSource)
+      .flatMap((exercise) => exercise.sets)
+    return sets.length ? [{ finishedAt: workout.finishedAt, sets }] : []
+  })
+}
 
-      return [{
-        bestSetWeight: Math.max(0, bestSet?.weight ?? 0),
-        bestSetReps: Math.max(0, bestSet?.reps ?? 0),
-        finishedAt: workout.finishedAt,
-      }]
-    })
+function catalogueMeta(exerciseId: string, exerciseSource: ExerciseSource): { equipment?: string; category?: string } {
+  // shortcut: user exercises fall back to the history step on Train; pass their metadata here if that proves wrong.
+  const entry = exerciseSource === 'global' ? exerciseCatalogue.find((exercise) => exercise.id === exerciseId) : undefined
+  return { equipment: entry?.equipment, category: entry?.category }
 }
 
 export function buildNextSessionRecommendation(
@@ -139,6 +70,7 @@ export function buildNextSessionRecommendation(
   readiness: ReadinessEntry,
   workouts: RecommendationWorkout[],
   now = Date.now(),
+  units: WeightUnits = 'kg',
 ): NextSessionRecommendation {
   const day = template.days[dayIndex] ?? template.days[0]
   const score = computeReadinessScore(readiness)
@@ -147,15 +79,20 @@ export function buildNextSessionRecommendation(
 
   const recommendedExercises = exercises.map((exercise, index): NextSessionExercise => {
     const key = templateExerciseKey(exercise.exerciseId, exercise.exerciseSource)
-    const history = exerciseHistory(workouts, exercise.exerciseId, exercise.exerciseSource)
-    const latest = history[0]
-    const progression = buildOverloadSuggestion(history, now)
-    const applyProgression = progression && (score.tone !== 'low' || progression.delta < 0)
-    const baseWeight = latest?.bestSetWeight && latest.bestSetWeight > 0
-      ? latest.bestSetWeight
-      : exercise.targetWeight
-    const weight = applyProgression ? progression.suggestedWeight : baseWeight
-    const weightDelta = applyProgression ? progression.delta : 0
+    const sessions = exerciseProgressionSessions(workouts, exercise.exerciseId, exercise.exerciseSource)
+    const progression = buildProgression({
+      sessions,
+      target: { reps: exercise.targetReps, sets: exercise.sets },
+      ...catalogueMeta(exercise.exerciseId, exercise.exerciseSource),
+      units,
+      lowReadiness: score.tone === 'low',
+      now,
+    })
+    const latest = [...sessions].sort((a, b) => b.finishedAt - a.finishedAt)[0]
+    const lastWeight = latest ? Math.max(0, ...latest.sets.map((set) => set.weight)) : 0
+    // A very long break leaves the start weight to the user (empty field).
+    const weight = progression ? progression.weight ?? 0 : lastWeight > 0 ? lastWeight : exercise.targetWeight
+    const weightDelta = progression?.change === 'weight' ? progression.delta : 0
 
     // ponytail: template exercises have no compound/accessory role; mid readiness trims
     // only the final two slots once a day is large enough to make that heuristic safe.
@@ -163,9 +100,7 @@ export function buildNextSessionRecommendation(
       || (score.tone === 'mid' && exercises.length >= 4 && index >= exercises.length - 2)
     const sets = trimSets ? Math.max(1, exercise.sets - 1) : exercise.sets
     const setsDelta = sets - exercise.sets
-    const reps = latest?.bestSetReps && latest.bestSetReps > 0
-      ? latest.bestSetReps
-      : exercise.targetReps
+    const reps = progression?.reps ?? exercise.targetReps
     overrides.set(key, { sets, weight, reps })
 
     return {

@@ -127,7 +127,15 @@ vi.mock('../../lib/exerciseDetailService', () => ({
 }))
 
 vi.mock('../../lib/overloadService', () => ({
-  suggestNextSession: vi.fn().mockResolvedValue(null),
+  readProgressionSessions: vi.fn().mockResolvedValue([]),
+}))
+
+vi.mock('../../lib/readinessService', () => ({
+  getReadiness: vi.fn().mockResolvedValue(null),
+}))
+
+vi.mock('../../lib/templateService', () => ({
+  getTemplate: vi.fn().mockResolvedValue(null),
 }))
 
 vi.mock('../../hooks/useMediaQuery', () => ({ useMediaQuery: () => false }))

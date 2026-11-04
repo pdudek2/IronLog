@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion'
 import { Check, ChevronDown, Plus, X } from 'lucide-react'
 import OverloadHint from '../OverloadHint'
 import { useWorkoutStore, type WorkoutExercise } from '../../store/workoutStore'
-import type { OverloadSuggestion } from '../../lib/overloadService'
+import type { SessionHint } from '../../shared/progression'
 import { getExerciseSessions, type ExerciseSession } from '../../lib/exerciseDetailService'
 import type { Units } from '../../lib/userProfile'
 
@@ -20,11 +20,11 @@ interface WorkoutExerciseLedgerItemProps {
   inlinePanel?: React.ReactNode
   hintDismissed: boolean
   hintKey: string
-  suggestion: OverloadSuggestion | null
+  suggestion: SessionHint | null
   units: Units
   userId?: string
   onAddSet: (exerciseIndex: number, button: HTMLButtonElement) => void
-  onApplySuggestion: (exerciseIndex: number, hintKey: string, weight: number) => void
+  onApplySuggestion: (exerciseIndex: number, hintKey: string, values: { weight?: number; reps?: number }) => void
   onDismissSuggestion: (hintKey: string) => void
   onOpenOverview: () => void
   drawnSetIndex: number | null
@@ -194,9 +194,8 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
 
       {suggestion && !hintDismissed && !exerciseComplete && (
         <OverloadHint
-          suggestion={suggestion}
-          units={units}
-          onApply={(weight) => onApplySuggestion(exerciseIndex, hintKey, weight)}
+          hint={suggestion}
+          onApply={() => onApplySuggestion(exerciseIndex, hintKey, { weight: suggestion.weight, reps: suggestion.reps })}
           onDismiss={() => onDismissSuggestion(hintKey)}
         />
       )}

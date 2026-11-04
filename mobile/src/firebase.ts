@@ -374,7 +374,7 @@ export async function readExerciseHistory(uid: string, exerciseId: string, sourc
   const { firestore } = await getServices()
   const snapshot = await getDocs(query(collection(firestore, 'exerciseSessions'),
     where('userId', '==', uid), where('exerciseId', '==', exerciseId),
-    where('exerciseSource', '==', source), orderBy('startedAt', 'desc'), limit(3)))
+    where('exerciseSource', '==', source), orderBy('finishedAt', 'desc'), limit(3)))
   return {
     data: parseExerciseHistory(snapshot.docs.map((document) => document.data()), uid, exerciseId, source),
     fromCache: snapshot.metadata.fromCache,

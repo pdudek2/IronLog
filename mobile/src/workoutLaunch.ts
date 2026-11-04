@@ -103,7 +103,8 @@ export function buildTemplateSession(template: WorkoutTemplate, dayIndex: number
       const best = history.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)
       const override = overrides?.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)
       const weightValue = override?.weight ?? templateStartWeight(exercise, best)
-      const repsValue = override?.reps ?? (best && best.bestSetReps > 0 ? best.bestSetReps : exercise.targetReps)
+      // The plan's target, not last time's best: the progression hint asks for more when it is due.
+      const repsValue = override?.reps ?? exercise.targetReps
       return {
         clientId: createLocalId('exercise'), exerciseId: exercise.exerciseId, exerciseSource: exercise.exerciseSource, name: exercise.name,
         sets: Array.from({ length: override?.sets ?? exercise.sets }, () => ({

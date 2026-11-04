@@ -23,7 +23,11 @@ import ExercisePicker from '../components/ExercisePicker'
 import BottomSheet from '../components/BottomSheet'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Bone, PageSkeleton } from '../components/ui'
-import { suggestNextSession, type OverloadSuggestion } from '../lib/overloadService'
+import { readProgressionSessions } from '../lib/overloadService'
+import { getTemplate, type WorkoutTemplate } from '../lib/templateService'
+import { getReadiness } from '../lib/readinessService'
+import { computeReadinessScore, todayKey } from '../shared/readiness'
+import { buildProgression, planTarget, sessionHint, type ProgressionSession } from '../shared/progression'
 import { exercises as exerciseDb } from '../data/exercises'
 import { isActiveSessionStale } from '../lib/sessionDuration'
 import WorkoutSetPanel from '../components/workout/WorkoutSetPanel'
@@ -253,7 +257,9 @@ export default function WorkoutPage() {
     exercises: userExercises,
     retry: retryUserExercises,
   } = useUserExercises(user?.uid ?? null)
-  const [suggestions, setSuggestions] = useState<Record<string, OverloadSuggestion | null>>({})
+  const [histories, setHistories] = useState<Record<string, ProgressionSession[]>>({})
+  const [sessionTemplate, setSessionTemplate] = useState<{ id: string; template: WorkoutTemplate | null } | null>(null)
+  const [lowReadiness, setLowReadiness] = useState(false)
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
   const fetchedKeys = useRef(new Set<string>())
 
@@ -399,10 +405,30 @@ export default function WorkoutPage() {
     const key = `${source}:${exerciseId}`
     if (fetchedKeys.current.has(key)) return
     fetchedKeys.current.add(key)
-    suggestNextSession(uid, exerciseId, source as 'global' | 'user')
-      .then((suggestion) => setSuggestions((prev) => ({ ...prev, [key]: suggestion })))
-      .catch(() => { fetchedKeys.current.delete(key) })
+    readProgressionSessions(uid, exerciseId, source as 'global' | 'user')
+      .then((sessions) => setHistories((prev) => ({ ...prev, [key]: sessions })))
+      .catch((error) => { console.error('[overloadService] query failed', error); fetchedKeys.current.delete(key) })
   }
+
+  const templateId = active?.templateId ?? null
+  useEffect(() => {
+    if (!templateId) return
+    let current = true
+    getTemplate(templateId).then(
+      (template) => { if (current) setSessionTemplate({ id: templateId, template }) },
+      () => { if (current) setSessionTemplate({ id: templateId, template: null }) },
+    )
+    return () => { current = false }
+  }, [templateId])
+
+  useEffect(() => {
+    if (!user) return
+    let current = true
+    getReadiness(user.uid, todayKey()).then((entry) => {
+      if (current) setLowReadiness(entry !== null && computeReadinessScore(entry).tone === 'low')
+    }, () => {})
+    return () => { current = false }
+  }, [user])
 
   // Fetch suggestions for exercises loaded from template on mount
   useEffect(() => {
@@ -543,8 +569,8 @@ export default function WorkoutPage() {
     setPendingExerciseRemoval(null)
   }
 
-  const handleApplySuggestion = useCallback((exerciseIndex: number, hintKey: string, weight: number) => {
-    useWorkoutStore.getState().applyOverload(exerciseIndex, weight)
+  const handleApplySuggestion = useCallback((exerciseIndex: number, hintKey: string, values: { weight?: number; reps?: number }) => {
+    useWorkoutStore.getState().applyOverload(exerciseIndex, values)
     setDismissedHints((prev) => {
       const next = new Set(prev)
       next.add(hintKey)
@@ -1074,7 +1100,23 @@ export default function WorkoutPage() {
                   <AnimatePresence mode="wait" initial={false} onExitComplete={() => setKeepExerciseStackMounted(false)}>
                     {panelExercise && currentExerciseClientId && (() => {
                       const exerciseMeta = exerciseCatalog.get(panelExercise.exerciseId)
-                      const hintKey = `${panelExercise.exerciseSource}:${panelExercise.exerciseId}`
+                      const historyKey = `${panelExercise.exerciseSource}:${panelExercise.exerciseId}`
+                      const hint = sessionHint(
+                        histories[historyKey] && (!templateId || sessionTemplate?.id === templateId) ? buildProgression({
+                          sessions: histories[historyKey],
+                          target: planTarget(templateId ? sessionTemplate?.template : null, panelExercise.exerciseId, panelExercise.exerciseSource),
+                          equipment: exerciseMeta?.equipment,
+                          category: exerciseMeta?.category,
+                          units,
+                          lowReadiness,
+                          now: Date.now(),
+                        }) : null,
+                        panelExercise.sets,
+                        units,
+                        exerciseMeta?.equipment,
+                      )
+                      // A trial announces itself and then proposes a weight; dismissing one must not hide the next.
+                      const hintKey = `${historyKey}|${hint?.label ?? ''}`
                       return (
                         <WorkoutExerciseLedgerItem
                           key={currentExerciseClientId}
@@ -1088,7 +1130,7 @@ export default function WorkoutPage() {
                           inlinePanel={isDesktop ? setPanel : undefined}
                           hintDismissed={dismissedHints.has(hintKey)}
                           hintKey={hintKey}
-                          suggestion={suggestions[hintKey] ?? null}
+                          suggestion={hint}
                           units={units}
                           userId={user?.uid}
                           onAddSet={handleAddSet}

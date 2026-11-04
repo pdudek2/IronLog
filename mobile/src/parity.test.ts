@@ -4,7 +4,7 @@ import { estimatedOneRepMax, exerciseMetrics, exerciseSummaryLabel, exerciseTarg
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { lastWorkoutRead } from '../../src/shared/lastWorkoutRead'
 import { monthCalendar } from '../../src/shared/monthCalendar'
-import { overloadHintLabel } from '../../src/shared/nextSessionRecommendation'
+import { buildProgression, progressionHintLabel } from '../../src/shared/progression'
 import { shouldDismissSheet } from '../../src/shared/sheetMotion'
 import { parseExerciseHistory, parsePreviousSets, startRead, readStateForKey, type ReadState, type ReadResult } from './scopedRead'
 
@@ -87,18 +87,16 @@ test('history validates owner/source and row order instead of manufacturing miss
   assert.throws(() => parsePreviousSets({ ...data, sets: [{ weight: 'bad', reps: 8 }] }, 'a', 'same-id', 'user'))
 })
 
-test('the last session fills Last, and three sessions earn the same suggestion as web', () => {
+test('the last session fills Last, and the history gives the same progression as web', () => {
   const now = 1_000_000_000_000
-  const session = (bestSetWeight: number, daysAgo: number) => ({ userId: 'a', exerciseId: 'bench', exerciseSource: 'global', bestSetWeight, finishedAt: now - daysAgo * 86_400_000, sets: [{ weight: bestSetWeight, reps: 6 }] })
-  const fresh = parseExerciseHistory([session(85, 2), session(82.5, 9), session(80, 16)], 'a', 'bench', 'global', now)
-  assert.deepEqual(fresh.sets, [{ weight: 85, reps: 6 }])
-  assert.equal(fresh.suggestion?.suggestedWeight, 87.5)
-  assert.equal(overloadHintLabel(fresh.suggestion!, 'kg'), 'Suggested +2.5 kg')
-  const stale = parseExerciseHistory([session(85, 30), session(82.5, 37), session(80, 44)], 'a', 'bench', 'global', now)
-  assert.equal(overloadHintLabel(stale.suggestion!, 'kg'), 'Long break: suggested −2.5 kg')
-  assert.equal(parseExerciseHistory([session(85, 2)], 'a', 'bench', 'global', now).suggestion, null)
-  assert.equal(parseExerciseHistory([session(88.75, 2), session(86.25, 9), session(85, 16)], 'a', 'bench', 'global', now).suggestion?.suggestedWeight, 91.25)
-  assert.deepEqual(parseExerciseHistory([], 'a', 'bench', 'global', now), { sets: [], suggestion: null })
+  const session = (weight: number, reps: number, daysAgo: number) => ({ userId: 'a', exerciseId: 'bench', exerciseSource: 'global', finishedAt: now - daysAgo * 86_400_000, sets: [{ weight, reps }, { weight, reps }, { weight, reps }] })
+  const history = parseExerciseHistory([session(85, 10, 2), session(82.5, 8, 9)], 'a', 'bench', 'global')
+  assert.deepEqual(history.sets, [{ weight: 85, reps: 10 }, { weight: 85, reps: 10 }, { weight: 85, reps: 10 }])
+  const progression = buildProgression({ sessions: history.sessions, target: { reps: 8, sets: 3 }, equipment: 'barbell', units: 'kg', now })
+  assert.equal(progression?.weight, 87.5)
+  assert.equal(progressionHintLabel(progression!, 'kg'), 'Suggested +2.5 kg')
+  assert.deepEqual(parseExerciseHistory([], 'a', 'bench', 'global'), { sets: [], sessions: [] })
+  assert.throws(() => parseExerciseHistory([{ ...session(85, 10, 2), sets: [{ weight: 'bad', reps: 8 }] }], 'a', 'bench', 'global'))
 })
 
 test('a sheet closes on a long or fast pull and springs back otherwise', () => {

@@ -1,4 +1,4 @@
-import { buildOverloadSuggestion, type OverloadSuggestion } from '../../src/shared/nextSessionRecommendation'
+import type { ProgressionSession } from '../../src/shared/progression'
 
 export type ReadResult<T> = { data: T; fromCache: boolean }
 export type ReadState<T> = { status: 'loading' } | { status: 'error' } | ({ status: 'ready' } & ReadResult<T>)
@@ -19,7 +19,7 @@ export function readStateForKey<T>(key: string, stored: { key: string; state: Re
 }
 
 export type PreviousSet = { weight: number; reps: number }
-export type ExerciseHistory = { sets: PreviousSet[]; suggestion: OverloadSuggestion | null }
+export type ExerciseHistory = { sets: PreviousSet[]; sessions: ProgressionSession[] }
 export type ExerciseMetadata = { id: string; name: string; category: string; equipment: string; muscles: string[] }
 export function parsePreviousSets(data: Record<string, unknown>, uid: string, id: string, source: string): PreviousSet[] {
   if (data.userId !== uid || data.exerciseId !== id || data.exerciseSource !== source || !Array.isArray(data.sets)) {
@@ -33,12 +33,10 @@ export function parsePreviousSets(data: Record<string, unknown>, uid: string, id
   })
 }
 
-export function parseExerciseHistory(sessions: Record<string, unknown>[], uid: string, id: string, source: string, now = Date.now()): ExerciseHistory {
-  return {
-    sets: sessions.length ? parsePreviousSets(sessions[0]!, uid, id, source) : [],
-    suggestion: buildOverloadSuggestion(sessions.map(({ bestSetWeight, finishedAt }) => ({
-      bestSetWeight: typeof bestSetWeight === 'number' ? bestSetWeight : 0,
-      finishedAt: typeof finishedAt === 'number' ? finishedAt : 0,
-    })), now),
-  }
+export function parseExerciseHistory(sessions: Record<string, unknown>[], uid: string, id: string, source: string): ExerciseHistory {
+  const parsed = sessions.map((session) => ({
+    finishedAt: typeof session.finishedAt === 'number' ? session.finishedAt : 0,
+    sets: parsePreviousSets(session, uid, id, source),
+  }))
+  return { sets: parsed[0]?.sets ?? [], sessions: parsed }
 }

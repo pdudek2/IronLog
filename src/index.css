@@ -8268,7 +8268,7 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 /* Workout: one exercise open, the rest as a list, the current set under the thumb. */
 .workout-session-list {
   position: relative;
-  padding-bottom: 6rem;
+  padding-bottom: 6.75rem;
 }
 
 .workout-band {

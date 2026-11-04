@@ -98,8 +98,8 @@ describe('workoutStore set steppers', () => {
         ],
       }],
     } } as never)
-    useWorkoutStore.getState().applyOverload(0, 87.5)
-    expect(useWorkoutStore.getState().active?.exercises[0]?.sets.map((set) => set.weight)).toEqual(['85', '87.5', '87.5'])
+    useWorkoutStore.getState().applyOverload(0, { reps: 7 })
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets.map((set) => [set.weight, set.reps])).toEqual([['85', '6'], ['85', '7'], ['85', '7']])
   })
 
   it('replaces only the touched exercise object when updating a set', () => {

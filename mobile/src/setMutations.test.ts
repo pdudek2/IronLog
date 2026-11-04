@@ -104,8 +104,8 @@ test('an applied suggestion changes every open set and leaves finished sets as l
       { clientId: 'c', weight: '', reps: '', done: false },
     ] }, { clientId: 'row', sets: [{ clientId: 'd', weight: '60', reps: '8', done: false }] }],
   } as unknown as ActiveWorkout
-  const next = applyOverload(session, 'bench', 87.5)
-  assert.deepEqual(next.exercises[0]!.sets.map((set) => set.weight), ['85', '87.5', '87.5'])
+  const next = applyOverload(session, 'bench', { weight: 87.5, reps: 7 })
+  assert.deepEqual(next.exercises[0]!.sets.map((set) => [set.weight, set.reps]), [['85', '6'], ['87.5', '7'], ['87.5', '7']])
   assert.equal(next.exercises[1]!.sets[0]!.weight, '60')
 })
 

@@ -29,7 +29,7 @@ import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import {
   displayWeightDeltaToKg,
 } from '../../src/shared/weightUnits'
-import { login, logout, readExerciseHistory, readExerciseMetadata, readRecentWorkouts, type AuthUser } from '../src/firebase'
+import { login, logout, readExerciseHistory, readExerciseMetadata, readReadiness, readRecentWorkouts, readTemplates, type AuthUser } from '../src/firebase'
 import { recentExercisePicks } from '../../src/shared/recentExercises'
 import { getStaleSessionAgeLabel, isActiveSessionStale } from '../../src/lib/sessionDuration'
 import {
@@ -54,7 +54,8 @@ import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runt
 import ExercisePicker from '../src/ExercisePicker'
 import { useKeyboardReveal } from '../src/useKeyboardReveal'
 import { covers } from '../src/covers'
-import { overloadHintLabel } from '../../src/shared/nextSessionRecommendation'
+import { buildProgression, planTarget, sessionHint, type ProgressionInput } from '../../src/shared/progression'
+import { computeReadinessScore, todayKey } from '../../src/shared/readiness'
 import { workoutCover } from '../../src/shared/workoutCover'
 import { colors, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
@@ -265,7 +266,7 @@ function SetValueInput({ value, units, field, label, rejectedEdit, onChange }: {
 interface EditingActions {
   updateSet(exerciseId: string, setId: string, field: 'weight' | 'reps', value: string): void
   adjustSet(exerciseId: string, setId: string, field: 'weight' | 'reps', delta: number): void
-  applyOverload(exerciseId: string, weightKg: number): void
+  applyOverload(exerciseId: string, values: { weight?: number; reps?: number }): void
   prefillFirstSet(exerciseId: string, weightKg: number, reps: number): void
   setDone(exerciseId: string, setId: string, done: boolean): void
   addSet(exerciseId: string): void
@@ -329,16 +330,23 @@ function FadeIn({ children }: { children: React.ReactNode }) {
   return <Animated.View style={{ opacity }}>{children}</Animated.View>
 }
 
-function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, metadata, panelSet, onSelectSet, onOverview, drawnSetId, editing }: {
+function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, metadata, target, lowReadiness, panelSet, onSelectSet, onOverview, drawnSetId, editing }: {
   uid: string; sessionKey: string; exercise: WorkoutExercise; position: number; count: number
+  // undefined while the session's plan is still loading
+  target: ProgressionInput['target'] | undefined; lowReadiness: boolean
   units: Units; metadata: ExerciseMetadata | undefined; panelSet: number; onSelectSet: (setId: string) => void; onOverview: () => void; drawnSetId: string | null; editing: EditingActions
 }) {
   const load = useCallback(() => readExerciseHistory(uid, exercise.exerciseId, exercise.exerciseSource), [uid, exercise.exerciseId, exercise.exerciseSource])
   const history = useSessionRead(JSON.stringify([uid, sessionKey, exercise.exerciseSource, exercise.exerciseId]), load, true)
   const category = metadata ? EXERCISE_CATEGORY_LABELS[metadata.category] : undefined
   const equipment = metadata ? EQUIPMENT_LABELS[metadata.equipment] : undefined
-  const [hintClosed, setHintClosed] = useState(false)
-  const suggestion = history.state.status === 'ready' && !hintClosed && exercise.sets.some((set) => !set.done) ? history.state.data.suggestion : null
+  // A trial announces itself and then proposes a weight; closing one must not hide the next.
+  const [closedHint, setClosedHint] = useState<string | null>(null)
+  const progression = history.state.status === 'ready' && target !== undefined ? buildProgression({
+    sessions: history.state.data.sessions, target, equipment: metadata?.equipment, category: metadata?.category, units, lowReadiness, now: Date.now(),
+  }) : null
+  const hint = sessionHint(progression, exercise.sets, units, metadata?.equipment)
+  const suggestion = hint && hint.label !== closedHint ? hint : null
   return <View style={styles.exerciseCard}>
     <Pressable accessibilityRole="button" accessibilityLabel={`Exercise ${position} of ${count}, open workout overview`} onPress={onOverview}
       style={({ pressed }) => [styles.exercisePositionRow, pressed && styles.headingPressed]}>
@@ -355,10 +363,11 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, met
     </View>
     <View>
       {suggestion && <View style={styles.hint}>
-        <Text style={styles.hintText}>{overloadHintLabel(suggestion, units)}</Text>
-        <Pressable accessibilityRole="button" hitSlop={{ top: 4, bottom: 4 }} onPress={() => { editing.applyOverload(exercise.clientId, suggestion.suggestedWeight); setHintClosed(true) }}
-          style={({ pressed }) => [styles.hintApply, pressed && styles.headingPressed]}><Text style={styles.hintApplyText}>Apply</Text></Pressable>
-        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss suggestion" onPress={() => setHintClosed(true)}
+        <Text style={styles.hintText}>{suggestion.label}</Text>
+        {(suggestion.weight !== undefined || suggestion.reps !== undefined) && <Pressable accessibilityRole="button" hitSlop={{ top: 4, bottom: 4 }}
+          onPress={() => { editing.applyOverload(exercise.clientId, { weight: suggestion.weight, reps: suggestion.reps }); setClosedHint(suggestion.label) }}
+          style={({ pressed }) => [styles.hintApply, pressed && styles.headingPressed]}><Text style={styles.hintApplyText}>Apply</Text></Pressable>}
+        <Pressable accessibilityRole="button" accessibilityLabel="Dismiss suggestion" onPress={() => setClosedHint(suggestion.label)}
           style={({ pressed }) => [styles.hintClose, pressed && styles.headingPressed]}><Icon name="close" size={16} /></Pressable>
       </View>}
       <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.setGrid, styles.setHeaderGrid]}>
@@ -424,6 +433,17 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
   const loadRecent = useCallback(() => readRecentWorkouts(uid, 10), [uid])
   const recent = useSessionRead(`recent-exercises:${uid}`, loadRecent, session.exercises.length === 0 || picking)
   const quickPicks = recent.state.status === 'ready' ? recentExercisePicks(recent.state.data) : []
+  const loadTemplates = useCallback(() => readTemplates(uid), [uid])
+  const templates = useSessionRead(JSON.stringify(['templates', uid, sessionKey]), loadTemplates, Boolean(session.templateId))
+  const loadReadiness = useCallback(() => readReadiness(uid, todayKey()), [uid])
+  const readiness = useSessionRead(JSON.stringify(['readiness', uid, sessionKey]), loadReadiness)
+  const lowReadiness = readiness.state.status === 'ready' && readiness.state.data !== null && computeReadinessScore(readiness.state.data).tone === 'low'
+  const targetOf = (exercise: WorkoutExercise): ProgressionInput['target'] | undefined => {
+    if (!session.templateId) return null
+    if (templates.state.status === 'loading') return undefined
+    const template = templates.state.status === 'ready' ? templates.state.data.find(({ id }) => id === session.templateId) : null
+    return planTarget(template, exercise.exerciseId, exercise.exerciseSource)
+  }
   const addAndPrefill = (id: string, name: string, source: ExerciseSource) => {
     const added = editing.addExercise(id, name, source)
     if (!added) return
@@ -471,6 +491,7 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
       position={currentIndex + 1} count={session.exercises.length} panelSet={panelSet} onSelectSet={onSelectSet}
       metadata={current.exerciseSource === 'global' ? exerciseCatalog.find(({ id }) => id === current.exerciseId)
         : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === current.exerciseId) : undefined}
+      target={targetOf(current)} lowReadiness={lowReadiness}
       editing={editing} onOverview={onOverview} drawnSetId={drawnSetId} /></FadeIn>}
     {queue.length > 0 && <Text accessibilityRole="header" style={styles.upNext}>Up next</Text>}
     {queue.map((index) => {

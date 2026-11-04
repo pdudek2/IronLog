@@ -25,8 +25,9 @@ const workouts: WorkoutSummary[] = [{
   id: 'workout-1',
   templateId: template.id,
   label: 'Upper A',
-  startedAt: Date.UTC(2026, 7, 9, 8),
-  finishedAt: Date.UTC(2026, 7, 9, 9),
+  // The card reads the clock, so the history stays two days old.
+  startedAt: Date.now() - 2 * 86_400_000 - 3_600_000,
+  finishedAt: Date.now() - 2 * 86_400_000,
   materialized: true,
   exercises: [{
     exerciseId: 'bench',
@@ -81,7 +82,7 @@ describe('NextSessionCard', () => {
     fireEvent.click(within(summary).getByRole('button', { name: 'Start Upper A' }))
     expect(onStart).toHaveBeenCalledTimes(1)
     expect([...onStart.mock.calls[0][0]]).toEqual([
-      ['global:bench', { sets: 4, weight: 72.5, reps: 8 }],
+      ['global:bench', { sets: 4, weight: 72.5, reps: 9 }],
       ['global:row', { sets: 4, weight: 65, reps: 8 }],
       ['global:ohp', { sets: 2, weight: 40, reps: 10 }],
       ['global:pulldown', { sets: 2, weight: 50, reps: 12 }],

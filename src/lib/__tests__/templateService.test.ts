@@ -52,7 +52,7 @@ function template(overrides: Partial<WorkoutTemplate> = {}): WorkoutTemplate {
 }
 
 describe('buildActiveWorkoutFromTemplate', () => {
-  it('uses recent exercise history before template targets', () => {
+  it('starts from the recent weight with the plan’s target reps', () => {
     const workout = buildActiveWorkoutFromTemplate(
       template(),
       0,
@@ -65,9 +65,9 @@ describe('buildActiveWorkoutFromTemplate', () => {
     )
 
     expect(workout.exercises[0].sets).toEqual([
-      { weight: '42.5', reps: '6', done: false },
-      { weight: '42.5', reps: '6', done: false },
-      { weight: '42.5', reps: '6', done: false },
+      { weight: '42.5', reps: '8', done: false },
+      { weight: '42.5', reps: '8', done: false },
+      { weight: '42.5', reps: '8', done: false },
     ])
   })
 
@@ -113,8 +113,8 @@ describe('buildActiveWorkoutFromTemplate', () => {
     )
 
     expect(workout.exercises[0].sets).toEqual([
-      { weight: '45', reps: '6', done: false },
-      { weight: '45', reps: '6', done: false },
+      { weight: '45', reps: '8', done: false },
+      { weight: '45', reps: '8', done: false },
     ])
   })
 })

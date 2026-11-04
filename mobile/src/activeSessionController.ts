@@ -291,8 +291,8 @@ export class ActiveSessionController {
     this.mutate((session) => adjustSetValue(session, exerciseId, setId, field, delta))
   }
 
-  applyOverload(exerciseId: string, weightKg: number): void {
-    this.mutate((session) => applyOverload(session, exerciseId, weightKg))
+  applyOverload(exerciseId: string, values: { weight?: number; reps?: number }): void {
+    this.mutate((session) => applyOverload(session, exerciseId, values))
   }
 
   prefillFirstSet(exerciseId: string, weightKg: number, reps: number): void {

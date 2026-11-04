@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createSessionId } from '../lib/sessionIdentity'
 import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
-import { applyOverloadWeight } from '../shared/nextSessionRecommendation'
+import { applyOverload } from '../shared/nextSessionRecommendation'
 
 export type ExerciseSource = 'global' | 'user'
 
@@ -46,7 +46,7 @@ interface WorkoutState {
   addSet: (exerciseIndex: number) => void
   removeSet: (exerciseIndex: number, setIndex: number) => void
   updateSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) => void
-  applyOverload: (exerciseIndex: number, weightKg: number) => void
+  applyOverload: (exerciseIndex: number, values: { weight?: number; reps?: number }) => void
   adjustSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', delta: number) => void
   toggleSetDone: (exerciseIndex: number, setIndex: number) => void
   removeExercise: (exerciseIndex: number) => void
@@ -194,11 +194,11 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
       return { active: { ...s.active, exercises } }
     }),
 
-  applyOverload: (exerciseIndex, weightKg) =>
+  applyOverload: (exerciseIndex, values) =>
     set((s) => {
       if (!s.active) return s
       const exercises = s.active.exercises.map((ex, i) =>
-        i === exerciseIndex ? { ...ex, sets: applyOverloadWeight(ex.sets, weightKg) } : ex
+        i === exerciseIndex ? { ...ex, sets: applyOverload(ex.sets, values) } : ex
       )
       return { active: { ...s.active, exercises } }
     }),

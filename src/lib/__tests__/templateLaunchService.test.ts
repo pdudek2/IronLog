@@ -87,7 +87,7 @@ describe('createPersistedTemplateWorkout', () => {
 
     expect(getExerciseSessions).toHaveBeenCalledTimes(1)
     expect(getExerciseSessions).toHaveBeenCalledWith('user-1', 'incline-bench-press', 'global', 1)
-    expect(workout.exercises[0].sets[0]).toEqual({ weight: '42.5', reps: '6', done: false })
+    expect(workout.exercises[0].sets[0]).toEqual({ weight: '42.5', reps: '8', done: false })
     expect(persistTemplateLaunchSession).toHaveBeenCalledWith('user-1', workout, false)
     expect(saveActiveSession).not.toHaveBeenCalled()
     expect(writeActiveSessionBackup).toHaveBeenCalledWith('user-1', workout, {

@@ -124,11 +124,11 @@ export default function DashboardScreen() {
     if (active.state.status !== 'empty' || !chosen || !readinessEntry || state.status !== 'ready' || state.fromCache
       || templatesState.status !== 'ready' || templatesState.fromCache || !selection?.target || !data) return null
     try {
-      const next = buildNextSessionRecommendation(chosen.template, selection.target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now())
+      const next = buildNextSessionRecommendation(chosen.template, selection.target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now(), units)
       validateTemplateOverrides(chosen.template, selection.target.dayIndex, next.overrides)
       return next
     } catch { return null }
-  }, [active.state.status, chosen, readinessEntry, state, templatesState, selection, data, now])
+  }, [active.state.status, chosen, readinessEntry, state, templatesState, selection, data, now, units])
   const startRecommended = () => {
     readiness?.controller.refreshDay()
     if (!recommendation || !chosen || !selection?.target || readinessEntry?.date !== readiness?.controller.state.date) return

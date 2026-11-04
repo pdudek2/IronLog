@@ -82,7 +82,7 @@ test('parses owned plans and keeps first launchable day and source-aware history
   const session = buildTemplateSession(plan, 1, history, 'session', 'revision', 100)
   assert.equal(session.templateId, 'plan-a')
   assert.equal(session.label, 'Pull')
-  assert.deepEqual(session.exercises[0]?.sets.map((set) => [set.weight, set.reps]), [['55', '6'], ['55', '6']])
+  assert.deepEqual(session.exercises[0]?.sets.map((set) => [set.weight, set.reps]), [['55', '8'], ['55', '8']])
   assert.deepEqual(session.exercises[1]?.sets.map((set) => [set.weight, set.reps]), [['25', '10']])
   assert.equal(session.exercises[1]?.exerciseSource, 'user')
 })

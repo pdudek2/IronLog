@@ -12,6 +12,10 @@ export default defineConfig({
       VITE_FIREBASE_STORAGE_BUCKET: 'test-ironlog.appspot.com',
       VITE_FIREBASE_MESSAGING_SENDER_ID: '123456789',
       VITE_FIREBASE_APP_ID: '1:123456789:web:test',
+      // api/_lib/firebaseAdmin loads .env.local on import; a dead emulator keeps a test without options.db off production.
+      FIRESTORE_EMULATOR_HOST: '127.0.0.1:1',
+      FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:1',
+      GCLOUD_PROJECT: 'test-ironlog',
     },
     globals: true,
     projects: [

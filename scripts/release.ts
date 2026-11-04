@@ -3,6 +3,7 @@
 // Add --dry-run to print the steps without running anything.
 // The APK is built before the web goes live, so a failed build stops the whole release.
 import { execFileSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { createInterface } from 'node:readline/promises'
@@ -36,6 +37,15 @@ export function releaseSteps({ sha, versionCode, testers, notes, worktree }: Rel
 }
 
 const git = (...args: string[]) => execFileSync('git', args, { encoding: 'utf8' }).trim()
+
+// prebuild --clean wipes mobile/android, so the release config must live in mobile/config.
+function checkAndroidWorktree(worktree: string) {
+  if (git('-C', worktree, 'status', '--porcelain')) throw new Error(`Commit or clean the Android worktree first: ${worktree}`)
+  const config = join(worktree, 'mobile/config/google-services.json')
+  if (!existsSync(config) || !readFileSync(config, 'utf8').includes('"com.pdudek2.shear"')) {
+    throw new Error(`Put the release google-services.json (com.pdudek2.shear) in ${config}.`)
+  }
+}
 const option = (name: string) => { const i = process.argv.indexOf(name); return i < 0 ? undefined : process.argv[i + 1] }
 
 async function main() {
@@ -48,13 +58,15 @@ async function main() {
     if (sha !== git('rev-parse', 'origin/main')) throw new Error('main must match origin/main. Push or pull first.')
   }
   const notes = option('--notes') ?? git('log', '-1', '--format=%s')
+  const worktree = process.env.SHEAR_ANDROID_WORKTREE ?? join(homedir(), '.codex/worktrees/e594/IronLog')
+  checkAndroidWorktree(worktree)
   const steps = releaseSteps({
     sha,
     // A commit count only grows, which is what Android needs from versionCode.
     versionCode: Number(git('rev-list', '--count', 'HEAD')),
     testers: option('--testers'),
     notes,
-    worktree: process.env.SHEAR_ANDROID_WORKTREE ?? join(homedir(), '.codex/worktrees/e594/IronLog'),
+    worktree,
   })
   console.log(`Release ${sha.slice(0, 7)}: ${notes}`)
   if (dryRun) { for (const s of steps) console.log(`- ${s.name}: ${s.cmd.join(' ')}`); return }

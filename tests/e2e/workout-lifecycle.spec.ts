@@ -368,8 +368,11 @@ test.describe('Workout lifecycle Phase 1 regressions', () => {
       'intentional Phase 1 finalize acknowledgement loss',
       isExpectedWorkoutLifecycleAckLossDiagnostic,
       async () => {
+        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
         await page.getByRole('button', { name: 'Finish', exact: true }).click()
         await expect(page.getByRole('alert')).toContainText('Could not confirm session closure.')
+        await expect(page.getByRole('alert')).toBeFocused()
+        await expect(page.getByRole('alert')).toBeInViewport()
         await failedRequest
         await expect.poll(() => browserDiagnostics.some((entry) => (
           entry.kind === 'console' && isExpectedWorkoutLifecycleAckLossDiagnostic(entry)

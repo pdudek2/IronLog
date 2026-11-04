@@ -172,6 +172,12 @@ function RestTimerBar({ rest, onAddTime, onSkip, variant = 'full', label }: Rest
     </motion.div>
   )
 }
+// Finish works from any scroll position, but the closure banners sit at the top of the page.
+function revealClosureAlert(alert: HTMLDivElement | null) {
+  alert?.scrollIntoView?.({ block: 'center' })
+  alert?.focus({ preventScroll: true })
+}
+
 function getExerciseClientId(exercise: WorkoutExercise, exerciseIndex: number): string {
   return exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${exerciseIndex}`
 }
@@ -809,7 +815,7 @@ export default function WorkoutPage() {
         />
       )}
       {closureState === 'active_session_changed' && (
-        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" ref={revealClosureAlert} tabIndex={-1} style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">The session changed on another device.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
             Could not load current data. Editing is locked until the session is synced with the server.
@@ -825,7 +831,7 @@ export default function WorkoutPage() {
         </div>
       )}
       {closureState === 'closure_unconfirmed' && (
-        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" ref={revealClosureAlert} tabIndex={-1} style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">Could not confirm session closure.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
             Your workout data is preserved. Editing is locked until the server confirms the outcome.
@@ -844,7 +850,7 @@ export default function WorkoutPage() {
       )}
 
       {closureState === 'session_mismatch' && (
-        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" ref={revealClosureAlert} tabIndex={-1} style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">This session is no longer active on the server.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
             Could not automatically sync the session opened on another device.
@@ -861,7 +867,7 @@ export default function WorkoutPage() {
       )}
 
       {closureState === 'closure_conflict' && (
-        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" ref={revealClosureAlert} tabIndex={-1} style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">The server rejected closing this session.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
             This session was already closed with a different outcome, and automatic reconciliation failed.
@@ -878,7 +884,7 @@ export default function WorkoutPage() {
       )}
 
       {closureState === 'auth_required' && (
-        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" ref={revealClosureAlert} tabIndex={-1} style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">Your sign-in session needs refreshing.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
             Your workout data is preserved. Sign in again, then retry closing the session.
@@ -895,7 +901,7 @@ export default function WorkoutPage() {
       )}
 
       {closureState === 'closure_rejected' && (
-        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" ref={revealClosureAlert} tabIndex={-1} style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">The server did not accept this workout.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
             {closureRejection ?? 'Some of its data is invalid.'} Correct it and try again.
@@ -904,7 +910,7 @@ export default function WorkoutPage() {
       )}
 
       {closureState === 'closure_failed' && (
-        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" style={{ borderColor: 'var(--danger)' }}>
+        <div className="surface-panel mb-4 rounded-[var(--radius-xl)] border p-4" role="alert" ref={revealClosureAlert} tabIndex={-1} style={{ borderColor: 'var(--danger)' }}>
           <p className="text-sm font-semibold text-white">This session cannot be closed.</p>
           <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
             The server refused this request. Try again, or reload the page to see the latest state.

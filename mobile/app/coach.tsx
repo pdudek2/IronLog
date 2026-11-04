@@ -103,7 +103,7 @@ function Coach({ uid }: { uid: string }) {
     <View style={s.grow}><Text style={s.boldLabel}>OpenRouter key</Text><Text style={s.small}>{state.validation === 'valid' ? 'Saved securely on this device.' : state.validation === 'checking' ? 'Verifying key…' : 'Needs verification.'}</Text></View>
     <Button onPress={openSettings}>Settings</Button>
   </View> : <View style={s.gate}>
-    <Text style={s.gateTitle}>Add a local OpenRouter key</Text><Text style={s.description}>Coach needs it to answer questions and generate plans.</Text>
+    <Text style={s.gateTitle}>Ask Coach about your training</Text><Text style={s.description}>Coach reads your workouts to answer questions and draft plans. It is optional and runs on your own OpenRouter key, kept on this device.</Text>
     <View style={s.left}><Button primary onPress={openSettings}>Set up key</Button></View>
   </View>
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} style={s.screen} edges={['top']}><StatusBar style="light" />
@@ -113,12 +113,12 @@ function Coach({ uid }: { uid: string }) {
         <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
           <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text></View>
           <View style={s.tabs}>{(['chat', 'plan'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => { if (value === tab) return; controller.cancel(); setTab(value) }} style={[s.tab, tab === value && s.tabActive]}><Text style={[s.buttonText, tab === value && { color: colors.accentText }]}>{value === 'chat' ? 'Chat' : 'Plan'}</Text></Pressable>)}</View>
-          {read && tab === 'chat' && !conversation && <View style={s.read}>
-            <Text style={s.readEyebrow}>{read.eyebrow}</Text>
+          {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
+          {read && tab === 'chat' && !conversation && <View style={[s.read, !configured && s.readAfterGate]}>
             <Text accessibilityRole="header" style={s.readTitle}>{read.title}</Text>
+            <Text style={s.readEyebrow}>{read.eyebrow}</Text>
             <Text style={s.body}>{read.body}</Text>
           </View>}
-          {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
           <View style={tab !== 'chat' && { display: 'none' }}><View onLayout={event => { chatY.current = event.nativeEvent.layout.y }} style={[s.chat, conversation && { height: Math.max(336, height - 336) }]}>
           {conversation && <View style={s.toolbar}><Button onPress={() => { controller.reset(); nearBottom.current = true }} label="Reset conversation">Reset</Button></View>}
           {!conversation ? <View style={[s.empty, configured && { paddingTop: 0 }]}>
@@ -157,7 +157,7 @@ const s = StyleSheet.create({
   content: { padding: 16, paddingBottom: 20 }, heading: { paddingTop: 0, paddingBottom: 0, gap: 6, marginBottom: 14 },
   title: pageTitle,
   nextTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
-  read: { gap: 4, paddingBottom: 18, paddingTop: 4 },
+  read: { gap: 4, paddingBottom: 18, paddingTop: 4 }, readAfterGate: { paddingTop: 24 },
   readEyebrow: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   readTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 22, letterSpacing: -0.44, lineHeight: 27 },
   subtitle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, color: colors.muted },

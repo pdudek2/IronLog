@@ -28,7 +28,7 @@ const STARTER_PROMPTS = [
   'Does my readiness suggest a harder or lighter session today?',
 ]
 
-const MISSING_PLAN_KEY_MESSAGE = 'Add a OpenRouter API key to unlock the plan generator.'
+const MISSING_PLAN_KEY_MESSAGE = 'Set up your OpenRouter key to draft plans with Coach.'
 
 const DEMO_EMAIL = 'demo@ironlog.app'
 
@@ -267,7 +267,7 @@ export default function ChatPage() {
 
     cancelActiveGeneration('superseded')
     setConfigured(false)
-    setError('Add a OpenRouter API key to use AI Coach.')
+    setError('Set up your OpenRouter key to use Coach.')
     return null
   }
 
@@ -592,21 +592,13 @@ export default function ChatPage() {
           data-has-rail={configured || Boolean(planPreview)}
         >
           <div className="coach-main-flow">
-            {read && activeTab === 'chat' && !hasConversation && (
-              <section className="coach-read">
-                <p>{read.eyebrow}</p>
-                <h2>{read.title}</h2>
-                <p>{read.body}</p>
-              </section>
-            )}
-
             {!configured && !showConfigPanel && (
               <>
                 <section className="coach-key-gate">
                   <div>
-                    <strong>Add a local OpenRouter key</strong>
+                    <strong>Ask Coach about your training</strong>
                     <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      Coach needs it to answer questions and generate plans.
+                      Coach reads your workouts to answer questions and draft plans. It is optional and runs on your own OpenRouter key, kept on this device.
                     </p>
                   </div>
                   <div className="mt-4" ref={keyGateAction}>
@@ -635,6 +627,14 @@ export default function ChatPage() {
               </>
             )}
 
+            {read && activeTab === 'chat' && !hasConversation && (
+              <section className="coach-read">
+                <h2>{read.title}</h2>
+                <p>{read.eyebrow}</p>
+                <p>{read.body}</p>
+              </section>
+            )}
+
             {activeTab === 'chat' ? (
               <>
                 <section className="coach-chat-panel">
@@ -655,6 +655,7 @@ export default function ChatPage() {
 
                   <div
                     className={`coach-thread ${messages.length === 0 && !streamText ? 'coach-thread--empty' : ''}`}
+                    role="region"
                     aria-label="Chat with AI Coach"
                     aria-busy={sending}
                   >

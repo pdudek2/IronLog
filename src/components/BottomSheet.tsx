@@ -1,6 +1,6 @@
 import { useId, useRef, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
-import { motion, useDragControls, useReducedMotion } from 'framer-motion'
+import { motion, useDragControls, useIsPresent, useReducedMotion } from 'framer-motion'
 import { X } from 'lucide-react'
 import { useDialogA11y } from '../hooks/useDialogA11y'
 import { useMediaQuery } from '../hooks/useMediaQuery'
@@ -26,10 +26,12 @@ export default function BottomSheet({ title, description, onClose, tall = false,
     ? { duration: 0 }
     : centred ? { duration: 0.18, ease: 'easeOut' as const } : { type: 'spring' as const, ...SHEET_SPRING }
 
-  useDialogA11y({ containerRef: panelRef, onClose, initialFocusRef })
+  const present = useIsPresent()
+
+  useDialogA11y({ containerRef: panelRef, onClose, initialFocusRef, active: present })
 
   return createPortal(
-    <div className="bottom-sheet-layer">
+    <div className="bottom-sheet-layer" inert={!present || undefined} aria-hidden={!present || undefined}>
       <motion.div
         className="bottom-sheet-scrim"
         initial={{ opacity: 0 }}

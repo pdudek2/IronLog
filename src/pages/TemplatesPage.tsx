@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronRight, ChevronUp, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, Ellipsis, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import BottomSheet from '../components/BottomSheet'
 import ConfirmDialog from '../components/ConfirmDialog'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
 import { ActionFeedback } from '../components/ActionFeedback'
@@ -67,6 +68,7 @@ export default function TemplatesPage() {
   const [error, setError] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [deleteTarget, setDeleteTarget] = useState<WorkoutTemplate | null>(null)
+  const [moreTarget, setMoreTarget] = useState<WorkoutTemplate | null>(null)
   const [deleteOperation, setDeleteOperation] = useState<TemplateDeleteOperation | null>(null)
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null)
 
@@ -272,13 +274,14 @@ export default function TemplatesPage() {
                       </button>
                       <button
                         type="button"
-                        aria-label={`Delete plan ${template.name}`}
-                        onClick={() => requestTemplateDelete(template)}
+                        aria-label={`More actions for plan ${template.name}`}
+                        aria-haspopup="dialog"
+                        onClick={() => setMoreTarget(template)}
                         disabled={deleteOperation !== null}
                         aria-describedby={templateDeleteOperation?.status === 'error' ? deleteFeedbackId : undefined}
-                        className="planner-icon-action planner-icon-action--danger"
+                        className="planner-icon-action"
                       >
-                        <Trash2 size={14} />
+                        <Ellipsis size={18} aria-hidden="true" />
                       </button>
                       {!shortPlanList && !singleDay && (
                         <button
@@ -399,6 +402,24 @@ export default function TemplatesPage() {
           <Link to="/chat">Generate a plan with Coach<ChevronRight size={16} aria-hidden="true" /></Link>
         </nav>
       </div>
+
+      <AnimatePresence>
+        {moreTarget && (
+          <BottomSheet key="plan-more" title={moreTarget.name} onClose={() => setMoreTarget(null)}>
+            <button
+              type="button"
+              className="bottom-sheet-row"
+              data-quiet
+              aria-label={`Delete plan ${moreTarget.name}`}
+              disabled={deleteOperation !== null}
+              onClick={() => { const target = moreTarget; setMoreTarget(null); requestTemplateDelete(target) }}
+            >
+              <span>Delete plan</span>
+              <Trash2 size={16} aria-hidden="true" />
+            </button>
+          </BottomSheet>
+        )}
+      </AnimatePresence>
 
       {deleteTarget && (
         <ConfirmDialog

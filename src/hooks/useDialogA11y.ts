@@ -23,18 +23,21 @@ interface UseDialogA11yOptions {
   containerRef: RefObject<HTMLElement | null>
   onClose: () => void
   initialFocusRef?: RefObject<HTMLElement | null>
+  /** False while a dialog animates out: it releases keys, scroll and focus before it unmounts. */
+  active?: boolean
 }
 
 export function useDialogA11y({
   containerRef,
   onClose,
   initialFocusRef,
+  active = true,
 }: UseDialogA11yOptions) {
   const closeDialog = useEffectEvent(onClose)
 
   useEffect(() => {
     const dialog = containerRef.current
-    if (!dialog) return
+    if (!dialog || !active) return
     const dialogElement: HTMLElement = dialog
 
     const previousActiveElement = document.activeElement instanceof HTMLElement
@@ -95,5 +98,5 @@ export function useDialogA11y({
       const focusLeftBehind = !document.activeElement || document.activeElement === document.body || dialogElement.contains(document.activeElement)
       if (focusLeftBehind) previousActiveElement?.focus?.()
     }
-  }, [containerRef, initialFocusRef])
+  }, [containerRef, initialFocusRef, active])
 }

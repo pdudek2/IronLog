@@ -60,7 +60,7 @@ test.describe('Chat UI', () => {
 
     const keyGate = page.locator('.coach-key-gate')
     await expect(keyGate).toBeVisible({ timeout: 5_000 })
-    await expect(keyGate.getByText('Add a local OpenRouter key', { exact: true })).toBeVisible()
+    await expect(keyGate.getByText('Ask Coach about your training', { exact: true })).toBeVisible()
     await expect(page.locator('.ai-key-panel')).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Set up key' }).click()
@@ -81,7 +81,7 @@ test.describe('Chat UI', () => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
 
-    await expect(page.getByText('Add a local OpenRouter key', { exact: true })).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('Ask Coach about your training', { exact: true })).toBeVisible({ timeout: 5_000 })
     await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toHaveCount(0)
 
     await page.screenshot({ path: 'test-results/chat-disabled-input.png' })

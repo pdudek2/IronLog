@@ -93,7 +93,7 @@ it('keeps sessions and records visible while user exercise metadata is retryable
 
   expect(await screen.findByRole('heading', { name: 'Wiosłowanie custom' })).toBeInTheDocument()
   expect(screen.getByText('Day siły')).toBeInTheDocument()
-  expect(screen.getByText('best set')).toBeInTheDocument()
+  expect(screen.getByText(/best 95 kg × 10 · est\. max 127 kg/)).toBeInTheDocument()
   expect(screen.getByRole('alert')).toHaveTextContent(
     'Could not load this exercise name and category. History and records are still available.',
   )
@@ -134,7 +134,7 @@ it('labels the capped session slice separately from the all-time session count',
 
   render(<ExerciseDetailPage />)
 
-  expect(await screen.findByText('14 sessions total · 10 most recent below')).toBeInTheDocument()
+  expect(await screen.findByText(/^14 sessions total · 10 most recent below · best 95 kg × 10/)).toBeInTheDocument()
   expect(screen.queryByText('Total')).not.toBeInTheDocument()
 })
 
@@ -153,9 +153,8 @@ it('uses the record total when recent session rows are unavailable', async () =>
 
   render(<ExerciseDetailPage />)
 
-  expect(await screen.findByText('4 sessions total')).toBeInTheDocument()
+  expect(await screen.findByText('4 sessions total · best 95 kg × 10 · est. max 127 kg')).toBeInTheDocument()
   expect(screen.queryByText(/No history/)).not.toBeInTheDocument()
-  expect(screen.getByText('best set')).toBeInTheDocument()
 })
 
 it('shows volume metrics and chronological bar labels without hover', async () => {
@@ -209,16 +208,15 @@ it('shows volume metrics and chronological bar labels without hover', async () =
   render(<ExerciseDetailPage />)
 
   expect(await screen.findByRole('heading', { name: 'Volume per session' })).toBeInTheDocument()
-  expect(within(screen.getByText('Latest').parentElement!).getByText('900 kg')).toBeInTheDocument()
-  expect(within(screen.getByText('Maximum').parentElement!).getByText('1.2k kg')).toBeInTheDocument()
+  expect(screen.getByText('Latest 900 kg · max 1,200 kg')).toBeInTheDocument()
 
   const chart = screen.getByRole('list', {
-    name: 'Volume over the last 3 sessions. Latest 900 kg. Maximum 1.2k kg.',
+    name: 'Volume over the last 3 sessions. Latest 900 kg. Maximum 1,200 kg.',
   })
   const sessions = within(chart).getAllByRole('listitem')
   expect(sessions).toHaveLength(3)
-  expect(sessions[0]).toHaveAccessibleName(/1\.0k kg/)
-  expect(sessions[1]).toHaveAccessibleName(/1\.2k kg/)
+  expect(sessions[0]).toHaveAccessibleName(/1,000 kg/)
+  expect(sessions[1]).toHaveAccessibleName(/1,200 kg/)
   expect(sessions[2]).toHaveAccessibleName(/900 kg/)
 })
 
@@ -246,9 +244,9 @@ it('collapses the latest and maximum volume when they are the same fact', async 
 
   render(<ExerciseDetailPage />)
 
-  expect(await screen.findByText('Latest · maximum')).toBeInTheDocument()
+  expect(await screen.findByText('Latest 1,200 kg, the most so far')).toBeInTheDocument()
   expect(screen.getByRole('list', {
-    name: 'Volume over the last 1 session. Latest and maximum 1.2k kg.',
+    name: 'Volume over the last 1 session. Latest and maximum 1,200 kg.',
   })).toBeInTheDocument()
 })
 

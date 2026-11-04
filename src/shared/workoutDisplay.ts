@@ -60,7 +60,7 @@ export function exerciseSummaryLabel(sets: { weight: number; reps: number }[], u
   const count = `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
   const best = bestSet(sets)
   if (!best) return count
-  return `${count} · ${best.weight > 0 ? `${kgToDisplayWeight(best.weight, units)} × ${best.reps}` : `${best.reps} reps`}`
+  return `${count} · ${best.weight > 0 ? `${kgToDisplayWeight(best.weight, units)} ${units} × ${best.reps}` : `${best.reps} reps`}`
 }
 export function estimatedOneRepMax(weight: number, reps: number): number {
   return Math.round(weight * (1 + reps / 30))

@@ -1,6 +1,4 @@
-import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
-
-// History list formatting shared by web and native, so both show the same dates, durations and month groups.
+// History list formatting shared by web and native, so both show the same dates and month groups.
 export interface WorkoutMonthGroup<T> {
   key: string
   label: string
@@ -27,11 +25,3 @@ export function formatHistoryDate(timestamp: number): string {
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   return `${weekdays[date.getDay()]}, ${date.getDate()}`
 }
-
-export function formatWorkoutDuration(start: number, end: number): string {
-  const minutes = Math.round((getCappedWorkoutFinishedAt(start, end) - start) / 60_000)
-  if (minutes < 1) return '< 1 min'
-  if (minutes < 60) return `${minutes} min`
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`
-}
-

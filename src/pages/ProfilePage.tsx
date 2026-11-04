@@ -9,7 +9,6 @@ import { Button, Input } from '../components/ui'
 import { pluralize } from '../lib/pluralize'
 import { getRecentWorkouts } from '../lib/workoutService'
 import { getRecords } from '../lib/progressService'
-import { calcStreak } from '../shared/streak'
 import { trainingSinceLabel } from '../shared/workoutDisplay'
 
 const GOALS: { value: PrimaryGoal; label: string }[] = [
@@ -32,7 +31,7 @@ export default function ProfilePage() {
   const [units, setUnits] = useState<Units>(profile?.units ?? 'kg')
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState('')
-  const [stats, setStats] = useState<{ workouts: string; records: string; streak: string } | null>(null)
+  const [stats, setStats] = useState<{ workouts: number; records: number } | null>(null)
   const uid = user?.uid
 
   useEffect(() => {
@@ -49,11 +48,7 @@ export default function ProfilePage() {
     Promise.all([getRecentWorkouts(uid, STATS_WORKOUTS), getRecords(uid)])
       .then(([workouts, { records }]) => {
         if (!live) return
-        setStats({
-          workouts: workouts.length >= STATS_WORKOUTS ? `${STATS_WORKOUTS}+` : String(workouts.length),
-          records: String(records.length),
-          streak: String(calcStreak(workouts)),
-        })
+        setStats({ workouts: workouts.length, records: records.length })
       })
       .catch(() => {})
     return () => { live = false }
@@ -85,18 +80,15 @@ export default function ProfilePage() {
           <h1 id="profile-title" className="progress-visually-hidden">Profile</h1>
           <p className="profile-name">{profile?.displayName ?? ' '}</p>
           {profile?.createdAt ? <p className="profile-since">{trainingSinceLabel(profile.createdAt)}</p> : null}
+          {stats && (
+            <p className="profile-since">
+              {stats.workouts >= STATS_WORKOUTS ? `${STATS_WORKOUTS}+` : stats.workouts} {pluralize(stats.workouts, 'workout', 'workouts')} · {stats.records} {pluralize(stats.records, 'record', 'records')}
+            </p>
+          )}
         </div>
       </header>
 
-      {stats && (
-        <dl className="profile-stats" aria-label="Training summary">
-          <div><dt>workouts</dt><dd>{stats.workouts}</dd></div>
-          <div><dt>records</dt><dd>{stats.records}</dd></div>
-          <div><dt>day streak</dt><dd>{stats.streak}</dd></div>
-        </dl>
-      )}
-
-      <div className="profile-settings-shell" style={{ maxWidth: '42rem' }}>
+      <div className="profile-settings-shell">
         <section className="profile-form-panel" aria-labelledby="profile-title">
           <form onSubmit={handleSubmit} className="flex flex-col">
             <div
@@ -118,9 +110,9 @@ export default function ProfilePage() {
             </div>
 
             <fieldset
-              className="m-0 min-w-0 border-0 py-4"
+              className="m-0 min-w-0 border-0 pt-0 pb-4"
             >
-              <legend className="mb-3 text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
+              <legend className="mb-2 pt-4 text-sm font-semibold" style={{ color: 'var(--text-strong)' }}>
                 Primary goal
               </legend>
               <div
@@ -141,7 +133,7 @@ export default function ProfilePage() {
             </fieldset>
 
             <div
-              className="grid gap-5 py-4 sm:grid-cols-[minmax(0,1fr)_14rem] sm:gap-8"
+              className="grid gap-5 py-4"
             >
               <div className="flex min-w-0 flex-col gap-2">
                 <div className="flex items-baseline justify-between gap-4">

@@ -144,7 +144,11 @@ vi.mock('../../components/MobileInteractionProvider', () => ({
 }))
 vi.mock('../../router/pageLoaders', () => ({ preloadRouteByPath: vi.fn() }))
 vi.mock('../../components/ExercisePicker', () => ({ default: () => null }))
-vi.mock('../../components/workout/WorkoutExerciseLedgerItem', () => ({ default: () => null }))
+vi.mock('../../components/workout/WorkoutExerciseLedgerItem', () => ({
+  default: ({ exerciseIndex, fallbackExercise, onRemoveExercise }: { exerciseIndex: number; fallbackExercise: { name: string } | null; onRemoveExercise(index: number): void }) => (
+    <button onClick={() => onRemoveExercise(exerciseIndex)}>Remove exercise {fallbackExercise?.name}</button>
+  ),
+}))
 
 vi.mock('sonner', () => ({
   toast: { error: mocks.toastError, success: mocks.toastSuccess },
@@ -171,6 +175,7 @@ vi.mock('framer-motion', () => {
     },
   }),
   useDragControls: () => ({ start: () => undefined }),
+  useIsPresent: () => true,
   useReducedMotion: () => true,
   }
 })
@@ -656,9 +661,9 @@ describe('WorkoutPage stale-session feedback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Finish workout?' })
-    expect(dialog).toHaveTextContent('Unfinished sets: 1')
+    expect(dialog).toHaveTextContent('1 set logged, 1 not logged')
     expect(mocks.beginClosure).not.toHaveBeenCalled()
-    fireEvent.click(screen.getByRole('button', { name: 'Continue workout' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Keep training' }))
     expect(mocks.beginClosure).not.toHaveBeenCalled()
     expect(mocks.active.exercises[0].sets).toHaveLength(2)
   })
@@ -695,7 +700,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.active = session
     const view = renderStaleSessionPage()
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
-    await screen.findByRole('button', { name: 'Save completed sets' })
+    await screen.findByRole('button', { name: 'Save 1 set and finish' })
 
     if (change === 'session') mocks.active = { ...session, sessionId: 'identity-replacement' }
     else if (change === 'account') mocks.uid = 'user-2'
@@ -756,7 +761,7 @@ describe('WorkoutPage stale-session feedback', () => {
     mocks.storeActive = latest
     mocks.beginClosure.mockReturnValue(intent)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save completed sets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save 1 set and finish' }))
 
     await waitFor(() => expect(mocks.prepareFinishClosure).toHaveBeenCalledWith(intent))
     expect(mocks.beginClosure).toHaveBeenCalledWith('finish', latest)
@@ -801,7 +806,7 @@ describe('WorkoutPage stale-session feedback', () => {
     renderStaleSessionPage()
     fireEvent.click(screen.getByRole('button', { name: 'Finish' }))
 
-    const confirm = screen.getByRole('button', { name: 'Save completed sets' })
+    const confirm = screen.getByRole('button', { name: 'Save 1 set and finish' })
     fireEvent.click(confirm)
     fireEvent.click(confirm)
 
@@ -827,7 +832,7 @@ describe('WorkoutPage stale-session feedback', () => {
       exercises: [{ ...session.exercises[0], sets: session.exercises[0].sets.map((set) => ({ ...set, done: false })) }],
     }
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save completed sets' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save 1 set and finish' }))
 
     await waitFor(() => expect(screen.getByRole('dialog', { name: 'Finish without saving?' })).toBeVisible())
     expect(mocks.beginClosure).not.toHaveBeenCalled()
@@ -883,7 +888,6 @@ describe('WorkoutPage exercise removal identity', () => {
       mocks.active = { sessionId: 'original', startedAt: Date.now(), templateId: null, exercises }
       renderStaleSessionPage()
       fireEvent.click(screen.getByRole('button', { name: /^y/ }))
-      fireEvent.click(screen.getByRole('button', { name: 'More workout options' }))
       fireEvent.click(await screen.findByRole('button', { name: 'Remove exercise y' }))
       await screen.findByRole('dialog', { name: 'Remove exercise?' })
       mocks.active = {

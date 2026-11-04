@@ -98,7 +98,7 @@ test('summarizes only completed exercise work like the web ledger', () => {
   assert.deepEqual(summarizeExercise(exercise, 'lbs'), {
     completed: 1,
     total: 2,
-    volume: '1.1k lbs',
+    volume: '1,146 lbs',
     max: '143.3 lbs',
   })
 })

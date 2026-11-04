@@ -38,9 +38,7 @@ export function displayWeightDeltaToKg(delta: number, units: WeightUnits): numbe
 }
 
 export function formatCompactVolume(volumeKg: number, units: WeightUnits): string {
-  const volume = kgToDisplayWeight(volumeKg, units)
-  if (!volume) return `0 ${units}`
-  if (volume >= 10_000) return `${Math.round(volume / 1_000)}k ${units}`
-  if (volume >= 1_000) return `${(volume / 1_000).toFixed(1)}k ${units}`
-  return `${Math.round(volume).toLocaleString('en-US')} ${units}`
+  const volume = Math.round(kgToDisplayWeight(volumeKg, units))
+  if (volume >= 10_000) return `${Math.round(volume / 1_000).toLocaleString('en-US')}k ${units}`
+  return `${volume.toLocaleString('en-US')} ${units}`
 }

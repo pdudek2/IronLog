@@ -1,4 +1,4 @@
-import { getCappedWorkoutFinishedAt } from '../../src/lib/sessionDuration'
+import { getCappedWorkoutFinishedAt } from '../../src/shared/sessionDuration'
 import type { SavedWorkout } from './history'
 import { deriveWorkout } from './history'
 import type { ReadState } from './scopedRead'

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   MAX_ACTIVE_SESSION_AGE_MS,
+  formatWorkoutDuration,
   getCappedWorkoutFinishedAt,
   getStaleSessionAgeLabel,
   isActiveSessionStale,
@@ -24,6 +25,12 @@ function session(startedAt: number): ActiveWorkout {
 }
 
 describe('sessionDuration', () => {
+  it('writes durations as minutes, then hours and minutes', () => {
+    expect(formatWorkoutDuration(0, 52 * 60_000)).toBe('52 min')
+    expect(formatWorkoutDuration(0, 70 * 60_000)).toBe('1 h 10 min')
+    expect(formatWorkoutDuration(0, 120 * 60_000)).toBe('2 h')
+  })
+
   it('marks active sessions older than the max age as stale', () => {
     const now = 1_000_000
     const staleStartedAt = now - MAX_ACTIVE_SESSION_AGE_MS - 1

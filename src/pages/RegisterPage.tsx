@@ -64,7 +64,7 @@ export default function RegisterPage() {
         {error && <p id="register-form-error" role="alert" className="text-sm" style={{ color: 'var(--danger)' }}>{error}</p>}
 
         <Button type="submit" loading={loading} className="auth-submit mt-2 w-full">
-          Sign up
+          Create account
         </Button>
         <Link to="/login" className="auth-alt">
           Back to sign in

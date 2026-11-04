@@ -67,23 +67,32 @@ vi.mock('sonner', () => ({
   toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }))
 
-vi.mock('framer-motion', () => ({
-  useReducedMotion: () => true,
-  AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  motion: new Proxy({}, {
-    get: (_target, tag: string | symbol) => {
-      if (typeof tag !== 'string') return undefined
-      return ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
-        delete props.initial
-        delete props.animate
-        delete props.exit
-        delete props.transition
-        delete props.whileTap
-        return createElement(tag, props, children)
-      }
-    },
-  }),
-}))
+vi.mock('framer-motion', () => {
+  // One component per tag: a fresh function per access would remount every motion subtree on each render.
+  const components = new Map<string, (props: { children?: ReactNode } & Record<string, unknown>) => ReactNode>()
+  return {
+    useReducedMotion: () => true,
+    useDragControls: () => ({ start: () => undefined }),
+    useIsPresent: () => true,
+    AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    motion: new Proxy({}, {
+      get: (_target, tag: string | symbol) => {
+        if (typeof tag !== 'string') return undefined
+        if (!components.has(tag)) components.set(tag, ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
+          for (const key of ['initial', 'animate', 'exit', 'transition', 'whileTap', 'drag', 'dragControls', 'dragListener', 'dragConstraints', 'dragElastic', 'dragMomentum', 'onDragEnd']) delete props[key]
+          return createElement(tag, props, children)
+        })
+        return components.get(tag)
+      },
+    }),
+  }
+})
+
+// Delete lives in the ⋯ sheet next to the title.
+async function clickDeleteWorkout() {
+  fireEvent.click(screen.getByRole('button', { name: 'More workout actions' }))
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Delete workout' })) })
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -142,8 +151,8 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.getWorkout.mockResolvedValueOnce({ ...workout, label })
     mocks.readWorkoutMutationState.mockResolvedValueOnce({ status: 'available', baseline: 'a'.repeat(64), workout: { ...workout, label }, operation: null, projection: 'ready' })
     renderPage(['/workout/workout-1'])
-    const deleteButton = (await screen.findAllByRole('button', { name: 'Delete workout' }))[0]
-    await act(async () => { fireEvent.click(deleteButton) })
+    await screen.findByRole('button', { name: 'More workout actions' })
+    await clickDeleteWorkout()
     const dialog = screen.getByRole('dialog', { name: 'Delete workout?' })
     const date = new Date(workout.startedAt).toLocaleDateString('en-US', {
       weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
@@ -289,7 +298,7 @@ describe('WorkoutDetailPage delete action', () => {
 
     expect(await screen.findByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Workout saved' })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Back' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'History' })).toBeInTheDocument()
   })
 
   it('shows confirmed absence separately from a failed read', async () => {
@@ -357,7 +366,7 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.deleteWorkout.mockResolvedValueOnce({ status: 'deleted' })
     renderPage()
 
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await screen.findByText('History workouts')
@@ -369,7 +378,7 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.deleteWorkout.mockRejectedValueOnce(new ApiRejectedError(reason))
     renderPage()
 
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await waitFor(() => expect(mocks.toastError).toHaveBeenCalledWith(reason))
@@ -387,9 +396,7 @@ describe('WorkoutDetailPage delete action', () => {
     renderPage()
 
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
-    const mobileActions = document.querySelector<HTMLElement>('.workout-detail-mobile-actions')
-    if (!mobileActions) throw new Error('Expected mobile workout actions.')
-    await act(async () => { fireEvent.click(within(mobileActions).getByRole('button', { name: 'Delete workout' })) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     expect(screen.getByRole('status')).toHaveTextContent('Deleting workout…')
@@ -403,13 +410,13 @@ describe('WorkoutDetailPage delete action', () => {
 
     const alert = screen.getByRole('alert')
     expect(alert).toHaveTextContent('Workout deleted. Could not refresh stats.')
-    expect(mobileActions).toContainElement(alert)
+    expect(document.querySelector('.workout-detail-mobile-actions')).toContainElement(alert)
     expect(screen.getByRole('heading', { name: 'Push day' })).toBeInTheDocument()
     expect(screen.queryByText('History workouts')).not.toBeInTheDocument()
     screen.getAllByRole('button', { name: 'Edit workout' }).forEach((button) => {
       expect(button).toBeDisabled()
     })
-    screen.getAllByRole('button', { name: 'Delete workout' }).forEach((button) => {
+    screen.getAllByRole('button', { name: 'More workout actions' }).forEach((button) => {
       expect(button).toBeDisabled()
     })
 
@@ -429,7 +436,7 @@ describe('WorkoutDetailPage delete action', () => {
     screen.getAllByRole('button', { name: 'Edit workout' }).forEach((button) => {
       expect(button).toBeDisabled()
     })
-    screen.getAllByRole('button', { name: 'Delete workout' }).forEach((button) => {
+    screen.getAllByRole('button', { name: 'More workout actions' }).forEach((button) => {
       expect(button).toBeDisabled()
     })
 
@@ -453,7 +460,7 @@ describe('WorkoutDetailPage delete action', () => {
 
     const firstRender = renderPage()
 
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     firstDelete.resolve({ status: 'cleanup_pending' })
@@ -489,7 +496,7 @@ describe('WorkoutDetailPage delete action', () => {
 
     const firstRender = renderPage()
 
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     firstDelete.resolve({ status: 'cleanup_pending' })
@@ -518,7 +525,7 @@ describe('WorkoutDetailPage delete action', () => {
 
     const firstRender = renderPage()
 
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await act(async () => {
@@ -538,7 +545,7 @@ describe('WorkoutDetailPage delete action', () => {
 
     renderPage()
 
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
 
     await act(async () => {
@@ -556,7 +563,7 @@ describe('WorkoutDetailPage delete action', () => {
   it('restores an unknown delete after reload without claiming success when its document is gone', async () => {
     mocks.deleteWorkout.mockResolvedValueOnce({ status: 'unknown' }).mockResolvedValueOnce({ status: 'deleted' })
     const firstRender = renderPage()
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not confirm workout deletion')
     expect(mocks.toastSuccess).not.toHaveBeenCalled()
@@ -574,7 +581,7 @@ describe('WorkoutDetailPage delete action', () => {
     const deletion = deferred<{ status: 'deleted' }>()
     mocks.deleteWorkout.mockReturnValueOnce(deletion.promise)
     renderPage()
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Delete workout' })[0]) })
+    await clickDeleteWorkout()
     fireEvent.click(screen.getByRole('button', { name: 'Delete' }))
     await act(async () => { useAuthStore.setState({ user: { uid: 'user-2' } as User }) })
     await act(async () => { deletion.resolve({ status: 'deleted' }) })
@@ -587,7 +594,7 @@ describe('WorkoutDetailPage delete action', () => {
     writeWorkoutDeleteRecovery('user-1', { workoutId: 'other-workout', status: 'unknown' })
     renderPage()
     await waitFor(() => expect(mocks.getWorkout).toHaveBeenCalled())
-    screen.getAllByRole('button', { name: 'Delete workout' }).forEach((button) => expect(button).toBeDisabled())
+    screen.getAllByRole('button', { name: 'More workout actions' }).forEach((button) => expect(button).toBeDisabled())
     expect(mocks.deleteWorkout).not.toHaveBeenCalled()
     // Without this class the panel, and so the notice, is hidden from 1024 px.
     expect(document.querySelector('.workout-detail-mobile-action-panel')).toHaveClass('has-feedback')
@@ -622,13 +629,13 @@ describe('WorkoutDetailPage delete action', () => {
 
     await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0]) })
     fireEvent.change(screen.getByLabelText('Session type'), { target: { value: 'Pull' } })
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: /Back/ })[0]) })
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'History' })[0]) })
 
     const dialog = await screen.findByRole('dialog', { name: 'Leave this edit?' })
     fireEvent.click(within(dialog).getByRole('button', { name: 'Keep editing' }))
     expect(screen.getByLabelText('Session type')).toHaveValue('Pull')
 
-    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: /Back/ })[0]) })
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'History' })[0]) })
     fireEvent.click(within(await screen.findByRole('dialog', { name: 'Leave this edit?' })).getByRole('button', { name: 'Discard changes' }))
     expect(await screen.findByText('History workouts')).toBeInTheDocument()
   })
@@ -664,7 +671,7 @@ describe('WorkoutDetailPage delete action', () => {
     window.history.pushState({}, '', '/workout-detail-origin')
     renderPage([origin, { pathname: '/workout/workout-1', state: { workoutPreview: workout, previewUid: 'user-1' } }])
 
-    fireEvent.click(screen.getByRole('button', { name: 'Back' }))
+    fireEvent.click(screen.getByRole('button', { name: 'History' }))
 
     expect(await screen.findByText(expected)).toBeInTheDocument()
   })
@@ -683,7 +690,7 @@ describe('WorkoutDetailPage delete action', () => {
   it('uses history as the Back fallback on a direct workout URL', async () => {
     renderPage(['/workout/workout-1'])
 
-    fireEvent.click(await screen.findByRole('button', { name: 'Back' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'History' }))
 
     expect(await screen.findByText('History workouts')).toBeInTheDocument()
   })

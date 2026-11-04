@@ -17,7 +17,7 @@ import {
   type TwoSlotSessionJournal,
 } from './sessionJournal'
 import { createLocalId, parseSessionDocument, type ActiveWorkout, type ExerciseSource, type Units } from './session'
-import { refreshStaleActiveSession } from '../../src/lib/sessionDuration'
+import { refreshStaleActiveSession } from '../../src/shared/sessionDuration'
 
 export interface SessionSnapshot {
   exists: boolean

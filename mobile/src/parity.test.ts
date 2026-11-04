@@ -35,7 +35,7 @@ test('the session shows one exercise: the queue, the target and the panel set ag
   assert.equal(exerciseTargetLabel([done, open, open], 'kg'), '3 × 8 · 51.25 kg')
   assert.equal(exerciseTargetLabel([{ weight: '', reps: '', done: false }], 'kg'), '1 set')
   assert.equal(exerciseTargetLabel([{ weight: '0', reps: '12', done: false }, open], 'kg'), '2 × 12')
-  assert.equal(exerciseSummaryLabel([{ weight: 80, reps: 8 }, { weight: 90, reps: 5 }, { weight: 90, reps: 6 }], 'kg'), '3 sets · 90 × 6')
+  assert.equal(exerciseSummaryLabel([{ weight: 80, reps: 8 }, { weight: 90, reps: 5 }, { weight: 90, reps: 6 }], 'kg'), '3 sets · 90 kg × 6')
   assert.equal(exerciseSummaryLabel([{ weight: 0, reps: 12 }], 'kg'), '1 set · 12 reps')
   assert.equal(exerciseSummaryLabel([], 'kg'), '0 sets')
   assert.equal(estimatedOneRepMax(90, 5), 105)

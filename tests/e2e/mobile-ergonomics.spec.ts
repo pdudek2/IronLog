@@ -196,7 +196,7 @@ test.describe('Phase 4 mobile ergonomics', () => {
     expect((finish?.x ?? 0) + (finish?.width ?? 0)).toBeLessThanOrEqual(320)
     await page.getByRole('button', { name: 'More workout options' }).click()
     await expectMinHitArea(
-      page.getByRole('dialog', { name: 'Workout options' }).getByRole('button', { name: 'Push', exact: true }),
+      page.getByRole('dialog', { name: 'Workout options' }).getByRole('button', { name: /^Session type/ }),
       'workout type',
     )
     await page.keyboard.press('Escape')

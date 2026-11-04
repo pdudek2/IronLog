@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronRight, Ellipsis, Plus, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Ellipsis, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useWorkoutStore, type WorkoutExercise } from '../store/workoutStore'
 import { useAuthStore } from '../store/authStore'
@@ -43,38 +43,6 @@ import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
 
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
-
-interface LabelChipsProps {
-  activeLabel: string
-  onToggle: (label: string) => void
-  className?: string
-}
-
-function LabelChips({ activeLabel, onToggle }: LabelChipsProps) {
-  return (
-    <div role="group" aria-label="Session type" className="workout-label-chips flex gap-1.5 overflow-x-auto no-scrollbar">
-      {WORKOUT_LABELS.map((label) => {
-        const isActive = activeLabel === label
-        return (
-          <motion.button
-            key={label}
-            onClick={() => onToggle(label)}
-            aria-pressed={isActive}
-            className="mobile-touch-target flex-none whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold"
-            style={{
-              backgroundColor: isActive ? 'var(--accent-soft)' : 'rgba(255,255,255,0.06)',
-              color: isActive ? 'var(--text-strong)' : 'var(--muted)',
-              border: isActive ? '1px solid var(--accent-soft-strong)' : '1px solid var(--border)',
-            }}
-            whileTap={{ scale: 0.92 }}
-          >
-            {label}
-          </motion.button>
-        )
-      })}
-    </div>
-  )
-}
 
 interface RestTimerBarProps {
   rest: { startedAt: number; totalSec: number }
@@ -243,7 +211,8 @@ export default function WorkoutPage() {
   const [manualExerciseClientId, setManualExerciseClientId] = useState<string | null>(null)
   const [selectedSet, setSelectedSet] = useState<{ exerciseId: string; setId: string } | null>(null)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
-  const [sessionSheet, setSessionSheet] = useState<'overview' | 'options' | null>(null)
+  const keepTrainingRef = useRef<HTMLButtonElement>(null)
+  const [sessionSheet, setSessionSheet] = useState<'overview' | 'options' | 'type' | null>(null)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [pendingFinish, setPendingFinish] = useState<{ uid: string; sessionId: string } | null>(null)
   const pendingFinishMatches = pendingFinish !== null
@@ -968,7 +937,6 @@ export default function WorkoutPage() {
           }}
         >
           <ElapsedSessionTimer startedAt={active.startedAt} className="text-xl font-bold tabular-nums text-white flex-none" />
-          <div className="flex-1 min-w-0" />
           <button
             type="button"
             className="workout-mobile-minimize"
@@ -979,8 +947,8 @@ export default function WorkoutPage() {
           >
             <ChevronDown size={17} aria-hidden="true" />
             <span>
-              <strong>Minimize</strong>
-              <small aria-hidden="true">Keeps running</small>
+              <strong>{activeLabel}</strong>
+              {totalSets > 0 && <small className="tabular-nums">{completedSets} of {totalSets} {pluralize(totalSets, 'set', 'sets')}</small>}
             </span>
           </button>
           <span id="workout-mobile-minimize-help" className="sr-only">Your workout keeps running</span>
@@ -1138,6 +1106,7 @@ export default function WorkoutPage() {
                           onDismissSuggestion={handleDismissSuggestion}
                           onOpenOverview={() => setSessionSheet('overview')}
                           drawnSetIndex={lastLogged?.draw && lastLogged.exerciseId === currentExerciseClientId ? lastLogged.setIndex : null}
+                          onRemoveExercise={handleRemoveExercise}
                           onRemoveSet={handleRemoveSet}
                           onSelectSet={(setIndex) => {
                             const set = panelExercise.sets[setIndex]
@@ -1184,7 +1153,7 @@ export default function WorkoutPage() {
         {sessionSheet && (
           <BottomSheet
             key="session-sheet"
-            title={sessionSheet === 'overview' ? active.label || 'This workout' : 'Workout options'}
+            title={sessionSheet === 'overview' ? active.label || 'This workout' : sessionSheet === 'type' ? 'Session type' : 'Workout options'}
             description={sessionSheet === 'options' && isDesktop ? (
               <span className="workout-options-summary tabular-nums">
                 {active.exercises.length} {pluralize(active.exercises.length, 'exercise', 'exercises')} · {completedSets}/{totalSets} sets · {formatCompactVolume(totalVolume, units)}
@@ -1215,6 +1184,19 @@ export default function WorkoutPage() {
                   <Plus size={16} aria-hidden="true" />
                 </button>
               </>
+            ) : sessionSheet === 'type' ? (
+              WORKOUT_LABELS.map((label) => (
+                <button
+                  key={label}
+                  type="button"
+                  className="bottom-sheet-row"
+                  aria-pressed={active.label === label}
+                  onClick={() => { setLabel(active.label === label ? '' : label); setSessionSheet('options') }}
+                >
+                  <span>{label}</span>
+                  {active.label === label && <Check size={16} aria-hidden="true" />}
+                </button>
+              ))
             ) : (
               <>
                 <button type="button" className="bottom-sheet-row" onClick={() => { setSessionSheet(null); setShowPicker(true) }}>
@@ -1227,24 +1209,12 @@ export default function WorkoutPage() {
                     <ChevronRight size={16} aria-hidden="true" />
                   </button>
                 )}
-                <p className="bottom-sheet-label">Session type</p>
-                <LabelChips
-                  activeLabel={active.label ?? ''}
-                  onToggle={(label) => setLabel(active.label === label ? '' : label)}
-                />
+                <button type="button" className="bottom-sheet-row" onClick={() => setSessionSheet('type')}>
+                  <span>Session type</span>
+                  <small>{active.label || 'None'}</small>
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button>
                 <hr className="bottom-sheet-rule" />
-                {panelExercise && (
-                  <button
-                    type="button"
-                    className="bottom-sheet-row"
-                    data-quiet
-                    onClick={() => { setSessionSheet(null); handleRemoveExercise(panelIndex) }}
-                    aria-label={`Remove exercise ${panelExercise.name}`}
-                  >
-                    <span>Remove {panelExercise.name}</span>
-                    <Trash2 size={16} aria-hidden="true" />
-                  </button>
-                )}
                 <button type="button" className="bottom-sheet-row" data-quiet onClick={() => { setSessionSheet(null); handleDiscard() }}>
                   <span>Discard workout</span>
                   <Trash2 size={16} aria-hidden="true" />
@@ -1297,20 +1267,34 @@ export default function WorkoutPage() {
         />
       )}
 
-      {pendingFinishMatches && (
-        <ConfirmDialog
-          title="Finish workout?"
-          message={`Unfinished sets: ${unfinishedSets}. Only completed sets will be saved.`}
-          confirmLabel="Save completed sets"
-          cancelLabel="Continue workout"
-          confirmDisabled={closureLocked}
-          onConfirm={() => {
-            setPendingFinish(null)
-            if (pendingFinish) handleConfirmFinish(pendingFinish)
-          }}
-          onCancel={() => setPendingFinish(null)}
-        />
-      )}
+      <AnimatePresence>
+        {pendingFinishMatches && (
+          <BottomSheet
+            key="finish-sheet"
+            title="Finish workout?"
+            description={`${completedSets} ${pluralize(completedSets, 'set', 'sets')} logged, ${unfinishedSets} not logged. Only logged sets are saved.`}
+            initialFocusRef={keepTrainingRef}
+            onClose={() => setPendingFinish(null)}
+          >
+            <div className="finish-sheet-actions">
+              <button
+                type="button"
+                className="dialog-action"
+                disabled={closureLocked}
+                onClick={() => {
+                  setPendingFinish(null)
+                  if (pendingFinish) handleConfirmFinish(pendingFinish)
+                }}
+              >
+                Save {completedSets} {pluralize(completedSets, 'set', 'sets')} and finish
+              </button>
+              <button ref={keepTrainingRef} type="button" className="dialog-action" data-quiet onClick={() => setPendingFinish(null)}>
+                Keep training
+              </button>
+            </div>
+          </BottomSheet>
+        )}
+      </AnimatePresence>
 
       {pendingExerciseRemoval !== null && (
         <ConfirmDialog

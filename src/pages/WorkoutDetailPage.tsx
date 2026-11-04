@@ -3,13 +3,17 @@ import { ApiRejectedError } from '../lib/authedApi'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { exerciseSummaryLabel } from '../shared/workoutDisplay'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowLeft,
   Check,
   ChevronDown,
+  ChevronLeft,
+  Ellipsis,
+  Trash2,
   X,
 } from 'lucide-react'
+import BottomSheet from '../components/BottomSheet'
 import {
   getWorkout,
   readWorkoutMutationState,
@@ -155,9 +159,6 @@ function WorkoutDetailLoadingSkeleton() {
           <Bone width="10rem" height="2.75rem" />
         </div>
       </div>
-      <div className="lg:hidden" style={{ maxWidth: '24rem', marginBottom: '1.5rem' }}>
-        <Bone height="2.75rem" />
-      </div>
       <div className="workout-summary-panel workout-detail-session-facts">
         {[0, 1, 2, 3].map((fact) => (
           <div key={fact} style={{ display: 'grid', gap: '0.5rem' }}>
@@ -207,6 +208,8 @@ export default function WorkoutDetailPage() {
   } = useUserExercises(user?.uid ?? null)
   const [transientDeleteOperation, setTransientDeleteOperation] = useState<WorkoutDeleteOperation | null>(null)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [moreOpen, setMoreOpen] = useState(false)
+  const moreButtonRef = useRef<HTMLButtonElement>(null)
   const [projectionRetry, setProjectionRetry] = useState<ProjectionRetryState>('idle')
   const [saving, setSaving] = useState(false)
   const editBaseline = useRef<string | null>(null)
@@ -597,24 +600,27 @@ export default function WorkoutDetailPage() {
       >
         Edit workout
       </motion.button>
-      <motion.button
-        onClick={handleDelete}
+      <button
+        type="button"
+        ref={moreButtonRef}
+        onClick={() => setMoreOpen(true)}
         disabled={isWorkoutUnavailable || saving || persistedDeleteRecovery !== null}
         aria-describedby={deleteOperation?.status === 'error' || (deleteOperation?.status === 'cleanup_pending' || deleteOperation?.status === 'unknown')
           ? deleteFeedbackId
           : undefined}
-        aria-label="Delete workout"
-        className="workout-detail-action workout-detail-action-delete disabled:opacity-40"
-        whileTap={{ scale: 0.97 }}
+        aria-label="More workout actions"
+        aria-haspopup="dialog"
+        className="workout-detail-more disabled:opacity-40"
       >
-        {isDeleting ? 'Deleting…' : 'Delete'}
-      </motion.button>
+        <Ellipsis size={20} aria-hidden="true" />
+      </button>
     </div>
   )
 
   // History, Dashboard and native name a workout the same way; the main category is only a small eyebrow.
   const heroLabel = workoutTitle(displayedWorkout)
-  const focusLabel = topFocus ? EXERCISE_CATEGORY_LABELS[topFocus[0]] : undefined
+  // A labelled session already names its focus; the top muscle only helps an unlabelled one.
+  const focusLabel = topFocus && !displayedWorkout.label?.trim() ? EXERCISE_CATEGORY_LABELS[topFocus[0]] : undefined
   return (
     <>
       <div className="workout-detail-page workout-detail-content">
@@ -626,8 +632,8 @@ export default function WorkoutDetailPage() {
           transition={{ duration: 0.18 }}
           whileTap={{ scale: 0.97 }}
         >
-          <ArrowLeft size={16} aria-hidden="true" />
-          {workoutResult ? 'Back to Home' : 'Back'}
+          {workoutResult ? <ArrowLeft size={16} aria-hidden="true" /> : <ChevronLeft size={16} aria-hidden="true" />}
+          {workoutResult ? 'Back to Home' : (location.state as { from?: string } | null)?.from === 'train' ? 'Train' : 'History'}
         </motion.button>
 
         {workoutResult && !isEditing && (
@@ -649,7 +655,7 @@ export default function WorkoutDetailPage() {
               {formatDate(displayedWorkout.startedAt)}{focusLabel ? ` · ${focusLabel}` : ''}
             </p>
           </div>
-          <div className="workout-detail-desktop-actions" role="group" aria-label="Workout actions">
+          <div className="workout-detail-desktop-actions" data-editing={isEditing || undefined} role="group" aria-label="Workout actions">
             {actionButtons}
           </div>
         </header>
@@ -665,7 +671,7 @@ export default function WorkoutDetailPage() {
           />
         )}
 
-        <WorkoutDetailMobileActions>
+        {(isEditing || deleteOperation || otherDeleteRecoveryId) && <WorkoutDetailMobileActions>
           <motion.div
             className={`workout-detail-mobile-action-panel${deleteOperation || otherDeleteRecoveryId ? ' has-feedback' : ''}`}
             initial={false}
@@ -700,11 +706,13 @@ export default function WorkoutDetailPage() {
                 className="workout-detail-delete-feedback"
               />
             )}
-            <div className={deleteOperation ? 'workout-detail-mobile-action-controls mt-3' : 'workout-detail-mobile-action-controls'}>
-              {actionButtons}
-            </div>
+            {isEditing && (
+              <div className={deleteOperation ? 'workout-detail-mobile-action-controls mt-3' : 'workout-detail-mobile-action-controls'}>
+                {actionButtons}
+              </div>
+            )}
           </motion.div>
-        </WorkoutDetailMobileActions>
+        </WorkoutDetailMobileActions>}
 
         {user && !isEditing && <WorkoutSteps uid={user.uid} workout={displayedWorkout} units={units} />}
 
@@ -923,6 +931,23 @@ export default function WorkoutDetailPage() {
         onRetryUserExercises={retryUserExercises}
       />
 
+      <AnimatePresence>
+        {moreOpen && (
+          <BottomSheet key="workout-more" title={heroLabel} onClose={() => setMoreOpen(false)}>
+            <button
+              type="button"
+              className="bottom-sheet-row"
+              data-quiet
+              disabled={isWorkoutUnavailable || saving || persistedDeleteRecovery !== null}
+              onClick={() => { setMoreOpen(false); void handleDelete() }}
+            >
+              <span>Delete workout</span>
+              <Trash2 size={16} aria-hidden="true" />
+            </button>
+          </BottomSheet>
+        )}
+      </AnimatePresence>
+
       {confirmDeleteOpen && (
         <ConfirmDialog
           title="Delete workout?"
@@ -930,7 +955,7 @@ export default function WorkoutDetailPage() {
           confirmLabel="Delete"
           danger
           onConfirm={() => { setConfirmDeleteOpen(false); doDelete() }}
-          onCancel={() => setConfirmDeleteOpen(false)}
+          onCancel={() => { setConfirmDeleteOpen(false); moreButtonRef.current?.focus() }}
         />
       )}
 

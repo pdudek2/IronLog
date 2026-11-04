@@ -13,13 +13,13 @@ import { readWorkoutDeleteRecovery } from '../lib/workoutDeleteRecovery'
 import { exercises as exerciseDb, type Exercise } from '../data/exercises'
 import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
-import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume } from '../lib/weightUnits'
 import { useProfileStore } from '../store/profileStore'
 import {
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
-import { formatHistoryDate, formatWorkoutDuration, groupWorkoutsByMonth } from '../shared/workoutHistory'
+import { groupWorkoutsByMonth } from '../shared/workoutHistory'
+import { formatWorkoutDuration } from '../lib/sessionDuration'
 
 type RangePreset = '30' | '90' | '365' | 'all'
 
@@ -318,7 +318,7 @@ export default function HistoryPage() {
                     key={cat}
                     type="button"
                     onClick={() => setActiveCategory(active ? null : cat)}
-                    className="history-category-filter-button mobile-touch-target px-3 py-1 text-xs font-semibold"
+                    className="filter-chip"
                     data-active={active}
                     aria-pressed={active}
                   >
@@ -409,11 +409,13 @@ export default function HistoryPage() {
                           className="history-workout-row"
                         >
                           <div className="history-workout-main">
-                            <img className="history-workout-thumb" src={`/covers/${workoutCover(workout.label)}.jpg`} alt="" loading="lazy" />
+                            <span className="history-workout-date">
+                              <small>{new Date(workout.startedAt).toLocaleDateString('en-US', { weekday: 'short' })}</small>
+                              <b>{new Date(workout.startedAt).getDate()}</b>
+                            </span>
                             <div className="min-w-0">
                               <h3>{workoutTitle(workout)}</h3>
                               <div className="history-workout-meta">
-                                <span>{formatHistoryDate(workout.startedAt)}</span>
                                 <span>{formatWorkoutDuration(workout.startedAt, workout.finishedAt)}</span>
                                 <span className="history-inline-stat">{formatCompactVolume(totalVolume, units)}</span>
                                 <span className="history-inline-stat">{totalSets} {pluralize(totalSets, 'set', 'sets')}</span>

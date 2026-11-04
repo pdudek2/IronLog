@@ -13,11 +13,12 @@ export async function restoreProfileName(page: Page, originalName: string): Prom
 export async function deleteTemplateByName(page: Page, name: string): Promise<void> {
   await page.goto('/templates')
   await expectAppReady(page, '/templates')
-  const buttons = page.getByRole('button', { name: `Delete plan ${name}` })
+  const buttons = page.getByRole('button', { name: `More actions for plan ${name}` })
   while (await buttons.count()) {
     const count = await buttons.count()
     await buttons.first().click()
-    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
+    await page.getByRole('button', { name: `Delete plan ${name}` }).click()
+    await page.getByRole('dialog', { name: 'Delete plan?' }).getByRole('button', { name: 'Delete', exact: true }).click()
     await expect(buttons).toHaveCount(count - 1, { timeout: 8_000 })
   }
 }

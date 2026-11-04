@@ -20,7 +20,7 @@ test('ten exercise volumes retain readable chronology', async ({ page, cleanup }
   await seedExerciseDetailEmulatorState(10)
   await page.goto(`/exercises/user/${PROGRESS_DETAIL_EXERCISE_ID}`)
   await expect(page.getByRole('heading', { name: 'Phase 7 Volume Detail' })).toBeVisible()
-  await expect(page.getByText('reps at best', { exact: true })).toBeVisible()
+  await expect(page.getByText(/best [0-9.,]+ kg × [0-9]+/)).toBeVisible()
   for (const width of [320, 393, 768]) {
     await page.setViewportSize({ width, height: 852 })
     await page.evaluate(() => document.fonts.ready)

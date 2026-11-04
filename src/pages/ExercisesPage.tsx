@@ -2,7 +2,7 @@ import React, { useEffect, useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
-import { ChevronDown, ChevronRight, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Pencil, Plus, Search, SlidersHorizontal, Trash2, X } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { getRecords } from '../lib/progressService'
@@ -303,8 +303,7 @@ function ChipRow<T extends string>({ label, options, labels, active, onSelect }:
           key={option}
           type="button"
           onClick={() => onSelect(option)}
-          className="exercise-filter-chip mobile-touch-target"
-          data-active={active === option}
+          className="filter-chip"
           aria-pressed={active === option}
         >
           {labels[option]}
@@ -467,6 +466,10 @@ export default function ExercisesPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
         >
+          <button type="button" className="template-editor-back" onClick={() => navigate('/templates')}>
+            <ChevronLeft size={16} aria-hidden="true" />
+            Plans
+          </button>
           <h1>Exercises</h1>
         </motion.div>
 
@@ -545,6 +548,7 @@ export default function ExercisesPage() {
               : userExercisesState.status
           }
         >
+        {!(userExercisesState.status === 'success' && userExercises.length === 0) && (
         <section className="exercise-library-section">
           <SectionHeader
             title="My exercises"
@@ -594,6 +598,7 @@ export default function ExercisesPage() {
             </AnimatePresence>
           ) : null}
         </section>
+        )}
 
         <section className="exercise-library-section">
           <SectionHeader title="Shared library" count={filteredGlobal.length} />

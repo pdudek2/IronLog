@@ -66,6 +66,8 @@ test('mobile workout actions adapt between inline content and the fixed viewport
 
   await page.goto(`/workout/${WORKOUT_ID}`)
   await expect(page.getByRole('heading', { name: /Phase 1 mobile detail actions/ })).toBeVisible()
+  // The dock carries Cancel and Save while editing; in view mode Edit and ⋯ sit on the title line.
+  await page.getByRole('button', { name: 'Edit workout' }).click()
 
   const navigation = page.locator('nav.bottom-nav')
   const summary = page.locator('.workout-summary-panel')
@@ -84,10 +86,9 @@ test('mobile workout actions adapt between inline content and the fixed viewport
     if (!summaryBox || !actionsBox) return false
     return actionsBox.y + actionsBox.height <= summaryBox.y
   }).toBe(true)
-  expect(await countVisibleFocusableButtons(allButtons, 'Edit workout')).toBe(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Delete')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Cancel')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Save')).toBe(1)
 
-  for (const row of await page.locator('.workout-exercise-row').all()) await row.click()
   await anchor.scrollIntoViewIfNeeded()
   await expect(actions).toHaveAttribute('data-placement', 'inline')
   const distancePastTop = await anchor.evaluate((element) => (
@@ -104,8 +105,8 @@ test('mobile workout actions adapt between inline content and the fixed viewport
   await page.mouse.wheel(0, 24)
   await expect(navigation).toHaveAttribute('aria-hidden', 'true')
   await expect.poll(() => actionClearanceDeltaFromCssTarget(actions)).toBeLessThanOrEqual(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Edit workout')).toBe(1)
-  expect(await countVisibleFocusableButtons(allButtons, 'Delete')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Cancel')).toBe(1)
+  expect(await countVisibleFocusableButtons(allButtons, 'Save')).toBe(1)
 
   await anchor.scrollIntoViewIfNeeded()
   await expect(actions).toHaveAttribute('data-placement', 'inline')

@@ -297,9 +297,10 @@ describe('HistoryPage range state', () => {
 
     expect(within(row).queryByText(/Martwy ciąg/)).not.toBeInTheDocument()
     expect(within(row).queryByLabelText('Exercise categories')).not.toBeInTheDocument()
-    expect(within(row).getByText('Sun, 30')).toBeInTheDocument()
-    expect(within(row).getByText('1h 0m')).toBeInTheDocument()
-    expect(within(row).getByText('1.8k kg')).toBeInTheDocument()
+    expect(within(row).getByText('Sun')).toBeInTheDocument()
+    expect(within(row).getByText('30')).toBeInTheDocument()
+    expect(within(row).getByText('1 h')).toBeInTheDocument()
+    expect(within(row).getByText('1,780 kg')).toBeInTheDocument()
     expect(within(row).getByText('5 sets')).toBeInTheDocument()
   })
 
@@ -372,6 +373,6 @@ describe('HistoryPage range state', () => {
     render(<HistoryPage />)
 
     const row = await screen.findByRole('button', { name: /Lbs session/i })
-    expect(within(row).getByText('1.1k lbs')).toBeInTheDocument()
+    expect(within(row).getByText('1,146 lbs')).toBeInTheDocument()
   })
 })

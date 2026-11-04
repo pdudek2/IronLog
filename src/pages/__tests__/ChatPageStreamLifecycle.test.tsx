@@ -241,7 +241,7 @@ describe('ChatPage stream lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry AI response' }))
 
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('alert')).toHaveTextContent('Add a OpenRouter API key to use AI Coach.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Set up your OpenRouter key to use Coach.')
     expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
   })
@@ -259,7 +259,7 @@ describe('ChatPage stream lifecycle', () => {
 
     expect(screen.getByLabelText('Chat with AI Coach')).toBeVisible()
     expect(within(screen.getByRole('log')).getByText('Czy progresuję?')).toBeVisible()
-    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
+    expect(screen.getByText('Ask Coach about your training')).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Analyze my last week of training.' }))
       .not.toBeInTheDocument()
@@ -275,7 +275,7 @@ describe('ChatPage stream lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
 
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled())
-    expect(screen.queryByText('Add a OpenRouter API key to use AI Coach.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Set up your OpenRouter key to use Coach.')).not.toBeInTheDocument()
   })
 
   it('clears failed-generation feedback when a new send finds no API key', async () => {
@@ -296,7 +296,7 @@ describe('ChatPage stream lifecycle', () => {
 
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
     expect(within(screen.getByRole('log')).queryByText('Nowe pytanie')).not.toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('Add a OpenRouter API key to use AI Coach.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Set up your OpenRouter key to use Coach.')
     expect(screen.queryByText('Awaria testowa.')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
   })

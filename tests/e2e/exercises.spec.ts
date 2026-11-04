@@ -28,7 +28,7 @@ test.describe('Exercises CRUD', () => {
     await page.screenshot({ path: 'test-results/exercises-created.png' })
 
     const flatLibraryContract = await page.evaluate(() => {
-      const activeFilter = document.querySelector<HTMLElement>('.exercise-filter-chip[data-active="true"]')
+      const activeFilter = document.querySelector<HTMLElement>('.filter-chip[aria-pressed="true"]')
       const openAffordance = document.querySelector<HTMLElement>('.exercise-library-open')
       const editAction = document.querySelector<HTMLElement>('.exercise-library-row-controls .planner-icon-action')
       const commandPanel = document.querySelector<HTMLElement>('.exercise-command-panel')
@@ -61,9 +61,9 @@ test.describe('Exercises CRUD', () => {
     })
 
     expect(flatLibraryContract).toEqual({
-      filterRadius: '0px',
-      filterBackground: 'rgba(0, 0, 0, 0)',
-      filterBottomBorder: '2px',
+      filterRadius: '8px',
+      filterBackground: 'rgba(244, 238, 232, 0.1)',
+      filterBottomBorder: '0px',
       openBorder: '0px',
       openBackground: 'rgba(0, 0, 0, 0)',
       editBorder: '0px',

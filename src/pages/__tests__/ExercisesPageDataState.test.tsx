@@ -59,6 +59,7 @@ vi.mock('sonner', () => ({
 }))
 vi.mock('framer-motion', () => ({
   useDragControls: () => ({ start: () => {} }),
+  useIsPresent: () => true,
   useReducedMotion: () => true,
   AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
   motion: new Proxy({}, {

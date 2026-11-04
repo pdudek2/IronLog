@@ -1,6 +1,6 @@
 import React from 'react'
 import { motion, useReducedMotion } from 'framer-motion'
-import { Check, ChevronDown, Plus, X } from 'lucide-react'
+import { Check, ChevronDown, Plus, Trash2, X } from 'lucide-react'
 import OverloadHint from '../OverloadHint'
 import { useWorkoutStore, type WorkoutExercise } from '../../store/workoutStore'
 import type { SessionHint } from '../../shared/progression'
@@ -28,6 +28,7 @@ interface WorkoutExerciseLedgerItemProps {
   onDismissSuggestion: (hintKey: string) => void
   onOpenOverview: () => void
   drawnSetIndex: number | null
+  onRemoveExercise: (exerciseIndex: number) => void
   onRemoveSet: (exerciseIndex: number, setIndex: number) => void
   onSelectSet: (setIndex: number) => void
   onToggleSet: (exerciseIndex: number, setIndex: number) => void
@@ -86,6 +87,7 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
   onAddSet,
   onApplySuggestion,
   onDismissSuggestion,
+  onRemoveExercise,
   onRemoveSet,
   onSelectSet,
   onToggleSet,
@@ -190,6 +192,14 @@ const WorkoutExerciseLedgerItem = React.memo(function WorkoutExerciseLedgerItem(
             </p>
           )}
         </div>
+        <button
+          type="button"
+          onClick={() => onRemoveExercise(exerciseIndex)}
+          className="workout-exercise-head-remove"
+          aria-label={`Remove exercise ${exercise.name}`}
+        >
+          <Trash2 size={17} aria-hidden="true" />
+        </button>
       </div>
 
       {suggestion && !hintDismissed && !exerciseComplete && (

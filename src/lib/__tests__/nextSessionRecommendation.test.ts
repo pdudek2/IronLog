@@ -94,7 +94,7 @@ describe('buildNextSessionRecommendation', () => {
     ])
     expect([...recommendation.overrides]).toEqual([
       ['global:bench', { sets: 4, weight: 72.5, reps: 8 }],
-      ['global:row', { sets: 4, weight: 70, reps: 8 }],
+      ['global:row', { sets: 4, weight: 70, reps: 6 }],
       ['global:ohp', { sets: 3, weight: 40, reps: 10 }],
       ['global:pulldown', { sets: 2, weight: 50, reps: 12 }],
       ['global:raise', { sets: 2, weight: 10, reps: 15 }],
@@ -120,7 +120,7 @@ describe('buildNextSessionRecommendation', () => {
     expect(recommendation.overrides.get('global:row')).toEqual({
       sets: 3,
       weight: 67.5,
-      reps: 10,
+      reps: 8,
     })
     expect([...recommendation.overrides.values()]).toHaveLength(5)
   })

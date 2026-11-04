@@ -228,7 +228,8 @@ export default function WorkoutPage() {
   } = useUserExercises(user?.uid ?? null)
   const [histories, setHistories] = useState<Record<string, ProgressionSession[]>>({})
   const [sessionTemplate, setSessionTemplate] = useState<{ id: string; template: WorkoutTemplate | null } | null>(null)
-  const [lowReadiness, setLowReadiness] = useState(false)
+  // null until today's readiness is read, so a raise never flashes before a low entry arrives.
+  const [lowReadiness, setLowReadiness] = useState<boolean | null>(null)
   const [dismissedHints, setDismissedHints] = useState<Set<string>>(new Set())
   const fetchedKeys = useRef(new Set<string>())
 
@@ -395,7 +396,7 @@ export default function WorkoutPage() {
     let current = true
     getReadiness(user.uid, todayKey()).then((entry) => {
       if (current) setLowReadiness(entry !== null && computeReadinessScore(entry).tone === 'low')
-    }, () => {})
+    }, () => { if (current) setLowReadiness(false) })
     return () => { current = false }
   }, [user])
 
@@ -1070,7 +1071,7 @@ export default function WorkoutPage() {
                       const exerciseMeta = exerciseCatalog.get(panelExercise.exerciseId)
                       const historyKey = `${panelExercise.exerciseSource}:${panelExercise.exerciseId}`
                       const hint = sessionHint(
-                        histories[historyKey] && (!templateId || sessionTemplate?.id === templateId) ? buildProgression({
+                        histories[historyKey] && lowReadiness !== null && (!templateId || sessionTemplate?.id === templateId) ? buildProgression({
                           sessions: histories[historyKey],
                           target: planTarget(templateId ? sessionTemplate?.template : null, panelExercise.exerciseId, panelExercise.exerciseSource),
                           equipment: exerciseMeta?.equipment,

@@ -163,7 +163,7 @@ describe('template saves', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
 
-    await expect(createTemplate('user-1', input)).resolves.toEqual(saved)
+    await expect(createTemplate('user-1', input)).resolves.toEqual({ ...saved, days: saved.days.map((day, index) => ({ ...day, id: `d${index}` })) })
     expect(fetchMock).toHaveBeenCalledWith('/api/save-template', expect.objectContaining({
       method: 'POST',
       headers: expect.objectContaining({ Authorization: 'Bearer id-token' }),

@@ -11,6 +11,7 @@ import type { ActiveWorkout, ExerciseSource } from '../store/workoutStore'
 import { db } from './firebase'
 import { callAuthedApi } from './authedApi'
 import { templateFingerprint, type EditableTemplate } from '../shared/templateFingerprint'
+import { planDayId } from '../shared/planDay'
 import { createSessionId } from './sessionIdentity'
 import { templateStartWeight } from '../shared/workoutDisplay'
 import { confirmedQuery } from './confirmedQuery'
@@ -25,6 +26,8 @@ export interface TemplateExercise {
 }
 
 export interface TemplateDay {
+  // Missing only on a day an editor has not saved yet; the server then assigns one.
+  id?: string
   name: string
   exercises: TemplateExercise[]
 }
@@ -101,7 +104,8 @@ export function buildActiveWorkoutFromTemplate(
   historyByExercise: TemplateExerciseHistoryMap = new Map(),
   overridesByExercise: TemplateExerciseOverrideMap = new Map(),
 ): ActiveWorkout {
-  const day = template.days[dayIndex] ?? template.days[0]
+  const resolvedIndex = template.days[dayIndex] ? dayIndex : 0
+  const day = template.days[resolvedIndex]
   const label = day?.name?.trim()
     ? day.name.trim()
     : template.name.trim()
@@ -110,6 +114,7 @@ export function buildActiveWorkoutFromTemplate(
     sessionId: createSessionId(),
     startedAt: Date.now(),
     templateId: template.id,
+    planDayId: day ? planDayId(day, resolvedIndex) : null,
     label,
     exercises: (day?.exercises ?? []).map((exercise) => {
       const key = templateExerciseKey(exercise.exerciseId, exercise.exerciseSource)
@@ -181,7 +186,7 @@ function normalizeDays(raw: unknown): TemplateDay[] {
 
     const exercises = normalizeExercises(record.exercises)
 
-    return [{ name, exercises }]
+    return [{ id: planDayId(record, index), name, exercises }]
   })
 }
 

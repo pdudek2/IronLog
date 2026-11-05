@@ -42,7 +42,7 @@ import { latestRecord, recordLine } from '../shared/workoutMoments'
 import { templateStartWeight } from '../shared/workoutDisplay'
 import { loadTemplateExerciseHistory } from '../lib/templateLaunchService'
 import { WORKOUT_COVERS, workoutCover } from '../shared/workoutCover'
-import { WEEK_LABELS, addLocalDays, firstLaunchableWorkout, getGreeting, getWeekDates, weekdayLabel } from '../shared/week'
+import { WEEK_LABELS, addLocalDays, getGreeting, getWeekDates, nextPlanWorkout, weekdayLabel } from '../shared/week'
 
 interface TemplatesResource {
   uid: string | null
@@ -197,11 +197,12 @@ export default function DashboardPage() {
   const [workoutSelection, setWorkoutSelection] = useState<WorkoutSelectionResource>({
     uid: cachedPlans?.uid ?? null,
     initialized: false,
-    target: cachedPlans ? firstLaunchableWorkout(cachedPlans.templates) : null,
+    target: cachedPlans ? nextPlanWorkout(cachedPlans.templates, ownsSnapshot ? snapshotWorkouts : []) : null,
     unavailable: false,
   })
   const [workoutPickerOpen, setWorkoutPickerOpen] = useState(false)
   const [workoutPicked, setWorkoutPicked] = useState(false)
+  const workoutPickedRef = useRef(false)
   const {
     pendingLaunch,
     launchOperation,
@@ -271,7 +272,7 @@ export default function DashboardPage() {
             return {
               uid,
               initialized: true,
-              target: firstLaunchableWorkout(data),
+              target: nextPlanWorkout(data, workoutsRef.current),
               unavailable: false,
             }
           }
@@ -322,7 +323,16 @@ export default function DashboardPage() {
       workouts: all,
       weeklyDone: countWeeklyWorkouts(all),
       streak: calcStreak(all),
-    })) workoutsRef.current = all
+    })) {
+      workoutsRef.current = all
+      // The queue moves on once the finished workout is in; a day the user picked stays.
+      const plans = useDashboardStore.getState().plans
+      if (plans?.uid === uid && !workoutPickedRef.current) {
+        setWorkoutSelection((current) => (current.uid === uid && current.initialized && !current.unavailable
+          ? { ...current, target: nextPlanWorkout(plans.templates, all) }
+          : current))
+      }
+    }
     return all
   }, [captureDashboardScope, setSnapshot])
 
@@ -482,6 +492,7 @@ export default function DashboardPage() {
       unavailable: false,
     })
     setWorkoutPicked(true)
+    workoutPickedRef.current = true
     setWorkoutPickerOpen(false)
   }
 

@@ -53,7 +53,7 @@ describe('save-template handler', () => {
 
     await handler(request(input), captured.res)
 
-    expect(mocks.saveTemplateForUser).toHaveBeenCalledWith('user-1', input)
+    expect(mocks.saveTemplateForUser).toHaveBeenCalledWith('user-1', { ...input, days: [{ id: 'd0', ...input.days[0] }] })
     expect(captured.status()).toBe(200)
     expect(captured.body()).toEqual({ template })
   })

@@ -223,6 +223,31 @@ describe('workoutStore completed set validation', () => {
     useWorkoutStore.getState().updateSet(0, 0, 'reps', '')
 
     expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.done).toBe(false)
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]).not.toHaveProperty('completedAt')
+  })
+
+  it('stamps a set when it is marked done, keeps the time through edits and drops it when undone', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
+      startedAt: 1,
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: '80', reps: '5', done: false }, { weight: '80', reps: '5', done: true, completedAt: 42 }],
+      }],
+    })
+    const sets = () => useWorkoutStore.getState().active!.exercises[0]!.sets
+
+    useWorkoutStore.getState().toggleSetDone(0, 0)
+    const stamped = sets()[0]!.completedAt
+    expect(stamped).toBeGreaterThan(1)
+    useWorkoutStore.getState().adjustSet(0, 0, 'weight', 2.5)
+    expect(sets()[0]!.completedAt).toBe(stamped)
+    expect(sets()[1]!.completedAt).toBe(42)
+    expect(stripWorkoutClientIds(useWorkoutStore.getState().active!).exercises[0]!.sets[1]).toEqual({ weight: '80', reps: '5', done: true, completedAt: 42 })
+    useWorkoutStore.getState().toggleSetDone(0, 0)
+    expect(sets()[0]).not.toHaveProperty('completedAt')
   })
 
   it('completes only sets the finish endpoint accepts', () => {

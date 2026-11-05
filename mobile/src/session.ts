@@ -25,6 +25,7 @@ export interface ActiveWorkout {
   sessionRevision: string | null
   startedAt: number
   templateId: string | null
+  planDayId?: string | null
   label?: string
   exercises: WorkoutExercise[]
 }
@@ -89,6 +90,7 @@ export function parseSessionDocument(uid: string, value: unknown): ActiveWorkout
     sessionRevision,
     startedAt: data.startedAt,
     templateId,
+    planDayId: typeof data.planDayId === 'string' && data.planDayId ? data.planDayId : null,
     label,
     exercises: data.exercises.map((value, exerciseIndex) => {
       const exercise = record(value, `exercises[${exerciseIndex}]`)

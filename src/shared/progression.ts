@@ -1,4 +1,5 @@
 import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
+import { planDayIndex } from './planDay'
 
 // Rules and their sources: PRODUCT.md, „Specyfikacja punktu 1 — silnik progresji”.
 export interface ProgressionSet { weight: number; reps: number }
@@ -211,13 +212,16 @@ export function sessionHint(progression: Progression | null, sets: SessionSet[],
   return null
 }
 
-// The plan's prescription for an exercise; ambiguous while the plan day is not recorded (PRODUCT.md, punkt 2).
+// The plan's prescription for an exercise, from the session's plan day when it is known and still in the plan.
 export function planTarget(
-  template: { days: { exercises: { exerciseId: string; exerciseSource: string; targetReps: number; sets: number }[] }[] } | null | undefined,
+  template: { days: { id?: unknown; exercises: { exerciseId: string; exerciseSource: string; targetReps: number; sets: number }[] }[] } | null | undefined,
   exerciseId: string,
   exerciseSource: string,
+  dayId?: string | null,
 ): ProgressionInput['target'] {
-  const matches = (template?.days ?? []).flatMap((day) => day.exercises)
+  const dayIndex = template ? planDayIndex(template, dayId) : -1
+  const days = dayIndex >= 0 ? [template!.days[dayIndex]!] : template?.days ?? []
+  const matches = days.flatMap((day) => day.exercises)
     .filter((exercise) => exercise.exerciseId === exerciseId && exercise.exerciseSource === exerciseSource)
   if (!matches.length) return null
   const first = matches[0]!

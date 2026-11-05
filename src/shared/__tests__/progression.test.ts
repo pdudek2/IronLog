@@ -160,4 +160,12 @@ describe('planTarget', () => {
     expect(planTarget({ days: [day(5)] }, 'squat', 'user')).toBeNull()
     expect(planTarget(null, 'squat', 'global')).toBeNull()
   })
+
+  it('takes the target from the session plan day and falls back to every day when that day is gone', () => {
+    const plan = { days: [{ id: 'upper-a', ...day(5) }, day(10)] }
+    expect(planTarget(plan, 'squat', 'global', 'upper-a')).toEqual({ reps: 5, sets: 3 })
+    expect(planTarget(plan, 'squat', 'global', 'd1')).toEqual({ reps: 10, sets: 3 })
+    expect(planTarget(plan, 'squat', 'global', 'deleted')).toBe('ambiguous')
+    expect(planTarget(plan, 'squat', 'global', null)).toBe('ambiguous')
+  })
 })

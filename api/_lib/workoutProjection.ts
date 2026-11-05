@@ -19,6 +19,7 @@ import {
 } from './workoutProjectionFence.js'
 import {
   buildExerciseSessionDocumentId,
+  boundSetTimes,
   normalizeWorkoutExercises,
   validateFirestoreDocumentId,
   validateWorkoutLabel,
@@ -443,7 +444,7 @@ export async function updateFinishedWorkoutForUser(
 
     transaction.update(workoutRef, {
       label: nextWorkout.label,
-      exercises: nextWorkout.exercises,
+      exercises: boundSetTimes(nextWorkout.exercises, existingWorkout.startedAt),
       materialized: false,
     })
 

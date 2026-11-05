@@ -142,6 +142,7 @@ function activeSessionDocument(
     sessionRevision,
     startedAt: persistableWorkout.startedAt,
     templateId: typeof persistableWorkout.templateId === 'string' ? persistableWorkout.templateId : null,
+    planDayId: typeof persistableWorkout.planDayId === 'string' ? persistableWorkout.planDayId : null,
     label: persistableWorkout.label?.trim() || null,
     exercises: persistableWorkout.exercises,
     updatedAt: Date.now(),
@@ -172,6 +173,7 @@ function parseSessionDoc(uid: string, data: Record<string, unknown>): ActiveWork
     sessionId: normalizeSessionId(data.sessionId, uid, startedAt),
     startedAt,
     templateId: typeof data.templateId === 'string' && data.templateId ? data.templateId : null,
+    planDayId: typeof data.planDayId === 'string' && data.planDayId ? data.planDayId : null,
     label: typeof data.label === 'string' && data.label ? data.label : undefined,
     exercises: Array.isArray(data.exercises)
       ? data.exercises.map((ex) => {
@@ -187,6 +189,7 @@ function parseSessionDoc(uid: string, data: Record<string, unknown>): ActiveWork
                     weight: String(set.weight ?? ''),
                     reps: String(set.reps ?? ''),
                     done: set.done === true,
+                    ...(set.done === true && Number.isSafeInteger(set.completedAt) ? { completedAt: set.completedAt as number } : {}),
                   }
                 })
               : [],

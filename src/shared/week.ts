@@ -1,3 +1,5 @@
+import { planDayIndex } from './planDay'
+
 // Calendar and launch helpers that Home shows the same way on web and native.
 export const WEEK_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 
@@ -42,6 +44,25 @@ export function firstLaunchableWorkout(
   for (const template of templates) {
     const dayIndex = template.days.findIndex((day) => day.exercises.length > 0)
     if (dayIndex >= 0) return { templateId: template.id, dayIndex }
+  }
+  return null
+}
+
+// The day after the last finished plan workout; one queue that follows that workout's plan.
+export function nextPlanWorkout(
+  plans: Array<{ id: string; days: Array<{ id?: unknown; exercises: unknown[] }> }>,
+  workouts: Array<{ templateId?: string | null; planDayId?: string | null; finishedAt: number }>,
+): { templateId: string; dayIndex: number } | null {
+  const last = workouts
+    .filter((workout) => plans.some((plan) => plan.id === workout.templateId && plan.days.some((day) => day.exercises.length > 0)))
+    .reduce<(typeof workouts)[number] | null>((latest, workout) => (!latest || workout.finishedAt > latest.finishedAt ? workout : latest), null)
+  if (!last) return firstLaunchableWorkout(plans)
+  const plan = plans.find((candidate) => candidate.id === last.templateId)!
+  const done = planDayIndex(plan, last.planDayId)
+  const count = plan.days.length
+  for (let step = 1; step <= count; step += 1) {
+    const dayIndex = done < 0 ? step - 1 : (done + step) % count
+    if (plan.days[dayIndex]!.exercises.length > 0) return { templateId: plan.id, dayIndex }
   }
   return null
 }

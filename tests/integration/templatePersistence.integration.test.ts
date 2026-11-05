@@ -54,7 +54,7 @@ describe('template persistence', () => {
       name: 'Three day plan',
       createdAt: 100,
       updatedAt: 100,
-      days: multiDayRequest().days,
+      days: multiDayRequest().days.map((day, index) => ({ id: `d${index}`, ...day })),
     })
 
     const updatedRequest = multiDayRequest('Updated three day plan')
@@ -71,7 +71,7 @@ describe('template persistence', () => {
       name: 'Updated three day plan',
       createdAt: 100,
       updatedAt: 200,
-      days: updatedRequest.days,
+      days: updatedRequest.days.map((day, index) => ({ id: `d${index}`, ...day })),
     })
 
     await expect(saveTemplateForUser(

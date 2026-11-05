@@ -278,11 +278,39 @@ describe('active session hydration', () => {
         sessionId: deriveLegacySessionId('user-1', 500),
         startedAt: 500,
         templateId: null,
+        planDayId: null,
         exercises: [],
       },
       sessionRevision: null,
       fromCache: false,
       hasPendingWrites: false,
     })
+  })
+
+  it('keeps the plan day and the time of done sets from the stored document', async () => {
+    const { onSnapshot } = await import('firebase/firestore')
+    const { subscribeToActiveSession } = await import('../activeSessionService')
+    vi.mocked(onSnapshot).mockImplementation(((_ref: unknown, _options: unknown, onNext: (snapshot: unknown) => void) => {
+      snapshotHandler = onNext as typeof snapshotHandler
+      return vi.fn()
+    }) as never)
+    const onChange = vi.fn()
+
+    subscribeToActiveSession('user-1', onChange)
+    snapshotHandler?.({
+      exists: () => true,
+      data: () => ({ sessionId: 'session-1', startedAt: 500, planDayId: 'upper-a', exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets: [
+        { weight: '80', reps: '5', done: true, completedAt: 900 },
+        { weight: '80', reps: '5', done: false, completedAt: 950 },
+      ] }] }),
+      metadata: { fromCache: false, hasPendingWrites: false },
+    } as never)
+
+    const session = onChange.mock.calls[0]![0].session
+    expect(session.planDayId).toBe('upper-a')
+    expect(session.exercises[0].sets).toEqual([
+      { weight: '80', reps: '5', done: true, completedAt: 900 },
+      { weight: '80', reps: '5', done: false },
+    ])
   })
 })

@@ -10,6 +10,8 @@ export interface WorkoutSet {
   weight: string
   reps: string
   done: boolean
+  // Device time the set was marked done; present only while it is done.
+  completedAt?: number
 }
 
 export interface WorkoutExercise {
@@ -24,6 +26,7 @@ export interface ActiveWorkout {
   sessionId: string
   startedAt: number
   templateId?: string | null
+  planDayId?: string | null
   label?: string
   exercises: WorkoutExercise[]
 }
@@ -60,6 +63,13 @@ function createClientId(prefix: 'exercise' | 'set'): string {
   return `${prefix}-${Date.now().toString(36)}-${clientIdCounter.toString(36)}`
 }
 
+function settleDone<T extends WorkoutSet>(set: T, done: boolean): T {
+  if (done) return { ...set, done }
+  const rest = { ...set }
+  delete rest.completedAt
+  return { ...rest, done }
+}
+
 const emptySet = (): WorkoutSet => ({ clientId: createClientId('set'), weight: '', reps: '', done: false })
 
 // Rows of the same session keep their ids (matched by position and exercise), so a save from another device does not
@@ -74,11 +84,10 @@ function withClientIds(workout: ActiveWorkout, previous?: ActiveWorkout | null):
       return {
         ...exercise,
         clientId: exercise.clientId ?? kept?.clientId ?? createClientId('exercise'),
-        sets: exercise.sets.map((set, setIndex) => ({
+        sets: exercise.sets.map((set, setIndex) => settleDone({
           ...set,
           clientId: set.clientId ?? kept?.sets[setIndex]?.clientId ?? createClientId('set'),
-          done: set.done && isValidCompletedSet(set),
-        })),
+        }, set.done && isValidCompletedSet(set))),
       }
     }),
   }
@@ -95,6 +104,7 @@ export function stripWorkoutClientIds(workout: ActiveWorkout): ActiveWorkout {
         weight: set.weight,
         reps: set.reps,
         done: set.done,
+        ...(set.completedAt === undefined ? {} : { completedAt: set.completedAt }),
       })),
     })),
   }
@@ -117,7 +127,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
   restTimer: null,
 
   startWorkout: () =>
-    set({ active: { sessionId: createSessionId(), startedAt: Date.now(), templateId: null, exercises: [] }, restTimer: null }),
+    set({ active: { sessionId: createSessionId(), startedAt: Date.now(), templateId: null, planDayId: null, exercises: [] }, restTimer: null }),
 
   hydrateFromDoc: (workout) =>
     set((state) => ({
@@ -186,7 +196,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
               sets: ex.sets.map((st, si) => {
                 if (si !== setIndex) return st
                 const next = { ...st, [field]: value }
-                return { ...next, done: next.done && isValidCompletedSet(next) }
+                return settleDone(next, next.done && isValidCompletedSet(next))
               }),
             }
           : ex
@@ -214,7 +224,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
                 if (si !== setIndex) return st
                 const current = parseSetNumber(st[field], field)
                 const next = { ...st, [field]: formatAdjustedSetValue(Math.max(0, current + delta), field) }
-                return { ...next, done: next.done && isValidCompletedSet(next) }
+                return settleDone(next, next.done && isValidCompletedSet(next))
               }),
             }
           : ex
@@ -231,9 +241,9 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
               ...ex,
               sets: ex.sets.map((st, si) => {
                 if (si !== setIndex) return st
-                if (st.done) return { ...st, done: false }
+                if (st.done) return settleDone(st, false)
                 const completed = ex.sets.filter((other) => other.done).length
-                return completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(st) ? { ...st, done: true } : st
+                return completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(st) ? { ...st, done: true, completedAt: Date.now() } : st
               }),
             }
           : ex

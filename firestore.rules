@@ -130,7 +130,7 @@ service cloud.firestore {
 
     function isActiveSession(uid, data) {
       return data.keys().hasAll(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
-             && data.keys().hasOnly(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
+             && data.keys().hasOnly(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'planDayId', 'label', 'exercises', 'updatedAt'])
              && currentUid() == uid
              && data.userId == currentUid()
              && isDocumentId(data.sessionId)
@@ -140,6 +140,7 @@ service cloud.firestore {
              && isMillis(data.updatedAt)
              && data.updatedAt >= data.startedAt
              && isNullableString(data.templateId, 160)
+             && (!data.keys().hasAny(['planDayId']) || isNullableString(data.planDayId, 64))
              && isNullableString(data.label, 120)
              && isActiveExercises(data.exercises);
     }

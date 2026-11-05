@@ -31,7 +31,7 @@ const replace = () => replaceSessionForUser(uid, request, { db, now: () => 200 }
 describe('atomic active-session replacement', () => {
   it('closes the exact old revision and creates the source-aware candidate atomically', async () => {
     await expect(replace()).resolves.toEqual({ status: 'replaced', sessionId: nextId })
-    expect((await active().get()).data()).toEqual({ ...request.candidate, userId: uid, updatedAt: 200 })
+    expect((await active().get()).data()).toEqual({ ...request.candidate, planDayId: 'd0', userId: uid, updatedAt: 200 })
     expect((await tombstone(oldId).get()).data()).toMatchObject({ userId: uid, outcome: 'discarded', replacementId: nextId })
     expect((await db.collection('workouts').doc(oldId).get()).exists).toBe(false)
   })

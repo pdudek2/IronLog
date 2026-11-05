@@ -64,10 +64,11 @@ async function main() {
   try {
   await setDoc(reference, {
     userId: owner.uid, sessionId, sessionRevision: initialRevision, startedAt: workout.startedAt,
-    templateId: null, label: 'Adapter', exercises: workout.exercises, updatedAt: Date.now(),
+    templateId: null, planDayId: 'upper-a', label: 'Adapter', exercises: workout.exercises, updatedAt: Date.now(),
   })
 
   workout.exercises[0]!.sets[0]!.done = true
+  workout.exercises[0]!.sets[0]!.completedAt = workout.startedAt + 30_000
   await save(owner.firestore, owner.uid, workout, initialRevision, `${runId}-revision-2`)
   const saved = (await getDoc(reference)).data()!
   assert.equal(saved.sessionRevision, `${runId}-revision-2`)
@@ -75,6 +76,10 @@ async function main() {
   assert.equal(saved.exercises[0].custom, 'kept')
   assert.equal(saved.exercises[0].sets[0].cue, 'kept')
   assert.equal(saved.exercises[0].sets[0].done, true)
+  // The update names only the fields it owns, so the plan day from launch stays and the set time travels.
+  assert.equal(saved.planDayId, 'upper-a')
+  assert.equal(saved.exercises[0].sets[0].completedAt, workout.startedAt + 30_000)
+  assert.equal(parseSessionDocument(owner.uid, saved).planDayId, 'upper-a')
 
   await assert.rejects(save(other.firestore, owner.uid, workout, `${runId}-revision-2`, `${runId}-other`))
   await assert.rejects(save(owner.firestore, owner.uid, workout, initialRevision, `${runId}-stale`), NativeActiveSessionConflictError)

@@ -61,14 +61,15 @@ export async function replaceSessionForUser(uid: string, raw: unknown, options: 
     const stored = template.data()
     if (!stored || stored.userId !== uid) throw conflict()
     const parsed = parseSaveTemplateRequest({ name: stored.name, days: stored.days })
-    const day = parsed.days[selection.dayIndex]
-    if (!day || JSON.stringify({ name: parsed.name, day }) !== selection.fingerprint
+    const { id: planDayId, ...day } = parsed.days[selection.dayIndex] ?? { id: null }
+    // The fingerprint leaves the day id out, so clients that predate day ids still match.
+    if (!planDayId || !('exercises' in day) || JSON.stringify({ name: parsed.name, day }) !== selection.fingerprint
       || day.exercises.length !== candidate.exercises.length
       || day.exercises.some((exercise, i) => exercise.exerciseId !== candidate.exercises[i].exerciseId || exercise.exerciseSource !== candidate.exercises[i].exerciseSource)) throw conflict()
     const now = (options.now ?? Date.now)()
     transaction.create(oldRef, { userId: uid, sessionId: replaces.sessionId, outcome: 'discarded', workoutId: null, closedAt: now,
       replacementId: candidate.sessionId, replacementDigest: digest })
-    transaction.set(activeRef, { ...candidate, userId: uid, updatedAt: now })
+    transaction.set(activeRef, { ...candidate, planDayId, userId: uid, updatedAt: now })
   })
   return { status: 'replaced' as const, sessionId: candidate.sessionId }
 }

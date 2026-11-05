@@ -1073,7 +1073,7 @@ export default function WorkoutPage() {
                       const hint = sessionHint(
                         histories[historyKey] && lowReadiness !== null && (!templateId || sessionTemplate?.id === templateId) ? buildProgression({
                           sessions: histories[historyKey],
-                          target: planTarget(templateId ? sessionTemplate?.template : null, panelExercise.exerciseId, panelExercise.exerciseSource),
+                          target: planTarget(templateId ? sessionTemplate?.template : null, panelExercise.exerciseId, panelExercise.exerciseSource, active?.planDayId),
                           equipment: exerciseMeta?.equipment,
                           category: exerciseMeta?.category,
                           units,

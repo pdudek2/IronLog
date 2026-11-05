@@ -22,6 +22,7 @@ import { confirmedQuery } from './confirmedQuery'
 interface WorkoutSetSummary {
   weight: number
   reps: number
+  completedAt?: number
 }
 
 export interface WorkoutExerciseSummary {
@@ -37,6 +38,7 @@ export interface WorkoutSummary {
   finishedAt: number
   materialized: boolean
   templateId?: string | null
+  planDayId?: string | null
   label?: string | null
   exercises: WorkoutExerciseSummary[]
 }
@@ -221,6 +223,7 @@ function normalizeWorkoutSummary(id: string, raw: unknown): WorkoutSummary {
     finishedAt: toFiniteNumber(record.finishedAt),
     materialized: record.materialized === true,
     templateId: typeof record.templateId === 'string' && record.templateId ? record.templateId : null,
+    planDayId: typeof record.planDayId === 'string' && record.planDayId ? record.planDayId : null,
     label: typeof record.label === 'string' && record.label.trim() ? record.label : null,
     exercises: sanitizeWorkoutExercises(record.exercises),
   }
@@ -262,7 +265,7 @@ function sanitizeWorkoutSets(raw: unknown): WorkoutSetSummary[] {
 
     if (reps <= 0 || weight < 0) return []
 
-    return [{ weight, reps }]
+    return [Number.isSafeInteger(record.completedAt) ? { weight, reps, completedAt: record.completedAt as number } : { weight, reps }]
   })
 }
 

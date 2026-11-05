@@ -397,6 +397,19 @@ describe('activeSessions rules', () => {
     }))
   })
 
+  it('accepts an optional plan day and keeps it through an update that does not name it', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const activeRef = doc(db, 'activeSessions', 'alice')
+
+    await assertSucceeds(setDoc(activeRef, { ...validActiveSession('alice'), planDayId: null }))
+    await assertSucceeds(setDoc(activeRef, { ...validActiveSession('alice'), planDayId: 'upper-a' }))
+    // An older client updates only the fields it knows; the stored plan day stays valid.
+    await assertSucceeds(updateDoc(activeRef, { label: 'Upper A', updatedAt: Date.now() + 1 }))
+    await assertFails(setDoc(activeRef, { ...validActiveSession('alice'), planDayId: 7 }))
+    await assertFails(setDoc(activeRef, { ...validActiveSession('alice'), planDayId: 'x'.repeat(65) }))
+    await assertFails(setDoc(activeRef, { ...validActiveSession('alice'), planDay: 'upper-a' }))
+  })
+
   it('requires safe session revisions', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
     const activeRef = doc(db, 'activeSessions', 'alice')

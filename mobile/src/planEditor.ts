@@ -1,5 +1,6 @@
 import { displayWeightStringToKg, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import { templateFingerprint } from '../../src/shared/templateFingerprint'
+import { newPlanDayId } from '../../src/shared/planDay'
 import type { WorkoutTemplate, TemplateExercise } from './workoutLaunch'
 
 export interface EditorExercise extends Omit<TemplateExercise, 'sets' | 'targetReps' | 'targetWeight'> {
@@ -10,13 +11,13 @@ export interface EditorExercise extends Omit<TemplateExercise, 'sets' | 'targetR
   originalWeightKg?: number
   originalWeightDisplay?: string
 }
-export interface EditorDay { rowId: string; name: string; exercises: EditorExercise[] }
+export interface EditorDay { rowId: string; dayId?: string; name: string; exercises: EditorExercise[] }
 export interface PlanSaveRequest {
   id?: string
   operationId: string
   baseline?: string
   name: string
-  days: { name: string; exercises: TemplateExercise[] }[]
+  days: { id?: string; name: string; exercises: TemplateExercise[] }[]
 }
 export interface PlanDraft {
   draftId: string
@@ -34,13 +35,13 @@ export interface PlanDraft {
 
 export function newPlanDraft(draftId: string, units: WeightUnits, template: WorkoutTemplate | null, newId: () => string): PlanDraft {
   const days = template?.days.length ? template.days.map((day) => ({
-    rowId: newId(), name: day.name,
+    rowId: newId(), ...(day.id ? { dayId: day.id } : {}), name: day.name,
     exercises: day.exercises.map((exercise) => {
       const weight = String(kgToDisplayWeight(exercise.targetWeight, units))
       return { ...exercise, rowId: newId(), sets: String(exercise.sets), targetReps: String(exercise.targetReps),
         weight, originalWeightKg: exercise.targetWeight, originalWeightDisplay: weight }
     }),
-  })) : [{ rowId: newId(), name: 'Day 1', exercises: [] }]
+  })) : [{ rowId: newId(), dayId: newPlanDayId(), name: 'Day 1', exercises: [] }]
   return {
     draftId, revision: 0, targetId: template?.id ?? null, baseline: template ? templateFingerprint(template) : null,
     units, name: template?.name ?? '', days, selectedDayId: days[0]!.rowId, pending: null, resolvedId: null, dirty: false,
@@ -67,7 +68,7 @@ export function normalizePlanDraft(draft: PlanDraft, operationId: string): PlanS
     if (dayName.length > 80) throw new Error('Day name cannot exceed 80 characters.')
     if (day.exercises.length > 20) throw new Error('A day can have at most 20 exercises.')
     const seen = new Set<string>()
-    return { name: dayName, exercises: day.exercises.map((exercise) => {
+    return { ...(day.dayId ? { id: day.dayId } : {}), name: dayName, exercises: day.exercises.map((exercise) => {
       const key = `${exercise.exerciseSource}:${exercise.exerciseId}`
       if (seen.has(key)) throw new Error('An exercise is already in this day.')
       seen.add(key)

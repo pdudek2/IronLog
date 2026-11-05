@@ -1,4 +1,5 @@
 import type { TemplateInput } from './templateService'
+import { PLAN_DAY_ID_PATTERN } from '../shared/planDay'
 
 const TEMPLATE_DRAFT_STORAGE_KEY = 'ironlog:template-draft'
 
@@ -31,6 +32,7 @@ export function readTemplateDraft(): TemplateInput | null {
         const exercises = Array.isArray(record.exercises) ? record.exercises : []
 
         return [{
+          ...(typeof record.id === 'string' && PLAN_DAY_ID_PATTERN.test(record.id) ? { id: record.id } : {}),
           name: typeof record.name === 'string' && record.name.trim() ? record.name.trim() : `Day ${index + 1}`,
           exercises: exercises.flatMap((exercise) => {
             if (typeof exercise !== 'object' || exercise === null || Array.isArray(exercise)) return []

@@ -135,6 +135,7 @@ describe('buildFinishedWorkoutFromActiveSession', () => {
     expect(buildFinishedWorkoutFromActiveSession(activeDraft, 1_790_003_600_000)).toEqual({
       sessionId: 'session-1',
       templateId: null,
+      planDayId: null,
       startedAt: 1_790_000_000_000,
       finishedAt: 1_790_003_600_000,
       label: 'Push',
@@ -145,6 +146,33 @@ describe('buildFinishedWorkoutFromActiveSession', () => {
         sets: [{ weight: 80.5, reps: 5 }],
       }],
     })
+  })
+
+  it('keeps the plan day and set times from the device clock, dropping a time a wrong clock puts out of range', () => {
+    const start = activeDraft.startedAt
+    const draft = {
+      ...activeDraft,
+      planDayId: 'upper-a',
+      exercises: [{
+        ...activeDraft.exercises[0],
+        sets: [
+          { weight: '80', reps: '5', done: true, completedAt: start + 60_000 },
+          { weight: '80', reps: '5', done: true, completedAt: start - 10 * 60_000 },
+          { weight: '80', reps: '5', done: true, completedAt: start + 13 * 60 * 60_000 },
+          { weight: '80', reps: '5', done: true, completedAt: 'soon' },
+          { weight: '80', reps: '5', done: false, completedAt: start + 120_000 },
+        ],
+      }],
+    }
+    const finished = buildFinishedWorkoutFromActiveSession(draft, start + 60 * 60_000)
+    expect(finished.planDayId).toBe('upper-a')
+    expect(finished.exercises[0]!.sets).toEqual([
+      { weight: 80, reps: 5, completedAt: start + 60_000 },
+      { weight: 80, reps: 5 },
+      { weight: 80, reps: 5 },
+      { weight: 80, reps: 5 },
+    ])
+    expect(buildFinishedWorkoutFromActiveSession({ ...activeDraft, planDayId: 'not/an id' }, start + 1).planDayId).toBeNull()
   })
 
   it('rejects a draft without any completed set', () => {

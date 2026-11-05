@@ -4,7 +4,7 @@ import test from 'node:test'
 import { LaunchJournal, type LaunchStorage } from './launchJournal'
 import { ReplacementRejectedError, WorkoutLaunchController, type LaunchPort, type LaunchState } from './workoutLaunchController'
 import {
-  buildTemplateSession, claimAbsentSession, firstLaunchableWorkout, parseTemplate, shouldOpenLaunchResult,
+  buildTemplateSession, claimAbsentSession, firstLaunchableWorkout, parseTemplate, selectionFingerprint, shouldOpenLaunchResult,
   type LaunchResult, type WorkoutTemplate,
 } from './workoutLaunch'
 import type { ActiveWorkout } from './session'
@@ -85,6 +85,15 @@ test('parses owned plans and keeps first launchable day and source-aware history
   assert.deepEqual(session.exercises[0]?.sets.map((set) => [set.weight, set.reps]), [['55', '8'], ['55', '8']])
   assert.deepEqual(session.exercises[1]?.sets.map((set) => [set.weight, set.reps]), [['25', '10']])
   assert.equal(session.exercises[1]?.exerciseSource, 'user')
+})
+
+test('a plan session records its day, legacy days read by index, and the launch fingerprint leaves the id out', () => {
+  const raw = { userId: 'owner', name: 'Plan', days: [{ name: 'Push', exercises: [] }, { id: 'pull-day', name: 'Pull', exercises: [] }] }
+  const plan = parseTemplate('plan-a', 'owner', raw)
+  assert.deepEqual(plan.days.map((day) => day.id), ['d0', 'pull-day'])
+  assert.equal(buildTemplateSession(template(), 1, new Map(), 'session', 'revision', 100).planDayId, 'd1')
+  // A fingerprint saved before day ids existed (and the one the server compares) still matches.
+  assert.equal(selectionFingerprint(plan, 1), JSON.stringify({ name: 'Plan', day: { name: 'Pull', exercises: [] } }))
 })
 
 test('transaction creates only when absent, reconciles same candidate, and preserves a competing session', async () => {

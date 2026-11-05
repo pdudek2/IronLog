@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { ApiError } from './errors.js'
+import { PLAN_DAY_ID_PATTERN } from '../../src/shared/planDay.js'
 import { MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES, MAX_SET_REPS, MAX_SET_WEIGHT_KG } from '../../src/shared/workoutLimits.js'
 
 export type ExerciseSource = 'global' | 'user'
@@ -8,6 +9,7 @@ export type ExerciseSource = 'global' | 'user'
 export interface ValidatedWorkoutSet {
   weight: number
   reps: number
+  completedAt?: number
 }
 
 export interface ValidatedWorkoutExercise {
@@ -20,6 +22,7 @@ export interface ValidatedWorkoutExercise {
 export interface FinalizeWorkoutInput {
   sessionId: string
   templateId: string | null
+  planDayId: string | null
   startedAt: number
   finishedAt: number
   label: string | null
@@ -38,6 +41,9 @@ export const MAX_EXERCISE_ID_LENGTH = 160
 export const MAX_FIRESTORE_DOCUMENT_ID_LENGTH = 160
 export { MAX_SET_REPS, MAX_SET_WEIGHT_KG }
 
+// Set times come from the device clock, like startedAt; finishedAt is server time, so it cannot bound them.
+const SET_TIME_EARLY_MS = 5 * 60_000
+const SET_TIME_LATE_MS = 12 * 60 * 60_000
 const EXERCISE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]*$/
 // Finish names the session and the revision it saw; the workout itself is read from the stored active session.
 const FINALIZE_FIELDS = new Set(['sessionId', 'sessionRevision'])
@@ -70,13 +76,14 @@ export function buildFinishedWorkoutFromActiveSession(
   if (normalizedFinishedAt < startedAt) {
     throw badRequest('Finish time cannot be before start time.')
   }
-  const exercises = normalizeActiveWorkoutExercises(record.exercises)
+  const exercises = boundSetTimes(normalizeActiveWorkoutExercises(record.exercises), startedAt)
 
   return {
     sessionId: validateFirestoreDocumentId(record.sessionId, 'sessionId'),
     templateId: record.templateId === undefined || record.templateId === null
       ? null
       : validateFirestoreDocumentId(record.templateId, 'templateId'),
+    planDayId: typeof record.planDayId === 'string' && PLAN_DAY_ID_PATTERN.test(record.planDayId) ? record.planDayId : null,
     startedAt,
     finishedAt: normalizedFinishedAt,
     label: validateWorkoutLabel(record.label),
@@ -110,7 +117,7 @@ function normalizeActiveWorkoutExercises(raw: unknown): ValidatedWorkoutExercise
       ? record.sets.flatMap((set) => {
         const setRecord = asRecord(set, 'Invalid workout set.')
         return setRecord.done === true
-          ? [{ weight: setRecord.weight, reps: setRecord.reps }]
+          ? [{ weight: setRecord.weight, reps: setRecord.reps, completedAt: setRecord.completedAt }]
           : []
       })
       : []
@@ -124,6 +131,18 @@ function normalizeActiveWorkoutExercises(raw: unknown): ValidatedWorkoutExercise
   }).filter((exercise) => exercise.sets.length > 0)
 
   return normalizeWorkoutExercises(completed)
+}
+
+// A wrong phone clock drops the set time; it never blocks saving the workout.
+export function boundSetTimes(exercises: ValidatedWorkoutExercise[], startedAt: number): ValidatedWorkoutExercise[] {
+  return exercises.map((exercise) => ({
+    ...exercise,
+    sets: exercise.sets.map(({ completedAt, ...set }) => (
+      completedAt !== undefined && completedAt >= startedAt - SET_TIME_EARLY_MS && completedAt <= startedAt + SET_TIME_LATE_MS
+        ? { ...set, completedAt }
+        : set
+    )),
+  }))
 }
 
 export function validateWorkoutLabel(value: unknown): string | null {
@@ -202,7 +221,9 @@ function normalizeWorkoutSet(raw: unknown): ValidatedWorkoutSet {
     throw badRequest('Invalid set reps.')
   }
 
-  return { weight, reps }
+  return Number.isSafeInteger(record.completedAt) && Number(record.completedAt) > 0
+    ? { weight, reps, completedAt: Number(record.completedAt) }
+    : { weight, reps }
 }
 
 export function validateExerciseId(value: unknown): string {

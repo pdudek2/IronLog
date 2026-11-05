@@ -1,6 +1,6 @@
 import type { EditableWorkout, WorkoutEditContent, WorkoutMutationGuard } from '../../src/shared/workoutMutation'
 import { displayWeightStringToKg, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
-export interface WorkoutDraftSet { rowId: string; weight: string; reps: string; originalKg?: number; originalDisplay?: string }
+export interface WorkoutDraftSet { rowId: string; weight: string; reps: string; originalKg?: number; originalDisplay?: string; completedAt?: number }
 export interface WorkoutDraftExercise { rowId: string; exerciseId: string; exerciseSource: 'global' | 'user'; name: string; sets: WorkoutDraftSet[] }
 export type WorkoutPendingOperation = WorkoutMutationGuard & { workoutId: string; committed?: true } & ({ action: 'delete' } | { action: 'update'; content: WorkoutEditContent })
 export interface WorkoutDraft {
@@ -12,7 +12,7 @@ export function newWorkoutDraft(workout: EditableWorkout, baseline: string, unit
     original: { label: workout.label, exercises: workout.exercises }, label: workout.label ?? '', units, pending: null,
     exercises: workout.exercises.map(ex => ({ ...ex, rowId: newId(), sets: ex.sets.map(set => {
       const weight = String(kgToDisplayWeight(set.weight, units))
-      return { rowId: newId(), weight, reps: String(set.reps), originalKg: set.weight, originalDisplay: weight }
+      return { rowId: newId(), weight, reps: String(set.reps), originalKg: set.weight, originalDisplay: weight, ...(set.completedAt === undefined ? {} : { completedAt: set.completedAt }) }
     }) })),
   }
 }
@@ -30,7 +30,7 @@ export function normalizeWorkoutDraft(draft: WorkoutDraft): WorkoutEditContent {
       const reps = Number(set.reps.trim())
       if (!Number.isFinite(weight) || weight < 0 || weight > 2000) throw new Error('Weight must be between 0 and 2000 kg.')
       if (!/^\d+$/.test(set.reps.trim()) || !Number.isInteger(reps) || reps < 1 || reps > 1000) throw new Error('Reps must be a whole number from 1 to 1000.')
-      return { weight, reps }
+      return set.completedAt === undefined ? { weight, reps } : { weight, reps, completedAt: set.completedAt }
     }) }
   }) }
 }
@@ -55,7 +55,8 @@ export function isWorkoutDraft(value: unknown, workoutId: string): value is Work
     for (const set of ex.sets) {
       if (!set || !string(set.rowId, 128) || rowIds.has(set.rowId) || !string(set.weight, 32) || !string(set.reps, 16)
         || (set.originalKg !== undefined && (!Number.isFinite(set.originalKg) || set.originalKg < 0 || set.originalKg > 2000))
-        || (set.originalDisplay !== undefined && !string(set.originalDisplay, 32))) return false
+        || (set.originalDisplay !== undefined && !string(set.originalDisplay, 32))
+        || (set.completedAt !== undefined && !Number.isSafeInteger(set.completedAt))) return false
       rowIds.add(set.rowId)
     }
   }

@@ -1,5 +1,5 @@
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useRouter } from 'expo-router'
@@ -28,7 +28,7 @@ import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../
 import { ResumeButton } from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
-import { firstLaunchableWorkout, selectedWorkout, validateTemplateOverrides, type BestSet, type TemplateExercise, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
+import { nextPlanWorkout, selectedWorkout, validateTemplateOverrides, type BestSet, type TemplateExercise, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
 import { colors, primaryGradient } from '../src/theme'
 import { Icon } from '../src/icons'
 
@@ -58,6 +58,9 @@ export default function DashboardScreen() {
   // With the tab bar scrolled away the bar sits on the screen edge, under the gesture area.
   const startBarInset = navigation.hidden ? { paddingBottom: Math.max(2, insets.bottom + 8) } : null
   const [picked, setPicked] = useState(false)
+  // The queue needs plans and recent workouts, which load separately; a day the user picked stays.
+  const pickedRef = useRef(false)
+  const planDataRef = useRef<{ uid: string; templates: WorkoutTemplate[] | null; workouts: HomeData['workouts'] | null }>({ uid: '', templates: null, workouts: null })
   const [weekOpen, setWeekOpen] = useState(false)
   const key = `home:${uid ?? ''}`
   const completion = completed ? `${completed.action}:${completed.action === 'finish' ? completed.workoutId : completed.sessionId}` : ''
@@ -66,17 +69,29 @@ export default function DashboardScreen() {
     if (!uid) return
     setNow(new Date())
     readiness?.controller.refreshDay()
-    return startRead(() => readHome(uid), (state) => setResult({ key, state }))
+    return startRead(() => readHome(uid), (state) => {
+      setResult({ key, state })
+      if (state.status !== 'ready') return
+      const plans = planDataRef.current
+      planDataRef.current = { uid, templates: plans.uid === uid ? plans.templates : null, workouts: state.data.workouts }
+      const templates = planDataRef.current.templates
+      if (templates && !pickedRef.current) setSelection((current) => current?.uid === uid && !current.unavailable
+        ? { ...current, target: nextPlanWorkout(templates, state.data.workouts) }
+        : current)
+    })
   }, [uid, key, attempt, completion, readiness?.controller]))
 
   useFocusEffect(useCallback(() => {
     if (!uid || active.state.status !== 'empty') return
     return startRead(() => readTemplates(uid), (state) => {
       setTemplatesResult({ key: uid, state })
-      if (state.status === 'ready') setSelection((current) => {
+      if (state.status !== 'ready') return
+      const plans = planDataRef.current
+      planDataRef.current = { uid, templates: state.data, workouts: plans.uid === uid ? plans.workouts : null }
+      setSelection((current) => {
         if (current?.uid === uid && current.unavailable) return current
-        if (current?.uid === uid && selectedWorkout(state.data, current.target)) return current
-        return { uid, target: firstLaunchableWorkout(state.data), unavailable: false }
+        if (current?.uid === uid && pickedRef.current && selectedWorkout(state.data, current.target)) return current
+        return { uid, target: nextPlanWorkout(state.data, planDataRef.current.workouts ?? []), unavailable: false }
       })
     })
   }, [uid, active.state.status, templatesAttempt]))
@@ -112,7 +127,8 @@ export default function DashboardScreen() {
     ? templateStartWeight(exercise, chosenBest.get(`${exercise.exerciseSource}:${exercise.exerciseId}`))
     : 0
   const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
-  const plansPending = active.state.status === 'loading' || (canOfferStart && templatesState.status === 'loading')
+  // Start waits for recent workouts too, so the queued day does not replace the first one on screen.
+  const plansPending = active.state.status === 'loading' || (canOfferStart && (templatesState.status === 'loading' || state.status === 'loading'))
   // Picking a workout means the next session matters more than the finished week.
   const weekClosed = Boolean(summary) && !plansPending && canOfferStart && !picked && (summary?.weeklyDone ?? 0) >= goal
   const coverName = active.state.status === 'ready' ? workoutCover(active.state.session.label) : weekClosed ? 'week' : workoutCover(chosen?.day.name ?? chosen?.template.name)
@@ -233,7 +249,7 @@ export default function DashboardScreen() {
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
         <View style={styles.pickerHead}><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Icon name="close" size={18} color={colors.muted} /></Pressable></View>
         <ScrollView style={styles.pickerPlans}>{templates.map((template) => <View key={template.id} style={styles.pickerPlan}><Text accessibilityRole="header" style={styles.pickerPlanTitle}>{template.name}</Text>{template.days.map((day, index) => { const enabled = day.exercises.length > 0; const selected = pickerDraft?.templateId === template.id && pickerDraft.dayIndex === index; return <Pressable key={`${template.id}:${index}`} accessibilityRole="button" accessibilityLabel={enabled ? `Select ${day.name} from plan ${template.name}` : `${day.name} from plan ${template.name}, no exercises`} accessibilityState={{ selected, disabled: !enabled }} disabled={!enabled} onPress={() => setPickerDraft({ templateId: template.id, dayIndex: index })} style={[styles.pickerDay, selected && styles.pickerDaySelected, !enabled && styles.disabled]}><View style={styles.pickerDayCopy}><Text style={styles.pickerDayName}>{day.name}</Text><Text numberOfLines={1} style={styles.pickerDayMeta}>{enabled ? exerciseSummary(day.exercises.map((exercise) => exercise.name)) : 'No exercises'}</Text></View>{selected && <Icon name="check" size={16} color={colors.textStrong} />}</Pressable> })}</View>)}</ScrollView>
-        <View style={[styles.pickerActions, { paddingBottom: Math.max(20, insets.bottom + 12) }]}><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPicked(true); setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.pickerChooseText}>{pickerDraftDay ? `Choose ${pickerDraftDay.name}` : 'Choose workout'}</Text></Pressable></View>
+        <View style={[styles.pickerActions, { paddingBottom: Math.max(20, insets.bottom + 12) }]}><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPicked(true); pickedRef.current = true; setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.pickerChooseText}>{pickerDraftDay ? `Choose ${pickerDraftDay.name}` : 'Choose workout'}</Text></Pressable></View>
       </View></View>
     </Modal>
   <BottomNavigation {...navigation} />

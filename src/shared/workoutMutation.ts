@@ -3,7 +3,7 @@ export interface EditableWorkoutExercise {
   exerciseId: string
   exerciseSource: 'global' | 'user'
   name: string
-  sets: { weight: number; reps: number }[]
+  sets: { weight: number; reps: number; completedAt?: number }[]
 }
 export interface WorkoutEditContent { label: string | null; exercises: EditableWorkoutExercise[] }
 export interface EditableWorkout extends WorkoutEditContent {

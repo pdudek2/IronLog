@@ -32,6 +32,16 @@ test('mutations use stable row identity and preserve unknown metadata', () => {
   assert.equal(original.exercises[0]?.sets[0]?.note, 'keep me')
 })
 
+test('a set carries its completion time only while it is done', () => {
+  const done = setSetDone(workout(), 'exercise-a', 'set-a', true)
+  const stamped = done.exercises[0]?.sets[0]?.completedAt
+  assert.equal(typeof stamped, 'number')
+  assert.equal(setSetDone(done, 'exercise-a', 'set-a', true).exercises[0]?.sets[0]?.completedAt, stamped)
+  assert.equal(adjustSetValue(done, 'exercise-a', 'set-a', 'weight', 2.5).exercises[0]?.sets[0]?.completedAt, stamped)
+  assert.equal('completedAt' in setSetDone(done, 'exercise-a', 'set-a', false).exercises[0]!.sets[0]!, false)
+  assert.equal('completedAt' in updateSetValue(done, 'exercise-a', 'set-a', 'reps', '').exercises[0]!.sets[0]!, false)
+})
+
 test('completion enforces finalizer bounds and invalid reps unmark a set', () => {
   assert.equal(setSetDone(workout(), 'exercise-a', 'set-a', true).exercises[0]?.sets[0]?.done, true)
   const tooHeavy = updateSetValue(workout(), 'exercise-a', 'set-a', 'weight', '2000.1')

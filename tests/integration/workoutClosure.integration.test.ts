@@ -5,6 +5,7 @@ import {
   discardSessionForUser,
   finalizeWorkoutForUser,
 } from '../../api/_lib/workoutClosure'
+import { updateFinishedWorkoutForUser } from '../../api/_lib/workoutProjection'
 import { deriveLegacySessionId } from '../../src/lib/sessionIdentity'
 import {
   clearReviewAdminDatabase,
@@ -116,6 +117,45 @@ describe('workout closure', () => {
     })
   })
 
+  it('stores the plan day and in-range set times, and an edit keeps both', async () => {
+    await seedActive()
+    await db.collection('activeSessions').doc(USER_ID).update({
+      planDayId: 'upper-a',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [
+          { weight: '80', reps: '5', done: true, completedAt: STARTED_AT + 60_000 },
+          { weight: '80', reps: '5', done: true, completedAt: STARTED_AT - 3_600_000 },
+        ],
+      }],
+    })
+    const materialize = vi.fn().mockImplementation(async (_uid, workoutId: string) => {
+      await db.collection('workouts').doc(workoutId).update({ materialized: true })
+    })
+
+    await finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId, sessionRevision: 'revision-1' }, { db, now: () => FINISHED_AT, materialize })
+    expect((await readClosure()).workout.data()).toMatchObject({
+      planDayId: 'upper-a',
+      exercises: [{ sets: [{ weight: 80, reps: 5, completedAt: STARTED_AT + 60_000 }, { weight: 80, reps: 5 }] }],
+    })
+    expect((await readClosure()).workout.data()!.exercises[0].sets[1]).not.toHaveProperty('completedAt')
+
+    await updateFinishedWorkoutForUser(USER_ID, input.sessionId, {
+      label: 'Edited',
+      exercises: [{
+        exerciseId: 'bench-press',
+        exerciseSource: 'global',
+        name: 'Bench Press',
+        sets: [{ weight: 82.5, reps: 5, completedAt: STARTED_AT + 60_000 }, { weight: 80, reps: 6, completedAt: STARTED_AT + 20 * 3_600_000 }],
+      }],
+    }, { db, materialize })
+    const edited = (await readClosure()).workout.data()!
+    expect(edited).toMatchObject({ label: 'Edited', planDayId: 'upper-a' })
+    expect(edited.exercises[0].sets).toEqual([{ weight: 82.5, reps: 5, completedAt: STARTED_AT + 60_000 }, { weight: 80, reps: 6 }])
+  })
+
   it('performs no writes when the active revision changed', async () => {
     await seedActive()
 
@@ -208,6 +248,7 @@ describe('workout closure', () => {
     const state = await readClosure()
     expect(state.workout.data()).toEqual({
       ...input,
+      planDayId: null,
       finishedAt: FINISHED_AT,
       userId: USER_ID,
       materialized: true,

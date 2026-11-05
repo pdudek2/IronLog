@@ -9,6 +9,7 @@ export type WorkoutMonthGroup = MonthGroup<DerivedWorkout>
 export interface SavedWorkoutSet {
   weight: number
   reps: number
+  completedAt?: number
 }
 
 export interface SavedWorkoutExercise {
@@ -24,6 +25,7 @@ export interface SavedWorkout {
   finishedAt: number
   materialized: boolean
   templateId?: string | null
+  planDayId?: string | null
   label?: string | null
   exercises: SavedWorkoutExercise[]
 }
@@ -81,7 +83,7 @@ export function parseSavedWorkout(id: string, uid: string, value: unknown): Save
       const weight = finiteNumber(set.weight ?? set.weightKg)
       const reps = finiteNumber(set.reps)
       if (weight === null || reps === null || weight < 0 || reps <= 0) return []
-      return [{ weight, reps }]
+      return [Number.isSafeInteger(set.completedAt) ? { weight, reps, completedAt: set.completedAt as number } : { weight, reps }]
     })
     if (sets.length === 0) return []
     const exerciseId = typeof exercise.exerciseId === 'string' && exercise.exerciseId.trim()
@@ -98,6 +100,7 @@ export function parseSavedWorkout(id: string, uid: string, value: unknown): Save
     finishedAt,
     materialized: record.materialized === true,
     templateId,
+    planDayId: typeof record.planDayId === 'string' && record.planDayId ? record.planDayId : null,
     label,
     exercises,
   }

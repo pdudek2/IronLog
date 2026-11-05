@@ -1,6 +1,7 @@
 import { createLocalId, parseSessionDocument, type ActiveWorkout, type ExerciseSource } from './session'
 import { templateStartWeight } from '../../src/shared/workoutDisplay'
 import type { TemplateExerciseOverrideMap } from '../../src/shared/nextSessionRecommendation'
+import { planDayId } from '../../src/shared/planDay'
 
 export interface TemplateExercise {
   exerciseId: string
@@ -15,7 +16,7 @@ export interface WorkoutTemplate {
   userId: string
   name: string
   updatedAt: number
-  days: { name: string; exercises: TemplateExercise[] }[]
+  days: { id?: string; name: string; exercises: TemplateExercise[] }[]
 }
 export interface WorkoutSelection { templateId: string; dayIndex: number }
 export interface BestSet { bestSetWeight: number; bestSetReps: number }
@@ -52,6 +53,7 @@ export function parseTemplate(id: string, uid: string, raw: unknown): WorkoutTem
       const day = record(rawDay)
       if (!Array.isArray(day.exercises)) throw new Error('Invalid plan exercises.')
       return {
+        id: planDayId(day, index),
         name: typeof day.name === 'string' && day.name.trim() ? day.name.trim() : `Day ${index + 1}`,
         exercises: day.exercises.map((rawExercise) => {
           const exercise = record(rawExercise)
@@ -69,7 +71,7 @@ export function parseTemplate(id: string, uid: string, raw: unknown): WorkoutTem
   }
 }
 
-export { firstLaunchableWorkout } from '../../src/shared/week'
+export { firstLaunchableWorkout, nextPlanWorkout } from '../../src/shared/week'
 
 export function selectedWorkout(templates: WorkoutTemplate[], selection: WorkoutSelection | null) {
   const template = templates.find((item) => item.id === selection?.templateId)
@@ -77,8 +79,10 @@ export function selectedWorkout(templates: WorkoutTemplate[], selection: Workout
   return template && day?.exercises.length ? { template, day } : null
 }
 
+// The day id stays out, as on the server, so a fingerprint from before day ids still matches.
 export function selectionFingerprint(template: WorkoutTemplate, dayIndex: number): string {
-  return JSON.stringify({ name: template.name, day: template.days[dayIndex] })
+  const day = template.days[dayIndex]
+  return JSON.stringify({ name: template.name, day: day ? { name: day.name, exercises: day.exercises } : undefined })
 }
 
 export function validateTemplateOverrides(template: WorkoutTemplate, dayIndex: number, overrides: TemplateExerciseOverrideMap): void {
@@ -98,7 +102,7 @@ export function buildTemplateSession(template: WorkoutTemplate, dayIndex: number
   if (!day?.exercises.length) throw new TargetUnavailableError()
   if (overrides) validateTemplateOverrides(template, dayIndex, overrides)
   return {
-    sessionId, sessionRevision: revision, startedAt, templateId: template.id, label: day.name || template.name,
+    sessionId, sessionRevision: revision, startedAt, templateId: template.id, planDayId: planDayId(day, dayIndex), label: day.name || template.name,
     exercises: day.exercises.map((exercise) => {
       const best = history.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)
       const override = overrides?.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)
@@ -129,7 +133,7 @@ export async function claimAbsentSession(port: CreateSessionPort, uid: string, c
   }
   if (snapshot.exists) throw new Error('Active session data is invalid.')
   port.create({ userId: uid, sessionId: candidate.sessionId, sessionRevision: candidate.sessionRevision,
-    startedAt: candidate.startedAt, updatedAt, templateId: candidate.templateId,
+    startedAt: candidate.startedAt, updatedAt, templateId: candidate.templateId, planDayId: candidate.planDayId ?? null,
     label: candidate.label?.trim() || null, exercises: candidate.exercises })
   return { kind: 'started', session: candidate }
 }

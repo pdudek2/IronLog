@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { adminDb } from './firebaseAdmin.js'
 import { ApiError } from './errors.js'
 import { templateFingerprint, type EditableTemplate } from '../../src/shared/templateFingerprint.js'
+import { newPlanDayId, PLAN_DAY_ID_PATTERN, planDayId } from '../../src/shared/planDay.js'
 import {
   MAX_SET_REPS,
   MAX_SET_WEIGHT_KG,
@@ -21,7 +22,7 @@ const MAX_TEMPLATE_DAYS = 14
 const MAX_TEMPLATE_SETS = 20
 const SAVE_FIELDS = new Set(['id', 'name', 'days', 'operationId', 'baseline'])
 const REQUIRED_SAVE_FIELDS = ['name', 'days']
-const DAY_FIELDS = new Set(['name', 'exercises'])
+const DAY_FIELDS = new Set(['id', 'name', 'exercises'])
 const EXERCISE_FIELDS = new Set([
   'exerciseId',
   'exerciseSource',
@@ -41,6 +42,7 @@ export interface ValidatedTemplateExercise {
 }
 
 export interface ValidatedTemplateDay {
+  id: string
   name: string
   exercises: ValidatedTemplateExercise[]
 }
@@ -87,7 +89,7 @@ export function parseSaveTemplateRequest(raw: unknown): SaveTemplateRequest {
     ...(record.operationId === undefined ? {} : { operationId: record.operationId as string }),
     ...(record.baseline === undefined ? {} : { baseline: record.baseline as string }),
     name: validateName(record.name, 'template name', MAX_TEMPLATE_NAME_LENGTH),
-    days: days.map(validateDay),
+    days: assignDayIds(days.map(validateDay)),
   }
 }
 
@@ -167,8 +169,24 @@ export async function saveTemplateForUser(
   })
 }
 
-function validateDay(raw: unknown): ValidatedTemplateDay {
+// Days without an id (older clients, saved drafts) take d<index> unless another day already holds it.
+function assignDayIds(days: (Omit<ValidatedTemplateDay, 'id'> & { id?: string })[]): ValidatedTemplateDay[] {
+  const explicit = days.flatMap((day) => (day.id ? [day.id] : []))
+  if (new Set(explicit).size !== explicit.length) throw badRequest('Plan day IDs must be unique.')
+  const taken = new Set(explicit)
+  return days.map((day, index) => {
+    if (day.id) return { ...day, id: day.id }
+    const id = taken.has(planDayId({}, index)) ? newPlanDayId() : planDayId({}, index)
+    taken.add(id)
+    return { ...day, id }
+  })
+}
+
+function validateDay(raw: unknown): Omit<ValidatedTemplateDay, 'id'> & { id?: string } {
   const record = asRecord(raw, 'Invalid plan day.')
+  if (record.id !== undefined && (typeof record.id !== 'string' || !PLAN_DAY_ID_PATTERN.test(record.id))) {
+    throw badRequest('Invalid plan day ID.')
+  }
   assertFields(record, DAY_FIELDS, ['name', 'exercises'])
   if (!Array.isArray(record.exercises)) throw badRequest('Day exercises must be an array.')
   if (record.exercises.length > MAX_WORKOUT_EXERCISES) {
@@ -179,6 +197,7 @@ function validateDay(raw: unknown): ValidatedTemplateDay {
   const identities = new Set(exercises.map((exercise) => `${exercise.exerciseSource}:${exercise.exerciseId}`))
   if (identities.size !== exercises.length) throw badRequest('A plan day cannot contain the same exercise twice.')
   return {
+    ...(typeof record.id === 'string' ? { id: record.id } : {}),
     name: validateName(record.name, 'day name', MAX_DAY_NAME_LENGTH),
     exercises,
   }

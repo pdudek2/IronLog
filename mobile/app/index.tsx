@@ -438,7 +438,7 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
     if (!session.templateId) return null
     if (templates.state.status === 'loading') return undefined
     const template = templates.state.status === 'ready' ? templates.state.data.find(({ id }) => id === session.templateId) : null
-    return planTarget(template, exercise.exerciseId, exercise.exerciseSource)
+    return planTarget(template, exercise.exerciseId, exercise.exerciseSource, session.planDayId)
   }
   const addAndPrefill = (id: string, name: string, source: ExerciseSource) => {
     const added = editing.addExercise(id, name, source)

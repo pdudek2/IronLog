@@ -27,12 +27,14 @@ import {
 } from '../lib/templateService'
 import { pluralize } from '../lib/pluralize'
 import { ApiRejectedError } from '../lib/authedApi'
+import { newPlanDayId } from '../shared/planDay'
 
 type DraftDay = TemplateDay & { _id: string }
 
 function emptyDay(index: number): DraftDay {
   return {
     _id: crypto.randomUUID(),
+    id: newPlanDayId(),
     name: `Day ${index + 1}`,
     exercises: [],
   }
@@ -344,6 +346,7 @@ export default function TemplateEditorPage() {
     const payload = {
       name: trimmedName,
       days: days.map((day, index) => ({
+        ...(day.id ? { id: day.id } : {}),
         name: day.name.trim() || `Day ${index + 1}`,
         exercises: day.exercises.map(normalizeTemplateExercise),
       })),

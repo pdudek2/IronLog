@@ -30,7 +30,7 @@ export function updateSetValue(
 ): ActiveWorkout {
   return updateTarget(session, exerciseId, setId, (set) => {
     const next = { ...set, [field]: value }
-    return { ...next, done: next.done && isValidCompletedSet(next) }
+    return settleDone(next, next.done && isValidCompletedSet(next))
   })
 }
 
@@ -70,7 +70,7 @@ export function adjustSetValue(
 ): ActiveWorkout {
   return updateTarget(session, exerciseId, setId, (set) => {
     const next = { ...set, [field]: adjustedValue(set[field], field, delta) }
-    return { ...next, done: next.done && isValidCompletedSet(next) }
+    return settleDone(next, next.done && isValidCompletedSet(next))
   })
 }
 
@@ -89,10 +89,18 @@ export function setSetDone(
 ): ActiveWorkout {
   const exercise = session.exercises.find((candidate) => candidate.clientId === exerciseId)
   const completed = exercise?.sets.filter((set) => set.done && set.clientId !== setId).length ?? 0
-  return updateTarget(session, exerciseId, setId, (set) => ({
-    ...set,
-    done: done && completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(set),
-  }))
+  return updateTarget(session, exerciseId, setId, (set) => {
+    const next = settleDone(set, done && completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(set))
+    return next.done && !set.done ? { ...next, completedAt: Date.now() } : next
+  })
+}
+
+// Device time the set was marked done; present only while it is done.
+function settleDone(set: WorkoutSet, done: boolean): WorkoutSet {
+  if (done) return { ...set, done }
+  const rest = { ...set }
+  delete rest.completedAt
+  return { ...rest, done }
 }
 
 export function addSet(session: ActiveWorkout, exerciseId: string): ActiveWorkout {

@@ -27,6 +27,19 @@ describe('template validation', () => {
     expect(parseSaveTemplateRequest({ ...raw, days: [{ name: 'Push', exercises: [exercise(), { ...exercise(), exerciseSource: 'user' }] }] }).days[0].exercises).toHaveLength(2)
   })
 
+  it('keeps day ids, gives a day without one its index unless that id is taken, and rejects duplicates', () => {
+    const day = (id?: string) => ({ ...(id ? { id } : {}), name: 'Day', exercises: [exercise()] })
+    const ids = (days: unknown[]) => parseSaveTemplateRequest({ name: 'Plan', days }).days.map((saved) => saved.id)
+
+    expect(ids([day(), day(), day()])).toEqual(['d0', 'd1', 'd2'])
+    // Day 1 was deleted in an editor: the survivors keep their ids and the new day takes neither.
+    expect(ids([day('d0'), day('d2'), day('day-new')])).toEqual(['d0', 'd2', 'day-new'])
+    const [, legacy] = ids([day(), day(), day('d1')])
+    expect(legacy).not.toMatch(/^d\d+$/)
+    expect(() => ids([day('upper-a'), day('upper-a')])).toThrow('Plan day IDs must be unique.')
+    expect(() => ids([day('bad/id')])).toThrow('Invalid plan day ID.')
+  })
+
   it('accepts and trims the complete boundary-sized template contract', () => {
     const raw = {
       id: 'template-1',

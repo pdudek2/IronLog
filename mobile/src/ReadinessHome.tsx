@@ -17,9 +17,9 @@ const fields = [
 ] as const
 const weight = (kg: number, units: 'kg' | 'lbs') => `${kgToDisplayWeight(kg, units).toLocaleString('en-US', { maximumFractionDigits: 1 })} ${units}`
 
-export default function ReadinessHome({ state, controller, recommendation, templateName, units, starting, canStart, onStart, onEdit, onChange, prerequisiteMessage, onRetry }: {
+export default function ReadinessHome({ state, controller, recommendation, templateName, units, starting, canStart, onStart, onEdit, prerequisiteMessage, onRetry }: {
   state: ReadinessState; controller: ReadinessController; recommendation: NextSessionRecommendation | null
-  templateName: string; units: 'kg' | 'lbs'; starting: boolean; canStart: boolean; onStart: () => void; onEdit: () => void; onChange: () => void
+  templateName: string; units: 'kg' | 'lbs'; starting: boolean; canStart: boolean; onStart: () => void; onEdit: () => void
   prerequisiteMessage: string | null; onRetry: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
@@ -57,7 +57,7 @@ export default function ReadinessHome({ state, controller, recommendation, templ
       <Text style={styles.date}>{dateLabel}</Text><Text style={styles.planName}>From plan · {templateName}</Text><Text accessibilityRole="header" style={styles.day}>{recommendation.dayName}</Text><Text style={styles.copy}>{recommendation.exercises.length} {pluralize(recommendation.exercises.length, 'exercise', 'exercises')}</Text>
       <View accessibilityLabel={`Readiness ${label}, ${recommendation.score} out of 100. ${adjustment}`} style={styles.adjustment}><Text style={styles.meta}>Readiness {label} ·</Text><Text style={[styles.adjustmentText, { color: !reduced && !changed ? colors.textStrong : recommendation.tone === 'high' ? colors.recoveryBright : colors.warning }]}>{adjustment}</Text></View>
       <Pressable accessibilityRole="button" disabled={!canStart} onPress={start} style={[styles.primary, !canStart && styles.disabled]}><Text style={styles.primaryText}>{starting ? 'Starting…' : `Start ${recommendation.dayName}`}</Text></Pressable>
-      <View style={styles.row}><Pressable accessibilityRole="button" accessibilityLabel="View plan exercises" onPress={() => setPreview(true)} style={[styles.link, styles.linkRow]}><Text style={styles.copy}>View exercises</Text><Icon name="chevron-right" size={14} /></Pressable><Pressable accessibilityRole="button" disabled={starting} onPress={onChange} style={styles.link}><Text style={styles.meta}>Change workout</Text></Pressable></View>
+      <View style={styles.row}><Pressable accessibilityRole="button" accessibilityLabel="View plan exercises" onPress={() => setPreview(true)} style={[styles.link, styles.linkRow]}><Text style={styles.copy}>View exercises</Text><Icon name="chevron-right" size={14} /></Pressable></View>
     </View>}
     <Modal transparent animationType="fade" visible={preview && !!recommendation} onRequestClose={() => setPreview(false)}>
       <Pressable accessibilityRole="button" accessibilityLabel="Close plan" style={styles.overlay} onPress={() => setPreview(false)}>

@@ -66,7 +66,7 @@ export default function AppLayout() {
         {location.pathname.startsWith('/workout/') && <ActiveWorkoutReturnBar />}
       </div>
       <main ref={mainRef} className="page-shell" tabIndex={-1}>
-        <div className="page-container">
+        <div className={section === 'dashboard' || section === 'progress' || workoutFocusShell ? 'page-container' : 'page-container page-container--column'}>
           <div className="min-w-0">
             <Suspense fallback={<PageFallback />}>
               <Outlet />

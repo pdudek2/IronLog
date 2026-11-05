@@ -31,7 +31,7 @@ describe('LandingDemo', () => {
   it('stops playing once the visitor takes over and charts the heavier set', () => {
     render(<LandingDemo />)
     fireEvent.click(screen.getByRole('button', { name: 'Adjust weight by 2.5' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Log set 2 for Bench press' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Log set 2 for Bench Press' }))
     expect(screen.getByRole('figure')).toHaveTextContent('85 kg')
 
     advance(30_000)

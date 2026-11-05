@@ -1,8 +1,7 @@
-import { formatProgressVolume } from '../../src/shared/progress'
-import { kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
+import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 
 export function progressChartValue(value: number, units: WeightUnits, kind: 'volume' | 'weight'): string {
-  return kind === 'volume' ? formatProgressVolume(value, units) : `${kgToDisplayWeight(value, units)} ${units}`
+  return kind === 'volume' ? formatCompactVolume(value, units) : `${kgToDisplayWeight(value, units)} ${units}`
 }
 
 export function progressChartTicks(values: number[], count: 3 | 5): number[] {

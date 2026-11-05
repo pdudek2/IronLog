@@ -18,6 +18,7 @@ import type { WorkoutTemplate } from '../src/workoutLaunch'
 import { colors, pageBackground, pageTitle, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import { Icon as LineIcon } from '../src/icons'
+import { BottomSheet } from '../src/BottomSheet'
 
 export default function TemplatesScreen() {
   const { user } = useAuthRuntime()
@@ -42,6 +43,7 @@ function Plans({ uid }: { uid: string }) {
   const [readAttempt, setReadAttempt] = useState(0)
   const [expanded, setExpanded] = useState<{ uid: string; id: string | null }>({ uid, id: null })
   const [planAction, setPlanAction] = useState<PlanAction | null>(null)
+  const [moreTarget, setMoreTarget] = useState<WorkoutTemplate | null>(null)
   const unavailable = launch.state.status === 'unavailable'
 
   useFocusEffect(useCallback(() => startRead(() => readTemplates(uid), (state) => {
@@ -120,7 +122,7 @@ function Plans({ uid }: { uid: string }) {
         const open = shortList || single || (expanded.uid === uid && expanded.id === plan.id)
         const exerciseCount = plan.days.reduce((sum, day) => sum + day.exercises.length, 0)
         return <View key={plan.id} style={styles.plan}>
-          <View style={styles.planHead}><View style={styles.planTitleCopy}><Text accessibilityRole="header" numberOfLines={2} style={styles.planTitle}>{plan.name}</Text><Text style={styles.daysCount}>{plan.days.length} {pluralize(plan.days.length, 'day', 'days')} · {exerciseCount} {pluralize(exerciseCount, 'exercise', 'exercises')}</Text></View><View style={styles.planActions}><Pressable accessibilityRole="button" accessibilityLabel={`Edit plan ${plan.name}`} disabled={!!planAction} onPress={() => router.navigate(`/templates/${plan.id}/edit`)} style={styles.planAction}><Icon kind="edit" color={colors.muted} /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete plan ${plan.name}`} disabled={!!planAction} onPress={() => void askDelete(plan)} style={styles.planAction}><Icon kind="delete" color={colors.muted} /></Pressable>{!shortList && !single && <Pressable accessibilityRole="button" accessibilityLabel={`${open ? 'Collapse' : 'Structure'} ${plan.name}`} accessibilityState={{ expanded: open }} onPress={() => setExpanded({ uid, id: open ? null : plan.id })} style={styles.structure}><Icon kind={open ? 'up' : 'down'} color={colors.muted} /></Pressable>}</View></View>
+          <View style={styles.planHead}><View style={styles.planTitleCopy}><Text accessibilityRole="header" numberOfLines={2} style={styles.planTitle}>{plan.name}</Text><Text style={styles.daysCount}>{plan.days.length} {pluralize(plan.days.length, 'day', 'days')} · {exerciseCount} {pluralize(exerciseCount, 'exercise', 'exercises')}</Text></View><View style={styles.planActions}><Pressable accessibilityRole="button" accessibilityLabel={`Edit plan ${plan.name}`} disabled={!!planAction} onPress={() => router.navigate(`/templates/${plan.id}/edit`)} style={styles.planAction}><Icon kind="edit" color={colors.muted} /></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`More actions for plan ${plan.name}`} disabled={!!planAction} onPress={() => setMoreTarget(plan)} style={styles.planAction}><LineIcon name="more" size={18} /></Pressable>{!shortList && !single && <Pressable accessibilityRole="button" accessibilityLabel={`${open ? 'Collapse' : 'Structure'} ${plan.name}`} accessibilityState={{ expanded: open }} onPress={() => setExpanded({ uid, id: open ? null : plan.id })} style={styles.structure}><Icon kind={open ? 'up' : 'down'} color={colors.muted} /></Pressable>}</View></View>
           {planAction?.id === plan.id && <View accessibilityRole="alert" style={styles.feedback}><Text style={styles.copy}>{planAction.status === 'checking' ? 'Checking plan…' : planAction.status === 'deleting' ? 'Deleting plan…' : planAction.error}</Text>{planAction.status === 'error' && <Pressable accessibilityRole="button" onPress={() => { void askDelete(plan, true) }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
           {feedback && feedbackPlan?.id === plan.id && launchFeedback}
           {open && <View style={styles.days}>{plan.days.map((day, dayIndex) => {
@@ -136,12 +138,17 @@ function Plans({ uid }: { uid: string }) {
         <Pressable accessibilityRole="button" onPress={() => router.navigate('/coach')} style={styles.tool}><Text style={styles.toolText}>Generate a plan with Coach</Text><LineIcon name="chevron-right" /></Pressable>
       </View>
     </ScrollView>
+  {moreTarget && <BottomSheet title={moreTarget.name} onClose={() => setMoreTarget(null)}>
+    {(close) => <Pressable accessibilityRole="button" accessibilityLabel={`Delete plan ${moreTarget.name}`} disabled={!!planAction} onPress={() => close(() => void askDelete(moreTarget))} style={styles.sheetRow}>
+      <Text style={styles.sheetRowQuiet}>Delete plan</Text><LineIcon name="trash" size={16} />
+    </Pressable>}
+  </BottomSheet>}
   <BottomNavigation {...navigation} />
   </SafeAreaView>
 }
 
-function Icon({ kind, color }: { kind: 'play' | 'up' | 'down' | 'edit' | 'delete'; color: string }) {
-  const path = kind === 'play' ? 'm8 5 11 7-11 7z' : kind === 'up' ? 'm18 15-6-6-6 6' : kind === 'down' ? 'm6 9 6 6 6-6' : kind === 'edit' ? 'M4 20h4l11-11-4-4L4 16v4Zm9-13 4 4' : 'M4 7h16M10 4h4M6 7l1 13h10l1-13M10 10v7m4-7v7'
+function Icon({ kind, color }: { kind: 'up' | 'down' | 'edit'; color: string }) {
+  const path = kind === 'up' ? 'm18 15-6-6-6 6' : kind === 'down' ? 'm6 9 6 6 6-6' : 'M4 20h4l11-11-4-4L4 16v4Zm9-13 4 4'
   return <Svg accessibilityElementsHidden width={15} height={15} viewBox="0 0 24 24"><Path d={path} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
 }
 
@@ -155,15 +162,16 @@ const styles = StyleSheet.create({
   title: pageTitle,
   count: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, marginTop: 2 }, 
   board: { marginTop: 4 }, plan: { paddingBottom: 12 }, 
-  planHead: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 12, paddingBottom: 4 }, planTitleCopy: { flex: 1, minWidth: 0 },
+  planHead: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingTop: 16, paddingBottom: 2 }, planTitleCopy: { flex: 1, minWidth: 0 },
   planActions: { flexDirection: 'row' }, planAction: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
-  planTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 18 }, daysCount: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 2 },
+  planTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 20, lineHeight: 25, letterSpacing: -0.3 }, daysCount: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, marginTop: 2 },
   structure: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   days: { gap: 2 },
   day: { }, 
-  dayHead: { minHeight: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, dayCopy: { flex: 1, minWidth: 0, minHeight: 56, justifyContent: 'center', gap: 2 },
-  dayTitle: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 16, lineHeight: 21 }, exerciseCount: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18 },
-  start: { minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.choiceSelected }, startText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 }, disabled: { opacity: 0.62 },
+  dayHead: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, dayCopy: { flex: 1, minWidth: 0, minHeight: 50, justifyContent: 'center', gap: 1 },
+  dayTitle: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15.5, lineHeight: 21 }, exerciseCount: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18 },
+  start: { minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center', paddingLeft: 12 }, startText: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  sheetRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 50 }, sheetRowQuiet: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15.5 }, disabled: { opacity: 0.62 },
   
   tools: { marginTop: 8 }, tool: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, toolText: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 },
   copy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 22 },

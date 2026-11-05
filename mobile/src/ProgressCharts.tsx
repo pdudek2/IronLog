@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import Svg, { Circle, Defs, G, Line, LinearGradient, Path, Rect, Stop } from 'react-native-svg'
 
-import { PROGRESS_MUSCLE_LABELS, formatProgressVolume, strengthChartScale, type MuscleBalancePoint, type StrengthPoint, type WeeklyPoint } from '../../src/shared/progress'
-import { kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
+import { PROGRESS_MUSCLE_LABELS, strengthChartScale, type MuscleBalancePoint, type StrengthPoint, type WeeklyPoint } from '../../src/shared/progress'
+import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import { progressChartLabelIndices, progressChartTicks, progressChartValue, progressChartX, progressMonotonePath } from './progressChartMath'
 import { colors } from './theme'
 
@@ -17,7 +17,7 @@ function Chart({ values, labels, units, width, kind, summary, onInspect }: { val
   const svgHeight = width / (kind === 'volume' ? 2.15 : 1.75)
   const frameHeight = Math.max(160, svgHeight)
   const plotHeight = svgHeight - 50 // Recharts: top 12, bottom 8, X axis 30.
-  const ticks = kind === 'weight' ? [...strengthChartScale(values).ticks].reverse() : progressChartTicks(values, plotWidth >= 260 ? 5 : 3)
+  const ticks = kind === 'weight' ? [...strengthChartScale(values).ticks].reverse() : progressChartTicks(values, 3)
   const upper = ticks[0]!
   const lower = ticks.at(-1)!
   const yAt = (value: number) => plotHeight * (1 - (value - lower) / (upper - lower))
@@ -68,7 +68,7 @@ function Chart({ values, labels, units, width, kind, summary, onInspect }: { val
 export function WeeklyVolumeChart({ points, units, width }: { points: WeeklyPoint[]; units: WeightUnits; width: number }) {
   const peak = points.reduce((best, point) => point.volume > best.volume ? point : best, points[0]!)
   const total = points.reduce((sum, point) => sum + point.volume, 0)
-  return <Chart values={points.map((point) => point.volume)} labels={points.map((point) => point.weekLabel)} units={units} width={width} kind="volume" summary={`Weekly volume from ${points[0]?.weekLabel} to ${points.at(-1)?.weekLabel}. Total ${formatProgressVolume(total, units)}. Highest week ${peak.weekLabel}: ${formatProgressVolume(peak.volume, units)}.`} />
+  return <Chart values={points.map((point) => point.volume)} labels={points.map((point) => point.weekLabel)} units={units} width={width} kind="volume" summary={`Weekly volume from ${points[0]?.weekLabel} to ${points.at(-1)?.weekLabel}. Total ${formatCompactVolume(total, units)}. Highest week ${peak.weekLabel}: ${formatCompactVolume(peak.volume, units)}.`} />
 }
 
 export function StrengthChart({ points, keyName, units, width, onInspect }: { points: StrengthPoint[]; keyName: string; units: WeightUnits; width: number; onInspect: (index: number) => void }) {

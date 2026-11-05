@@ -498,11 +498,10 @@ test.describe('Active workout shell reduction', () => {
 
     await page.getByRole('button', { name: 'More workout options' }).click()
     const options = page.getByRole('dialog', { name: 'Workout options' })
-    await options.locator('.workout-label-chips > button').first().click()
-    const activeLabel = options.locator('.workout-label-chips > button[aria-pressed="true"]')
-    await expect(activeLabel).toHaveCount(1)
-    await expect(activeLabel).toHaveCSS('background-color', 'rgba(255, 255, 255, 0.17)')
-    await expect(activeLabel).toHaveCSS('border-radius', '11px')
+    await options.getByRole('button', { name: /^Session type/ }).click()
+    const types = page.getByRole('dialog', { name: 'Session type' })
+    await types.getByRole('button', { name: 'Push' }).click()
+    await expect(options.getByRole('button', { name: /^Session type/ })).toContainText('Push')
     await options.getByRole('button', { name: 'Close' }).click()
     await expect(options).toHaveCount(0)
 
@@ -520,7 +519,7 @@ test.describe('Active workout shell reduction', () => {
     await panel.getByRole('button', { name: 'Log set 1 for Squat' }).click()
     await expect(page.getByRole('button', { name: 'Unmark set 1 for Squat' })).toHaveCSS('color', 'rgb(239, 231, 220)')
 
-    const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar .tabular-nums').innerText()
+    const sessionTimerText = await page.locator('.workout-mobile-lifecycle-bar > .tabular-nums').innerText()
     const addRestButton = panel.getByRole('button', { name: 'Add 30 seconds' })
     const skipRestButton = panel.getByRole('button', { name: 'Skip rest' })
     await expect(restTimer).toBeVisible()
@@ -679,7 +678,6 @@ test.describe('Active workout shell reduction', () => {
     await page.getByRole('button', { name: 'Skip rest' }).click()
     await expect(restTimerBar).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'More workout options' }).click()
     const removeExerciseButton = page.getByRole('button', { name: 'Remove exercise Squat' })
     await removeExerciseButton.click()
 

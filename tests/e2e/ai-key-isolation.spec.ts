@@ -51,7 +51,7 @@ test('isolates OpenRouter keys through A → logout → B → A without adopting
   await page.evaluate(() => window.localStorage.setItem('ironlog.openrouterApiKey', 'sk-ant-test-only-unowned-legacy'))
   await page.reload()
   await expectAppReady(page, '/chat')
-  await expect(page.getByText('Add a local OpenRouter key', { exact: true })).toBeVisible()
+  await expect(page.getByText('Ask Coach about your training', { exact: true })).toBeVisible()
   expect(await page.evaluate((uid) => ({
     legacy: window.localStorage.getItem('ironlog.openrouterApiKey'),
     account: window.localStorage.getItem(`ironlog.openrouterApiKey:${uid}`),
@@ -82,7 +82,7 @@ test('isolates OpenRouter keys through A → logout → B → A without adopting
         && url.origin === 'http://127.0.0.1:9099'
         && url.pathname === '/identitytoolkit.googleapis.com/v1/accounts:signUp'
     }),
-    page.getByRole('button', { name: 'Sign up', exact: true }).click(),
+    page.getByRole('button', { name: 'Create account', exact: true }).click(),
   ])
   expect(registrationResponse.ok()).toBe(true)
   const { idToken, localId: uidB } = await registrationResponse.json() as { idToken: string; localId: string }
@@ -102,7 +102,7 @@ test('isolates OpenRouter keys through A → logout → B → A without adopting
   await expectAppReady(page, '/dashboard')
   await openCoach(page, testInfo.project.name)
   await expect.poll(() => page.evaluate(() => window.__ironlogEmulatorTestBridge?.readAuthenticatedUid())).toBe(uidB)
-  await expect(page.getByText('Add a local OpenRouter key', { exact: true })).toBeVisible()
+  await expect(page.getByText('Ask Coach about your training', { exact: true })).toBeVisible()
   await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toHaveCount(0)
   await page.screenshot({ path: testInfo.outputPath('account-b-key-gate.png'), fullPage: true })
   await page.getByRole('button', { name: 'Set up key', exact: true }).click()

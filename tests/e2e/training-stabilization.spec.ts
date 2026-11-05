@@ -106,8 +106,8 @@ test.describe('training stabilization', () => {
     const finish = page.getByRole('button', { name: 'Finish', exact: true })
     await finish.click()
     let dialog = page.getByRole('dialog', { name: 'Finish workout?' })
-    await expect(dialog).toContainText('Unfinished sets: 1. Only completed sets will be saved.')
-    const continueWorkout = dialog.getByRole('button', { name: 'Continue workout' })
+    await expect(dialog).toContainText('1 set logged, 1 not logged. Only logged sets are saved.')
+    const continueWorkout = dialog.getByRole('button', { name: 'Keep training' })
     await expect(continueWorkout).toBeFocused()
     await continueWorkout.click()
     await expect(dialog).toHaveCount(0)
@@ -127,7 +127,7 @@ test.describe('training stabilization', () => {
 
     await finish.click()
     dialog = page.getByRole('dialog', { name: 'Finish workout?' })
-    await dialog.getByRole('button', { name: 'Save completed sets' }).click()
+    await dialog.getByRole('button', { name: 'Save 1 set and finish' }).click()
     await page.waitForURL(`/workout/${sessionId}`, { timeout: 20_000 })
 
     const workout = await readLifecycleWorkout(sessionId)
@@ -167,12 +167,12 @@ test.describe('training stabilization', () => {
 
     await page.goto('/dashboard')
     await expectAppReady(page, '/dashboard')
-    await expect(page.getByText('1.1k lbs').first()).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByText('1,146 lbs').first()).toBeVisible({ timeout: 15_000 })
 
     await page.goto('/history')
     await expectAppReady(page, '/history')
     const historyRow = page.getByRole('button', { name: /Phase 1 training stabilization units/i })
-    await expect(historyRow).toContainText('1.1k lbs')
+    await expect(historyRow).toContainText('1,146 lbs')
     await historyRow.click()
 
     await page.locator('.workout-exercise-row').first().click()
@@ -199,7 +199,7 @@ test.describe('training stabilization', () => {
 
     await page.goto(`/exercises/user/${PROGRESS_DETAIL_EXERCISE_ID}`)
     await expect(page.getByRole('heading', { name: 'Phase 7 Volume Detail' })).toBeVisible({ timeout: 15_000 })
-    await expect(page.locator('.exercise-detail-volume-summary')).toContainText('lbs')
+    await expect(page.locator('.exercise-detail-trend .exercise-detail-panel-head')).toContainText('lbs')
 
     await page.goto('/progress')
     await expectAppReady(page, '/progress')

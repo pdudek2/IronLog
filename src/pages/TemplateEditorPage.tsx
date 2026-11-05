@@ -563,6 +563,7 @@ export default function TemplateEditorPage() {
                             }))}
                             className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />
+                          <span className="template-input-unit" aria-hidden="true">sets</span>
                         </label>
 
                         <label>
@@ -579,6 +580,7 @@ export default function TemplateEditorPage() {
                             }))}
                             className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />
+                          <span className="template-input-unit" aria-hidden="true">reps</span>
                         </label>
 
                         <label>
@@ -596,6 +598,7 @@ export default function TemplateEditorPage() {
                             }))}
                             className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />
+                          <span className="template-input-unit" aria-hidden="true">{units}</span>
                         </label>
                       </div>
                     </div>

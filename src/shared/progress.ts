@@ -8,12 +8,6 @@ export const PROGRESS_MUSCLE_LABELS: Record<string, string> = {
   chest: 'Chest', back: 'Back', shoulders: 'Shoulders', biceps: 'Biceps', triceps: 'Triceps', quads: 'Quads',
   hamstrings: 'Hamstrings', glutes: 'Glutes', core: 'Core', calves: 'Calves', forearms: 'Forearms',
 }
-export function formatProgressVolume(volumeKg: number, units: WeightUnits): string {
-  const volume = kgToDisplayWeight(volumeKg, units)
-  if (volume >= 1_000_000) return `${(volume / 1_000_000).toFixed(1)}M ${units}`
-  if (volume >= 1000) return `${(volume / 1000).toFixed(1)}k ${units}`
-  return `${Math.round(volume)} ${units}`
-}
 
 export interface ProgressSessionLite {
   id: string

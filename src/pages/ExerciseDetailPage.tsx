@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { estimatedOneRepMax } from '../shared/workoutDisplay'
 import { motion } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, ChevronLeft } from 'lucide-react'
 import { exercises as globalExercises } from '../data/exercises'
 import {
   getExerciseSessions,
@@ -121,8 +121,10 @@ export default function ExerciseDetailPage() {
   const chronologicalSessions = useMemo(() => [...sessions].reverse(), [sessions])
   const latestVolume = sessions[0]?.totalVolume ?? 0
   const maxVolume = sessions.length ? Math.max(...sessions.map((session) => session.totalVolume)) : 0
-  // Bars need a non-zero scale; the value shown as the maximum stays the real one (0 for bodyweight work).
-  const scaleVolume = Math.max(maxVolume, 1)
+  const minVolume = sessions.length ? Math.min(...sessions.map((session) => session.totalVolume)) : 0
+  // The axis starts below the lightest session, so small changes stay visible; both ends are labelled.
+  const scaleFloor = Math.floor((minVolume * 0.8) / 100) * 100
+  const scaleCeiling = Math.max(maxVolume, scaleFloor + 1)
   const latestIsMaximum = latestVolume === maxVolume
 
   const userExercise = exerciseSource === 'user' && userCatalog.state.status === 'success'
@@ -200,6 +202,12 @@ export default function ExerciseDetailPage() {
       .filter((label) => label !== categoryLabel),
   ))
   const allTimeSessions = Math.max(record?.totalSessions ?? 0, sessions.length)
+  const historyLine = [
+    `${allTimeSessions} ${pluralize(allTimeSessions, 'session', 'sessions')} total`,
+    sessions.length > 0 && allTimeSessions > sessions.length ? `${sessions.length} most recent below` : null,
+    record ? `best ${kgToDisplayWeight(record.maxWeight, units)} ${units} × ${record.maxReps}` : null,
+    record ? `est. max ${kgToDisplayWeight(estimatedOneRepMax(record.maxWeight, record.maxReps), units)} ${units}` : null,
+  ].filter(Boolean).join(' · ')
 
   return (
     <div className="exercise-detail-page">
@@ -218,50 +226,30 @@ export default function ExerciseDetailPage() {
             />
           )}
 
-          <div>
-            <h1 className="hero-editorial-name">{exercise?.name ?? record?.exerciseName ?? id}</h1>
-          </div>
+          <button type="button" className="template-editor-back" onClick={() => navigate('/exercises')}>
+            <ChevronLeft size={16} aria-hidden="true" />
+            Exercises
+          </button>
 
-          {taxonomy.length > 0 && (
+          <h1 className="hero-editorial-name">{exercise?.name ?? record?.exerciseName ?? id}</h1>
+
+          {(taxonomy.length > 0 || muscleLabels.length > 0) && (
             <div className="exercise-detail-classification">
-              <div className="exercise-detail-taxonomy">
-                {taxonomy.map((label) => (
-                  <span key={label}>
-                    {label}
-                  </span>
-                ))}
-              </div>
+              {taxonomy.length > 0 && <p>{taxonomy.join(' · ')}</p>}
               {muscleLabels.length > 0 && (
-                <div className="exercise-detail-muscles" aria-label={`Muscles: ${muscleLabels.join(', ')}`}>
-                  <span>Muscles</span>
-                  {muscleLabels.map((label) => <span key={label}>{label}</span>)}
-                </div>
+                <p className="exercise-detail-muscles">
+                  <span className="sr-only">Also works </span>
+                  {muscleLabels.map((label, index) => (index === 0 ? label : label.toLowerCase())).join(', ')}
+                </p>
               )}
             </div>
           )}
 
           <p className="hero-editorial-sub">
             {allTimeSessions > 0
-              ? `${allTimeSessions} ${pluralize(allTimeSessions, 'session', 'sessions')} total${sessions.length > 0 && allTimeSessions > sessions.length ? ` · ${sessions.length} most recent below` : ''}`
+              ? historyLine
               : 'No history yet. Add this exercise to a session to start tracking progress.'}
           </p>
-
-          {record && (
-            <dl className="exercise-detail-records">
-              <div>
-                <dt>best set</dt>
-                <dd>{kgToDisplayWeight(record.maxWeight, units)} {units}</dd>
-              </div>
-              <div>
-                <dt>estimated max</dt>
-                <dd>{kgToDisplayWeight(estimatedOneRepMax(record.maxWeight, record.maxReps), units)} {units}</dd>
-              </div>
-              <div>
-                <dt>reps at best</dt>
-                <dd>{record.maxReps}</dd>
-              </div>
-            </dl>
-          )}
         </motion.div>
       </section>
 
@@ -270,18 +258,17 @@ export default function ExerciseDetailPage() {
           {/* Volume trend */}
           {sessions.length > 0 && (
             <section className="exercise-detail-panel exercise-detail-trend">
-              <div className="mb-4">
+              <div className="exercise-detail-panel-head">
                 <h2 className="section-title">Volume per session</h2>
+                <p className="tabular-nums">
+                  Latest {formatCompactVolume(latestVolume, units)}
+                  {latestIsMaximum ? ', the most so far' : ` · max ${formatCompactVolume(maxVolume, units)}`}
+                </p>
               </div>
-              <div className="exercise-detail-volume-summary">
-                {latestIsMaximum ? (
-                  <p><span>Latest · maximum</span><strong>{formatCompactVolume(latestVolume, units)}</strong></p>
-                ) : (
-                  <>
-                    <p><span>Latest</span><strong>{formatCompactVolume(latestVolume, units)}</strong></p>
-                    <p><span>Maximum</span><strong>{formatCompactVolume(maxVolume, units)}</strong></p>
-                  </>
-                )}
+              <div className="exercise-detail-volume-plot">
+              <div className="exercise-detail-volume-axis" aria-hidden="true">
+                <span>{formatCompactVolume(scaleCeiling, units)}</span>
+                <span>{formatCompactVolume(scaleFloor, units)}</span>
               </div>
               <div
                 className="exercise-detail-volume-chart"
@@ -291,7 +278,7 @@ export default function ExerciseDetailPage() {
                   ? `Volume over the last ${chronologicalSessions.length} ${pluralize(chronologicalSessions.length, 'session', 'sessions')}. Latest and maximum ${formatCompactVolume(latestVolume, units)}.`
                   : `Volume over the last ${chronologicalSessions.length} ${pluralize(chronologicalSessions.length, 'session', 'sessions')}. Latest ${formatCompactVolume(latestVolume, units)}. Maximum ${formatCompactVolume(maxVolume, units)}.`}
               >
-                {chronologicalSessions.map((session) => (
+                {chronologicalSessions.map((session, index) => (
                   <div
                     key={session.id}
                     className="exercise-detail-volume-column"
@@ -302,9 +289,9 @@ export default function ExerciseDetailPage() {
                       <motion.div
                         aria-hidden="true"
                         className="exercise-detail-volume-bar"
+                        data-latest={index === chronologicalSessions.length - 1}
                         style={{
-                          background: 'var(--accent)',
-                          height: `${Math.max((session.totalVolume / scaleVolume) * 100, 4)}%`,
+                          height: `${Math.max(((session.totalVolume - scaleFloor) / (scaleCeiling - scaleFloor)) * 100, 4)}%`,
                         }}
                         initial={{ scaleY: 0 }}
                         animate={{ scaleY: 1 }}
@@ -316,6 +303,7 @@ export default function ExerciseDetailPage() {
                     </span>
                   </div>
                 ))}
+              </div>
               </div>
             </section>
           )}
@@ -369,7 +357,7 @@ export default function ExerciseDetailPage() {
                               key={i}
                               className="text-xs tabular-nums"
                             >
-                              {kgToDisplayWeight(set.weight, units)}×{set.reps}
+                              {kgToDisplayWeight(set.weight, units)} {units} × {set.reps}
                             </span>
                           ))}
                         </div>

@@ -92,23 +92,32 @@ vi.mock('react-router-dom', async () => {
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }))
-vi.mock('framer-motion', () => ({
-  useReducedMotion: () => true,
-  AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
-  motion: new Proxy({}, {
-    get: (_target, tag: string | symbol) => {
-      if (typeof tag !== 'string') return undefined
-      return ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
-        delete props.initial
-        delete props.animate
-        delete props.exit
-        delete props.transition
-        delete props.whileTap
-        return createElement(tag, props, children)
-      }
-    },
-  }),
-}))
+vi.mock('framer-motion', () => {
+  // One component per tag: a fresh function per access would remount every motion subtree on each render.
+  const components = new Map<string, (props: { children?: ReactNode } & Record<string, unknown>) => ReactNode>()
+  return {
+    useReducedMotion: () => true,
+    useDragControls: () => ({ start: () => undefined }),
+    useIsPresent: () => true,
+    AnimatePresence: ({ children }: { children?: ReactNode }) => <>{children}</>,
+    motion: new Proxy({}, {
+      get: (_target, tag: string | symbol) => {
+        if (typeof tag !== 'string') return undefined
+        if (!components.has(tag)) components.set(tag, ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
+          for (const key of ['initial', 'animate', 'exit', 'transition', 'whileTap', 'drag', 'dragControls', 'dragListener', 'dragConstraints', 'dragElastic', 'dragMomentum', 'onDragEnd']) delete props[key]
+          return createElement(tag, props, children)
+        })
+        return components.get(tag)
+      },
+    }),
+  }
+})
+
+// Plan delete lives in the ⋯ sheet beside the edit pencil.
+function clickDeletePlan(name: string) {
+  fireEvent.click(within(cardFor(name)).getByRole('button', { name: `More actions for plan ${name}` }))
+  fireEvent.click(screen.getByRole('button', { name: `Delete plan ${name}` }))
+}
 
 function idleLaunchState(): TemplateWorkoutLaunch {
   return {
@@ -304,7 +313,7 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete plan Plan A' }))
+    clickDeletePlan('Plan A')
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     const pending = within(cardFor('Plan A')).getByRole('status')
@@ -348,10 +357,10 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete plan Plan A' }))
+    clickDeletePlan('Plan A')
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
-    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Delete plan Plan B' })
+    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'More actions for plan Plan B' })
     fireEvent.click(planBDelete)
     const secondConfirm = screen.queryByRole('button', { name: 'Potwierdź usunięcie' })
     if (secondConfirm) fireEvent.click(secondConfirm)
@@ -372,11 +381,12 @@ describe('TemplatesPage launch actions', () => {
       expect(screen.queryByRole('heading', { name: 'Plan A' })).not.toBeInTheDocument()
     })
     const availablePlanBDelete = within(cardFor('Plan B')).getByRole('button', {
-      name: 'Delete plan Plan B',
+      name: 'More actions for plan Plan B',
     })
     expect(availablePlanBDelete).toBeEnabled()
 
     fireEvent.click(availablePlanBDelete)
+    fireEvent.click(screen.getByRole('button', { name: 'Delete plan Plan B' }))
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     await waitFor(() => {
@@ -390,7 +400,7 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete plan Plan A' }))
+    clickDeletePlan('Plan A')
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     await act(async () => {
@@ -409,7 +419,7 @@ describe('TemplatesPage launch actions', () => {
 
     await renderPage()
 
-    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'Delete plan Plan A' }))
+    clickDeletePlan('Plan A')
     fireEvent.click(screen.getByRole('button', { name: 'Potwierdź usunięcie' }))
 
     await act(async () => {
@@ -417,7 +427,7 @@ describe('TemplatesPage launch actions', () => {
     })
 
     const alert = await within(cardFor('Plan A')).findByRole('alert')
-    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'Delete plan Plan B' })
+    const planBDelete = within(cardFor('Plan B')).getByRole('button', { name: 'More actions for plan Plan B' })
 
     expect(planBDelete).toBeDisabled()
     fireEvent.click(planBDelete)

@@ -7,7 +7,7 @@ import { StatusBar } from 'expo-status-bar'
 import HistoryHeader from '../src/HistoryHeader'
 import BottomNavigation, { useBottomNavigation, type NavigationExit } from '../src/BottomNavigation'
 import { logout, readProfile, readProgressRecords, readRecentWorkouts, saveProfile } from '../src/firebase'
-import { calcStreak } from '../../src/shared/streak'
+import { pluralize } from '../../src/lib/pluralize'
 import { trainingSinceLabel } from '../../src/shared/workoutDisplay'
 import { ProfileController, profileGoals, type ProfileState } from '../src/profile'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
@@ -81,18 +81,14 @@ function Profile({ uid }: { uid: string }) {
       return false
     }
   }
-  const [stats, setStats] = useState<{ workouts: string; records: string; streak: string } | null>(null)
+  const [stats, setStats] = useState<{ workouts: number; records: number } | null>(null)
   const [createdAt, setCreatedAt] = useState<number | null>(null)
   useEffect(() => {
     let live = true
     void Promise.all([readRecentWorkouts(uid, STATS_WORKOUTS), readProgressRecords(uid), readProfile(uid)]).then(([workouts, records, profile]) => {
       if (!live) return
       setCreatedAt(profile.data?.createdAt ?? null)
-      setStats({
-        workouts: workouts.data.length >= STATS_WORKOUTS ? `${STATS_WORKOUTS}+` : String(workouts.data.length),
-        records: String(records.data.records.length),
-        streak: String(calcStreak(workouts.data)),
-      })
+      setStats({ workouts: workouts.data.length, records: records.data.records.length })
     }).catch(() => undefined)
     return () => { live = false }
   }, [uid])
@@ -110,13 +106,9 @@ function Profile({ uid }: { uid: string }) {
           <View style={styles.headCopy}>
             <Text accessibilityRole="header" accessibilityLabel="Profile" numberOfLines={1} style={styles.title}>{input?.displayName || 'Profile'}</Text>
             {createdAt ? <Text style={styles.since}>{trainingSinceLabel(createdAt)}</Text> : null}
+            {stats && <Text style={styles.since}>{stats.workouts >= STATS_WORKOUTS ? `${STATS_WORKOUTS}+` : stats.workouts} {pluralize(stats.workouts, 'workout', 'workouts')} · {stats.records} {pluralize(stats.records, 'record', 'records')}</Text>}
           </View>
         </View>
-        {stats && <View accessibilityLabel="Training summary" style={styles.stats}>
-          {[['workouts', stats.workouts], ['records', stats.records], ['day streak', stats.streak]].map(([label, value]) => <View key={label} style={styles.stat}>
-            <Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text>
-          </View>)}
-        </View>}
         {current.status === 'loading' ? <ActivityIndicator color={colors.accentText} style={styles.loading} />
           : !input ? <View style={styles.loading}><Text accessibilityRole="alert" style={styles.error}>{current.status === 'missing' ? 'Profile setup is missing. Retry or return to Train.' : current.message}</Text><Pressable accessibilityRole="button" onPress={() => void controller.load(true)} style={styles.retry}><Text style={styles.accent}>Retry</Text></Pressable><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/dashboard'))} style={styles.retry}><Text style={styles.muted}>Back to Home</Text></Pressable></View>
           : <View style={styles.form}>
@@ -132,21 +124,17 @@ function Profile({ uid }: { uid: string }) {
   </SafeAreaView>
 }
 
-const border = colors.line
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background }, page: { paddingHorizontal: 16, paddingTop: 16 },
   head: { alignItems: 'center', flexDirection: 'row', gap: 12, paddingBottom: 4 }, headCopy: { flex: 1, minWidth: 0 }, title: pageTitle,
   avatar: { alignItems: 'center', backgroundColor: colors.choiceSelected, borderRadius: 24, height: 48, justifyContent: 'center', width: 48 },
   avatarText: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18 },
   since: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
-  stats: { flexDirection: 'row', paddingTop: 16 }, stat: { flex: 1 },
-  statValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, fontVariant: ['tabular-nums'] },
-  statLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, marginTop: 1 },
   form: { paddingTop: 8 }, goalSection: { paddingVertical: 8 }, section: { paddingVertical: 12, gap: 0 },
   label: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20 },
-  input: { height: 46, marginTop: 8, borderColor: border, borderWidth: 1, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', color: colors.textStrong, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, paddingHorizontal: 16 }, invalidInput: { borderColor: colors.warning },
-  goalLabel: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20, marginBottom: 10 }, goals: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)' },
-  goal: { width: '49%', flexGrow: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 9 }, selectedGoal: { backgroundColor: colors.choiceSelected }, goalText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 18 }, selectedText: { color: colors.text },
+  input: { height: 46, marginTop: 8, borderColor: 'transparent', borderWidth: 1, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', color: colors.textStrong, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, paddingHorizontal: 16 }, invalidInput: { borderColor: colors.warning },
+  goalLabel: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20, marginBottom: 10 }, goals: { flexDirection: 'row', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)' },
+  goal: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 9, paddingHorizontal: 4 }, selectedGoal: { backgroundColor: colors.choiceSelected }, goalText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 16, textAlign: 'center' }, selectedText: { color: colors.text },
   weekHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }, weekValue: { color: colors.accentText, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20 }, slider: { height: 44, marginVertical: -10, marginHorizontal: -8 }, bounds: { flexDirection: 'row', justifyContent: 'space-between' }, bound: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 16 }, unitsLabel: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20, marginTop: 20, marginBottom: 8 },
   units: { alignSelf: 'flex-start', flexDirection: 'row', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)' }, unit: { minHeight: 44, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', borderRadius: 9 }, selectedUnit: { backgroundColor: colors.choiceSelected }, unitText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4 },
   saveSection: { paddingTop: 20, gap: 12 }, save: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient }, saveText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 }, disabled: { opacity: 0.55 },

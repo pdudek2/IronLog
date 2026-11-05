@@ -913,7 +913,8 @@ describe('Dashboard workout projection status', () => {
     render(<DashboardPage />)
 
     const recommendation = await screen.findByRole('region', { name: 'Today’s workout' })
-    expect(recommendation.closest('.train-side')).toBeInTheDocument()
+    expect(recommendation.closest('.train-plan')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start Upper A as planned' })).toBeEnabled()
     const startRecommendation = within(recommendation).getByRole('button', { name: 'Start Upper A' })
     expect(startRecommendation).toBeEnabled()
     fireEvent.click(startRecommendation)

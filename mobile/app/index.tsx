@@ -31,7 +31,7 @@ import {
 } from '../../src/shared/weightUnits'
 import { login, logout, readExerciseHistory, readExerciseMetadata, readReadiness, readRecentWorkouts, readTemplates, type AuthUser } from '../src/firebase'
 import { recentExercisePicks } from '../../src/shared/recentExercises'
-import { getStaleSessionAgeLabel, isActiveSessionStale } from '../../src/lib/sessionDuration'
+import { getStaleSessionAgeLabel, isActiveSessionStale } from '../../src/shared/sessionDuration'
 import {
   formatElapsed,
   type ActiveWorkout,
@@ -61,13 +61,15 @@ import { colors, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
 import { BottomSheet } from '../src/BottomSheet'
+import { pluralize } from '../../src/lib/pluralize'
 import { BrandMark, Icon } from '../src/icons'
 
-function ActionButton({ label, onPress, secondary = false, disabled = false }: {
+function ActionButton({ label, onPress, secondary = false, disabled = false, flat = false }: {
   label: string
   onPress: () => void
   secondary?: boolean
   disabled?: boolean
+  flat?: boolean
 }) {
   return (
     <Pressable
@@ -78,6 +80,7 @@ function ActionButton({ label, onPress, secondary = false, disabled = false }: {
       style={({ pressed }) => [
         styles.button,
         secondary ? styles.buttonSecondary : styles.buttonPrimary,
+        flat && styles.buttonFlat,
         disabled && styles.buttonDisabled,
         pressed && !disabled && styles.buttonPressed,
       ]}
@@ -187,7 +190,7 @@ function LoginForm() {
           </View>
           {error?.field === 'password' && <Text accessibilityLiveRegion="polite" style={styles.loginError}>{error.message}</Text>}
           <View style={styles.omittedAuthActionSpace} />
-          <ActionButton disabled={busy} label={busy ? 'Signing in…' : 'Sign in'} onPress={() => void submit()} />
+          <ActionButton flat disabled={busy} label={busy ? 'Signing in…' : 'Sign in'} onPress={() => void submit()} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -286,17 +289,6 @@ function SheetAddExercise({ session, onPress }: { session: ActiveWorkout; onPres
   </Pressable>
 }
 
-function LabelChips({ active, onToggle }: { active: string; onToggle: (label: string) => void }) {
-  return <View style={styles.labelChips}>
-    {WORKOUT_LABELS.map((label) => <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: active === label }}
-      accessibilityLabel={`Session type ${label}`} onPress={() => onToggle(label)}
-      style={({ pressed }) => [styles.labelChip, active === label && styles.labelChipActive, pressed && styles.headingPressed]}>
-      <Text style={[styles.labelChipText, active === label && styles.labelChipTextActive]}>{label}</Text>
-    </Pressable>)}
-  </View>
-}
-
-
 function SetTick({ draw }: { draw: boolean }) {
   const [progress] = useState(() => new Animated.Value(draw ? 0 : 1))
   useEffect(() => {
@@ -330,11 +322,11 @@ function FadeIn({ children }: { children: React.ReactNode }) {
   return <Animated.View style={{ opacity }}>{children}</Animated.View>
 }
 
-function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, metadata, target, lowReadiness, panelSet, onSelectSet, onOverview, drawnSetId, editing }: {
+function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, metadata, target, lowReadiness, panelSet, onSelectSet, onOverview, onRemove, drawnSetId, editing }: {
   uid: string; sessionKey: string; exercise: WorkoutExercise; position: number; count: number
   // undefined while the session's plan is still loading
   target: ProgressionInput['target'] | undefined; lowReadiness: boolean
-  units: Units; metadata: ExerciseMetadata | undefined; panelSet: number; onSelectSet: (setId: string) => void; onOverview: () => void; drawnSetId: string | null; editing: EditingActions
+  units: Units; metadata: ExerciseMetadata | undefined; panelSet: number; onSelectSet: (setId: string) => void; onOverview: () => void; onRemove: () => void; drawnSetId: string | null; editing: EditingActions
 }) {
   const load = useCallback(() => readExerciseHistory(uid, exercise.exerciseId, exercise.exerciseSource), [uid, exercise.exerciseId, exercise.exerciseSource])
   const history = useSessionRead(JSON.stringify([uid, sessionKey, exercise.exerciseSource, exercise.exerciseId]), load, true)
@@ -360,6 +352,8 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, met
           {(category || equipment) && <Text style={styles.exerciseMeta}>{category}{category && equipment ? ' · ' : ''}{equipment}</Text>}
         </View>
       </View>
+      <Pressable accessibilityRole="button" accessibilityLabel={`Remove exercise ${exercise.name}`} onPress={onRemove}
+        style={({ pressed }) => [styles.exerciseRemove, pressed && styles.headingPressed]}><Icon name="trash" size={17} /></Pressable>
     </View>
     <View>
       {suggestion && <View style={styles.hint}>
@@ -421,9 +415,9 @@ function currentExerciseIndex(session: ActiveWorkout, manual: string | null) {
   return picked >= 0 ? picked : focusExerciseIndex(session.exercises)
 }
 
-function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, panelSet, onGoTo, onSelectSet, onOverview, picking, onPicking, drawnSetId }: {
+function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, panelSet, onGoTo, onSelectSet, onOverview, onRemoveExercise, picking, onPicking, drawnSetId }: {
   uid: string; session: ActiveWorkout; units: Units; stale: boolean; editing: EditingActions; currentIndex: number; panelSet: number
-  onGoTo: (id: string) => void; onSelectSet: (setId: string) => void; onOverview: () => void; picking: boolean; onPicking: (picking: boolean) => void; drawnSetId: string | null
+  onGoTo: (id: string) => void; onSelectSet: (setId: string) => void; onOverview: () => void; onRemoveExercise: (exercise: WorkoutExercise) => void; picking: boolean; onPicking: (picking: boolean) => void; drawnSetId: string | null
 }) {
   const loadMetadata = useCallback(() => readExerciseMetadata(uid), [uid])
   const hasCustom = session.exercises.some((exercise) => exercise.exerciseSource === 'user')
@@ -494,7 +488,7 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
       metadata={current.exerciseSource === 'global' ? exerciseCatalog.find(({ id }) => id === current.exerciseId)
         : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === current.exerciseId) : undefined}
       target={targetOf(current)} lowReadiness={lowReadiness}
-      editing={editing} onOverview={onOverview} drawnSetId={drawnSetId} /></FadeIn>}
+      editing={editing} onOverview={onOverview} onRemove={() => onRemoveExercise(current)} drawnSetId={drawnSetId} /></FadeIn>}
     {queue.length > 0 && <Text accessibilityRole="header" style={styles.upNext}>Up next</Text>}
     {queue.map((index) => {
       const exercise = session.exercises[index]!
@@ -642,7 +636,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
     state, retry, retrySave, discardLocalChanges,
     updateSet, adjustSet, applyOverload, prefillFirstSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, refreshStart,
   } = active
-  const [sheet, setSheet] = useState<'overview' | 'options' | null>(null)
+  const [sheet, setSheet] = useState<'overview' | 'options' | 'type' | null>(null)
+  const [finishPrompt, setFinishPrompt] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
   const [manualExercise, setManualExercise] = useState<{ sessionId: string; id: string } | null>(null)
@@ -732,13 +727,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
       showDialog('Waiting for sync', 'This workout has not been saved from this app yet. Change any set, then try again.')
       return
     }
-    const unfinished = sets.filter((set) => !set.done).length
-    if (unfinished === 0) return startClosure('finish', session)
-    showDialog('Finish workout?', `Unfinished sets: ${unfinished}. Only completed sets will be saved.`, [
-      { text: 'Continue workout', style: 'cancel' },
-      { text: 'Save completed sets', onPress: () => startClosure('finish', session) },
-    ])
+    if (sets.every((set) => set.done)) return startClosure('finish', session)
+    setFinishPrompt(session.sessionId)
   })
+  const finishSession = finishPrompt && session?.sessionId === finishPrompt ? session : null
+  const finishSets = finishSession?.exercises.flatMap((exercise) => exercise.sets) ?? []
+  const loggedSets = finishSets.filter((set) => set.done).length
 
   const confirmDiscardLocal = () => showDialog(
     'Use latest workout?',
@@ -795,6 +789,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
     removeExercise: guardClosureInteraction(canEditCurrentSession, removeExercise),
   }
   const rejectedEditState = state.status === 'ready' && state.syncStatus === 'storage-error' ? state : null
+  const allSets = session?.exercises.flatMap((exercise) => exercise.sets) ?? []
+  const sessionSetCount = { done: allSets.filter((set) => set.done).length, total: allSets.length }
   const selectSet = (setId: string) => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }) }
 
   return (
@@ -812,10 +808,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
         <View style={styles.lifecycleBar}>
           <View style={styles.lifecycleBarInner}>
             <Elapsed session={state.session} />
-            <View style={styles.flex} />
             <Pressable accessibilityRole="button" accessibilityLabel="Minimize workout" accessibilityHint="Your workout keeps running" onPress={() => router.navigate('/dashboard')} style={styles.minimizeButton}>
               <Svg accessibilityElementsHidden height={17} width={17} viewBox="0 0 24 24"><Path d="m6 9 6 6 6-6" fill="none" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
-              <View><Text style={styles.minimizeText}>Minimize</Text><Text style={styles.minimizeHint}>Keeps running</Text></View>
+              <View style={styles.flex}><Text numberOfLines={1} style={styles.minimizeText}>{state.session.label?.trim() || 'Session in progress'}</Text>{sessionSetCount.total > 0 && <Text style={styles.minimizeHint}>{sessionSetCount.done} of {sessionSetCount.total} {pluralize(sessionSetCount.total, 'set', 'sets')}</Text>}</View>
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="More workout options" onPress={() => setSheet('options')}
               style={({ pressed }) => [styles.optionsTrigger, pressed && styles.pickerPressed]}>
@@ -924,7 +919,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
             })}</View>
           </View>}
           <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale} currentIndex={panelIndex} panelSet={currentSetIndex}
-            onGoTo={goToExercise} onSelectSet={selectSet} onOverview={() => setSheet('overview')} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} />
+            onGoTo={goToExercise} onSelectSet={selectSet} onOverview={() => setSheet('overview')} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} />
         </View>
         </>)}
       </Animated.ScrollView>
@@ -938,7 +933,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         onClearSelection={() => setSelectedSet(null)}
         onNext={() => { const next = liveSession?.exercises[nextExerciseIndex]; if (next) goToExercise(exerciseIdentity(next, nextExerciseIndex)) }}
         onFinish={finish} />}
-      {sheet && liveSession && <BottomSheet title={sheet === 'overview' ? liveSession.label || 'This workout' : 'Workout options'} onClose={() => setSheet(null)}>
+      {sheet && liveSession && <BottomSheet title={sheet === 'overview' ? liveSession.label || 'This workout' : sheet === 'type' ? 'Session type' : 'Workout options'} onClose={() => setSheet(null)}>
         {(close) => sheet === 'overview' ? <>
           {liveSession.exercises.map((exercise, index) => {
             const identity = exerciseIdentity(exercise, index)
@@ -949,20 +944,33 @@ function SessionScreen({ user }: { user: AuthUser }) {
             </Pressable>
           })}
           <SheetAddExercise session={liveSession} onPress={() => close(() => setPicking(true))} />
-        </> : <>
+        </> : sheet === 'type' ? WORKOUT_LABELS.map((label) => <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: liveSession.label === label }}
+          onPress={() => { guardClosureInteraction(canEditCurrentSession, () => setLabel(liveSession.label === label ? '' : label))(); setSheet('options') }}
+          style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
+          <Text style={styles.sheetRowText}>{label}</Text>{liveSession.label === label && <Icon name="check" size={16} color={colors.textStrong} />}
+        </Pressable>) : <>
           <SheetAddExercise session={liveSession} onPress={() => close(() => setPicking(true))} />
           {liveSession.exercises.length > 0 && <Pressable accessibilityRole="button" onPress={() => setSheet('overview')} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
             <Text style={styles.sheetRowText}>All exercises</Text><Icon name="chevron-right" size={16} />
           </Pressable>}
-          <Text style={styles.sheetLabel}>Session type</Text>
-          <LabelChips active={liveSession.label ?? ''} onToggle={guardClosureInteraction(canEditCurrentSession, (label) => setLabel(liveSession.label === label ? '' : label))} />
+          <Pressable accessibilityRole="button" onPress={() => setSheet('type')} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
+            <Text style={[styles.sheetRowText, styles.flex]}>Session type</Text><Text style={styles.sheetRowMeta}>{liveSession.label || 'None'}</Text><Icon name="chevron-right" size={16} />
+          </Pressable>
           <View style={styles.sheetRule} />
-          {panelExercise && <Pressable accessibilityRole="button" accessibilityLabel={`Remove exercise ${panelExercise.name}`} disabled={locked}
-            onPress={() => close(() => removePanelExercise(panelExercise))} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
-            <Text style={styles.sheetRowQuiet}>Remove {panelExercise.name}</Text><Icon name="trash" size={16} />
-          </Pressable>}
           <Pressable accessibilityRole="button" disabled={locked} onPress={() => close(discard)} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
             <Text style={styles.sheetRowQuiet}>Discard workout</Text><Icon name="trash" size={16} />
+          </Pressable>
+        </>}
+      </BottomSheet>}
+      {finishSession && <BottomSheet title="Finish workout?" onClose={() => setFinishPrompt(null)}>
+        {(close) => <>
+          <Text style={styles.sheetCopy}>{loggedSets} {pluralize(loggedSets, 'set', 'sets')} logged, {finishSets.length - loggedSets} not logged. Only logged sets are saved.</Text>
+          <Pressable accessibilityRole="button" disabled={sessionLocked} onPress={() => close(() => startClosure('finish', finishSession))}
+            style={({ pressed }) => [styles.sheetAction, styles.buttonPrimary, styles.buttonFlat, sessionLocked && styles.buttonDisabled, pressed && styles.buttonPressed]}>
+            <Text style={styles.buttonText}>Save {loggedSets} {pluralize(loggedSets, 'set', 'sets')} and finish</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" onPress={() => close()} style={({ pressed }) => [styles.sheetAction, styles.sheetActionQuiet, pressed && styles.buttonPressed]}>
+            <Text style={[styles.buttonText, styles.buttonSecondaryText]}>Keep training</Text>
           </Pressable>
         </>}
       </BottomSheet>}
@@ -1002,7 +1010,7 @@ const styles = StyleSheet.create({
   loginLead: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22, marginTop: 6 },
   loginSeam: { backgroundColor: colors.seam, height: 2.5, marginTop: 20 },
   // Same surface as the set panel under the thumb.
-  loginPanel: { borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: '0 -18px 40px -14px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.07)', experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, flexGrow: 1, marginBottom: -24, marginHorizontal: -16, marginTop: 24, paddingBottom: 32, paddingHorizontal: 16, paddingTop: 20 },
+  loginPanel: { borderTopLeftRadius: 22, borderTopRightRadius: 22, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07)', experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, flexGrow: 1, marginBottom: -24, marginHorizontal: -16, marginTop: 24, paddingBottom: 32, paddingHorizontal: 16, paddingTop: 20 },
   brandMark: {
     alignItems: 'center',
     backgroundColor: 'rgba(20, 17, 16, 0.68)',
@@ -1021,11 +1029,10 @@ const styles = StyleSheet.create({
   label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, lineHeight: 16, marginBottom: 4 },
   passwordLabel: { marginTop: 16 },
   inputSurface: {
-    backgroundColor: 'rgba(255, 255, 255, 0.045)',
-    borderColor: colors.line,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    borderColor: 'transparent',
     borderRadius: 8,
     borderWidth: 1,
-    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.03)',
   },
   input: {
     color: colors.text,
@@ -1045,6 +1052,7 @@ const styles = StyleSheet.create({
     boxShadow: '0 6px 8px rgba(244, 238, 232, 0.108), inset 0 1px 0 rgba(255, 255, 255, 0.18)',
     experimental_backgroundImage: primaryGradient,
   },
+  buttonFlat: { boxShadow: [] },
   buttonSecondary: { backgroundColor: colors.surfaceRaised, borderColor: colors.lineStrong, borderWidth: 1, minWidth: 140 },
   buttonDisabled: { opacity: 0.55 },
   buttonPressed: { opacity: 0.82 },
@@ -1069,7 +1077,9 @@ const styles = StyleSheet.create({
   sheetRowMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13.5, fontVariant: ['tabular-nums'] },
   sheetRowQuiet: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15.5 },
   sheetRule: { height: 1, marginHorizontal: -20, marginTop: 12, marginBottom: 4, backgroundColor: 'rgba(255, 255, 255, 0.07)' },
-  sheetLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13.5, paddingTop: 8 },
+  sheetCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14.5, lineHeight: 21, paddingBottom: 6 },
+  sheetAction: { alignItems: 'center', borderRadius: 12, justifyContent: 'center', minHeight: 52, marginTop: 8, paddingHorizontal: 18 },
+  sheetActionQuiet: { backgroundColor: colors.surfaceHigh },
   syncInline: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 11, lineHeight: 18, height: 18, textAlign: 'right', paddingHorizontal: 16 },
   previewCopy: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, textAlign: 'center', paddingVertical: 8 },
   lookupText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
@@ -1087,6 +1097,7 @@ const styles = StyleSheet.create({
   exerciseCard: { paddingBottom: 4 },
   exerciseHeadRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
   exerciseHeading: { flex: 1, flexDirection: 'row', minHeight: 44 },
+  exerciseRemove: { alignItems: 'center', justifyContent: 'center', width: 44, height: 44, marginTop: -4, marginRight: -12, borderRadius: 10 },
   headingPressed: { opacity: 0.72 },
   exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20, marginTop: 2 },
   exerciseName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 30, lineHeight: 34, letterSpacing: -0.78 },
@@ -1118,8 +1129,8 @@ const styles = StyleSheet.create({
   panelNum: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 2 },
   panelDivider: { backgroundColor: colors.line, height: 44, width: 1 },
   panelValue: { alignItems: 'center', flex: 1, minWidth: 0 },
-  panelInput: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 21, fontVariant: ['tabular-nums'], letterSpacing: -0.42, minWidth: 0, padding: 0, textAlign: 'center', width: '100%' },
-  panelUnit: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12 },
+  panelInput: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 21, fontVariant: ['tabular-nums'], letterSpacing: -0.42, minHeight: 44, minWidth: 0, padding: 0, textAlign: 'center', width: '100%' },
+  panelUnit: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 12, marginTop: -10 },
   panelStep: { alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.09)', borderRadius: 12, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)', height: 52, justifyContent: 'center', width: 48 },
   panelStepText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13, fontVariant: ['tabular-nums'] },
   panelAction: { alignItems: 'center', backgroundColor: colors.primaryEnd, borderRadius: 15, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35)', experimental_backgroundImage: primaryGradient, height: 52, justifyContent: 'center' },
@@ -1157,9 +1168,9 @@ const styles = StyleSheet.create({
   omittedSetAdjustmentsSpace: { height: 52 },
   // Web: rounded-xl px-5 text-sm font-bold min-h-11 with the primary gradient.
   finishButton: { alignItems: 'center', backgroundColor: colors.surfaceRaised, borderRadius: 12, justifyContent: 'center', marginLeft: 8, minHeight: 44, paddingHorizontal: 20 },
-  minimizeButton: { alignItems: 'center', flexDirection: 'row', gap: 5, minHeight: 44, paddingHorizontal: 2 },
-  minimizeText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 12 },
-  minimizeHint: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11 },
+  minimizeButton: { alignItems: 'center', flex: 1, flexDirection: 'row', gap: 5, marginLeft: 14, minHeight: 44, paddingHorizontal: 2 },
+  minimizeText: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  minimizeHint: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, fontVariant: ['tabular-nums'] },
   finishButtonText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 14, lineHeight: 20 },
   optionsTrigger: { alignItems: 'center', borderRadius: 8, height: 44, justifyContent: 'center', width: 44 },
   closureNotice: { backgroundColor: colors.surface, borderColor: colors.warning, borderRadius: 16, borderWidth: 1, gap: 4, marginHorizontal: 16, marginTop: 14, padding: 16 },
@@ -1184,11 +1195,6 @@ const styles = StyleSheet.create({
   quickPickName: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4 },
   quickPickMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 11.84 },
   quickPickAction: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 12.8 },
-  labelChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingTop: 6 },
-  labelChip: { justifyContent: 'center', minHeight: 44, paddingHorizontal: 13, borderRadius: 11, backgroundColor: 'rgba(255, 255, 255, 0.055)' },
-  labelChipActive: { backgroundColor: 'rgba(255, 255, 255, 0.17)' },
-  labelChipText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
-  labelChipTextActive: { color: colors.textStrong },
   pickerPressed: { backgroundColor: 'rgba(255, 255, 255, 0.035)' },
 
 })

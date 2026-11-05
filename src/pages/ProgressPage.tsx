@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { motion } from 'framer-motion'
-import NumberFlow from '@number-flow/react'
 import { AlertCircle, ChevronDown } from 'lucide-react'
 import {
   CartesianGrid, Cell,
@@ -19,7 +18,6 @@ import {
   aggregateWeeklyVolume,
   defaultStrengthKey,
   withoutLeadingEmptyWeeks,
-  formatProgressVolume as formatVolume,
   strengthChartScale,
   strengthDeltaLabel,
   PROGRESS_MUSCLE_COLORS as MUSCLE_COLORS,
@@ -33,7 +31,7 @@ import {
 } from '../lib/progressService'
 import { pluralize } from '../lib/pluralize'
 import { useProfileStore } from '../store/profileStore'
-import { kgToDisplayWeight } from '../lib/weightUnits'
+import { formatCompactVolume as formatVolume, kgToDisplayWeight } from '../lib/weightUnits'
 import type { Units } from '../lib/userProfile'
 
 const RANGE_OPTIONS = [
@@ -431,78 +429,6 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
             </div>
           </motion.div>
 
-          {hasSessionSnapshot && !showRangeEmpty && !showEmptyState && (
-          <div className="progress-summary-grid" role="group" aria-label={`Summary: ${rangeDays} days`}>
-            <div className="progress-volume-tile" role="group" aria-label="Volume">
-              <span>Volume</span>
-              <strong>
-                <NumberFlow
-                  value={kgToDisplayWeight(totalVolume, units)}
-                  transformTiming={{ duration: 600, easing: 'cubic-bezier(0.2,0.8,0.2,1)' }}
-                  format={{ useGrouping: true, maximumFractionDigits: 0 }}
-                  locales="en-US"
-                />
-                <small> {units}</small>
-              </strong>
-              <p>Last {rangeDays} days</p>
-              {hasPreviousPeriod && (
-                <p className="progress-metric-delta" data-trend={periodComparison.volumeDelta >= 0 ? 'up' : 'down'}>
-                  {formatDelta(periodComparison.volumeDelta)}
-                </p>
-              )}
-            </div>
-
-            {(() => {
-              const stats: { label: string; value: string | number; delta?: number; meta?: string }[] = [
-                {
-                  label: 'Sessions',
-                  value: uniqueWorkouts,
-                  delta: hasPreviousPeriod ? periodComparison.sessionsDelta : undefined,
-                },
-                {
-                  label: 'Avg. / session',
-                  value: formatVolume(periodComparison.currentAvgVolume, units),
-                  delta: hasPreviousPeriod ? periodComparison.avgVolumeDelta : undefined,
-                },
-                { label: 'Exercises', value: uniqueExerciseCount },
-                {
-                  label: 'Records',
-                  value: recordsLoadedOnce ? records.length : '—',
-                  meta: recordsLoadedOnce
-                    ? (topRecord ? topRecord.exerciseName : 'no records')
-                    : 'unavailable',
-                },
-                { label: 'Muscle group', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${pluralize(topMuscle.count, 'entry', 'entries')}` : 'no data' },
-              ]
-              const renderStat = (item: (typeof stats)[number]) => (
-                <div key={item.label} className="progress-signal-row" role="group" aria-label={item.label}>
-                  <span>{item.label}</span>
-                  <div>
-                    <strong>{item.value}</strong>
-                    {(item.delta !== undefined || item.meta) && (
-                      <small
-                        className={item.delta === undefined ? undefined : 'progress-metric-delta'}
-                        data-trend={item.delta === undefined ? undefined : item.delta >= 0 ? 'up' : 'down'}
-                      >
-                        {item.delta === undefined ? item.meta : formatDelta(item.delta)}
-                      </small>
-                    )}
-                  </div>
-                </div>
-              )
-              return (
-                <>
-                  {stats.filter((item) => item.label === 'Sessions' || item.label === 'Records').map(renderStat)}
-                  <details className="progress-more-stats">
-                    <summary>More stats<ChevronDown size={14} aria-hidden="true" /></summary>
-                    <div>{stats.filter((item) => item.label !== 'Sessions' && item.label !== 'Records').map(renderStat)}</div>
-                  </details>
-                </>
-              )
-            })()}
-          </div>
-
-          )}
         </section>
         )}
 
@@ -550,6 +476,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                         </option>
                       ))}
                     </select>
+                    <ChevronDown size={18} aria-hidden="true" />
                   </label>
                 )}
               </div>
@@ -628,6 +555,67 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                 </div>
               )}
             </section>
+          <div className="progress-summary-grid" role="group" aria-label={`Summary: ${rangeDays} days`}>
+            <div className="progress-volume-tile" role="group" aria-label="Volume">
+              <span>Volume</span>
+              <strong>{formatVolume(totalVolume, units)}</strong>
+              <p className="progress-visually-hidden">Last {rangeDays} days</p>
+              {hasPreviousPeriod && (
+                <small className="progress-metric-delta" data-trend={periodComparison.volumeDelta >= 0 ? 'up' : 'down'}>
+                  {formatDelta(periodComparison.volumeDelta)}
+                </small>
+              )}
+            </div>
+
+            {(() => {
+              const stats: { label: string; value: string | number; delta?: number; meta?: string }[] = [
+                {
+                  label: 'Sessions',
+                  value: uniqueWorkouts,
+                  delta: hasPreviousPeriod ? periodComparison.sessionsDelta : undefined,
+                },
+                {
+                  label: 'Avg. / session',
+                  value: formatVolume(periodComparison.currentAvgVolume, units),
+                  delta: hasPreviousPeriod ? periodComparison.avgVolumeDelta : undefined,
+                },
+                { label: 'Exercises', value: uniqueExerciseCount },
+                {
+                  label: 'Records',
+                  value: recordsLoadedOnce ? records.length : '—',
+                  meta: recordsLoadedOnce
+                    ? (topRecord ? topRecord.exerciseName : 'no records')
+                    : 'unavailable',
+                },
+                { label: 'Muscle group', value: topMuscleName, meta: topMuscle ? `${topMuscle.count} ${pluralize(topMuscle.count, 'entry', 'entries')}` : 'no data' },
+              ]
+              const renderStat = (item: (typeof stats)[number]) => (
+                <div key={item.label} className="progress-signal-row" role="group" aria-label={item.label}>
+                  <span>{item.label}</span>
+                  <div>
+                    <strong>{item.value}</strong>
+                    {(item.delta !== undefined || item.meta) && (
+                      <small
+                        className={item.delta === undefined ? undefined : 'progress-metric-delta'}
+                        data-trend={item.delta === undefined ? undefined : item.delta >= 0 ? 'up' : 'down'}
+                      >
+                        {item.delta === undefined ? item.meta : formatDelta(item.delta)}
+                      </small>
+                    )}
+                  </div>
+                </div>
+              )
+              return (
+                <>
+                  {stats.filter((item) => item.label === 'Sessions' || item.label === 'Records').map(renderStat)}
+                  <details className="progress-more-stats">
+                    <summary>More stats<ChevronDown size={14} aria-hidden="true" /></summary>
+                    <div>{stats.filter((item) => item.label !== 'Sessions' && item.label !== 'Records').map(renderStat)}</div>
+                  </details>
+                </>
+              )
+            })()}
+          </div>
             <div className="progress-analysis-side">
             <motion.section
               className="progress-panel progress-panel--wide"
@@ -646,7 +634,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
               </div>
               <div className="progress-chart-frame progress-chart-frame--volume" role="img" aria-label={weeklyVolumeLabel}>
                 <ResponsiveContainer width="100%" aspect={2.15} minWidth={1} initialDimension={{ width: 1, height: 1 }}>
-                  {/* Room for "6.0k kg" on one line and for the last week label at the right edge. */}
+                  {/* Room for "7,500 kg" on one line and for the last week label at the right edge. */}
                   <BarChart data={weeklyData} margin={{ top: 12, right: 24, left: 0, bottom: 8 }}>
                     <CartesianGrid stroke="rgba(244,241,242,0.05)" vertical={false} />
                     <XAxis
@@ -659,6 +647,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
                     />
                     <YAxis
                       tickFormatter={(v) => formatVolume(Number(v), units)}
+                      tickCount={3}
                       tick={{ fill: 'var(--muted)', fontSize: 12 }}
                       axisLine={false}
                       tickLine={false}
@@ -747,10 +736,7 @@ function ProgressContent({ userId }: { userId: string | undefined }) {
 
                   <strong>{rec.exerciseName}</strong>
 
-                  <div className="progress-record-result">
-                    <span>{kgToDisplayWeight(rec.maxWeight, units)}<small> {units}</small></span>
-                    <small>× {rec.maxReps}</small>
-                  </div>
+                  <span className="progress-record-ledger-result">{kgToDisplayWeight(rec.maxWeight, units)} {units} <small>× {rec.maxReps}</small></span>
 
                   <p>{rec.totalSessions} {pluralize(rec.totalSessions, 'session', 'sessions')}</p>
                 </article>

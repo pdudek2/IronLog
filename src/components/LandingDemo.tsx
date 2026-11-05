@@ -29,7 +29,7 @@ function BestSetChart({ today }: { today: number | null }) {
         <span>Best set · 6 weeks</span>
         <strong className="tabular-nums">{values[last]} kg</strong>
       </figcaption>
-      <svg viewBox="0 0 300 108" role="img" aria-label={`Bench press best set over six weeks, now ${values[last]} kg`}>
+      <svg viewBox="0 0 300 108" role="img" aria-label={`Bench Press best set over six weeks, now ${values[last]} kg`}>
         <defs>
           <linearGradient id="landing-chart-fade" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor="var(--accent)" stopOpacity={0.16} />
@@ -132,7 +132,7 @@ export default function LandingDemo() {
   const panel = (
     <WorkoutSetPanel
       exerciseIndex={0}
-      exerciseName="Bench press"
+      exerciseName="Bench Press"
       set={panelSet}
       setIndex={current}
       setCount={sets.length}
@@ -153,10 +153,9 @@ export default function LandingDemo() {
   return (
     <section className="landing-demo workout-focus-shell" aria-label="Try the set panel">
       <div className="workout-exercise-card">
-        <p className="landing-demo-position">Exercise 1 of 4 · try it</p>
         <div className="workout-exercise-head">
           <div className="min-w-0">
-            <h2 className="workout-exercise-name">Bench press</h2>
+            <h2 className="workout-exercise-name">Bench Press</h2>
             <p className="workout-exercise-meta">Chest · Barbell</p>
           </div>
         </div>

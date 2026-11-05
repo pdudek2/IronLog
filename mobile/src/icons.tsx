@@ -15,6 +15,7 @@ const paths = {
   check: 'M20 6 9 17l-5-5',
   plus: 'M12 5v14M5 12h14',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
+  more: 'M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
 } as const
 
 export function Icon({ name, size = 16, color = colors.muted }: { name: keyof typeof paths; size?: number; color?: string }) {

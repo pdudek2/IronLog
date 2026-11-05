@@ -179,7 +179,7 @@ describe('TemplateEditorPage accessibility', () => {
     const weight = await screen.findByRole('spinbutton', { name: 'Starting weight (lbs) — Bench Press' })
     expect(weight).toHaveValue(176.4)
     expect(weight).toBeValid()
-    expect(screen.getByText('Weight (lbs)')).toBeInTheDocument()
+    expect(weight.closest('label')).toHaveTextContent(/lbs$/)
     expect(screen.queryByText('Unsaved changes')).not.toBeInTheDocument()
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Renamed plan' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save plan' }))

@@ -767,7 +767,6 @@ test('exercise confirmation cannot delete a remotely rehydrated exercise', async
   await seedLifecycleActiveSession({ sessionId })
   await page.goto('/workout/new')
   await expectAppReady(page, '/workout/new')
-  await page.getByRole('button', { name: 'More workout options' }).first().click()
   await page.getByRole('button', { name: 'Remove exercise Phase 1 Bench Press' }).click()
   const dialog = page.getByRole('dialog', { name: 'Remove exercise?' })
   await expect(dialog).toBeVisible()
@@ -790,6 +789,9 @@ test('delete action on the workout page opens its dialog in place when activated
   const routePath = `/workout/${sessionId}`
   await page.goto(routePath)
 
+  const moreButton = page.getByRole('button', { name: 'More workout actions', exact: true })
+  await moreButton.focus()
+  await page.keyboard.press('Enter')
   const deleteButton = page.getByRole('button', { name: 'Delete workout', exact: true })
   await expect(deleteButton).toBeVisible()
   await deleteButton.focus()
@@ -799,8 +801,10 @@ test('delete action on the workout page opens its dialog in place when activated
   const confirmDialog = page.getByRole('dialog', { name: 'Delete workout?' })
   await expect(confirmDialog).toBeVisible()
   await expect(page).toHaveURL(routePath)
+  await expect(page.getByRole('dialog')).toHaveCount(1)
   await confirmDialog.getByRole('button', { name: 'Cancel', exact: true }).click()
   await expect(confirmDialog).not.toBeVisible()
+  await expect(moreButton).toBeFocused()
 })
 
 for (const source of ['history', 'detail'] as const) {
@@ -820,6 +824,7 @@ for (const source of ['history', 'detail'] as const) {
     const routePath = `/workout/${sessionId}`
     await page.goto(routePath)
     await expect(page).toHaveURL(routePath)
+    await page.getByRole('button', { name: 'More workout actions', exact: true }).click()
     await page.getByRole('button', { name: 'Delete workout', exact: true }).click()
     await expect(page.getByRole('dialog', { name: 'Delete workout?' })).toContainText('Phase 1 delete acknowledgement')
     await page.getByRole('dialog').screenshot({ path: testInfo.outputPath(`delete-${source}-confirmation.png`) })

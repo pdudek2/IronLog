@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ChevronDown } from 'lucide-react'
+import { ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
 import NextSessionCard from '../components/NextSessionCard'
@@ -20,6 +20,7 @@ import {
 import type { ReadinessEntry } from '../lib/readinessService'
 import { useTemplateWorkoutLaunch } from '../hooks/useTemplateWorkoutLaunch'
 import { usePassiveActiveSessionSync } from '../hooks/usePassiveActiveSessionSync'
+import { useMediaQuery } from '../hooks/useMediaQuery'
 import { preloadRouteByPath } from '../router/pageLoaders'
 import {
   getRecentWorkouts, retryWorkoutMaterialization, countWeeklyWorkouts,
@@ -156,6 +157,7 @@ function TrainExercises({ uid, template, dayIndex, units, onOpen }: {
                 </>
               )}
             </span>
+            <ChevronRight size={16} aria-hidden="true" />
           </button>
         )
       })}
@@ -166,6 +168,7 @@ function TrainExercises({ uid, template, dayIndex, units, onOpen }: {
 export default function DashboardPage() {
   const { user } = useAuthStore()
   usePassiveActiveSessionSync(user?.uid)
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
   const { profile } = useProfileStore()
   const units = profile?.units ?? 'kg'
   const active = useWorkoutStore((state) => state.active)
@@ -460,6 +463,8 @@ export default function DashboardPage() {
     && quickTemplateHasExercises
     && readinessState.status === 'success'
     && readinessState.data !== null
+  // On phone the saved check-in card sits above and carries the adjusted Start.
+  const plainStartIsSecondary = showTodayRecommendation && !isDesktop
   function handleRetryTemplates() {
     if (!user) return
     requestedTemplatesUserRef.current = user.uid
@@ -571,6 +576,50 @@ export default function DashboardPage() {
   const coverName = active ? workoutCover(active.label) : weekClosed ? 'week' : workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)
   const record = latestRecord(workouts, today.getTime())
 
+  const readiness = (
+    <>
+      {!hasActiveSession && (
+        <ReadinessWidget
+          onStateChange={handleReadinessStateChange}
+          renderSaved={(entry) => (
+            quickTemplate && quickTemplateHasExercises && quickTemplateRequestKey
+              ? (
+                  <NextSessionCard
+                    template={quickTemplate}
+                    dayIndex={quickTemplateDayIndex}
+                    readiness={entry}
+                    workouts={workouts}
+                    units={profile?.units ?? 'kg'}
+                    launching={launchingTemplateId === quickTemplate.id}
+                    describedBy={quickTemplateLaunchOperation?.status === 'error'
+                      ? quickTemplateLaunchErrorId
+                      : undefined}
+                    onStart={(overrides) => {
+                      launchSelectedWorkout(overrides)
+                    }}
+                    onEdit={() => navigate(`/templates/${quickTemplate.id}/edit`)}
+                  />
+                )
+              : null
+          )}
+        />
+      )}
+
+      {showTodayRecommendation
+        && quickTemplateLaunchOperation?.status === 'error'
+        && quickTemplateLaunchErrorId && (
+        <ActionFeedback
+          id={quickTemplateLaunchErrorId}
+          status="error"
+          message={quickTemplateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
+          onRetry={() => { void retryTemplateLaunch() }}
+          onDismiss={dismissTemplateLaunchError}
+          className="dashboard-quick-plan-feedback"
+        />
+      )}
+    </>
+  )
+
   return (
     <div className="dashboard-page">
         <section className="train-hero">
@@ -616,10 +665,11 @@ export default function DashboardPage() {
                     key={workout.id}
                     type="button"
                     className="train-exercise"
-                    onClick={() => navigate(`/workout/${workout.id}`)}
+                    onClick={() => navigate(`/workout/${workout.id}`, { state: { from: 'train' } })}
                   >
                     <span>{weekdayLabel(workout.startedAt)} · {workoutTitle(workout)}</span>
                     <span>{formatCompactVolume(calcVolume(workout), units)}</span>
+                    <ChevronRight size={16} aria-hidden="true" />
                   </button>
                 ))}
               </div>
@@ -654,30 +704,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            <div className="train-links">
-              <button type="button" className="train-link" onClick={() => navigate('/templates')}>Plans</button>
-              {!hasActiveSession && templatesState.status === 'success' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && (
-                <button
-                  type="button"
-                  className="train-link dashboard-planned-start-change"
-                  onClick={() => setWorkoutPickerOpen(true)}
-                  disabled={launchingTemplateId !== null}
-                >
-                  Change workout
-                </button>
-              )}
-              {!hasActiveSession && !noPlans && (
-                <button
-                  type="button"
-                  className="train-link dashboard-ad-hoc-action"
-                  onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
-                  disabled={openingWorkout}
-                >
-                  {openingWorkout ? 'Opening workout…' : 'Empty workout'}
-                </button>
-              )}
-            </div>
-
             {!showTodayRecommendation
               && quickTemplateLaunchOperation?.status === 'error'
               && quickTemplateLaunchErrorId && (
@@ -690,6 +716,8 @@ export default function DashboardPage() {
                 className="dashboard-quick-plan-feedback"
               />
             )}
+
+            {!isDesktop && readiness}
 
             {active && (
               <section className="train-start" role="region" aria-label="Active workout">
@@ -715,9 +743,9 @@ export default function DashboardPage() {
                     aria-describedby={quickTemplateLaunchOperation?.status === 'error'
                       ? quickTemplateLaunchErrorId
                       : undefined}
-                    className="dashboard-planned-start-primary"
+                    className={plainStartIsSecondary ? 'train-start-as-planned' : 'dashboard-planned-start-primary'}
                   >
-                    {quickTemplateLaunchOperation?.status === 'pending' ? 'Starting…' : `Start ${quickTemplateDay.name}`}
+                    {quickTemplateLaunchOperation?.status === 'pending' ? 'Starting…' : `Start ${quickTemplateDay.name}${plainStartIsSecondary ? ' as planned' : ''}`}
                   </button>
                 ) : (
                   <button
@@ -731,6 +759,30 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
+
+            <div className="train-links">
+              <button type="button" className="train-link" onClick={() => navigate('/templates')}>Plans</button>
+              {!hasActiveSession && templatesState.status === 'success' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && (
+                <button
+                  type="button"
+                  className="train-link dashboard-planned-start-change"
+                  onClick={() => setWorkoutPickerOpen(true)}
+                  disabled={launchingTemplateId !== null}
+                >
+                  Change workout
+                </button>
+              )}
+              {!hasActiveSession && !noPlans && (
+                <button
+                  type="button"
+                  className="train-link dashboard-ad-hoc-action"
+                  onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
+                  disabled={openingWorkout}
+                >
+                  {openingWorkout ? 'Opening workout…' : 'Empty workout'}
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="train-side">
@@ -763,45 +815,7 @@ export default function DashboardPage() {
               </details>
             </motion.div>
 
-            {!hasActiveSession && (
-              <ReadinessWidget
-                onStateChange={handleReadinessStateChange}
-                renderSaved={(entry) => (
-                  quickTemplate && quickTemplateHasExercises && quickTemplateRequestKey
-                    ? (
-                        <NextSessionCard
-                          template={quickTemplate}
-                          dayIndex={quickTemplateDayIndex}
-                          readiness={entry}
-                          workouts={workouts}
-                          units={profile?.units ?? 'kg'}
-                          launching={launchingTemplateId === quickTemplate.id}
-                          describedBy={quickTemplateLaunchOperation?.status === 'error'
-                            ? quickTemplateLaunchErrorId
-                            : undefined}
-                          onStart={(overrides) => {
-                            launchSelectedWorkout(overrides)
-                          }}
-                          onEdit={() => navigate(`/templates/${quickTemplate.id}/edit`)}
-                        />
-                      )
-                    : null
-                )}
-              />
-            )}
-
-            {showTodayRecommendation
-              && quickTemplateLaunchOperation?.status === 'error'
-              && quickTemplateLaunchErrorId && (
-              <ActionFeedback
-                id={quickTemplateLaunchErrorId}
-                status="error"
-                message={quickTemplateLaunchOperation.errorMessage ?? 'Could not start the plan.'}
-                onRetry={() => { void retryTemplateLaunch() }}
-                onDismiss={dismissTemplateLaunchError}
-                className="dashboard-quick-plan-feedback"
-              />
-            )}
+            {isDesktop && readiness}
           </div>
         </section>
 

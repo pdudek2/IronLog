@@ -54,7 +54,7 @@ test('history derives source-scoped categories, filters title/exercises and grou
 
 test('history formatting stays aligned with web duration, preview, and unit conversion', () => {
   assert.equal(formatWorkoutDuration(0, 45 * 60_000), '45 min')
-  assert.equal(formatWorkoutDuration(0, 13 * 60 * 60_000), '12h 0m')
+  assert.equal(formatWorkoutDuration(0, 13 * 60 * 60_000), '12 h')
   assert.equal(workoutSetVolumeLabel(65, 8, 'lbs'), '1,146.4')
 })
 

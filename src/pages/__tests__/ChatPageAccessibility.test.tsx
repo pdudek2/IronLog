@@ -89,7 +89,7 @@ describe('ChatPage accessibility', () => {
     mocks.apiKey = ''
     render(<ChatPage />)
 
-    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
+    expect(screen.getByText('Ask Coach about your training')).toBeVisible()
     const configure = screen.getByRole('button', { name: 'Set up key' })
     expect(configure).toBeVisible()
     expect(configure).toHaveAttribute('aria-expanded', 'false')
@@ -101,12 +101,12 @@ describe('ChatPage accessibility', () => {
     const controlledPanel = configure.getAttribute('aria-controls')
     expect(controlledPanel).toBeTruthy()
     fireEvent.click(configure)
-    expect(screen.queryByText('Add a local OpenRouter key')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ask Coach about your training')).not.toBeInTheDocument()
     expect(document.getElementById(controlledPanel!)).toBeVisible()
     const cancel = screen.getByRole('button', { name: 'Cancel' })
     fireEvent.click(cancel)
     expect(screen.getByRole('button', { name: 'Set up key' })).toHaveAttribute('aria-expanded', 'false')
-    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
+    expect(screen.getByText('Ask Coach about your training')).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
 
@@ -120,7 +120,7 @@ describe('ChatPage accessibility', () => {
     await openModelSelect()
     fireEvent.click(screen.getByRole('button', { name: 'Remove locally stored key' }))
 
-    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
+    expect(screen.getByText('Ask Coach about your training')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Set up key' })).toBeVisible()
     expect(screen.queryByLabelText('Your key', { selector: 'input' })).not.toBeInTheDocument()
 
@@ -303,7 +303,7 @@ describe('ChatPage accessibility', () => {
     render(<ChatPage />)
 
     const configure = await screen.findByRole('button', { name: 'Set up key' })
-    expect(screen.getByText('Add a local OpenRouter key')).toBeVisible()
+    expect(screen.getByText('Ask Coach about your training')).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
 
     fireEvent.click(configure)
@@ -319,7 +319,7 @@ describe('ChatPage accessibility', () => {
 
     await waitFor(() => expect(mocks.fetchAvailableOpenRouterModels).toHaveBeenCalledTimes(3))
     expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled()
-    expect(screen.queryByText('Add a local OpenRouter key')).not.toBeInTheDocument()
+    expect(screen.queryByText('Ask Coach about your training')).not.toBeInTheDocument()
   })
 
   it('clears the missing-key plan alert after successful key recovery', async () => {
@@ -330,7 +330,7 @@ describe('ChatPage accessibility', () => {
     mocks.apiKey = ''
     fireEvent.click(screen.getByRole('button', { name: 'Generate plan' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Add a OpenRouter API key to unlock the plan generator.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Set up your OpenRouter key to draft plans with Coach.')
     let key = screen.queryByLabelText('Your key', { selector: 'input' })
     if (!key) {
       fireEvent.click(screen.getByRole('button', { name: 'Set up key' }))
@@ -341,8 +341,8 @@ describe('ChatPage accessibility', () => {
     })
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
 
-    await waitFor(() => expect(screen.queryByText('Add a local OpenRouter key')).not.toBeInTheDocument())
-    expect(screen.queryByText('Add a OpenRouter API key to unlock the plan generator.')).not.toBeInTheDocument()
+    await waitFor(() => expect(screen.queryByText('Ask Coach about your training')).not.toBeInTheDocument())
+    expect(screen.queryByText('Set up your OpenRouter key to draft plans with Coach.')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Generate plan' })).toBeEnabled()
   })
 

@@ -1,7 +1,7 @@
 import WorkoutDraftRecovery from '../src/WorkoutDraftRecovery'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { useRouter } from 'expo-router'
@@ -25,9 +25,7 @@ import { useSessionRead } from '../src/useSessionRead'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import HistoryHeader from '../src/HistoryHeader'
 import { BottomSheet } from '../src/BottomSheet'
-import { covers } from '../src/covers'
 import { monthCalendar } from '../../src/shared/monthCalendar'
-import { workoutCover } from '../../src/shared/workoutCover'
 import { colors } from '../src/theme'
 import { Icon } from '../src/icons'
 
@@ -170,7 +168,7 @@ export default function HistoryScreen() {
                     {availableCategories.map((value) => {
                       const activeCategory = category === value
                       return <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: activeCategory }} onPress={() => setCategory(activeCategory ? null : value)} style={[styles.categoryButton, activeCategory && styles.categorySelected]}>
-                        <Text style={[styles.categoryText, activeCategory && styles.rangeLabelSelected]}>{EXERCISE_CATEGORY_LABELS[value] ?? value}</Text>
+                        <Text style={[styles.categoryText, activeCategory && styles.categoryTextSelected]}>{EXERCISE_CATEGORY_LABELS[value] ?? value}</Text>
                       </Pressable>
                     })}
                   </ScrollView>
@@ -193,10 +191,13 @@ export default function HistoryScreen() {
                       {group.workouts.map(({ workout, totalSets, totalVolume }) => {
                         return <Pressable key={workout.id} accessibilityRole="button" accessibilityLabel={`${workoutTitle(workout)}, ${formatHistoryDate(workout.startedAt)}`} onPress={() => router.push({ pathname: '/workout/[workoutId]', params: { workoutId: workout.id } })} style={styles.workoutRow}>
                           <View style={styles.workoutMain}>
-                            <Image source={covers[workoutCover(workout.label)]} style={styles.workoutThumb} />
+                            <View style={styles.workoutDate}>
+                              <Text style={styles.workoutWeekday}>{new Date(workout.startedAt).toLocaleDateString('en-US', { weekday: 'short' })}</Text>
+                              <Text style={styles.workoutDay}>{new Date(workout.startedAt).getDate()}</Text>
+                            </View>
                             <View style={styles.workoutCopy}>
                               <Text numberOfLines={2} style={styles.workoutTitle}>{workoutTitle(workout)}</Text>
-                              <Text style={styles.workoutMetaText}>{formatHistoryDate(workout.startedAt)} · {formatWorkoutDuration(workout.startedAt, workout.finishedAt)} · {workoutVolumeLabel(totalVolume, active.state.units)} · {totalSets} {pluralize(totalSets, 'set', 'sets')}</Text>
+                              <Text style={styles.workoutMetaText}>{formatWorkoutDuration(workout.startedAt, workout.finishedAt)} · {workoutVolumeLabel(totalVolume, active.state.units)} · {totalSets} {pluralize(totalSets, 'set', 'sets')}</Text>
                             </View>
                             <Svg accessibilityElementsHidden height={18} width={18} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.mutedSoft} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg>
                           </View>
@@ -260,7 +261,9 @@ const styles = StyleSheet.create({
   calendarWeekday: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5 },
   calendarDay: { alignItems: 'center', borderRadius: 14, height: 44, justifyContent: 'center', width: 44 }, calendarDayActive: { backgroundColor: colors.choiceSelected }, calendarDayToday: { borderColor: colors.text, borderWidth: 1.5 },
   calendarDayText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] }, calendarDayTextActive: { color: colors.textStrong },
-  workoutThumb: { borderRadius: 12, height: 44, width: 44 },
+  workoutDate: { alignItems: 'center', width: 36 },
+  workoutWeekday: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 11, lineHeight: 12 },
+  workoutDay: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 18, lineHeight: 20, letterSpacing: -0.18, fontVariant: ['tabular-nums'] },
   rangeRow: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 12, flexDirection: 'row', gap: 2, padding: 3 },
   rangeButton: { alignItems: 'center', borderRadius: 9, flex: 1, justifyContent: 'center', minHeight: 44, paddingHorizontal: 3 },
   rangeSelected: { backgroundColor: colors.choiceSelected },
@@ -273,9 +276,10 @@ const styles = StyleSheet.create({
   clearText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 22, lineHeight: 26 },
   categoryScroll: { marginHorizontal: -16 },
   categoryRow: { alignItems: 'center', gap: 6, paddingHorizontal: 16 },
-  categoryButton: { borderColor: colors.line, borderRadius: 10, borderWidth: 1, minHeight: 44, justifyContent: 'center', paddingHorizontal: 12 },
-  categorySelected: { backgroundColor: colors.choiceSelected, borderColor: 'transparent' },
+  categoryButton: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 8, minHeight: 44, minWidth: 44, justifyContent: 'center', paddingHorizontal: 14 },
+  categorySelected: { backgroundColor: colors.choiceSelected },
   categoryText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 },
+  categoryTextSelected: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold' },
   monthList: { gap: 24, marginTop: 12, width: '100%' },
   monthGroup: { minWidth: 0 },
   monthHeading: { alignItems: 'baseline', flexDirection: 'row', justifyContent: 'space-between', paddingBottom: 4 },

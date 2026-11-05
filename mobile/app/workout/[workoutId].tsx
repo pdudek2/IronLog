@@ -20,9 +20,10 @@ import { workoutTitle } from '../../../src/lib/workoutCopy'
 import { colors, pageBackground } from '../../src/theme'
 import { Icon } from '../../src/icons'
 import { WorkoutSteps } from '../../src/WorkoutSteps'
+import { BottomSheet } from '../../src/BottomSheet'
 
 export default function SavedWorkoutScreen() {
-  const { workoutId: routeId, saved } = useLocalSearchParams<{ workoutId: string; saved?: string }>()
+  const { workoutId: routeId, saved, from } = useLocalSearchParams<{ workoutId: string; saved?: string; from?: string }>()
   const workoutId = Array.isArray(routeId) ? routeId[0] ?? '' : routeId ?? ''
   const validWorkoutId = Boolean(workoutId && !workoutId.includes('/'))
   const { user } = useAuthRuntime()
@@ -61,8 +62,10 @@ export default function SavedWorkoutScreen() {
     return entries
   }, [metadata.state])
   const [openExercises, setOpenExercises] = useState<number[]>([])
+  const [moreOpen, setMoreOpen] = useState(false)
   const heroLabel = workout ? workoutTitle(workout) : ''
-  const focusLabel = workoutFocusLabel(workout?.exercises.map((exercise) => exercise.exerciseId
+  // A labelled session already names its focus; the top muscle only helps an unlabelled one.
+  const focusLabel = workout?.label?.trim() ? null : workoutFocusLabel(workout?.exercises.map((exercise) => exercise.exerciseId
     ? exerciseMap.get(`${exercise.exerciseSource}:${exercise.exerciseId}`)?.category : undefined) ?? [])
   const totalSets = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0) ?? 0
   const totalReps = workout?.exercises.reduce((sum, exercise) => sum + exercise.sets.reduce((inner, set) => inner + set.reps, 0), 0) ?? 0
@@ -82,8 +85,8 @@ export default function SavedWorkoutScreen() {
       <ActiveWorkoutReturnBar top />
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.navRow}>
-          <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={back} style={styles.backButton}>
-            <Svg accessibilityElementsHidden height={16} width={16} viewBox="0 0 24 24"><Path d="m12 19-7-7 7-7" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><Path d="M19 12H5" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg><Text style={styles.backText}>{resultIsValid ? 'Back to Train' : 'Back'}</Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={resultIsValid ? 'Back to Train' : `Back to ${from === 'train' ? 'Train' : 'History'}`} onPress={back} style={styles.backButton}>
+            {resultIsValid ? <Svg accessibilityElementsHidden height={16} width={16} viewBox="0 0 24 24"><Path d="m12 19-7-7 7-7" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /><Path d="M19 12H5" fill="none" stroke={colors.muted} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg> : <Icon name="chevron-left" size={16} />}<Text style={styles.backText}>{resultIsValid ? 'Back to Train' : from === 'train' ? 'Train' : 'History'}</Text>
           </Pressable>
         </View>
 
@@ -117,13 +120,12 @@ export default function SavedWorkoutScreen() {
 
         {workout && <>
           <View style={styles.sessionHead}>
-            <Text accessibilityRole="header" style={styles.workoutName}>{heroLabel}</Text>
+            <View style={styles.titleRow}>
+              <Text accessibilityRole="header" style={styles.workoutName}>{heroLabel}</Text>
+              <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId } })} style={styles.editAction}><Text style={styles.editText}>Edit workout</Text></Pressable>
+              <Pressable accessibilityRole="button" accessibilityLabel="More workout actions" onPress={() => setMoreOpen(true)} style={styles.moreAction}><Icon name="more" size={20} /></Pressable>
+            </View>
             <Text style={styles.kicker}>{formatWorkoutDate(workout.startedAt)}{focusLabel ? ` · ${focusLabel}` : ''}</Text>
-          </View>
-
-          <View style={styles.mutationActions}>
-            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId } })} style={styles.editAction}><Text style={[styles.retryText, { color: colors.textStrong, textAlign: 'center' }]}>Edit workout</Text></Pressable>
-            <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId, action: 'delete' } })} style={styles.retryButton}><Text style={[styles.retryText, { color: colors.muted }]}>Delete</Text></Pressable>
           </View>
 
           {uid && <WorkoutSteps uid={uid} workout={workout} units={active.state.units} />}
@@ -172,6 +174,11 @@ export default function SavedWorkoutScreen() {
           </View>
         </>}
       </ScrollView>
+      {moreOpen && <BottomSheet title={heroLabel} onClose={() => setMoreOpen(false)}>
+        {(close) => <Pressable accessibilityRole="button" onPress={() => close(() => router.push({ pathname: '/workout-edit/[workoutId]', params: { workoutId, action: 'delete' } }))} style={styles.sheetRow}>
+          <Text style={styles.sheetRowQuiet}>Delete workout</Text><Icon name="trash" size={16} />
+        </Pressable>}
+      </BottomSheet>}
     </SafeAreaView>
   )
 }
@@ -184,8 +191,12 @@ function SummaryFact({ label, value }: { label: string; value: string }) {
 }
 
 const styles = StyleSheet.create({
-  mutationActions: { flexDirection: 'row', gap: 8, justifyContent: 'flex-start', paddingBottom: 16 },
-  editAction: { flex: 1, minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 12, backgroundColor: colors.choiceSelected },
+  titleRow: { alignItems: 'center', flexDirection: 'row', gap: 4 },
+  editAction: { justifyContent: 'center', marginLeft: 'auto', minHeight: 44, paddingHorizontal: 8 },
+  editText: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  moreAction: { alignItems: 'center', height: 44, justifyContent: 'center', marginRight: -10, width: 44 },
+  sheetRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', minHeight: 50 },
+  sheetRowQuiet: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 15.5 },
   screen: { backgroundColor: colors.background, flex: 1 },
   content: { flexGrow: 1, paddingBottom: 36, paddingHorizontal: 16, paddingTop: 16, experimental_backgroundImage: pageBackground },
       navRow: { alignItems: 'center', flexDirection: 'row', minHeight: 44 },
@@ -197,9 +208,9 @@ const styles = StyleSheet.create({
   resultCopy: { flex: 1 },
   resultTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 16 },
   resultSubtitle: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 2 },
-  sessionHead: { paddingBottom: 12, paddingTop: 8 },
+  sessionHead: { paddingBottom: 12 },
   kicker: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, marginTop: 4 },
-  workoutName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 28, lineHeight: 31, letterSpacing: -0.67 },
+  workoutName: { flexShrink: 1, color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 28, lineHeight: 31, letterSpacing: -0.67 },
   facts: { flexDirection: 'row' },
   fact: { flex: 1, minWidth: 0, paddingVertical: 8 },
   factLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, marginTop: 1 },

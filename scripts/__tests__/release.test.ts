@@ -11,6 +11,12 @@ describe('releaseSteps', () => {
     expect(at('Deploy the web')).toBeLessThan(at('Send the APK to testers'))
   })
 
+  it('deploys the rules after the APK build and before the web', () => {
+    expect(at('Deploy the Firestore rules')).toBeGreaterThan(at('Build the release APK'))
+    expect(at('Deploy the Firestore rules')).toBeLessThan(at('Deploy the web'))
+    expect(steps[at('Deploy the Firestore rules')].cmd).toEqual(expect.arrayContaining(['deploy', '--only', 'firestore:rules', '--project', 'ironlog-ede05']))
+  })
+
   it('passes the version code and production backend to the Android build', () => {
     expect(steps[at('Android prebuild')].env).toMatchObject({ IRONLOG_MOBILE_BACKEND: 'production', IRONLOG_MOBILE_VERSION_CODE: '900' })
   })

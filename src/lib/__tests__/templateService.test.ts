@@ -94,28 +94,21 @@ describe('buildActiveWorkoutFromTemplate', () => {
     ])
   })
 
-  it('applies a recommendation over history without replacing unchanged fields', () => {
-    const workout = buildActiveWorkoutFromTemplate(
-      template(),
-      0,
-      new Map([
-        [templateExerciseKey('incline-bench-press', 'global'), {
-          bestSetWeight: 42.5,
-          bestSetReps: 6,
-        }],
-      ]),
-      new Map([
-        [templateExerciseKey('incline-bench-press', 'global'), {
-          sets: 2,
-          weight: 45,
-        }],
-      ]),
-    )
+  it('launches the ordered list: today\'s sets, weights and groups, without dropped exercises, and the record', () => {
+    const exercise = (exerciseId: string, sets: number) => ({ exerciseId, exerciseSource: 'global' as const, name: exerciseId, sets, targetReps: 8, targetWeight: 40 })
+    const plan = template({ days: [{ name: 'Upper', exercises: [exercise('bench', 4), exercise('row', 3), exercise('curl', 3), exercise('pushdown', 3)] }] })
+    const compression = { v: 1 as const, budgetMin: 30, mode: 'compressed' as const, shortRest: true, estimateMin: 27.5, fullEstimateMin: 40, factor: 1.2, samples: 0, calibration: 'none' as const, readiness: null, exercises: [] }
+    const workout = buildActiveWorkoutFromTemplate(plan, 0, new Map(), {
+      items: [{ dayExerciseIndex: 0, sets: 2, weight: 80, reps: 8 }, { dayExerciseIndex: 3, sets: 2, weight: 25, reps: 12, group: 'g1' }, { dayExerciseIndex: 2, sets: 2, weight: 12, reps: 10, group: 'g1' }],
+      compression,
+      proposals: [{ budgetMin: 30, mode: 'compressed' }],
+    })
 
-    expect(workout.exercises[0].sets).toEqual([
-      { weight: '45', reps: '8', done: false },
-      { weight: '45', reps: '8', done: false },
+    expect(workout.exercises.map((entry) => [entry.exerciseId, entry.sets.length, entry.sets[0]!.weight, entry.group ?? null])).toEqual([
+      ['bench', 2, '80', null], ['pushdown', 2, '25', 'g1'], ['curl', 2, '12', 'g1'],
     ])
+    expect(workout).toMatchObject({ compression, proposals: [{ budgetMin: 30, mode: 'compressed' }] })
+    expect(() => buildActiveWorkoutFromTemplate(plan, 0, new Map(), { items: [{ dayExerciseIndex: 1, sets: 4, weight: 0, reps: 8 }] })).toThrow('Invalid recommendation.')
   })
 })
 

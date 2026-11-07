@@ -3,7 +3,7 @@ import { ChevronRight, X } from 'lucide-react'
 import { buildNextSessionRecommendation } from '../lib/nextSessionRecommendation'
 import type { ReadinessEntry } from '../lib/readinessService'
 import type {
-  TemplateExerciseOverrideMap,
+  TemplateLaunch,
   WorkoutTemplate,
 } from '../lib/templateService'
 import type { Units } from '../lib/userProfile'
@@ -19,7 +19,7 @@ interface NextSessionCardProps {
   units: Units
   launching: boolean
   describedBy?: string
-  onStart: (overrides: TemplateExerciseOverrideMap) => void
+  onStart: (launch: TemplateLaunch) => void
   onEdit: () => void
 }
 
@@ -85,7 +85,7 @@ export default function NextSessionCard({
   function handleStart() {
     if (launching) return
     closePopover()
-    onStart(recommendation.overrides)
+    onStart({ items: recommendation.launch })
   }
 
   function handleEdit() {

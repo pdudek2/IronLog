@@ -8,7 +8,7 @@ import {
 import { createPersistedTemplateWorkout } from '../lib/templateLaunchService'
 import {
   getTemplates,
-  type TemplateExerciseOverrideMap,
+  type TemplateLaunch,
   type WorkoutTemplate,
 } from '../lib/templateService'
 import { useWorkoutStore } from '../store/workoutStore'
@@ -17,7 +17,7 @@ export interface TemplateLaunchTarget {
   template: WorkoutTemplate
   dayIndex: number
   requestKey: string
-  overrides?: TemplateExerciseOverrideMap
+  launch?: TemplateLaunch
 }
 
 export interface TemplateLaunchOperation {
@@ -35,7 +35,7 @@ export interface TemplateWorkoutLaunch {
     template: WorkoutTemplate,
     dayIndex: number,
     requestKey: string,
-    overrides?: TemplateExerciseOverrideMap,
+    launch?: TemplateLaunch,
   ) => Promise<void>
   confirmTemplateLaunch: () => Promise<void>
   cancelTemplateLaunch: () => void
@@ -115,13 +115,13 @@ export function useTemplateWorkoutLaunch(
         return
       }
       const currentTarget = { ...target, template: currentTemplate }
-      const workout = target.overrides
+      const workout = target.launch
         ? await createPersistedTemplateWorkout(
             uid,
             currentTarget.template,
             currentTarget.dayIndex,
             replaceExisting,
-            currentTarget.overrides,
+            currentTarget.launch,
           )
         : await createPersistedTemplateWorkout(
             uid,
@@ -158,11 +158,11 @@ export function useTemplateWorkoutLaunch(
     template: WorkoutTemplate,
     dayIndex: number,
     requestKey: string,
-    overrides?: TemplateExerciseOverrideMap,
+    launch?: TemplateLaunch,
   ) => {
     if (!uid || launchLockRef.current) return
-    const target: TemplateLaunchTarget = overrides
-      ? { template, dayIndex, requestKey, overrides }
+    const target: TemplateLaunchTarget = launch
+      ? { template, dayIndex, requestKey, launch }
       : { template, dayIndex, requestKey }
     if (hasActiveSessionWork(active)) {
       setLaunchOperation(null)

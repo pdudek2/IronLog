@@ -37,6 +37,21 @@ test('reconstructs the newest valid draft and falls back from a torn newest slot
   if (recovered.status === 'draft') assert.equal(recovered.draft.session.exercises[0]?.sets[0]?.reps, '5')
 })
 
+test('a restarted journal keeps the compression record, proposals and exercise groups', async () => {
+  const slots = new MemorySlots()
+  const journal = new TwoSlotSessionJournal(slots)
+  await journal.load('user-a')
+  const value = draft()
+  const compression = { v: 1 as const, budgetMin: 30, mode: 'compressed' as const, shortRest: true, estimateMin: 27.5, fullEstimateMin: 60.7, factor: 1.2, samples: 0, calibration: 'none' as const, readiness: null, exercises: [] }
+  value.session = { ...value.session, compression, proposals: [{ budgetMin: 30, mode: 'compressed' }], exercises: value.session.exercises.map((exercise) => ({ ...exercise, group: 'g1' })) }
+  await journal.writeDraft('user-a', value)
+  const restored = await new TwoSlotSessionJournal(slots).load('user-a')
+  assert.equal(restored.status, 'draft')
+  if (restored.status === 'draft') {
+    assert.deepEqual([restored.draft.session.compression, restored.draft.session.proposals, restored.draft.session.exercises[0]?.group], [compression, [{ budgetMin: 30, mode: 'compressed' }], 'g1'])
+  }
+})
+
 test('rejects malformed and wrong-owner records without exposing their contents', async () => {
   const slots = new MemorySlots()
   slots.values.set('user-a:0', '{bad')

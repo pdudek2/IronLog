@@ -92,12 +92,12 @@ describe('buildNextSessionRecommendation', () => {
       { sets: 3, weight: 50, weightDelta: 0, setsDelta: 0 },
       { sets: 3, weight: 10, weightDelta: 0, setsDelta: 0 },
     ])
-    expect([...recommendation.overrides]).toEqual([
-      ['global:bench', { sets: 4, weight: 72.5, reps: 8 }],
-      ['global:row', { sets: 4, weight: 70, reps: 6 }],
-      ['global:ohp', { sets: 3, weight: 40, reps: 10 }],
-      ['global:pulldown', { sets: 3, weight: 50, reps: 12 }],
-      ['global:raise', { sets: 3, weight: 10, reps: 15 }],
+    expect(recommendation.launch).toEqual([
+      { dayExerciseIndex: 0, sets: 4, weight: 72.5, reps: 8 },
+      { dayExerciseIndex: 1, sets: 4, weight: 70, reps: 6 },
+      { dayExerciseIndex: 2, sets: 3, weight: 40, reps: 10 },
+      { dayExerciseIndex: 3, sets: 3, weight: 50, reps: 12 },
+      { dayExerciseIndex: 4, sets: 3, weight: 10, reps: 15 },
     ])
   })
 
@@ -117,12 +117,8 @@ describe('buildNextSessionRecommendation', () => {
       weightDelta: 0,
       setsDelta: -1,
     })
-    expect(recommendation.overrides.get('global:row')).toEqual({
-      sets: 3,
-      weight: 67.5,
-      reps: 8,
-    })
-    expect([...recommendation.overrides.values()]).toHaveLength(5)
+    expect(recommendation.launch[1]).toEqual({ dayExerciseIndex: 1, sets: 3, weight: 67.5, reps: 8 })
+    expect(recommendation.launch).toHaveLength(5)
   })
 
   it('never takes the main lift below 2 sets on low readiness', () => {

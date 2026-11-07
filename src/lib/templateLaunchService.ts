@@ -7,7 +7,7 @@ import {
   buildActiveWorkoutFromTemplate,
   templateExerciseKey,
   type TemplateExerciseHistoryMap,
-  type TemplateExerciseOverrideMap,
+  type TemplateLaunch,
   type WorkoutTemplate,
 } from './templateService'
 
@@ -51,10 +51,10 @@ export async function createPersistedTemplateWorkout(
   template: WorkoutTemplate,
   dayIndex: number,
   replaceExisting: boolean,
-  overrides?: TemplateExerciseOverrideMap,
+  launch?: TemplateLaunch,
 ): Promise<ActiveWorkout> {
   const history = await loadTemplateExerciseHistory(uid, template, dayIndex)
-  const workout = buildActiveWorkoutFromTemplate(template, dayIndex, history, overrides)
+  const workout = buildActiveWorkoutFromTemplate(template, dayIndex, history, launch)
   if (replaceExisting) {
     // The replaced session is closed through the server first, so its tombstone stops a late write from another
     // device from reviving it.

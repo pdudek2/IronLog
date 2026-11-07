@@ -1,6 +1,7 @@
 import { doc, getDocFromServer, onSnapshot, runTransaction, type Unsubscribe } from 'firebase/firestore'
 import { db } from './firebase'
 import { stripWorkoutClientIds, type ActiveWorkout, type ExerciseSource } from '../store/workoutStore'
+import type { CompressionProposal, CompressionRecord } from '../shared/compressionRecord'
 import { normalizeSessionId } from './sessionIdentity'
 
 export interface ActiveSessionSnapshot {
@@ -145,6 +146,8 @@ function activeSessionDocument(
     planDayId: typeof persistableWorkout.planDayId === 'string' ? persistableWorkout.planDayId : null,
     label: persistableWorkout.label?.trim() || null,
     exercises: persistableWorkout.exercises,
+    ...(persistableWorkout.compression ? { compression: persistableWorkout.compression } : {}),
+    ...(persistableWorkout.proposals ? { proposals: persistableWorkout.proposals } : {}),
     updatedAt: Date.now(),
   }
 }
@@ -175,6 +178,9 @@ function parseSessionDoc(uid: string, data: Record<string, unknown>): ActiveWork
     templateId: typeof data.templateId === 'string' && data.templateId ? data.templateId : null,
     planDayId: typeof data.planDayId === 'string' && data.planDayId ? data.planDayId : null,
     label: typeof data.label === 'string' && data.label ? data.label : undefined,
+    // Kept as stored, so a session from another client keeps them through the next save; the server validates on finish.
+    ...(data.compression && typeof data.compression === 'object' && !Array.isArray(data.compression) ? { compression: data.compression as CompressionRecord } : {}),
+    ...(Array.isArray(data.proposals) ? { proposals: data.proposals as CompressionProposal[] } : {}),
     exercises: Array.isArray(data.exercises)
       ? data.exercises.map((ex) => {
           const record = ex as Record<string, unknown>
@@ -182,6 +188,7 @@ function parseSessionDoc(uid: string, data: Record<string, unknown>): ActiveWork
             exerciseId: String(record.exerciseId ?? ''),
             exerciseSource: (record.exerciseSource === 'user' ? 'user' : 'global') as ExerciseSource,
             name: String(record.name ?? ''),
+            ...(typeof record.group === 'string' && record.group ? { group: record.group } : {}),
             sets: Array.isArray(record.sets)
               ? record.sets.map((s) => {
                   const set = s as Record<string, unknown>

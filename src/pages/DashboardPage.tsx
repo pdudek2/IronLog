@@ -14,7 +14,7 @@ import {
   templateExerciseKey,
   type TemplateExercise,
   type TemplateExerciseHistoryMap,
-  type TemplateExerciseOverrideMap,
+  type TemplateLaunch,
   type WorkoutTemplate,
 } from '../lib/templateService'
 import type { ReadinessEntry } from '../lib/readinessService'
@@ -501,7 +501,7 @@ export default function DashboardPage() {
     navigate(`/templates/${templateId}/edit`)
   }
 
-  function launchSelectedWorkout(overrides?: TemplateExerciseOverrideMap) {
+  function launchSelectedWorkout(launch?: TemplateLaunch) {
     if (!user || workoutSelection.uid !== user.uid || !workoutSelection.target) return
     const resolved = resolveWorkoutSelection(templates, workoutSelection.target)
     if (!resolved) {
@@ -510,8 +510,8 @@ export default function DashboardPage() {
       return
     }
     const requestKey = `dashboard:${resolved.template.id}:selection:${resolved.dayIndex}`
-    if (overrides) {
-      void requestTemplateLaunch(resolved.template, resolved.dayIndex, requestKey, overrides)
+    if (launch) {
+      void requestTemplateLaunch(resolved.template, resolved.dayIndex, requestKey, launch)
     } else {
       void requestTemplateLaunch(resolved.template, resolved.dayIndex, requestKey)
     }
@@ -605,8 +605,8 @@ export default function DashboardPage() {
                     describedBy={quickTemplateLaunchOperation?.status === 'error'
                       ? quickTemplateLaunchErrorId
                       : undefined}
-                    onStart={(overrides) => {
-                      launchSelectedWorkout(overrides)
+                    onStart={(launch) => {
+                      launchSelectedWorkout(launch)
                     }}
                     onEdit={() => navigate(`/templates/${quickTemplate.id}/edit`)}
                   />

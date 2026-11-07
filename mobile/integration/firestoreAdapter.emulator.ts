@@ -64,8 +64,10 @@ async function main() {
   try {
   await setDoc(reference, {
     userId: owner.uid, sessionId, sessionRevision: initialRevision, startedAt: workout.startedAt,
-    templateId: null, planDayId: 'upper-a', label: 'Adapter', exercises: workout.exercises, updatedAt: Date.now(),
+    templateId: null, planDayId: 'upper-a', label: 'Adapter', exercises: workout.exercises.map((exercise, index) => (index === 0 ? { ...exercise, group: 'g1' } : exercise)), updatedAt: Date.now(),
+    compression: { v: 1, budgetMin: 30, mode: 'compressed' }, proposals: [{ budgetMin: 30, mode: 'compressed' }],
   })
+  Object.assign(workout, parseSessionDocument(owner.uid, (await getDoc(reference)).data()))
 
   workout.exercises[0]!.sets[0]!.done = true
   workout.exercises[0]!.sets[0]!.completedAt = workout.startedAt + 30_000
@@ -80,6 +82,9 @@ async function main() {
   assert.equal(saved.planDayId, 'upper-a')
   assert.equal(saved.exercises[0].sets[0].completedAt, workout.startedAt + 30_000)
   assert.equal(parseSessionDocument(owner.uid, saved).planDayId, 'upper-a')
+  // An older or newer client's save keeps the compression record, the proposals and the exercise group.
+  assert.deepEqual([saved.compression, saved.proposals, saved.exercises[0].group], [{ v: 1, budgetMin: 30, mode: 'compressed' }, [{ budgetMin: 30, mode: 'compressed' }], 'g1'])
+  assert.deepEqual(parseSessionDocument(owner.uid, saved).compression, { v: 1, budgetMin: 30, mode: 'compressed' })
 
   await assert.rejects(save(other.firestore, owner.uid, workout, `${runId}-revision-2`, `${runId}-other`))
   await assert.rejects(save(owner.firestore, owner.uid, workout, initialRevision, `${runId}-stale`), NativeActiveSessionConflictError)

@@ -923,7 +923,7 @@ describe('Dashboard workout projection status', () => {
       template,
       0,
       'dashboard:template-1:selection:0',
-      expect.any(Map),
+      { items: expect.any(Array) },
     )
 
     const dialog = screen.getByRole('dialog', { hidden: true })

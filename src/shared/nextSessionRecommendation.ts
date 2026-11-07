@@ -2,6 +2,7 @@ import { computeReadinessScore, type ReadinessEntry } from './readiness'
 import { exercises as exerciseCatalogue } from '../../data/exercises'
 import { buildProgression, type ProgressionSession } from './progression'
 import { exerciseRoles } from './compression'
+import type { CompressionProposal, CompressionRecord, LaunchItem } from './compressionRecord'
 import type { WeightUnits } from './weightUnits'
 
 type ExerciseSource = 'global' | 'user'
@@ -13,8 +14,8 @@ export interface RecommendationWorkout {
   finishedAt: number
   exercises: { exerciseId?: string; exerciseSource?: ExerciseSource; sets: { weight: number; reps: number }[] }[]
 }
-export interface TemplateExerciseOverride { sets?: number; weight?: number; reps?: number }
-export type TemplateExerciseOverrideMap = ReadonlyMap<string, TemplateExerciseOverride>
+// What a plan start launches instead of the plain day: the ordered list, and the record of a non-usual start.
+export interface TemplateLaunch { items: LaunchItem[]; compression?: CompressionRecord | null; proposals?: CompressionProposal[] | null }
 export function templateExerciseKey(exerciseId: string, source: ExerciseSource): string { return `${source}:${exerciseId}` }
 
 export function applyOverload<T extends { weight: string; reps: string; done: boolean }>(sets: T[], values: { weight?: number; reps?: number }): T[] {
@@ -42,7 +43,8 @@ export interface NextSessionRecommendation {
   tone: 'low' | 'mid' | 'high'
   label: string
   exercises: NextSessionExercise[]
-  overrides: TemplateExerciseOverrideMap
+  // The day in plan order after readiness; time compression reorders and trims it.
+  launch: LaunchItem[]
 }
 
 // Repeated entries of one exercise in a workout count as one session, as in workoutProjection.
@@ -76,11 +78,9 @@ export function buildNextSessionRecommendation(
   const day = template.days[dayIndex] ?? template.days[0]
   const score = computeReadinessScore(readiness)
   const exercises = day?.exercises ?? []
-  const overrides = new Map<string, TemplateExerciseOverride>()
   const roles = exerciseRoles(exercises.map((exercise) => catalogueMeta(exercise.exerciseId, exercise.exerciseSource)))
 
   const recommendedExercises = exercises.map((exercise, index): NextSessionExercise => {
-    const key = templateExerciseKey(exercise.exerciseId, exercise.exerciseSource)
     const sessions = exerciseProgressionSessions(workouts, exercise.exerciseId, exercise.exerciseSource)
     const { equipment, category } = catalogueMeta(exercise.exerciseId, exercise.exerciseSource)
     const progression = buildProgression({
@@ -103,7 +103,6 @@ export function buildNextSessionRecommendation(
     const sets = score.tone === 'low' ? Math.max(floor, exercise.sets - 1) : exercise.sets
     const setsDelta = sets - exercise.sets
     const reps = progression?.reps ?? exercise.targetReps
-    overrides.set(key, { sets, weight, reps })
 
     return {
       exerciseId: exercise.exerciseId,
@@ -123,6 +122,6 @@ export function buildNextSessionRecommendation(
     tone: score.tone,
     label: score.label,
     exercises: recommendedExercises,
-    overrides,
+    launch: recommendedExercises.map((exercise, dayExerciseIndex) => ({ dayExerciseIndex, sets: exercise.sets, weight: exercise.weight, reps: exercise.reps })),
   }
 }

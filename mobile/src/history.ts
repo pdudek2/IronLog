@@ -1,3 +1,4 @@
+import { parseCompressionRecord, parseGroup, type CompressionRecord } from '../../src/shared/compressionRecord'
 import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import type { ExerciseSource } from './session'
@@ -17,6 +18,7 @@ export interface SavedWorkoutExercise {
   exerciseSource: ExerciseSource
   name: string
   sets: SavedWorkoutSet[]
+  group?: string
 }
 
 export interface SavedWorkout {
@@ -28,6 +30,7 @@ export interface SavedWorkout {
   planDayId?: string | null
   label?: string | null
   exercises: SavedWorkoutExercise[]
+  compression?: CompressionRecord | null
 }
 
 export interface DerivedWorkout {
@@ -89,7 +92,8 @@ export function parseSavedWorkout(id: string, uid: string, value: unknown): Save
     const exerciseId = typeof exercise.exerciseId === 'string' && exercise.exerciseId.trim()
       ? exercise.exerciseId
       : undefined
-    return [{ ...(exerciseId ? { exerciseId } : {}), exerciseSource: source, name: exercise.name.trim(), sets }]
+    const group = parseGroup(exercise.group)
+    return [{ ...(exerciseId ? { exerciseId } : {}), exerciseSource: source, name: exercise.name.trim(), sets, ...(group ? { group } : {}) }]
   })
 
   const label = typeof record.label === 'string' && record.label.trim() ? record.label.trim() : null
@@ -103,6 +107,7 @@ export function parseSavedWorkout(id: string, uid: string, value: unknown): Save
     planDayId: typeof record.planDayId === 'string' && record.planDayId ? record.planDayId : null,
     label,
     exercises,
+    compression: parseCompressionRecord(record.compression),
   }
 }
 

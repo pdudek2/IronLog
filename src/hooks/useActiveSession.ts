@@ -68,6 +68,8 @@ function serializeActiveWorkout(value: ActiveWorkout | null): string {
     planDayId: value.planDayId || null,
     label: value.label?.trim() || null,
     exercises: stripWorkoutClientIds(value).exercises,
+    compression: value.compression ?? null,
+    proposals: value.proposals ?? null,
   } : null)
 }
 

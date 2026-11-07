@@ -53,8 +53,9 @@ export interface TemplateExerciseHistory {
 
 export type TemplateExerciseHistoryMap = Map<string, TemplateExerciseHistory>
 
-import { templateExerciseKey, type TemplateExerciseOverrideMap } from '../shared/nextSessionRecommendation'
-export { templateExerciseKey, type TemplateExerciseOverride, type TemplateExerciseOverrideMap } from '../shared/nextSessionRecommendation'
+import { templateExerciseKey, type TemplateLaunch } from '../shared/nextSessionRecommendation'
+import { isValidLaunchList } from '../shared/compressionRecord'
+export { templateExerciseKey, type TemplateLaunch } from '../shared/nextSessionRecommendation'
 
 export async function getTemplates(uid: string): Promise<WorkoutTemplate[]> {
   const snap = confirmedQuery(await getDocs(
@@ -98,11 +99,17 @@ export async function deleteTemplate(id: string): Promise<void> {
   await deleteDoc(doc(db, 'templates', id))
 }
 
+function launchItems(exercises: TemplateExercise[], launch?: TemplateLaunch): { exercise: TemplateExercise; sets: number; weight?: number; reps?: number; group?: string }[] {
+  if (!launch) return exercises.map((exercise) => ({ exercise, sets: exercise.sets }))
+  if (!isValidLaunchList(exercises, launch.items)) throw new Error('Invalid recommendation.')
+  return launch.items.map((item) => ({ exercise: exercises[item.dayExerciseIndex]!, sets: item.sets, weight: item.weight, reps: item.reps, group: item.group }))
+}
+
 export function buildActiveWorkoutFromTemplate(
   template: WorkoutTemplate,
   dayIndex = 0,
   historyByExercise: TemplateExerciseHistoryMap = new Map(),
-  overridesByExercise: TemplateExerciseOverrideMap = new Map(),
+  launch?: TemplateLaunch,
 ): ActiveWorkout {
   const resolvedIndex = template.days[dayIndex] ? dayIndex : 0
   const day = template.days[resolvedIndex]
@@ -116,23 +123,22 @@ export function buildActiveWorkoutFromTemplate(
     templateId: template.id,
     planDayId: day ? planDayId(day, resolvedIndex) : null,
     label,
-    exercises: (day?.exercises ?? []).map((exercise) => {
-      const key = templateExerciseKey(exercise.exerciseId, exercise.exerciseSource)
-      const history = historyByExercise.get(key)
-      const override = overridesByExercise.get(key)
-      const weightValue = override?.weight
-        ?? templateStartWeight(exercise, history)
+    ...(launch?.compression ? { compression: launch.compression } : {}),
+    ...(launch?.proposals ? { proposals: launch.proposals } : {}),
+    exercises: launchItems(day?.exercises ?? [], launch).map(({ exercise, sets, weight: launchWeight, reps: launchReps, group }) => {
+      const history = historyByExercise.get(templateExerciseKey(exercise.exerciseId, exercise.exerciseSource))
+      const weightValue = launchWeight ?? templateStartWeight(exercise, history)
       // The plan's target, not last time's best: the progression hint asks for more when it is due.
-      const repsValue = override?.reps ?? exercise.targetReps
+      const repsValue = launchReps ?? exercise.targetReps
       const weight = weightValue > 0 ? String(weightValue) : ''
       const reps = repsValue > 0 ? String(repsValue) : ''
-      const setCount = Math.max(1, Math.round(override?.sets ?? exercise.sets))
 
       return {
         exerciseId: exercise.exerciseId,
         exerciseSource: exercise.exerciseSource,
         name: exercise.name,
-        sets: Array.from({ length: setCount }, () => ({
+        ...(group ? { group } : {}),
+        sets: Array.from({ length: Math.max(1, Math.round(sets)) }, () => ({
           weight,
           reps,
           done: false,

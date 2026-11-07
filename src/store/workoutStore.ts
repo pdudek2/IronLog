@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { createSessionId } from '../lib/sessionIdentity'
 import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
 import { applyOverload } from '../shared/nextSessionRecommendation'
+import type { CompressionProposal, CompressionRecord } from '../shared/compressionRecord'
 
 export type ExerciseSource = 'global' | 'user'
 
@@ -20,6 +21,8 @@ export interface WorkoutExercise {
   exerciseSource: ExerciseSource
   name: string
   sets: WorkoutSet[]
+  // Pair or circuit of a compressed day.
+  group?: string
 }
 
 export interface ActiveWorkout {
@@ -29,6 +32,8 @@ export interface ActiveWorkout {
   planDayId?: string | null
   label?: string
   exercises: WorkoutExercise[]
+  compression?: CompressionRecord | null
+  proposals?: CompressionProposal[] | null
 }
 
 export interface RestTimerState {
@@ -100,6 +105,7 @@ export function stripWorkoutClientIds(workout: ActiveWorkout): ActiveWorkout {
       exerciseId: exercise.exerciseId,
       exerciseSource: exercise.exerciseSource,
       name: exercise.name,
+      ...(exercise.group === undefined ? {} : { group: exercise.group }),
       sets: exercise.sets.map((set) => ({
         weight: set.weight,
         reps: set.reps,

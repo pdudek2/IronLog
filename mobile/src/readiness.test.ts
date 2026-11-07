@@ -13,11 +13,11 @@ for (const fixture of fixtures) test(`shared ${fixture.tone} fixture uses source
   const result = buildNextSessionRecommendation(plan, 0, entry, workouts, NOW)
   assert.equal(result.tone, fixture.tone)
   assert.deepEqual(result.exercises.map(e => [e.sets, e.weight, e.reps]), fixture.expected)
-  assert.deepEqual([...result.overrides.values()].map(e => [e.sets, e.weight, e.reps]), fixture.expected)
+  assert.deepEqual(result.launch.map(e => [e.sets, e.weight, e.reps]), fixture.expected)
   const canonical = result.exercises[0]!.weight
   assert.equal(kgToDisplayWeight(canonical, 'kg'), canonical)
   assert.ok(kgToDisplayWeight(canonical, 'lbs') > canonical)
-  assert.equal(result.overrides.get('global:same')?.weight, canonical)
+  assert.equal(result.launch[0]?.weight, canonical)
 })
 test('shared no-history, score thresholds and the break boundary', () => {
   assert.deepEqual(buildNextSessionRecommendation(plan, 0, readiness(fixtures[2].values), [], NOW).exercises.map(e => e.weight), [70,25,60,10])

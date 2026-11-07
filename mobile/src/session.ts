@@ -1,4 +1,5 @@
 import { deriveLegacySessionId } from '../../src/shared/sessionIdentity'
+import type { CompressionProposal, CompressionRecord } from '../../src/shared/compressionRecord'
 
 export type Units = 'kg' | 'lbs'
 export type ExerciseSource = 'global' | 'user'
@@ -28,6 +29,8 @@ export interface ActiveWorkout {
   planDayId?: string | null
   label?: string
   exercises: WorkoutExercise[]
+  compression?: CompressionRecord | null
+  proposals?: CompressionProposal[] | null
 }
 
 export class SessionDataError extends Error {
@@ -92,6 +95,9 @@ export function parseSessionDocument(uid: string, value: unknown): ActiveWorkout
     templateId,
     planDayId: typeof data.planDayId === 'string' && data.planDayId ? data.planDayId : null,
     label,
+    // Kept as stored; the server validates both on finish.
+    ...(data.compression && typeof data.compression === 'object' && !Array.isArray(data.compression) ? { compression: data.compression as CompressionRecord } : {}),
+    ...(Array.isArray(data.proposals) ? { proposals: data.proposals as CompressionProposal[] } : {}),
     exercises: data.exercises.map((value, exerciseIndex) => {
       const exercise = record(value, `exercises[${exerciseIndex}]`)
       const source = exercise.exerciseSource === undefined

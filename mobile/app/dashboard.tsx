@@ -28,7 +28,7 @@ import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../
 import { ResumeButton } from '../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../src/HistoryHeader'
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
-import { nextPlanWorkout, selectedWorkout, validateTemplateOverrides, type BestSet, type TemplateExercise, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
+import { nextPlanWorkout, selectedWorkout, validateTemplateLaunch, type BestSet, type TemplateExercise, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
 import { colors, primaryGradient } from '../src/theme'
 import { Icon } from '../src/icons'
 
@@ -141,14 +141,14 @@ export default function DashboardScreen() {
       || templatesState.status !== 'ready' || templatesState.fromCache || !selection?.target || !data) return null
     try {
       const next = buildNextSessionRecommendation(chosen.template, selection.target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now(), units)
-      validateTemplateOverrides(chosen.template, selection.target.dayIndex, next.overrides)
+      validateTemplateLaunch(chosen.template, selection.target.dayIndex, { items: next.launch })
       return next
     } catch { return null }
   }, [active.state.status, chosen, readinessEntry, state, templatesState, selection, data, now, units])
   const startRecommended = () => {
     readiness?.controller.refreshDay()
     if (!recommendation || !chosen || !selection?.target || readinessEntry?.date !== readiness?.controller.state.date) return
-    void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template, overrides: recommendation.overrides })
+    void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template, launch: { items: recommendation.launch } })
   }
 
   useEffect(() => { setNow(new Date()) }, [readiness?.state.date])

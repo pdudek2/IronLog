@@ -156,6 +156,48 @@ describe('workout closure', () => {
     expect(edited.exercises[0].sets).toEqual([{ weight: 82.5, reps: 5, completedAt: STARTED_AT + 60_000 }, { weight: 80, reps: 6 }])
   })
 
+  it('stores the compression record and groups, flags only the cut exercise as shortened, and an edit keeps groups', async () => {
+    await seedActive()
+    const set = (weight: string, done = true) => ({ weight, reps: '8', done })
+    const compression = { v: 1, budgetMin: 30, mode: 'compressed', shortRest: true, estimateMin: 27.5, fullEstimateMin: 60.7, factor: 1.2, samples: 0, calibration: 'none', readiness: null,
+      exercises: [
+        { dayExerciseIndex: 0, exerciseId: 'bench-press', exerciseSource: 'global', plannedSets: 4, sets: 2 },
+        { dayExerciseIndex: 1, exerciseId: 'lat-pulldown', exerciseSource: 'global', plannedSets: 3, sets: 3 },
+        { dayExerciseIndex: 2, exerciseId: 'seated-cable-row', exerciseSource: 'global', plannedSets: 3, sets: 0 },
+      ] }
+    await db.collection('activeSessions').doc(USER_ID).update({
+      compression,
+      proposals: [{ budgetMin: 45, mode: 'compressed' }, { budgetMin: 30, mode: 'compressed' }],
+      exercises: [
+        { exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets: [set('40'), set('80'), set('80')] },
+        { exerciseId: 'lat-pulldown', exerciseSource: 'global', name: 'Lat Pulldown', group: 'g1', sets: [set('50'), set('50')] },
+        { exerciseId: 'db-curl', exerciseSource: 'global', name: 'Curl', group: 'g1', sets: [set('12'), set('12', false)] },
+      ],
+    })
+
+    await finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId, sessionRevision: 'revision-1' }, { db, now: () => FINISHED_AT })
+    const workout = (await readClosure()).workout.data()!
+    expect(workout).toMatchObject({ compression, proposals: [{ budgetMin: 45, mode: 'compressed' }, { budgetMin: 30, mode: 'compressed' }] })
+    expect(workout.exercises.map((exercise: { group?: string }) => exercise.group ?? null)).toEqual([null, 'g1', 'g1'])
+    const shortened = async () => Object.fromEntries((await db.collection('exerciseSessions').where('workoutId', '==', input.sessionId).get()).docs
+      .map((doc) => [doc.data().exerciseId, doc.data().shortened]))
+    // Bench: 2 working sets after the warm-up, 4 planned. Pulldown was not cut, so 2 of 3 done is not a shortened start. Curl had no record.
+    expect(await shortened()).toEqual({ 'bench-press': true, 'lat-pulldown': false, 'db-curl': false })
+
+    await updateFinishedWorkoutForUser(USER_ID, input.sessionId, {
+      label: 'Push',
+      exercises: [
+        { exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets: [80, 80, 80, 80].map((weight) => ({ weight, reps: 8 })) },
+        { exerciseId: 'lat-pulldown', exerciseSource: 'global', name: 'Lat Pulldown', sets: [{ weight: 50, reps: 8 }] },
+        { exerciseId: 'db-curl', exerciseSource: 'global', name: 'Curl', sets: [{ weight: 12, reps: 8 }] },
+      ],
+    }, { db })
+    const edited = (await readClosure()).workout.data()!
+    expect(edited.exercises.map((exercise: { group?: string }) => exercise.group ?? null)).toEqual([null, 'g1', 'g1'])
+    expect(edited.compression).toEqual(compression)
+    expect((await shortened())['bench-press']).toBe(false)
+  })
+
   it('performs no writes when the active revision changed', async () => {
     await seedActive()
 

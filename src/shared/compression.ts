@@ -19,6 +19,7 @@ export interface CompressionInput {
   budgetMin: number | null
   straight?: boolean
   lowReadiness?: boolean
+  // Pace from calibration(); the cold-start pace when omitted.
   factor?: number
   // Keys (`source:id`) that the last workout of this plan day dropped or cut.
   protectedKeys?: ReadonlySet<string>
@@ -39,6 +40,9 @@ const TRANSITION = 20
 const CHANGE = 60
 const WARM_UP = 240
 const CARDIO_SET = 300
+// Real time = overhead + pace × model: a least-squares fit over 28 of Patryk's workouts (3.5 min + 1.2 × model).
+export const SESSION_OVERHEAD = 210
+export const COLD_FACTOR = 1.2
 
 export const exerciseKey = (exercise: Pick<DayExercise, 'exerciseId' | 'exerciseSource'>) => `${exercise.exerciseSource}:${exercise.exerciseId}`
 
@@ -93,17 +97,30 @@ export function estimateSec(blocks: Block[], roles: Role[], shortRest: boolean, 
   return warmUp + live.reduce((sum, block) => sum + blockSec(block, roles, shortRest, lowReadiness), 0) + (live.length - 1) * CHANGE
 }
 
-// Calibration from finished workouts of the same plan day: real time over the model's estimate of what was done.
-export function calibration(samples: { realSec: number; estimateSec: number }[]): { factor: number; samples: number } {
-  const ratios = samples
+// Seconds from the start to the latest logged set; a set re-ticked late moves the end, which is when the work ended.
+export function workoutSeconds(startedAt: number, sets: { completedAt?: number }[]): number | null {
+  const ends = sets.flatMap((set) => (Number.isSafeInteger(set.completedAt) ? [set.completedAt!] : []))
+  return ends.length ? Math.max(...ends) - startedAt : null
+}
+
+export type CalibrationSource = 'day' | 'user' | 'none'
+export interface CalibrationSample { realSec: number; estimateSec: number }
+
+// Pace from the user's finished workouts, newest first: this plan day when it has two, else all their days.
+export function calibration(day: CalibrationSample[], user: CalibrationSample[]): { factor: number; samples: number; source: CalibrationSource } {
+  const ratios = (samples: CalibrationSample[]) => samples
     .filter((sample) => sample.realSec > 0 && sample.realSec <= 3 * 3600 && sample.estimateSec > 0)
     .slice(0, 5)
-    .map((sample) => sample.realSec / sample.estimateSec)
+    .map((sample) => (sample.realSec - SESSION_OVERHEAD) / sample.estimateSec)
     .sort((a, b) => a - b)
-  if (ratios.length < 2) return { factor: 1, samples: ratios.length }
-  const mid = ratios.length / 2
-  const median = ratios.length % 2 ? ratios[Math.floor(mid)]! : (ratios[mid - 1]! + ratios[mid]!) / 2
-  return { factor: Math.min(1.6, Math.max(0.75, median)), samples: ratios.length }
+  for (const [source, samples] of [['day', day], ['user', user]] as const) {
+    const sorted = ratios(samples)
+    if (sorted.length < 2) continue
+    const mid = sorted.length / 2
+    const median = sorted.length % 2 ? sorted[Math.floor(mid)]! : (sorted[mid - 1]! + sorted[mid]!) / 2
+    return { factor: Math.min(1.6, Math.max(0.75, median)), samples: sorted.length, source }
+  }
+  return { factor: COLD_FACTOR, samples: 0, source: 'none' }
 }
 
 function straightBlocks(sets: number[]): Block[] {
@@ -148,19 +165,19 @@ function formGroups(exercises: DayExercise[], roles: Role[]): number[][] {
 export function compressDay(input: CompressionInput): CompressionResult {
   const { exercises, budgetMin } = input
   const low = input.lowReadiness ?? false
-  const factor = input.factor ?? 1
+  const factor = input.factor ?? COLD_FACTOR
   const protectedKeys = input.protectedKeys ?? new Set<string>()
   const roles = exerciseRoles(exercises)
   const isProtected = (index: number) => protectedKeys.has(exerciseKey(exercises[index]!))
   const fullBlocks = straightBlocks(exercises.map((exercise) => exercise.sets))
-  const fullEstimateSec = Math.round(estimateSec(fullBlocks, roles, false, low) * factor)
+  const fullEstimateSec = Math.round(SESSION_OVERHEAD + estimateSec(fullBlocks, roles, false, low) * factor)
   const budgetSec = budgetMin === null ? Infinity : budgetMin * 60
 
   const sets = exercises.map((exercise) => exercise.sets)
   let groups: number[][] = []
   let shortRest = false
   const blocks = () => (groups.length ? groupedBlocks(sets, groups) : straightBlocks(sets))
-  const estimate = () => Math.round(estimateSec(blocks(), roles, shortRest, low) * factor)
+  const estimate = () => Math.round(SESSION_OVERHEAD + estimateSec(blocks(), roles, shortRest, low) * factor)
   const fits = () => estimate() <= budgetSec
   const result = (mode: CompressionResult['mode']): CompressionResult => ({
     mode, fits: fits(), blocks: blocks(), sets: [...sets], shortRest, estimateSec: estimate(), fullEstimateSec,

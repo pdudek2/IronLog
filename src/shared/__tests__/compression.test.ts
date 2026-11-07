@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { exercises as catalogue } from '../../../data/exercises'
-import { calibration, compressDay, exerciseRoles, groupRestSec, type CompressionResult, type DayExercise } from '../compression'
+import { calibration, compressDay, exerciseRoles, groupRestSec, workoutSeconds, type CompressionResult, type DayExercise } from '../compression'
 import { isShortened } from '../compressionRecord'
 
 const day = (...items: [string, number][]): DayExercise[] => items.map(([id, sets]) => {
@@ -32,97 +32,103 @@ function invariants(result: CompressionResult, exercises: DayExercise[], budgetM
   }
 }
 
-describe('compressDay on the Upper day', () => {
+describe('compressDay on the Upper day (cold-start pace)', () => {
   it('estimates the full day and leaves it alone when it fits', () => {
     const result = compressDay({ exercises: upper(), budgetMin: null })
     expect(result).toMatchObject({ mode: 'full', fits: true, shortRest: false })
-    expect(min(result)).toBe(47.7)
-    expect(min(compressDay({ exercises: upper(), budgetMin: 50 }))).toBe(47.7)
+    expect(min(result)).toBe(60.7)
+    expect(min(compressDay({ exercises: upper(), budgetMin: 62 }))).toBe(60.7)
   })
 
-  it('keeps all 19 sets at 45 min with the isolation circuit', () => {
+  it('keeps all 19 sets at 55 min with the isolation circuit', () => {
     const exercises = upper()
-    const result = compressDay({ exercises, budgetMin: 45 })
+    const result = compressDay({ exercises, budgetMin: 55 })
     expect(result).toMatchObject({ mode: 'compressed', fits: true, shortRest: false })
     expect(ids(result, exercises)).toEqual(['bench-press×4', 'lat-pulldown×3', 'seated-cable-row×3', 'db-lateral-raise×3 + db-curl×3 + tricep-pushdown×3'])
     expect(total(result)).toBe(19)
-    expect(min(result)).toBe(41.7)
-    invariants(result, exercises, 45)
+    expect(min(result)).toBe(53.5)
+    invariants(result, exercises, 55)
   })
 
-  it('drops one pull and a circuit round at 30 min, and the other pull the next time', () => {
+  it('drops one pull at 45 min, and the other pull the next time', () => {
     const exercises = upper()
-    const first = compressDay({ exercises, budgetMin: 30 })
-    expect(ids(first, exercises)).toEqual(['bench-press×4', 'lat-pulldown×3', 'db-lateral-raise×2 + db-curl×2 + tricep-pushdown×2'])
-    expect(min(first)).toBe(30)
-    const next = compressDay({ exercises, budgetMin: 30, protectedKeys: new Set(['global:seated-cable-row']) })
-    expect(ids(next, exercises)).toEqual(['bench-press×4', 'seated-cable-row×3', 'db-lateral-raise×2 + db-curl×2 + tricep-pushdown×2'])
-    invariants(first, exercises, 30)
+    const first = compressDay({ exercises, budgetMin: 45 })
+    expect(first).toMatchObject({ shortRest: true })
+    expect(ids(first, exercises)).toEqual(['bench-press×4', 'lat-pulldown×3', 'db-lateral-raise×3 + db-curl×3 + tricep-pushdown×3'])
+    expect(min(first)).toBe(43.9)
+    const next = compressDay({ exercises, budgetMin: 45, protectedKeys: new Set(['global:seated-cable-row']) })
+    expect(ids(next, exercises)).toEqual(['bench-press×4', 'seated-cable-row×3', 'db-lateral-raise×3 + db-curl×3 + tricep-pushdown×3'])
+    invariants(first, exercises, 45)
   })
 
-  it('cuts the main lift to 2 only at 20 min, keeping a pull and two circuit rounds', () => {
+  it('cuts accessories to 2, then the main lift to 2, then accessories to 1', () => {
     const exercises = upper()
-    const result = compressDay({ exercises, budgetMin: 20 })
-    expect(ids(result, exercises)).toEqual(['bench-press×2', 'lat-pulldown×2', 'db-lateral-raise×2 + db-curl×2 + tricep-pushdown×2'])
-    expect(min(result)).toBe(20)
-    invariants(result, exercises, 20)
+    const at35 = compressDay({ exercises, budgetMin: 35 })
+    expect(ids(at35, exercises)).toEqual(['bench-press×3', 'lat-pulldown×2', 'db-lateral-raise×2 + db-curl×2 + tricep-pushdown×2'])
+    const at30 = compressDay({ exercises, budgetMin: 30 })
+    expect(ids(at30, exercises)).toEqual(['bench-press×2', 'lat-pulldown×2', 'db-lateral-raise×2 + db-curl×2 + tricep-pushdown×2'])
+    expect(min(at30)).toBe(27.5)
+    const at20 = compressDay({ exercises, budgetMin: 20 })
+    expect(ids(at20, exercises)).toEqual(['bench-press×2', 'lat-pulldown×1', 'db-lateral-raise×1 + db-curl×1 + tricep-pushdown×1'])
+    expect(min(at20)).toBe(19.9)
+    for (const [result, budget] of [[at35, 35], [at30, 30], [at20, 20]] as const) invariants(result, exercises, budget)
   })
 
   it('falls back to the maintenance pair, and says when even that does not fit', () => {
     const exercises = upper()
+    const fifteen = compressDay({ exercises, budgetMin: 15 })
+    expect(fifteen).toMatchObject({ mode: 'maintenance', fits: true })
+    expect(ids(fifteen, exercises)).toEqual(['bench-press×2 + lat-pulldown×2'])
+    expect(min(fifteen)).toBe(14.7)
+    expect(ids(compressDay({ exercises, budgetMin: 19.5 }), exercises)).toEqual(['bench-press×2 + lat-pulldown×2', 'db-lateral-raise×1 + db-curl×1 + tricep-pushdown×1'])
     const twelve = compressDay({ exercises, budgetMin: 12 })
-    expect(twelve).toMatchObject({ mode: 'maintenance', fits: true })
-    expect(ids(twelve, exercises)).toEqual(['bench-press×2 + lat-pulldown×2'])
-    expect(min(twelve)).toBe(9.3)
-    expect(ids(compressDay({ exercises, budgetMin: 13 }), exercises)).toEqual(['bench-press×2 + lat-pulldown×2', 'db-lateral-raise×1 + db-curl×1 + tricep-pushdown×1'])
-    const eight = compressDay({ exercises, budgetMin: 8 })
-    expect(eight).toMatchObject({ mode: 'maintenance', fits: false })
-    expect(min(eight)).toBe(9.3)
+    expect(twelve).toMatchObject({ mode: 'maintenance', fits: false })
+    expect(min(twelve)).toBe(14.7)
+    invariants(fifteen, exercises, 15)
     invariants(twelve, exercises, 12)
-    invariants(eight, exercises, 8)
   })
 
-  it('without supersets keeps every set at 45 min through shorter rests and cuts more at 30', () => {
+  it('without supersets keeps every set at 58 min through shorter rests and cuts more at 30', () => {
     const exercises = upper()
-    const at45 = compressDay({ exercises, budgetMin: 45, straight: true })
-    expect(at45).toMatchObject({ mode: 'straight', shortRest: true })
-    expect([total(at45), min(at45)]).toEqual([19, 44.7])
+    const at58 = compressDay({ exercises, budgetMin: 58, straight: true })
+    expect(at58).toMatchObject({ mode: 'straight', shortRest: true })
+    expect([total(at58), min(at58)]).toEqual([19, 57.1])
     const at30 = compressDay({ exercises, budgetMin: 30, straight: true })
-    expect(ids(at30, exercises)).toEqual(['bench-press×4', 'lat-pulldown×2', 'db-lateral-raise×2', 'db-curl×2', 'tricep-pushdown×2'])
-    expect(total(at30)).toBe(12)
-    expect(total(compressDay({ exercises, budgetMin: 30 }))).toBe(13)
-    expect(ids(compressDay({ exercises, budgetMin: 12, straight: true }), exercises)).toEqual(['bench-press×2', 'lat-pulldown×2'])
+    expect(ids(at30, exercises)).toEqual(['bench-press×2', 'lat-pulldown×2', 'db-lateral-raise×2', 'db-curl×2', 'tricep-pushdown×1'])
+    expect(total(at30)).toBe(9)
+    expect(total(compressDay({ exercises, budgetMin: 30 }))).toBe(10)
+    expect(ids(compressDay({ exercises, budgetMin: 15, straight: true }), exercises)).toEqual(['bench-press×2', 'lat-pulldown×2'])
   })
 
   it('keeps 90 s rests on a low-readiness day and the main lift at 2 sets or more', () => {
     const exercises = upper().map((exercise, index) => ({ ...exercise, sets: index === 0 ? 3 : 2 }))
     expect(compressDay({ exercises, budgetMin: 45, lowReadiness: true })).toMatchObject({ mode: 'full', fits: true })
-    expect(min(compressDay({ exercises, budgetMin: null, lowReadiness: true }))).toBe(32.2)
+    expect(min(compressDay({ exercises, budgetMin: null, lowReadiness: true }))).toBe(42.1)
     const at20 = compressDay({ exercises, budgetMin: 20, lowReadiness: true })
     expect(at20.shortRest).toBe(false)
     invariants(at20, exercises, 20)
   })
 
-  it('scales the estimate by the calibration factor', () => {
-    expect(min(compressDay({ exercises: upper(), budgetMin: null, factor: 1.36 }))).toBe(64.8)
-    expect(compressDay({ exercises: upper(), budgetMin: 45, factor: 1.36 }).sets.reduce((a, b) => a + b, 0)).toBeLessThan(19)
+  it('adds the session overhead once and scales the model by the pace', () => {
+    expect(min(compressDay({ exercises: upper(), budgetMin: null, factor: 1 }))).toBe(51.2)
+    expect(min(compressDay({ exercises: upper(), budgetMin: null, factor: 1.36 }))).toBe(68.3)
   })
 })
 
 describe('compressDay on other days', () => {
-  it('Lower has no overlapping accessories, so 30 min trims accessories to 2, then the main lift', () => {
+  it('Lower has no overlapping accessories, so 40 min trims accessories to 2, then the main lift', () => {
     const exercises = lower()
-    const result = compressDay({ exercises, budgetMin: 30 })
+    const result = compressDay({ exercises, budgetMin: 40 })
     expect(ids(result, exercises)).toEqual(['squat×3', 'romanian-dl×2', 'leg-press×2', 'leg-curl×2 + leg-extension×2 + calf-raise×2'])
-    expect(min(result)).toBe(28)
-    invariants(result, exercises, 30)
+    expect(min(result)).toBe(37.1)
+    invariants(result, exercises, 40)
   })
 
   it('pairs non-competing compounds on a full-body day and keeps the main lift straight', () => {
     const exercises = day(['squat', 3], ['bench-press', 3], ['barbell-row', 3], ['ohp', 3], ['db-curl', 3])
-    const result = compressDay({ exercises, budgetMin: 30 })
-    expect(ids(result, exercises).slice(0, 3)).toEqual(['squat×3', 'bench-press×3 + barbell-row×3', 'ohp×3 + db-curl×3'])
-    invariants(result, exercises, 30)
+    const result = compressDay({ exercises, budgetMin: 40 })
+    expect(ids(result, exercises)).toEqual(['squat×3', 'bench-press×3 + barbell-row×3', 'ohp×3 + db-curl×3'])
+    invariants(result, exercises, 40)
   })
 
   it('handles machines only, two exercises and very short budgets', () => {
@@ -155,11 +161,22 @@ describe('compressDay on other days', () => {
 })
 
 describe('calibration', () => {
-  it('takes the clamped median of up to five plan-day workouts and needs two', () => {
-    expect(calibration([{ realSec: 3900, estimateSec: 2860 }])).toEqual({ factor: 1, samples: 1 })
-    expect(calibration([3900, 3600, 4200].map((realSec) => ({ realSec, estimateSec: 2860 }))).factor).toBeCloseTo(1.364, 3)
-    expect(calibration([{ realSec: 9000, estimateSec: 2860 }, { realSec: 8000, estimateSec: 2860 }])).toEqual({ factor: 1.6, samples: 2 })
-    expect(calibration([{ realSec: 12_000, estimateSec: 2860 }, { realSec: 3000, estimateSec: 2860 }]).samples).toBe(1)
+  const samples = (...realSec: number[]) => realSec.map((sec) => ({ realSec: sec, estimateSec: 2860 }))
+
+  it('takes the clamped median pace of up to five workouts of the plan day, net of the overhead', () => {
+    expect(calibration(samples(3900, 3600, 4200), []).factor).toBeCloseTo((3900 - 210) / 2860, 3)
+    expect(calibration(samples(9000, 8000), [])).toEqual({ factor: 1.6, samples: 2, source: 'day' })
+    expect(calibration(samples(12_000, 3000, 3000), []).samples).toBe(2)
+  })
+
+  it('falls back to all the user\'s days, then to the cold-start pace', () => {
+    expect(calibration(samples(3900), samples(3400, 3600))).toMatchObject({ source: 'user', samples: 2 })
+    expect(calibration(samples(3900), samples(3400))).toEqual({ factor: 1.2, samples: 0, source: 'none' })
+  })
+
+  it('measures a workout to its latest logged set', () => {
+    expect(workoutSeconds(1000, [{ completedAt: 5000 }, {}, { completedAt: 3000 }])).toBe(4000)
+    expect(workoutSeconds(1000, [{}])).toBeNull()
   })
 })
 

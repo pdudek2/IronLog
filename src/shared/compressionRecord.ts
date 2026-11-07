@@ -18,6 +18,7 @@ export interface CompressionRecord {
   fullEstimateMin: number
   factor: number
   samples: number
+  calibration: 'day' | 'user' | 'none'
   readiness: 'low' | 'mid' | 'high' | null
   exercises: CompressionEntry[]
 }

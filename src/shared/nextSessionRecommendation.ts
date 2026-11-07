@@ -111,6 +111,11 @@ function catalogueMeta(exerciseId: string, exerciseSource: ExerciseSource, userE
   return { equipment: entry?.equipment, category: entry?.category, muscles: entry?.muscles ?? [] }
 }
 
+// Roles of a session's exercises, for the rest timer; user exercises without metadata count as unknown compounds.
+export function sessionRoles(exercises: { exerciseId: string; exerciseSource: ExerciseSource }[], userExercises?: ReadonlyMap<string, ExerciseMeta>) {
+  return exerciseRoles(exercises.map((exercise) => catalogueMeta(exercise.exerciseId, exercise.exerciseSource, userExercises)))
+}
+
 export function buildNextSessionRecommendation(
   template: RecommendationTemplate,
   dayIndex: number,

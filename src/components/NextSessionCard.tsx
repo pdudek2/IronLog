@@ -85,7 +85,7 @@ export default function NextSessionCard({
   function handleStart() {
     if (launching) return
     closePopover()
-    onStart({ items: recommendation.launch })
+    onStart({ items: recommendation.launch, ...(recommendation.record ? { compression: recommendation.record } : {}) })
   }
 
   function handleEdit() {

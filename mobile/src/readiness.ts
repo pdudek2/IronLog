@@ -20,9 +20,10 @@ export function parseReadiness(uid: string, date: string, raw: unknown): Readine
 
 // Saved native sets are canonical kg. Keep source identity when adapting the read model.
 export function recommendationHistory(workouts: SavedWorkout[]): RecommendationWorkout[] {
-  return workouts.map(workout => ({ finishedAt: workout.finishedAt,
-    exercises: workout.exercises.map(exercise => ({ exerciseId: exercise.exerciseId,
-      exerciseSource: exercise.exerciseSource, sets: exercise.sets.map(set => ({ weight: set.weight, reps: set.reps })) })) }))
+  return workouts.map(workout => ({ finishedAt: workout.finishedAt, startedAt: workout.startedAt, templateId: workout.templateId ?? null,
+    planDayId: workout.planDayId ?? null, compression: workout.compression ?? null,
+    exercises: workout.exercises.map(exercise => ({ exerciseId: exercise.exerciseId, exerciseSource: exercise.exerciseSource,
+      ...(exercise.group ? { group: exercise.group } : {}), sets: exercise.sets.map(set => ({ ...set })) })) }))
 }
 
 function sameEntry(left: ReadinessEntry | null, right: ReadinessEntry) {

@@ -148,7 +148,7 @@ export default function DashboardScreen() {
   const startRecommended = () => {
     readiness?.controller.refreshDay()
     if (!recommendation || !chosen || !selection?.target || readinessEntry?.date !== readiness?.controller.state.date) return
-    void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template, launch: { items: recommendation.launch } })
+    void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template, launch: { items: recommendation.launch, ...(recommendation.record ? { compression: recommendation.record } : {}) } })
   }
 
   useEffect(() => { setNow(new Date()) }, [readiness?.state.date])

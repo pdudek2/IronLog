@@ -24,6 +24,7 @@ export async function readProgressionSessions(
     const sets: unknown[] = Array.isArray(data.sets) ? data.sets : []
     return {
       finishedAt: typeof data.finishedAt === 'number' ? data.finishedAt : 0,
+      shortened: data.shortened === true,
       sets: sets.flatMap((set) => {
         if (!set || typeof set !== 'object') return []
         const { weight, reps } = set as { weight?: unknown; reps?: unknown }

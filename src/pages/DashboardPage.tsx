@@ -5,6 +5,12 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
 import NextSessionCard from '../components/NextSessionCard'
+import { TodayExercises, TrainTime } from '../components/TrainToday'
+import { buildNextSessionRecommendation, type TodayOptions } from '../shared/nextSessionRecommendation'
+import type { CompressionProposal } from '../shared/compressionRecord'
+import { planDayId as planDayIdOf } from '../shared/planDay'
+import { useUserExercises } from '../hooks/useUserExercises'
+import { recordPlanSkip } from '../lib/planSkipService'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
 import WorkoutPickerDialog, { type WorkoutSelectionKey } from '../components/WorkoutPickerDialog'
 import { ActionFeedback } from '../components/ActionFeedback'
@@ -165,6 +171,8 @@ function TrainExercises({ uid, template, dayIndex, units, onOpen }: {
   )
 }
 
+interface TodayChoice { key: string | null; budgetMin: number | null; straight: boolean; proposals: CompressionProposal[] }
+
 export default function DashboardPage() {
   const { user } = useAuthStore()
   usePassiveActiveSessionSync(user?.uid)
@@ -201,6 +209,9 @@ export default function DashboardPage() {
     unavailable: false,
   })
   const [workoutPickerOpen, setWorkoutPickerOpen] = useState(false)
+  const [todayChoice, setTodayChoice] = useState<TodayChoice>({ key: null, budgetMin: null, straight: false, proposals: [] })
+  const [skipping, setSkipping] = useState(false)
+  const { exercises: userExerciseList } = useUserExercises(user?.uid ?? null)
   const [workoutPicked, setWorkoutPicked] = useState(false)
   const workoutPickedRef = useRef(false)
   const {
@@ -475,6 +486,40 @@ export default function DashboardPage() {
     && readinessState.data !== null
   // On phone the saved check-in card sits above and carries the adjusted Start.
   const plainStartIsSecondary = showTodayRecommendation && !isDesktop
+  // The time chosen today belongs to the day on screen; another day starts from Usual.
+  const choice: TodayChoice = todayChoice.key === quickTemplateRequestKey ? todayChoice : { key: quickTemplateRequestKey, budgetMin: null, straight: false, proposals: [] }
+  const userExerciseMeta = new Map(userExerciseList.map((exercise) => [`user:${exercise.id}`, exercise]))
+  const todayOptions = (budgetMin: number | null, straight: boolean): TodayOptions => ({
+    budgetMin, straight, userExercises: userExerciseMeta,
+    templateId: quickTemplate?.id ?? null, planDayId: quickTemplateDay ? planDayIdOf(quickTemplateDay, quickTemplateDayIndex) : null,
+  })
+  const readinessEntry = readinessState.status === 'success' ? readinessState.data : null
+  const planToday = (budgetMin: number | null, straight: boolean) => quickTemplate && quickTemplateDay?.exercises.length
+    ? buildNextSessionRecommendation(quickTemplate, quickTemplateDayIndex, readinessEntry, workouts, Date.now(), units, todayOptions(budgetMin, straight))
+    : null
+  const todayPlan = hasActiveSession ? null : planToday(choice.budgetMin, choice.straight)
+  // The plain Start launches today's version only once the user touched the time row.
+  const timeLaunch: TemplateLaunch | undefined = todayPlan && (choice.budgetMin !== null || choice.proposals.length > 0)
+    ? { items: todayPlan.launch, ...(todayPlan.record ? { compression: todayPlan.record } : {}), ...(choice.proposals.length ? { proposals: choice.proposals } : {}) }
+    : undefined
+  function chooseTime(budgetMin: number | null, straight: boolean) {
+    const proposal = planToday(budgetMin, straight)
+    const mode: CompressionProposal['mode'] = budgetMin === null ? 'usual' : proposal?.record?.mode ?? 'usual'
+    setTodayChoice({ key: quickTemplateRequestKey, budgetMin, straight, proposals: [...choice.proposals, { budgetMin, mode }].slice(-12) })
+  }
+  async function skipToday() {
+    if (!user || !quickTemplate || !quickTemplateDay || skipping) return
+    setSkipping(true)
+    try {
+      await recordPlanSkip(user.uid, quickTemplate.id, planDayIdOf(quickTemplateDay, quickTemplateDayIndex))
+      toast.success(`Skipped today. ${quickTemplateDay.name} stays next.`)
+      setTodayChoice({ key: quickTemplateRequestKey, budgetMin: null, straight: false, proposals: [] })
+    } catch {
+      toast.error('Could not skip today. Try again.')
+    } finally {
+      setSkipping(false)
+    }
+  }
   function handleRetryTemplates() {
     if (!user) return
     requestedTemplatesUserRef.current = user.uid
@@ -605,6 +650,8 @@ export default function DashboardPage() {
                     describedBy={quickTemplateLaunchOperation?.status === 'error'
                       ? quickTemplateLaunchErrorId
                       : undefined}
+                    options={todayOptions(choice.budgetMin, choice.straight)}
+                    proposals={choice.proposals}
                     onStart={(launch) => {
                       launchSelectedWorkout(launch)
                     }}
@@ -684,6 +731,13 @@ export default function DashboardPage() {
                   </button>
                 ))}
               </div>
+            ) : !hasActiveSession && user && quickTemplate && quickTemplateHasExercises && todayPlan && choice.budgetMin !== null ? (
+              <TodayExercises
+                today={todayPlan}
+                exercises={quickTemplateDay?.exercises ?? []}
+                units={units}
+                onOpen={(exercise) => navigate(`/exercises/${exercise.exerciseSource}/${exercise.exerciseId}`)}
+              />
             ) : !hasActiveSession && user && quickTemplate && quickTemplateHasExercises ? (
               <TrainExercises
                 key={quickTemplateRequestKey}
@@ -728,6 +782,18 @@ export default function DashboardPage() {
               />
             )}
 
+            {todayPlan && !weekClosed && (
+              <TrainTime
+                today={todayPlan}
+                budgetMin={choice.budgetMin}
+                straight={choice.straight}
+                onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)}
+                onStraight={(straight) => chooseTime(choice.budgetMin, straight)}
+                onSkip={() => { void skipToday() }}
+                skipping={skipping}
+              />
+            )}
+
             {!isDesktop && readiness}
 
             {active && (
@@ -748,7 +814,7 @@ export default function DashboardPage() {
                 {plansLoading ? <Bone height="3.25rem" style={{ borderRadius: '0.9375rem' }} /> : quickTemplateDay && quickTemplateHasExercises && quickTemplateRequestKey ? (
                   <button
                     type="button"
-                    onClick={() => launchSelectedWorkout()}
+                    onClick={() => launchSelectedWorkout(plainStartIsSecondary ? undefined : timeLaunch)}
                     disabled={launchingTemplateId !== null}
                     aria-busy={quickTemplateLaunchOperation?.status === 'pending' ? 'true' : undefined}
                     aria-describedby={quickTemplateLaunchOperation?.status === 'error'

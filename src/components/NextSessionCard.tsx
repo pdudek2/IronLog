@@ -1,6 +1,8 @@
 import { useId, useMemo, useRef } from 'react'
 import { ChevronRight, X } from 'lucide-react'
 import { buildNextSessionRecommendation } from '../lib/nextSessionRecommendation'
+import type { TodayOptions } from '../shared/nextSessionRecommendation'
+import type { CompressionProposal } from '../shared/compressionRecord'
 import type { ReadinessEntry } from '../lib/readinessService'
 import type {
   TemplateLaunch,
@@ -19,6 +21,9 @@ interface NextSessionCardProps {
   units: Units
   launching: boolean
   describedBy?: string
+  // Today's time choice from the Train screen.
+  options?: TodayOptions
+  proposals?: CompressionProposal[]
   onStart: (launch: TemplateLaunch) => void
   onEdit: () => void
 }
@@ -56,6 +61,8 @@ export default function NextSessionCard({
   units,
   launching,
   describedBy,
+  options,
+  proposals,
   onStart,
   onEdit,
 }: NextSessionCardProps) {
@@ -70,7 +77,8 @@ export default function NextSessionCard({
     workouts,
     undefined,
     units,
-  ), [dayIndex, readiness, template, workouts, units])
+    options,
+  ), [dayIndex, readiness, template, workouts, units, options])
 
   function closePopover() {
     const popover = popoverRef.current
@@ -85,7 +93,7 @@ export default function NextSessionCard({
   function handleStart() {
     if (launching) return
     closePopover()
-    onStart({ items: recommendation.launch, ...(recommendation.record ? { compression: recommendation.record } : {}) })
+    onStart({ items: recommendation.launch, ...(recommendation.record ? { compression: recommendation.record } : {}), ...(proposals?.length ? { proposals } : {}) })
   }
 
   function handleEdit() {

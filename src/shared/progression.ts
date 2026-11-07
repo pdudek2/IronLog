@@ -1,9 +1,11 @@
 import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
 import { planDayIndex } from './planDay'
+import { workingSets as workingSetsOf } from './compressionRecord'
 
 // Rules and their sources: PRODUCT.md, „Specyfikacja punktu 1 — silnik progresji”.
 export interface ProgressionSet { weight: number; reps: number }
-export interface ProgressionSession { finishedAt: number; sets: ProgressionSet[] }
+// shortened: the start cut this exercise's sets and fewer working sets than planned were done (Specyfikacja punktu 3).
+export interface ProgressionSession { finishedAt: number; sets: ProgressionSet[]; shortened?: boolean }
 
 export interface ProgressionInput {
   sessions: ProgressionSession[]
@@ -48,6 +50,7 @@ function cleanSessions(sessions: ProgressionSession[]): ProgressionSession[] {
   return sessions
     .map((session) => ({
       finishedAt: session.finishedAt,
+      shortened: session.shortened === true,
       sets: session.sets.filter((set) => Number.isFinite(set.weight) && set.weight >= 0 && Number.isInteger(set.reps) && set.reps > 0),
     }))
     .filter((session) => Number.isFinite(session.finishedAt) && session.finishedAt > 0 && session.sets.length > 0)
@@ -59,12 +62,7 @@ function topWeight(session: ProgressionSession): number {
   return Math.max(...session.sets.map((set) => set.weight))
 }
 
-// Working sets share the session's top weight; lighter sets under 80% of it are warm-ups.
-function workingSets(session: ProgressionSession): ProgressionSet[] | 'ambiguous' {
-  const top = topWeight(session)
-  if (session.sets.some((set) => set.weight < top - SAME && set.weight >= top * 0.8)) return 'ambiguous'
-  return session.sets.filter((set) => set.weight >= top - SAME)
-}
+const workingSets = (session: ProgressionSession) => workingSetsOf(session.sets)
 
 function mostCommonReps(sets: ProgressionSet[]): number {
   const counts = new Map<number, number>()
@@ -120,7 +118,8 @@ export function buildProgression(input: ProgressionInput): Progression | null {
   // one was at most 90% of it; a smaller drop is the lifter's own correction.
   const recent = sessions.filter((session) => input.now - session.finishedAt <= 14 * DAY_MS)
   const heaviest = recent.reduce((best, session) => (topWeight(session) > topWeight(best) ? session : best), latest)
-  const base = lastWeight <= topWeight(heaviest) * 0.9 ? heaviest : latest
+  // A shortened latest session holds its own weight: no raise, no return to an older heavier one.
+  const base = !latest.shortened && lastWeight <= topWeight(heaviest) * 0.9 ? heaviest : latest
   const working = workingSets(base)
   if (working === 'ambiguous') return null
   const baseWeight = topWeight(base)
@@ -138,7 +137,7 @@ export function buildProgression(input: ProgressionInput): Progression | null {
   // A step over 10% of the weight (light dumbbells) first asks for two reps over the plan.
   const top = ceiling + (step > baseWeight * 0.1 && ceiling > 5 ? 2 : 0)
   const reachedTop = working.every((set) => set.reps >= top)
-  if (reachedTop && enoughSets && !input.lowReadiness) {
+  if (reachedTop && enoughSets && !input.lowReadiness && !latest.shortened) {
     return result(finish(baseWeight + step, input.units), floor, 'weight')
   }
   const reps = Math.min(top, Math.max(floor, weakest + 1))

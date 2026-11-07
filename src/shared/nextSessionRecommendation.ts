@@ -1,6 +1,7 @@
 import { computeReadinessScore, type ReadinessEntry } from './readiness'
 import { exercises as exerciseCatalogue } from '../../data/exercises'
 import { buildProgression, type ProgressionSession } from './progression'
+import { exerciseRoles } from './compression'
 import type { WeightUnits } from './weightUnits'
 
 type ExerciseSource = 'global' | 'user'
@@ -58,10 +59,10 @@ function exerciseProgressionSessions(
   })
 }
 
-function catalogueMeta(exerciseId: string, exerciseSource: ExerciseSource): { equipment?: string; category?: string } {
+function catalogueMeta(exerciseId: string, exerciseSource: ExerciseSource): { equipment?: string; category?: string; muscles: readonly string[] } {
   // shortcut: user exercises fall back to the history step on Train; pass their metadata here if that proves wrong.
   const entry = exerciseSource === 'global' ? exerciseCatalogue.find((exercise) => exercise.id === exerciseId) : undefined
-  return { equipment: entry?.equipment, category: entry?.category }
+  return { equipment: entry?.equipment, category: entry?.category, muscles: entry?.muscles ?? [] }
 }
 
 export function buildNextSessionRecommendation(
@@ -76,14 +77,17 @@ export function buildNextSessionRecommendation(
   const score = computeReadinessScore(readiness)
   const exercises = day?.exercises ?? []
   const overrides = new Map<string, TemplateExerciseOverride>()
+  const roles = exerciseRoles(exercises.map((exercise) => catalogueMeta(exercise.exerciseId, exercise.exerciseSource)))
 
   const recommendedExercises = exercises.map((exercise, index): NextSessionExercise => {
     const key = templateExerciseKey(exercise.exerciseId, exercise.exerciseSource)
     const sessions = exerciseProgressionSessions(workouts, exercise.exerciseId, exercise.exerciseSource)
+    const { equipment, category } = catalogueMeta(exercise.exerciseId, exercise.exerciseSource)
     const progression = buildProgression({
       sessions,
       target: { reps: exercise.targetReps, sets: exercise.sets },
-      ...catalogueMeta(exercise.exerciseId, exercise.exerciseSource),
+      equipment,
+      category,
       units,
       lowReadiness: score.tone === 'low',
       now,
@@ -94,11 +98,9 @@ export function buildNextSessionRecommendation(
     const weight = progression ? progression.weight ?? 0 : lastWeight > 0 ? lastWeight : exercise.targetWeight
     const weightDelta = progression?.change === 'weight' ? progression.delta : 0
 
-    // ponytail: template exercises have no compound/accessory role; mid readiness trims
-    // only the final two slots once a day is large enough to make that heuristic safe.
-    const trimSets = score.tone === 'low'
-      || (score.tone === 'mid' && exercises.length >= 4 && index >= exercises.length - 2)
-    const sets = trimSets ? Math.max(1, exercise.sets - 1) : exercise.sets
+    // Low readiness: one set less, the main lift never below 2 (Specyfikacja punktu 3); mid cuts nothing.
+    const floor = roles[index] === 'main' ? Math.min(2, exercise.sets) : 1
+    const sets = score.tone === 'low' ? Math.max(floor, exercise.sets - 1) : exercise.sets
     const setsDelta = sets - exercise.sets
     const reps = progression?.reps ?? exercise.targetReps
     overrides.set(key, { sets, weight, reps })

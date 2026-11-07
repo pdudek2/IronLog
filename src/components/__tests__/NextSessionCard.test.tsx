@@ -65,7 +65,7 @@ describe('NextSessionCard', () => {
     const summary = screen.getByRole('region', { name: 'Today’s workout' })
     expect(within(summary).getByRole('heading', { name: 'Upper A' })).toBeInTheDocument()
     expect(within(summary).getByLabelText(/Readiness moderate, 50 out of 100/))
-      .toHaveTextContent('2 fewer sets')
+      .toHaveTextContent('Plan unchanged')
     expect(summary).not.toHaveTextContent('50/100')
     expect(within(summary).getByRole('button', { name: 'View plan exercises' }))
       .toHaveTextContent('View exercises')
@@ -84,8 +84,8 @@ describe('NextSessionCard', () => {
     expect([...onStart.mock.calls[0][0]]).toEqual([
       ['global:bench', { sets: 4, weight: 72.5, reps: 8 }],
       ['global:row', { sets: 4, weight: 65, reps: 8 }],
-      ['global:ohp', { sets: 2, weight: 40, reps: 10 }],
-      ['global:pulldown', { sets: 2, weight: 50, reps: 12 }],
+      ['global:ohp', { sets: 3, weight: 40, reps: 10 }],
+      ['global:pulldown', { sets: 3, weight: 50, reps: 12 }],
     ])
 
     fireEvent.click(edit)

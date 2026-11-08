@@ -138,7 +138,7 @@ export function buildNextSessionRecommendation(
     const { equipment, category } = metas[index]!
     const progression = buildProgression({
       sessions,
-      target: { reps: exercise.targetReps, sets: exercise.sets },
+      target: { reps: exercise.targetReps, sets: exercise.sets, weight: exercise.targetWeight },
       equipment,
       category,
       units,

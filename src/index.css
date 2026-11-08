@@ -3241,7 +3241,8 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   margin-top: 1rem;
 }
 
-.plans-links a {
+.plans-links a,
+.plans-links button {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -3249,6 +3250,20 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   min-height: 3rem;
   color: var(--text);
   font-size: 0.9375rem;
+}
+
+.plans-links button {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  text-align: left;
+}
+
+.plans-links button:disabled {
+  color: var(--muted);
 }
 
 .plans-links svg {
@@ -3425,6 +3440,10 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   font-size: 0.95rem;
 }
 
+.planner-starter-use {
+  margin-top: 1rem;
+}
+
 .planner-empty-example ol {
   display: grid;
   gap: 0;
@@ -3448,11 +3467,9 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
 }
 
 .planner-empty-example li span {
-  overflow: hidden;
   color: var(--muted);
   font-size: 0.76rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.45;
 }
 
 .planner-template-row {
@@ -3846,6 +3863,80 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   color: var(--accent-text);
 }
 
+.template-exercise-detail {
+  margin: 0.1rem 0 0;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.template-exercise-detail strong {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.template-exercise-resolve {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 1rem;
+  margin-top: 0.3rem;
+}
+
+.template-exercise-create {
+  min-height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.template-exercise-create:hover,
+.template-exercise-create:focus-visible {
+  color: var(--text-strong);
+}
+
+.template-paste-skipped {
+  padding: 0 0 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.template-paste-skipped p {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.template-paste-skipped ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.template-paste-skipped li {
+  display: grid;
+  gap: 0.05rem;
+  font-size: 0.8rem;
+}
+
+.template-paste-skipped li span {
+  overflow-wrap: anywhere;
+  color: var(--text);
+}
+
+.template-paste-skipped li small {
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
 .template-exercise-inputs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -3971,6 +4062,12 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
 
 .template-editor-bottom-actions .planner-primary-action {
   width: 100%;
+}
+
+.template-editor-save-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
 }
 
 .template-editor-bottom-actions {
@@ -4116,7 +4213,8 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
     padding-bottom: calc(7rem + env(safe-area-inset-bottom, 0px));
   }
 
-  .template-editor-desktop-save {
+  .template-editor-desktop-save,
+  .template-editor-save-hint {
     display: none;
   }
 
@@ -7982,6 +8080,56 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .train-dock-actions > [data-quiet] {
   flex: 0 1 8.5rem;
+}
+
+.train-dock-start {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.train-dock-start > :first-child {
+  grid-column: 1 / -1;
+}
+
+.train-dock-start > [data-quiet] {
+  font-size: 0.9375rem;
+}
+
+.paste-plan-help {
+  margin: 0 0 0.75rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.paste-plan-field {
+  display: block;
+  width: 100%;
+  min-height: 13rem;
+  padding: 0.85rem 1rem;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+}
+
+.paste-plan-field::placeholder {
+  color: var(--muted);
+}
+
+.paste-plan-error {
+  margin: 0.6rem 0 0;
+  color: var(--danger);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.paste-plan-continue {
+  width: 100%;
+  margin-top: 1rem;
 }
 
 .train-time-switch {

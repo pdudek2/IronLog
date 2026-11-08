@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import ExercisePicker from '../components/ExercisePicker'
 import ConfirmDialog from '../components/ConfirmDialog'
+import CreateExerciseForm from '../components/CreateExerciseForm'
 import TemplateSaveDock, { type TemplateSaveState } from '../components/TemplateSaveDock'
 import { Bone, PageSkeleton } from '../components/ui'
 import { useUnsavedChangesGuard } from '../hooks/useUnsavedChangesGuard'
@@ -28,8 +29,30 @@ import {
 import { pluralize } from '../lib/pluralize'
 import { ApiRejectedError } from '../lib/authedApi'
 import { newPlanDayId } from '../shared/planDay'
+import { createUserExercise, type UserExerciseInput } from '../lib/userExercisesService'
+import { unmatchedHint, type ImportedPlan, type ImportedRow } from '../shared/planImport'
 
-type DraftDay = TemplateDay & { _id: string }
+type DraftExercise = TemplateExercise & { _id?: string; detail?: string | null; unmatched?: ImportedRow['unmatched'] }
+type DraftDay = Omit<TemplateDay, 'exercises'> & { _id: string; exercises: DraftExercise[] }
+
+function pastedDays(plan: ImportedPlan): DraftDay[] {
+  return plan.days.map((day) => ({
+    _id: crypto.randomUUID(),
+    id: newPlanDayId(),
+    name: day.name,
+    exercises: day.rows.map((row) => ({
+      _id: crypto.randomUUID(),
+      exerciseId: row.exercise?.exerciseId ?? '',
+      exerciseSource: row.exercise?.exerciseSource ?? 'global',
+      name: row.name,
+      sets: row.sets,
+      targetReps: row.targetReps,
+      targetWeight: row.targetWeight,
+      detail: row.detail,
+      ...(row.unmatched ? { unmatched: row.unmatched } : {}),
+    })),
+  }))
+}
 
 function emptyDay(index: number): DraftDay {
   return {
@@ -52,7 +75,7 @@ function toPositiveFloat(value: string, fallback: number) {
   return Number.isFinite(parsed) ? Math.max(fallback, parsed) : fallback
 }
 
-function serializeDraftState(name: string, days: Array<Pick<TemplateDay, 'name' | 'exercises'>>) {
+function serializeDraftState(name: string, days: Array<{ name: string; exercises: DraftExercise[] }>) {
   return JSON.stringify({
     name,
     days: days.map((day) => ({
@@ -64,6 +87,7 @@ function serializeDraftState(name: string, days: Array<Pick<TemplateDay, 'name' 
         sets: exercise.sets,
         targetReps: exercise.targetReps,
         targetWeight: exercise.targetWeight,
+        unmatched: Boolean(exercise.unmatched),
       })),
     })),
   })
@@ -73,9 +97,11 @@ function defaultSerializableDays(): TemplateDay[] {
   return [{ name: 'Day 1', exercises: [] }]
 }
 
-function normalizeTemplateExercise(exercise: TemplateExercise): TemplateExercise {
+function normalizeTemplateExercise(exercise: DraftExercise): TemplateExercise {
   return {
-    ...exercise,
+    exerciseId: exercise.exerciseId,
+    exerciseSource: exercise.exerciseSource,
+    name: exercise.name,
     sets: Math.max(1, Math.trunc(exercise.sets) || 1),
     targetReps: Math.max(0, Math.trunc(exercise.targetReps) || 0),
     targetWeight: Math.max(0, Number.isFinite(exercise.targetWeight) ? exercise.targetWeight : 0),
@@ -122,6 +148,8 @@ export default function TemplateEditorPage() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const location = useLocation()
+  const [pasted] = useState(() => (!id ? (location.state as { pasted?: ImportedPlan } | null)?.pasted ?? null : null))
   const [initialDraft] = useState(() => (
     !id && searchParams.get('draft') === 'ai' ? readTemplateDraft() : null
   ))
@@ -133,17 +161,20 @@ export default function TemplateEditorPage() {
   const [template, setTemplate] = useState<WorkoutTemplate | null>(null)
   const [editBaseline, setEditBaseline] = useState<string | null>(null)
   const saveAttempt = useRef<{ payload: string; operationId: string } | null>(null)
-  const [name, setName] = useState(() => initialDraft?.name ?? '')
+  const [name, setName] = useState(() => pasted?.name ?? initialDraft?.name ?? '')
   const [days, setDays] = useState<DraftDay[]>(() => (
-    initialDraft?.days.length
+    pasted ? pastedDays(pasted) : initialDraft?.days.length
       ? initialDraft.days.map((day) => ({ ...day, _id: crypto.randomUUID() }))
       : [emptyDay(0)]
   ))
   const [selectedDayId, setSelectedDayId] = useState(() => days[0]._id)
   const [pickerDayIndex, setPickerDayIndex] = useState<number | null>(null)
+  // The pasted row being resolved through the picker or the create form.
+  const [resolving, setResolving] = useState<{ dayIndex: number; rowId: string; mode: 'choose' | 'create' } | null>(null)
   const {
     state: userExercisesState,
     retry: retryUserExercises,
+    updateExercises,
   } = useUserExercises(user?.uid ?? null)
   const [savedSnapshot, setSavedSnapshot] = useState(() => serializeDraftState(
     '',
@@ -211,8 +242,11 @@ export default function TemplateEditorPage() {
   const currentSnapshot = useMemo(() => serializeDraftState(name, days), [name, days])
   const hasUnsavedChanges = !loading && currentSnapshot !== savedSnapshot
   const needsName = totalExercises > 0 && name.trim().length < 2
+  const openRows = days.reduce((sum, day) => sum + day.exercises.filter((exercise) => exercise.unmatched).length, 0)
   const canSubmit = name.trim().length >= 2
     && days.some((day) => day.exercises.length > 0)
+    && openRows === 0
+  const resolvingRow = resolving ? days[resolving.dayIndex]?.exercises.find((exercise) => exercise._id === resolving.rowId) : undefined
   const saveState: TemplateSaveState = saving
     ? 'saving'
     : saveError
@@ -304,7 +338,34 @@ export default function TemplateEditorPage() {
     setPickerDayIndex(null)
   }
 
-  function updateExercise(dayIndex: number, exerciseIndex: number, updater: (exercise: TemplateExercise) => TemplateExercise) {
+  function resolveRow(dayIndex: number, rowId: string, exerciseId: string, exerciseName: string, source: ExerciseSource) {
+    if (days[dayIndex]?.exercises.some((exercise) => exercise._id !== rowId && exercise.exerciseId === exerciseId && exercise.exerciseSource === source)) {
+      toast.message('This exercise is already in this day.')
+      return false
+    }
+    setDays((prev) => prev.map((day, index) => (index !== dayIndex ? day : {
+      ...day,
+      exercises: day.exercises.map((exercise) => {
+        if (exercise._id !== rowId || !exercise.unmatched) return exercise
+        const { unmatched, ...rest } = exercise
+        return { ...rest, exerciseId, exerciseSource: source, name: exerciseName, detail: unmatched.line }
+      }),
+    })))
+    setResolving(null)
+    return true
+  }
+
+  async function createForRow(input: UserExerciseInput) {
+    if (!user || !resolving) return
+    const operationUid = user.uid
+    const target = resolving
+    const created = await createUserExercise(operationUid, input)
+    if (useAuthStore.getState().user?.uid !== operationUid) return
+    updateExercises(operationUid, (current) => [created, ...current])
+    resolveRow(target.dayIndex, target.rowId, created.id, created.name, 'user')
+  }
+
+  function updateExercise(dayIndex: number, exerciseIndex: number, updater: (exercise: DraftExercise) => DraftExercise) {
     setDays((prev) => prev.map((day, index) => {
       if (index !== dayIndex) return day
       return {
@@ -340,6 +401,11 @@ export default function TemplateEditorPage() {
       return
     }
 
+    if (openRows > 0) {
+      toast.error('Choose an exercise for every pasted line first.')
+      return
+    }
+
     setSaveError(null)
     setSaving(true)
 
@@ -371,7 +437,8 @@ export default function TemplateEditorPage() {
       setSavedSnapshot(serializeDraftState(payload.name, payload.days))
       leaveGuard.reset()
       leaveGuard.allowNextNavigation()
-      navigate('/templates')
+      // Back must not reopen a pasted plan from its router state and save it again.
+      navigate('/templates', { replace: Boolean(pasted) })
     } catch (error) {
       setSaveError(error instanceof ApiRejectedError ? error.message : 'Could not save the plan.')
       setSaving(false)
@@ -428,6 +495,17 @@ export default function TemplateEditorPage() {
               )}
             </section>
 
+            {pasted && pasted.skipped.length > 0 && (
+              <section className="template-paste-skipped" aria-label="Lines not added">
+                <p>{pasted.skipped.length} {pluralize(pasted.skipped.length, 'line was', 'lines were')} not added</p>
+                <ul>
+                  {pasted.skipped.map((item, index) => (
+                    <li key={index}><span>{item.line}</span><small>{item.reason}</small></li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
             <div className="template-day-selector">
               <div
                 className="planner-template-days"
@@ -438,6 +516,7 @@ export default function TemplateEditorPage() {
                 {days.map((day, dayIndex) => {
                 const dayDisplayName = day.name.trim() || `Day ${dayIndex + 1}`
                 const targetSets = day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)
+                const dayOpen = day.exercises.filter((exercise) => exercise.unmatched).length
                 const selected = day._id === selectedDayId
 
                 return (
@@ -456,8 +535,7 @@ export default function TemplateEditorPage() {
                   >
                     <span>{dayDisplayName}</span>
                     <small>
-                      {day.exercises.length} ex. · {targetSets}{' '}
-                      {pluralize(targetSets, 'set', 'sets')}
+                      {dayOpen > 0 ? `${dayOpen} to choose` : <>{day.exercises.length} ex. · {targetSets}{' '}{pluralize(targetSets, 'set', 'sets')}</>}
                     </small>
                   </button>
                 )
@@ -528,17 +606,25 @@ export default function TemplateEditorPage() {
                   )}
                   {selectedDay.exercises.map((exercise, exerciseIndex) => (
                     <div
-                      key={`${selectedDay._id}-${exercise.exerciseSource}-${exercise.exerciseId}`}
+                      key={exercise._id ?? `${selectedDay._id}-${exercise.exerciseSource}-${exercise.exerciseId}`}
                       className="template-exercise-row"
+                      data-unmatched={exercise.unmatched ? '' : undefined}
                     >
                       <div className="template-exercise-row-head">
                         <div className="min-w-0">
                           <div className="template-exercise-identity">
                             <p>{exercise.name}</p>
-                            {exercise.exerciseSource === 'user' && (
+                            {exercise.exerciseSource === 'user' && !exercise.unmatched && (
                               <span className="template-exercise-source">mine</span>
                             )}
                           </div>
+                          {exercise.unmatched ? (
+                            <p className="template-exercise-detail">
+                              <strong>{unmatchedHint[exercise.unmatched.reason]}</strong> {exercise.unmatched.line}
+                            </p>
+                          ) : exercise.detail ? (
+                            <p className="template-exercise-detail">{exercise.detail}</p>
+                          ) : null}
                         </div>
 
                         <button
@@ -604,6 +690,19 @@ export default function TemplateEditorPage() {
                           <span className="template-input-unit" aria-hidden="true">{units}</span>
                         </label>
                       </div>
+
+                      {exercise.unmatched && exercise._id && (
+                        <div className="template-exercise-resolve">
+                          <button type="button" className="planner-secondary-action" aria-label={`Choose exercise for ${exercise.name}`} onClick={() => setResolving({ dayIndex: selectedDayIndex, rowId: exercise._id!, mode: 'choose' })}>
+                            Choose exercise
+                          </button>
+                          {exercise.unmatched.reason !== 'duplicate' && (
+                            <button type="button" className="template-exercise-create" onClick={() => setResolving({ dayIndex: selectedDayIndex, rowId: exercise._id!, mode: 'create' })}>
+                              Create “{exercise.name}”
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
 
@@ -624,6 +723,9 @@ export default function TemplateEditorPage() {
             )}
 
             <div className="template-editor-bottom-actions">
+              {openRows > 0 && (
+                <p className="template-editor-save-hint">Choose {openRows} {pluralize(openRows, 'exercise', 'exercises')} to save</p>
+              )}
               {saveState !== 'persisted-clean' && (
                 <motion.button
                   type="submit"
@@ -648,11 +750,31 @@ export default function TemplateEditorPage() {
         <TemplateSaveDock
           state={saveState}
           canSubmit={canSubmit}
+          hint={openRows > 0 ? `Choose ${openRows} ${pluralize(openRows, 'exercise', 'exercises')} to save` : undefined}
           errorMessage={saveError ?? undefined}
           onRetry={() => { void saveTemplate() }}
           onDismissError={() => setSaveError(null)}
         />
       </form>
+
+      <ExercisePicker
+        open={resolving?.mode === 'choose' && Boolean(resolvingRow)}
+        title={resolvingRow ? `Choose for “${resolvingRow.name}”` : undefined}
+        suggestions={resolvingRow?.unmatched?.suggestions}
+        userExercisesState={userExercisesState}
+        onRetryUserExercises={retryUserExercises}
+        onClose={() => setResolving(null)}
+        onSelect={(exerciseId, exerciseName, source) => { if (resolving) resolveRow(resolving.dayIndex, resolving.rowId, exerciseId, exerciseName, source) }}
+      />
+
+      {resolving?.mode === 'create' && resolvingRow && (
+        <CreateExerciseForm
+          mode="create"
+          initialValue={{ name: resolvingRow.name, category: 'chest', equipment: 'barbell', muscles: [] }}
+          onSubmit={createForRow}
+          onClose={() => setResolving(null)}
+        />
+      )}
 
       <ExercisePicker
         open={pickerDayIndex !== null}

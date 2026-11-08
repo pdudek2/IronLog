@@ -36,6 +36,9 @@ describe('buildProgression', () => {
   it('gives nothing for a top set with back-offs, nothing without history and nothing for cardio', () => {
     expect(run([session(3, [[100, 3], [85, 8], [85, 8]])])).toBeNull()
     expect(run([])).toBeNull()
+    expect(run([], { target: { reps: 8, sets: 3, weight: 60 } })).toBeNull()
+    expect(run([], { target: null })).toBeNull()
+    expect(run([], { target: { reps: 12, sets: 2, weight: 0 }, equipment: 'bodyweight' })).toBeNull()
     expect(run([session(3, [[0, 10]])], { category: 'cardio' })).toBeNull()
   })
 
@@ -120,6 +123,15 @@ describe('trialWeight', () => {
     expect(trialWeight(trial, { weight: 65, reps: 10 })).toBe(65)
   })
 
+  it('makes the first set a test without a cap when the exercise has no history and no plan weight', () => {
+    const fresh = run([], { target: { reps: 10, sets: 3, weight: 0 }, equipment: 'dumbbell' })!
+    expect(fresh).toMatchObject({ weight: null, reps: 10, change: 'none', trial: { maxWeight: null }, step: 2 })
+    expect(progressionHintLabel(fresh, 'kg')).toBe('First set is a test')
+    expect(trialWeight(fresh, { weight: 14, reps: 10 })).toBe(14)
+    expect(trialWeight(fresh, { weight: 14, reps: 15 })).toBe(14)
+    expect(trialWeight(fresh, { weight: 15, reps: 6 })).toBe(13)
+  })
+
   it('skips low-rep plans', () => {
     const triple = run([session(40, sets3(140, 3))], { target: { reps: 3, sets: 3 } })!
     expect(trialWeight(triple, { weight: 130, reps: 5 })).toBeNull()
@@ -156,6 +168,12 @@ describe('sessionHint', () => {
     expect(sessionHint(trial, sets(['60', '8', true], ['60', '8', false]), 'kg')).toBeNull()
   })
 
+  it('proposes the weight for the rest from the first set of an exercise new to the plan', () => {
+    const fresh = run([], { target: { reps: 8, sets: 3, weight: 0 } })
+    expect(sessionHint(fresh, sets(['', '8', false], ['', '8', false]), 'kg')).toEqual({ label: 'First set is a test' })
+    expect(sessionHint(fresh, sets(['50', '12', true], ['', '8', false]), 'kg')).toEqual({ label: 'From your first set: 52.5 kg', weight: 52.5 })
+  })
+
   it('after a very long break takes the heaviest logged set as the scale, so a warm-up is not the test', () => {
     const old = run([session(120, sets3(100, 8))])!
     expect(old.weight).toBeNull()
@@ -168,6 +186,8 @@ describe('planTarget', () => {
   const day = (reps: number) => ({ exercises: [{ exerciseId: 'squat', exerciseSource: 'global', targetReps: reps, sets: 3 }] })
   it('reads the plan, abstains when days disagree and has no target outside the plan', () => {
     expect(planTarget({ days: [day(5), day(5)] }, 'squat', 'global')).toEqual({ reps: 5, sets: 3 })
+    const weighted = (weight: number) => ({ exercises: [{ ...day(5).exercises[0]!, targetWeight: weight }] })
+    expect(planTarget({ days: [weighted(0), weighted(60)] }, 'squat', 'global')).toEqual({ reps: 5, sets: 3, weight: 60 })
     expect(planTarget({ days: [day(5), day(10)] }, 'squat', 'global')).toBe('ambiguous')
     expect(planTarget({ days: [day(5)] }, 'squat', 'user')).toBeNull()
     expect(planTarget(null, 'squat', 'global')).toBeNull()

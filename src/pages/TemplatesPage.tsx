@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronDown, ChevronRight, ChevronUp, Ellipsis, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, ChevronUp, ClipboardPaste, Ellipsis, Pencil, Plus, Share2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import BottomSheet from '../components/BottomSheet'
 import ConfirmDialog from '../components/ConfirmDialog'
@@ -16,6 +16,30 @@ import {
   type WorkoutTemplate,
 } from '../lib/templateService'
 import { pluralize } from '../lib/pluralize'
+import PastePlanSheet from '../components/PastePlanSheet'
+import { useStarterPlan } from '../hooks/useStarterPlan'
+import { starterPlanInput } from '../shared/planImport'
+import { planToText } from '../shared/planText'
+
+const STARTER = starterPlanInput()
+
+async function sharePlan(template: WorkoutTemplate) {
+  const text = planToText({ name: template.name, days: template.days })
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: template.name, text })
+      return
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success('Plan copied as text')
+  } catch {
+    toast.error('Could not copy the plan.')
+  }
+}
 
 function countPlanExercises(template: { days: { exercises: unknown[] }[] }): number {
   return template.days.reduce((sum, day) => sum + day.exercises.length, 0)
@@ -71,6 +95,8 @@ export default function TemplatesPage() {
   const [moreTarget, setMoreTarget] = useState<WorkoutTemplate | null>(null)
   const [deleteOperation, setDeleteOperation] = useState<TemplateDeleteOperation | null>(null)
   const [expandedTemplateId, setExpandedTemplateId] = useState<string | null>(null)
+  const [pasting, setPasting] = useState(false)
+  const starter = useStarterPlan((created) => setTemplates((prev) => [created, ...prev]))
 
   useEffect(() => {
     if (!user) return
@@ -157,12 +183,21 @@ export default function TemplatesPage() {
         <div className="planner-header-actions">
           <motion.button
             type="button"
-            onClick={() => navigate('/templates/new')}
+            onClick={() => setPasting(true)}
             className={!error && templates.length === 0 ? 'planner-primary-action' : 'plans-new'}
             whileTap={{ scale: 0.97 }}
           >
-            <Plus size={16} />
-            {!error && templates.length === 0 ? 'Create your first plan' : 'New plan'}
+            <ClipboardPaste size={16} aria-hidden="true" />
+            Paste a plan
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={() => navigate('/templates/new')}
+            className="plans-new"
+            whileTap={{ scale: 0.97 }}
+          >
+            <Plus size={16} aria-hidden="true" />
+            New plan
           </motion.button>
         </div>
         </section>
@@ -193,29 +228,27 @@ export default function TemplatesPage() {
               <div>
                 <h2>You have no plans yet</h2>
                 <p>
-                  A plan stores your days, exercises and sets. Start any day with one click.
+                  Paste the plan you already follow, start from ours, or build one. Start any day with one click.
                 </p>
               </div>
             </div>
 
             <div className="planner-empty-example">
               <div>
-                <span>Example schedule</span>
-                <strong>Upper / Lower · 4 days</strong>
+                <span>Starter plan</span>
+                <strong>{STARTER.name} · {STARTER.days.length} days</strong>
               </div>
               <ol>
-                {[
-                  ['Upper A', 'Bench Press · Row · OHP'],
-                  ['Lower A', 'Squat · RDL · Leg Press'],
-                  ['Upper B', 'Incline · Pull-up · Lateral Raise'],
-                  ['Lower B', 'Deadlift · Split Squat · Leg Curl'],
-                ].map(([day, exercises]) => (
-                  <li key={day}>
-                    <strong>{day}</strong>
-                    <span>{exercises}</span>
+                {STARTER.days.map((day) => (
+                  <li key={day.name}>
+                    <strong>{day.name}</strong>
+                    <span>{day.exercises.map((exercise) => exercise.name).join(' · ')}</span>
                   </li>
                 ))}
               </ol>
+              <button type="button" className="planner-secondary-action planner-starter-use" onClick={() => { void starter.create() }} disabled={starter.saving}>
+                {starter.saving ? 'Adding…' : 'Use the starter plan'}
+              </button>
             </div>
           </motion.section>
         ) : (
@@ -400,12 +433,26 @@ export default function TemplatesPage() {
         <nav className="plans-links" aria-label="Plan tools">
           <Link to="/exercises">Exercises<ChevronRight size={16} aria-hidden="true" /></Link>
           <Link to="/chat">Generate a plan with Coach<ChevronRight size={16} aria-hidden="true" /></Link>
+          {templates.length > 0 && (
+            <button type="button" onClick={() => { void starter.create() }} disabled={starter.saving}>
+              {starter.saving ? 'Adding the starter plan…' : `Use the starter plan · ${STARTER.name}`}
+              <ChevronRight size={16} aria-hidden="true" />
+            </button>
+          )}
         </nav>
       </div>
 
       <AnimatePresence>
         {moreTarget && (
           <BottomSheet key="plan-more" title={moreTarget.name} onClose={() => setMoreTarget(null)}>
+            <button
+              type="button"
+              className="bottom-sheet-row"
+              onClick={() => { const target = moreTarget; setMoreTarget(null); void sharePlan(target) }}
+            >
+              <span>Share plan</span>
+              <Share2 size={16} aria-hidden="true" />
+            </button>
             <button
               type="button"
               className="bottom-sheet-row"
@@ -419,6 +466,10 @@ export default function TemplatesPage() {
             </button>
           </BottomSheet>
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {pasting && <PastePlanSheet key="paste-plan" onClose={() => setPasting(false)} />}
       </AnimatePresence>
 
       {deleteTarget && (

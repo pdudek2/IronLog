@@ -12,8 +12,12 @@ import { showDialog } from './dialog'
 import { Icon } from './icons'
 
 const initial: ExerciseInput = { name: '', category: 'chest', equipment: 'barbell', muscles: [] }
-export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid: string; exercise: Exercise | null; onClose: () => void; onSaved: () => void }) {
-  const baseline = useRef<ExerciseInput>(exercise ?? initial)
+export default function ExerciseForm({ uid, exercise, initialName, onClose, onSaved }: {
+  uid: string; exercise: Exercise | null; initialName?: string; onClose: () => void
+  // A confirmed create passes the new exercise; a reload after a conflict passes nothing.
+  onSaved: (created?: { id: string; name: string }) => void
+}) {
+  const baseline = useRef<ExerciseInput>(exercise ?? { ...initial, name: initialName ?? '' })
   const [input, setInput] = useState<ExerciseInput>(baseline.current)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,20 +43,21 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
     try { operation = attempt.current?.operation ?? (kind === 'delete' ? { kind: 'delete', id: id.current, source: 'user' }
       : { kind: exercise ? 'update' : 'create', id: id.current, source: 'user', input: validateExerciseInput(input) }) }
     catch (nextError) { setError(nextError instanceof Error ? nextError.message : 'Check the exercise fields.'); nameField.current?.focus(); return }
+    const done = () => onSaved(operation.kind === 'create' ? { id: operation.id, name: operation.input.name } : undefined)
     running.current = true; setBusy(true); setError(null)
     try {
       if (attempt.current) {
         const confirmed = await waitForExerciseConfirmation(confirmExerciseMutation(uid, operation))
         if (!alive.current) return
         if (confirmed === null) { setError('Could not confirm the save yet. Check your connection and try again.'); return }
-        if (confirmed) { onSaved(); return }
+        if (confirmed) { done(); return }
         if (attempt.current.status === 'pending') { setError('Still checking the save. Keep this form open and try again.'); return }
       }
       const current = startExerciseMutation(operation, next => writeCustomExercise(uid, next))
       attempt.current = current
       const status = await waitForExerciseMutation(current)
       if (!alive.current) return
-      if (status === 'saved') { onSaved(); return }
+      if (status === 'saved') { done(); return }
       if (status === 'pending') { setError('Could not confirm the save yet. Check the outcome before closing.'); return }
       if (current.error instanceof ExerciseCreateConflictError) {
         setCreateConflict(true); setError(current.error.message); return
@@ -66,7 +71,7 @@ export default function ExerciseForm({ uid, exercise, onClose, onSaved }: { uid:
       try {
         const confirmed = await waitForExerciseConfirmation(confirmExerciseMutation(uid, operation))
         if (!alive.current) return
-        if (confirmed) { onSaved(); return }
+        if (confirmed) { done(); return }
         if (confirmed === null) { setError('Could not confirm the save yet. Check your connection and try again.'); return }
       } catch (confirmationError) {
         if (confirmationError instanceof ExerciseCreateConflictError) {

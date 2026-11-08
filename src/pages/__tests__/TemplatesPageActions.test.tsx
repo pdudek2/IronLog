@@ -436,6 +436,15 @@ describe('TemplatesPage launch actions', () => {
     expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
   })
 
+  it('shares a plan as the text a pasted plan reads back', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    await renderPage()
+    fireEvent.click(within(cardFor('Plan A')).getByRole('button', { name: 'More actions for plan Plan A' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Share plan' }))
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('Plan A\n\nDay A\nSquat 3x5 @100 kg\n\nDay A2\nBench Press 3x8 @80 kg'))
+  })
+
   it('shows structure immediately when the library has at most two plans', async () => {
     await renderPage()
 

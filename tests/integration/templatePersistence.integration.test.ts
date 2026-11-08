@@ -6,6 +6,8 @@ import {
   getReviewAdminDatabase,
 } from '../review/support/adminReviewDatabase'
 import { parseSaveTemplateRequest, saveTemplateForUser } from '../../api/_lib/templateService'
+import { starterPlanInput } from '../../src/shared/planImport'
+import { parsePlanText, planToText, resolvedPlan } from '../../src/shared/planText'
 
 const db = getReviewAdminDatabase()
 
@@ -43,6 +45,17 @@ function multiDayRequest(name = 'Three day plan') {
 }
 
 describe('template persistence', () => {
+  it('saves plans made from text, with new catalogue exercises and no weights, and exports them back', async () => {
+    const pasted = resolvedPlan(parsePlanText('Glutes\nHip thrust 3x10\nHack squat 3x8 @100\nPrzywodzenie 3x12'))!
+    for (const input of [starterPlanInput(), pasted]) {
+      const created = await saveTemplateForUser('alice', parseSaveTemplateRequest(input), { db, now: () => 100 })
+      const stored = (await db.collection('templates').doc(created.id).get()).data() as { name: string; days: { name: string; exercises: { exerciseId: string; exerciseSource: 'global'; name: string; sets: number; targetReps: number; targetWeight: number }[] }[] }
+      expect(stored.days.map((day) => day.exercises)).toEqual(input.days.map((day) => day.exercises))
+      expect(resolvedPlan(parsePlanText(planToText(stored)))!.days).toEqual(input.days)
+    }
+    expect(pasted.days[0]!.exercises.map((exercise) => exercise.exerciseId)).toEqual(['hip-thrust', 'hack-squat', 'hip-adduction'])
+  })
+
   it('creates and updates a multi-day plan that survives emulator reload', async () => {
     const created = await saveTemplateForUser(
       'alice',

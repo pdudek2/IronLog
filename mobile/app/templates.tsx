@@ -1,6 +1,6 @@
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native'
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -19,6 +19,12 @@ import { colors, pageBackground, pageTitle, primaryGradient } from '../src/theme
 import { showDialog } from '../src/dialog'
 import { Icon as LineIcon } from '../src/icons'
 import { BottomSheet } from '../src/BottomSheet'
+import { PastePlanSheet } from '../src/PastePlanSheet'
+import { useStarterPlan } from '../src/useStarterPlan'
+import { starterPlanInput } from '../../src/shared/planImport'
+import { planToText } from '../../src/shared/planText'
+
+const STARTER = starterPlanInput()
 
 export default function TemplatesScreen() {
   const { user } = useAuthRuntime()
@@ -44,6 +50,7 @@ function Plans({ uid }: { uid: string }) {
   const [expanded, setExpanded] = useState<{ uid: string; id: string | null }>({ uid, id: null })
   const [planAction, setPlanAction] = useState<PlanAction | null>(null)
   const [moreTarget, setMoreTarget] = useState<WorkoutTemplate | null>(null)
+  const [pasting, setPasting] = useState(false)
   const unavailable = launch.state.status === 'unavailable'
 
   useFocusEffect(useCallback(() => startRead(() => readTemplates(uid), (state) => {
@@ -62,6 +69,8 @@ function Plans({ uid }: { uid: string }) {
   const feedback = ['retry', 'unavailable', 'corrupt'].includes(launch.state.status)
   const feedbackPlan = plans.find((plan) => plan.id === launch.state.selection?.templateId)
   const retryRead = () => setReadAttempt((value) => value + 1)
+  const starter = useStarterPlan(uid, retryRead)
+  const empty = state.status === 'ready' && !state.fromCache && plans.length === 0
   async function deleteConfirmed(id: string, name: string, baseline: string) {
     setPlanAction({ id, name, baseline, status: 'deleting' })
     try {
@@ -108,14 +117,19 @@ function Plans({ uid }: { uid: string }) {
     <StatusBar style="light" />
     <HistoryHeader />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
-      <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <Text style={styles.count}>{plans.length} {pluralize(plans.length, 'plan', 'plans')}</Text>}</View><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><LineIcon name="plus" size={15} color={colors.text} /><Text style={styles.newPlanText}>New plan</Text></Pressable></View>
+      <View style={styles.heading}><View><Text accessibilityRole="header" style={styles.title}>Plans</Text>{plans.length > 0 && <Text style={styles.count}>{plans.length} {pluralize(plans.length, 'plan', 'plans')}</Text>}</View><View style={styles.headerActions}><Pressable accessibilityRole="button" onPress={() => setPasting(true)} style={empty ? styles.pastePrimary : styles.newPlan}><LineIcon name="paste" size={15} color={empty ? colors.onPrimary : colors.text} /><Text style={empty ? styles.pastePrimaryText : styles.newPlanText}>Paste a plan</Text></Pressable><Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={styles.newPlan}><LineIcon name="plus" size={15} color={colors.text} /><Text style={styles.newPlanText}>New plan</Text></Pressable></View></View>
       {saved === '1' && <Text accessibilityLiveRegion="polite" style={styles.savedNotice}>Plan saved</Text>}
       {feedback && !feedbackPlan && launchFeedback}
       {launch.state.status === 'loading' && <Text style={styles.noticeCopy}>Checking workout start…</Text>}
       {state.status === 'loading' && <View style={[styles.status, styles.loading]}><ActivityIndicator color={colors.accent} /><Text style={styles.copy}>Loading plans…</Text></View>}
       {state.status === 'error' && <View accessibilityRole="alert" style={styles.status}><Text style={styles.statusTitle}>Could not load plans</Text><Text style={[styles.copy, styles.statusCopy]}>Check your connection and try again.</Text><Pressable accessibilityRole="button" onPress={retryRead} style={styles.readRetry}><Text style={styles.readRetryText}>Try again</Text></Pressable></View>}
       {state.status === 'ready' && state.fromCache && <View accessibilityRole="alert" style={styles.cache}><Text style={styles.copy}>{plans.length ? 'Showing plans saved on this device. Starting requires a connection.' : 'Could not confirm your saved plans. This device has no copy to check offline.'}</Text><Pressable accessibilityRole="button" onPress={retryRead} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable></View>}
-      {state.status === 'ready' && !state.fromCache && plans.length === 0 && <View style={styles.empty}><Text accessibilityRole="header" style={styles.emptyTitle}>You have no plans yet</Text><Text style={styles.emptyCopy}>A plan stores your days, exercises and sets. Create your first plan to get started.</Text></View>}
+      {empty && <View style={styles.empty}><Text accessibilityRole="header" style={styles.emptyTitle}>You have no plans yet</Text><Text style={styles.emptyCopy}>Paste the plan you already follow, start from ours, or build one. Start any day with one tap.</Text>
+        <View style={styles.starter}><View style={styles.starterHead}><Text style={styles.starterLabel}>Starter plan</Text><Text style={styles.starterName}>{STARTER.name} · {STARTER.days.length} days</Text></View>
+          {STARTER.days.map((day) => <View key={day.name} style={styles.starterDay}><Text style={styles.starterDayName}>{day.name}</Text><Text style={styles.starterExercises}>{day.exercises.map((exercise) => exercise.name).join(' · ')}</Text></View>)}
+          <Pressable accessibilityRole="button" disabled={starter.saving} onPress={() => void starter.create()} style={[styles.starterUse, starter.saving && styles.disabled]}><Text style={styles.starterUseText}>{starter.saving ? 'Adding…' : 'Use the starter plan'}</Text></Pressable>
+          {starter.error && <Text accessibilityRole="alert" style={styles.copy}>{starter.error}</Text>}
+        </View></View>}
       {plans.length > 0 && <View style={styles.board}>{plans.map((plan) => {
         // A one-day plan has nothing to choose, so its Start is always visible.
         const single = plan.days.length === 1
@@ -136,13 +150,18 @@ function Plans({ uid }: { uid: string }) {
       <View style={styles.tools}>
         <Pressable accessibilityRole="button" onPress={() => router.navigate('/exercises')} style={styles.tool}><Text style={styles.toolText}>Exercises</Text><LineIcon name="chevron-right" /></Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.navigate('/coach')} style={styles.tool}><Text style={styles.toolText}>Generate a plan with Coach</Text><LineIcon name="chevron-right" /></Pressable>
+        {plans.length > 0 && <Pressable accessibilityRole="button" disabled={starter.saving} onPress={() => void starter.create()} style={styles.tool}><Text style={styles.toolText}>{starter.saving ? 'Adding the starter plan…' : `Use the starter plan · ${STARTER.name}`}</Text><LineIcon name="chevron-right" /></Pressable>}
+        {plans.length > 0 && starter.error && <Text accessibilityRole="alert" style={styles.copy}>{starter.error}</Text>}
       </View>
     </ScrollView>
   {moreTarget && <BottomSheet title={moreTarget.name} onClose={() => setMoreTarget(null)}>
-    {(close) => <Pressable accessibilityRole="button" accessibilityLabel={`Delete plan ${moreTarget.name}`} disabled={!!planAction} onPress={() => close(() => void askDelete(moreTarget))} style={styles.sheetRow}>
+    {(close) => <><Pressable accessibilityRole="button" onPress={() => { const plan = moreTarget; close(() => void Share.share({ title: plan.name, message: planToText({ name: plan.name, days: plan.days }) })) }} style={styles.sheetRow}>
+      <Text style={styles.sheetRowText}>Share plan</Text><LineIcon name="share" size={16} />
+    </Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete plan ${moreTarget.name}`} disabled={!!planAction} onPress={() => close(() => void askDelete(moreTarget))} style={styles.sheetRow}>
       <Text style={styles.sheetRowQuiet}>Delete plan</Text><LineIcon name="trash" size={16} />
-    </Pressable>}
+    </Pressable></>}
   </BottomSheet>}
+  {pasting && <PastePlanSheet uid={uid} onClose={() => setPasting(false)} />}
   <BottomNavigation {...navigation} />
   </SafeAreaView>
 }
@@ -158,6 +177,13 @@ const styles = StyleSheet.create({
   content: { flexGrow: 1, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 32, experimental_backgroundImage: pageBackground },
     heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, paddingBottom: 8 },
   
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  pastePrimary: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient }, pastePrimaryText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
+  starter: { marginTop: 20, paddingTop: 16, borderTopWidth: 1, borderTopColor: 'rgba(244,238,232,0.08)' }, starterHead: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, paddingBottom: 10 },
+  starterLabel: { color: colors.muted, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 }, starterName: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 15 },
+  starterDay: { flexDirection: 'row', gap: 12, paddingVertical: 10, borderTopWidth: 1, borderTopColor: 'rgba(244,238,232,0.075)' }, starterDayName: { width: 56, color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 }, starterExercises: { flex: 1, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19 },
+  starterUse: { minHeight: 44, alignSelf: 'flex-start', justifyContent: 'center', paddingHorizontal: 14, marginTop: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(244,238,232,0.12)' }, starterUseText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
+  sheetRowText: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15.5 },
   newPlan: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 4, justifyContent: 'center' }, newPlanText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
   title: pageTitle,
   count: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, marginTop: 2 }, 

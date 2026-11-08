@@ -35,7 +35,7 @@ test.describe('Phase 4 mobile ergonomics', () => {
     await page.getByRole('button', { name: 'Add exercise' }).first().click()
 
     const close = page.getByRole('dialog', { name: 'Add exercise' })
-      .getByRole('button', { name: 'Close' })
+      .getByRole('button', { name: 'Close', exact: true })
     const box = await close.boundingBox()
     expect(box, 'picker close should be visible').not.toBeNull()
     expect(box!.width).toBeCloseTo(44)
@@ -124,7 +124,7 @@ test.describe('Phase 4 mobile ergonomics', () => {
 
     await page.getByRole('button', { name: 'Add exercise' }).first().click()
     const picker = page.getByRole('dialog', { name: 'Add exercise' })
-    await expectMinHitArea(picker.getByRole('button', { name: 'Close' }), 'picker close')
+    await expectMinHitArea(picker.getByRole('button', { name: 'Close', exact: true }), 'picker close')
     await expectMinHitArea(picker.getByRole('button', { name: 'All' }), 'picker category')
   })
 

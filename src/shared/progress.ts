@@ -2,11 +2,11 @@ import { exercises, type Category } from '../../data/exercises'
 import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
 import { addLocalDays } from './week'
 
-const MUSCLE_KEYS = ['chest', 'shoulders', 'triceps', 'back', 'biceps', 'forearms', 'quads', 'hamstrings', 'glutes', 'calves', 'core']
+const MUSCLE_KEYS = ['chest', 'shoulders', 'triceps', 'back', 'biceps', 'forearms', 'quads', 'hamstrings', 'glutes', 'adductors', 'calves', 'core']
 export const PROGRESS_MUSCLE_COLORS: Record<string, string> = Object.fromEntries(MUSCLE_KEYS.map((key) => [key, '#a89f98']))
 export const PROGRESS_MUSCLE_LABELS: Record<string, string> = {
   chest: 'Chest', back: 'Back', shoulders: 'Shoulders', biceps: 'Biceps', triceps: 'Triceps', quads: 'Quads',
-  hamstrings: 'Hamstrings', glutes: 'Glutes', core: 'Core', calves: 'Calves', forearms: 'Forearms',
+  hamstrings: 'Hamstrings', glutes: 'Glutes', adductors: 'Adductors', core: 'Core', calves: 'Calves', forearms: 'Forearms',
 }
 
 export interface ProgressSessionLite {

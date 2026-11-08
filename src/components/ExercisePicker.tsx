@@ -5,6 +5,7 @@ import { exercises as exerciseDb, searchExercises, type Category, type Exercise 
 import type { ExerciseSource } from '../store/workoutStore'
 import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../lib/exerciseLabels'
 import type { RecentExercisePick } from '../shared/recentExercises'
+import type { ExerciseRef } from '../shared/exerciseMatch'
 import type { DataState } from '../types/dataState'
 import { ActionFeedback } from './ActionFeedback'
 import BottomSheet from './BottomSheet'
@@ -29,6 +30,9 @@ interface Props {
   userExercisesState: DataState<Exercise[]>
   onRetryUserExercises: () => void
   recent?: RecentExercisePick[]
+  // Closest matches for a pasted line, listed first.
+  suggestions?: ExerciseRef[]
+  title?: string
 }
 
 function ResultRow({ exercise, onSelect }: { exercise: SearchResult; onSelect: Props['onSelect'] }) {
@@ -46,7 +50,7 @@ function ResultRow({ exercise, onSelect }: { exercise: SearchResult; onSelect: P
   )
 }
 
-function PickerBody({ onSelect, onClose, userExercisesState, onRetryUserExercises, recent = [] }: Omit<Props, 'open'>) {
+function PickerBody({ onSelect, onClose, userExercisesState, onRetryUserExercises, recent = [], suggestions = [], title = 'Add exercise' }: Omit<Props, 'open'>) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -75,8 +79,13 @@ function PickerBody({ onSelect, onClose, userExercisesState, onRetryUserExercise
     return exercise ? [{ ...exercise, name: pick.name, source: pick.source }] : []
   })
 
+  const suggestedResults: SearchResult[] = filtered ? [] : suggestions.flatMap((ref) => {
+    const exercise = (ref.exerciseSource === 'user' ? userExercises : exerciseDb).find(({ id }) => id === ref.exerciseId)
+    return exercise ? [{ ...exercise, source: ref.exerciseSource }] : []
+  })
+
   return (
-    <BottomSheet title="Add exercise" tall onClose={onClose} initialFocusRef={touch ? undefined : searchInputRef}>
+    <BottomSheet title={title} tall onClose={onClose} initialFocusRef={touch ? undefined : searchInputRef}>
       <label className="exercise-picker-search">
         <Search size={16} aria-hidden="true" />
         <input
@@ -113,6 +122,14 @@ function PickerBody({ onSelect, onClose, userExercisesState, onRetryUserExercise
             message="Could not load your exercises. The shared library is still available."
             onRetry={onRetryUserExercises}
           />
+        )}
+        {suggestedResults.length > 0 && (
+          <>
+            <p className="exercise-picker-group">Closest matches</p>
+            {suggestedResults.map((exercise) => (
+              <ResultRow key={`suggested-${exercise.source}-${exercise.id}`} exercise={exercise} onSelect={onSelect} />
+            ))}
+          </>
         )}
         {recentResults.length > 0 && (
           <>

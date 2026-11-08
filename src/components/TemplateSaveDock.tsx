@@ -14,6 +14,8 @@ export interface TemplateSaveDockProps {
   errorMessage?: string
   onRetry?: () => void
   onDismissError?: () => void
+  // Why Save is unavailable, shown in place of the status.
+  hint?: string
 }
 
 const statusLabels: Record<Exclude<TemplateSaveState, 'error' | 'new-pristine'>, string> = {
@@ -28,6 +30,7 @@ export default function TemplateSaveDock({
   errorMessage,
   onRetry,
   onDismissError,
+  hint,
 }: TemplateSaveDockProps) {
   if (state === 'persisted-clean') return null
 
@@ -47,9 +50,9 @@ export default function TemplateSaveDock({
         />
       )}
       <div className="template-save-dock-panel">
-        {!hasError && state !== 'new-pristine' && (
+        {!hasError && (hint || state !== 'new-pristine') && (
           <span className="template-save-dock-status" role="status" aria-live="polite">
-            {statusLabels[state]}
+            {hint ?? (state !== 'new-pristine' && statusLabels[state])}
           </span>
         )}
         <button

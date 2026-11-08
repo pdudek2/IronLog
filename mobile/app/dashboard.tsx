@@ -276,8 +276,9 @@ export default function DashboardScreen() {
       </>}
     </ScrollView>
     {data && active.state.status === 'ready' && <View style={[styles.startBar, startBarInset]}><ResumeButton />{trainLinks}</View>}
-    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Today" style={[styles.dock, !today && styles.dockBare, dockInset]}>
-      {today && readiness && <TrainCheckIn state={readiness.state} controller={readiness.controller} open={checkInOpen} onToggle={() => setCheckInOpen((open) => !open)} />}
+    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Today" style={[styles.dock, !today && !readiness && styles.dockBare, dockInset]}>
+      {/* The check-in stays without a plan day too: Coach reads it. */}
+      {readiness && <TrainCheckIn state={readiness.state} controller={readiness.controller} open={checkInOpen} onToggle={() => setCheckInOpen((open) => !open)} />}
       {/* While the check-in is open the time row and today's line step aside; Start stays. */}
       {today && chosen && !checkInOpen && <TrainTime today={today} plannedSets={chosen.day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
         budgetMin={choice.budgetMin} straight={choice.straight}

@@ -629,7 +629,8 @@ export default function DashboardPage() {
   const todayControls = !hasActiveSession && todayPlan && quickTemplateDay
   const dock = !hasActiveSession && (
     <section className="train-dock" aria-label="Today">
-      {todayControls && (
+      {/* The check-in stays without a plan day too: Coach reads it. */}
+      {!hasActiveSession && (
         <ReadinessWidget onStateChange={handleReadinessStateChange} editSaved />
       )}
       {todayControls && (

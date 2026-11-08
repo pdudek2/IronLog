@@ -132,7 +132,7 @@ test.describe('Contrast contracts', () => {
     await expectAppReady(page, '/dashboard')
 
     const helperText = page.locator('.train-days span[data-done="false"][data-today="false"]').first()
-    const primaryCta = page.locator('button.dashboard-planned-start-primary, button.dashboard-ad-hoc-action--primary').first()
+    const primaryCta = page.locator('.train-dock button.workout-set-panel-action:not([data-quiet])').first()
     await expect(helperText).toBeVisible()
     await expect(primaryCta).toBeVisible()
     await expect(primaryCta).toBeEnabled()

@@ -96,7 +96,7 @@ export function buildProgression(input: ProgressionInput): Progression | null {
   const latest = sessions[0]
   if (!latest) {
     const plan = input.target
-    if (!plan || plan.reps <= 0 || plan.weight !== 0) return null
+    if (!plan || plan.reps <= 0 || plan.weight !== 0 || input.equipment === 'bodyweight') return null
     const { floor, ceiling } = repRange(plan.reps)
     return { weight: null, reps: ceiling, change: 'none', delta: 0, trial: { maxWeight: null }, floor, ceiling, step: stepFor([], input.equipment, input.units) }
   }

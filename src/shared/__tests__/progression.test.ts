@@ -38,6 +38,7 @@ describe('buildProgression', () => {
     expect(run([])).toBeNull()
     expect(run([], { target: { reps: 8, sets: 3, weight: 60 } })).toBeNull()
     expect(run([], { target: null })).toBeNull()
+    expect(run([], { target: { reps: 12, sets: 2, weight: 0 }, equipment: 'bodyweight' })).toBeNull()
     expect(run([session(3, [[0, 10]])], { category: 'cardio' })).toBeNull()
   })
 

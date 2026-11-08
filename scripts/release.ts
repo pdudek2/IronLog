@@ -21,7 +21,8 @@ export function releaseSteps({ sha, versionCode, testers, notes, worktree }: Rel
   const apk = join(mobile, 'android/app/build/outputs/apk/release/app-release.apk')
   const android = { IRONLOG_MOBILE_BACKEND: 'production', IRONLOG_MOBILE_VERSION_CODE: String(versionCode) }
   const gradle = { ...android, JAVA_HOME, ANDROID_HOME: join(homedir(), 'Library/Android/sdk') }
-  const firebase = ['npx', '-y', '-p', 'firebase-tools@15.34.2', 'firebase', 'appdistribution:distribute', apk, '--app', FIREBASE_APP, '--project', FIREBASE_PROJECT, '--release-notes', notes]
+  const firebaseCli = ['npx', '-y', '-p', 'firebase-tools@15.34.2', 'firebase']
+  const firebase = [...firebaseCli, 'appdistribution:distribute', apk, '--app', FIREBASE_APP, '--project', FIREBASE_PROJECT, '--release-notes', notes]
   return [
     { name: 'Web tests', cmd: ['npm', 'run', 'test:unit'] },
     { name: 'Web lint', cmd: ['npx', 'eslint', '.', '--ignore-pattern', '.claude/**'] },
@@ -31,6 +32,7 @@ export function releaseSteps({ sha, versionCode, testers, notes, worktree }: Rel
     { name: 'Native typecheck', cwd: mobile, cmd: ['npm', 'run', 'typecheck'] },
     { name: 'Android prebuild', cwd: mobile, env: android, cmd: ['npx', 'expo', 'prebuild', '--platform', 'android', '--clean', '--no-install'] },
     { name: 'Build the release APK', cwd: worktree, env: gradle, cmd: ['mobile/android/gradlew', '-p', 'mobile/android', ':app:assembleRelease', '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a'] },
+    { name: 'Deploy the Firestore rules', cmd: [...firebaseCli, 'deploy', '--only', 'firestore:rules', '--project', FIREBASE_PROJECT] },
     { name: 'Deploy the web', cmd: ['vercel', 'deploy', '--prod', '--yes'] },
     { name: 'Send the APK to testers', cmd: testers ? [...firebase, '--testers', testers] : firebase },
   ]

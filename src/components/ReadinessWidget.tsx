@@ -19,6 +19,8 @@ interface ReadinessResource {
 interface ReadinessWidgetProps {
   onStateChange?: (state: DataState<ReadinessEntry | null>) => void
   renderSaved?: (entry: ReadinessEntry) => ReactNode
+  // Keeps the check-in open for changes once today's entry is saved.
+  editSaved?: boolean
 }
 
 function resourceKey(uid: string, date: string): string {
@@ -28,6 +30,7 @@ function resourceKey(uid: string, date: string): string {
 export default function ReadinessWidget({
   onStateChange,
   renderSaved,
+  editSaved = false,
 }: ReadinessWidgetProps) {
   const { user } = useAuthStore()
   const initialDate = todayKey()
@@ -129,10 +132,7 @@ export default function ReadinessWidget({
 
   if (state.status === 'loading') {
     return (
-      <div
-        className="readiness-card readiness-card--loading animate-pulse"
-        style={{ minHeight: '5rem' }}
-      />
+      <div className="readiness-card readiness-card--loading animate-pulse" />
     )
   }
 
@@ -158,12 +158,8 @@ export default function ReadinessWidget({
     )
   }
 
-  if (state.data === null) {
-    return (
-      <ReadinessPrompt
-        onSaved={handleSaved}
-      />
-    )
+  if (state.data === null || editSaved) {
+    return <ReadinessPrompt entry={state.data} onSaved={handleSaved} />
   }
 
   const entry = state.data

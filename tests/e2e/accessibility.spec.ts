@@ -127,14 +127,15 @@ test('primary mobile controls expose at least 44px hit areas', async ({ page }, 
   await page.goto('/dashboard')
   await expectAppReady(page, '/dashboard')
 
-  const readinessSummary = page.locator('summary.readiness-summary')
-  await expect(readinessSummary).toBeVisible()
-  await readinessSummary.click()
-  await expect(page.getByRole('slider', { name: 'Readiness: Sleep' })).toBeVisible()
+  const checkIn = page.locator('[data-today-readiness]')
+  await expect(checkIn).toBeVisible()
+  await checkIn.click()
+  const sleepStep = page.getByRole('radio', { name: 'Sleep 1 of 5, Poor' })
+  await expect(sleepStep).toBeVisible()
 
   const controls = [
     page.getByRole('button', { name: 'SHEAR — home' }),
-    page.getByRole('slider', { name: 'Readiness: Sleep' }),
+    sleepStep,
   ]
 
   for (const control of controls) {

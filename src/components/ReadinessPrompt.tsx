@@ -1,102 +1,86 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
+import { ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuthStore } from '../store/authStore'
 import { saveReadiness, type ReadinessEntry } from '../lib/readinessService'
 
 interface Props {
+  entry?: ReadinessEntry | null
   onSaved: (entry: ReadinessEntry) => void
 }
 
-interface SliderField {
-  key: 'sleep' | 'mood' | 'soreness'
-  label: string
-  lowLabel: string
-  highLabel: string
-}
+type Field = 'sleep' | 'mood' | 'soreness'
 
-const FIELDS: SliderField[] = [
-  { key: 'sleep',    label: 'Sleep',      lowLabel: 'Poor',    highLabel: 'Great' },
-  { key: 'mood',     label: 'Mood',  lowLabel: 'Bad',      highLabel: 'Great' },
-  { key: 'soreness', label: 'Soreness', lowLabel: 'None',     highLabel: 'Severe' },
+// Soreness runs the other way from sleep and mood, so every step names its meaning.
+const FIELDS: { key: Field; label: string; words: [string, string, string, string, string] }[] = [
+  { key: 'sleep', label: 'Sleep', words: ['Poor', 'Restless', 'Okay', 'Good', 'Great'] },
+  { key: 'mood', label: 'Mood', words: ['Bad', 'Low', 'Okay', 'Good', 'Great'] },
+  { key: 'soreness', label: 'Soreness', words: ['None', 'Light', 'Some', 'Sore', 'Severe'] },
 ]
 
-export default function ReadinessPrompt({ onSaved }: Props) {
+export default function ReadinessPrompt({ entry = null, onSaved }: Props) {
   const { user } = useAuthStore()
-  const [values, setValues] = useState({ sleep: 3, mood: 3, soreness: 3 })
+  const [values, setValues] = useState(() => ({ sleep: entry?.sleep ?? 3, mood: entry?.mood ?? 3, soreness: entry?.soreness ?? 3 }))
   const [saving, setSaving] = useState(false)
 
-  async function handleSave() {
-    if (!user || saving) return
+  // Each tap saves today's entry, so the check-in never stands between the user and Start.
+  async function choose(key: Field, value: number) {
+    const next = { ...values, [key]: value }
+    setValues(next)
+    if (!user) return
     setSaving(true)
     try {
-      const entry = await saveReadiness(user.uid, values)
-      toast.success('Readiness saved')
-      onSaved(entry)
+      onSaved(await saveReadiness(user.uid, next))
     } catch {
-      toast.error('Could not save readiness.')
+      toast.error('Could not save the check-in.')
+    } finally {
       setSaving(false)
     }
   }
 
   return (
-    <motion.details
-      className="readiness-card readiness-card--prompt"
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.2 }}
-    >
-      <summary className="readiness-summary">
-        <div>
-          <span>Readiness · optional</span>
-          <strong>Adjust today’s workout</strong>
-          <small>Sleep, mood and soreness</small>
-        </div>
-        <span className="readiness-summary-action">Check in</span>
+    <details className="train-checkin">
+      <summary data-today-readiness>
+        {entry ? (
+          <span className="train-checkin-line">
+            Sleep {entry.sleep} · Mood {entry.mood} · Soreness {entry.soreness}
+          </span>
+        ) : (
+          <span className="train-checkin-line">
+            How’s today? <small>Sleep, mood, soreness</small>
+          </span>
+        )}
+        <span className="train-checkin-act" data-closed>{entry ? 'Change' : 'Check in'}</span>
+        <span className="train-checkin-act" data-open>Close</span>
+        <ChevronUp size={16} aria-hidden="true" />
       </summary>
 
-      <div className="readiness-prompt-body">
-        <div className="space-y-3">
-          {FIELDS.map(({ key, label, lowLabel, highLabel }) => (
-            <div key={key}>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-white">{label}</span>
-                <span
-                  className="text-sm font-bold tabular-nums"
-                  style={{ color: 'var(--accent)' }}
-                >
-                  {values[key]}/5
-                </span>
-              </div>
-              <input
-                type="range"
-                aria-label={`Readiness: ${label}`}
-                aria-valuetext={`${values[key]} out of 5, from 1 ${lowLabel} to 5 ${highLabel}`}
-                min={1}
-                max={5}
-                step={1}
-                value={values[key]}
-                onChange={(e) => setValues((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
-                className="readiness-slider w-full"
-                style={{ touchAction: 'manipulation' }}
-              />
-              <div className="readiness-scale flex justify-between mt-1">
-                <span className="text-xs" style={{ color: 'var(--muted)' }}>{lowLabel}</span>
-                <span className="text-xs" style={{ color: 'var(--muted)' }}>{highLabel}</span>
-              </div>
+      <div className="train-checkin-body">
+        {FIELDS.map(({ key, label, words }) => (
+          <fieldset key={key} className="train-checkin-scale">
+            <legend>
+              {label} <small>{words[values[key] - 1]}</small>
+            </legend>
+            <div>
+              {words.map((word, index) => (
+                <label key={word} className="workout-set-step">
+                  <input
+                    type="radio"
+                    name={`readiness-${key}`}
+                    value={index + 1}
+                    checked={values[key] === index + 1}
+                    onChange={() => { void choose(key, index + 1) }}
+                    aria-label={`${label} ${index + 1} of 5, ${word}`}
+                  />
+                  {index + 1}
+                </label>
+              ))}
             </div>
-          ))}
-        </div>
+          </fieldset>
+        ))}
 
-        <motion.button
-          onClick={handleSave}
-          disabled={saving}
-          className="readiness-save"
-          whileTap={{ scale: 0.98 }}
-        >
-          {saving ? 'Saving...' : 'Save score'}
-        </motion.button>
+        <p className="train-checkin-note" aria-live="polite">{saving ? 'Saving…' : entry ? 'Saved for today' : 'Tap to save for today'}</p>
       </div>
-    </motion.details>
+    </details>
   )
 }

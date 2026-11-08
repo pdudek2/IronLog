@@ -59,8 +59,8 @@ test.describe('Dashboard regressions', () => {
     await expect(page.getByRole('button', { name: /^Delete workout/ })).toHaveCount(0)
   })
 
-  test('opens the compact next-session plan with Start before Edit on mobile', async ({ page, cleanup }, testInfo) => {
-    test.skip(testInfo.project.name !== 'mobile', 'mobile-only quick-look contract')
+  test('keeps today in one dock with one Start on a narrow phone', async ({ page, cleanup }, testInfo) => {
+    test.skip(testInfo.project.name !== 'mobile', 'mobile-only dock contract')
     await page.setViewportSize({ width: 320, height: 844 })
     cleanup.add('discard active session', () => discardActiveSession(page))
 
@@ -73,6 +73,9 @@ test.describe('Dashboard regressions', () => {
           ['bench-press', 'Bench Press', 4, 8, 70],
           ['barbell-row', 'Barbell Row', 4, 8, 65],
           ['ohp', 'Overhead Press', 3, 10, 40],
+          ['db-lateral-raise', 'Lateral Raise', 3, 12, 10],
+          ['db-curl', 'Dumbbell Curl', 3, 10, 14],
+          ['tricep-pushdown', 'Tricep Pushdown', 3, 12, 25],
         ].map(([exerciseId, name, sets, targetReps, targetWeight]) => ({
           exerciseId: String(exerciseId),
           exerciseSource: 'global' as const,
@@ -88,36 +91,25 @@ test.describe('Dashboard regressions', () => {
     cleanup.add('delete next-session template', () => deleteTemplateByName(page, NEXT_SESSION_TEMPLATE_NAME))
 
     await openDashboard(page)
-    const readinessSave = page.getByRole('button', { name: 'Save score' })
-    if (await readinessSave.isVisible().catch(() => false)) {
-      await readinessSave.click()
-    } else {
-      await page.getByText('Adjust today’s workout', { exact: true }).click()
-      await readinessSave.click()
-    }
+    const dock = page.getByRole('region', { name: 'Today' })
+    await expect(dock).toBeVisible({ timeout: 10_000 })
+    await expect(dock.getByRole('button', { name: /^Start / })).toHaveCount(1)
 
-    const recommendation = page.getByRole('region', { name: 'Today’s workout' })
-    await expect(recommendation).toBeVisible({ timeout: 10_000 })
-    await expect(page.getByRole('button', { name: 'Edit' })).toBeHidden()
+    await dock.locator('[data-today-readiness]').click()
+    await dock.getByRole('radio', { name: 'Sleep 2 of 5, Restless' }).check()
+    await expect(dock.getByText('Saved for today')).toBeVisible({ timeout: 10_000 })
+    await expect(dock.getByRole('button', { name: /^Start / })).toBeVisible()
+    await dock.locator('[data-today-readiness]').click()
+
+    await dock.getByRole('radio', { name: '30 min' }).click()
+    await expect(dock.getByText(/of 20 sets/)).toBeVisible()
     expect(await page.evaluate(() => (
       document.documentElement.scrollWidth - document.documentElement.clientWidth
     ))).toBe(0)
 
-    await recommendation.getByRole('button', { name: 'View plan exercises' }).click()
-    const dialog = page.getByRole('dialog', { name: 'Upper A' })
-    await expect(dialog).toBeVisible()
-    await expect(dialog.locator('.dashboard-plan-popover-actions > button')).toHaveText([
-      'Start',
-      'Edit',
-    ])
-
-    await page.keyboard.press('Escape')
-    await expect(dialog).toBeHidden()
-
-    await recommendation.getByRole('button', { name: 'View plan exercises' }).click()
-    await dialog.getByRole('button', { name: 'Start' }).click()
-    await expect(dialog).toBeHidden()
+    await dock.getByRole('button', { name: /^Start / }).click()
     await expect(page).toHaveURL('/workout/new', { timeout: 15_000 })
     await expect(page.getByText('Bench Press', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
   })
+
 })

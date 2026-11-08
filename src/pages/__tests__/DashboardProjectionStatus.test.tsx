@@ -120,6 +120,11 @@ vi.mock('../../components/ReadinessWidget', async () => {
   }
 })
 
+// Train reads the user's own exercises for the time estimate; Firestore is not part of these tests.
+vi.mock('../../hooks/useUserExercises', () => ({
+  useUserExercises: () => ({ state: { status: 'success', data: [] }, exercises: [], retry: () => undefined, updateExercises: () => undefined }),
+}))
+
 vi.mock('../../components/TemplateLaunchConfirmDialog', () => ({ default: () => null }))
 
 vi.mock('react-router-dom', async () => {
@@ -882,7 +887,7 @@ describe('Dashboard workout projection status', () => {
     expect(within(picker).getByRole('button', { name: 'Edit plan Newest empty' })).toBeInTheDocument()
   })
 
-  it('starts the compact recommendation before offering template editing', async () => {
+  it('starts today’s version from the one Start in the dock after a check-in', async () => {
     const template = {
       id: 'template-1',
       userId: 'user-1',
@@ -912,12 +917,10 @@ describe('Dashboard workout projection status', () => {
 
     render(<DashboardPage />)
 
-    const recommendation = await screen.findByRole('region', { name: 'Today’s workout' })
-    expect(recommendation.closest('.train-plan')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Start Upper A as planned' })).toBeEnabled()
-    const startRecommendation = within(recommendation).getByRole('button', { name: 'Start Upper A' })
-    expect(startRecommendation).toBeEnabled()
-    fireEvent.click(startRecommendation)
+    const dock = await screen.findByRole('region', { name: 'Today' })
+    const starts = screen.getAllByRole('button', { name: /^Start / })
+    expect(starts).toHaveLength(1)
+    fireEvent.click(within(dock).getByRole('button', { name: 'Start Upper A' }))
 
     expect(mocks.requestTemplateLaunch).toHaveBeenCalledWith(
       template,
@@ -925,15 +928,6 @@ describe('Dashboard workout projection status', () => {
       'dashboard:template-1:selection:0',
       { items: expect.any(Array) },
     )
-
-    const dialog = screen.getByRole('dialog', { hidden: true })
-    const [start, edit] = within(dialog).getAllByRole('button', { hidden: true }).slice(-2)
-    expect(start).toHaveTextContent('Start')
-    expect(edit).toHaveTextContent('Edit')
-    expect(start.compareDocumentPosition(edit) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-
-    fireEvent.click(edit)
-    expect(mocks.navigate).toHaveBeenCalledWith('/templates/template-1/edit')
   })
 
   it('ignores a template failure that arrives after unmount, including its side effects', async () => {

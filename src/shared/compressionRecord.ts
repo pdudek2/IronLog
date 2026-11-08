@@ -95,14 +95,16 @@ export function parseProposals(raw: unknown): CompressionProposal[] | null {
 export const parseGroup = (raw: unknown): string | null => (typeof raw === 'string' && GROUP_PATTERN.test(raw) ? raw : null)
 
 // Today's version of a plan day, in session order. Exercises the day drops today are absent.
-export interface LaunchItem { dayExerciseIndex: number; sets: number; weight: number; reps: number; group?: string }
+// Without weight and reps the start uses the usual day's (last best weight, plan reps).
+export interface LaunchItem { dayExerciseIndex: number; sets: number; weight?: number; reps?: number; group?: string }
 
 export function isValidLaunchList(day: readonly { sets: number }[], items: readonly LaunchItem[]): boolean {
   const seen = new Set<number>()
   return items.length > 0 && items.every((item) => {
     if (!int(item.dayExerciseIndex, 0, day.length - 1) || seen.has(item.dayExerciseIndex)) return false
     seen.add(item.dayExerciseIndex)
-    return int(item.sets, 1, Math.max(1, day[item.dayExerciseIndex]!.sets)) && int(item.reps, 0, 1000) && num(item.weight, 0, 2000)
+    return int(item.sets, 1, Math.max(1, day[item.dayExerciseIndex]!.sets))
+      && (item.reps === undefined || int(item.reps, 0, 1000)) && (item.weight === undefined || num(item.weight, 0, 2000))
       && (item.group === undefined || GROUP_PATTERN.test(item.group))
   })
 }

@@ -223,6 +223,11 @@ a {
   outline: none;
 }
 
+/* hidden would make the shell a scroll container and stop the Train dock from sticking. */
+.page-shell:has(.train-dock) {
+  overflow-x: clip;
+}
+
 .page-shell:has(.not-found-page) {
   min-height: calc(100dvh - var(--top-nav-height));
 }
@@ -1276,6 +1281,7 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
 }
 
 .readiness-card--loading {
+  min-height: 5rem;
   background: none;
 }
 
@@ -1388,384 +1394,10 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   }
 }
 
-/* ── Dashboard: readiness-aware next session ───────────────────── */
-
-.dashboard-today-card {
-  display: grid;
-  gap: 0;
-  overflow: hidden;
-  border-radius: var(--radius-xl);
-  background:
-    linear-gradient(135deg, rgba(244, 238, 232, 0.06), transparent 54%),
-    var(--puls-surface-2);
-  padding: clamp(1rem, 3vw, 1.35rem);
-}
-
-.dashboard-today-date {
-  margin: 0 0 0.7rem;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 650;
-}
-
-.dashboard-today-head {
-  display: block;
-}
-
-.dashboard-today-head > div:first-child {
-  min-width: 0;
-}
-
-.dashboard-today-head h1 {
-  margin: 0;
-  overflow-wrap: anywhere;
-  color: var(--text-strong);
-  font-family: var(--font-display);
-  font-size: clamp(2rem, 9vw, 2.6rem);
-  font-weight: 740;
-  letter-spacing: -0.03em;
-  line-height: 1;
-  text-wrap: balance;
-}
-
-.dashboard-today-head h1 + p {
-  margin: 0.45rem 0 0;
-  overflow: hidden;
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.4;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.dashboard-today-head .dashboard-today-plan-name {
-  margin: 0 0 0.45rem;
-  color: var(--accent-text);
-  font-size: 0.72rem;
-  font-weight: 720;
-  line-height: 1.35;
-  white-space: normal;
-}
-
-.dashboard-today-adjustment {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  justify-content: flex-start;
-  gap: 0.25rem 0.4rem;
-  margin: 1rem 0 0;
-  border-top: 1px solid var(--border);
-  padding-top: 0.8rem;
-}
-
-.dashboard-today-adjustment span {
-  color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 680;
-}
-
-.dashboard-today-adjustment span::after {
-  content: "·";
-  margin-left: 0.4rem;
-  color: var(--muted-soft);
-}
-
-.dashboard-today-adjustment strong {
-  color: var(--puls-warning);
-  font-size: 0.75rem;
-  font-weight: 720;
-  text-align: left;
-}
-
-.dashboard-today-adjustment[data-tone="high"] strong {
-  color: var(--text);
-}
-
-.dashboard-today-adjustment[data-adjusted="false"] strong {
-  color: var(--text-strong);
-}
-
-.dashboard-today-actions {
-  display: grid;
-  gap: 0.35rem;
-  margin-top: 0.9rem;
-}
-
-.dashboard-today-trigger {
-  display: inline-flex;
-  width: fit-content;
-  min-height: 2.75rem;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  justify-self: start;
-  padding: 0 0.25rem;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--muted);
-  text-align: left;
-  transition: color 160ms ease;
-}
-
-.dashboard-today-trigger:hover {
-  color: var(--text-strong);
-}
-
-.dashboard-today-start,
-.dashboard-plan-edit {
-  min-height: 3rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.82rem;
-  font-weight: 720;
-}
-
-.dashboard-today-start {
-  width: 100%;
-  border: 0;
-  background: var(--primary-gradient);
-  color: var(--accent-foreground);
-}
-
-.dashboard-today-start:hover:not(:disabled) {
-  filter: brightness(1.08);
-}
-
-.dashboard-today-start:disabled {
-  cursor: wait;
-  opacity: 0.64;
-}
-
-.dashboard-plan-popover {
-  inset: auto 0 max(5rem, calc(4.25rem + env(safe-area-inset-bottom, 0px)));
-  width: min(calc(100vw - 1.5rem), 28rem);
-  max-height: calc(100dvh - 6.5rem);
-  margin: auto;
-  padding: 1rem;
-  overflow: auto;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-xl);
-  background: var(--puls-surface-1);
-  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.42);
-  color: var(--text);
-  font-family: var(--font-body);
-  opacity: 0;
-  transform: translateY(1.1rem) scale(0.985);
-  transition:
-    opacity 180ms ease,
-    transform 180ms cubic-bezier(0.16, 1, 0.3, 1),
-    display 180ms allow-discrete,
-    overlay 180ms allow-discrete;
-}
-
-.dashboard-plan-popover:popover-open {
-  opacity: 1;
-  transform: translateY(0) scale(1);
+@starting-style {
 }
 
 @starting-style {
-  .dashboard-plan-popover:popover-open {
-    opacity: 0;
-    transform: translateY(1.1rem) scale(0.985);
-  }
-}
-
-.dashboard-plan-popover::backdrop {
-  background: rgba(8, 6, 5, 0.68);
-  opacity: 0;
-  transition:
-    opacity 180ms ease,
-    display 180ms allow-discrete,
-    overlay 180ms allow-discrete;
-}
-
-.dashboard-plan-popover:popover-open::backdrop {
-  opacity: 1;
-}
-
-@starting-style {
-  .dashboard-plan-popover:popover-open::backdrop {
-    opacity: 0;
-  }
-}
-
-.dashboard-plan-popover-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-}
-
-.dashboard-plan-popover-head h2 {
-  margin: 0;
-  color: var(--text-strong);
-  font-family: var(--font-display);
-  font-size: 1.5rem;
-  font-weight: 720;
-  letter-spacing: -0.025em;
-  line-height: 1.1;
-  text-wrap: balance;
-}
-
-.dashboard-plan-popover-head p {
-  margin: 0.35rem 0 0;
-  color: var(--muted);
-  font-size: 0.72rem;
-}
-
-.dashboard-plan-popover-close {
-  display: grid;
-  width: 2.75rem;
-  height: 2.75rem;
-  flex: none;
-  place-items: center;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--muted);
-}
-
-.dashboard-plan-popover-close:hover {
-  background: var(--surface-muted);
-  color: var(--text-strong);
-}
-
-.dashboard-plan-exercises {
-  margin: 0.6rem 0 0;
-  padding: 0;
-  border-top: 1px solid var(--border);
-  list-style: none;
-}
-
-.dashboard-plan-exercises > li {
-  display: flex;
-  min-height: 2.85rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.dashboard-plan-exercises > li > div:first-child {
-  min-width: 0;
-}
-
-.dashboard-plan-exercises > li > div:first-child strong {
-  display: inline;
-  color: var(--text);
-  font-size: 0.76rem;
-  font-weight: 680;
-}
-
-.dashboard-plan-exercises > li > div:first-child span {
-  margin-left: 0.5rem;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  white-space: nowrap;
-}
-
-.dashboard-plan-target {
-  flex: none;
-  text-align: right;
-}
-
-.dashboard-plan-target strong,
-.dashboard-plan-target span {
-  display: block;
-}
-
-.dashboard-plan-target strong {
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  font-weight: 600;
-}
-
-.dashboard-plan-target span {
-  margin-top: 0.18rem;
-  color: var(--puls-warning);
-  font-size: 0.6875rem;
-  font-weight: 680;
-}
-
-.dashboard-plan-target span[data-tone="up"] {
-  color: var(--text);
-}
-
-.dashboard-plan-popover-actions {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 0.5rem;
-  margin-top: 0.85rem;
-}
-
-.dashboard-plan-popover-actions .dashboard-today-start {
-  margin-top: 0;
-}
-
-.dashboard-plan-edit {
-  padding: 0 1rem;
-  border: 1px solid var(--border-strong);
-  background: transparent;
-  color: var(--text);
-}
-
-.dashboard-plan-edit:hover {
-  background: var(--surface-muted);
-}
-
-.dashboard-today-trigger:focus-visible,
-.dashboard-today-start:focus-visible,
-.dashboard-plan-edit:focus-visible,
-.dashboard-plan-popover-close:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 3px;
-}
-
-@media (min-width: 760px) {
-
-  .dashboard-today-card {
-    padding: 1.35rem 1.5rem;
-  }
-
-  .dashboard-today-actions {
-    grid-template-columns: minmax(13rem, 18rem) auto;
-    align-items: center;
-    justify-content: start;
-    gap: 0.75rem;
-  }
-
-  .dashboard-today-start {
-    min-height: 3.5rem;
-  }
-
-  .dashboard-plan-popover {
-    bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
-  }
-}
-
-@media (max-width: 370px) {
-  .dashboard-plan-popover {
-    width: calc(100vw - 1rem);
-    padding: 0.8rem;
-  }
-
-  .dashboard-plan-exercises > li {
-    gap: 0.65rem;
-  }
-
-  .dashboard-plan-exercises > li > div:first-child span {
-    margin-left: 0.3rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .dashboard-plan-popover,
-  .dashboard-plan-popover::backdrop {
-    transition: opacity 0.01ms linear;
-  }
 }
 
 .exercise-detail-session-list {
@@ -2703,7 +2335,6 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
     font-size: 1rem;
   }
 
-
   .workout-detail-set-table {
     width: calc(100% + 2rem);
     margin-inline: -1rem;
@@ -3470,7 +3101,6 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
     display: grid;
     justify-items: start;
   }
-
 
 }
 
@@ -4994,7 +4624,6 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   box-shadow: none;
 }
 
-
 .workout-set-header,
 .workout-set-row {
   display: grid;
@@ -6241,7 +5870,6 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   transition: background-color 120ms ease, transform 120ms ease;
   touch-action: manipulation;
 }
-
 
 .rest-timer-action:active {
   transform: scale(0.95);
@@ -8085,88 +7713,286 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   font-weight: 500;
 }
 
-.train-time {
+/* Start dock: today's choices live in the panel that holds Start, in the session thumb panel's language. */
+.train-dock {
+  position: sticky;
+  z-index: 20;
+  bottom: calc(4.375rem + env(safe-area-inset-bottom, 0px));
+  order: 10;
   display: grid;
-  gap: 0.625rem;
-  margin-top: 0.75rem;
+  gap: 0.5rem;
+  margin: 0.75rem -0.375rem 0;
+  padding: 0.375rem 0.75rem 0.75rem;
+  border-radius: 1.375rem;
+  background: linear-gradient(180deg, var(--surface-3), var(--surface-2));
+  box-shadow: 0 -18px 40px -14px rgba(0, 0, 0, 0.7), 0 10px 24px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.07);
 }
 
-.train-time-options {
+.train-dock:not(:has(.train-checkin, .train-dock-today)) {
+  padding-top: 0.75rem;
+}
+
+.train-dock .readiness-card--loading {
+  min-height: 2.75rem;
+}
+
+.train-dock .readiness-card--error {
+  padding: 0.75rem;
+  border-radius: 0.9375rem;
+}
+
+.train-dock .readiness-card--error button {
+  margin-top: 0.5rem;
+}
+
+.train-checkin summary {
   display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.75rem;
+  padding: 0 0.25rem;
+  border-radius: 0.75rem;
+  color: var(--text);
+  font-size: 0.875rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.train-checkin summary::-webkit-details-marker {
+  display: none;
+}
+
+.train-checkin summary:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 0;
+}
+
+.train-checkin-line {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.train-checkin-line small {
+  margin-left: 0.25rem;
+  color: var(--muted);
+  font-size: inherit;
+  font-weight: 400;
+}
+
+.train-checkin-act {
+  flex: none;
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.train-checkin summary svg {
+  flex: none;
+  color: var(--muted);
+  transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.train-checkin:not([open]) .train-checkin-act[data-open],
+.train-checkin[open] .train-checkin-act[data-closed] {
+  display: none;
+}
+
+.train-checkin[open] summary svg {
+  transform: rotate(180deg);
+}
+
+/* Second level: the check-in opens above time and Start; each tap saves, so Start stays. */
+.train-dock:has(> .train-checkin[open]) > .train-dock-today {
+  display: none;
+}
+
+.train-checkin-note {
+  margin: 0.125rem 0 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.train-checkin-body {
+  display: grid;
+  gap: 0.375rem;
+  padding-top: 0.25rem;
+}
+
+.train-checkin-body > .workout-set-panel-action {
+  margin-top: 0.5rem;
+}
+
+.train-checkin-scale {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0 0 0 0.25rem;
+  border: 0;
+  animation: train-dock-rise 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.train-checkin-scale:nth-child(2) { animation-delay: 30ms; }
+.train-checkin-scale:nth-child(3) { animation-delay: 60ms; }
+
+.train-checkin-scale legend {
+  float: left;
+  display: grid;
+  padding: 0;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.25;
+}
+
+.train-checkin-scale legend small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.train-checkin-scale > div {
+  display: grid;
+  grid-template-columns: repeat(5, 2.75rem);
+  gap: 0.25rem;
+}
+
+.train-checkin-scale label {
+  position: relative;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background-color 140ms ease, box-shadow 140ms ease, color 140ms ease;
+}
+
+/* The radio covers its key, so the hit area is the 44 px key itself. */
+.train-checkin-scale input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.train-dock-time button[aria-checked='true'] {
+  background: var(--puls-bone);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+  color: var(--accent-foreground);
+}
+
+.train-checkin-scale label:has(input:checked) {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 0 1.5px var(--text), 0 2px 6px rgba(0, 0, 0, 0.35);
+  color: var(--text-strong);
+}
+
+.train-checkin-scale label:has(input:focus-visible) {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+@keyframes train-dock-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.train-dock-today {
+  display: grid;
   gap: 0.375rem;
 }
 
-.train-time-options button {
+.train-dock-time {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.train-dock-time button {
   flex: 1 1 auto;
   min-height: 2.75rem;
-  padding: 0 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  background: transparent;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   color: var(--text);
   font: inherit;
   font-size: 0.875rem;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  transition: background-color 160ms ease, border-color 160ms ease;
+  transition: background-color 160ms ease, box-shadow 160ms ease, color 160ms ease;
 }
 
-.train-time-options button:first-child {
-  flex-grow: 2;
+.train-dock-time button:first-child {
+  flex-grow: 1.6;
 }
 
-.train-time-options button span {
+.train-dock-time button span {
   color: var(--muted);
   font-weight: 400;
 }
 
-.train-time-options button[aria-checked='true'] {
-  border-color: color-mix(in srgb, var(--puls-bone) 70%, transparent);
-  background: var(--choice-selected-bg);
-  color: var(--text-strong);
+.train-dock-time button[aria-checked='true'] span {
+  color: color-mix(in srgb, var(--accent-foreground) 72%, transparent);
 }
 
-.train-time-options button[aria-checked='true'] span {
-  color: var(--text);
+.train-dock-time button:hover:not([aria-checked='true']) {
+  background: rgba(255, 255, 255, 0.11);
 }
 
-.train-time-options button:hover:not([aria-checked='true']) {
-  background: color-mix(in srgb, var(--text) 5%, transparent);
-}
-
-.train-time-options button:focus-visible,
+.train-dock-time button:focus-visible,
+.train-dock .workout-set-panel-action:focus-visible,
 .train-time-switch input:focus-visible {
   outline: 2px solid var(--focus-ring);
   outline-offset: 2px;
 }
 
-.train-time-summary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem 1rem;
+.train-dock-line {
+  margin: 0;
+  padding: 0.375rem 0.25rem 0;
   color: var(--muted);
   font-size: 0.875rem;
-}
-
-.train-time-summary p {
-  margin: 0;
-}
-
-.train-time-summary strong {
-  color: var(--text);
-  font-weight: 500;
   font-variant-numeric: tabular-nums;
 }
 
+.train-dock-line strong {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.train-dock-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.train-dock-actions > * {
+  flex: 1 1 0;
+}
+
+.train-dock-actions > [data-quiet] {
+  flex: 0 1 8.5rem;
+}
+
 .train-time-switch {
-  display: inline-flex;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.5rem;
   min-height: 2.75rem;
+  padding: 0 0.25rem;
   color: var(--text);
+  font-size: 0.875rem;
   cursor: pointer;
 }
 
@@ -8235,33 +8061,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   order: 11;
 }
 
-/* The adjusted Start in the card above leads; a sticky transparent button would float over the list. */
-.train-start:has(> .train-start-as-planned) {
-  position: static;
-  margin-top: 0.25rem;
-}
-
-.train-start .train-start-as-planned {
-  height: 2.75rem;
-  border-radius: var(--radius-md);
-  background: transparent;
-  box-shadow: none;
-  color: var(--text);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  transition: background-color 160ms ease;
-}
-
-.train-start .train-start-as-planned:hover:not(:disabled),
-.train-start .train-start-as-planned:active:not(:disabled) {
-  background: var(--selected-bg);
-}
-
-.train-start .train-start-as-planned:focus-visible {
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
-}
-
 .train-link {
   min-width: 2.75rem;
   min-height: 2.75rem;
@@ -8277,21 +8076,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 .train-link:hover,
 .train-link:focus-visible {
   color: var(--text);
-}
-
-.train-plan > .readiness-card--prompt {
-  margin: 0.75rem 0 0.5rem;
-  padding: 0 1rem;
-  border-radius: var(--radius-lg);
-  background: var(--surface-1);
-}
-
-.train-plan > .readiness-card--prompt .readiness-summary {
-  padding: 0.625rem 0;
-}
-
-.train-plan > .readiness-card--prompt .readiness-prompt-body {
-  padding-bottom: 1rem;
 }
 
 .train-start {
@@ -8453,6 +8237,15 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   .train-side {
     grid-column: 2;
     grid-row: 1 / span 2;
+  }
+
+  .train-dock {
+    position: sticky;
+    top: 5.5rem;
+    bottom: auto;
+    order: 0;
+    margin: 0;
+    padding: 0.5rem 1rem 1rem;
   }
 
   .train-start {
@@ -9168,7 +8961,6 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
   color: var(--text);
 }
-
 
 .workout-desktop-bar {
   display: flex;

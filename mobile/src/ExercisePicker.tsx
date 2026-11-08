@@ -6,6 +6,7 @@ import Svg, { Path } from 'react-native-svg'
 import { exercises as exerciseDb, searchExercises, type Category } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../../src/lib/exerciseLabels'
 import type { RecentExercisePick } from '../../src/shared/recentExercises'
+import type { ExerciseRef } from '../../src/shared/exerciseMatch'
 import { BottomSheet } from './BottomSheet'
 import type { ExerciseSource } from './session'
 import type { ExerciseMetadata, ReadState } from './scopedRead'
@@ -18,9 +19,12 @@ const PICKER_CATEGORIES: { value: Category | 'all'; label: string }[] = [
 
 type PickerResult = { id: string; name: string; category: string; equipment: string; source: ExerciseSource }
 
-export default function ExercisePicker({ userExercises, recent = [], onRetryUserExercises, onSelect, onClose }: {
+export default function ExercisePicker({ userExercises, recent = [], suggestions = [], title = 'Add exercise', onRetryUserExercises, onSelect, onClose }: {
   userExercises: ReadState<ExerciseMetadata[]>
   recent?: RecentExercisePick[]
+  // Closest matches for a pasted line, listed first.
+  suggestions?: ExerciseRef[]
+  title?: string
   onRetryUserExercises: () => void
   onSelect: (id: string, name: string, source: ExerciseSource) => void
   onClose: () => void
@@ -48,7 +52,12 @@ export default function ExercisePicker({ userExercises, recent = [], onRetryUser
       ? userExercises.data.find(({ id }) => id === pick.id) : exerciseDb.find(({ id }) => id === pick.id)
     return exercise ? [{ ...exercise, name: pick.name, source: pick.source }] : []
   })
-  return <BottomSheet tall title="Add exercise" onClose={onClose}>{(close) => {
+  const suggestedRows = filtered ? [] : suggestions.flatMap((ref) => {
+    const exercise = ref.exerciseSource === 'user' && userExercises.status === 'ready'
+      ? userExercises.data.find(({ id }) => id === ref.exerciseId) : ref.exerciseSource === 'global' ? exerciseDb.find(({ id }) => id === ref.exerciseId) : undefined
+    return exercise ? [{ ...exercise, source: ref.exerciseSource }] : []
+  })
+  return <BottomSheet tall title={title} onClose={onClose}>{(close) => {
     const row = (item: PickerResult) => <Pressable key={`${item.source}-${item.id}`} accessibilityRole="button" accessibilityLabel={`${item.name}${item.source === 'user' ? ', mine' : ''}`}
       onPress={() => close(() => onSelect(item.id, item.name, item.source))} style={({ pressed }) => [styles.pickerResult, pressed && styles.pickerPressed]}>
       <View style={styles.pickerResultMain}>
@@ -81,6 +90,8 @@ export default function ExercisePicker({ userExercises, recent = [], onRetryUser
           {userExercises.status === 'error' && <Pressable accessibilityRole="button" onPress={onRetryUserExercises} style={styles.lookupAction}>
             <Text style={styles.pickerFeedback}>Could not load your exercises. The shared library is still available. <Text style={styles.syncActionText}>Retry</Text></Text>
           </Pressable>}
+          {suggestedRows.length > 0 && <Text accessibilityRole="header" style={styles.pickerGroup}>Closest matches</Text>}
+          {suggestedRows.map(row)}
           {recentRows.length > 0 && <Text accessibilityRole="header" style={styles.pickerGroup}>Recently used</Text>}
           {recentRows.map(row)}
           {results.length > 0 && <Text accessibilityRole="header" style={styles.pickerGroup}>{filtered ? `${results.length} found` : 'All exercises'}</Text>}

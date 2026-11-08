@@ -2,6 +2,7 @@ import { displayWeightStringToKg, kgToDisplayWeight, type WeightUnits } from '..
 import { templateFingerprint } from '../../src/shared/templateFingerprint'
 import { newPlanDayId } from '../../src/shared/planDay'
 import type { WorkoutTemplate, TemplateExercise } from './workoutLaunch'
+import type { ImportedPlan, ImportedRow } from '../../src/shared/planImport'
 
 export interface EditorExercise extends Omit<TemplateExercise, 'sets' | 'targetReps' | 'targetWeight'> {
   rowId: string
@@ -10,6 +11,9 @@ export interface EditorExercise extends Omit<TemplateExercise, 'sets' | 'targetR
   weight: string
   originalWeightKg?: number
   originalWeightDisplay?: string
+  // A pasted line that is not an exercise yet; the draft cannot be saved while one remains.
+  unmatched?: ImportedRow['unmatched']
+  detail?: string | null
 }
 export interface EditorDay { rowId: string; dayId?: string; name: string; exercises: EditorExercise[] }
 export interface PlanSaveRequest {
@@ -31,6 +35,8 @@ export interface PlanDraft {
   pending: PlanSaveRequest | null
   resolvedId: string | null
   dirty: boolean
+  // Pasted lines that could not be read, shown until the draft is saved or discarded.
+  skipped?: ImportedPlan['skipped']
 }
 
 export function newPlanDraft(draftId: string, units: WeightUnits, template: WorkoutTemplate | null, newId: () => string): PlanDraft {
@@ -56,6 +62,18 @@ function numeric(text: string, maximum: number, whole: boolean, label: string): 
   return value
 }
 
+// A pasted plan opens as a dirty new draft, so the journal keeps it, open lines included, across a restart.
+export function importedPlanDraft(plan: ImportedPlan, units: WeightUnits, newId: () => string): PlanDraft {
+  const days = plan.days.map((day) => ({ rowId: newId(), dayId: newPlanDayId(), name: day.name, exercises: day.rows.map((row) => {
+    const weight = String(kgToDisplayWeight(row.targetWeight, units))
+    return { rowId: newId(), exerciseId: row.exercise?.exerciseId ?? '', exerciseSource: row.exercise?.exerciseSource ?? 'global' as const, name: row.name,
+      sets: String(row.sets), targetReps: String(row.targetReps), weight, originalWeightKg: row.targetWeight, originalWeightDisplay: weight,
+      detail: row.detail, ...(row.unmatched ? { unmatched: row.unmatched } : {}) }
+  }) }))
+  return { draftId: newId(), revision: 0, targetId: null, baseline: null, resolvedId: null, units, name: plan.name, days,
+    selectedDayId: days[0]!.rowId, pending: null, dirty: true, ...(plan.skipped.length ? { skipped: plan.skipped } : {}) }
+}
+
 export function normalizePlanDraft(draft: PlanDraft, operationId: string): PlanSaveRequest {
   if (!draft.targetId && draft.resolvedId) throw new Error('This plan was already created. Reload or discard this draft before creating another.')
   if (draft.targetId && draft.baseline === null) throw new Error('The edit baseline is missing. Reload this plan.')
@@ -63,6 +81,7 @@ export function normalizePlanDraft(draft: PlanDraft, operationId: string): PlanS
   if (name.length < 2 || name.length > 120) throw new Error('Plan name must be 2–120 characters.')
   if (draft.days.length < 1 || draft.days.length > 14) throw new Error('A plan needs 1–14 days.')
   if (draft.days.every((day) => day.exercises.length === 0)) throw new Error('Add at least one exercise.')
+  if (draft.days.some((day) => day.exercises.some((exercise) => exercise.unmatched))) throw new Error('Choose an exercise for every pasted line.')
   const days = draft.days.map((day, index) => {
     const dayName = day.name.trim() || `Day ${index + 1}`
     if (dayName.length > 80) throw new Error('Day name cannot exceed 80 characters.')

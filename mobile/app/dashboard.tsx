@@ -35,6 +35,8 @@ import { useOptionalLaunchRuntime } from '../src/launchRuntime'
 import { nextPlanWorkout, selectedWorkout, validateTemplateLaunch, type BestSet, type TemplateExercise, type WorkoutSelection, type WorkoutTemplate } from '../src/workoutLaunch'
 import { colors, primaryGradient } from '../src/theme'
 import { Icon } from '../src/icons'
+import { PastePlanSheet } from '../src/PastePlanSheet'
+import { useStarterPlan } from '../src/useStarterPlan'
 
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
 type TemplateData = WorkoutTemplate[]
@@ -72,6 +74,8 @@ export default function DashboardScreen() {
   const [todayChoice, setTodayChoice] = useState<TodayChoice | null>(null)
   const [checkInOpen, setCheckInOpen] = useState(false)
   const [skipping, setSkipping] = useState(false)
+  const [pasting, setPasting] = useState(false)
+  const starter = useStarterPlan(uid ?? '', () => setTemplatesAttempt((value) => value + 1))
   const [userExercises, setUserExercises] = useState<{ uid: string; meta: Map<string, ExerciseMetadata> } | null>(null)
   const key = `home:${uid ?? ''}`
   const completion = completed ? `${completed.action}:${completed.action === 'finish' ? completed.workoutId : completed.sessionId}` : ''
@@ -208,7 +212,7 @@ export default function DashboardScreen() {
   const trainLinks = <View style={styles.links}>
       <Pressable accessibilityRole="button" onPress={() => router.navigate('/templates')} style={styles.link}><Text style={styles.linkText}>Plans</Text></Pressable>
       {canOfferStart && templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.link}><Text style={styles.linkText}>Change workout</Text></Pressable>}
-      {canOfferStart && !noPlans && <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={styles.link}><Text style={styles.linkText}>Empty workout</Text></Pressable>}
+      {canOfferStart && <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={styles.link}><Text style={styles.linkText}>{noPlans ? 'Start empty workout' : 'Empty workout'}</Text></Pressable>}
     </View>
 
   if (!user) return <SafeAreaView edges={['top']} style={styles.screen}><StatusBar style="light" /><Text style={styles.muted}>Restoring sign-in…</Text></SafeAreaView>
@@ -253,7 +257,7 @@ export default function DashboardScreen() {
             <Text style={styles.exerciseMeta}>{exercise.sets} × {exercise.targetReps}{startWeightOf(exercise) > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(startWeightOf(exercise)), units)} {units}</Text></>}</Text>
             <Icon name="chevron-right" size={16} />
           </Pressable>)}
-          {canOfferStart && !chosen && !plansPending && <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : 'You can still start an empty workout.'}</Text></View>}
+          {canOfferStart && !chosen && !plansPending && <View style={styles.planEmpty}><Text style={styles.planEmptyTitle}>{templatesState.status === 'loading' ? 'Loading plans…' : templatesState.status === 'error' ? 'Plans unavailable' : selection?.uid === uid && selection.unavailable ? 'Workout no longer available' : templatesState.fromCache && templates.length === 0 ? 'Could not confirm saved plans' : templates.length === 0 ? 'No plans yet' : 'No workouts in your plans'}</Text><Text style={styles.planEmptyCopy}>{selection?.uid === uid && selection.unavailable ? 'Choose another workout before starting.' : noPlans ? 'Paste the plan you already follow, or start from ours.' : 'You can still start an empty workout.'}</Text></View>}
           {canOfferStart && templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
           {canOfferStart && templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
         </View>
@@ -288,9 +292,18 @@ export default function DashboardScreen() {
           {today && choice.budgetMin !== null && !today.compression.fits && <Pressable accessibilityRole="button" disabled={skipping} onPress={() => void skipToday()} style={[styles.skip, skipping && styles.disabled]}><Text style={styles.skipText}>{skipping ? 'Skipping…' : 'Skip today'}</Text></Pressable>}
           <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={startToday} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : `Start ${chosen.day.name}`}</Text></Pressable>
         </>
+          : noPlans ? <View style={styles.firstPlan}>
+            <Pressable accessibilityRole="button" onPress={() => setPasting(true)} style={styles.start}><Text style={styles.startText}>Paste a plan</Text></Pressable>
+            <View style={styles.firstPlanRow}>
+              <Pressable accessibilityRole="button" disabled={starter.saving} onPress={() => void starter.create()} style={[styles.skip, styles.firstPlanQuiet, starter.saving && styles.disabled]}><Text style={styles.skipText}>{starter.saving ? 'Adding…' : 'Use the starter plan'}</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={[styles.skip, styles.firstPlanQuiet]}><Text style={styles.skipText}>Build a plan</Text></Pressable>
+            </View>
+            {starter.error && <Text accessibilityRole="alert" style={styles.planEmptyCopy}>{starter.error}</Text>}
+          </View>
           : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
       </View>
     </View>}
+    {pasting && uid && <PastePlanSheet uid={uid} onClose={() => setPasting(false)} />}
     <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
         <View style={styles.pickerHead}><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Icon name="close" size={18} color={colors.muted} /></Pressable></View>
@@ -354,7 +367,7 @@ const styles = StyleSheet.create({
   planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },
   launchFeedback: { gap: 4 }, disabled: { opacity: 0.65 },
   dock: { gap: 8, marginHorizontal: 10, marginTop: 10, marginBottom: 2, paddingTop: 6, paddingHorizontal: 12, paddingBottom: 12, borderRadius: 22, backgroundColor: colors.surfaceHigh, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: '0 -18px 40px -14px rgba(0, 0, 0, 0.7), 0 10px 24px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.07)' },
-  dockBare: { paddingTop: 12 }, dockActions: { flexDirection: 'row', gap: 8, marginTop: 4 }, dockStart: { flex: 1 },
+  dockBare: { paddingTop: 12 }, dockActions: { flexDirection: 'row', gap: 8, marginTop: 4 }, dockStart: { flex: 1 }, firstPlan: { flex: 1, gap: 8 }, firstPlanRow: { flexDirection: 'row', gap: 8 }, firstPlanQuiet: { flexGrow: 1, flexBasis: 0 },
   skip: { flexGrow: 0, flexShrink: 1, flexBasis: 136, height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: 'rgba(255, 255, 255, 0.09)', boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)' }, skipText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
   group: { marginLeft: 2, paddingLeft: 12, borderLeftWidth: 1, borderLeftColor: colors.lineStrong }, groupLabel: { marginTop: 6, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20 },
   skipped: { color: colors.mutedSoft }, skippedName: { color: colors.mutedSoft, textDecorationLine: 'line-through', textDecorationColor: colors.mutedSoft },

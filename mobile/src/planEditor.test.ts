@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { newPlanDraft, normalizePlanDraft, refreshPlanDraftUnits } from './planEditor'
+import { importedPlanDraft, newPlanDraft, normalizePlanDraft, refreshPlanDraftUnits } from './planEditor'
+import { importPlanText } from '../../src/shared/planImport'
 import { PlanEditorJournal, type PlanDraftSlots } from './planEditorJournal'
 import { finishAcknowledgedPlanSave, releaseRejectedPlanSave, requestPlanEditorExit } from './planEditorFlow'
 import type { WorkoutTemplate } from './workoutLaunch'
@@ -265,4 +266,28 @@ test('profile units settle original display inputs and preserve canonical kg acr
   const edited = refreshPlanDraftUnits(pounds, 'kg'); assert.equal(edited.days[0]!.exercises[0]!.originalWeightKg, 45.3592)
   pounds.days[0]!.exercises[0]!.weight = '1..'; assert.throws(() => refreshPlanDraftUnits(pounds, 'kg'))
   assert.equal(pounds.units, 'lbs'); assert.equal(pounds.days[0]!.exercises[0]!.weight, '1..')
+})
+
+test('a pasted plan keeps its open lines across a restart and saves only once they are exercises', async () => {
+  const slots = new Map<string, string>()
+  const storage: PlanDraftSlots = {
+    read: async (key, slot) => slots.get(`${key}:${slot}`) ?? null,
+    write: async (key, slot, value) => { slots.set(`${key}:${slot}`, value) },
+  }
+  let id = 0
+  const pasted = importPlanText('Upper\nWyciskanie sztangi na ławce 4x8 60 kg\nBiceps 3x12 14 kg')!
+  const draft = importedPlanDraft(pasted, 'kg', () => `id-${++id}`)
+  assert.throws(() => normalizePlanDraft(draft, 'operation-1'), /every pasted line/)
+  assert.equal(await new PlanEditorJournal(storage).installIfEmpty('uid', draft, 'paste'), true)
+
+  const restored = await new PlanEditorJournal(storage).open('uid', null, 'editor-after-restart')
+  const open = restored!.days[0]!.exercises[1]!
+  assert.equal(open.unmatched?.reason, 'generic')
+  assert.equal(open.unmatched?.line, 'Biceps 3x12 14 kg')
+
+  restored!.days[0]!.exercises[1] = { ...open, unmatched: undefined, exerciseId: 'barbell-curl', exerciseSource: 'global', name: 'Barbell Curl' }
+  assert.deepEqual(normalizePlanDraft(restored!, 'operation-1').days[0]!.exercises, [
+    { exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets: 4, targetReps: 8, targetWeight: 60 },
+    { exerciseId: 'barbell-curl', exerciseSource: 'global', name: 'Barbell Curl', sets: 3, targetReps: 12, targetWeight: 14 },
+  ])
 })

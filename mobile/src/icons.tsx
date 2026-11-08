@@ -16,6 +16,8 @@ const paths = {
   plus: 'M12 5v14M5 12h14',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
   more: 'M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0',
+  paste: 'M15 2H9a1 1 0 0 0-1 1v2c0 .6.4 1 1 1h6c.6 0 1-.4 1-1V3c0-.6-.4-1-1-1ZM8 4H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2M16 4h2a2 2 0 0 1 2 2v2M11 14h10m-4-4 4 4-4 4',
+  share: 'M18 2a3 3 0 1 0 0 6a3 3 0 1 0 0-6M6 9a3 3 0 1 0 0 6a3 3 0 1 0 0-6M18 16a3 3 0 1 0 0 6a3 3 0 1 0 0-6M8.59 13.51l6.83 3.98M15.41 6.51l-6.82 3.98',
 } as const
 
 export function Icon({ name, size = 16, color = colors.muted }: { name: keyof typeof paths; size?: number; color?: string }) {

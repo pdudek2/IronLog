@@ -71,6 +71,7 @@ function renderPasted() {
     { path: '/templates', element: <p>Plans list</p> },
   ], { initialEntries: [{ pathname: '/templates/new', state: { pasted } }] })
   render(<RouterProvider router={router} />)
+  return router
 }
 
 describe('TemplateEditorPage with a pasted plan', () => {
@@ -84,7 +85,7 @@ describe('TemplateEditorPage with a pasted plan', () => {
   })
 
   it('blocks saving until every line is an exercise, then saves only plan fields', async () => {
-    renderPasted()
+    const router = renderPasted()
 
     expect(await screen.findByRole('textbox', { name: 'Name' })).toHaveValue('Upper / Lower')
     const skipped = screen.getByRole('region', { name: 'Lines not added' })
@@ -105,6 +106,7 @@ describe('TemplateEditorPage with a pasted plan', () => {
     expect(screen.queryByText(/to save$/)).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Save plan' }))
     await screen.findByText('Plans list')
+    expect(router.state.historyAction).toBe('REPLACE')
 
     const input = mocks.createTemplate.mock.calls[0]?.[1]
     expect(input.name).toBe('Upper / Lower')

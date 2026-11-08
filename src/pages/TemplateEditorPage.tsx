@@ -437,7 +437,8 @@ export default function TemplateEditorPage() {
       setSavedSnapshot(serializeDraftState(payload.name, payload.days))
       leaveGuard.reset()
       leaveGuard.allowNextNavigation()
-      navigate('/templates')
+      // Back must not reopen a pasted plan from its router state and save it again.
+      navigate('/templates', { replace: Boolean(pasted) })
     } catch (error) {
       setSaveError(error instanceof ApiRejectedError ? error.message : 'Could not save the plan.')
       setSaving(false)

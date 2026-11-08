@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { newWorkoutDraft, normalizeWorkoutDraft, isWorkoutDraft } from './workoutEditor'
+import { newWorkoutDraft, normalizeWorkoutDraft, isWorkoutDraft, workoutDraftDirty } from './workoutEditor'
 import { WorkoutEditorJournal } from './workoutEditorJournal'
 const snapshot = { id: 'workout', label: 'Pull', startedAt: 1, finishedAt: 2, materialized: true, exercises: [
   { exerciseId: 'same', exerciseSource: 'global' as const, name: 'Row', sets: [{ weight: 42.375, reps: 8 }] },
@@ -16,6 +16,14 @@ test('preserves exact untouched kg, source identities, repeated rows and local r
   assert.equal(request.exercises[0]!.sets[0]!.weight, 42.375)
   assert.deepEqual(request.exercises.map(e => e.exerciseSource), ['global', 'user', 'global'])
   assert.equal(new Set(d.exercises.map(e => e.rowId)).size, 3)
+})
+test('a grouped exercise keeps its group through the draft, its journal check and the saved content', () => {
+  const grouped = { ...snapshot, exercises: [{ ...snapshot.exercises[0]!, group: 'g1' }] }
+  const d = newWorkoutDraft(grouped, 'a'.repeat(64), 'kg', newId)
+  assert.equal(isWorkoutDraft(JSON.parse(JSON.stringify(d)), 'workout'), true)
+  assert.deepEqual(normalizeWorkoutDraft(d), { label: 'Pull', exercises: grouped.exercises })
+  assert.equal(workoutDraftDirty(d), false)
+  assert.equal(isWorkoutDraft({ ...d, exercises: [{ ...d.exercises[0]!, group: 'x'.repeat(17) }] }, 'workout'), false)
 })
 test('invalid rows are rejected rather than omitted and label/row limits hold', () => {
   const d = draft(); d.exercises[0]!.sets[0]!.reps = '1.5'

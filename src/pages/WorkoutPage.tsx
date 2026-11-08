@@ -40,7 +40,8 @@ import {
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
-import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
+import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
+import { sessionRoles } from '../shared/nextSessionRecommendation'
 
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
 
@@ -254,20 +255,27 @@ export default function WorkoutPage() {
     }
     toggleSetDone(exerciseIndex, setIndex)
     if (wasNotDone) {
-      useWorkoutStore.getState().startRestTimer(90)
+      const next = useWorkoutStore.getState().active
+      const userMeta = new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))
+      const rest = next ? restAfterSet(next.exercises, exerciseIndex, sessionRoles(next.exercises, userMeta), next.compression?.shortRest === true) : 0
+      if (rest > 0) useWorkoutStore.getState().startRestTimer(rest)
+      else useWorkoutStore.getState().clearRestTimer()
       const exercise = currentActive?.exercises[exerciseIndex]
       if (exercise) {
         const exerciseId = getExerciseClientId(exercise, exerciseIndex)
         setLastLogged({ exerciseId, setIndex, draw: true })
-        // The next exercise waits for "Go to", so the logged set and Undo stay on screen.
-        if (completesExercise) setManualExerciseClientId(exerciseId)
+        // The next exercise waits for "Go to", so the logged set and Undo stay on screen; a pair or circuit moves on by itself.
+        const groupOpen = exercise.group !== undefined && next?.exercises.some((other, index) => index !== exerciseIndex && other.group === exercise.group && other.sets.some((set) => !set.done))
+        // Inside an open round the next member takes the screen, even if this one was picked with Go to.
+        if (groupOpen) setManualExerciseClientId(null)
+        else if (completesExercise) setManualExerciseClientId(exerciseId)
       }
       setSelectedSet(null)
       if ('vibrate' in navigator) navigator.vibrate(12)
     } else {
       useWorkoutStore.getState().clearRestTimer()
     }
-  }, [])
+  }, [userExercises])
 
   const handleAddRestTime = useCallback((deltaSec: number) => {
     useWorkoutStore.getState().addRestTimerSeconds(deltaSec)

@@ -1,4 +1,3 @@
-import { createElement, type ReactNode } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ReadinessPrompt from '../ReadinessPrompt'
@@ -22,27 +21,12 @@ vi.mock('sonner', () => ({
   toast: { success: mocks.toastSuccess, error: mocks.toastError },
 }))
 
-vi.mock('framer-motion', () => ({
-  motion: new Proxy({}, {
-    get: (_target, tag: string | symbol) => {
-      if (typeof tag !== 'string') return undefined
-      return ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
-        delete props.initial
-        delete props.animate
-        delete props.transition
-        delete props.whileTap
-        return createElement(tag, props, children)
-      }
-    },
-  }),
-}))
-
 describe('ReadinessPrompt', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('uses native disclosure and saves the selected values', async () => {
+  it('uses native disclosure and saves each tap for today', async () => {
     const entry = {
       userId: 'user-1',
       date: '2026-08-31',
@@ -54,21 +38,18 @@ describe('ReadinessPrompt', () => {
     mocks.saveReadiness.mockResolvedValue(entry)
     render(<ReadinessPrompt onSaved={mocks.onSaved} />)
 
-    const summary = screen.getByText('Adjust today’s workout')
+    const summary = screen.getByText('Check in')
     const details = summary.closest('details')
     expect(details).not.toHaveAttribute('open')
     fireEvent.click(summary)
     expect(details).toHaveAttribute('open')
 
-    // Soreness runs the other way from sleep and mood, so each slider names both ends of its scale.
-    expect(screen.getByRole('slider', { name: 'Readiness: Soreness' }))
-      .toHaveAttribute('aria-valuetext', '3 out of 5, from 1 None to 5 Severe')
-    expect(screen.getAllByText('Severe')).toHaveLength(1)
+    // Soreness runs the other way from sleep and mood, so each step names its meaning.
+    expect(screen.getByRole('group', { name: /Soreness/ })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'Soreness 5 of 5, Severe' })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Soreness 3 of 5, Some' })).toBeChecked()
 
-    fireEvent.change(screen.getByRole('slider', { name: 'Readiness: Sleep' }), {
-      target: { value: '4' },
-    })
-    fireEvent.click(screen.getByRole('button', { name: 'Save score' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Sleep 4 of 5, Good' }))
 
     await waitFor(() => expect(mocks.onSaved).toHaveBeenCalledWith(entry))
     expect(mocks.saveReadiness).toHaveBeenCalledWith('user-1', {
@@ -76,17 +57,25 @@ describe('ReadinessPrompt', () => {
       mood: 3,
       soreness: 3,
     })
-    expect(mocks.toastSuccess).toHaveBeenCalledWith('Readiness saved')
   })
 
-  it('restores the save action after a failed request', async () => {
+  it('opens today’s saved check-in for a change with its values', () => {
+    render(<ReadinessPrompt entry={{ userId: 'user-1', date: '2026-08-31', sleep: 2, mood: 4, soreness: 5, createdAt: 1 }} onSaved={mocks.onSaved} />)
+
+    expect(screen.getByText('Sleep 2 · Mood 4 · Soreness 5')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Change'))
+    expect(screen.getByRole('radio', { name: 'Sleep 2 of 5, Restless' })).toBeChecked()
+    expect(screen.getByRole('radio', { name: 'Soreness 5 of 5, Severe' })).toBeChecked()
+  })
+
+  it('reports a failed save and keeps the choice to try again', async () => {
     mocks.saveReadiness.mockRejectedValue(new Error('offline'))
     render(<ReadinessPrompt onSaved={mocks.onSaved} />)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save score' }))
+    fireEvent.click(screen.getByRole('radio', { name: 'Mood 2 of 5, Low', hidden: true }))
 
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Save score' })).toBeEnabled())
+    await waitFor(() => expect(mocks.toastError).toHaveBeenCalled())
     expect(mocks.onSaved).not.toHaveBeenCalled()
-    expect(mocks.toastError).toHaveBeenCalledWith('Could not save readiness.')
+    expect(mocks.toastError).toHaveBeenCalledWith('Could not save the check-in.')
   })
 })

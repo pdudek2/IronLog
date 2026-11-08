@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 
 import { ApiError } from './errors.js'
 import { PLAN_DAY_ID_PATTERN } from '../../src/shared/planDay.js'
+import { parseCompressionRecord, parseGroup, parseProposals, type CompressionProposal, type CompressionRecord } from '../../src/shared/compressionRecord.js'
 import { MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES, MAX_SET_REPS, MAX_SET_WEIGHT_KG } from '../../src/shared/workoutLimits.js'
 
 export type ExerciseSource = 'global' | 'user'
@@ -17,6 +18,8 @@ export interface ValidatedWorkoutExercise {
   exerciseSource: ExerciseSource
   name: string
   sets: ValidatedWorkoutSet[]
+  // Pair or circuit id from a compressed day.
+  group?: string
 }
 
 export interface FinalizeWorkoutInput {
@@ -27,6 +30,9 @@ export interface FinalizeWorkoutInput {
   finishedAt: number
   label: string | null
   exercises: ValidatedWorkoutExercise[]
+  // Absent unless the session had one; a malformed value is stored as null.
+  compression?: CompressionRecord | null
+  proposals?: CompressionProposal[] | null
 }
 
 interface NormalizeWorkoutExercisesOptions {
@@ -88,7 +94,16 @@ export function buildFinishedWorkoutFromActiveSession(
     finishedAt: normalizedFinishedAt,
     label: validateWorkoutLabel(record.label),
     exercises,
+    ...optionalSessionField('compression', record.compression, parseCompressionRecord),
+    ...optionalSessionField('proposals', record.proposals, parseProposals),
   }
+}
+
+function optionalSessionField<K extends string, T>(key: K, raw: unknown, parse: (raw: unknown) => T | null): { [P in K]?: T | null } {
+  if (raw === undefined) return {}
+  const value = parse(raw)
+  if (value === null) console.warn(`Dropped an invalid ${key} record from a finished session.`)
+  return { [key]: value } as { [P in K]?: T | null }
 }
 
 export function normalizeWorkoutExercises(
@@ -127,6 +142,7 @@ function normalizeActiveWorkoutExercises(raw: unknown): ValidatedWorkoutExercise
       exerciseSource: record.exerciseSource,
       name: record.name,
       sets,
+      group: record.group,
     }
   }).filter((exercise) => exercise.sets.length > 0)
 
@@ -191,8 +207,9 @@ function normalizeWorkoutExercise(raw: unknown): ValidatedWorkoutExercise {
   const exerciseSource = validateExerciseSource(record.exerciseSource)
   const name = validateExerciseName(record.name)
   const sets = normalizeWorkoutSets(record.sets)
+  const group = parseGroup(record.group)
 
-  return { exerciseId, exerciseSource, name, sets }
+  return group ? { exerciseId, exerciseSource, name, sets, group } : { exerciseId, exerciseSource, name, sets }
 }
 
 function normalizeWorkoutSets(raw: unknown): ValidatedWorkoutSet[] {

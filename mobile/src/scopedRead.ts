@@ -36,6 +36,7 @@ export function parsePreviousSets(data: Record<string, unknown>, uid: string, id
 export function parseExerciseHistory(sessions: Record<string, unknown>[], uid: string, id: string, source: string): ExerciseHistory {
   const parsed = sessions.map((session) => ({
     finishedAt: typeof session.finishedAt === 'number' ? session.finishedAt : 0,
+    shortened: session.shortened === true,
     sets: parsePreviousSets(session, uid, id, source),
   }))
   return { sets: parsed[0]?.sets ?? [], sessions: parsed }

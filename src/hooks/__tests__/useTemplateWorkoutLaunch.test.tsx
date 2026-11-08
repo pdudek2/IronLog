@@ -251,7 +251,7 @@ describe('useTemplateWorkoutLaunch', () => {
   })
 
   it('keeps recommendation overrides when retrying a failed launch', async () => {
-    const overrides = new Map([['global:squat', { sets: 2, weight: 102.5 }]])
+    const overrides = { items: [{ dayExerciseIndex: 0, sets: 2, weight: 102.5, reps: 5 }] }
     mocks.createPersistedTemplateWorkout
       .mockRejectedValueOnce(new Error('offline'))
       .mockResolvedValueOnce(workout)

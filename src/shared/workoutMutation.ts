@@ -4,6 +4,7 @@ export interface EditableWorkoutExercise {
   exerciseSource: 'global' | 'user'
   name: string
   sets: { weight: number; reps: number; completedAt?: number }[]
+  group?: string
 }
 export interface WorkoutEditContent { label: string | null; exercises: EditableWorkoutExercise[] }
 export interface EditableWorkout extends WorkoutEditContent {

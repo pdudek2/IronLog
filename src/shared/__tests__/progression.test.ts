@@ -44,6 +44,18 @@ describe('buildProgression', () => {
     expect(run([session(3, sets3(65, 8)), session(10, [[70, 6], [70, 6], [70, 5]])])).toMatchObject({ weight: 67.5, reps: 6 })
   })
 
+  it('holds the weight after a shortened session, then evaluates normally again', () => {
+    const plan = { target: { reps: 8, sets: 4 } }
+    const cut = { ...session(3, [[70, 8], [70, 8], [70, 8]]), shortened: true }
+    expect(run([cut], plan)).toMatchObject({ weight: 70, change: 'none' })
+    expect(run([{ ...session(3, [[70, 7], [70, 7], [70, 6]]), shortened: true }], plan)).toMatchObject({ weight: 70, reps: 7, change: 'reps' })
+    expect(run([session(3, [[70, 8], [70, 8], [70, 8]])], plan)).toMatchObject({ weight: 72.5, change: 'weight' })
+    expect(run([session(1, [[70, 8], [70, 8], [70, 8], [70, 8]]), cut], plan)).toMatchObject({ weight: 72.5, change: 'weight' })
+    // No return to an older heavier session from a shortened one, and the break rules still come first.
+    expect(run([{ ...session(3, sets3(50, 8)), shortened: true }, session(10, sets3(70, 8))])).toMatchObject({ weight: 50, change: 'none' })
+    expect(run([{ ...session(60, sets3(100, 8)), shortened: true }], plan)?.trial).not.toBeNull()
+  })
+
   it('never brings back a heavier weight on low readiness', () => {
     expect(run([session(3, sets3(60, 8))], { lowReadiness: true })).toMatchObject({ weight: 60, change: 'none' })
     expect(run([session(3, sets3(50, 8)), session(10, sets3(70, 8))], { lowReadiness: true })).toMatchObject({ weight: 50, change: 'none' })

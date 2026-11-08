@@ -151,7 +151,7 @@ describe('createPersistedTemplateWorkout', () => {
       bestSetReps: 5,
       sets: [{ weight: 100, reps: 5 }],
     }])
-    const overrides = new Map([['global:squat', { sets: 2, weight: 102.5 }]])
+    const overrides = { items: [{ dayExerciseIndex: 0, sets: 2, weight: 102.5, reps: 5 }] }
 
     const workout = await createPersistedTemplateWorkout(
       'user-1',

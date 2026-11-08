@@ -1,4 +1,5 @@
 import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from './weightUnits'
+import { groupRestSec, restSec, type Role } from './compression'
 
 export type DisplaySet = { weight: string; reps: string; done: boolean }
 export function parseWeight(value: string): number {
@@ -24,18 +25,53 @@ export function summarizeExercise(exercise: { sets: DisplaySet[] }, units: Weigh
   return { completed, total: exercise.sets.length, volume: formatCompactVolume(volumeKg, units),
     max: maxKg ? `${kgToDisplayWeight(maxKg, units)} ${units}` : '—' }
 }
-export function focusExerciseIndex(exercises: { sets: Pick<DisplaySet, 'done'>[] }[]): number {
-  const next = exercises.findIndex((exercise) => exercise.sets.some((set) => !set.done))
-  return next >= 0 ? next : exercises.length - 1
+type FlowExercise = { group?: string; sets: Pick<DisplaySet, 'done'>[] }
+
+// Every open set in the order the session takes them. A pair or circuit goes in rounds (A1 B1 A2 B2):
+// the member with the fewest logged sets goes next, so a member without a set in this round is skipped.
+function upcomingSets(exercises: FlowExercise[]): number[] {
+  const open = exercises.map((exercise) => exercise.sets.filter((set) => !set.done).length)
+  const logged = exercises.map((exercise, index) => exercise.sets.length - open[index]!)
+  const order: number[] = []
+  for (let first = open.findIndex((count) => count > 0); first >= 0; first = open.findIndex((count) => count > 0)) {
+    const group = exercises[first]!.group
+    let next = first
+    if (group) {
+      exercises.forEach((exercise, index) => {
+        if (exercise.group === group && open[index]! > 0 && logged[index]! < logged[next]!) next = index
+      })
+    }
+    order.push(next)
+    open[next]! -= 1
+    logged[next]! += 1
+  }
+  return order
+}
+
+export function focusExerciseIndex(exercises: FlowExercise[]): number {
+  return upcomingSets(exercises)[0] ?? exercises.length - 1
 }
 export function focusSetIndex(sets: Pick<DisplaySet, 'done'>[]): number {
   const next = sets.findIndex((set) => !set.done)
   return next >= 0 ? next : Math.max(sets.length - 1, 0)
 }
-export function upNextQueue(exercises: { sets: Pick<DisplaySet, 'done'>[] }[], currentIndex: number): number[] {
-  const order = [...exercises.keys()]
-  return [...order.slice(currentIndex + 1), ...order.slice(0, Math.max(currentIndex, 0))]
-    .filter((index) => exercises[index]!.sets.some((set) => !set.done))
+export function upNextQueue(exercises: FlowExercise[], currentIndex: number): number[] {
+  const queue = [...new Set(upcomingSets(exercises))].filter((index) => index !== currentIndex)
+  // Outside a group the queue starts after the exercise on screen, as it always has.
+  return exercises[currentIndex]?.group ? queue : [...queue.filter((index) => index > currentIndex), ...queue.filter((index) => index < currentIndex)]
+}
+// Seconds of rest after the set just logged (the state already counts it); 0 while its round is still open.
+export function restAfterSet(exercises: FlowExercise[], exerciseIndex: number, roles: readonly Role[], shortRest: boolean): number {
+  const exercise = exercises[exerciseIndex]
+  if (!exercise) return 0
+  const role = roles[exerciseIndex] ?? 'compound'
+  const round = exercise.sets.filter((set) => set.done).length
+  const peers = exercise.group
+    ? exercises.flatMap((other, index) => (index !== exerciseIndex && other.group === exercise.group && other.sets.length >= round ? [index] : []))
+    : []
+  if (!peers.length) return restSec(role, shortRest, false)
+  if (peers.some((index) => exercises[index]!.sets.filter((set) => set.done).length < round)) return 0
+  return groupRestSec([role, ...peers.map((index) => roles[index] ?? 'compound')], shortRest, false)
 }
 export function panelSetIndex(sets: { clientId?: string; done: boolean }[], selectedSetId: string | null): number {
   const selected = selectedSetId === null ? -1 : sets.findIndex((set, index) => (set.clientId ?? String(index)) === selectedSetId)

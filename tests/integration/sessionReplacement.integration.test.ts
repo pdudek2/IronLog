@@ -66,6 +66,21 @@ describe('atomic active-session replacement', () => {
     expect(results.filter(result => result.status === 'fulfilled')).toHaveLength(1)
     expect([nextId, other.candidate.sessionId]).toContain((await active().get()).data()?.sessionId)
   })
+  it('accepts a compressed candidate and keeps its record, proposals and groups', async () => {
+    const compression = { v: 1, budgetMin: 20, mode: 'compressed', shortRest: true, estimateMin: 12, fullEstimateMin: 15, factor: 1.2, samples: 0, calibration: 'none', readiness: null,
+      exercises: [{ dayExerciseIndex: 0, exerciseId: 'row', exerciseSource: 'global', plannedSets: 2, sets: 0 }, { dayExerciseIndex: 1, exerciseId: 'row', exerciseSource: 'user', plannedSets: 1, sets: 1 }] }
+    const [globalRow, userRow] = request.candidate.exercises
+    request = parseReplacement({ replaces: request.replaces, selection: request.selection,
+      candidate: { ...request.candidate, compression, proposals: [{ budgetMin: 20, mode: 'compressed' }], exercises: [{ ...userRow, group: 'g1' }] } })
+    await expect(replace()).resolves.toEqual({ status: 'replaced', sessionId: nextId })
+    expect((await active().get()).data()).toMatchObject({ compression, proposals: [{ budgetMin: 20, mode: 'compressed' }], exercises: [{ exerciseSource: 'user', group: 'g1' }] })
+    const twice = parseReplacement({ replaces: request.replaces, selection: request.selection,
+      candidate: { ...request.candidate, sessionId: `twice-${nextId}`, exercises: [globalRow, { ...globalRow, clientId: 'another', sets: globalRow!.sets.map((set) => ({ ...set, clientId: `${set.clientId}-2` })) }] } })
+    expect(() => parseReplacement({ ...request, candidate: { ...request.candidate, compression: { v: 2 } } })).toThrow()
+    await active().set({ ...request.candidate, sessionId: oldId, sessionRevision: 'original-revision', userId: uid })
+    await tombstone(oldId).delete()
+    await expect(replaceSessionForUser(uid, twice, { db })).rejects.toMatchObject({ status: 409 })
+  })
   it('rejects malformed candidates before writes', async () => {
     request.candidate.exercises[0].sets[0].weight = '-5'
     await expect(replace()).rejects.toMatchObject({ status: 400 })

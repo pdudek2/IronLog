@@ -175,6 +175,21 @@ describe('buildFinishedWorkoutFromActiveSession', () => {
     expect(buildFinishedWorkoutFromActiveSession({ ...activeDraft, planDayId: 'not/an id' }, start + 1).planDayId).toBeNull()
   })
 
+  it('carries the compression record, proposals and groups, and nulls a malformed record', () => {
+    const start = activeDraft.startedAt
+    const compression = { v: 1, budgetMin: 45, mode: 'compressed', shortRest: false, estimateMin: 43.9, fullEstimateMin: 60.7, factor: 1.2, samples: 0, calibration: 'none', readiness: null,
+      exercises: [{ dayExerciseIndex: 0, exerciseId: 'bench-press', exerciseSource: 'global', plannedSets: 4, sets: 3 }] }
+    const proposals = [{ budgetMin: 45, mode: 'compressed' }]
+    const draft = { ...activeDraft, compression, proposals, exercises: [{ ...activeDraft.exercises[0], group: 'g1' }] }
+    const finished = buildFinishedWorkoutFromActiveSession(draft, start + 1)
+    expect(finished).toMatchObject({ compression, proposals })
+    expect(finished.exercises[0]!.group).toBe('g1')
+    expect(buildFinishedWorkoutFromActiveSession(activeDraft, start + 1)).not.toHaveProperty('compression')
+    const bad = buildFinishedWorkoutFromActiveSession({ ...draft, compression: { ...compression, v: 2 }, proposals: 'x', exercises: [{ ...activeDraft.exercises[0], group: 'not a group!' }] }, start + 1)
+    expect(bad).toMatchObject({ compression: null, proposals: null })
+    expect(bad.exercises[0]).not.toHaveProperty('group')
+  })
+
   it('rejects a draft without any completed set', () => {
     const empty = {
       ...activeDraft,

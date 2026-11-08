@@ -4,6 +4,7 @@ import { adminDb } from './firebaseAdmin.js'
 import { ApiError } from './errors.js'
 import { parseSaveTemplateRequest } from './templateService.js'
 import { validateFirestoreDocumentId, validateExerciseId, validateExerciseSource, validateExerciseName } from './workoutValidation.js'
+import { GROUP_PATTERN, parseCompressionRecord, parseProposals } from '../../src/shared/compressionRecord.js'
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new ApiError(400, 'Invalid replacement.')
@@ -31,15 +32,36 @@ export function parseReplacement(raw: unknown) {
     sessionId: validateFirestoreDocumentId(input.sessionId, 'sessionId'), sessionRevision: validateFirestoreDocumentId(input.sessionRevision, 'sessionRevision'),
     startedAt: integer(input.startedAt, 1, Number.MAX_SAFE_INTEGER), templateId,
     label: typeof input.label === 'string' && input.label.length <= 120 ? input.label : '',
+    ...optional('compression', input.compression, parseCompressionRecord),
+    ...optional('proposals', input.proposals, parseProposals),
     exercises: input.exercises.map(rawExercise => {
       const exercise = object(rawExercise)
       if (!Array.isArray(exercise.sets) || !exercise.sets.length || exercise.sets.length > 20) throw new ApiError(400, 'Invalid sets.')
+      if (exercise.group !== undefined && (typeof exercise.group !== 'string' || !GROUP_PATTERN.test(exercise.group))) throw new ApiError(400, 'Invalid exercise group.')
       return { clientId: uniqueId(exercise.clientId), exerciseId: validateExerciseId(exercise.exerciseId), exerciseSource: validateExerciseSource(exercise.exerciseSource), name: validateExerciseName(exercise.name),
+        ...(exercise.group === undefined ? {} : { group: exercise.group }),
         sets: exercise.sets.map(rawSet => { const set = object(rawSet); if (set.done !== false) throw new ApiError(400, 'New sets must be unfinished.'); return { clientId: uniqueId(set.clientId), weight: numeric(set.weight, 2000), reps: numeric(set.reps, 1000, true), done: false } }) }
     }),
   }
   if (candidate.sessionId === replaces.sessionId) throw new ApiError(400, 'Replacement requires a new session.')
   return { replaces, candidate, selection }
+}
+function optional<K extends string, T>(key: K, raw: unknown, parse: (raw: unknown) => T | null): { [P in K]?: T } {
+  if (raw === undefined) return {}
+  const value = parse(raw)
+  if (value === null) throw new ApiError(400, `Invalid ${key}.`)
+  return { [key]: value } as { [P in K]?: T }
+}
+// A compressed day launches a reordered subset of the plan day; the same exercise may appear twice in both.
+function isSubsetOfDay(day: { exerciseId: string; exerciseSource: string }[], candidate: { exerciseId: string; exerciseSource: string }[]): boolean {
+  const left = new Map<string, number>()
+  for (const exercise of day) left.set(`${exercise.exerciseSource}:${exercise.exerciseId}`, (left.get(`${exercise.exerciseSource}:${exercise.exerciseId}`) ?? 0) + 1)
+  return candidate.every((exercise) => {
+    const key = `${exercise.exerciseSource}:${exercise.exerciseId}`
+    const count = left.get(key) ?? 0
+    left.set(key, count - 1)
+    return count > 0
+  })
 }
 export async function replaceSessionForUser(uid: string, raw: unknown, options: { db?: Firestore; now?: () => number } = {}) {
   const request = parseReplacement(raw)
@@ -64,8 +86,7 @@ export async function replaceSessionForUser(uid: string, raw: unknown, options: 
     const { id: planDayId, ...day } = parsed.days[selection.dayIndex] ?? { id: null }
     // The fingerprint leaves the day id out, so clients that predate day ids still match.
     if (!planDayId || !('exercises' in day) || JSON.stringify({ name: parsed.name, day }) !== selection.fingerprint
-      || day.exercises.length !== candidate.exercises.length
-      || day.exercises.some((exercise, i) => exercise.exerciseId !== candidate.exercises[i].exerciseId || exercise.exerciseSource !== candidate.exercises[i].exerciseSource)) throw conflict()
+      || !isSubsetOfDay(day.exercises, candidate.exercises)) throw conflict()
     const now = (options.now ?? Date.now)()
     transaction.create(oldRef, { userId: uid, sessionId: replaces.sessionId, outcome: 'discarded', workoutId: null, closedAt: now,
       replacementId: candidate.sessionId, replacementDigest: digest })

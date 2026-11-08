@@ -49,7 +49,8 @@ import {
   storedValueToSetInput,
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { sessionRoles } from '../../src/shared/nextSessionRecommendation'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
 import { useKeyboardReveal } from '../src/useKeyboardReveal'
@@ -503,7 +504,6 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
   </View>
 }
 
-const REST_SECONDS = 90
 type Rest = { sessionId: string; startedAt: number; totalSec: number }
 // shortcut: lives only in memory, so a killed app forgets the rest; move it to the session journal if testers miss it.
 let lastRest: Rest | null = null
@@ -763,12 +763,20 @@ function SessionScreen({ user }: { user: AuthUser }) {
     if (error) { showDialog('Set not logged', error); return }
     setDone(exerciseId, setId, done)
     if (!done) { changeRest(null); return }
-    if (liveSession) changeRest({ sessionId: liveSession.sessionId, startedAt: Date.now(), totalSec: REST_SECONDS })
     setLastLogged({ exerciseId, setId, draw: true })
     setSelectedSet(null)
-    const exercise = liveSession?.exercises.find(({ clientId }) => clientId === exerciseId)
-    // The next exercise waits for "Go to", so the logged set and Undo stay on screen.
-    if (liveSession && exercise?.sets.every((set) => set.done || set.clientId === setId)) setManualExercise({ sessionId: liveSession.sessionId, id: exerciseId })
+    const exerciseIndex = liveSession ? liveSession.exercises.findIndex(({ clientId }) => clientId === exerciseId) : -1
+    const exercise = liveSession?.exercises[exerciseIndex]
+    if (!liveSession || !exercise) return
+    const after = liveSession.exercises.map((entry) => entry.clientId !== exerciseId ? entry : { ...entry, sets: entry.sets.map((set) => set.clientId === setId ? { ...set, done: true } : set) })
+    // shortcut: user exercises count as unknown compounds here (120 s); pass their metadata if the rest feels wrong.
+    const restSeconds = restAfterSet(after, exerciseIndex, sessionRoles(after), liveSession.compression?.shortRest === true)
+    changeRest(restSeconds > 0 ? { sessionId: liveSession.sessionId, startedAt: Date.now(), totalSec: restSeconds } : null)
+    // The next exercise waits for "Go to", so the logged set and Undo stay on screen; a pair or circuit moves on by itself.
+    const groupOpen = typeof exercise.group === 'string' && after.some((other) => other.clientId !== exerciseId && other.group === exercise.group && other.sets.some((set) => !set.done))
+    // Inside an open round the next member takes the screen, even if this one was picked with Go to.
+    if (groupOpen) setManualExercise(null)
+    else if (after[exerciseIndex]!.sets.every((set) => set.done)) setManualExercise({ sessionId: liveSession.sessionId, id: exerciseId })
   })
   const liveSessionId = liveSession?.sessionId
   useEffect(() => {

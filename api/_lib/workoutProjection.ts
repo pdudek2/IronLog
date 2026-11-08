@@ -28,6 +28,7 @@ import {
   type ValidatedWorkoutSet,
 } from './workoutValidation.js'
 import { exercises as exerciseCatalog } from '../../data/exercises.js'
+import { isShortened, parseCompressionRecord, type CompressionRecord } from '../../src/shared/compressionRecord.js'
 
 type WorkoutSet = ValidatedWorkoutSet
 type WorkoutExercise = ValidatedWorkoutExercise
@@ -42,6 +43,7 @@ interface StoredWorkoutMetadata {
 
 interface StoredWorkout extends StoredWorkoutMetadata {
   exercises: WorkoutExercise[]
+  compression: CompressionRecord | null
 }
 
 interface ExerciseSessionDoc {
@@ -64,6 +66,7 @@ interface ExerciseSessionDoc {
   equipment: string | null
   muscleGroups: string[]
   sets: WorkoutSet[]
+  shortened: boolean
 }
 
 interface RecordDoc {
@@ -444,7 +447,7 @@ export async function updateFinishedWorkoutForUser(
 
     transaction.update(workoutRef, {
       label: nextWorkout.label,
-      exercises: boundSetTimes(nextWorkout.exercises, existingWorkout.startedAt),
+      exercises: boundSetTimes(keepGroups(nextWorkout.exercises, existingWorkout.exercises), existingWorkout.startedAt),
       materialized: false,
     })
 
@@ -674,7 +677,18 @@ function parseStoredWorkout(raw: unknown): StoredWorkout {
     label: validateWorkoutLabel(record.label),
     materialized: record.materialized === true,
     exercises,
+    compression: parseCompressionRecord(record.compression),
   }
+}
+
+// Editors that predate groups send exercises without them; the stored entry at the same place keeps its group.
+function keepGroups(next: WorkoutExercise[], stored: WorkoutExercise[]): WorkoutExercise[] {
+  return next.map((exercise, index) => {
+    const before = stored[index]
+    return exercise.group === undefined && before?.group !== undefined && before.exerciseId === exercise.exerciseId && before.exerciseSource === exercise.exerciseSource
+      ? { ...exercise, group: before.group }
+      : exercise
+  })
 }
 
 function parseWorkoutUpdate(raw: unknown): Pick<StoredWorkout, 'label' | 'exercises'> {
@@ -871,6 +885,7 @@ function buildExerciseSessions(
       equipment,
       muscleGroups,
       sets: exercise.sets,
+      shortened: isShortened(workout.compression, exercise.exerciseId, exercise.exerciseSource, exercise.sets),
     }
   })
 }

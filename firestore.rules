@@ -130,7 +130,7 @@ service cloud.firestore {
 
     function isActiveSession(uid, data) {
       return data.keys().hasAll(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'label', 'exercises', 'updatedAt'])
-             && data.keys().hasOnly(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'planDayId', 'label', 'exercises', 'updatedAt'])
+             && data.keys().hasOnly(['userId', 'sessionId', 'sessionRevision', 'startedAt', 'templateId', 'planDayId', 'label', 'exercises', 'updatedAt', 'compression', 'proposals'])
              && currentUid() == uid
              && data.userId == currentUid()
              && isDocumentId(data.sessionId)
@@ -141,8 +141,23 @@ service cloud.firestore {
              && data.updatedAt >= data.startedAt
              && isNullableString(data.templateId, 160)
              && (!data.keys().hasAny(['planDayId']) || isNullableString(data.planDayId, 64))
+             // The server validates both when the workout is finished; here they are only bounded.
+             && (!data.keys().hasAny(['compression']) || data.compression == null || data.compression is map)
+             && (!data.keys().hasAny(['proposals']) || data.proposals == null || (data.proposals is list && data.proposals.size() <= 12))
              && isNullableString(data.label, 120)
              && isActiveExercises(data.exercises);
+    }
+
+    function isPlanSkip(id, data) {
+      return data.keys().hasOnly(['userId', 'date', 'templateId', 'planDayId', 'createdAt'])
+             && data.keys().hasAll(['userId', 'date', 'templateId', 'planDayId', 'createdAt'])
+             && data.userId == currentUid()
+             && data.date is string
+             && data.date.matches('^\\d{4}-\\d{2}-\\d{2}$')
+             && id == currentUid() + '_' + data.date
+             && isNonEmptyString(data.templateId, 160)
+             && isNonEmptyString(data.planDayId, 64)
+             && isMillis(data.createdAt);
     }
 
     function isUserProfile(data) {
@@ -255,6 +270,13 @@ service cloud.firestore {
                     && keepsOwner()
                     && isReadiness(id, request.resource.data);
       allow delete: if ownsDoc();
+    }
+
+    // One "Skip today" per day; a second tap is refused and the client treats that as done.
+    match /planSkips/{id} {
+      allow create: if ownsNewDoc()
+                    && isPlanSkip(id, request.resource.data);
+      allow read: if signedIn() && id.matches('^' + currentUid() + '_.+$');
     }
 
     match /activeSessions/{uid} {

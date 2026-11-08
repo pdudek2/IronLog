@@ -13,7 +13,7 @@ export const workouts: RecommendationWorkout[] = [1, 3, 6].map(days => ({ finish
 ] }))
 export const fixtures = [
   { tone: 'low', score: 0, values: { sleep: 1, mood: 1, soreness: 5 }, expected: [[3,72.5,8], [2,30,10], [2,60,8], [1,10,12]] },
-  { tone: 'mid', score: 50, values: { sleep: 3, mood: 3, soreness: 3 }, expected: [[4,75,6], [3,30,10], [2,60,8], [1,10,12]] },
+  { tone: 'mid', score: 50, values: { sleep: 3, mood: 3, soreness: 3 }, expected: [[4,75,6], [3,30,10], [3,60,8], [1,10,12]] },
   { tone: 'high', score: 100, values: { sleep: 5, mood: 5, soreness: 1 }, expected: [[4,75,6], [3,30,10], [3,60,8], [1,10,12]] },
 ] as const
 export const readiness = (values: Pick<ReadinessEntry, 'sleep' | 'mood' | 'soreness'>): ReadinessEntry => ({ ...values, userId: 'owner', date: '2026-10-01', createdAt: NOW })

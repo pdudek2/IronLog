@@ -97,6 +97,7 @@ function cloneExercises(exercises: WorkoutSummary['exercises']): WorkoutSummary[
     exerciseSource: exercise.exerciseSource ?? 'global',
     name: exercise.name,
     sets: exercise.sets.map((set) => ({ weight: set.weight, reps: set.reps, ...(set.completedAt === undefined ? {} : { completedAt: set.completedAt }) })),
+    ...(exercise.group === undefined ? {} : { group: exercise.group }),
   }))
 }
 

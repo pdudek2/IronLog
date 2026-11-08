@@ -410,6 +410,33 @@ describe('activeSessions rules', () => {
     await assertFails(setDoc(activeRef, { ...validActiveSession('alice'), planDay: 'upper-a' }))
   })
 
+  it('accepts optional compression and proposals, and an older client update that does not name them', async () => {
+    const db = testEnv.authenticatedContext('alice').firestore()
+    const activeRef = doc(db, 'activeSessions', 'alice')
+    const compression = { v: 1, budgetMin: 30, mode: 'compressed', exercises: [] }
+
+    await assertSucceeds(setDoc(activeRef, validActiveSession('alice')))
+    await assertSucceeds(setDoc(activeRef, { ...validActiveSession('alice'), compression, proposals: [{ budgetMin: 30, mode: 'compressed' }] }))
+    await assertSucceeds(updateDoc(activeRef, { label: 'Upper A', updatedAt: Date.now() + 1 }))
+    await assertFails(setDoc(activeRef, { ...validActiveSession('alice'), compression: 'short' }))
+    await assertFails(setDoc(activeRef, { ...validActiveSession('alice'), proposals: Array.from({ length: 13 }, () => ({ budgetMin: null, mode: 'usual' })) }))
+    await assertFails(setDoc(activeRef, { ...validActiveSession('alice'), compressed: true }))
+  })
+
+  it('lets the owner record one Skip today per day and nothing else', async () => {
+    const alice = testEnv.authenticatedContext('alice').firestore()
+    const skip = { userId: 'alice', date: '2026-11-08', templateId: 'plan-1', planDayId: 'upper-a', createdAt: Date.now() }
+    const ref = doc(alice, 'planSkips', 'alice_2026-11-08')
+
+    await assertFails(setDoc(doc(alice, 'planSkips', 'alice_2026-11-07'), skip))
+    await assertFails(setDoc(ref, { ...skip, note: 'tired' }))
+    await assertFails(setDoc(doc(testEnv.authenticatedContext('bob').firestore(), 'planSkips', 'alice_2026-11-08'), skip))
+    await assertSucceeds(setDoc(ref, skip))
+    await assertSucceeds(getDoc(ref))
+    await assertFails(setDoc(ref, { ...skip, createdAt: Date.now() + 1 }))
+    await assertFails(getDoc(doc(testEnv.authenticatedContext('bob').firestore(), 'planSkips', 'alice_2026-11-08')))
+  })
+
   it('requires safe session revisions', async () => {
     const db = testEnv.authenticatedContext('alice').firestore()
     const activeRef = doc(db, 'activeSessions', 'alice')

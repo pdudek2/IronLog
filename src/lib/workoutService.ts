@@ -18,6 +18,7 @@ import { auth, db } from './firebase'
 import { ApiRejectedError, callAuthedApi } from './authedApi'
 import { clearWorkoutDeleteRecovery, readWorkoutDeleteRecovery, writeWorkoutDeleteRecovery } from './workoutDeleteRecovery'
 import { confirmedQuery } from './confirmedQuery'
+import { parseCompressionRecord, parseGroup, type CompressionRecord } from '../shared/compressionRecord'
 
 interface WorkoutSetSummary {
   weight: number
@@ -30,6 +31,7 @@ export interface WorkoutExerciseSummary {
   exerciseSource?: ExerciseSource
   name: string
   sets: WorkoutSetSummary[]
+  group?: string
 }
 
 export interface WorkoutSummary {
@@ -41,6 +43,7 @@ export interface WorkoutSummary {
   planDayId?: string | null
   label?: string | null
   exercises: WorkoutExerciseSummary[]
+  compression?: CompressionRecord | null
 }
 
 export interface WorkoutHistoryResult {
@@ -226,6 +229,7 @@ function normalizeWorkoutSummary(id: string, raw: unknown): WorkoutSummary {
     planDayId: typeof record.planDayId === 'string' && record.planDayId ? record.planDayId : null,
     label: typeof record.label === 'string' && record.label.trim() ? record.label : null,
     exercises: sanitizeWorkoutExercises(record.exercises),
+    compression: parseCompressionRecord(record.compression),
   }
 }
 
@@ -249,6 +253,7 @@ function sanitizeWorkoutExercises(raw: unknown): WorkoutExerciseSummary[] {
       exerciseSource,
       name,
       sets,
+      ...(parseGroup(record.group) ? { group: parseGroup(record.group)! } : {}),
     }]
   })
 }

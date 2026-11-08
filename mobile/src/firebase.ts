@@ -19,12 +19,13 @@ import {
   getFirestore,
   onSnapshot,
   runTransaction,
+  setDoc,
   type QuerySnapshot,
 } from '@react-native-firebase/firestore'
 import Constants from 'expo-constants'
 import { parseProfile, updateExistingProfile, ProfileNotSubmittedError, type ProfileFields } from './profile'
 import { parseReadiness, ReadinessNotSubmittedError } from './readiness'
-import type { ReadinessEntry } from '../../src/shared/readiness'
+import { todayKey, type ReadinessEntry } from '../../src/shared/readiness'
 
 import type { SubscribeToSession } from './activeSessionController'
 import { parseSessionDocument, type ActiveWorkout, type Units, type ExerciseSource } from './session'
@@ -260,6 +261,18 @@ export async function saveReadiness(entry: ReadinessEntry): Promise<void> {
     if (snapshot.exists()) parseReadiness(fields.userId, fields.date, snapshot.data())
     transaction.set(reference, fields)
   }, { maxAttempts: 1 })
+}
+
+// One "Skip today" per day: the rules refuse a second write, which means it is already recorded.
+export async function recordPlanSkip(uid: string, templateId: string, planDayId: string): Promise<void> {
+  const { auth, firestore } = await getServices()
+  if (auth.currentUser?.uid !== uid) throw new Error('The signed-in account changed.')
+  const date = todayKey()
+  try {
+    await setDoc(doc(firestore, 'planSkips', `${uid}_${date}`), { userId: uid, date, templateId, planDayId, createdAt: Date.now() })
+  } catch (error) {
+    if (!String((error as { code?: unknown } | null)?.code ?? '').endsWith('permission-denied')) throw error
+  }
 }
 
 export async function readTemplates(uid: string): Promise<ReadResult<WorkoutTemplate[]>> {

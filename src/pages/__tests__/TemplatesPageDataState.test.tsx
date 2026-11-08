@@ -88,14 +88,15 @@ describe('TemplatesPage data states', () => {
 
     expect(await screen.findByText('Could not load plans')).toBeInTheDocument()
     expect(screen.queryByText('You have no plans yet')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Create your first plan' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Use the starter plan' })).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
 
     expect(await screen.findByText('You have no plans yet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Exercises' })).toHaveAttribute('href', '/exercises')
-    expect(screen.getByRole('button', { name: 'Create your first plan' })).toBeInTheDocument()
-    expect(screen.getByText('Upper / Lower · 4 days')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Paste a plan' })).toHaveClass('planner-primary-action')
+    expect(screen.getByRole('button', { name: 'Use the starter plan' })).toBeInTheDocument()
+    expect(screen.getByText('Full body A/B · 2 days')).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
   })
 

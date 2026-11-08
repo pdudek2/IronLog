@@ -19,6 +19,7 @@ const mocks = vi.hoisted(() => ({
   getRecentWorkouts: vi.fn(),
   retryWorkoutMaterialization: vi.fn(),
   getTemplates: vi.fn(),
+  createTemplate: vi.fn(),
   loadTemplateExerciseHistory: vi.fn(async () => new Map()),
   toastError: vi.fn(),
   profile: { displayName: 'Patryk', weeklyGoal: 3 },
@@ -57,6 +58,7 @@ vi.mock('../../lib/workoutService', async () => ({
 
 vi.mock('../../lib/templateService', () => ({
   getTemplates: mocks.getTemplates,
+  createTemplate: mocks.createTemplate,
   templateExerciseKey: (exerciseId: string, source: string) => `${source}:${exerciseId}`,
 }))
 
@@ -598,6 +600,31 @@ describe('Dashboard workout projection status', () => {
 
     expect(await screen.findByText('No plans yet')).toBeInTheDocument()
     expect(mocks.getTemplates).toHaveBeenCalledTimes(2)
+  })
+
+  it('adds the starter plan from an empty Train and offers its first day', async () => {
+    mocks.getRecentWorkouts.mockResolvedValue([])
+    mocks.getTemplates.mockResolvedValueOnce([])
+    let stored: WorkoutTemplate | null = null
+    mocks.createTemplate.mockImplementation(async (_uid: string, input: Pick<WorkoutTemplate, 'name' | 'days'>) => {
+      stored = { id: 'starter', userId: 'user-1', createdAt: 1, updatedAt: 1, ...input }
+      return stored
+    })
+    mocks.getTemplates.mockImplementation(async () => (stored ? [stored] : []))
+
+    render(<DashboardPage />)
+
+    expect(await screen.findByText('No plans yet')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Paste a plan' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Build a plan' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Start empty workout' })).toHaveClass('train-link')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Use the starter plan' }))
+
+    expect(await screen.findByRole('button', { name: 'Start Day A' })).toBeInTheDocument()
+    const input = mocks.createTemplate.mock.calls[0]?.[1] as Pick<WorkoutTemplate, 'name' | 'days'>
+    expect(input.days.map((day) => day.name)).toEqual(['Day A', 'Day B'])
+    expect(input.days.flatMap((day) => day.exercises).every((exercise) => exercise.targetWeight === 0)).toBe(true)
   })
 
   it('renders template data after a successful read', async () => {

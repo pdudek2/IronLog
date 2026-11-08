@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
@@ -48,6 +48,8 @@ import { templateStartWeight } from '../shared/workoutDisplay'
 import { loadTemplateExerciseHistory } from '../lib/templateLaunchService'
 import { WORKOUT_COVERS, workoutCover } from '../shared/workoutCover'
 import { WEEK_LABELS, addLocalDays, getGreeting, getWeekDates, nextPlanWorkout, weekdayLabel } from '../shared/week'
+import PastePlanSheet from '../components/PastePlanSheet'
+import { useStarterPlan } from '../hooks/useStarterPlan'
 
 interface TemplatesResource {
   uid: string | null
@@ -210,6 +212,8 @@ export default function DashboardPage() {
   const [workoutPickerOpen, setWorkoutPickerOpen] = useState(false)
   const [todayChoice, setTodayChoice] = useState<TodayChoice>({ key: null, budgetMin: null, straight: false, proposals: [] })
   const [skipping, setSkipping] = useState(false)
+  const [pasting, setPasting] = useState(false)
+  const starter = useStarterPlan(() => handleRetryTemplates())
   const { exercises: userExerciseList } = useUserExercises(user?.uid ?? null)
   const [workoutPicked, setWorkoutPicked] = useState(false)
   const workoutPickedRef = useRef(false)
@@ -286,7 +290,9 @@ export default function DashboardPage() {
               unavailable: false,
             }
           }
-          if (!current.target || resolveWorkoutSelection(data, current.target)) return current
+          // A first plan added on Train (the starter plan) becomes today's workout.
+          if (!current.target) return current.unavailable ? current : { ...current, target: nextPlanWorkout(data, workoutsRef.current) }
+          if (resolveWorkoutSelection(data, current.target)) return current
           return { ...current, target: null, unavailable: true }
         })
       })
@@ -664,6 +670,18 @@ export default function DashboardPage() {
               {quickTemplateLaunchOperation?.status === 'pending' ? 'Starting…' : `Start ${quickTemplateDay.name}`}
             </button>
           </>
+        ) : noPlans ? (
+          <div className="train-dock-start">
+            <button type="button" className="workout-set-panel-action" onClick={() => setPasting(true)}>
+              Paste a plan
+            </button>
+            <button type="button" className="workout-set-panel-action" data-quiet onClick={() => { void starter.create() }} disabled={starter.saving}>
+              {starter.saving ? 'Adding…' : 'Use the starter plan'}
+            </button>
+            <button type="button" className="workout-set-panel-action" data-quiet onClick={() => navigate('/templates/new')}>
+              Build a plan
+            </button>
+          </div>
         ) : (
           <button
             type="button"
@@ -763,7 +781,9 @@ export default function DashboardPage() {
                 <span>
                   {workoutSelection.unavailable
                     ? 'Choose another workout before starting.'
-                    : 'You can still start an empty workout.'}
+                    : noPlans
+                      ? 'Paste the plan you already follow, or start from ours.'
+                      : 'You can still start an empty workout.'}
                 </span>
                 {templatesState.status === 'error' && (
                   <button type="button" className="dashboard-planned-start-change" onClick={handleRetryTemplates}>
@@ -812,14 +832,14 @@ export default function DashboardPage() {
                   Change workout
                 </button>
               )}
-              {!hasActiveSession && !noPlans && (
+              {!hasActiveSession && (
                 <button
                   type="button"
                   className="train-link dashboard-ad-hoc-action"
                   onClick={() => { void handleOpenWorkout().catch(() => undefined) }}
                   disabled={openingWorkout}
                 >
-                  {openingWorkout ? 'Opening workout…' : 'Empty workout'}
+                  {openingWorkout ? 'Opening workout…' : noPlans ? 'Start empty workout' : 'Empty workout'}
                 </button>
               )}
             </div>
@@ -868,6 +888,10 @@ export default function DashboardPage() {
           onEdit={editPickerPlan}
         />
       )}
+
+      <AnimatePresence>
+        {pasting && <PastePlanSheet key="paste-plan" onClose={() => setPasting(false)} />}
+      </AnimatePresence>
 
       <TemplateLaunchConfirmDialog
         open={pendingLaunch !== null}

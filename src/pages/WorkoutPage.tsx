@@ -266,7 +266,9 @@ export default function WorkoutPage() {
         setLastLogged({ exerciseId, setIndex, draw: true })
         // The next exercise waits for "Go to", so the logged set and Undo stay on screen; a pair or circuit moves on by itself.
         const groupOpen = exercise.group !== undefined && next?.exercises.some((other, index) => index !== exerciseIndex && other.group === exercise.group && other.sets.some((set) => !set.done))
-        if (completesExercise && !groupOpen) setManualExerciseClientId(exerciseId)
+        // Inside an open round the next member takes the screen, even if this one was picked with Go to.
+        if (groupOpen) setManualExerciseClientId(null)
+        else if (completesExercise) setManualExerciseClientId(exerciseId)
       }
       setSelectedSet(null)
       if ('vibrate' in navigator) navigator.vibrate(12)

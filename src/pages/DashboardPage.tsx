@@ -626,7 +626,7 @@ export default function DashboardPage() {
   const coverName = active ? workoutCover(active.label) : weekClosed ? 'week' : workoutCover(quickTemplateDay?.name ?? quickTemplate?.name)
   const record = latestRecord(workouts, today.getTime())
 
-  const todayControls = !hasActiveSession && !weekClosed && todayPlan && quickTemplateDay
+  const todayControls = !hasActiveSession && todayPlan && quickTemplateDay
   const dock = !hasActiveSession && (
     <section className="train-dock" aria-label="Today">
       {todayControls && (

@@ -56,8 +56,11 @@ describe('compressDay on the Upper day (cold-start pace)', () => {
     expect(first).toMatchObject({ shortRest: true })
     expect(ids(first, exercises)).toEqual(['bench-press×4', 'lat-pulldown×3', 'db-lateral-raise×3 + db-curl×3 + tricep-pushdown×3'])
     expect(min(first)).toBe(43.9)
-    const next = compressDay({ exercises, budgetMin: 45, protectedKeys: new Set(['global:seated-cable-row']) })
+    const next = compressDay({ exercises, budgetMin: 45, protectedKeys: new Map([['global:seated-cable-row', 2]]) })
     expect(ids(next, exercises)).toEqual(['bench-press×4', 'seated-cable-row×3', 'db-lateral-raise×3 + db-curl×3 + tricep-pushdown×3'])
+    // After a 30 min day every accessory was cut; the dropped pull still goes back first (runtime finding 2026-11-08).
+    const afterThirty = new Map([['global:bench-press', 1], ['global:lat-pulldown', 1], ['global:seated-cable-row', 2], ['global:db-lateral-raise', 1], ['global:db-curl', 1], ['global:tricep-pushdown', 1]])
+    expect(ids(compressDay({ exercises, budgetMin: 30, protectedKeys: afterThirty }), exercises)).toEqual(['bench-press×2', 'seated-cable-row×2', 'db-lateral-raise×2 + db-curl×2 + tricep-pushdown×2'])
     invariants(first, exercises, 45)
   })
 
@@ -147,6 +150,11 @@ describe('compressDay on other days', () => {
     expect(result.sets[1]).toBeGreaterThan(0)
     expect(result.blocks.find((block) => block.items.some((item) => item.index === 1))!.group).toBeNull()
     expect(exerciseRoles(day(['treadmill', 1], ['bench-press', 3]))).toEqual(['cardio', 'main'])
+    // The maintenance version keeps cardio too, so a long run makes a short budget not fit (runtime finding 2026-11-08).
+    const run = day(['treadmill', 4], ['bench-press', 3])
+    const at20 = compressDay({ exercises: run, budgetMin: 20 })
+    expect(at20).toMatchObject({ mode: 'maintenance', fits: false })
+    expect(at20.sets).toEqual([4, 2])
   })
 
   it('picks a barbell compound as the main lift, not a barbell curl', () => {

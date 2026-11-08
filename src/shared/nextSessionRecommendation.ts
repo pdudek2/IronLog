@@ -173,7 +173,8 @@ export function buildNextSessionRecommendation(
   const sameDay = newest.filter((workout) => options.planDayId && workout.templateId === options.templateId && workout.planDayId === options.planDayId)
   const pace = calibration(sameDay.flatMap((workout) => calibrationSample(workout, meta)), newest.flatMap((workout) => calibrationSample(workout, meta)))
   // Rotation: what the last workout of this day dropped or cut goes last today.
-  const protectedKeys = new Set((sameDay[0]?.compression?.exercises ?? []).filter((entry) => entry.sets < entry.plannedSets).map(exerciseKey))
+  const protectedKeys = new Map((sameDay[0]?.compression?.exercises ?? []).filter((entry) => entry.sets < entry.plannedSets)
+    .map((entry) => [exerciseKey(entry), entry.sets === 0 ? 2 : 1] as const))
   const dayExercises: DayExercise[] = exercises.map((exercise, index) => ({ exerciseId: exercise.exerciseId, exerciseSource: exercise.exerciseSource, sets: recommendedExercises[index]!.sets, ...metas[index]! }))
   const budgetMin = options.budgetMin ?? null
   const compression = compressDay({ exercises: dayExercises, budgetMin, straight: options.straight, lowReadiness: low, factor: pace.factor, protectedKeys })

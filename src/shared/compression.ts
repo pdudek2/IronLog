@@ -21,8 +21,8 @@ export interface CompressionInput {
   lowReadiness?: boolean
   // Pace from calibration(); the cold-start pace when omitted.
   factor?: number
-  // Keys (`source:id`) that the last workout of this plan day dropped or cut.
-  protectedKeys?: ReadonlySet<string>
+  // Keys (`source:id`) the last workout of this plan day dropped (2) or cut (1); higher goes later.
+  protectedKeys?: ReadonlyMap<string, number>
 }
 
 export interface CompressionResult {
@@ -166,9 +166,9 @@ export function compressDay(input: CompressionInput): CompressionResult {
   const { exercises, budgetMin } = input
   const low = input.lowReadiness ?? false
   const factor = input.factor ?? COLD_FACTOR
-  const protectedKeys = input.protectedKeys ?? new Set<string>()
+  const protectedKeys = input.protectedKeys ?? new Map<string, number>()
   const roles = exerciseRoles(exercises)
-  const isProtected = (index: number) => protectedKeys.has(exerciseKey(exercises[index]!))
+  const protection = (index: number) => protectedKeys.get(exerciseKey(exercises[index]!)) ?? 0
   const fullBlocks = straightBlocks(exercises.map((exercise) => exercise.sets))
   const fullEstimateSec = Math.round(SESSION_OVERHEAD + estimateSec(fullBlocks, roles, false, low) * factor)
   const budgetSec = budgetMin === null ? Infinity : budgetMin * 60
@@ -210,7 +210,7 @@ export function compressDay(input: CompressionInput): CompressionResult {
       return [{ index, gain }]
     })
     if (!candidates.length) break
-    candidates.sort((a, b) => Number(isProtected(a.index)) - Number(isProtected(b.index)) || b.gain - a.gain || b.index - a.index)
+    candidates.sort((a, b) => protection(a.index) - protection(b.index) || b.gain - a.gain || b.index - a.index)
     sets[candidates[0]!.index] = 0
     if (fits()) return result(mode)
   }
@@ -222,10 +222,10 @@ export function compressDay(input: CompressionInput): CompressionResult {
         const items = block.items.filter((item) => item.sets > 0 && roles[item.index] !== 'main' && roles[item.index] !== 'cardio')
         if (!items.length) return []
         const count = Math.max(...items.map((item) => item.sets))
-        return count > floor ? [{ at, items, count, guarded: items.some((item) => isProtected(item.index)) }] : []
+        return count > floor ? [{ at, items, count, guarded: Math.max(...items.map((item) => protection(item.index))) }] : []
       })
       if (!units.length) return false
-      units.sort((a, b) => Number(a.guarded) - Number(b.guarded) || b.count - a.count || b.at - a.at)
+      units.sort((a, b) => a.guarded - b.guarded || b.count - a.count || b.at - a.at)
       const unit = units[0]!
       for (const item of unit.items) if (item.sets === unit.count) sets[item.index]! -= 1
       if (fits()) return true
@@ -240,7 +240,8 @@ export function compressDay(input: CompressionInput): CompressionResult {
   if (trimAccessories(1)) return result(mode)
 
   // 7. Maintenance: the main lift and one non-competing partner, two sets each, then one circuit round if it fits.
-  sets.fill(0)
+  // Cardio stays as planned here too.
+  exercises.forEach((exercise, index) => { sets[index] = roles[index] === 'cardio' ? exercise.sets : 0 })
   groups = []
   shortRest = !low
   if (main < 0) return result('maintenance')
@@ -249,7 +250,7 @@ export function compressDay(input: CompressionInput): CompressionResult {
     .map((exercise, index) => ({ exercise, index }))
     .filter(({ exercise, index }) => index !== main && known(roles[index]!) && exercise.sets > 0 && nonCompeting(exercise.muscles, exercises[main]!.muscles))
     .sort((a, b) => Number(roles[a.index] !== 'compound') - Number(roles[b.index] !== 'compound')
-      || Number(isProtected(b.index)) - Number(isProtected(a.index)) || a.index - b.index)[0]
+      || protection(b.index) - protection(a.index) || a.index - b.index)[0]
   if (partner) {
     sets[partner.index] = Math.min(2, partner.exercise.sets)
     if (!input.straight) groups = [[Math.min(main, partner.index), Math.max(main, partner.index)]]

@@ -5,10 +5,14 @@ import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import ReadinessHome from '../src/ReadinessHome'
+import { TrainCheckIn, TrainTime } from '../src/TrainToday'
 import { useReadinessRuntime } from '../src/readinessRuntime'
-import { buildNextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
-import { recommendationHistory } from '../src/readiness'
+import { buildNextSessionRecommendation, type NextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
+import type { CompressionProposal } from '../../src/shared/compressionRecord'
+import { planDayId } from '../../src/shared/planDay'
+import { recommendationHistory, todayLaunch } from '../src/readiness'
+import { showDialog } from '../src/dialog'
+import type { ExerciseMetadata } from '../src/scopedRead'
 
 import { TrainCoverMedia } from '../src/TrainCoverMedia'
 import { deriveWorkout } from '../src/history'
@@ -18,7 +22,7 @@ import { pluralize } from '../../src/lib/pluralize'
 import { workoutTitle } from '../../src/lib/workoutCopy'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 import { workoutCover } from '../../src/shared/workoutCover'
-import { readHome, readTemplateBestSet, readTemplates } from '../src/firebase'
+import { readExerciseMetadata, readHome, readTemplateBestSet, readTemplates, recordPlanSkip } from '../src/firebase'
 import { exerciseSummary, templateStartWeight } from '../../src/shared/workoutDisplay'
 import { canShowHomeSummary, deriveHome, getGreeting } from '../src/home'
 import { publishStreak } from '../src/streak'
@@ -34,6 +38,8 @@ import { Icon } from '../src/icons'
 
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
 type TemplateData = WorkoutTemplate[]
+// The time chosen today belongs to the day on screen; another day starts from Usual.
+type TodayChoice = { key: string; budgetMin: number | null; straight: boolean; proposals: CompressionProposal[] }
 
 export default function DashboardScreen() {
   const { user } = useAuthRuntime()
@@ -57,11 +63,16 @@ export default function DashboardScreen() {
   const insets = useSafeAreaInsets()
   // With the tab bar scrolled away the bar sits on the screen edge, under the gesture area.
   const startBarInset = navigation.hidden ? { paddingBottom: Math.max(2, insets.bottom + 8) } : null
+  const dockInset = navigation.hidden ? { marginBottom: Math.max(2, insets.bottom + 8) } : null
   const [picked, setPicked] = useState(false)
   // The queue needs plans and recent workouts, which load separately; a day the user picked stays.
   const pickedRef = useRef(false)
   const planDataRef = useRef<{ uid: string; templates: WorkoutTemplate[] | null; workouts: HomeData['workouts'] | null }>({ uid: '', templates: null, workouts: null })
   const [weekOpen, setWeekOpen] = useState(false)
+  const [todayChoice, setTodayChoice] = useState<TodayChoice | null>(null)
+  const [checkInOpen, setCheckInOpen] = useState(false)
+  const [skipping, setSkipping] = useState(false)
+  const [userExercises, setUserExercises] = useState<{ uid: string; meta: Map<string, ExerciseMetadata> } | null>(null)
   const key = `home:${uid ?? ''}`
   const completion = completed ? `${completed.action}:${completed.action === 'finish' ? completed.workoutId : completed.sessionId}` : ''
 
@@ -136,20 +147,55 @@ export default function DashboardScreen() {
   const launchState = launch?.state.status ?? 'loading'
   const starting = launchState === 'starting'
   const readinessEntry = readiness?.state.status === 'ready' ? readiness.state.entry : null
-  const recommendation = useMemo(() => {
-    if (active.state.status !== 'empty' || !chosen || !readinessEntry || state.status !== 'ready' || state.fromCache
-      || templatesState.status !== 'ready' || templatesState.fromCache || !selection?.target || !data) return null
+  useEffect(() => {
+    if (!uid) return
+    let current = true
+    void readExerciseMetadata(uid).then(({ data: list }) => { if (current) setUserExercises({ uid, meta: new Map(list.map((exercise) => [`user:${exercise.id}`, exercise])) }) }, () => {})
+    return () => { current = false }
+  }, [uid])
+  const target = selection?.target
+  const choiceKey = chosen && target ? `${chosen.template.id}:${target.dayIndex}` : ''
+  const choice: TodayChoice = todayChoice?.key === choiceKey ? todayChoice : { key: choiceKey, budgetMin: null, straight: false, proposals: [] }
+  const planToday = (budgetMin: number | null, straight: boolean) => {
+    if (active.state.status !== 'empty' || !chosen || !target || !data || state.status !== 'ready' || state.fromCache
+      || templatesState.status !== 'ready' || templatesState.fromCache) return null
     try {
-      const next = buildNextSessionRecommendation(chosen.template, selection.target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now(), units)
-      validateTemplateLaunch(chosen.template, selection.target.dayIndex, { items: next.launch })
+      const next = buildNextSessionRecommendation(chosen.template, target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now(), units, {
+        budgetMin, straight, templateId: chosen.template.id, planDayId: planDayId(chosen.day, target.dayIndex),
+        userExercises: userExercises?.uid === uid ? userExercises.meta : undefined,
+      })
+      validateTemplateLaunch(chosen.template, target.dayIndex, { items: next.launch })
       return next
     } catch { return null }
-  }, [active.state.status, chosen, readinessEntry, state, templatesState, selection, data, now, units])
-  const startRecommended = () => {
-    readiness?.controller.refreshDay()
-    if (!recommendation || !chosen || !selection?.target || readinessEntry?.date !== readiness?.controller.state.date) return
-    void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template, launch: { items: recommendation.launch, ...(recommendation.record ? { compression: recommendation.record } : {}) } })
   }
+  const todayPlan = planToday(choice.budgetMin, choice.straight)
+  const launchToday = todayLaunch(todayPlan, readinessEntry !== null, choice)
+  const chooseTime = (budgetMin: number | null, straight: boolean) => {
+    const mode: CompressionProposal['mode'] = budgetMin === null ? 'usual' : planToday(budgetMin, straight)?.record?.mode ?? 'usual'
+    setTodayChoice({ key: choice.key, budgetMin, straight, proposals: [...choice.proposals, { budgetMin, mode }].slice(-12) })
+  }
+  const skipToday = async () => {
+    if (!uid || !chosen || !target || skipping) return
+    const { key } = choice
+    setSkipping(true)
+    try {
+      await recordPlanSkip(uid, chosen.template.id, planDayId(chosen.day, target.dayIndex))
+      setTodayChoice({ key, budgetMin: null, straight: false, proposals: [] })
+      showDialog('Skipped today', `${chosen.day.name} stays next.`)
+    } catch {
+      showDialog('Could not skip today', 'Try again.')
+    } finally { setSkipping(false) }
+  }
+  const startToday = () => {
+    readiness?.controller.refreshDay()
+    // A check-in from before midnight does not describe today.
+    if (!chosen || !target || (readinessEntry && readinessEntry.date !== readiness?.controller.state.date)) return
+    void launch?.start({ kind: 'template', selection: target, snapshot: chosen.template, ...(launchToday ? { launch: launchToday } : {}) })
+  }
+
+  // Today's choices belong to a plan day on screen, not to a closed week.
+  const today = canOfferStart && chosen ? todayPlan : null
+  const openExercise = (exercise: TemplateExercise) => router.push({ pathname: '/exercises/[source]/[id]', params: { source: exercise.exerciseSource, id: exercise.exerciseId } })
 
   useEffect(() => { setNow(new Date()) }, [readiness?.state.date])
 
@@ -159,7 +205,6 @@ export default function DashboardScreen() {
     setTemplatesAttempt((value) => value + 1)
   }, [launchState, uid])
 
-  const startPlanned = () => { if (chosen && selection?.target) void launch?.start({ kind: 'template', selection: selection.target, snapshot: chosen.template }) }
   const trainLinks = <View style={styles.links}>
       <Pressable accessibilityRole="button" onPress={() => router.navigate('/templates')} style={styles.link}><Text style={styles.linkText}>Plans</Text></Pressable>
       {canOfferStart && templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.link}><Text style={styles.linkText}>Change workout</Text></Pressable>}
@@ -202,7 +247,8 @@ export default function DashboardScreen() {
             <Text style={styles.exerciseMeta}>{formatCompactVolume(deriveWorkout(workout, new Map()).totalVolume, units)}</Text>
             <Icon name="chevron-right" size={16} />
           </Pressable>)}
-          {!weekClosed && chosen && chosen.day.exercises.map((exercise, index) => <Pressable key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" onPress={() => router.push({ pathname: '/exercises/[source]/[id]', params: { source: exercise.exerciseSource, id: exercise.exerciseId } })} style={styles.exercise}>
+          {!weekClosed && chosen && todayPlan && (todayPlan.record || readinessEntry) ? <TodayExercises today={todayPlan} exercises={chosen.day.exercises} checkedIn={readinessEntry !== null} startWeightOf={startWeightOf} units={units} onOpen={openExercise} />
+            : !weekClosed && chosen && chosen.day.exercises.map((exercise, index) => <Pressable key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" onPress={() => openExercise(exercise)} style={styles.exercise}>
             <Text numberOfLines={1} style={styles.exerciseName}>{exercise.name}</Text>
             <Text style={styles.exerciseMeta}>{exercise.sets} × {exercise.targetReps}{startWeightOf(exercise) > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(startWeightOf(exercise)), units)} {units}</Text></>}</Text>
             <Icon name="chevron-right" size={16} />
@@ -211,16 +257,7 @@ export default function DashboardScreen() {
           {canOfferStart && templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
           {canOfferStart && templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
         </View>
-        {active.state.status === 'empty' && readiness && <ReadinessHome state={readiness.state} controller={readiness.controller}
-          recommendation={recommendation} templateName={chosen?.template.name ?? ''} units={units}
-          starting={starting} canStart={canOfferStart && launchState === 'ready'} onStart={startRecommended}
-          onEdit={() => { if (chosen) router.push({ pathname: '/templates/[id]/edit', params: { id: chosen.template.id } }) }}
-          prerequisiteMessage={readinessEntry && chosen && !recommendation ? state.status === 'loading' || templatesState.status === 'loading' ? 'Loading recommendation…' : 'Could not confirm recommendation data. You can still start the selected workout.' : null}
-          onRetry={() => { retry(); setTemplatesAttempt(value => value + 1) }} />}
-        {recommendation && chosen && <View style={styles.asPlanned}>
-          <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={startPlanned} style={[styles.startAsPlanned, starting && styles.disabled]}><Text style={styles.startAsPlannedText}>{`Start ${chosen.day.name} as planned`}</Text></Pressable>
-          {trainLinks}
-        </View>}
+        {active.state.status !== 'ready' && trainLinks}
         {canOfferStart && <View>
             {launchState === 'loading' && <Text style={styles.planEmptyCopy}>Checking workout start…</Text>}
             {(launchState === 'retry' || launchState === 'unavailable' || launchState === 'corrupt') && <View accessibilityRole="alert" style={styles.launchFeedback}><Text style={styles.planEmptyCopy}>{launch?.state.message ?? 'Could not start workout.'}</Text>{launchState !== 'corrupt' && <Pressable accessibilityRole="button" onPress={() => { if (launchState === 'unavailable') { launch?.dismissUnavailable(); setSelection({ uid: uid!, target: null, unavailable: true }); setTemplatesAttempt((value) => value + 1) } else void launch?.retry() }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
@@ -239,11 +276,19 @@ export default function DashboardScreen() {
       </>}
     </ScrollView>
     {data && active.state.status === 'ready' && <View style={[styles.startBar, startBarInset]}><ResumeButton />{trainLinks}</View>}
-    {data && (canOfferStart || plansPending) && !recommendation && <View style={[styles.startBar, startBarInset]}>
-      {plansPending ? <View style={styles.startPending} /> : chosen
-        ? <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={startPlanned} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : `Start ${chosen.day.name}`}</Text></Pressable>
-        : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
-      {trainLinks}
+    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Today" style={[styles.dock, !today && styles.dockBare, dockInset]}>
+      {today && readiness && <TrainCheckIn state={readiness.state} controller={readiness.controller} open={checkInOpen} onToggle={() => setCheckInOpen((open) => !open)} />}
+      {/* While the check-in is open the time row and today's line step aside; Start stays. */}
+      {today && chosen && !checkInOpen && <TrainTime today={today} plannedSets={chosen.day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
+        budgetMin={choice.budgetMin} straight={choice.straight}
+        onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)} onStraight={(straight) => chooseTime(choice.budgetMin, straight)} />}
+      <View style={styles.dockActions}>
+        {plansPending ? <View style={styles.startPending} /> : chosen ? <>
+          {today && choice.budgetMin !== null && !today.compression.fits && <Pressable accessibilityRole="button" disabled={skipping} onPress={() => void skipToday()} style={[styles.skip, skipping && styles.disabled]}><Text style={styles.skipText}>{skipping ? 'Skipping…' : 'Skip today'}</Text></Pressable>}
+          <Pressable accessibilityRole="button" disabled={starting || launchState !== 'ready'} onPress={startToday} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : `Start ${chosen.day.name}`}</Text></Pressable>
+        </>
+          : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
+      </View>
     </View>}
     <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
@@ -256,6 +301,37 @@ export default function DashboardScreen() {
   </SafeAreaView>
 }
 
+// Today's day in session order: pairs and circuits as one block, dropped exercises at the end.
+function TodayExercises({ today, exercises, checkedIn, startWeightOf, units, onOpen }: {
+  today: NextSessionRecommendation; exercises: TemplateExercise[]
+  // After a check-in the start takes the progression's weights; otherwise the usual day's.
+  checkedIn: boolean; startWeightOf: (exercise: TemplateExercise) => number; units: 'kg' | 'lbs'; onOpen: (exercise: TemplateExercise) => void
+}) {
+  const row = (index: number, sets: number) => {
+    const exercise = exercises[index]!
+    const skipped = sets === 0
+    const planned = checkedIn ? today.exercises[index]! : { reps: exercise.targetReps, weight: startWeightOf(exercise) }
+    return <Pressable key={`${skipped ? 'skipped:' : ''}${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" accessibilityLabel={skipped ? `${exercise.name}, skipped today` : undefined} onPress={() => onOpen(exercise)} style={styles.exercise}>
+      <Text numberOfLines={1} style={[styles.exerciseName, skipped && styles.skippedName]}>{exercise.name}</Text>
+      {skipped ? <Text style={[styles.exerciseMeta, styles.skipped]}>Skipped today</Text>
+        : <Text style={styles.exerciseMeta}>{sets} × {planned.reps}{planned.weight > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(planned.weight), units)} {units}</Text></>}</Text>}
+      <Icon name="chevron-right" size={16} />
+    </Pressable>
+  }
+  return <>
+    {today.compression.blocks.map((block) => {
+      const live = block.items.filter((item) => item.sets > 0)
+      if (!live.length) return null
+      if (live.length === 1) return row(live[0]!.index, live[0]!.sets)
+      const rounds = Math.max(...live.map((item) => item.sets))
+      return <View key={`group:${block.group ?? live[0]!.index}`} style={styles.group}>
+        <Text style={styles.groupLabel}>{live.length === 2 ? 'Superset' : 'Circuit'} · {rounds} {rounds === 1 ? 'round' : 'rounds'}</Text>
+        {live.map((item) => row(item.index, item.sets))}
+      </View>
+    })}
+    {exercises.map((_, index) => today.compression.sets[index] === 0 ? row(index, 0) : null)}
+  </>
+}
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background }, content: { flexGrow: 1, paddingTop: 26.4, paddingHorizontal: 16, paddingBottom: 28 },
@@ -273,10 +349,14 @@ const styles = StyleSheet.create({
   exerciseName: { flex: 1, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15 }, exerciseMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] }, exerciseWeight: { color: colors.text, fontFamily: 'InstrumentSans_500Medium' },
   planPending: { height: 216 }, startPending: { height: 52 },
   links: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', columnGap: 24 }, link: { minHeight: 44, justifyContent: 'center' }, weekLink: { alignItems: 'center', columnGap: 4, flexDirection: 'row', minHeight: 44 }, linkText: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 }, weekLinkText: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
-  asPlanned: { marginTop: -4, paddingBottom: 8 }, startAsPlanned: { minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 12, backgroundColor: colors.surfaceRaised }, startAsPlannedText: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 15 },
   planEmpty: { gap: 4, paddingVertical: 8 }, planEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },
   launchFeedback: { gap: 4 }, disabled: { opacity: 0.65 },
+  dock: { gap: 8, marginHorizontal: 10, marginTop: 10, marginBottom: 2, paddingTop: 6, paddingHorizontal: 12, paddingBottom: 12, borderRadius: 22, backgroundColor: colors.surfaceHigh, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: '0 -18px 40px -14px rgba(0, 0, 0, 0.7), 0 10px 24px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.07)' },
+  dockBare: { paddingTop: 12 }, dockActions: { flexDirection: 'row', gap: 8, marginTop: 4 }, dockStart: { flex: 1 },
+  skip: { flexGrow: 0, flexShrink: 1, flexBasis: 136, height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: 'rgba(255, 255, 255, 0.09)', boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)' }, skipText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
+  group: { marginLeft: 2, paddingLeft: 12, borderLeftWidth: 1, borderLeftColor: colors.lineStrong }, groupLabel: { marginTop: 6, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20 },
+  skipped: { color: colors.mutedSoft }, skippedName: { color: colors.mutedSoft, textDecorationLine: 'line-through', textDecorationColor: colors.mutedSoft },
   startBar: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 2 }, start: { height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35)' }, startText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
   week: { paddingTop: 18, paddingBottom: 26 }, weekHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }, weekTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 }, weekMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] },
   days: { flexDirection: 'row', gap: 6, marginTop: 10 }, day: { flex: 1, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 10 }, dayDone: { backgroundColor: colors.choiceSelected }, dayToday: { borderColor: colors.text, borderWidth: 1.5 },

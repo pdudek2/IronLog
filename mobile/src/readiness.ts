@@ -1,6 +1,7 @@
 import { todayKey, type ReadinessEntry } from '../../src/shared/readiness'
 import type { ReadResult } from './scopedRead'
-import type { RecommendationWorkout } from '../../src/shared/nextSessionRecommendation'
+import type { NextSessionRecommendation, RecommendationWorkout, TemplateLaunch } from '../../src/shared/nextSessionRecommendation'
+import type { CompressionProposal } from '../../src/shared/compressionRecord'
 import type { SavedWorkout } from './history'
 
 export type ReadinessValues = Pick<ReadinessEntry, 'sleep' | 'mood' | 'soreness'>
@@ -26,6 +27,14 @@ export function recommendationHistory(workouts: SavedWorkout[]): RecommendationW
       ...(exercise.group ? { group: exercise.group } : {}), sets: exercise.sets.map(set => ({ ...set })) })) }))
 }
 
+// Start launches today's version once the user gave a time or checked in; an untouched day starts the plan as written.
+export function todayLaunch(plan: NextSessionRecommendation | null, checkedIn: boolean, choice: { budgetMin: number | null; proposals: CompressionProposal[] }): TemplateLaunch | undefined {
+  if (!plan || (choice.budgetMin === null && !choice.proposals.length && !checkedIn)) return undefined
+  // Without a check-in, today's version keeps the usual day's weights, so a shorter day never changes a load.
+  const items = checkedIn ? plan.launch : plan.launch.map(({ dayExerciseIndex, sets, group }) => ({ dayExerciseIndex, sets, ...(group ? { group } : {}) }))
+  return { items, ...(plan.record ? { compression: plan.record } : {}), ...(choice.proposals.length ? { proposals: choice.proposals } : {}) }
+}
+
 function sameEntry(left: ReadinessEntry | null, right: ReadinessEntry) {
   return !!left && left.userId === right.userId && left.date === right.date && left.createdAt === right.createdAt
     && left.sleep === right.sleep && left.mood === right.mood && left.soreness === right.soreness
@@ -41,6 +50,7 @@ export class ReadinessController {
   state: ReadinessState
   private generation = 0
   private alive = true
+  private queued = false
   private attempt: { entry: ReadinessEntry; status: 'pending' | 'saved' | 'failed'; result: Promise<void>; error?: unknown } | null = null
   constructor(private readonly uid: string, private readonly port: {
     read: (uid: string, date: string, server: boolean) => Promise<ReadResult<ReadinessEntry | null>>
@@ -60,14 +70,23 @@ export class ReadinessController {
     const date = todayKey(this.port.now())
     if (!this.alive || date === this.state.date) return
     this.generation += 1
+    this.queued = false
     this.set({ date, status: 'loading', entry: null, values: null, message: this.attempt ? 'An earlier check-in still needs confirmation.' : null })
     void this.load()
   }
-  change(values: ReadinessValues) {
+  // Each tap saves; a tap during a save is kept and saved once that save settles.
+  choose(values: ReadinessValues): Promise<void> {
     this.refreshDay()
-    if (!this.alive || this.state.status !== 'ready' || this.state.entry || this.state.busy || this.attempt) return
+    if (!this.alive || this.state.status !== 'ready') return Promise.resolve()
     parseReadiness(this.uid, this.state.date, { ...values, userId: this.uid, date: this.state.date, createdAt: 0 })
     this.set({ values: { ...values }, message: null })
+    if (this.state.busy || this.attempt) { this.queued = true; return Promise.resolve() }
+    return this.save()
+  }
+  private drain() {
+    if (!this.queued || this.attempt || this.state.busy) return
+    this.queued = false
+    void this.save()
   }
   async load(server = false) {
     if (!this.alive) return
@@ -93,8 +112,9 @@ export class ReadinessController {
     this.refreshDay()
     if (!this.alive || this.state.busy) return
     if (this.attempt) return this.reconcile()
-    if (this.state.status !== 'ready' || this.state.entry || !this.state.values) return
-    const entry = parseReadiness(this.uid, this.state.date, { ...this.state.values, userId: this.uid, date: this.state.date, createdAt: this.port.now().getTime() })
+    const { entry: saved, values } = this.state
+    if (this.state.status !== 'ready' || !values || (saved && saved.sleep === values.sleep && saved.mood === values.mood && saved.soreness === values.soreness)) return
+    const entry = parseReadiness(this.uid, this.state.date, { ...values, userId: this.uid, date: this.state.date, createdAt: this.port.now().getTime() })
     this.generation += 1
     this.set({ busy: true, pending: true, message: null })
     const attempt = { entry, status: 'pending' as 'pending' | 'saved' | 'failed', result: Promise.resolve(), error: undefined as unknown }
@@ -109,6 +129,7 @@ export class ReadinessController {
       || ['permission-denied', 'invalid-argument'].some(value => code.endsWith(value)))) {
       this.attempt = null
       this.set({ pending: false, message: 'Could not save readiness. Your values were kept; try again.' })
+      this.drain()
       return
     }
     await this.reconcile()
@@ -126,11 +147,11 @@ export class ReadinessController {
       const entry = read.data ? parseReadiness(this.uid, attempt.entry.date, read.data) : null
       this.attempt = null
       this.set({ pending: false, ...(this.state.date === attempt.entry.date
-        ? sameEntry(entry, attempt.entry) ? { status: 'ready', entry, values: entry, message: 'Readiness saved' }
-          : { message: 'Save was not confirmed. Your values were kept; review and save again.' }
+        ? sameEntry(entry, attempt.entry) ? { status: 'ready', entry, values: this.queued ? this.state.values : entry, message: null }
+          : { message: 'Save was not confirmed. Tap a value to save again.' }
         : { message: null }) })
     } catch (error) {
       if (this.alive) this.set({ message: error instanceof Error ? error.message : 'Could not confirm readiness.' })
-    } finally { if (this.alive) this.set({ busy: false }) }
+    } finally { if (this.alive) { this.set({ busy: false }); this.drain() } }
   }
 }

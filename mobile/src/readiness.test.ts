@@ -3,7 +3,7 @@ import test from 'node:test'
 import { buildNextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
 import { computeReadinessScore, todayKey, type ReadinessEntry } from '../../src/shared/readiness'
 import { fixtures, plan, workouts, NOW, readiness } from '../../src/shared/__fixtures__/readiness'
-import { parseReadiness, ReadinessController, ReadinessDataError, recommendationHistory, type ReadinessState } from './readiness'
+import { parseReadiness, ReadinessController, ReadinessDataError, recommendationHistory, todayLaunch, type ReadinessState } from './readiness'
 import type { ReadResult } from './scopedRead'
 import { kgToDisplayWeight } from '../../src/shared/weightUnits'
 
@@ -39,6 +39,18 @@ test('strict parsing rejects owner/date/invalid values/timestamps; local midnigh
   assert.equal(todayKey(new Date(2026, 9, 2, 0, 0)), '2026-10-02')
   assert.equal(recommendationHistory([{ id: 'a', startedAt: 1, finishedAt: 2, materialized: true, exercises: [{ exerciseId: 'same', exerciseSource: 'user', name: 'Custom', sets: [{ weight: 30, reps: 9 }] }] }])[0]?.exercises[0]?.exerciseSource, 'user')
 })
+test('today\'s launch: an untouched day starts as written; a shorter day without a check-in keeps the usual weights', () => {
+  const entry = readiness(fixtures[0].values)
+  const usual = { budgetMin: null, proposals: [] }
+  assert.equal(todayLaunch(buildNextSessionRecommendation(plan, 0, null, workouts, NOW), false, usual), undefined)
+  const short = buildNextSessionRecommendation(plan, 0, null, workouts, NOW, 'kg', { budgetMin: 20 })
+  const proposals = [{ budgetMin: 20, mode: short.record?.mode ?? 'usual' as const }]
+  const plain = todayLaunch(short, false, { budgetMin: 20, proposals })!
+  assert.ok(plain.items.length > 0 && plain.items.every(item => item.weight === undefined && item.reps === undefined))
+  assert.deepEqual(plain.proposals, proposals)
+  const checked = todayLaunch(buildNextSessionRecommendation(plan, 0, entry, workouts, NOW), true, usual)!
+  assert.ok(checked.items.every(item => typeof item.weight === 'number' && typeof item.reps === 'number'))
+})
 const tick = () => new Promise(resolve => setImmediate(resolve))
 function harness(milliseconds = 20) {
   let now = new Date(2026, 9, 1, 12)
@@ -62,38 +74,42 @@ for (const failure of ['cache', 'read', 'malformed']) test(`${failure} cannot in
   await h.controller.load(); await h.controller.save()
   assert.notEqual(h.controller.state.status, 'ready'); assert.equal(h.controller.state.values, null); assert.equal(h.writes.length, 0)
 })
-test('defaults only after absence; double tap saves submitted snapshot once', async () => {
+test('defaults only after absence; each tap saves once, a tap during a save follows it, a saved day can change', async () => {
   const h = harness(); await h.controller.load()
   assert.deepEqual(h.controller.state.values, fixtures[1].values)
-  h.controller.change(fixtures[2].values)
-  await Promise.all([h.controller.save(), h.controller.save()])
+  await Promise.all([h.controller.choose(fixtures[2].values), h.controller.save(), h.controller.choose(fixtures[2].values)])
   assert.equal(h.writes.length, 1); assert.deepEqual(h.controller.state.entry, readiness(fixtures[2].values))
+  const saving = h.controller.choose(fixtures[0].values); h.controller.choose(fixtures[1].values)
+  assert.deepEqual(h.controller.state.values, fixtures[1].values)
+  await saving; await tick(); await tick()
+  assert.deepEqual(h.writes.map(w => w.sleep), [fixtures[2].values.sleep, fixtures[0].values.sleep, fixtures[1].values.sleep])
+  assert.deepEqual(h.controller.state.entry && { sleep: h.controller.state.entry.sleep, mood: h.controller.state.entry.mood, soreness: h.controller.state.entry.soreness }, fixtures[1].values)
 })
 test('bounded uncertain write preserves original outcome and inputs until settled, even if server read matches', async () => {
   const h = harness(5); await h.controller.load()
   let finish!: () => void
   h.port.write = async entry => { h.writes.push(entry); h.entries.set(entry.date, entry); await new Promise<void>(resolve => { finish = resolve }) }
-  h.controller.change(fixtures[2].values)
-  await h.controller.save()
+  await h.controller.choose(fixtures[2].values)
   assert.equal(h.controller.state.pending, true); assert.equal(h.controller.state.entry, null)
   await h.controller.save(); assert.equal(h.writes.length, 1)
-  h.controller.change(fixtures[0].values); assert.deepEqual(h.controller.state.values, fixtures[2].values)
+  await h.controller.choose(fixtures[0].values); assert.equal(h.writes.length, 1)
   finish(); await tick(); await h.controller.reconcile()
-  assert.equal(h.controller.state.pending, false); assert.deepEqual(h.controller.state.entry, readiness(fixtures[2].values))
+  assert.deepEqual(h.controller.state.entry, readiness(fixtures[2].values))
+  await tick(); assert.deepEqual(h.writes.map(w => w.sleep), [fixtures[2].values.sleep, fixtures[0].values.sleep])
 })
 test('failed/uncertain save retains inputs; reconnect nonmatch unlocks before explicit retry', async () => {
-  const h = harness(); await h.controller.load(); h.controller.change(fixtures[0].values)
+  const h = harness(); await h.controller.load()
   h.port.write = async () => { throw Error('lost connection') }; h.readError = true
-  await h.controller.save(); assert.equal(h.controller.state.pending, true)
+  await h.controller.choose(fixtures[0].values); assert.equal(h.controller.state.pending, true)
   h.readError = false; await h.controller.reconcile()
   assert.equal(h.controller.state.pending, false); assert.deepEqual(h.controller.state.values, fixtures[0].values)
   h.port.write = async entry => { h.writes.push(entry); h.entries.set(entry.date, entry) }
   await h.controller.save(); assert.equal(h.controller.state.entry?.sleep, 1)
 })
 test('definite rejection unlocks without hiding values or allowing duplicate writes', async () => {
-  const h = harness(); await h.controller.load(); h.controller.change(fixtures[0].values)
+  const h = harness(); await h.controller.load()
   h.port.write = async () => { throw { code: 'firestore/permission-denied' } }
-  await h.controller.save(); assert.equal(h.controller.state.pending, false); assert.equal(h.controller.state.values?.sleep, 1)
+  await h.controller.choose(fixtures[0].values); assert.equal(h.controller.state.pending, false); assert.equal(h.controller.state.values?.sleep, 1)
 })
 test('midnight/resume fences a late read and keeps new day absent', async () => {
   const h = harness(); let release!: (value: ReadResult<ReadinessEntry | null>) => void

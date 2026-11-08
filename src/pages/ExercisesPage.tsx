@@ -8,6 +8,7 @@ import { useProfileStore } from '../store/profileStore'
 import { getRecords } from '../lib/progressService'
 import { kgToDisplayWeight } from '../lib/weightUnits'
 import { exercises, type Category, type Equipment, type Exercise, type MuscleGroup } from '../data/exercises'
+import { muscleOptions } from '../shared/exerciseInput'
 import {
   createUserExercise,
   deleteUserExercise,
@@ -47,6 +48,7 @@ const MUSCLE_LABELS: Record<MuscleGroup, string> = {
   quads: 'Quads',
   hamstrings: 'Hamstrings',
   glutes: 'Glutes',
+  adductors: 'Adductors',
   shoulders: 'Shoulders',
   triceps: 'Triceps',
   biceps: 'Biceps',
@@ -57,7 +59,8 @@ const MUSCLE_LABELS: Record<MuscleGroup, string> = {
 
 const CATEGORIES = (Object.keys(CATEGORY_LABELS) as (Category | 'all')[])
 const EQUIPMENT_OPTIONS = (Object.keys(EQUIPMENT_LABELS) as (Equipment | 'all')[])
-const MUSCLE_OPTIONS = (Object.keys(MUSCLE_LABELS) as MuscleGroup[])
+// Own exercises keep the muscle list Firestore rules accept; adductors is catalogue-only.
+const MUSCLE_OPTIONS = muscleOptions
 
 // ─── Create Form Modal ────────────────────────────────────────────────────────
 

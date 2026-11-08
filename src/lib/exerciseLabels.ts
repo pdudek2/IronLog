@@ -41,6 +41,7 @@ const MUSCLE_LABELS: Record<MuscleGroup | string, string> = {
   quads: 'Quads',
   hamstrings: 'Hamstrings',
   glutes: 'Glutes',
+  adductors: 'Adductors',
   calves: 'Calves',
   core: 'Core',
   lats: 'Lats',

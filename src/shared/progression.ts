@@ -11,7 +11,8 @@ export interface ProgressionInput {
   sessions: ProgressionSession[]
   // Plan prescription; null when the session has no plan, 'ambiguous' when the plan has the exercise on days with
   // different targets and the day is unknown.
-  target: { reps: number; sets: number } | null | 'ambiguous'
+  // weight: the plan's weight; 0 on an exercise without history makes the first set a test.
+  target: { reps: number; sets: number; weight?: number } | null | 'ambiguous'
   equipment?: string
   category?: string
   units: WeightUnits
@@ -26,8 +27,9 @@ export interface Progression {
   // Against the latest session's working weight.
   change: 'weight' | 'reps' | 'none'
   delta: number
-  // Set on a break: the first set is a test and may raise the weight up to maxWeight.
-  trial: { maxWeight: number } | null
+  // Set on a break: the first set is a test and may raise the weight up to maxWeight. Without history and without a
+  // weight in the plan the test has no cap (maxWeight null) and no start weight.
+  trial: { maxWeight: number | null } | null
   // The plan's rep number is the top of the range (2026-11-04); 1–5 reps stay fixed.
   floor: number
   ceiling: number
@@ -92,7 +94,12 @@ export function buildProgression(input: ProgressionInput): Progression | null {
   if (input.category === 'cardio' || input.target === 'ambiguous') return null
   const sessions = cleanSessions(input.sessions)
   const latest = sessions[0]
-  if (!latest) return null
+  if (!latest) {
+    const plan = input.target
+    if (!plan || plan.reps <= 0 || plan.weight !== 0) return null
+    const { floor, ceiling } = repRange(plan.reps)
+    return { weight: null, reps: ceiling, change: 'none', delta: 0, trial: { maxWeight: null }, floor, ceiling, step: stepFor([], input.equipment, input.units) }
+  }
   const latestWorking = workingSets(latest)
   if (latestWorking === 'ambiguous') return null
 
@@ -151,7 +158,8 @@ export function trialWeight(progression: Progression, set: ProgressionSet, units
   const oneRepMax = set.weight * (1 + Math.min(set.reps, 10) / 30)
   const raw = oneRepMax / (1 + progression.ceiling / 30)
   const onGrid = set.weight + Math.floor((raw - set.weight) / progression.step + 1e-9) * progression.step
-  const capped = Math.min(Math.max(progression.trial.maxWeight, set.weight), onGrid)
+  const cap = progression.trial.maxWeight
+  const capped = cap === null ? onGrid : Math.min(Math.max(cap, set.weight), onGrid)
   return finish(set.reps >= progression.ceiling ? Math.max(capped, set.weight) : capped, units)
 }
 
@@ -162,6 +170,7 @@ function signedWeight(deltaKg: number, units: WeightUnits): string {
 const perDumbbell = (equipment?: string) => (equipment === 'dumbbell' ? ' per dumbbell' : '')
 
 export function progressionHintLabel(progression: Progression, units: WeightUnits, equipment?: string): string {
+  if (progression.trial?.maxWeight === null) return 'First set is a test'
   if (progression.trial) {
     return progression.weight !== null && progression.delta < 0
       ? `Long break: first set is a test at ${signedWeight(progression.delta, units)}${perDumbbell(equipment)}`
@@ -213,7 +222,7 @@ export function sessionHint(progression: Progression | null, sets: SessionSet[],
 
 // The plan's prescription for an exercise, from the session's plan day when it is known and still in the plan.
 export function planTarget(
-  template: { days: { id?: unknown; exercises: { exerciseId: string; exerciseSource: string; targetReps: number; sets: number }[] }[] } | null | undefined,
+  template: { days: { id?: unknown; exercises: { exerciseId: string; exerciseSource: string; targetReps: number; sets: number; targetWeight?: number }[] }[] } | null | undefined,
   exerciseId: string,
   exerciseSource: string,
   dayId?: string | null,
@@ -225,6 +234,6 @@ export function planTarget(
   if (!matches.length) return null
   const first = matches[0]!
   return matches.every((exercise) => exercise.targetReps === first.targetReps && exercise.sets === first.sets)
-    ? { reps: first.targetReps, sets: first.sets }
+    ? { reps: first.targetReps, sets: first.sets, weight: matches.every((exercise) => exercise.targetWeight !== undefined) ? Math.max(...matches.map((exercise) => exercise.targetWeight!)) : undefined }
     : 'ambiguous'
 }

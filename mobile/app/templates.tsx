@@ -8,7 +8,7 @@ import Svg, { Path } from 'react-native-svg'
 
 import { pluralize } from '../../src/lib/pluralize'
 import HistoryHeader from '../src/HistoryHeader'
-import { deletePlanIfUnchanged, readTemplateFromServer, readTemplates } from '../src/firebase'
+import { deletePlanIfUnchanged, readTemplateFromServer, readTemplates, readUnits } from '../src/firebase'
 import { inspectPlanForDelete, reconcilePlanAction, type PlanAction } from '../src/planDeleteFlow'
 import { templateFingerprint } from '../../src/shared/templateFingerprint'
 import { useLaunchRuntime } from '../src/launchRuntime'
@@ -155,7 +155,7 @@ function Plans({ uid }: { uid: string }) {
       </View>
     </ScrollView>
   {moreTarget && <BottomSheet title={moreTarget.name} onClose={() => setMoreTarget(null)}>
-    {(close) => <><Pressable accessibilityRole="button" onPress={() => { const plan = moreTarget; close(() => void Share.share({ title: plan.name, message: planToText({ name: plan.name, days: plan.days }) })) }} style={styles.sheetRow}>
+    {(close) => <><Pressable accessibilityRole="button" onPress={() => { const plan = moreTarget; close(() => void readUnits(uid).catch(() => 'kg' as const).then((units) => Share.share({ title: plan.name, message: planToText({ name: plan.name, days: plan.days }, units) }))) }} style={styles.sheetRow}>
       <Text style={styles.sheetRowText}>Share plan</Text><LineIcon name="share" size={16} />
     </Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete plan ${moreTarget.name}`} disabled={!!planAction} onPress={() => close(() => void askDelete(moreTarget))} style={styles.sheetRow}>
       <Text style={styles.sheetRowQuiet}>Delete plan</Text><LineIcon name="trash" size={16} />

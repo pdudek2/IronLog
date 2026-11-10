@@ -20,11 +20,13 @@ import PastePlanSheet from '../components/PastePlanSheet'
 import { useStarterPlan } from '../hooks/useStarterPlan'
 import { starterPlanInput } from '../shared/planImport'
 import { planToText } from '../shared/planText'
+import type { WeightUnits } from '../shared/weightUnits'
+import { useProfileStore } from '../store/profileStore'
 
 const STARTER = starterPlanInput()
 
-async function sharePlan(template: WorkoutTemplate) {
-  const text = planToText({ name: template.name, days: template.days })
+async function sharePlan(template: WorkoutTemplate, units: WeightUnits) {
+  const text = planToText({ name: template.name, days: template.days }, units)
   if (navigator.share) {
     try {
       await navigator.share({ title: template.name, text })
@@ -75,6 +77,7 @@ function TemplatesLoadingSkeleton() {
 
 export default function TemplatesPage() {
   const { user } = useAuthStore()
+  const { profile } = useProfileStore()
   const navigate = useNavigate()
   const {
     pendingLaunch,
@@ -448,7 +451,7 @@ export default function TemplatesPage() {
             <button
               type="button"
               className="bottom-sheet-row"
-              onClick={() => { const target = moreTarget; setMoreTarget(null); void sharePlan(target) }}
+              onClick={() => { const target = moreTarget; setMoreTarget(null); void sharePlan(target, profile?.units ?? 'kg') }}
             >
               <span>Share plan</span>
               <Share2 size={16} aria-hidden="true" />

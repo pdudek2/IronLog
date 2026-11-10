@@ -18,6 +18,7 @@ export interface ImportedPlan { name: string; days: { name: string; rows: Import
 export const PASTED_PLAN_NAME = 'Pasted plan'
 
 const SKIP_LABELS: Record<Exclude<SkipReason, 'comment'>, string> = {
+  warmUp: 'Warm-up, left out of the plan',
   emptyDay: 'Day without exercises',
   tooManyDays: 'More than 14 days',
   tooManyExercises: 'More than 20 exercises in a day',

@@ -1,4 +1,5 @@
 import { matchExerciseName, type ExerciseRef, type MatchCandidate, type NameMatch } from './exerciseMatch'
+import { kgToDisplayWeight, type WeightUnits } from './weightUnits'
 import { MAX_SESSION_EXERCISES, MAX_SET_REPS, MAX_SET_WEIGHT_KG } from './workoutLimits'
 
 // Text format of a plan (PRODUCT.md, „Specyfikacja punktu 4A”). Every line of the input ends up in exactly one place:
@@ -26,7 +27,7 @@ export interface ParsedExercise {
 
 export interface ParsedDay { name: string; line: number | null; exercises: ParsedExercise[] }
 
-export type SkipReason = 'comment' | 'emptyDay' | 'tooManyDays' | 'tooManyExercises' | 'outOfRange'
+export type SkipReason = 'comment' | 'warmUp' | 'emptyDay' | 'tooManyDays' | 'tooManyExercises' | 'outOfRange'
 export interface ParsedPlan {
   name: string | null
   days: ParsedDay[]
@@ -42,7 +43,11 @@ const TIME = '(?:s|sec|secs|sek|seconds?|min|mins|minut[ya]?|minutes?)'
 // Effort, percent, rest and tempo stay in the note; without this their number would be read as kilograms.
 const ASIDE = `@?\\s*(?:rpe|rir)\\s*:?\\s*${NUM}(?:\\s*[-–]\\s*${NUM})?|\\b(?:rest|przerwa|tempo)\\s*:?\\s*\\d[\\d.,:–-]*(?:\\s*${TIME}\\b)?|@?\\s*${NUM}(?:\\s*[-–]\\s*${NUM})?\\s*(?:%|(?:${TIME}|rpe|rir)\\b)`
 const TOKEN = new RegExp(`${GROUP.source}|${ASIDE}|@\\s*(${NUM})\\s*(kg|lbs?)?|(${NUM})\\s*(kg|lbs?)?(?![\\d.,]*\\s*[x×*/])`, 'gi')
-const NOTE_LINE = /^(?:super\s?set|superseri[ae]|giant set|rest|przerwa|notes?|uwag[ai])(?![a-z\u00c0-\u024f])/i
+const WARM_UP = '(?:warm[\\s-]?ups?|rozgrzewk[aioę]|rozgrzewkowe)'
+const NOTE_LINE = new RegExp(`^(?:super\\s?set|superseri[ae]|giant set|rest|przerwa|notes?|uwag[ai]|${WARM_UP})(?![a-z\\u00c0-\\u024f])`, 'i')
+// The plan holds working sets only: "Warm-up: Squat 2x10", "Squat warm-up 2x10", "Squat 2x10 40kg (warm-up sets)".
+const WARM_UP_NAME = new RegExp(`(?:^|[^a-z])${WARM_UP}(?![a-z\\u00c0-\\u024f])`, 'i')
+const WARM_UP_NOTE = new RegExp(`^\\(?${WARM_UP}(?:\\s+(?:sets?|seri[ae]))?\\)?$`, 'i')
 
 const round2 = (value: number) => Math.round(value * 100) / 100
 const number = (text: string) => Number.parseFloat(text.replace(',', '.'))
@@ -146,6 +151,7 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
   const lines = text.replace(/\r/g, '').split('\n')
   const skipped: ParsedPlan['skipped'] = []
   const blocks: { header: { name: string; line: number } | null; exercises: ParsedExercise[]; overflow: number[] }[] = []
+  const groupsOf = new Map<ParsedExercise, SetGroup[]>()
 
   lines.forEach((raw, index) => {
     const line = index + 1
@@ -173,21 +179,47 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
     const parsed = parseSets(rest)!
     const name = (before || parsed.leftover).slice(0, MAX_NAME_LENGTH)
     const note = before ? parsed.leftover || null : null
-    const { sets, reps, weight, simplified } = fold(parsed.groups)
+    const match = matchExerciseName(name, userExercises)
+    // "Week 1/2", "Mon 10/11", "12/11": two numbers and a slash next to a name that is no exercise are a heading, not two sets.
+    if (first[4]?.split('/').length === 2 && rest.trim() === first[0] && (!before || match.status === 'unknown')) {
+      blocks.push({ header: { name: headerName(cleaned), line }, exercises: [], overflow: [] })
+      return
+    }
+    if (WARM_UP_NAME.test(name) || WARM_UP_NOTE.test(note ?? '')) {
+      skipped.push({ line, source: raw, reason: 'warmUp' })
+      return
+    }
+    const { groups } = parsed
+    const { sets, reps, weight, simplified } = fold(groups)
     if (!name || sets < 1 || sets > MAX_PLAN_SETS || reps > MAX_SET_REPS || weight > MAX_SET_WEIGHT_KG) {
       skipped.push({ line, source: raw, reason: 'outOfRange' })
       return
     }
     if (!blocks.length) blocks.push({ header: null, exercises: [], overflow: [] })
     const block = blocks.at(-1)!
+    // The same exercise on the next line: a clearly lighter line first is its warm-up, anything else is more sets of it.
+    const previous = block.exercises.at(-1)
+    const same = previous && previous.match.status === 'matched' && match.status === 'matched'
+      && previous.match.exercise.exerciseId === match.exercise.exerciseId && previous.match.exercise.exerciseSource === match.exercise.exerciseSource
+    if (same && previous.targetWeight > 0 && previous.targetWeight < weight * 0.8) {
+      skipped.push({ line: previous.line, source: previous.source, reason: 'warmUp' })
+      block.exercises.pop()
+    } else if (same) {
+      const all = [...groupsOf.get(previous)!, ...groups]
+      const merged = fold(all)
+      if (merged.sets <= MAX_PLAN_SETS) {
+        groupsOf.set(previous, all)
+        Object.assign(previous, { sets: merged.sets, targetReps: merged.reps, targetWeight: merged.weight, simplified: true })
+        return
+      }
+    }
     if (block.exercises.length >= MAX_SESSION_EXERCISES) {
       skipped.push({ line, source: raw, reason: 'tooManyExercises' })
       return
     }
-    block.exercises.push({
-      line, source: raw, name, note, sets, targetReps: reps, targetWeight: weight, simplified,
-      match: matchExerciseName(name, userExercises), duplicate: false,
-    })
+    const exercise: ParsedExercise = { line, source: raw, name, note, sets, targetReps: reps, targetWeight: weight, simplified, match, duplicate: false }
+    groupsOf.set(exercise, groups)
+    block.exercises.push(exercise)
   })
 
   // Two headers before the first exercise: the first one names the plan.
@@ -222,12 +254,11 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
 export interface PlanTextExercise { name: string; sets: number; targetReps: number; targetWeight: number }
 export interface PlanTextInput { name: string; days: { name: string; exercises: PlanTextExercise[] }[] }
 
-const weightText = (kg: number) => String(round2(kg))
-
-export function planToText(plan: PlanTextInput): string {
+export function planToText(plan: PlanTextInput, units: WeightUnits = 'kg'): string {
+  const weightText = (kg: number) => String(units === 'lbs' ? kgToDisplayWeight(kg, units) : round2(kg))
   const days = plan.days.map((day) => [
     day.name,
-    ...day.exercises.map((exercise) => `${exercise.name} ${exercise.sets}x${exercise.targetReps}${exercise.targetWeight > 0 ? ` @${weightText(exercise.targetWeight)} kg` : ''}`),
+    ...day.exercises.map((exercise) => `${exercise.name} ${exercise.sets}x${exercise.targetReps}${exercise.targetWeight > 0 ? ` @${weightText(exercise.targetWeight)} ${units}` : ''}`),
   ].join('\n'))
   return [plan.name, ...days].join('\n\n')
 }

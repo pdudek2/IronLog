@@ -299,6 +299,8 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
   lines.forEach((raw, index) => {
     const line = index + 1
     const row = tableRow(raw, table)
+    // What the preview shows for a row to check: table cells are set apart by tabs, which do not show.
+    const written = raw.trim().replace(/\s*\t\s*/g, '  ')
     if (row?.skip) {
       skipped.push({ line, source: raw, reason: 'comment' })
       return
@@ -435,7 +437,7 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
       if (merged.sets <= MAX_PLAN_SETS) {
         groupsOf.set(previous, all)
         linesOf.get(previous)!.push({ line, source: raw })
-        Object.assign(previous, { sets: merged.sets, targetReps: merged.reps, targetWeight: merged.weight, simplified: true, check: previous.check ?? (check ? raw.trim() : null) })
+        Object.assign(previous, { sets: merged.sets, targetReps: merged.reps, targetWeight: merged.weight, simplified: true, check: previous.check ?? (check ? written : null) })
         return
       }
     }
@@ -443,7 +445,7 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
       skipped.push({ line, source: raw, reason: 'tooManyExercises' })
       return
     }
-    const exercise: ParsedExercise = { line, source: raw, name, note, sets, targetReps: reps, targetWeight: weight, simplified, match, duplicate: false, check: check ? raw.trim() : null }
+    const exercise: ParsedExercise = { line, source: raw, name, note, sets, targetReps: reps, targetWeight: weight, simplified, match, duplicate: false, check: check ? written : null }
     groupsOf.set(exercise, groups)
     linesOf.set(exercise, [{ line, source: raw }])
     block.exercises.push(exercise)

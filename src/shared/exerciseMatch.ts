@@ -1,10 +1,11 @@
 import { exercises as catalogue, normalizeExerciseName, type Exercise, type MuscleGroup } from '../../data/exercises'
 
 export interface ExerciseRef { exerciseId: string; exerciseSource: 'global' | 'user'; name: string }
-export interface MatchCandidate extends ExerciseRef { muscles?: readonly string[]; aliases?: readonly string[] }
+export interface MatchCandidate extends ExerciseRef { muscles?: readonly string[]; aliases?: readonly string[]; equipment?: string }
 
 export type NameMatch =
-  | { status: 'matched'; exercise: ExerciseRef; via: 'name' | 'variant' | 'typo'; variant: string | null }
+  // otherEquipment: the variant names equipment the exercise does not use ("Bench Press (Dumbbell)"), so the row needs a look.
+  | { status: 'matched'; exercise: ExerciseRef; via: 'name' | 'variant' | 'typo'; variant: string | null; otherEquipment?: true }
   | { status: 'generic' | 'unknown'; suggestions: ExerciseRef[] }
 
 // Muscle names say which muscle, not which exercise: these always go to the user with suggestions.
@@ -20,10 +21,22 @@ const GENERIC_NAMES: Record<string, MuscleGroup[]> = {
   brzuch: ['core'], abs: ['core'], core: ['core'], przedramiona: ['forearms'], forearms: ['forearms'],
 }
 
+// A variant naming other equipment is another exercise: "wyciskanie na skosie hantle" is not the barbell press.
+const EQUIPMENT_WORDS: [RegExp, string][] = [
+  [/^(?:db|dbs|dumbbells?|hantl\w*|hantel\w*)$/, 'dumbbell'], [/^(?:bb|barbell|sztang\w*)$/, 'barbell'],
+  [/^(?:cable|cables|wyciag\w*|link\w*)$/, 'cable'], [/^(?:machine|maszyn\w*)$/, 'machine'], [/^smith$/, 'smith'], [/^(?:kb|kettlebells?|kettl\w*)$/, 'kettlebell'],
+]
+const equipmentOf = (word: string) => EQUIPMENT_WORDS.find(([pattern]) => pattern.test(word))?.[1]
+const otherEquipment = (candidate: MatchCandidate, variant: string | null) => normalizeExerciseName(variant ?? '').split(' ')
+  .some((word) => { const equipment = equipmentOf(word); return Boolean(equipment && candidate.equipment && equipment !== candidate.equipment) })
+const matched = (candidate: MatchCandidate, via: 'name' | 'variant' | 'typo', variant: string | null): NameMatch => ({
+  status: 'matched', exercise: toRef(candidate), via, variant, ...(otherEquipment(candidate, variant) ? { otherEquipment: true as const } : {}),
+})
+
 const toRef = (exercise: MatchCandidate): ExerciseRef => ({ exerciseId: exercise.exerciseId, exerciseSource: exercise.exerciseSource, name: exercise.name })
 
 export const catalogueCandidates: MatchCandidate[] = catalogue.map((exercise: Exercise) => ({
-  exerciseId: exercise.id, exerciseSource: 'global', name: exercise.name, muscles: exercise.muscles, aliases: exercise.aliases,
+  exerciseId: exercise.id, exerciseSource: 'global', name: exercise.name, muscles: exercise.muscles, aliases: exercise.aliases, equipment: exercise.equipment,
 }))
 
 function distance(a: string, b: string): number {
@@ -83,7 +96,7 @@ export function matchExerciseName(raw: string, userExercises: MatchCandidate[] =
     return { status: 'generic', suggestions: suggestions.slice(0, 6).map(toRef) }
   }
   const named = exact(name, groups)
-  if (named) return { status: 'matched', exercise: toRef(named), via: variantInParens ? 'variant' : 'name', variant: variantInParens }
+  if (named) return matched(named, variantInParens ? 'variant' : 'name', variantInParens)
 
   // Extra words keep an exercise only when no other exercise explains them: "Squat hack" is Hack Squat,
   // "Leg press skośny" is Leg Press with a variant, "Leg press calf raise" goes to the user.
@@ -104,7 +117,7 @@ export function matchExerciseName(raw: string, userExercises: MatchCandidate[] =
       const rest = base.trim().split(/\s+/)
         .filter((word) => normalizeExerciseName(word).split(' ').some((part) => part && !covered.has(part))).join(' ')
       const variant = [rest, variantInParens].filter(Boolean).join(', ') || null
-      return { status: 'matched', exercise: toRef(winner), via: variant ? 'variant' : 'name', variant }
+      return matched(winner, variant ? 'variant' : 'name', variant)
     }
   }
 
@@ -113,7 +126,7 @@ export function matchExerciseName(raw: string, userExercises: MatchCandidate[] =
   const [best, runnerUp] = [...all].map((candidate) => ({ candidate, typo: Math.min(...namesOf(candidate).map((known) => distance(name, known))) }))
     .sort((a, b) => a.typo - b.typo)
   if (best && best.typo <= allowed && (!runnerUp || runnerUp.typo > best.typo)) {
-    return { status: 'matched', exercise: toRef(best.candidate), via: 'typo', variant: variantInParens }
+    return matched(best.candidate, 'typo', variantInParens)
   }
   const ranked = nearest(name, all, 6)
   return { status: 'unknown', suggestions: ranked.filter((entry) => entry.rank <= Math.max(3, name.length / 2)).map((entry) => toRef(entry.candidate)) }

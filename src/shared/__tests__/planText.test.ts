@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import fixture from '../__fixtures__/notionUpperLower.json'
+import foreignPlans from '../__fixtures__/foreignPlans.json'
 import { exercises, normalizeExerciseName, searchExercises } from '../../../data/exercises'
 import { matchExerciseName } from '../exerciseMatch'
 import { parsePlanText, planToText, resolvedPlan, type PlanTextInput } from '../planText'
@@ -49,6 +50,17 @@ describe('parsePlanText: set notation', () => {
     ['Barbell row 3x10, 90s rest', 3, 10, 0],
     ['Overhead press 3x8 rest 2 min', 3, 8, 0],
     ['Squat 3x5 100kg RPE 8', 3, 5, 100],
+    ['Squat 5x5 @ 75% 1RM', 5, 5, 0],
+    ['Squat 3x5 5RM', 3, 5, 0],
+    ['Bench press 3x6-15', 3, 15, 0],
+    ['Bench press 3x8 tempo 3/1/1', 3, 8, 0],
+    ['Bench press 3x8 2/0/2 tempo', 3, 8, 0],
+    ['Squat 5 reps x 3 sets 100kg', 3, 5, 100],
+    ['Barbell row 10 reps, 3 sets', 3, 10, 0],
+    ['Bench 225x5x3', 3, 5, 225],
+    ['Dips 3 sets to failure', 3, 0, 0],
+    ['DB shoulder press 3X12 @ 50S', 3, 12, 50],
+    ['[11/9/26, 8:03 PM] Coach: Squat 3x5 100kg', 3, 5, 100],
   ])('%s → %i × %i @ %f', (line, sets, reps, weight) => {
     expect(one(line)).toMatchObject({ sets, targetReps: reps, targetWeight: weight, simplified: false })
   })
@@ -61,6 +73,38 @@ describe('parsePlanText: set notation', () => {
     expect(one('Leg press 4x8 2x8 82 kg 2x8 91 kg')).toMatchObject({ sets: 4, targetReps: 8, targetWeight: 91 })
     expect(one('Leg press skośny 2x8 110kg, 1x10 130kg, 1x15 130 kg')).toMatchObject({ sets: 4, targetReps: 8, targetWeight: 110 })
     expect(one('Squat 2x5, 1x5 100 kg')).toMatchObject({ sets: 3, targetReps: 5, targetWeight: 100, simplified: false })
+    expect(one('Bench press 2 sets of 12 reps, 1 set of 8 reps')).toMatchObject({ sets: 3, targetReps: 12, targetWeight: 0, simplified: true })
+    expect(one('Bench press 3 sets: 10, 8, 6')).toMatchObject({ sets: 3, targetReps: 10, targetWeight: 0, simplified: true })
+    expect(one('Deadlift 405x3, 365x5x2')).toMatchObject({ sets: 3, targetReps: 5, targetWeight: 365, simplified: true })
+    expect(one('Incline bench 4 sets: 60x12, 70x10, 80x8, 90x6')).toMatchObject({ sets: 4, targetReps: 6, targetWeight: 90 })
+    expect(one('OHP 65% x5, 75% x5, 85% x5+')).toMatchObject({ sets: 3, targetReps: 5, targetWeight: 0 })
+  })
+
+  it('marks a row whose numbers were read by a guess, and leaves plain rows unmarked', () => {
+    const check = (line: string) => one(line).check !== null
+    expect(['Squat 30x5', 'Push-ups 50x3', 'Bench 225x5x3', 'DB curl 3x12 25s', 'Dumbbell curl 3x12 2x12.5kg', 'Leg press 4x12 3 plates', 'Squat 4/8/80', 'Squat 3x5 - 100', 'Squat 3x5-100', 'Bench press 3 sets: 8, 6', 'Squat 3x5 week 2', 'Dumbbell curl 3x12 2x10kg', 'Squat 100 3x5',
+      'Squat warm up 2x5 then 3x5 100kg'].filter((line) => !check(line))).toEqual([])
+    expect(['Squat 3x5', 'Bench press 5x5x100', 'A1 Bench press 3x8', 'RDL 3x8 80 tempo 3/1/1', 'Squat 3x5 100 tempo 3010', 'Squat 3x5 - 100kg', 'Squat 3x5 100', 'Bench press 4x8 60 kg', 'Squat 3x5 @80%', 'Biceps 1x6 15kg, 2x10 12,5 kg',
+      'Lateral raise 3x12-15 (light)', 'Pull-ups: 3 x AMRAP'].filter(check)).toEqual([])
+    expect(one('Squat warm up 2x5 then 3x5 100kg')).toMatchObject({ name: 'Squat', sets: 3, targetReps: 5, targetWeight: 100 })
+    expect(one('Squat 3x5 100kg\nSquat 3x5 week 2').check).toBe('Squat 3x5 week 2')
+  })
+
+  it('reads share text of other apps: the exercise line, then its sets, warm-ups left out', () => {
+    const plan = parsePlanText('Squat (Barbell)\nSet 1: 135 lbs x 8 [Warm-up]\nSet 2: 225 lbs x 5\nSet 3: 225 lbs x 5\n\nBench Press (Barbell)\nW: 40 kg × 10\nSet 1: 80 kg × 8\nSet 2: 80 kg × 7')
+    expect(plan.days[0]!.exercises.map((exercise) => [exercise.match.status === 'matched' && exercise.match.exercise.name, exercise.sets, exercise.targetReps, exercise.targetWeight]))
+      .toEqual([['Squat', 2, 5, 102.06], ['Bench Press', 2, 8, 80]])
+    expect(plan.skipped.map((entry) => [entry.line, entry.reason])).toEqual([[2, 'warmUp'], [7, 'warmUp']])
+    // A set the plan cannot hold is listed, and the sets after it stay with their exercise, which then asks for a look.
+    const odd = parsePlanText('Squat (Barbell)\nSet 1: 100 kg x 5\nSet 2: 5000 kg x 5\nSet 3: 100 kg x 5\nBench\nSet 1: 80 kg x 8')
+    expect(odd.days[0]!.exercises.map((exercise) => [exercise.name, exercise.sets, exercise.check])).toEqual([['Squat (Barbell)', 2, 'Set 2: 5000 kg x 5'], ['Bench', 1, null]])
+    expect(odd.skipped).toEqual([expect.objectContaining({ line: 3, reason: 'outOfRange' })])
+  })
+
+  it('reads a weight without a unit in the user\'s units', () => {
+    const weights = (units: 'kg' | 'lbs') => parsePlanText('Squat 3x5 225\nBench 3x8 @135\nRow 3x10 60 kg', [], units).days[0]!.exercises.map((exercise) => exercise.targetWeight)
+    expect(weights('lbs')).toEqual([102.06, 61.23, 60])
+    expect(weights('kg')).toEqual([225, 135, 60])
   })
 
   it('keeps the words around the sets as a note', () => {
@@ -83,7 +127,7 @@ describe('parsePlanText: days, title and skipped lines', () => {
   })
 
   it('puts every line somewhere: a day, an exercise or a skipped line with a reason', () => {
-    const text = 'Plan\nWeek 1\nPush\nBench 3x5\n// only a comment\nSquat 30x5\nExtras\n'
+    const text = 'Plan\nWeek 1\nPush\nBench 3x5\n// only a comment\nSquat 3x5 5000 kg\nExtras\n'
     const plan = parsePlanText(text)
     expect(plan.name).toBe('Plan')
     expect(plan.skipped.map(({ line, reason }) => [line, reason])).toEqual([[2, 'emptyDay'], [5, 'comment'], [6, 'outOfRange'], [7, 'emptyDay']])
@@ -113,6 +157,7 @@ describe('parsePlanText: days, title and skipped lines', () => {
     }
     expect(rows('Squat 3x5\nPrzysiad 2x8')).toEqual([[[5, 5, 0, true]], []])
     expect(rows('Squat 2x10 40kg\nSquat 3x5 100kg')).toEqual([[[3, 5, 100, false]], [[1, 'warmUp']]])
+    expect(rows('Squat 1x10 20kg\nSquat 1x8 24kg\nSquat 3x5 100kg')).toEqual([[[3, 5, 100, false]], [[1, 'warmUp'], [2, 'warmUp']]])
     expect(rows('Squat 3x5 100kg\nSquat 2x12 60kg')).toEqual([[[5, 5, 100, true]], []])
     const variants = parsePlanText('Leg press (single leg) 3x12 50kg\nLeg press 3x10 120kg')
     expect(variants.days[0]!.exercises.map((exercise) => [exercise.sets, exercise.duplicate])).toEqual([[3, false], [3, true]])
@@ -128,6 +173,9 @@ describe('parsePlanText: days, title and skipped lines', () => {
     expect(dated.skipped.map((entry) => [entry.line, entry.reason])).toEqual([[6, 'emptyDay']])
     expect(dated.name).toBe('Week 1/2')
     expect(parsePlanText('Push\nBench 3x8\nMoje cwiczenie 10/8\nDips 3x10').days.map((day) => day.exercises.length)).toEqual([3])
+    expect(parsePlanText('WEEK 1/4\nMON 11/10 – PUSH\nBench 3x5').days.map((day) => day.name)).toEqual(['MON 11/10 – PUSH'])
+    const first = parsePlanText('Push\nCable woodchop 12/10\nBench press 3x8')
+    expect([first.name, first.days.map((day) => [day.name, day.exercises.length])]).toEqual([null, [['Push', 2]]])
   })
 })
 
@@ -140,6 +188,9 @@ describe('matchExerciseName', () => {
     expect(matchedId('Ciąganie drążka 3x8')).toBe('lat-pulldown')
     expect(one('Leg press (ziemny) 3x10').match).toMatchObject({ status: 'matched', via: 'variant', variant: 'ziemny', exercise: { exerciseId: 'leg-press' } })
     expect(one('Leg curls tyłem 3x10').match).toMatchObject({ status: 'matched', variant: 'tyłem', exercise: { exerciseId: 'leg-curl' } })
+    // Other equipment in the name keeps the match but asks: the weights of a dumbbell and a barbell press differ.
+    for (const line of ['Incline Smith Press 4x8', 'Wyciskanie na skosie hantle 3x10', 'Bench Press (Dumbbell) 3x10']) expect(one(line).check).toBe(line)
+    expect(one('Dumbbell Bench Press 3x10').check).toBeNull()
     expect(one('Pull-up negative 3x5').match).toMatchObject({ status: 'matched', variant: 'negative', exercise: { exerciseId: 'pull-up' } })
   })
 
@@ -188,6 +239,49 @@ describe('the Notion corpus', () => {
     expect(count('skipped')).toBe(1)
     expect(count('matched')).toBeGreaterThanOrEqual(158)
     expect(count('generic') + count('unknown') + count('matched') + count('skipped')).toBe(entries.length)
+  })
+})
+
+describe('the foreign plans corpus', () => {
+  type Line = { line: string; kind: string; exercise?: string; sets?: number; reps?: number; weight?: number; unit?: string | null }
+  type Case = { id: string; units: 'kg' | 'lbs'; text: string; lines: Line[] }
+  const corpus = foreignPlans as unknown as { dev: Case[]; holdout: Case[] }
+
+  // A row is silently wrong when it looks settled (matched, no check, no duplicate) but its exercise or numbers differ from the label.
+  it('asks about every row it cannot read; the rows it gets wrong without asking are only the known ones', () => {
+    const silent: string[] = []
+    const lost: string[] = []
+    for (const plan of [...corpus.dev, ...corpus.holdout]) {
+      const parsed = parsePlanText(plan.text, [], plan.units)
+      const rows = parsed.days.flatMap((day) => day.exercises)
+      const numbers = plan.text.replace(/\r/g, '').split('\n')
+      let cursor = 0
+      const located = plan.lines.map((line) => { cursor = numbers.indexOf(line.line, cursor) + 1; return { ...line, no: cursor } })
+      const groups: (typeof located)[] = []
+      for (const line of located.filter((entry) => entry.kind === 'exercise')) {
+        const last = groups.at(-1)?.at(-1)
+        if (last && last.exercise === line.exercise && !['custom', 'generic'].includes(line.exercise!) && last.no === line.no - 1) groups.at(-1)!.push(line)
+        else groups.push([line])
+      }
+      const kg = (line: Line) => ((line.unit ?? plan.units) === 'lbs' ? line.weight! * 0.45359237 : line.weight!)
+      for (const group of groups) {
+        const row = rows.find((candidate) => group.some((line) => line.no === candidate.line))
+        if (!row && !parsed.skipped.some((entry) => group.some((line) => line.no === entry.line))) lost.push(`${plan.id}: ${group[0]!.line}`)
+        if (!row || row.check || row.duplicate || row.match.status !== 'matched') continue
+        const main = [...group].sort((a, b) => b.sets! - a.sets! || kg(b) - kg(a))[0]!
+        const right = row.match.exercise.name === group[0]!.exercise && row.sets === group.reduce((sum, line) => sum + line.sets!, 0)
+          && row.targetReps === main.reps && Math.abs(row.targetWeight - kg(main)) < 0.06
+        if (!right) silent.push(`${plan.id}: ${group[0]!.line}`)
+      }
+    }
+    expect(silent).toEqual([
+      'notation-zoo-lbs: Hammer curls 3x12 2x30',
+      '531-week3-kg: Squat: 105kg x5, 120kg x3, 135kg x1+',
+      '531-week3-kg: Bench: 70kg x5, 80kg x3, 90kg x1+',
+      'strong-style-export: Lateral Raise (Dumbbell)',
+    ])
+    // Pasted tables are not read yet; their rows show up as days without exercises, and one table row becomes a day name.
+    expect(lost).toEqual(['markdown-table-push: | Overhead press | 3 | 8 | 50 kg |'])
   })
 })
 

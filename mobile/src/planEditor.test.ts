@@ -275,7 +275,7 @@ test('a pasted plan keeps its open lines across a restart and saves only once th
     write: async (key, slot, value) => { slots.set(`${key}:${slot}`, value) },
   }
   let id = 0
-  const pasted = importPlanText('Upper\nWyciskanie sztangi na ławce 4x8 60 kg\nBiceps 3x12 14 kg')!
+  const pasted = importPlanText('Upper\nWyciskanie sztangi na ławce 4x8 60 kg\nBiceps 3x12 14 kg\nPrzysiad 3x5 - 100', [], 'lbs')!
   const draft = importedPlanDraft(pasted, 'kg', () => `id-${++id}`)
   assert.throws(() => normalizePlanDraft(draft, 'operation-1'), /every pasted line/)
   assert.equal(await new PlanEditorJournal(storage).installIfEmpty('uid', draft, 'paste'), true)
@@ -284,10 +284,12 @@ test('a pasted plan keeps its open lines across a restart and saves only once th
   const open = restored!.days[0]!.exercises[1]!
   assert.equal(open.unmatched?.reason, 'generic')
   assert.equal(open.unmatched?.line, 'Biceps 3x12 14 kg')
+  assert.deepEqual([restored!.days[0]!.exercises[2]!.check, restored!.days[0]!.exercises[2]!.weight], ['Przysiad 3x5 - 100', '45.36'])
 
   restored!.days[0]!.exercises[1] = { ...open, unmatched: undefined, exerciseId: 'barbell-curl', exerciseSource: 'global', name: 'Barbell Curl' }
   assert.deepEqual(normalizePlanDraft(restored!, 'operation-1').days[0]!.exercises, [
     { exerciseId: 'bench-press', exerciseSource: 'global', name: 'Bench Press', sets: 4, targetReps: 8, targetWeight: 60 },
     { exerciseId: 'barbell-curl', exerciseSource: 'global', name: 'Barbell Curl', sets: 3, targetReps: 12, targetWeight: 14 },
+    { exerciseId: 'squat', exerciseSource: 'global', name: 'Squat', sets: 3, targetReps: 5, targetWeight: 45.36 },
   ])
 })

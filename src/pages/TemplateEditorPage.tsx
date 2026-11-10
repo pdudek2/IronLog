@@ -30,9 +30,9 @@ import { pluralize } from '../lib/pluralize'
 import { ApiRejectedError } from '../lib/authedApi'
 import { newPlanDayId } from '../shared/planDay'
 import { createUserExercise, type UserExerciseInput } from '../lib/userExercisesService'
-import { unmatchedHint, type ImportedPlan, type ImportedRow } from '../shared/planImport'
+import { CHECK_HINT, unmatchedHint, type ImportedPlan, type ImportedRow } from '../shared/planImport'
 
-type DraftExercise = TemplateExercise & { _id?: string; detail?: string | null; unmatched?: ImportedRow['unmatched'] }
+type DraftExercise = TemplateExercise & { _id?: string; detail?: string | null; check?: string | null; unmatched?: ImportedRow['unmatched'] }
 type DraftDay = Omit<TemplateDay, 'exercises'> & { _id: string; exercises: DraftExercise[] }
 
 function pastedDays(plan: ImportedPlan): DraftDay[] {
@@ -49,6 +49,7 @@ function pastedDays(plan: ImportedPlan): DraftDay[] {
       targetReps: row.targetReps,
       targetWeight: row.targetWeight,
       detail: row.detail,
+      check: row.check,
       ...(row.unmatched ? { unmatched: row.unmatched } : {}),
     })),
   }))
@@ -371,7 +372,7 @@ export default function TemplateEditorPage() {
       return {
         ...day,
         exercises: day.exercises.map((exercise, currentExerciseIndex) => (
-          currentExerciseIndex === exerciseIndex ? updater(exercise) : exercise
+          currentExerciseIndex === exerciseIndex ? { ...updater(exercise), check: null } : exercise
         )),
       }
     }))
@@ -621,6 +622,10 @@ export default function TemplateEditorPage() {
                           {exercise.unmatched ? (
                             <p className="template-exercise-detail">
                               <strong>{unmatchedHint[exercise.unmatched.reason]}</strong> {exercise.unmatched.line}
+                            </p>
+                          ) : exercise.check ? (
+                            <p className="template-exercise-detail">
+                              <strong>{CHECK_HINT}</strong> {exercise.check}
                             </p>
                           ) : exercise.detail ? (
                             <p className="template-exercise-detail">{exercise.detail}</p>

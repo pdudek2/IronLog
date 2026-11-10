@@ -1,0 +1,3979 @@
+{
+ "about": "Pasted plans in other people's notations, written and labelled by a separate agent that saw only the catalogue (2026-11-10). holdout was scored blind once before the parser was tuned on dev.",
+ "dev": [
+  {
+   "id": "gzclp-kg",
+   "style": "GZCLP tiers with 3+ and 15+ AMRAP marks",
+   "units": "kg",
+   "text": "GZCLP – 3 days a week, rotate A1 B1 A2 B2\nDay A1\nT1 Squat 5x3+ 100kg\nT2 Bench 3x10 60kg\nT3 Lat Pulldown 3x15+ 45kg\nDay B1\nT1 OHP 5x3+ 50kg\nT2 Deadlift 3x10 100kg\nT3 DB Row 3x15+ 22kg\nDay A2\nT1 Bench 5x3+ 82.5kg\nT2 Squat 3x10 75kg\nProgression: add 2.5kg upper / 5kg lower when all reps are hit",
+   "lines": [
+    {
+     "line": "GZCLP – 3 days a week, rotate A1 B1 A2 B2",
+     "kind": "other"
+    },
+    {
+     "line": "Day A1",
+     "kind": "day"
+    },
+    {
+     "line": "T1 Squat 5x3+ 100kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 3,
+     "weight": 100,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "T2 Bench 3x10 60kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "T3 Lat Pulldown 3x15+ 45kg",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 15,
+     "weight": 45,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Day B1",
+     "kind": "day"
+    },
+    {
+     "line": "T1 OHP 5x3+ 50kg",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 5,
+     "reps": 3,
+     "weight": 50,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "T2 Deadlift 3x10 100kg",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 3,
+     "reps": 10,
+     "weight": 100,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "T3 DB Row 3x15+ 22kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 3,
+     "reps": 15,
+     "weight": 22,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Day A2",
+     "kind": "day"
+    },
+    {
+     "line": "T1 Bench 5x3+ 82.5kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 3,
+     "weight": 82.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "T2 Squat 3x10 75kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 10,
+     "weight": 75,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Progression: add 2.5kg upper / 5kg lower when all reps are hit",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "pl-coach-whatsapp",
+   "style": "Polish coach message copied from WhatsApp with timestamps",
+   "units": "kg",
+   "text": "[09.11.2026, 21:14] Trener Kuba: Jutro nogi, rozpiska poniżej 👇\n[09.11.2026, 21:14] Trener Kuba: Rozgrzewka 10 min rower + mobilizacja bioder\nprzysiad 5x5 90kg\nmartwy rumuński 3x10 70kg\nwykroki z hantlami 3x12 na nogę, hantle 16kg\nprostowanie nóg 3x15\nłydki 4x20\n[09.11.2026, 21:15] Trener Kuba: przerwy 2-3 min przy przysiadach, reszta 90s\n[09.11.2026, 21:16] Trener Kuba: jak przysiad pójdzie lekko to w ostatniej serii daj 92,5",
+   "lines": [
+    {
+     "line": "[09.11.2026, 21:14] Trener Kuba: Jutro nogi, rozpiska poniżej 👇",
+     "kind": "day"
+    },
+    {
+     "line": "[09.11.2026, 21:14] Trener Kuba: Rozgrzewka 10 min rower + mobilizacja bioder",
+     "kind": "warmup"
+    },
+    {
+     "line": "przysiad 5x5 90kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 5,
+     "weight": 90,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "martwy rumuński 3x10 70kg",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 10,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "wykroki z hantlami 3x12 na nogę, hantle 16kg",
+     "kind": "exercise",
+     "exercise": "Lunge",
+     "sets": 3,
+     "reps": 12,
+     "weight": 16,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "prostowanie nóg 3x15",
+     "kind": "exercise",
+     "exercise": "Leg Extension",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "łydki 4x20",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 4,
+     "reps": 20,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "[09.11.2026, 21:15] Trener Kuba: przerwy 2-3 min przy przysiadach, reszta 90s",
+     "kind": "other"
+    },
+    {
+     "line": "[09.11.2026, 21:16] Trener Kuba: jak przysiad pójdzie lekko to w ostatniej serii daj 92,5",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "reddit-ppl-kg",
+   "style": "Reddit-style PPL, plain sets x reps with kg",
+   "units": "kg",
+   "text": "Push A\nBench Press 4x5 80kg\nOverhead Press 3x8 45kg\nIncline DB Press 3x10 24kg\nLateral Raises 3x15 8kg\n\nPull A\nDeadlift 1x5 140kg\nLat Pulldown 3x10 60kg\nFace Pulls 3x20 15kg\nHammer Curls 3x10 14kg\n\nLegs A\nSquat 3x5 110kg\nRomanian Deadlift 3x10 90kg\nNordic curls 3x6\nCalves 5x10 60kg",
+   "lines": [
+    {
+     "line": "Push A",
+     "kind": "day"
+    },
+    {
+     "line": "Bench Press 4x5 80kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 5,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Overhead Press 3x8 45kg",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 45,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Incline DB Press 3x10 24kg",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 24,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Lateral Raises 3x15 8kg",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 3,
+     "reps": 15,
+     "weight": 8,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Pull A",
+     "kind": "day"
+    },
+    {
+     "line": "Deadlift 1x5 140kg",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 1,
+     "reps": 5,
+     "weight": 140,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Lat Pulldown 3x10 60kg",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 10,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Face Pulls 3x20 15kg",
+     "kind": "exercise",
+     "exercise": "Face Pull",
+     "sets": 3,
+     "reps": 20,
+     "weight": 15,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Hammer Curls 3x10 14kg",
+     "kind": "exercise",
+     "exercise": "Hammer Curl",
+     "sets": 3,
+     "reps": 10,
+     "weight": 14,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Legs A",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 3x5 110kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 110,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Romanian Deadlift 3x10 90kg",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 10,
+     "weight": 90,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Nordic curls 3x6",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 6,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Calves 5x10 60kg",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 5,
+     "reps": 10,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "hevy-style-share-lbs",
+   "style": "workout-app share text in lbs, sets as lines, warm-up tag, volume footer",
+   "units": "lbs",
+   "text": "Leg Day 🦵\nSaturday, Nov 8, 2026\n\nSquat (Barbell)\nSet 1: 135 lbs x 8 [Warm-up]\nSet 2: 225 lbs x 5\nSet 3: 225 lbs x 5\nSet 4: 225 lbs x 5\n\nLeg Press (Machine)\nSet 1: 360 lbs x 12\nSet 2: 360 lbs x 12\nSet 3: 360 lbs x 10\n\nLying Leg Curl (Machine)\nSet 1: 90 lbs x 12\nSet 2: 90 lbs x 12\nSet 3: 90 lbs x 12\n\nSeated Calf Raise\nSet 1: 135 lbs x 15\nSet 2: 135 lbs x 15\n\nVolume: 22,905 lbs",
+   "lines": [
+    {
+     "line": "Leg Day 🦵",
+     "kind": "day"
+    },
+    {
+     "line": "Saturday, Nov 8, 2026",
+     "kind": "other"
+    },
+    {
+     "line": "Squat (Barbell)",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 225,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "Set 1: 135 lbs x 8 [Warm-up]",
+     "kind": "warmup"
+    },
+    {
+     "line": "Set 2: 225 lbs x 5",
+     "kind": "other"
+    },
+    {
+     "line": "Set 3: 225 lbs x 5",
+     "kind": "other"
+    },
+    {
+     "line": "Set 4: 225 lbs x 5",
+     "kind": "other"
+    },
+    {
+     "line": "Leg Press (Machine)",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 360,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "Set 1: 360 lbs x 12",
+     "kind": "other"
+    },
+    {
+     "line": "Set 2: 360 lbs x 12",
+     "kind": "other"
+    },
+    {
+     "line": "Set 3: 360 lbs x 10",
+     "kind": "other"
+    },
+    {
+     "line": "Lying Leg Curl (Machine)",
+     "kind": "exercise",
+     "exercise": "Leg Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 90,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "Set 1: 90 lbs x 12",
+     "kind": "other"
+    },
+    {
+     "line": "Set 2: 90 lbs x 12",
+     "kind": "other"
+    },
+    {
+     "line": "Set 3: 90 lbs x 12",
+     "kind": "other"
+    },
+    {
+     "line": "Seated Calf Raise",
+     "kind": "exercise",
+     "exercise": "Seated Calf Raise",
+     "sets": 2,
+     "reps": 15,
+     "weight": 135,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "Set 1: 135 lbs x 15",
+     "kind": "other"
+    },
+    {
+     "line": "Set 2: 135 lbs x 15",
+     "kind": "other"
+    },
+    {
+     "line": "Volume: 22,905 lbs",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "gzclp-caps-lbs",
+   "style": "GZCLP with ALL CAPS days, tier after the name, @ weights",
+   "units": "lbs",
+   "text": "MY GZCLP (lbs)\nMONDAY\nSquat T1 5x3 @ 225\nBench T2 3x10 @ 135\nLat pulldown T3 3x15 @ 100, last set AMRAP\nWEDNESDAY\nOHP T1 5x3 @ 95\nDeadlift T2 3x10 @ 185\nDumbbell row T3 3x15 @ 45, last set AMRAP\nFRIDAY\nBench T1 5x3 @ 175\nSquat T2 3x10 @ 165",
+   "lines": [
+    {
+     "line": "MY GZCLP (lbs)",
+     "kind": "other"
+    },
+    {
+     "line": "MONDAY",
+     "kind": "day"
+    },
+    {
+     "line": "Squat T1 5x3 @ 225",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 3,
+     "weight": 225,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Bench T2 3x10 @ 135",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 135,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Lat pulldown T3 3x15 @ 100, last set AMRAP",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 15,
+     "weight": 100,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "WEDNESDAY",
+     "kind": "day"
+    },
+    {
+     "line": "OHP T1 5x3 @ 95",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 5,
+     "reps": 3,
+     "weight": 95,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Deadlift T2 3x10 @ 185",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 3,
+     "reps": 10,
+     "weight": 185,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Dumbbell row T3 3x15 @ 45, last set AMRAP",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 3,
+     "reps": 15,
+     "weight": 45,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "FRIDAY",
+     "kind": "day"
+    },
+    {
+     "line": "Bench T1 5x3 @ 175",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 3,
+     "weight": 175,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Squat T2 3x10 @ 165",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 10,
+     "weight": 165,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "phul-set-ranges",
+   "style": "PHUL template with set ranges like 3-4 x 3-5",
+   "units": "lbs",
+   "text": "PHUL\nMon – Upper Power\nBarbell Bench Press 3-4 x 3-5\nIncline DB Bench 3-4 x 6-10\nBent Over Row 3-4 x 3-5\nLat Pull Down 3-4 x 6-10\nOverhead Press 2-3 x 5-8\nBarbell Curl 2-3 x 6-10\nCalf Exercise 4 x 6-10",
+   "lines": [
+    {
+     "line": "PHUL",
+     "kind": "other"
+    },
+    {
+     "line": "Mon – Upper Power",
+     "kind": "day"
+    },
+    {
+     "line": "Barbell Bench Press 3-4 x 3-5",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "set range; the model holds one set count"
+    },
+    {
+     "line": "Incline DB Bench 3-4 x 6-10",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 4,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "set range; the model holds one set count"
+    },
+    {
+     "line": "Bent Over Row 3-4 x 3-5",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 4,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "set range; the model holds one set count"
+    },
+    {
+     "line": "Lat Pull Down 3-4 x 6-10",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 4,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "set range; the model holds one set count"
+    },
+    {
+     "line": "Overhead Press 2-3 x 5-8",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "set range; the model holds one set count"
+    },
+    {
+     "line": "Barbell Curl 2-3 x 6-10",
+     "kind": "exercise",
+     "exercise": "Barbell Curl",
+     "sets": 3,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "set range; the model holds one set count"
+    },
+    {
+     "line": "Calf Exercise 4 x 6-10",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 4,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "notation-zoo-lbs",
+   "style": "American lbs plan with week label, dated CAPS days, 225x5x3 and mixed groups",
+   "units": "lbs",
+   "text": "WEEK 1/4\nMON 11/10 – PUSH\nBench 225x5x3\nIncline DB 3x10 @ 70s\nClose grip bench 3x8 185\nCable flys 3x15\nDips 3 sets to failure\nWED 11/12 – PULL\nDeadlift 405x3, 365x5x2\nPull ups 5x5 +25\nBarbell rows 4x8 @ 80kg\nMeadows row 3x10 @ 70\nHammer curls 3x12 2x30",
+   "lines": [
+    {
+     "line": "WEEK 1/4",
+     "kind": "other"
+    },
+    {
+     "line": "MON 11/10 – PUSH",
+     "kind": "day"
+    },
+    {
+     "line": "Bench 225x5x3",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 225,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Incline DB 3x10 @ 70s",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 70,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Close grip bench 3x8 185",
+     "kind": "exercise",
+     "exercise": "Close-Grip Bench Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 185,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Cable flys 3x15",
+     "kind": "exercise",
+     "exercise": "Cable Crossover",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Dips 3 sets to failure",
+     "kind": "exercise",
+     "exercise": "Dips",
+     "sets": 3,
+     "reps": 0,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "WED 11/12 – PULL",
+     "kind": "day"
+    },
+    {
+     "line": "Deadlift 405x3, 365x5x2",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 3,
+     "reps": 5,
+     "weight": 365,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Pull ups 5x5 +25",
+     "kind": "exercise",
+     "exercise": "Pull-up",
+     "sets": 5,
+     "reps": 5,
+     "weight": 25,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Barbell rows 4x8 @ 80kg",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 4,
+     "reps": 8,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Meadows row 3x10 @ 70",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 10,
+     "weight": 70,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Hammer curls 3x12 2x30",
+     "kind": "exercise",
+     "exercise": "Hammer Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 30,
+     "unit": null,
+     "ambiguous": "a pair of 30s, or a second group of 2 sets x 30"
+    }
+   ]
+  },
+  {
+   "id": "typos-leg-day",
+   "style": "lowercase leg day full of typos, some bare weights",
+   "units": "kg",
+   "text": "leg day\nSqauts 4x8 100kg\nLeg pres 4x12 160\nRomainian deadlift 3x10 80kg\nLunges 3x10 each leg\nLeg extention 3x15 40\nHamstring curl 3x12 35\nCalf raies 4x15 60kg",
+   "lines": [
+    {
+     "line": "leg day",
+     "kind": "day"
+    },
+    {
+     "line": "Sqauts 4x8 100kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 4,
+     "reps": 8,
+     "weight": 100,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Leg pres 4x12 160",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 4,
+     "reps": 12,
+     "weight": 160,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Romainian deadlift 3x10 80kg",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 10,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Lunges 3x10 each leg",
+     "kind": "exercise",
+     "exercise": "Lunge",
+     "sets": 3,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Leg extention 3x15 40",
+     "kind": "exercise",
+     "exercise": "Leg Extension",
+     "sets": 3,
+     "reps": 15,
+     "weight": 40,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Hamstring curl 3x12 35",
+     "kind": "exercise",
+     "exercise": "Leg Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 35,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Calf raies 4x15 60kg",
+     "kind": "exercise",
+     "exercise": "Calf Raise",
+     "sets": 4,
+     "reps": 15,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "notation-zoo-kg",
+   "style": "mixed notations: sets of, RPE, %1RM, tempo, rep lists, weight x reps x sets",
+   "units": "kg",
+   "text": "Monday 10/11\nSquat 3 sets of 8-10 @ 80kg\nBench Press 4 x 6 @ RPE 8\nDeadlift 5x5 @ 75% 1RM\nRomanian Deadlift 3x8 tempo 3-1-1 70kg\nLeg press 3 sets: 10, 8, 6\nBarbell row 60kg x 8 x 3\nLat pulldown 3x12 - 55kg\nDB curl 3x12 2x10kg",
+   "lines": [
+    {
+     "line": "Monday 10/11",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 3 sets of 8-10 @ 80kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 10,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Bench Press 4 x 6 @ RPE 8",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 6,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Deadlift 5x5 @ 75% 1RM",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 5,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Romanian Deadlift 3x8 tempo 3-1-1 70kg",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 8,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Leg press 3 sets: 10, 8, 6",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "three one-set groups with no weight; no rule picks the reps"
+    },
+    {
+     "line": "Barbell row 60kg x 8 x 3",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 3,
+     "reps": 8,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Lat pulldown 3x12 - 55kg",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 55,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "DB curl 3x12 2x10kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 10,
+     "unit": "kg",
+     "ambiguous": "two 10 kg dumbbells, or a second group of 2 sets x 10 kg"
+    }
+   ]
+  },
+  {
+   "id": "starting-strength",
+   "style": "Starting Strength A/B without weights",
+   "units": "lbs",
+   "text": "Starting Strength\nWorkout A\nSquat 3x5\nPress 3x5\nDeadlift 1x5\nWorkout B\nSquat 3x5\nBench Press 3x5\nPower Clean 5x3\nAlternate A/B three days a week, add 5 lb to squat and deadlift each session.",
+   "lines": [
+    {
+     "line": "Starting Strength",
+     "kind": "other"
+    },
+    {
+     "line": "Workout A",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 3x5",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Press 3x5",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Deadlift 1x5",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 1,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Workout B",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 3x5",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Bench Press 3x5",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Power Clean 5x3",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 5,
+     "reps": 3,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Alternate A/B three days a week, add 5 lb to squat and deadlift each session.",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "nsuns-4day",
+   "style": "nSuns LP T1/T2 percent ladders",
+   "units": "lbs",
+   "text": "nSuns 531 LP 4 day\nMon\nT1 Bench: 1x8 65%, 1x6 75%, 3x4 85%, 1x5 80%, 1x6 75%, 1x7 70%, 1x8+ 65%\nT2 OHP: 1x6 50%, 1x5 60%, 1x3 70%, 1x5 70%, 1x7 70%, 1x4 70%, 1x6 70%, 1x8 70%\nChest flyes 3x12\nTue\nT1 Squat 1x5 75%, 1x3 85%, 1x1+ 95%, 1x3 90%, 4x5 70%\nT2 Sumo Deadlift 1x5 50%, 1x5 60%, 3x3 70%, 1x5 60%, 1x7 50%\nLeg curls 3x12\nThu\nT1 OHP 1x8 65%, 1x6 75%, 3x4 85%, 1x5 80%, 1x6 75%, 1x7 70%, 1x8+ 65%\nT2 Incline Bench 1x6 40%, 1x5 50%, 3x3 60%, 1x5 50%, 1x7 40%\nFri\nT1 Deadlift 1x5 75%, 1x3 85%, 1x1+ 95%, 5x3 80%\nT2 Front Squat 1x5 35%, 1x5 45%, 3x3 55%, 1x5 45%, 1x7 35%\nAbs 3x15",
+   "lines": [
+    {
+     "line": "nSuns 531 LP 4 day",
+     "kind": "other"
+    },
+    {
+     "line": "Mon",
+     "kind": "day"
+    },
+    {
+     "line": "T1 Bench: 1x8 65%, 1x6 75%, 3x4 85%, 1x5 80%, 1x6 75%, 1x7 70%, 1x8+ 65%",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 9,
+     "reps": 4,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "T2 OHP: 1x6 50%, 1x5 60%, 1x3 70%, 1x5 70%, 1x7 70%, 1x4 70%, 1x6 70%, 1x8 70%",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 8,
+     "reps": 8,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "eight one-set groups with no weight; the most-sets and heavier rules do not pick one"
+    },
+    {
+     "line": "Chest flyes 3x12",
+     "kind": "exercise",
+     "exercise": "Dumbbell Fly",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Tue",
+     "kind": "day"
+    },
+    {
+     "line": "T1 Squat 1x5 75%, 1x3 85%, 1x1+ 95%, 1x3 90%, 4x5 70%",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 8,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "T2 Sumo Deadlift 1x5 50%, 1x5 60%, 3x3 70%, 1x5 60%, 1x7 50%",
+     "kind": "exercise",
+     "exercise": "Sumo Deadlift",
+     "sets": 7,
+     "reps": 3,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Leg curls 3x12",
+     "kind": "exercise",
+     "exercise": "Leg Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Thu",
+     "kind": "day"
+    },
+    {
+     "line": "T1 OHP 1x8 65%, 1x6 75%, 3x4 85%, 1x5 80%, 1x6 75%, 1x7 70%, 1x8+ 65%",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 9,
+     "reps": 4,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "T2 Incline Bench 1x6 40%, 1x5 50%, 3x3 60%, 1x5 50%, 1x7 40%",
+     "kind": "exercise",
+     "exercise": "Incline Bench Press",
+     "sets": 7,
+     "reps": 3,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Fri",
+     "kind": "day"
+    },
+    {
+     "line": "T1 Deadlift 1x5 75%, 1x3 85%, 1x1+ 95%, 5x3 80%",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 8,
+     "reps": 3,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "T2 Front Squat 1x5 35%, 1x5 45%, 3x3 55%, 1x5 45%, 1x7 35%",
+     "kind": "exercise",
+     "exercise": "Front Squat",
+     "sets": 7,
+     "reps": 3,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Abs 3x15",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "pl-numbered-prose",
+   "style": "Polish numbered list in sentences: \"5 serii po 5 powtórzeń, ciężar 85 kg\"",
+   "units": "kg",
+   "text": "Wtorek – góra\n1) Wyciskanie sztangi leżąc – 5 serii po 5 powtórzeń, ciężar 85 kg\n2) Wiosłowanie hantlem – 4 serie po 10 na rękę, 30 kg\n3) Wyciskanie hantli nad głowę – 3 serie po 10–12, 20 kg\n4) Ściąganie drążka do klatki – 3 x 12, 60 kg\n5) Modlitewnik – 3 x 10, 27,5 kg\n6) Triceps – 3 x 15\nUwaga: między seriami 2 min przerwy",
+   "lines": [
+    {
+     "line": "Wtorek – góra",
+     "kind": "day"
+    },
+    {
+     "line": "1) Wyciskanie sztangi leżąc – 5 serii po 5 powtórzeń, ciężar 85 kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 85,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "2) Wiosłowanie hantlem – 4 serie po 10 na rękę, 30 kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 4,
+     "reps": 10,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "3) Wyciskanie hantli nad głowę – 3 serie po 10–12, 20 kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Shoulder Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 20,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "4) Ściąganie drążka do klatki – 3 x 12, 60 kg",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "5) Modlitewnik – 3 x 10, 27,5 kg",
+     "kind": "exercise",
+     "exercise": "Preacher Curl",
+     "sets": 3,
+     "reps": 10,
+     "weight": 27.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "6) Triceps – 3 x 15",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Uwaga: między seriami 2 min przerwy",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "pl-split-no-diacritics",
+   "style": "Polish split without diacritics, 4*8 asterisk notation",
+   "units": "kg",
+   "text": "PONIEDZIAŁEK – KLATA + TRICEPS\nwyciskanie na lawce 4*8 80kg\nwyciskanie na skosie hantle 3*10 28kg\nrozpietki 3*12 14kg\ndipy 3*max\nSRODA – PLECY + BICEPS\nmartwy ciag 3*5 142,5kg\npodciaganie 4*8\nwioslowanie sztanga 4*10 70kg\nbiceps 3*12 16kg\nPIĄTEK – NOGI + BARKI\nprzysiad 4*6 110kg\nsuwnica 3*12 200kg\ndwuglowe 3*12 45kg\nprzysiad na smithie 4*8 80kg",
+   "lines": [
+    {
+     "line": "PONIEDZIAŁEK – KLATA + TRICEPS",
+     "kind": "day"
+    },
+    {
+     "line": "wyciskanie na lawce 4*8 80kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 8,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "wyciskanie na skosie hantle 3*10 28kg",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 28,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "rozpietki 3*12 14kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Fly",
+     "sets": 3,
+     "reps": 12,
+     "weight": 14,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "dipy 3*max",
+     "kind": "exercise",
+     "exercise": "Dips",
+     "sets": 3,
+     "reps": 0,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "SRODA – PLECY + BICEPS",
+     "kind": "day"
+    },
+    {
+     "line": "martwy ciag 3*5 142,5kg",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 3,
+     "reps": 5,
+     "weight": 142.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "podciaganie 4*8",
+     "kind": "exercise",
+     "exercise": "Pull-up",
+     "sets": 4,
+     "reps": 8,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "wioslowanie sztanga 4*10 70kg",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 4,
+     "reps": 10,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "biceps 3*12 16kg",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 12,
+     "weight": 16,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "PIĄTEK – NOGI + BARKI",
+     "kind": "day"
+    },
+    {
+     "line": "przysiad 4*6 110kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 4,
+     "reps": 6,
+     "weight": 110,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "suwnica 3*12 200kg",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 200,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "dwuglowe 3*12 45kg",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 12,
+     "weight": 45,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "przysiad na smithie 4*8 80kg",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 4,
+     "reps": 8,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "en-coach-whatsapp-lbs",
+   "style": "English coach messages from WhatsApp, one exercise per message",
+   "units": "lbs",
+   "text": "[11/9/26, 8:03 PM] Coach Dan: Thursday upper:\n[11/9/26, 8:03 PM] Coach Dan: bench 4x6 @ RPE 8\n[11/9/26, 8:04 PM] Coach Dan: then 3x10 db rows, go heavy\n[11/9/26, 8:04 PM] Coach Dan: OHP 3x8 95\n[11/9/26, 8:05 PM] Coach Dan: pulldowns 3x12\n[11/9/26, 8:05 PM] Coach Dan: db curls 3x15, short rest\n[11/9/26, 8:06 PM] Coach Dan: rope pushdowns 3x15\n[11/9/26, 8:07 PM] Me: got it 👍",
+   "lines": [
+    {
+     "line": "[11/9/26, 8:03 PM] Coach Dan: Thursday upper:",
+     "kind": "day"
+    },
+    {
+     "line": "[11/9/26, 8:03 PM] Coach Dan: bench 4x6 @ RPE 8",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 6,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "[11/9/26, 8:04 PM] Coach Dan: then 3x10 db rows, go heavy",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 3,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "[11/9/26, 8:04 PM] Coach Dan: OHP 3x8 95",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 95,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "[11/9/26, 8:05 PM] Coach Dan: pulldowns 3x12",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "[11/9/26, 8:05 PM] Coach Dan: db curls 3x15, short rest",
+     "kind": "exercise",
+     "exercise": "Dumbbell Curl",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "[11/9/26, 8:06 PM] Coach Dan: rope pushdowns 3x15",
+     "kind": "exercise",
+     "exercise": "Tricep Pushdown",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "[11/9/26, 8:07 PM] Me: got it 👍",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "531-week3-kg",
+   "style": "5/3/1 week 3 written out in kg with 1+ top sets",
+   "units": "kg",
+   "text": "Week 3 (the 5/3/1 week)\nSquat: 105kg x5, 120kg x3, 135kg x1+\nSquat BBB 5x10 70kg\nBench: 70kg x5, 80kg x3, 90kg x1+\nBench BBB 5x10 47.5kg\nLeg press 3x15\nDumbbell row 4x12 32kg\nAb wheel 3x10",
+   "lines": [
+    {
+     "line": "Week 3 (the 5/3/1 week)",
+     "kind": "other"
+    },
+    {
+     "line": "Squat: 105kg x5, 120kg x3, 135kg x1+",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 1,
+     "weight": 135,
+     "unit": "kg",
+     "ambiguous": "all groups are one set; the heaviest is a 1+ AMRAP set, so reps 1 or 0"
+    },
+    {
+     "line": "Squat BBB 5x10 70kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 10,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Bench: 70kg x5, 80kg x3, 90kg x1+",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 1,
+     "weight": 90,
+     "unit": "kg",
+     "ambiguous": "all groups are one set; the heaviest is a 1+ AMRAP set, so reps 1 or 0"
+    },
+    {
+     "line": "Bench BBB 5x10 47.5kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 10,
+     "weight": 47.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Leg press 3x15",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Dumbbell row 4x12 32kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 4,
+     "reps": 12,
+     "weight": 32,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Ab wheel 3x10",
+     "kind": "exercise",
+     "exercise": "Ab Wheel Rollout",
+     "sets": 3,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "warmups-and-cooldown",
+   "style": "session with general warm-up, warm-up ramp lines and a cool-down",
+   "units": "kg",
+   "text": "Upper 1\nWarm-up: 5 min rowing + band pull-aparts\nBench warm-up: bar x10, 40kg x5, 60kg x3\nBench Press 4x6 85kg\nOverhead Press 2x5 30kg (warm-up)\nOverhead Press 3x8 50kg\nPull-ups 4x8\nDB Row 3x10 30kg RIR 1-2\nCool-down: 5 min bike",
+   "lines": [
+    {
+     "line": "Upper 1",
+     "kind": "day"
+    },
+    {
+     "line": "Warm-up: 5 min rowing + band pull-aparts",
+     "kind": "warmup"
+    },
+    {
+     "line": "Bench warm-up: bar x10, 40kg x5, 60kg x3",
+     "kind": "warmup"
+    },
+    {
+     "line": "Bench Press 4x6 85kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 6,
+     "weight": 85,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Overhead Press 2x5 30kg (warm-up)",
+     "kind": "warmup"
+    },
+    {
+     "line": "Overhead Press 3x8 50kg",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 50,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Pull-ups 4x8",
+     "kind": "exercise",
+     "exercise": "Pull-up",
+     "sets": 4,
+     "reps": 8,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "DB Row 3x10 30kg RIR 1-2",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 3,
+     "reps": 10,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Cool-down: 5 min bike",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "markdown-list-lbs",
+   "style": "markdown numbered list with bold names, × and lb",
+   "units": "lbs",
+   "text": "# Lower A\n1. **Back Squat** — 3×5 @ 275 lb\n2. **Romanian Deadlift** — 3×8 @ 225 lb\n3. **Bulgarian Split Squat** — 3×10/leg @ 35 lb DBs\n4. **Leg Curl** — 3×12\n5. **Standing Calf Raise** — 4×10 @ 200 lb\n\n# Upper A\n1. **Bench Press** — 3×5 @ 205 lb\n2. **Pendlay Row** — 3×5 @ 175 lb\n3. **Seated DB Shoulder Press** — 3×10 @ 55 lb\n4. **Chin-up** — 3×AMRAP\n5. **Pallof Press** — 3×12",
+   "lines": [
+    {
+     "line": "# Lower A",
+     "kind": "day"
+    },
+    {
+     "line": "1. **Back Squat** — 3×5 @ 275 lb",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 275,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "2. **Romanian Deadlift** — 3×8 @ 225 lb",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 8,
+     "weight": 225,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "3. **Bulgarian Split Squat** — 3×10/leg @ 35 lb DBs",
+     "kind": "exercise",
+     "exercise": "Bulgarian Split Squat",
+     "sets": 3,
+     "reps": 10,
+     "weight": 35,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "4. **Leg Curl** — 3×12",
+     "kind": "exercise",
+     "exercise": "Leg Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "5. **Standing Calf Raise** — 4×10 @ 200 lb",
+     "kind": "exercise",
+     "exercise": "Calf Raise",
+     "sets": 4,
+     "reps": 10,
+     "weight": 200,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "# Upper A",
+     "kind": "day"
+    },
+    {
+     "line": "1. **Bench Press** — 3×5 @ 205 lb",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 205,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "2. **Pendlay Row** — 3×5 @ 175 lb",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 5,
+     "weight": 175,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "3. **Seated DB Shoulder Press** — 3×10 @ 55 lb",
+     "kind": "exercise",
+     "exercise": "Dumbbell Shoulder Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 55,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "4. **Chin-up** — 3×AMRAP",
+     "kind": "exercise",
+     "exercise": "Chin-up",
+     "sets": 3,
+     "reps": 0,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "5. **Pallof Press** — 3×12",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "caps-phat-style-lbs",
+   "style": "ALL CAPS days and lines, 5X3 @ weight in lbs, rest day",
+   "units": "lbs",
+   "text": "DAY 1: UPPER (HEAVY)\nBENCH PRESS 5X3 @ 245\nWEIGHTED PULL-UPS 5X3 @ +45\nOHP 3X5 @ 135\nDAY 2: LOWER (HEAVY)\nSQUAT 5X3 @ 315\nDEFICIT DEADLIFT 3X3 @ 365\nHANGING LEG RAISE 3X12\nDAY 3: REST\nDAY 4: UPPER (VOLUME)\nINCLINE BENCH 4X10 @ 165\nDB SHOULDER PRESS 3X12 @ 50S\nBICEPS 3X15 @ 60\nDAY 5: LOWER (VOLUME)\nRDL 4X10 @ 225\nGOBLET SQUAT 3X15 @ 70",
+   "lines": [
+    {
+     "line": "DAY 1: UPPER (HEAVY)",
+     "kind": "day"
+    },
+    {
+     "line": "BENCH PRESS 5X3 @ 245",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 3,
+     "weight": 245,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "WEIGHTED PULL-UPS 5X3 @ +45",
+     "kind": "exercise",
+     "exercise": "Pull-up",
+     "sets": 5,
+     "reps": 3,
+     "weight": 45,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "OHP 3X5 @ 135",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 135,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "DAY 2: LOWER (HEAVY)",
+     "kind": "day"
+    },
+    {
+     "line": "SQUAT 5X3 @ 315",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 3,
+     "weight": 315,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "DEFICIT DEADLIFT 3X3 @ 365",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 3,
+     "weight": 365,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "HANGING LEG RAISE 3X12",
+     "kind": "exercise",
+     "exercise": "Hanging Leg Raise",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "DAY 3: REST",
+     "kind": "other"
+    },
+    {
+     "line": "DAY 4: UPPER (VOLUME)",
+     "kind": "day"
+    },
+    {
+     "line": "INCLINE BENCH 4X10 @ 165",
+     "kind": "exercise",
+     "exercise": "Incline Bench Press",
+     "sets": 4,
+     "reps": 10,
+     "weight": 165,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "DB SHOULDER PRESS 3X12 @ 50S",
+     "kind": "exercise",
+     "exercise": "Dumbbell Shoulder Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 50,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "BICEPS 3X15 @ 60",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 15,
+     "weight": 60,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "DAY 5: LOWER (VOLUME)",
+     "kind": "day"
+    },
+    {
+     "line": "RDL 4X10 @ 225",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 4,
+     "reps": 10,
+     "weight": 225,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "GOBLET SQUAT 3X15 @ 70",
+     "kind": "exercise",
+     "exercise": "Goblet Squat",
+     "sets": 3,
+     "reps": 15,
+     "weight": 70,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "dated-5x5-log",
+   "style": "dated session log, Mon 10/11 headers, same lifts repeated across days",
+   "units": "kg",
+   "text": "Mon 10/11\nSquat 5x5 100kg\nBench 5x5 72.5kg\nRow 5x5 65kg\nWed 12/11\nSquat 5x5 102.5kg\nOHP 5x5 45kg\nDeadlift 1x5 140kg",
+   "lines": [
+    {
+     "line": "Mon 10/11",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 5x5 100kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 5,
+     "weight": 100,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Bench 5x5 72.5kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 72.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Row 5x5 65kg",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 5,
+     "reps": 5,
+     "weight": 65,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Wed 12/11",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 5x5 102.5kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 5,
+     "weight": 102.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "OHP 5x5 45kg",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 45,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Deadlift 1x5 140kg",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 1,
+     "reps": 5,
+     "weight": 140,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "ambiguous-mess",
+   "style": "messy personal notes, Polish day labels, genuinely unclear numbers",
+   "units": "kg",
+   "text": "plan na ten tydzień\npon\nSquat 3x5 - 20\nLeg press 4x12 3 plates\nLunges 3x10 2x12kg\nLeg curl 3x12-15 30-35kg\nCalf raise 4x20 bw\nśr\nBench 5x5 (week 1: 80kg, week 2: 82.5kg)\nSquat 4/8/80",
+   "lines": [
+    {
+     "line": "plan na ten tydzień",
+     "kind": "other"
+    },
+    {
+     "line": "pon",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 3x5 - 20",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 20,
+     "unit": null,
+     "ambiguous": "20 could be the weight or a rep or minute target"
+    },
+    {
+     "line": "Leg press 4x12 3 plates",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 4,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "\"3 plates\" is a load but not a number of kg"
+    },
+    {
+     "line": "Lunges 3x10 2x12kg",
+     "kind": "exercise",
+     "exercise": "Lunge",
+     "sets": 3,
+     "reps": 10,
+     "weight": 12,
+     "unit": "kg",
+     "ambiguous": "two 12 kg dumbbells, or a second group of 2 sets x 12 kg"
+    },
+    {
+     "line": "Leg curl 3x12-15 30-35kg",
+     "kind": "exercise",
+     "exercise": "Leg Curl",
+     "sets": 3,
+     "reps": 15,
+     "weight": 35,
+     "unit": "kg",
+     "ambiguous": "weight range; the model holds one weight"
+    },
+    {
+     "line": "Calf raise 4x20 bw",
+     "kind": "exercise",
+     "exercise": "Calf Raise",
+     "sets": 4,
+     "reps": 20,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "śr",
+     "kind": "day"
+    },
+    {
+     "line": "Bench 5x5 (week 1: 80kg, week 2: 82.5kg)",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": "two weekly weights on one line"
+    },
+    {
+     "line": "Squat 4/8/80",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 4,
+     "reps": 8,
+     "weight": 80,
+     "unit": null,
+     "ambiguous": "slash order sets/reps/weight is a guess"
+    }
+   ]
+  }
+ ],
+ "holdout": [
+  {
+   "id": "bro-chest-triceps",
+   "style": "bodybuilding chest and triceps day with emoji header, typo and failure sets",
+   "units": "kg",
+   "text": "CHEST & TRICEPS 💪\nIncline Smith Press 4x8-10 70kg\nFlat DB Press 4x10 32kg\nPec Dec 3x15 50kg\nCable Flyes 3x12-15 15kg (drop set on last)\nDips 3x failure\nSkull crushers 4x10 30kg\nJM press 3x10 40kg\nOverhead cable extension 3x12 20kg",
+   "lines": [
+    {
+     "line": "CHEST & TRICEPS 💪",
+     "kind": "day"
+    },
+    {
+     "line": "Incline Smith Press 4x8-10 70kg",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 4,
+     "reps": 10,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Flat DB Press 4x10 32kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Bench Press",
+     "sets": 4,
+     "reps": 10,
+     "weight": 32,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Pec Dec 3x15 50kg",
+     "kind": "exercise",
+     "exercise": "Pec Deck",
+     "sets": 3,
+     "reps": 15,
+     "weight": 50,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Cable Flyes 3x12-15 15kg (drop set on last)",
+     "kind": "exercise",
+     "exercise": "Cable Crossover",
+     "sets": 3,
+     "reps": 15,
+     "weight": 15,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Dips 3x failure",
+     "kind": "exercise",
+     "exercise": "Dips",
+     "sets": 3,
+     "reps": 0,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Skull crushers 4x10 30kg",
+     "kind": "exercise",
+     "exercise": "Skull Crusher",
+     "sets": 4,
+     "reps": 10,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "JM press 3x10 40kg",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 10,
+     "weight": 40,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Overhead cable extension 3x12 20kg",
+     "kind": "exercise",
+     "exercise": "Overhead Tricep Extension",
+     "sets": 3,
+     "reps": 12,
+     "weight": 20,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "strong-style-export",
+   "style": "workout-app export, name line then one line per set, warm-up sets marked W",
+   "units": "kg",
+   "text": "Evening Push\nSunday, 9 November 2026 at 18:02\n\nBench Press (Barbell)\nW: 40 kg × 10\nW: 60 kg × 5\nSet 1: 80 kg × 8\nSet 2: 80 kg × 8\nSet 3: 80 kg × 7\n\nOverhead Press (Barbell)\nSet 1: 45 kg × 8\nSet 2: 45 kg × 8\nSet 3: 45 kg × 8\n\nLateral Raise (Dumbbell)\nSet 1: 10 kg × 15\nSet 2: 10 kg × 14\nSet 3: 8 kg × 15\nSet 4: 8 kg × 15\n\nTriceps Pushdown (Cable - Straight Bar)\nSet 1: 30 kg × 12\nSet 2: 30 kg × 12\nSet 3: 30 kg × 10",
+   "lines": [
+    {
+     "line": "Evening Push",
+     "kind": "day"
+    },
+    {
+     "line": "Sunday, 9 November 2026 at 18:02",
+     "kind": "other"
+    },
+    {
+     "line": "Bench Press (Barbell)",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "W: 40 kg × 10",
+     "kind": "warmup"
+    },
+    {
+     "line": "W: 60 kg × 5",
+     "kind": "warmup"
+    },
+    {
+     "line": "Set 1: 80 kg × 8",
+     "kind": "other"
+    },
+    {
+     "line": "Set 2: 80 kg × 8",
+     "kind": "other"
+    },
+    {
+     "line": "Set 3: 80 kg × 7",
+     "kind": "other"
+    },
+    {
+     "line": "Overhead Press (Barbell)",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 45,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Set 1: 45 kg × 8",
+     "kind": "other"
+    },
+    {
+     "line": "Set 2: 45 kg × 8",
+     "kind": "other"
+    },
+    {
+     "line": "Set 3: 45 kg × 8",
+     "kind": "other"
+    },
+    {
+     "line": "Lateral Raise (Dumbbell)",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 4,
+     "reps": 15,
+     "weight": 8,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Set 1: 10 kg × 15",
+     "kind": "other"
+    },
+    {
+     "line": "Set 2: 10 kg × 14",
+     "kind": "other"
+    },
+    {
+     "line": "Set 3: 8 kg × 15",
+     "kind": "other"
+    },
+    {
+     "line": "Set 4: 8 kg × 15",
+     "kind": "other"
+    },
+    {
+     "line": "Triceps Pushdown (Cable - Straight Bar)",
+     "kind": "exercise",
+     "exercise": "Tricep Pushdown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Set 1: 30 kg × 12",
+     "kind": "other"
+    },
+    {
+     "line": "Set 2: 30 kg × 12",
+     "kind": "other"
+    },
+    {
+     "line": "Set 3: 30 kg × 10",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "plain-full-body-lbs",
+   "style": "plain full body in lbs with bare weights, easy",
+   "units": "lbs",
+   "text": "Full body\nGoblet Squat 3x12 50\nPush-ups 3x15\nDumbbell Row 3x10 40\nHip Thrust 3x10 135\nPlank 3x30s",
+   "lines": [
+    {
+     "line": "Full body",
+     "kind": "day"
+    },
+    {
+     "line": "Goblet Squat 3x12 50",
+     "kind": "exercise",
+     "exercise": "Goblet Squat",
+     "sets": 3,
+     "reps": 12,
+     "weight": 50,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Push-ups 3x15",
+     "kind": "exercise",
+     "exercise": "Push-up",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Dumbbell Row 3x10 40",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 3,
+     "reps": 10,
+     "weight": 40,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Hip Thrust 3x10 135",
+     "kind": "exercise",
+     "exercise": "Hip Thrust",
+     "sets": 3,
+     "reps": 10,
+     "weight": 135,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Plank 3x30s",
+     "kind": "exercise",
+     "exercise": "Plank",
+     "sets": 3,
+     "reps": 30,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "timed or distance work; the number after x is not reps"
+    }
+   ]
+  },
+  {
+   "id": "reddit-ppl-ranges",
+   "style": "Reddit beginner PPL with rep ranges and 5+ last sets, no weights",
+   "units": "lbs",
+   "text": "Linear PPL, 6 days, run it PPLPPL + rest\n\nPULL\nBarbell Rows 4x5, 1x5+\nLat Pulldowns 3x8-12\nFace Pulls 5x15-20\nHammer Curls 4x8-12\n\nPUSH\nBench Press 4x5, 1x5+\nOverhead Press 3x8-12\nTriceps Pushdowns 3x8-12\nLateral Raises 3x15-20 (superset with pushdowns)\n\nLEGS\nSquat 2x5, 1x5+\nRomanian Deadlift 3x8-12\nLeg Curls 3x8-12\nCalf Raises 5x8-12",
+   "lines": [
+    {
+     "line": "Linear PPL, 6 days, run it PPLPPL + rest",
+     "kind": "other"
+    },
+    {
+     "line": "PULL",
+     "kind": "day"
+    },
+    {
+     "line": "Barbell Rows 4x5, 1x5+",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 5,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Lat Pulldowns 3x8-12",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Face Pulls 5x15-20",
+     "kind": "exercise",
+     "exercise": "Face Pull",
+     "sets": 5,
+     "reps": 20,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Hammer Curls 4x8-12",
+     "kind": "exercise",
+     "exercise": "Hammer Curl",
+     "sets": 4,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "PUSH",
+     "kind": "day"
+    },
+    {
+     "line": "Bench Press 4x5, 1x5+",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Overhead Press 3x8-12",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Triceps Pushdowns 3x8-12",
+     "kind": "exercise",
+     "exercise": "Tricep Pushdown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Lateral Raises 3x15-20 (superset with pushdowns)",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 3,
+     "reps": 20,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "LEGS",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 2x5, 1x5+",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Romanian Deadlift 3x8-12",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Leg Curls 3x8-12",
+     "kind": "exercise",
+     "exercise": "Leg Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Calf Raises 5x8-12",
+     "kind": "exercise",
+     "exercise": "Calf Raise",
+     "sets": 5,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "531-bbb-percent",
+   "style": "5/3/1 Boring But Big with percent lines and a TM line",
+   "units": "lbs",
+   "text": "5/3/1 BBB - Cycle 2\nTM: Squat 285 / Bench 205 / Deadlift 345 / OHP 135\n\nWeek 1\nDay 1 - OHP\nOHP 65% x5, 75% x5, 85% x5+\nOHP 5x10 @ 50%\nChin-ups 5x10\nDay 2 - Deadlift\nDeadlift 65% x5, 75% x5, 85% x5+\nDeadlift 5x10 @ 50%\nHanging Leg Raise 5x15\nDay 3 - Bench\nBench 65% x5, 75% x5, 85% x5+\nBench 5x10 @ 50%\nDB Row 5x10\nDay 4 - Squat\nSquat 65% x5, 75% x5, 85% x5+\nSquat 5x10 @ 50%\nLeg Curl 5x10",
+   "lines": [
+    {
+     "line": "5/3/1 BBB - Cycle 2",
+     "kind": "other"
+    },
+    {
+     "line": "TM: Squat 285 / Bench 205 / Deadlift 345 / OHP 135",
+     "kind": "other"
+    },
+    {
+     "line": "Week 1",
+     "kind": "other"
+    },
+    {
+     "line": "Day 1 - OHP",
+     "kind": "day"
+    },
+    {
+     "line": "OHP 65% x5, 75% x5, 85% x5+",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "OHP 5x10 @ 50%",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 5,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Chin-ups 5x10",
+     "kind": "exercise",
+     "exercise": "Chin-up",
+     "sets": 5,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Day 2 - Deadlift",
+     "kind": "day"
+    },
+    {
+     "line": "Deadlift 65% x5, 75% x5, 85% x5+",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Deadlift 5x10 @ 50%",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 5,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Hanging Leg Raise 5x15",
+     "kind": "exercise",
+     "exercise": "Hanging Leg Raise",
+     "sets": 5,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Day 3 - Bench",
+     "kind": "day"
+    },
+    {
+     "line": "Bench 65% x5, 75% x5, 85% x5+",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Bench 5x10 @ 50%",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "DB Row 5x10",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 5,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Day 4 - Squat",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 65% x5, 75% x5, 85% x5+",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Squat 5x10 @ 50%",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Leg Curl 5x10",
+     "kind": "exercise",
+     "exercise": "Leg Curl",
+     "sets": 5,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "top-set-back-offs",
+   "style": "several set groups on one line: top sets, back-offs, ascending pyramids",
+   "units": "kg",
+   "text": "Heavy day\nSquat 1x5 @ 140kg, 3x8 @ 115kg (back-offs)\nRomanian deadlift 3x8 RIR 2\nBench 1x6 100, 2x10 80\nChin-ups 3x6 +10kg\nLight day\nDeadlift top set 1x3 180kg then 2x5 160kg\nIncline bench 4 sets: 60x12, 70x10, 80x8, 90x6\nLeg press 1x20 140kg, 1x15 160kg\nPaused bench 3x3 80kg",
+   "lines": [
+    {
+     "line": "Heavy day",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 1x5 @ 140kg, 3x8 @ 115kg (back-offs)",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 4,
+     "reps": 8,
+     "weight": 115,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Romanian deadlift 3x8 RIR 2",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 8,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Bench 1x6 100, 2x10 80",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 80,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Chin-ups 3x6 +10kg",
+     "kind": "exercise",
+     "exercise": "Chin-up",
+     "sets": 3,
+     "reps": 6,
+     "weight": 10,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Light day",
+     "kind": "day"
+    },
+    {
+     "line": "Deadlift top set 1x3 180kg then 2x5 160kg",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 3,
+     "reps": 5,
+     "weight": 160,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Incline bench 4 sets: 60x12, 70x10, 80x8, 90x6",
+     "kind": "exercise",
+     "exercise": "Incline Bench Press",
+     "sets": 4,
+     "reps": 6,
+     "weight": 90,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Leg press 1x20 140kg, 1x15 160kg",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 2,
+     "reps": 15,
+     "weight": 160,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Paused bench 3x3 80kg",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 3,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "bro-back-biceps-lbs",
+   "style": "bodybuilding back day in lbs with # and dumbbell \"80s\"",
+   "units": "lbs",
+   "text": "BACK & BICEPS\nPull-ups 4 x 8-10 (add weight if easy)\nT-bar row 4x8 3 plates\nOne arm DB row 3x10 each side 80s\nLat pulldown close grip 3x12 150#\nStraight arm pulldown 3x15 60#\nShrugs 4x12 225\nPreacher curls 3x10 70\nBiceps 3x12 25s\nHammer curls 2 sets of 12, 1 set of 8",
+   "lines": [
+    {
+     "line": "BACK & BICEPS",
+     "kind": "day"
+    },
+    {
+     "line": "Pull-ups 4 x 8-10 (add weight if easy)",
+     "kind": "exercise",
+     "exercise": "Pull-up",
+     "sets": 4,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "T-bar row 4x8 3 plates",
+     "kind": "exercise",
+     "exercise": "T-Bar Row",
+     "sets": 4,
+     "reps": 8,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "\"3 plates\" is a load but not a number of lbs"
+    },
+    {
+     "line": "One arm DB row 3x10 each side 80s",
+     "kind": "exercise",
+     "exercise": "Dumbbell Row",
+     "sets": 3,
+     "reps": 10,
+     "weight": 80,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Lat pulldown close grip 3x12 150#",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 150,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "Straight arm pulldown 3x15 60#",
+     "kind": "exercise",
+     "exercise": "Straight-Arm Pulldown",
+     "sets": 3,
+     "reps": 15,
+     "weight": 60,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "Shrugs 4x12 225",
+     "kind": "exercise",
+     "exercise": "Shrug",
+     "sets": 4,
+     "reps": 12,
+     "weight": 225,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Preacher curls 3x10 70",
+     "kind": "exercise",
+     "exercise": "Preacher Curl",
+     "sets": 3,
+     "reps": 10,
+     "weight": 70,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Biceps 3x12 25s",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 12,
+     "weight": 25,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Hammer curls 2 sets of 12, 1 set of 8",
+     "kind": "exercise",
+     "exercise": "Hammer Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "sheet-kg-header-lbs-account",
+   "style": "Google Sheets rows, unit only in the Weight (kg) header, lbs account",
+   "units": "lbs",
+   "text": "Exercise\tSets\tReps\tWeight (kg)\nSquat\t5\t5\t100\nBench\t5\t5\t70\nBarbell Row\t5\t5\t60\nOverhead Press\t3\t8\t40\nChin-ups\t3\tmax\tBW",
+   "lines": [
+    {
+     "line": "Exercise\tSets\tReps\tWeight (kg)",
+     "kind": "other"
+    },
+    {
+     "line": "Squat\t5\t5\t100",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 5,
+     "weight": 100,
+     "unit": "kg",
+     "ambiguous": "kg comes from the column header, not the row"
+    },
+    {
+     "line": "Bench\t5\t5\t70",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": "kg comes from the column header, not the row"
+    },
+    {
+     "line": "Barbell Row\t5\t5\t60",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 5,
+     "reps": 5,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": "kg comes from the column header, not the row"
+    },
+    {
+     "line": "Overhead Press\t3\t8\t40",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 40,
+     "unit": "kg",
+     "ambiguous": "kg comes from the column header, not the row"
+    },
+    {
+     "line": "Chin-ups\t3\tmax\tBW",
+     "kind": "exercise",
+     "exercise": "Chin-up",
+     "sets": 3,
+     "reps": 0,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "kettlebell-home-circuit",
+   "style": "home kettlebell circuit with distance and timed items",
+   "units": "kg",
+   "text": "Home workout (kettlebell 24kg)\nCircuit x4:\nKB swings 4x15 24kg\nKB clean and press 4x8 24kg\nPush-ups 4x20\nFarmer's carry 4x40m 2x24kg\nRussian twists 4x20\nJump rope 4x1 min",
+   "lines": [
+    {
+     "line": "Home workout (kettlebell 24kg)",
+     "kind": "other"
+    },
+    {
+     "line": "Circuit x4:",
+     "kind": "other"
+    },
+    {
+     "line": "KB swings 4x15 24kg",
+     "kind": "exercise",
+     "exercise": "Kettlebell Swing",
+     "sets": 4,
+     "reps": 15,
+     "weight": 24,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "KB clean and press 4x8 24kg",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 4,
+     "reps": 8,
+     "weight": 24,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Push-ups 4x20",
+     "kind": "exercise",
+     "exercise": "Push-up",
+     "sets": 4,
+     "reps": 20,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Farmer's carry 4x40m 2x24kg",
+     "kind": "exercise",
+     "exercise": "Farmer's Walk",
+     "sets": 4,
+     "reps": 40,
+     "weight": 24,
+     "unit": "kg",
+     "ambiguous": "timed or distance work; the number after x is not reps"
+    },
+    {
+     "line": "Russian twists 4x20",
+     "kind": "exercise",
+     "exercise": "Russian Twist",
+     "sets": 4,
+     "reps": 20,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Jump rope 4x1 min",
+     "kind": "exercise",
+     "exercise": "Jump Rope",
+     "sets": 4,
+     "reps": 1,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "timed or distance work; the number after x is not reps"
+    }
+   ]
+  },
+  {
+   "id": "pl-plain-ab",
+   "style": "plain Polish A/B plan, easy",
+   "units": "kg",
+   "text": "Trening A\nPrzysiad 3x5 100kg\nWyciskanie na ławce 3x5 72,5kg\nWiosłowanie sztangą 3x8 60kg\nTrening B\nMartwy ciąg 1x5 130kg\nWyciskanie żołnierskie 3x5 45kg\nPlecy 3x10",
+   "lines": [
+    {
+     "line": "Trening A",
+     "kind": "day"
+    },
+    {
+     "line": "Przysiad 3x5 100kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 3,
+     "reps": 5,
+     "weight": 100,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Wyciskanie na ławce 3x5 72,5kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 72.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Wiosłowanie sztangą 3x8 60kg",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 3,
+     "reps": 8,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Trening B",
+     "kind": "day"
+    },
+    {
+     "line": "Martwy ciąg 1x5 130kg",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 1,
+     "reps": 5,
+     "weight": 130,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Wyciskanie żołnierskie 3x5 45kg",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 5,
+     "weight": 45,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Plecy 3x10",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "same-exercise-twice",
+   "style": "same exercise on consecutive lines: heavy single then volume, drop sets",
+   "units": "kg",
+   "text": "Push\nBench Press 1x3 110kg\nBench Press 3x8 85kg\nIncline DB Press 3x10 28kg\nIncline DB Press 1x15 20kg (drop)\nCable crossover 3x15\nLateral raise 3x15 10kg\nLateral raise 2x20 6kg",
+   "lines": [
+    {
+     "line": "Push",
+     "kind": "day"
+    },
+    {
+     "line": "Bench Press 1x3 110kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 1,
+     "reps": 3,
+     "weight": 110,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Bench Press 3x8 85kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 85,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Incline DB Press 3x10 28kg",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 28,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Incline DB Press 1x15 20kg (drop)",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 1,
+     "reps": 15,
+     "weight": 20,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Cable crossover 3x15",
+     "kind": "exercise",
+     "exercise": "Cable Crossover",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Lateral raise 3x15 10kg",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 3,
+     "reps": 15,
+     "weight": 10,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Lateral raise 2x20 6kg",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 2,
+     "reps": 20,
+     "weight": 6,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "supersets-a1-a2",
+   "style": "superset labels A1/A2, B1/B2 and a giant set",
+   "units": "kg",
+   "text": "Upper B – supersets\nA1. DB Bench Press 3x10 30kg\nA2. Chest-supported row 3x10 24kg\nRest 90s after A2\nB1. Seated DB press 3x12 18kg\nB2. Lat pulldown 3x12 55kg\nC1) Incline curl 3x12 10kg\nC2) Overhead tricep extension 3x12 20kg\nC3) Lateral raise 3x20 6kg\nGiant set C x3 rounds, minimal rest",
+   "lines": [
+    {
+     "line": "Upper B – supersets",
+     "kind": "day"
+    },
+    {
+     "line": "A1. DB Bench Press 3x10 30kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Bench Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "A2. Chest-supported row 3x10 24kg",
+     "kind": "exercise",
+     "exercise": "Machine Row",
+     "sets": 3,
+     "reps": 10,
+     "weight": 24,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Rest 90s after A2",
+     "kind": "other"
+    },
+    {
+     "line": "B1. Seated DB press 3x12 18kg",
+     "kind": "exercise",
+     "exercise": "Dumbbell Shoulder Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 18,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "B2. Lat pulldown 3x12 55kg",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 55,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "C1) Incline curl 3x12 10kg",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 10,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "C2) Overhead tricep extension 3x12 20kg",
+     "kind": "exercise",
+     "exercise": "Overhead Tricep Extension",
+     "sets": 3,
+     "reps": 12,
+     "weight": 20,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "C3) Lateral raise 3x20 6kg",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 3,
+     "reps": 20,
+     "weight": 6,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Giant set C x3 rounds, minimal rest",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "sheet-rpe-rest-columns",
+   "style": "Google Sheets rows with RPE and Rest columns, no weight column",
+   "units": "kg",
+   "text": "Exercise\tSets\tReps\tRPE\tRest\nFront Squat\t4\t6-8\t8\t3 min\nRomanian Deadlift\t3\t8-10\t7\t2 min\nBulgarian Split Squat\t3\t10\t8\t90s\nHip Thrust\t3\t12\t8\t90s\nSeated Leg Curl\t3\t12-15\t9\t60s\nHanging Leg Raise\t3\t15\t\t60s",
+   "lines": [
+    {
+     "line": "Exercise\tSets\tReps\tRPE\tRest",
+     "kind": "other"
+    },
+    {
+     "line": "Front Squat\t4\t6-8\t8\t3 min",
+     "kind": "exercise",
+     "exercise": "Front Squat",
+     "sets": 4,
+     "reps": 8,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Romanian Deadlift\t3\t8-10\t7\t2 min",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Bulgarian Split Squat\t3\t10\t8\t90s",
+     "kind": "exercise",
+     "exercise": "Bulgarian Split Squat",
+     "sets": 3,
+     "reps": 10,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Hip Thrust\t3\t12\t8\t90s",
+     "kind": "exercise",
+     "exercise": "Hip Thrust",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Seated Leg Curl\t3\t12-15\t9\t60s",
+     "kind": "exercise",
+     "exercise": "Seated Leg Curl",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Hanging Leg Raise\t3\t15\t\t60s",
+     "kind": "exercise",
+     "exercise": "Hanging Leg Raise",
+     "sets": 3,
+     "reps": 15,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "reddit-upper-lower-lbs",
+   "style": "Reddit upper/lower with dash bullets and @ weights in lbs",
+   "units": "lbs",
+   "text": "Upper/Lower 4 day - my current split, feedback welcome\n\nUpper 1 (Mon)\n- Bench 4x6 @ 185\n- BB Row 4x6 @ 155\n- Seated DB Press 3x10 @ 50s\n- Lat Pulldown 3x10-12 @ 140\n- EZ curl 3x12\n- Skullcrushers 3x12\n\nLower 1 (Tue)\n- Squat 4x6 @ 245\n- RDL 3x8 @ 205\n- Leg Press 3x12 @ 160kg (gym machine is in kg)\n- Standing Calf Raise 4x12 @ 180\n\nUpper 2 (Thu)\n- Incline Bench 4x8 @ 155\n- Chin-ups 4 x AMRAP\n- Arnold Press 3x10 @ 40s\n- Rope pushdown 3x15 @ 50\n\nLower 2 (Fri)\n- Deadlift 3x5 @ 315\n- Zercher Squat 3x8 @ 155\n- Walking Lunges 3x12 @ 40s\n- Seated Calf Raise 4x15 @ 90",
+   "lines": [
+    {
+     "line": "Upper/Lower 4 day - my current split, feedback welcome",
+     "kind": "other"
+    },
+    {
+     "line": "Upper 1 (Mon)",
+     "kind": "day"
+    },
+    {
+     "line": "- Bench 4x6 @ 185",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 6,
+     "weight": 185,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- BB Row 4x6 @ 155",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 4,
+     "reps": 6,
+     "weight": 155,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Seated DB Press 3x10 @ 50s",
+     "kind": "exercise",
+     "exercise": "Dumbbell Shoulder Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 50,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Lat Pulldown 3x10-12 @ 140",
+     "kind": "exercise",
+     "exercise": "Lat Pulldown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 140,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- EZ curl 3x12",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Skullcrushers 3x12",
+     "kind": "exercise",
+     "exercise": "Skull Crusher",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Lower 1 (Tue)",
+     "kind": "day"
+    },
+    {
+     "line": "- Squat 4x6 @ 245",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 4,
+     "reps": 6,
+     "weight": 245,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- RDL 3x8 @ 205",
+     "kind": "exercise",
+     "exercise": "Romanian Deadlift",
+     "sets": 3,
+     "reps": 8,
+     "weight": 205,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Leg Press 3x12 @ 160kg (gym machine is in kg)",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 160,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "- Standing Calf Raise 4x12 @ 180",
+     "kind": "exercise",
+     "exercise": "Calf Raise",
+     "sets": 4,
+     "reps": 12,
+     "weight": 180,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Upper 2 (Thu)",
+     "kind": "day"
+    },
+    {
+     "line": "- Incline Bench 4x8 @ 155",
+     "kind": "exercise",
+     "exercise": "Incline Bench Press",
+     "sets": 4,
+     "reps": 8,
+     "weight": 155,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Chin-ups 4 x AMRAP",
+     "kind": "exercise",
+     "exercise": "Chin-up",
+     "sets": 4,
+     "reps": 0,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Arnold Press 3x10 @ 40s",
+     "kind": "exercise",
+     "exercise": "Arnold Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 40,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Rope pushdown 3x15 @ 50",
+     "kind": "exercise",
+     "exercise": "Tricep Pushdown",
+     "sets": 3,
+     "reps": 15,
+     "weight": 50,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Lower 2 (Fri)",
+     "kind": "day"
+    },
+    {
+     "line": "- Deadlift 3x5 @ 315",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 3,
+     "reps": 5,
+     "weight": 315,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Zercher Squat 3x8 @ 155",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 8,
+     "weight": 155,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Walking Lunges 3x12 @ 40s",
+     "kind": "exercise",
+     "exercise": "Lunge",
+     "sets": 3,
+     "reps": 12,
+     "weight": 40,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "- Seated Calf Raise 4x15 @ 90",
+     "kind": "exercise",
+     "exercise": "Seated Calf Raise",
+     "sets": 4,
+     "reps": 15,
+     "weight": 90,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "emoji-bullets",
+   "style": "emoji bullets with abbreviations and a typo",
+   "units": "kg",
+   "text": "🔥 PUSH DAY 🔥\n💪 Bench 5x5 80kg\n💪 Incline DB 3x12 50lbs\n✅ Dips 3xmax\n👉 Lat raises 4x15 8kg\n👉 Tricep pushdwon 3x12 25kg\n🧊 Stretch 10 min",
+   "lines": [
+    {
+     "line": "🔥 PUSH DAY 🔥",
+     "kind": "day"
+    },
+    {
+     "line": "💪 Bench 5x5 80kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "💪 Incline DB 3x12 50lbs",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 50,
+     "unit": "lbs",
+     "ambiguous": false
+    },
+    {
+     "line": "✅ Dips 3xmax",
+     "kind": "exercise",
+     "exercise": "Dips",
+     "sets": 3,
+     "reps": 0,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "👉 Lat raises 4x15 8kg",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 4,
+     "reps": 15,
+     "weight": 8,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "👉 Tricep pushdwon 3x12 25kg",
+     "kind": "exercise",
+     "exercise": "Tricep Pushdown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 25,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "🧊 Stretch 10 min",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "shoulders-arms",
+   "style": "bodybuilding shoulders and arms with tempo, per side and a drop set note",
+   "units": "kg",
+   "text": "Shoulders & Arms\nArnold press 4x10 20kg\nMachine shoulder press 3x12 50kg\nCable lateral raise 3x15 per side 7.5kg\nReverse pec deck 3x15 40kg\nEZ bar curl 3x10 tempo 3-0-1 30kg\nConcentration curl 3x12 12kg\nClose-grip bench 3x8 70kg\nTriceps 3x15 8kg\nDrop set on the last set of every exercise",
+   "lines": [
+    {
+     "line": "Shoulders & Arms",
+     "kind": "day"
+    },
+    {
+     "line": "Arnold press 4x10 20kg",
+     "kind": "exercise",
+     "exercise": "Arnold Press",
+     "sets": 4,
+     "reps": 10,
+     "weight": 20,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Machine shoulder press 3x12 50kg",
+     "kind": "exercise",
+     "exercise": "Machine Shoulder Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 50,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Cable lateral raise 3x15 per side 7.5kg",
+     "kind": "exercise",
+     "exercise": "Cable Lateral Raise",
+     "sets": 3,
+     "reps": 15,
+     "weight": 7.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Reverse pec deck 3x15 40kg",
+     "kind": "exercise",
+     "exercise": "Reverse Pec Deck",
+     "sets": 3,
+     "reps": 15,
+     "weight": 40,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "EZ bar curl 3x10 tempo 3-0-1 30kg",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 10,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Concentration curl 3x12 12kg",
+     "kind": "exercise",
+     "exercise": "Concentration Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 12,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Close-grip bench 3x8 70kg",
+     "kind": "exercise",
+     "exercise": "Close-Grip Bench Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Triceps 3x15 8kg",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 15,
+     "weight": 8,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Drop set on the last set of every exercise",
+     "kind": "other"
+    }
+   ]
+  },
+  {
+   "id": "pl-fbw-serie-po",
+   "style": "Polish FBW notes with \"serie po\", \"powtórzeń\" and kg",
+   "units": "kg",
+   "text": "FBW A\nPrzysiad ze sztangą 4 serie po 8 powtórzeń, 80 kg\nWyciskanie na ławce płaskiej 4x8 70kg\nWiosłowanie sztangą w opadzie 4x10 60 kg\nWyciskanie sztangi zza karku 3x10 40kg\nUginanie ramion ze sztangą 3x12 30kg\nBrzuch 3x20\n\nFBW B\nMartwy ciąg 4x5 120kg\nWyciskanie hantli na skosie 3 serie po 10-12 powtórzeń (hantle po 26 kg)\nPodciąganie nachwytem 4 serie max\nWznosy bokiem 4x15 10kg\nFrancuz 3x12 25kg\nDeska 3x45 s",
+   "lines": [
+    {
+     "line": "FBW A",
+     "kind": "day"
+    },
+    {
+     "line": "Przysiad ze sztangą 4 serie po 8 powtórzeń, 80 kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 4,
+     "reps": 8,
+     "weight": 80,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Wyciskanie na ławce płaskiej 4x8 70kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 8,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Wiosłowanie sztangą w opadzie 4x10 60 kg",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 4,
+     "reps": 10,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Wyciskanie sztangi zza karku 3x10 40kg",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 10,
+     "weight": 40,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Uginanie ramion ze sztangą 3x12 30kg",
+     "kind": "exercise",
+     "exercise": "Barbell Curl",
+     "sets": 3,
+     "reps": 12,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Brzuch 3x20",
+     "kind": "exercise",
+     "exercise": "generic",
+     "sets": 3,
+     "reps": 20,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "FBW B",
+     "kind": "day"
+    },
+    {
+     "line": "Martwy ciąg 4x5 120kg",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 4,
+     "reps": 5,
+     "weight": 120,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Wyciskanie hantli na skosie 3 serie po 10-12 powtórzeń (hantle po 26 kg)",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 26,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Podciąganie nachwytem 4 serie max",
+     "kind": "exercise",
+     "exercise": "Pull-up",
+     "sets": 4,
+     "reps": 0,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Wznosy bokiem 4x15 10kg",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 4,
+     "reps": 15,
+     "weight": 10,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Francuz 3x12 25kg",
+     "kind": "exercise",
+     "exercise": "Skull Crusher",
+     "sets": 3,
+     "reps": 12,
+     "weight": 25,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Deska 3x45 s",
+     "kind": "exercise",
+     "exercise": "Plank",
+     "sets": 3,
+     "reps": 45,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": "timed or distance work; the number after x is not reps"
+    }
+   ]
+  },
+  {
+   "id": "sheet-day-column",
+   "style": "Google Sheets rows with tabs, day in the first column",
+   "units": "kg",
+   "text": "Day\tExercise\tSets\tReps\tWeight\nMon\tBench Press\t4\t6\t85\n\tIncline DB Press\t3\t10-12\t26\n\tCable Fly\t3\t15\t12.5\n\tTricep Pushdown\t3\t12\t30\nWed\tSquat\t4\t5\t120\n\tLeg Press\t3\t10\t200\n\tSissy Squat\t3\t12\tBW\n\tCalf Raise\t4\t15\t80",
+   "lines": [
+    {
+     "line": "Day\tExercise\tSets\tReps\tWeight",
+     "kind": "other"
+    },
+    {
+     "line": "Mon\tBench Press\t4\t6\t85",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 4,
+     "reps": 6,
+     "weight": 85,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "\tIncline DB Press\t3\t10-12\t26",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 3,
+     "reps": 12,
+     "weight": 26,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "\tCable Fly\t3\t15\t12.5",
+     "kind": "exercise",
+     "exercise": "Cable Crossover",
+     "sets": 3,
+     "reps": 15,
+     "weight": 12.5,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "\tTricep Pushdown\t3\t12\t30",
+     "kind": "exercise",
+     "exercise": "Tricep Pushdown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 30,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "Wed\tSquat\t4\t5\t120",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 4,
+     "reps": 5,
+     "weight": 120,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "\tLeg Press\t3\t10\t200",
+     "kind": "exercise",
+     "exercise": "Leg Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 200,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "\tSissy Squat\t3\t12\tBW",
+     "kind": "exercise",
+     "exercise": "custom",
+     "sets": 3,
+     "reps": 12,
+     "weight": 0,
+     "unit": null,
+     "ambiguous": false
+    },
+    {
+     "line": "\tCalf Raise\t4\t15\t80",
+     "kind": "exercise",
+     "exercise": "Calf Raise",
+     "sets": 4,
+     "reps": 15,
+     "weight": 80,
+     "unit": null,
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "stronglifts-kg",
+   "style": "StrongLifts 5x5 with a title that contains 5x5",
+   "units": "kg",
+   "text": "SL 5x5\nWorkout A\nSquat 5x5 60kg\nBench Press 5x5 40kg\nBarbell Row 5x5 40kg\nWorkout B\nSquat 5x5 62.5kg\nOverhead Press 5x5 30kg\nDeadlift 1x5 70kg",
+   "lines": [
+    {
+     "line": "SL 5x5",
+     "kind": "other"
+    },
+    {
+     "line": "Workout A",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 5x5 60kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 5,
+     "weight": 60,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Bench Press 5x5 40kg",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 40,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Barbell Row 5x5 40kg",
+     "kind": "exercise",
+     "exercise": "Barbell Row",
+     "sets": 5,
+     "reps": 5,
+     "weight": 40,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Workout B",
+     "kind": "day"
+    },
+    {
+     "line": "Squat 5x5 62.5kg",
+     "kind": "exercise",
+     "exercise": "Squat",
+     "sets": 5,
+     "reps": 5,
+     "weight": 62.5,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Overhead Press 5x5 30kg",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "Deadlift 1x5 70kg",
+     "kind": "exercise",
+     "exercise": "Deadlift",
+     "sets": 1,
+     "reps": 5,
+     "weight": 70,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  },
+  {
+   "id": "markdown-table-push",
+   "style": "markdown table with Exercise/Sets/Reps/Weight columns",
+   "units": "kg",
+   "text": "## Push day\n| Exercise | Sets | Reps | Weight |\n|---|---|---|---|\n| Bench press | 5 | 5 | 90 kg |\n| Overhead press | 3 | 8 | 50 kg |\n| Incline dumbbell press | 3 | 10 | 2×26 kg |\n| Lateral raise | 4 | 15 | 10 kg |\n| Triceps pushdown | 3 | 12 | 30 kg |",
+   "lines": [
+    {
+     "line": "## Push day",
+     "kind": "day"
+    },
+    {
+     "line": "| Exercise | Sets | Reps | Weight |",
+     "kind": "other"
+    },
+    {
+     "line": "|---|---|---|---|",
+     "kind": "other"
+    },
+    {
+     "line": "| Bench press | 5 | 5 | 90 kg |",
+     "kind": "exercise",
+     "exercise": "Bench Press",
+     "sets": 5,
+     "reps": 5,
+     "weight": 90,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "| Overhead press | 3 | 8 | 50 kg |",
+     "kind": "exercise",
+     "exercise": "Overhead Press",
+     "sets": 3,
+     "reps": 8,
+     "weight": 50,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "| Incline dumbbell press | 3 | 10 | 2×26 kg |",
+     "kind": "exercise",
+     "exercise": "Incline Dumbbell Press",
+     "sets": 3,
+     "reps": 10,
+     "weight": 26,
+     "unit": "kg",
+     "ambiguous": "2×26 is a pair of dumbbells, but could read as 52 kg or as sets"
+    },
+    {
+     "line": "| Lateral raise | 4 | 15 | 10 kg |",
+     "kind": "exercise",
+     "exercise": "Lateral Raise",
+     "sets": 4,
+     "reps": 15,
+     "weight": 10,
+     "unit": "kg",
+     "ambiguous": false
+    },
+    {
+     "line": "| Triceps pushdown | 3 | 12 | 30 kg |",
+     "kind": "exercise",
+     "exercise": "Tricep Pushdown",
+     "sets": 3,
+     "reps": 12,
+     "weight": 30,
+     "unit": "kg",
+     "ambiguous": false
+    }
+   ]
+  }
+ ]
+}

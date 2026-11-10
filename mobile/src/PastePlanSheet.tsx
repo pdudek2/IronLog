@@ -33,11 +33,12 @@ export function PastePlanSheet({ uid, onClose }: { uid: string; onClose: () => v
     const own = catalog.state.status === 'ready'
       ? catalog.state.data.map((exercise) => ({ exerciseId: exercise.id, exerciseSource: 'user' as const, name: exercise.name, muscles: exercise.muscles }))
       : []
-    const pasted = importPlanText(text, own)
-    if (!pasted) { setError('No exercises found. Write one exercise per line with its sets, like “Bench press 4x8 60 kg”.'); return }
     setBusy(true); setError(null); setCollision(false)
     try {
-      const draft = importedPlanDraft(pasted, await readUnits(uid), createSessionRevision)
+      const units = await readUnits(uid)
+      const pasted = importPlanText(text, own, units)
+      if (!pasted) { setError('No exercises found. Write one exercise per line with its sets, like “Bench press 4x8 60 kg”.'); return }
+      const draft = importedPlanDraft(pasted, units, createSessionRevision)
       if (!await planEditorJournal.installIfEmpty(uid, draft, createSessionRevision())) { setCollision(true); return }
       close(() => router.push('/templates/new'))
     } catch {

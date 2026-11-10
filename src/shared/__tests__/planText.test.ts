@@ -104,6 +104,26 @@ describe('parsePlanText: set notation', () => {
     expect(odd.skipped).toEqual([expect.objectContaining({ line: 3, reason: 'outOfRange' })])
   })
 
+  it('reads a pasted table: columns by their header, a day column, and the usual order when there is no header', () => {
+    const read = (text: string, units: 'kg' | 'lbs' = 'kg') => {
+      const plan = parsePlanText(text, [], units)
+      return plan.days.map((day) => [day.name, ...day.exercises.map((exercise) => `${exercise.name} ${exercise.sets}x${exercise.targetReps} ${exercise.targetWeight}${exercise.check ? ' ?' : ''}`)])
+    }
+    expect(read('Exercise\tReps\tSets\tWeight (kg)\tRPE\tNotes\nSquat\t5\t3\t100\t8\ttop set 2\nChin-up\tmax\t3\tBW\t\t', 'lbs'))
+      .toEqual([['Day 1', 'Squat 3x5 100', 'Chin-up 3x0 0']])
+    expect(read('Dzień\tĆwiczenie\tSerie\tPowtórzenia\tCiężar [kg]\nDzień A\tPrzysiad\t4\t8\t80\nDzień A\tWyciskanie na ławce\t4\t8-10\t62,5\nDzień B\tMartwy ciąg\t3\t5\t120'))
+      .toEqual([['Dzień A', 'Przysiad 4x8 80', 'Wyciskanie na ławce 4x10 62.5'], ['Dzień B', 'Martwy ciąg 3x5 120']])
+    expect(read('## Push\n| Exercise | Sets | Reps | Weight |\n|---|---|---|---|\n| Bench press | 5 | 5 | 90 kg |\n| Incline dumbbell press | 3 | 10 | 2×26 kg |'))
+      .toEqual([['Push', 'Bench press 5x5 90', 'Incline dumbbell press 3x10 26 ?']])
+    expect(read('Squat\t5\t5\t100\nBench press\t10\t3\t60\nRow\t3\t10\t50\t8')).toEqual([['Day 1', 'Squat 5x5 100', 'Bench press 10x3 60 ?', 'Row 3x10 50 ?']])
+    // Cells that carry their own notation, a lone pipe and a single tab are ordinary lines.
+    expect(read('Exercise | Sets x Reps | Weight\nBench press | 3x8 | 60 kg')).toEqual([['Day 1', 'Bench press 3x8 60']])
+    expect(read('Bench\t3x8\nSquat 3x5 | heavy')).toEqual([['Day 1', 'Bench 3x8 0', 'Squat 3x5 0']])
+    const limits = parsePlanText(`Exercise\tSets\tReps\tWeight\nSquat\t3\t5\t5000\n${Array.from({ length: 21 }, (_, index) => `Lift ${index}\t3\t5\t50`).join('\n')}`)
+    expect([limits.days[0]!.exercises.length, limits.skipped.filter((entry) => entry.reason !== 'comment').map((entry) => [entry.line, entry.reason])])
+      .toEqual([20, [[2, 'outOfRange'], [23, 'tooManyExercises']]])
+  })
+
   it('reads a weight without a unit in the user\'s units', () => {
     const weights = (units: 'kg' | 'lbs') => parsePlanText('Squat 3x5 225\nBench 3x8 @135\nRow 3x10 60 kg', [], units).days[0]!.exercises.map((exercise) => exercise.targetWeight)
     expect(weights('lbs')).toEqual([102.06, 61.23, 60])
@@ -246,15 +266,15 @@ describe('the Notion corpus', () => {
 })
 
 describe('the foreign plans corpus', () => {
-  type Line = { line: string; kind: string; exercise?: string; sets?: number; reps?: number; weight?: number; unit?: string | null }
+  type Line = { line: string; kind: string; exercise?: string; day?: string | null; sets?: number; reps?: number; weight?: number; unit?: string | null }
   type Case = { id: string; units: 'kg' | 'lbs'; text: string; lines: Line[] }
-  const corpus = foreignPlans as unknown as { dev: Case[]; holdout: Case[] }
+  const corpus = foreignPlans as unknown as { dev: Case[]; holdout: Case[]; tables: Case[] }
 
   // A row is silently wrong when it looks settled (matched, no check, no duplicate) but its exercise or numbers differ from the label.
   it('asks about every row it cannot read; the rows it gets wrong without asking are only the known ones', () => {
     const silent: string[] = []
     const lost: string[] = []
-    for (const plan of [...corpus.dev, ...corpus.holdout]) {
+    for (const plan of [...corpus.dev, ...corpus.holdout, ...corpus.tables]) {
       const parsed = parsePlanText(plan.text, [], plan.units)
       const rows = parsed.days.flatMap((day) => day.exercises)
       const numbers = plan.text.replace(/\r/g, '').split('\n')
@@ -272,8 +292,9 @@ describe('the foreign plans corpus', () => {
         if (!row && !parsed.skipped.some((entry) => group.some((line) => line.no === entry.line))) lost.push(`${plan.id}: ${group[0]!.line}`)
         if (!row || row.check || row.duplicate || row.match.status !== 'matched') continue
         const main = [...group].sort((a, b) => b.sets! - a.sets! || kg(b) - kg(a))[0]!
+        const day = parsed.days.find((candidate) => candidate.exercises.includes(row))!.name
         const right = row.match.exercise.name === group[0]!.exercise && row.sets === group.reduce((sum, line) => sum + line.sets!, 0)
-          && row.targetReps === main.reps && Math.abs(row.targetWeight - kg(main)) < 0.06
+          && row.targetReps === main.reps && Math.abs(row.targetWeight - kg(main)) < 0.06 && (!group[0]!.day || day.toLowerCase().includes(group[0]!.day.toLowerCase()))
         if (!right) silent.push(`${plan.id}: ${group[0]!.line}`)
       }
     }
@@ -283,8 +304,7 @@ describe('the foreign plans corpus', () => {
       '531-week3-kg: Bench: 70kg x5, 80kg x3, 90kg x1+',
       'strong-style-export: Lateral Raise (Dumbbell)',
     ])
-    // Pasted tables are not read yet; their rows show up as days without exercises, and one table row becomes a day name.
-    expect(lost).toEqual(['markdown-table-push: | Overhead press | 3 | 8 | 50 kg |'])
+    expect(lost).toEqual([])
   })
 })
 

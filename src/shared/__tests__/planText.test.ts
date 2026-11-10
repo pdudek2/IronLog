@@ -122,6 +122,13 @@ describe('parsePlanText: set notation', () => {
     // Without a header the exercise among the text cells is the name, a text cell before it the day, a label or bullet neither.
     expect(read('Mon\tSquat\t3\t5\t100\nMon\tBench press\t3\t8\t60\nWed\tDeadlift\t3\t5\t120')).toEqual([['Mon', 'Squat 3x5 100', 'Bench press 3x8 60'], ['Wed', 'Deadlift 3x5 120']])
     expect(read('A1\tSquat\t3\t5\t100\n1.\tBench press\t3x8\nDeadlift\tBarbell\t3\t5\t60')).toEqual([['Day 1', 'Squat 3x5 100', 'Bench press 3x8 0', 'Deadlift 3x5 60']])
+    // A day title inside the sheet keeps the header; a row the columns cannot read is listed, not turned into a day.
+    const titled = parsePlanText('Exercise\tReps\tSets\tWeight (kg)\tLast week\nSquat\t5\t3\t100\t97.5\nPull\nBarbell row\t8\t4\t60\t\nPull-up\t\tmax reps\tbodyweight\t\nLunge\t10/10\t3\t20\t', [], 'lbs')
+    expect(titled.days.map((day) => [day.name, ...day.exercises.map((exercise) => `${exercise.sets}x${exercise.targetReps} ${exercise.targetWeight}${exercise.check ? ' ?' : ''}`)]))
+      .toEqual([['Day 1', '3x5 100 ?'], ['Pull', '4x8 60', '3x10 20 ?']])
+    expect(titled.skipped.filter((entry) => entry.reason !== 'comment').map((entry) => [entry.line, entry.reason])).toEqual([[5, 'outOfRange']])
+    // "Set" counts the sets unless the rows number them.
+    expect(read('Exercise\tSet\tReps\tWeight\nSquat\t3\t10\t100')).toEqual([['Day 1', 'Squat 3x10 100']])
     // A header ends with its table: the next table, or an ordinary line with pipes, is not read through it.
     expect(read('Exercise|Reps|Sets|Weight (kg)\nSquat|5|3|100\n\nBench press\t3\t8\t60', 'lbs')).toEqual([['Day 1', 'Squat 3x5 100', 'Bench press 3x8 27.22']])
     // Cells that carry their own notation, a lone pipe and a single tab are ordinary lines.

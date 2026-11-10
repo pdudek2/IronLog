@@ -436,7 +436,8 @@ export default function TemplatesPage() {
         <nav className="plans-links" aria-label="Plan tools">
           <Link to="/exercises">Exercises<ChevronRight size={16} aria-hidden="true" /></Link>
           <Link to="/chat">Generate a plan with Coach<ChevronRight size={16} aria-hidden="true" /></Link>
-          {templates.length > 0 && (
+          {/* shortcut: plans carry no starter marker, so a plan with the starter's name counts as the starter; add a marker if plans get renamed copies */}
+          {templates.length > 0 && !templates.some((template) => template.name === STARTER.name) && (
             <button type="button" onClick={() => { void starter.create() }} disabled={starter.saving}>
               {starter.saving ? 'Adding the starter plan…' : `Use the starter plan · ${STARTER.name}`}
               <ChevronRight size={16} aria-hidden="true" />

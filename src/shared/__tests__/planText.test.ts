@@ -59,6 +59,9 @@ describe('parsePlanText: set notation', () => {
     ['Barbell row 10 reps, 3 sets', 3, 10, 0],
     ['Bench 225x5x3', 3, 5, 225],
     ['Dips 3 sets to failure', 3, 0, 0],
+    ['Pull-up 3 sets', 3, 0, 0],
+    ['Hip adduction 3 sets @59 kg', 3, 0, 59],
+    ['Podciąganie 3 serie', 3, 0, 0],
     ['DB shoulder press 3X12 @ 50S', 3, 12, 50],
     ['[11/9/26, 8:03 PM] Coach: Squat 3x5 100kg', 3, 5, 100],
   ])('%s → %i × %i @ %f', (line, sets, reps, weight) => {
@@ -306,7 +309,7 @@ describe('planToText', () => {
   }
 
   it('writes one day per block and reads back into the same plan', () => {
-    expect(planToText(plan)).toBe('Upper / Lower\n\nUpper\nBench Press 4x8 @57.5 kg\nLateral Raise 3x12\nDumbbell Curl 3x10 @12.25 kg\n\nLower\nSquat 4x8 @102.06 kg\nHip Adduction 3x0 @59 kg')
+    expect(planToText(plan)).toBe('Upper / Lower\n\nUpper\nBench Press 4x8 @57.5 kg\nLateral Raise 3x12\nDumbbell Curl 3x10 @12.25 kg\n\nLower\nSquat 4x8 @102.06 kg\nHip Adduction 3 sets @59 kg')
     expect(back(plan)).toEqual(plan)
   })
 

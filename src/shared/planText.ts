@@ -103,6 +103,8 @@ function plainSets(text: string): { text: string; guessed: boolean } {
     .replace(/(\d{1,4})\s*reps?\s*[x×*,]?\s*(\d{1,3})\s*sets?(?![a-z\u00c0-\u024f])(?!\s*(?:of|po|[x×*:])\s*\d)/gi, '$2x$1')
     .replace(/(\d{1,3})\s*(?:sets?|seri[ei]|serii|series)(?![a-z\u00c0-\u024f])\s*(?:of|po|[x×*,:–-])?\s*(?!1x)(?=\d|amrap|maks|max|failure)/gi, '$1x')
     .replace(/(\d)\s*(?:reps?|powt(?:[óo]rze(?:[nń]|nia)|\.)?)(?![a-z\u00c0-\u024f])/gi, '$1')
+    // "Pull-up 3 sets": sets without a rep target.
+    .replace(/(?<![\d.,x×*/])(\d{1,2})\s*(?:sets?|seri[ei]|serii)(?![a-z\u00c0-\u024f])(?!\s*(?:[x×*:,–-]|of|po|to|do)?\s*\d)/gi, '$1x0')
   return { text: out, guessed }
 }
 
@@ -394,7 +396,8 @@ export function planToText(plan: PlanTextInput, units: WeightUnits = 'kg'): stri
   const weightText = (kg: number) => String(units === 'lbs' ? kgToDisplayWeight(kg, units) : round2(kg))
   const days = plan.days.map((day) => [
     day.name,
-    ...day.exercises.map((exercise) => `${exercise.name} ${exercise.sets}x${exercise.targetReps}${exercise.targetWeight > 0 ? ` @${weightText(exercise.targetWeight)} ${units}` : ''}`),
+    // No rep target is written "3 sets": "3x0" reads as zero reps to the friend the text is sent to.
+    ...day.exercises.map((exercise) => `${exercise.name} ${exercise.targetReps > 0 ? `${exercise.sets}x${exercise.targetReps}` : `${exercise.sets} sets`}${exercise.targetWeight > 0 ? ` @${weightText(exercise.targetWeight)} ${units}` : ''}`),
   ].join('\n'))
   return [plan.name, ...days].join('\n\n')
 }

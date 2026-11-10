@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createSessionId } from '../lib/sessionIdentity'
 import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
-import { applyOverload } from '../shared/nextSessionRecommendation'
+import { applyOverload, carryLoggedWeight } from '../shared/nextSessionRecommendation'
 import type { CompressionProposal, CompressionRecord } from '../shared/compressionRecord'
 
 export type ExerciseSource = 'global' | 'user'
@@ -241,19 +241,17 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
   toggleSetDone: (exerciseIndex, setIndex) =>
     set((s) => {
       if (!s.active) return s
-      const exercises = s.active.exercises.map((ex, i) =>
-        i === exerciseIndex
-          ? {
-              ...ex,
-              sets: ex.sets.map((st, si) => {
-                if (si !== setIndex) return st
-                if (st.done) return settleDone(st, false)
-                const completed = ex.sets.filter((other) => other.done).length
-                return completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(st) ? { ...st, done: true, completedAt: Date.now() } : st
-              }),
-            }
-          : ex
-      )
+      const exercises = s.active.exercises.map((ex, i) => {
+        if (i !== exerciseIndex) return ex
+        const wasDone = ex.sets[setIndex]?.done
+        const sets = ex.sets.map((st, si) => {
+          if (si !== setIndex) return st
+          if (st.done) return settleDone(st, false)
+          const completed = ex.sets.filter((other) => other.done).length
+          return completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(st) ? { ...st, done: true, completedAt: Date.now() } : st
+        })
+        return { ...ex, sets: wasDone || !sets[setIndex] ? sets : carryLoggedWeight(sets, sets[setIndex]) }
+      })
       return { active: { ...s.active, exercises } }
     }),
 

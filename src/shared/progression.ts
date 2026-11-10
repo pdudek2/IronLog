@@ -205,7 +205,10 @@ export function sessionHint(progression: Progression | null, sets: SessionSet[],
     const test = done.find((set) => set.weight >= reference * 0.8)
     if (!test) return progression.ceiling > 3 ? { label } : null
     const weight = trialWeight(progression, test, units)
-    return weight !== null && differs('weight', weight) ? { label: trialHintLabel(weight, units, equipment), weight } : null
+    if (weight === null) return null
+    if (differs('weight', weight)) return { label: trialHintLabel(weight, units, equipment), weight }
+    // Without history the open sets took the test's weight on their own; the line says where the number came from.
+    return progression.trial.maxWeight === null ? { label: trialHintLabel(weight, units, equipment) } : null
   }
   if (progression.weight === null) return null
   if (progression.change === 'weight' && differs('weight', progression.weight)) {

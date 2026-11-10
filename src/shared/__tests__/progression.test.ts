@@ -172,6 +172,7 @@ describe('sessionHint', () => {
     const fresh = run([], { target: { reps: 8, sets: 3, weight: 0 } })
     expect(sessionHint(fresh, sets(['', '8', false], ['', '8', false]), 'kg')).toEqual({ label: 'First set is a test' })
     expect(sessionHint(fresh, sets(['50', '12', true], ['', '8', false]), 'kg')).toEqual({ label: 'From your first set: 52.5 kg', weight: 52.5 })
+    expect(sessionHint(fresh, sets(['50', '8', true], ['50', '8', false]), 'kg')).toEqual({ label: 'From your first set: 50 kg' })
   })
 
   it('after a very long break takes the heaviest logged set as the scale, so a warm-up is not the test', () => {

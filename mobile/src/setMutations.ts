@@ -1,7 +1,7 @@
 import type { ActiveWorkout, WorkoutExercise, WorkoutSet } from './session'
 import { createLocalId } from './session'
 import { completedSetError, isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../../src/shared/workoutLimits'
-import { applyOverload as applyOverloadToSets } from '../../src/shared/nextSessionRecommendation'
+import { applyOverload as applyOverloadToSets, carryLoggedWeight } from '../../src/shared/nextSessionRecommendation'
 
 export { MAX_SESSION_EXERCISES }
 
@@ -89,10 +89,19 @@ export function setSetDone(
 ): ActiveWorkout {
   const exercise = session.exercises.find((candidate) => candidate.clientId === exerciseId)
   const completed = exercise?.sets.filter((set) => set.done && set.clientId !== setId).length ?? 0
-  return updateTarget(session, exerciseId, setId, (set) => {
-    const next = settleDone(set, done && completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(set))
-    return next.done && !set.done ? { ...next, completedAt: Date.now() } : next
+  const wasDone = exercise?.sets.find((set) => set.clientId === setId)?.done
+  const next = updateTarget(session, exerciseId, setId, (set) => {
+    const settled = settleDone(set, done && completed < MAX_DONE_SETS_PER_EXERCISE && isValidCompletedSet(set))
+    return settled.done && !set.done ? { ...settled, completedAt: Date.now() } : settled
   })
+  if (!done || wasDone) return next
+  return {
+    ...next,
+    exercises: next.exercises.map((candidate) => {
+      const logged = candidate.clientId === exerciseId ? candidate.sets.find((set) => set.clientId === setId) : undefined
+      return logged ? { ...candidate, sets: carryLoggedWeight(candidate.sets, logged) } : candidate
+    }),
+  }
 }
 
 // Device time the set was marked done; present only while it is done.

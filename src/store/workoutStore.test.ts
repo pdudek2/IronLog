@@ -196,14 +196,35 @@ describe('workoutStore completed set validation', () => {
           exerciseId: 'pull-up',
           exerciseSource: 'global',
           name: 'Pull-up',
-          sets: [{ weight: '', reps: '8', done: false }],
+          sets: [{ weight: '', reps: '8', done: false }, { weight: '', reps: '8', done: false }],
         },
       ],
     })
 
     useWorkoutStore.getState().toggleSetDone(0, 0)
 
-    expect(useWorkoutStore.getState().active?.exercises[0]?.sets[0]?.done).toBe(true)
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets.map((set) => [set.weight, set.done])).toEqual([['', true], ['', false]])
+  })
+
+  it('gives the logged weight to open sets that have none and leaves the others alone', () => {
+    useWorkoutStore.getState().hydrateFromDoc({
+      sessionId: 'session-1',
+      startedAt: 1,
+      label: 'Pull',
+      exercises: [
+        {
+          exerciseId: 'deadlift',
+          exerciseSource: 'global',
+          name: 'Deadlift',
+          sets: [{ weight: '100', reps: '5', done: false }, { weight: '0', reps: '5', done: false }, { weight: '', reps: '5', done: false }, { weight: '60', reps: '5', done: false }],
+        },
+      ],
+    })
+
+    useWorkoutStore.getState().toggleSetDone(0, 0)
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets.map((set) => set.weight)).toEqual(['100', '100', '100', '60'])
+    useWorkoutStore.getState().toggleSetDone(0, 0)
+    expect(useWorkoutStore.getState().active?.exercises[0]?.sets.map((set) => set.weight)).toEqual(['100', '100', '100', '60'])
   })
 
   it('clears the completed state when repetitions are removed', () => {

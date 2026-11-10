@@ -49,6 +49,13 @@ describe('parsePlanText: set notation', () => {
     ['Barbell row 3x10, 90s rest', 3, 10, 0],
     ['Overhead press 3x8 rest 2 min', 3, 8, 0],
     ['Squat 3x5 100kg RPE 8', 3, 5, 100],
+    ['Squat 5x5 @ 75% 1RM', 5, 5, 0],
+    ['Squat 3x5 5RM', 3, 5, 0],
+    ['Bench press 3x6-15', 3, 15, 0],
+    ['Bench press 3x8 tempo 3/1/1', 3, 8, 0],
+    ['Bench press 3x8 2/0/2 tempo', 3, 8, 0],
+    ['Squat 5 reps x 3 sets 100kg', 3, 5, 100],
+    ['Barbell row 10 reps, 3 sets', 3, 10, 0],
   ])('%s → %i × %i @ %f', (line, sets, reps, weight) => {
     expect(one(line)).toMatchObject({ sets, targetReps: reps, targetWeight: weight, simplified: false })
   })
@@ -61,6 +68,24 @@ describe('parsePlanText: set notation', () => {
     expect(one('Leg press 4x8 2x8 82 kg 2x8 91 kg')).toMatchObject({ sets: 4, targetReps: 8, targetWeight: 91 })
     expect(one('Leg press skośny 2x8 110kg, 1x10 130kg, 1x15 130 kg')).toMatchObject({ sets: 4, targetReps: 8, targetWeight: 110 })
     expect(one('Squat 2x5, 1x5 100 kg')).toMatchObject({ sets: 3, targetReps: 5, targetWeight: 100, simplified: false })
+    expect(one('Bench press 2 sets of 12 reps, 1 set of 8 reps')).toMatchObject({ sets: 3, targetReps: 12, targetWeight: 0, simplified: true })
+    expect(one('Bench press 3 sets: 10, 8, 6')).toMatchObject({ sets: 3, targetReps: 10, targetWeight: 0, simplified: true })
+  })
+
+  it('marks a row whose numbers were read by a guess, and leaves plain rows unmarked', () => {
+    const check = (line: string) => one(line).check !== null
+    expect(['Squat 3x5 - 100', 'Squat 3x5-100', 'Bench press 3 sets: 8, 6', 'Squat 3x5 week 2', 'Dumbbell curl 3x12 2x10kg', 'Squat 100 3x5',
+      'Squat warm up 2x5 then 3x5 100kg'].filter((line) => !check(line))).toEqual([])
+    expect(['Squat 3x5', 'Squat 3x5 - 100kg', 'Squat 3x5 100', 'Bench press 4x8 60 kg', 'Squat 3x5 @80%', 'Biceps 1x6 15kg, 2x10 12,5 kg',
+      'Lateral raise 3x12-15 (light)', 'Pull-ups: 3 x AMRAP'].filter(check)).toEqual([])
+    expect(one('Squat warm up 2x5 then 3x5 100kg')).toMatchObject({ name: 'Squat', sets: 3, targetReps: 5, targetWeight: 100 })
+    expect(one('Squat 3x5 100kg\nSquat 3x5 week 2').check).toBe('Squat 3x5 week 2')
+  })
+
+  it('reads a weight without a unit in the user\'s units', () => {
+    const weights = (units: 'kg' | 'lbs') => parsePlanText('Squat 3x5 225\nBench 3x8 @135\nRow 3x10 60 kg', [], units).days[0]!.exercises.map((exercise) => exercise.targetWeight)
+    expect(weights('lbs')).toEqual([102.06, 61.23, 60])
+    expect(weights('kg')).toEqual([225, 135, 60])
   })
 
   it('keeps the words around the sets as a note', () => {
@@ -113,6 +138,7 @@ describe('parsePlanText: days, title and skipped lines', () => {
     }
     expect(rows('Squat 3x5\nPrzysiad 2x8')).toEqual([[[5, 5, 0, true]], []])
     expect(rows('Squat 2x10 40kg\nSquat 3x5 100kg')).toEqual([[[3, 5, 100, false]], [[1, 'warmUp']]])
+    expect(rows('Squat 1x10 20kg\nSquat 1x8 24kg\nSquat 3x5 100kg')).toEqual([[[3, 5, 100, false]], [[1, 'warmUp'], [2, 'warmUp']]])
     expect(rows('Squat 3x5 100kg\nSquat 2x12 60kg')).toEqual([[[5, 5, 100, true]], []])
     const variants = parsePlanText('Leg press (single leg) 3x12 50kg\nLeg press 3x10 120kg')
     expect(variants.days[0]!.exercises.map((exercise) => [exercise.sets, exercise.duplicate])).toEqual([[3, false], [3, true]])
@@ -128,6 +154,8 @@ describe('parsePlanText: days, title and skipped lines', () => {
     expect(dated.skipped.map((entry) => [entry.line, entry.reason])).toEqual([[6, 'emptyDay']])
     expect(dated.name).toBe('Week 1/2')
     expect(parsePlanText('Push\nBench 3x8\nMoje cwiczenie 10/8\nDips 3x10').days.map((day) => day.exercises.length)).toEqual([3])
+    const first = parsePlanText('Push\nCable woodchop 12/10\nBench press 3x8')
+    expect([first.name, first.days.map((day) => [day.name, day.exercises.length])]).toEqual([null, [['Push', 2]]])
   })
 })
 

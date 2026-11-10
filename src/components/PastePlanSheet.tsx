@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import BottomSheet from './BottomSheet'
 import { useAuthStore } from '../store/authStore'
+import { useProfileStore } from '../store/profileStore'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { importPlanText } from '../shared/planImport'
 
@@ -11,19 +12,20 @@ export default function PastePlanSheet({ onClose }: { onClose: () => void }) {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const { state } = useUserExercises(user?.uid ?? null)
+  const units = useProfileStore((store) => store.profile?.units)
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
   const fieldRef = useRef<HTMLTextAreaElement>(null)
   const helpId = useId()
   const errorId = useId()
-  // Own exercises match before the catalogue, so wait for them unless they failed to load.
-  const loading = state.status === 'loading'
+  // Own exercises match before the catalogue, so wait for them unless they failed to load; a bare weight needs the units.
+  const loading = state.status === 'loading' || !units
 
   function handleContinue() {
     const userExercises = state.status === 'success'
       ? state.data.map((exercise) => ({ exerciseId: exercise.id, exerciseSource: 'user' as const, name: exercise.name, muscles: exercise.muscles }))
       : []
-    const pasted = importPlanText(text, userExercises)
+    const pasted = importPlanText(text, userExercises, units)
     if (!pasted) {
       setError('No exercises found. Write one exercise per line with its sets, like “Bench press 4x8 60 kg”.')
       fieldRef.current?.focus()

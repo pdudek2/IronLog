@@ -1,6 +1,7 @@
 import type { ExerciseRef, MatchCandidate } from './exerciseMatch'
 import { parsePlanText, resolvedPlan, type ParsedExercise, type ParsedPlan, type SkipReason } from './planText'
 import { STARTER_PLAN_TEXT } from './starterPlan'
+import type { WeightUnits } from './weightUnits'
 
 // What the plan editor shows for a pasted plan: recognised lines become plan exercises, the rest wait for the user.
 export interface ImportedRow {
@@ -10,6 +11,8 @@ export interface ImportedRow {
   targetWeight: number
   // Muted line under the exercise: what was written when it differs from the exercise it became.
   detail: string | null
+  // The written line, when the numbers were read by a guess and need a look before saving.
+  check: string | null
   exercise: ExerciseRef | null
   unmatched: { line: string; reason: 'generic' | 'unknown' | 'duplicate'; suggestions: ExerciseRef[] } | null
 }
@@ -43,7 +46,7 @@ export function importedPlan(parsed: ParsedPlan): ImportedPlan {
       name: day.name,
       rows: day.exercises.map((exercise) => {
         const { match } = exercise
-        const base = { name: exercise.name, sets: exercise.sets, targetReps: exercise.targetReps, targetWeight: exercise.targetWeight }
+        const base = { name: exercise.name, sets: exercise.sets, targetReps: exercise.targetReps, targetWeight: exercise.targetWeight, check: exercise.check }
         if (match.status === 'matched' && !exercise.duplicate) {
           return { ...base, name: match.exercise.name, detail: detailOf(exercise), exercise: match.exercise, unmatched: null }
         }
@@ -59,10 +62,12 @@ export function importedPlan(parsed: ParsedPlan): ImportedPlan {
   }
 }
 
-export function importPlanText(text: string, userExercises: MatchCandidate[] = []): ImportedPlan | null {
-  const plan = importedPlan(parsePlanText(text, userExercises))
+export function importPlanText(text: string, userExercises: MatchCandidate[] = [], units: WeightUnits = 'kg'): ImportedPlan | null {
+  const plan = importedPlan(parsePlanText(text, userExercises, units))
   return plan.days.length ? plan : null
 }
+
+export const CHECK_HINT = 'Check the numbers'
 
 export const unmatchedHint: Record<'generic' | 'unknown' | 'duplicate', string> = {
   generic: 'Which exercise?',

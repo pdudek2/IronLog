@@ -14,6 +14,7 @@ export interface EditorExercise extends Omit<TemplateExercise, 'sets' | 'targetR
   // A pasted line that is not an exercise yet; the draft cannot be saved while one remains.
   unmatched?: ImportedRow['unmatched']
   detail?: string | null
+  check?: string | null
 }
 export interface EditorDay { rowId: string; dayId?: string; name: string; exercises: EditorExercise[] }
 export interface PlanSaveRequest {
@@ -68,7 +69,7 @@ export function importedPlanDraft(plan: ImportedPlan, units: WeightUnits, newId:
     const weight = String(kgToDisplayWeight(row.targetWeight, units))
     return { rowId: newId(), exerciseId: row.exercise?.exerciseId ?? '', exerciseSource: row.exercise?.exerciseSource ?? 'global' as const, name: row.name,
       sets: String(row.sets), targetReps: String(row.targetReps), weight, originalWeightKg: row.targetWeight, originalWeightDisplay: weight,
-      detail: row.detail, ...(row.unmatched ? { unmatched: row.unmatched } : {}) }
+      detail: row.detail, check: row.check, ...(row.unmatched ? { unmatched: row.unmatched } : {}) }
   }) }))
   return { draftId: newId(), revision: 0, targetId: null, baseline: null, resolvedId: null, units, name: plan.name, days,
     selectedDayId: days[0]!.rowId, pending: null, dirty: true, ...(plan.skipped.length ? { skipped: plan.skipped } : {}) }

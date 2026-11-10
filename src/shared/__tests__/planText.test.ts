@@ -31,6 +31,24 @@ describe('parsePlanText: set notation', () => {
     ['- Squat 3x5', 3, 5, 0],
     ['2) Squat 3x5', 3, 5, 0],
     ['Face pull 3x15 10 kg // nie zrobilem', 3, 15, 10],
+    ['Squat 3x5 - 100kg', 3, 5, 100],
+    ['Bench press 4x8 – 60 kg', 4, 8, 60],
+    ['Squat 3x5 - 100', 3, 5, 100],
+    ['Squat 3x8-12 60kg', 3, 12, 60],
+    ['Squat 100kg 3x5', 3, 5, 100],
+    ['Bench press 60 kg x 8 x 4', 4, 8, 60],
+    ['Bench Press: 3 sets x 8-10 reps', 3, 10, 0],
+    ['Squat 3 sets of 5', 3, 5, 0],
+    ['Barbell Row - 4 sets, 10 reps', 4, 10, 0],
+    ['Deadlift 5 reps x 3 sets', 3, 5, 0],
+    ['Przysiad 3 serie po 8 powtórzeń 60 kg', 3, 8, 60],
+    ['Pull-ups: 3 x AMRAP', 3, 0, 0],
+    ['Squat 3x5 @80%', 3, 5, 0],
+    ['Bench press 3x8 RPE 8', 3, 8, 0],
+    ['Deadlift 3x5 @ RPE 8', 3, 5, 0],
+    ['Barbell row 3x10, 90s rest', 3, 10, 0],
+    ['Overhead press 3x8 rest 2 min', 3, 8, 0],
+    ['Squat 3x5 100kg RPE 8', 3, 5, 100],
   ])('%s → %i × %i @ %f', (line, sets, reps, weight) => {
     expect(one(line)).toMatchObject({ sets, targetReps: reps, targetWeight: weight, simplified: false })
   })
@@ -49,6 +67,10 @@ describe('parsePlanText: set notation', () => {
     expect(one('Łydki 3x15 24 kg na łydkę').note).toBe('na łydkę')
     expect(one('Leg press 3x10 80 kg leg press ziemny')).toMatchObject({ name: 'Leg press', note: 'leg press ziemny' })
     expect(one('3x5 Squat')).toMatchObject({ name: 'Squat', note: null })
+    expect(one('Squat 100kg 3x5')).toMatchObject({ name: 'Squat', note: null })
+    expect(one('Squat 3x5 - 100kg')).toMatchObject({ name: 'Squat', note: null })
+    expect(one('Lat pulldown 3x12 RIR 2').note).toBe('RIR 2')
+    expect(one('Squat 3x5 @80%').note).toBe('@80%')
   })
 })
 
@@ -61,11 +83,14 @@ describe('parsePlanText: days, title and skipped lines', () => {
   })
 
   it('puts every line somewhere: a day, an exercise or a skipped line with a reason', () => {
-    const text = 'Plan\nWeek 1\nPush\nBench 3x5\n// only a comment\nSquat 30x5\nNotes\n'
+    const text = 'Plan\nWeek 1\nPush\nBench 3x5\n// only a comment\nSquat 30x5\nExtras\n'
     const plan = parsePlanText(text)
     expect(plan.name).toBe('Plan')
     expect(plan.skipped.map(({ line, reason }) => [line, reason])).toEqual([[2, 'emptyDay'], [5, 'comment'], [6, 'outOfRange'], [7, 'emptyDay']])
     expect(plan.days).toEqual([expect.objectContaining({ name: 'Push', line: 3 })])
+    const noted = parsePlanText('Push\nSuperset:\nBench 3x8\nRest 2 min between sets\nDips 3x10\nNotes')
+    expect(noted.days.map((day) => [day.name, day.exercises.length])).toEqual([['Push', 2]])
+    expect(noted.skipped.map(({ line, reason }) => [line, reason])).toEqual([[2, 'comment'], [4, 'comment'], [6, 'comment']])
   })
 
   it('keeps at most 14 days and 20 exercises a day, and marks a repeated exercise', () => {
@@ -95,6 +120,17 @@ describe('matchExerciseName', () => {
     expect(matchedId('Ciąganie drążka 3x8')).toBe('lat-pulldown')
     expect(one('Leg press (ziemny) 3x10').match).toMatchObject({ status: 'matched', via: 'variant', variant: 'ziemny', exercise: { exerciseId: 'leg-press' } })
     expect(one('Leg curls tyłem 3x10').match).toMatchObject({ status: 'matched', variant: 'tyłem', exercise: { exerciseId: 'leg-curl' } })
+    expect(one('Pull-up negative 3x5').match).toMatchObject({ status: 'matched', variant: 'negative', exercise: { exerciseId: 'pull-up' } })
+  })
+
+  it('does not swap an exercise for another one that shares its first words', () => {
+    expect(matchedId('Squat hack 3x8')).toBe('hack-squat')
+    expect(matchedId('Deadlift sumo 3x5')).toBe('sumo-deadlift')
+    expect(matchedId('Bench press close grip 3x8')).toBe('close-grip-bench')
+    expect(matchedId('Leg press calf raise 3x15')).toBe('unknown')
+    expect(matchedId('Bench dip 3x12')).toBe('unknown')
+    expect(matchedId('Squat sumo 3x8')).toBe('unknown')
+    expect(matchedId('Smith machine squat 3x8')).toBe('unknown')
   })
 
   it('never picks an exercise for a muscle name, but suggests the likely ones first', () => {

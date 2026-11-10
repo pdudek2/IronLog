@@ -85,15 +85,26 @@ export function matchExerciseName(raw: string, userExercises: MatchCandidate[] =
   const named = exact(name, groups)
   if (named) return { status: 'matched', exercise: toRef(named), via: variantInParens ? 'variant' : 'name', variant: variantInParens }
 
-  // A trailing word the catalogue does not know is a variant of the base exercise ("Leg press skośny").
+  // Extra words keep an exercise only when no other exercise explains them: "Squat hack" is Hack Squat,
+  // "Leg press skośny" is Leg Press with a variant, "Leg press calf raise" goes to the user.
   const words = name.split(' ')
-  for (let keep = words.length - 1; keep >= 1; keep--) {
-    const prefix = words.slice(0, keep).join(' ')
-    if (GENERIC_NAMES[prefix]) break
-    const hit = exact(prefix, groups)
-    if (hit) {
-      const rest = base.trim().split(/\s+/).slice(keep).join(' ')
-      return { status: 'matched', exercise: toRef(hit), via: 'variant', variant: [rest, variantInParens].filter(Boolean).join(', ') || null }
+  const claims = all.flatMap((candidate) => namesOf(candidate)
+    .filter((known) => !GENERIC_NAMES[known])
+    .map((known) => known.split(' '))
+    .filter((known) => known.every((word) => words.includes(word)))
+    .map((known) => ({ candidate, known })))
+  // A leading modifier usually names another exercise ("Smith machine squat"), so the claim must hold the first word.
+  const leading = claims.filter((claim) => claim.known.includes(words[0]!))
+  const size = Math.max(0, ...leading.map((claim) => claim.known.length))
+  const largest = leading.filter((claim) => claim.known.length === size)
+  const winner = largest[0]?.candidate
+  if (winner && !largest.some((claim) => claim.candidate !== winner && claim.candidate.exerciseSource === winner.exerciseSource)) {
+    const covered = new Set(claims.filter((claim) => claim.candidate === winner).flatMap((claim) => claim.known))
+    if (!claims.some((claim) => claim.candidate.exerciseId !== winner.exerciseId && claim.known.some((word) => !covered.has(word)))) {
+      const rest = base.trim().split(/\s+/)
+        .filter((word) => normalizeExerciseName(word).split(' ').some((part) => part && !covered.has(part))).join(' ')
+      const variant = [rest, variantInParens].filter(Boolean).join(', ') || null
+      return { status: 'matched', exercise: toRef(winner), via: variant ? 'variant' : 'name', variant }
     }
   }
 

@@ -35,8 +35,14 @@ export interface ParsedPlan {
 
 interface SetGroup { sets: number; reps: number; weight: number | null; written: boolean }
 
-const GROUP = /(\d{1,3})\s*[x×*]\s*(\d{1,4})(?:\s*[-–]\s*(\d{1,4}))?|([1-9]\d?(?:\s*\/\s*[1-9]\d?)+)(?![\d/])/i
-const TOKEN = new RegExp(`${GROUP.source}|@\\s*(\\d+(?:[.,]\\d+)?)\\s*(kg|lbs?)?|(\\d+(?:[.,]\\d+)?)\\s*(kg|lbs?)?(?![\\d.,]*\\s*[x×*/])`, 'gi')
+// The second number of "3x8-12" is not taken when a unit follows it: "3x5 - 100kg" is a weight after a dash.
+const GROUP = /(\d{1,3})\s*[x×*]\s*(\d{1,4}|(?:amrap|maks|max)\b)(?:\s*[-–]\s*(\d{1,4})(?![\d.,]*\s*(?:kg|lbs?)|\d))?|([1-9]\d?(?:\s*\/\s*[1-9]\d?)+)(?![\d/])/i
+const NUM = '\\d+(?:[.,]\\d+)?'
+const TIME = '(?:s|sec|secs|sek|seconds?|min|mins|minut[ya]?|minutes?)'
+// Effort, percent, rest and tempo stay in the note; without this their number would be read as kilograms.
+const ASIDE = `@?\\s*(?:rpe|rir)\\s*:?\\s*${NUM}(?:\\s*[-–]\\s*${NUM})?|\\b(?:rest|przerwa|tempo)\\s*:?\\s*\\d[\\d.,:–-]*(?:\\s*${TIME}\\b)?|@?\\s*${NUM}(?:\\s*[-–]\\s*${NUM})?\\s*(?:%|(?:${TIME}|rpe|rir)\\b)`
+const TOKEN = new RegExp(`${GROUP.source}|${ASIDE}|@\\s*(${NUM})\\s*(kg|lbs?)?|(${NUM})\\s*(kg|lbs?)?(?![\\d.,]*\\s*[x×*/])`, 'gi')
+const NOTE_LINE = /^(?:super\s?set|superseri[ae]|giant set|rest|przerwa|notes?|uwag[ai])(?![a-z\u00c0-\u024f])/i
 
 const round2 = (value: number) => Math.round(value * 100) / 100
 const number = (text: string) => Number.parseFloat(text.replace(',', '.'))
@@ -51,7 +57,15 @@ function cleanLead(text: string): string {
 }
 
 function headerName(text: string): string {
-  return text.replace(/^#+\s*/, '').replace(/[\s:–-]+$/, '').trim().slice(0, MAX_NAME_LENGTH)
+  return text.replace(/^#+\s*/, '').replace(/[\s:–—-]+$/, '').trim().slice(0, MAX_NAME_LENGTH)
+}
+
+// "3 sets x 8-10 reps", "3 sets of 5", "4 sets, 10 reps", "8 reps x 3 sets", "3 serie po 8" → "3x8".
+function plainSets(text: string): string {
+  return text
+    .replace(/(\d{1,4})\s*reps?\s*[x×*,]?\s*(\d{1,3})\s*sets?(?![a-z\u00c0-\u024f])/gi, '$2x$1')
+    .replace(/(\d{1,3})\s*(?:sets?|seri[ei]|serii|series)(?![a-z\u00c0-\u024f])\s*(?:of|po|[x×*,:–-])?\s*(?=\d|amrap|maks|max)/gi, '$1x')
+    .replace(/(\d)\s*(?:reps?|powt(?:[óo]rze(?:[nń]|nia)|\.)?)(?![a-z\u00c0-\u024f])/gi, '$1')
 }
 
 function parseSets(rest: string): { groups: SetGroup[]; leftover: string } | null {
@@ -65,10 +79,20 @@ function parseSets(rest: string): { groups: SetGroup[]; leftover: string } | nul
     cursor = token.index! + token[0].length
     const [, sets, reps, top, perSet, atWeight, atUnit, weight, weightUnit] = token
     if (sets !== undefined) {
-      groups.push({ sets: Number(sets), reps: Number(top ?? reps), weight: null, written: false })
+      const count = Number(reps)
+      const group: SetGroup = { sets: Number(sets), reps: Number.isNaN(count) ? 0 : count, weight: null, written: false }
+      groups.push(group)
+      if (Number.isNaN(count)) leftover += ` ${reps}`
+      else if (top !== undefined) {
+        // "3x8-12" is a rep range; in "3x5 - 100" the second number is too far from the reps to be one.
+        if (Number(top) <= Math.max(count * 2, count + 4)) group.reps = Math.max(count, Number(top))
+        else { group.weight = Number(top); group.written = true; bare.push(group) }
+      }
     } else if (perSet !== undefined) {
       const list = perSet.split('/').map((value) => Number(value.trim()))
       for (const reps of list) groups.push({ sets: 1, reps, weight: null, written: false })
+    } else if (atWeight === undefined && weight === undefined) {
+      leftover += ` ${token[0]}`
     } else {
       const current = groups.at(-1)
       const explicit = (atUnit ?? weightUnit)?.toLowerCase().startsWith('l') ? 'lb' : (atUnit ?? weightUnit) ? 'kg' : null
@@ -98,7 +122,7 @@ function parseSets(rest: string): { groups: SetGroup[]; leftover: string } | nul
       ?? groups.slice(0, index).reverse().find((previous) => previous.weight !== null)?.weight
       ?? 0
   })
-  return { groups, leftover: leftover.replace(/[\s,;]+/g, ' ').trim() }
+  return { groups, leftover: leftover.split(/[\s,;]+/).filter((word) => !/^(?:[^a-z\d\u00c0-\u024f]*|x)$/i.test(word)).join(' ') }
 }
 
 // The plan model has one rep target and one weight per exercise: sets add up, and the group with the most sets
@@ -126,18 +150,27 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
   lines.forEach((raw, index) => {
     const line = index + 1
     const { text: uncommented, comment } = stripComment(raw)
-    const cleaned = cleanLead(uncommented)
+    const cleaned = plainSets(cleanLead(uncommented))
     if (!cleaned) {
       if (comment) skipped.push({ line, source: raw, reason: 'comment' })
       return
     }
     const first = cleaned.match(GROUP)
     if (!first) {
-      blocks.push({ header: { name: headerName(cleaned) || `Day ${blocks.length + 1}`, line }, exercises: [], overflow: [] })
+      if (NOTE_LINE.test(cleaned)) skipped.push({ line, source: raw, reason: 'comment' })
+      else blocks.push({ header: { name: headerName(cleaned) || `Day ${blocks.length + 1}`, line }, exercises: [], overflow: [] })
       return
     }
-    const before = cleaned.slice(0, first.index).replace(/[\s:–,-]+$/, '').trim()
-    const parsed = parseSets(cleaned.slice(first.index))!
+    let before = cleaned.slice(0, first.index).replace(/[\s:–—,-]+$/, '').trim()
+    let rest = cleaned.slice(first.index)
+    // "Squat 100kg 3x5", and "Bench press 60 kg x 8 x 4" where the weight comes first and the sets last.
+    const lead = before.match(/^(.*?)[\s:–—,@-]*(\d+(?:[.,]\d+)?\s*(?:kg|lbs?))(?:\s*([x×*]))?$/i)
+    if (lead) {
+      const group = lead[3] && first[3] === undefined && /^\d+$/.test(first[2] ?? '') ? `${first[2]}x${first[1]}` : first[0]
+      rest = `${group} ${lead[2]}${rest.slice(first[0].length)}`
+      before = lead[1]!
+    }
+    const parsed = parseSets(rest)!
     const name = (before || parsed.leftover).slice(0, MAX_NAME_LENGTH)
     const note = before ? parsed.leftover || null : null
     const { sets, reps, weight, simplified } = fold(parsed.groups)

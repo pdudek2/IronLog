@@ -114,6 +114,9 @@ describe('parsePlanText: days, title and skipped lines', () => {
     expect(rows('Squat 3x5\nPrzysiad 2x8')).toEqual([[[5, 5, 0, true]], []])
     expect(rows('Squat 2x10 40kg\nSquat 3x5 100kg')).toEqual([[[3, 5, 100, false]], [[1, 'warmUp']]])
     expect(rows('Squat 3x5 100kg\nSquat 2x12 60kg')).toEqual([[[5, 5, 100, true]], []])
+    const variants = parsePlanText('Leg press (single leg) 3x12 50kg\nLeg press 3x10 120kg')
+    expect(variants.days[0]!.exercises.map((exercise) => [exercise.sets, exercise.duplicate])).toEqual([[3, false], [3, true]])
+    expect(variants.skipped).toEqual([])
     expect(rows('Warm-up\nWarm-up: Squat 2x10\nSquat 1x8 60kg (warm-up)\nRozgrzewka przysiad 1x5\nSquat 3x5 100kg + 2 warm-up sets'))
       .toEqual([[[3, 5, 100, false]], [[1, 'comment'], [2, 'warmUp'], [3, 'warmUp'], [4, 'warmUp']]])
   })
@@ -124,6 +127,7 @@ describe('parsePlanText: days, title and skipped lines', () => {
     expect(dated.days.map((day) => [day.name, day.exercises.map((exercise) => exercise.name)])).toEqual([['Mon 10/11', ['Squat']], ['12/11', ['Biceps']]])
     expect(dated.skipped.map((entry) => [entry.line, entry.reason])).toEqual([[6, 'emptyDay']])
     expect(dated.name).toBe('Week 1/2')
+    expect(parsePlanText('Push\nBench 3x8\nMoje cwiczenie 10/8\nDips 3x10').days.map((day) => day.exercises.length)).toEqual([3])
   })
 })
 

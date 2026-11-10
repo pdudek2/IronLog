@@ -181,7 +181,9 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
     const note = before ? parsed.leftover || null : null
     const match = matchExerciseName(name, userExercises)
     // "Week 1/2", "Mon 10/11", "12/11": two numbers and a slash next to a name that is no exercise are a heading, not two sets.
-    if (first[4]?.split('/').length === 2 && rest.trim() === first[0] && (!before || match.status === 'unknown')) {
+    // Inside a day only a rising pair is one, so "My lift 10/8" stays a line for the user instead of splitting the day.
+    const pair = first[4]?.split('/').map(Number)
+    if (pair?.length === 2 && rest.trim() === first[0] && (!before || (match.status === 'unknown' && (pair[0]! < pair[1]! || !blocks.at(-1)?.exercises.length)))) {
       blocks.push({ header: { name: headerName(cleaned), line }, exercises: [], overflow: [] })
       return
     }
@@ -201,6 +203,7 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
     const previous = block.exercises.at(-1)
     const same = previous && previous.match.status === 'matched' && match.status === 'matched'
       && previous.match.exercise.exerciseId === match.exercise.exerciseId && previous.match.exercise.exerciseSource === match.exercise.exerciseSource
+      && previous.match.variant === match.variant
     if (same && previous.targetWeight > 0 && previous.targetWeight < weight * 0.8) {
       skipped.push({ line: previous.line, source: previous.source, reason: 'warmUp' })
       block.exercises.pop()

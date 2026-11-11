@@ -47,4 +47,4 @@ it('concurrent same-operation requests commit one receipt; name collisions and l
   const legacy = body('Legacy name')
   await db.collection('userExercises').doc(legacy.id).set({ userId: uid, ...legacy.input })
   await expect(create(body('Legacy name'))).rejects.toMatchObject({ code: 'EXERCISE_NAME_CONFLICT' })
-}, 30_000)
+})

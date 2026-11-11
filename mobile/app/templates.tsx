@@ -150,8 +150,9 @@ function Plans({ uid }: { uid: string }) {
       <View style={styles.tools}>
         <Pressable accessibilityRole="button" onPress={() => router.navigate('/exercises')} style={styles.tool}><Text style={styles.toolText}>Exercises</Text><LineIcon name="chevron-right" /></Pressable>
         <Pressable accessibilityRole="button" onPress={() => router.navigate('/coach')} style={styles.tool}><Text style={styles.toolText}>Generate a plan with Coach</Text><LineIcon name="chevron-right" /></Pressable>
-        {plans.length > 0 && <Pressable accessibilityRole="button" disabled={starter.saving} onPress={() => void starter.create()} style={styles.tool}><Text style={styles.toolText}>{starter.saving ? 'Adding the starter plan…' : `Use the starter plan · ${STARTER.name}`}</Text><LineIcon name="chevron-right" /></Pressable>}
-        {plans.length > 0 && starter.error && <Text accessibilityRole="alert" style={styles.copy}>{starter.error}</Text>}
+        {/* shortcut: plans carry no starter marker, so a plan with the starter's name counts as the starter */}
+        {plans.length > 0 && !plans.some((plan) => plan.name === STARTER.name) && <Pressable accessibilityRole="button" disabled={starter.saving} onPress={() => void starter.create()} style={styles.tool}><Text style={styles.toolText}>{starter.saving ? 'Adding the starter plan…' : `Use the starter plan · ${STARTER.name}`}</Text><LineIcon name="chevron-right" /></Pressable>}
+        {plans.length > 0 && !plans.some((plan) => plan.name === STARTER.name) && starter.error && <Text accessibilityRole="alert" style={styles.copy}>{starter.error}</Text>}
       </View>
     </ScrollView>
   {moreTarget && <BottomSheet title={moreTarget.name} onClose={() => setMoreTarget(null)}>

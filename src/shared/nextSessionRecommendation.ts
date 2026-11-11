@@ -41,6 +41,13 @@ export function applyOverload<T extends { weight: string; reps: string; done: bo
   }))
 }
 
+// A plan without weights starts every set at 0: once a set is logged with a weight, the open sets that have none take it,
+// so the next "Log set" cannot record 0 by accident. Sets that already carry a weight are left to the Apply hint.
+export function carryLoggedWeight<T extends { weight: string; done: boolean }>(sets: T[], logged: T): T[] {
+  if (!logged.done || !(Number.parseFloat(logged.weight) > 0)) return sets
+  return sets.map((set) => (set.done || Number.parseFloat(set.weight) > 0 ? set : { ...set, weight: logged.weight }))
+}
+
 export interface NextSessionExercise {
   exerciseId: string
   exerciseSource: ExerciseSource

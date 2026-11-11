@@ -59,6 +59,8 @@ describe('parsePlanText: set notation', () => {
     ['Barbell row 10 reps, 3 sets', 3, 10, 0],
     ['Bench 225x5x3', 3, 5, 225],
     ['Dips 3 sets to failure', 3, 0, 0],
+    ['Squat 3x5 100 RPE 8', 3, 5, 100],
+    ['Squat 3x5 @8 RPE', 3, 5, 0],
     ['DB shoulder press 3X12 @ 50S', 3, 12, 50],
     ['[11/9/26, 8:03 PM] Coach: Squat 3x5 100kg', 3, 5, 100],
   ])('%s → %i × %i @ %f', (line, sets, reps, weight) => {
@@ -99,6 +101,45 @@ describe('parsePlanText: set notation', () => {
     const odd = parsePlanText('Squat (Barbell)\nSet 1: 100 kg x 5\nSet 2: 5000 kg x 5\nSet 3: 100 kg x 5\nBench\nSet 1: 80 kg x 8')
     expect(odd.days[0]!.exercises.map((exercise) => [exercise.name, exercise.sets, exercise.check])).toEqual([['Squat (Barbell)', 2, 'Set 2: 5000 kg x 5'], ['Bench', 1, null]])
     expect(odd.skipped).toEqual([expect.objectContaining({ line: 3, reason: 'outOfRange' })])
+  })
+
+  it('reads a pasted table: columns by their header, a day column, and the usual order when there is no header', () => {
+    const read = (text: string, units: 'kg' | 'lbs' = 'kg') => {
+      const plan = parsePlanText(text, [], units)
+      return plan.days.map((day) => [day.name, ...day.exercises.map((exercise) => `${exercise.name} ${exercise.sets}x${exercise.targetReps} ${exercise.targetWeight}${exercise.check ? ' ?' : ''}`)])
+    }
+    expect(read('Exercise name\tReps\tSets\tWeight [kg]\tRPE\tNotes\nSquat\t5\t3\t100\t8\ttop set 2\nChin-up\tmax\t3\tBW\t\t\nLunge\t10/side\t3\t20\t\t\textra', 'lbs'))
+      .toEqual([['Day 1', 'Squat 3x5 100', 'Chin-up 3x0 0', 'Lunge 3x10 20']])
+    // A weight cell that is not a plain number is a guess; RPE in it is no weight; "Set" numbers the sets, one row each.
+    expect(read('Exercise\tSets\tReps\tWeight\nPull-up\t3\t8\tBW+10\nLeg curl\t3\t12\tRPE 8\nPress\t3\t5\t20/25/30'))
+      .toEqual([['Day 1', 'Pull-up 3x8 10 ?', 'Leg curl 3x12 0', 'Press 3x5 30 ?']])
+    expect(read('Exercise\tSet\tWeight\tReps\nSquat\t1\t100\t5\nSquat\t2\t100\t5\nSquat\t3\t100\t5')).toEqual([['Day 1', 'Squat 3x5 100']])
+    expect(read('Dzień\tĆwiczenie\tSerie\tPowtórzenia\tCiężar [kg]\nDzień A\tPrzysiad\t4\t8\t80\nDzień A\tWyciskanie na ławce\t4\t8-10\t62,5\nDzień B\tMartwy ciąg\t3\t5\t120'))
+      .toEqual([['Dzień A', 'Przysiad 4x8 80', 'Wyciskanie na ławce 4x10 62.5'], ['Dzień B', 'Martwy ciąg 3x5 120']])
+    expect(read('## Push\n| Exercise | Sets | Reps | Weight |\n|---|---|---|---|\n| Bench press | 5 | 5 | 90 kg |\n| Incline dumbbell press | 3 | 10 | 2×26 kg |'))
+      .toEqual([['Push', 'Bench press 5x5 90', 'Incline dumbbell press 3x10 26 ?']])
+    expect(read('Squat\t5\t5\t100\nBench press\t10\t3\t60\nRow\t3\t10\t50\t8')).toEqual([['Day 1', 'Squat 5x5 100', 'Bench press 10x3 60 ?', 'Row 3x10 50 ?']])
+    // Without a header the text cell next to the numbers is the name, a text cell before it the day, a label or bullet neither.
+    expect(read('Mon\tSquat\t3\t5\t100\nMon\tBench press\t3\t8\t60\nWed\tDeadlift\t3\t5\t120')).toEqual([['Mon', 'Squat 3x5 100', 'Bench press 3x8 60'], ['Wed', 'Deadlift 3x5 120']])
+    expect(read('A1\tSquat\t3\t5\t100\n1.\tBench press\t3x8\nLower\tReverse hyper\t3\t12\t40')).toEqual([['Day 1', 'Squat 3x5 100', 'Bench press 3x8 0'], ['Lower', 'Reverse hyper 3x12 40']])
+    // A day title inside the sheet keeps the header; a row the columns cannot read is listed, not turned into a day.
+    const titled = parsePlanText('Exercise\tReps\tSets\tWeight (kg)\tLast week\nSquat\t5\t3\t100\t97.5\nPull\nBarbell row\t8\t4\t60\t\nPull-up\t\tmax reps\tbodyweight\t\nLunge\t10/10\t3\t20\t', [], 'lbs')
+    expect(titled.days.map((day) => [day.name, ...day.exercises.map((exercise) => `${exercise.sets}x${exercise.targetReps} ${exercise.targetWeight}${exercise.check ? ' ?' : ''}`)]))
+      .toEqual([['Day 1', '3x5 100 ?'], ['Pull', '4x8 60', '3x10 20 ?']])
+    expect(titled.skipped.filter((entry) => entry.reason !== 'comment').map((entry) => [entry.line, entry.reason])).toEqual([[5, 'outOfRange']])
+    // "Set" counts the sets unless the rows number them; "W" in a numbered table is a warm-up set.
+    expect(read('Exercise\tSet\tReps\tWeight\nSquat\t3\t10\t100')).toEqual([['Day 1', 'Squat 3x10 100']])
+    expect(read('Exercise\tSet\tWeight\tReps\nDeadlift\t1\t140\t5\nSquat\tW\t60\t5\nSquat\t1\t100\t5\nSquat\t2\t100\t5')).toEqual([['Day 1', 'Deadlift 1x5 140', 'Squat 2x5 100']])
+    // A header that calls the exercise column "Workout", and a second column of one kind.
+    expect(read('Workout\tReps\tSets\tWeight (kg)\nSquat\t3\t4\t100\n\nExercise\tSets\tReps min\tReps max\nBench press\t3\t8\t12', 'lbs')).toEqual([['Day 1', 'Squat 4x3 100', 'Bench press 3x8 0 ?']])
+    // A header ends with its table: the next table, or an ordinary line with pipes, is not read through it.
+    expect(read('Exercise|Reps|Sets|Weight (kg)\nSquat|5|3|100\n\nBench press\t3\t8\t60', 'lbs')).toEqual([['Day 1', 'Squat 3x5 100', 'Bench press 3x8 27.22']])
+    // Cells that carry their own notation, a lone pipe and a single tab are ordinary lines.
+    expect(read('Exercise | Sets x Reps | Weight\nBench press | 3x8 | 60 kg')).toEqual([['Day 1', 'Bench press 3x8 60']])
+    expect(read('Bench\t3x8\nSquat 3x5 | heavy')).toEqual([['Day 1', 'Bench 3x8 0', 'Squat 3x5 0']])
+    const limits = parsePlanText(`Exercise\tSets\tReps\tWeight\nSquat\t3\t5\t5000\n${Array.from({ length: 21 }, (_, index) => `Lift ${index}\t3\t5\t50`).join('\n')}`)
+    expect([limits.days[0]!.exercises.length, limits.skipped.filter((entry) => entry.reason !== 'comment').map((entry) => [entry.line, entry.reason])])
+      .toEqual([20, [[2, 'outOfRange'], [23, 'tooManyExercises']]])
   })
 
   it('reads a weight without a unit in the user\'s units', () => {
@@ -243,15 +284,15 @@ describe('the Notion corpus', () => {
 })
 
 describe('the foreign plans corpus', () => {
-  type Line = { line: string; kind: string; exercise?: string; sets?: number; reps?: number; weight?: number; unit?: string | null }
+  type Line = { line: string; kind: string; exercise?: string; day?: string | null; sets?: number; reps?: number; weight?: number; unit?: string | null }
   type Case = { id: string; units: 'kg' | 'lbs'; text: string; lines: Line[] }
-  const corpus = foreignPlans as unknown as { dev: Case[]; holdout: Case[] }
+  const corpus = foreignPlans as unknown as { dev: Case[]; holdout: Case[]; tables: Case[] }
 
   // A row is silently wrong when it looks settled (matched, no check, no duplicate) but its exercise or numbers differ from the label.
   it('asks about every row it cannot read; the rows it gets wrong without asking are only the known ones', () => {
     const silent: string[] = []
     const lost: string[] = []
-    for (const plan of [...corpus.dev, ...corpus.holdout]) {
+    for (const plan of [...corpus.dev, ...corpus.holdout, ...corpus.tables]) {
       const parsed = parsePlanText(plan.text, [], plan.units)
       const rows = parsed.days.flatMap((day) => day.exercises)
       const numbers = plan.text.replace(/\r/g, '').split('\n')
@@ -269,8 +310,9 @@ describe('the foreign plans corpus', () => {
         if (!row && !parsed.skipped.some((entry) => group.some((line) => line.no === entry.line))) lost.push(`${plan.id}: ${group[0]!.line}`)
         if (!row || row.check || row.duplicate || row.match.status !== 'matched') continue
         const main = [...group].sort((a, b) => b.sets! - a.sets! || kg(b) - kg(a))[0]!
+        const day = parsed.days.find((candidate) => candidate.exercises.includes(row))!.name
         const right = row.match.exercise.name === group[0]!.exercise && row.sets === group.reduce((sum, line) => sum + line.sets!, 0)
-          && row.targetReps === main.reps && Math.abs(row.targetWeight - kg(main)) < 0.06
+          && row.targetReps === main.reps && Math.abs(row.targetWeight - kg(main)) < 0.06 && (!group[0]!.day || day.toLowerCase().includes(group[0]!.day.toLowerCase()))
         if (!right) silent.push(`${plan.id}: ${group[0]!.line}`)
       }
     }
@@ -280,8 +322,7 @@ describe('the foreign plans corpus', () => {
       '531-week3-kg: Bench: 70kg x5, 80kg x3, 90kg x1+',
       'strong-style-export: Lateral Raise (Dumbbell)',
     ])
-    // Pasted tables are not read yet; their rows show up as days without exercises, and one table row becomes a day name.
-    expect(lost).toEqual(['markdown-table-push: | Overhead press | 3 | 8 | 50 kg |'])
+    expect(lost).toEqual([])
   })
 })
 

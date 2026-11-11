@@ -43,7 +43,7 @@ interface SetGroup { sets: number; reps: number; weight: number | null; written:
 const GROUP = /(\d{1,3})\s*[x×*]\s*(\d{1,4}(?![\d]|[.,]\d)|(?:amrap|maks|max|failure)\b)(?:\s*[-–]\s*(\d{1,4})(?![\d.,]*\s*(?:kg|lbs?)|\d))?|([1-9]\d?(?:\s*\/\s*[1-9]\d?)+)(?![\d/])/i
 const NUM = '\\d+(?:[.,]\\d+)?'
 const TIME = '(?:s|sec|secs|sek|seconds?|min|mins|minut[ya]?|minutes?)'
-const ASIDE = `@?\\s*(?:rpe|rir)\\s*:?\\s*${NUM}(?:\\s*[-–]\\s*${NUM})?|\\b(?:rest|przerwa|tempo)\\s*:?\\s*\\d[\\d.,:/–-]*(?:\\s*${TIME}\\b)?|@?\\s*${NUM}(?:\\s*[-–]\\s*${NUM})?\\s*(?:%|(?:rpe|rir)\\b)|(?<!@\\s*)\\b${NUM}(?:\\s*[-–]\\s*${NUM})?\\s*${TIME}\\b|\\b\\d{1,2}\\s*rm\\b`
+const ASIDE = `@?\\s*(?:rpe|rir)\\s*:?\\s*${NUM}(?:\\s*[-–]\\s*${NUM})?|\\b(?:rest|przerwa|tempo)\\s*:?\\s*\\d[\\d.,:/–-]*(?:\\s*${TIME}\\b)?|@?\\s*${NUM}(?:\\s*[-–]\\s*${NUM})?\\s*%|(?<![\\d.,])@?\\s*(?:10|\\d)(?:[.,]5)?\\s*(?:rpe|rir)\\b|(?<!@\\s*)\\b${NUM}(?:\\s*[-–]\\s*${NUM})?\\s*${TIME}\\b|\\b\\d{1,2}\\s*rm\\b`
 // "2/0/2 tempo" goes before the sets so its slashes are not read as reps per set.
 const TEMPO_FIRST = '\\d+(?:[/:–-]\\d+){2,}\\s*tempo\\b'
 const TOKEN = new RegExp(`${TEMPO_FIRST}|${GROUP.source}|${ASIDE}|@\\s*(${NUM})\\s*(kg|lbs?)?|(${NUM})\\s*(kg|lbs?)?(?![\\d.,]*\\s*[x×*/])`, 'gi')
@@ -183,6 +183,150 @@ function parseSets(rest: string, fallback: 'kg' | 'lb'): { groups: SetGroup[]; l
   return { groups, leftover: words.join(' '), check }
 }
 
+// A pasted table: spreadsheet cells come with tabs, a markdown table with pipes. A row is rewritten into an ordinary
+// plan line ("Bench press 5x5 90 kg RPE 8") so one reader handles every notation. A number the columns do not explain
+// marks the row to check, and a row that fits no reading is listed as unread instead of becoming a day.
+type Column = 'day' | 'name' | 'sets' | 'set' | 'reps' | 'scheme' | 'weight' | 'rpe' | 'rir' | 'rest' | 'skip' | 'unknown'
+interface TableState { columns: Column[] | null; unit: 'kg' | 'lbs' | null; tabs: boolean }
+type TableRow = { skip: true } | { skip?: false; unread: true } | { skip?: false; unread?: false; day: string | null; text: string; check: boolean }
+
+// Tried in order: "Last week (kg)" is not the weight, a "Superset" column is not "Sets", "Sets x Reps" is one column.
+const COLUMN_WORDS: [RegExp, Column][] = [
+  [/^(?:(?:week\s?)?day|dzie[nń]|dni|workout|trening|session|sesja)(?![a-z])/, 'day'],
+  [/previous|\bprev\b|\blast\b|\bthis\b|current|poprzedni|ostatni|obecn|aktualn|1\s?rm|\bmax\b|\bpr\b/, 'unknown'],
+  [/super\s?set|superseri|^#$|^(?:no|nr|lp)\.?$|notes?|uwagi|komentarz|tempo|week|tydzie|body\s?weight|(?:masa|waga) cia|warm[\s-]?up|rozgrzewk/, 'skip'],
+  [/sets?\s*(?:[x×/&]|and|i)\s*reps?|seri[ei]\s*[x×/]\s*powt/, 'scheme'],
+  [/exercise|[cć]wiczeni|\bname\b|nazwa|movement|\blift\b/, 'name'],
+  [/^(?:set|seria)(?:\s*(?:no|nr)\.?)?$/, 'set'],
+  [/\bsets\b|seri[ei]\b|serii/, 'sets'],
+  [/\breps?\b|repetitions|powt/, 'reps'],
+  [/\bweight\b|\bload\b|\bkgs?\b|\blbs?\b|pounds|waga|masa|ci[eę][zż]ar|obci[aą][zż]eni/, 'weight'],
+  [/\brpe\b/, 'rpe'], [/\brir\b/, 'rir'],
+  [/\brest\b|przerw|odpoczyn/, 'rest'],
+]
+const TEXT_CELL = /[a-zÀ-ɏ]{2}/i
+const unitOf = (text: string): 'kg' | 'lbs' | null => {
+  const unit = text.match(/(kg|lb|pound|funt)/i)?.[1]?.toLowerCase()
+  return unit ? (unit === 'kg' ? 'kg' : 'lbs') : null
+}
+
+function tableCells(raw: string): string[] | null {
+  const clean = (cell: string) => cell.replace(/\*\*/g, '').trim()
+  if (raw.split('\t').length >= 3) return raw.split('\t').map(clean)
+  if (raw.split('|').length < 3) return null
+  return raw.trim().replace(/^\||\|$/g, '').split('|').map(clean)
+}
+
+// "8", "8-10", "8/8/6", "max", "to failure"; from "10/side" or "5+" the leading number.
+function repsCell(cell: string): { text: string; check: boolean } | null {
+  const clean = cell.replace(/\s*(?:reps?|powt[a-zÀ-ɏ]*\.?)$/i, '').trim()
+  if (/^(?:(?:to\s+)?failure|do upadku|amrap|max|maks)$/i.test(clean)) return { text: 'failure', check: false }
+  if (/^(?:\d{1,3}(?:\s*[-–]\s*\d{1,3})?|[1-9]\d?(?:\s*\/\s*[1-9]\d?)+)$/.test(clean)) return { text: clean, check: false }
+  const lead = clean.match(/^\d{1,3}(?:\s*[-–]\s*\d{1,3})?/)
+  return lead ? { text: lead[0], check: /\d/.test(clean.slice(lead[0].length)) } : null
+}
+
+// The row through its columns, or null when a cell does not fit its column.
+function columnsRow(cells: string[], columns: Column[], unit: 'kg' | 'lbs'): { day: string | null; text: string; check: boolean } | null {
+  const at = (column: Column) => cells[columns.indexOf(column)] ?? ''
+  const name = at('name')
+  if (!TEXT_CELL.test(name) || /^\d/.test(name)) return null
+  let check = columns.some((column, index) => column === 'unknown' && /^\d/.test(cells[index] ?? ''))
+
+  let scheme = at('scheme').replace(/^(\d{1,2})\s*\/\s*(\d{1,3})$/, '$1x$2')
+  if (!scheme) {
+    // In a table that numbers its sets, "W" in that column is a warm-up set.
+    if (columns.includes('set') && /^w/i.test(at('set'))) return { day: at('day') || null, text: `${name} 1x1 (warm-up)`, check: false }
+    const count = (columns.includes('set') ? '1' : at('sets').replace(/\s*(?:sets?|seri[ei])$/i, '')).match(/^(\d{1,2})(?:\s*[-–]\s*(\d{1,2}))?$/)
+    const reps = repsCell(at('reps'))
+    if (!count || !reps) return null
+    if (count[2] || reps.check) check = true
+    const sets = count[2] ?? count[1]!
+    const list = reps.text.split('/').map((value) => value.trim())
+    // "8/8/6" names each set. "10/10" for 3 sets is ten a side, and any other mismatch is a guess.
+    if (list.length === 1 || list.length === Number(sets)) scheme = list.length === 1 ? `${sets}x${reps.text}` : reps.text
+    else { check = true; scheme = list.every((value) => value === list[0]) ? `${sets}x${list[0]}` : reps.text }
+  } else if (!GROUP.test(plainSets(scheme).text)) return null
+
+  const aside: string[] = []
+  let weight = ''
+  const cell = at('weight').replace(/^@\s*/, '')
+  if (/%|rpe|rir/i.test(cell)) aside.push(cell)
+  else if (/\d/.test(cell)) {
+    // Anything but a plain number ("2x20", "BW+10", "20/25/30") is a guess at its largest number.
+    const plain = cell.match(/^(\d+(?:[.,]\d+)?)\s*(?:kgs?|lbs?)?$/i)
+    if (!plain) check = true
+    const amount = plain ? plain[1]! : String(Math.max(...cell.match(/\d+(?:[.,]\d+)?/g)!.map(number)))
+    weight = `${amount} ${unitOf(cell) ?? unit}`
+  }
+  if (/^\d/.test(at('rpe'))) aside.push(`RPE ${at('rpe')}`)
+  if (/^\d/.test(at('rir'))) aside.push(`RIR ${at('rir')}`)
+  if (at('rest')) aside.push(`rest ${at('rest')}`)
+  return { day: at('day') || null, text: [name, scheme, weight, ...aside].filter(Boolean).join(' '), check }
+}
+
+// Without a header the usual order is assumed: the name, then sets, reps and weight. The text cell next to the numbers
+// is the name, and a text cell right before it is the day.
+function guessColumns(cells: string[]): { columns: Column[]; check: boolean } | null {
+  const isText = (cell: string | undefined) => Boolean(cell) && TEXT_CELL.test(cell!) && !/^\d/.test(cell!)
+  const firstNumber = cells.findIndex((cell, index) => /^\d/.test(cell) && cells.slice(0, index).some(isText))
+  if (firstNumber < 0) return null
+  const name = cells.map((cell, index) => (index < firstNumber && isText(cell) ? index : -1)).reduce((last, index) => Math.max(last, index), -1)
+  const before = cells[name - 1]
+  const day = isText(before) || /^[a-z]$/i.test(before ?? '') ? name - 1 : -1
+  const numbers: Column[] = ['sets', 'reps', 'weight']
+  const columns = cells.map((_, index): Column => (index === name ? 'name' : index === day ? 'day' : index >= firstNumber ? numbers.shift() ?? 'skip' : 'skip'))
+  const [first, second] = [cells[firstNumber]!, cells[firstNumber + 1] ?? '']
+  return { columns, check: cells.slice(firstNumber + 3).some(Boolean) || !second || Number.parseFloat(first) > Number.parseFloat(second) }
+}
+
+function tableRow(raw: string, state: TableState, units: WeightUnits, following: (offset: number) => string | undefined): TableRow | null {
+  const cells = tableCells(raw)
+  // Titles, notes and empty lines sit inside a sheet, so its header stays until another header replaces it.
+  if (!cells) return null
+  // A header read from a sheet does not describe a markdown table, nor the other way round.
+  if (state.columns && state.tabs !== raw.includes('\t')) { state.columns = null; state.unit = null }
+  const filled = cells.filter(Boolean)
+  // A lone cell is a title or a day name in the sheet; it is read as an ordinary line.
+  if (filled.length < 2) return filled.length ? { day: null, text: filled[0]!, check: false } : { skip: true }
+  if (filled.every((cell) => /^:?-{2,}:?$/.test(cell))) return { skip: true }
+
+  const header = cells.map((cell): Column | undefined => {
+    const word = cell.toLowerCase().replace(/[[(][^\])]*[\])]|[:*]/g, '').trim()
+    return COLUMN_WORDS.find(([pattern]) => pattern.test(word))?.[1]
+  })
+  if (!cells.some((cell) => /\d/.test(cell)) && header.filter((column) => column && column !== 'skip' && column !== 'unknown').length >= 2) {
+    // "Exercise name" is recognised. A header that names only the numbers leaves its first unnamed column as the name,
+    // or the column it calls "Workout".
+    if (!header.includes('name')) header[header.includes(undefined) ? header.indexOf(undefined) : header.lastIndexOf('day')] = 'name'
+    // Two columns of one kind ("Reps min", "Reps max"): the second is a number the row does not explain.
+    for (const [index, column] of header.entries()) if (column && column !== 'skip' && header.indexOf(column) < index) header[index] = 'unknown'
+    // "Set" counts the sets unless the rows number them: somewhere the same exercise has n and then n + 1.
+    const set = header.indexOf('set')
+    if (set >= 0) {
+      const nameAt = header.indexOf('name')
+      const rows = Array.from({ length: 60 }, (_, offset) => tableCells(following(offset + 1) ?? '')).filter((row): row is string[] => Boolean(row?.[nameAt]))
+      const numbered = rows.some((row, index) => index > 0 && row[nameAt] === rows[index - 1]![nameAt] && Number(row[set]) === Number(rows[index - 1]![set]) + 1)
+      if (!numbered) header[set] = 'sets'
+    }
+    state.columns = header.includes('name') ? header.map((column) => column ?? 'unknown') : null
+    state.unit = unitOf(cells[header.indexOf('weight')] ?? '')
+    state.tabs = raw.includes('\t')
+    return { skip: true }
+  }
+
+  const mapped = state.columns && columnsRow(cells, state.columns, state.unit ?? units)
+  if (mapped) return mapped
+  const guess = guessColumns(cells)
+  const guessed = guess && columnsRow(cells, guess.columns, units)
+  // A row that did not fit its own header was read by the usual order instead: that is a guess.
+  if (guessed) return { ...guessed, check: guessed.check || guess.check || state.columns !== null }
+  // Cells that hold their own notation ("3x8", "3 sets of 8") are read as an ordinary line, and so is a row without
+  // numbers outside a headed table (a title). Under a header such a row is an exercise the columns could not read.
+  const text = filled.join(' ')
+  return GROUP.test(plainSets(text).text) || (!state.columns && !/\d/.test(text)) ? { day: null, text, check: false } : { unread: true }
+}
+
 // The plan model has one rep target and one weight per exercise: sets add up, and the group with the most sets
 // (then the heavier, then more reps) gives the reps and the weight.
 function fold(all: SetGroup[]): { sets: number; reps: number; weight: number; simplified: boolean } {
@@ -212,9 +356,19 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
   let pendingCheck: string | null = null
   let dropping = -1
 
+  const table: TableState = { columns: null, unit: null, tabs: false }
   lines.forEach((raw, index) => {
     const line = index + 1
-    const { text: uncommented, comment } = stripComment(raw)
+    const row = tableRow(raw, table, units, (offset) => lines[index + offset])
+    // What the preview shows for a row to check: table cells are set apart by tabs, which do not show.
+    const written = raw.trim().replace(/\s*\t\s*/g, '  ')
+    if (row?.skip || row?.unread) {
+      skipped.push({ line, source: raw, reason: row.skip ? 'comment' : 'outOfRange' })
+      return
+    }
+    // A sheet may repeat the day in every row.
+    if (row?.day && blocks.at(-1)?.header?.name !== headerName(row.day)) blocks.push({ header: { name: headerName(row.day), line }, exercises: [], overflow: [] })
+    const { text: uncommented, comment } = row ? { text: row.text, comment: false } : stripComment(raw)
     const plain = plainSets(cleanLead(uncommented))
     const cleaned = plain.text
     if (!cleaned) {
@@ -306,7 +460,7 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
     let name = (before || parsed.leftover).slice(0, MAX_NAME_LENGTH)
     const note = before ? parsed.leftover || null : null
     let { groups, check } = parsed
-    if (plain.guessed) check = true
+    if (plain.guessed || row?.check) check = true
     if (WARM_UP_NAME.test(name) || WARM_UP_NOTE.test(note ?? '')) {
       // "Squat warm up 2x5 then 3x5 100kg": the sets after "then" are working sets.
       const working = WARM_UP_NAME.test(name) ? rest.split(/\b(?:then|potem|nast[eę]pnie|working|robocze)\b/i)[1] : undefined
@@ -344,7 +498,7 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
       if (merged.sets <= MAX_PLAN_SETS) {
         groupsOf.set(previous, all)
         linesOf.get(previous)!.push({ line, source: raw })
-        Object.assign(previous, { sets: merged.sets, targetReps: merged.reps, targetWeight: merged.weight, simplified: true, check: previous.check ?? (check ? raw.trim() : null) })
+        Object.assign(previous, { sets: merged.sets, targetReps: merged.reps, targetWeight: merged.weight, simplified: true, check: previous.check ?? (check ? written : null) })
         return
       }
     }
@@ -352,7 +506,7 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
       skipped.push({ line, source: raw, reason: 'tooManyExercises' })
       return
     }
-    const exercise: ParsedExercise = { line, source: raw, name, note, sets, targetReps: reps, targetWeight: weight, simplified, match, duplicate: false, check: check ? raw.trim() : null }
+    const exercise: ParsedExercise = { line, source: raw, name, note, sets, targetReps: reps, targetWeight: weight, simplified, match, duplicate: false, check: check ? written : null }
     groupsOf.set(exercise, groups)
     linesOf.set(exercise, [{ line, source: raw }])
     block.exercises.push(exercise)

@@ -1,5 +1,5 @@
 import { createElement, type ReactNode } from 'react'
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TemplateWorkoutLaunch } from '../../hooks/useTemplateWorkoutLaunch'
 import type { WorkoutTemplate } from '../../lib/templateService'
@@ -434,6 +434,15 @@ describe('TemplatesPage launch actions', () => {
     expect(screen.queryByRole('button', { name: 'Potwierdź usunięcie' })).not.toBeInTheDocument()
     expect(within(cardFor('Plan A')).getByRole('alert')).toBe(alert)
     expect(mocks.deleteTemplate).toHaveBeenCalledTimes(1)
+  })
+
+  it('offers the starter plan until a plan of that name exists', async () => {
+    await renderPage()
+    expect(screen.getByRole('button', { name: 'Use the starter plan · Full body A/B' })).toBeInTheDocument()
+    cleanup()
+    mocks.getTemplates.mockResolvedValue([{ ...templates[0]!, id: 'starter', name: 'Full body A/B' }, ...templates])
+    await renderPage()
+    expect(screen.queryByRole('button', { name: /Use the starter plan/ })).not.toBeInTheDocument()
   })
 
   it('shares a plan as the text a pasted plan reads back', async () => {

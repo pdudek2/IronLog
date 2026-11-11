@@ -1,11 +1,9 @@
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { exercises } from '../../../data/exercises'
 import { catalogueCandidates } from '../exerciseMatch'
+import notion from '../__fixtures__/notionHistory.csv?raw'
 import { historyCsv, historyNames, importRequestWorkouts, localDay, readHistoryCsv, startedAtOf, type ParsedHistory } from '../historyCsv'
 
-const notion = readFileSync(join(__dirname, '../__fixtures__/notionHistory.csv'), 'utf8')
 const read = (text: string, units: 'kg' | 'lbs' = 'kg'): ParsedHistory => {
   const result = readHistoryCsv(text, units)
   if (!result.ok) throw new Error(result.error)

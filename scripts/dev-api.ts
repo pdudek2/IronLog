@@ -10,6 +10,7 @@ import materializeWorkoutHandler from '../api/materialize-workout.ts'
 import replaceSessionHandler from '../api/replace-session.ts'
 import saveTemplateHandler from '../api/save-template.ts'
 import createExerciseHandler from '../api/create-exercise.ts'
+import importWorkoutsHandler from '../api/import-workouts.ts'
 import updateWorkoutHandler from '../api/update-workout.ts'
 import { sendJson, type ApiRequest, type ApiResponse } from '../api/_lib/http.ts'
 
@@ -26,6 +27,7 @@ const routes = new Map<string, RouteHandler>([
   ['/api/save-template', saveTemplateHandler],
   ['/api/replace-session', replaceSessionHandler],
   ['/api/create-exercise', createExerciseHandler],
+  ['/api/import-workouts', importWorkoutsHandler],
   ['/api/update-workout', updateWorkoutHandler],
   ['/api/workout-mutation-state', workoutMutationStateHandler],
 ])

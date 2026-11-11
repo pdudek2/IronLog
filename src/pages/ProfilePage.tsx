@@ -47,7 +47,8 @@ export default function ProfilePage() {
       link.href = url
       link.download = `shear-history-${new Date().toISOString().slice(0, 10)}.csv`
       link.click()
-      URL.revokeObjectURL(url)
+      // Some browsers start the download after click returns; the object URL must outlive it.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000)
       if (truncated) toast.message('The file holds your latest 20,000 workouts.')
     } catch {
       toast.error('Could not read your workouts. Try again.')

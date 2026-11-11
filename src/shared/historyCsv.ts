@@ -7,14 +7,15 @@ import { MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES, MAX_SET_REPS, MAX_SE
 const LB_KG = 0.45359237
 
 type Column = 'date' | 'time' | 'number' | 'label' | 'exercise' | 'set' | 'reps' | 'weight' | 'status' | 'notes'
-// Tried in order on the lower-cased header with underscores as spaces: "Workout #" is a number, "Workout" a name.
+// Tried in order on the lower-cased header with underscores as spaces: "Numer serii" is a set, "Workout #" a workout
+// number, "Workout" a name.
 const COLUMN_WORDS: [RegExp, Column][] = [
   [/^(?:data|date|dzie[nń]|day)$/, 'date'],
   [/^(?:godzina|time|start(?:\s*time)?|hour)$/, 'time'],
-  [/numer|^(?:workout|session|training|trening)\s*(?:#|no\.?|nr|number|id)$|^#$/, 'number'],
+  [/^(?:set|seria|set order|set no\.?|set #|set number|nr serii|numer serii)$/, 'set'],
+  [/^(?:(?:numer|nr|no\.?)\s*(?:treningu|sesji)|(?:workout|session|training|trening)\s*(?:#|no\.?|nr|number|id)|#)$/, 'number'],
   [/exercise|[cć]wiczeni/, 'exercise'],
   [/^(?:typ|type|workout|workout name|session|session name|trening|nazwa treningu|day name)$/, 'label'],
-  [/^(?:set|seria|set order|set no\.?|set #|nr serii|numer serii)$/, 'set'],
   [/^(?:reps?|repetitions|powt[a-zÀ-ɏ]*\.?)$/, 'reps'],
   [/weight|ci[eę][zż]ar|\bload\b|obci[aą][zż]/, 'weight'],
   [/^status$/, 'status'],
@@ -82,14 +83,16 @@ function detectDelimiter(header: string): string {
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
-// "2026-04-10", "2026-04-10 18:05:00" (Strong), "10.04.2026", "10/04/2026".
+// "2026-04-10", "2026-04-10 18:05:00" (Strong), "10.04.2026", "10/04/2026"; "4/25/2026" only when the day says so.
 function readDate(cell: string): { date: string; time: string | null } | null {
   const iso = cell.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2}))?/)
   const local = cell.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2}):(\d{2}))?/)
+  const us = local && Number(local[2]) > 12 && Number(local[1]) <= 12
   const [year, month, day, hour, minute] = iso
     ? [iso[1], iso[2], iso[3], iso[4], iso[5]]
-    : local ? [local[3], local[2], local[1], local[4], local[5]] : []
+    : local ? [local[3], us ? local[1] : local[2], us ? local[2] : local[1], local[4], local[5]] : []
   if (!year) return null
+  if (hour !== undefined && (Number(hour) > 23 || Number(minute) > 59)) return null
   const value = new Date(Number(year), Number(month) - 1, Number(day))
   if (value.getFullYear() !== Number(year) || value.getMonth() !== Number(month) - 1 || value.getDate() !== Number(day)) return null
   return { date: `${year}-${pad(Number(month))}-${pad(Number(day))}`, time: hour ? `${pad(Number(hour))}:${minute}` : null }
@@ -126,7 +129,12 @@ export function readHistoryCsv(text: string, units: WeightUnits): HistoryReadRes
     return { ok: false, error: `The file needs a column for the ${missing.join(', ')}; it has ${header.filter(Boolean).join(', ')}.` }
   }
   const weightHeader = columns.has('weight') ? header[columns.get('weight')!]! : ''
-  const pounds = /\blbs?\b|pound|funt/i.test(weightHeader) || (!/\bkg\b/i.test(weightHeader) && units === 'lbs')
+  // "Ciężar_kg", "weight_lbs": underscores separate words here as well.
+  const unitWords = weightHeader.replace(/_/g, ' ')
+  const pounds = /\blbs?\b|pound|funt/i.test(unitWords) || (!/\bkgs?\b/i.test(unitWords) && units === 'lbs')
+  // The server takes workouts from 2000 up to today; a row outside that is listed, not sent to fail its batch.
+  const earliest = '2000-01-01'
+  const latest = localDay(Date.now() + 24 * 60 * 60_000)
 
   const history: ParsedHistory = { workouts: [], skipped: [], notes: [] }
   const byKey = new Map<string, ImportWorkout>()
@@ -139,7 +147,8 @@ export function readHistoryCsv(text: string, units: WeightUnits): HistoryReadRes
     const reps = Number(repsText)
     const weightText = at('weight').replace(',', '.').replace(/\s*(?:kgs?|lbs?)$/i, '')
     const weight = !weightText || /^(?:bw|body\s?weight|-)$/i.test(weightText) ? 0 : Number(weightText)
-    if (!when || !name || !repsText || !Number.isInteger(reps) || reps < 0 || reps > MAX_SET_REPS || !Number.isFinite(weight) || weight < 0) { unread(); continue }
+    if (!when || !name || !repsText || !Number.isInteger(reps) || reps < 1 || reps > MAX_SET_REPS || !Number.isFinite(weight) || weight < 0
+      || when.date < earliest || when.date > latest || name.length > 120 || at('number').length > 40) { unread(); continue }
     const weightKg = Math.round(weight * (pounds ? LB_KG : 1) * 100) / 100
     if (weightKg > MAX_SET_WEIGHT_KG) { unread(); continue }
     const status = readStatus(at('status'))
@@ -220,13 +229,14 @@ const csvField = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replace(
 
 // The import reads this file back: same columns, kg in the header so the account's units do not apply.
 export function historyCsv(workouts: ExportWorkout[]): string {
-  const rows = [['Date', 'Time', 'Workout', 'Exercise', 'Set', 'Reps', 'Weight (kg)']]
-  for (const workout of [...workouts].sort((a, b) => a.startedAt - b.startedAt)) {
+  // "Workout #" keeps two workouts of one day and name apart when the file is read back.
+  const rows = [['Date', 'Time', 'Workout #', 'Workout', 'Exercise', 'Set', 'Reps', 'Weight (kg)']]
+  for (const [number, workout] of [...workouts].sort((a, b) => a.startedAt - b.startedAt).entries()) {
     const date = new Date(workout.startedAt)
     const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`
     for (const exercise of workout.exercises) {
       exercise.sets.forEach((set, index) => {
-        rows.push([localDay(workout.startedAt), time, workout.label ?? '', exercise.name, String(index + 1), String(set.reps), String(Math.round(set.weight * 100) / 100)])
+        rows.push([localDay(workout.startedAt), time, String(number + 1), workout.label ?? '', exercise.name, String(index + 1), String(set.reps), String(Math.round(set.weight * 100) / 100)])
       })
     }
   }

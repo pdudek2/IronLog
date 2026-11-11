@@ -19,6 +19,7 @@ import {
   loadDashboardPage,
   loadExerciseDetailPage,
   loadExercisesPage,
+  loadHistoryImportPage,
   loadHistoryPage,
   loadLandingPage,
   loadLoginPage,
@@ -43,6 +44,7 @@ const OnboardingPage = lazy(loadOnboardingPage)
 const WorkoutPage = lazy(loadWorkoutPage)
 const WorkoutDetailPage = lazy(loadWorkoutDetailPage)
 const HistoryPage = lazy(loadHistoryPage)
+const HistoryImportPage = lazy(loadHistoryImportPage)
 const ProfilePage = lazy(loadProfilePage)
 const ExercisesPage = lazy(loadExercisesPage)
 const ExerciseDetailPage = lazy(loadExerciseDetailPage)
@@ -165,6 +167,7 @@ const router = createBrowserRouter(createRoutesFromElements(
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/history" element={<HistoryPage />} />
+          <Route path="/history/import" element={<HistoryImportPage />} />
           <Route path="/progress" element={<ProgressPage />} />
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/templates/new" element={<TemplateEditorPage />} />

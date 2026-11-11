@@ -34,6 +34,11 @@ function importsWithoutExtension(): string[] {
   return missing
 }
 
+// The Vercel Hobby plan deploys at most 12 functions; a 13th file in api/ stops the whole deploy.
+it('keeps api/ within the 12 functions the Vercel plan deploys', () => {
+  expect(readdirSync(join(root, 'api')).filter((name) => name.endsWith('.ts')).length).toBeLessThanOrEqual(12)
+})
+
 it('API functions import local modules with the .js extension Node ESM needs', () => {
   expect(importsWithoutExtension()).toEqual([])
 })

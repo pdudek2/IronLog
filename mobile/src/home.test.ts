@@ -28,6 +28,9 @@ test('uses local Monday/day boundaries and caps duration', () => {
   assert.equal(data.days[6]?.workouts, 1)
   assert.equal(data.weeklyVolume, 2_000)
   assert.equal(data.averageMinutes, 30)
+  // An imported workout has no time and leaves the average alone.
+  const imported = { ...workout('imported', monday.getTime() + 3_600_000), finishedAt: monday.getTime() + 3_600_000 }
+  assert.equal(deriveHome([workout('monday', monday.getTime()), imported], now).averageMinutes, 30)
   assert.equal(data.recent.length, 4)
   assert.equal(getGreeting(new Date(2026, 8, 23, 5)), 'Good night')
 })

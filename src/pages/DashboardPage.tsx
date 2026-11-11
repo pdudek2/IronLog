@@ -31,7 +31,7 @@ import {
   getRecentWorkouts, retryWorkoutMaterialization, countWeeklyWorkouts,
   calcStreak, calcVolume, type WorkoutSummary,
 } from '../lib/workoutService'
-import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
+import { getCappedWorkoutFinishedAt, hasRecordedDuration } from '../lib/sessionDuration'
 import { pluralize } from '../lib/pluralize'
 import { workoutTitle } from '../lib/workoutCopy'
 import { useAuthStore } from '../store/authStore'
@@ -568,10 +568,12 @@ export default function DashboardPage() {
   const previousWeekWorkouts = workouts.filter((workout) => workout.startedAt >= previousWeekStart && workout.startedAt < weekStart)
   const weeklyVolume = weeklyWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
   const previousWeeklyVolume = previousWeekWorkouts.reduce((sum, workout) => sum + calcVolume(workout), 0)
-  const avgMinutes = weeklyWorkouts.length
-    ? Math.round(weeklyWorkouts.reduce((sum, workout) => (
+  // Imported workouts carry no time, so they are left out of the average.
+  const timedWorkouts = weeklyWorkouts.filter((workout) => hasRecordedDuration(workout.startedAt, workout.finishedAt))
+  const avgMinutes = timedWorkouts.length
+    ? Math.round(timedWorkouts.reduce((sum, workout) => (
       sum + (getCappedWorkoutFinishedAt(workout.startedAt, workout.finishedAt) - workout.startedAt)
-    ), 0) / weeklyWorkouts.length / 60_000)
+    ), 0) / timedWorkouts.length / 60_000)
     : 0
   const avgVolumePerSession = weeklyWorkouts.length ? Math.round(weeklyVolume / weeklyWorkouts.length) : 0
   const weeklySessionsDelta = weeklyDone - previousWeekWorkouts.length

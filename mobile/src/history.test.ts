@@ -5,6 +5,7 @@ import {
   deriveWorkout,
   filterWorkouts,
   formatWorkoutDuration,
+  hasRecordedDuration,
   groupWorkoutsByMonth,
   parseSavedWorkout,
   workoutFocusLabel,
@@ -54,6 +55,7 @@ test('history derives source-scoped categories, filters title/exercises and grou
 
 test('history formatting stays aligned with web duration, preview, and unit conversion', () => {
   assert.equal(formatWorkoutDuration(0, 45 * 60_000), '45 min')
+  assert.deepEqual([hasRecordedDuration(5, 5), hasRecordedDuration(5, 6)], [false, true])
   assert.equal(formatWorkoutDuration(0, 13 * 60 * 60_000), '12 h')
   assert.equal(workoutSetVolumeLabel(65, 8, 'lbs'), '1,146.4')
 })

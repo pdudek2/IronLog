@@ -26,6 +26,8 @@ const routes = new Map<string, RouteHandler>([
   ['/api/save-template', saveTemplateHandler],
   ['/api/replace-session', replaceSessionHandler],
   ['/api/create-exercise', createExerciseHandler],
+  // Rewritten to the materialize function in vercel.json, as in production.
+  ['/api/import-workouts', materializeWorkoutHandler],
   ['/api/update-workout', updateWorkoutHandler],
   ['/api/workout-mutation-state', workoutMutationStateHandler],
 ])

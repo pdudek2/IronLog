@@ -4,7 +4,7 @@ import { formatCompactVolume, kgToDisplayWeight, type WeightUnits } from '../../
 import type { ExerciseSource } from './session'
 import type { WorkoutMonthGroup as MonthGroup } from '../../src/shared/workoutHistory'
 export { formatHistoryDate, groupWorkoutsByMonth } from '../../src/shared/workoutHistory'
-export { formatWorkoutDuration } from '../../src/shared/sessionDuration'
+export { formatWorkoutDuration, hasRecordedDuration } from '../../src/shared/sessionDuration'
 export type WorkoutMonthGroup = MonthGroup<DerivedWorkout>
 
 export interface SavedWorkoutSet {

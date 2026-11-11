@@ -19,7 +19,7 @@ import {
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
 import { groupWorkoutsByMonth } from '../shared/workoutHistory'
-import { formatWorkoutDuration } from '../lib/sessionDuration'
+import { formatWorkoutDuration, hasRecordedDuration } from '../lib/sessionDuration'
 
 type RangePreset = '30' | '90' | '365' | 'all'
 
@@ -384,6 +384,7 @@ export default function HistoryPage() {
             <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
               Your first completed workout will appear here.
             </p>
+            <button type="button" className="planner-secondary-action mt-5" onClick={() => navigate('/history/import')}>Import history from a file</button>
           </div>
         ) : (
           <div className="history-month-list">
@@ -416,7 +417,7 @@ export default function HistoryPage() {
                             <div className="min-w-0">
                               <h3>{workoutTitle(workout)}</h3>
                               <div className="history-workout-meta">
-                                <span>{formatWorkoutDuration(workout.startedAt, workout.finishedAt)}</span>
+                                {hasRecordedDuration(workout.startedAt, workout.finishedAt) && <span>{formatWorkoutDuration(workout.startedAt, workout.finishedAt)}</span>}
                                 <span className="history-inline-stat">{formatCompactVolume(totalVolume, units)}</span>
                                 <span className="history-inline-stat">{totalSets} {pluralize(totalSets, 'set', 'sets')}</span>
                               </div>

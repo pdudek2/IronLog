@@ -5,6 +5,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/onboarding$/, 'Welcome'],
   [/^\/dashboard$/, 'Home'],
   [/^\/history$/, 'History'],
+  [/^\/history\/import$/, 'Import history'],
   [/^\/progress$/, 'Progress'],
   [/^\/templates$/, 'Plans'],
   [/^\/templates\/new$/, 'New plan'],

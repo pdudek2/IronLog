@@ -1,4 +1,4 @@
-import { getCappedWorkoutFinishedAt } from '../../src/shared/sessionDuration'
+import { getCappedWorkoutFinishedAt, hasRecordedDuration } from '../../src/shared/sessionDuration'
 import type { SavedWorkout } from './history'
 import { deriveWorkout } from './history'
 import type { ReadState } from './scopedRead'
@@ -48,11 +48,13 @@ export function deriveHome(workouts: SavedWorkout[], now: Date) {
       isToday: date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth() && date.getDate() === now.getDate(),
     }
   })
+  const timed = weekly.filter((workout) => hasRecordedDuration(workout.startedAt, workout.finishedAt))
   return {
     dates, days, weekly, weeklyDone: weekly.length, weeklyVolume,
     activeDays: days.filter((day) => day.workouts > 0).length,
     peakDay: days.reduce<(typeof days)[number] | null>((peak, day) => !peak || day.volume > peak.volume ? day : peak, null),
-    averageMinutes: weekly.length ? Math.round(weekly.reduce((sum, workout) => sum + getCappedWorkoutFinishedAt(workout.startedAt, workout.finishedAt) - workout.startedAt, 0) / weekly.length / 60_000) : 0,
+    // Imported workouts carry no time, so they are left out of the average.
+    averageMinutes: timed.length ? Math.round(timed.reduce((sum, workout) => sum + getCappedWorkoutFinishedAt(workout.startedAt, workout.finishedAt) - workout.startedAt, 0) / timed.length / 60_000) : 0,
     averageVolume: weekly.length ? Math.round(weeklyVolume / weekly.length) : 0,
     sessionsDelta: weekly.length - previous.length,
     volumeDelta: previousVolume > 0 && weekly.length > 0 ? Math.round((weeklyVolume - previousVolume) / previousVolume * 100) : null,

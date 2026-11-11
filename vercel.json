@@ -29,12 +29,21 @@
   "redirects": [
     {
       "source": "/(.*)",
-      "has": [{ "type": "host", "value": "ironlog-coach.vercel.app" }],
+      "has": [
+        {
+          "type": "host",
+          "value": "ironlog-coach.vercel.app"
+        }
+      ],
       "destination": "https://getshear.vercel.app/$1",
       "permanent": true
     }
   ],
   "rewrites": [
+    {
+      "source": "/api/import-workouts",
+      "destination": "/api/materialize-workout"
+    },
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"

@@ -17,6 +17,7 @@ import {
   filterWorkouts,
   formatHistoryDate,
   formatWorkoutDuration,
+  hasRecordedDuration,
   groupWorkoutsByMonth,
   type HistoryRange,
   workoutVolumeLabel,
@@ -197,7 +198,7 @@ export default function HistoryScreen() {
                             </View>
                             <View style={styles.workoutCopy}>
                               <Text numberOfLines={2} style={styles.workoutTitle}>{workoutTitle(workout)}</Text>
-                              <Text style={styles.workoutMetaText}>{formatWorkoutDuration(workout.startedAt, workout.finishedAt)} · {workoutVolumeLabel(totalVolume, active.state.units)} · {totalSets} {pluralize(totalSets, 'set', 'sets')}</Text>
+                              <Text style={styles.workoutMetaText}>{[hasRecordedDuration(workout.startedAt, workout.finishedAt) ? formatWorkoutDuration(workout.startedAt, workout.finishedAt) : null, workoutVolumeLabel(totalVolume, active.state.units), `${totalSets} ${pluralize(totalSets, 'set', 'sets')}`].filter(Boolean).join(' · ')}</Text>
                             </View>
                             <Svg accessibilityElementsHidden height={18} width={18} viewBox="0 0 24 24"><Path d="m9 18 6-6-6-6" fill="none" stroke={colors.mutedSoft} strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} /></Svg>
                           </View>

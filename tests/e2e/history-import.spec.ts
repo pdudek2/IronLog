@@ -74,7 +74,7 @@ test.describe('History import', () => {
     const exported = await (await file.createReadStream()).toArray()
     const text = Buffer.concat(exported).toString('utf8')
     expect(text.trim().split('\r\n')).toHaveLength(6)
-    expect(text).toContain('2026-03-04,12:00,Lower,Squat,1,5,100')
+    expect(text).toContain('2026-03-04,12:00,2,Lower,Squat,1,5,100')
 
     await page.goto('/history/import')
     await expect(page.getByText('Choose a CSV file')).toBeVisible({ timeout: 15_000 })

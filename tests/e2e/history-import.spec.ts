@@ -98,4 +98,29 @@ test.describe('History import', () => {
     await page.getByRole('button', { name: 'All', exact: true }).click()
     await expect(page.locator('.history-workout-meta')).toHaveCount(3)
   })
+
+  test('undoes the batches that went through when a later one keeps failing', async ({ page, request, expectedBrowserDiagnostics }, testInfo) => {
+    test.skip(process.env.E2E_BACKEND !== 'emulator', 'Needs a fresh emulator account')
+    await signUpFresh(page, request)
+    const days = Array.from({ length: 11 }, (_, index) => `2026-02-${String(index + 1).padStart(2, '0')},Squat,5,100`)
+    let posts = 0
+    await page.route('**/api/import-workouts', (route) => (++posts > 1 ? route.fulfill({ status: 500, contentType: 'application/json', body: '{"error":"Server unavailable."}' }) : route.continue()))
+
+    await page.goto('/history/import')
+    await expect(page.getByText('Choose a CSV file')).toBeVisible({ timeout: 15_000 })
+    await chooseFile(page, 'days.csv', `Date,Exercise,Reps,Weight (kg)\n${days.join('\n')}\n`)
+    await expectedBrowserDiagnostics.allowing(
+      'the second batch refused on purpose',
+      (entry) => entry.kind === 'console' && entry.message.includes('500 (Internal Server Error)'),
+      async () => {
+        await page.getByRole('button', { name: 'Import 11 workouts' }).click()
+        await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible({ timeout: 30_000 })
+      },
+    )
+    await page.screenshot({ path: testInfo.outputPath('failed-batch.png') })
+    await page.getByRole('button', { name: 'Undo import' }).click()
+    await expect(page.getByRole('heading', { name: 'Import undone' })).toBeVisible({ timeout: 30_000 })
+    await page.goto('/history')
+    await expect(page.getByRole('button', { name: 'Import history from a file' })).toBeVisible({ timeout: 15_000 })
+  })
 })

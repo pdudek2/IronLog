@@ -1,0 +1,746 @@
+﻿Data;Numer_treningu;Typ;Ćwiczenie;Seria;Powtórzenia;Ciężar_kg;Status;Uwagi;Źródło_Notion;Zapis_oryginalny
+2025-11-04;86;LOWER;Przysiad;1;8;55.0;Wykonano;;;Przysiad 4x8 55 kg
+2025-11-04;86;LOWER;Przysiad;2;8;55.0;Wykonano;;;Przysiad 4x8 55 kg
+2025-11-04;86;LOWER;Przysiad;3;8;55.0;Wykonano;;;Przysiad 4x8 55 kg
+2025-11-04;86;LOWER;Przysiad;4;8;55.0;Wykonano;;;Przysiad 4x8 55 kg
+2025-11-04;86;LOWER;Odwodziciele;1;8;;Do weryfikacji;"W Notion zapisano ""55 g"" przed liczbą serii; ciężar niejednoznaczny | Nazwa oryg.: Out odwodziciel";;Out odwodziciel 55 g 3x8
+2025-11-04;86;LOWER;Odwodziciele;2;8;;Do weryfikacji;"W Notion zapisano ""55 g"" przed liczbą serii; ciężar niejednoznaczny | Nazwa oryg.: Out odwodziciel";;Out odwodziciel 55 g 3x8
+2025-11-04;86;LOWER;Odwodziciele;3;8;;Do weryfikacji;"W Notion zapisano ""55 g"" przed liczbą serii; ciężar niejednoznaczny | Nazwa oryg.: Out odwodziciel";;Out odwodziciel 55 g 3x8
+2025-11-04;86;LOWER;Przywodziciele;1;8;;Wykonano;Nazwa oryg.: In przywodziciel;;In przywodziciel 4x8
+2025-11-04;86;LOWER;Przywodziciele;2;8;;Wykonano;Nazwa oryg.: In przywodziciel;;In przywodziciel 4x8
+2025-11-04;86;LOWER;Przywodziciele;3;8;;Wykonano;Nazwa oryg.: In przywodziciel;;In przywodziciel 4x8
+2025-11-04;86;LOWER;Przywodziciele;4;8;;Wykonano;Nazwa oryg.: In przywodziciel;;In przywodziciel 4x8
+2025-11-04;86;LOWER;Leg press;1;8;73.0;Wykonano;;;Leg press 4x8 73 kg
+2025-11-04;86;LOWER;Leg press;2;8;73.0;Wykonano;;;Leg press 4x8 73 kg
+2025-11-04;86;LOWER;Leg press;3;8;73.0;Wykonano;;;Leg press 4x8 73 kg
+2025-11-04;86;LOWER;Leg press;4;8;73.0;Wykonano;;;Leg press 4x8 73 kg
+2025-12-12;87;UPPER;Wyciskanie na ławce;1;8;40.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 3x8 40 kg 1x8 45 kg
+2025-12-12;87;UPPER;Wyciskanie na ławce;2;8;40.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 3x8 40 kg 1x8 45 kg
+2025-12-12;87;UPPER;Wyciskanie na ławce;3;8;40.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 3x8 40 kg 1x8 45 kg
+2025-12-12;87;UPPER;Wyciskanie na ławce;4;8;45.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 3x8 40 kg 1x8 45 kg
+2025-12-12;87;UPPER;Ściąganie drążka;1;8;40.0;Wykonano;Nazwa oryg.: Ciąganie drążka;;Ciąganie drążka 3x8 40 kg
+2025-12-12;87;UPPER;Ściąganie drążka;2;8;40.0;Wykonano;Nazwa oryg.: Ciąganie drążka;;Ciąganie drążka 3x8 40 kg
+2025-12-12;87;UPPER;Ściąganie drążka;3;8;40.0;Wykonano;Nazwa oryg.: Ciąganie drążka;;Ciąganie drążka 3x8 40 kg
+2025-12-12;87;UPPER;Wiosłowanie na wyciągu;1;8;40.0;Wykonano;Nazwa oryg.: Wiosłowanie na wyciągi;;Wiosłowanie na wyciągi 3x8 40 kg
+2025-12-12;87;UPPER;Wiosłowanie na wyciągu;2;8;40.0;Wykonano;Nazwa oryg.: Wiosłowanie na wyciągi;;Wiosłowanie na wyciągi 3x8 40 kg
+2025-12-12;87;UPPER;Wiosłowanie na wyciągu;3;8;40.0;Wykonano;Nazwa oryg.: Wiosłowanie na wyciągi;;Wiosłowanie na wyciągi 3x8 40 kg
+2025-12-12;87;UPPER;OHP;1;8;25.0;Wykonano;;;Ohp 3x8 25 kg
+2025-12-12;87;UPPER;OHP;2;8;25.0;Wykonano;;;Ohp 3x8 25 kg
+2025-12-12;87;UPPER;OHP;3;8;25.0;Wykonano;;;Ohp 3x8 25 kg
+2025-12-12;87;UPPER;Wznosy bokiem;1;8;7.5;Wykonano;;;Wznosy bokiem 3x8 7,5 kg
+2025-12-12;87;UPPER;Wznosy bokiem;2;8;7.5;Wykonano;;;Wznosy bokiem 3x8 7,5 kg
+2025-12-12;87;UPPER;Wznosy bokiem;3;8;7.5;Wykonano;;;Wznosy bokiem 3x8 7,5 kg
+2025-12-12;87;UPPER;Biceps;1;12;7.5;Wykonano;;;Biceps 3x12 7,5 kg
+2025-12-12;87;UPPER;Biceps;2;12;7.5;Wykonano;;;Biceps 3x12 7,5 kg
+2025-12-12;87;UPPER;Biceps;3;12;7.5;Wykonano;;;Biceps 3x12 7,5 kg
+2025-12-12;87;UPPER;Triceps;1;8;12.5;Wykonano;;;Triceps 3x8 12,5 kg
+2025-12-12;87;UPPER;Triceps;2;8;12.5;Wykonano;;;Triceps 3x8 12,5 kg
+2025-12-12;87;UPPER;Triceps;3;8;12.5;Wykonano;;;Triceps 3x8 12,5 kg
+2025-12-16;88;LOWER;Leg press;1;8;82.0;Wykonano;"Źródło zawiera także zbiorcze 4x8; rozbito na 2x8 82 kg + 2x8 91 kg";;Leg press 4x8 2x8 82 kg 2x8 91 kg
+2025-12-16;88;LOWER;Leg press;2;8;82.0;Wykonano;"Źródło zawiera także zbiorcze 4x8; rozbito na 2x8 82 kg + 2x8 91 kg";;Leg press 4x8 2x8 82 kg 2x8 91 kg
+2025-12-16;88;LOWER;Leg press;3;8;91.0;Wykonano;"Źródło zawiera także zbiorcze 4x8; rozbito na 2x8 82 kg + 2x8 91 kg";;Leg press 4x8 2x8 82 kg 2x8 91 kg
+2025-12-16;88;LOWER;Leg press;4;8;91.0;Wykonano;"Źródło zawiera także zbiorcze 4x8; rozbito na 2x8 82 kg + 2x8 91 kg";;Leg press 4x8 2x8 82 kg 2x8 91 kg
+2025-12-16;88;LOWER;Leg curls tyłem;1;10;30.0;Wykonano;;;Leg curls tyłem 3x10 30 kg
+2025-12-16;88;LOWER;Leg curls tyłem;2;10;30.0;Wykonano;;;Leg curls tyłem 3x10 30 kg
+2025-12-16;88;LOWER;Leg curls tyłem;3;10;30.0;Wykonano;;;Leg curls tyłem 3x10 30 kg
+2025-12-16;88;LOWER;Przywodziciele;1;10;36.0;Wykonano;;;Przywodziciele 3x10 36 kg
+2025-12-16;88;LOWER;Przywodziciele;2;10;36.0;Wykonano;;;Przywodziciele 3x10 36 kg
+2025-12-16;88;LOWER;Przywodziciele;3;10;36.0;Wykonano;;;Przywodziciele 3x10 36 kg
+2025-12-16;88;LOWER;Łydki;1;12;15.0;Wykonano;;;Łydki 3x12 15 kg
+2025-12-16;88;LOWER;Łydki;2;12;15.0;Wykonano;;;Łydki 3x12 15 kg
+2025-12-16;88;LOWER;Łydki;3;12;15.0;Wykonano;;;Łydki 3x12 15 kg
+2025-12-18;89;UPPER;Wyciskanie na ławce;1;8;45.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 45 kg
+2025-12-18;89;UPPER;Wyciskanie na ławce;2;8;45.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 45 kg
+2025-12-18;89;UPPER;Wyciskanie na ławce;3;8;45.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 45 kg
+2025-12-18;89;UPPER;Wyciskanie na ławce;4;8;45.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 45 kg
+2025-12-18;89;UPPER;Ściąganie drążka;1;8;45.0;Wykonano;;;Ściąganie drążka 1x8 45 kg, 2x10 40 kg
+2025-12-18;89;UPPER;Ściąganie drążka;2;10;40.0;Wykonano;;;Ściąganie drążka 1x8 45 kg, 2x10 40 kg
+2025-12-18;89;UPPER;Ściąganie drążka;3;10;40.0;Wykonano;;;Ściąganie drążka 1x8 45 kg, 2x10 40 kg
+2025-12-18;89;UPPER;Wiosłowanie na wyciągu;1;10;40.0;Wykonano;;;Wiosłowanie na wyciągu 1x10 40 kg, 2x10 35 kg
+2025-12-18;89;UPPER;Wiosłowanie na wyciągu;2;10;35.0;Wykonano;;;Wiosłowanie na wyciągu 1x10 40 kg, 2x10 35 kg
+2025-12-18;89;UPPER;Wiosłowanie na wyciągu;3;10;35.0;Wykonano;;;Wiosłowanie na wyciągu 1x10 40 kg, 2x10 35 kg
+2025-12-18;89;UPPER;OHP;1;10;25.0;Wykonano;;;Ohp 3x10 25 kg
+2025-12-18;89;UPPER;OHP;2;10;25.0;Wykonano;;;Ohp 3x10 25 kg
+2025-12-18;89;UPPER;OHP;3;10;25.0;Wykonano;;;Ohp 3x10 25 kg
+2025-12-18;89;UPPER;Wznosy bokiem;1;9;8.0;Wykonano;;;Wznosy bokiem 3x9 8 kg
+2025-12-18;89;UPPER;Wznosy bokiem;2;9;8.0;Wykonano;;;Wznosy bokiem 3x9 8 kg
+2025-12-18;89;UPPER;Wznosy bokiem;3;9;8.0;Wykonano;;;Wznosy bokiem 3x9 8 kg
+2025-12-18;89;UPPER;Biceps;1;8;9.0;Wykonano;;;Biceps 3x8 9 kg
+2025-12-18;89;UPPER;Biceps;2;8;9.0;Wykonano;;;Biceps 3x8 9 kg
+2025-12-18;89;UPPER;Biceps;3;8;9.0;Wykonano;;;Biceps 3x8 9 kg
+2025-12-18;89;UPPER;Triceps;1;8;15.0;Wykonano;;;Triceps 3x8 15 kg
+2025-12-18;89;UPPER;Triceps;2;8;15.0;Wykonano;;;Triceps 3x8 15 kg
+2025-12-18;89;UPPER;Triceps;3;8;15.0;Wykonano;;;Triceps 3x8 15 kg
+2025-12-21;90;LOWER;Przysiad;1;8;55.0;Wykonano;;;Przysiad 4x8 55 kg
+2025-12-21;90;LOWER;Przysiad;2;8;55.0;Wykonano;;;Przysiad 4x8 55 kg
+2025-12-21;90;LOWER;Przysiad;3;8;55.0;Wykonano;;;Przysiad 4x8 55 kg
+2025-12-21;90;LOWER;Przysiad;4;8;55.0;Wykonano;;;Przysiad 4x8 55 kg
+2025-12-21;90;LOWER;Leg press;1;8;82.0;Wykonano;;;Leg press 4x8 82 kg
+2025-12-21;90;LOWER;Leg press;2;8;82.0;Wykonano;;;Leg press 4x8 82 kg
+2025-12-21;90;LOWER;Leg press;3;8;82.0;Wykonano;;;Leg press 4x8 82 kg
+2025-12-21;90;LOWER;Leg press;4;8;82.0;Wykonano;;;Leg press 4x8 82 kg
+2025-12-21;90;LOWER;Leg curls;1;12;30.0;Wykonano;;;Leg curls 3x12 30 kg
+2025-12-21;90;LOWER;Leg curls;2;12;30.0;Wykonano;;;Leg curls 3x12 30 kg
+2025-12-21;90;LOWER;Leg curls;3;12;30.0;Wykonano;;;Leg curls 3x12 30 kg
+2025-12-21;90;LOWER;Przywodziciele;1;12;36.0;Wykonano;;;Przywodziciele 3x12 36 kg
+2025-12-21;90;LOWER;Przywodziciele;2;12;36.0;Wykonano;;;Przywodziciele 3x12 36 kg
+2025-12-21;90;LOWER;Przywodziciele;3;12;36.0;Wykonano;;;Przywodziciele 3x12 36 kg
+2025-12-21;90;LOWER;Łydki;1;12;25.0;Wykonano;;;Łydki 3x12 25 kg
+2025-12-21;90;LOWER;Łydki;2;12;25.0;Wykonano;;;Łydki 3x12 25 kg
+2025-12-21;90;LOWER;Łydki;3;12;25.0;Wykonano;;;Łydki 3x12 25 kg
+2025-12-29;91;UPPER;Wyciskanie na ławce;1;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2025-12-29;91;UPPER;Wyciskanie na ławce;2;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2025-12-29;91;UPPER;Wyciskanie na ławce;3;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2025-12-29;91;UPPER;Wyciskanie na ławce;4;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2025-12-29;91;UPPER;Ściąganie drążka;1;8;45.0;Wykonano;;;Ściąganie drążka 1x8 45 kg 2x12 40 kg
+2025-12-29;91;UPPER;Ściąganie drążka;2;12;40.0;Wykonano;;;Ściąganie drążka 1x8 45 kg 2x12 40 kg
+2025-12-29;91;UPPER;Ściąganie drążka;3;12;40.0;Wykonano;;;Ściąganie drążka 1x8 45 kg 2x12 40 kg
+2025-12-29;91;UPPER;Wiosłowanie na wyciągu;1;12;25.0;Wykonano;Nazwa oryg.: Wiosłowanie;;Wiosłowanie 2x12 25kg 2x8 35 kg
+2025-12-29;91;UPPER;Wiosłowanie na wyciągu;2;12;25.0;Wykonano;Nazwa oryg.: Wiosłowanie;;Wiosłowanie 2x12 25kg 2x8 35 kg
+2025-12-29;91;UPPER;Wiosłowanie na wyciągu;3;8;35.0;Wykonano;Nazwa oryg.: Wiosłowanie;;Wiosłowanie 2x12 25kg 2x8 35 kg
+2025-12-29;91;UPPER;Wiosłowanie na wyciągu;4;8;35.0;Wykonano;Nazwa oryg.: Wiosłowanie;;Wiosłowanie 2x12 25kg 2x8 35 kg
+2025-12-29;91;UPPER;OHP;1;8;27.5;Wykonano;;;Ohp 3x8 27,5 kg
+2025-12-29;91;UPPER;OHP;2;8;27.5;Wykonano;;;Ohp 3x8 27,5 kg
+2025-12-29;91;UPPER;OHP;3;8;27.5;Wykonano;;;Ohp 3x8 27,5 kg
+2025-12-29;91;UPPER;Wznosy bokiem;1;12;8.0;Wykonano;;;Wznosy bokiem 3x12 8 kg
+2025-12-29;91;UPPER;Wznosy bokiem;2;12;8.0;Wykonano;;;Wznosy bokiem 3x12 8 kg
+2025-12-29;91;UPPER;Wznosy bokiem;3;12;8.0;Wykonano;;;Wznosy bokiem 3x12 8 kg
+2025-12-29;91;UPPER;Biceps;1;12;9.0;Wykonano;;;Biceps 3x12 9 kg
+2025-12-29;91;UPPER;Biceps;2;12;9.0;Wykonano;;;Biceps 3x12 9 kg
+2025-12-29;91;UPPER;Biceps;3;12;9.0;Wykonano;;;Biceps 3x12 9 kg
+2025-12-29;91;UPPER;Triceps;1;10;15.0;Wykonano;;;Triceps 3x10 15 kg
+2025-12-29;91;UPPER;Triceps;2;10;15.0;Wykonano;;;Triceps 3x10 15 kg
+2025-12-29;91;UPPER;Triceps;3;10;15.0;Wykonano;;;Triceps 3x10 15 kg
+2026-01-08;92;LOWER;Martwy ciąg;1;6;50.0;Wykonano;;;Martwy ciąg 3x6 50 kg
+2026-01-08;92;LOWER;Martwy ciąg;2;6;50.0;Wykonano;;;Martwy ciąg 3x6 50 kg
+2026-01-08;92;LOWER;Martwy ciąg;3;6;50.0;Wykonano;;;Martwy ciąg 3x6 50 kg
+2026-01-08;92;LOWER;Leg press;1;8;82.0;Wykonano;;;Leg press 2x8 82 kg, 2x8 91 kg
+2026-01-08;92;LOWER;Leg press;2;8;82.0;Wykonano;;;Leg press 2x8 82 kg, 2x8 91 kg
+2026-01-08;92;LOWER;Leg press;3;8;91.0;Wykonano;;;Leg press 2x8 82 kg, 2x8 91 kg
+2026-01-08;92;LOWER;Leg press;4;8;91.0;Wykonano;;;Leg press 2x8 82 kg, 2x8 91 kg
+2026-01-08;92;LOWER;Leg curls;1;8;35.0;Wykonano;;;Leg curls 3x8 35 kg
+2026-01-08;92;LOWER;Leg curls;2;8;35.0;Wykonano;;;Leg curls 3x8 35 kg
+2026-01-08;92;LOWER;Leg curls;3;8;35.0;Wykonano;;;Leg curls 3x8 35 kg
+2026-01-08;92;LOWER;Przywodziciele;1;8;41.0;Wykonano;;;Przywodziciele 3x8 41 kg
+2026-01-08;92;LOWER;Przywodziciele;2;8;41.0;Wykonano;;;Przywodziciele 3x8 41 kg
+2026-01-08;92;LOWER;Przywodziciele;3;8;41.0;Wykonano;;;Przywodziciele 3x8 41 kg
+2026-01-13;93;UPPER;Wyciskanie na ławce;1;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2026-01-13;93;UPPER;Wyciskanie na ławce;2;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2026-01-13;93;UPPER;Wyciskanie na ławce;3;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2026-01-13;93;UPPER;Wyciskanie na ławce;4;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2026-01-13;93;UPPER;Ściąganie drążka;1;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-01-13;93;UPPER;Ściąganie drążka;2;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-01-13;93;UPPER;Ściąganie drążka;3;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-01-13;93;UPPER;Wiosłowanie na wyciągu;1;8;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 35 kg
+2026-01-13;93;UPPER;Wiosłowanie na wyciągu;2;8;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 35 kg
+2026-01-13;93;UPPER;Wiosłowanie na wyciągu;3;8;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 35 kg
+2026-01-13;93;UPPER;Wznosy bokiem;1;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-01-13;93;UPPER;Wznosy bokiem;2;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-01-13;93;UPPER;Wznosy bokiem;3;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-01-13;93;UPPER;Biceps;1;8;10.0;Wykonano;;;Biceps 3x8 10 kg
+2026-01-13;93;UPPER;Biceps;2;8;10.0;Wykonano;;;Biceps 3x8 10 kg
+2026-01-13;93;UPPER;Biceps;3;8;10.0;Wykonano;;;Biceps 3x8 10 kg
+2026-01-13;93;UPPER;Triceps;1;8;25.0;Wykonano;;;Triceps 3x8 25 kg
+2026-01-13;93;UPPER;Triceps;2;8;25.0;Wykonano;;;Triceps 3x8 25 kg
+2026-01-13;93;UPPER;Triceps;3;8;25.0;Wykonano;;;Triceps 3x8 25 kg
+2026-01-14;94;LOWER;Przysiad;1;8;57.5;Wykonano;;;Przysiad 4x8 57,5 kg
+2026-01-14;94;LOWER;Przysiad;2;8;57.5;Wykonano;;;Przysiad 4x8 57,5 kg
+2026-01-14;94;LOWER;Przysiad;3;8;57.5;Wykonano;;;Przysiad 4x8 57,5 kg
+2026-01-14;94;LOWER;Przysiad;4;8;57.5;Wykonano;;;Przysiad 4x8 57,5 kg
+2026-01-14;94;LOWER;Leg extension;1;8;59.0;Wykonano;;;Leg extension 3x8 59 kg
+2026-01-14;94;LOWER;Leg extension;2;8;59.0;Wykonano;;;Leg extension 3x8 59 kg
+2026-01-14;94;LOWER;Leg extension;3;8;59.0;Wykonano;;;Leg extension 3x8 59 kg
+2026-01-14;94;LOWER;Leg curls;1;10;35.0;Wykonano;;;Leg curls 3x10 35 kg
+2026-01-14;94;LOWER;Leg curls;2;10;35.0;Wykonano;;;Leg curls 3x10 35 kg
+2026-01-14;94;LOWER;Leg curls;3;10;35.0;Wykonano;;;Leg curls 3x10 35 kg
+2026-01-14;94;LOWER;Łydki;1;12;30.0;Wykonano;;;Łydki 3x12 30 kg
+2026-01-14;94;LOWER;Łydki;2;12;30.0;Wykonano;;;Łydki 3x12 30 kg
+2026-01-14;94;LOWER;Łydki;3;12;30.0;Wykonano;;;Łydki 3x12 30 kg
+2026-01-16;95;UPPER;Wyciskanie na ławce;1;10;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 50 kg
+2026-01-16;95;UPPER;Wyciskanie na ławce;2;10;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 50 kg
+2026-01-16;95;UPPER;Wyciskanie na ławce;3;10;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 50 kg
+2026-01-16;95;UPPER;Wyciskanie na ławce;4;10;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 50 kg
+2026-01-16;95;UPPER;Ściąganie drążka;1;10;40.0;Wykonano;;;Ściąganie drążka 4x10 40 kg
+2026-01-16;95;UPPER;Ściąganie drążka;2;10;40.0;Wykonano;;;Ściąganie drążka 4x10 40 kg
+2026-01-16;95;UPPER;Ściąganie drążka;3;10;40.0;Wykonano;;;Ściąganie drążka 4x10 40 kg
+2026-01-16;95;UPPER;Ściąganie drążka;4;10;40.0;Wykonano;;;Ściąganie drążka 4x10 40 kg
+2026-01-16;95;UPPER;Wiosłowanie na wyciągu;1;12;30.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 30 kg
+2026-01-16;95;UPPER;Wiosłowanie na wyciągu;2;12;30.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 30 kg
+2026-01-16;95;UPPER;Wiosłowanie na wyciągu;3;12;30.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 30 kg
+2026-01-16;95;UPPER;Wznosy bokiem;1;9;9.0;Wykonano;;;Wznosy bokiem 3x9 9 kg
+2026-01-16;95;UPPER;Wznosy bokiem;2;9;9.0;Wykonano;;;Wznosy bokiem 3x9 9 kg
+2026-01-16;95;UPPER;Wznosy bokiem;3;9;9.0;Wykonano;;;Wznosy bokiem 3x9 9 kg
+2026-01-16;95;UPPER;Biceps;1;9;10.0;Wykonano;;;Biceps 3x9 10 kg
+2026-01-16;95;UPPER;Biceps;2;9;10.0;Wykonano;;;Biceps 3x9 10 kg
+2026-01-16;95;UPPER;Biceps;3;9;10.0;Wykonano;;;Biceps 3x9 10 kg
+2026-01-16;95;UPPER;Triceps;1;10;25.0;Wykonano;;;Triceps 3x10 25 kg
+2026-01-16;95;UPPER;Triceps;2;10;25.0;Wykonano;;;Triceps 3x10 25 kg
+2026-01-16;95;UPPER;Triceps;3;10;25.0;Wykonano;;;Triceps 3x10 25 kg
+2026-01-18;96;LOWER;Martwy ciąg;1;6;60.0;Wykonano;;;Martwy ciąg 3x6 60 kg
+2026-01-18;96;LOWER;Martwy ciąg;2;6;60.0;Wykonano;;;Martwy ciąg 3x6 60 kg
+2026-01-18;96;LOWER;Martwy ciąg;3;6;60.0;Wykonano;;;Martwy ciąg 3x6 60 kg
+2026-01-18;96;LOWER;Leg press;1;8;91.0;Wykonano;;;Leg press 3x8 91 kg
+2026-01-18;96;LOWER;Leg press;2;8;91.0;Wykonano;;;Leg press 3x8 91 kg
+2026-01-18;96;LOWER;Leg press;3;8;91.0;Wykonano;;;Leg press 3x8 91 kg
+2026-01-18;96;LOWER;Leg curls;1;8;40.0;Wykonano;;;Leg curls 3x8 40 kg
+2026-01-18;96;LOWER;Leg curls;2;8;40.0;Wykonano;;;Leg curls 3x8 40 kg
+2026-01-18;96;LOWER;Leg curls;3;8;40.0;Wykonano;;;Leg curls 3x8 40 kg
+2026-01-18;96;LOWER;Przywodziciele;1;10;41.0;Wykonano;;;Przywodziciele 3x10 41 kg
+2026-01-18;96;LOWER;Przywodziciele;2;10;41.0;Wykonano;;;Przywodziciele 3x10 41 kg
+2026-01-18;96;LOWER;Przywodziciele;3;10;41.0;Wykonano;;;Przywodziciele 3x10 41 kg
+2026-01-18;96;LOWER;Łydki;1;12;35.0;Wykonano;;;Łydki 3x12 35 kg
+2026-01-18;96;LOWER;Łydki;2;12;35.0;Wykonano;;;Łydki 3x12 35 kg
+2026-01-18;96;LOWER;Łydki;3;12;35.0;Wykonano;;;Łydki 3x12 35 kg
+2026-01-29;97;UPPER;Wyciskanie na ławce;1;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2026-01-29;97;UPPER;Wyciskanie na ławce;2;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2026-01-29;97;UPPER;Wyciskanie na ławce;3;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2026-01-29;97;UPPER;Wyciskanie na ławce;4;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 50 kg
+2026-01-29;97;UPPER;Ściąganie drążka;1;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-01-29;97;UPPER;Ściąganie drążka;2;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-01-29;97;UPPER;Ściąganie drążka;3;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-01-29;97;UPPER;Wiosłowanie na wyciągu;1;8;25.0;Wykonano;;;Wiosłowanie na wyciągu 4x8 25 kg
+2026-01-29;97;UPPER;Wiosłowanie na wyciągu;2;8;25.0;Wykonano;;;Wiosłowanie na wyciągu 4x8 25 kg
+2026-01-29;97;UPPER;Wiosłowanie na wyciągu;3;8;25.0;Wykonano;;;Wiosłowanie na wyciągu 4x8 25 kg
+2026-01-29;97;UPPER;Wiosłowanie na wyciągu;4;8;25.0;Wykonano;;;Wiosłowanie na wyciągu 4x8 25 kg
+2026-01-29;97;UPPER;OHP;1;8;25.0;Wykonano;;;Ohp 3x8 25 kg
+2026-01-29;97;UPPER;OHP;2;8;25.0;Wykonano;;;Ohp 3x8 25 kg
+2026-01-29;97;UPPER;OHP;3;8;25.0;Wykonano;;;Ohp 3x8 25 kg
+2026-01-29;97;UPPER;Wznosy bokiem;1;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-01-29;97;UPPER;Wznosy bokiem;2;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-01-29;97;UPPER;Wznosy bokiem;3;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-01-29;97;UPPER;Biceps;1;10;10.0;Wykonano;;;Biceps 3x10 10 kg
+2026-01-29;97;UPPER;Biceps;2;10;10.0;Wykonano;;;Biceps 3x10 10 kg
+2026-01-29;97;UPPER;Biceps;3;10;10.0;Wykonano;;;Biceps 3x10 10 kg
+2026-01-29;97;UPPER;Triceps;1;8;25.0;Wykonano;;;Triceps 3x8 25 kg 1x12 20 kg 1x8 22,5 kg
+2026-01-29;97;UPPER;Triceps;2;8;25.0;Wykonano;;;Triceps 3x8 25 kg 1x12 20 kg 1x8 22,5 kg
+2026-01-29;97;UPPER;Triceps;3;8;25.0;Wykonano;;;Triceps 3x8 25 kg 1x12 20 kg 1x8 22,5 kg
+2026-01-29;97;UPPER;Triceps;4;12;20.0;Wykonano;;;Triceps 3x8 25 kg 1x12 20 kg 1x8 22,5 kg
+2026-01-29;97;UPPER;Triceps;5;8;22.5;Wykonano;;;Triceps 3x8 25 kg 1x12 20 kg 1x8 22,5 kg
+2026-02-02;98;LOWER;Przysiad;1;8;60.0;Wykonano;;;Przysiad 4x8 60 kg
+2026-02-02;98;LOWER;Przysiad;2;8;60.0;Wykonano;;;Przysiad 4x8 60 kg
+2026-02-02;98;LOWER;Przysiad;3;8;60.0;Wykonano;;;Przysiad 4x8 60 kg
+2026-02-02;98;LOWER;Przysiad;4;8;60.0;Wykonano;;;Przysiad 4x8 60 kg
+2026-02-02;98;LOWER;Leg press;1;8;91.0;Wykonano;;;Leg press 3x8 91 kg
+2026-02-02;98;LOWER;Leg press;2;8;91.0;Wykonano;;;Leg press 3x8 91 kg
+2026-02-02;98;LOWER;Leg press;3;8;91.0;Wykonano;;;Leg press 3x8 91 kg
+2026-02-02;98;LOWER;Leg curls;1;8;40.0;Wykonano;;;Leg curls 3x8 40 kg
+2026-02-02;98;LOWER;Leg curls;2;8;40.0;Wykonano;;;Leg curls 3x8 40 kg
+2026-02-02;98;LOWER;Leg curls;3;8;40.0;Wykonano;;;Leg curls 3x8 40 kg
+2026-02-02;98;LOWER;Przywodziciele;1;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-02-02;98;LOWER;Przywodziciele;2;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-02-02;98;LOWER;Przywodziciele;3;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-02-10;99;UPPER;Wyciskanie na ławce;1;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 2x8 52,5 kg 2x8 50 kg
+2026-02-10;99;UPPER;Wyciskanie na ławce;2;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 2x8 52,5 kg 2x8 50 kg
+2026-02-10;99;UPPER;Wyciskanie na ławce;3;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 2x8 52,5 kg 2x8 50 kg
+2026-02-10;99;UPPER;Wyciskanie na ławce;4;8;50.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 2x8 52,5 kg 2x8 50 kg
+2026-02-10;99;UPPER;Ściąganie drążka;1;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-02-10;99;UPPER;Ściąganie drążka;2;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-02-10;99;UPPER;Ściąganie drążka;3;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-02-10;99;UPPER;Wiosłowanie na wyciągu;1;8;30.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 30 kg
+2026-02-10;99;UPPER;Wiosłowanie na wyciągu;2;8;30.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 30 kg
+2026-02-10;99;UPPER;Wiosłowanie na wyciągu;3;8;30.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 30 kg
+2026-02-10;99;UPPER;Wznosy bokiem;1;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-02-10;99;UPPER;Wznosy bokiem;2;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-02-10;99;UPPER;Wznosy bokiem;3;8;9.0;Wykonano;;;Wznosy bokiem 3x8 9 kg
+2026-02-10;99;UPPER;Biceps;1;8;10.0;Wykonano;;;Biceps 3x8 10 kg
+2026-02-10;99;UPPER;Biceps;2;8;10.0;Wykonano;;;Biceps 3x8 10 kg
+2026-02-10;99;UPPER;Biceps;3;8;10.0;Wykonano;;;Biceps 3x8 10 kg
+2026-02-10;99;UPPER;Triceps;1;8;17.5;Wykonano;;;Triceps 3x8 17,5 kg
+2026-02-10;99;UPPER;Triceps;2;8;17.5;Wykonano;;;Triceps 3x8 17,5 kg
+2026-02-10;99;UPPER;Triceps;3;8;17.5;Wykonano;;;Triceps 3x8 17,5 kg
+2026-02-16;100;LOWER;Przysiad;1;8;60.0;Wykonano;;;Przysiad 4x8 60 kg
+2026-02-16;100;LOWER;Przysiad;2;8;60.0;Wykonano;;;Przysiad 4x8 60 kg
+2026-02-16;100;LOWER;Przysiad;3;8;60.0;Wykonano;;;Przysiad 4x8 60 kg
+2026-02-16;100;LOWER;Przysiad;4;8;60.0;Wykonano;;;Przysiad 4x8 60 kg
+2026-02-16;100;LOWER;Leg press (ziemny);1;10;80.0;Wykonano;W Notion: leg press ziemny | Nazwa oryg.: Leg press;;Leg press 3x10 80 kg leg press ziemny
+2026-02-16;100;LOWER;Leg press (ziemny);2;10;80.0;Wykonano;W Notion: leg press ziemny | Nazwa oryg.: Leg press;;Leg press 3x10 80 kg leg press ziemny
+2026-02-16;100;LOWER;Leg press (ziemny);3;10;80.0;Wykonano;W Notion: leg press ziemny | Nazwa oryg.: Leg press;;Leg press 3x10 80 kg leg press ziemny
+2026-02-16;100;LOWER;Leg curls;1;12;40.0;Wykonano;;;Leg curls 3x12 40 kg
+2026-02-16;100;LOWER;Leg curls;2;12;40.0;Wykonano;;;Leg curls 3x12 40 kg
+2026-02-16;100;LOWER;Leg curls;3;12;40.0;Wykonano;;;Leg curls 3x12 40 kg
+2026-02-16;100;LOWER;Przywodziciele;1;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-02-16;100;LOWER;Przywodziciele;2;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-02-16;100;LOWER;Przywodziciele;3;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-02-18;101;UPPER;Wyciskanie na ławce;1;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 52,5 kg
+2026-02-18;101;UPPER;Wyciskanie na ławce;2;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 52,5 kg
+2026-02-18;101;UPPER;Wyciskanie na ławce;3;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 52,5 kg
+2026-02-18;101;UPPER;Wyciskanie na ławce;4;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 52,5 kg
+2026-02-18;101;UPPER;Ściąganie drążka;1;8;45.0;Wykonano;;;Ściąganie drążka 4x8 45 kg
+2026-02-18;101;UPPER;Ściąganie drążka;2;8;45.0;Wykonano;;;Ściąganie drążka 4x8 45 kg
+2026-02-18;101;UPPER;Ściąganie drążka;3;8;45.0;Wykonano;;;Ściąganie drążka 4x8 45 kg
+2026-02-18;101;UPPER;Ściąganie drążka;4;8;45.0;Wykonano;;;Ściąganie drążka 4x8 45 kg
+2026-02-18;101;UPPER;Wiosłowanie na wyciągu;1;8;35.0;Wykonano;;;Wiosłowanie na wyciągu 2x8 35 kg, 1x8 40 kg
+2026-02-18;101;UPPER;Wiosłowanie na wyciągu;2;8;35.0;Wykonano;;;Wiosłowanie na wyciągu 2x8 35 kg, 1x8 40 kg
+2026-02-18;101;UPPER;Wiosłowanie na wyciągu;3;8;40.0;Wykonano;;;Wiosłowanie na wyciągu 2x8 35 kg, 1x8 40 kg
+2026-02-18;101;UPPER;Wznosy bokiem;1;8;10.0;Wykonano;;;Wznosy bokiem 3x8 10 kg
+2026-02-18;101;UPPER;Wznosy bokiem;2;8;10.0;Wykonano;;;Wznosy bokiem 3x8 10 kg
+2026-02-18;101;UPPER;Wznosy bokiem;3;8;10.0;Wykonano;;;Wznosy bokiem 3x8 10 kg
+2026-02-18;101;UPPER;Biceps;1;10;10.0;Wykonano;;;Biceps 3x10 10 kg
+2026-02-18;101;UPPER;Biceps;2;10;10.0;Wykonano;;;Biceps 3x10 10 kg
+2026-02-18;101;UPPER;Biceps;3;10;10.0;Wykonano;;;Biceps 3x10 10 kg
+2026-02-18;101;UPPER;Triceps;1;12;17.5;Wykonano;;;Triceps 3x12 17,5 kg
+2026-02-18;101;UPPER;Triceps;2;12;17.5;Wykonano;;;Triceps 3x12 17,5 kg
+2026-02-18;101;UPPER;Triceps;3;12;17.5;Wykonano;;;Triceps 3x12 17,5 kg
+2026-02-20;102;LOWER;Martwy ciąg;1;6;62.5;Wykonano;;;Martwy ciąg 3x6 62,5 kg
+2026-02-20;102;LOWER;Martwy ciąg;2;6;62.5;Wykonano;;;Martwy ciąg 3x6 62,5 kg
+2026-02-20;102;LOWER;Martwy ciąg;3;6;62.5;Wykonano;;;Martwy ciąg 3x6 62,5 kg
+2026-02-20;102;LOWER;Leg press;1;10;91.0;Wykonano;;;Leg press 3x10 91 kg
+2026-02-20;102;LOWER;Leg press;2;10;91.0;Wykonano;;;Leg press 3x10 91 kg
+2026-02-20;102;LOWER;Leg press;3;10;91.0;Wykonano;;;Leg press 3x10 91 kg
+2026-02-20;102;LOWER;Leg curls;1;8;45.0;Wykonano;;;Leg curls 3x8 45 kg
+2026-02-20;102;LOWER;Leg curls;2;8;45.0;Wykonano;;;Leg curls 3x8 45 kg
+2026-02-20;102;LOWER;Leg curls;3;8;45.0;Wykonano;;;Leg curls 3x8 45 kg
+2026-02-20;102;LOWER;Przywodziciele;1;8;41.0;Wykonano;;;Przywodziciele 3x8 41 kg
+2026-02-20;102;LOWER;Przywodziciele;2;8;41.0;Wykonano;;;Przywodziciele 3x8 41 kg
+2026-02-20;102;LOWER;Przywodziciele;3;8;41.0;Wykonano;;;Przywodziciele 3x8 41 kg
+2026-02-22;103;UPPER;Wyciskanie na ławce;1;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 52,5 kg
+2026-02-22;103;UPPER;Wyciskanie na ławce;2;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 52,5 kg
+2026-02-22;103;UPPER;Wyciskanie na ławce;3;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 52,5 kg
+2026-02-22;103;UPPER;Wyciskanie na ławce;4;8;52.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 52,5 kg
+2026-02-22;103;UPPER;Ściąganie drążka;1;8;45.0;Wykonano;;;Ściąganie drążka 3x8 45 kg
+2026-02-22;103;UPPER;Ściąganie drążka;2;8;45.0;Wykonano;;;Ściąganie drążka 3x8 45 kg
+2026-02-22;103;UPPER;Ściąganie drążka;3;8;45.0;Wykonano;;;Ściąganie drążka 3x8 45 kg
+2026-02-22;103;UPPER;Wiosłowanie na wyciągu;1;8;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 40 kg
+2026-02-22;103;UPPER;Wiosłowanie na wyciągu;2;8;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 40 kg
+2026-02-22;103;UPPER;Wiosłowanie na wyciągu;3;8;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 40 kg
+2026-02-22;103;UPPER;Wznosy bokiem;1;9;10.0;Wykonano;;;Wznosy bokiem 3x9 10 kg
+2026-02-22;103;UPPER;Wznosy bokiem;2;9;10.0;Wykonano;;;Wznosy bokiem 3x9 10 kg
+2026-02-22;103;UPPER;Wznosy bokiem;3;9;10.0;Wykonano;;;Wznosy bokiem 3x9 10 kg
+2026-02-22;103;UPPER;Biceps;1;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-02-22;103;UPPER;Biceps;2;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-02-22;103;UPPER;Biceps;3;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-02-22;103;UPPER;Triceps;1;8;20.0;Wykonano;;;Triceps 3x8 20 kg
+2026-02-22;103;UPPER;Triceps;2;8;20.0;Wykonano;;;Triceps 3x8 20 kg
+2026-02-22;103;UPPER;Triceps;3;8;20.0;Wykonano;;;Triceps 3x8 20 kg
+2026-02-23;104;LOWER;Przysiad;1;8;62.5;Wykonano;;;Przysiad 4x8 62,5 kg
+2026-02-23;104;LOWER;Przysiad;2;8;62.5;Wykonano;;;Przysiad 4x8 62,5 kg
+2026-02-23;104;LOWER;Przysiad;3;8;62.5;Wykonano;;;Przysiad 4x8 62,5 kg
+2026-02-23;104;LOWER;Przysiad;4;8;62.5;Wykonano;;;Przysiad 4x8 62,5 kg
+2026-02-23;104;LOWER;Leg press;1;8;100.0;Wykonano;;;Leg press 3x8 100 kg
+2026-02-23;104;LOWER;Leg press;2;8;100.0;Wykonano;;;Leg press 3x8 100 kg
+2026-02-23;104;LOWER;Leg press;3;8;100.0;Wykonano;;;Leg press 3x8 100 kg
+2026-02-23;104;LOWER;Leg curls;1;9;45.0;Wykonano;;;Leg curls 3x9 45 kg
+2026-02-23;104;LOWER;Leg curls;2;9;45.0;Wykonano;;;Leg curls 3x9 45 kg
+2026-02-23;104;LOWER;Leg curls;3;9;45.0;Wykonano;;;Leg curls 3x9 45 kg
+2026-02-23;104;LOWER;Przywodziciele;1;10;41.0;Wykonano;;;Przywodziciele 3x10 41 kg
+2026-02-23;104;LOWER;Przywodziciele;2;10;41.0;Wykonano;;;Przywodziciele 3x10 41 kg
+2026-02-23;104;LOWER;Przywodziciele;3;10;41.0;Wykonano;;;Przywodziciele 3x10 41 kg
+2026-02-23;104;LOWER;Łydki;1;10;35.0;Wykonano;;;Łydki 3x10 35 kg
+2026-02-23;104;LOWER;Łydki;2;10;35.0;Wykonano;;;Łydki 3x10 35 kg
+2026-02-23;104;LOWER;Łydki;3;10;35.0;Wykonano;;;Łydki 3x10 35 kg
+2026-02-24;105;UPPER;Wyciskanie na ławce;1;8;55.0;Wykonano;;;Wyciskanie na ławce 4x8 55 kg
+2026-02-24;105;UPPER;Wyciskanie na ławce;2;8;55.0;Wykonano;;;Wyciskanie na ławce 4x8 55 kg
+2026-02-24;105;UPPER;Wyciskanie na ławce;3;8;55.0;Wykonano;;;Wyciskanie na ławce 4x8 55 kg
+2026-02-24;105;UPPER;Wyciskanie na ławce;4;8;55.0;Wykonano;;;Wyciskanie na ławce 4x8 55 kg
+2026-02-24;105;UPPER;Ściąganie drążka;1;8;45.0;Wykonano;;;Ściąganie drążka 3x8 45 kg
+2026-02-24;105;UPPER;Ściąganie drążka;2;8;45.0;Wykonano;;;Ściąganie drążka 3x8 45 kg
+2026-02-24;105;UPPER;Ściąganie drążka;3;8;45.0;Wykonano;;;Ściąganie drążka 3x8 45 kg
+2026-02-24;105;UPPER;Wiosłowanie na wyciągu;1;10;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x10 40 kg
+2026-02-24;105;UPPER;Wiosłowanie na wyciągu;2;10;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x10 40 kg
+2026-02-24;105;UPPER;Wiosłowanie na wyciągu;3;10;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x10 40 kg
+2026-02-24;105;UPPER;Wznosy bokiem;1;9;10.0;Wykonano;;;Wznosy bokiem 3x9 10 kg
+2026-02-24;105;UPPER;Wznosy bokiem;2;9;10.0;Wykonano;;;Wznosy bokiem 3x9 10 kg
+2026-02-24;105;UPPER;Wznosy bokiem;3;9;10.0;Wykonano;;;Wznosy bokiem 3x9 10 kg
+2026-02-24;105;UPPER;Biceps;1;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-02-24;105;UPPER;Biceps;2;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-02-24;105;UPPER;Biceps;3;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-02-24;105;UPPER;Triceps;1;10;20.0;Wykonano;;;Triceps 3x10 20 kg
+2026-02-24;105;UPPER;Triceps;2;10;20.0;Wykonano;;;Triceps 3x10 20 kg
+2026-02-24;105;UPPER;Triceps;3;10;20.0;Wykonano;;;Triceps 3x10 20 kg
+2026-02-27;106;LOWER;Martwy ciąg;1;6;65.0;Wykonano;;;Martwy ciąg 3x6 65 kg
+2026-02-27;106;LOWER;Martwy ciąg;2;6;65.0;Wykonano;;;Martwy ciąg 3x6 65 kg
+2026-02-27;106;LOWER;Martwy ciąg;3;6;65.0;Wykonano;;;Martwy ciąg 3x6 65 kg
+2026-02-27;106;LOWER;Leg press;1;10;100.0;Wykonano;;;Leg press 3x10 100 kg
+2026-02-27;106;LOWER;Leg press;2;10;100.0;Wykonano;;;Leg press 3x10 100 kg
+2026-02-27;106;LOWER;Leg press;3;10;100.0;Wykonano;;;Leg press 3x10 100 kg
+2026-02-27;106;LOWER;Leg curls;1;10;45.0;Wykonano;;;Leg curls 2x10 45 kg
+2026-02-27;106;LOWER;Leg curls;2;10;45.0;Wykonano;;;Leg curls 2x10 45 kg
+2026-03-02;107;UPPER;Wyciskanie na ławce;1;8;55.0;Wykonano;;;Wyciskanie na ławce 4x8 55 kg
+2026-03-02;107;UPPER;Wyciskanie na ławce;2;8;55.0;Wykonano;;;Wyciskanie na ławce 4x8 55 kg
+2026-03-02;107;UPPER;Wyciskanie na ławce;3;8;55.0;Wykonano;;;Wyciskanie na ławce 4x8 55 kg
+2026-03-02;107;UPPER;Wyciskanie na ławce;4;8;55.0;Wykonano;;;Wyciskanie na ławce 4x8 55 kg
+2026-03-02;107;UPPER;Ściąganie drążka;1;9;45.0;Wykonano;;;Ściąganie drążka 3x9 45 kg
+2026-03-02;107;UPPER;Ściąganie drążka;2;9;45.0;Wykonano;;;Ściąganie drążka 3x9 45 kg
+2026-03-02;107;UPPER;Ściąganie drążka;3;9;45.0;Wykonano;;;Ściąganie drążka 3x9 45 kg
+2026-03-02;107;UPPER;Wiosłowanie na wyciągu;1;12;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 35 kg
+2026-03-02;107;UPPER;Wiosłowanie na wyciągu;2;12;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 35 kg
+2026-03-02;107;UPPER;Wiosłowanie na wyciągu;3;12;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 35 kg
+2026-03-02;107;UPPER;Face pull;1;12;12.5;Wykonano;;;Face pull 3x12 12,5 kg
+2026-03-02;107;UPPER;Face pull;2;12;12.5;Wykonano;;;Face pull 3x12 12,5 kg
+2026-03-02;107;UPPER;Face pull;3;12;12.5;Wykonano;;;Face pull 3x12 12,5 kg
+2026-03-02;107;UPPER;Biceps;1;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-02;107;UPPER;Biceps;2;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-02;107;UPPER;Biceps;3;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-02;107;UPPER;Triceps;1;12;20.0;Wykonano;;;Triceps 3x12 20 kg
+2026-03-02;107;UPPER;Triceps;2;12;20.0;Wykonano;;;Triceps 3x12 20 kg
+2026-03-02;107;UPPER;Triceps;3;12;20.0;Wykonano;;;Triceps 3x12 20 kg
+2026-03-03;108;LOWER;Przysiad;1;8;65.0;Wykonano;;;Przysiad 4x8 65 kg
+2026-03-03;108;LOWER;Przysiad;2;8;65.0;Wykonano;;;Przysiad 4x8 65 kg
+2026-03-03;108;LOWER;Przysiad;3;8;65.0;Wykonano;;;Przysiad 4x8 65 kg
+2026-03-03;108;LOWER;Przysiad;4;8;65.0;Wykonano;;;Przysiad 4x8 65 kg
+2026-03-03;108;LOWER;Leg press;1;12;100.0;Wykonano;;;Leg press 3x12 100 kg
+2026-03-03;108;LOWER;Leg press;2;12;100.0;Wykonano;;;Leg press 3x12 100 kg
+2026-03-03;108;LOWER;Leg press;3;12;100.0;Wykonano;;;Leg press 3x12 100 kg
+2026-03-03;108;LOWER;Leg curls;1;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-03;108;LOWER;Leg curls;2;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-03;108;LOWER;Leg curls;3;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-03;108;LOWER;Przywodziciele;1;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-03-03;108;LOWER;Przywodziciele;2;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-03-03;108;LOWER;Przywodziciele;3;8;46.0;Wykonano;;;Przywodziciele 3x8 46 kg
+2026-03-05;109;UPPER;Wyciskanie na ławce;1;8;55.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 55kg
+2026-03-05;109;UPPER;Wyciskanie na ławce;2;8;55.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 55kg
+2026-03-05;109;UPPER;Wyciskanie na ławce;3;8;55.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 55kg
+2026-03-05;109;UPPER;Wyciskanie na ławce;4;8;55.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 55kg
+2026-03-05;109;UPPER;Ściąganie drążka;1;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-03-05;109;UPPER;Ściąganie drążka;2;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-03-05;109;UPPER;Ściąganie drążka;3;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-03-05;109;UPPER;Wiosłowanie na wyciągu;1;12;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 35 kg
+2026-03-05;109;UPPER;Wiosłowanie na wyciągu;2;12;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 35 kg
+2026-03-05;109;UPPER;Wiosłowanie na wyciągu;3;12;35.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 35 kg
+2026-03-05;109;UPPER;Wznosy bokiem;1;10;10.0;Wykonano;;;Wznosy bokiem 3x10 10 kg
+2026-03-05;109;UPPER;Wznosy bokiem;2;10;10.0;Wykonano;;;Wznosy bokiem 3x10 10 kg
+2026-03-05;109;UPPER;Wznosy bokiem;3;10;10.0;Wykonano;;;Wznosy bokiem 3x10 10 kg
+2026-03-05;109;UPPER;Biceps;1;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-05;109;UPPER;Biceps;2;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-05;109;UPPER;Biceps;3;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-05;109;UPPER;Triceps;1;8;22.5;Wykonano;;;Triceps 3x8 22,5 kg
+2026-03-05;109;UPPER;Triceps;2;8;22.5;Wykonano;;;Triceps 3x8 22,5 kg
+2026-03-05;109;UPPER;Triceps;3;8;22.5;Wykonano;;;Triceps 3x8 22,5 kg
+2026-03-05;109;UPPER;Face pull;1;12;;Wykonano;;;Face pull 3x12
+2026-03-05;109;UPPER;Face pull;2;12;;Wykonano;;;Face pull 3x12
+2026-03-05;109;UPPER;Face pull;3;12;;Wykonano;;;Face pull 3x12
+2026-03-06;110;LOWER;Martwy ciąg;1;6;67.5;Wykonano;;;Martwy ciąg 3x6 67,5 kg
+2026-03-06;110;LOWER;Martwy ciąg;2;6;67.5;Wykonano;;;Martwy ciąg 3x6 67,5 kg
+2026-03-06;110;LOWER;Martwy ciąg;3;6;67.5;Wykonano;;;Martwy ciąg 3x6 67,5 kg
+2026-03-06;110;LOWER;Leg press;1;8;108.0;Wykonano;;;Leg press 3x8 108 kg
+2026-03-06;110;LOWER;Leg press;2;8;108.0;Wykonano;;;Leg press 3x8 108 kg
+2026-03-06;110;LOWER;Leg press;3;8;108.0;Wykonano;;;Leg press 3x8 108 kg
+2026-03-06;110;LOWER;Leg curls;1;12;45.0;Wykonano;;;Leg curls 2x12 45 kg
+2026-03-06;110;LOWER;Leg curls;2;12;45.0;Wykonano;;;Leg curls 2x12 45 kg
+2026-03-06;110;LOWER;Łydki;1;12;35.0;Wykonano;;;Łydki 3x12 35 kg
+2026-03-06;110;LOWER;Łydki;2;12;35.0;Wykonano;;;Łydki 3x12 35 kg
+2026-03-06;110;LOWER;Łydki;3;12;35.0;Wykonano;;;Łydki 3x12 35 kg
+2026-03-08;111;UPPER;Wyciskanie na ławce;1;10;55.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 55kg
+2026-03-08;111;UPPER;Wyciskanie na ławce;2;10;55.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 55kg
+2026-03-08;111;UPPER;Wyciskanie na ławce;3;10;55.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 55kg
+2026-03-08;111;UPPER;Wyciskanie na ławce;4;10;55.0;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 55kg
+2026-03-08;111;UPPER;Ściąganie drążka;1;10;35.0;Wykonano;;;Ściąganie drążka 3x10 35 kg
+2026-03-08;111;UPPER;Ściąganie drążka;2;10;35.0;Wykonano;;;Ściąganie drążka 3x10 35 kg
+2026-03-08;111;UPPER;Ściąganie drążka;3;10;35.0;Wykonano;;;Ściąganie drążka 3x10 35 kg
+2026-03-08;111;UPPER;Wiosłowanie na wyciągu;1;8;37.5;Wykonano;;;Wiosłowanie na wyciągu 3x8 37,5 kg
+2026-03-08;111;UPPER;Wiosłowanie na wyciągu;2;8;37.5;Wykonano;;;Wiosłowanie na wyciągu 3x8 37,5 kg
+2026-03-08;111;UPPER;Wiosłowanie na wyciągu;3;8;37.5;Wykonano;;;Wiosłowanie na wyciągu 3x8 37,5 kg
+2026-03-08;111;UPPER;Wznosy bokiem;1;11;10.0;Wykonano;;;Wznosy bokiem 3x11 10 kg
+2026-03-08;111;UPPER;Wznosy bokiem;2;11;10.0;Wykonano;;;Wznosy bokiem 3x11 10 kg
+2026-03-08;111;UPPER;Wznosy bokiem;3;11;10.0;Wykonano;;;Wznosy bokiem 3x11 10 kg
+2026-03-08;111;UPPER;Biceps;1;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-03-08;111;UPPER;Biceps;2;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-03-08;111;UPPER;Biceps;3;8;12.5;Wykonano;;;Biceps 3x8 12,5 kg
+2026-03-08;111;UPPER;Triceps;1;10;22.5;Wykonano;;;Triceps 3x10 22,5 kg
+2026-03-08;111;UPPER;Triceps;2;10;22.5;Wykonano;;;Triceps 3x10 22,5 kg
+2026-03-08;111;UPPER;Triceps;3;10;22.5;Wykonano;;;Triceps 3x10 22,5 kg
+2026-03-08;111;UPPER;Face pull;1;12;;Wykonano;;;Face pull 3x12
+2026-03-08;111;UPPER;Face pull;2;12;;Wykonano;;;Face pull 3x12
+2026-03-08;111;UPPER;Face pull;3;12;;Wykonano;;;Face pull 3x12
+2026-03-10;112;LOWER;Przysiad;1;10;65.0;Wykonano;;;Przysiad 4x10 65 kg
+2026-03-10;112;LOWER;Przysiad;2;10;65.0;Wykonano;;;Przysiad 4x10 65 kg
+2026-03-10;112;LOWER;Przysiad;3;10;65.0;Wykonano;;;Przysiad 4x10 65 kg
+2026-03-10;112;LOWER;Przysiad;4;10;65.0;Wykonano;;;Przysiad 4x10 65 kg
+2026-03-10;112;LOWER;Leg press;1;8;109.0;Wykonano;;;Leg press 3x8 109 kg
+2026-03-10;112;LOWER;Leg press;2;8;109.0;Wykonano;;;Leg press 3x8 109 kg
+2026-03-10;112;LOWER;Leg press;3;8;109.0;Wykonano;;;Leg press 3x8 109 kg
+2026-03-10;112;LOWER;Leg curls;1;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-10;112;LOWER;Leg curls;2;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-10;112;LOWER;Leg curls;3;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-12;113;UPPER;Wyciskanie na ławce;1;8;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 57,5kg
+2026-03-12;113;UPPER;Wyciskanie na ławce;2;8;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 57,5kg
+2026-03-12;113;UPPER;Wyciskanie na ławce;3;8;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 57,5kg
+2026-03-12;113;UPPER;Wyciskanie na ławce;4;8;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x8 57,5kg
+2026-03-12;113;UPPER;Ściąganie drążka;1;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-03-12;113;UPPER;Ściąganie drążka;2;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-03-12;113;UPPER;Ściąganie drążka;3;8;40.0;Wykonano;;;Ściąganie drążka 3x8 40 kg
+2026-03-12;113;UPPER;Wiosłowanie na wyciągu;1;8;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 40 kg
+2026-03-12;113;UPPER;Wiosłowanie na wyciągu;2;8;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 40 kg
+2026-03-12;113;UPPER;Wiosłowanie na wyciągu;3;8;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x8 40 kg
+2026-03-12;113;UPPER;Wznosy bokiem;1;12;10.0;Wykonano;;;Wznosy bokiem 3x12 10 kg
+2026-03-12;113;UPPER;Wznosy bokiem;2;12;10.0;Wykonano;;;Wznosy bokiem 3x12 10 kg
+2026-03-12;113;UPPER;Wznosy bokiem;3;12;10.0;Wykonano;;;Wznosy bokiem 3x12 10 kg
+2026-03-12;113;UPPER;Biceps;1;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-12;113;UPPER;Biceps;2;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-12;113;UPPER;Biceps;3;9;12.5;Wykonano;;;Biceps 3x9 12,5 kg
+2026-03-12;113;UPPER;Triceps;1;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-12;113;UPPER;Triceps;2;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-12;113;UPPER;Triceps;3;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-12;113;UPPER;Face pull;1;8;15.0;Wykonano;;;Face pull 3x8 15 kg
+2026-03-12;113;UPPER;Face pull;2;8;15.0;Wykonano;;;Face pull 3x8 15 kg
+2026-03-12;113;UPPER;Face pull;3;8;15.0;Wykonano;;;Face pull 3x8 15 kg
+2026-03-13;114;LOWER;Martwy ciąg;1;6;70.0;Wykonano;;;Martwy ciąg 3x6 70 kg
+2026-03-13;114;LOWER;Martwy ciąg;2;6;70.0;Wykonano;;;Martwy ciąg 3x6 70 kg
+2026-03-13;114;LOWER;Martwy ciąg;3;6;70.0;Wykonano;;;Martwy ciąg 3x6 70 kg
+2026-03-13;114;LOWER;Leg press (ziemny);1;10;100.0;Wykonano;Nazwa oryg.: Leg press Ziemia;;Leg press Ziemia 3x10 100 kg
+2026-03-13;114;LOWER;Leg press (ziemny);2;10;100.0;Wykonano;Nazwa oryg.: Leg press Ziemia;;Leg press Ziemia 3x10 100 kg
+2026-03-13;114;LOWER;Leg press (ziemny);3;10;100.0;Wykonano;Nazwa oryg.: Leg press Ziemia;;Leg press Ziemia 3x10 100 kg
+2026-03-13;114;LOWER;Leg curls;1;12;45.0;Wykonano;;;Leg curls 3x12 45 kg
+2026-03-13;114;LOWER;Leg curls;2;12;45.0;Wykonano;;;Leg curls 3x12 45 kg
+2026-03-13;114;LOWER;Leg curls;3;12;45.0;Wykonano;;;Leg curls 3x12 45 kg
+2026-03-13;114;LOWER;Przywodziciele;1;8;50.0;Wykonano;;;Przywodziciele 3x8 50 kg
+2026-03-13;114;LOWER;Przywodziciele;2;8;50.0;Wykonano;;;Przywodziciele 3x8 50 kg
+2026-03-13;114;LOWER;Przywodziciele;3;8;50.0;Wykonano;;;Przywodziciele 3x8 50 kg
+2026-03-13;114;LOWER;Łydki;1;15;24.0;Wykonano;24 kg na łydkę;;Łydki 3x15 24 kg na łydkę
+2026-03-13;114;LOWER;Łydki;2;15;24.0;Wykonano;24 kg na łydkę;;Łydki 3x15 24 kg na łydkę
+2026-03-13;114;LOWER;Łydki;3;15;24.0;Wykonano;24 kg na łydkę;;Łydki 3x15 24 kg na łydkę
+2026-03-16;115;UPPER;Wyciskanie na ławce;1;10;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 1x10, 1x8, 2x9 57,5kg
+2026-03-16;115;UPPER;Wyciskanie na ławce;2;8;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 1x10, 1x8, 2x9 57,5kg
+2026-03-16;115;UPPER;Wyciskanie na ławce;3;9;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 1x10, 1x8, 2x9 57,5kg
+2026-03-16;115;UPPER;Wyciskanie na ławce;4;9;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 1x10, 1x8, 2x9 57,5kg
+2026-03-16;115;UPPER;Ściąganie drążka;1;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-03-16;115;UPPER;Ściąganie drążka;2;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-03-16;115;UPPER;Ściąganie drążka;3;10;40.0;Wykonano;;;Ściąganie drążka 3x10 40 kg
+2026-03-16;115;UPPER;Wiosłowanie na wyciągu;1;12;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 40 kg
+2026-03-16;115;UPPER;Wiosłowanie na wyciągu;2;12;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 40 kg
+2026-03-16;115;UPPER;Wiosłowanie na wyciągu;3;12;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x12 40 kg
+2026-03-16;115;UPPER;Wznosy bokiem;1;13;10.0;Wykonano;;;Wznosy bokiem 3x13 10 kg
+2026-03-16;115;UPPER;Wznosy bokiem;2;13;10.0;Wykonano;;;Wznosy bokiem 3x13 10 kg
+2026-03-16;115;UPPER;Wznosy bokiem;3;13;10.0;Wykonano;;;Wznosy bokiem 3x13 10 kg
+2026-03-16;115;UPPER;Biceps;1;6;15.0;Wykonano;;;Biceps 1x6 15kg, 2x10 12,5 kg
+2026-03-16;115;UPPER;Biceps;2;10;12.5;Wykonano;;;Biceps 1x6 15kg, 2x10 12,5 kg
+2026-03-16;115;UPPER;Biceps;3;10;12.5;Wykonano;;;Biceps 1x6 15kg, 2x10 12,5 kg
+2026-03-16;115;UPPER;Triceps;1;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-16;115;UPPER;Triceps;2;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-16;115;UPPER;Triceps;3;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-16;115;UPPER;Face pull;1;15;10.0;Wykonano;;;Face pull 3x15 10 kg
+2026-03-16;115;UPPER;Face pull;2;15;10.0;Wykonano;;;Face pull 3x15 10 kg
+2026-03-16;115;UPPER;Face pull;3;15;10.0;Wykonano;;;Face pull 3x15 10 kg
+2026-03-17;116;LOWER;Przysiad;1;8;67.5;Wykonano;;;Przysiad 4x8 67,5 kg
+2026-03-17;116;LOWER;Przysiad;2;8;67.5;Wykonano;;;Przysiad 4x8 67,5 kg
+2026-03-17;116;LOWER;Przysiad;3;8;67.5;Wykonano;;;Przysiad 4x8 67,5 kg
+2026-03-17;116;LOWER;Przysiad;4;8;67.5;Wykonano;;;Przysiad 4x8 67,5 kg
+2026-03-17;116;LOWER;Leg press;1;10;109.0;Wykonano;;;Leg press 1x10, 2x12 109 kg
+2026-03-17;116;LOWER;Leg press;2;12;109.0;Wykonano;;;Leg press 1x10, 2x12 109 kg
+2026-03-17;116;LOWER;Leg press;3;12;109.0;Wykonano;;;Leg press 1x10, 2x12 109 kg
+2026-03-17;116;LOWER;Leg curls;1;13;45.0;Wykonano;;;Leg curls 3x13 45 kg
+2026-03-17;116;LOWER;Leg curls;2;13;45.0;Wykonano;;;Leg curls 3x13 45 kg
+2026-03-17;116;LOWER;Leg curls;3;13;45.0;Wykonano;;;Leg curls 3x13 45 kg
+2026-03-17;116;LOWER;Przywodziciele;1;10;50.0;Wykonano;;;Przywodziciele 4x10 50 kg
+2026-03-17;116;LOWER;Przywodziciele;2;10;50.0;Wykonano;;;Przywodziciele 4x10 50 kg
+2026-03-17;116;LOWER;Przywodziciele;3;10;50.0;Wykonano;;;Przywodziciele 4x10 50 kg
+2026-03-17;116;LOWER;Przywodziciele;4;10;50.0;Wykonano;;;Przywodziciele 4x10 50 kg
+2026-03-19;117;UPPER;Wyciskanie na ławce;1;10;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 57,5kg
+2026-03-19;117;UPPER;Wyciskanie na ławce;2;10;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 57,5kg
+2026-03-19;117;UPPER;Wyciskanie na ławce;3;10;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 57,5kg
+2026-03-19;117;UPPER;Wyciskanie na ławce;4;10;57.5;Wykonano;Nazwa oryg.: Wyciskanie szeroko;;Wyciskanie szeroko 4x10 57,5kg
+2026-03-19;117;UPPER;Ściąganie drążka;1;12;40.0;Wykonano;;;Ściąganie drążka 3x12 40 kg
+2026-03-19;117;UPPER;Ściąganie drążka;2;12;40.0;Wykonano;;;Ściąganie drążka 3x12 40 kg
+2026-03-19;117;UPPER;Ściąganie drążka;3;12;40.0;Wykonano;;;Ściąganie drążka 3x12 40 kg
+2026-03-19;117;UPPER;Wiosłowanie na wyciągu;1;15;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x15 40 kg
+2026-03-19;117;UPPER;Wiosłowanie na wyciągu;2;15;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x15 40 kg
+2026-03-19;117;UPPER;Wiosłowanie na wyciągu;3;15;40.0;Wykonano;;;Wiosłowanie na wyciągu 3x15 40 kg
+2026-03-19;117;UPPER;Wznosy bokiem;1;14;10.0;Wykonano;;;Wznosy bokiem 3x14 10 kg
+2026-03-19;117;UPPER;Wznosy bokiem;2;14;10.0;Wykonano;;;Wznosy bokiem 3x14 10 kg
+2026-03-19;117;UPPER;Wznosy bokiem;3;14;10.0;Wykonano;;;Wznosy bokiem 3x14 10 kg
+2026-03-19;117;UPPER;Biceps;1;10;12.5;Wykonano;;;Biceps 3x10 12,5 kg
+2026-03-19;117;UPPER;Biceps;2;10;12.5;Wykonano;;;Biceps 3x10 12,5 kg
+2026-03-19;117;UPPER;Biceps;3;10;12.5;Wykonano;;;Biceps 3x10 12,5 kg
+2026-03-19;117;UPPER;Triceps;1;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-19;117;UPPER;Triceps;2;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-19;117;UPPER;Triceps;3;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-19;117;UPPER;Face pull;1;15;10.0;Nie wykonano;W Notion dopisek: nie zrobiłem;;Face pull 3x15 10 kg // nie zrobilem
+2026-03-19;117;UPPER;Face pull;2;15;10.0;Nie wykonano;W Notion dopisek: nie zrobiłem;;Face pull 3x15 10 kg // nie zrobilem
+2026-03-19;117;UPPER;Face pull;3;15;10.0;Nie wykonano;W Notion dopisek: nie zrobiłem;;Face pull 3x15 10 kg // nie zrobilem
+2026-03-20;118;LOWER;Martwy ciąg;1;4;72.5;Wykonano;;;Martwy ciąg 3x4 72,5 kg
+2026-03-20;118;LOWER;Martwy ciąg;2;4;72.5;Wykonano;;;Martwy ciąg 3x4 72,5 kg
+2026-03-20;118;LOWER;Martwy ciąg;3;4;72.5;Wykonano;;;Martwy ciąg 3x4 72,5 kg
+2026-03-20;118;LOWER;Leg press;1;10;118.0;Wykonano;;;Leg press 1x10, 2x12 118 kg
+2026-03-20;118;LOWER;Leg press;2;12;118.0;Wykonano;;;Leg press 1x10, 2x12 118 kg
+2026-03-20;118;LOWER;Leg press;3;12;118.0;Wykonano;;;Leg press 1x10, 2x12 118 kg
+2026-03-20;118;LOWER;Leg curls;1;14;45.0;Wykonano;;;Leg curls 2x14 45 kg
+2026-03-20;118;LOWER;Leg curls;2;14;45.0;Wykonano;;;Leg curls 2x14 45 kg
+2026-03-20;118;LOWER;Przywodziciele;1;12;55.0;Wykonano;;;Przywodziciele 1x12 55 kg
+2026-03-23;119;UPPER;Wyciskanie na ławce;1;6;60.0;Wykonano;;;Wyciskanie na ławce 3x6, 1x12 60 kg
+2026-03-23;119;UPPER;Wyciskanie na ławce;2;6;60.0;Wykonano;;;Wyciskanie na ławce 3x6, 1x12 60 kg
+2026-03-23;119;UPPER;Wyciskanie na ławce;3;6;60.0;Wykonano;;;Wyciskanie na ławce 3x6, 1x12 60 kg
+2026-03-23;119;UPPER;Wyciskanie na ławce;4;12;60.0;Wykonano;;;Wyciskanie na ławce 3x6, 1x12 60 kg
+2026-03-23;119;UPPER;Ściąganie drążka;1;12;40.0;Wykonano;;;Ściąganie drążka 2x12 40 kg, 1x12 42,5 kg
+2026-03-23;119;UPPER;Ściąganie drążka;2;12;40.0;Wykonano;;;Ściąganie drążka 2x12 40 kg, 1x12 42,5 kg
+2026-03-23;119;UPPER;Ściąganie drążka;3;12;42.5;Wykonano;;;Ściąganie drążka 2x12 40 kg, 1x12 42,5 kg
+2026-03-23;119;UPPER;Wiosłowanie na wyciągu;1;15;45.0;Wykonano;;;Wiosłowanie na wyciągu 3x15 45 kg
+2026-03-23;119;UPPER;Wiosłowanie na wyciągu;2;15;45.0;Wykonano;;;Wiosłowanie na wyciągu 3x15 45 kg
+2026-03-23;119;UPPER;Wiosłowanie na wyciągu;3;15;45.0;Wykonano;;;Wiosłowanie na wyciągu 3x15 45 kg
+2026-03-23;119;UPPER;Wznosy bokiem;1;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-23;119;UPPER;Wznosy bokiem;2;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-23;119;UPPER;Wznosy bokiem;3;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-23;119;UPPER;Biceps;1;8;15.0;Wykonano;;;Biceps 1x8 15 kg, 2x15 10 kg
+2026-03-23;119;UPPER;Biceps;2;15;10.0;Wykonano;;;Biceps 1x8 15 kg, 2x15 10 kg
+2026-03-23;119;UPPER;Biceps;3;15;10.0;Wykonano;;;Biceps 1x8 15 kg, 2x15 10 kg
+2026-03-23;119;UPPER;Triceps;1;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-23;119;UPPER;Triceps;2;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-23;119;UPPER;Triceps;3;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-24;120;LOWER;Przysiad;1;8;70.0;Wykonano;;;Przysiad 4x8 70 kg
+2026-03-24;120;LOWER;Przysiad;2;8;70.0;Wykonano;;;Przysiad 4x8 70 kg
+2026-03-24;120;LOWER;Przysiad;3;8;70.0;Wykonano;;;Przysiad 4x8 70 kg
+2026-03-24;120;LOWER;Przysiad;4;8;70.0;Wykonano;;;Przysiad 4x8 70 kg
+2026-03-24;120;LOWER;Leg press;1;10;118.0;Wykonano;;;Leg press 3x10 118 kg
+2026-03-24;120;LOWER;Leg press;2;10;118.0;Wykonano;;;Leg press 3x10 118 kg
+2026-03-24;120;LOWER;Leg press;3;10;118.0;Wykonano;;;Leg press 3x10 118 kg
+2026-03-24;120;LOWER;Leg curls;1;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-24;120;LOWER;Leg curls;2;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-24;120;LOWER;Leg curls;3;10;45.0;Wykonano;;;Leg curls 3x10 45 kg
+2026-03-24;120;LOWER;Przywodziciele;1;12;50.0;Wykonano;;;Przywodziciele 3x12 50 kg
+2026-03-24;120;LOWER;Przywodziciele;2;12;50.0;Wykonano;;;Przywodziciele 3x12 50 kg
+2026-03-24;120;LOWER;Przywodziciele;3;12;50.0;Wykonano;;;Przywodziciele 3x12 50 kg
+2026-03-26;121;UPPER;Wyciskanie na ławce;1;8;60.0;Wykonano;;;Wyciskanie na ławce 4x8 60 kg
+2026-03-26;121;UPPER;Wyciskanie na ławce;2;8;60.0;Wykonano;;;Wyciskanie na ławce 4x8 60 kg
+2026-03-26;121;UPPER;Wyciskanie na ławce;3;8;60.0;Wykonano;;;Wyciskanie na ławce 4x8 60 kg
+2026-03-26;121;UPPER;Wyciskanie na ławce;4;8;60.0;Wykonano;;;Wyciskanie na ławce 4x8 60 kg
+2026-03-26;121;UPPER;Ściąganie drążka;1;10;42.5;Wykonano;;;Ściąganie drążka 4x10 42,5 kg
+2026-03-26;121;UPPER;Ściąganie drążka;2;10;42.5;Wykonano;;;Ściąganie drążka 4x10 42,5 kg
+2026-03-26;121;UPPER;Ściąganie drążka;3;10;42.5;Wykonano;;;Ściąganie drążka 4x10 42,5 kg
+2026-03-26;121;UPPER;Ściąganie drążka;4;10;42.5;Wykonano;;;Ściąganie drążka 4x10 42,5 kg
+2026-03-26;121;UPPER;Wiosłowanie na wyciągu;1;10;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x10 42,5 kg
+2026-03-26;121;UPPER;Wiosłowanie na wyciągu;2;10;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x10 42,5 kg
+2026-03-26;121;UPPER;Wiosłowanie na wyciągu;3;10;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x10 42,5 kg
+2026-03-26;121;UPPER;Wznosy bokiem;1;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-26;121;UPPER;Wznosy bokiem;2;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-26;121;UPPER;Wznosy bokiem;3;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-26;121;UPPER;Biceps;1;10;10.0;Wykonano;;;Biceps 1x10, 2x8 10 kg
+2026-03-26;121;UPPER;Biceps;2;8;10.0;Wykonano;;;Biceps 1x10, 2x8 10 kg
+2026-03-26;121;UPPER;Biceps;3;8;10.0;Wykonano;;;Biceps 1x10, 2x8 10 kg
+2026-03-26;121;UPPER;Triceps;1;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-26;121;UPPER;Triceps;2;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-26;121;UPPER;Triceps;3;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-27;122;LOWER;Martwy ciąg;1;6;72.5;Wykonano;;;Martwy ciąg 3x6 72,5 kg
+2026-03-27;122;LOWER;Martwy ciąg;2;6;72.5;Wykonano;;;Martwy ciąg 3x6 72,5 kg
+2026-03-27;122;LOWER;Martwy ciąg;3;6;72.5;Wykonano;;;Martwy ciąg 3x6 72,5 kg
+2026-03-27;122;LOWER;Leg press;1;8;118.0;Wykonano;;;Leg press 1x8, 1x12, 1x14 118kg
+2026-03-27;122;LOWER;Leg press;2;12;118.0;Wykonano;;;Leg press 1x8, 1x12, 1x14 118kg
+2026-03-27;122;LOWER;Leg press;3;14;118.0;Wykonano;;;Leg press 1x8, 1x12, 1x14 118kg
+2026-03-27;122;LOWER;Leg curls;1;12;45.0;Wykonano;;;Leg curls 3x12 45 kg
+2026-03-27;122;LOWER;Leg curls;2;12;45.0;Wykonano;;;Leg curls 3x12 45 kg
+2026-03-27;122;LOWER;Leg curls;3;12;45.0;Wykonano;;;Leg curls 3x12 45 kg
+2026-03-27;122;LOWER;Przywodziciele;1;15;50.0;Wykonano;;;Przywodziciele 2x15 50 kg, 1x8 55 kg
+2026-03-27;122;LOWER;Przywodziciele;2;15;50.0;Wykonano;;;Przywodziciele 2x15 50 kg, 1x8 55 kg
+2026-03-27;122;LOWER;Przywodziciele;3;8;55.0;Wykonano;;;Przywodziciele 2x15 50 kg, 1x8 55 kg
+2026-03-27;122;LOWER;Odwodziciele;1;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-03-27;122;LOWER;Odwodziciele;2;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-03-27;122;LOWER;Odwodziciele;3;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-03-30;123;UPPER;Wyciskanie na ławce;1;10;60.0;Wykonano;;;Wyciskanie na ławce 4x10 60 kg
+2026-03-30;123;UPPER;Wyciskanie na ławce;2;10;60.0;Wykonano;;;Wyciskanie na ławce 4x10 60 kg
+2026-03-30;123;UPPER;Wyciskanie na ławce;3;10;60.0;Wykonano;;;Wyciskanie na ławce 4x10 60 kg
+2026-03-30;123;UPPER;Wyciskanie na ławce;4;10;60.0;Wykonano;;;Wyciskanie na ławce 4x10 60 kg
+2026-03-30;123;UPPER;Ściąganie drążka;1;6;42.5;Wykonano;;;Ściąganie drążka 2x6 42,5 kg, 2x10 40 kg
+2026-03-30;123;UPPER;Ściąganie drążka;2;6;42.5;Wykonano;;;Ściąganie drążka 2x6 42,5 kg, 2x10 40 kg
+2026-03-30;123;UPPER;Ściąganie drążka;3;10;40.0;Wykonano;;;Ściąganie drążka 2x6 42,5 kg, 2x10 40 kg
+2026-03-30;123;UPPER;Ściąganie drążka;4;10;40.0;Wykonano;;;Ściąganie drążka 2x6 42,5 kg, 2x10 40 kg
+2026-03-30;123;UPPER;Wiosłowanie na wyciągu;1;12;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x12 42,5 kg
+2026-03-30;123;UPPER;Wiosłowanie na wyciągu;2;12;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x12 42,5 kg
+2026-03-30;123;UPPER;Wiosłowanie na wyciągu;3;12;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x12 42,5 kg
+2026-03-30;123;UPPER;Wznosy bokiem;1;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-30;123;UPPER;Wznosy bokiem;2;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-30;123;UPPER;Wznosy bokiem;3;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-03-30;123;UPPER;Biceps;1;10;10.0;Wykonano;;;Biceps 2x10 10 kg, 1x8 10 kg
+2026-03-30;123;UPPER;Biceps;2;10;10.0;Wykonano;;;Biceps 2x10 10 kg, 1x8 10 kg
+2026-03-30;123;UPPER;Biceps;3;8;10.0;Wykonano;;;Biceps 2x10 10 kg, 1x8 10 kg
+2026-03-30;123;UPPER;Triceps;1;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-30;123;UPPER;Triceps;2;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-30;123;UPPER;Triceps;3;12;22.5;Wykonano;;;Triceps 3x12 22,5 kg
+2026-03-31;124;LOWER;Leg press (skośny);1;8;110.0;Wykonano;Nazwa oryg.: Leg press skośny;;Leg press skośny 2x8 110kg, 1x10 130kg, 1x15 130 kg
+2026-03-31;124;LOWER;Leg press (skośny);2;8;110.0;Wykonano;Nazwa oryg.: Leg press skośny;;Leg press skośny 2x8 110kg, 1x10 130kg, 1x15 130 kg
+2026-03-31;124;LOWER;Leg press (skośny);3;10;130.0;Wykonano;Nazwa oryg.: Leg press skośny;;Leg press skośny 2x8 110kg, 1x10 130kg, 1x15 130 kg
+2026-03-31;124;LOWER;Leg press (skośny);4;15;130.0;Wykonano;Nazwa oryg.: Leg press skośny;;Leg press skośny 2x8 110kg, 1x10 130kg, 1x15 130 kg
+2026-03-31;124;LOWER;Leg curls;1;8;50.0;Wykonano;;;Leg curls 2x8, 1x12 50 kg
+2026-03-31;124;LOWER;Leg curls;2;8;50.0;Wykonano;;;Leg curls 2x8, 1x12 50 kg
+2026-03-31;124;LOWER;Leg curls;3;12;50.0;Wykonano;;;Leg curls 2x8, 1x12 50 kg
+2026-03-31;124;LOWER;Przywodziciele;1;10;55.0;Wykonano;;;Przywodziciele 1x10, 2x15 55 kg
+2026-03-31;124;LOWER;Przywodziciele;2;15;55.0;Wykonano;;;Przywodziciele 1x10, 2x15 55 kg
+2026-03-31;124;LOWER;Przywodziciele;3;15;55.0;Wykonano;;;Przywodziciele 1x10, 2x15 55 kg
+2026-03-31;124;LOWER;Odwodziciele;1;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-03-31;124;LOWER;Odwodziciele;2;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-03-31;124;LOWER;Odwodziciele;3;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-04-02;125;UPPER;Wyciskanie na ławce;1;8;62.5;Wykonano;;;Wyciskanie na ławce 4x8 62,5 kg
+2026-04-02;125;UPPER;Wyciskanie na ławce;2;8;62.5;Wykonano;;;Wyciskanie na ławce 4x8 62,5 kg
+2026-04-02;125;UPPER;Wyciskanie na ławce;3;8;62.5;Wykonano;;;Wyciskanie na ławce 4x8 62,5 kg
+2026-04-02;125;UPPER;Wyciskanie na ławce;4;8;62.5;Wykonano;;;Wyciskanie na ławce 4x8 62,5 kg
+2026-04-02;125;UPPER;Ściąganie drążka;1;8;42.5;Wykonano;;;Ściąganie drążka 1x8 42,5, 2x10 42,5 kg
+2026-04-02;125;UPPER;Ściąganie drążka;2;10;42.5;Wykonano;;;Ściąganie drążka 1x8 42,5, 2x10 42,5 kg
+2026-04-02;125;UPPER;Ściąganie drążka;3;10;42.5;Wykonano;;;Ściąganie drążka 1x8 42,5, 2x10 42,5 kg
+2026-04-02;125;UPPER;Wiosłowanie na wyciągu;1;12;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x12 42,5 kg
+2026-04-02;125;UPPER;Wiosłowanie na wyciągu;2;12;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x12 42,5 kg
+2026-04-02;125;UPPER;Wiosłowanie na wyciągu;3;12;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x12 42,5 kg
+2026-04-02;125;UPPER;Wznosy bokiem;1;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-04-02;125;UPPER;Wznosy bokiem;2;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-04-02;125;UPPER;Wznosy bokiem;3;15;10.0;Wykonano;;;Wznosy bokiem 3x15 10 kg
+2026-04-02;125;UPPER;Biceps;1;11;10.0;Wykonano;;;Biceps 1x11 10 kg, 2x10 10 kg
+2026-04-02;125;UPPER;Biceps;2;10;10.0;Wykonano;;;Biceps 1x11 10 kg, 2x10 10 kg
+2026-04-02;125;UPPER;Biceps;3;10;10.0;Wykonano;;;Biceps 1x11 10 kg, 2x10 10 kg
+2026-04-02;125;UPPER;Triceps;1;8;20.0;Wykonano;;;Triceps 1x8, 2x12 20 kg
+2026-04-02;125;UPPER;Triceps;2;12;20.0;Wykonano;;;Triceps 1x8, 2x12 20 kg
+2026-04-02;125;UPPER;Triceps;3;12;20.0;Wykonano;;;Triceps 1x8, 2x12 20 kg
+2026-04-02;125;UPPER;Face pull;1;15;10.0;Wykonano;;;Face pull 3x15 10 kg
+2026-04-02;125;UPPER;Face pull;2;15;10.0;Wykonano;;;Face pull 3x15 10 kg
+2026-04-02;125;UPPER;Face pull;3;15;10.0;Wykonano;;;Face pull 3x15 10 kg
+2026-04-03;126;LOWER;Przysiad;1;8;70.0;Wykonano;;;Przysiad 4x8 70 kg
+2026-04-03;126;LOWER;Przysiad;2;8;70.0;Wykonano;;;Przysiad 4x8 70 kg
+2026-04-03;126;LOWER;Przysiad;3;8;70.0;Wykonano;;;Przysiad 4x8 70 kg
+2026-04-03;126;LOWER;Przysiad;4;8;70.0;Wykonano;;;Przysiad 4x8 70 kg
+2026-04-03;126;LOWER;Leg press;1;8;118.0;Wykonano;;;Leg press 2x8, 1x12 118 kg
+2026-04-03;126;LOWER;Leg press;2;8;118.0;Wykonano;;;Leg press 2x8, 1x12 118 kg
+2026-04-03;126;LOWER;Leg press;3;12;118.0;Wykonano;;;Leg press 2x8, 1x12 118 kg
+2026-04-03;126;LOWER;Leg curls;1;10;50.0;Wykonano;;;Leg curls 3x10 50 kg
+2026-04-03;126;LOWER;Leg curls;2;10;50.0;Wykonano;;;Leg curls 3x10 50 kg
+2026-04-03;126;LOWER;Leg curls;3;10;50.0;Wykonano;;;Leg curls 3x10 50 kg
+2026-04-03;126;LOWER;Przywodziciele;1;15;55.0;Wykonano;;;Przywodziciele 3x15 55 kg
+2026-04-03;126;LOWER;Przywodziciele;2;15;55.0;Wykonano;;;Przywodziciele 3x15 55 kg
+2026-04-03;126;LOWER;Przywodziciele;3;15;55.0;Wykonano;;;Przywodziciele 3x15 55 kg
+2026-04-06;127;UPPER;Wyciskanie na ławce;1;8;62.5;Wykonano;;;Wyciskanie na ławce 3x8, 1x10 62,5kg
+2026-04-06;127;UPPER;Wyciskanie na ławce;2;8;62.5;Wykonano;;;Wyciskanie na ławce 3x8, 1x10 62,5kg
+2026-04-06;127;UPPER;Wyciskanie na ławce;3;8;62.5;Wykonano;;;Wyciskanie na ławce 3x8, 1x10 62,5kg
+2026-04-06;127;UPPER;Wyciskanie na ławce;4;10;62.5;Wykonano;;;Wyciskanie na ławce 3x8, 1x10 62,5kg
+2026-04-06;127;UPPER;Ściąganie drążka;1;10;42.5;Wykonano;;;Ściąganie drążka 3x10 42,5 kg
+2026-04-06;127;UPPER;Ściąganie drążka;2;10;42.5;Wykonano;;;Ściąganie drążka 3x10 42,5 kg
+2026-04-06;127;UPPER;Ściąganie drążka;3;10;42.5;Wykonano;;;Ściąganie drążka 3x10 42,5 kg
+2026-04-06;127;UPPER;Wiosłowanie na wyciągu;1;13;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x13 42,5 kg
+2026-04-06;127;UPPER;Wiosłowanie na wyciągu;2;13;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x13 42,5 kg
+2026-04-06;127;UPPER;Wiosłowanie na wyciągu;3;13;42.5;Wykonano;;;Wiosłowanie na wyciągu 3x13 42,5 kg
+2026-04-06;127;UPPER;Wznosy bokiem;1;15;10.0;Wykonano;;;Wznosy bokiem 2x15 10 kg, 1x12 12,5 kg
+2026-04-06;127;UPPER;Wznosy bokiem;2;15;10.0;Wykonano;;;Wznosy bokiem 2x15 10 kg, 1x12 12,5 kg
+2026-04-06;127;UPPER;Wznosy bokiem;3;12;12.5;Wykonano;;;Wznosy bokiem 2x15 10 kg, 1x12 12,5 kg
+2026-04-06;127;UPPER;Biceps;1;12;9.0;Wykonano;;;Biceps 1x12, 2x10 9 kg
+2026-04-06;127;UPPER;Biceps;2;10;9.0;Wykonano;;;Biceps 1x12, 2x10 9 kg
+2026-04-06;127;UPPER;Biceps;3;10;9.0;Wykonano;;;Biceps 1x12, 2x10 9 kg
+2026-04-06;127;UPPER;Triceps;1;10;22.5;Wykonano;;;Triceps 1x10, 2x12 22,5 kg
+2026-04-06;127;UPPER;Triceps;2;12;22.5;Wykonano;;;Triceps 1x10, 2x12 22,5 kg
+2026-04-06;127;UPPER;Triceps;3;12;22.5;Wykonano;;;Triceps 1x10, 2x12 22,5 kg
+2026-04-07;128;LOWER;Martwy ciąg;1;6;72.5;Wykonano;;;Martwy ciąg 3x6 72,5 kg
+2026-04-07;128;LOWER;Martwy ciąg;2;6;72.5;Wykonano;;;Martwy ciąg 3x6 72,5 kg
+2026-04-07;128;LOWER;Martwy ciąg;3;6;72.5;Wykonano;;;Martwy ciąg 3x6 72,5 kg
+2026-04-07;128;LOWER;Leg press;1;12;118.0;Wykonano;;;Leg press 3x12 118 kg
+2026-04-07;128;LOWER;Leg press;2;12;118.0;Wykonano;;;Leg press 3x12 118 kg
+2026-04-07;128;LOWER;Leg press;3;12;118.0;Wykonano;;;Leg press 3x12 118 kg
+2026-04-07;128;LOWER;Leg curls;1;12;50.0;Wykonano;;;Leg curls 3x12 50 kg
+2026-04-07;128;LOWER;Leg curls;2;12;50.0;Wykonano;;;Leg curls 3x12 50 kg
+2026-04-07;128;LOWER;Leg curls;3;12;50.0;Wykonano;;;Leg curls 3x12 50 kg
+2026-04-07;128;LOWER;Przywodziciele;1;8;59.0;Wykonano;;;Przywodziciele 3x8 59 kg
+2026-04-07;128;LOWER;Przywodziciele;2;8;59.0;Wykonano;;;Przywodziciele 3x8 59 kg
+2026-04-07;128;LOWER;Przywodziciele;3;8;59.0;Wykonano;;;Przywodziciele 3x8 59 kg
+2026-04-07;128;LOWER;Odwodziciele;1;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-04-07;128;LOWER;Odwodziciele;2;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-04-07;128;LOWER;Odwodziciele;3;8;73.0;Wykonano;;;Odwodziciele 3x8 73 kg
+2026-04-10;130;LOWER;Przysiad;1;8;75.0;Wykonano;;;Przysiad 4x8 75 kg
+2026-04-10;130;LOWER;Przysiad;2;8;75.0;Wykonano;;;Przysiad 4x8 75 kg
+2026-04-10;130;LOWER;Przysiad;3;8;75.0;Wykonano;;;Przysiad 4x8 75 kg
+2026-04-10;130;LOWER;Przysiad;4;8;75.0;Wykonano;;;Przysiad 4x8 75 kg
+2026-04-10;130;LOWER;Leg press;1;8;118.0;Do weryfikacji;"Niejasny zapis ""3x12118 kg"" odczytano jako 3x12 118 kg; warto potwierdzić";;Leg press 1x8, 2x10, 3x12118 kg
+2026-04-10;130;LOWER;Leg press;2;10;118.0;Do weryfikacji;"Niejasny zapis ""3x12118 kg"" odczytano jako 3x12 118 kg; warto potwierdzić";;Leg press 1x8, 2x10, 3x12118 kg
+2026-04-10;130;LOWER;Leg press;3;10;118.0;Do weryfikacji;"Niejasny zapis ""3x12118 kg"" odczytano jako 3x12 118 kg; warto potwierdzić";;Leg press 1x8, 2x10, 3x12118 kg
+2026-04-10;130;LOWER;Leg press;4;12;118.0;Do weryfikacji;"Niejasny zapis ""3x12118 kg"" odczytano jako 3x12 118 kg; warto potwierdzić";;Leg press 1x8, 2x10, 3x12118 kg
+2026-04-10;130;LOWER;Leg press;5;12;118.0;Do weryfikacji;"Niejasny zapis ""3x12118 kg"" odczytano jako 3x12 118 kg; warto potwierdzić";;Leg press 1x8, 2x10, 3x12118 kg
+2026-04-10;130;LOWER;Leg press;6;12;118.0;Do weryfikacji;"Niejasny zapis ""3x12118 kg"" odczytano jako 3x12 118 kg; warto potwierdzić";;Leg press 1x8, 2x10, 3x12118 kg
+2026-04-10;130;LOWER;Leg curls;1;12;50.0;Wykonano;;;Leg curls 2x12, 1x10 50 kg
+2026-04-10;130;LOWER;Leg curls;2;12;50.0;Wykonano;;;Leg curls 2x12, 1x10 50 kg
+2026-04-10;130;LOWER;Leg curls;3;10;50.0;Wykonano;;;Leg curls 2x12, 1x10 50 kg
+2026-04-10;130;LOWER;Przywodziciele;1;12;59.0;Wykonano;;;Przywodziciele 3x12 59 kg
+2026-04-10;130;LOWER;Przywodziciele;2;12;59.0;Wykonano;;;Przywodziciele 3x12 59 kg
+2026-04-10;130;LOWER;Przywodziciele;3;12;59.0;Wykonano;;;Przywodziciele 3x12 59 kg
+2026-04-10;130;LOWER;Odwodziciele;1;10;73.0;Wykonano;;;Odwodziciele 3x10 73 kg
+2026-04-10;130;LOWER;Odwodziciele;2;10;73.0;Wykonano;;;Odwodziciele 3x10 73 kg
+2026-04-10;130;LOWER;Odwodziciele;3;10;73.0;Wykonano;;;Odwodziciele 3x10 73 kg

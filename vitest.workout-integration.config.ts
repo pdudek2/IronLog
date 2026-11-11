@@ -5,6 +5,8 @@ export default defineConfig({
     environment: 'node',
     globals: true,
     fileParallelism: false,
+    // The emulator holds a contended transaction about 3.5 s, so a race test can need two of those.
+    testTimeout: 30_000,
     include: ['tests/integration/**/*.integration.test.ts'],
     env: {
       VITE_FIREBASE_API_KEY: 'phase-r-test-key',

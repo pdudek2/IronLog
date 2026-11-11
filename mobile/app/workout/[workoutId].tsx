@@ -15,7 +15,7 @@ import { useSessionRead } from '../../src/useSessionRead'
 import { useActiveRuntime, useAuthRuntime, useOptionalClosureRuntime } from '../../src/runtime'
 import ActiveWorkoutReturnBar from '../../src/ActiveWorkoutReturnBar'
 import HistoryHeader from '../../src/HistoryHeader'
-import { formatWorkoutDate, formatWorkoutDuration, workoutFocusLabel, workoutSetVolumeLabel } from '../../src/history'
+import { formatWorkoutDate, formatWorkoutDuration, hasRecordedDuration, workoutFocusLabel, workoutSetVolumeLabel } from '../../src/history'
 import { workoutTitle } from '../../../src/lib/workoutCopy'
 import { colors, pageBackground } from '../../src/theme'
 import { Icon } from '../../src/icons'
@@ -131,7 +131,7 @@ export default function SavedWorkoutScreen() {
           {uid && <WorkoutSteps uid={uid} workout={workout} units={active.state.units} />}
 
           <View accessibilityLabel="Workout summary" style={styles.facts}>
-            <SummaryFact label="Time" value={formatWorkoutDuration(workout.startedAt, workout.finishedAt)} />
+            {hasRecordedDuration(workout.startedAt, workout.finishedAt) && <SummaryFact label="Time" value={formatWorkoutDuration(workout.startedAt, workout.finishedAt)} />}
             <SummaryFact label="Sets" value={String(totalSets)} />
             <SummaryFact label="Reps" value={String(totalReps)} />
             <SummaryFact label="Volume" value={formatCompactVolume(volume, active.state.units)} />

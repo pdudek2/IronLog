@@ -1,4 +1,5 @@
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { ChevronRight, Download } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import type * as React from 'react'
 import { toast } from 'sonner'
@@ -7,7 +8,8 @@ import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { Button, Input } from '../components/ui'
 import { pluralize } from '../lib/pluralize'
-import { getRecentWorkouts } from '../lib/workoutService'
+import { getRecentWorkouts, getWorkoutHistory } from '../lib/workoutService'
+import { historyCsv } from '../shared/historyCsv'
 import { getRecords } from '../lib/progressService'
 import { trainingSinceLabel } from '../shared/workoutDisplay'
 
@@ -32,7 +34,27 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState('')
   const [stats, setStats] = useState<{ workouts: number; records: number } | null>(null)
+  const [exporting, setExporting] = useState(false)
   const uid = user?.uid
+
+  async function exportHistory() {
+    if (!uid) return
+    setExporting(true)
+    try {
+      const { workouts, truncated } = await getWorkoutHistory(uid, 250, 20_000)
+      const url = URL.createObjectURL(new Blob([historyCsv(workouts)], { type: 'text/csv;charset=utf-8' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `shear-history-${new Date().toISOString().slice(0, 10)}.csv`
+      link.click()
+      URL.revokeObjectURL(url)
+      if (truncated) toast.message('The file holds your latest 20,000 workouts.')
+    } catch {
+      toast.error('Could not read your workouts. Try again.')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => {
     if (!profile) return
@@ -196,6 +218,14 @@ export default function ProfilePage() {
               </Button>
             </div>
           </form>
+
+          <nav className="plans-links profile-data-links" aria-label="Your data">
+            <Link to="/history/import">Import history<ChevronRight size={16} aria-hidden="true" /></Link>
+            <button type="button" disabled={exporting} onClick={() => { void exportHistory() }}>
+              {exporting ? 'Preparing the file…' : 'Export history'}
+              <Download size={16} aria-hidden="true" />
+            </button>
+          </nav>
 
           <button type="button" className="profile-sign-out" onClick={() => navigate('/logout')}>
             Sign out

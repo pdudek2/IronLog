@@ -9316,3 +9316,187 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
     height: 3.25rem;
   }
 }
+
+/* History import (PRODUCT.md, „Specyfikacja punktu 4B”): one column, rows split by hairlines like the plan editor. */
+.history-import-page {
+  display: grid;
+  gap: 1.5rem;
+  padding-bottom: 6rem;
+}
+
+.history-import-help {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
+.history-import-pick {
+  display: grid;
+  justify-items: start;
+  gap: 1rem;
+}
+
+.history-import-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.history-import-file[aria-disabled='true'] {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.history-import-file:focus-within {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+.history-import-error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 0.875rem;
+}
+
+.history-import-section {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.history-import-section h2,
+.history-import-result h2 {
+  margin: 0;
+  font-size: 1.125rem;
+  font-weight: 650;
+}
+
+.history-import-section summary {
+  min-height: 2.75rem;
+  display: flex;
+  align-items: center;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.history-import-list {
+  display: grid;
+  margin: 0.25rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.history-import-row {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.75rem 0;
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 640px) {
+  .history-import-row:has(.history-import-row-actions) {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}
+
+.history-import-name {
+  display: block;
+  margin: 0;
+  font-weight: 600;
+}
+
+.history-import-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.history-import-workout,
+.history-import-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  cursor: pointer;
+}
+
+.history-import-workout input,
+.history-import-check input {
+  flex: none;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin-top: 0.125rem;
+  accent-color: var(--text);
+}
+
+.history-import-check {
+  padding-left: 2rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.history-import-check strong {
+  color: var(--text);
+}
+
+.history-import-skipped {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.history-import-skipped span {
+  color: var(--text);
+}
+
+.history-import-skipped code {
+  overflow-wrap: anywhere;
+}
+
+.history-import-submit {
+  position: sticky;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+}
+
+@media (min-width: 1024px) {
+  .history-import-submit {
+    bottom: 0;
+  }
+}
+
+.history-import-result {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.history-import-result p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.history-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.profile-data-links {
+  margin-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}

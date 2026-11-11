@@ -214,7 +214,7 @@ export function importRequestWorkouts(
   })
 }
 
-export interface ExportWorkout { startedAt: number; label: string | null; exercises: { name: string; sets: { weight: number; reps: number }[] }[] }
+export interface ExportWorkout { startedAt: number; label?: string | null; exercises: { name: string; sets: { weight: number; reps: number }[] }[] }
 
 const csvField = (value: string) => (/[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value)
 

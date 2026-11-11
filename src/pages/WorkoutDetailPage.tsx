@@ -44,7 +44,7 @@ import {
   EXERCISE_CATEGORY_LABELS,
   getEquipmentLabel,
 } from '../lib/exerciseLabels'
-import { getCappedWorkoutFinishedAt } from '../lib/sessionDuration'
+import { getCappedWorkoutFinishedAt, hasRecordedDuration } from '../lib/sessionDuration'
 import { workoutTitle } from '../lib/workoutCopy'
 import { useProfileStore } from '../store/profileStore'
 import {
@@ -718,10 +718,12 @@ export default function WorkoutDetailPage() {
         {user && !isEditing && <WorkoutSteps uid={user.uid} workout={displayedWorkout} units={units} />}
 
         <dl className="workout-summary-panel workout-detail-session-facts" aria-label="Workout summary">
-          <div>
-            <dt>Time</dt>
-            <dd>{formatDuration(displayedWorkout.startedAt, displayedWorkout.finishedAt)}</dd>
-          </div>
+          {hasRecordedDuration(displayedWorkout.startedAt, displayedWorkout.finishedAt) && (
+            <div>
+              <dt>Time</dt>
+              <dd>{formatDuration(displayedWorkout.startedAt, displayedWorkout.finishedAt)}</dd>
+            </div>
+          )}
           <div>
             <dt>Sets</dt>
             <dd>{totalSets}</dd>

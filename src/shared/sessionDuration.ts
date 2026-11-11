@@ -34,6 +34,9 @@ export function getStaleSessionAgeLabel(startedAt: number, now = Date.now()): st
   return `${hours} ${hours === 1 ? 'hour' : 'hours'}`
 }
 
+// An imported workout ends when it starts: its file had no times, so no duration is shown.
+export const hasRecordedDuration = (start: number, end: number) => end > start
+
 export function formatWorkoutDuration(start: number, end: number): string {
   const minutes = Math.round((getCappedWorkoutFinishedAt(start, end) - start) / 60_000)
   if (minutes < 1) return '< 1 min'

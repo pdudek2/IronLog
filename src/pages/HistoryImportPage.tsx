@@ -74,7 +74,8 @@ export default function HistoryImportPage() {
     setPhase({ kind: 'review' })
   }
 
-  const names = file ? historyNames(file.history, ownExercises) : []
+  // Names the file left open come first, then the most used; the order does not move as the user chooses.
+  const names = (file ? historyNames(file.history, ownExercises) : []).sort((a, b) => Number(a.match.status === 'matched') - Number(b.match.status === 'matched') || b.sets - a.sets)
   const open = names.filter((entry) => !mapping[entry.name]).length
   const requests = file ? importRequestWorkouts(file.history, (name) => mapping[name] ?? null, (workout) => choices[workout.key] ?? { include: false, withChecks: false }) : []
   const setCount = requests.reduce((sum, workout) => sum + workout.exercises.reduce((total, exercise) => total + exercise.sets.length, 0), 0)
@@ -98,6 +99,7 @@ export default function HistoryImportPage() {
       setPhase({ kind: 'importing', done: Math.min(start + BATCH, requests.length), total: requests.length })
     }
     setPhase({ kind: 'done', workoutIds, pending })
+    window.scrollTo({ top: 0 })
   }
 
   async function undo(workoutIds: string[]) {
@@ -185,7 +187,7 @@ export default function HistoryImportPage() {
                         </p>
                       </div>
                       <div className="history-import-row-actions">
-                        <button type="button" className="planner-secondary-action" disabled={busy} onClick={() => setResolving({ name: entry.name, mode: 'choose' })}>{chosen ? 'Change' : 'Choose exercise'}</button>
+                        <button type="button" className={chosen ? 'template-exercise-create' : 'planner-secondary-action'} disabled={busy} onClick={() => setResolving({ name: entry.name, mode: 'choose' })}>{chosen ? 'Change' : 'Choose exercise'}</button>
                         {!chosen && <button type="button" className="template-exercise-create" disabled={busy} onClick={() => setResolving({ name: entry.name, mode: 'create' })}>Create “{entry.name}”</button>}
                       </div>
                     </li>
@@ -239,7 +241,7 @@ export default function HistoryImportPage() {
             )}
 
             <div className="history-import-submit">
-              <p className="template-editor-save-hint" aria-live="polite">
+              <p className="history-import-hint" aria-live="polite">
                 {phase.kind === 'importing' ? `Importing… ${phase.done} of ${phase.total} workouts`
                   : phase.kind === 'failed' ? phase.message
                     : open ? `Choose ${open} ${pluralize(open, 'exercise', 'exercises')} to import`

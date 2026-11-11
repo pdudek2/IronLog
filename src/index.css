@@ -9460,22 +9460,37 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   overflow-wrap: anywhere;
 }
 
+.history-import-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
 .history-import-submit {
-  position: sticky;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 5.5rem);
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.75rem 0;
-  background: var(--bg);
   border-top: 1px solid var(--border);
 }
 
-@media (min-width: 1024px) {
+/* Below 1024 px the bar rides above the bottom navigation like the plan editor's save dock. */
+@media (max-width: 1023px) {
   .history-import-submit {
-    bottom: 0;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--mobile-viewport-bottom-inset, 0px) + 3.65rem + env(safe-area-inset-bottom, 0px));
+    z-index: 46;
+    padding: 0.5rem max(1rem, env(safe-area-inset-right, 0px)) 0.5rem max(1rem, env(safe-area-inset-left, 0px));
+    background: rgba(15, 13, 12, 0.98);
+    transition: bottom 180ms ease;
+  }
+
+  body:has(.bottom-nav[aria-hidden="true"]) .history-import-submit {
+    bottom: calc(var(--mobile-viewport-bottom-inset, 0px) + env(safe-area-inset-bottom, 0px));
   }
 }
 

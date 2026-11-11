@@ -9511,6 +9511,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   margin-top: 0.5rem;
 }
 
+.history-import-submit .history-import-actions {
+  margin-top: 0;
+}
+
 .profile-data-links {
   margin-top: 1.5rem;
   border-top: 1px solid var(--border);

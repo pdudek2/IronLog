@@ -83,11 +83,18 @@ function detectDelimiter(header: string): string {
 
 const pad = (value: number) => String(value).padStart(2, '0')
 
-// "2026-04-10", "2026-04-10 18:05:00" (Strong), "10.04.2026", "10/04/2026"; "4/25/2026" only when the day says so.
-function readDate(cell: string): { date: string; time: string | null } | null {
+const LOCAL_DATE = /^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2}):(\d{2}))?/
+
+// A file is month-first only when some date can be read no other way and none says day-first.
+function monthFirst(cells: string[]): boolean {
+  const dates = cells.map((cell) => cell.match(LOCAL_DATE)).filter((match) => match !== null)
+  return dates.some((match) => Number(match[2]) > 12) && !dates.some((match) => Number(match[1]) > 12)
+}
+
+// "2026-04-10", "2026-04-10 18:05:00" (Strong), "10.04.2026", "10/04/2026"; "4/25/2026" in a month-first file.
+function readDate(cell: string, us: boolean): { date: string; time: string | null } | null {
   const iso = cell.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s]+(\d{1,2}):(\d{2}))?/)
-  const local = cell.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})(?:\s+(\d{1,2}):(\d{2}))?/)
-  const us = local && Number(local[2]) > 12 && Number(local[1]) <= 12
+  const local = cell.match(LOCAL_DATE)
   const [year, month, day, hour, minute] = iso
     ? [iso[1], iso[2], iso[3], iso[4], iso[5]]
     : local ? [local[3], us ? local[1] : local[2], us ? local[2] : local[1], local[4], local[5]] : []
@@ -132,16 +139,17 @@ export function readHistoryCsv(text: string, units: WeightUnits): HistoryReadRes
   // "Ciężar_kg", "weight_lbs": underscores separate words here as well.
   const unitWords = weightHeader.replace(/_/g, ' ')
   const pounds = /\blbs?\b|pound|funt/i.test(unitWords) || (!/\bkgs?\b/i.test(unitWords) && units === 'lbs')
-  // The server takes workouts from 2000 up to today; a row outside that is listed, not sent to fail its batch.
+  // The server takes workouts from 2000 up to tomorrow; a row outside that is listed, not sent to fail its batch.
   const earliest = '2000-01-01'
   const latest = localDay(Date.now() + 24 * 60 * 60_000)
 
+  const us = monthFirst(rows.slice(1).map((row) => (row.cells[columns.get('date')!] ?? '').trim()))
   const history: ParsedHistory = { workouts: [], skipped: [], notes: [] }
   const byKey = new Map<string, ImportWorkout>()
   for (const row of rows.slice(1)) {
     const at = (column: Column) => (columns.has(column) ? (row.cells[columns.get(column)!] ?? '').trim() : '')
     const unread = () => history.skipped.push({ line: row.line, source: row.source, reason: 'unread' })
-    const when = readDate(at('date'))
+    const when = readDate(at('date'), us)
     const name = at('exercise').replace(/\s+/g, ' ')
     const repsText = at('reps').replace(',', '.')
     const reps = Number(repsText)

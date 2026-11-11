@@ -58,6 +58,8 @@ describe('readHistoryCsv: notations', () => {
     // A set number is not a workout number; a US date is read when only that reading is a date.
     const sets = read('Data;Ćwiczenie;Numer serii;Powtórzenia;Ciężar\n2026-04-10;Przysiad;1;5;100\n2026-04-10;Przysiad;2;5;100\n4/25/2026;Squat;1;5;100')
     expect(sets.workouts.map((workout) => [workout.date, workout.exercises[0]!.sets.length])).toEqual([['2026-04-10', 2], ['2026-04-25', 1]])
+    // One reading for the whole file: in a US file 4/10 is April as well.
+    expect(read('Date,Exercise,Reps\n4/10/2026,Squat,5\n4/25/2026,Squat,5').workouts.map((workout) => workout.date)).toEqual(['2026-04-10', '2026-04-25'])
   })
 
   it('lists rows it cannot read, skips sets not done, and asks about any other status', () => {

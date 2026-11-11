@@ -12,6 +12,8 @@ const parse = (body: unknown) => parseImportWorkoutsRequest(body, NOW)
 describe('parseImportWorkoutsRequest', () => {
   it('accepts a batch of finished workouts and keeps only weight and reps of each set', () => {
     const request = parse({ importId: 'run-1', workouts: [workout('2026-04-10|130', { exercises: [{ exerciseId: 'squat', exerciseSource: 'global', name: 'Squat', sets: [{ weight: 75, reps: 8, completedAt: 5 }] }] })] })
+    // Tomorrow at 23:30 picked just after midnight is 47.5 h ahead.
+    expect(parse({ importId: 'run-1', workouts: [workout('late', { startedAt: NOW + 47.5 * 3_600_000 })] }).workouts).toHaveLength(1)
     expect(request.workouts[0]).toEqual({ key: '2026-04-10|130', startedAt: Date.UTC(2026, 3, 10, 10), label: 'Lower', exercises: [{ exerciseId: 'squat', exerciseSource: 'global', name: 'Squat', sets: [{ weight: 75, reps: 8 }] }] })
   })
 
@@ -21,7 +23,7 @@ describe('parseImportWorkoutsRequest', () => {
       [{ importId: 'r', workouts: [] }, /at least one workout/],
       [{ importId: 'r', workouts: Array.from({ length: MAX_IMPORT_WORKOUTS + 1 }, (_, index) => workout(`k${index}`)) }, /at most/],
       [{ importId: 'r', workouts: [workout('a'), workout('a')] }, /own key/],
-      [{ importId: 'r', workouts: [workout('a', { startedAt: NOW + 2 * 24 * 3_600_000 })] }, /date/],
+      [{ importId: 'r', workouts: [workout('a', { startedAt: NOW + 49 * 3_600_000 })] }, /date/],
       [{ importId: 'r', workouts: [workout('a', { startedAt: Date.UTC(1999, 0, 1) })] }, /date/],
       [{ importId: 'r', workouts: [workout('a', { exercises: [] })] }, /at least one exercise/],
       [{ importId: 'r', workouts: [workout('a', { exercises: [{ exerciseId: 'squat', exerciseSource: 'global', name: 'Squat', sets: [{ weight: 5000, reps: 5 }] }] })] }, /weight/i],

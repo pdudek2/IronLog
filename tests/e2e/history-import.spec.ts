@@ -65,6 +65,9 @@ test.describe('History import', () => {
     await expect(rows.first()).not.toContainText('min')
     await expect(page.getByRole('heading', { name: 'Upper' }).first()).toBeVisible()
 
+    await page.goto('/exercises/global/squat')
+    await expect(page.locator('.exercise-detail-trend .exercise-detail-panel-head p')).toContainText('Latest 500 kg', { timeout: 15_000 })
+
     // The export carries the imported sets, and the same file now meets the days already in SHEAR.
     await page.goto('/profile')
     const download = page.waitForEvent('download')

@@ -171,7 +171,7 @@ export default function HistoryImportPage() {
           </>}
           {phase.kind === 'undoFailed' && <>
             <h2>Undo stopped</h2>
-            <p>{phase.left} imported {pluralize(phase.left, 'workout is', 'workouts are')} still in History.</p>
+            <p>{phase.left} imported {pluralize(phase.left, 'workout was', 'workouts were')} not fully removed.</p>
             <div className="history-import-actions">
               <button type="button" className="planner-primary-action" onClick={() => { void undo() }}>Try undo again</button>
               <Link to="/history" className="planner-secondary-action">View history</Link>
@@ -280,9 +280,13 @@ export default function HistoryImportPage() {
                     : open ? `Choose ${open} ${pluralize(open, 'exercise', 'exercises')} to import`
                       : `${requests.length} ${pluralize(requests.length, 'workout', 'workouts')} · ${setCount} ${pluralize(setCount, 'set', 'sets')}`}
               </p>
-              <button type="button" className="planner-primary-action" disabled={busy || open > 0 || requests.length === 0} onClick={() => { void runImport() }}>
-                {phase.kind === 'failed' ? 'Try again' : `Import ${requests.length} ${pluralize(requests.length, 'workout', 'workouts')}`}
-              </button>
+              <div className="history-import-actions">
+                {/* Choices are locked once a batch went out, so a batch that keeps failing needs a way back. */}
+                {phase.kind === 'failed' && runIds.length > 0 && <button type="button" className="planner-secondary-action" onClick={() => { void undo() }}>Undo import</button>}
+                <button type="button" className="planner-primary-action" disabled={busy || open > 0 || requests.length === 0} onClick={() => { void runImport() }}>
+                  {phase.kind === 'failed' ? 'Try again' : `Import ${requests.length} ${pluralize(requests.length, 'workout', 'workouts')}`}
+                </button>
+              </div>
             </div>
           </>}
         </>

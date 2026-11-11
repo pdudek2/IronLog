@@ -12,8 +12,8 @@ import { normalizeWorkoutExercises, validateWorkoutLabel, type ValidatedWorkoutE
 export const MAX_IMPORT_WORKOUTS = 10
 const MAX_KEY_LENGTH = 200
 const EARLIEST_STARTED_AT = Date.UTC(2000, 0, 1)
-// The client turns a local date into startedAt, so "today" may sit up to a day ahead of server time.
-const CLOCK_SLACK_MS = 36 * 60 * 60_000
+// The client sends local dates up to tomorrow, so a late time tomorrow is almost two days ahead.
+const CLOCK_SLACK_MS = 48 * 60 * 60_000
 const REQUEST_FIELDS = new Set(['importId', 'workouts'])
 const WORKOUT_FIELDS = new Set(['key', 'startedAt', 'label', 'exercises'])
 

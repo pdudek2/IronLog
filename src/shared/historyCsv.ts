@@ -110,7 +110,7 @@ function readStatus(cell: string): 'done' | 'skip' | 'check' {
 const titleCase = (text: string) => (/^[A-ZĄĆĘŁŃÓŚŹŻ\s]+$/.test(text) ? text.charAt(0) + text.slice(1).toLowerCase() : text)
 
 export function readHistoryCsv(text: string, units: WeightUnits): HistoryReadResult {
-  const clean = text.replace(/^﻿/, '')
+  const clean = text.replace(/^\uFEFF/, '')
   const firstLine = clean.split('\n', 1)[0] ?? ''
   const rows = readRows(clean, detectDelimiter(firstLine))
   if (rows.length < 2) return { ok: false, error: 'The file has no rows after its header.' }
@@ -230,5 +230,5 @@ export function historyCsv(workouts: ExportWorkout[]): string {
       })
     }
   }
-  return `﻿${rows.map((row) => row.map(csvField).join(',')).join('\r\n')}\r\n`
+  return `\uFEFF${rows.map((row) => row.map(csvField).join(',')).join('\r\n')}\r\n`
 }

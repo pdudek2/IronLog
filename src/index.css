@@ -708,12 +708,53 @@ a {
   background: var(--seam);
 }
 
+.landing {
+  /* Panel bottom padding + one skipped row + the cut's margin: the 45-min cut lands on the page seam. */
+  --overhang: calc(3.875rem + 2px);
+}
+
+/* The plan's paper: a fixed brand surface on this page only, ending in the seam the hero panel crosses. */
+.landing-paper {
+  --paper-muted: color-mix(in srgb, var(--puls-ink) 70%, var(--puls-bone));
+  --accent-text: var(--puls-ink);
+  border-bottom: 2px solid var(--seam);
+  background: var(--puls-bone);
+  color: var(--puls-ink);
+}
+
+.landing-paper .auth-brand,
+.landing-paper .landing-signin {
+  color: var(--puls-ink);
+}
+
+.landing-paper .landing-signin:hover {
+  color: var(--paper-muted);
+}
+
+.landing-paper .auth-brand-mark {
+  border-color: transparent;
+  background: var(--puls-ink);
+  box-shadow: 0 4px 10px -4px color-mix(in srgb, var(--puls-ink) 60%, transparent);
+  color: var(--puls-bone);
+}
+
+.landing-bar ::selection,
+.landing-copy ::selection,
+.landing-paste-form textarea::selection {
+  background: color-mix(in srgb, var(--puls-ink) 18%, transparent);
+}
+
 .landing-hero {
   display: grid;
-  gap: 3rem;
+  gap: 2rem;
   width: min(calc(100% - 2rem), 72rem);
   margin: 0 auto;
-  padding: 2.5rem 0 calc(3rem + env(safe-area-inset-bottom, 0px));
+  padding-top: 2rem;
+}
+
+.landing-copy {
+  display: grid;
+  justify-items: start;
 }
 
 .landing-copy h1,
@@ -726,42 +767,66 @@ a {
 
 .landing-copy h1 {
   max-width: 12ch;
-  font-size: 2.5rem;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  color: var(--puls-ink);
+  font-size: 2.75rem;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
 }
 
 .landing-copy p {
-  max-width: 30rem;
-  margin: 0.75rem 0 0;
-  color: var(--muted);
-  font-size: 1rem;
+  max-width: 28rem;
+  margin: 1rem 0 0;
+  color: var(--paper-muted);
+  font-size: 1.0625rem;
   line-height: 1.5;
+  text-wrap: pretty;
 }
 
-.landing-hero {
-  row-gap: 2rem;
+.landing-ink {
+  min-height: 3rem;
+  margin-top: 1.5rem;
+  padding-inline: 1.5rem;
+  background: var(--puls-ink);
+  box-shadow: 0 12px 24px -12px color-mix(in srgb, var(--puls-ink) 70%, transparent);
+  color: var(--puls-bone);
 }
 
-.landing-actions {
-  display: grid;
-  gap: 0.75rem;
+.landing-ink:hover {
+  background: var(--puls-surface-2);
 }
 
-.landing-cta small {
-  display: block;
-  margin-top: 0.75rem;
-  color: var(--muted);
-  font-size: 0.8125rem;
+.landing-hero .landing-today {
+  position: relative;
+  z-index: 1;
+  max-width: none;
+  margin-bottom: calc(-1 * var(--overhang));
+  background: var(--puls-surface-1);
+  box-shadow:
+    0 32px 56px -20px color-mix(in srgb, var(--puls-ink) 60%, transparent),
+    0 8px 16px -8px color-mix(in srgb, var(--puls-ink) 40%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.landing-hero .landing-cut {
+  margin-inline: -1.25rem;
+}
+
+.landing-hero .landing-today ::selection {
+  background: rgba(244, 238, 232, 0.144);
 }
 
 .landing-primary {
   min-height: 3rem;
+  padding-inline: 1.5rem;
 }
 
 .landing-demo {
   width: 100%;
   max-width: 30rem;
+}
+
+.landing-demo .workout-exercise-card {
+  min-width: 0;
 }
 
 /* The value fields keep their look but get a 44 px tap area. */
@@ -901,13 +966,61 @@ a {
   background: var(--seam);
 }
 
-.landing-section {
-  display: grid;
-  gap: 1.5rem;
+.landing-dark {
+  flex: 1;
+}
+
+.landing-section,
+.landing-close,
+.landing-foot {
   width: min(calc(100% - 2rem), 72rem);
   margin: 0 auto;
-  padding: 3rem 0 calc(3rem + env(safe-area-inset-bottom, 0px));
-  border-top: 1px solid var(--border);
+}
+
+.landing-section {
+  display: grid;
+  gap: 1.75rem;
+  padding: 3.5rem 0;
+}
+
+.landing-section:first-child {
+  padding-top: calc(var(--overhang) + 4rem);
+}
+
+.landing-close {
+  display: grid;
+  justify-items: start;
+  gap: 1.5rem;
+  padding: 3.5rem 0 4rem;
+}
+
+.landing-close h2 {
+  max-width: 16ch;
+  margin: 0;
+  color: var(--text-strong);
+  font-size: 2.25rem;
+  font-weight: 650;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+
+.landing-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding: 1.5rem 0 calc(1.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.landing-foot .landing-signin {
+  margin-left: -0.5rem;
+}
+
+.landing-foot small {
+  color: var(--muted);
+  font-size: 0.8125rem;
 }
 
 .landing-section-copy h2 {
@@ -921,7 +1034,7 @@ a {
 }
 
 .landing-section-copy p {
-  max-width: 30rem;
+  max-width: 34rem;
   margin: 0.625rem 0 0;
   color: var(--muted);
   line-height: 1.5;
@@ -929,9 +1042,12 @@ a {
 
 .landing-paste {
   display: grid;
-  gap: 1.25rem;
+  gap: 2rem;
   width: 100%;
-  max-width: 30rem;
+}
+
+.landing-paste-result .landing-today {
+  max-width: none;
 }
 
 .landing-paste-form {
@@ -944,28 +1060,21 @@ a {
   font-size: 0.875rem;
 }
 
+/* The note is paper, the same bone as the plan above the seam. */
 .landing-paste-form textarea {
   width: 100%;
-  min-height: 10rem;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xl);
-  background: var(--surface-muted);
-  color: var(--text);
+  min-height: 12rem;
+  padding: 1.125rem 1.25rem;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--puls-bone);
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.8);
+  caret-color: var(--puls-ink);
+  color: var(--puls-ink);
   font: inherit;
-  font-size: 0.9375rem;
-  line-height: 1.5;
+  font-size: 1.0625rem;
+  line-height: 1.6;
   resize: vertical;
-}
-
-.landing-paste-form textarea::placeholder {
-  color: var(--muted-soft);
-}
-
-.landing-paste-form textarea:focus-visible {
-  border-color: var(--border-strong);
-  outline: 2px solid var(--focus-ring);
-  outline-offset: 2px;
 }
 
 .landing-paste-form .ui-button {
@@ -1099,16 +1208,18 @@ a {
 @media (min-width: 640px) {
   .landing-bar,
   .landing-hero,
-  .landing-section {
+  .landing-section,
+  .landing-close,
+  .landing-foot {
     width: min(calc(100% - 3rem), 72rem);
   }
 
   .landing-copy h1 {
-    font-size: 3.5rem;
+    font-size: 3.75rem;
   }
 
-  .landing-actions {
-    grid-template-columns: repeat(2, 12rem);
+  .landing-close h2 {
+    font-size: 3rem;
   }
 
   .auth-main {
@@ -1127,41 +1238,49 @@ a {
 
 @media (min-width: 1024px) {
   .landing-hero {
-    flex: 1;
-    grid-template-columns: minmax(0, 1fr) 28.5rem;
+    grid-template-columns: minmax(0, 1fr) min(38rem, 56%);
     align-items: start;
-    gap: 5rem;
-    padding-block: 4rem 5rem;
-  }
-
-  .landing-hero {
-    grid-template-rows: auto 1fr;
-    row-gap: 2rem;
+    gap: 3.5rem;
+    padding-top: 3rem;
   }
 
   .landing-hero .landing-copy {
-    padding-top: 5rem;
-  }
-
-  .landing-hero .landing-today {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-  }
-
-  .landing-cta {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
-  .landing-section {
-    grid-template-columns: minmax(0, 1fr) 28.5rem;
-    align-items: start;
-    gap: 5rem;
-    padding-block: 5rem;
+    padding-top: 2.5rem;
   }
 
   .landing-copy h1 {
-    font-size: 4.25rem;
+    font-size: clamp(3.75rem, 1.75rem + 3.2vw, 4.75rem);
+  }
+
+  .landing-section {
+    gap: 2.5rem;
+    padding-block: 5rem;
+  }
+
+  .landing-section:first-child {
+    padding-top: calc(var(--overhang) + 5rem);
+  }
+
+  .landing-paste {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 3.5rem;
+  }
+
+  .landing-demo {
+    display: grid;
+    grid-template-columns: minmax(0, 30rem) minmax(0, 1fr);
+    align-items: end;
+    gap: 3.5rem;
+    max-width: none;
+  }
+
+  .landing-demo-chart {
+    margin: 0;
+  }
+
+  .landing-close {
+    padding-block: 5rem 6rem;
   }
 
   .auth-head h1 {

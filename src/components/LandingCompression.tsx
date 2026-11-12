@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion'
 import { landingToday, type LandingDay } from '../shared/landingDay'
 
@@ -11,6 +11,7 @@ const slide = { duration: 0.5, ease: [0.2, 0.7, 0.2, 1] as const }
 // the list here (not at the thumb, as on Train) because a visitor watches the cause before the effect.
 export default function LandingCompression({ day, playing: autoplay, label }: { day: LandingDay; playing: boolean; label: string }) {
   const reduceMotion = useReducedMotion()
+  const group = useId()
   const usual = minutes(landingToday(day, null, false).fullEstimateSec)
   const shorter = useMemo(() => BUDGETS.filter((budget) => budget < usual), [usual])
   const [budget, setBudget] = useState<number | null>(() => (autoplay && !reduceMotion ? null : shorter[0] ?? null))
@@ -83,7 +84,7 @@ export default function LandingCompression({ day, playing: autoplay, label }: { 
         </p>
       )}
 
-      <LayoutGroup>
+      <LayoutGroup id={group}>
         <div className="train-exercises" style={{ '--rows': day.exercises.length } as React.CSSProperties}>
           {today.blocks.map((block) => {
             const live = block.items.filter((item) => item.sets > 0)

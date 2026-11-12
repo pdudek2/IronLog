@@ -26,7 +26,7 @@ function BestSetChart({ today }: { today: number | null }) {
   return (
     <figure className="landing-demo-chart">
       <figcaption>
-        <span>Best set · 6 weeks</span>
+        <span>Best set · 6 weeks · example data</span>
         <strong className="tabular-nums">{values[last]} kg</strong>
       </figcaption>
       <svg viewBox="0 0 300 108" role="img" aria-label={`Bench Press best set over six weeks, now ${values[last]} kg`}>

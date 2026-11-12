@@ -766,9 +766,8 @@ a {
 }
 
 .landing-copy h1 {
-  max-width: 12ch;
   color: var(--puls-ink);
-  font-size: 2.75rem;
+  font-size: 2.25rem;
   line-height: 1.02;
   letter-spacing: -0.035em;
 }
@@ -950,8 +949,16 @@ a {
 
 /* Height of the tallest state (every row plus two group labels), so nothing below jumps while the loop runs. */
 .landing-today .train-exercises {
-  min-height: calc(var(--rows) * 2.75rem + 3.5rem);
   margin-top: 0.5rem;
+}
+
+/* The looping panel keeps its tallest height (rows, two group labels, a three-line caption), so its cut stays on the seam. */
+.landing-today--playing .train-exercises {
+  min-height: calc(var(--rows) * 2.75rem + 3.5rem);
+}
+
+.landing-today--playing .train-dock-line {
+  min-height: calc(3lh + 0.25rem);
 }
 
 .landing-today .train-exercise span + span strong {
@@ -971,8 +978,7 @@ a {
 }
 
 .landing-section,
-.landing-close,
-.landing-foot {
+.landing-phone-cta {
   width: min(calc(100% - 2rem), 72rem);
   margin: 0 auto;
 }
@@ -983,44 +989,45 @@ a {
   padding: 3.5rem 0;
 }
 
-.landing-section:first-child {
-  padding-top: calc(var(--overhang) + 4rem);
+.landing-phone-cta {
+  padding-top: calc(var(--overhang) + 1.5rem);
+}
+
+.landing-phone-cta .ui-button {
+  width: 100%;
+}
+
+.landing-ink--hero {
+  display: none;
 }
 
 .landing-close {
   display: grid;
   justify-items: start;
   gap: 1.5rem;
-  padding: 3.5rem 0 4rem;
+  padding: 3.5rem max(1rem, calc((100% - 72rem) / 2)) calc(3rem + env(safe-area-inset-bottom, 0px));
+  border-top: 2px solid var(--seam);
+  border-bottom: 0;
+}
+
+.landing-close .landing-ink {
+  margin-top: 0;
+}
+
+.landing-close small {
+  color: var(--paper-muted);
+  font-size: 0.8125rem;
 }
 
 .landing-close h2 {
   max-width: 16ch;
   margin: 0;
-  color: var(--text-strong);
+  color: var(--puls-ink);
   font-size: 2.25rem;
   font-weight: 650;
   line-height: 1.05;
   letter-spacing: -0.03em;
   text-wrap: balance;
-}
-
-.landing-foot {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 1.5rem;
-  padding: 1.5rem 0 calc(1.5rem + env(safe-area-inset-bottom, 0px));
-}
-
-.landing-foot .landing-signin {
-  margin-left: -0.5rem;
-}
-
-.landing-foot small {
-  color: var(--muted);
-  font-size: 0.8125rem;
 }
 
 .landing-section-copy h2 {
@@ -1209,13 +1216,21 @@ a {
   .landing-bar,
   .landing-hero,
   .landing-section,
-  .landing-close,
-  .landing-foot {
+  .landing-phone-cta {
     width: min(calc(100% - 3rem), 72rem);
   }
 
+  .landing-close {
+    padding-inline: max(1.5rem, calc((100% - 72rem) / 2));
+  }
+
   .landing-copy h1 {
+    max-width: 12ch;
     font-size: 3.75rem;
+  }
+
+  .landing-today--playing .train-dock-line {
+    min-height: calc(2lh + 0.25rem);
   }
 
   .landing-close h2 {
@@ -1281,6 +1296,18 @@ a {
 
   .landing-close {
     padding-block: 5rem 6rem;
+  }
+
+  .landing-ink--hero {
+    display: inline-flex;
+  }
+
+  .landing-phone-cta {
+    display: none;
+  }
+
+  .landing-phone-cta + .landing-section {
+    padding-top: calc(var(--overhang) + 4rem);
   }
 
   .auth-head h1 {

@@ -32,11 +32,22 @@ export function landingDays(parsed: ParsedPlan): LandingDay[] {
     // A typo match waits for the user's look in the app; with nobody to ask, the landing keeps the written name.
     const exercises = day.exercises.map((exercise): LandingExercise => (exercise.match.status === 'matched' && exercise.match.via !== 'typo' && meta.has(exercise.match.exercise.exerciseId)
       ? fromCatalogue(exercise.match.exercise.exerciseId, exercise.sets, exercise.targetReps, exercise.targetWeight)
-      : { exerciseId: `line-${exercise.line}`, exerciseSource: 'user', name: exercise.name, sets: exercise.sets, reps: exercise.targetReps, weight: exercise.targetWeight, muscles: [] }))
+      : { exerciseId: `line-${exercise.line}`, exerciseSource: 'user', name: exercise.name.charAt(0).toUpperCase() + exercise.name.slice(1), sets: exercise.sets, reps: exercise.targetReps, weight: exercise.targetWeight, muscles: [] }))
     return exercises.length ? [{ name: day.name, exercises }] : []
   })
 }
 
 export function landingToday(day: LandingDay, budgetMin: number | null, straight: boolean): CompressionResult {
   return compressDay({ exercises: day.exercises, budgetMin, straight })
+}
+
+// What today's version changed against the plan as written, for the sentence under the time.
+export function landingChanges(day: LandingDay, today: CompressionResult) {
+  const paired = today.blocks.reduce((sum, block) => {
+    const live = block.items.filter((item) => item.sets > 0).length
+    return live > 1 ? sum + live : sum
+  }, 0)
+  const skipped = day.exercises.filter((_, index) => today.sets[index] === 0).map((exercise) => exercise.name)
+  const fewer = day.exercises.filter((exercise, index) => today.sets[index]! > 0 && today.sets[index]! < exercise.sets).length
+  return { paired, skipped, fewer }
 }

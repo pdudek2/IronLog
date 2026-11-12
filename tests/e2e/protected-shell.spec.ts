@@ -20,7 +20,7 @@ test.describe('Protected application shell', () => {
     })
     const anonymousPage = await anonymousContext.newPage()
     await anonymousPage.goto('/')
-    await expect(anonymousPage.getByRole('heading', { name: 'Train with a plan. Keep every set.' })).toBeVisible({ timeout: 15_000 })
+    await expect(anonymousPage.getByRole('heading', { name: 'Your plan, cut to the time you have.' })).toBeVisible({ timeout: 15_000 })
     await anonymousPage.goto('/dashboard')
     await expect(anonymousPage).toHaveURL('/login', { timeout: 15_000 })
   })

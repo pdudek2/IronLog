@@ -75,6 +75,11 @@ export async function getRecentWorkouts(uid: string, count = 20): Promise<Workou
   return snap.docs.map((docSnap) => normalizeWorkoutSummary(docSnap.id, docSnap.data()))
 }
 
+export async function getFirstWorkoutStartedAt(uid: string): Promise<number | null> {
+  const snap = confirmedQuery(await getDocs(query(collection(db, 'workouts'), where('userId', '==', uid), orderBy('startedAt', 'asc'), limit(1))))
+  return snap.docs[0] ? normalizeWorkoutSummary(snap.docs[0].id, snap.docs[0].data()).startedAt : null
+}
+
 export async function getWorkoutHistory(
   uid: string,
   batchSize = 250,

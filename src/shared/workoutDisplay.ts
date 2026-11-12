@@ -101,8 +101,8 @@ export function exerciseSummaryLabel(sets: { weight: number; reps: number }[], u
 export function estimatedOneRepMax(weight: number, reps: number): number {
   return Math.round(weight * (1 + reps / 30))
 }
-export function trainingSinceLabel(createdAt: number): string {
-  return `Training since ${new Date(createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
+export function trainingSinceLabel(createdAt: number, firstWorkoutAt: number | null): string {
+  return `Training since ${new Date(Math.min(createdAt, firstWorkoutAt ?? createdAt)).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`
 }
 export function formatPreviousSet(set: { weight: number; reps: number } | undefined, units: WeightUnits): string {
   return set ? `${kgToDisplayWeight(set.weight, units)} × ${set.reps}` : '—'

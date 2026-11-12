@@ -44,7 +44,7 @@ export function releaseSteps({ sha, versionCode, testers, notes, worktree }: Rel
     { name: 'Native lint', cwd: mobile, cmd: ['npm', 'run', 'lint'] },
     { name: 'Android prebuild', cwd: mobile, env: android, cmd: ['npx', 'expo', 'prebuild', '--platform', 'android', '--clean', '--no-install'] },
     { name: 'Build the release APK', cwd: worktree, env: gradle, cmd: ['mobile/android/gradlew', '-p', 'mobile/android', ':app:assembleRelease', '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a'] },
-    { name: 'Deploy the Firestore rules', cmd: [...firebaseCli, 'deploy', '--only', 'firestore:rules', '--project', FIREBASE_PROJECT] },
+    { name: 'Deploy the Firestore rules and indexes', cmd: [...firebaseCli, 'deploy', '--only', 'firestore:rules,firestore:indexes', '--project', FIREBASE_PROJECT] },
     { name: 'Deploy the web', cmd: ['vercel', 'deploy', '--prod', '--yes'] },
     { name: 'Send the APK to testers', cmd: testers ? [...firebase, '--testers', testers] : firebase },
   ]

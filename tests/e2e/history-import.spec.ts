@@ -70,6 +70,7 @@ test.describe('History import', () => {
 
     // The export carries the imported sets, and the same file now meets the days already in SHEAR.
     await page.goto('/profile')
+    await expect(page.locator('.profile-since').first()).toHaveText('Training since March 2026', { timeout: 15_000 })
     const download = page.waitForEvent('download')
     await page.getByRole('button', { name: 'Export history' }).click()
     const file = await download

@@ -200,6 +200,9 @@ describe('parsePlanText: days, title and skipped lines', () => {
     expect(rows('Squat 2x10 40kg\nSquat 3x5 100kg')).toEqual([[[3, 5, 100, false]], [[1, 'warmUp']]])
     expect(rows('Squat 1x10 20kg\nSquat 1x8 24kg\nSquat 3x5 100kg')).toEqual([[[3, 5, 100, false]], [[1, 'warmUp'], [2, 'warmUp']]])
     expect(rows('Squat 3x5 100kg\nSquat 2x12 60kg')).toEqual([[[5, 5, 100, true]], []])
+    // A name read by a typo guess is another exercise until the user says otherwise: no folding, no warm-up.
+    expect(rows('French press 3x12 30kg\nBench press 4x5 90kg')).toEqual([[[3, 12, 30, false], [4, 5, 90, false]], []])
+    expect(rows('Bench press 4x5 90kg\nFrench press 3x12 30kg')).toEqual([[[4, 5, 90, false], [3, 12, 30, false]], []])
     const variants = parsePlanText('Leg press (single leg) 3x12 50kg\nLeg press 3x10 120kg')
     expect(variants.days[0]!.exercises.map((exercise) => [exercise.sets, exercise.duplicate])).toEqual([[3, false], [3, true]])
     expect(variants.skipped).toEqual([])

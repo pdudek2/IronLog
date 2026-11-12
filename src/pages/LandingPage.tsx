@@ -20,8 +20,7 @@ export default function LandingPage() {
         <div className="landing-hero">
           <div className="landing-copy">
             <h1>Your plan, cut to the time you have.</h1>
-            <p>Pick how long you have today. SHEAR pairs exercises into supersets and trims extras at your usual weights, and your plan stays as you wrote it.</p>
-            <i className="auth-seam" aria-hidden="true" />
+            <p>Say how long you have today. SHEAR puts your exercises into supersets, then drops extras. Your weights and your saved plan stay the same.</p>
           </div>
 
           <LandingCompression day={EXAMPLE_DAY} playing label="Example plan" />

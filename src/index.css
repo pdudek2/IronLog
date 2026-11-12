@@ -739,10 +739,6 @@ a {
   line-height: 1.5;
 }
 
-.landing-copy .auth-seam {
-  margin-top: 1.5rem;
-}
-
 .landing-hero {
   row-gap: 2rem;
 }
@@ -874,13 +870,35 @@ a {
   min-height: 2.75rem;
 }
 
-.landing .landing-today-dock {
-  position: static;
-  margin: 0.75rem -0.25rem 0;
+.landing-today .train-dock-time {
+  margin-top: 0.5rem;
 }
 
-.landing-today-start {
-  min-height: 2.75rem;
+/* The selected time switches at once, so no frame shows two half-lit times. */
+.landing-today .train-dock-time button {
+  transition: none;
+}
+
+.landing-today .train-dock-line {
+  padding-bottom: 0.25rem;
+}
+
+/* Height of the tallest state (every row plus two group labels), so nothing below jumps while the loop runs. */
+.landing-today .train-exercises {
+  min-height: calc(var(--rows) * 2.75rem + 3.5rem);
+  margin-top: 0.5rem;
+}
+
+.landing-today .train-exercise span + span strong {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.landing-cut {
+  display: block;
+  height: 2px;
+  margin: 0.375rem 0;
+  background: var(--seam);
 }
 
 .landing-section {
@@ -952,6 +970,7 @@ a {
 
 .landing-paste-form .ui-button {
   min-height: 2.75rem;
+  padding-inline: 1.125rem;
   justify-self: start;
 }
 

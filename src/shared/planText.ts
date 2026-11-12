@@ -488,7 +488,7 @@ export function parsePlanText(text: string, userExercises: MatchCandidate[] = []
     const previous = block.exercises.at(-1)
     const same = previous && previous.match.status === 'matched' && match.status === 'matched'
       && previous.match.exercise.exerciseId === match.exercise.exerciseId && previous.match.exercise.exerciseSource === match.exercise.exerciseSource
-      && previous.match.variant === match.variant
+      && previous.match.variant === match.variant && previous.match.via !== 'typo' && match.via !== 'typo'
     if (same && previous.targetWeight > 0 && previous.targetWeight < weight * 0.8) {
       for (const dropped of linesOf.get(previous)!) skipped.push({ ...dropped, reason: 'warmUp' })
       block.exercises.pop()

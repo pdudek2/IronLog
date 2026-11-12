@@ -240,6 +240,12 @@ export async function readRecentWorkouts(uid: string, count: number): Promise<Re
   return { data: snapshot.docs.map((document) => parseSavedWorkout(document.id, uid, document.data())), fromCache: snapshot.metadata.fromCache }
 }
 
+export async function readFirstWorkoutAt(uid: string): Promise<number | null> {
+  const { firestore } = await getServices()
+  const snapshot = await getDocs(query(collection(firestore, 'workouts'), where('userId', '==', uid), orderBy('startedAt', 'asc'), limit(1)))
+  return snapshot.docs[0] ? parseSavedWorkout(snapshot.docs[0].id, uid, snapshot.docs[0].data()).startedAt : null
+}
+
 export async function readReadiness(uid: string, date: string, server = false): Promise<ReadResult<ReadinessEntry | null>> {
   const { auth, firestore } = await getServices()
   if (auth.currentUser?.uid !== uid) throw new ReadinessNotSubmittedError('The signed-in account changed.')

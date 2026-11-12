@@ -6,7 +6,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import HistoryHeader from '../src/HistoryHeader'
 import BottomNavigation, { useBottomNavigation, type NavigationExit } from '../src/BottomNavigation'
-import { logout, readProfile, readProgressRecords, readRecentWorkouts, saveProfile } from '../src/firebase'
+import { logout, readFirstWorkoutAt, readProfile, readProgressRecords, readRecentWorkouts, saveProfile } from '../src/firebase'
 import { pluralize } from '../../src/lib/pluralize'
 import { trainingSinceLabel } from '../../src/shared/workoutDisplay'
 import { ProfileController, profileGoals, type ProfileState } from '../src/profile'
@@ -83,6 +83,7 @@ function Profile({ uid }: { uid: string }) {
   }
   const [stats, setStats] = useState<{ workouts: number; records: number } | null>(null)
   const [createdAt, setCreatedAt] = useState<number | null>(null)
+  const [firstWorkoutAt, setFirstWorkoutAt] = useState<number | null>(null)
   useEffect(() => {
     let live = true
     void Promise.all([readRecentWorkouts(uid, STATS_WORKOUTS), readProgressRecords(uid), readProfile(uid)]).then(([workouts, records, profile]) => {
@@ -90,6 +91,7 @@ function Profile({ uid }: { uid: string }) {
       setCreatedAt(profile.data?.createdAt ?? null)
       setStats({ workouts: workouts.data.length, records: records.data.records.length })
     }).catch(() => undefined)
+    readFirstWorkoutAt(uid).then((at) => { if (live) setFirstWorkoutAt(at) }).catch(() => undefined)
     return () => { live = false }
   }, [uid])
   const current = state ?? controller.state
@@ -105,7 +107,7 @@ function Profile({ uid }: { uid: string }) {
           <View style={styles.avatar}><Text style={styles.avatarText}>{(input?.displayName || '?').charAt(0).toUpperCase()}</Text></View>
           <View style={styles.headCopy}>
             <Text accessibilityRole="header" accessibilityLabel="Profile" numberOfLines={1} style={styles.title}>{input?.displayName || 'Profile'}</Text>
-            {createdAt ? <Text style={styles.since}>{trainingSinceLabel(createdAt)}</Text> : null}
+            {createdAt ? <Text style={styles.since}>{trainingSinceLabel(createdAt, firstWorkoutAt)}</Text> : null}
             {stats && <Text style={styles.since}>{stats.workouts >= STATS_WORKOUTS ? `${STATS_WORKOUTS}+` : stats.workouts} {pluralize(stats.workouts, 'workout', 'workouts')} · {stats.records} {pluralize(stats.records, 'record', 'records')}</Text>}
           </View>
         </View>

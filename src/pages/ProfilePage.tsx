@@ -8,7 +8,7 @@ import { useProfileStore } from '../store/profileStore'
 import { useAuthStore } from '../store/authStore'
 import { Button, Input } from '../components/ui'
 import { pluralize } from '../lib/pluralize'
-import { getRecentWorkouts, getWorkoutHistory } from '../lib/workoutService'
+import { getFirstWorkoutStartedAt, getRecentWorkouts, getWorkoutHistory } from '../lib/workoutService'
 import { historyCsv } from '../shared/historyCsv'
 import { getRecords } from '../lib/progressService'
 import { trainingSinceLabel } from '../shared/workoutDisplay'
@@ -34,6 +34,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [nameError, setNameError] = useState('')
   const [stats, setStats] = useState<{ workouts: number; records: number } | null>(null)
+  const [firstWorkoutAt, setFirstWorkoutAt] = useState<number | null>(null)
   const [exporting, setExporting] = useState(false)
   const uid = user?.uid
 
@@ -74,6 +75,7 @@ export default function ProfilePage() {
         setStats({ workouts: workouts.length, records: records.length })
       })
       .catch(() => {})
+    getFirstWorkoutStartedAt(uid).then((at) => { if (live) setFirstWorkoutAt(at) }).catch(() => {})
     return () => { live = false }
   }, [uid])
 
@@ -102,7 +104,7 @@ export default function ProfilePage() {
         <div>
           <h1 id="profile-title" className="progress-visually-hidden">Profile</h1>
           <p className="profile-name">{profile?.displayName ?? ' '}</p>
-          {profile?.createdAt ? <p className="profile-since">{trainingSinceLabel(profile.createdAt)}</p> : null}
+          {profile?.createdAt ? <p className="profile-since">{trainingSinceLabel(profile.createdAt, firstWorkoutAt)}</p> : null}
           {stats && (
             <p className="profile-since">
               {stats.workouts >= STATS_WORKOUTS ? `${STATS_WORKOUTS}+` : stats.workouts} {pluralize(stats.workouts, 'workout', 'workouts')} · {stats.records} {pluralize(stats.records, 'record', 'records')}

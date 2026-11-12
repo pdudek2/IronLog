@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { focusExerciseIndex, restAfterSet, upNextQueue } from '../workoutDisplay'
+import { focusExerciseIndex, restAfterSet, trainingSinceLabel, upNextQueue } from '../workoutDisplay'
 import type { Role } from '../compression'
+
+it('dates training from the first workout when imported history is older than the account', () => {
+  const account = new Date(2026, 3, 9).getTime()
+  expect(trainingSinceLabel(account, new Date(2025, 10, 4).getTime())).toBe('Training since November 2025')
+  expect(trainingSinceLabel(account, new Date(2026, 4, 1).getTime())).toBe('Training since April 2026')
+  expect(trainingSinceLabel(account, null)).toBe('Training since April 2026')
+})
 
 const exercise = (done: number, total: number, group?: string) => ({ ...(group ? { group } : {}), sets: Array.from({ length: total }, (_, index) => ({ done: index < done })) })
 // Walks a session set by set from focus to focus.

@@ -25,9 +25,9 @@ describe('releaseSteps', () => {
   })
 
   it('deploys the rules after the APK build and before the web', () => {
-    expect(at('Deploy the Firestore rules')).toBeGreaterThan(at('Build the release APK'))
-    expect(at('Deploy the Firestore rules')).toBeLessThan(at('Deploy the web'))
-    expect(steps[at('Deploy the Firestore rules')].cmd).toEqual(expect.arrayContaining(['deploy', '--only', 'firestore:rules', '--project', 'ironlog-ede05']))
+    expect(at('Deploy the Firestore rules and indexes')).toBeGreaterThan(at('Build the release APK'))
+    expect(at('Deploy the Firestore rules and indexes')).toBeLessThan(at('Deploy the web'))
+    expect(steps[at('Deploy the Firestore rules and indexes')].cmd).toEqual(expect.arrayContaining(['deploy', '--only', 'firestore:rules,firestore:indexes', '--project', 'ironlog-ede05']))
   })
 
   it('passes the version code and production backend to the Android build', () => {

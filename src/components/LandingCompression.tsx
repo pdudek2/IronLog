@@ -1,16 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { LayoutGroup, motion, useReducedMotion } from 'framer-motion'
-import { landingToday, type LandingDay } from '../shared/landingDay'
+import { landingChanges, landingToday, type LandingDay } from '../shared/landingDay'
 
 const BUDGETS = [45, 30, 20] as const
 const LOOP: (number | null)[] = [45, 30, null]
 const minutes = (sec: number) => Math.round(sec / 60)
+const and = (parts: string[]) => (parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts.at(-1)}` : parts[0] ?? '')
+const exercises = (count: number) => `${count} ${count === 1 ? 'exercise' : 'exercises'}`
 const slide = { duration: 0.5, ease: [0.2, 0.7, 0.2, 1] as const }
 
 // Today's version of one plan day; on the hero it changes the time by itself until touched. The time sits above
 // the list here (not at the thumb, as on Train) because a visitor watches the cause before the effect.
 export default function LandingCompression({ day, playing: autoplay, label }: { day: LandingDay; playing: boolean; label: string }) {
   const reduceMotion = useReducedMotion()
+  const group = useId()
   const usual = minutes(landingToday(day, null, false).fullEstimateSec)
   const shorter = useMemo(() => BUDGETS.filter((budget) => budget < usual), [usual])
   const [budget, setBudget] = useState<number | null>(() => (autoplay && !reduceMotion ? null : shorter[0] ?? null))
@@ -32,6 +35,12 @@ export default function LandingCompression({ day, playing: autoplay, label }: { 
   const today = useMemo(() => landingToday(day, budget, false), [day, budget])
   const planned = day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)
   const skipped = day.exercises.flatMap((_, index) => (today.sets[index] === 0 ? [index] : []))
+  const changes = landingChanges(day, today)
+  const changed = and([
+    ...(changes.paired ? [`${exercises(changes.paired)} pair up`] : []),
+    ...(changes.skipped.length === 1 ? [`${changes.skipped[0]} is skipped`] : changes.skipped.length ? [`${exercises(changes.skipped.length)} are skipped`] : []),
+    ...(changes.fewer ? [`${exercises(changes.fewer)} ${changes.fewer === 1 ? 'has' : 'have'} fewer sets`] : []),
+  ])
   const stop = () => setTouched(true)
   const choose = (value: number | null) => { stop(); setBudget(value) }
 
@@ -50,7 +59,7 @@ export default function LandingCompression({ day, playing: autoplay, label }: { 
 
   return (
     <section
-      className="landing-today"
+      className={autoplay ? 'landing-today landing-today--playing' : 'landing-today'}
       aria-label={`${day.name}, today's version`}
       onPointerEnter={(event) => { if (event.pointerType === 'mouse') setHeld(true) }}
       onPointerLeave={() => setHeld(false)}
@@ -79,11 +88,12 @@ export default function LandingCompression({ day, playing: autoplay, label }: { 
         </p>
       ) : (
         <p className="train-dock-line">
-          <strong>~{minutes(today.estimateSec)} min</strong>{budget === null ? ` · ${planned} sets` : ` instead of ~${usual}`}{' · '}Same weights
+          <strong>~{minutes(today.estimateSec)} min</strong>
+          {budget === null ? `. ${planned} sets, as written.` : ` instead of ~${usual}.${changed ? ` ${changed}.` : ''} Weights stay the same.`}
         </p>
       )}
 
-      <LayoutGroup>
+      <LayoutGroup id={group}>
         <div className="train-exercises" style={{ '--rows': day.exercises.length } as React.CSSProperties}>
           {today.blocks.map((block) => {
             const live = block.items.filter((item) => item.sets > 0)

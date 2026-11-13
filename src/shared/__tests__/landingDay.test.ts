@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EXAMPLE_DAY, landingDays, landingToday } from '../landingDay'
+import { EXAMPLE_DAY, landingChanges, landingDays, landingToday } from '../landingDay'
 import { parsePlanText } from '../planText'
 
 const minutes = (sec: number) => Math.round(sec / 60)
@@ -12,6 +12,11 @@ describe('landing day', () => {
     expect(short.sets).toEqual([4, 3, 0, 3, 2, 2, 2])
     expect(short.blocks.filter((block) => block.group).map((block) => block.items.length).sort()).toEqual([2, 3])
     expect(at(30).sets[0]).toBe(2)
+    expect([null, 45, 30].map((budget) => landingChanges(EXAMPLE_DAY, at(budget)))).toEqual([
+      { paired: 0, skipped: [], fewer: 0 },
+      { paired: 5, skipped: ['Seated Cable Row'], fewer: 3 },
+      { paired: 5, skipped: ['Seated Cable Row'], fewer: 6 },
+    ])
   })
 
   it('reads a pasted plan into days, keeping lines the catalogue does not know', () => {

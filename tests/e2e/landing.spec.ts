@@ -27,10 +27,10 @@ test.describe('Landing', () => {
     await page.clock.runFor(10_000)
     await expect(time('20 min')).toBeChecked()
 
-    await page.getByRole('link', { name: 'Try it on your own plan' }).click()
+    await expect(page.getByRole('region', { name: 'push, today\'s version', exact: true }).getByText('Skipped today')).toBeVisible()
     await page.getByLabel('Your plan', { exact: true }).fill('Push\nWyciskanie na ławce 4x5 90\nFrench press 3x12 30\nWznosy bokiem 3x15 10\nPompki na poręczach 3x8\n\nPull\nMartwy ciąg 3x5 140\nPodciąganie 4x6')
     await page.getByRole('button', { name: 'Show my short day' }).click()
-    const pasted = page.getByRole('region', { name: 'Push, today\'s version' })
+    const pasted = page.getByRole('region', { name: 'Push, today\'s version', exact: true })
     await expect(pasted.getByText('French press')).toBeVisible()
     await expect(pasted.getByRole('radio', { name: /min$/ }).first()).toBeVisible()
     await page.getByRole('radio', { name: 'Pull' }).click()

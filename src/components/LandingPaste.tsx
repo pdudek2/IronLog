@@ -1,19 +1,26 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import LandingCompression from './LandingCompression'
 import { landingDays, type LandingDay } from '../shared/landingDay'
 
-// The parser loads only when someone pastes; the page itself stays light.
+// The parser is its own chunk, loaded after the page has rendered.
 async function readPlan(text: string): Promise<{ days: LandingDay[]; unread: number }> {
   const { parsePlanText } = await import('../shared/planText')
   const parsed = parsePlanText(text)
   return { days: landingDays(parsed), unread: parsed.skipped.filter((line) => line.reason !== 'comment' && line.reason !== 'warmUp' && line.reason !== 'emptyDay').length }
 }
 
+const NOTE = 'push\nbench 4x6 80\nincline db 3x10 26\nohp 3x8 40\nwznosy bokiem 3x15 10\nfrench press 3x12 30\ndipy 3x8'
+
 export default function LandingPaste() {
-  const [text, setText] = useState('')
+  const [text, setText] = useState(NOTE)
   const [result, setResult] = useState<{ days: LandingDay[]; unread: number } | null>(null)
+  const [run, setRun] = useState(0)
   const [dayIndex, setDayIndex] = useState(0)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    void readPlan(NOTE).then((read) => setResult((shown) => shown ?? read))
+  }, [])
 
   async function show(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -29,6 +36,7 @@ export default function LandingPaste() {
     }
     setError('')
     setDayIndex(0)
+    setRun((value) => value + 1)
     setResult(read)
   }
 
@@ -44,11 +52,10 @@ export default function LandingPaste() {
           onChange={(event) => { setText(event.target.value); setError('') }}
           rows={7}
           spellCheck={false}
-          placeholder={'Push\nBench press 4x6 80\nIncline dumbbell press 3x10 26\nLateral raise 3x15 10'}
           aria-describedby={error ? 'landing-plan-error' : undefined}
         />
         {error && <p id="landing-plan-error" className="landing-paste-error" role="alert">{error}</p>}
-        <button type="submit" className="ui-button ui-button--ghost">Show my short day</button>
+        <button type="submit" className="ui-button ui-button--primary">Show my short day</button>
       </form>
 
       {result && day && (
@@ -62,7 +69,7 @@ export default function LandingPaste() {
               ))}
             </div>
           )}
-          <LandingCompression key={dayIndex} day={day} playing={false} label="Your plan" />
+          <LandingCompression key={`${run}-${dayIndex}`} day={day} playing={false} label="From your note" />
           {result.unread > 0 && <p className="landing-paste-note">{result.unread} {result.unread === 1 ? 'line' : 'lines'} not read</p>}
         </div>
       )}

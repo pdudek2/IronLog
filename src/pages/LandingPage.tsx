@@ -8,35 +8,33 @@ import { EXAMPLE_DAY } from '../shared/landingDay'
 export default function LandingPage() {
   return (
     <div className="landing">
-      <header className="landing-bar">
-        <BrandLink />
-        <nav className="landing-nav" aria-label="Account">
-          <Link to="/login" className="landing-signin">Sign in</Link>
-          <Link to="/register" className="landing-signin">Create account</Link>
-        </nav>
-      </header>
+      <div className="landing-paper">
+        <header className="landing-bar">
+          <BrandLink />
+          <nav className="landing-nav" aria-label="Account">
+            <Link to="/login" className="landing-signin">Sign in</Link>
+          </nav>
+        </header>
 
-      <main>
         <div className="landing-hero">
           <div className="landing-copy">
             <h1>Your plan, cut to the time you have.</h1>
             <p>Say how long you have today. SHEAR puts your exercises into supersets, then drops extras. Your weights and your saved plan stay the same.</p>
+            <Link to="/register" className="ui-button landing-ink landing-ink--hero">Create account</Link>
           </div>
 
           <LandingCompression day={EXAMPLE_DAY} playing label="Example plan" />
+        </div>
+      </div>
 
-          <div className="landing-cta">
-            <div className="landing-actions">
-              <Link to="/register" className="ui-button ui-button--primary landing-primary">Create account</Link>
-              <a href="#your-plan" className="auth-alt">Try it on your own plan</a>
-            </div>
-            <small>Free on the web. The Android app is in testing.</small>
-          </div>
+      <main className="landing-dark">
+        <div className="landing-phone-cta">
+          <Link to="/register" className="ui-button ui-button--primary landing-primary">Create account</Link>
         </div>
 
         <section className="landing-section" id="your-plan" aria-labelledby="landing-plan-title">
           <div className="landing-section-copy">
-            <h2 id="landing-plan-title">Try it on your plan</h2>
+            <h2 id="landing-plan-title">Try it on your own plan</h2>
             <p>Paste it from Notes, a spreadsheet or another app, in English or Polish. Nothing is saved.</p>
           </div>
           <LandingPaste />
@@ -50,6 +48,12 @@ export default function LandingPage() {
           <LandingDemo />
         </section>
       </main>
+
+      <footer className="landing-paper landing-close" aria-labelledby="landing-close-title">
+        <h2 id="landing-close-title">Bring the plan you already train.</h2>
+        <Link to="/register" className="ui-button landing-ink">Create account</Link>
+        <small>Free on the web. The Android app is in testing.</small>
+      </footer>
     </div>
   )
 }

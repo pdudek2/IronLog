@@ -15,7 +15,7 @@ test.describe('Landing', () => {
 
     await page.clock.runFor(1_700)
     await expect(time('45 min')).toBeChecked()
-    await expect(hero.getByRole('group', { name: 'Superset, 3 rounds' })).toBeVisible()
+    await expect(hero.getByText('Superset · 3 rounds')).toBeVisible()
     await expect(hero.getByText('Skipped today')).toBeVisible()
     await expect(hero.getByText('~41 min')).toBeVisible()
     await expect(hero.getByText(/instead of ~69/)).toBeVisible()

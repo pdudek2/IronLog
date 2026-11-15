@@ -9,12 +9,14 @@ const record: CompressionRecord = {
 describe('parseCompressionRecord', () => {
   it('keeps a valid record and drops unknown fields', () => {
     expect(parseCompressionRecord({ ...record, extra: 1 })).toEqual(record)
+    expect(parseCompressionRecord({ ...record, breakDays: 40 })).toEqual({ ...record, breakDays: 40 })
   })
 
   it('turns any malformed record into null', () => {
     for (const bad of [null, [], { ...record, v: 2 }, { ...record, mode: 'usual' }, { ...record, calibration: 'x' }, { ...record, budgetMin: 0 },
       { ...record, exercises: Array.from({ length: 21 }, () => record.exercises[0]) },
-      { ...record, exercises: [{ ...record.exercises[0], sets: 21 }] }, { ...record, exercises: [{ ...record.exercises[0], exerciseSource: 'x' }] }]) {
+      { ...record, exercises: [{ ...record.exercises[0], sets: 21 }] }, { ...record, exercises: [{ ...record.exercises[0], exerciseSource: 'x' }] },
+      { ...record, breakDays: 14 }, { ...record, breakDays: 3651 }, { ...record, breakDays: '40' }, { ...record, breakDays: 20.5 }]) {
       expect(parseCompressionRecord(bad)).toBeNull()
     }
   })

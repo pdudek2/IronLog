@@ -172,7 +172,7 @@ function TrainExercises({ uid, template, dayIndex, units, onOpen }: {
   )
 }
 
-interface TodayChoice { key: string | null; budgetMin: number | null; straight: boolean; proposals: CompressionProposal[] }
+interface TodayChoice { key: string | null; budgetMin: number | null; straight: boolean; fullSets: boolean; proposals: CompressionProposal[] }
 
 export default function DashboardPage() {
   const { user } = useAuthStore()
@@ -210,7 +210,7 @@ export default function DashboardPage() {
     unavailable: false,
   })
   const [workoutPickerOpen, setWorkoutPickerOpen] = useState(false)
-  const [todayChoice, setTodayChoice] = useState<TodayChoice>({ key: null, budgetMin: null, straight: false, proposals: [] })
+  const [todayChoice, setTodayChoice] = useState<TodayChoice>({ key: null, budgetMin: null, straight: false, fullSets: false, proposals: [] })
   const [skipping, setSkipping] = useState(false)
   const [pasting, setPasting] = useState(false)
   const starter = useStarterPlan(() => handleRetryTemplates())
@@ -486,26 +486,26 @@ export default function DashboardPage() {
       : { status: 'loading' }
   const quickTemplateHasExercises = Boolean(quickTemplateDay)
   // The time chosen today belongs to the day on screen; another day starts from Usual.
-  const choice: TodayChoice = todayChoice.key === quickTemplateRequestKey ? todayChoice : { key: quickTemplateRequestKey, budgetMin: null, straight: false, proposals: [] }
+  const choice: TodayChoice = todayChoice.key === quickTemplateRequestKey ? todayChoice : { key: quickTemplateRequestKey, budgetMin: null, straight: false, fullSets: false, proposals: [] }
   const userExerciseMeta = new Map(userExerciseList.map((exercise) => [`user:${exercise.id}`, exercise]))
-  const todayOptions = (budgetMin: number | null, straight: boolean): TodayOptions => ({
-    budgetMin, straight, userExercises: userExerciseMeta,
+  const todayOptions = (budgetMin: number | null, straight: boolean, fullSets: boolean): TodayOptions => ({
+    budgetMin, straight, fullSets, userExercises: userExerciseMeta,
     templateId: quickTemplate?.id ?? null, planDayId: quickTemplateDay ? planDayIdOf(quickTemplateDay, quickTemplateDayIndex) : null,
   })
   const readinessEntry = readinessState.status === 'success' ? readinessState.data : null
-  const planToday = (budgetMin: number | null, straight: boolean) => quickTemplate && quickTemplateDay?.exercises.length
-    ? buildNextSessionRecommendation(quickTemplate, quickTemplateDayIndex, readinessEntry, workouts, Date.now(), units, todayOptions(budgetMin, straight))
+  const planToday = (budgetMin: number | null, straight: boolean, fullSets: boolean) => quickTemplate && quickTemplateDay?.exercises.length
+    ? buildNextSessionRecommendation(quickTemplate, quickTemplateDayIndex, readinessEntry, workouts, Date.now(), units, todayOptions(budgetMin, straight, fullSets))
     : null
-  const todayPlan = hasActiveSession ? null : planToday(choice.budgetMin, choice.straight)
-  // Start launches today's version once the user gave a time or checked in; an untouched day starts the plan as written.
-  const todayLaunch: TemplateLaunch | undefined = todayPlan && (choice.budgetMin !== null || choice.proposals.length > 0 || readinessEntry)
+  const todayPlan = hasActiveSession ? null : planToday(choice.budgetMin, choice.straight, choice.fullSets)
+  // Start launches today's version once the user gave a time, checked in or comes back from a break; an untouched day starts the plan as written.
+  const todayLaunch: TemplateLaunch | undefined = todayPlan && (choice.budgetMin !== null || choice.proposals.length > 0 || readinessEntry || todayPlan.breakDays !== null)
     // Without a check-in, today's version keeps the usual day's weights, so a shorter day never changes a load.
     ? { items: readinessEntry ? todayPlan.launch : todayPlan.launch.map((item) => ({ dayExerciseIndex: item.dayExerciseIndex, sets: item.sets, ...(item.group ? { group: item.group } : {}) })), ...(todayPlan.record ? { compression: todayPlan.record } : {}), ...(choice.proposals.length ? { proposals: choice.proposals } : {}) }
     : undefined
-  function chooseTime(budgetMin: number | null, straight: boolean) {
-    const proposal = planToday(budgetMin, straight)
+  function chooseTime(budgetMin: number | null, straight: boolean, fullSets = choice.fullSets) {
+    const proposal = planToday(budgetMin, straight, fullSets)
     const mode: CompressionProposal['mode'] = budgetMin === null ? 'usual' : proposal?.record?.mode ?? 'usual'
-    setTodayChoice({ key: quickTemplateRequestKey, budgetMin, straight, proposals: [...choice.proposals, { budgetMin, mode }].slice(-12) })
+    setTodayChoice({ key: quickTemplateRequestKey, budgetMin, straight, fullSets, proposals: [...choice.proposals, { budgetMin, mode }].slice(-12) })
   }
   async function skipToday() {
     if (!user || !quickTemplate || !quickTemplateDay || skipping) return
@@ -513,7 +513,7 @@ export default function DashboardPage() {
     try {
       await recordPlanSkip(user.uid, quickTemplate.id, planDayIdOf(quickTemplateDay, quickTemplateDayIndex))
       toast.success(`Skipped today. ${quickTemplateDay.name} stays next.`)
-      setTodayChoice({ key: quickTemplateRequestKey, budgetMin: null, straight: false, proposals: [] })
+      setTodayChoice({ key: quickTemplateRequestKey, budgetMin: null, straight: false, fullSets: false, proposals: [] })
     } catch {
       toast.error('Could not skip today. Try again.')
     } finally {
@@ -647,8 +647,10 @@ export default function DashboardPage() {
           plannedSets={quickTemplateDay.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
           budgetMin={choice.budgetMin}
           straight={choice.straight}
+          fullSets={choice.fullSets}
           onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)}
           onStraight={(straight) => chooseTime(choice.budgetMin, straight)}
+          onFullSets={(fullSets) => chooseTime(choice.budgetMin, choice.straight, fullSets)}
         />
       )}
       <div className="train-dock-actions">

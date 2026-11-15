@@ -50,6 +50,9 @@ test('today\'s launch: an untouched day starts as written; a shorter day without
   assert.deepEqual(plain.proposals, proposals)
   const checked = todayLaunch(buildNextSessionRecommendation(plan, 0, entry, workouts, NOW), true, usual)!
   assert.ok(checked.items.every(item => typeof item.weight === 'number' && typeof item.reps === 'number'))
+  const back = todayLaunch(buildNextSessionRecommendation(plan, 0, null, workouts.map(w => ({ ...w, finishedAt: NOW - 40 * 86_400_000 })), NOW), false, usual)!
+  assert.equal(back.compression?.breakDays, 40)
+  assert.ok(back.items.every(item => item.weight === undefined))
 })
 const tick = () => new Promise(resolve => setImmediate(resolve))
 function harness(milliseconds = 20) {

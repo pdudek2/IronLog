@@ -48,9 +48,9 @@ export function TrainCheckIn({ state, controller, open, onToggle }: { state: Rea
 }
 
 // The dock's time row, today's line and the switch: what Start launches, before it is pressed.
-export function TrainTime({ today, plannedSets, budgetMin, straight, onBudget, onStraight }: {
-  today: NextSessionRecommendation; plannedSets: number; budgetMin: number | null; straight: boolean
-  onBudget: (budgetMin: number | null) => void; onStraight: (straight: boolean) => void
+export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, onBudget, onStraight, onFullSets }: {
+  today: NextSessionRecommendation; plannedSets: number; budgetMin: number | null; straight: boolean; fullSets: boolean
+  onBudget: (budgetMin: number | null) => void; onStraight: (straight: boolean) => void; onFullSets: (fullSets: boolean) => void
 }) {
   const approx = today.calibration.source === 'none' ? '~' : ''
   const { compression } = today
@@ -58,7 +58,10 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, onBudget, o
   const shorter = TIME_BUDGETS.filter((budget) => budget < usual)
   const kept = compression.sets.reduce((sum, sets) => sum + sets, 0)
   const grouped = compression.blocks.some((block) => block.group && block.items.filter((item) => item.sets > 0).length > 1)
+  // After a break the start weights stay the usual day's and the session's first set tests them.
+  const weights = today.breakDays !== null && today.exercises.some((exercise) => exercise.trial) ? 'First set is a test' : 'Same weights'
   return <>
+    {today.breakDays !== null && <Text style={styles.todayLine}>{today.breakDays} days since your last workout{fullSets ? '' : ' · fewer sets today'}</Text>}
     {(shorter.length > 0 || budgetMin !== null) && <View accessibilityRole="radiogroup" accessibilityLabel="Time today" style={styles.time}>
       <Pressable accessibilityRole="radio" accessibilityState={{ checked: budgetMin === null }} onPress={() => onBudget(null)} style={[styles.timeButton, styles.timeUsual, budgetMin === null && styles.timeChecked]}>
         <Text style={[styles.timeText, budgetMin === null && styles.timeTextChecked]}>Usual <Text style={budgetMin === null ? styles.timeSoftChecked : styles.timeSoft}>{approx}{usual} min</Text></Text>
@@ -69,7 +72,11 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, onBudget, o
     </View>}
     {budgetMin !== null && !compression.fits
       ? <Text accessibilityLiveRegion="polite" style={styles.todayLine}><Text style={styles.todayStrong}>Doesn’t fit in {budgetMin} min.</Text> The shortest version takes {approx}{minutes(compression.estimateSec)} min.</Text>
-      : today.record && <Text style={styles.todayLine}><Text style={styles.todayStrong}>{approx}{minutes(compression.estimateSec)} min</Text> · {kept} of {plannedSets} sets · Same weights</Text>}
+      : today.record && <Text style={styles.todayLine}><Text style={styles.todayStrong}>{approx}{minutes(compression.estimateSec)} min</Text> · {kept} of {plannedSets} sets · {weights}</Text>}
+    {today.breakDays !== null && <Pressable accessibilityRole="switch" accessibilityState={{ checked: fullSets }} accessibilityLabel="Full sets" onPress={() => onFullSets(!fullSets)} style={styles.switchRow}>
+      <Text style={styles.switchText}>Full sets</Text>
+      <View style={[styles.track, fullSets && styles.trackOn]}><View style={[styles.thumb, fullSets && styles.thumbOn]} /></View>
+    </Pressable>}
     {budgetMin !== null && compression.fits && (grouped || straight) && <Pressable accessibilityRole="switch" accessibilityState={{ checked: straight }} accessibilityLabel="Without supersets" onPress={() => onStraight(!straight)} style={styles.switchRow}>
       <Text style={styles.switchText}>Without supersets</Text>
       <View style={[styles.track, straight && styles.trackOn]}><View style={[styles.thumb, straight && styles.thumbOn]} /></View>

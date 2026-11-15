@@ -184,6 +184,7 @@ describe('buildFinishedWorkoutFromActiveSession', () => {
     const finished = buildFinishedWorkoutFromActiveSession(draft, start + 1)
     expect(finished).toMatchObject({ compression, proposals })
     expect(finished.exercises[0]!.group).toBe('g1')
+    expect(buildFinishedWorkoutFromActiveSession({ ...draft, compression: { ...compression, breakDays: 40 } }, start + 1).compression).toEqual({ ...compression, breakDays: 40 })
     expect(buildFinishedWorkoutFromActiveSession(activeDraft, start + 1)).not.toHaveProperty('compression')
     const bad = buildFinishedWorkoutFromActiveSession({ ...draft, compression: { ...compression, v: 2 }, proposals: 'x', exercises: [{ ...activeDraft.exercises[0], group: 'not a group!' }] }, start + 1)
     expect(bad).toMatchObject({ compression: null, proposals: null })

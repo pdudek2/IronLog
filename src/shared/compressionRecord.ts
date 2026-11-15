@@ -20,6 +20,8 @@ export interface CompressionRecord {
   samples: number
   calibration: 'day' | 'user' | 'none'
   readiness: 'low' | 'mid' | 'high' | null
+  // Full days off before this workout, when it was the first after a break (Specyfikacja etapu 2B).
+  breakDays?: number
   exercises: CompressionEntry[]
 }
 
@@ -69,6 +71,7 @@ export function parseCompressionRecord(raw: unknown): CompressionRecord | null {
   if (!isRecord(raw) || raw.v !== 1 || !budget(raw.budgetMin) || !MODES.includes(raw.mode as string) || typeof raw.shortRest !== 'boolean'
     || !num(raw.estimateMin, 0, 600) || !num(raw.fullEstimateMin, 0, 600) || !num(raw.factor, 0.5, 2) || !int(raw.samples, 0, 5)
     || !SOURCES.includes(raw.calibration as string) || !(raw.readiness === null || READINESS.includes(raw.readiness as string))
+    || !(raw.breakDays === undefined || int(raw.breakDays, 15, 3650))
     || !Array.isArray(raw.exercises) || raw.exercises.length > MAX_ENTRIES) return null
   const exercises: CompressionEntry[] = []
   for (const entry of raw.exercises) {
@@ -78,7 +81,8 @@ export function parseCompressionRecord(raw: unknown): CompressionRecord | null {
   }
   return {
     v: 1, budgetMin: raw.budgetMin, mode: raw.mode as CompressionMode, shortRest: raw.shortRest, estimateMin: raw.estimateMin, fullEstimateMin: raw.fullEstimateMin,
-    factor: raw.factor, samples: raw.samples, calibration: raw.calibration as CompressionRecord['calibration'], readiness: raw.readiness as CompressionRecord['readiness'], exercises,
+    factor: raw.factor, samples: raw.samples, calibration: raw.calibration as CompressionRecord['calibration'], readiness: raw.readiness as CompressionRecord['readiness'],
+    ...(raw.breakDays !== undefined ? { breakDays: raw.breakDays as number } : {}), exercises,
   }
 }
 

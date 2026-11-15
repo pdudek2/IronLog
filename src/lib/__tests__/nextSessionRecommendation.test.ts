@@ -4,6 +4,7 @@ import type { WorkoutTemplate } from '../templateService'
 import type { WorkoutSummary } from '../workoutService'
 import { buildNextSessionRecommendation } from '../nextSessionRecommendation'
 import { buildProgression } from '../../shared/progression'
+import { breakSets } from '../../shared/nextSessionRecommendation'
 
 const NOW = Date.UTC(2026, 7, 10, 12)
 
@@ -185,5 +186,46 @@ describe("today's launch on the Upper day", () => {
     expect(train).toMatchObject({ weight: 20, weightDelta: 0 })
     expect(session.weight).toBe(train.weight)
     expect(buildNextSessionRecommendation(upper, 0, null, [{ ...history[0]!, compression: null }], NOW, 'kg', day).exercises[0]!.weightDelta).toBeGreaterThan(0)
+  })
+
+  it('cuts the first workout after a break by its length, never twice with readiness, and Full sets keeps the plan', () => {
+    const plan: [string, number][] = [['bench-press', 4], ['lat-pulldown', 3], ['seated-cable-row', 3], ['db-lateral-raise', 3], ['db-curl', 3], ['tricep-pushdown', 3]]
+    const off = (days: number) => [done(NOW - days * 86_400_000 - 7_200_000, plan)]
+    const today = (days: number, options: Parameters<typeof buildNextSessionRecommendation>[6] = {}, entry: ReadinessEntry | null = null) => buildNextSessionRecommendation(upper, 0, entry, off(days), NOW, 'kg', { ...day, ...options })
+    const sets = (result: ReturnType<typeof today>) => result.exercises.map((exercise) => exercise.sets)
+    const low = readiness({ sleep: 1, mood: 1, soreness: 5 })
+
+    expect(today(14)).toMatchObject({ breakDays: null, record: null })
+    expect(sets(today(14))).toEqual([4, 3, 3, 3, 3, 3])
+    for (const days of [15, 28]) {
+      expect(sets(today(days))).toEqual([3, 2, 2, 2, 2, 2])
+      expect(today(days).record).toMatchObject({ mode: 'readiness', breakDays: days, readiness: null })
+    }
+    expect(sets(today(29))).toEqual([2, 2, 2, 2, 2, 2])
+    expect(today(100).exercises.every((exercise) => exercise.trial)).toBe(true)
+    expect(sets(today(20, {}, low))).toEqual([3, 2, 2, 2, 2, 2])
+    expect(sets(today(40, {}, low))).toEqual([2, 2, 2, 2, 2, 2])
+    const short = today(40, { budgetMin: 30 })
+    expect(short.record).toMatchObject({ budgetMin: 30, breakDays: 40 })
+    short.record!.exercises.forEach((entry, index) => expect(entry.sets).toBeLessThanOrEqual(sets(today(40))[index]!))
+
+    const full = today(40, { fullSets: true })
+    expect(sets(full)).toEqual([4, 3, 3, 3, 3, 3])
+    expect(full.record).toMatchObject({ breakDays: 40 })
+    expect(full.record!.exercises.every((entry) => entry.sets === entry.plannedSets)).toBe(true)
+    expect(sets(today(40, { fullSets: true }, low))).toEqual([3, 2, 2, 2, 2, 2])
+  })
+
+  it('keeps cardio and the main lift floor after a break', () => {
+    expect([breakSets(3, 'cardio', 40), breakSets(2, 'main', 40), breakSets(1, 'main', 40), breakSets(5, 'isolation', 40), breakSets(1, 'isolation', 20), breakSets(4, 'main', null)]).toEqual([3, 2, 1, 3, 1, 4])
+  })
+
+  it('makes the second workout back a usual day that holds the weight of what the first one cut', () => {
+    const back = buildNextSessionRecommendation(upper, 0, null, [done(NOW - 40 * 86_400_000, [['bench-press', 4]])], NOW - 2 * 86_400_000, 'kg', day)
+    const firstBack = done(NOW - 2 * 86_400_000 - 7_200_000, [['bench-press', 2]], back.record)
+    firstBack.exercises[0]!.sets = firstBack.exercises[0]!.sets.map((set) => ({ ...set, reps: 12 }))
+    const next = buildNextSessionRecommendation(upper, 0, null, [firstBack], NOW, 'kg', day)
+    expect(next).toMatchObject({ breakDays: null, record: null })
+    expect(next.exercises[0]).toMatchObject({ sets: 4, weightDelta: 0, trial: false })
   })
 })

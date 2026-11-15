@@ -1,7 +1,7 @@
 import { computeReadinessScore, type ReadinessEntry } from './readiness'
 import { exercises as exerciseCatalogue } from '../../data/exercises'
 import { buildProgression, type ProgressionSession } from './progression'
-import { calibration, compressDay, estimateSec, exerciseKey, exerciseRoles, workoutSeconds, type Block, type CalibrationSample, type CompressionResult, type DayExercise } from './compression'
+import { calibration, compressDay, estimateSec, exerciseKey, exerciseRoles, workoutSeconds, type Block, type CalibrationSample, type CompressionResult, type DayExercise, type Role } from './compression'
 import { isShortened, type CompressionProposal, type CompressionRecord, type LaunchItem } from './compressionRecord'
 import type { WeightUnits } from './weightUnits'
 
@@ -23,6 +23,8 @@ export interface TodayOptions {
   // Minutes the user has today; null keeps the usual day.
   budgetMin?: number | null
   straight?: boolean
+  // Keeps the plan's sets on the first workout after a break.
+  fullSets?: boolean
   // This plan day, for calibration and rotation.
   templateId?: string | null
   planDayId?: string | null
@@ -57,6 +59,8 @@ export interface NextSessionExercise {
   weight: number
   setsDelta: number
   weightDelta: number
+  // The first set is a test after a long break (progression engine, rule 6).
+  trial: boolean
 }
 
 export interface NextSessionRecommendation {
@@ -65,7 +69,9 @@ export interface NextSessionRecommendation {
   score: number | null
   tone: 'low' | 'mid' | 'high' | null
   label: string | null
-  // Sets after readiness, before time compression.
+  // Full days since the latest workout when it is a break (15+), else null.
+  breakDays: number | null
+  // Sets after readiness and the break, before time compression.
   exercises: NextSessionExercise[]
   compression: CompressionResult
   calibration: { factor: number; samples: number; source: 'day' | 'user' | 'none' }
@@ -73,6 +79,17 @@ export interface NextSessionRecommendation {
   launch: LaunchItem[]
   // Null for the usual day.
   record: CompressionRecord | null
+}
+
+const DAY_MS = 86_400_000
+const BREAK_DAYS = 15
+
+// The first workout back after 15–28 days loses a set per exercise, after 29+ half its sets (rounded up); the main lift
+// keeps 2. A later workout measures from this one, so only the first is cut (Specyfikacja etapu 2B).
+export function breakSets(sets: number, role: Role, breakDays: number | null): number {
+  if (breakDays === null || breakDays < BREAK_DAYS || role === 'cardio') return sets
+  const floor = role === 'main' ? Math.min(2, sets) : 1
+  return Math.max(floor, breakDays > 28 ? Math.ceil(sets / 2) : sets - 1)
 }
 
 // Repeated entries of one exercise in a workout count as one session, as in workoutProjection.
@@ -139,6 +156,9 @@ export function buildNextSessionRecommendation(
   const meta = (exerciseId: string, source: ExerciseSource) => catalogueMeta(exerciseId, source, options.userExercises)
   const metas = exercises.map((exercise) => meta(exercise.exerciseId, exercise.exerciseSource))
   const roles = exerciseRoles(metas)
+  const latestAt = workouts.reduce((latest, workout) => Math.max(latest, workout.finishedAt), -Infinity)
+  const gap = Number.isFinite(latestAt) ? Math.floor((now - latestAt) / DAY_MS) : null
+  const breakDays = gap !== null && gap >= BREAK_DAYS ? gap : null
 
   const recommendedExercises = exercises.map((exercise, index): NextSessionExercise => {
     const sessions = exerciseProgressionSessions(workouts, exercise.exerciseId, exercise.exerciseSource)
@@ -158,9 +178,11 @@ export function buildNextSessionRecommendation(
     const weight = progression ? progression.weight ?? 0 : lastWeight > 0 ? lastWeight : exercise.targetWeight
     const weightDelta = progression?.change === 'weight' ? progression.delta : 0
 
-    // Low readiness: one set less, the main lift never below 2 (Specyfikacja punktu 3); mid cuts nothing.
+    // Low readiness: one set less, the main lift never below 2 (Specyfikacja punktu 3); mid cuts nothing. A break cuts
+    // the same way or harder; the harder cut wins, the two never add up.
     const floor = roles[index] === 'main' ? Math.min(2, exercise.sets) : 1
-    const sets = low ? Math.max(floor, exercise.sets - 1) : exercise.sets
+    const afterReadiness = low ? Math.max(floor, exercise.sets - 1) : exercise.sets
+    const sets = options.fullSets ? afterReadiness : Math.min(afterReadiness, breakSets(exercise.sets, roles[index]!, breakDays))
     const setsDelta = sets - exercise.sets
     const reps = progression?.reps ?? exercise.targetReps
 
@@ -173,6 +195,7 @@ export function buildNextSessionRecommendation(
       weight,
       setsDelta,
       weightDelta,
+      trial: progression?.trial != null,
     }
   })
 
@@ -189,7 +212,7 @@ export function buildNextSessionRecommendation(
     dayExerciseIndex: item.index, sets: item.sets, weight: recommendedExercises[item.index]!.weight, reps: recommendedExercises[item.index]!.reps,
     ...(block.group && block.items.filter((other) => other.sets > 0).length > 1 ? { group: block.group } : {}),
   })))
-  const changed = budgetMin !== null || compression.mode !== 'full' || recommendedExercises.some((exercise) => exercise.setsDelta !== 0)
+  const changed = budgetMin !== null || compression.mode !== 'full' || breakDays !== null || recommendedExercises.some((exercise) => exercise.setsDelta !== 0)
   const minutes = (sec: number) => Math.round(sec / 6) / 10
 
   return {
@@ -197,6 +220,7 @@ export function buildNextSessionRecommendation(
     score: score?.score ?? null,
     tone: score?.tone ?? null,
     label: score?.label ?? null,
+    breakDays,
     exercises: recommendedExercises,
     compression,
     calibration: pace,
@@ -205,6 +229,7 @@ export function buildNextSessionRecommendation(
       v: 1, budgetMin, mode: compression.mode === 'full' ? 'readiness' : compression.mode, shortRest: compression.shortRest,
       estimateMin: minutes(compression.estimateSec), fullEstimateMin: minutes(compression.fullEstimateSec),
       factor: Math.round(pace.factor * 1000) / 1000, samples: pace.samples, calibration: pace.source, readiness: score?.tone ?? null,
+      ...(breakDays !== null ? { breakDays } : {}),
       exercises: exercises.map((exercise, index) => ({ dayExerciseIndex: index, exerciseId: exercise.exerciseId, exerciseSource: exercise.exerciseSource, plannedSets: exercise.sets, sets: compression.sets[index]! })),
     } : null,
   }

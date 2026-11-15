@@ -41,7 +41,7 @@ import { useStarterPlan } from '../src/useStarterPlan'
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
 type TemplateData = WorkoutTemplate[]
 // The time chosen today belongs to the day on screen; another day starts from Usual.
-type TodayChoice = { key: string; budgetMin: number | null; straight: boolean; proposals: CompressionProposal[] }
+type TodayChoice = { key: string; budgetMin: number | null; straight: boolean; fullSets: boolean; proposals: CompressionProposal[] }
 
 export default function DashboardScreen() {
   const { user } = useAuthRuntime()
@@ -159,24 +159,24 @@ export default function DashboardScreen() {
   }, [uid])
   const target = selection?.target
   const choiceKey = chosen && target ? `${chosen.template.id}:${target.dayIndex}` : ''
-  const choice: TodayChoice = todayChoice?.key === choiceKey ? todayChoice : { key: choiceKey, budgetMin: null, straight: false, proposals: [] }
-  const planToday = (budgetMin: number | null, straight: boolean) => {
+  const choice: TodayChoice = todayChoice?.key === choiceKey ? todayChoice : { key: choiceKey, budgetMin: null, straight: false, fullSets: false, proposals: [] }
+  const planToday = (budgetMin: number | null, straight: boolean, fullSets: boolean) => {
     if (active.state.status !== 'empty' || !chosen || !target || !data || state.status !== 'ready' || state.fromCache
       || templatesState.status !== 'ready' || templatesState.fromCache) return null
     try {
       const next = buildNextSessionRecommendation(chosen.template, target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now(), units, {
-        budgetMin, straight, templateId: chosen.template.id, planDayId: planDayId(chosen.day, target.dayIndex),
+        budgetMin, straight, fullSets, templateId: chosen.template.id, planDayId: planDayId(chosen.day, target.dayIndex),
         userExercises: userExercises?.uid === uid ? userExercises.meta : undefined,
       })
       validateTemplateLaunch(chosen.template, target.dayIndex, { items: next.launch })
       return next
     } catch { return null }
   }
-  const todayPlan = planToday(choice.budgetMin, choice.straight)
+  const todayPlan = planToday(choice.budgetMin, choice.straight, choice.fullSets)
   const launchToday = todayLaunch(todayPlan, readinessEntry !== null, choice)
-  const chooseTime = (budgetMin: number | null, straight: boolean) => {
-    const mode: CompressionProposal['mode'] = budgetMin === null ? 'usual' : planToday(budgetMin, straight)?.record?.mode ?? 'usual'
-    setTodayChoice({ key: choice.key, budgetMin, straight, proposals: [...choice.proposals, { budgetMin, mode }].slice(-12) })
+  const chooseTime = (budgetMin: number | null, straight: boolean, fullSets = choice.fullSets) => {
+    const mode: CompressionProposal['mode'] = budgetMin === null ? 'usual' : planToday(budgetMin, straight, fullSets)?.record?.mode ?? 'usual'
+    setTodayChoice({ key: choice.key, budgetMin, straight, fullSets, proposals: [...choice.proposals, { budgetMin, mode }].slice(-12) })
   }
   const skipToday = async () => {
     if (!uid || !chosen || !target || skipping) return
@@ -184,7 +184,7 @@ export default function DashboardScreen() {
     setSkipping(true)
     try {
       await recordPlanSkip(uid, chosen.template.id, planDayId(chosen.day, target.dayIndex))
-      setTodayChoice({ key, budgetMin: null, straight: false, proposals: [] })
+      setTodayChoice({ key, budgetMin: null, straight: false, fullSets: false, proposals: [] })
       showDialog('Skipped today', `${chosen.day.name} stays next.`)
     } catch {
       showDialog('Could not skip today', 'Try again.')
@@ -285,8 +285,9 @@ export default function DashboardScreen() {
       {readiness && <TrainCheckIn state={readiness.state} controller={readiness.controller} open={checkInOpen} onToggle={() => setCheckInOpen((open) => !open)} />}
       {/* While the check-in is open the time row and today's line step aside; Start stays. */}
       {today && chosen && !checkInOpen && <TrainTime today={today} plannedSets={chosen.day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
-        budgetMin={choice.budgetMin} straight={choice.straight}
-        onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)} onStraight={(straight) => chooseTime(choice.budgetMin, straight)} />}
+        budgetMin={choice.budgetMin} straight={choice.straight} fullSets={choice.fullSets}
+        onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)} onStraight={(straight) => chooseTime(choice.budgetMin, straight)}
+        onFullSets={(fullSets) => chooseTime(choice.budgetMin, choice.straight, fullSets)} />}
       <View style={styles.dockActions}>
         {plansPending ? <View style={styles.startPending} /> : chosen ? <>
           {today && choice.budgetMin !== null && !today.compression.fits && <Pressable accessibilityRole="button" disabled={skipping} onPress={() => void skipToday()} style={[styles.skip, skipping && styles.disabled]}><Text style={styles.skipText}>{skipping ? 'Skipping…' : 'Skip today'}</Text></Pressable>}

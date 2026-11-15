@@ -12,13 +12,15 @@ const TIME_BUDGETS = [45, 30, 20] as const
 const minutes = (sec: number) => Math.round(sec / 60)
 
 // The dock's time row and today's line: what Start launches, before it is pressed.
-export function TrainTime({ today, plannedSets, budgetMin, straight, onBudget, onStraight }: {
+export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, onBudget, onStraight, onFullSets }: {
   today: NextSessionRecommendation
   plannedSets: number
   budgetMin: number | null
   straight: boolean
+  fullSets: boolean
   onBudget: (budgetMin: number | null) => void
   onStraight: (straight: boolean) => void
+  onFullSets: (fullSets: boolean) => void
 }) {
   const approx = today.calibration.source === 'none' ? '~' : ''
   const { compression } = today
@@ -27,8 +29,14 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, onBudget, o
   const kept = compression.sets.reduce((sum, sets) => sum + sets, 0)
   const grouped = compression.blocks.some((block) => block.group && block.items.filter((item) => item.sets > 0).length > 1)
 
+  // After a break the start weights stay the usual day's and the session's first set tests them.
+  const weights = today.breakDays !== null && today.exercises.some((exercise) => exercise.trial) ? 'First set is a test' : 'Same weights'
+
   return (
     <div className="train-dock-today">
+      {today.breakDays !== null && (
+        <p className="train-dock-line">{today.breakDays} days since your last workout{fullSets ? '' : ' · fewer sets today'}</p>
+      )}
       {(shorter.length > 0 || budgetMin !== null) && (
         <div className="train-dock-time" role="radiogroup" aria-label="Time today">
           <button type="button" role="radio" aria-checked={budgetMin === null} onClick={() => onBudget(null)}>
@@ -47,8 +55,14 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, onBudget, o
         </p>
       ) : today.record && (
         <p className="train-dock-line">
-          <strong>{approx}{minutes(compression.estimateSec)} min</strong>{' · '}{kept} of {plannedSets} sets{' · '}Same weights
+          <strong>{approx}{minutes(compression.estimateSec)} min</strong>{' · '}{kept} of {plannedSets} sets{' · '}{weights}
         </p>
+      )}
+      {today.breakDays !== null && (
+        <label className="train-time-switch">
+          <span>Full sets</span>
+          <input type="checkbox" role="switch" checked={fullSets} onChange={(event) => onFullSets(event.target.checked)} />
+        </label>
       )}
       {budgetMin !== null && compression.fits && (grouped || straight) && (
         <label className="train-time-switch">

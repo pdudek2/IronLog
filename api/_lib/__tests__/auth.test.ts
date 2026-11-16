@@ -43,7 +43,13 @@ describe('requireUserId', () => {
     verifyIdToken.mockResolvedValueOnce({ uid: 'user-123' })
 
     await expect(requireUserId(makeRequest('Bearer valid-token'))).resolves.toBe('user-123')
-    expect(verifyIdToken).toHaveBeenCalledWith('valid-token')
+    expect(verifyIdToken).toHaveBeenCalledWith('valid-token', false)
+  })
+
+  it('checks revocation when asked', async () => {
+    verifyIdToken.mockResolvedValueOnce({ uid: 'user-123' })
+    await expect(requireUserId(makeRequest('Bearer valid-token'), { checkRevoked: true })).resolves.toBe('user-123')
+    expect(verifyIdToken).toHaveBeenCalledWith('valid-token', true)
   })
 })
 

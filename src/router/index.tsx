@@ -22,6 +22,7 @@ import {
   loadHistoryImportPage,
   loadHistoryPage,
   loadLandingPage,
+  loadPrivacyPage,
   loadLoginPage,
   loadLogoutPage,
   loadNotFoundPage,
@@ -36,6 +37,7 @@ import {
 } from './pageLoaders'
 
 const LandingPage = lazy(loadLandingPage)
+const PrivacyPage = lazy(loadPrivacyPage)
 const LoginPage = lazy(loadLoginPage)
 const LogoutPage = lazy(loadLogoutPage)
 const RegisterPage = lazy(loadRegisterPage)
@@ -155,6 +157,7 @@ function RootRoute() {
 
 const router = createBrowserRouter(createRoutesFromElements(
   <Route element={<RootRoute />}>
+    <Route path="/privacy" element={<PrivacyPage />} />
     <Route element={<PublicRouteOutlet />}>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />

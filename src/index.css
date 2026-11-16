@@ -8913,6 +8913,117 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   }
 }
 
+.privacy {
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.privacy-bar {
+  width: min(calc(100% - 2rem), 44rem);
+  margin: 0 auto;
+  padding-top: calc(1rem + env(safe-area-inset-top, 0px));
+}
+
+.privacy-body {
+  width: min(calc(100% - 2rem), 44rem);
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+.privacy-body h1 {
+  color: var(--text-strong);
+  font-size: 2.25rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.privacy-body h2 {
+  margin-top: 2rem;
+  color: var(--text-strong);
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+
+.privacy-body p,
+.privacy-body ul,
+.privacy-body ol {
+  margin-top: 0.625rem;
+}
+
+.privacy-body ul,
+.privacy-body ol {
+  display: grid;
+  gap: 0.375rem;
+  padding-left: 1.25rem;
+}
+
+.privacy-body ul { list-style: disc; }
+.privacy-body ol { list-style: decimal; }
+
+.privacy-body strong {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.privacy-body a,
+.auth-legal a,
+.profile-feedback-address {
+  color: var(--text-strong);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.privacy-updated {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.privacy-back {
+  margin-top: 2.5rem !important;
+}
+
+.auth-legal {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-align: center;
+}
+
+.profile-feedback-address {
+  display: block;
+  padding: 0 0 0.5rem;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  user-select: all;
+}
+
+.profile-delete {
+  display: block;
+  min-height: 2.75rem;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.profile-delete-sheet {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profile-delete-sheet p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
 .profile-sign-out {
   display: block;
   min-height: 2.75rem;

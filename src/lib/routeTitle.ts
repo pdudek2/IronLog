@@ -2,6 +2,7 @@ const TITLES: Array<[RegExp, string]> = [
   [/^\/$/, 'Strength training log'],
   [/^\/login$/, 'Sign in'],
   [/^\/register$/, 'Create account'],
+  [/^\/privacy$/, 'Privacy policy'],
   [/^\/onboarding$/, 'Welcome'],
   [/^\/dashboard$/, 'Home'],
   [/^\/history$/, 'History'],

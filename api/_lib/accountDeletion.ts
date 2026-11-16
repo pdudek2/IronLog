@@ -31,7 +31,7 @@ async function remaining(db: Firestore, uid: string): Promise<string[]> {
   const counts = await Promise.all(DELETED_BY_USER_ID.map(async (name) =>
     (await db.collection(name).where('userId', '==', uid).limit(1).get()).empty ? null : name))
   const own = await Promise.all(DELETED_BY_ID.map(async (name) => ((await db.collection(name).doc(uid).get()).exists ? name : null)))
-  return [...counts, ...own].filter((name): name is string => name !== null)
+  return [...counts, ...own].flatMap((name) => (name === null ? [] : [name as string]))
 }
 
 // Idempotent: a retry after a partial failure finishes the job; it also cleans up after an Auth user that is already gone.

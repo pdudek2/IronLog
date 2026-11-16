@@ -1,5 +1,11 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { ChevronRight, Download } from 'lucide-react'
+import { ChevronRight, Download, Mail } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
+import BottomSheet from '../components/BottomSheet'
+import { deleteAccount } from '../lib/accountDeletionService'
+import { getAuthErrorMessage } from '../lib/auth'
+import { useWorkoutStore } from '../store/workoutStore'
+import { FEEDBACK_EMAIL, feedbackMailto } from '../shared/feedbackMail'
 import { useEffect, useState } from 'react'
 import type * as React from 'react'
 import { toast } from 'sonner'
@@ -28,6 +34,7 @@ export default function ProfilePage() {
   const { profile, setProfile } = useProfileStore()
 
   const [displayName, setDisplayName] = useState(profile?.displayName ?? '')
+  const [deleting, setDeleting] = useState(false)
   const [primaryGoal, setPrimaryGoal] = useState<PrimaryGoal>(profile?.primaryGoal ?? 'hypertrophy')
   const [weeklyGoal, setWeeklyGoal] = useState(profile?.weeklyGoal ?? 3)
   const [units, setUnits] = useState<Units>(profile?.units ?? 'kg')
@@ -230,11 +237,65 @@ export default function ProfilePage() {
             </button>
           </nav>
 
+          <nav className="plans-links profile-data-links" aria-label="Help and privacy">
+            <a href={feedbackMailto({ platform: 'Web', system: navigator.userAgent, version: typeof __APP_BUILD__ === 'string' ? __APP_BUILD__ : 'dev', date: new Date() })}>
+              Send feedback<Mail size={16} aria-hidden="true" />
+            </a>
+            <Link to="/privacy">Privacy policy<ChevronRight size={16} aria-hidden="true" /></Link>
+          </nav>
+          {/* A missing mail app cannot be detected, so the address is always there to copy. */}
+          <span className="profile-feedback-address">{FEEDBACK_EMAIL}</span>
+
           <button type="button" className="profile-sign-out" onClick={() => navigate('/logout')}>
             Sign out
           </button>
+          <button type="button" className="profile-delete" onClick={() => setDeleting(true)}>
+            Delete account
+          </button>
         </section>
       </div>
+      <AnimatePresence>
+        {deleting && <DeleteAccountSheet onClose={() => setDeleting(false)} />}
+      </AnimatePresence>
     </div>
+  )
+}
+
+function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
+  const activeWorkout = useWorkoutStore((store) => store.active)
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  async function submit(event: React.SyntheticEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (busy) return
+    if (activeWorkout) { setError('Finish or discard your workout first.'); return }
+    if (!navigator.onLine) { setError('Connect to the internet to delete your account.'); return }
+    if (!password) { setError('Enter your password.'); return }
+    setBusy(true)
+    setError('')
+    try {
+      await deleteAccount(password)
+    } catch (cause) {
+      const code = typeof cause === 'object' && cause && 'code' in cause ? String(cause.code) : ''
+      setError(code.startsWith('auth/') ? getAuthErrorMessage(cause, 'login') : cause instanceof Error && cause.message ? cause.message : 'Could not delete your account. Try again.')
+      setBusy(false)
+    }
+  }
+
+  return (
+    <BottomSheet title="Delete account" onClose={onClose}>
+      <form className="profile-delete-sheet" onSubmit={(event) => { void submit(event) }}>
+        <p>This deletes your account, profile, plans, workouts, records and check-ins at once. It cannot be undone.</p>
+        <label className="flex flex-col gap-1">
+          <span className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Password</span>
+          <Input type="password" autoComplete="current-password" value={password} onChange={(event) => { setPassword(event.target.value); setError('') }} />
+        </label>
+        {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
+        <p>Forgot your password? Sign out and use “Forgot password?” on the sign-in screen.</p>
+        <Button type="submit" loading={busy} className="w-full">Delete account</Button>
+      </form>
+    </BottomSheet>
   )
 }

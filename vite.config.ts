@@ -41,7 +41,11 @@ export default defineConfig(() => {
   const emulatorMode = process.env.E2E_BACKEND === 'emulator'
   const cspMode = process.env.E2E_CSP === 'true'
 
+  // Shown in the feedback mail so a report names the build it came from.
+  const build = `${new Date().toISOString().slice(0, 10)} ${process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? 'local'}`
+
   return {
+    define: { __APP_BUILD__: JSON.stringify(build) },
     envDir: emulatorMode ? 'tests/e2e/env' : undefined,
     plugins: [react(), tailwindcss()],
     preview: cspMode

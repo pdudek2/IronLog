@@ -21,6 +21,7 @@ import { useMediaQuery } from '../hooks/useMediaQuery'
 import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
 import ExercisePicker from '../components/ExercisePicker'
 import BottomSheet from '../components/BottomSheet'
+import SessionCutSheet from '../components/SessionCutSheet'
 import ConfirmDialog from '../components/ConfirmDialog'
 import { Bone, PageSkeleton } from '../components/ui'
 import { readProgressionSessions } from '../lib/overloadService'
@@ -214,6 +215,7 @@ export default function WorkoutPage() {
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const keepTrainingRef = useRef<HTMLButtonElement>(null)
   const [sessionSheet, setSessionSheet] = useState<'overview' | 'options' | 'type' | null>(null)
+  const [cutOpen, setCutOpen] = useState(false)
   const [confirmFinishEmpty, setConfirmFinishEmpty] = useState(false)
   const [pendingFinish, setPendingFinish] = useState<{ uid: string; sessionId: string } | null>(null)
   const pendingFinishMatches = pendingFinish !== null
@@ -1130,7 +1132,10 @@ export default function WorkoutPage() {
 
                 {queue.length > 0 && (
                   <section className="workout-up-next" aria-labelledby="workout-up-next-title">
-                    <h3 id="workout-up-next-title">Up next</h3>
+                    <div className="workout-up-next-head">
+                      <h3 id="workout-up-next-title">Up next</h3>
+                      <button type="button" className="workout-cut-trigger" onClick={() => setCutOpen(true)} aria-haspopup="dialog">Short on time?</button>
+                    </div>
                     {queue.map((index) => {
                       const exercise = active.exercises[index]!
                       return (
@@ -1218,6 +1223,10 @@ export default function WorkoutPage() {
                     <ChevronRight size={16} aria-hidden="true" />
                   </button>
                 )}
+                <button type="button" className="bottom-sheet-row" onClick={() => { setSessionSheet(null); setCutOpen(true) }}>
+                  <span>Short on time</span>
+                  <ChevronRight size={16} aria-hidden="true" />
+                </button>
                 <button type="button" className="bottom-sheet-row" onClick={() => setSessionSheet('type')}>
                   <span>Session type</span>
                   <small>{active.label || 'None'}</small>
@@ -1231,6 +1240,19 @@ export default function WorkoutPage() {
               </>
             )}
           </BottomSheet>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {cutOpen && (
+          <SessionCutSheet
+            key="cut-sheet"
+            session={active}
+            userExercises={new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))}
+            onCut={(plan, choice, now) => useWorkoutStore.getState().cutRest(plan, choice, now)}
+            onFinish={handleFinish}
+            onClose={() => setCutOpen(false)}
+          />
         )}
       </AnimatePresence>
 

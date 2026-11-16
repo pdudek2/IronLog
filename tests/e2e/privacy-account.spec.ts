@@ -14,7 +14,7 @@ test.describe('Privacy and account deletion', () => {
     await expect(page).toHaveURL('/privacy')
   })
 
-  test('deleting the account asks for the password, removes the account and clears this browser', async ({ page, request }) => {
+  test('deleting the account asks for the password, removes the account and clears this browser', async ({ page, request, expectedBrowserDiagnostics }) => {
     test.skip(process.env.E2E_BACKEND !== 'emulator', 'Needs a fresh emulator account')
     const email = `delete-${Date.now()}-${Math.round(Math.random() * 1e6)}@ironlog.local`
     const password = process.env.TEST_PASSWORD!
@@ -42,13 +42,25 @@ test.describe('Privacy and account deletion', () => {
     await page.getByRole('button', { name: 'Delete account' }).click()
     const sheet = page.getByRole('dialog', { name: 'Delete account' })
     await sheet.getByLabel('Password').fill('wrong-password')
-    await sheet.getByRole('button', { name: 'Delete account' }).click()
-    await expect(sheet.getByRole('alert')).toBeVisible({ timeout: 15_000 })
+    await expectedBrowserDiagnostics.allowing(
+      'the wrong password refused on purpose',
+      (entry) => entry.kind === 'console' && entry.message.includes('400 (Bad Request)'),
+      async () => {
+        await sheet.getByRole('button', { name: 'Delete account' }).click()
+        await expect(sheet.getByRole('alert')).toHaveText('Wrong password.', { timeout: 15_000 })
+      },
+    )
     await expect(page).toHaveURL('/profile')
 
     await sheet.getByLabel('Password').fill(password)
-    await sheet.getByRole('button', { name: 'Delete account' }).click()
-    await expect(page).toHaveURL(/\/login\?deleted=1$/, { timeout: 30_000 })
+    await expectedBrowserDiagnostics.allowing(
+      'deletion stops Firestore and closes its channel',
+      (entry) => entry.kind === 'requestfailed' && entry.message.includes('Firestore/Listen/channel'),
+      async () => {
+        await sheet.getByRole('button', { name: 'Delete account' }).click()
+        await expect(page).toHaveURL(/\/login\?deleted=1$/, { timeout: 30_000 })
+      },
+    )
     await expect(page.getByText('Your account has been deleted.')).toBeVisible()
 
     expect(await page.evaluate((id) => [localStorage.getItem(`ironlog:workout-closure:${id}`), localStorage.getItem('ironlog:workout-closure:someone-else')], uid)).toEqual([null, '{}'])

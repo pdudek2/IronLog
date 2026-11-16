@@ -63,7 +63,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       throw openrouterApiError(upstream.status)
     }
 
-    sendJson(res, 200, { models: [{ id: COACH_MODEL, label: 'GPT-6 Luna' }] })
+    sendJson(res, 200, { models: [{ id: COACH_MODEL, label: 'GPT-5.6 Luna' }] })
   } catch (error) {
     if (error instanceof RateLimitError) {
       res.setHeader('Retry-After', String(error.retryAfterSeconds))

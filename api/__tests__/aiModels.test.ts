@@ -26,7 +26,7 @@ describe('OpenRouter key verification', () => {
     })
     expect(res.statusCode).toBe(status === 402 ? 429 : status)
     expect(output).not.toContain(key)
-    if (status === 200) expect(JSON.parse(output)).toEqual({ models: [{ id: 'openai/gpt-6-luna', label: 'GPT-6 Luna' }] })
+    if (status === 200) expect(JSON.parse(output)).toEqual({ models: [{ id: 'openai/gpt-5.6-luna', label: 'GPT-5.6 Luna' }] })
   })
 
   it('reads the shared-key allowance without a key, and still refuses an empty body', async () => {

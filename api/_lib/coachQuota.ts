@@ -2,7 +2,7 @@ import type { Firestore } from 'firebase-admin/firestore'
 import { COACH_DAILY_LIMIT } from '../../src/shared/coachQuota.js'
 import { adminDb } from './firebaseAdmin.js'
 
-export const COACH_MODEL = 'openai/gpt-6-luna'
+export const COACH_MODEL = 'openai/gpt-5.6-luna'
 export const COACH_DAILY_TOTAL = 400
 
 export type CoachLimitCode = 'daily-limit' | 'daily-limit-all'

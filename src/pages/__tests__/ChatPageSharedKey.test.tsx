@@ -125,7 +125,7 @@ describe('ChatPage on the shared key', () => {
   })
 
   it('drops the counter once the user saves their own key', async () => {
-    mocks.fetchAvailableOpenRouterModels.mockResolvedValue([{ id: 'openai/gpt-6-luna', label: 'GPT-6 Luna' }])
+    mocks.fetchAvailableOpenRouterModels.mockResolvedValue([{ id: 'openai/gpt-5.6-luna', label: 'GPT-5.6 Luna' }])
     render(<ChatPage />)
     expect(await screen.findByText('17 of 20 left today')).toBeVisible()
     fireEvent.click(screen.getByRole('button', { name: 'Use your own OpenRouter key' }))

@@ -9,7 +9,7 @@ vi.mock('../firebaseAdmin.js', () => ({
   adminAuth: { verifyIdToken },
 }))
 
-import { requireUserId } from '../auth.js'
+import { requireRecentUserId, requireUserId } from '../auth.js'
 import type { ApiRequest } from '../http.js'
 
 function makeRequest(authorization?: string): ApiRequest {
@@ -44,5 +44,29 @@ describe('requireUserId', () => {
 
     await expect(requireUserId(makeRequest('Bearer valid-token'))).resolves.toBe('user-123')
     expect(verifyIdToken).toHaveBeenCalledWith('valid-token')
+  })
+})
+
+describe('requireRecentUserId', () => {
+  beforeEach(() => {
+    verifyIdToken.mockReset()
+  })
+  const now = 1_800_000_000
+
+  it('checks revocation and accepts a sign-in from the last five minutes', async () => {
+    verifyIdToken.mockResolvedValueOnce({ uid: 'user-123', auth_time: now - 299 })
+    await expect(requireRecentUserId(makeRequest('Bearer fresh'), now)).resolves.toBe('user-123')
+    expect(verifyIdToken).toHaveBeenCalledWith('fresh', true)
+  })
+
+  it('refuses an older sign-in with a 403 that asks to sign in again', async () => {
+    verifyIdToken.mockResolvedValueOnce({ uid: 'user-123', auth_time: now - 301 })
+    await expect(requireRecentUserId(makeRequest('Bearer old'), now)).rejects.toMatchObject({ status: 403, message: 'Sign in again to delete your account.' })
+  })
+
+  it('refuses a missing or revoked token with a 401', async () => {
+    await expect(requireRecentUserId(makeRequest(), now)).rejects.toMatchObject({ status: 401 })
+    verifyIdToken.mockRejectedValueOnce(Object.assign(new Error('revoked'), { code: 'auth/id-token-revoked' }))
+    await expect(requireRecentUserId(makeRequest('Bearer revoked'), now)).rejects.toMatchObject({ status: 401 })
   })
 })

@@ -6,11 +6,14 @@ import type { ApiRequest, ApiResponse } from '../_lib/http.js'
 
 const mocks = vi.hoisted(() => ({
   requireUserId: vi.fn(),
+  requireRecentUserId: vi.fn(),
+  deleteAccountForUser: vi.fn(),
   updateFinishedWorkoutForUser: vi.fn(),
   deleteFinishedWorkoutForUser: vi.fn(),
 }))
 
-vi.mock('../_lib/auth.js', () => ({ requireUserId: mocks.requireUserId }))
+vi.mock('../_lib/auth.js', () => ({ requireUserId: mocks.requireUserId, requireRecentUserId: mocks.requireRecentUserId }))
+vi.mock('../_lib/accountDeletion.js', () => ({ deleteAccountForUser: mocks.deleteAccountForUser }))
 vi.mock('../_lib/workoutProjection.js', () => ({
   updateFinishedWorkoutForUser: mocks.updateFinishedWorkoutForUser,
   deleteFinishedWorkoutForUser: mocks.deleteFinishedWorkoutForUser,
@@ -90,5 +93,29 @@ describe('workout mutation handlers', () => {
 
     expect(captured.status()).toBe(409)
     expect(captured.body()).toEqual({ error: 'Konflikt.', code: 'workout_mismatch' })
+  })
+
+  it('deletes the account on the rewritten /api/delete-account body, with a recent sign-in only', async () => {
+    mocks.requireRecentUserId.mockResolvedValue('user-1')
+    mocks.deleteAccountForUser.mockResolvedValue(undefined)
+    const captured = captureResponse()
+    await deleteHandler(request({ deleteAccount: true }), captured.res)
+    expect(captured.status()).toBe(200)
+    expect(mocks.deleteAccountForUser).toHaveBeenCalledWith('user-1')
+    expect(mocks.deleteFinishedWorkoutForUser).not.toHaveBeenCalled()
+
+    mocks.requireRecentUserId.mockRejectedValue(new ApiError(403, 'Sign in again to delete your account.'))
+    const stale = captureResponse()
+    await deleteHandler(request({ deleteAccount: true }), stale.res)
+    expect(stale.status()).toBe(403)
+    expect(stale.body()).toEqual({ error: 'Sign in again to delete your account.' })
+  })
+
+  it('still asks for a workoutId when neither field is sent', async () => {
+    mocks.requireUserId.mockResolvedValue('user-1')
+    const captured = captureResponse()
+    await deleteHandler(request({ deleteAccount: 'yes' }), captured.res)
+    expect(captured.status()).toBe(400)
+    expect(mocks.deleteAccountForUser).not.toHaveBeenCalled()
   })
 })

@@ -446,6 +446,26 @@ test('label-only and exercise add/remove edits are saved as draft changes', asyn
   assert.deepEqual(ready(h.states).session.exercises.map(({ clientId }) => clientId), [addedId])
 })
 
+test('a cut that changes only the compression record is saved, not dropped as unchanged content', async () => {
+  const h = harness()
+  await loadServer(h)
+  // One open Bench set does not fit in 2 min; the only change left is the shorter rests, so only the record changes.
+  h.controller.cutRest({ leftMin: 2, clock: false, straight: false }, 61_000)
+  await wait()
+  const cut = ready(h.states).session
+  assert.equal(cut.compression?.shortRest, true)
+  assert.deepEqual(cut.exercises, ready(h.states).session.exercises)
+  h.controller.retrySave()
+  await wait()
+  assert.equal(h.saves.length, 1)
+  assert.deepEqual(h.saves[0]?.session.compression, cut.compression)
+  h.saves[0]!.result.resolve()
+  h.listeners[0]!.next({ ...snapshot('user-a', 'request-1'), data: { ...session('user-a', 'request-1'), compression: cut.compression } })
+  await wait(30)
+  assert.equal(ready(h.states).syncStatus, 'saved')
+  assert.deepEqual(ready(h.states).session.compression, cut.compression)
+})
+
 test('editing during transient backoff retains the pending retry and drains the newer draft', async () => {
   const h = harness()
   try {

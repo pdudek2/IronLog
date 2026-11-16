@@ -149,6 +149,8 @@ export function removeExercise(session: ActiveWorkout, exerciseId: string): Acti
   return { ...session, exercises: session.exercises.filter((exercise) => exercise.clientId !== exerciseId) }
 }
 
+export { cutRest } from '../../src/shared/sessionCut'
+
 export function setLabel(session: ActiveWorkout, label: string): ActiveWorkout {
   const next: ActiveWorkout = { ...session, label: label.trim() }
   if (!next.label) delete next.label

@@ -60,6 +60,7 @@ export function useActiveSession(uid: string | null) {
     addExercise: controller.addExercise.bind(controller),
     removeExercise: controller.removeExercise.bind(controller),
     setLabel: controller.setLabel.bind(controller),
+    cutRest: controller.cutRest.bind(controller),
     refreshStart: controller.refreshStart.bind(controller),
   }
 }

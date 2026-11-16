@@ -1,7 +1,7 @@
 import { computeReadinessScore, type ReadinessEntry } from './readiness'
 import { exercises as exerciseCatalogue } from '../../data/exercises'
 import { buildProgression, type ProgressionSession } from './progression'
-import { calibration, compressDay, estimateSec, exerciseKey, exerciseRoles, workoutSeconds, type Block, type CalibrationSample, type CompressionResult, type DayExercise, type Role } from './compression'
+import { calibration, compressDay, estimateSec, exerciseKey, exerciseRoles, sessionBlocks, workoutSeconds, type CalibrationSample, type CompressionResult, type DayExercise, type Role } from './compression'
 import { isShortened, type CompressionProposal, type CompressionRecord, type LaunchItem } from './compressionRecord'
 import type { WeightUnits } from './weightUnits'
 
@@ -110,26 +110,18 @@ function exerciseProgressionSessions(
 function doneEstimateSec(workout: RecommendationWorkout, meta: (exerciseId: string, source: ExerciseSource) => ExerciseMeta): number {
   const exercises = workout.exercises.filter((exercise) => exercise.exerciseId && exercise.sets.length)
   const roles = exerciseRoles(exercises.map((exercise) => meta(exercise.exerciseId!, exercise.exerciseSource ?? 'global')))
-  const blocks: Block[] = []
-  const byGroup = new Map<string, Block>()
-  exercises.forEach((exercise, index) => {
-    const item = { index, sets: exercise.sets.length }
-    const existing = exercise.group ? byGroup.get(exercise.group) : undefined
-    if (existing) { existing.items.push(item); return }
-    const block: Block = { items: [item], group: exercise.group ?? null }
-    if (exercise.group) byGroup.set(exercise.group, block)
-    blocks.push(block)
-  })
+  const blocks = sessionBlocks(exercises.map((exercise) => exercise.sets.length), exercises.map((exercise) => exercise.group))
   return estimateSec(blocks, roles, workout.compression?.shortRest ?? false, workout.compression?.readiness === 'low')
 }
 
+// A workout cut mid-session mixes long and short rests, so its model does not say how fast the user is.
 function calibrationSample(workout: RecommendationWorkout, meta: (exerciseId: string, source: ExerciseSource) => ExerciseMeta): CalibrationSample[] {
-  if (workout.startedAt === undefined) return []
+  if (workout.startedAt === undefined || workout.compression?.cut) return []
   const realSec = workoutSeconds(workout.startedAt, workout.exercises.flatMap((exercise) => exercise.sets))
   return realSec === null ? [] : [{ realSec: realSec / 1000, estimateSec: doneEstimateSec(workout, meta) }]
 }
 
-function catalogueMeta(exerciseId: string, exerciseSource: ExerciseSource, userExercises?: ReadonlyMap<string, ExerciseMeta>): ExerciseMeta {
+export function catalogueMeta(exerciseId: string, exerciseSource: ExerciseSource, userExercises?: ReadonlyMap<string, ExerciseMeta>): ExerciseMeta {
   if (exerciseSource === 'user') return userExercises?.get(templateExerciseKey(exerciseId, 'user')) ?? { muscles: [] }
   const entry = exerciseCatalogue.find((exercise) => exercise.id === exerciseId)
   return { equipment: entry?.equipment, category: entry?.category, muscles: entry?.muscles ?? [] }

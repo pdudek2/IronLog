@@ -22,7 +22,21 @@ export interface CompressionRecord {
   readiness: 'low' | 'mid' | 'high' | null
   // Full days off before this workout, when it was the first after a break (Specyfikacja etapu 2B).
   breakDays?: number
+  // The latest cut of the rest of the session (Specyfikacja — skrócenie w trakcie sesji).
+  cut?: SessionCutRecord
   exercises: CompressionEntry[]
+}
+
+export interface SessionCutRecord {
+  // Whole minutes from the start to the cut, the minutes left then, and the estimate of the rest after it.
+  atMin: number
+  leftMin: number
+  estimateMin: number
+  clock: boolean
+  count: number
+  // The record exists only because of the cut (a usual start or a session without a plan).
+  only: boolean
+  pace: 'session' | 'record' | 'cold'
 }
 
 export interface CompressionProposal { budgetMin: number | null; mode: CompressionMode | 'usual' }
@@ -61,6 +75,7 @@ const READINESS: readonly string[] = ['low', 'mid', 'high']
 const MAX_ENTRIES = 20
 const MAX_PROPOSALS = 12
 
+const PACES: readonly string[] = ['session', 'record', 'cold']
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
 const int = (value: unknown, min: number, max: number): value is number => Number.isSafeInteger(value) && (value as number) >= min && (value as number) <= max
 const num = (value: unknown, min: number, max: number): value is number => typeof value === 'number' && Number.isFinite(value) && value >= min && value <= max
@@ -79,11 +94,19 @@ export function parseCompressionRecord(raw: unknown): CompressionRecord | null {
       || (entry.exerciseSource !== 'global' && entry.exerciseSource !== 'user') || !int(entry.plannedSets, 0, 20) || !int(entry.sets, 0, 20)) return null
     exercises.push({ dayExerciseIndex: entry.dayExerciseIndex, exerciseId: entry.exerciseId, exerciseSource: entry.exerciseSource, plannedSets: entry.plannedSets, sets: entry.sets })
   }
+  const cut = parseCut(raw.cut)
   return {
     v: 1, budgetMin: raw.budgetMin, mode: raw.mode as CompressionMode, shortRest: raw.shortRest, estimateMin: raw.estimateMin, fullEstimateMin: raw.fullEstimateMin,
     factor: raw.factor, samples: raw.samples, calibration: raw.calibration as CompressionRecord['calibration'], readiness: raw.readiness as CompressionRecord['readiness'],
-    ...(raw.breakDays !== undefined ? { breakDays: raw.breakDays as number } : {}), exercises,
+    ...(raw.breakDays !== undefined ? { breakDays: raw.breakDays as number } : {}), ...(cut ? { cut } : {}), exercises,
   }
+}
+
+// A malformed cut is dropped alone, so the start's record and its shortened flags survive.
+function parseCut(raw: unknown): SessionCutRecord | null {
+  if (!isRecord(raw) || !int(raw.atMin, 0, 720) || !int(raw.leftMin, 1, 240) || !num(raw.estimateMin, 0, 600) || typeof raw.clock !== 'boolean'
+    || !int(raw.count, 1, 20) || typeof raw.only !== 'boolean' || !PACES.includes(raw.pace as string)) return null
+  return { atMin: raw.atMin, leftMin: raw.leftMin, estimateMin: raw.estimateMin, clock: raw.clock, count: raw.count, only: raw.only, pace: raw.pace as SessionCutRecord['pace'] }
 }
 
 export function parseProposals(raw: unknown): CompressionProposal[] | null {

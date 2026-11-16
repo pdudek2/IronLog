@@ -6,6 +6,8 @@ import {
   finalizeWorkoutForUser,
 } from '../../api/_lib/workoutClosure'
 import { updateFinishedWorkoutForUser } from '../../api/_lib/workoutProjection'
+import { applyCut, planCut } from '../../src/shared/sessionCut'
+import type { CompressionRecord } from '../../src/shared/compressionRecord'
 import { deriveLegacySessionId } from '../../src/lib/sessionIdentity'
 import {
   clearReviewAdminDatabase,
@@ -196,6 +198,36 @@ describe('workout closure', () => {
     expect(edited.exercises.map((exercise: { group?: string }) => exercise.group ?? null)).toEqual([null, 'g1', 'g1'])
     expect(edited.compression).toEqual(compression)
     expect((await shortened())['bench-press']).toBe(false)
+  })
+
+  it('stores a mid-session cut with its record and flags the cut exercises as shortened', async () => {
+    await seedActive()
+    const sets = (weight: string, total: number, done: number) => Array.from({ length: total }, (_, index) => ({ weight, reps: '10', done: index < done }))
+    const session = {
+      startedAt: STARTED_AT,
+      compression: null as CompressionRecord | null,
+      exercises: [
+        { exerciseId: 'bench-press', exerciseSource: 'global' as const, name: 'Bench Press', sets: sets('80', 4, 4) },
+        { exerciseId: 'lat-pulldown', exerciseSource: 'global' as const, name: 'Lat Pulldown', sets: sets('60', 3, 3) },
+        { exerciseId: 'seated-cable-row', exerciseSource: 'global' as const, name: 'Row', sets: sets('60', 3, 0) },
+        { exerciseId: 'db-lateral-raise', exerciseSource: 'global' as const, name: 'Raise', sets: sets('10', 3, 0) },
+        { exerciseId: 'db-curl', exerciseSource: 'global' as const, name: 'Curl', sets: sets('14', 3, 0) },
+        { exerciseId: 'tricep-pushdown', exerciseSource: 'global' as const, name: 'Pushdown', sets: sets('30', 3, 0) },
+      ],
+    }
+    const choice = { leftMin: 10, clock: false, straight: false }
+    const cut = applyCut(session, planCut(session, choice, STARTED_AT + 1_800_000), choice, STARTED_AT + 1_800_000)
+    expect(cut.exercises.map((exercise) => exercise.exerciseId)).not.toContain('seated-cable-row')
+    const done = cut.exercises.map((exercise) => ({ ...exercise, sets: exercise.sets.map((set) => ({ ...set, done: true })) }))
+    await db.collection('activeSessions').doc(USER_ID).update({ compression: cut.compression, exercises: done })
+
+    await finalizeWorkoutForUser(USER_ID, { sessionId: input.sessionId, sessionRevision: 'revision-1' }, { db, now: () => FINISHED_AT })
+    const workout = (await readClosure()).workout.data()!
+    expect(workout.compression).toEqual(cut.compression)
+    expect(workout.compression.cut).toMatchObject({ leftMin: 10, only: true, count: 1 })
+    const shortened = Object.fromEntries((await db.collection('exerciseSessions').where('workoutId', '==', input.sessionId).get()).docs
+      .map((doc) => [doc.data().exerciseId, doc.data().shortened]))
+    expect(shortened).toEqual({ 'bench-press': false, 'lat-pulldown': false, 'db-lateral-raise': true, 'db-curl': true, 'tricep-pushdown': true })
   })
 
   it('performs no writes when the active revision changed', async () => {

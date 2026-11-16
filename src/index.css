@@ -8644,6 +8644,58 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   font-size: 0.8125rem;
 }
 
+.session-cut {
+  display: grid;
+  gap: 0.5rem;
+  padding-bottom: 0.25rem;
+}
+
+.session-cut-clock {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 2.75rem;
+  padding-left: 0.25rem;
+  color: var(--text);
+  font-size: 0.875rem;
+}
+
+.session-cut-clock > span {
+  flex: 1;
+}
+
+.session-cut-clock button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.session-cut-clock button[aria-pressed] {
+  min-width: 4.75rem;
+  padding: 0 0.75rem;
+  font-weight: 500;
+}
+
+.session-cut-clock button[aria-pressed='true'] {
+  background: var(--puls-bone);
+  color: var(--accent-foreground);
+}
+
+.session-cut-clock button:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.session-cut-list {
+  padding: 0 0.25rem;
+}
+
 .train-exercise--skipped,
 .train-exercise--skipped span + span {
   color: var(--muted-soft);
@@ -8961,6 +9013,26 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
 
 .workout-up-next {
   margin-top: 0.5rem;
+}
+
+.workout-up-next-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.workout-up-next .workout-cut-trigger {
+  width: auto;
+  min-height: 2.75rem;
+  margin-right: -0.25rem;
+  padding: 0 0.25rem;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.workout-up-next .workout-cut-trigger:hover {
+  color: var(--text);
 }
 
 .workout-up-next h3 {

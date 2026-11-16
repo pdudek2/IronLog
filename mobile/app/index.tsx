@@ -61,6 +61,7 @@ import { workoutCover } from '../../src/shared/workoutCover'
 import { colors, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
+import { SessionCut } from '../src/SessionCut'
 import { BottomSheet } from '../src/BottomSheet'
 import { pluralize } from '../../src/lib/pluralize'
 import { BrandMark, Icon } from '../src/icons'
@@ -416,9 +417,10 @@ function currentExerciseIndex(session: ActiveWorkout, manual: string | null) {
   return picked >= 0 ? picked : focusExerciseIndex(session.exercises)
 }
 
-function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, panelSet, onGoTo, onSelectSet, onOverview, onRemoveExercise, picking, onPicking, drawnSetId }: {
+function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, panelSet, onGoTo, onSelectSet, onOverview, onRemoveExercise, picking, onPicking, drawnSetId, onShortOnTime }: {
   uid: string; session: ActiveWorkout; units: Units; stale: boolean; editing: EditingActions; currentIndex: number; panelSet: number
   onGoTo: (id: string) => void; onSelectSet: (setId: string) => void; onOverview: () => void; onRemoveExercise: (exercise: WorkoutExercise) => void; picking: boolean; onPicking: (picking: boolean) => void; drawnSetId: string | null
+  onShortOnTime: () => void
 }) {
   const loadMetadata = useCallback(() => readExerciseMetadata(uid), [uid])
   const hasCustom = session.exercises.some((exercise) => exercise.exerciseSource === 'user')
@@ -490,7 +492,12 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
         : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === current.exerciseId) : undefined}
       target={targetOf(current)} lowReadiness={lowReadiness}
       editing={editing} onOverview={onOverview} onRemove={() => onRemoveExercise(current)} drawnSetId={drawnSetId} /></FadeIn>}
-    {queue.length > 0 && <Text accessibilityRole="header" style={styles.upNext}>Up next</Text>}
+    {queue.length > 0 && <View style={styles.upNextHead}>
+      <Text accessibilityRole="header" style={styles.upNext}>Up next</Text>
+      <Pressable accessibilityRole="button" onPress={onShortOnTime} style={({ pressed }) => [styles.cutTrigger, pressed && styles.headingPressed]}>
+        <Text style={styles.cutTriggerText}>Short on time?</Text>
+      </Pressable>
+    </View>}
     {queue.map((index) => {
       const exercise = session.exercises[index]!
       return <Pressable key={exerciseIdentity(exercise, index)} accessibilityRole="button" onPress={() => onGoTo(exerciseIdentity(exercise, index))}
@@ -634,9 +641,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const closureRuntime = useClosureRuntime()
   const {
     state, retry, retrySave, discardLocalChanges,
-    updateSet, adjustSet, applyOverload, prefillFirstSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, refreshStart,
+    updateSet, adjustSet, applyOverload, prefillFirstSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, cutRest, refreshStart,
   } = active
   const [sheet, setSheet] = useState<'overview' | 'options' | 'type' | null>(null)
+  const [cutOpen, setCutOpen] = useState(false)
   const [finishPrompt, setFinishPrompt] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
@@ -927,7 +935,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
             })}</View>
           </View>}
           <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale} currentIndex={panelIndex} panelSet={currentSetIndex}
-            onGoTo={goToExercise} onSelectSet={selectSet} onOverview={() => setSheet('overview')} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} />
+            onGoTo={goToExercise} onSelectSet={selectSet} onOverview={() => setSheet('overview')} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} onShortOnTime={() => setCutOpen(true)} />
         </View>
         </>)}
       </Animated.ScrollView>
@@ -961,6 +969,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
           {liveSession.exercises.length > 0 && <Pressable accessibilityRole="button" onPress={() => setSheet('overview')} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
             <Text style={styles.sheetRowText}>All exercises</Text><Icon name="chevron-right" size={16} />
           </Pressable>}
+          <Pressable accessibilityRole="button" onPress={() => close(() => setCutOpen(true))} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
+            <Text style={styles.sheetRowText}>Short on time</Text><Icon name="chevron-right" size={16} />
+          </Pressable>
           <Pressable accessibilityRole="button" onPress={() => setSheet('type')} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
             <Text style={[styles.sheetRowText, styles.flex]}>Session type</Text><Text style={styles.sheetRowMeta}>{liveSession.label || 'None'}</Text><Icon name="chevron-right" size={16} />
           </Pressable>
@@ -969,6 +980,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
             <Text style={styles.sheetRowQuiet}>Discard workout</Text><Icon name="trash" size={16} />
           </Pressable>
         </>}
+      </BottomSheet>}
+      {cutOpen && liveSession && <BottomSheet title="Short on time" onClose={() => setCutOpen(false)}>
+        {(close) => <SessionCut uid={user.uid} session={liveSession} disabled={locked} onCut={cutRest} onFinish={finish} close={close} />}
       </BottomSheet>}
       {finishSession && <BottomSheet title="Finish workout?" onClose={() => setFinishPrompt(null)}>
         {(close) => <>
@@ -1117,6 +1131,9 @@ const styles = StyleSheet.create({
   hintApplyText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
   hintClose: { alignItems: 'center', height: 44, justifyContent: 'center', marginRight: -12, width: 44 },
   upNext: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, marginBottom: 2, marginTop: 12 },
+  upNextHead: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  cutTrigger: { justifyContent: 'center', marginRight: -4, marginTop: 10, minHeight: 44, paddingHorizontal: 4 },
+  cutTriggerText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   upNextRow: { alignItems: 'center', flexDirection: 'row', gap: 10, minHeight: 44 },
   upNextName: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14.5 },
   upNextTarget: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] },

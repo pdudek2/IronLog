@@ -5,6 +5,8 @@ import { getApp, getApps, initializeApp, type FirebaseApp } from '@react-native-
 import {
   connectAuthEmulator,
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
   getAuth,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -139,6 +141,35 @@ export async function sendPasswordReset(email: string): Promise<void> {
     if (typeof cause === 'object' && cause && 'code' in cause && cause.code === 'auth/user-not-found') return
     throw cause
   }
+}
+
+// Account deletion: the password again, a fresh token, then the server deletes the data and the Auth user.
+// A retry after a lost response finds the user gone and counts as done.
+export async function deleteAccountOnServer(uid: string, password: string): Promise<void> {
+  const { auth } = await getServices()
+  const user = auth.currentUser
+  if (!user || user.uid !== uid || !user.email) throw Object.assign(new Error('The signed-in account changed.'), { code: 'auth/account-changed' })
+  try {
+    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password))
+  } catch (cause) {
+    const code = typeof cause === 'object' && cause && 'code' in cause ? String(cause.code) : ''
+    if (code === 'auth/user-not-found') return
+    throw cause
+  }
+  const token = await user.getIdToken(true)
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 60_000)
+  try {
+    const response = await fetch(`${apiBaseUrl}/api/delete-account`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deleteAccount: true }), signal: controller.signal,
+    })
+    if (!response.ok) {
+      const payload: unknown = await response.json().catch(() => null)
+      const message = payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string' ? payload.error : 'Could not delete your account. Try again.'
+      throw new Error(message)
+    }
+  } finally { clearTimeout(timeout) }
 }
 
 export async function currentIdToken(uid: string): Promise<string> {

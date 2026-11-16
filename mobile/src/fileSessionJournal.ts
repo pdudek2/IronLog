@@ -25,3 +25,10 @@ export const closureIntentStorage = new ClosureIntentJournal({
 })
 
 export const launchJournal = new LaunchJournal(fileSlots('launch-attempt'))
+
+// Account deletion: every journal this account left on the device.
+export async function removeAccountJournals(owns: (key: string) => boolean, uid: string): Promise<void> {
+  for (const name of ['session-journal', 'closure-intent', 'launch-attempt', 'workout-editor', 'plan-editor']) await fileSlots(name).removeKeys(owns)
+  const legacy = legacyClosureFile(uid)
+  if (legacy.exists) legacy.delete()
+}

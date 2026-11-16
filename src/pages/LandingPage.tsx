@@ -35,7 +35,7 @@ export default function LandingPage() {
         <section className="landing-section" id="your-plan" aria-labelledby="landing-plan-title">
           <div className="landing-section-copy">
             <h2 id="landing-plan-title">Try it on your own plan</h2>
-            <p>Paste it from Notes, a spreadsheet or another app, in English or Polish. Nothing is saved.</p>
+            <p>Paste it from Notes, a spreadsheet or another app, in English or Polish. Nothing is saved until you create an account.</p>
           </div>
           <LandingPaste />
         </section>

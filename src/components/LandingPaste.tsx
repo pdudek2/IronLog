@@ -1,19 +1,21 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import LandingCompression from './LandingCompression'
 import { landingDays, type LandingDay } from '../shared/landingDay'
+import { saveLandingPlan } from '../lib/landingPlanStorage'
 
 // The parser is its own chunk, loaded after the page has rendered.
-async function readPlan(text: string): Promise<{ days: LandingDay[]; unread: number }> {
+async function readPlan(text: string): Promise<{ text: string; days: LandingDay[]; unread: number }> {
   const { parsePlanText } = await import('../shared/planText')
   const parsed = parsePlanText(text)
-  return { days: landingDays(parsed), unread: parsed.skipped.filter((line) => line.reason !== 'comment' && line.reason !== 'warmUp' && line.reason !== 'emptyDay').length }
+  return { text, days: landingDays(parsed), unread: parsed.skipped.filter((line) => line.reason !== 'comment' && line.reason !== 'warmUp' && line.reason !== 'emptyDay').length }
 }
 
 const NOTE = 'push\nbench 4x6 80\nincline db 3x10 26\nohp 3x8 40\nwznosy bokiem 3x15 10\nfrench press 3x12 30\ndipy 3x8'
 
 export default function LandingPaste() {
   const [text, setText] = useState(NOTE)
-  const [result, setResult] = useState<{ days: LandingDay[]; unread: number } | null>(null)
+  const [result, setResult] = useState<{ text: string; days: LandingDay[]; unread: number } | null>(null)
   const [run, setRun] = useState(0)
   const [dayIndex, setDayIndex] = useState(0)
   const [error, setError] = useState('')
@@ -71,6 +73,11 @@ export default function LandingPaste() {
           )}
           <LandingCompression key={`${run}-${dayIndex}`} day={day} playing={false} label="From your note" />
           {result.unread > 0 && <p className="landing-paste-note">{result.unread} {result.unread === 1 ? 'line' : 'lines'} not read</p>}
+          {result.text !== NOTE && (
+            <Link to="/register" className="landing-paste-carry" onClick={() => saveLandingPlan(result.text)}>
+              Create an account with this plan
+            </Link>
+          )}
         </div>
       )}
     </div>

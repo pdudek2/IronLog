@@ -15,57 +15,57 @@ export default function PrivacyPage() {
       <main className="privacy-body">
         <h1>Privacy policy</h1>
         <p className="privacy-updated">Last updated {UPDATED}</p>
-        <p>SHEAR is a strength training log. This page explains what data it keeps, why, who else handles it and how you can see or delete it.</p>
+        <p>This policy explains what personal data SHEAR collects, why, and what you can do about it.</p>
 
-        <h2>Who is responsible</h2>
-        <p>Patryk Dudek runs SHEAR and is the controller of your data. Contact: {mail}.</p>
+        <h2>Who we are</h2>
+        <p>SHEAR is run by Patryk Dudek, who is the controller of your personal data. Contact: {mail}.</p>
 
-        <h2>What we keep</h2>
+        <h2>What we collect</h2>
         <ul>
-          <li><strong>Account:</strong> your email address and password, handled by Firebase Authentication. We never see your password.</li>
-          <li><strong>Profile:</strong> your name, training goal, workouts per week and units.</li>
-          <li><strong>Training:</strong> your plans, workouts, sets with their weights, reps and the time each set was logged, your own exercises, and records derived from them.</li>
-          <li><strong>Daily check-in (optional):</strong> how you slept, your mood and soreness. This is close to health data, so it is only kept when you fill it in, and you can skip it every day.</li>
-          <li><strong>Technical:</strong> your IP address appears in our hosting logs and, when you use Coach, in a short-lived hashed counter that limits requests.</li>
+          <li>Account: your email address and password. We never see your password.</li>
+          <li>Profile: your name, training goal, weekly workout target and units.</li>
+          <li>Training: your plans, workouts, sets with weight, reps and the time you logged them, your own exercises and your records.</li>
+          <li>Daily check-in, only if you fill it in: sleep, mood and soreness.</li>
+          <li>Technical data: your IP address and basic request details when you use the app.</li>
         </ul>
-        <p>We do not use advertising or third-party analytics.</p>
+        <p>We don't show ads or use analytics trackers.</p>
 
-        <h2>Why, and on what basis</h2>
+        <h2>Why we use it</h2>
         <ul>
-          <li>To run the app for you: your history, the next weights, shortening a plan to the time you have. The basis is our agreement with you when you create an account.</li>
-          <li>To improve the app, we look at how features are used across all accounts, for example whether shortened workouts fit the chosen time. The basis is our legitimate interest; you can object at any time by email.</li>
+          <li>To provide the app: keep your history, suggest your next weights and fit a workout to the time you have. Legal basis: our contract with you (Art. 6(1)(b) GDPR).</li>
+          <li>To improve the app by looking at how features are used across accounts. Legal basis: our legitimate interest (Art. 6(1)(f) GDPR). You can object at any time by email.</li>
+          <li>To keep the service secure and prevent abuse. Legal basis: our legitimate interest (Art. 6(1)(f) GDPR).</li>
         </ul>
 
-        <h2>Who else handles it</h2>
+        <h2>Who we share it with</h2>
+        <p>We use these service providers, who process data on our behalf:</p>
         <ul>
-          <li><strong>Google Firebase</strong> stores your account and training data. Firebase App Distribution holds testers' email addresses and device details.</li>
-          <li><strong>Vercel</strong> runs our server functions and keeps request logs with IP addresses.</li>
-          <li><strong>Google Fonts</strong> serves the web app's fonts, so Google receives your IP address when a page loads.</li>
-          <li><strong>Proton</strong> hosts {FEEDBACK_EMAIL}, so it holds the messages you send us.</li>
-          <li><strong>Coach (optional):</strong> when you use it with your own OpenRouter key, your profile, the last 31 days of check-ins, your workouts and records are sent through our server to OpenRouter and the model provider you chose, to answer you. We do not store the conversation.</li>
+          <li>Google (Firebase and Google Fonts): sign-in, database, test app distribution and web fonts.</li>
+          <li>Vercel: hosting.</li>
+          <li>Proton: email.</li>
+          <li>OpenRouter and the AI model provider you choose, only if you use Coach. Coach sends them your profile, recent check-ins, workouts and records so it can answer. We don't store the conversations.</li>
         </ul>
-        <p>Some of these providers process data outside the European Economic Area, mainly in the United States, under the European Commission's standard contractual clauses or the EU–US Data Privacy Framework.</p>
+        <p>Some of these providers process data outside the European Economic Area, mainly in the United States. These transfers rely on the EU-US Data Privacy Framework or the European Commission's standard contractual clauses.</p>
 
-        <h2>How long</h2>
-        <p>Until you delete your account. Deleting removes your data from our database at once. Copies in our providers' backups and logs expire later under their own rules.</p>
+        <h2>How long we keep it</h2>
+        <p>Until you delete your account. Backups and logs held by our providers are removed later, on their own schedules.</p>
 
         <h2>Your rights</h2>
-        <ul>
-          <li>See your data and get a copy: Profile → Export history on the web gives your workouts as a CSV file; email us for a full copy.</li>
-          <li>Correct, restrict, move or delete your data, and object to the use for improving the app.</li>
-          <li>Complain to the Polish data protection authority, the President of the Personal Data Protection Office (UODO).</li>
-        </ul>
+        <p>You can access, correct, delete, restrict or move your data, and object to how we use it. On the web, Profile → Export history downloads your workouts as a CSV file; for a full copy, email us. You can also complain to the Polish data protection authority (Prezes Urzędu Ochrony Danych Osobowych).</p>
 
         <h2>Age</h2>
         <p>SHEAR is for people aged 16 and over.</p>
 
         <h2 id="delete-your-account">Delete your account</h2>
         <ol>
-          <li>Open SHEAR on the web or in the Android app and sign in.</li>
-          <li>Go to Profile and choose <strong>Delete account</strong>.</li>
-          <li>Enter your password to confirm. Your account and all your data are deleted at once and cannot be restored.</li>
+          <li>Sign in to SHEAR on the web or in the Android app.</li>
+          <li>Open Profile and choose Delete account.</li>
+          <li>Enter your password to confirm. Your account and all its data are deleted immediately and can't be restored.</li>
         </ol>
-        <p>If you can no longer sign in, email {mail} from the address of your account and we will delete it for you.</p>
+        <p>If you can't sign in, email {mail} from your account's address and we'll delete it for you.</p>
+
+        <h2>Changes</h2>
+        <p>If we change this policy, we'll update the date at the top of this page.</p>
 
         <p className="privacy-back"><Link to="/">Back to SHEAR</Link></p>
       </main>

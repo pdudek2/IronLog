@@ -7,7 +7,7 @@ test.describe('Privacy and account deletion', () => {
     await page.goto('/privacy')
     await expect(page.getByRole('heading', { name: 'Privacy policy', level: 1 })).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Delete your account' })).toBeVisible()
-    await expect(page.getByText(/Patryk Dudek runs SHEAR/)).toBeVisible()
+    await expect(page.getByText(/SHEAR is run by Patryk Dudek/)).toBeVisible()
 
     await page.goto('/register')
     await page.getByRole('link', { name: 'Privacy policy' }).click()

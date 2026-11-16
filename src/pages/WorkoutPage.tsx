@@ -248,16 +248,6 @@ export default function WorkoutPage() {
     const wasNotDone = currentSet && !currentSet.done
     // The toast's action comes later; a set logged in between must not be unticked by it.
     if (withoutWeight && !wasNotDone) return
-    const userMeta = new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))
-    const loggedExercise = currentActive?.exercises[exerciseIndex]
-    if (wasNotDone && !withoutWeight && loggedExercise
-      && needsWeightConfirm(currentSet, { exerciseId: loggedExercise.exerciseId, ...catalogueMeta(loggedExercise.exerciseId, loggedExercise.exerciseSource, userMeta) })) {
-      toast('No weight entered. Log this set without weight?', {
-        id: 'log-without-weight',
-        action: { label: 'Log without weight', onClick: () => toggleSet(exerciseIndex, setIndex, true) },
-      })
-      return
-    }
     const completesExercise = wasNotDone && currentActive?.exercises[exerciseIndex]?.sets.every(
       (set, index) => index === setIndex || set.done,
     )
@@ -265,6 +255,27 @@ export default function WorkoutPage() {
     const error = wasNotDone ? completedSetError(currentSet, completedSets) : null
     if (error) {
       toast.error(error)
+      return
+    }
+    const userMeta = new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))
+    const loggedExercise = currentActive?.exercises[exerciseIndex]
+    if (wasNotDone && !withoutWeight && loggedExercise
+      && needsWeightConfirm(currentSet, { exerciseId: loggedExercise.exerciseId, ...catalogueMeta(loggedExercise.exerciseId, loggedExercise.exerciseSource, userMeta) })) {
+      // Indexes can shift before the tap (a removed set, a cut, a sync), so the action finds the same set again.
+      const exerciseKey = getExerciseClientId(loggedExercise, exerciseIndex)
+      const setKey = currentSet.clientId
+      toast('No weight entered. Log this set without weight?', {
+        id: 'log-without-weight',
+        action: {
+          label: 'Log without weight',
+          onClick: () => {
+            const exercises = useWorkoutStore.getState().active?.exercises ?? []
+            const at = exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === exerciseKey)
+            const setAt = at >= 0 ? exercises[at]!.sets.findIndex((set, index) => (setKey ? set.clientId === setKey : index === setIndex)) : -1
+            if (setAt >= 0) toggleSet(at, setAt, true)
+          },
+        },
+      })
       return
     }
     toggleSetDone(exerciseIndex, setIndex)

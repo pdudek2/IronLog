@@ -777,7 +777,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
       && needsWeightConfirm(loggedSet, { exerciseId: logged.exerciseId, ...catalogueMeta(logged.exerciseId, logged.exerciseSource) })) {
       showDialog('No weight entered', 'Log this set without weight?', [
         { text: 'Enter weight', style: 'cancel' },
-        { text: 'Log without weight', onPress: () => toggleSet(exerciseId, setId, true, true) },
+        { text: 'Log without weight', onPress: () => latestToggle.current(exerciseId, setId, true, true) },
       ])
       return
     }
@@ -798,6 +798,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
     if (groupOpen) setManualExercise(null)
     else if (after[exerciseIndex]!.sets.every((set) => set.done)) setManualExercise({ sessionId: liveSession.sessionId, id: exerciseId })
   })
+  // The dialog answers later; it must use the session and lock state of that moment, not of when it opened.
+  const latestToggle = useRef(toggleSet)
+  latestToggle.current = toggleSet
   const liveSessionId = liveSession?.sessionId
   useEffect(() => {
     if (!isFocused || !liveSessionId) return

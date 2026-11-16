@@ -7,6 +7,7 @@ import {
 } from '../../api/_lib/workoutClosure'
 import { updateFinishedWorkoutForUser } from '../../api/_lib/workoutProjection'
 import { applyCut, planCut } from '../../src/shared/sessionCut'
+import type { CompressionRecord } from '../../src/shared/compressionRecord'
 import { deriveLegacySessionId } from '../../src/lib/sessionIdentity'
 import {
   clearReviewAdminDatabase,
@@ -204,6 +205,7 @@ describe('workout closure', () => {
     const sets = (weight: string, total: number, done: number) => Array.from({ length: total }, (_, index) => ({ weight, reps: '10', done: index < done }))
     const session = {
       startedAt: STARTED_AT,
+      compression: null as CompressionRecord | null,
       exercises: [
         { exerciseId: 'bench-press', exerciseSource: 'global' as const, name: 'Bench Press', sets: sets('80', 4, 4) },
         { exerciseId: 'lat-pulldown', exerciseSource: 'global' as const, name: 'Lat Pulldown', sets: sets('60', 3, 3) },

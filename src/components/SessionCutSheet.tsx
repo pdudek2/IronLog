@@ -58,26 +58,6 @@ export default function SessionCutSheet({ session, userExercises, onCut, onFinis
       onClose={onClose}
     >
       <div className="session-cut">
-        <div className="train-dock-time" role="radiogroup" aria-label="Time left">
-          {shorter.map((left) => (
-            <button key={left} type="button" role="radio" aria-checked={pick?.kind === 'left' && pick.min === left} onClick={() => setPick({ kind: 'left', min: left })}>
-              {left} min
-            </button>
-          ))}
-        </div>
-        <div className="session-cut-clock" data-active={pick?.kind === 'clock' || undefined}>
-          <span>Finish by</span>
-          <button type="button" aria-label="Five minutes earlier" onClick={() => setPick({ kind: 'clock', at: clockAt - STEP_MS })}>
-            <Minus size={16} aria-hidden="true" />
-          </button>
-          <button type="button" className="tabular-nums" aria-pressed={pick?.kind === 'clock'} onClick={() => setPick({ kind: 'clock', at: clockAt })}>
-            {clockLabel(clockAt)}
-          </button>
-          <button type="button" aria-label="Five minutes later" onClick={() => setPick({ kind: 'clock', at: clockAt + STEP_MS })}>
-            <Plus size={16} aria-hidden="true" />
-          </button>
-        </div>
-
         {passed ? (
           <p className="train-dock-line" role="status">That time has passed.</p>
         ) : plan && !plan.changed && plan.result.fits ? (
@@ -103,16 +83,34 @@ export default function SessionCutSheet({ session, userExercises, onCut, onFinis
           </label>
         )}
 
-        {plan?.changed && (
-          <div className="train-dock-actions">
-            {!plan.result.fits && plan.openAfter > 0 && (
-              <button type="button" className="workout-set-panel-action" data-quiet onClick={() => { onClose(); onFinish() }}>Finish</button>
-            )}
-            <button type="button" className="workout-set-panel-action" onClick={apply}>
-              {plan.openAfter === 0 ? 'End here' : 'Shorten the rest'}
+        <div className="train-dock-time" role="radiogroup" aria-label="Time left">
+          {shorter.map((left) => (
+            <button key={left} type="button" role="radio" aria-checked={pick?.kind === 'left' && pick.min === left} onClick={() => setPick({ kind: 'left', min: left })}>
+              {left} min
             </button>
-          </div>
-        )}
+          ))}
+        </div>
+        <div className="session-cut-clock" data-active={pick?.kind === 'clock' || undefined}>
+          <span>Finish by</span>
+          <button type="button" aria-label="Five minutes earlier" onClick={() => setPick({ kind: 'clock', at: clockAt - STEP_MS })}>
+            <Minus size={16} aria-hidden="true" />
+          </button>
+          <button type="button" className="tabular-nums" aria-pressed={pick?.kind === 'clock'} onClick={() => setPick({ kind: 'clock', at: clockAt })}>
+            {clockLabel(clockAt)}
+          </button>
+          <button type="button" aria-label="Five minutes later" onClick={() => setPick({ kind: 'clock', at: clockAt + STEP_MS })}>
+            <Plus size={16} aria-hidden="true" />
+          </button>
+        </div>
+        {/* The time controls and the button stay put under the thumb; what changes grows above them. */}
+        <div className="train-dock-actions">
+          {plan?.changed && !plan.result.fits && plan.openAfter > 0 && (
+            <button type="button" className="workout-set-panel-action" data-quiet onClick={() => { onClose(); onFinish() }}>Finish</button>
+          )}
+          <button type="button" className="workout-set-panel-action" onClick={apply} disabled={!plan?.changed}>
+            {plan?.changed && plan.openAfter === 0 ? 'End here' : 'Shorten the rest'}
+          </button>
+        </div>
       </div>
     </BottomSheet>
   )

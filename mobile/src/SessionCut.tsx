@@ -51,6 +51,20 @@ export function SessionCut({ session, disabled, onCut, onFinish, close }: {
 
   return <View style={styles.body}>
     <Text style={styles.lead}>~{remaining} min of work left · {base.openBefore} {pluralize(base.openBefore, 'set', 'sets')}</Text>
+    {passed ? <Text accessibilityLiveRegion="polite" style={styles.line}>That time has passed.</Text>
+      : plan && !plan.changed && plan.result.fits ? <Text accessibilityLiveRegion="polite" style={styles.line}><Text style={styles.strong}>You have time.</Text> The rest takes ~{minutes(plan.result.estimateSec)} min.</Text>
+      : plan && plan.openAfter === 0 ? <Text accessibilityLiveRegion="polite" style={styles.line}><Text style={styles.strong}>Nothing more fits.</Text> Finish here.</Text>
+      : plan && !plan.result.fits ? <Text accessibilityLiveRegion="polite" style={styles.line}><Text style={styles.strong}>Doesn’t fit in {choice.leftMin} min.</Text> The shortest finish takes ~{minutes(plan.result.estimateSec)} min.</Text>
+      : plan ? <Text accessibilityLiveRegion="polite" style={styles.line}><Text style={styles.strong}>~{minutes(plan.result.estimateSec)} min</Text> · {plan.openAfter} of {plan.openBefore} sets left · Same weights</Text>
+      : null}
+
+    {plan?.changed && plan.openAfter > 0 && <CutPreview session={session} plan={plan} />}
+
+    {plan?.changed && (grouped || straight) && <Pressable accessibilityRole="switch" accessibilityState={{ checked: straight }} accessibilityLabel="Without supersets" onPress={() => setStraight(!straight)} style={styles.switchRow}>
+      <Text style={styles.switchText}>Without supersets</Text>
+      <View style={[styles.track, straight && styles.trackOn]}><View style={[styles.thumb, straight && styles.thumbOn]} /></View>
+    </Pressable>}
+
     <View accessibilityRole="radiogroup" accessibilityLabel="Time left" style={styles.time}>
       {shorter.map((left) => {
         const checked = pick?.kind === 'left' && pick.min === left
@@ -69,28 +83,15 @@ export function SessionCut({ session, disabled, onCut, onFinish, close }: {
       <Pressable accessibilityRole="button" accessibilityLabel="Five minutes later" onPress={() => setPick({ kind: 'clock', at: clockAt + STEP_MS })} style={styles.step}><Icon name="plus" size={16} color={colors.text} /></Pressable>
     </View>
 
-    {passed ? <Text accessibilityLiveRegion="polite" style={styles.line}>That time has passed.</Text>
-      : plan && !plan.changed && plan.result.fits ? <Text accessibilityLiveRegion="polite" style={styles.line}><Text style={styles.strong}>You have time.</Text> The rest takes ~{minutes(plan.result.estimateSec)} min.</Text>
-      : plan && plan.openAfter === 0 ? <Text accessibilityLiveRegion="polite" style={styles.line}><Text style={styles.strong}>Nothing more fits.</Text> Finish here.</Text>
-      : plan && !plan.result.fits ? <Text accessibilityLiveRegion="polite" style={styles.line}><Text style={styles.strong}>Doesn’t fit in {choice.leftMin} min.</Text> The shortest finish takes ~{minutes(plan.result.estimateSec)} min.</Text>
-      : plan ? <Text accessibilityLiveRegion="polite" style={styles.line}><Text style={styles.strong}>~{minutes(plan.result.estimateSec)} min</Text> · {plan.openAfter} of {plan.openBefore} sets left · Same weights</Text>
-      : null}
-
-    {plan?.changed && plan.openAfter > 0 && <CutPreview session={session} plan={plan} />}
-
-    {plan?.changed && (grouped || straight) && <Pressable accessibilityRole="switch" accessibilityState={{ checked: straight }} accessibilityLabel="Without supersets" onPress={() => setStraight(!straight)} style={styles.switchRow}>
-      <Text style={styles.switchText}>Without supersets</Text>
-      <View style={[styles.track, straight && styles.trackOn]}><View style={[styles.thumb, straight && styles.thumbOn]} /></View>
-    </Pressable>}
-
-    {plan?.changed && <View style={styles.actions}>
-      {!plan.result.fits && plan.openAfter > 0 && <Pressable accessibilityRole="button" disabled={disabled} onPress={() => close(onFinish)} style={({ pressed }) => [styles.action, styles.actionQuiet, pressed && styles.pressed]}>
+    {/* The time controls and the button stay put under the thumb; what changes grows above them. */}
+    <View style={styles.actions}>
+      {plan?.changed && !plan.result.fits && plan.openAfter > 0 && <Pressable accessibilityRole="button" disabled={disabled} onPress={() => close(onFinish)} style={({ pressed }) => [styles.action, styles.actionQuiet, pressed && styles.pressed]}>
         <Text style={[styles.actionText, styles.actionQuietText]}>Finish</Text>
       </Pressable>}
-      <Pressable accessibilityRole="button" disabled={disabled} onPress={apply} style={({ pressed }) => [styles.action, styles.actionPrimary, disabled && styles.disabled, pressed && styles.pressed]}>
-        <Text style={styles.actionText}>{plan.openAfter === 0 ? 'End here' : 'Shorten the rest'}</Text>
+      <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || !plan?.changed }} disabled={disabled || !plan?.changed} onPress={apply} style={({ pressed }) => [styles.action, styles.actionPrimary, (disabled || !plan?.changed) && styles.disabled, pressed && styles.pressed]}>
+        <Text style={styles.actionText}>{plan?.changed && plan.openAfter === 0 ? 'End here' : 'Shorten the rest'}</Text>
       </Pressable>
-    </View>}
+    </View>
   </View>
 }
 

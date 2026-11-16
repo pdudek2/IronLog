@@ -241,10 +241,10 @@ export default function ProfilePage() {
             <a href={feedbackMailto({ platform: 'Web', system: navigator.userAgent, version: typeof __APP_BUILD__ === 'string' ? __APP_BUILD__ : 'dev', date: new Date() })}>
               Send feedback<Mail size={16} aria-hidden="true" />
             </a>
+            {/* A missing mail app cannot be detected, so the address is always there to copy. */}
+            <span className="profile-feedback-address">{FEEDBACK_EMAIL}</span>
             <Link to="/privacy">Privacy policy<ChevronRight size={16} aria-hidden="true" /></Link>
           </nav>
-          {/* A missing mail app cannot be detected, so the address is always there to copy. */}
-          <span className="profile-feedback-address">{FEEDBACK_EMAIL}</span>
 
           <button type="button" className="profile-sign-out" onClick={() => navigate('/logout')}>
             Sign out

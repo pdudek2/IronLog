@@ -19,7 +19,7 @@ describe('clearLocalAccountData', () => {
   it("removes this account's keys and the shared ones, and keeps another account's recovery keys", () => {
     const local = memory({
       'ironlog-active-session-backup:me': '1', 'ironlog:workout-closure:me': '1', 'ironlog:workout-delete-recovery:me': '1',
-      'ironlog.openrouterApiKey:me': 'k', 'ironlog.openrouterModel': 'm', 'ironlog:landing-plan': 'p',
+      'ironlog.openrouterApiKey:me': 'k', 'ironlog.openrouterModel': 'm', 'ironlog:landing-plan': 'p', 'ironlog:train-cover-played': '1',
       'ironlog-active-session-backup:other': '1', 'ironlog:workout-closure:other': '1', 'ironlog.openrouterApiKey:other': 'k',
     })
     const session = memory({ 'ironlog:template-draft': 'd' })

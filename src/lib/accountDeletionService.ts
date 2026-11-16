@@ -12,6 +12,7 @@ export function clearLocalAccountData(uid: string, local: Storage = window.local
     `ironlog.openrouterApiKey:${uid}`,
     'ironlog.openrouterModel',
     'ironlog:landing-plan',
+    'ironlog:train-cover-played',
   ]) local.removeItem(key)
   session.removeItem('ironlog:template-draft')
 }

@@ -159,6 +159,13 @@ function DeleteAccount({ uid, working, close, onDeleted }: { uid: string; workin
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  // The sheet sits at the screen bottom; lift its content above the keyboard so the password and button stay visible.
+  const [keyboard, setKeyboard] = useState(0)
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', (event) => setKeyboard(event.endCoordinates.height))
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboard(0))
+    return () => { shown.remove(); hidden.remove() }
+  }, [])
   const submit = async () => {
     if (busy) return
     if (working) { setError('Finish or discard your workout first.'); return }
@@ -180,7 +187,7 @@ function DeleteAccount({ uid, working, close, onDeleted }: { uid: string; workin
       setBusy(false)
     }
   }
-  return <View style={styles.deleteSheet}>
+  return <View style={[styles.deleteSheet, { paddingBottom: 8 + keyboard }]}>
     <Text style={styles.deleteCopy}>This deletes your account, profile, plans, workouts, records and check-ins at once. It cannot be undone.</Text>
     <Text style={styles.label}>Password</Text>
     <TextInput accessibilityLabel="Password" autoCapitalize="none" autoComplete="current-password" secureTextEntry editable={!busy}

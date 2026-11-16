@@ -85,15 +85,20 @@ export function planCut(session: CutSession, choice: CutChoice, now: number, use
 // One mutation: open sets past the cut go (from the end), exercises left with nothing are removed, new groups are set and the
 // compression record carries what was cut. Logged sets, weights and reps stay as they are.
 export function applyCut<S extends CutSession>(session: S, plan: CutPlan, choice: CutChoice, now: number): S {
-  if (!plan.changed || choice.leftMin === null) return session
+  if (!plan.changed || choice.leftMin === null || plan.before.length !== session.exercises.length) return session
   const exercises = session.exercises.flatMap((exercise, index) => {
-    if (plan.after[index] === 0 && plan.done[index] === 0 && plan.before[index]! > 0) return []
+    if (plan.after[index] === 0 && plan.before[index]! > 0 && !exercise.sets.some((set) => set.done)) return []
     let keep = plan.after[index]! - plan.done[index]!
     const sets = exercise.sets.filter((set) => set.done || keep-- > 0)
     const group = plan.groups[index]
     return [{ ...exercise, sets, ...(group ? { group } : {}) }]
   })
   return { ...session, exercises, compression: cutRecord(session, plan, choice.leftMin, choice.clock, now) }
+}
+
+// The cut as one mutation, planned on the session it changes so nothing logged since the preview is lost.
+export function cutRest<S extends CutSession>(session: S, choice: CutChoice, now: number, userExercises?: ReadonlyMap<string, ExerciseMeta>): S {
+  return applyCut(session, planCut(session, choice, now, userExercises), choice, now)
 }
 
 function cutRecord(session: CutSession, plan: CutPlan, leftMin: number, clock: boolean, now: number): CompressionRecord {

@@ -982,7 +982,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </>}
       </BottomSheet>}
       {cutOpen && liveSession && <BottomSheet title="Short on time" onClose={() => setCutOpen(false)}>
-        {(close) => <SessionCut session={liveSession} disabled={locked} onCut={cutRest} onFinish={finish} close={close} />}
+        {(close) => <SessionCut uid={user.uid} session={liveSession} disabled={locked} onCut={cutRest} onFinish={finish} close={close} />}
       </BottomSheet>}
       {finishSession && <BottomSheet title="Finish workout?" onClose={() => setFinishPrompt(null)}>
         {(close) => <>

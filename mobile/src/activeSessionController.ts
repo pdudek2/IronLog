@@ -19,7 +19,8 @@ import {
 } from './sessionJournal'
 import { createLocalId, parseSessionDocument, type ActiveWorkout, type ExerciseSource, type Units } from './session'
 import { refreshStaleActiveSession } from '../../src/shared/sessionDuration'
-import type { CutChoice, CutPlan } from '../../src/shared/sessionCut'
+import type { CutChoice } from '../../src/shared/sessionCut'
+import type { ExerciseMeta } from '../../src/shared/nextSessionRecommendation'
 
 export interface SessionSnapshot {
   exists: boolean
@@ -328,8 +329,8 @@ export class ActiveSessionController {
     this.mutate((session) => setLabel(session, label))
   }
 
-  cutRest(plan: CutPlan, choice: CutChoice, now: number): void {
-    this.mutate((session) => cutRest(session, plan, choice, now))
+  cutRest(choice: CutChoice, now: number, userExercises?: ReadonlyMap<string, ExerciseMeta>): void {
+    this.mutate((session) => cutRest(session, choice, now, userExercises))
   }
 
   /** Resumes a session left open past the stale limit with its timer restarted, as the web does. */

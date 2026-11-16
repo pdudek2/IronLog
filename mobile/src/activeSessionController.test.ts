@@ -10,7 +10,6 @@ import {
 } from './activeSessionController'
 import { TwoSlotSessionJournal, type JournalSlotStorage } from './sessionJournal'
 import type { ActiveWorkout, Units } from './session'
-import type { CutPlan } from '../../src/shared/sessionCut'
 
 interface Listener {
   uid: string
@@ -450,11 +449,8 @@ test('label-only and exercise add/remove edits are saved as draft changes', asyn
 test('a cut that changes only the compression record is saved, not dropped as unchanged content', async () => {
   const h = harness()
   await loadServer(h)
-  const plan: CutPlan = {
-    result: { mode: 'compressed', fits: true, blocks: [], sets: [1], shortRest: true, estimateSec: 60, fullEstimateSec: 90 },
-    done: [0], before: [1], after: [1], openBefore: 1, openAfter: 1, groups: [undefined], pace: 1.2, paceSource: 'cold', changed: true,
-  }
-  h.controller.cutRest(plan, { leftMin: 2, clock: false, straight: false }, 61_000)
+  // One open Bench set does not fit in 2 min; the only change left is the shorter rests, so only the record changes.
+  h.controller.cutRest({ leftMin: 2, clock: false, straight: false }, 61_000)
   await wait()
   const cut = ready(h.states).session
   assert.equal(cut.compression?.shortRest, true)

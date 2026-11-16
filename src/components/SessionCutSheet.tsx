@@ -14,10 +14,11 @@ const clockLabel = (at: number) => new Date(at).toLocaleTimeString([], { hour: '
 type Pick = { kind: 'left'; min: number } | { kind: 'clock'; at: number } | null
 
 // „Short on time”: the time left, a preview of the rest and one tap that cuts it (Specyfikacja — skrócenie w trakcie sesji).
-export default function SessionCutSheet({ session, userExercises, onCut, onFinish, onClose }: {
+export default function SessionCutSheet({ session, userExercises, disabled, onCut, onFinish, onClose }: {
   session: ActiveWorkout
   userExercises: ReadonlyMap<string, ExerciseMeta>
-  onCut: (plan: CutPlan, choice: CutChoice, now: number) => void
+  disabled: boolean
+  onCut: (choice: CutChoice, now: number) => void
   onFinish: () => void
   onClose: () => void
 }) {
@@ -46,8 +47,9 @@ export default function SessionCutSheet({ session, userExercises, onCut, onFinis
 
   const apply = () => {
     const time = Date.now()
-    const live = planCut(session, choiceAt(time), time, userExercises)
-    onCut(live, choiceAt(time), time)
+    // A finish time that ran out since the preview would cut every open set; show that instead.
+    if (choiceAt(time).leftMin! < 1) { setNow(time); return }
+    onCut(choiceAt(time), time)
     onClose()
   }
 
@@ -104,10 +106,10 @@ export default function SessionCutSheet({ session, userExercises, onCut, onFinis
         </div>
         {/* The time controls and the button stay put under the thumb; what changes grows above them. */}
         <div className="train-dock-actions">
-          {plan?.changed && !plan.result.fits && plan.openAfter > 0 && (
-            <button type="button" className="workout-set-panel-action" data-quiet onClick={() => { onClose(); onFinish() }}>Finish</button>
+          {plan && !plan.result.fits && plan.openAfter > 0 && (
+            <button type="button" className="workout-set-panel-action" data-quiet disabled={disabled} onClick={() => { onClose(); onFinish() }}>Finish</button>
           )}
-          <button type="button" className="workout-set-panel-action" onClick={apply} disabled={!plan?.changed}>
+          <button type="button" className="workout-set-panel-action" onClick={apply} disabled={disabled || !plan?.changed}>
             {plan?.changed && plan.openAfter === 0 ? 'End here' : 'Shorten the rest'}
           </button>
         </div>

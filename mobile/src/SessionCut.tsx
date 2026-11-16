@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { planCut, type CutChoice, type CutPlan } from '../../src/shared/sessionCut'
+import type { ExerciseMeta } from '../../src/shared/nextSessionRecommendation'
+import { readExerciseMetadata } from './firebase'
 import { pluralize } from '../../src/lib/pluralize'
 import type { ActiveWorkout } from './session'
 import { colors, primaryGradient } from './theme'
@@ -9,43 +11,56 @@ import { Icon } from './icons'
 const LEFT = [30, 20, 15, 10] as const
 const STEP_MS = 5 * 60_000
 const minutes = (sec: number) => Math.round(sec / 60)
-const clockLabel = (at: number) => { const date = new Date(at); return `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}` }
+const clockLabel = (at: number) => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 type Pick = { kind: 'left'; min: number } | { kind: 'clock'; at: number } | null
 
 // „Short on time”, the same sheet as web: the time left, a preview of the rest and one tap that cuts it.
-export function SessionCut({ session, disabled, onCut, onFinish, close }: {
+export function SessionCut({ uid, session, disabled, onCut, onFinish, close }: {
+  uid: string
   session: ActiveWorkout
   disabled: boolean
-  onCut: (plan: CutPlan, choice: CutChoice, now: number) => void
+  onCut: (choice: CutChoice, now: number, userExercises?: ReadonlyMap<string, ExerciseMeta>) => void
   onFinish: () => void
   close: (after?: () => void) => void
 }) {
   const [now, setNow] = useState(() => Date.now())
   const [pick, setPick] = useState<Pick>(null)
   const [straight, setStraight] = useState(false)
+  // Own exercises need their muscles for roles and pairs, as on web and the dashboard.
+  const [userExercises, setUserExercises] = useState<{ uid: string; meta: Map<string, ExerciseMeta> } | null>(null)
+  const hasCustom = session.exercises.some((exercise) => exercise.exerciseSource === 'user')
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 15_000)
     return () => clearInterval(timer)
   }, [])
+  useEffect(() => {
+    if (!hasCustom) return
+    let current = true
+    void readExerciseMetadata(uid).then(({ data }) => { if (current) setUserExercises({ uid, meta: new Map(data.map((exercise) => [`user:${exercise.id}`, exercise])) }) }, () => {})
+    return () => { current = false }
+  }, [uid, hasCustom])
+  const meta = userExercises?.uid === uid ? userExercises.meta : undefined
 
   const choiceAt = (time: number): CutChoice => ({
     leftMin: pick === null ? null : pick.kind === 'left' ? pick.min : Math.max(0, Math.floor((pick.at - time) / 60_000)),
     clock: pick?.kind === 'clock',
     straight,
   })
-  const base = planCut(session, { leftMin: null, clock: false, straight: false }, now)
+  const base = planCut(session, { leftMin: null, clock: false, straight: false }, now, meta)
   const remaining = minutes(base.result.fullEstimateSec)
   const choice = choiceAt(now)
   const passed = choice.leftMin !== null && choice.leftMin < 1
-  const plan = choice.leftMin !== null && !passed ? planCut(session, choice, now) : null
+  const plan = choice.leftMin !== null && !passed ? planCut(session, choice, now, meta) : null
   const shorter = LEFT.filter((left) => left < remaining)
   const defaultClock = Math.floor((now + base.result.fullEstimateSec * 1000) / STEP_MS) * STEP_MS
   const clockAt = pick?.kind === 'clock' ? pick.at : defaultClock
   const grouped = plan?.groups.some((group, index) => group && group !== session.exercises[index]?.group) ?? false
   const apply = () => {
     const time = Date.now()
-    onCut(planCut(session, choiceAt(time), time), choiceAt(time), time)
+    // A finish time that ran out since the preview would cut every open set; show that instead.
+    if (choiceAt(time).leftMin! < 1) { setNow(time); return }
+    onCut(choiceAt(time), time, meta)
     close()
   }
 
@@ -85,7 +100,7 @@ export function SessionCut({ session, disabled, onCut, onFinish, close }: {
 
     {/* The time controls and the button stay put under the thumb; what changes grows above them. */}
     <View style={styles.actions}>
-      {plan?.changed && !plan.result.fits && plan.openAfter > 0 && <Pressable accessibilityRole="button" disabled={disabled} onPress={() => close(onFinish)} style={({ pressed }) => [styles.action, styles.actionQuiet, pressed && styles.pressed]}>
+      {plan && !plan.result.fits && plan.openAfter > 0 && <Pressable accessibilityRole="button" disabled={disabled} onPress={() => close(onFinish)} style={({ pressed }) => [styles.action, styles.actionQuiet, pressed && styles.pressed]}>
         <Text style={[styles.actionText, styles.actionQuietText]}>Finish</Text>
       </Pressable>}
       <Pressable accessibilityRole="button" accessibilityState={{ disabled: disabled || !plan?.changed }} disabled={disabled || !plan?.changed} onPress={apply} style={({ pressed }) => [styles.action, styles.actionPrimary, (disabled || !plan?.changed) && styles.disabled, pressed && styles.pressed]}>

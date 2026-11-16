@@ -186,7 +186,7 @@ export function sessionPace(
 ): { factor: number; sets: number } {
   const times = exercises.flatMap((exercise) => exercise.sets.flatMap((set) => (set.done && Number.isSafeInteger(set.completedAt) ? [set.completedAt!] : [])))
   if (times.length < 2) return { factor: prior, sets: times.length }
-  const counts = exercises.map((exercise) => exercise.sets.filter((set) => set.done).length)
+  const counts = exercises.map((exercise) => exercise.sets.filter((set) => set.done && Number.isSafeInteger(set.completedAt)).length)
   const blocks = sessionBlocks(counts, exercises.map((exercise) => exercise.group))
   const model = estimateSec(blocks, roles, shortRest, low) - (blocks.some((block) => block.items.some((item) => item.sets > 0 && roles[item.index] === 'main')) ? WARM_UP : 0) - WORK
   const real = (Math.max(...times) - Math.min(...times)) / 1000
@@ -370,7 +370,7 @@ export function compressDay(input: CompressionInput): CompressionResult {
     sets[main] = Math.max(done[main]!, Math.min(2, exercises[main]!.sets))
     const partner = exercises
       .map((exercise, index) => ({ exercise, index }))
-      .filter(({ exercise, index }) => index !== main && known(roles[index]!) && exercise.sets > 0 && nonCompeting(exercise.muscles, exercises[main]!.muscles))
+      .filter(({ exercise, index }) => index !== main && known(roles[index]!) && exercise.sets > done[index]! && nonCompeting(exercise.muscles, exercises[main]!.muscles))
       .sort((a, b) => Number(done[a.index] === 0) - Number(done[b.index] === 0) || Number(roles[a.index] !== 'compound') - Number(roles[b.index] !== 'compound')
         || protection(b.index) - protection(a.index) || a.index - b.index)[0]
     if (partner) {

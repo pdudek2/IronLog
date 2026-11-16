@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { exercises as catalogue } from '../../../data/exercises'
 import { exerciseRoles, sessionPace } from '../compression'
 import { isShortened, parseCompressionRecord, type CompressionRecord } from '../compressionRecord'
-import { applyCut, planCut, type CutChoice, type CutPlan } from '../sessionCut'
+import { applyCut, cutRest, planCut, type CutChoice, type CutPlan } from '../sessionCut'
+import { buildNextSessionRecommendation } from '../nextSessionRecommendation'
 
 const T0 = 1_800_000_000_000
 type Set = { weight: string; reps: string; done: boolean; completedAt?: number }
@@ -103,11 +104,12 @@ describe('planCut on the Upper day after Bench and Pulldown (cold pace, the rest
     expect(after.exercises.every((exercise) => !exercise.group)).toBe(true)
   })
 
-  it('reports nothing more fits when the main lift and a started partner are done', () => {
-    const before = upper([4, 3])
-    const plan = planCut(before, choice(1), T0)
-    expect(plan).toMatchObject({ openAfter: 0 })
-    expect(plan.result.fits).toBe(true)
+  it('keeps one partner with open sets as the shortest finish, and reports nothing more fits without one', () => {
+    const shortest = planCut(upper([4, 3]), choice(1), T0)
+    expect(shortest).toMatchObject({ openAfter: 2, after: [4, 3, 2, 0, 0, 0] })
+    expect(shortest.result.fits).toBe(false)
+    const nothing = planCut(session([['bench-press', 4, 4], ['lat-pulldown', 3, 3]]), choice(1), T0)
+    expect(nothing).toMatchObject({ openAfter: 0 })
   })
 })
 
@@ -223,5 +225,36 @@ describe('sessionPace', () => {
     // Bench sets 3.67 min apart = the model (40 + 180 s); the pace is the prior's pull toward 1.
     expect(sessionPace(sets(4, 220 / 60), roles, false, false, 1.2).factor).toBeCloseTo((4 * 1 + 5 * 1.2) / 9, 3)
     expect(sessionPace(sets(7, 30), roles, false, false, 1.2).factor).toBe(1.6)
+  })
+})
+
+describe('review fixes', () => {
+  it('never drops an exercise that got a logged set after the preview, and cutRest plans on the live session', () => {
+    const before = upper([4, 3])
+    const plan = planCut(before, choice(15), T0)
+    expect(plan.after[2]).toBe(0)
+    const live = { ...before, exercises: before.exercises.map((exercise, index) => (index === 2 ? { ...exercise, sets: exercise.sets.map((set, s) => (s === 0 ? { ...set, done: true } : set)) } : exercise)) }
+    expect(applyCut(live, plan, choice(15), T0).exercises.map((exercise) => exercise.exerciseId)).toContain('seated-cable-row')
+    const cut = cutRest(live, choice(15), T0)
+    expect(cut.exercises.find((exercise) => exercise.exerciseId === 'seated-cable-row')!.sets.filter((set) => set.done)).toHaveLength(1)
+  })
+
+  it('gives the shortest finish to the exercise in progress, not to one already done', () => {
+    const before = session([['bench-press', 4, 4], ['lat-pulldown', 3, 3], ['db-curl', 3, 1], ['tricep-pushdown', 3, 0]])
+    const plan = planCut(before, choice(1), T0)
+    expect(plan.after).toEqual([4, 3, 2, 0])
+    expect(plan.openAfter).toBe(1)
+  })
+
+  it('leaves workouts cut mid-session out of the pace calibration', () => {
+    const template = { name: 'Upper', days: [{ name: 'Upper', exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global' as const, name: 'Bench', sets: 3, targetReps: 8, targetWeight: 80 }] }] }
+    const workout = (at: number, cut: boolean) => ({
+      finishedAt: at + 1_800_000, startedAt: at,
+      ...(cut ? { compression: { ...parseCompressionRecord({ v: 1, budgetMin: null, mode: 'compressed', shortRest: false, estimateMin: 20, fullEstimateMin: 20, factor: 1.2, samples: 0, calibration: 'none', readiness: null, exercises: [] })!, cut: { atMin: 10, leftMin: 10, estimateMin: 8, clock: false, count: 1, only: true, pace: 'cold' as const } } } : {}),
+      exercises: [{ exerciseId: 'bench-press', exerciseSource: 'global' as const, sets: [1, 2, 3].map((n) => ({ weight: 80, reps: 8, completedAt: at + n * 300_000 })) }],
+    })
+    const day = 86_400_000
+    const history = [workout(T0 - day, false), workout(T0 - 2 * day, true), workout(T0 - 3 * day, false)]
+    expect(buildNextSessionRecommendation(template, 0, null, history, T0).calibration).toMatchObject({ samples: 2, source: 'user' })
   })
 })

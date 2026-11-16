@@ -1249,7 +1249,8 @@ export default function WorkoutPage() {
             key="cut-sheet"
             session={active}
             userExercises={new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))}
-            onCut={(plan, choice, now) => useWorkoutStore.getState().cutRest(plan, choice, now)}
+            disabled={closureLocked}
+            onCut={(choice, now) => useWorkoutStore.getState().cutRest(choice, now, new Map(userExercises.map((entry) => [`user:${entry.id}`, entry])))}
             onFinish={handleFinish}
             onClose={() => setCutOpen(false)}
           />

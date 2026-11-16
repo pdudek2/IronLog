@@ -291,7 +291,7 @@ test.describe('Active workout shell reduction', () => {
     await page.getByRole('dialog', { name: 'This workout' }).getByRole('button', { name: /^Squat/ }).click()
     await expect(onlyCard).toHaveCount(1)
     await expect(onlyCard).toContainText('Squat')
-    await expect(page.getByRole('region', { name: 'Up next' }).getByRole('button')).toHaveCount(1)
+    await expect(page.getByRole('region', { name: 'Up next' }).getByRole('button').filter({ hasNotText: 'Short on time?' })).toHaveCount(1)
 
     await currentSetPanel(page).getByRole('button', { name: 'Go to Bench Press' }).click()
     await expect(onlyCard).toContainText('Bench Press')

@@ -1,6 +1,7 @@
 import { planRequestBody, type PlanBrief, type PlanResult, type CoachPlanRequest } from './coachPlan'
 import type { AiContextMetadata } from '../../src/lib/aiContext'
 import { CoachApiError, type CoachMessage, type CoachRequest } from './coachService'
+import { COACH_PLAN_COST, type CoachQuotaUsage } from '../../src/shared/coachQuota'
 
 export type CoachState = {
   key: string; keyLoading: boolean; keySaving: boolean; storageError: string | null
@@ -8,17 +9,22 @@ export type CoachState = {
   plan: PlanResult | null; planGeneration: 'idle' | 'generating' | 'interrupted' | 'failed'; planError: string | null
   messages: CoachMessage[]; partial: string; context?: AiContextMetadata
   generation: 'idle' | 'streaming' | 'interrupted' | 'failed'; error: string | null; questionId: number | null
+  // The shared-key allowance; a failed read assumes the server has a key and lets it answer.
+  quota: CoachQuota | null; quotaFailed: boolean; limit: { code: string; resetAt: string } | null
 }
+export type CoachQuota = CoachQuotaUsage & { resetAt: string; shared: boolean }
 export type CoachDependencies = {
   loadKey: () => Promise<string | null>; saveKey: (key: string) => Promise<void>
   validateKey: (key: string, signal: AbortSignal) => Promise<void>
+  quota?: (signal: AbortSignal) => Promise<CoachQuota>
   plan?: (request: CoachPlanRequest) => Promise<PlanResult>
   reply: (request: CoachRequest) => Promise<string>
 }
 
 export class CoachController {
   state: CoachState = { key: '', keyLoading: true, keySaving: false, storageError: null,
-    validation: 'none', keyError: null, plan: null, planGeneration: 'idle', planError: null, messages: [], partial: '', generation: 'idle', error: null, questionId: null }
+    validation: 'none', keyError: null, plan: null, planGeneration: 'idle', planError: null, messages: [], partial: '', generation: 'idle', error: null, questionId: null,
+    quota: null, quotaFailed: false, limit: null }
   private disposed = false
   private active = false
   private serial = 0
@@ -41,9 +47,30 @@ export class CoachController {
       if (this.disposed || revision !== this.keyRevision) return
       this.update({ key, keyLoading: false, validation: key ? 'unverified' : 'none' })
       if (this.active && key) void this.verify()
+      void this.loadQuota()
     } catch {
       if (revision === this.keyRevision) this.update({ keyLoading: false, storageError: 'Could not read your saved key. Retry before changing it.' })
     }
+  }
+  private async loadQuota() {
+    if (!this.deps.quota) return
+    try {
+      const quota = await this.deps.quota(new AbortController().signal)
+      const limit = quota.used >= quota.limit ? { code: 'daily-limit', resetAt: quota.resetAt } : null
+      this.update({ quota, quotaFailed: false, ...(limit ? { limit } : {}) })
+    } catch { this.update({ quotaFailed: true }) }
+  }
+  get ownKey() { return !!this.state.key && this.state.validation !== 'invalid' }
+  get sharedReady() { return this.state.quota ? this.state.quota.shared : this.state.quotaFailed }
+  get remaining() { return this.state.quota ? Math.max(0, this.state.quota.limit - this.state.quota.used) : null }
+  private get requestKey() { return this.ownKey ? this.state.key : '' }
+  private noteUsage(usage: CoachQuotaUsage) {
+    if (this.state.quota) this.update({ quota: { ...this.state.quota, ...usage } })
+  }
+  private failure(error: unknown) {
+    if (!(error instanceof CoachApiError)) return {}
+    if ((error.code === 'daily-limit' || error.code === 'daily-limit-all') && error.resetAt) return { limit: { code: error.code, resetAt: error.resetAt } }
+    return error.code === 'invalid-key' && this.ownKey ? { validation: 'invalid' as const } : {}
   }
   setActive(active: boolean) {
     const changed = this.active !== active
@@ -115,15 +142,19 @@ export class CoachController {
     this.update({ messages: [], partial: '', context: undefined, generation: 'idle', error: null, questionId: null })
   }
   get canSend() {
-    return this.active && !this.disposed && !!this.state.key && !this.state.keySaving && !this.state.keyLoading
-      && this.state.validation !== 'invalid' && this.state.validation !== 'checking' && this.state.generation !== 'streaming' && this.state.planGeneration !== 'generating'
+    const usable = this.ownKey ? this.state.validation !== 'checking' : this.sharedReady && !this.state.limit && this.remaining !== 0
+    return this.active && !this.disposed && !this.state.keySaving && !this.state.keyLoading && usable
+      && this.state.generation !== 'streaming' && this.state.planGeneration !== 'generating'
+  }
+  get canPlan() {
+    return this.canSend && (this.ownKey || this.remaining === null || this.remaining >= COACH_PLAN_COST)
   }
   captureCurrent() { const revision = this.keyRevision, lifecycle = this.lifecycle; return () => this.active && !this.disposed && revision === this.keyRevision && lifecycle === this.lifecycle }
   clearPlan() { this.cancel(); this.update({ plan: null, planError: null, planGeneration: 'idle' }) }
   async generatePlan(brief: PlanBrief) {
-    if (!this.canSend || !this.deps.plan) return
+    if (!this.canPlan || !this.deps.plan) return
     const frozen = { ...brief, equipment: [...brief.equipment] }
-    try { planRequestBody(this.state.key, frozen) } catch (error) {
+    try { planRequestBody(this.requestKey, frozen) } catch (error) {
       this.update({ planError: error instanceof CoachApiError ? error.message : 'Check the workout brief.' }); return
     }
     const request = new AbortController()
@@ -133,12 +164,12 @@ export class CoachController {
     let timer: ReturnType<typeof setTimeout> | undefined
     const timeout = new Promise<never>((_, reject) => { request.signal.addEventListener('abort', () => reject(new Error('Request cancelled.')), { once: true }); timer = setTimeout(() => reject(new CoachApiError('Plan generation timed out. Generating again may use another AI request.')), this.planTimeoutMs) })
     try {
-      const plan = await Promise.race([this.deps.plan({ key: this.state.key, brief: frozen, signal: request.signal }), timeout])
-      if (current()) this.update({ plan, planGeneration: 'idle', planError: null })
+      const plan = await Promise.race([this.deps.plan({ key: this.requestKey, brief: frozen, signal: request.signal }), timeout])
+      if (current()) { if (plan.quota) this.noteUsage(plan.quota); this.update({ plan, planGeneration: 'idle', planError: null }) }
     } catch (error) {
       if (current()) this.update({ planGeneration: 'failed',
         planError: error instanceof CoachApiError ? error.message : 'The plan could not be completed. Generate again when ready.',
-        ...(error instanceof CoachApiError && error.code === 'invalid-key' ? { validation: 'invalid' as const } : {}),
+        ...this.failure(error),
       })
     } finally { clearTimeout(timer); request.abort(); if (this.request === request) this.request = null }
   }
@@ -161,7 +192,8 @@ export class CoachController {
     let context: AiContextMetadata | undefined
     this.update({ generation: 'streaming', error: null, partial: '', context: undefined })
     try {
-      const content = await this.deps.reply({ key: this.state.key, messages: this.state.messages, signal: request.signal,
+      const content = await this.deps.reply({ key: this.requestKey, messages: this.state.messages, signal: request.signal,
+        onQuota: (usage) => { if (current()) this.noteUsage(usage) },
         onContext: (value) => { if (current()) { context = value; this.update({ context }) } },
         onChunk: (text) => { if (current()) this.update({ partial: this.state.partial + text }) },
       })
@@ -172,7 +204,7 @@ export class CoachController {
       if (!current()) return
       this.update({ generation: 'failed', partial: '', context: undefined, questionId,
         error: error instanceof CoachApiError ? error.message : 'The response could not be completed. Retry when ready.',
-        ...(error instanceof CoachApiError && error.code === 'invalid-key' ? { validation: 'invalid' as const } : {}),
+        ...this.failure(error),
       })
     } finally { request.abort(); if (this.request === request) this.request = null }
   }

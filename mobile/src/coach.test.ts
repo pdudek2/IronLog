@@ -80,3 +80,25 @@ test('generation also releases transport on early response rejection',async()=>{
  const {controller:c,replies:r}=await setup();c.send('question');r[0].result.reject(new Error('Invalid context header'));await tick()
  assert.equal(r[0].request.signal.aborted,true);assert.equal(c.state.generation,'failed')
 })
+test('without a key Coach runs on the shared allowance, sends no key and counts down', async()=>{
+ const {controller:c,replies:r}=await setup({loadKey:async()=>null,quota:async()=>({used:3,limit:20,resetAt:'2026-11-17T00:00:00.000Z',shared:true})})
+ await tick();assert.equal(c.canSend,true);assert.equal(c.send('question'),true)
+ assert.equal(r[0].request.key,'');assert.equal(JSON.parse(coachRequestBody(r[0].request.key,c.state.messages)).apiKey,undefined)
+ r[0].request.onQuota?.({used:4,limit:20});assert.equal(c.remaining,16)
+})
+test('a spent allowance blocks sending without marking any key invalid, and a plan needs 5 units', async()=>{
+ const {controller:c,replies:r}=await setup({loadKey:async()=>null,quota:async()=>({used:16,limit:20,resetAt:'2026-11-17T00:00:00.000Z',shared:true})})
+ await tick();assert.equal(c.canSend,true);assert.equal(c.canPlan,false)
+ c.send('question');r[0].result.reject(new CoachApiError('limit','daily-limit','2026-11-17T00:00:00.000Z'));await tick()
+ assert.equal(c.state.validation,'none');assert.deepEqual(c.state.limit,{code:'daily-limit',resetAt:'2026-11-17T00:00:00.000Z'});assert.equal(c.canSend,false)
+})
+test('a server without a shared key leaves only the own-key path', async()=>{
+ const {controller:c}=await setup({loadKey:async()=>null,quota:async()=>({used:0,limit:20,resetAt:'2026-11-17T00:00:00.000Z',shared:false})})
+ await tick();assert.equal(c.sharedReady,false);assert.equal(c.canSend,false)
+})
+test('limit and unavailable codes become readable messages that keep the reset time', async()=>{
+ const respond=(body:object,status:number)=>async()=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}})
+ const call=(body:object,status:number)=>coachPost('',  'ai-chat','{}',new AbortController().signal,async()=>'token',respond(body,status) as typeof fetch)
+ await assert.rejects(call({error:'x',code:'daily-limit',resetAt:'2026-11-17T00:00:00.000Z'},429),(e:unknown)=>e instanceof CoachApiError&&e.code==='daily-limit'&&e.resetAt==='2026-11-17T00:00:00.000Z'&&e.message.startsWith("Today's Coach limit is used up. It resets at"))
+ await assert.rejects(call({error:'x',code:'coach-unavailable'},503),(e:unknown)=>e instanceof CoachApiError&&e.message.startsWith('Coach is not available right now'))
+})

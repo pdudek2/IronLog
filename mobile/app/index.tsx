@@ -29,7 +29,7 @@ import { EXERCISE_CATEGORY_LABELS } from '../../src/lib/exerciseLabels'
 import {
   displayWeightDeltaToKg,
 } from '../../src/shared/weightUnits'
-import { login, logout, readExerciseHistory, readExerciseMetadata, readReadiness, readRecentWorkouts, readTemplates, type AuthUser } from '../src/firebase'
+import { login, logout, readExerciseHistory, register, sendPasswordReset, readExerciseMetadata, readReadiness, readRecentWorkouts, readTemplates, type AuthUser } from '../src/firebase'
 import { recentExercisePicks } from '../../src/shared/recentExercises'
 import { getStaleSessionAgeLabel, isActiveSessionStale } from '../../src/shared/sessionDuration'
 import {
@@ -101,9 +101,13 @@ const handledDiscard = { sessionId: '' }
 function LoginForm() {
   const router = useRouter()
   const passwordInput = useRef<TextInput>(null)
+  // Same screen as web's sign-in and register pages; most invited testers have no account yet.
+  const [mode, setMode] = useState<'signin' | 'register'>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [notice, setNotice] = useState('')
   const [error, setError] = useState<{ field: 'email' | 'password'; message: string } | null>(null)
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
   // KeyboardAvoidingView already shrinks the form; scrolling to its end keeps Sign in above the keyboard too.
@@ -115,21 +119,53 @@ function LoginForm() {
   }, [keyboardInset, scroll])
 
   const submit = async () => {
-    if (busy) return
+    if (busy || resetting) return
     if (!email.trim() || !password) {
       setError({ field: !email.trim() ? 'email' : 'password', message: 'Enter your email and password.' })
       return
     }
+    if (mode === 'register' && password.length < 6) {
+      setError({ field: 'password', message: 'Use at least 6 characters.' })
+      return
+    }
     setBusy(true)
     setError(null)
+    setNotice('')
     try {
-      await login(email, password)
+      // Train sends an account without a profile to onboarding.
+      if (mode === 'register') await register(email, password)
+      else await login(email, password)
       router.replace('/dashboard')
     } catch (cause) {
-      setError({ field: 'password', message: getAuthErrorMessage(cause, 'login') })
+      setError({ field: mode === 'register' ? 'email' : 'password', message: getAuthErrorMessage(cause, mode === 'register' ? 'register' : 'login') })
     } finally {
       setBusy(false)
     }
+  }
+
+  const reset = async () => {
+    if (busy || resetting) return
+    setNotice('')
+    if (!email.trim()) {
+      setError({ field: 'email', message: 'Enter your email and we will send a password reset link.' })
+      return
+    }
+    setResetting(true)
+    setError(null)
+    try {
+      await sendPasswordReset(email)
+      setNotice('If an account exists, we have sent a password reset link.')
+    } catch {
+      setError({ field: 'email', message: 'Could not send the link. Check your email and try again.' })
+    } finally {
+      setResetting(false)
+    }
+  }
+
+  const switchMode = () => {
+    setMode((current) => (current === 'signin' ? 'register' : 'signin'))
+    setError(null)
+    setNotice('')
   }
 
   return (
@@ -146,8 +182,8 @@ function LoginForm() {
           </View>
           <Text style={styles.brandName}>SHEAR</Text>
         </View>
-        <Text accessibilityRole="header" style={styles.loginTitle}>Sign in</Text>
-        <Text style={styles.loginLead}>Every set builds on the last.</Text>
+        <Text accessibilityRole="header" style={styles.loginTitle}>{mode === 'register' ? 'Create account' : 'Sign in'}</Text>
+        <Text style={styles.loginLead}>{mode === 'register' ? 'Plans, sessions and progress in one log.' : 'Every set builds on the last.'}</Text>
         <View pointerEvents="none" style={styles.loginSeam} />
         <View style={styles.loginPanel}>
           <Text style={styles.label}>Email</Text>
@@ -178,7 +214,7 @@ function LoginForm() {
               accessibilityLabel="Password"
               ref={passwordInput}
               autoCapitalize="none"
-              autoComplete="current-password"
+              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
               onChangeText={(value) => { setPassword(value); if (error?.field === 'password') setError(null) }}
               onBlur={() => setFocusedField(null)}
               onFocus={() => setFocusedField('password')}
@@ -192,8 +228,16 @@ function LoginForm() {
             />
           </View>
           {error?.field === 'password' && <Text accessibilityLiveRegion="polite" style={styles.loginError}>{error.message}</Text>}
-          <View style={styles.omittedAuthActionSpace} />
-          <ActionButton flat disabled={busy} label={busy ? 'Signing in…' : 'Sign in'} onPress={() => void submit()} />
+          {mode === 'register' && error?.field !== 'password' && <Text style={styles.loginHelp}>At least 6 characters</Text>}
+          {mode === 'signin'
+            ? <Pressable accessibilityRole="button" disabled={busy || resetting} onPress={() => void reset()} style={({ pressed }) => [styles.loginReset, pressed && styles.headingPressed]}>
+              <Text style={styles.loginResetText}>{resetting ? 'Sending…' : 'Forgot password?'}</Text>
+            </Pressable>
+            : <View style={styles.omittedAuthActionSpace} />}
+          {notice ? <Text accessibilityLiveRegion="polite" style={styles.loginNotice}>{notice}</Text> : null}
+          <ActionButton flat disabled={busy || resetting}
+            label={mode === 'register' ? busy ? 'Creating account…' : 'Create account' : busy ? 'Signing in…' : 'Sign in'} onPress={() => void submit()} />
+          <ActionButton secondary flat disabled={busy || resetting} label={mode === 'register' ? 'Back to sign in' : 'Create account'} onPress={switchMode} />
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1083,6 +1127,10 @@ const styles = StyleSheet.create({
   inputFocused: { borderColor: colors.accentText, boxShadow: '0 0 0 3px rgba(244, 238, 232, 0.144)' },
   loginError: { color: colors.warning, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 4 },
   omittedAuthActionSpace: { height: 49 },
+  loginHelp: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 4 },
+  loginReset: { alignItems: 'center', alignSelf: 'flex-end', height: 49, justifyContent: 'center', paddingHorizontal: 4 },
+  loginResetText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },
+  loginNotice: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19, marginBottom: 4 },
   button: { alignItems: 'center', borderRadius: 8, justifyContent: 'center', minHeight: 48, marginTop: 15, paddingHorizontal: 18 },
   buttonPrimary: {
     backgroundColor: colors.primaryEnd,

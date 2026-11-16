@@ -4,8 +4,10 @@ import { ReplacementRejectedError } from './workoutLaunchController'
 import { getApp, getApps, initializeApp, type FirebaseApp } from '@react-native-firebase/app'
 import {
   connectAuthEmulator,
+  createUserWithEmailAndPassword,
   getAuth,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signOut,
   type User,
@@ -23,7 +25,7 @@ import {
   type QuerySnapshot,
 } from '@react-native-firebase/firestore'
 import Constants from 'expo-constants'
-import { parseProfile, updateExistingProfile, ProfileNotSubmittedError, type ProfileFields } from './profile'
+import { createMissingProfile, parseProfile, updateExistingProfile, ProfileMissingError, ProfileNotSubmittedError, type ProfileFields } from './profile'
 import { parseReadiness, ReadinessNotSubmittedError } from './readiness'
 import { todayKey, type ReadinessEntry } from '../../src/shared/readiness'
 
@@ -123,6 +125,22 @@ export async function login(email: string, password: string): Promise<void> {
   await signInWithEmailAndPassword(auth, email.trim(), password)
 }
 
+export async function register(email: string, password: string): Promise<void> {
+  const { auth } = await getServices()
+  await createUserWithEmailAndPassword(auth, email.trim(), password)
+}
+
+// The same answer whether or not the account exists; projects without enumeration protection report an unknown email.
+export async function sendPasswordReset(email: string): Promise<void> {
+  const { auth } = await getServices()
+  try {
+    await sendPasswordResetEmail(auth, email.trim())
+  } catch (cause) {
+    if (typeof cause === 'object' && cause && 'code' in cause && cause.code === 'auth/user-not-found') return
+    throw cause
+  }
+}
+
 export async function currentIdToken(uid: string): Promise<string> {
   const { auth } = await getServices()
   const user = auth.currentUser
@@ -218,13 +236,28 @@ export async function saveProfile(uid: string, input: ProfileFields): Promise<vo
   }, { maxAttempts: 1 })
 }
 
+export async function createProfile(uid: string, input: ProfileFields): Promise<Units> {
+  const { auth, firestore } = await getServices()
+  const reference = doc(firestore, 'users', uid)
+  return runTransaction(firestore, async (transaction) => {
+    if (auth.currentUser?.uid !== uid) throw new ProfileNotSubmittedError('The signed-in account changed.')
+    return createMissingProfile({
+      read: async () => {
+        const snapshot = await transaction.get(reference)
+        return { exists: snapshot.exists(), data: snapshot.data() }
+      },
+      create: (fields) => { transaction.set(reference, fields) },
+    }, uid, input, Date.now())
+  })
+}
+
 export async function readHome(uid: string): Promise<ReadResult<{ profile: HomeProfile; workouts: SavedWorkout[] }>> {
   const { firestore } = await getServices()
   const [profileSnapshot, workoutsSnapshot] = await Promise.all([
     getDoc(doc(firestore, 'users', uid)),
     getDocs(query(collection(firestore, 'workouts'), where('userId', '==', uid), orderBy('startedAt', 'desc'), limit(50))),
   ])
-  if (!profileSnapshot.exists()) throw new Error('Could not confirm profile')
+  if (!profileSnapshot.exists()) throw profileSnapshot.metadata.fromCache ? new Error('Could not confirm profile') : new ProfileMissingError()
   return {
     data: {
       profile: parseHomeProfile(uid, profileSnapshot.data()),

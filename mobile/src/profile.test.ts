@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { parseProfile, ProfileController, ProfileDataError, updateExistingProfile, validateProfile, type NativeProfile, type ProfileState } from './profile'
+import { createMissingProfile, parseProfile, ProfileController, ProfileDataError, updateExistingProfile, validateProfile, type NativeProfile, type ProfileState } from './profile'
 const profile: NativeProfile = { displayName: 'Alex', primaryGoal: 'strength', weeklyGoal: 3, units: 'kg', createdAt: 123 }
 function deferred<T>() { let resolve!: (value: T) => void; let reject!: (error: unknown) => void; const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no }); return { promise, resolve, reject } }
 function setup() {
@@ -82,4 +82,21 @@ test('a failed local units refresh holds confirmed fields until retry and does n
   const h = new ProfileController('owner', { read: async () => ({ data: { ...profile, units: 'lbs' }, fromCache: false }), write: async () => { writes++ }, applyUnits: async () => { if (++calls === 1) throw new Error('storage full') } }, () => {})
   await h.load(); await h.save(); assert.equal(h.state.pending, true); assert.equal(h.state.message, 'storage full')
   await h.save(); assert.equal(writes, 1); assert.equal(h.state.pending, false); assert.equal(h.state.message, 'Profile saved')
+})
+
+test('onboarding creates a missing profile once and never overwrites an existing one', async () => {
+  const input = { displayName: '  Ola ', primaryGoal: 'hypertrophy' as const, weeklyGoal: 3, units: 'lbs' as const }
+  const created: unknown[] = []
+  const units = await createMissingProfile({ read: async () => ({ exists: false, data: undefined }), create: (fields) => { created.push(fields) } }, 'u1', input, 1_000)
+  assert.equal(units, 'lbs')
+  assert.deepEqual(created, [{ displayName: 'Ola', primaryGoal: 'hypertrophy', weeklyGoal: 3, units: 'lbs', createdAt: 1_000 }])
+
+  const existing = { displayName: 'Other device', primaryGoal: 'strength', weeklyGoal: 4, units: 'kg', createdAt: 50 }
+  const kept: unknown[] = []
+  assert.equal(await createMissingProfile({ read: async () => ({ exists: true, data: existing }), create: (fields) => { kept.push(fields) } }, 'u1', input, 2_000), 'kg')
+  assert.deepEqual(kept, [])
+
+  const none = { read: async () => ({ exists: false, data: undefined }), create: () => { throw new Error('must not write') } }
+  await assert.rejects(createMissingProfile(none, 'u1', { ...input, displayName: '  ' }, 1), ProfileDataError)
+  await assert.rejects(createMissingProfile(none, 'u1', { ...input, units: 'stone' as never }, 1), ProfileDataError)
 })

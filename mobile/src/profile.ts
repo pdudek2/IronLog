@@ -10,6 +10,8 @@ export type ProfileFields = { displayName: string; primaryGoal: typeof profileGo
 export type NativeProfile = ProfileFields & { createdAt: number }
 export class ProfileDataError extends Error {}
 export class ProfileNotSubmittedError extends Error {}
+// The server confirmed there is no profile yet: the account goes to onboarding.
+export class ProfileMissingError extends Error {}
 
 export function validateProfile(input: ProfileFields): ProfileFields {
   const displayName = input.displayName.trim()
@@ -39,6 +41,19 @@ export async function updateExistingProfile(transaction: {
   if (!snapshot.exists) throw new ProfileNotSubmittedError('Profile setup is missing. Return to Home or retry.')
   parseProfile(uid, snapshot.data)
   transaction.update(fields)
+}
+
+// Onboarding creates the profile only when it is missing, so a retry or a second device never overwrites one.
+// Returns the units of the stored profile, which the workout runtime must switch to.
+export async function createMissingProfile(transaction: {
+  read: () => Promise<{ exists: boolean; data: unknown }>
+  create: (fields: NativeProfile) => void
+}, uid: string, input: ProfileFields, now: number): Promise<Units> {
+  const fields = validateProfile(input)
+  const snapshot = await transaction.read()
+  if (snapshot.exists) return parseProfile(uid, snapshot.data).units
+  transaction.create({ ...fields, createdAt: now })
+  return fields.units
 }
 
 export function sameProfile(left: ProfileFields, right: ProfileFields): boolean {

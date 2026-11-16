@@ -86,6 +86,13 @@ async function main() {
   assert.deepEqual([saved.compression, saved.proposals, saved.exercises[0].group], [{ v: 1, budgetMin: 30, mode: 'compressed' }, [{ budgetMin: 30, mode: 'compressed' }], 'g1'])
   assert.deepEqual(parseSessionDocument(owner.uid, saved).compression, { v: 1, budgetMin: 30, mode: 'compressed' })
 
+  // A cut made on this device reaches the server with its record, the start's fields included.
+  const cutRecord = { ...saved.compression, cut: { atMin: 1, leftMin: 15, estimateMin: 12, clock: false, count: 1, only: false, pace: 'cold' } }
+  await save(owner.firestore, owner.uid, { ...workout, compression: cutRecord as ActiveWorkout['compression'] }, `${runId}-revision-2`, `${runId}-revision-cut`)
+  const cutSaved = (await getDoc(reference)).data()!
+  assert.deepEqual(cutSaved.compression, cutRecord)
+  await adminDb.collection('activeSessions').doc(owner.uid).set(saved)
+
   await assert.rejects(save(other.firestore, owner.uid, workout, `${runId}-revision-2`, `${runId}-other`))
   await assert.rejects(save(owner.firestore, owner.uid, workout, initialRevision, `${runId}-stale`), NativeActiveSessionConflictError)
 

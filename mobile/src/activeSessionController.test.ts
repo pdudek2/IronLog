@@ -10,6 +10,7 @@ import {
 } from './activeSessionController'
 import { TwoSlotSessionJournal, type JournalSlotStorage } from './sessionJournal'
 import type { ActiveWorkout, Units } from './session'
+import type { CutPlan } from '../../src/shared/sessionCut'
 
 interface Listener {
   uid: string
@@ -444,6 +445,29 @@ test('label-only and exercise add/remove edits are saved as draft changes', asyn
   h.controller.removeExercise(added.exercises[0]!.clientId)
   await wait()
   assert.deepEqual(ready(h.states).session.exercises.map(({ clientId }) => clientId), [addedId])
+})
+
+test('a cut that changes only the compression record is saved, not dropped as unchanged content', async () => {
+  const h = harness()
+  await loadServer(h)
+  const plan: CutPlan = {
+    result: { mode: 'compressed', fits: true, blocks: [], sets: [1], shortRest: true, estimateSec: 60, fullEstimateSec: 90 },
+    done: [0], before: [1], after: [1], openBefore: 1, openAfter: 1, groups: [undefined], pace: 1.2, paceSource: 'cold', changed: true,
+  }
+  h.controller.cutRest(plan, { leftMin: 2, clock: false, straight: false }, 61_000)
+  await wait()
+  const cut = ready(h.states).session
+  assert.equal(cut.compression?.shortRest, true)
+  assert.deepEqual(cut.exercises, ready(h.states).session.exercises)
+  h.controller.retrySave()
+  await wait()
+  assert.equal(h.saves.length, 1)
+  assert.deepEqual(h.saves[0]?.session.compression, cut.compression)
+  h.saves[0]!.result.resolve()
+  h.listeners[0]!.next({ ...snapshot('user-a', 'request-1'), data: { ...session('user-a', 'request-1'), compression: cut.compression } })
+  await wait(30)
+  assert.equal(ready(h.states).syncStatus, 'saved')
+  assert.deepEqual(ready(h.states).session.compression, cut.compression)
 })
 
 test('editing during transient backoff retains the pending retry and drains the newer draft', async () => {

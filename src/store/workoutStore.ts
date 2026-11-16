@@ -3,6 +3,7 @@ import { createSessionId } from '../lib/sessionIdentity'
 import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
 import { applyOverload, carryLoggedWeight } from '../shared/nextSessionRecommendation'
 import type { CompressionProposal, CompressionRecord } from '../shared/compressionRecord'
+import { applyCut, type CutChoice, type CutPlan } from '../shared/sessionCut'
 
 export type ExerciseSource = 'global' | 'user'
 
@@ -58,6 +59,7 @@ interface WorkoutState {
   adjustSet: (exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', delta: number) => void
   toggleSetDone: (exerciseIndex: number, setIndex: number) => void
   removeExercise: (exerciseIndex: number) => void
+  cutRest: (plan: CutPlan, choice: CutChoice, now: number) => void
   clearWorkout: () => void
 }
 
@@ -265,6 +267,8 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
         },
       }
     }),
+
+  cutRest: (plan, choice, now) => set((s) => (s.active ? { active: applyCut(s.active, plan, choice, now) } : s)),
 
   clearWorkout: () => set({ active: null, restTimer: null }),
 }))

@@ -43,7 +43,7 @@ export default function OnboardingScreen() {
         new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error('timeout')), SAVE_LIMIT_MS) }),
       ])
       // The workout runtime read units at sign-in, before there was a profile.
-      active.refreshUnits(user.uid, units)
+      void active.refreshUnits(user.uid, units).catch(() => undefined)
       router.replace('/dashboard')
     } catch (cause) {
       if (cause instanceof ProfileDataError) setNameError(cause.message)
@@ -110,12 +110,12 @@ export default function OnboardingScreen() {
           </View>
         </View>
 
-        {saveError ? <Text accessibilityRole="alert" style={[styles.error, styles.saveError]}>{saveError}</Text> : null}
+        {saveError ? <Text accessibilityRole="alert" accessibilityLiveRegion="polite" style={[styles.error, styles.saveError]}>{saveError}</Text> : null}
         <Pressable accessibilityRole="button" accessibilityState={{ disabled: saving, busy: saving }} disabled={saving} onPress={() => void save()}
           style={({ pressed }) => [styles.save, saving && styles.disabled, pressed && styles.pressed]}>
           <Text style={styles.saveText}>{saving ? 'Saving…' : 'Save profile'}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" disabled={saving} onPress={() => void logout()} style={styles.signOut}>
+        <Pressable accessibilityRole="button" disabled={saving} onPress={() => void logout().catch(() => setSaveError('Could not sign out. Try again.'))} style={styles.signOut}>
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
       </ScrollView>

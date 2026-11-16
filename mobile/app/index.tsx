@@ -137,7 +137,8 @@ function LoginForm() {
       else await login(email, password)
       router.replace('/dashboard')
     } catch (cause) {
-      setError({ field: mode === 'register' ? 'email' : 'password', message: getAuthErrorMessage(cause, mode === 'register' ? 'register' : 'login') })
+      const weak = typeof cause === 'object' && cause !== null && 'code' in cause && cause.code === 'auth/weak-password'
+      setError({ field: mode === 'register' && !weak ? 'email' : 'password', message: getAuthErrorMessage(cause, mode === 'register' ? 'register' : 'login') })
     } finally {
       setBusy(false)
     }
@@ -194,7 +195,7 @@ function LoginForm() {
               autoComplete="email"
               inputMode="email"
               keyboardType="email-address"
-              onChangeText={(value) => { setEmail(value); if (error?.field === 'email') setError(null) }}
+              onChangeText={(value) => { setEmail(value); setNotice(''); if (error?.field === 'email') setError(null) }}
               onBlur={() => setFocusedField(null)}
               onFocus={() => setFocusedField('email')}
               placeholder="email@example.com"

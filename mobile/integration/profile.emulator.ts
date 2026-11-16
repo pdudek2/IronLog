@@ -3,7 +3,8 @@ import { initializeApp, deleteApp } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { createUserWithEmailAndPassword, signOut, signInWithEmailAndPassword } from 'firebase/auth'
 import { doc, getDocFromServer, runTransaction, terminate } from 'firebase/firestore'
-import { createProfile, getServices, readProfile, register, saveProfile, sendPasswordReset } from '../src/firebase'
+import { createProfile, getServices, readHome, readProfile, register, saveProfile, sendPasswordReset } from '../src/firebase'
+import { ProfileMissingError } from '../src/profile'
 import { updateExistingProfile } from '../src/profile'
 
 async function main() {
@@ -42,6 +43,8 @@ try {
   await signOut(auth)
   await register(`  ${run}-new@ironlog.local `, password)
   fresh = auth.currentUser!.uid
+  // Train sends an account the server confirms has no profile to onboarding.
+  await assert.rejects(readHome(fresh), ProfileMissingError)
   assert.equal(await createProfile(fresh, { displayName: ' New ', primaryGoal: 'hypertrophy', weeklyGoal: 3, units: 'lbs' }), 'lbs')
   const created = (await db.collection('users').doc(fresh).get()).data()!
   assert.equal(created.displayName, 'New')

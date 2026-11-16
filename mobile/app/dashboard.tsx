@@ -86,10 +86,13 @@ export default function DashboardScreen() {
     setNow(new Date())
     readiness?.controller.refreshDay()
     // An account the server confirms has no profile (new, from web, or left mid-onboarding) sets one up first.
+    // The redirect runs from the publish callback, which a disposed read (another tab opened meanwhile) never reaches.
+    let missing = false
     return startRead(() => readHome(uid).catch((cause: unknown) => {
-      if (cause instanceof ProfileMissingError) router.replace('/onboarding')
+      missing = cause instanceof ProfileMissingError
       throw cause
     }), (state) => {
+      if (missing) { router.replace('/onboarding'); return }
       setResult({ key, state })
       if (state.status !== 'ready') return
       const plans = planDataRef.current

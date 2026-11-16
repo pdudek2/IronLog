@@ -90,12 +90,37 @@ describe('ChatPage on the shared key', () => {
   it('locks the composer with the reset time once the allowance is spent, without offering a retry', async () => {
     const { AiApiError } = await import('../../lib/chatService')
     mocks.streamChatReply.mockRejectedValue(new AiApiError("Today's Coach limit is used up.", 'daily-limit', RESET))
+    mocks.fetchCoachQuota.mockResolvedValueOnce(quota(3)).mockResolvedValue(quota(20))
     render(<ChatPage />)
     await send('Czy progresuję?')
     const time = new Date(RESET).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     expect(await screen.findByRole('alert')).toHaveTextContent(`Today's Coach limit is used up. It resets at ${time}.`)
     expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeDisabled()
     expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
+  })
+
+  it('a refused plan with units left still lets the user chat, because the lock follows the server counter', async () => {
+    const { AiApiError } = await import('../../lib/chatService')
+    mocks.fetchCoachQuota.mockResolvedValueOnce(quota(12)).mockResolvedValue(quota(16))
+    mocks.generateTrainingPlan.mockRejectedValue(new AiApiError("Today's Coach limit is used up.", 'daily-limit', RESET))
+    render(<ChatPage />)
+    expect(await screen.findByText('8 of 20 left today')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: /Plan/ }))
+    fireEvent.change(screen.getByLabelText('Plan goal'), { target: { value: 'Siła' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Generate plan' }))
+    expect(await screen.findByText("A plan uses 5 of today's 20 Coach messages; 4 left.")).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: /Chat/ }))
+    expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled()
+  })
+
+  it('lifts a spent allowance by itself at the reset time', async () => {
+    mocks.fetchCoachQuota
+      .mockResolvedValueOnce({ ...quota(20), resetAt: new Date(Date.now() + 100).toISOString() })
+      .mockResolvedValue(quota(0))
+    render(<ChatPage />)
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeDisabled())
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled(), { timeout: 4_000 })
+    expect(screen.getByText('20 of 20 left today')).toBeVisible()
   })
 
   it('keeps retry for the per-minute limit, which has no code', async () => {

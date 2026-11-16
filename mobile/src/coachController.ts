@@ -1,7 +1,7 @@
 import { planRequestBody, type PlanBrief, type PlanResult, type CoachPlanRequest } from './coachPlan'
 import type { AiContextMetadata } from '../../src/lib/aiContext'
 import { CoachApiError, type CoachMessage, type CoachRequest } from './coachService'
-import { COACH_PLAN_COST, type CoachQuotaUsage } from '../../src/shared/coachQuota'
+import { COACH_PLAN_COST, nextUtcMidnight, type CoachQuotaUsage } from '../../src/shared/coachQuota'
 
 export type CoachState = {
   key: string; keyLoading: boolean; keySaving: boolean; storageError: string | null
@@ -9,7 +9,8 @@ export type CoachState = {
   plan: PlanResult | null; planGeneration: 'idle' | 'generating' | 'interrupted' | 'failed'; planError: string | null
   messages: CoachMessage[]; partial: string; context?: AiContextMetadata
   generation: 'idle' | 'streaming' | 'interrupted' | 'failed'; error: string | null; questionId: number | null
-  // The shared-key allowance; a failed read assumes the server has a key and lets it answer.
+  // The shared-key allowance; a failed read assumes the server has a key and lets it answer. `limit` holds only the
+  // shared daily total, which no counter shows; the person's own limit follows `quota`.
   quota: CoachQuota | null; quotaFailed: boolean; limit: { code: string; resetAt: string } | null
 }
 export type CoachQuota = CoachQuotaUsage & { resetAt: string; shared: boolean }
@@ -32,11 +33,23 @@ export class CoachController {
   private keyRevision = 0
   private request: AbortController | null = null
   private validation: AbortController | null = null
+  private resetTimer: ReturnType<typeof setTimeout> | null = null
   constructor(private readonly deps: CoachDependencies, private readonly publish: (state: CoachState) => void, private readonly planTimeoutMs = 90_000) {}
   private update(patch: Partial<CoachState>) {
     if (this.disposed) return
     this.state = { ...this.state, ...patch }
+    if ('quota' in patch || 'limit' in patch) this.scheduleReset()
     this.publish(this.state)
+  }
+  // A spent allowance lifts itself at the reset time, also on a screen left open overnight.
+  private scheduleReset() {
+    if (this.resetTimer) clearTimeout(this.resetTimer)
+    this.resetTimer = null
+    const limit = this.activeLimit
+    if (!limit) return
+    const timer = setTimeout(() => { this.resetTimer = null; void this.loadQuota() }, Math.max(0, Date.parse(limit.resetAt) - Date.now()) + 1_000)
+    ;(timer as { unref?: () => void }).unref?.()
+    this.resetTimer = timer
   }
   async load() {
     if (this.disposed) return
@@ -56,20 +69,28 @@ export class CoachController {
     if (!this.deps.quota) return
     try {
       const quota = await this.deps.quota(new AbortController().signal)
-      const limit = quota.used >= quota.limit ? { code: 'daily-limit', resetAt: quota.resetAt } : null
-      this.update({ quota, quotaFailed: false, ...(limit ? { limit } : {}) })
+      const expired = this.state.limit && Date.now() >= Date.parse(this.state.limit.resetAt)
+      this.update({ quota, quotaFailed: false, ...(expired ? { limit: null } : {}) })
     } catch { this.update({ quotaFailed: true }) }
+  }
+  get activeLimit(): { code: string; resetAt: string } | null {
+    if (this.ownKey) return null
+    if (this.state.limit && Date.now() < Date.parse(this.state.limit.resetAt)) return this.state.limit
+    const quota = this.state.quota
+    return quota && quota.used >= quota.limit && Date.now() < Date.parse(quota.resetAt) ? { code: 'daily-limit', resetAt: quota.resetAt } : null
   }
   get ownKey() { return !!this.state.key && this.state.validation !== 'invalid' }
   get sharedReady() { return this.state.quota ? this.state.quota.shared : this.state.quotaFailed }
   get remaining() { return this.state.quota ? Math.max(0, this.state.quota.limit - this.state.quota.used) : null }
   private get requestKey() { return this.ownKey ? this.state.key : '' }
   private noteUsage(usage: CoachQuotaUsage) {
-    if (this.state.quota) this.update({ quota: { ...this.state.quota, ...usage } })
+    this.update({ quota: this.state.quota ? { ...this.state.quota, ...usage } : { ...usage, resetAt: nextUtcMidnight(Date.now()), shared: true } })
   }
+  // After a failure or an abort on the shared key only the server knows what was spent.
   private failure(error: unknown) {
+    if (!this.ownKey) void this.loadQuota()
     if (!(error instanceof CoachApiError)) return {}
-    if ((error.code === 'daily-limit' || error.code === 'daily-limit-all') && error.resetAt) return { limit: { code: error.code, resetAt: error.resetAt } }
+    if (error.code === 'daily-limit-all' && error.resetAt) return { limit: { code: error.code, resetAt: error.resetAt } }
     return error.code === 'invalid-key' && this.ownKey ? { validation: 'invalid' as const } : {}
   }
   setActive(active: boolean) {
@@ -81,10 +102,14 @@ export class CoachController {
       this.validation?.abort()
       this.validation = null
       if (this.state.validation === 'checking') this.update({ validation: 'unverified' })
-    } else if (this.state.key && this.state.validation === 'unverified') void this.verify()
+    } else {
+      if (this.state.key && this.state.validation === 'unverified') void this.verify()
+      if (changed && !this.state.keyLoading) void this.loadQuota()
+    }
   }
   dispose() {
     this.setActive(false)
+    if (this.resetTimer) clearTimeout(this.resetTimer)
     this.disposed = true
     this.keyRevision++
     this.state = { ...this.state, key: '', messages: [], partial: '', context: undefined, plan: null }
@@ -134,6 +159,7 @@ export class CoachController {
     const pending = this.request
     this.request = null
     pending?.abort()
+    if (pending && !this.ownKey && !this.disposed) void this.loadQuota()
     if (this.state.planGeneration === 'generating') this.update({ planGeneration: 'interrupted', planError: null })
     if (this.state.generation === 'streaming') this.update({ generation: 'interrupted', partial: '', context: undefined, error: null })
   }
@@ -142,7 +168,7 @@ export class CoachController {
     this.update({ messages: [], partial: '', context: undefined, generation: 'idle', error: null, questionId: null })
   }
   get canSend() {
-    const usable = this.ownKey ? this.state.validation !== 'checking' : this.sharedReady && !this.state.limit && this.remaining !== 0
+    const usable = this.ownKey ? this.state.validation !== 'checking' : this.sharedReady && !this.activeLimit
     return this.active && !this.disposed && !this.state.keySaving && !this.state.keyLoading && usable
       && this.state.generation !== 'streaming' && this.state.planGeneration !== 'generating'
   }

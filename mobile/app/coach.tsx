@@ -72,8 +72,9 @@ function Coach({ uid }: { uid: string }) {
   const configured = controller.ownKey
   const ready = configured || controller.sharedReady
   const sharedOff = !configured && state.quota?.shared === false
+  const limit = controller.activeLimit
   const allowance = configured ? null
-    : state.limit ? (state.limit.code === 'daily-limit' ? `Today's Coach limit is used up. It resets at ${resetTimeLabel(state.limit.resetAt)}.` : `Coach has reached today's limit for everyone. It resets at ${resetTimeLabel(state.limit.resetAt)}.`)
+    : limit ? (limit.code === 'daily-limit' ? `Today's Coach limit is used up. It resets at ${resetTimeLabel(limit.resetAt)}.` : `Coach has reached today's limit for everyone. It resets at ${resetTimeLabel(limit.resetAt)}.`)
     : state.quota ? `${controller.remaining} of ${state.quota.limit} left today` : null
   useEffect(() => { void controller.load(); return () => controller.dispose() }, [controller])
   useEffect(() => { const subscription = Keyboard.addListener('keyboardDidShow', () => { if (composerFocused.current) outer.current?.scrollTo({ y: Math.max(0, composerY.current - 80), animated: true }) }); return () => subscription.remove() }, [])
@@ -143,9 +144,9 @@ function Coach({ uid }: { uid: string }) {
             </View>)}
             {state.generation === 'streaming' && <View style={s.message}><Text style={s.role}>AI COACH</Text>{state.partial ? <Markdown content={state.partial} /> : <Text style={s.description}>Analyzing context…</Text>}<ContextNotice context={state.context} /></View>}
           </ScrollView>}
-          {['failed', 'interrupted'].includes(state.generation) && <View style={s.feedback}><Text accessibilityRole="alert" style={state.error ? s.error : s.description}>{state.error ?? 'Generation stopped.'}</Text>{!state.limit && <Button disabled={!controller.canSend} onPress={() => { nearBottom.current = true; controller.retry() }}>Retry AI response</Button>}</View>}
+          {['failed', 'interrupted'].includes(state.generation) && <View style={s.feedback}><Text accessibilityRole="alert" style={state.error ? s.error : s.description}>{state.error ?? 'Generation stopped.'}</Text>{!limit && <Button disabled={!controller.canSend} onPress={() => { nearBottom.current = true; controller.retry() }}>Retry AI response</Button>}</View>}
           {ready && <View style={s.composer} onLayout={event => { composerY.current = event.nativeEvent.layout.y + chatY.current }}>
-            <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.accentText} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !state.limit)}
+            <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.accentText} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !limit)}
               onFocus={() => { composerFocused.current = true }} onBlur={() => { composerFocused.current = false }}
               placeholder="Ask about progress or your last session" placeholderTextColor={colors.mutedSoft} style={s.composerInput} textAlignVertical="top" />
             <View style={s.sendRow}>{!!allowance && <Text style={[s.small, s.grow]}>{allowance}</Text>}<Button primary disabled={!input.trim() || !controller.canSend} onPress={() => send(input)}>{state.generation === 'streaming' ? 'Sending…' : 'Send'}</Button></View>

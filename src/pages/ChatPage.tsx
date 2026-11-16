@@ -24,7 +24,7 @@ import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { getRecentWorkouts, type WorkoutSummary } from '../lib/workoutService'
 import { lastWorkoutRead } from '../shared/lastWorkoutRead'
-import { COACH_PLAN_COST, resetTimeLabel, type CoachQuotaUsage } from '../shared/coachQuota'
+import { COACH_PLAN_COST, nextUtcMidnight, resetTimeLabel, type CoachQuotaUsage } from '../shared/coachQuota'
 
 const STARTER_PROMPTS = [
   'Analyze my last week of training.',
@@ -198,7 +198,7 @@ export default function ChatPage() {
   const navigate = useNavigate()
   const isDemoUser = user?.email === DEMO_EMAIL
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
-  // Leaving Coach or the plan tab stops generation; the request runs on the user's own key.
+  // Leaving Coach or the plan tab stops generation, so nobody pays for an answer nobody reads.
   const planAbort = useRef<AbortController | null>(null)
   useEffect(() => () => planAbort.current?.abort(), [])
   useEffect(() => { if (activeTab !== 'plan') planAbort.current?.abort() }, [activeTab])
@@ -216,9 +216,11 @@ export default function ChatPage() {
   // The shared-key allowance belongs to the signed-in account; a stale one from another account is ignored.
   const [quotaState, setQuotaState] = useState<(CoachQuota & { uid: string }) | null>(null)
   const quota = quotaState && quotaState.uid === keyOwnerUid ? quotaState : null
-  const [limitState, setLimitState] = useState<(CoachLimit & { uid: string | null }) | null>(null)
+  // The person's limit follows the server's counter; only the shared daily total, which no counter shows, is kept here.
+  const [limitAll, setLimitAll] = useState<{ uid: string | null; resetAt: string } | null>(null)
   const quotaLimit: CoachLimit | null = quota && quota.used >= quota.limit ? { code: 'daily-limit', resetAt: quota.resetAt } : null
-  const limit = configured ? null : (limitState && limitState.uid === keyOwnerUid ? limitState : null) ?? quotaLimit
+  const limit = configured ? null
+    : (limitAll && limitAll.uid === keyOwnerUid ? { code: 'daily-limit-all' as const, resetAt: limitAll.resetAt } : null) ?? quotaLimit
   // Without the allowance there is no telling whether the server has a key; a failed read assumes it does.
   const [quotaFailedUid, setQuotaFailedUid] = useState<string | null>(null)
   const sharedOff = !configured && quota?.shared === false
@@ -226,17 +228,36 @@ export default function ChatPage() {
   const ready = keyOwnerUid !== null && (configured || sharedReady)
   const remaining = quota ? Math.max(0, quota.limit - quota.used) : null
   const planBlocked = !configured && (limit !== null || (remaining !== null && remaining < COACH_PLAN_COST))
-  useEffect(() => {
-    if (!keyOwnerUid) return
-    let live = true
+  const quotaOwner = useRef(keyOwnerUid)
+  quotaOwner.current = keyOwnerUid
+  const refreshQuota = useCallback(() => {
+    const uid = keyOwnerUid
+    if (!uid) return
     fetchCoachQuota()
-      .then((next) => { if (live) setQuotaState({ ...next, uid: keyOwnerUid }) })
-      .catch(() => { if (live) setQuotaFailedUid(keyOwnerUid) })
-    return () => { live = false }
+      .then((next) => { if (quotaOwner.current === uid) setQuotaState({ ...next, uid }) })
+      .catch(() => { if (quotaOwner.current === uid) setQuotaFailedUid(uid) })
   }, [keyOwnerUid])
+  useEffect(() => { refreshQuota() }, [refreshQuota])
+  // A spent allowance lifts itself at the reset time, also in a tab left open overnight.
+  const limitResetAt = limit?.resetAt
+  useEffect(() => {
+    if (!limitResetAt) return
+    const timer = window.setTimeout(() => { setLimitAll(null); refreshQuota() }, Math.max(0, Date.parse(limitResetAt) - Date.now()) + 1_000)
+    return () => window.clearTimeout(timer)
+  }, [limitResetAt, refreshQuota])
   const noteUsage = useCallback((usage: CoachQuotaUsage) => {
-    setQuotaState((current) => current && current.uid === keyOwnerUid ? { ...current, ...usage } : current)
+    setQuotaState((current) => {
+      if (current && current.uid === keyOwnerUid) return { ...current, ...usage }
+      return keyOwnerUid ? { ...usage, uid: keyOwnerUid, resetAt: nextUtcMidnight(Date.now()), shared: true } : current
+    })
   }, [keyOwnerUid])
+  // After a failure or an abort only the server knows what was spent.
+  function afterSharedFailure(error: unknown) {
+    if (configured) return
+    const reached = coachLimitOf(error)
+    if (reached?.code === 'daily-limit-all') setLimitAll({ uid: keyOwnerUid, resetAt: reached.resetAt })
+    refreshQuota()
+  }
   // Closing the key panel brings focus back to the button that opened it.
   const keyGateAction = useRef<HTMLDivElement>(null)
   const keyPanelWasOpen = useRef(false)
@@ -394,6 +415,7 @@ export default function ChatPage() {
       setGenerationState({ status: 'idle' })
     } catch (nextError) {
       if (activeGenerationRef.current?.generationId !== generationId) return
+      afterSharedFailure(nextError)
       if (controller.signal.aborted || (nextError instanceof Error && nextError.name === 'AbortError')) {
         setStreamText('')
         setStreamUnavailableSources([])
@@ -402,7 +424,6 @@ export default function ChatPage() {
       }
 
       const reached = coachLimitOf(nextError)
-      if (reached) setLimitState({ ...reached, uid: keyOwnerUid })
       const message = reached
         ? coachLimitMessage(reached)
         : nextError instanceof Error ? nextError.message : 'Could not connect to AI Coach.'
@@ -530,9 +551,9 @@ export default function ChatPage() {
       setPlanUnavailableSources(context.unavailableSources)
       toast.success('Plan generated. You can save it to your plans.')
     } catch (nextError) {
+      afterSharedFailure(nextError)
       if (controller.signal.aborted) return
       const reached = coachLimitOf(nextError)
-      if (reached) setLimitState({ ...reached, uid: keyOwnerUid })
       const message = reached ? coachLimitMessage(reached) : nextError instanceof Error ? nextError.message : 'Could not generate a plan.'
       setPlanError({ message, field: null })
       setPlanPreview(null)

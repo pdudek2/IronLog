@@ -482,7 +482,7 @@ async function generatePlan(
       model,
       max_tokens: 32768,
       reasoning: { effort: 'high', exclude: true },
-      provider: { require_parameters: true },
+      provider: { require_parameters: true, only: ['openai'] },
       stream: false,
       messages: [{ role: 'system', content: buildPlanSystemPrompt(context, request, catalog) }, {
         role: 'user',
@@ -539,7 +539,7 @@ export async function streamChatReply(
           model,
           max_tokens: 16384,
           reasoning: { effort: 'medium', exclude: true },
-          provider: { require_parameters: true },
+          provider: { require_parameters: true, only: ['openai'] },
           stream: true,
           messages: [{ role: 'system', content: buildSystemPrompt(context) }, ...messages.map((message) => ({
             role: message.role,
@@ -666,8 +666,9 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     await assertRateLimit({ key: `${userId}:${ip}` })
 
     const body = await readJsonBody<AiChatBody>(req, { maxBytes: 128 * 1024 })
+    // No key at all means the shared server key; a key that is present must be a usable one.
+    const shared = body.apiKey === undefined
     const ownKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''
-    const shared = ownKey.length === 0
     const mode = body.mode === 'plan' ? 'plan' : 'chat'
     const messages = sanitizeMessages(body.messages)
 

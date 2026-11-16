@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { BrandLink } from '../components/AuthShell'
 import { FEEDBACK_EMAIL } from '../shared/feedbackMail'
 
-const UPDATED = '16 November 2026'
+const UPDATED = '17 November 2026'
 
 // Public: testers read it before creating an account, and Google Play links to its deletion section.
 export default function PrivacyPage() {

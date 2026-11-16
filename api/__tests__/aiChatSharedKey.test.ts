@@ -146,6 +146,22 @@ describe('Coach on the shared key', () => {
     expect(mocks.refundCoachUnits).not.toHaveBeenCalled()
   })
 
+  it('keeps the units for an empty chat answer OpenRouter already billed', async () => {
+    await call(chatBody, () => vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n')); controller.close() } }),
+    }))
+    expect(mocks.reserveCoachUnits).toHaveBeenCalledOnce()
+    expect(mocks.refundCoachUnits).not.toHaveBeenCalled()
+  })
+
+  it('reports spent server credit as unavailable in plan mode too, and gives the 5 units back', async () => {
+    const result = await call(planBody, () => status(402))
+    expect(result.status()).toBe(503)
+    expect(result.json()).toMatchObject({ code: 'coach-unavailable' })
+    expect(mocks.refundCoachUnits).toHaveBeenCalledWith(expect.objectContaining({ cost: 5 }))
+  })
+
   it('keeps the units for a plan OpenRouter answered but that is unusable', async () => {
     const result = await call(planBody, () => vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => ({ choices: [{ message: { content: 'not json' } }] }) }))
     expect(result.status()).toBe(502)
@@ -170,9 +186,14 @@ describe('Coach on the shared key', () => {
     expect(mocks.reserveCoachUnits).not.toHaveBeenCalled()
   })
 
-  it('still refuses a key that is too short instead of falling back to the server key', async () => {
-    const result = await call({ ...chatBody, apiKey: 'short' })
+  it.each(['short', '', '   ', 42])('refuses a present but unusable key (%j) instead of falling back to the server key', async (apiKey) => {
+    const result = await call({ ...chatBody, apiKey })
     expect(result.status()).toBe(400)
     expect(mocks.reserveCoachUnits).not.toHaveBeenCalled()
+  })
+
+  it('asks only OpenAI for the model, as the privacy policy says', async () => {
+    const result = await call(chatBody, streamed)
+    expect(JSON.parse(result.fetchMock.mock.calls[0]![1].body).provider).toEqual({ require_parameters: true, only: ['openai'] })
   })
 })

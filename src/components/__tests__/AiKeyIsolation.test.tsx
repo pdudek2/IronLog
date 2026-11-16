@@ -36,6 +36,7 @@ beforeEach(() => {
   account('a')
   mocks.fetchAvailableOpenRouterModels.mockReset().mockResolvedValue([{ id: 'claude-test', label: 'OpenRouter Test' }])
   mocks.streamChatReply.mockReset().mockResolvedValue('Response')
+  mocks.fetchCoachQuota.mockResolvedValue({ used: 0, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: false })
 })
 
 describe('account-owned OpenRouter API keys', () => {
@@ -129,6 +130,20 @@ describe('account-owned OpenRouter API keys', () => {
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
     account('a')
     expect(getOpenRouterApiKey()).toBe(KEY_A)
+  })
+
+  it('on the shared key B asks without any key, never with A’s', async () => {
+    mocks.fetchCoachQuota.mockResolvedValue({ used: 0, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: true })
+    setOpenRouterApiKey(KEY_A)
+    render(<ChatPage />)
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled())
+    account('b')
+    const composer = await screen.findByRole('textbox', { name: 'Message AI Coach' })
+    await waitFor(() => expect(composer).toBeEnabled())
+    fireEvent.change(composer, { target: { value: 'Jak ćwiczyć?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(mocks.streamChatReply).toHaveBeenCalledTimes(1))
+    expect(mocks.streamChatReply.mock.calls[0]![0]).toMatchObject({ apiKey: '' })
   })
 
   it('moves focus into the key panel and back to its button when the panel closes', async () => {

@@ -60,7 +60,14 @@ describe('coach quota', () => {
     await reserveCoachUnits('me', 2, { db, now: Date.parse('2026-11-17T00:00:01Z') })
     await refundCoachUnits(lateNight, { db })
     expect(docs.get('me')).toEqual({ userId: 'me', date: '2026-11-17', used: 2 })
-    expect(docs.has('total_2026-11-15')).toBe(false)
+    expect(docs.get('total_2026-11-16')?.used).toBe(0)
+    expect(docs.get('total_2026-11-17')?.used).toBe(2)
+  })
+
+  it('never creates a counter when refunding', async () => {
+    const { db, docs } = memoryDb()
+    await refundCoachUnits({ uid: 'ghost', day: '2026-11-16', cost: 1, used: 1 }, { db })
+    expect(docs.size).toBe(0)
   })
 
   it('resets at the next UTC midnight', () => {

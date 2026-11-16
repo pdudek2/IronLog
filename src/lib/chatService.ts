@@ -244,6 +244,7 @@ export async function fetchCoachQuota(): Promise<CoachQuota> {
     method: 'POST',
     headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ quota: true }),
+    signal: AbortSignal.timeout(10_000),
   })
   const payload = await response.json().catch(() => null) as (CoachQuota & { error?: string; code?: string }) | null
   if (!response.ok || !payload || typeof payload.used !== 'number') throw apiError(payload, 'Could not read the Coach allowance.')

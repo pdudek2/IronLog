@@ -1,5 +1,5 @@
 import type { Firestore } from 'firebase-admin/firestore'
-import { COACH_DAILY_LIMIT } from '../../src/shared/coachQuota.js'
+import { COACH_DAILY_LIMIT, nextUtcMidnight } from '../../src/shared/coachQuota.js'
 import { adminDb } from './firebaseAdmin.js'
 
 export const COACH_MODEL = 'openai/gpt-5.6-luna'
@@ -30,10 +30,7 @@ export interface CoachReservation {
 
 export const utcDay = (now: number) => new Date(now).toISOString().slice(0, 10)
 
-export function nextUtcMidnight(now: number): string {
-  const date = new Date(now)
-  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + 1)).toISOString()
-}
+export { nextUtcMidnight }
 
 const usedOn = (data: unknown, day: string): number => {
   const record = (data ?? {}) as { date?: unknown; used?: unknown }

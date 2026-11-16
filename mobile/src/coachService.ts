@@ -45,7 +45,8 @@ export async function coachPost(baseUrl: string, path: 'ai-chat' | 'ai-models', 
       : code === 'coach-unavailable' ? COACH_UNAVAILABLE
       : code === 'invalid-key'
       ? 'OpenRouter rejected this key. Update it in settings.'
-      : response.status === 429 ? 'A request limit or credit limit was reached. Wait or check your OpenRouter account.'
+      : code === 'rate-limited' ? 'A request limit or credit limit was reached. Wait or check your OpenRouter account.'
+      : response.status === 429 ? 'Too many requests. Wait a moment and try again.'
           : response.status === 401 ? 'Your sign-in expired. Sign in again.'
             : 'AI Coach could not complete the request. Try again.'
     throw new CoachApiError(message, code, resetAt)

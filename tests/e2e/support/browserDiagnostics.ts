@@ -44,6 +44,9 @@ export function isBlockingRequestFailure(
     && /^https:\/\/fonts\.gstatic\.com\//.test(url)
   const isLocalCover = (resourceType === 'image' || resourceType === 'media')
     && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/covers\//.test(url)
+  // Coach reads its allowance on open; leaving the page drops that read, which changes nothing.
+  const isLocalCoachAllowanceRead = (resourceType === 'fetch' || resourceType === 'xhr')
+    && /^https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?\/api\/ai-models$/.test(url)
 
   return !(
     intentionalNavigationOrTeardown
@@ -54,6 +57,7 @@ export function isBlockingRequestFailure(
       || isLocalViteProductionChunk
       || isTrustedGoogleFont
       || isLocalCover
+      || isLocalCoachAllowanceRead
     )
   )
 }

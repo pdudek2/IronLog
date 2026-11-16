@@ -14,7 +14,7 @@ function serialized<T>(uid: string, operation: () => Promise<T>): Promise<T> {
   return pending
 }
 export function nativeCoachDependencies(uid: string): CoachDependencies {
-  const keyName = `ironlog.coach.${Array.from(uid).map(c => c.codePointAt(0)!.toString(16).padStart(6, '0')).join('')}`
+  const keyName = coachKeyName(uid)
   const post = (path: 'ai-chat' | 'ai-models', body: string, signal: AbortSignal) =>
     coachPost(apiBaseUrl, path, body, signal, () => currentIdToken(uid), expoFetch as typeof fetch)
   return {
@@ -32,3 +32,7 @@ export function nativeCoachDependencies(uid: string): CoachDependencies {
     reply: async request => consumeCoachReply(await post('ai-chat', coachRequestBody(request.key, request.messages), request.signal), request),
   }
 }
+
+export const coachKeyName = (uid: string) => `ironlog.coach.${Array.from(uid).map(c => c.codePointAt(0)!.toString(16).padStart(6, '0')).join('')}`
+
+export const removeCoachKey = (uid: string) => SecureStore.deleteItemAsync(coachKeyName(uid))

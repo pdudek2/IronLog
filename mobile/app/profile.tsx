@@ -1,12 +1,19 @@
 import Slider from '@react-native-community/slider'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, BackHandler, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, BackHandler, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import Constants from 'expo-constants'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import HistoryHeader from '../src/HistoryHeader'
 import BottomNavigation, { useBottomNavigation, type NavigationExit } from '../src/BottomNavigation'
-import { logout, readFirstWorkoutAt, readProfile, readProgressRecords, readRecentWorkouts, saveProfile } from '../src/firebase'
+import { deleteAccountOnServer, logout, readFirstWorkoutAt, readProfile, readProgressRecords, readRecentWorkouts, saveProfile } from '../src/firebase'
+import { BottomSheet } from '../src/BottomSheet'
+import { markAccountDeleted, ownsJournalKey } from '../src/accountData'
+import { removeAccountJournals } from '../src/fileSessionJournal'
+import { removeCoachKey } from '../src/coachNative'
+import { FEEDBACK_EMAIL, feedbackMailto } from '../../src/shared/feedbackMail'
+import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { pluralize } from '../../src/lib/pluralize'
 import { trainingSinceLabel } from '../../src/shared/workoutDisplay'
 import { ProfileController, profileGoals, type ProfileState } from '../src/profile'
@@ -15,6 +22,16 @@ import { colors, pageTitle, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 
 const STATS_WORKOUTS = 50
+const PRIVACY_URL = 'https://getshear.vercel.app/privacy'
+
+function feedbackUrl(): string {
+  const config = Constants.expoConfig
+  const model = (Platform.constants as { Model?: string }).Model
+  return feedbackMailto({
+    platform: 'Android', system: `Android ${Platform.Version}${model ? ` · ${model}` : ''}`,
+    version: `${config?.version ?? '?'} (${config?.android?.versionCode ?? '?'})`, date: new Date(),
+  })
+}
 
 export default function ProfileScreen() {
   const { user } = useAuthRuntime()
@@ -31,6 +48,7 @@ function Profile({ uid }: { uid: string }) {
   const [controller] = useState(() => new ProfileController(uid, { read: readProfile, write: saveProfile,
     applyUnits: (owner, units) => runtime.current.refreshUnits(owner, units) }, setState))
   const [signingOut, setSigningOut] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const navigation = useBottomNavigation()
   const insets = useSafeAreaInsets()
   const focused = useRef(false)
@@ -119,11 +137,68 @@ function Profile({ uid }: { uid: string }) {
             <View style={styles.section}><View style={styles.weekHeading}><Text style={styles.label}>Workouts per week</Text><Text accessibilityLiveRegion="polite" style={styles.weekValue}>{input.weeklyGoal} {input.weeklyGoal === 1 ? 'workout' : 'workouts'}</Text></View><Slider accessibilityLabel="Workouts per week" accessibilityValue={{ min: 1, max: 7, now: Math.min(7, input.weeklyGoal), text: `${input.weeklyGoal} saved workouts; choose 1 to 7` }} disabled={locked} minimumValue={1} maximumValue={7} step={1} value={Math.min(7, input.weeklyGoal)} onValueChange={weeklyGoal => controller.change({ weeklyGoal })} minimumTrackTintColor="rgba(255,255,255,0.08)" maximumTrackTintColor="rgba(255,255,255,0.08)" thumbTintColor={colors.accent} style={styles.slider} /><View style={styles.bounds} accessible={false}><Text style={styles.bound}>1</Text><Text style={styles.bound}>7</Text></View><Text style={styles.unitsLabel}>Units</Text><View style={styles.units}>{(['kg', 'lbs'] as const).map(units => <Pressable key={units} accessibilityRole="button" accessibilityLabel={units} accessibilityState={{ selected: input.units === units, disabled: locked }} disabled={locked} onPress={() => controller.change({ units })} style={[styles.unit, units === 'lbs' && undefined, input.units === units && styles.selectedUnit]}><Text style={[styles.unitText, input.units === units && styles.selectedText]}>{units}</Text></Pressable>)}</View></View>
             <View style={styles.saveSection}><Pressable accessibilityRole="button" accessibilityLabel={current.busy ? 'Saving' : current.pending ? 'Check save outcome' : 'Save changes'} accessibilityState={{ disabled: current.busy || current.status !== 'ready', busy: current.busy }} disabled={current.busy || current.status !== 'ready'} onPress={() => void submit()} style={[styles.save, (current.busy || current.status !== 'ready') && styles.disabled]}><Text style={styles.saveText}>{current.busy ? 'Saving…' : current.pending ? 'Check save outcome' : 'Save changes'}</Text></Pressable>{current.message && <Text accessibilityRole={current.message === 'Profile saved' ? undefined : 'alert'} accessibilityLiveRegion="polite" style={current.message === 'Profile saved' ? styles.success : styles.error}>{current.message}</Text>}{current.status !== 'ready' && <Pressable accessibilityRole="button" onPress={() => void controller.load(true)} style={styles.retry}><Text style={styles.accent}>Retry</Text></Pressable>}</View>
           </View>}
+        <View style={styles.links}>
+          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(feedbackUrl()).catch(() => undefined)} style={styles.linkRow}><Text style={styles.linkText}>Send feedback</Text><Text style={styles.linkMeta}>Email</Text></Pressable>
+          {/* Android 11+ does not report a mail app for mailto, so the address is always there to copy. */}
+          <Text selectable style={styles.address}>{FEEDBACK_EMAIL}</Text>
+          <Pressable accessibilityRole="link" onPress={() => void Linking.openURL(PRIVACY_URL).catch(() => undefined)} style={styles.linkRow}><Text style={styles.linkText}>Privacy policy</Text><Text style={styles.linkMeta}>Opens the browser</Text></Pressable>
+        </View>
         <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => leave(signOut)} style={styles.signOut}><Text style={styles.signOutText}>Sign out</Text></Pressable>
+        <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => setDeleting(true)} style={styles.signOut}><Text style={styles.signOutText}>Delete account</Text></Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
     <BottomNavigation {...navigation} onRequestExit={leave} />
+    {deleting && <BottomSheet title="Delete account" onClose={() => setDeleting(false)}>
+      {(close) => <DeleteAccount uid={uid} working={active.state.status === 'ready'} close={close} onDeleted={() => router.replace('/')} />}
+    </BottomSheet>}
   </SafeAreaView>
+}
+
+// Password again, then the server deletes everything; the device forgets the account's journals and Coach key.
+function DeleteAccount({ uid, working, close, onDeleted }: { uid: string; working: boolean; close: (after?: () => void) => void; onDeleted: () => void }) {
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  // The sheet sits at the screen bottom; lift its content above the keyboard so the password and button stay visible.
+  const [keyboard, setKeyboard] = useState(0)
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', (event) => setKeyboard(event.endCoordinates.height))
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboard(0))
+    return () => { shown.remove(); hidden.remove() }
+  }, [])
+  const submit = async () => {
+    if (busy) return
+    if (working) { setError('Finish or discard your workout first.'); return }
+    if (!password) { setError('Enter your password.'); return }
+    setBusy(true)
+    setError('')
+    try {
+      await deleteAccountOnServer(uid, password)
+      await removeAccountJournals((key) => ownsJournalKey(key, uid), uid).catch(() => undefined)
+      await removeCoachKey(uid).catch(() => undefined)
+      markAccountDeleted()
+      await logout().catch(() => undefined)
+      close(onDeleted)
+    } catch (cause) {
+      const code = typeof cause === 'object' && cause && 'code' in cause ? String(cause.code) : ''
+      setError(code === 'auth/network-request-failed' ? 'Connect to the internet to delete your account.'
+        : code === 'auth/wrong-password' || code === 'auth/invalid-credential' ? 'Wrong password.'
+        : code.startsWith('auth/') ? getAuthErrorMessage(cause, 'login')
+        : cause instanceof Error && cause.message ? cause.message : 'Could not delete your account. Try again.')
+      setBusy(false)
+    }
+  }
+  return <View style={[styles.deleteSheet, { paddingBottom: 8 + keyboard }]}>
+    <Text style={styles.deleteCopy}>This deletes your account, profile, plans, workouts, records and check-ins at once. It cannot be undone.</Text>
+    <Text style={styles.label}>Password</Text>
+    <TextInput accessibilityLabel="Password" autoCapitalize="none" autoComplete="current-password" secureTextEntry editable={!busy}
+      selectionColor={colors.accentText} value={password} onChangeText={(value) => { setPassword(value); setError('') }} style={styles.input} />
+    {error ? <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text> : null}
+    <Text style={styles.deleteCopy}>Forgot your password? Sign out and use “Forgot password?” on the sign-in screen.</Text>
+    <Pressable accessibilityRole="button" accessibilityState={{ disabled: busy, busy }} disabled={busy} onPress={() => void submit()} style={[styles.save, busy && styles.disabled]}>
+      <Text style={styles.saveText}>{busy ? 'Deleting…' : 'Delete account'}</Text>
+    </Pressable>
+  </View>
 }
 
 const styles = StyleSheet.create({
@@ -140,6 +215,13 @@ const styles = StyleSheet.create({
   weekHeading: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 16 }, weekValue: { color: colors.accentText, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20 }, slider: { height: 44, marginVertical: -10, marginHorizontal: -8 }, bounds: { flexDirection: 'row', justifyContent: 'space-between' }, bound: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 16 }, unitsLabel: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14, lineHeight: 20, marginTop: 20, marginBottom: 8 },
   units: { alignSelf: 'flex-start', flexDirection: 'row', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)' }, unit: { minHeight: 44, paddingHorizontal: 18, alignItems: 'center', justifyContent: 'center', borderRadius: 9 }, selectedUnit: { backgroundColor: colors.choiceSelected }, unitText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 14.4 },
   saveSection: { paddingTop: 20, gap: 12 }, save: { minHeight: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient }, saveText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 }, disabled: { opacity: 0.55 },
+  links: { marginTop: 20 },
+  linkRow: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  linkText: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 15 },
+  linkMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 },
+  address: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginTop: -8, marginBottom: 4 },
+  deleteSheet: { gap: 10, paddingBottom: 8 },
+  deleteCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20 },
   signOut: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginTop: 12 }, signOutText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   loading: { marginTop: 32, gap: 12 }, error: { color: colors.warning, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 18 }, success: { color: colors.recovery, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 }, retry: { minHeight: 44, justifyContent: 'center' }, accent: { color: colors.accentText, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 }, muted: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14 },
 })

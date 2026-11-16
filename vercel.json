@@ -1,4 +1,9 @@
 {
+  "functions": {
+    "api/delete-workout.ts": {
+      "maxDuration": 60
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
@@ -43,6 +48,10 @@
     {
       "source": "/api/import-workouts",
       "destination": "/api/materialize-workout"
+    },
+    {
+      "source": "/api/delete-account",
+      "destination": "/api/delete-workout"
     },
     {
       "source": "/api/(.*)",

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type * as React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { getAuthErrorMessage, loginUser, resetPassword } from '../lib/auth'
 import AuthShell from '../components/AuthShell'
 import { Button, Input } from '../components/ui'
@@ -16,7 +16,8 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<LoginError | null>(null)
-  const [resetNotice, setResetNotice] = useState('')
+  const [searchParams] = useSearchParams()
+  const [resetNotice, setResetNotice] = useState(() => (searchParams.get('deleted') === '1' ? 'Your account has been deleted.' : ''))
   const [loading, setLoading] = useState(false)
   const [resetLoading, setResetLoading] = useState(false)
 

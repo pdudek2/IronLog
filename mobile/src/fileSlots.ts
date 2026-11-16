@@ -12,6 +12,14 @@ export function fileSlots(directoryName: string) {
       const current = file(key, slot)
       return current.exists ? current.text() : null
     },
+    // Removes every slot file whose key the predicate claims (account deletion).
+    async removeKeys(owns: (key: string) => boolean): Promise<void> {
+      if (!directory.exists) return
+      for (const entry of directory.list()) {
+        const match = entry instanceof File ? /^(.*)\.[01]\.json(\.tmp)?$/.exec(entry.name) : null
+        if (match && owns(decodeURIComponent(match[1]!))) entry.delete()
+      }
+    },
     async write(key: string, slot: 0 | 1, value: string): Promise<void> {
       if (!directory.exists) directory.create({ idempotent: true, intermediates: true })
       const temporary = file(key, slot, '.tmp')

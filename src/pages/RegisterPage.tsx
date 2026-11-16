@@ -68,6 +68,7 @@ export default function RegisterPage() {
         <Link to="/login" className="auth-alt">
           Back to sign in
         </Link>
+        <p className="auth-legal">See how we handle your data: <Link to="/privacy">Privacy policy</Link>.</p>
       </form>
     </AuthShell>
   )

@@ -3,7 +3,7 @@ import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { StatusBar } from 'expo-status-bar'
 import { useIsFocused, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import {
+import { Linking,
   AccessibilityInfo,
   Animated,
   Easing,
@@ -63,6 +63,7 @@ import { workoutCover } from '../../src/shared/workoutCover'
 import { colors, primaryGradient } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
+import { takeAccountDeletedNotice } from '../src/accountData'
 import { SessionCut } from '../src/SessionCut'
 import { BottomSheet } from '../src/BottomSheet'
 import { pluralize } from '../../src/lib/pluralize'
@@ -107,7 +108,7 @@ function LoginForm() {
   const [password, setPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [resetting, setResetting] = useState(false)
-  const [notice, setNotice] = useState('')
+  const [notice, setNotice] = useState(() => (takeAccountDeletedNotice() ? 'Your account has been deleted.' : ''))
   const [error, setError] = useState<{ field: 'email' | 'password'; message: string } | null>(null)
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
   // KeyboardAvoidingView already shrinks the form; scrolling to its end keeps Sign in above the keyboard too.
@@ -239,6 +240,8 @@ function LoginForm() {
           <ActionButton flat disabled={busy || resetting}
             label={mode === 'register' ? busy ? 'Creating account…' : 'Create account' : busy ? 'Signing in…' : 'Sign in'} onPress={() => void submit()} />
           <ActionButton secondary flat disabled={busy || resetting} label={mode === 'register' ? 'Back to sign in' : 'Create account'} onPress={switchMode} />
+          {mode === 'register' && <Text style={styles.loginLegal}>See how we handle your data:{' '}
+            <Text accessibilityRole="link" onPress={() => void Linking.openURL('https://getshear.vercel.app/privacy').catch(() => undefined)} style={styles.loginLegalLink}>Privacy policy</Text>.</Text>}
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -1131,6 +1134,8 @@ const styles = StyleSheet.create({
   loginHelp: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, marginTop: 4 },
   loginReset: { alignItems: 'center', alignSelf: 'flex-end', height: 49, justifyContent: 'center', paddingHorizontal: 4 },
   loginResetText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },
+  loginLegal: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19, marginTop: 14, textAlign: 'center' },
+  loginLegalLink: { color: colors.text, textDecorationLine: 'underline' },
   loginNotice: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19, marginBottom: 4 },
   button: { alignItems: 'center', borderRadius: 8, justifyContent: 'center', minHeight: 48, marginTop: 15, paddingHorizontal: 18 },
   buttonPrimary: {

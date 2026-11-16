@@ -5,6 +5,9 @@ import { getApp, getApps, initializeApp, type FirebaseApp } from '@react-native-
 import {
   connectAuthEmulator,
   createUserWithEmailAndPassword,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  reload,
   getAuth,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -138,6 +141,47 @@ export async function sendPasswordReset(email: string): Promise<void> {
   } catch (cause) {
     if (typeof cause === 'object' && cause && 'code' in cause && cause.code === 'auth/user-not-found') return
     throw cause
+  }
+}
+
+// Account deletion: the password again, a fresh token, then the server deletes the data and the Auth user.
+// A retry after a lost response finds the user gone and counts as done.
+export async function deleteAccountOnServer(uid: string, password: string): Promise<void> {
+  const { auth } = await getServices()
+  const user = auth.currentUser
+  if (!user || user.uid !== uid || !user.email) throw Object.assign(new Error('The signed-in account changed.'), { code: 'auth/account-changed' })
+  try {
+    await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password))
+    const token = await user.getIdToken(true)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 65_000)
+    let response: Response
+    try {
+      response = await fetch(`${apiBaseUrl}/api/delete-account`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ deleteAccount: true }), signal: controller.signal,
+      })
+    } catch {
+      throw new Error('Could not reach the server. Check your connection and try again.')
+    } finally { clearTimeout(timeout) }
+    if (!response.ok) {
+      const payload: unknown = await response.json().catch(() => null)
+      const message = payload && typeof payload === 'object' && 'error' in payload && typeof payload.error === 'string' ? payload.error : 'Could not delete your account. Try again.'
+      throw new Error(message)
+    }
+  } catch (cause) {
+    // A lost response, or a retry after one, finds the account already gone.
+    if (!await accountIsGone(user)) throw cause
+  }
+}
+
+async function accountIsGone(user: User): Promise<boolean> {
+  try {
+    await reload(user)
+    return false
+  } catch (cause) {
+    const code = typeof cause === 'object' && cause && 'code' in cause ? String(cause.code) : ''
+    return code === 'auth/user-not-found' || code === 'auth/user-token-expired' || code === 'auth/user-disabled'
   }
 }
 

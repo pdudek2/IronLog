@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
 import { useFocusEffect, useRouter } from 'expo-router'
+import { ProfileMissingError } from '../src/profile'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 import { TrainCheckIn, TrainTime } from '../src/TrainToday'
@@ -84,7 +85,14 @@ export default function DashboardScreen() {
     if (!uid) return
     setNow(new Date())
     readiness?.controller.refreshDay()
-    return startRead(() => readHome(uid), (state) => {
+    // An account the server confirms has no profile (new, from web, or left mid-onboarding) sets one up first.
+    // The redirect runs from the publish callback, which a disposed read (another tab opened meanwhile) never reaches.
+    let missing = false
+    return startRead(() => readHome(uid).catch((cause: unknown) => {
+      missing = cause instanceof ProfileMissingError
+      throw cause
+    }), (state) => {
+      if (missing) { router.replace('/onboarding'); return }
       setResult({ key, state })
       if (state.status !== 'ready') return
       const plans = planDataRef.current
@@ -94,7 +102,7 @@ export default function DashboardScreen() {
         ? { ...current, target: nextPlanWorkout(templates, state.data.workouts) }
         : current)
     })
-  }, [uid, key, attempt, completion, readiness?.controller]))
+  }, [uid, key, attempt, completion, readiness?.controller, router]))
 
   useFocusEffect(useCallback(() => {
     if (!uid || active.state.status !== 'empty') return

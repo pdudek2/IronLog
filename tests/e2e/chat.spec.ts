@@ -46,6 +46,45 @@ async function setGeometryViewport(page: Page, projectName: string) {
 }
 
 test.describe('Chat UI', () => {
+  test('a user without a key asks Coach on the shared key and sees the allowance count down', async ({ page }) => {
+    await installMockAiRuntime(page, [{ frames: [{ delayMs: 0, frame: { type: 'chunk', text: 'Tak, progresujesz.' } }, { delayMs: 0, frame: { type: 'done' } }] }], { sharedKey: true })
+    await page.goto('/chat')
+    await expectAppReady(page, '/chat')
+    await expect(page.getByText(/sends your question, profile, check-ins, workouts and records to OpenRouter/)).toBeVisible()
+    await expect(page.getByText('20 of 20 left today')).toBeVisible()
+    await sendQuestion(page)
+    await expect(page.getByText('Tak, progresujesz.')).toBeVisible()
+    await expect(page.getByText('19 of 20 left today')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Use your own OpenRouter key' }).click()
+    await page.getByLabel('Your key', { exact: true }).fill('sk-or-test-only-own-browser-key')
+    await page.getByRole('button', { name: 'Save key' }).click()
+    await expect(page.getByText(/left today/)).toHaveCount(0)
+    await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled()
+  })
+
+  test('a spent allowance locks the composer until the reset, and a plan needs 5 units', async ({ page, expectedBrowserDiagnostics }) => {
+    const resetAt = new Date(Date.now() + 3_600_000).toISOString()
+    await installMockAiRuntime(page, [{ kind: 'error', status: 429, message: "Today's Coach limit is used up.", code: 'daily-limit', resetAt }], { sharedKey: true, used: 17 })
+    await page.goto('/chat')
+    await expectAppReady(page, '/chat')
+    await expect(page.getByText('3 of 20 left today')).toBeVisible()
+    await page.getByRole('button', { name: /^Plan/ }).click()
+    await expect(page.getByRole('button', { name: 'Generate plan' })).toBeDisabled()
+    await page.getByRole('button', { name: /^Chat/ }).click()
+
+    await expectedBrowserDiagnostics.allowing(
+      'the allowance refused on purpose',
+      (entry) => entry.kind === 'console' && entry.message.includes('429'),
+      async () => {
+        await sendQuestion(page)
+        await expect(page.getByRole('alert')).toContainText("Today's Coach limit is used up. It resets at")
+      },
+    )
+    await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toBeDisabled()
+    await expect(page.getByRole('button', { name: 'Retry AI response' })).toHaveCount(0)
+  })
+
   test('chat page loads without console errors', async ({ page }) => {
     await page.goto('/chat')
     await expectAppReady(page, '/chat')
@@ -63,7 +102,7 @@ test.describe('Chat UI', () => {
     await expect(keyGate.getByText('Ask Coach about your training', { exact: true })).toBeVisible()
     await expect(page.locator('.ai-key-panel')).toHaveCount(0)
 
-    await page.getByRole('button', { name: 'Set up key' }).click()
+    await page.getByRole('button', { name: 'Use your own OpenRouter key' }).click()
     await expect(keyGate).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Cancel' })).toBeVisible()
 

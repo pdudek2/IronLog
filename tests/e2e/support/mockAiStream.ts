@@ -36,24 +36,36 @@ export interface MockAiErrorAttempt {
   kind: 'error'
   status: number
   message: string
+  code?: string
+  resetAt?: string
+}
+
+export interface MockAiOptions {
+  // Coach on the server's key: no key in the browser, requests carry none, the allowance comes back in a header.
+  sharedKey?: boolean
+  used?: number
 }
 
 export type MockAiAttempt = MockAiChatAttempt | MockAiPlanAttempt | MockAiErrorAttempt
 
-export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]): Promise<void> {
+export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[], options: MockAiOptions = {}): Promise<void> {
   if (!await page.evaluate(() => Boolean(window.__ironlogEmulatorTestBridge))) {
     await page.goto('/')
   }
   await page.waitForFunction(() => Boolean(window.__ironlogEmulatorTestBridge?.readAuthenticatedUid()))
   const uid = await page.evaluate(() => window.__ironlogEmulatorTestBridge!.readAuthenticatedUid()!)
 
-  return page.addInitScript(({ configuredAttempts, uid }: { configuredAttempts: MockAiAttempt[]; uid: string }) => {
+  return page.addInitScript(({ configuredAttempts, uid, sharedKey, initialUsed }: { configuredAttempts: MockAiAttempt[]; uid: string; sharedKey: boolean; initialUsed: number }) => {
     const runtimeWindow = window as typeof window & {
       __ironlogMockAiAbortCount: number
     }
     const originalFetch = window.fetch.bind(window)
     const encoder = new TextEncoder()
     let nextAttempt = 0
+    let used = initialUsed
+    const resetAt = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate() + 1)).toISOString()
+    const keyFields = sharedKey ? [] : ['apiKey']
+    const keyValid = (value: Record<string, unknown>) => sharedKey || isNonEmptyString(value.apiKey)
 
     const isRecord = (value: unknown): value is Record<string, unknown> => (
       typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -94,10 +106,11 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
       && hasExactKeys(value, ['apiKey'])
       && isNonEmptyString(value.apiKey)
     )
+    const isQuotaBody = (value: unknown) => isRecord(value) && hasExactKeys(value, ['quota']) && value.quota === true
     const isChatBody = (value: unknown) => (
       isRecord(value)
-      && hasExactKeys(value, ['apiKey', 'model', 'messages'])
-      && isNonEmptyString(value.apiKey)
+      && hasExactKeys(value, [...keyFields, 'model', 'messages'])
+      && keyValid(value)
       && isNonEmptyString(value.model)
       && Array.isArray(value.messages)
       && value.messages.length > 0
@@ -110,15 +123,16 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
     )
     const isPlanBody = (value: unknown) => (
       isRecord(value)
-      && hasExactKeys(value, ['apiKey', 'model', 'mode', 'planRequest'])
-      && isNonEmptyString(value.apiKey)
+      && hasExactKeys(value, [...keyFields, 'model', 'mode', 'planRequest'])
+      && keyValid(value)
       && isNonEmptyString(value.model)
       && value.mode === 'plan'
       && isRecord(value.planRequest)
     )
 
     runtimeWindow.__ironlogMockAiAbortCount = 0
-    if (!window.localStorage.getItem(`ironlog.openrouterApiKey:${uid}`)) {
+    if (sharedKey) window.localStorage.removeItem(`ironlog.openrouterApiKey:${uid}`)
+    if (!sharedKey && !window.localStorage.getItem(`ironlog.openrouterApiKey:${uid}`)) {
       window.localStorage.setItem(`ironlog.openrouterApiKey:${uid}`, 'sk-ant-test-only-browser-key')
     }
     window.localStorage.setItem('ironlog.openrouterModel', 'claude-test')
@@ -131,6 +145,12 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
 
       if (pathname === '/api/ai-models') {
         const body = await readJsonRequest(new Request(input, init), pathname)
+        if (isQuotaBody(body)) {
+          return new Response(JSON.stringify({ used, limit: 20, resetAt, shared: true }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json; charset=utf-8' },
+          })
+        }
         if (!isModelsBody(body)) throw contractViolation(pathname, 'body { apiKey }')
 
         return new Response(JSON.stringify({
@@ -149,7 +169,7 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
 
       if (attempt.kind === 'error') {
         nextAttempt += 1
-        return new Response(JSON.stringify({ error: attempt.message }), {
+        return new Response(JSON.stringify({ error: attempt.message, code: attempt.code, resetAt: attempt.resetAt }), {
           status: attempt.status,
           headers: { 'Content-Type': 'application/json; charset=utf-8' },
         })
@@ -158,19 +178,22 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
       if (attempt.kind === 'plan') {
         if (!isPlanBody(body)) throw contractViolation(pathname, 'plan request body')
         nextAttempt += 1
+        if (sharedKey) used += 5
         return new Response(JSON.stringify({ plan: attempt.plan }), {
           status: 200,
           headers: {
             'Content-Type': 'application/json; charset=utf-8',
             'X-IronLog-AI-Context': attempt.contextHeader ?? 'full',
+            ...(sharedKey ? { 'X-IronLog-AI-Quota': `used=${used};limit=20` } : {}),
           },
         })
       }
 
       if (!isChatBody(body)) {
-        throw contractViolation(pathname, 'body { apiKey, model, messages }')
+        throw contractViolation(pathname, sharedKey ? 'body { model, messages }' : 'body { apiKey, model, messages }')
       }
       nextAttempt += 1
+      if (sharedKey) used += 1
 
       const signal = init?.signal ?? (input instanceof Request ? input.signal : null)
       let timerId: number | null = null
@@ -229,8 +252,9 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
         headers: {
           'Content-Type': 'application/x-ndjson; charset=utf-8',
           'X-IronLog-AI-Context': attempt.contextHeader ?? 'full',
+          ...(sharedKey ? { 'X-IronLog-AI-Quota': `used=${used};limit=20` } : {}),
         },
       })
     }
-  }, { configuredAttempts: attempts, uid }).then(() => undefined)
+  }, { configuredAttempts: attempts, uid, sharedKey: options.sharedKey === true, initialUsed: options.used ?? 0 }).then(() => undefined)
 }

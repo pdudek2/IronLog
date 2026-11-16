@@ -6185,6 +6185,11 @@ body:has(.bottom-nav .active-workout-return-bar) .page-shell:not(:has(.not-found
   .coach-composer-footer p {
     display: none;
   }
+
+  .coach-composer-footer p.coach-allowance {
+    display: block;
+    margin-right: auto;
+  }
 }
 
 .profile-settings-shell {

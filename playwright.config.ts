@@ -31,6 +31,8 @@ const emulatorWebEnv = {
   VITE_FIREBASE_MESSAGING_SENDER_ID: '123456789',
   VITE_FIREBASE_APP_ID: '1:123456789:web:demo',
   VITE_FIREBASE_USE_EMULATORS: 'true',
+  // Defined and empty, so a key in .env.local can never reach e2e: the server has no shared Coach key here.
+  OPENROUTER_API_KEY: '',
 }
 
 export default defineConfig({

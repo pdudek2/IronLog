@@ -261,6 +261,8 @@ export default function ProfilePage() {
   )
 }
 
+const WRONG_PASSWORD = new Set(['auth/wrong-password', 'auth/invalid-credential', 'auth/invalid-login-credentials'])
+
 function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
   const activeWorkout = useWorkoutStore((store) => store.active)
   const [password, setPassword] = useState('')
@@ -279,18 +281,20 @@ function DeleteAccountSheet({ onClose }: { onClose: () => void }) {
       await deleteAccount(password)
     } catch (cause) {
       const code = typeof cause === 'object' && cause && 'code' in cause ? String(cause.code) : ''
-      setError(code.startsWith('auth/') ? getAuthErrorMessage(cause, 'login') : cause instanceof Error && cause.message ? cause.message : 'Could not delete your account. Try again.')
+      setError(WRONG_PASSWORD.has(code) ? 'Wrong password.'
+        : code.startsWith('auth/') ? getAuthErrorMessage(cause, 'login')
+        : cause instanceof Error && cause.message ? cause.message : 'Could not delete your account. Try again.')
       setBusy(false)
     }
   }
 
   return (
-    <BottomSheet title="Delete account" onClose={onClose}>
+    <BottomSheet title="Delete account" onClose={busy ? () => undefined : onClose}>
       <form className="profile-delete-sheet" onSubmit={(event) => { void submit(event) }}>
         <p>This deletes your account, profile, plans, workouts, records and check-ins at once. It cannot be undone.</p>
         <label className="flex flex-col gap-1">
           <span className="text-xs font-medium" style={{ color: 'var(--muted)' }}>Password</span>
-          <Input type="password" autoComplete="current-password" value={password} onChange={(event) => { setPassword(event.target.value); setError('') }} />
+          <Input type="password" autoComplete="current-password" disabled={busy} value={password} onChange={(event) => { setPassword(event.target.value); setError('') }} />
         </label>
         {error && <p role="alert" style={{ color: 'var(--danger)' }}>{error}</p>}
         <p>Forgot your password? Sign out and use “Forgot password?” on the sign-in screen.</p>

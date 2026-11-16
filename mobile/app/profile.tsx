@@ -182,6 +182,7 @@ function DeleteAccount({ uid, working, close, onDeleted }: { uid: string; workin
     } catch (cause) {
       const code = typeof cause === 'object' && cause && 'code' in cause ? String(cause.code) : ''
       setError(code === 'auth/network-request-failed' ? 'Connect to the internet to delete your account.'
+        : code === 'auth/wrong-password' || code === 'auth/invalid-credential' ? 'Wrong password.'
         : code.startsWith('auth/') ? getAuthErrorMessage(cause, 'login')
         : cause instanceof Error && cause.message ? cause.message : 'Could not delete your account. Try again.')
       setBusy(false)

@@ -1,4 +1,4 @@
-import { EmailAuthProvider, reauthenticateWithCredential, signOut } from 'firebase/auth'
+import { EmailAuthProvider, reauthenticateWithCredential, reload, signOut, type User } from 'firebase/auth'
 import { clearIndexedDbPersistence, terminate } from 'firebase/firestore'
 import { auth, db } from './firebase'
 import { callAuthedApi } from './authedApi'
@@ -19,21 +19,30 @@ export function clearLocalAccountData(uid: string, local: Storage = window.local
 
 const code = (error: unknown) => (typeof error === 'object' && error && 'code' in error ? String(error.code) : '')
 
+// The server function may run up to 60 s; a shorter client timeout would report a deletion that went through as failed.
+const DELETE_TIMEOUT_MS = 65_000
+const GONE = new Set(['auth/user-not-found', 'auth/user-token-expired', 'auth/user-disabled'])
+
+async function accountIsGone(user: User): Promise<boolean> {
+  try {
+    await reload(user)
+    return false
+  } catch (error) {
+    return GONE.has(code(error))
+  }
+}
+
 export async function deleteAccount(password: string): Promise<void> {
   const user = auth.currentUser
   if (!user?.email) throw new Error('Sign in again to delete your account.')
   const uid = user.uid
-  let alreadyDeleted = false
   try {
     await reauthenticateWithCredential(user, EmailAuthProvider.credential(user.email, password))
-  } catch (error) {
-    // A retry after a lost response finds the account already gone.
-    if (code(error) !== 'auth/user-not-found' && code(error) !== 'auth/user-token-expired') throw error
-    alreadyDeleted = true
-  }
-  if (!alreadyDeleted) {
     await user.getIdToken(true)
-    await callAuthedApi<{ ok: true }>('/api/delete-account', { deleteAccount: true }, uid)
+    await callAuthedApi<{ ok: true }>('/api/delete-account', { deleteAccount: true }, uid, DELETE_TIMEOUT_MS)
+  } catch (error) {
+    // A lost response, or a retry after one, finds the account already gone; the SDK reports that only on reload.
+    if (!await accountIsGone(user)) throw error
   }
   clearLocalAccountData(uid)
   await signOut(auth).catch(() => undefined)

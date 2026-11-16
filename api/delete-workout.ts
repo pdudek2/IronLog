@@ -19,9 +19,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     return
   }
 
+  let fallbackMessage = 'Could not delete the workout.'
   try {
     const body = await readJsonBody<DeleteWorkoutBody>(req, { maxBytes: 8 * 1024 })
     if (body.deleteAccount === true && body.workoutId === undefined) {
+      fallbackMessage = 'Could not delete your account. Try again.'
       await deleteAccountForUser(await requireRecentUserId(req))
       sendJson(res, 200, { ok: true })
       return
@@ -36,6 +38,6 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     const result = await deleteFinishedWorkoutForUser(userId, body.workoutId, { guard: parseWorkoutMutationGuard(body) })
     sendJson(res, 200, result)
   } catch (error) {
-    sendApiError(res, error, { fallbackMessage: 'Could not delete the workout.' })
+    sendApiError(res, error, { fallbackMessage })
   }
 }

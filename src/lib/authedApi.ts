@@ -4,7 +4,7 @@ export class ApiRejectedError extends Error {}
 
 const API_TIMEOUT_MS = 15_000
 
-export async function callAuthedApi<T>(path: string, body: unknown, expectedUid?: string): Promise<T> {
+export async function callAuthedApi<T>(path: string, body: unknown, expectedUid?: string, timeoutMs = API_TIMEOUT_MS): Promise<T> {
   const user = auth.currentUser
   if (!user) throw new Error('No active user session.')
   if (expectedUid && user.uid !== expectedUid) throw new ApiRejectedError('The user account has changed.')
@@ -16,7 +16,7 @@ export async function callAuthedApi<T>(path: string, body: unknown, expectedUid?
 
   // A request that never answers would leave a delete or save pending forever; every caller can retry safely.
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS)
+  const timeout = setTimeout(() => controller.abort(), timeoutMs)
   let response: Response
   let payload: T | { error?: string } | null
   try {

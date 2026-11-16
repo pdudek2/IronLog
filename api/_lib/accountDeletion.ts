@@ -12,7 +12,7 @@ export const DELETED_BY_ID = ['users'] as const
 export const KEPT_ON_DELETION: Record<string, string> = {
   exercises: 'the global catalogue, not user data',
   dailyAiUsage: 'nothing writes it yet; point 4 (Coach on a shared key) adds it to the deleted list',
-  aiRateLimits: 'ids are a hash of uid and IP, short-lived and not findable by uid; disclosed in the privacy policy',
+  aiRateLimits: 'ids are a one-way hash of uid and IP holding only recent request times, so a uid cannot find them; the policy says counters stay',
 }
 
 const BATCH = 400

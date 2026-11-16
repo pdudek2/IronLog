@@ -7,6 +7,7 @@ import {
   displayWeightStringToKg,
   kgStringToDisplayWeight,
 } from '../../lib/weightUnits'
+import { weightStep } from '../../shared/weightUnits'
 import { setPanelStatus } from '../../shared/workoutDisplay'
 
 interface WorkoutSetPanelProps {
@@ -68,10 +69,10 @@ export default function WorkoutSetPanel({
         <div className="workout-set-panel-row">
           <div className="workout-set-panel-nums">
             <div className="workout-set-num">
-              <Stepper label="weight" step={-2.5} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'weight', displayWeightDeltaToKg(delta, units))} />
+              <Stepper label="weight" step={-weightStep(units)} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'weight', displayWeightDeltaToKg(delta, units))} />
               <label>
                 <WeightInput
-                  placeholder="0"
+                  placeholder="–"
                   value={kgStringToDisplayWeight(set.weight, units)}
                   onValueChange={(value) => onUpdateSet(exerciseIndex, setIndex, 'weight', displayWeightStringToKg(value, units))}
                   onFocus={(event) => event.currentTarget.select()}
@@ -79,7 +80,7 @@ export default function WorkoutSetPanel({
                 />
                 <small>{units}</small>
               </label>
-              <Stepper label="weight" step={2.5} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'weight', displayWeightDeltaToKg(delta, units))} />
+              <Stepper label="weight" step={weightStep(units)} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'weight', displayWeightDeltaToKg(delta, units))} />
             </div>
             <i aria-hidden="true" />
             <div className="workout-set-num">

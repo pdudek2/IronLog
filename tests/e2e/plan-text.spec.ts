@@ -23,6 +23,10 @@ async function chooseFor(page: Page, line: string, exercise: string): Promise<vo
 async function expectFirstSetTest(page: Page, exercise: string): Promise<void> {
   await expect(page.getByText('First set is a test', { exact: true })).toBeVisible({ timeout: 15_000 })
   const panel = page.getByRole('region', { name: 'Current set' })
+  // A loaded set without weight is asked about instead of being logged as 0.
+  await panel.getByRole('button', { name: new RegExp(`^Log set 1 for ${exercise}`) }).click()
+  await expect(page.getByText('No weight entered. Log this set without weight?')).toBeVisible()
+  await expect(panel.getByRole('button', { name: new RegExp(`^Log set 1 for ${exercise}`) })).toBeVisible()
   await panel.getByRole('spinbutton', { name: /^Weight,/ }).fill('60')
   await panel.getByRole('spinbutton', { name: /^Reps,/ }).fill('8')
   await panel.getByRole('button', { name: new RegExp(`^Log set 1 for ${exercise}`) }).click()
@@ -91,5 +95,57 @@ test.describe('Starter plan', () => {
     await start.click()
     await page.waitForURL('/workout/new', { timeout: 15_000 })
     await expectFirstSetTest(page, 'Squat')
+  })
+})
+
+test.describe('First plan from Train', () => {
+  test.use({ storageState: { cookies: [], origins: [] } })
+
+  async function freshAccount(page: Page, request: import('@playwright/test').APIRequestContext, name: string) {
+    const email = `${name.toLowerCase()}-${Date.now()}-${Math.round(Math.random() * 1e6)}@ironlog.local`
+    const password = process.env.TEST_PASSWORD!
+    const signUp = await request.post('http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo-api-key', { data: { email, password, returnSecureToken: true } })
+    expect(signUp.ok()).toBe(true)
+    await page.goto('/login')
+    await page.getByLabel('Email').fill(email)
+    await page.getByLabel('Password').fill(password)
+    await page.getByRole('button', { name: 'Sign in' }).click()
+    await expect(page).toHaveURL('/onboarding', { timeout: 20_000 })
+    await page.getByLabel('Name').fill(name)
+    await page.getByRole('button', { name: 'Save profile' }).click()
+    await page.waitForURL('/dashboard', { timeout: 20_000 })
+  }
+
+  test('a plan pasted on Train saves back to Train, and an unloaded lunge can be logged on purpose', async ({ page, request }) => {
+    test.skip(process.env.E2E_BACKEND !== 'emulator', 'Needs a fresh emulator account')
+    await freshAccount(page, request, 'Return')
+    await page.getByRole('button', { name: 'Paste a plan' }).click()
+    await page.getByRole('textbox', { name: 'Plan text' }).fill('Legs\nLunge 3x10\nSquat 3x5 80 kg')
+    await page.getByRole('button', { name: 'Continue' }).click()
+    await expect(page).toHaveURL('/templates/new')
+    await page.locator('button[type="submit"]:visible').filter({ hasText: 'Save plan' }).click()
+    await expect(page).toHaveURL('/dashboard', { timeout: 20_000 })
+    const start = page.getByRole('button', { name: 'Start Legs' })
+    await expect(start).toBeVisible({ timeout: 15_000 })
+
+    await start.click()
+    await page.waitForURL('/workout/new', { timeout: 15_000 })
+    const panel = page.getByRole('region', { name: 'Current set' })
+    await panel.getByRole('button', { name: /^Log set 1 for Lunge/ }).click()
+    await page.getByRole('button', { name: 'Log without weight' }).click()
+    await expect(panel.getByRole('button', { name: /^Log set 2 for Lunge/ })).toBeVisible()
+  })
+
+  test('Build a plan from Train goes back to Train', async ({ page, request }) => {
+    test.skip(process.env.E2E_BACKEND !== 'emulator', 'Needs a fresh emulator account')
+    await freshAccount(page, request, 'Build')
+    await page.getByRole('button', { name: 'Build a plan' }).click()
+    await expect(page).toHaveURL('/templates/new')
+    // The editor's own back link, not the tab bar's Train.
+    const back = page.locator('.template-editor-back')
+    await expect(back).toHaveText('Train')
+    await back.click()
+    await expect(page).toHaveURL('/dashboard')
+    await expect(page.getByRole('button', { name: 'Use the starter plan' })).toBeVisible({ timeout: 15_000 })
   })
 })

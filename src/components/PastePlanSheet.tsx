@@ -8,7 +8,8 @@ import { importPlanText } from '../shared/planImport'
 
 const EXAMPLE = 'Upper\nBench press 4x8 60 kg\nPull-up 3x8\n\nLower\nSquat 3x5 @80'
 
-export default function PastePlanSheet({ onClose }: { onClose: () => void }) {
+// `returnTo` is where the editor goes after saving; from Train it is Train, from the plan list the list.
+export default function PastePlanSheet({ onClose, returnTo }: { onClose: () => void; returnTo?: string }) {
   const { user } = useAuthStore()
   const navigate = useNavigate()
   const { state } = useUserExercises(user?.uid ?? null)
@@ -31,7 +32,7 @@ export default function PastePlanSheet({ onClose }: { onClose: () => void }) {
       fieldRef.current?.focus()
       return
     }
-    navigate('/templates/new', { state: { pasted } })
+    navigate('/templates/new', { state: { pasted, ...(returnTo ? { returnTo } : {}) } })
   }
 
   return (

@@ -152,6 +152,8 @@ export default function TemplateEditorPage() {
   const [searchParams] = useSearchParams()
   const location = useLocation()
   const [pasted] = useState(() => (!id ? (location.state as { pasted?: ImportedPlan } | null)?.pasted ?? null : null))
+  // A plan started from Train goes back to Train, where its first day is ready to start.
+  const [returnTo] = useState(() => (!id && (location.state as { returnTo?: unknown } | null)?.returnTo === '/dashboard' ? '/dashboard' : null))
   const [initialDraft] = useState(() => (
     !id && searchParams.get('draft') === 'ai' ? readTemplateDraft() : null
   ))
@@ -268,7 +270,7 @@ export default function TemplateEditorPage() {
   }, [selectedDayId])
 
   function handleBackToTemplates() {
-    navigate('/templates')
+    navigate(returnTo ?? '/templates', { replace: Boolean(returnTo) })
   }
 
   function updateDay(index: number, nextDay: DraftDay) {
@@ -441,7 +443,7 @@ export default function TemplateEditorPage() {
       leaveGuard.reset()
       leaveGuard.allowNextNavigation()
       // Back must not reopen a pasted plan from its router state and save it again.
-      navigate('/templates', { replace: Boolean(pasted) })
+      navigate(returnTo ?? '/templates', { replace: Boolean(pasted || returnTo) })
     } catch (error) {
       setSaveError(error instanceof ApiRejectedError ? error.message : 'Could not save the plan.')
       setSaving(false)
@@ -466,7 +468,7 @@ export default function TemplateEditorPage() {
           className="template-editor-back"
         >
           <ChevronLeft size={16} aria-hidden="true" />
-          Plans
+          {returnTo ? 'Train' : 'Plans'}
         </button>
 
         <div className="template-editor-heading">

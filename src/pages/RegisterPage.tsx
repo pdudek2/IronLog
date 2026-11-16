@@ -50,7 +50,6 @@ export default function RegisterPage() {
             id="register-password"
             name="password"
             type="password"
-            placeholder="••••••••"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="new-password"

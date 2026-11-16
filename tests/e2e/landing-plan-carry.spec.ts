@@ -28,7 +28,9 @@ test.describe('Plan pasted on the landing', () => {
     await expect(page).toHaveURL('/templates/new')
     await expect(page.getByText('2 days · 4 exercises · 13 sets')).toBeVisible()
     await page.locator('button[type="submit"]:visible').filter({ hasText: 'Save plan' }).click()
-    await expect(page).toHaveURL('/templates', { timeout: 20_000 })
+    // A plan saved from Train goes back to Train, ready to start.
+    await expect(page).toHaveURL('/dashboard', { timeout: 20_000 })
+    await expect(page.getByRole('button', { name: 'Start Push' })).toBeVisible({ timeout: 15_000 })
     expect(await page.evaluate(() => localStorage.getItem('ironlog:landing-plan'))).toBeNull()
 
     // An account that already has a plan is not offered one from the landing.

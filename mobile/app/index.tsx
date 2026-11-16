@@ -50,7 +50,9 @@ import {
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
 import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
-import { sessionRoles } from '../../src/shared/nextSessionRecommendation'
+import { catalogueMeta, sessionRoles } from '../../src/shared/nextSessionRecommendation'
+import { needsWeightConfirm } from '../../src/shared/workoutLimits'
+import { weightStep } from '../../src/shared/weightUnits'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
 import { useKeyboardReveal } from '../src/useKeyboardReveal'
@@ -181,7 +183,6 @@ function LoginForm() {
               onBlur={() => setFocusedField(null)}
               onFocus={() => setFocusedField('password')}
               onSubmitEditing={() => void submit()}
-              placeholder="••••••••"
               placeholderTextColor={colors.mutedSoft}
               returnKeyType="done"
               selectionColor={colors.accentText}
@@ -259,7 +260,7 @@ function SetValueInput({ value, units, field, label, rejectedEdit, onChange }: {
       onChange(canonical)
     }}
     onFocus={() => { focused.current = true }}
-    placeholder="0"
+    placeholder={field === 'weight' ? '–' : '0'}
     placeholderTextColor={colors.mutedSoft}
     selectTextOnFocus
     selectionColor={colors.lineStrong}
@@ -562,10 +563,10 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
     {rest ?? <View style={styles.panelStatus}><Text style={styles.panelStatusText}>{setPanelStatus(set, setIndex, exercise.sets.length)}</Text></View>}
     {set && <View style={styles.panelNums}>
       <View style={styles.panelNum}>
-        <SetStepper label="weight" step={-2.5} onStep={() => adjust('weight', displayWeightDeltaToKg(-2.5, units))} />
+        <SetStepper label="weight" step={-weightStep(units)} onStep={() => adjust('weight', displayWeightDeltaToKg(-weightStep(units), units))} />
         <View style={styles.panelValue}><SetValueInput rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight"
           label={`Weight, ${exercise.name}, set ${number}, ${units}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'weight', value)} /><Text style={styles.panelUnit}>{units}</Text></View>
-        <SetStepper label="weight" step={2.5} onStep={() => adjust('weight', displayWeightDeltaToKg(2.5, units))} />
+        <SetStepper label="weight" step={weightStep(units)} onStep={() => adjust('weight', displayWeightDeltaToKg(weightStep(units), units))} />
       </View>
       <View style={styles.panelDivider} />
       <View style={styles.panelNum}>
@@ -766,9 +767,20 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const currentSetIndex = panelExercise ? panelSetIndex(panelExercise.sets, selectedSet?.exerciseId === currentId ? selectedSet?.setId ?? null : null) : -1
   const nextExerciseIndex = liveSession ? upNextQueue(liveSession.exercises, panelIndex)[0] ?? -1 : -1
   const currentRest = rest && rest.sessionId === liveSession?.sessionId ? rest : null
-  const toggleSet = guardClosureInteraction(canEditCurrentSession, (exerciseId: string, setId: string, done: boolean) => {
+  const toggleSet = guardClosureInteraction(canEditCurrentSession, (exerciseId: string, setId: string, done: boolean, withoutWeight = false) => {
     const error = done && liveSession ? setDoneError(liveSession, exerciseId, setId) : null
     if (error) { showDialog('Set not logged', error); return }
+    const logged = liveSession?.exercises.find(({ clientId }) => clientId === exerciseId)
+    const loggedSet = logged?.sets.find(({ clientId }) => clientId === setId)
+    // shortcut: user exercises have no metadata here, so they are not asked about 0; load it with the session if testers hit it.
+    if (done && !withoutWeight && logged && loggedSet && !loggedSet.done
+      && needsWeightConfirm(loggedSet, { exerciseId: logged.exerciseId, ...catalogueMeta(logged.exerciseId, logged.exerciseSource) })) {
+      showDialog('No weight entered', 'Log this set without weight?', [
+        { text: 'Enter weight', style: 'cancel' },
+        { text: 'Log without weight', onPress: () => latestToggle.current(exerciseId, setId, true, true) },
+      ])
+      return
+    }
     setDone(exerciseId, setId, done)
     if (!done) { changeRest(null); return }
     setLastLogged({ exerciseId, setId, draw: true })
@@ -786,6 +798,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
     if (groupOpen) setManualExercise(null)
     else if (after[exerciseIndex]!.sets.every((set) => set.done)) setManualExercise({ sessionId: liveSession.sessionId, id: exerciseId })
   })
+  // The dialog answers later; it must use the session and lock state of that moment, not of when it opened.
+  const latestToggle = useRef(toggleSet)
+  latestToggle.current = toggleSet
   const liveSessionId = liveSession?.sessionId
   useEffect(() => {
     if (!isFocused || !liveSessionId) return

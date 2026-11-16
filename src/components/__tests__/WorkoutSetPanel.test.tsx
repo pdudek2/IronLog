@@ -93,8 +93,8 @@ describe('WorkoutSetPanel', () => {
     fireEvent.change(repsInput, { target: { value: '8' } })
     expect(on.onUpdateSet).toHaveBeenCalledWith(1, 2, 'reps', '8')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Adjust weight by 2.5' }))
-    expect(on.onAdjustSet).toHaveBeenCalledWith(1, 2, 'weight', 2.5 / 2.2046226218)
+    fireEvent.click(screen.getByRole('button', { name: 'Adjust weight by 5' }))
+    expect(on.onAdjustSet).toHaveBeenCalledWith(1, 2, 'weight', 5 / 2.2046226218)
   })
 
   it('keeps the entered kilogram precision', () => {

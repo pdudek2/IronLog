@@ -18,6 +18,7 @@ import {
   clearTemplateDraft,
   readTemplateDraft,
 } from '../lib/templateDraftStorage'
+import { clearLandingPlan } from '../lib/landingPlanStorage'
 import {
   createTemplate,
   getTemplate,
@@ -433,6 +434,7 @@ export default function TemplateEditorPage() {
       } else {
         await createTemplate(user.uid, payload, operationId)
         clearTemplateDraft()
+        clearLandingPlan()
         toast.success('Plan saved')
       }
       setSavedSnapshot(serializeDraftState(payload.name, payload.days))

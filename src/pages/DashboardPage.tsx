@@ -50,6 +50,8 @@ import { WORKOUT_COVERS, workoutCover } from '../shared/workoutCover'
 import { WEEK_LABELS, addLocalDays, getGreeting, getWeekDates, nextPlanWorkout, weekdayLabel } from '../shared/week'
 import PastePlanSheet from '../components/PastePlanSheet'
 import { useStarterPlan } from '../hooks/useStarterPlan'
+import { readLandingPlan } from '../lib/landingPlanStorage'
+import { importPlanText } from '../shared/planImport'
 
 interface TemplatesResource {
   uid: string | null
@@ -461,6 +463,8 @@ export default function DashboardPage() {
   const templates = templatesState.status === 'success' ? templatesState.data : []
   // A new account has nothing to start from a plan, so an empty workout is the main action.
   const noPlans = templatesState.status === 'success' && templates.length === 0
+  // shortcut: matches the catalogue only, since an account without plans rarely has its own exercises yet
+  const landingPlan = noPlans ? importPlanText(readLandingPlan() ?? '', [], units) : null
   const plansLoading = templatesState.status === 'loading' && !hasActiveSession
   const selectedWorkout = workoutSelection.uid === user?.uid
     ? resolveWorkoutSelection(templates, workoutSelection.target)
@@ -676,9 +680,15 @@ export default function DashboardPage() {
           </>
         ) : noPlans ? (
           <div className="train-dock-start">
-            <button type="button" className="workout-set-panel-action" onClick={() => setPasting(true)}>
-              Paste a plan
-            </button>
+            {landingPlan ? (
+              <button type="button" className="workout-set-panel-action" onClick={() => navigate('/templates/new', { state: { pasted: landingPlan } })}>
+                Save your pasted plan
+              </button>
+            ) : (
+              <button type="button" className="workout-set-panel-action" onClick={() => setPasting(true)}>
+                Paste a plan
+              </button>
+            )}
             <button type="button" className="workout-set-panel-action" data-quiet onClick={() => { void starter.create() }} disabled={starter.saving}>
               {starter.saving ? 'Adding…' : 'Use the starter plan'}
             </button>
@@ -786,7 +796,7 @@ export default function DashboardPage() {
                   {workoutSelection.unavailable
                     ? 'Choose another workout before starting.'
                     : noPlans
-                      ? 'Paste the plan you already follow, or start from ours.'
+                      ? landingPlan ? 'The plan you pasted is ready. Check it, then save it.' : 'Paste the plan you already follow, or start from ours.'
                       : 'You can still start an empty workout.'}
                 </span>
                 {templatesState.status === 'error' && (

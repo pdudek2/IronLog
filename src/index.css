@@ -1215,6 +1215,19 @@ a {
   font-size: 0.8125rem;
 }
 
+.landing-paste-carry {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-self: start;
+  color: var(--text-strong);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.25em;
+}
+
 .auth-main {
   display: flex;
   flex: 1;

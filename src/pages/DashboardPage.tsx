@@ -681,7 +681,7 @@ export default function DashboardPage() {
         ) : noPlans ? (
           <div className="train-dock-start">
             {landingPlan ? (
-              <button type="button" className="workout-set-panel-action" onClick={() => navigate('/templates/new', { state: { pasted: landingPlan } })}>
+              <button type="button" className="workout-set-panel-action" onClick={() => navigate('/templates/new', { state: { pasted: landingPlan, returnTo: '/dashboard' } })}>
                 Save your pasted plan
               </button>
             ) : (
@@ -692,7 +692,7 @@ export default function DashboardPage() {
             <button type="button" className="workout-set-panel-action" data-quiet onClick={() => { void starter.create() }} disabled={starter.saving}>
               {starter.saving ? 'Adding…' : 'Use the starter plan'}
             </button>
-            <button type="button" className="workout-set-panel-action" data-quiet onClick={() => navigate('/templates/new')}>
+            <button type="button" className="workout-set-panel-action" data-quiet onClick={() => navigate('/templates/new', { state: { returnTo: '/dashboard' } })}>
               Build a plan
             </button>
           </div>
@@ -904,7 +904,7 @@ export default function DashboardPage() {
       )}
 
       <AnimatePresence>
-        {pasting && <PastePlanSheet key="paste-plan" onClose={() => setPasting(false)} />}
+        {pasting && <PastePlanSheet key="paste-plan" returnTo="/dashboard" onClose={() => setPasting(false)} />}
       </AnimatePresence>
 
       <TemplateLaunchConfirmDialog

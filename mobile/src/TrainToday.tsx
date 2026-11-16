@@ -64,7 +64,7 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, o
     {today.breakDays !== null && <Text style={styles.todayLine}>{today.breakDays} days since your last workout{fullSets ? '' : ' · fewer sets today'}</Text>}
     {(shorter.length > 0 || budgetMin !== null) && <View accessibilityRole="radiogroup" accessibilityLabel="Time today" style={styles.time}>
       <Pressable accessibilityRole="radio" accessibilityState={{ checked: budgetMin === null }} onPress={() => onBudget(null)} style={[styles.timeButton, styles.timeUsual, budgetMin === null && styles.timeChecked]}>
-        <Text style={[styles.timeText, budgetMin === null && styles.timeTextChecked]}>Usual <Text style={budgetMin === null ? styles.timeSoftChecked : styles.timeSoft}>{approx}{usual} min</Text></Text>
+        <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85} style={[styles.timeText, budgetMin === null && styles.timeTextChecked]}>Usual <Text style={budgetMin === null ? styles.timeSoftChecked : styles.timeSoft}>{approx}{usual} min</Text></Text>
       </Pressable>
       {shorter.map((budget) => <Pressable key={budget} accessibilityRole="radio" accessibilityState={{ checked: budgetMin === budget }} onPress={() => onBudget(budget)} style={[styles.timeButton, budgetMin === budget && styles.timeChecked]}>
         <Text style={[styles.timeText, budgetMin === budget && styles.timeTextChecked]}>{budget} min</Text>
@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
   note: { marginTop: 2, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20 },
   time: { flexDirection: 'row', gap: 4 },
   timeButton: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, borderRadius: 12, backgroundColor: 'rgba(255, 255, 255, 0.07)', boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)' },
-  timeUsual: { flex: 1.6 }, timeChecked: { backgroundColor: colors.accent, boxShadow: '0 2px 6px rgba(0, 0, 0, 0.35)' },
+  timeUsual: { flex: 1.6, paddingHorizontal: 4 }, timeChecked: { backgroundColor: colors.accent, boxShadow: '0 2px 6px rgba(0, 0, 0, 0.35)' },
   timeText: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, fontVariant: ['tabular-nums'] }, timeTextChecked: { color: colors.onPrimary },
   timeSoft: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular' }, timeSoftChecked: { color: colors.onPrimary, opacity: 0.72, fontFamily: 'InstrumentSans_400Regular' },
   todayLine: { paddingTop: 6, paddingHorizontal: 4, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, fontVariant: ['tabular-nums'] },

@@ -33,6 +33,9 @@ export function displayWeightStringToKg(value: string, units: WeightUnits): stri
   return formatStoredWeight(displayWeight / POUNDS_PER_KILOGRAM)
 }
 
+// The set panel's weight step in the units shown: plates go up by 2.5 kg or 5 lb.
+export const weightStep = (units: WeightUnits): number => (units === 'lbs' ? 5 : 2.5)
+
 export function displayWeightDeltaToKg(delta: number, units: WeightUnits): number {
   return units === 'lbs' ? delta / POUNDS_PER_KILOGRAM : delta
 }

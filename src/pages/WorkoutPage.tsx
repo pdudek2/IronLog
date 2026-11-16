@@ -34,7 +34,7 @@ import { isActiveSessionStale } from '../lib/sessionDuration'
 import WorkoutSetPanel from '../components/workout/WorkoutSetPanel'
 import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
-import { completedSetError, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
+import { completedSetError, MAX_SESSION_EXERCISES, needsWeightConfirm } from '../shared/workoutLimits'
 import {
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
@@ -42,7 +42,7 @@ import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
 import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
-import { sessionRoles } from '../shared/nextSessionRecommendation'
+import { catalogueMeta, sessionRoles } from '../shared/nextSessionRecommendation'
 
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
 
@@ -242,10 +242,22 @@ export default function WorkoutPage() {
     if (!active) void startNewSession()
   }, [active, location.pathname, navigate, ready, shouldStartFromRoute, startNewSession])
 
-  const handleToggleSet = useCallback((exerciseIndex: number, setIndex: number) => {
+  const handleToggleSet = useCallback(function toggleSet(exerciseIndex: number, setIndex: number, withoutWeight = false) {
     const { active: currentActive, toggleSetDone } = useWorkoutStore.getState()
     const currentSet = currentActive?.exercises[exerciseIndex]?.sets[setIndex]
     const wasNotDone = currentSet && !currentSet.done
+    // The toast's action comes later; a set logged in between must not be unticked by it.
+    if (withoutWeight && !wasNotDone) return
+    const userMeta = new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))
+    const loggedExercise = currentActive?.exercises[exerciseIndex]
+    if (wasNotDone && !withoutWeight && loggedExercise
+      && needsWeightConfirm(currentSet, { exerciseId: loggedExercise.exerciseId, ...catalogueMeta(loggedExercise.exerciseId, loggedExercise.exerciseSource, userMeta) })) {
+      toast('No weight entered. Log this set without weight?', {
+        id: 'log-without-weight',
+        action: { label: 'Log without weight', onClick: () => toggleSet(exerciseIndex, setIndex, true) },
+      })
+      return
+    }
     const completesExercise = wasNotDone && currentActive?.exercises[exerciseIndex]?.sets.every(
       (set, index) => index === setIndex || set.done,
     )
@@ -258,7 +270,6 @@ export default function WorkoutPage() {
     toggleSetDone(exerciseIndex, setIndex)
     if (wasNotDone) {
       const next = useWorkoutStore.getState().active
-      const userMeta = new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))
       const rest = next ? restAfterSet(next.exercises, exerciseIndex, sessionRoles(next.exercises, userMeta), next.compression?.shortRest === true) : 0
       if (rest > 0) useWorkoutStore.getState().startRestTimer(rest)
       else useWorkoutStore.getState().clearRestTimer()

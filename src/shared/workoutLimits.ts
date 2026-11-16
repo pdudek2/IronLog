@@ -20,3 +20,18 @@ export function completedSetError(set: { weight: string; reps: string }, otherDo
   }
   return otherDoneSets >= MAX_DONE_SETS_PER_EXERCISE ? `An exercise can hold up to ${MAX_DONE_SETS_PER_EXERCISE} completed sets.` : null
 }
+
+const LOADED = new Set(['barbell', 'dumbbell', 'machine', 'cable', 'kettlebell'])
+// Assistance of 0 on the assisted pull-up machine is a real set.
+const ZERO_IS_REAL = new Set(['assisted-pull-up'])
+
+// A loaded exercise logged without weight is asked about, not refused: lunges, step-ups and calf raises are often
+// done unloaded, and a custom exercise defaults to barbell. Cardio machines log time, not weight.
+export function needsWeightConfirm(
+  set: { weight: string },
+  exercise: { exerciseId: string; equipment?: string; category?: string },
+): boolean {
+  if (!exercise.equipment || !LOADED.has(exercise.equipment) || exercise.category === 'cardio' || ZERO_IS_REAL.has(exercise.exerciseId)) return false
+  const weight = Number.parseFloat(set.weight)
+  return !(weight > 0)
+}

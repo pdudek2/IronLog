@@ -11,7 +11,8 @@ import { importPlanText } from '../../src/shared/planImport'
 
 const EXAMPLE = 'Upper\nBench press 4x8 60 kg\nPull-up 3x8\n\nLower\nSquat 3x5 @80'
 
-export function PastePlanSheet({ uid, onClose }: { uid: string; onClose: () => void }) {
+export function PastePlanSheet({ uid, onClose, returnTo }: { uid: string; onClose: () => void; returnTo?: 'dashboard' }) {
+  const editor = returnTo ? { pathname: '/templates/new' as const, params: { returnTo } } : '/templates/new' as const
   const router = useRouter()
   const [text, setText] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +41,7 @@ export function PastePlanSheet({ uid, onClose }: { uid: string; onClose: () => v
       if (!pasted) { setError('No exercises found. Write one exercise per line with its sets, like “Bench press 4x8 60 kg”.'); return }
       const draft = importedPlanDraft(pasted, units, createSessionRevision)
       if (!await planEditorJournal.installIfEmpty(uid, draft, createSessionRevision())) { setCollision(true); return }
-      close(() => router.push('/templates/new'))
+      close(() => router.push(editor))
     } catch {
       setError('Could not open the plan editor. Your text is still here; try again.')
     } finally { setBusy(false) }
@@ -53,7 +54,7 @@ export function PastePlanSheet({ uid, onClose }: { uid: string; onClose: () => v
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {collision && <View style={styles.collision}>
       <Text style={styles.help}>A new plan draft is already on this device. Finish or discard it before pasting another plan.</Text>
-      <Pressable accessibilityRole="button" onPress={() => close(() => router.push('/templates/new'))} style={styles.link}><Text style={styles.linkText}>Open the draft</Text></Pressable>
+      <Pressable accessibilityRole="button" onPress={() => close(() => router.push(editor))} style={styles.link}><Text style={styles.linkText}>Open the draft</Text></Pressable>
     </View>}
     <Pressable accessibilityRole="button" accessibilityState={{ disabled: !text.trim() || loading || busy }} disabled={!text.trim() || loading || busy}
       onPress={() => void proceed(close)} style={[styles.continue, (!text.trim() || loading || busy) && styles.disabled]}>

@@ -88,7 +88,6 @@ export default function LoginPage() {
             id="login-password"
             name="password"
             type="password"
-            placeholder="••••••••"
             value={password}
             onChange={(e) => {
               setPassword(e.target.value)

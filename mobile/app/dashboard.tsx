@@ -297,14 +297,14 @@ export default function DashboardScreen() {
             <Pressable accessibilityRole="button" onPress={() => setPasting(true)} style={styles.start}><Text style={styles.startText}>Paste a plan</Text></Pressable>
             <View style={styles.firstPlanRow}>
               <Pressable accessibilityRole="button" disabled={starter.saving} onPress={() => void starter.create()} style={[styles.skip, styles.firstPlanQuiet, starter.saving && styles.disabled]}><Text style={styles.skipText}>{starter.saving ? 'Adding…' : 'Use the starter plan'}</Text></Pressable>
-              <Pressable accessibilityRole="button" onPress={() => router.navigate('/templates/new')} style={[styles.skip, styles.firstPlanQuiet]}><Text style={styles.skipText}>Build a plan</Text></Pressable>
+              <Pressable accessibilityRole="button" onPress={() => router.navigate({ pathname: '/templates/new', params: { returnTo: 'dashboard' } })} style={[styles.skip, styles.firstPlanQuiet]}><Text style={styles.skipText}>Build a plan</Text></Pressable>
             </View>
             {starter.error && <Text accessibilityRole="alert" style={styles.planEmptyCopy}>{starter.error}</Text>}
           </View>
           : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
       </View>
     </View>}
-    {pasting && uid && <PastePlanSheet uid={uid} onClose={() => setPasting(false)} />}
+    {pasting && uid && <PastePlanSheet uid={uid} returnTo="dashboard" onClose={() => setPasting(false)} />}
     <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>
         <View style={styles.pickerHead}><Text accessibilityRole="header" style={styles.pickerTitle}>Choose a workout</Text><Pressable accessibilityRole="button" accessibilityLabel="Close workout picker" onPress={() => setPickerOpen(false)} style={styles.pickerClose}><Icon name="close" size={18} color={colors.muted} /></Pressable></View>

@@ -25,13 +25,13 @@ import { newPlanDayId } from '../../src/shared/planDay'
 
 const newId = () => createSessionRevision()
 
-export default function PlanEditorScreen({ targetId, saveImport }: { targetId: string | null; saveImport?: string }) {
+export default function PlanEditorScreen({ targetId, saveImport, returnTo }: { targetId: string | null; saveImport?: string; returnTo?: 'dashboard' }) {
   const { user } = useAuthRuntime()
   if (!user) return <SafeAreaView style={styles.screen}><Text style={styles.muted}>Restoring sign-in…</Text></SafeAreaView>
-  return <Editor key={`${user.uid}:${targetId ?? 'new'}`} uid={user.uid} targetId={targetId} saveImport={saveImport} />
+  return <Editor key={`${user.uid}:${targetId ?? 'new'}`} uid={user.uid} targetId={targetId} saveImport={saveImport} returnTo={returnTo} />
 }
 
-function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string | null; saveImport?: string }) {
+function Editor({ uid, targetId, saveImport, returnTo }: { uid: string; targetId: string | null; saveImport?: string; returnTo?: 'dashboard' }) {
   const active = useActiveRuntime()
   const router = useRouter()
   const navigation = useBottomNavigation()
@@ -112,12 +112,17 @@ function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string |
     })
   }
   // The Back handler outlives renders; it calls the latest leave so a storage error raised since focus is seen.
+  // A plan started from Train goes back to Train (one stack entry, not a second Train); otherwise to the plan list.
+  function exit(saved: boolean) {
+    if (returnTo === 'dashboard') { if (router.canGoBack()) router.back(); else router.replace('/dashboard'); return }
+    router.replace(saved ? { pathname: '/templates', params: { saved: '1' } } : '/templates')
+  }
   const latestLeave = useRef(leave)
   latestLeave.current = leave
   useFocusEffect(useCallback(() => {
     focused.current = true
     exiting.current = false
-    if (completed.current) { router.replace({ pathname: '/templates', params: { saved: '1' } }); return () => { focused.current = false } }
+    if (completed.current) { exit(true); return () => { focused.current = false } }
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
       if (picking) { setPicking(false); return true }
       if (resolving) { setResolving(null); return true }
@@ -173,7 +178,7 @@ function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string |
         read: (id) => readTemplateFromServer(uid, id), persist,
         clear: (latest) => planEditorJournal.clearIfOwned(uid, targetId, ownerId.current, latest.draftId, latest.revision),
         shouldNavigate: () => alive.current && focused.current && !exiting.current,
-        navigate: () => router.replace({ pathname: '/templates', params: { saved: '1' } }),
+        navigate: () => exit(true),
       })
       if (!alive.current) return
       if (outcome === 'saved') {
@@ -200,7 +205,7 @@ function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string |
     if (!current || current.pending || busy) return
     showDialog('Discard draft?', 'Your local changes will be removed.', [{ text: 'Keep draft', style: 'cancel' }, { text: 'Discard', style: 'destructive', onPress: () => {
       void planEditorJournal.clearIfOwned(uid, targetId, ownerId.current, current.draftId, current.revision).then((cleared) => {
-        if (alive.current && cleared) router.replace('/templates')
+        if (alive.current && cleared) exit(false)
         else if (alive.current) setMessage('Could not discard this draft. Retry.')
       }, () => { if (alive.current) setStorageError('Could not remove local draft. Retry.') })
     } }])
@@ -246,7 +251,7 @@ function Editor({ uid, targetId, saveImport }: { uid: string; targetId: string |
     <HistoryHeader onRequestAction={(_, proceed) => leave(proceed)} />
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-        <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/templates'))} style={[styles.headerLink, styles.headerLinkRow]}><Icon name="chevron-left" /><Text style={styles.muted}>Plans</Text></Pressable><View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text><Text style={styles.summary}>{draft.days.length} {pluralize(draft.days.length, 'day', 'days')} · {totalExercises} {pluralize(totalExercises, 'exercise', 'exercises')} · {totalSets} {pluralize(totalSets, 'set', 'sets')}</Text></View></View>
+        <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => exit(false))} style={[styles.headerLink, styles.headerLinkRow]}><Icon name="chevron-left" /><Text style={styles.muted}>{returnTo ? 'Train' : 'Plans'}</Text></Pressable><View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text><Text style={styles.summary}>{draft.days.length} {pluralize(draft.days.length, 'day', 'days')} · {totalExercises} {pluralize(totalExercises, 'exercise', 'exercises')} · {totalSets} {pluralize(totalSets, 'set', 'sets')}</Text></View></View>
         <Text style={styles.label}>Name</Text>
         <TextInput accessibilityLabel="Plan name" editable={!locked} maxLength={120} value={draft.name} onFocus={() => { inputFocused.current = true }} onBlur={() => { inputFocused.current = false }} onChangeText={(value) => change((current) => ({ ...current, name: value }))} placeholder="E.g. Upper / Lower 4 days" placeholderTextColor={colors.muted} style={styles.nameInput} />
         {draft.skipped && draft.skipped.length > 0 && <View accessibilityLabel="Lines not added" style={styles.skipped}><Text style={styles.skippedTitle}>{draft.skipped.length} {pluralize(draft.skipped.length, 'line was', 'lines were')} not added</Text>{draft.skipped.map((item, index) => <View key={index} style={styles.skippedRow}><Text style={styles.skippedLine}>{item.line}</Text><Text style={styles.detail}>{item.reason}</Text></View>)}</View>}

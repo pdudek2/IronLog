@@ -21,13 +21,14 @@ import ExerciseForm from './ExerciseForm'
 import { colors, pageBackground, pageTitle } from './theme'
 import { Icon as LineIcon } from './icons'
 
-function useFocusedRead<T>(key: string, load: () => Promise<ReadResult<T>>, enabled = true) {
+// `remember` keeps the last result for the next visit to the library list; the key holds the uid.
+function useFocusedRead<T>(key: string, load: () => Promise<ReadResult<T>>, enabled = true, remember?: string) {
   const [stored, setStored] = useState<{ key: string; state: ReadState<T> } | null>(null)
   const [attempt, setAttempt] = useState(0)
   useFocusEffect(useCallback(() => {
-    if (enabled) return startRead(load, state => setStored({ key, state }))
-  }, [key, load, attempt, enabled]))
-  return { state: readStateForKey(key, stored), retry: () => setAttempt(value => value + 1) }
+    if (enabled) return startRead(load, state => setStored({ key, state }), remember)
+  }, [key, load, attempt, enabled, remember]))
+  return { state: readStateForKey(key, stored, remember), retry: () => setAttempt(value => value + 1) }
 }
 
 function Frame({ children, navigation }: { children: ReactNode; navigation: ReturnType<typeof useBottomNavigation> }) {
@@ -51,7 +52,7 @@ function Library({ uid }: { uid: string }) {
   const navigation = useBottomNavigation()
   const navigationInset = useNavigationInset()
   const load = useCallback(() => readExerciseMetadata(uid), [uid])
-  const catalog = useFocusedRead(uid, load)
+  const catalog = useFocusedRead(uid, load, true, `library:${uid}`)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [equipment, setEquipment] = useState('all')
@@ -59,7 +60,7 @@ function Library({ uid }: { uid: string }) {
   const [form, setForm] = useState<{ exercise: Exercise | null } | null>(null)
   const custom = catalog.state.status === 'ready' ? catalog.state.data as Exercise[] : []
   const loadRecords = useCallback(() => readProgressRecords(uid), [uid])
-  const recordsRead = useFocusedRead(`${uid}:records`, loadRecords)
+  const recordsRead = useFocusedRead(`${uid}:records`, loadRecords, true, `library-records:${uid}`)
   const units = useActiveRuntime().state.units
   const bestSets = useMemo(() => new Map(recordsRead.state.status === 'ready'
     ? recordsRead.state.data.records.map((record) => [`${record.exerciseSource}:${record.exerciseId}`, record.maxWeight]) : []), [recordsRead.state])

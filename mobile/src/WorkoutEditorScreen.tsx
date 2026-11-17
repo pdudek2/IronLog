@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar'
 import { createSessionRevision, readExerciseMetadata } from './firebase'
 import { useActiveRuntime, useAuthRuntime } from './runtime'
 import { useSessionRead } from './useSessionRead'
+import { forgetReads } from './scopedRead'
 import { workoutEditorJournal } from './fileWorkoutEditorJournal'
 import { WorkoutEditorController } from './workoutEditorController'
 import { readWorkoutMutation, sendWorkoutMutation } from './workoutMutationNative'
@@ -35,7 +36,7 @@ export default function WorkoutEditorScreen({ workoutId, deleting }: { workoutId
 function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; deleting: boolean }) {
   const active = useActiveRuntime(), router = useRouter(), insets = useSafeAreaInsets()
   const [controller] = useState(() => new WorkoutEditorController({ uid, workoutId, owner: id(), units: active.state.units, newId: id, journal: workoutEditorJournal,
-    read: op => readWorkoutMutation(uid, workoutId, op), send: op => sendWorkoutMutation(uid, op) }))
+    read: op => readWorkoutMutation(uid, workoutId, op), send: op => sendWorkoutMutation(uid, op).finally(forgetReads) }))
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot)
   const draft = state.draft
   const [labelPicker, setLabelPicker] = useState(false)

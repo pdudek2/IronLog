@@ -47,8 +47,8 @@ export default function HistoryScreen() {
   const uid = user?.uid ?? null
   const historyLoader = useCallback(() => uid ? readWorkoutHistory(uid) : Promise.resolve({ data: { workouts: [], truncated: false }, fromCache: false }), [uid])
   const metadataLoader = useCallback(() => uid ? readExerciseMetadata(uid) : Promise.resolve({ data: [], fromCache: false }), [uid])
-  const history = useSessionRead(`history:${uid ?? ''}`, historyLoader, Boolean(uid))
-  const metadata = useSessionRead(`history-exercises:${uid ?? ''}`, metadataLoader, Boolean(uid))
+  const history = useSessionRead(`history:${uid ?? ''}`, historyLoader, Boolean(uid), true)
+  const metadata = useSessionRead(`history-exercises:${uid ?? ''}`, metadataLoader, Boolean(uid), true)
   const [range, setRange] = useState<HistoryRange>('90')
   const [rangeAnchorMs, setRangeAnchorMs] = useState(() => Date.now())
   const [search, setSearch] = useState('')

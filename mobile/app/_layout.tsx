@@ -16,6 +16,7 @@ import { LaunchRuntimeProvider } from '../src/launchRuntime'
 import { ReadinessRuntimeProvider } from '../src/readinessRuntime'
 import '../src/splash'
 import { colors } from '../src/theme'
+import { forgetReads } from '../src/scopedRead'
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
@@ -53,6 +54,8 @@ function RootStack() {
   useEffect(() => {
     if (user === null && pathname !== '/') router.replace('/')
   }, [pathname, router, user])
+  const uid = user?.uid
+  useEffect(() => { forgetReads() }, [uid])
   const stack = <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.background } }} />
   return (
     <ActiveRuntimeProvider key={user?.uid ?? 'signed-out'} uid={user?.uid ?? null}>

@@ -3,7 +3,7 @@ import test from 'node:test'
 
 import { formatCompactVolume } from '../../src/shared/weightUnits'
 import { canShowHomeSummary, deriveHome, getGreeting, getWeekDates, parseHomeProfile } from './home'
-import { readStateForKey, startRead, type ReadState } from './scopedRead'
+import { forgetReads, readStateForKey, startRead, type ReadState } from './scopedRead'
 import type { SavedWorkout } from './history'
 
 function workout(id: string, startedAt: number, weight = 100): SavedWorkout {
@@ -60,4 +60,36 @@ test('read state distinguishes error/cache/empty and disposes stale account requ
   assert.equal(canShowHomeSummary({ status: 'ready', data: { workouts: [] }, fromCache: false }), true)
   assert.equal(canShowHomeSummary({ status: 'ready', data: { workouts: [workout('one', Date.now())] }, fromCache: true }), true)
   assert.equal(canShowHomeSummary({ status: 'error' }), false)
+})
+
+test('a remembered read shows the last result before the fresh one, per account, and never after a write or as fresh after a failure', async () => {
+  const settle = () => new Promise<void>((resolve) => setImmediate(resolve))
+  const read = (uid: string, load: () => Promise<{ data: number; fromCache: boolean }>) => {
+    const states: ReadState<number>[] = []
+    startRead(load, (value) => { states.push(value) }, `history:${uid}`)
+    return states
+  }
+  forgetReads()
+  const first = read('alice', async () => ({ data: 1, fromCache: false }))
+  await settle()
+  assert.deepEqual(first, [{ status: 'loading' }, { status: 'ready', data: 1, fromCache: false }])
+
+  const second = read('alice', async () => ({ data: 2, fromCache: false }))
+  assert.deepEqual(second, [{ status: 'ready', data: 1, fromCache: false }], 'the last result is on screen before the refresh returns')
+  await settle()
+  assert.deepEqual(second.at(-1), { status: 'ready', data: 2, fromCache: false })
+  assert.deepEqual(readStateForKey('history:alice', null, 'history:alice'), { status: 'ready', data: 2, fromCache: false })
+  assert.deepEqual(read('bob', () => new Promise(() => {})), [{ status: 'loading' }], 'another account sees nothing')
+
+  const failed = read('alice', async () => { throw new Error('offline') })
+  await settle()
+  assert.deepEqual(failed.at(-1), { status: 'ready', data: 2, fromCache: true }, 'a failed refresh keeps the data marked as not confirmed')
+
+  let finishLate!: (value: { data: number; fromCache: boolean }) => void
+  read('alice', () => new Promise((resolve) => { finishLate = resolve }))
+  forgetReads() // a workout finished meanwhile
+  await settle()
+  finishLate({ data: 3, fromCache: false })
+  await settle()
+  assert.deepEqual(read('alice', () => new Promise(() => {})), [{ status: 'loading' }], 'neither the old result nor one read before the write comes back')
 })

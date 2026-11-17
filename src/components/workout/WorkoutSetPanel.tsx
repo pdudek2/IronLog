@@ -115,7 +115,8 @@ export default function WorkoutSetPanel({
               type="button"
               className="workout-set-panel-action"
               onClick={() => {
-                if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+                // A focused field lets go; a keyboard user on this button stays on it for the next set.
+                if (document.activeElement instanceof HTMLInputElement) document.activeElement.blur()
                 onToggleSet(exerciseIndex, setIndex)
               }}
               aria-label={`Log set ${setNumber} for ${exerciseName}`}

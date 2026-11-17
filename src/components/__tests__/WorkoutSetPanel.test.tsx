@@ -51,8 +51,12 @@ describe('WorkoutSetPanel', () => {
     expect(weight).toHaveValue('86.25')
 
     weight.focus()
-    fireEvent.click(screen.getByRole('button', { name: 'Log set 3 for Bench Press' }))
+    const log = screen.getByRole('button', { name: 'Log set 3 for Bench Press' })
+    fireEvent.click(log)
     expect(document.activeElement).not.toBe(weight)
+    log.focus()
+    fireEvent.click(log)
+    expect(document.activeElement).toBe(log)
 
     screen.getByRole('spinbutton', { name: 'Reps, Bench Press, set 3' }).focus()
     rerender(<WorkoutSetPanel {...base} {...on} setIndex={3} set={{ clientId: 'b', weight: '86.25', reps: '6', done: false }} />)

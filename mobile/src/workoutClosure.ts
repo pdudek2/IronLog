@@ -276,6 +276,11 @@ export class WorkoutClosureController {
     return this.readIntent()
   }
 
+  // From a finish result until its navigation is decided, so the workout screen paints no interim page.
+  finishNavigationPending(): boolean {
+    return !this.disposed && this.completed?.action === 'finish' && this.consumedFinishId !== this.completed.workoutId
+  }
+
   consumeFinishedNavigation(workoutFocused: boolean): string | null {
     if (this.disposed || this.completed?.action !== 'finish' || this.consumedFinishId === this.completed.workoutId) return null
     this.consumedFinishId = this.completed.workoutId

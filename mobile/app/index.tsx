@@ -653,10 +653,8 @@ function ClosureNotice({ closure, onRetry, onDismiss, onSignIn }: { closure: Clo
     <Text style={styles.syncTitle}>Checking saved workout requests…</Text>
     <Text style={styles.syncCopy}>Editing and closing stay locked until recovery is checked.</Text>
   </View>
-  if (closure.status === 'submitting') return <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
-    <ActivityIndicator color={colors.accent} />
-    <Text style={styles.syncTitle}>{closure.intent.action === 'finish' ? 'Saving workout…' : 'Discarding workout…'}</Text>
-  </View>
+  // Saving shows in the Finish button, so the session does not move down under the finger.
+  if (closure.status === 'submitting') return null
   const { title, copy, action } = CLOSURE_COPY[closure.status]
   const canDismiss = closure.status === 'active_session_changed' || closure.status === 'closure_conflict' || closure.status === 'session_mismatch' || closure.status === 'closure_rejected'
   const onPress = closure.status === 'auth_required' ? onSignIn : canDismiss ? onDismiss : onRetry
@@ -703,7 +701,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const [weightFocus, setWeightFocus] = useState(0)
   const changeRest = (next: Rest | null) => { lastRest = next; setRest(next) }
   const insets = useSafeAreaInsets()
-  const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
+  const { closure, completed, locked, handingOff, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
   const sessionClosed = state.status === 'ready' && completed?.action === 'finish'
     && completed.workoutId === state.session.sessionId
   const launch = useOptionalLaunchRuntime()
@@ -923,7 +921,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Finish workout" disabled={locked} onPress={finish}
               style={({ pressed }) => [styles.finishButton, locked && styles.buttonDisabled, pressed && styles.buttonPressed]}>
-              <Text style={styles.finishButtonText}>{closure?.status === 'submitting' ? '...' : 'Finish'}</Text>
+              <Text accessibilityLiveRegion="polite" style={styles.finishButtonText}>{closure.status === 'submitting' ? closure.intent.action === 'finish' ? 'Saving…' : 'Discarding…' : 'Finish'}</Text>
             </Pressable>
           </View>
         </View>
@@ -949,7 +947,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
       {closure && <ClosureNotice closure={closure} onRetry={retryClosure} onDismiss={dismissClosure} onSignIn={() => void doLogout()} />}
 
-      {state.status === 'empty' && (
+      {state.status === 'empty' && !handingOff && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>{completed?.action === 'finish' ? 'Workout saved' : completed ? 'Workout discarded' : 'No workout in progress'}</Text>
           <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Your saved workout is ready in History.' : 'Start a workout from Train whenever you are ready.'}</Text>
@@ -958,7 +956,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-      {sessionClosed && (
+      {sessionClosed && !handingOff && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>Workout saved</Text>
           <Text style={styles.stateCopy}>Your completed session is ready in History.</Text>

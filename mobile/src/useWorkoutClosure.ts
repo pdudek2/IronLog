@@ -49,6 +49,8 @@ export function useWorkoutClosure(uid: string) {
     closure: current.state,
     completed: current.completed,
     locked: isClosureLocked(current.state),
+    // The saved workout is about to replace the workout screen.
+    handingOff: !!current.completed && pathname === '/' && controller.finishNavigationPending(),
     canEdit: () => controller.canEdit(),
     start: (action: ClosureAction, session: ActiveWorkout) => controller.startClosure(action, session),
     retry: () => controller.retry(),

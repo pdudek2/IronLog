@@ -383,7 +383,9 @@ test('finish navigation survives screen remounts without replaying the previous 
     await wait()
     h.requests.at(-1)!.resolve({ action: 'finish', workoutId: id, status: 'materialized' })
     await saving
+    assert.equal(h.controller.finishNavigationPending(), true)
     assert.equal(h.controller.consumeFinishedNavigation(true), id)
+    assert.equal(h.controller.finishNavigationPending(), false)
     assert.equal(h.controller.consumeFinishedNavigation(true), null)
     assert.deepEqual(h.states.at(-1)!.completed, { action: 'finish', workoutId: id, status: 'materialized' })
   }

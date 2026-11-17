@@ -61,7 +61,7 @@ async function call(body: unknown, fetchImpl?: (call: ReturnType<typeof doubles>
 const streamed = () => vi.fn().mockResolvedValue({
   ok: true, status: 200,
   body: new ReadableStream({ start(controller) {
-    controller.enqueue(new TextEncoder().encode('data: {"choices":[{"delta":{"content":"Tak."},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'))
+    controller.enqueue(new TextEncoder().encode('data: {"choices":[{"index":0,"delta":{"content":"Tak."},"finish_reason":"stop"}]}\n\ndata: [DONE]\n\n'))
     controller.close()
   } }),
 })
@@ -146,12 +146,30 @@ describe('Coach on the shared key', () => {
     expect(mocks.refundCoachUnits).not.toHaveBeenCalled()
   })
 
-  it('keeps the units for an empty chat answer OpenRouter already billed', async () => {
-    await call(chatBody, () => vi.fn().mockResolvedValue({
-      ok: true, status: 200,
-      body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode('data: [DONE]\n\n')); controller.close() } }),
-    }))
+  const sse = (text: string) => vi.fn().mockResolvedValue({
+    ok: true, status: 200,
+    body: new ReadableStream({ start(controller) { controller.enqueue(new TextEncoder().encode(text)); controller.close() } }),
+  })
+
+  it.each([
+    ['an empty answer', 'data: [DONE]\n\n'],
+    ['an error before any text', ': OPENROUTER PROCESSING\n\ndata: {"error":{"code":502,"message":"Provider returned error"}}\n\n'],
+  ])('gives the unit back for %s, and logs what OpenRouter said', async (_case, text) => {
+    await call(chatBody, () => sse(text))
     expect(mocks.reserveCoachUnits).toHaveBeenCalledOnce()
+    expect(mocks.refundCoachUnits).toHaveBeenCalledWith(reservation(1))
+    expect(console.error).toHaveBeenCalledWith('[ai-chat stream terminal]', expect.objectContaining({ answered: false }))
+  })
+
+  it.each(['length', 'content_filter'])('keeps the unit when the model stopped with %s before any text', async (finishReason) => {
+    await call(chatBody, () => sse(`data: {"choices":[{"index":0,"delta":{},"finish_reason":"${finishReason}"}]}\n\n`))
+    expect(console.error).toHaveBeenCalledWith('[ai-chat stream terminal]', expect.objectContaining({ answered: false, finishReason }))
+    expect(mocks.refundCoachUnits).not.toHaveBeenCalled()
+  })
+
+  it('logs the upstream code and message without content, and keeps the unit once text was sent', async () => {
+    await call(chatBody, () => sse('data: {"choices":[{"index":0,"delta":{"content":"Tak"}}]}\n\ndata: {"error":{"code":"server_error","message":"Upstream timed out"}}\n\n'))
+    expect(console.error).toHaveBeenCalledWith('[ai-chat stream terminal]', expect.objectContaining({ reason: 'upstream-error', answered: true, code: 'server_error', message: 'Upstream timed out' }))
     expect(mocks.refundCoachUnits).not.toHaveBeenCalled()
   })
 

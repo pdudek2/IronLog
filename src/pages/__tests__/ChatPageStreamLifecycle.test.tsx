@@ -54,7 +54,8 @@ vi.mock('react-router-dom', async () => {
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() },
 }))
-vi.mock('framer-motion', () => ({
+vi.mock('framer-motion', async () => ({
+  ...await vi.importActual<object>('framer-motion'),
   motion: new Proxy({}, {
     get: (_target, tag: string | symbol) => {
       if (typeof tag !== 'string') return undefined
@@ -129,7 +130,8 @@ describe('ChatPage stream lifecycle', () => {
     await sendPrompt('Czy progresuję?')
     const first = pendingReplies[0]
 
-    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+    fireEvent.click(screen.getByRole('button', { name: 'More Coach options' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reset conversation' }))
     expect(first.options.signal).toBeInstanceOf(AbortSignal)
     expect(first.options.signal.aborted).toBe(true)
 
@@ -192,7 +194,8 @@ describe('ChatPage stream lifecycle', () => {
     render(<ChatPage />)
     await sendPrompt('Czy progresuję?')
     const pending = pendingReplies[0]
-    fireEvent.click(screen.getByRole('button', { name: 'Reset' }))
+    fireEvent.click(screen.getByRole('button', { name: 'More Coach options' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Reset conversation' }))
 
     act(() => pending.options.onContext({ status: 'limited', unavailableSources: ['records'] }))
     expect(screen.queryByText(/with some data unavailable/)).not.toBeInTheDocument()

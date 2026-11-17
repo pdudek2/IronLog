@@ -107,10 +107,10 @@ test('isolates OpenRouter keys through A → logout → B → A without adopting
   await expectAppReady(page, '/dashboard')
   await openCoach(page, testInfo.project.name)
   await expect.poll(() => page.evaluate(() => window.__ironlogEmulatorTestBridge?.readAuthenticatedUid())).toBe(uidB)
-  await expect(page.getByText('Ask Coach about your training', { exact: true })).toBeVisible()
   // B runs on the shared allowance, never on A's key.
   await expect(page.getByText('20 of 20 left today')).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('account-b-key-gate.png'), fullPage: true })
+  await page.getByRole('button', { name: 'More Coach options' }).click()
   await page.getByRole('button', { name: 'Use your own OpenRouter key', exact: true }).click()
   await expect(page.getByLabel('Your key', { exact: true })).toHaveValue('')
   await expect(page.getByRole('button', { name: 'Remove locally stored key' })).toBeDisabled()

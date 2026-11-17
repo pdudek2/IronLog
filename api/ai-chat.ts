@@ -521,6 +521,7 @@ export async function streamChatReply(
   req: ApiRequest,
   res: ApiResponse,
   onRejected: (error: ApiError) => Promise<ApiError> = async (error) => error,
+  onUnanswered: () => Promise<void> = async () => undefined,
 ): Promise<void> {
   const bridge = createClientAbortBridge(req, res)
 
@@ -592,8 +593,12 @@ export async function streamChatReply(
     if (result.status === 'error') {
       console.error('[ai-chat stream terminal]', {
         reason: result.reason,
+        answered: result.answered,
+        ...result.detail,
         model,
       })
+      // A finish reason (length, content_filter) means the model ran and was billed, and a prompt can provoke it.
+      if (!result.answered && !result.detail?.finishReason) await onUnanswered()
     }
 
     bridge.markTerminal()
@@ -619,11 +624,15 @@ async function reserveFor(userId: string, cost: number, res: ApiResponse): Promi
   return reservation
 }
 
+async function giveBack(reservation: CoachReservation | null): Promise<void> {
+  if (reservation) await refundCoachUnits(reservation).catch((cause: unknown) => console.error('[coach quota refund failed]', cause))
+}
+
 // OpenRouter never accepted the request, so nothing was billed: give the units back. On the shared key a rejected
 // key, spent credit or missing model is the owner's problem, not the user's key.
 async function notAccepted(error: ApiError, reservation: CoachReservation | null): Promise<ApiError> {
   if (!reservation || !error.code || !UPSTREAM_REJECTED.has(error.code)) return error
-  await refundCoachUnits(reservation).catch((cause: unknown) => console.error('[coach quota refund failed]', cause))
+  await giveBack(reservation)
   if (!SERVER_KEY_PROBLEM.has(error.code)) return error
   console.error('[coach shared key rejected]', { code: error.code })
   return coachUnavailable()
@@ -716,7 +725,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     }
 
     const reservation = shared ? await reserveFor(userId, 1, res) : null
-    await streamChatReply(apiKey, model, context, messages, req, res, (error) => notAccepted(error, reservation))
+    await streamChatReply(apiKey, model, context, messages, req, res, (error) => notAccepted(error, reservation), () => giveBack(reservation))
     return
   } catch (error) {
     if (res.headersSent || res.writableEnded || res.destroyed) return

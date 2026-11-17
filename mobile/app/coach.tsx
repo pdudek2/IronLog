@@ -1,7 +1,7 @@
 import CoachPlanPanel from '../src/CoachPlanPanel'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AppState, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { AppState, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -16,6 +16,7 @@ import { nativeCoachDependencies } from '../src/coachNative'
 import { markdownBlocks, markdownInline } from '../src/coachMarkdown'
 import type { AiContextMetadata } from '../../src/lib/aiContext'
 import { colors, pageTitle, primaryGradient } from '../src/theme'
+import { BottomSheet } from '../src/BottomSheet'
 import { Icon } from '../src/icons'
 import { resetTimeLabel } from '../../src/shared/coachQuota'
 
@@ -61,13 +62,9 @@ function Coach({ uid }: { uid: string }) {
   const [draft, setDraft] = useState('')
   const [reveal, setReveal] = useState(false)
   const [input, setInput] = useState('')
-  const scroll = useRef<ScrollView>(null)
   const outer = useRef<ScrollView>(null)
-  const composerY = useRef(0)
-  const chatY = useRef(0)
-  const composerFocused = useRef(false)
-  const { height } = useWindowDimensions()
   const nearBottom = useRef(true)
+  const [more, setMore] = useState(false)
   const conversation = state.messages.length > 0
   const configured = controller.ownKey
   const ready = configured || controller.sharedReady
@@ -77,7 +74,6 @@ function Coach({ uid }: { uid: string }) {
     : limit ? (limit.code === 'daily-limit' ? `Today's Coach limit is used up. It resets at ${resetTimeLabel(limit.resetAt)}.` : `Coach has reached today's limit for everyone. It resets at ${resetTimeLabel(limit.resetAt)}.`)
     : state.quota ? `${controller.remaining} of ${state.quota.limit} left today` : null
   useEffect(() => { void controller.load(); return () => controller.dispose() }, [controller])
-  useEffect(() => { const subscription = Keyboard.addListener('keyboardDidShow', () => { if (composerFocused.current) outer.current?.scrollTo({ y: Math.max(0, composerY.current - 80), animated: true }) }); return () => subscription.remove() }, [])
   useFocusEffect(useCallback(() => {
     controller.setActive(AppState.currentState === 'active')
     const subscription = AppState.addEventListener('change', next => { controller.setActive(next === 'active'); if (next !== 'active') setReveal(false) })
@@ -109,72 +105,89 @@ function Coach({ uid }: { uid: string }) {
   </View> : state.key ? <View style={s.collapsed}>
     <View style={s.grow}><Text style={s.boldLabel}>OpenRouter key</Text><Text style={s.small}>{state.validation === 'valid' ? 'Saved securely on this device.' : state.validation === 'checking' ? 'Verifying key…' : 'Needs verification.'}</Text></View>
     <Button onPress={openSettings}>Settings</Button>
-  </View> : <View style={s.gate}>
+  </View> : sharedOff ? <View style={s.gate}>
     <Text style={s.gateTitle}>Ask Coach about your training</Text>
-    {sharedOff
-      ? <Text style={s.description}>Coach is not available right now. You can use it with your own OpenRouter key, kept on this device.</Text>
-      : <Text style={s.description}>To answer, Coach sends your question, profile, check-ins, workouts and records to OpenRouter and the AI model provider.{' '}
-        <Text accessibilityRole="link" onPress={() => void Linking.openURL('https://getshear.vercel.app/privacy').catch(() => undefined)} style={s.link}>Privacy policy</Text></Text>}
-    <View style={s.left}><Button primary={sharedOff} onPress={openSettings}>Use your own OpenRouter key</Button></View>
-  </View>
+    <Text style={s.description}>Coach is not available right now. You can use it with your own OpenRouter key, kept on this device.</Text>
+    <View style={s.left}><Button primary onPress={openSettings}>Use your own OpenRouter key</Button></View>
+  </View> : null
+  const openPrivacy = () => void Linking.openURL('https://getshear.vercel.app/privacy').catch(() => undefined)
+  const top = <>
+    <View style={s.heading}>
+      <Text accessibilityRole="header" style={s.title}>Coach</Text>
+      <View style={s.headerActions}>
+        <View style={s.tabs}>{(['chat', 'plan'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => { if (value === tab) return; controller.cancel(); setTab(value) }} style={[s.tab, tab === value && s.tabActive]}><Text style={[s.buttonText, tab === value && { color: colors.accentText }]}>{value === 'chat' ? 'Chat' : 'Plan'}</Text></Pressable>)}</View>
+        <Pressable accessibilityRole="button" accessibilityLabel="More Coach options" onPress={() => setMore(true)} style={({ pressed }) => [s.more, pressed && s.pressed]}><Icon name="more" size={20} /></Pressable>
+      </View>
+    </View>
+    {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
+  </>
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} style={s.screen} edges={['top']}><StatusBar style="light" />
     <HistoryHeader />
     <KeyboardAvoidingView style={s.grow} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <View style={s.workspace}>
-        <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
-          <View style={s.heading}><Text accessibilityRole="header" style={s.title}>Coach</Text></View>
-          <View style={s.tabs}>{(['chat', 'plan'] as const).map(value => <Pressable key={value} accessibilityRole="tab" accessibilityState={{ selected: tab === value }} onPress={() => { if (value === tab) return; controller.cancel(); setTab(value) }} style={[s.tab, tab === value && s.tabActive]}><Text style={[s.buttonText, tab === value && { color: colors.accentText }]}>{value === 'chat' ? 'Chat' : 'Plan'}</Text></Pressable>)}</View>
-          {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
-          {read && tab === 'chat' && !conversation && <View style={[s.read, !configured && s.readAfterGate]}>
-            <Text accessibilityRole="header" style={s.readTitle}>{read.title}</Text>
-            <Text style={s.readEyebrow}>{read.eyebrow}</Text>
-            <Text style={s.body}>{read.body}</Text>
+      <View style={[s.grow, tab !== 'chat' && { display: 'none' }]}>
+        <ScrollView ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" scrollEventThrottle={16}
+          onScroll={event => { navigation.onScroll(event); const e = event.nativeEvent; nearBottom.current = e.contentSize.height - e.layoutMeasurement.height - e.contentOffset.y < 96 }}
+          onContentSizeChange={() => { if (conversation && nearBottom.current) outer.current?.scrollToEnd({ animated: false }) }}>
+          {top}
+          {!conversation ? <View style={s.empty}>
+            {read ? <View style={s.read}>
+              <Text accessibilityRole="header" style={s.readTitle}>{read.title}</Text>
+              <Text style={s.readEyebrow}>{read.eyebrow}</Text>
+              <Text style={s.body}>{read.body}</Text>
+            </View> : <>
+              <Text style={s.emptyTitle}>{ready ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</Text>
+              <Text style={s.small}>{ready ? 'Ask about your week, next workout, readiness or an exercise plateau.' : 'Your analysis and follow-up questions will appear here.'}</Text>
+            </>}
+            {!configured && !sharedOff && <Text style={s.note}>Coach sends your question, profile, check-ins, workouts and records to OpenRouter and the AI model provider.{' '}
+              <Text accessibilityRole="link" onPress={openPrivacy} style={s.link}>Privacy policy</Text></Text>}
+            {ready && <View style={s.prompts}><Text accessibilityRole="header" style={s.nextTitle}>Try asking</Text>{prompts.map(prompt => <Pressable accessibilityRole="button" disabled={!controller.canSend} accessibilityState={{ disabled: !controller.canSend }} key={prompt} onPress={() => send(prompt)} style={[s.prompt, !controller.canSend && s.disabled]}><Text style={s.promptText}>{prompt}</Text><Icon name="chevron-right" /></Pressable>)}</View>}
+          </View> : <View style={s.messages}>
+            {state.messages.map(message => message.role === 'user'
+              ? <View key={message.id} accessible accessibilityLabel={`You: ${message.content}`} style={s.userMessage}><Text selectable style={s.userText}>{message.content}</Text></View>
+              : <View key={message.id}><Markdown content={message.content} /><ContextNotice context={message.context} /></View>)}
+            {state.generation === 'streaming' && <View>{state.partial ? <Markdown content={state.partial} /> : <Text style={s.description}>Analyzing context…</Text>}<ContextNotice context={state.context} /></View>}
           </View>}
-          <View style={tab !== 'chat' && { display: 'none' }}><View onLayout={event => { chatY.current = event.nativeEvent.layout.y }} style={[s.chat, conversation && { height: Math.max(336, height - 336) }]}>
-          {conversation && <View style={s.toolbar}><Button onPress={() => { controller.reset(); nearBottom.current = true }} label="Reset conversation">Reset</Button></View>}
-          {!conversation ? <View style={[s.empty, ready && { paddingTop: 0 }]}>
-            {!read && <Text style={s.emptyTitle}>{ready ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</Text>}
-            {!read && <Text style={s.small}>{ready ? 'Ask about your week, next workout, readiness or an exercise plateau.' : 'Your analysis and follow-up questions will appear here.'}</Text>}
-            {ready && <View style={s.prompts}><Text accessibilityRole="header" style={s.nextTitle}>Next</Text>{prompts.map(prompt => <Pressable accessibilityRole="button" disabled={!controller.canSend} accessibilityState={{ disabled: !controller.canSend }} key={prompt} onPress={() => send(prompt)} style={[s.prompt, !controller.canSend && s.disabled]}><Text style={s.promptText}>{prompt}</Text><Icon name="chevron-right" size={16} /></Pressable>)}</View>}
-          </View> : <ScrollView ref={scroll} style={s.grow} nestedScrollEnabled contentContainerStyle={s.messages} keyboardShouldPersistTaps="handled"
-            onScroll={({ nativeEvent: e }) => { nearBottom.current = e.contentSize.height - e.layoutMeasurement.height - e.contentOffset.y < 96 }} scrollEventThrottle={32}
-            onContentSizeChange={() => { if (nearBottom.current) scroll.current?.scrollToEnd({ animated: false }) }}>
-            {state.messages.map(message => <View key={message.id} style={[s.message, message.role === 'user' && s.userMessage]}>
-              <Text style={[s.role, message.role === 'user' && s.userRole]}>{message.role === 'user' ? 'YOU' : 'AI COACH'}</Text><Markdown content={message.content} /><ContextNotice context={message.context} />
-            </View>)}
-            {state.generation === 'streaming' && <View style={s.message}><Text style={s.role}>AI COACH</Text>{state.partial ? <Markdown content={state.partial} /> : <Text style={s.description}>Analyzing context…</Text>}<ContextNotice context={state.context} /></View>}
-          </ScrollView>}
           {['failed', 'interrupted'].includes(state.generation) && <View style={s.feedback}><Text accessibilityRole="alert" style={state.error ? s.error : s.description}>{state.error ?? 'Generation stopped.'}</Text>{!limit && <Button disabled={!controller.canSend} onPress={() => { nearBottom.current = true; controller.retry() }}>Retry AI response</Button>}</View>}
-          {ready && <View style={s.composer} onLayout={event => { composerY.current = event.nativeEvent.layout.y + chatY.current }}>
-            <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.accentText} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !limit)}
-              onFocus={() => { composerFocused.current = true }} onBlur={() => { composerFocused.current = false }}
-              placeholder="Ask about progress or your last session" placeholderTextColor={colors.mutedSoft} style={s.composerInput} textAlignVertical="top" />
-            <View style={s.sendRow}>{!!allowance && <Text style={[s.small, s.grow]}>{allowance}</Text>}<Button primary disabled={!input.trim() || !controller.canSend} onPress={() => send(input)}>{state.generation === 'streaming' ? 'Sending…' : 'Send'}</Button></View>
-          </View>}
-          </View>
-          </View><View style={tab !== 'plan' && { display: 'none' }}><CoachPlanPanel uid={uid} controller={controller} /></View>
           {configured && keyPanel}
         </ScrollView>
+        {ready && <View style={s.composer}>
+          <View style={s.composerField}>
+            <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.accentText} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !limit)}
+              placeholder="Ask about your training" placeholderTextColor={colors.mutedSoft} style={s.composerInput} textAlignVertical="center" />
+            <Pressable accessibilityRole="button" accessibilityLabel={state.generation === 'streaming' ? 'Sending' : 'Send'} accessibilityState={{ disabled: !input.trim() || !controller.canSend }} disabled={!input.trim() || !controller.canSend} onPress={() => send(input)}
+              style={({ pressed }) => [s.send, !input.trim() || !controller.canSend ? s.sendDisabled : s.sendOn, pressed && s.pressed]}>
+              <Icon name="arrow-up" size={18} color={!input.trim() || !controller.canSend ? colors.mutedSoft : colors.onPrimary} />
+            </Pressable>
+          </View>
+          {!!(configured ? 'Responses are billed to your OpenRouter API key.' : allowance) && <Text style={s.composerNote}>{configured ? 'Responses are billed to your OpenRouter API key.' : allowance}</Text>}
+        </View>}
       </View>
+      <View style={[s.grow, tab !== 'plan' && { display: 'none' }]}><CoachPlanPanel uid={uid} controller={controller} top={top} bottom={configured ? keyPanel : null} onScroll={navigation.onScroll} /></View>
     </KeyboardAvoidingView>
-  <BottomNavigation {...navigation} />
+    <BottomNavigation {...navigation} />
+    {more && <BottomSheet title="Coach" onClose={() => setMore(false)}>{close => <>
+      {tab === 'chat' && conversation && <Pressable accessibilityRole="button" onPress={() => close(() => { controller.reset(); nearBottom.current = true })} style={({ pressed }) => [s.sheetRow, pressed && s.pressed]}><Text style={s.sheetRowText}>Reset conversation</Text></Pressable>}
+      {!configured && !settings && <Pressable accessibilityRole="button" onPress={() => close(openSettings)} style={({ pressed }) => [s.sheetRow, pressed && s.pressed]}><Text style={s.sheetRowText}>Use your own OpenRouter key</Text></Pressable>}
+      <Pressable accessibilityRole="link" onPress={() => close(openPrivacy)} style={({ pressed }) => [s.sheetRow, pressed && s.pressed]}><Text style={s.sheetRowText}>Privacy policy</Text><Icon name="chevron-right" /></Pressable>
+    </>}</BottomSheet>}
   </SafeAreaView>
 }
 const s = StyleSheet.create({
-  tabs: { flexDirection: 'row', alignSelf: 'flex-start', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', marginBottom: 14 }, tab: { minHeight: 44, paddingHorizontal: 18, justifyContent: 'center', borderRadius: 9 }, tabActive: { backgroundColor: colors.choiceSelected },
+  heading: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  tabs: { flexDirection: 'row', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)' }, tab: { minHeight: 44, paddingHorizontal: 16, justifyContent: 'center', borderRadius: 9 }, tabActive: { backgroundColor: colors.choiceSelected },
+  more: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 14 }, pressed: { opacity: 0.6 },
   screen: { flex: 1, backgroundColor: colors.background }, grow: { flex: 1 },
-  workspace: { flex: 1 },
-  
-  content: { padding: 16, paddingBottom: 20 }, heading: { paddingTop: 0, paddingBottom: 0, gap: 6, marginBottom: 14 },
+  content: { padding: 16, paddingBottom: 24 },
   title: pageTitle,
-  nextTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
-  read: { gap: 4, paddingBottom: 18, paddingTop: 4 }, readAfterGate: { paddingTop: 24 },
+  nextTitle: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13, marginBottom: 4 },
+  read: { gap: 4, paddingBottom: 8 },
   readEyebrow: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   readTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 22, letterSpacing: -0.44, lineHeight: 27 },
-  subtitle: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, color: colors.muted },
   body: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.text },
   description: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 24, color: colors.muted },
   small: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12.48, lineHeight: 18.1, color: colors.muted },
+  note: { fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 19.5, color: colors.muted },
   gate: { paddingVertical: 8, gap: 2 },
   gateTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 23, color: colors.text },
   left: { alignItems: 'flex-start', marginTop: 7.6 },
@@ -182,22 +195,27 @@ const s = StyleSheet.create({
   buttonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 }, button: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', minHeight: 44, minWidth: 44, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   buttonText: { fontFamily: 'InstrumentSans_700Bold', fontSize: 13, color: colors.muted }, primaryText: { color: colors.onPrimary },
   primary: { borderColor: 'transparent', backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient }, disabled: { opacity: 0.45 },
-  empty: { paddingTop: 16, paddingBottom: 0, gap: 8 }, emptyTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 20, lineHeight: 26, letterSpacing: -0.32, color: colors.text },
-  prompts: { gap: 2 }, prompt: { minHeight: 48, paddingVertical: 6, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }, promptText: { flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 20, color: colors.text },
+  empty: { paddingTop: 4, gap: 16 }, emptyTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 20, lineHeight: 26, letterSpacing: -0.32, color: colors.text },
+  prompts: {}, prompt: { minHeight: 48, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, borderBottomWidth: 1, borderColor: colors.line }, promptText: { flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 20, color: colors.text },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
-  settings: { backgroundColor: 'rgba(38, 33, 30,0.46)', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', padding: 14.4, gap: 12 },
+  settings: { backgroundColor: 'rgba(38, 33, 30,0.46)', borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', padding: 14.4, gap: 12, marginBottom: 12 },
   settingsTitle: { fontFamily: 'InstrumentSans_700Bold', fontSize: 20, color: colors.textStrong, flexShrink: 1 },
   label: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12, color: colors.muted },
   keyInput: { borderWidth: 1, borderColor: colors.line, minHeight: 44, paddingHorizontal: 12, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.04)', color: colors.textStrong, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },
   boldLabel: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 24, color: colors.textStrong }, model: { gap: 8, borderTopWidth: 1, borderColor: colors.line, paddingTop: 12 },
-  collapsed: { paddingVertical: 14.4, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', flexDirection: 'row', alignItems: 'center', gap: 8 },
-  chat: { paddingVertical: 12.8, marginTop: 0, marginBottom: 16 }, toolbar: { flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 8 },
-  messages: { gap: 12.8 }, message: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', paddingVertical: 14.4, paddingHorizontal: 16, borderRadius: 0 },
-  userMessage: { alignSelf: 'flex-end', maxWidth: '100%', borderColor: 'rgba(244, 238, 232, 0.156)', experimental_backgroundImage: 'linear-gradient(135deg,rgba(244, 238, 232, 0.09),rgba(244, 238, 232, 0.036))' },
-  role: { fontFamily: 'InstrumentSans_700Bold', fontSize: 11, lineHeight: 16.3, letterSpacing: 0.87, color: colors.muted, marginBottom: 5.6 }, userRole: { color: colors.accentText },
+  collapsed: { paddingVertical: 14.4, marginTop: 16, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(244, 238, 232,0.18)', flexDirection: 'row', alignItems: 'center', gap: 8 },
+  messages: { gap: 28 },
+  userMessage: { alignSelf: 'flex-end', maxWidth: '85%', borderRadius: 14, backgroundColor: colors.surfaceHigh, paddingVertical: 10, paddingHorizontal: 15 },
+  userText: { fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, color: colors.textStrong },
   markdownHeading: { fontFamily: 'InstrumentSans_700Bold', fontSize: 16.8, lineHeight: 24 }, bold: { fontFamily: 'InstrumentSans_700Bold' }, italic: { fontStyle: 'italic' }, code: { fontFamily: 'InstrumentSans_600SemiBold', backgroundColor: 'rgba(255,255,255,0.07)', fontSize: 13 },
   context: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: 8 },
   feedback: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: colors.line, gap: 8 }, error: { fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20, color: colors.accentText },
-  composer: { paddingTop: 11.2, gap: 9.6 },
-  composerInput: { minHeight: 50, maxHeight: 112, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07)', fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 20, color: colors.textStrong }, sendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12 },
+  composer: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6, gap: 6, backgroundColor: colors.background },
+  composerField: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, borderRadius: 19.2, padding: 4.8, paddingLeft: 16, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 14px 30px -12px rgba(0, 0, 0, 0.8)' },
+  composerInput: { flex: 1, minHeight: 44, maxHeight: 112, paddingVertical: 11, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 20, color: colors.textStrong },
+  send: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
+  sendOn: { backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient }, sendDisabled: { backgroundColor: 'rgba(255,255,255,0.06)' },
+  composerNote: { paddingHorizontal: 16, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 17, color: colors.muted },
+  sheetRow: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between', minHeight: 50 },
+  sheetRowText: { color: colors.text, flexShrink: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 15.5 },
 })

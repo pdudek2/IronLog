@@ -12,9 +12,12 @@ export type ChatStreamFailureReason =
   | 'unexpected-eof'
   | 'empty-response'
 
+// What OpenRouter said when it failed, for the logs: never message content.
+export interface ChatStreamFailureDetail { code?: string; message?: string; finishReason?: string }
+
 export type OpenRouterStreamResult =
   | { status: 'done' }
-  | { status: 'error'; reason: ChatStreamFailureReason }
+  | { status: 'error'; reason: ChatStreamFailureReason; answered: boolean; detail?: ChatStreamFailureDetail }
   | { status: 'aborted' }
 
 export interface PipeOpenRouterStreamOptions {
@@ -57,6 +60,14 @@ function takeSseBlock(buffer: string): { block: string; rest: string } | null {
   return {
     block: buffer.slice(0, separator.index),
     rest: buffer.slice(separator.index + separator[0].length),
+  }
+}
+
+function upstreamErrorDetail(error: unknown): ChatStreamFailureDetail {
+  if (!isRecord(error)) return { message: String(error).slice(0, 200) }
+  return {
+    ...(error.code !== undefined ? { code: String(error.code).slice(0, 40) } : {}),
+    ...(typeof error.message === 'string' ? { message: error.message.slice(0, 200) } : {}),
   }
 }
 
@@ -119,7 +130,7 @@ export async function pipeOpenRouterStream({
     if (isTerminal) terminalSent = true
     return true
   }
-  const fail = async (reason: ChatStreamFailureReason): Promise<OpenRouterStreamResult> => {
+  const fail = async (reason: ChatStreamFailureReason, detail?: ChatStreamFailureDetail): Promise<OpenRouterStreamResult> => {
     if (!terminalSent) {
       const written = await writeSafely(
         { type: 'error', message: GENERIC_STREAM_ERROR },
@@ -129,7 +140,7 @@ export async function pipeOpenRouterStream({
     }
 
     await cancelReader('stream-failed')
-    return { status: 'error', reason }
+    return { status: 'error', reason, answered: hasContent, ...(detail ? { detail } : {}) }
   }
 
   signal.addEventListener('abort', onAbort, { once: true })
@@ -171,12 +182,12 @@ export async function pipeOpenRouterStream({
           let event: unknown
           try { event = JSON.parse(data) } catch { return await fail('invalid-event') }
           if (!isRecord(event)) return await fail('invalid-event')
-          if (event.error) return await fail('upstream-error')
+          if (event.error) return await fail('upstream-error', upstreamErrorDetail(event.error))
           if (!Array.isArray(event.choices)) return await fail('invalid-event')
           for (const choice of event.choices) {
             if (!isRecord(choice) || choice.index !== 0) continue
             if (choice.finish_reason != null) {
-              if (choice.finish_reason !== 'stop') return await fail('upstream-error')
+              if (choice.finish_reason !== 'stop') return await fail('upstream-error', { finishReason: String(choice.finish_reason).slice(0, 40) })
               finished = true
             }
             if (isRecord(choice.delta) && choice.delta.content != null) {

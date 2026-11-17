@@ -180,7 +180,7 @@ export default function DashboardScreen() {
   const choiceKey = chosen && target ? `${chosen.template.id}:${target.dayIndex}` : ''
   const choice: TodayChoice = todayChoice?.key === choiceKey ? todayChoice : { key: choiceKey, budgetMin: null, straight: false, fullSets: false, proposals: [] }
   const planToday = (budgetMin: number | null, straight: boolean, fullSets: boolean) => {
-    if (active.state.status !== 'empty' || !chosen || !target || !data || state.status !== 'ready' || state.fromCache
+    if (view.active.status !== 'empty' || !chosen || !target || !data || state.status !== 'ready' || state.fromCache
       || templatesState.status !== 'ready' || templatesState.fromCache) return null
     try {
       const next = buildNextSessionRecommendation(chosen.template, target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now(), units, {

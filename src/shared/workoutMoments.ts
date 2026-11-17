@@ -91,7 +91,8 @@ export function workoutSteps(workout: MomentWorkout, sessions: StepSession[]) {
     exerciseName: exercise.name,
     top,
     best,
-    delta: top.weight - (best ? previousBest : previous.bestSetWeight),
+    // Stored weights carry up to 4 decimals (lbs converted to kg); subtraction must not print float noise.
+    delta: Math.round((top.weight - (best ? previousBest : previous.bestSetWeight)) * 10_000) / 10_000,
     bars: [
       ...shown.map((step) => ({ ...step, height: height(step.weight), current: false })),
       { key: workout.id, weight: top.weight, height: height(top.weight), current: true },

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { COACH_PLAN_COST } from '../../src/shared/coachQuota'
 import { AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
@@ -73,7 +74,9 @@ export default function CoachPlanPanel({ uid, controller }: { uid: string; contr
       <View style={s.field}><Text style={s.label}>Additional notes</Text><TextInput selectionColor={colors.accentText} accessibilityLabel="Additional notes" style={[s.input, s.notes]} textAlignVertical="top" multiline placeholder="E.g. 60 min, no deadlifts" placeholderTextColor={colors.mutedSoft} value={brief.notes} onChangeText={v => change('notes',v)} maxLength={400} editable={!disabled} /></View>
       {!!planError && <Text accessibilityRole="alert" style={s.error}>{planError}</Text>}
       {planGeneration === 'interrupted' && <Text style={s.muted}>Generation stopped. Generate again when ready.</Text>}
-      <View style={s.actions}><Text style={s.muted}>Coach adds your profile, history and exercise library to the brief.</Text><Action primary disabled={!controller.canSend || disabled} onPress={() => { if (brief.goal.trim().length < 2) { setGoalError(true); goal.current?.focus(); return } setGoalError(false); void controller.generatePlan(brief) }}>{generating ? 'Generating plan…' : 'Generate plan'}</Action></View>
+      <View style={s.actions}><Text style={s.muted}>{controller.canSend && !controller.canPlan
+        ? `A plan uses ${COACH_PLAN_COST} of today's ${controller.state.quota?.limit ?? ''} Coach messages; ${controller.remaining} left.`
+        : 'Coach adds your profile, history and exercise library to the brief.'}</Text><Action primary disabled={!controller.canPlan || disabled} onPress={() => { if (brief.goal.trim().length < 2) { setGoalError(true); goal.current?.focus(); return } setGoalError(false); void controller.generatePlan(brief) }}>{generating ? 'Generating plan…' : 'Generate plan'}</Action></View>
       {generating && <Action onPress={() => controller.cancel()}>Stop generation</Action>}
     </View>
     {plan && selected && <View style={s.section}>

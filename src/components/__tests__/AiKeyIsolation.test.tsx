@@ -7,12 +7,15 @@ import { useAuthStore } from '../../store/authStore'
 import { clearOpenRouterApiKey, getOpenRouterApiKey, hasOpenRouterApiKey, setOpenRouterApiKey } from '../../lib/aiKeyStorage'
 
 const mocks = vi.hoisted(() => ({
+  // A server without a shared key: the pre-shared-key behaviour these tests cover.
+  fetchCoachQuota: vi.fn(async () => ({ used: 0, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: false })),
   fetchAvailableOpenRouterModels: vi.fn(),
   streamChatReply: vi.fn(),
 }))
 vi.mock('../../lib/chatService', () => ({
   AiApiError: class AiApiError extends Error {},
   fetchAvailableOpenRouterModels: mocks.fetchAvailableOpenRouterModels,
+  fetchCoachQuota: mocks.fetchCoachQuota,
   streamChatReply: mocks.streamChatReply,
   generateTrainingPlan: vi.fn(),
 }))
@@ -33,6 +36,7 @@ beforeEach(() => {
   account('a')
   mocks.fetchAvailableOpenRouterModels.mockReset().mockResolvedValue([{ id: 'claude-test', label: 'OpenRouter Test' }])
   mocks.streamChatReply.mockReset().mockResolvedValue('Response')
+  mocks.fetchCoachQuota.mockResolvedValue({ used: 0, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: false })
 })
 
 describe('account-owned OpenRouter API keys', () => {
@@ -115,7 +119,7 @@ describe('account-owned OpenRouter API keys', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled())
     account('b')
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Set up key' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use your own OpenRouter key' }))
     expect(screen.getByLabelText('Your key')).toHaveValue('')
     fireEvent.change(screen.getByLabelText('Your key'), { target: { value: KEY_B } })
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
@@ -128,12 +132,26 @@ describe('account-owned OpenRouter API keys', () => {
     expect(getOpenRouterApiKey()).toBe(KEY_A)
   })
 
+  it('on the shared key B asks without any key, never with A’s', async () => {
+    mocks.fetchCoachQuota.mockResolvedValue({ used: 0, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: true })
+    setOpenRouterApiKey(KEY_A)
+    render(<ChatPage />)
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled())
+    account('b')
+    const composer = await screen.findByRole('textbox', { name: 'Message AI Coach' })
+    await waitFor(() => expect(composer).toBeEnabled())
+    fireEvent.change(composer, { target: { value: 'Jak ćwiczyć?' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
+    await waitFor(() => expect(mocks.streamChatReply).toHaveBeenCalledTimes(1))
+    expect(mocks.streamChatReply.mock.calls[0]![0]).toMatchObject({ apiKey: '' })
+  })
+
   it('moves focus into the key panel and back to its button when the panel closes', async () => {
     account('b')
     render(<ChatPage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Set up key' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Use your own OpenRouter key' }))
     await waitFor(() => expect(screen.getByLabelText('Your key')).toHaveFocus())
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Set up key' })).toHaveFocus())
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Use your own OpenRouter key' })).toHaveFocus())
   })
 })

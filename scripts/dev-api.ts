@@ -42,7 +42,7 @@ function applyCors(req: ApiRequest, res: ApiResponse) {
     res.setHeader('Vary', 'Origin')
     res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type')
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-    res.setHeader('Access-Control-Expose-Headers', 'X-IronLog-AI-Context')
+    res.setHeader('Access-Control-Expose-Headers', 'X-IronLog-AI-Context, X-IronLog-AI-Quota')
   }
 }
 

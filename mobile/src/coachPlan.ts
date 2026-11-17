@@ -3,12 +3,13 @@ import { kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnit
 import type { TemplateExercise } from './workoutLaunch'
 import { normalizePlanDraft, type PlanDraft } from './planEditor'
 import { boundedJson, CoachApiError } from './coachService'
+import { AI_QUOTA_HEADER, parseQuotaHeader, type CoachQuotaUsage } from '../../src/shared/coachQuota'
 
 export interface PlanBrief {
   goal: string; daysPerWeek: number; experience: string; equipment: string[]; focus: string; notes: string
 }
 export interface GeneratedPlan { name: string; summary: string; days: { name: string; exercises: TemplateExercise[] }[] }
-export interface PlanResult { plan: GeneratedPlan; context: AiContextMetadata }
+export interface PlanResult { plan: GeneratedPlan; context: AiContextMetadata; quota?: CoachQuotaUsage | null }
 export interface CoachPlanRequest { key: string; brief: PlanBrief; signal: AbortSignal }
 export const PLAN_RESPONSE_LIMIT = 128 * 1024
 export const defaultPlanBrief = (): PlanBrief => ({ goal: '', daysPerWeek: 3, experience: 'intermediate', equipment: ['barbell', 'dumbbell', 'bodyweight'], focus: '', notes: '' })
@@ -21,7 +22,7 @@ export function planRequestBody(key: string, brief: PlanBrief): string {
     || brief.equipment.length > 6 || brief.equipment.some(item => !['barbell', 'dumbbell', 'cable', 'machine', 'bodyweight', 'kettlebell'].includes(item))) {
     throw new CoachApiError('Check the workout brief before generating a plan.')
   }
-  return JSON.stringify({ apiKey: key, mode: 'plan', planRequest: brief })
+  return JSON.stringify({ ...(key ? { apiKey: key } : {}), mode: 'plan', planRequest: brief })
 }
 function invalid(): never { throw new CoachApiError('AI Coach returned an invalid plan. Generate again when ready.') }
 function record(value: unknown): Record<string, unknown> {
@@ -59,7 +60,7 @@ export async function consumePlanResponse(response: Response, signal: AbortSigna
     || Number(response.headers.get('content-length')) > PLAN_RESPONSE_LIMIT) return invalid()
   let payload: unknown
   try { payload = await boundedJson(response, signal, PLAN_RESPONSE_LIMIT) } catch { return invalid() }
-  return { plan: parseGeneratedPlan(payload), context: parseAiContextHeader(response.headers) }
+  return { plan: parseGeneratedPlan(payload), context: parseAiContextHeader(response.headers), quota: parseQuotaHeader(response.headers.get(AI_QUOTA_HEADER)) }
 }
 
 export function generatedPlanDraft(plan: GeneratedPlan, units: WeightUnits, newId: () => string, save: boolean): PlanDraft {

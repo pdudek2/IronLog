@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { BrandLink } from '../components/AuthShell'
 import { FEEDBACK_EMAIL } from '../shared/feedbackMail'
 
-const UPDATED = '16 November 2026'
+const UPDATED = '17 November 2026'
 
 // Public: testers read it before creating an account, and Google Play links to its deletion section.
 export default function PrivacyPage() {
@@ -26,6 +26,7 @@ export default function PrivacyPage() {
           <li>Profile: your name, training goal, weekly workout target and units.</li>
           <li>Training: your plans, workouts, sets with weight, reps and the time you logged them, your own exercises and your records.</li>
           <li>Daily check-in, optional: sleep, mood and soreness. This may count as health data, so we only keep it when you fill it in.</li>
+          <li>Coach usage: how many Coach messages you send each day, to apply the daily limit.</li>
           <li>Technical data: your IP address and basic request details when you use the app.</li>
         </ul>
         <p>We don't show ads or use analytics trackers.</p>
@@ -43,7 +44,7 @@ export default function PrivacyPage() {
           <li>Google (Firebase and Google Fonts): sign-in, database, test app distribution and web fonts.</li>
           <li>Vercel: hosting.</li>
           <li>Proton: email.</li>
-          <li>OpenRouter and the AI model provider you choose, only if you use Coach with your own OpenRouter key. Coach sends them your profile, recent check-ins, workouts and records so it can answer. Your key passes through our server and is not stored there, and neither are the conversations.</li>
+          <li>OpenRouter and the company that runs the AI model (OpenAI, Microsoft Azure or Amazon Web Services), only when you use Coach. Coach sends them your question, profile, recent check-ins, workouts and records so it can answer. We don't store the conversations. If you use your own OpenRouter key, it passes through our server and is not stored there.</li>
         </ul>
         <p>Some of these providers process data outside the European Economic Area, mainly in the United States. These transfers rely on the EU-US Data Privacy Framework or the European Commission's standard contractual clauses.</p>
 

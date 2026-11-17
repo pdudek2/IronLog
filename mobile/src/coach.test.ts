@@ -80,3 +80,48 @@ test('generation also releases transport on early response rejection',async()=>{
  const {controller:c,replies:r}=await setup();c.send('question');r[0].result.reject(new Error('Invalid context header'));await tick()
  assert.equal(r[0].request.signal.aborted,true);assert.equal(c.state.generation,'failed')
 })
+test('without a key Coach runs on the shared allowance, sends no key and counts down', async()=>{
+ const {controller:c,replies:r}=await setup({loadKey:async()=>null,quota:async()=>({used:3,limit:20,resetAt:'2026-11-17T00:00:00.000Z',shared:true})})
+ await tick();assert.equal(c.canSend,true);assert.equal(c.send('question'),true)
+ assert.equal(r[0].request.key,'');assert.equal(JSON.parse(coachRequestBody(r[0].request.key,c.state.messages)).apiKey,undefined)
+ r[0].request.onQuota?.({used:4,limit:20});assert.equal(c.remaining,16)
+})
+test('a spent allowance blocks sending without marking any key invalid, and a plan needs 5 units', async()=>{
+ const resetAt=new Date(Date.now()+3_600_000).toISOString();let used=16
+ const {controller:c,replies:r}=await setup({loadKey:async()=>null,quota:async()=>({used,limit:20,resetAt,shared:true})})
+ await tick();assert.equal(c.canSend,true);assert.equal(c.canPlan,false)
+ used=20;c.send('question');r[0].result.reject(new CoachApiError('limit','daily-limit',resetAt));await tick();await tick()
+ assert.equal(c.state.validation,'none');assert.deepEqual(c.activeLimit,{code:'daily-limit',resetAt});assert.equal(c.canSend,false)
+})
+test('a server without a shared key leaves only the own-key path', async()=>{
+ const {controller:c}=await setup({loadKey:async()=>null,quota:async()=>({used:0,limit:20,resetAt:'2026-11-17T00:00:00.000Z',shared:false})})
+ await tick();assert.equal(c.sharedReady,false);assert.equal(c.canSend,false)
+})
+test('limit and unavailable codes become readable messages that keep the reset time', async()=>{
+ const respond=(body:object,status:number)=>async()=>new Response(JSON.stringify(body),{status,headers:{'Content-Type':'application/json'}})
+ const call=(body:object,status:number)=>coachPost('',  'ai-chat','{}',new AbortController().signal,async()=>'token',respond(body,status) as typeof fetch)
+ await assert.rejects(call({error:'x',code:'daily-limit',resetAt:'2026-11-17T00:00:00.000Z'},429),(e:unknown)=>e instanceof CoachApiError&&e.code==='daily-limit'&&e.resetAt==='2026-11-17T00:00:00.000Z'&&e.message.startsWith("Today's Coach limit is used up. It resets at"))
+ await assert.rejects(call({error:'x',code:'coach-unavailable'},503),(e:unknown)=>e instanceof CoachApiError&&e.message.startsWith('Coach is not available right now'))
+})
+test('a refused plan with units left re-reads the counter instead of locking chat', async()=>{
+ let used=12
+ const plan=deferred<never>()
+ const {controller:c}=await setup({loadKey:async()=>null,quota:async()=>({used,limit:20,resetAt:new Date(Date.now()+3_600_000).toISOString(),shared:true}),plan:()=>plan.promise})
+ await tick();assert.equal(c.canPlan,true)
+ void c.generatePlan({goal:'Siła',daysPerWeek:3,experience:'intermediate',equipment:['barbell'],focus:'',notes:''})
+ used=16;plan.reject(new CoachApiError('limit','daily-limit',new Date(Date.now()+3_600_000).toISOString()));await tick();await tick()
+ assert.equal(c.remaining,4);assert.equal(c.canPlan,false);assert.equal(c.canSend,true);assert.equal(c.activeLimit,null)
+})
+test('zero units show the limit, and the lock lifts once the reset time has passed', async()=>{
+ let quota={used:20,limit:20,resetAt:new Date(Date.now()+3_600_000).toISOString(),shared:true}
+ const {controller:c}=await setup({loadKey:async()=>null,quota:async()=>quota})
+ await tick();assert.equal(c.activeLimit?.code,'daily-limit');assert.equal(c.canSend,false)
+ quota={used:0,limit:20,resetAt:new Date(Date.now()+86_400_000).toISOString(),shared:true}
+ c.setActive(false);c.setActive(true);await tick();await tick()
+ assert.equal(c.activeLimit,null);assert.equal(c.canSend,true)
+})
+test('coach-unavailable keeps the own-key path open and never marks a key invalid', async()=>{
+ const {controller:c,replies:r}=await setup({loadKey:async()=>null,quota:async()=>({used:0,limit:20,resetAt:new Date(Date.now()+3_600_000).toISOString(),shared:true})})
+ await tick();c.send('q');r[0].result.reject(new CoachApiError('Coach is not available right now.','coach-unavailable'));await tick()
+ assert.equal(c.state.validation,'none');assert.equal(c.state.error,'Coach is not available right now.')
+})

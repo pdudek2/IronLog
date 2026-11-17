@@ -105,7 +105,7 @@ test('timeout covers never-resolving token/transport/body dependencies and does 
 
 test('plan transport maps auth, credits, rate and server failures without showing provider text',async()=>{
   const {coachPost}=await import('./coachService')
-  for(const [status,code,pattern] of [[401,undefined,/sign-in expired/],[429,undefined,/limit/],[500,undefined,/could not complete/],[403,'invalid-key',/rejected/]] as const) {
+  for(const [status,code,pattern] of [[401,undefined,/sign-in expired/],[429,undefined,/Too many requests/],[500,undefined,/could not complete/],[403,'invalid-key',/rejected/]] as const) {
     await assert.rejects(coachPost('http://fixture','ai-chat',planRequestBody('fixture',brief()),new AbortController().signal,async()=> 'demo-token',async()=>new Response(JSON.stringify({code,error:'secret-provider-text'}),{status})),error=>error instanceof CoachApiError&&pattern.test(error.message)&&!error.message.includes('secret'))
   }
 })
@@ -122,4 +122,11 @@ test('import does not mistake a corrupt second slot for an empty draft',async()=
   const before=new Map(store.data)
   await assert.rejects(journal.installIfEmpty('u',draft,'import'),/recovery/)
   assert.deepEqual(store.data,before)
+})
+
+test('a plan response carries the shared-key allowance header', async () => {
+  const body = JSON.stringify({ plan: { name: 'Plan A', summary: 'S', days: [{ name: 'Day', exercises: [{ exerciseId: 'squat', exerciseSource: 'global', name: 'Squat', sets: 3, targetReps: 5, targetWeight: 100 }] }] } })
+  const response = new Response(body, { headers: { 'content-type': 'application/json', 'X-IronLog-AI-Context': 'full', 'X-IronLog-AI-Quota': 'used=9;limit=20' } })
+  const result = await consumePlanResponse(response, new AbortController().signal)
+  assert.deepEqual(result.quota, { used: 9, limit: 20 })
 })

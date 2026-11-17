@@ -34,6 +34,11 @@ test('isolates OpenRouter keys through A → logout → B → A without adopting
   const passwordB = 'ironlog-isolation-test-only'
   const escapedAiRequests: string[] = []
   await context.route(/\/api\/|api\.openrouter\.com/, async (route) => {
+    // Reading the shared-key allowance carries no key; answer it as a server without a shared key.
+    if (new URL(route.request().url()).pathname === '/api/ai-models' && route.request().postData() === '{"quota":true}') {
+      await route.fulfill({ json: { used: 0, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: false } })
+      return
+    }
     escapedAiRequests.push(route.request().url())
     await route.abort('blockedbyclient')
   })
@@ -103,9 +108,10 @@ test('isolates OpenRouter keys through A → logout → B → A without adopting
   await openCoach(page, testInfo.project.name)
   await expect.poll(() => page.evaluate(() => window.__ironlogEmulatorTestBridge?.readAuthenticatedUid())).toBe(uidB)
   await expect(page.getByText('Ask Coach about your training', { exact: true })).toBeVisible()
-  await expect(page.getByRole('textbox', { name: 'Message AI Coach' })).toHaveCount(0)
+  // B runs on the shared allowance, never on A's key.
+  await expect(page.getByText('20 of 20 left today')).toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('account-b-key-gate.png'), fullPage: true })
-  await page.getByRole('button', { name: 'Set up key', exact: true }).click()
+  await page.getByRole('button', { name: 'Use your own OpenRouter key', exact: true }).click()
   await expect(page.getByLabel('Your key', { exact: true })).toHaveValue('')
   await expect(page.getByRole('button', { name: 'Remove locally stored key' })).toBeDisabled()
   expect(await page.evaluate((uid) => window.localStorage.getItem(`ironlog.openrouterApiKey:${uid}`), uidB)).toBeNull()

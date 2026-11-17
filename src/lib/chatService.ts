@@ -1,6 +1,7 @@
 import { auth } from './firebase'
 import { getOpenRouterModel } from './aiKeyStorage'
 import { isAbortError, readChatStream } from './chatStreamProtocol'
+import { AI_QUOTA_HEADER, parseQuotaHeader, type CoachQuotaUsage } from '../shared/coachQuota'
 
 import { parseAiContextHeader, type AiContextMetadata, type AiContextSource } from './aiContext'
 export { AI_CONTEXT_SOURCES, parseAiContextHeader, type AiContextMetadata, type AiContextSource } from './aiContext'
@@ -50,20 +51,35 @@ export interface OpenRouterModelOption {
 
 export class AiApiError extends Error {
   readonly code?: string
+  readonly resetAt?: string
 
-  constructor(message: string, code?: string) {
+  constructor(message: string, code?: string, resetAt?: string) {
     super(message)
     this.name = 'AiApiError'
     this.code = code
+    this.resetAt = resetAt
   }
 }
 
+export interface CoachQuota extends CoachQuotaUsage {
+  resetAt: string
+  shared: boolean
+}
+
+type ErrorPayload = { error?: string; code?: string; resetAt?: string } | null
+
+function apiError(payload: ErrorPayload, fallback: string): AiApiError {
+  return new AiApiError(payload?.error ?? fallback, payload?.code, payload?.resetAt)
+}
+
 export interface StreamChatReplyOptions {
+  // Empty means Coach on the shared server key.
   apiKey: string
   messages: Array<Pick<ChatMessage, 'role' | 'content'>>
   signal: AbortSignal
   onContext: (context: AiContextMetadata) => void
   onChunk: (chunk: string) => void
+  onQuota?: (usage: CoachQuotaUsage) => void
 }
 
 function getChatApiUrl(): string {
@@ -91,6 +107,7 @@ export async function streamChatReply({
   signal,
   onContext,
   onChunk,
+  onQuota,
 }: StreamChatReplyOptions): Promise<string> {
   const idToken = await getAuthenticatedUserToken()
   let response: Response
@@ -101,7 +118,7 @@ export async function streamChatReply({
     .filter(({ content }) => content.trim())
     .slice(-12)
     .map(({ role, content }) => ({ role, content: content.trim().slice(0, 4000) }))
-  const requestBody = { apiKey, model: getOpenRouterModel() || undefined, messages: recentMessages }
+  const requestBody = { ...(apiKey ? { apiKey } : {}), model: getOpenRouterModel() || undefined, messages: recentMessages }
   let body = JSON.stringify(requestBody)
   const encoder = new TextEncoder()
   while (encoder.encode(body).byteLength > 128 * 1024 && recentMessages.length > 1) {
@@ -128,7 +145,7 @@ export async function streamChatReply({
   }
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { error?: string; code?: string } | null
+    const payload = await response.json().catch(() => null) as ErrorPayload
 
     if (
       response.status === 404 &&
@@ -140,11 +157,13 @@ export async function streamChatReply({
         `The frontend is running locally, but the AI backend returned 404 at ${chatApiUrl}. Start it with \`npm run dev:api\` or \`npm run dev:all\`.`,
       )
     }
-    throw new AiApiError(payload?.error ?? 'AI Coach returned an invalid response.', payload?.code)
+    throw apiError(payload, 'AI Coach returned an invalid response.')
   }
 
   const context = parseAiContextHeader(response.headers)
   onContext(context)
+  const usage = parseQuotaHeader(response.headers.get(AI_QUOTA_HEADER))
+  if (usage) onQuota?.(usage)
 
   if (!response.body) {
     throw new Error('The AI stream returned no data.')
@@ -166,7 +185,7 @@ export async function generateTrainingPlan({
   apiKey: string
   request: TrainingPlanRequest
   signal?: AbortSignal
-}): Promise<{ plan: GeneratedTrainingPlan; context: AiContextMetadata }> {
+}): Promise<{ plan: GeneratedTrainingPlan; context: AiContextMetadata; quota: CoachQuotaUsage | null }> {
   const idToken = await getAuthenticatedUserToken()
   const chatApiUrl = getChatApiUrl()
 
@@ -180,7 +199,7 @@ export async function generateTrainingPlan({
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        apiKey,
+        ...(apiKey ? { apiKey } : {}),
         model: getOpenRouterModel() || undefined,
         mode: 'plan',
         planRequest: request,
@@ -193,11 +212,11 @@ export async function generateTrainingPlan({
   }
 
   const payload = await response.json().catch(() => null) as
-    | { error?: string; code?: string; plan?: GeneratedTrainingPlan }
+    | { error?: string; code?: string; resetAt?: string; plan?: GeneratedTrainingPlan }
     | null
 
   if (!response.ok) {
-    throw new AiApiError(payload?.error ?? 'Could not generate a plan.', payload?.code)
+    throw apiError(payload, 'Could not generate a plan.')
   }
 
   if (!payload?.plan) {
@@ -207,15 +226,34 @@ export async function generateTrainingPlan({
   return {
     plan: payload.plan,
     context: parseAiContextHeader(response.headers),
+    quota: parseQuotaHeader(response.headers.get(AI_QUOTA_HEADER)),
   }
+}
+
+function getModelsApiUrl(): string {
+  const host = typeof window !== 'undefined' ? window.location.hostname || 'localhost' : 'localhost'
+  return !import.meta.env.DEV || typeof window === 'undefined'
+    ? '/api/ai-models'
+    : `http://${host}:3000/api/ai-models`
+}
+
+// Today's shared-key allowance, and whether the server has a key at all.
+export async function fetchCoachQuota(): Promise<CoachQuota> {
+  const idToken = await getAuthenticatedUserToken()
+  const response = await fetch(getModelsApiUrl(), {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ quota: true }),
+    signal: AbortSignal.timeout(10_000),
+  })
+  const payload = await response.json().catch(() => null) as (CoachQuota & { error?: string; code?: string }) | null
+  if (!response.ok || !payload || typeof payload.used !== 'number') throw apiError(payload, 'Could not read the Coach allowance.')
+  return { used: payload.used, limit: payload.limit, resetAt: payload.resetAt, shared: payload.shared === true }
 }
 
 export async function fetchAvailableOpenRouterModels(apiKey: string): Promise<OpenRouterModelOption[]> {
   const idToken = await getAuthenticatedUserToken()
-  const host = typeof window !== 'undefined' ? window.location.hostname || 'localhost' : 'localhost'
-  const url = !import.meta.env.DEV || typeof window === 'undefined'
-    ? '/api/ai-models'
-    : `http://${host}:3000/api/ai-models`
+  const url = getModelsApiUrl()
 
   let response: Response
 

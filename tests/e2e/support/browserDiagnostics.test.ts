@@ -77,6 +77,14 @@ describe('browser diagnostics classification', () => {
     expect(isBlockingRequestFailure('image', 'net::ERR_ABORTED', 'https://example.com/covers/push.jpg', true)).toBe(true)
   })
 
+  it('ignores an aborted local Coach allowance read only during intentional navigation or teardown', () => {
+    const read = 'http://localhost:3000/api/ai-models'
+    expect(isBlockingRequestFailure('fetch', 'net::ERR_ABORTED', read, true)).toBe(false)
+    expect(isBlockingRequestFailure('fetch', 'net::ERR_ABORTED', read)).toBe(true)
+    expect(isBlockingRequestFailure('fetch', 'net::ERR_FAILED', read, true)).toBe(true)
+    expect(isBlockingRequestFailure('fetch', 'net::ERR_ABORTED', 'http://localhost:3000/api/ai-chat', true)).toBe(true)
+  })
+
   it('ignores only aborted fonts.gstatic.com font requests during intentional navigation or teardown', () => {
     const googleFontUrl = 'https://fonts.gstatic.com/s/urbanist/v17/L0x5DF02iFML4hGCyMqlbSnbfM3k.woff2'
 

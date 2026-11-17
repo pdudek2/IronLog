@@ -1,7 +1,7 @@
 import CoachPlanPanel from '../src/CoachPlanPanel'
 import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AppState, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
+import { AppState, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -17,6 +17,7 @@ import { markdownBlocks, markdownInline } from '../src/coachMarkdown'
 import type { AiContextMetadata } from '../../src/lib/aiContext'
 import { colors, pageTitle, primaryGradient } from '../src/theme'
 import { Icon } from '../src/icons'
+import { resetTimeLabel } from '../../src/shared/coachQuota'
 
 const prompts = ['Analyze my last week of training.', 'What should I focus on in my next upper body workout?', 'Does my readiness suggest a harder or lighter session today?']
 export default function CoachScreen() {
@@ -68,7 +69,13 @@ function Coach({ uid }: { uid: string }) {
   const { height } = useWindowDimensions()
   const nearBottom = useRef(true)
   const conversation = state.messages.length > 0
-  const configured = !!state.key && state.validation !== 'invalid'
+  const configured = controller.ownKey
+  const ready = configured || controller.sharedReady
+  const sharedOff = !configured && state.quota?.shared === false
+  const limit = controller.activeLimit
+  const allowance = configured ? null
+    : limit ? (limit.code === 'daily-limit' ? `Today's Coach limit is used up. It resets at ${resetTimeLabel(limit.resetAt)}.` : `Coach has reached today's limit for everyone. It resets at ${resetTimeLabel(limit.resetAt)}.`)
+    : state.quota ? `${controller.remaining} of ${state.quota.limit} left today` : null
   useEffect(() => { void controller.load(); return () => controller.dispose() }, [controller])
   useEffect(() => { const subscription = Keyboard.addListener('keyboardDidShow', () => { if (composerFocused.current) outer.current?.scrollTo({ y: Math.max(0, composerY.current - 80), animated: true }) }); return () => subscription.remove() }, [])
   useFocusEffect(useCallback(() => {
@@ -96,15 +103,19 @@ function Coach({ uid }: { uid: string }) {
       <Button label="Remove locally stored key" disabled={!state.key || state.keySaving || state.keyLoading || !!state.storageError} onPress={() => void saveKey('')}><Svg width={17} height={17} viewBox="0 0 24 24"><Path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" fill="none" stroke={colors.muted} strokeWidth={1.6} /></Svg></Button>
     </View>
     <Text style={s.small}>Stored locally · sent through SHEAR to OpenRouter only for each request.</Text>
-    {!!state.key && <View style={s.model}><Text style={s.boldLabel}>OpenRouter model</Text><Text style={s.body}>{state.validation === 'checking' ? 'Verifying key…' : state.validation === 'valid' ? 'GPT-5.6 Luna · Max reasoning' : 'Saved on device · needs verification'}</Text>
+    {!!state.key && <View style={s.model}><Text style={s.boldLabel}>OpenRouter model</Text><Text style={s.body}>{state.validation === 'checking' ? 'Verifying key…' : state.validation === 'valid' ? 'GPT-5.6 Luna' : 'Saved on device · needs verification'}</Text>
       {state.validation === 'unverified' && <Button onPress={() => void controller.verify()}>Retry verification</Button>}</View>}
     {state.keyError && <Text accessibilityRole="alert" style={s.error}>{state.keyError}</Text>}
   </View> : state.key ? <View style={s.collapsed}>
     <View style={s.grow}><Text style={s.boldLabel}>OpenRouter key</Text><Text style={s.small}>{state.validation === 'valid' ? 'Saved securely on this device.' : state.validation === 'checking' ? 'Verifying key…' : 'Needs verification.'}</Text></View>
     <Button onPress={openSettings}>Settings</Button>
   </View> : <View style={s.gate}>
-    <Text style={s.gateTitle}>Ask Coach about your training</Text><Text style={s.description}>Coach reads your workouts to answer questions and draft plans. It is optional and runs on your own OpenRouter key, kept on this device.</Text>
-    <View style={s.left}><Button primary onPress={openSettings}>Set up key</Button></View>
+    <Text style={s.gateTitle}>Ask Coach about your training</Text>
+    {sharedOff
+      ? <Text style={s.description}>Coach is not available right now. You can use it with your own OpenRouter key, kept on this device.</Text>
+      : <Text style={s.description}>To answer, Coach sends your question, profile, check-ins, workouts and records to OpenRouter and the AI model provider.{' '}
+        <Text accessibilityRole="link" onPress={() => void Linking.openURL('https://getshear.vercel.app/privacy').catch(() => undefined)} style={s.link}>Privacy policy</Text></Text>}
+    <View style={s.left}><Button primary={sharedOff} onPress={openSettings}>Use your own OpenRouter key</Button></View>
   </View>
   return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} style={s.screen} edges={['top']}><StatusBar style="light" />
     <HistoryHeader />
@@ -121,10 +132,10 @@ function Coach({ uid }: { uid: string }) {
           </View>}
           <View style={tab !== 'chat' && { display: 'none' }}><View onLayout={event => { chatY.current = event.nativeEvent.layout.y }} style={[s.chat, conversation && { height: Math.max(336, height - 336) }]}>
           {conversation && <View style={s.toolbar}><Button onPress={() => { controller.reset(); nearBottom.current = true }} label="Reset conversation">Reset</Button></View>}
-          {!conversation ? <View style={[s.empty, configured && { paddingTop: 0 }]}>
-            {!read && <Text style={s.emptyTitle}>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</Text>}
-            {!read && <Text style={s.small}>{configured ? 'Ask about your week, next workout, readiness or an exercise plateau.' : 'Your analysis and follow-up questions will appear here.'}</Text>}
-            {configured && <View style={s.prompts}><Text accessibilityRole="header" style={s.nextTitle}>Next</Text>{prompts.map(prompt => <Pressable accessibilityRole="button" disabled={!controller.canSend} accessibilityState={{ disabled: !controller.canSend }} key={prompt} onPress={() => send(prompt)} style={[s.prompt, !controller.canSend && s.disabled]}><Text style={s.promptText}>{prompt}</Text><Icon name="chevron-right" size={16} /></Pressable>)}</View>}
+          {!conversation ? <View style={[s.empty, ready && { paddingTop: 0 }]}>
+            {!read && <Text style={s.emptyTitle}>{ready ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</Text>}
+            {!read && <Text style={s.small}>{ready ? 'Ask about your week, next workout, readiness or an exercise plateau.' : 'Your analysis and follow-up questions will appear here.'}</Text>}
+            {ready && <View style={s.prompts}><Text accessibilityRole="header" style={s.nextTitle}>Next</Text>{prompts.map(prompt => <Pressable accessibilityRole="button" disabled={!controller.canSend} accessibilityState={{ disabled: !controller.canSend }} key={prompt} onPress={() => send(prompt)} style={[s.prompt, !controller.canSend && s.disabled]}><Text style={s.promptText}>{prompt}</Text><Icon name="chevron-right" size={16} /></Pressable>)}</View>}
           </View> : <ScrollView ref={scroll} style={s.grow} nestedScrollEnabled contentContainerStyle={s.messages} keyboardShouldPersistTaps="handled"
             onScroll={({ nativeEvent: e }) => { nearBottom.current = e.contentSize.height - e.layoutMeasurement.height - e.contentOffset.y < 96 }} scrollEventThrottle={32}
             onContentSizeChange={() => { if (nearBottom.current) scroll.current?.scrollToEnd({ animated: false }) }}>
@@ -133,12 +144,12 @@ function Coach({ uid }: { uid: string }) {
             </View>)}
             {state.generation === 'streaming' && <View style={s.message}><Text style={s.role}>AI COACH</Text>{state.partial ? <Markdown content={state.partial} /> : <Text style={s.description}>Analyzing context…</Text>}<ContextNotice context={state.context} /></View>}
           </ScrollView>}
-          {['failed', 'interrupted'].includes(state.generation) && <View style={s.feedback}><Text accessibilityRole="alert" style={state.error ? s.error : s.description}>{state.error ?? 'Generation stopped.'}</Text><Button disabled={!controller.canSend} onPress={() => { nearBottom.current = true; controller.retry() }}>Retry AI response</Button></View>}
-          {configured && <View style={s.composer} onLayout={event => { composerY.current = event.nativeEvent.layout.y + chatY.current }}>
-            <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.accentText} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming'}
+          {['failed', 'interrupted'].includes(state.generation) && <View style={s.feedback}><Text accessibilityRole="alert" style={state.error ? s.error : s.description}>{state.error ?? 'Generation stopped.'}</Text>{!limit && <Button disabled={!controller.canSend} onPress={() => { nearBottom.current = true; controller.retry() }}>Retry AI response</Button>}</View>}
+          {ready && <View style={s.composer} onLayout={event => { composerY.current = event.nativeEvent.layout.y + chatY.current }}>
+            <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.accentText} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !limit)}
               onFocus={() => { composerFocused.current = true }} onBlur={() => { composerFocused.current = false }}
               placeholder="Ask about progress or your last session" placeholderTextColor={colors.mutedSoft} style={s.composerInput} textAlignVertical="top" />
-            <View style={s.sendRow}><Button primary disabled={!input.trim() || !controller.canSend} onPress={() => send(input)}>{state.generation === 'streaming' ? 'Sending…' : 'Send'}</Button></View>
+            <View style={s.sendRow}>{!!allowance && <Text style={[s.small, s.grow]}>{allowance}</Text>}<Button primary disabled={!input.trim() || !controller.canSend} onPress={() => send(input)}>{state.generation === 'streaming' ? 'Sending…' : 'Send'}</Button></View>
           </View>}
           </View>
           </View><View style={tab !== 'plan' && { display: 'none' }}><CoachPlanPanel uid={uid} controller={controller} /></View>
@@ -167,6 +178,7 @@ const s = StyleSheet.create({
   gate: { paddingVertical: 8, gap: 2 },
   gateTitle: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 23, color: colors.text },
   left: { alignItems: 'flex-start', marginTop: 7.6 },
+  link: { color: colors.text, textDecorationLine: 'underline' },
   buttonContent: { flexDirection: 'row', alignItems: 'center', gap: 8 }, button: { borderWidth: 1, borderColor: colors.line, backgroundColor: 'rgba(255,255,255,0.032)', minHeight: 44, minWidth: 44, paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center', borderRadius: 8 },
   buttonText: { fontFamily: 'InstrumentSans_700Bold', fontSize: 13, color: colors.muted }, primaryText: { color: colors.onPrimary },
   primary: { borderColor: 'transparent', backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient }, disabled: { opacity: 0.45 },
@@ -187,5 +199,5 @@ const s = StyleSheet.create({
   context: { fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18, color: colors.muted, marginTop: 8 },
   feedback: { marginTop: 16, padding: 12, borderWidth: 1, borderColor: colors.line, gap: 8 }, error: { fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20, color: colors.accentText },
   composer: { paddingTop: 11.2, gap: 9.6 },
-  composerInput: { minHeight: 50, maxHeight: 112, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07)', fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 20, color: colors.textStrong }, sendRow: { alignItems: 'flex-end' },
+  composerInput: { minHeight: 50, maxHeight: 112, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16, backgroundColor: colors.surfaceRaised, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07)', fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 20, color: colors.textStrong }, sendRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12 },
 })

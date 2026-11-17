@@ -2,12 +2,12 @@ import { adminAuth } from './firebaseAdmin.js'
 import { ApiError } from './errors.js'
 import { getBearerToken, type ApiRequest } from './http.js'
 
-export async function requireUserId(req: ApiRequest): Promise<string> {
+export async function requireUserId(req: ApiRequest, options: { checkRevoked?: boolean } = {}): Promise<string> {
   const token = getBearerToken(req)
   if (!token) throw new ApiError(401, 'Missing authentication token.')
 
   try {
-    const decoded = await adminAuth.verifyIdToken(token)
+    const decoded = await adminAuth.verifyIdToken(token, options.checkRevoked === true)
     if (!decoded.uid) throw new Error('Token is missing a user ID.')
     return decoded.uid
   } catch (error) {

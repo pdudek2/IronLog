@@ -11,8 +11,11 @@ import { getOpenRouterApiKey, hasOpenRouterApiKey } from '../lib/aiKeyStorage'
 import { createTemplate } from '../lib/templateService'
 import { saveTemplateDraft } from '../lib/templateDraftStorage'
 import {
+  AiApiError,
+  fetchCoachQuota,
   generateTrainingPlan,
   streamChatReply,
+  type CoachQuota,
   type AiContextSource,
   type ChatMessage,
   type GeneratedTrainingPlan,
@@ -21,6 +24,7 @@ import { useAuthStore } from '../store/authStore'
 import { useProfileStore } from '../store/profileStore'
 import { getRecentWorkouts, type WorkoutSummary } from '../lib/workoutService'
 import { lastWorkoutRead } from '../shared/lastWorkoutRead'
+import { COACH_PLAN_COST, nextUtcMidnight, resetTimeLabel, type CoachQuotaUsage } from '../shared/coachQuota'
 
 const STARTER_PROMPTS = [
   'Analyze my last week of training.',
@@ -28,7 +32,23 @@ const STARTER_PROMPTS = [
   'Does my readiness suggest a harder or lighter session today?',
 ]
 
-const MISSING_PLAN_KEY_MESSAGE = 'Set up your OpenRouter key to draft plans with Coach.'
+const UNAVAILABLE_MESSAGE = 'Coach is not available right now. You can still use your own OpenRouter key.'
+
+interface CoachLimit {
+  code: 'daily-limit' | 'daily-limit-all'
+  resetAt: string
+}
+
+function coachLimitOf(error: unknown): CoachLimit | null {
+  if (!(error instanceof AiApiError) || !error.resetAt) return null
+  return error.code === 'daily-limit' || error.code === 'daily-limit-all' ? { code: error.code, resetAt: error.resetAt } : null
+}
+
+function coachLimitMessage({ code, resetAt }: CoachLimit): string {
+  return code === 'daily-limit'
+    ? `Today's Coach limit is used up. It resets at ${resetTimeLabel(resetAt)}.`
+    : `Coach has reached today's limit for everyone. It resets at ${resetTimeLabel(resetAt)}.`
+}
 
 const DEMO_EMAIL = 'demo@ironlog.app'
 
@@ -178,7 +198,7 @@ export default function ChatPage() {
   const navigate = useNavigate()
   const isDemoUser = user?.email === DEMO_EMAIL
   const [activeTab, setActiveTab] = useState<AiWorkspaceTab>('chat')
-  // Leaving Coach or the plan tab stops generation; the request runs on the user's own key.
+  // Leaving Coach or the plan tab stops generation, so nobody pays for an answer nobody reads.
   const planAbort = useRef<AbortController | null>(null)
   useEffect(() => () => planAbort.current?.abort(), [])
   useEffect(() => { if (activeTab !== 'plan') planAbort.current?.abort() }, [activeTab])
@@ -193,6 +213,51 @@ export default function ChatPage() {
     setKeyConfiguration({ uid: keyOwnerUid, configured: nextConfigured })
   }, [keyOwnerUid])
   const [showConfigPanel, setShowConfigPanel] = useState(false)
+  // The shared-key allowance belongs to the signed-in account; a stale one from another account is ignored.
+  const [quotaState, setQuotaState] = useState<(CoachQuota & { uid: string }) | null>(null)
+  const quota = quotaState && quotaState.uid === keyOwnerUid ? quotaState : null
+  // The person's limit follows the server's counter; only the shared daily total, which no counter shows, is kept here.
+  const [limitAll, setLimitAll] = useState<{ uid: string | null; resetAt: string } | null>(null)
+  const quotaLimit: CoachLimit | null = quota && quota.used >= quota.limit ? { code: 'daily-limit', resetAt: quota.resetAt } : null
+  const limit = configured ? null
+    : (limitAll && limitAll.uid === keyOwnerUid ? { code: 'daily-limit-all' as const, resetAt: limitAll.resetAt } : null) ?? quotaLimit
+  // Without the allowance there is no telling whether the server has a key; a failed read assumes it does.
+  const [quotaFailedUid, setQuotaFailedUid] = useState<string | null>(null)
+  const sharedOff = !configured && quota?.shared === false
+  const sharedReady = quota ? quota.shared : quotaFailedUid !== null && quotaFailedUid === keyOwnerUid
+  const ready = keyOwnerUid !== null && (configured || sharedReady)
+  const remaining = quota ? Math.max(0, quota.limit - quota.used) : null
+  const planBlocked = !configured && (limit !== null || (remaining !== null && remaining < COACH_PLAN_COST))
+  const quotaOwner = useRef(keyOwnerUid)
+  quotaOwner.current = keyOwnerUid
+  const refreshQuota = useCallback(() => {
+    const uid = keyOwnerUid
+    if (!uid) return
+    fetchCoachQuota()
+      .then((next) => { if (quotaOwner.current === uid) setQuotaState({ ...next, uid }) })
+      .catch(() => { if (quotaOwner.current === uid) setQuotaFailedUid(uid) })
+  }, [keyOwnerUid])
+  useEffect(() => { refreshQuota() }, [refreshQuota])
+  // A spent allowance lifts itself at the reset time, also in a tab left open overnight.
+  const limitResetAt = limit?.resetAt
+  useEffect(() => {
+    if (!limitResetAt) return
+    const timer = window.setTimeout(() => { setLimitAll(null); refreshQuota() }, Math.max(0, Date.parse(limitResetAt) - Date.now()) + 1_000)
+    return () => window.clearTimeout(timer)
+  }, [limitResetAt, refreshQuota])
+  const noteUsage = useCallback((usage: CoachQuotaUsage) => {
+    setQuotaState((current) => {
+      if (current && current.uid === keyOwnerUid) return { ...current, ...usage }
+      return keyOwnerUid ? { ...usage, uid: keyOwnerUid, resetAt: nextUtcMidnight(Date.now()), shared: true } : current
+    })
+  }, [keyOwnerUid])
+  // After a failure or an abort only the server knows what was spent.
+  function afterSharedFailure(error: unknown) {
+    if (configured) return
+    const reached = coachLimitOf(error)
+    if (reached?.code === 'daily-limit-all') setLimitAll({ uid: keyOwnerUid, resetAt: reached.resetAt })
+    refreshQuota()
+  }
   // Closing the key panel brings focus back to the button that opened it.
   const keyGateAction = useRef<HTMLDivElement>(null)
   const keyPanelWasOpen = useRef(false)
@@ -261,14 +326,21 @@ export default function ChatPage() {
     activeGenerationRef.current = null
   }
 
+  // The user's own key, or '' for the shared server key; null when Coach cannot be used now.
   function getChatActionApiKey(): string | null {
     const apiKey = getOpenRouterApiKey()
     if (configured && apiKey) return apiKey
-
-    cancelActiveGeneration('superseded')
-    setConfigured(false)
-    setError('Set up your OpenRouter key to use Coach.')
-    return null
+    if (configured) setConfigured(false)
+    if (!sharedReady) {
+      cancelActiveGeneration('superseded')
+      setError(UNAVAILABLE_MESSAGE)
+      return null
+    }
+    if (limit) {
+      setError(coachLimitMessage(limit))
+      return null
+    }
+    return ''
   }
 
   useEffect(() => {
@@ -325,6 +397,7 @@ export default function ChatPage() {
           if (activeGenerationRef.current?.generationId !== generationId) return
           setStreamText((current) => current + chunk)
         },
+        onQuota: noteUsage,
       })
 
       if (activeGenerationRef.current?.generationId !== generationId) return
@@ -342,6 +415,7 @@ export default function ChatPage() {
       setGenerationState({ status: 'idle' })
     } catch (nextError) {
       if (activeGenerationRef.current?.generationId !== generationId) return
+      afterSharedFailure(nextError)
       if (controller.signal.aborted || (nextError instanceof Error && nextError.name === 'AbortError')) {
         setStreamText('')
         setStreamUnavailableSources([])
@@ -349,7 +423,10 @@ export default function ChatPage() {
         return
       }
 
-      const message = nextError instanceof Error ? nextError.message : 'Could not connect to AI Coach.'
+      const reached = coachLimitOf(nextError)
+      const message = reached
+        ? coachLimitMessage(reached)
+        : nextError instanceof Error ? nextError.message : 'Could not connect to AI Coach.'
       setStreamText('')
       setStreamUnavailableSources([])
       setGenerationState({ status: 'failed', questionId, message })
@@ -363,7 +440,7 @@ export default function ChatPage() {
     if (!prompt || sending) return
 
     const apiKey = getChatActionApiKey()
-    if (!apiKey) return
+    if (apiKey === null) return
 
     shouldStickToBottomRef.current = true
     const nextMessages: ChatMessage[] = [
@@ -386,7 +463,7 @@ export default function ChatPage() {
     const { questionId } = generationState
     if (!messages.some((message) => message.id === questionId && message.role === 'user')) return
     const apiKey = getChatActionApiKey()
-    if (!apiKey) return
+    if (apiKey === null) return
     void runChatGeneration(messages, questionId, apiKey)
   }
 
@@ -432,10 +509,11 @@ export default function ChatPage() {
   }
 
   async function handleGeneratePlan() {
-    const apiKey = getOpenRouterApiKey()
-    if (!apiKey) {
-      setConfigured(false)
-      setPlanError({ message: MISSING_PLAN_KEY_MESSAGE, field: null })
+    const ownKey = getOpenRouterApiKey()
+    if (configured && !ownKey) setConfigured(false)
+    const apiKey = configured && ownKey ? ownKey : ''
+    if (!apiKey && (!sharedReady || planBlocked)) {
+      setPlanError({ message: !sharedReady ? UNAVAILABLE_MESSAGE : limit ? coachLimitMessage(limit) : `A plan uses ${COACH_PLAN_COST} of today's Coach messages.`, field: null })
       return
     }
 
@@ -454,7 +532,7 @@ export default function ChatPage() {
     planAbort.current = controller
 
     try {
-      const { plan, context } = await generateTrainingPlan({
+      const { plan, context, quota: usage } = await generateTrainingPlan({
         signal: controller.signal,
         apiKey,
         request: {
@@ -467,13 +545,16 @@ export default function ChatPage() {
         },
       })
 
+      if (usage) noteUsage(usage)
       setSelectedPreviewDay(0)
       setPlanPreview(plan)
       setPlanUnavailableSources(context.unavailableSources)
       toast.success('Plan generated. You can save it to your plans.')
     } catch (nextError) {
+      afterSharedFailure(nextError)
       if (controller.signal.aborted) return
-      const message = nextError instanceof Error ? nextError.message : 'Could not generate a plan.'
+      const reached = coachLimitOf(nextError)
+      const message = reached ? coachLimitMessage(reached) : nextError instanceof Error ? nextError.message : 'Could not generate a plan.'
       setPlanError({ message, field: null })
       setPlanPreview(null)
       setPlanUnavailableSources([])
@@ -527,7 +608,7 @@ export default function ChatPage() {
     setConfigured(nextConfigured)
     if (nextConfigured) {
       setError('')
-      setPlanError((current) => current?.message === MISSING_PLAN_KEY_MESSAGE ? null : current)
+      setPlanError(null)
       setShowConfigPanel(false)
       return
     }
@@ -598,17 +679,20 @@ export default function ChatPage() {
                   <div>
                     <strong>Ask Coach about your training</strong>
                     <p className="mt-2 text-sm leading-6" style={{ color: 'var(--muted)' }}>
-                      Coach reads your workouts to answer questions and draft plans. It is optional and runs on your own OpenRouter key, kept on this device.
+                      {sharedOff
+                        ? 'Coach is not available right now. You can use it with your own OpenRouter key, kept on this device.'
+                        : <>To answer, Coach sends your question, profile, check-ins, workouts and records to OpenRouter and the AI model provider. <a href="/privacy" className="underline underline-offset-2">Privacy policy</a></>}
                     </p>
                   </div>
                   <div className="mt-4" ref={keyGateAction}>
                     <Button
                       type="button"
+                      variant={sharedOff ? 'primary' : 'ghost'}
                       aria-expanded={showConfigPanel}
                       aria-controls={keyPanelId}
                       onClick={() => setShowConfigPanel((current) => !current)}
                     >
-                      Set up key
+                      Use your own OpenRouter key
                     </Button>
                   </div>
                 </section>
@@ -663,16 +747,16 @@ export default function ChatPage() {
                       <div className="coach-empty-thread">
                         {!read && (
                           <div>
-                            <p>{configured ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</p>
+                            <p>{ready ? 'Ask a question or choose a shortcut.' : 'No conversation history'}</p>
                             <span>
-                              {configured
+                              {ready
                                 ? 'Ask about your week, next workout, readiness or an exercise plateau.'
                                 : 'Your analysis and follow-up questions will appear here.'}
                             </span>
                           </div>
                         )}
 
-                        {configured && (
+                        {ready && (
                           <div className="coach-empty-prompts">
                             <h2>Next</h2>
                             {STARTER_PROMPTS.map((prompt) => (
@@ -680,7 +764,7 @@ export default function ChatPage() {
                                 key={prompt}
                                 type="button"
                                 onClick={() => void handleSend(prompt)}
-                                disabled={sending}
+                                disabled={sending || limit !== null}
                                 className="coach-prompt-button"
                                 aria-label={prompt}
                               >
@@ -771,15 +855,17 @@ export default function ChatPage() {
                   {generationState.status === 'failed' && (
                     <div className="coach-generation-feedback coach-generation-feedback--error" role="alert">
                       <span>{generationState.message}</span>
-                      <Button type="button" variant="ghost" onClick={handleRetry}>
-                        Retry AI response
-                      </Button>
+                      {limit === null && (
+                        <Button type="button" variant="ghost" onClick={handleRetry}>
+                          Retry AI response
+                        </Button>
+                      )}
                     </div>
                   )}
 
                   {error && <SectionError message={error} />}
 
-                  {configured && (
+                  {ready && (
                     <form onSubmit={handleSubmit} className="coach-composer">
                     <textarea
                       aria-label="Message AI Coach"
@@ -792,17 +878,23 @@ export default function ChatPage() {
                       }}
                       onKeyDown={handleComposerKeyDown}
                       placeholder="Ask about progress, a plan or your last session"
-                      disabled={!configured || sending}
+                      disabled={sending || limit !== null}
                       rows={2}
                       className="coach-composer-input"
                     />
 
                     <div className="coach-composer-footer">
-                      <p>Responses are billed to your OpenRouter API key.</p>
+                      <p className={configured ? undefined : 'coach-allowance'}>
+                        {configured
+                          ? 'Responses are billed to your OpenRouter API key.'
+                          : limit
+                            ? coachLimitMessage(limit)
+                            : remaining !== null ? `${remaining} of ${quota?.limit} left today` : ''}
+                      </p>
 
                       <Button
                         type="submit"
-                        disabled={!configured || !input.trim() || sending}
+                        disabled={!input.trim() || sending || limit !== null}
                         onPointerDown={(event) => event.preventDefault()}
                         className="inline-flex items-center gap-2"
                       >
@@ -926,12 +1018,16 @@ export default function ChatPage() {
                   )}
 
                   <div className="coach-plan-actions">
-                    <p>Coach adds your profile, history and exercise library to the brief.</p>
+                    <p>
+                      {planBlocked && !limit
+                        ? `A plan uses ${COACH_PLAN_COST} of today's ${quota?.limit ?? ''} Coach messages; ${remaining} left.`
+                        : 'Coach adds your profile, history and exercise library to the brief.'}
+                    </p>
 
                     <Button
                       type="button"
                       onClick={() => void handleGeneratePlan()}
-                      disabled={!configured || generatingPlan}
+                      disabled={!ready || generatingPlan || planBlocked}
                       className="inline-flex items-center gap-2"
                     >
                       {generatingPlan && <LoaderCircle size={15} className="animate-spin" />}

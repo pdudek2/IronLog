@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import ChatPage from '../ChatPage'
 
 const mocks = vi.hoisted(() => ({
+  // A server without a shared key: the pre-shared-key behaviour these tests cover.
+  fetchCoachQuota: vi.fn(async () => ({ used: 0, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: false })),
   fetchAvailableOpenRouterModels: vi.fn(),
   generateTrainingPlan: vi.fn(),
   streamChatReply: vi.fn(),
@@ -38,6 +40,7 @@ vi.mock('../../lib/chatService', () => ({
     }
   },
   fetchAvailableOpenRouterModels: mocks.fetchAvailableOpenRouterModels,
+  fetchCoachQuota: mocks.fetchCoachQuota,
   generateTrainingPlan: mocks.generateTrainingPlan,
   streamChatReply: mocks.streamChatReply,
 }))
@@ -90,7 +93,7 @@ describe('ChatPage accessibility', () => {
     render(<ChatPage />)
 
     expect(screen.getByText('Ask Coach about your training')).toBeVisible()
-    const configure = screen.getByRole('button', { name: 'Set up key' })
+    const configure = screen.getByRole('button', { name: 'Use your own OpenRouter key' })
     expect(configure).toBeVisible()
     expect(configure).toHaveAttribute('aria-expanded', 'false')
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
@@ -105,7 +108,7 @@ describe('ChatPage accessibility', () => {
     expect(document.getElementById(controlledPanel!)).toBeVisible()
     const cancel = screen.getByRole('button', { name: 'Cancel' })
     fireEvent.click(cancel)
-    expect(screen.getByRole('button', { name: 'Set up key' })).toHaveAttribute('aria-expanded', 'false')
+    expect(screen.getByRole('button', { name: 'Use your own OpenRouter key' })).toHaveAttribute('aria-expanded', 'false')
     expect(screen.getByText('Ask Coach about your training')).toBeVisible()
 
     fireEvent.click(screen.getByRole('button', { name: /^Plan/ }))
@@ -121,10 +124,10 @@ describe('ChatPage accessibility', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Remove locally stored key' }))
 
     expect(screen.getByText('Ask Coach about your training')).toBeVisible()
-    expect(screen.getByRole('button', { name: 'Set up key' })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Use your own OpenRouter key' })).toBeVisible()
     expect(screen.queryByLabelText('Your key', { selector: 'input' })).not.toBeInTheDocument()
 
-    fireEvent.click(screen.getByRole('button', { name: 'Set up key' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use your own OpenRouter key' }))
     expect(screen.getByLabelText('Your key', { selector: 'input' })).toBeVisible()
   })
 
@@ -302,7 +305,7 @@ describe('ChatPage accessibility', () => {
       .mockResolvedValue([{ id: 'claude-test', label: 'OpenRouter Test' }])
     render(<ChatPage />)
 
-    const configure = await screen.findByRole('button', { name: 'Set up key' })
+    const configure = await screen.findByRole('button', { name: 'Use your own OpenRouter key' })
     expect(screen.getByText('Ask Coach about your training')).toBeVisible()
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
 
@@ -330,10 +333,10 @@ describe('ChatPage accessibility', () => {
     mocks.apiKey = ''
     fireEvent.click(screen.getByRole('button', { name: 'Generate plan' }))
 
-    expect(screen.getByRole('alert')).toHaveTextContent('Set up your OpenRouter key to draft plans with Coach.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Coach is not available right now. You can still use your own OpenRouter key.')
     let key = screen.queryByLabelText('Your key', { selector: 'input' })
     if (!key) {
-      fireEvent.click(screen.getByRole('button', { name: 'Set up key' }))
+      fireEvent.click(screen.getByRole('button', { name: 'Use your own OpenRouter key' }))
       key = screen.getByLabelText('Your key', { selector: 'input' })
     }
     fireEvent.change(key, {
@@ -342,7 +345,7 @@ describe('ChatPage accessibility', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
 
     await waitFor(() => expect(screen.queryByText('Ask Coach about your training')).not.toBeInTheDocument())
-    expect(screen.queryByText('Set up your OpenRouter key to draft plans with Coach.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Coach is not available right now. You can still use your own OpenRouter key.')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Generate plan' })).toBeEnabled()
   })
 

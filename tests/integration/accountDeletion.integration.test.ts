@@ -27,7 +27,7 @@ function fakeAuth() {
 async function seed(uid: string): Promise<void> {
   const batch = db.batch()
   for (const name of DELETED_BY_USER_ID) {
-    const id = name === 'activeSessions' ? uid : `${uid}_${name}`
+    const id = name === 'activeSessions' || name === 'dailyAiUsage' ? uid : `${uid}_${name}`
     batch.set(db.collection(name).doc(id), { userId: uid, marker: name })
     batch.set(db.collection(name).doc(`${uid}-plain-${name}`), { userId: uid, marker: name })
   }
@@ -55,6 +55,7 @@ afterAll(async () => {
 describe('account deletion', () => {
   it('removes every document of the user and the Auth account, and nothing of the neighbour', async () => {
     const neighbourBefore = await snapshot(NEIGHBOUR)
+    await db.collection('dailyAiUsage').doc('total_2026-11-16').set({ date: '2026-11-16', used: 7 })
     const { auth, deleted } = fakeAuth()
     await deleteAccountForUser(TARGET, { db, auth })
 
@@ -62,6 +63,7 @@ describe('account deletion', () => {
     for (const [name, docs] of Object.entries(left)) expect([name, docs]).toEqual([name, name.endsWith('/id') ? [null] : []])
     expect(await snapshot(NEIGHBOUR)).toEqual(neighbourBefore)
     expect(deleted).toEqual([TARGET])
+    expect((await db.collection('dailyAiUsage').doc('total_2026-11-16').get()).data()).toEqual({ date: '2026-11-16', used: 7 })
   })
 
   it('finishes after an interrupted run, and cleans leftovers when the Auth user is already gone', async () => {

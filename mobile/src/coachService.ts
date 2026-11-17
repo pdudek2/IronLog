@@ -1,21 +1,26 @@
 import { parseAiContextHeader, type AiContextMetadata } from '../../src/lib/aiContext'
 import { readChatStream } from '../../src/lib/chatStreamProtocol'
+import { AI_QUOTA_HEADER, parseQuotaHeader, resetTimeLabel, type CoachQuotaUsage } from '../../src/shared/coachQuota'
 
 export type CoachMessage = { id: number; role: 'user' | 'assistant'; content: string; context?: AiContextMetadata }
 export class CoachApiError extends Error {
-  constructor(message: string, readonly code?: string) { super(message) }
+  constructor(message: string, readonly code?: string, readonly resetAt?: string) { super(message) }
 }
+export const COACH_UNAVAILABLE = 'Coach is not available right now. You can still use your own OpenRouter key.'
 export type CoachRequest = {
   key: string; messages: CoachMessage[]; signal: AbortSignal
   onContext: (context: AiContextMetadata) => void; onChunk: (text: string) => void
+  onQuota?: (usage: CoachQuotaUsage) => void
 }
 export function coachRequestBody(key: string, messages: CoachMessage[]): string {
   const recent = messages.map(({ role, content }) => ({ role, content: content.trim().slice(0, 4000) }))
     .filter(({ content }) => content).slice(-12)
-  let body = JSON.stringify({ apiKey: key, messages: recent })
+  // An empty key means Coach on the shared server key, so none is sent.
+  const keyField = key ? { apiKey: key } : {}
+  let body = JSON.stringify({ ...keyField, messages: recent })
   while (new TextEncoder().encode(body).length > 128 * 1024 && recent.length > 1) {
     recent.shift()
-    body = JSON.stringify({ apiKey: key, messages: recent })
+    body = JSON.stringify({ ...keyField, messages: recent })
   }
   if (new TextEncoder().encode(body).length > 128 * 1024) throw new Error('The message is too large. Shorten it and try again.')
   return body
@@ -31,15 +36,20 @@ export async function coachPost(baseUrl: string, path: 'ai-chat' | 'ai-models', 
       headers: { Authorization: `Bearer ${idToken}`, 'Content-Type': 'application/json' }, body })
   } catch { throw new Error('Could not connect to AI Coach. Check your connection and retry.') }
   if (!response.ok) {
-    const payload = await boundedJson(response, signal, 16 * 1024).catch(() => null) as { code?: unknown } | null
+    const payload = await boundedJson(response, signal, 16 * 1024).catch(() => null) as { code?: unknown; resetAt?: unknown } | null
     const code = typeof payload?.code === 'string' ? payload.code : undefined
+    const resetAt = typeof payload?.resetAt === 'string' ? payload.resetAt : undefined
     // Do not display arbitrary provider text: it can include request details or the key.
-    const message = code === 'invalid-key'
+    const message = code === 'daily-limit' && resetAt ? `Today's Coach limit is used up. It resets at ${resetTimeLabel(resetAt)}.`
+      : code === 'daily-limit-all' && resetAt ? `Coach has reached today's limit for everyone. It resets at ${resetTimeLabel(resetAt)}.`
+      : code === 'coach-unavailable' ? COACH_UNAVAILABLE
+      : code === 'invalid-key'
       ? 'OpenRouter rejected this key. Update it in settings.'
-      : response.status === 429 ? 'A request limit or credit limit was reached. Wait or check your OpenRouter account.'
+      : code === 'rate-limited' ? 'A request limit or credit limit was reached. Wait or check your OpenRouter account.'
+      : response.status === 429 ? 'Too many requests. Wait a moment and try again.'
           : response.status === 401 ? 'Your sign-in expired. Sign in again.'
             : 'AI Coach could not complete the request. Try again.'
-    throw new CoachApiError(message, code)
+    throw new CoachApiError(message, code, resetAt)
   }
   return response
 }
@@ -50,6 +60,8 @@ export async function consumeCoachReply(response: Response, request: CoachReques
     throw new Error('AI Coach returned an invalid stream.')
   }
   request.onContext(context)
+  const usage = parseQuotaHeader(response.headers.get(AI_QUOTA_HEADER))
+  if (usage) request.onQuota?.(usage)
   return readChatStream(response.body, { signal: request.signal, onChunk: request.onChunk })
 }
 

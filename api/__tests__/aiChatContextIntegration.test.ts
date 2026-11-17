@@ -250,7 +250,7 @@ describe('AI context response metadata', () => {
     expect(sent.messages[0].content).toContain('User: Łukasz')
     expect(sent.messages.slice(1)).toEqual(validBody.messages)
     expect(sent.model).toBe('openai/gpt-5.6-luna')
-    expect(sent.reasoning.effort).toBe('max')
+    expect(sent.reasoning.effort).toBe('medium')
     expect(vi.mocked(fetch).mock.calls[0][0]).toBe('https://openrouter.ai/api/v1/chat/completions')
     expect(request.headers).toMatchObject({ Authorization: `Bearer ${validBody.apiKey}` })
     expect(captured.header('X-IronLog-AI-Context')).toBe('limited;unavailable=readiness')
@@ -370,7 +370,7 @@ describe('AI context response metadata', () => {
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     const openrouterBody = JSON.parse(String(init.body)) as { model: string; reasoning: { effort: string }; messages: Array<{content:string}> }
     expect(openrouterBody.model).toBe('openai/gpt-5.6-luna')
-    expect(openrouterBody.reasoning.effort).toBe('max')
+    expect(openrouterBody.reasoning.effort).toBe('high')
     expect(openrouterBody.messages[0].content).toContain('TOP RECORDS')
     expect(openrouterBody.messages[0].content).toContain("Use the user's free-text Notes as the language cue")
     expect(openrouterBody.messages[0].content).toContain('Preserve exercise names from the supplied catalog.')

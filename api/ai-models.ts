@@ -2,6 +2,7 @@ import { requireUserId } from './_lib/auth.js'
 import { openrouterApiError, openrouterNetworkError } from './_lib/openrouterErrors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
 import { RateLimitError, assertRateLimit } from './_lib/rateLimit.js'
+import { COACH_MODEL, readCoachQuota } from './_lib/coachQuota.js'
 
 export const config = {
   maxDuration: 15,
@@ -9,6 +10,7 @@ export const config = {
 
 interface AiModelsBody {
   apiKey?: string
+  quota?: unknown
 }
 
 function getClientIp(req: ApiRequest): string {
@@ -32,10 +34,18 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
   try {
     const userId = await requireUserId(req)
     const ip = getClientIp(req)
-    await assertRateLimit({ key: `models:${userId}:${ip}`, limit: 12, windowMs: 60_000 })
-
     const body = await readJsonBody<AiModelsBody>(req, { maxBytes: 16 * 1024 })
     const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''
+
+    // The Hobby plan allows 12 functions, so the shared-key allowance is read here; `quota: true` asks for it.
+    // Coach reads it on every open and after every failure, so it has its own budget apart from key checks.
+    if (body.quota === true && body.apiKey === undefined) {
+      await assertRateLimit({ key: `quota:${userId}:${ip}`, limit: 60, windowMs: 60_000 })
+      sendJson(res, 200, { ...await readCoachQuota(userId), shared: Boolean(process.env.OPENROUTER_API_KEY?.trim()) })
+      return
+    }
+
+    await assertRateLimit({ key: `models:${userId}:${ip}`, limit: 12, windowMs: 60_000 })
 
     if (apiKey.length < 20) {
       sendJson(res, 400, { error: 'A valid OpenRouter API key is required.' })
@@ -55,7 +65,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       throw openrouterApiError(upstream.status)
     }
 
-    sendJson(res, 200, { models: [{ id: 'openai/gpt-5.6-luna', label: 'GPT-5.6 Luna · Max reasoning' }] })
+    sendJson(res, 200, { models: [{ id: COACH_MODEL, label: 'GPT-5.6 Luna' }] })
   } catch (error) {
     if (error instanceof RateLimitError) {
       res.setHeader('Retry-After', String(error.retryAfterSeconds))

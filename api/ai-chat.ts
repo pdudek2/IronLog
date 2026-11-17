@@ -5,6 +5,8 @@ import { openrouterApiError, openrouterNetworkError } from './_lib/openrouterErr
 import { ApiError, isApiError } from './_lib/errors.js'
 import { type ApiRequest, type ApiResponse, readJsonBody, sendApiError, sendJson } from './_lib/http.js'
 import { RateLimitError, assertRateLimit } from './_lib/rateLimit.js'
+import { COACH_MODEL, CoachLimitError, refundCoachUnits, reserveCoachUnits, type CoachReservation } from './_lib/coachQuota.js'
+import { AI_QUOTA_HEADER, COACH_DAILY_LIMIT, COACH_PLAN_COST, formatQuotaHeader } from '../src/shared/coachQuota.js'
 import {
   createClientAbortBridge,
   pipeOpenRouterStream,
@@ -479,8 +481,8 @@ async function generatePlan(
     body: JSON.stringify({
       model,
       max_tokens: 32768,
-      reasoning: { effort: 'max', exclude: true },
-      provider: { require_parameters: true },
+      reasoning: { effort: 'high', exclude: true },
+      provider: COACH_PROVIDERS,
       stream: false,
       messages: [{ role: 'system', content: buildPlanSystemPrompt(context, request, catalog) }, {
         role: 'user',
@@ -518,6 +520,7 @@ export async function streamChatReply(
   messages: NormalizedMessage[],
   req: ApiRequest,
   res: ApiResponse,
+  onRejected: (error: ApiError) => Promise<ApiError> = async (error) => error,
 ): Promise<void> {
   const bridge = createClientAbortBridge(req, res)
 
@@ -535,8 +538,8 @@ export async function streamChatReply(
         body: JSON.stringify({
           model,
           max_tokens: 16384,
-          reasoning: { effort: 'max', exclude: true },
-          provider: { require_parameters: true },
+          reasoning: { effort: 'medium', exclude: true },
+          provider: COACH_PROVIDERS,
           stream: true,
           messages: [{ role: 'system', content: buildSystemPrompt(context) }, ...messages.map((message) => ({
             role: message.role,
@@ -544,9 +547,9 @@ export async function streamChatReply(
           }))],
         }),
         signal: bridge.signal,
-      }).catch((error) => {
+      }).catch(async (error) => {
         if (bridge.signal.aborted) throw error
-        throw openrouterNetworkError()
+        throw await onRejected(openrouterNetworkError())
       })
     } catch (error) {
       if (bridge.signal.aborted) return
@@ -560,7 +563,7 @@ export async function streamChatReply(
         status: upstream.status,
         model,
       })
-      throw openrouterApiError(upstream.status)
+      throw await onRejected(openrouterApiError(upstream.status))
     }
 
     const body = upstream.body
@@ -598,6 +601,32 @@ export async function streamChatReply(
   } finally {
     bridge.dispose()
   }
+}
+
+// Only the companies the privacy policy names, and none that keep prompts, whatever the OpenRouter account allows.
+const COACH_PROVIDERS = { require_parameters: true, only: ['openai', 'azure', 'amazon-bedrock'], data_collection: 'deny' }
+
+const UPSTREAM_REJECTED = new Set(['invalid-key', 'rate-limited', 'model-unavailable', 'upstream-unavailable', 'network-retryable'])
+const SERVER_KEY_PROBLEM = new Set(['invalid-key', 'rate-limited', 'model-unavailable'])
+
+function coachUnavailable(): ApiError {
+  return new ApiError(503, 'Coach is not available right now. Try again later.', { code: 'coach-unavailable' })
+}
+
+async function reserveFor(userId: string, cost: number, res: ApiResponse): Promise<CoachReservation> {
+  const reservation = await reserveCoachUnits(userId, cost)
+  res.setHeader(AI_QUOTA_HEADER, formatQuotaHeader({ used: reservation.used, limit: COACH_DAILY_LIMIT }))
+  return reservation
+}
+
+// OpenRouter never accepted the request, so nothing was billed: give the units back. On the shared key a rejected
+// key, spent credit or missing model is the owner's problem, not the user's key.
+async function notAccepted(error: ApiError, reservation: CoachReservation | null): Promise<ApiError> {
+  if (!reservation || !error.code || !UPSTREAM_REJECTED.has(error.code)) return error
+  await refundCoachUnits(reservation).catch((cause: unknown) => console.error('[coach quota refund failed]', cause))
+  if (!SERVER_KEY_PROBLEM.has(error.code)) return error
+  console.error('[coach shared key rejected]', { code: error.code })
+  return coachUnavailable()
 }
 
 // The model answered but its plan is unusable; the request itself was fine, so it is a gateway error, not a 500.
@@ -640,14 +669,20 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     await assertRateLimit({ key: `${userId}:${ip}` })
 
     const body = await readJsonBody<AiChatBody>(req, { maxBytes: 128 * 1024 })
-    const apiKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''
+    // No key at all means the shared server key; a key that is present must be a usable one.
+    const shared = body.apiKey === undefined
+    const ownKey = typeof body.apiKey === 'string' ? body.apiKey.trim() : ''
     const mode = body.mode === 'plan' ? 'plan' : 'chat'
     const messages = sanitizeMessages(body.messages)
 
-    if (apiKey.length < 20) {
+    if (!shared && ownKey.length < 20) {
       sendJson(res, 400, { error: 'A valid OpenRouter API key is required.' })
       return
     }
+    const apiKey = shared ? process.env.OPENROUTER_API_KEY?.trim() ?? '' : ownKey
+    if (!apiKey) throw coachUnavailable()
+    // A deleted account keeps a valid token for up to an hour; on the shared key it must not spend or recreate a counter.
+    if (shared) await requireUserId(req, { checkRevoked: true })
 
     if (mode === 'chat' && messages.length === 0) {
       sendJson(res, 400, { error: 'No message to send.' })
@@ -656,15 +691,22 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
 
     const context = await loadAiUserContext(userId)
     res.setHeader(AI_CONTEXT_HEADER, serializeAiContextHeader(context.sources))
-    const model = 'openai/gpt-5.6-luna'
+    const model = COACH_MODEL
 
     if (mode === 'plan') {
       const request = normalizePlanRequest(body.planRequest)
       const catalog = await fetchAvailableExercises(userId)
-      // A client that leaves stops the request, so the user's key is not billed for a plan nobody receives.
+      const reservation = shared ? await reserveFor(userId, COACH_PLAN_COST, res) : null
+      // A client that leaves stops the request, so nobody pays for a plan nobody receives.
       const bridge = createClientAbortBridge(req, res)
       try {
-        const plan = await generatePlan(apiKey, model, context, request, catalog, bridge.signal)
+        let plan: GeneratedPlan
+        try {
+          plan = await generatePlan(apiKey, model, context, request, catalog, bridge.signal)
+        } catch (error) {
+          if (!bridge.signal.aborted && isApiError(error)) throw await notAccepted(error, reservation)
+          throw error
+        }
         bridge.markTerminal()
         sendJson(res, 200, { plan })
       } finally {
@@ -673,7 +715,8 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
       return
     }
 
-    await streamChatReply(apiKey, model, context, messages, req, res)
+    const reservation = shared ? await reserveFor(userId, 1, res) : null
+    await streamChatReply(apiKey, model, context, messages, req, res, (error) => notAccepted(error, reservation))
     return
   } catch (error) {
     if (res.headersSent || res.writableEnded || res.destroyed) return
@@ -681,6 +724,11 @@ export default async function handler(req: ApiRequest, res: ApiResponse): Promis
     if (error instanceof RateLimitError) {
       res.setHeader('Retry-After', String(error.retryAfterSeconds))
       sendJson(res, 429, { error: error.message })
+      return
+    }
+
+    if (error instanceof CoachLimitError) {
+      sendJson(res, 429, { error: error.message, code: error.code, resetAt: error.resetAt })
       return
     }
 

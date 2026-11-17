@@ -195,6 +195,7 @@ describe('generateTrainingPlan', () => {
       headers: {
         'Content-Type': 'application/json',
         'X-IronLog-AI-Context': 'limited;unavailable=profile',
+        'X-IronLog-AI-Quota': 'used=6;limit=20',
       },
     })))
 
@@ -207,7 +208,22 @@ describe('generateTrainingPlan', () => {
     })).resolves.toEqual({
       plan: { name: 'Plan', summary: 'Opis', days: [] },
       context: { status: 'limited', unavailableSources: ['profile'] },
+      quota: { used: 6, limit: 20 },
     })
+  })
+
+  it('sends no key on the shared server key and keeps the reset time of a spent allowance', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: "Today's Coach limit is used up.", code: 'daily-limit', resetAt: '2026-11-17T00:00:00.000Z',
+    }), { status: 429, headers: { 'Content-Type': 'application/json' } }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const result = generateTrainingPlan({
+      apiKey: '',
+      request: { goal: 'Strength', daysPerWeek: 3, experience: 'intermediate', equipment: [], focus: '', notes: '' },
+    })
+    await expect(result).rejects.toMatchObject({ code: 'daily-limit', resetAt: '2026-11-17T00:00:00.000Z' })
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).not.toHaveProperty('apiKey')
   })
 })
 

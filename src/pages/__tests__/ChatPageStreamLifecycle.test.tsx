@@ -5,6 +5,8 @@ import type { streamChatReply } from '../../lib/chatService'
 import ChatPage from '../ChatPage'
 
 const mocks = vi.hoisted(() => ({
+  // A server without a shared key: the pre-shared-key behaviour these tests cover.
+  fetchCoachQuota: vi.fn(async () => ({ used: 0, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: false })),
   fetchAvailableOpenRouterModels: vi.fn(),
   generateTrainingPlan: vi.fn(),
   streamChatReply: vi.fn(),
@@ -39,6 +41,7 @@ vi.mock('../../lib/chatService', () => ({
     }
   },
   fetchAvailableOpenRouterModels: mocks.fetchAvailableOpenRouterModels,
+  fetchCoachQuota: mocks.fetchCoachQuota,
   generateTrainingPlan: mocks.generateTrainingPlan,
   streamChatReply: mocks.streamChatReply,
 }))
@@ -241,7 +244,7 @@ describe('ChatPage stream lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Retry AI response' }))
 
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
-    expect(screen.getByRole('alert')).toHaveTextContent('Set up your OpenRouter key to use Coach.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Coach is not available right now. You can still use your own OpenRouter key.')
     expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
   })
@@ -266,7 +269,7 @@ describe('ChatPage stream lifecycle', () => {
     expect(screen.queryByLabelText('Your key', { selector: 'input' })).not.toBeInTheDocument()
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Set up key' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Use your own OpenRouter key' }))
     const key = screen.getByLabelText('Your key', { selector: 'input' })
     expect(key).toBeVisible()
     fireEvent.change(key, {
@@ -275,7 +278,7 @@ describe('ChatPage stream lifecycle', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))
 
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled())
-    expect(screen.queryByText('Set up your OpenRouter key to use Coach.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Coach is not available right now. You can still use your own OpenRouter key.')).not.toBeInTheDocument()
   })
 
   it('clears failed-generation feedback when a new send finds no API key', async () => {
@@ -296,7 +299,7 @@ describe('ChatPage stream lifecycle', () => {
 
     expect(mocks.streamChatReply).toHaveBeenCalledTimes(1)
     expect(within(screen.getByRole('log')).queryByText('Nowe pytanie')).not.toBeInTheDocument()
-    expect(screen.getByRole('alert')).toHaveTextContent('Set up your OpenRouter key to use Coach.')
+    expect(screen.getByRole('alert')).toHaveTextContent('Coach is not available right now. You can still use your own OpenRouter key.')
     expect(screen.queryByText('Awaria testowa.')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Retry AI response' })).not.toBeInTheDocument()
   })

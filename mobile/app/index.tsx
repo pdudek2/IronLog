@@ -657,15 +657,18 @@ const CLOSURE_COPY: Record<ClosureNoticeStatus, { title: string; copy: string; a
   active_session_changed: { title: 'The session changed on another device.', copy: 'Check the latest data on this device, then finish it again.', action: 'Load current session' },
 }
 
-function ClosureNotice({ closure, onRetry, onDismiss, onSignIn }: { closure: ClosureState; onRetry: () => void; onDismiss: () => void; onSignIn: () => void }) {
+function ClosureNotice({ closure, savingInButton, onRetry, onDismiss, onSignIn }: { closure: ClosureState; savingInButton: boolean; onRetry: () => void; onDismiss: () => void; onSignIn: () => void }) {
   if (closure.status === 'ready') return null
   if (closure.status === 'loading') return <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
     <ActivityIndicator color={colors.accent} />
     <Text style={styles.syncTitle}>Checking saved workout requests…</Text>
     <Text style={styles.syncCopy}>Editing and closing stay locked until recovery is checked.</Text>
   </View>
-  // Saving shows in the Finish button, so the session does not move down under the finger.
-  if (closure.status === 'submitting') return null
+  // With the session on screen saving shows in the Finish button, so the session does not move down under the finger.
+  if (closure.status === 'submitting') return savingInButton ? null : <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
+    <ActivityIndicator color={colors.accent} />
+    <Text style={styles.syncTitle}>{closure.intent.action === 'finish' ? 'Saving workout…' : 'Discarding workout…'}</Text>
+  </View>
   const { title, copy, action } = CLOSURE_COPY[closure.status]
   const canDismiss = closure.status === 'active_session_changed' || closure.status === 'closure_conflict' || closure.status === 'session_mismatch' || closure.status === 'closure_rejected'
   const onPress = closure.status === 'auth_required' ? onSignIn : canDismiss ? onDismiss : onRetry
@@ -904,6 +907,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const rejectedEditState = state.status === 'ready' && state.syncStatus === 'storage-error' ? state : null
   const allSets = session?.exercises.flatMap((exercise) => exercise.sets) ?? []
   const sessionSetCount = { done: allSets.filter((set) => set.done).length, total: allSets.length }
+  // The saved workout replaces this screen; it stays blank under the summary's entering animation too.
+  const hideSaved = handingOff || (!isFocused && completed?.action === 'finish')
   const selectSet = (setId: string) => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }) }
 
   return (
@@ -956,9 +961,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-      {closure && <ClosureNotice closure={closure} onRetry={retryClosure} onDismiss={dismissClosure} onSignIn={() => void doLogout()} />}
+      {closure && <ClosureNotice closure={closure} savingInButton={state.status === 'ready'} onRetry={retryClosure} onDismiss={dismissClosure} onSignIn={() => void doLogout()} />}
 
-      {state.status === 'empty' && !handingOff && (
+      {state.status === 'empty' && !hideSaved && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>{completed?.action === 'finish' ? 'Workout saved' : completed ? 'Workout discarded' : 'No workout in progress'}</Text>
           <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Your saved workout is ready in History.' : 'Start a workout from Train whenever you are ready.'}</Text>
@@ -967,7 +972,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-      {sessionClosed && !handingOff && (
+      {sessionClosed && !hideSaved && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>Workout saved</Text>
           <Text style={styles.stateCopy}>Your completed session is ready in History.</Text>

@@ -52,6 +52,11 @@ const production = backend === 'production'
 const EAS_PROJECT_ID = '2f852b31-cbd3-4c52-8f26-ff310368ac24'
 // Without a channel the build never talks to the update server.
 const updateChannel = process.env.IRONLOG_MOBILE_UPDATE_CHANNEL
+// Set by the release script from the native fingerprint, the same string for the build and its updates.
+const runtimeVersion = process.env.IRONLOG_MOBILE_RUNTIME_VERSION
+if (updateChannel && !runtimeVersion) {
+  throw new Error(`Set IRONLOG_MOBILE_RUNTIME_VERSION for a build or update on the ${updateChannel} channel.`)
+}
 
 const apiBaseUrl = process.env.IRONLOG_MOBILE_API_URL
   ?? (backend === 'emulator' ? `http://${emulatorHost}:3000` : 'https://getshear.vercel.app')
@@ -81,8 +86,7 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: true,
   },
-  // Set by the release script from the native fingerprint, the same string for the build and its updates.
-  runtimeVersion: process.env.IRONLOG_MOBILE_RUNTIME_VERSION,
+  runtimeVersion,
   updates: updateChannel
     ? { url: `https://u.expo.dev/${EAS_PROJECT_ID}`, requestHeaders: { 'expo-channel-name': updateChannel } }
     : { enabled: false },

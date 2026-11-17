@@ -105,7 +105,9 @@ const run = (steps: ReleaseStep[]) => {
 }
 
 function androidFingerprint(mobile: string): string {
-  const out = execFileSync(fingerprintCmd[0]!, fingerprintCmd.slice(1), { cwd: mobile, encoding: 'utf8', env: { ...process.env, ...mobileEnv } })
+  // A string runtime version is left out of the hash; the placeholder only satisfies the app config.
+  const env = { ...process.env, ...mobileEnv, IRONLOG_MOBILE_RUNTIME_VERSION: 'fingerprint' }
+  const out = execFileSync(fingerprintCmd[0]!, fingerprintCmd.slice(1), { cwd: mobile, encoding: 'utf8', env })
   const { hash, sources } = JSON.parse(out) as { hash: string; sources: { id?: string }[] }
   // The fingerprint quietly leaves out an app config that throws, so its absence must stop the release.
   if (!sources.some((source) => source.id === 'expoConfig')) {

@@ -1,5 +1,7 @@
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
-import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import { KeyboardLift } from '../src/KeyboardLift'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { StatusBar } from 'expo-status-bar'
 import { useIsFocused, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -12,8 +14,6 @@ import { Linking,
   Keyboard,
   BackHandler,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -56,7 +56,6 @@ import { acceptSetInput, lastSessionBest, needsWeightConfirm, weightSlip } from 
 import { weightStep } from '../../src/shared/weightUnits'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
-import { useKeyboardReveal } from '../src/useKeyboardReveal'
 import { covers } from '../src/covers'
 import { buildProgression, planTarget, sessionHint, type ProgressionInput } from '../../src/shared/progression'
 import { computeReadinessScore, todayKey } from '../../src/shared/readiness'
@@ -112,13 +111,6 @@ function LoginForm() {
   const [notice, setNotice] = useState(() => (takeAccountDeletedNotice() ? 'Your account has been deleted.' : ''))
   const [error, setError] = useState<{ field: 'email' | 'password'; message: string } | null>(null)
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
-  // KeyboardAvoidingView already shrinks the form; scrolling to its end keeps Sign in above the keyboard too.
-  const { scroll, keyboardInset } = useKeyboardReveal()
-  useEffect(() => {
-    if (!keyboardInset) return
-    const timer = setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50)
-    return () => clearTimeout(timer)
-  }, [keyboardInset, scroll])
 
   const submit = async () => {
     if (busy || resetting) return
@@ -172,10 +164,10 @@ function LoginForm() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.flex, styles.loginShell]}>
-      <ScrollView
-        ref={scroll}
-        automaticallyAdjustKeyboardInsets
+    <View style={[styles.flex, styles.loginShell]}>
+      {/* The offset keeps Sign in above the keyboard with the field. */}
+      <KeyboardAwareScrollView
+        bottomOffset={120}
         contentContainerStyle={styles.loginContent}
         keyboardShouldPersistTaps="handled"
       >
@@ -244,8 +236,8 @@ function LoginForm() {
           {mode === 'register' && <Text style={styles.loginLegal}>See how we handle your data:{' '}
             <Text accessibilityRole="link" onPress={() => void Linking.openURL('https://getshear.vercel.app/privacy').catch(() => undefined)} style={styles.loginLegalLink}>Privacy policy</Text>.</Text>}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   )
 }
 
@@ -611,7 +603,7 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
   const adjust = (field: 'weight' | 'reps', delta: number) => set && editing.adjustSet(exercise.clientId, set.clientId, field, delta)
   const openSet = exercise.sets.findIndex(({ done }) => !done)
   const action = set?.done ? openSet >= 0 ? `Back to set ${openSet + 1}` : 'Done' : set ? 'Log set' : nextName ? `Go to ${nextName}` : finishing ? 'Finishing…' : 'Finish workout'
-  return <View accessibilityLabel="Current set" style={[styles.panel, { paddingBottom: inset }]}>
+  return <KeyboardLift accessibilityLabel="Current set" rest={inset + 14} gap={8} style={styles.panel}>
     {rest ?? <View style={styles.panelStatus}><Text style={styles.panelStatusText}>{setPanelStatus(set, setIndex, exercise.sets.length)}</Text></View>}
     {set && <View style={styles.panelNums}>
       <View style={styles.panelNum}>
@@ -632,7 +624,7 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
       onPress={set?.done ? onClearSelection : set ? onLog : nextName ? onNext : onFinish} style={({ pressed }) => [styles.panelAction, set?.done && styles.panelActionQuiet, !set && !nextName && finishing && styles.buttonDisabled, pressed && styles.buttonPressed]}>
       <Text style={[styles.panelActionText, set?.done && styles.panelActionQuietText]}>{action}</Text>
     </Pressable>
-  </View>
+  </KeyboardLift>
 }
 
 // Copy mirrors the web closure alerts in WorkoutPage.
@@ -687,7 +679,8 @@ function guardClosureInteraction<Args extends unknown[], Result>(canEdit: () => 
 
 function SessionScreen({ user }: { user: AuthUser }) {
   const navigation = useBottomNavigation()
-  const { scroll, content, keyboardInset } = useKeyboardReveal()
+  const navigationInset = useNavigationInset()
+  const scroll = useRef<ScrollView>(null)
   const isFocused = useIsFocused()
   const router = useRouter()
   const active = useActiveRuntime()
@@ -900,11 +893,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const selectSet = (setId: string) => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }) }
 
   return (
-    <View onFocus={navigation.onFocus} onBlur={navigation.onBlur} pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
-      <Animated.ScrollView
+    <View pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
+      <ScrollView
         ref={scroll}
-        innerViewRef={content}
-        contentContainerStyle={[styles.sessionContent, panelVisible ? styles.sessionContentPanel : keyboardInset > 0 && { paddingBottom: keyboardInset }]}
+        contentContainerStyle={[styles.sessionContent, panelVisible ? styles.sessionContentPanel : !liveSession && { paddingBottom: navigationInset }]}
         keyboardShouldPersistTaps="handled"
         stickyHeaderIndices={[0]}
         scrollEventThrottle={16}
@@ -1028,10 +1020,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
             onGoTo={goToExercise} onSelectSet={selectSet} onOverview={() => setSheet('overview')} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} onShortOnTime={() => setCutOpen(true)} />
         </View>
         </>)}
-      </Animated.ScrollView>
+      </ScrollView>
       {panelVisible && <SetPanel exercise={panelExercise} setIndex={currentSetIndex} units={state.status === 'ready' ? state.units : 'kg'}
-        // RN's keyboard height leaves out the navigation bar, which the edge-to-edge panel also sits over.
-        rejectedEdit={rejectedEditState} inset={keyboardInset > 0 ? keyboardInset + insets.bottom + 8 : insets.bottom + 14} weightRef={weightInput} finishing={closure?.status === 'submitting'}
+        rejectedEdit={rejectedEditState} inset={insets.bottom} weightRef={weightInput} finishing={closure?.status === 'submitting'}
         nextName={nextExerciseIndex >= 0 ? liveSession?.exercises[nextExerciseIndex]?.name ?? null : null}
         editing={panelEditing}
         rest={currentRest && <RestBar rest={currentRest} label={setPanelRestLabel(panelExercise.sets[currentSetIndex], currentSetIndex)}

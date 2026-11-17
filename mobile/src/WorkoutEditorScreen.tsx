@@ -3,7 +3,7 @@ import { formatCompactVolume } from '../../src/shared/weightUnits'
 import { exercises as exerciseCatalog } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, EXERCISE_CATEGORY_COLORS, getEquipmentLabel } from '../../src/lib/exerciseLabels'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ActivityIndicator, BackHandler, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, BackHandler, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
@@ -21,7 +21,7 @@ import type { NavigationExit } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import ExercisePicker from './ExercisePicker'
-import { useKeyboardReveal } from './useKeyboardReveal'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { colors, pageBackground, pageTitle } from './theme'
 import { ConfirmDialog } from './dialog'
 import { Icon } from './icons'
@@ -34,7 +34,6 @@ export default function WorkoutEditorScreen({ workoutId, deleting }: { workoutId
 }
 function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; deleting: boolean }) {
   const active = useActiveRuntime(), router = useRouter(), insets = useSafeAreaInsets()
-  const { scroll, content: scrollContent } = useKeyboardReveal()
   const [controller] = useState(() => new WorkoutEditorController({ uid, workoutId, owner: id(), units: active.state.units, newId: id, journal: workoutEditorJournal,
     read: op => readWorkoutMutation(uid, workoutId, op), send: op => sendWorkoutMutation(uid, op) }))
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot)
@@ -97,8 +96,8 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
   const locked = state.busy || !!draft?.pending
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" /><HistoryHeader onRequestAction={(_, go) => leave(go)} /><ActiveWorkoutReturnBar top onRequestExit={leave} />
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView ref={scroll} innerViewRef={scrollContent} stickyHeaderIndices={[1]} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
+    <View style={styles.screen}>
+      <KeyboardAwareScrollView bottomOffset={16} stickyHeaderIndices={[1]} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         <View>
           <View style={{ alignSelf: 'flex-start' }}><Action icon="chevron-left" title="Back" onPress={() => leave(() => router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }))} /></View>
           {!draft && state.busy && <ActivityIndicator color={colors.accentText} />}
@@ -139,9 +138,8 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
           </View> })}
           <Action outlined title="+ Add exercise" disabled={locked || draft.exercises.length >= 20} onPress={() => setPicking(true)} />
         </>}</View>
-      </ScrollView>
-
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
     {picking && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} onClose={() => setPicking(false)} onSelect={(exerciseId, name, exerciseSource) => {
       change(d => ({ ...d, exercises: [...d.exercises, { rowId: id(), exerciseId, name, exerciseSource, sets: [{ rowId: id(), weight: '0', reps: '' }] }] })); setPicking(false)
     }} />}

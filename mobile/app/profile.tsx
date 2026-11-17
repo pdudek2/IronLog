@@ -1,12 +1,13 @@
 import Slider from '@react-native-community/slider'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, BackHandler, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, BackHandler, Keyboard, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import Constants from 'expo-constants'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import HistoryHeader from '../src/HistoryHeader'
-import BottomNavigation, { useBottomNavigation, type NavigationExit } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset, type NavigationExit } from '../src/BottomNavigation'
+import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller'
 import { deleteAccountOnServer, logout, readFirstWorkoutAt, readProfile, readProgressRecords, readRecentWorkouts, saveProfile } from '../src/firebase'
 import { BottomSheet } from '../src/BottomSheet'
 import { markAccountDeleted, ownsJournalKey } from '../src/accountData'
@@ -50,12 +51,12 @@ function Profile({ uid }: { uid: string }) {
   const [signingOut, setSigningOut] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const navigation = useBottomNavigation()
-  const insets = useSafeAreaInsets()
+  const navigationInset = useNavigationInset()
   const focused = useRef(false)
   const exiting = useRef(false)
   const confirming = useRef(false)
   const inputFocused = useRef(false)
-  const scroll = useRef<ScrollView>(null)
+  const scroll = useRef<KeyboardAwareScrollViewRef>(null)
   const name = useRef<TextInput>(null)
   useEffect(() => () => controller.dispose(), [controller])
   const leave: NavigationExit = proceed => {
@@ -119,8 +120,7 @@ function Profile({ uid }: { uid: string }) {
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader onRequestAction={(action, proceed) => { if (action !== 'profile') leave(proceed) }} />
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView ref={scroll} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingBottom: Math.max(32, insets.bottom) }]}>
+    <KeyboardAwareScrollView ref={scroll} bottomOffset={16} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingBottom: 32 + navigationInset }]}>
         <View style={styles.head}>
           <View style={styles.avatar}><Text style={styles.avatarText}>{(input?.displayName || '?').charAt(0).toUpperCase()}</Text></View>
           <View style={styles.headCopy}>
@@ -132,7 +132,7 @@ function Profile({ uid }: { uid: string }) {
         {current.status === 'loading' ? <ActivityIndicator color={colors.accentText} style={styles.loading} />
           : !input ? <View style={styles.loading}><Text accessibilityRole="alert" style={styles.error}>{current.status === 'missing' ? 'Profile setup is missing. Retry or return to Train.' : current.message}</Text><Pressable accessibilityRole="button" onPress={() => void controller.load(true)} style={styles.retry}><Text style={styles.accent}>Retry</Text></Pressable><Pressable accessibilityRole="button" onPress={() => leave(() => router.replace('/dashboard'))} style={styles.retry}><Text style={styles.muted}>Back to Home</Text></Pressable></View>
           : <View style={styles.form}>
-            <View style={styles.section}><Text style={styles.label}>Name</Text><TextInput ref={name} accessibilityLabel="Name" autoComplete="name" editable={!locked} placeholder="E.g. Alex" placeholderTextColor={colors.muted} selectionColor={colors.accentText} value={input.displayName} onFocus={() => { inputFocused.current = true; navigation.onFocus() }} onBlur={() => { inputFocused.current = false; navigation.onBlur() }} onChangeText={displayName => controller.change({ displayName })} style={[styles.input, current.nameError && styles.invalidInput]} />{current.nameError && <Text accessibilityRole="alert" style={styles.error}>{current.nameError}</Text>}</View>
+            <View style={styles.section}><Text style={styles.label}>Name</Text><TextInput ref={name} accessibilityLabel="Name" autoComplete="name" editable={!locked} placeholder="E.g. Alex" placeholderTextColor={colors.muted} selectionColor={colors.accentText} value={input.displayName} onFocus={() => { inputFocused.current = true }} onBlur={() => { inputFocused.current = false }} onChangeText={displayName => controller.change({ displayName })} style={[styles.input, current.nameError && styles.invalidInput]} />{current.nameError && <Text accessibilityRole="alert" style={styles.error}>{current.nameError}</Text>}</View>
             <View style={styles.goalSection}><Text style={styles.goalLabel}>Primary goal</Text><View style={styles.goals}>{profileGoals.map(goal => <Pressable key={goal.value} accessibilityRole="button" accessibilityState={{ selected: input.primaryGoal === goal.value, disabled: locked }} disabled={locked} onPress={() => controller.change({ primaryGoal: goal.value })} style={[styles.goal, input.primaryGoal === goal.value && styles.selectedGoal]}><Text style={[styles.goalText, input.primaryGoal === goal.value && styles.selectedText]}>{goal.label}</Text></Pressable>)}</View></View>
             <View style={styles.section}><View style={styles.weekHeading}><Text style={styles.label}>Workouts per week</Text><Text accessibilityLiveRegion="polite" style={styles.weekValue}>{input.weeklyGoal} {input.weeklyGoal === 1 ? 'workout' : 'workouts'}</Text></View><Slider accessibilityLabel="Workouts per week" accessibilityValue={{ min: 1, max: 7, now: Math.min(7, input.weeklyGoal), text: `${input.weeklyGoal} saved workouts; choose 1 to 7` }} disabled={locked} minimumValue={1} maximumValue={7} step={1} value={Math.min(7, input.weeklyGoal)} onValueChange={weeklyGoal => controller.change({ weeklyGoal })} minimumTrackTintColor="rgba(255,255,255,0.08)" maximumTrackTintColor="rgba(255,255,255,0.08)" thumbTintColor={colors.accent} style={styles.slider} /><View style={styles.bounds} accessible={false}><Text style={styles.bound}>1</Text><Text style={styles.bound}>7</Text></View><Text style={styles.unitsLabel}>Units</Text><View style={styles.units}>{(['kg', 'lbs'] as const).map(units => <Pressable key={units} accessibilityRole="button" accessibilityLabel={units} accessibilityState={{ selected: input.units === units, disabled: locked }} disabled={locked} onPress={() => controller.change({ units })} style={[styles.unit, units === 'lbs' && undefined, input.units === units && styles.selectedUnit]}><Text style={[styles.unitText, input.units === units && styles.selectedText]}>{units}</Text></Pressable>)}</View></View>
             <View style={styles.saveSection}><Pressable accessibilityRole="button" accessibilityLabel={current.busy ? 'Saving' : current.pending ? 'Check save outcome' : 'Save changes'} accessibilityState={{ disabled: !controller.canSave, busy: current.busy }} disabled={!controller.canSave} onPress={() => void submit()} style={[styles.save, !controller.canSave && styles.disabled]}><Text style={styles.saveText}>{current.busy ? 'Saving…' : current.pending ? 'Check save outcome' : 'Save changes'}</Text></Pressable>{current.message && <Text accessibilityRole={current.message === 'Profile saved' ? undefined : 'alert'} accessibilityLiveRegion="polite" style={current.message === 'Profile saved' ? styles.success : styles.error}>{current.message}</Text>}{current.status !== 'ready' && <Pressable accessibilityRole="button" onPress={() => void controller.load(true)} style={styles.retry}><Text style={styles.accent}>Retry</Text></Pressable>}</View>
@@ -145,8 +145,7 @@ function Profile({ uid }: { uid: string }) {
         </View>
         <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => leave(signOut)} style={styles.signOut}><Text style={styles.signOutText}>Sign out</Text></Pressable>
         <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => setDeleting(true)} style={styles.signOut}><Text style={styles.signOutText}>Delete account</Text></Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+    </KeyboardAwareScrollView>
     <BottomNavigation {...navigation} onRequestExit={leave} />
     {deleting && <BottomSheet title="Delete account" onClose={() => setDeleting(false)}>
       {(close) => <DeleteAccount uid={uid} working={active.state.status === 'ready'} close={close} onDeleted={() => router.replace('/')} />}
@@ -159,13 +158,6 @@ function DeleteAccount({ uid, working, close, onDeleted }: { uid: string; workin
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  // The sheet sits at the screen bottom; lift its content above the keyboard so the password and button stay visible.
-  const [keyboard, setKeyboard] = useState(0)
-  useEffect(() => {
-    const shown = Keyboard.addListener('keyboardDidShow', (event) => setKeyboard(event.endCoordinates.height))
-    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboard(0))
-    return () => { shown.remove(); hidden.remove() }
-  }, [])
   const submit = async () => {
     if (busy) return
     if (working) { setError('Finish or discard your workout first.'); return }
@@ -188,7 +180,7 @@ function DeleteAccount({ uid, working, close, onDeleted }: { uid: string; workin
       setBusy(false)
     }
   }
-  return <View style={[styles.deleteSheet, { paddingBottom: 8 + keyboard }]}>
+  return <View style={styles.deleteSheet}>
     <Text style={styles.deleteCopy}>This deletes your account, profile, plans, workouts, records and check-ins at once. It cannot be undone.</Text>
     <Text style={styles.label}>Password</Text>
     <TextInput accessibilityLabel="Password" autoCapitalize="none" autoComplete="current-password" secureTextEntry editable={!busy}

@@ -1,7 +1,9 @@
 import CoachPlanPanel from '../src/CoachPlanPanel'
-import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import { KeyboardLift } from '../src/KeyboardLift'
+import { KeyboardAwareScrollView, type KeyboardAwareScrollViewRef } from 'react-native-keyboard-controller'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { AppState, KeyboardAvoidingView, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { AppState, Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useFocusEffect } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -46,6 +48,7 @@ function ContextNotice({ context }: { context?: AiContextMetadata }) {
 }
 function Coach({ uid }: { uid: string }) {
   const navigation = useBottomNavigation()
+  const navigationInset = useNavigationInset()
   const [, redraw] = useState(0)
   const [controller] = useState(() => new CoachController(nativeCoachDependencies(uid), () => redraw(value => value + 1)))
   const state = controller.state
@@ -62,7 +65,7 @@ function Coach({ uid }: { uid: string }) {
   const [draft, setDraft] = useState('')
   const [reveal, setReveal] = useState(false)
   const [input, setInput] = useState('')
-  const outer = useRef<ScrollView>(null)
+  const outer = useRef<KeyboardAwareScrollViewRef>(null)
   const nearBottom = useRef(true)
   const [more, setMore] = useState(false)
   const conversation = state.messages.length > 0
@@ -121,11 +124,12 @@ function Coach({ uid }: { uid: string }) {
     </View>
     {state.keyLoading ? <Text style={s.description}>Loading key settings…</Text> : state.storageError ? <View><Text accessibilityRole="alert" style={s.error}>{state.storageError}</Text><Button onPress={() => void controller.load()}>Retry key loading</Button></View> : !configured && keyPanel}
   </>
-  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} style={s.screen} edges={['top']}><StatusBar style="light" />
+  return <SafeAreaView style={s.screen} edges={['top']}><StatusBar style="light" />
     <HistoryHeader />
-    <KeyboardAvoidingView style={s.grow} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+    <View style={s.grow}>
       <View style={[s.grow, tab !== 'chat' && { display: 'none' }]}>
-        <ScrollView ref={outer} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" scrollEventThrottle={16}
+        {/* The offset keeps the key field above the composer too. */}
+        <KeyboardAwareScrollView ref={outer} bottomOffset={80} style={s.grow} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" scrollEventThrottle={16}
           onScroll={event => { navigation.onScroll(event); const e = event.nativeEvent; nearBottom.current = e.contentSize.height - e.layoutMeasurement.height - e.contentOffset.y < 96 }}
           onContentSizeChange={() => { if (conversation && nearBottom.current) outer.current?.scrollToEnd({ animated: false }) }}>
           {top}
@@ -149,8 +153,9 @@ function Coach({ uid }: { uid: string }) {
           </View>}
           {['failed', 'interrupted'].includes(state.generation) && <View style={s.feedback}><Text accessibilityRole="alert" style={state.error ? s.error : s.description}>{state.error ?? 'Generation stopped.'}</Text>{!limit && <Button disabled={!controller.canSend} onPress={() => { nearBottom.current = true; controller.retry() }}>Retry AI response</Button>}</View>}
           {configured && keyPanel}
-        </ScrollView>
-        {ready && <View style={s.composer}>
+        </KeyboardAwareScrollView>
+        {/* The composer stays above the tab bar and rides the keyboard over it. */}
+        <KeyboardLift rest={navigationInset}>{ready && <View style={s.composer}>
           <View style={s.composerField}>
             <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.accentText} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !limit)}
               placeholder="Ask about your training" placeholderTextColor={colors.mutedSoft} style={s.composerInput} textAlignVertical="center" />
@@ -160,10 +165,10 @@ function Coach({ uid }: { uid: string }) {
             </Pressable>
           </View>
           {!!(configured ? 'Responses are billed to your OpenRouter API key.' : allowance) && <Text style={s.composerNote}>{configured ? 'Responses are billed to your OpenRouter API key.' : allowance}</Text>}
-        </View>}
+        </View>}</KeyboardLift>
       </View>
-      <View style={[s.grow, tab !== 'plan' && { display: 'none' }]}><CoachPlanPanel uid={uid} controller={controller} top={top} bottom={configured ? keyPanel : null} onScroll={navigation.onScroll} /></View>
-    </KeyboardAvoidingView>
+      <View style={[s.grow, tab !== 'plan' && { display: 'none' }]}><CoachPlanPanel uid={uid} controller={controller} top={top} bottom={configured ? keyPanel : null} onScroll={navigation.onScroll} bottomInset={navigationInset} /></View>
+    </View>
     <BottomNavigation {...navigation} />
     {more && <BottomSheet title="Coach" onClose={() => setMore(false)}>{close => <>
       {tab === 'chat' && conversation && <Pressable accessibilityRole="button" onPress={() => close(() => { controller.reset(); nearBottom.current = true })} style={({ pressed }) => [s.sheetRow, pressed && s.pressed]}><Text style={s.sheetRowText}>Reset conversation</Text></Pressable>}

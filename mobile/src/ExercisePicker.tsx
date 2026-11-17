@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { FlatList, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useState } from 'react'
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
 
@@ -8,6 +8,7 @@ import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel } from '../../src/lib/exerc
 import type { RecentExercisePick } from '../../src/shared/recentExercises'
 import type { ExerciseRef } from '../../src/shared/exerciseMatch'
 import { BottomSheet } from './BottomSheet'
+import { KeyboardLift } from './KeyboardLift'
 import type { ExerciseSource } from './session'
 import type { ExerciseMetadata, ReadState } from './scopedRead'
 import { colors } from './theme'
@@ -32,12 +33,6 @@ export default function ExercisePicker({ userExercises, recent = [], suggestions
   const insets = useSafeAreaInsets()
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<Category | 'all'>('all')
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
-  useEffect(() => {
-    const shown = Keyboard.addListener('keyboardDidShow', (event) => setKeyboardHeight(event.endCoordinates.height))
-    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardHeight(0))
-    return () => { shown.remove(); hidden.remove() }
-  }, [])
   const q = query.toLowerCase()
   const filtered = q !== '' || category !== 'all'
   // Matches web ordering: the user's own exercises first, then the shared library.
@@ -84,7 +79,7 @@ export default function ExercisePicker({ userExercises, recent = [], suggestions
         data={results}
         keyExtractor={(item) => `${item.source}-${item.id}`}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: Math.max(16, insets.bottom + 8) + keyboardHeight }}
+        ListFooterComponent={<KeyboardLift rest={Math.max(16, insets.bottom + 8)} gap={16} />}
         ListHeaderComponent={<>
           {userExercises.status === 'loading' && <Text accessibilityLiveRegion="polite" style={styles.pickerFeedback}>Loading your exercises…</Text>}
           {userExercises.status === 'error' && <Pressable accessibilityRole="button" onPress={onRetryUserExercises} style={styles.lookupAction}>

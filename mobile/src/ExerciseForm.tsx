@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import type { Exercise } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, getEquipmentLabel, getMuscleLabel } from '../../src/lib/exerciseLabels'
@@ -10,6 +10,7 @@ import { startExerciseMutation, waitForExerciseMutation, waitForExerciseConfirma
 import { colors, primaryGradient } from './theme'
 import { showDialog } from './dialog'
 import { Icon } from './icons'
+import { KeyboardLift } from './KeyboardLift'
 
 const initial: ExerciseInput = { name: '', category: 'chest', equipment: 'barbell', muscles: [] }
 export default function ExerciseForm({ uid, exercise, initialName, onClose, onSaved }: {
@@ -104,24 +105,27 @@ export default function ExerciseForm({ uid, exercise, initialName, onClose, onSa
     if (locked || !exercise) return
     showDialog('Delete exercise?', `Delete exercise "${exercise.name}"? It will no longer be available in your exercise library.`, [{ text: 'Cancel', style: 'cancel' }, { text: 'Delete', style: 'destructive', onPress: () => { if (alive.current) void submit('delete') } }])
   }
-  return <Modal visible transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={close}>
-    <KeyboardAvoidingView style={[styles.overlay, { paddingTop: insets.top }]} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+  // Focus waits for the modal's window: an autoFocus field gets focus before the window does, and no keyboard opens.
+  return <Modal visible transparent animationType="fade" statusBarTranslucent navigationBarTranslucent onRequestClose={close} onShow={() => nameField.current?.focus()}>
+    <KeyboardLift rest={0} style={[styles.overlay, { paddingTop: insets.top }]}>
       <Pressable accessibilityLabel="Close form backdrop" onPress={close} style={StyleSheet.absoluteFill} />
       <View accessibilityViewIsModal style={[styles.sheet, { paddingBottom: Math.max(16, insets.bottom) }]}>
         <View style={styles.header}><Text accessibilityRole="header" style={styles.title}>{exercise ? 'Edit custom exercise' : 'Add custom exercise'}</Text><Pressable accessibilityRole="button" accessibilityLabel="Close form" onPress={close} style={styles.close}><Icon name="close" size={18} /></Pressable></View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-          <View style={styles.group}><Text style={styles.label}>Name</Text><TextInput ref={nameField} accessibilityLabel="Exercise name" autoFocus value={input.name} editable={!locked} maxLength={120} onChangeText={name => { setInput({ ...input, name }); setError(null) }} placeholder="E.g. Banded Pull-apart" placeholderTextColor={colors.mutedSoft} style={styles.input} /></View>
+          <View style={styles.group}><Text style={styles.label}>Name</Text><TextInput ref={nameField} accessibilityLabel="Exercise name" value={input.name} editable={!locked} maxLength={120} onChangeText={name => { setInput({ ...input, name }); setError(null) }} placeholder="E.g. Banded Pull-apart" placeholderTextColor={colors.mutedSoft} style={styles.input} /></View>
           <View style={styles.pair}>
             <Select label="Category" value={input.category} options={categories} getLabel={value => EXERCISE_CATEGORY_LABELS[value]!} disabled={locked} onChange={category => setInput({ ...input, category })} />
             <Select label="Equipment" value={input.equipment} options={equipmentOptions} getLabel={getEquipmentLabel} disabled={locked} onChange={equipment => setInput({ ...input, equipment })} />
           </View>
           <View style={styles.group}><Text style={styles.label}>Muscle groups</Text><View style={styles.chips}>{muscleOptions.map(muscle => <Pressable key={muscle} accessibilityRole="button" accessibilityState={{ selected: input.muscles.includes(muscle), disabled: locked }} disabled={locked} onPress={() => setInput({ ...input, muscles: input.muscles.includes(muscle) ? input.muscles.filter(value => value !== muscle) : [...input.muscles, muscle] })} style={[styles.chip, input.muscles.includes(muscle) && styles.selectedChip]}><Text style={[styles.chipText, input.muscles.includes(muscle) && styles.selectedChipText]}>{getMuscleLabel(muscle)}</Text></Pressable>)}</View></View>
           {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
+        </ScrollView>
+        <View style={styles.footer}>
           <Pressable accessibilityRole="button" accessibilityLabel={busy ? 'Saving' : createConflict ? 'Close and reload library' : attempt.current ? 'Check outcome / Retry' : exercise ? 'Save changes' : 'Add exercise'} disabled={busy} accessibilityState={{ disabled: busy, busy }} onPress={() => createConflict ? onSaved() : void submit()} style={[styles.save, busy && { opacity: 0.5 }]}><Text style={styles.saveText}>{busy ? 'Saving…' : createConflict ? 'Close and reload library' : attempt.current ? 'Check outcome / Retry' : exercise ? 'Save changes' : 'Add exercise'}</Text></Pressable>
           {exercise && <Pressable accessibilityRole="button" disabled={locked} onPress={askDelete} style={styles.remove}><Text style={styles.removeText}>Delete exercise</Text></Pressable>}
-        </ScrollView>
+        </View>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardLift>
   </Modal>
 }
 
@@ -136,7 +140,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, paddingHorizontal: 20, paddingTop: 20 },
   close: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center', marginTop: -10, marginRight: -10 },
   title: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 19, lineHeight: 25, letterSpacing: -0.2 },
-  content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, gap: 16 }, group: { gap: 6 }, half: { flex: 1, minWidth: 0 }, pair: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  content: { paddingHorizontal: 20, paddingTop: 16, paddingBottom: 8, gap: 16 }, footer: { paddingHorizontal: 20, paddingTop: 8 }, group: { gap: 6 }, half: { flex: 1, minWidth: 0 }, pair: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   label: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 },
   input: { ...field, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 16 },
   select: { ...field, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, selectText: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 16 }, selectedOption: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold' },

@@ -1,4 +1,4 @@
-import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
 import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useFocusEffect } from 'expo-router'
@@ -32,6 +32,7 @@ export default function ProgressScreen() {
 
 function ProgressContent({ uid }: { uid: string }) {
   const navigation = useBottomNavigation()
+  const navigationInset = useNavigationInset()
   const active = useActiveRuntime()
   const units = active.state.units
   const { width } = useWindowDimensions()
@@ -95,10 +96,10 @@ function ProgressContent({ uid }: { uid: string }) {
   ]
   const chartWidth = Math.max(280, width - 58)
 
-  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
+  return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { paddingBottom: 44 + navigationInset }]} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>Progress</Text>
         {!coverage && !notices.length && <Text style={styles.subtitle}>{loading ? 'Loading progress' : 'Workout data is temporarily unavailable.'}</Text>}

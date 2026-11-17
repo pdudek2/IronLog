@@ -1,4 +1,4 @@
-import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
@@ -64,9 +64,7 @@ export default function DashboardScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
   const insets = useSafeAreaInsets()
-  // With the tab bar scrolled away the bar sits on the screen edge, under the gesture area.
-  const startBarInset = navigation.hidden ? { paddingBottom: Math.max(2, insets.bottom + 8) } : null
-  const dockInset = navigation.hidden ? { marginBottom: Math.max(2, insets.bottom + 8) } : null
+  const navigationInset = useNavigationInset()
   const [picked, setPicked] = useState(false)
   // The queue needs plans and recent workouts, which load separately; a day the user picked stays.
   const pickedRef = useRef(false)
@@ -225,7 +223,7 @@ export default function DashboardScreen() {
 
   if (!user) return <SafeAreaView edges={['top']} style={styles.screen}><StatusBar style="light" /><Text style={styles.muted}>Restoring sign-in…</Text></SafeAreaView>
 
-  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
+  return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
@@ -287,8 +285,10 @@ export default function DashboardScreen() {
         </View>}
       </>}
     </ScrollView>
-    {data && active.state.status === 'ready' && <View style={[styles.startBar, startBarInset]}><ResumeButton />{trainLinks}</View>}
-    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Today" style={[styles.dock, !today && !readiness && styles.dockBare, dockInset]}>
+    {/* The docks keep their place above the tab bar whether it shows or not. */}
+    <View style={{ paddingBottom: navigationInset }}>
+    {data && active.state.status === 'ready' && <View style={styles.startBar}><ResumeButton />{trainLinks}</View>}
+    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Today" style={[styles.dock, !today && !readiness && styles.dockBare]}>
       {/* The check-in stays without a plan day too: Coach reads it. */}
       {readiness && <TrainCheckIn state={readiness.state} controller={readiness.controller} open={checkInOpen} onToggle={() => setCheckInOpen((open) => !open)} />}
       {/* While the check-in is open the time row and today's line step aside; Start stays. */}
@@ -312,6 +312,7 @@ export default function DashboardScreen() {
           : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
       </View>
     </View>}
+    </View>
     {pasting && uid && <PastePlanSheet uid={uid} returnTo="dashboard" onClose={() => setPasting(false)} />}
     <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>

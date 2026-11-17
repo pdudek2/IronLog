@@ -1,9 +1,11 @@
 import { shouldSaveImportedDraft } from './coachPlan'
-import BottomNavigation, { useBottomNavigation } from './BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from './BottomNavigation'
+import { KeyboardLift } from './KeyboardLift'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ActivityIndicator, BackHandler, Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, BackHandler, Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
+import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import Svg, { Path } from 'react-native-svg'
 
@@ -36,7 +38,7 @@ function Editor({ uid, targetId, saveImport, returnTo }: { uid: string; targetId
   const active = useActiveRuntime()
   const router = useRouter()
   const navigation = useBottomNavigation()
-  const insets = useSafeAreaInsets()
+  const navigationInset = useNavigationInset()
   const [draft, setDraft] = useState<PlanDraft | null>(null)
   const ownerId = useRef(newId())
   const draftRef = useRef<PlanDraft | null>(null)
@@ -247,11 +249,12 @@ function Editor({ uid, targetId, saveImport, returnTo }: { uid: string; targetId
   const canSubmit = (!!draft.pending || (draft.name.trim().length >= 2 && draft.days.some((item) => item.exercises.length > 0) && openRows === 0))
     && !(draft.resolvedId && !draft.pending) && !busy && !storageError
   const showDock = !targetId || draft.dirty || !!draft.pending || !!error || reloadReady || busy
-  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
+  return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader onRequestAction={(_, proceed) => leave(proceed)} />
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <View style={styles.screen}>
+      {/* The offset keeps the focused field above the save dock. */}
+      <KeyboardAwareScrollView bottomOffset={showDock ? 76 : 16} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
         <View style={styles.header}><Pressable accessibilityRole="button" onPress={() => leave(() => exit(false))} style={[styles.headerLink, styles.headerLinkRow]}><Icon name="chevron-left" /><Text style={styles.muted}>{returnTo ? 'Train' : 'Plans'}</Text></Pressable><View style={styles.heading}><Text accessibilityRole="header" style={styles.title}>{targetId ? 'Edit plan' : 'New plan'}</Text><Text style={styles.summary}>{draft.days.length} {pluralize(draft.days.length, 'day', 'days')} · {totalExercises} {pluralize(totalExercises, 'exercise', 'exercises')} · {totalSets} {pluralize(totalSets, 'set', 'sets')}</Text></View></View>
         <Text style={styles.label}>Name</Text>
         <TextInput accessibilityLabel="Plan name" editable={!locked} maxLength={120} value={draft.name} onFocus={() => { inputFocused.current = true }} onBlur={() => { inputFocused.current = false }} onChangeText={(value) => change((current) => ({ ...current, name: value }))} placeholder="E.g. Upper / Lower 4 days" placeholderTextColor={colors.muted} style={styles.nameInput} />
@@ -262,9 +265,9 @@ function Editor({ uid, targetId, saveImport, returnTo }: { uid: string; targetId
           <Pressable accessibilityRole="button" disabled={locked || day.exercises.length >= 20} onPress={() => setPicking(true)} style={[styles.addExercise, day.exercises.length > 0 && styles.addExerciseMore]}><PlanIcon kind="plus" color={day.exercises.length ? colors.muted : colors.onPrimary} /><Text style={day.exercises.length ? styles.muted : styles.addExerciseText}>Add exercise</Text></Pressable>
         </View>
         {(draft.dirty || draft.resolvedId) && <Pressable accessibilityRole="button" disabled={locked} onPress={() => void discard()} style={styles.discard}><Text style={styles.muted}>Discard draft</Text></Pressable>}
-      </ScrollView>
-      {showDock && <View style={[styles.dock, { paddingBottom: navigation.keyboard ? Math.max(insets.bottom, 12) : 12 }]}><View style={styles.dockCopy}>{(draft.pending || draft.dirty || !durable) && <Text style={styles.dockTitle}>{draft.pending ? 'Save outcome unresolved' : !durable ? 'Saving draft…' : openRows > 0 ? `Choose ${openRows} ${pluralize(openRows, 'exercise', 'exercises')} to save` : 'Unsaved changes'}</Text>}{error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}</View><View style={styles.dockActions}>{reloadReady && !draft.pending && <Pressable accessibilityRole="button" onPress={reload} style={styles.secondary}><Text style={styles.accent}>Reload</Text></Pressable>}{storageError && <Pressable accessibilityRole="button" onPress={() => { void persist(draftRef.current!) }} style={styles.secondary}><Text style={styles.accent}>Retry draft</Text></Pressable>}<Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSubmit }} disabled={!canSubmit} onPress={() => void save()} style={[styles.save, !canSubmit && styles.disabled]}><PlanIcon kind="pencil" color={colors.textStrong} /><Text style={styles.saveText}>{busy ? 'Saving…' : draft.pending ? 'Retry save' : 'Save plan'}</Text></Pressable></View></View>}
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+      <KeyboardLift rest={navigationInset}>{showDock && <View style={styles.dock}><View style={styles.dockCopy}>{(draft.pending || draft.dirty || !durable) && <Text style={styles.dockTitle}>{draft.pending ? 'Save outcome unresolved' : !durable ? 'Saving draft…' : openRows > 0 ? `Choose ${openRows} ${pluralize(openRows, 'exercise', 'exercises')} to save` : 'Unsaved changes'}</Text>}{error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}</View><View style={styles.dockActions}>{reloadReady && !draft.pending && <Pressable accessibilityRole="button" onPress={reload} style={styles.secondary}><Text style={styles.accent}>Reload</Text></Pressable>}{storageError && <Pressable accessibilityRole="button" onPress={() => { void persist(draftRef.current!) }} style={styles.secondary}><Text style={styles.accent}>Retry draft</Text></Pressable>}<Pressable accessibilityRole="button" accessibilityState={{ disabled: !canSubmit }} disabled={!canSubmit} onPress={() => void save()} style={[styles.save, !canSubmit && styles.disabled]}><PlanIcon kind="pencil" color={colors.textStrong} /><Text style={styles.saveText}>{busy ? 'Saving…' : draft.pending ? 'Retry save' : 'Save plan'}</Text></Pressable></View></View>}</KeyboardLift>
+    </View>
     <BottomNavigation {...navigation} onRequestExit={leave} />
     {resolving?.mode === 'choose' && resolvingRow && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} title={`Choose for “${resolvingRow.name}”`} suggestions={resolvingRow.unmatched?.suggestions} onClose={() => setResolving(null)} onSelect={(exerciseId, name, source) => { resolveRow(resolvingRow.rowId, exerciseId, name, source) }} />}
     {resolving?.mode === 'create' && resolvingRow && <ExerciseForm uid={uid} exercise={null} initialName={resolvingRow.name} onClose={() => setResolving(null)} onSaved={(created) => { catalog.retry(); if (created) resolveRow(resolvingRow.rowId, created.id, created.name, 'user'); else setResolving(null) }} />}
@@ -288,7 +291,7 @@ const styles = StyleSheet.create({
   detail: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 17, marginTop: 1, marginBottom: 4 }, detailStrong: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold' },
   resolve: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 16, marginTop: 6 }, choose: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(244,238,232,0.12)' }, chooseText: { color: colors.text, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 }, create: { minHeight: 44, justifyContent: 'center' }, createText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13 },
   skipped: { paddingTop: 16, paddingBottom: 12, gap: 6, borderBottomWidth: 1, borderBottomColor: 'rgba(244,238,232,0.08)' }, skippedTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 13.5 }, skippedRow: { gap: 1 }, skippedLine: { color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 },
-  dock: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 8, gap: 8 }, dockCopy: { flex: 1, gap: 3 }, dockTitle: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 11 }, error: { color: '#f0a75a', fontFamily: 'InstrumentSans_500Medium', fontSize: 12, lineHeight: 16 }, dockActions: { flexDirection: 'row', gap: 4 }, save: { minHeight: 44, minWidth: 114, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryEnd, borderRadius: 12, experimental_backgroundImage: primaryGradient }, saveText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 }, secondary: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }, disabled: { opacity: 0.55 }, button: { minHeight: 44, justifyContent: 'center' },
+  dock: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 8 }, dockCopy: { flex: 1, gap: 3 }, dockTitle: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 11 }, error: { color: '#f0a75a', fontFamily: 'InstrumentSans_500Medium', fontSize: 12, lineHeight: 16 }, dockActions: { flexDirection: 'row', gap: 4 }, save: { minHeight: 44, minWidth: 114, flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primaryEnd, borderRadius: 12, experimental_backgroundImage: primaryGradient }, saveText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 }, secondary: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }, disabled: { opacity: 0.55 }, button: { minHeight: 44, justifyContent: 'center' },
 })
 
 function daySets(day: { exercises: { sets: string }[] }): number {

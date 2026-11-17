@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font'
 import { SplashScreen, Stack, usePathname, useRouter } from 'expo-router'
 import { useEffect } from 'react'
 import { Keyboard, TextInput } from 'react-native'
+import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ActiveRuntimeProvider, AuthRuntimeProvider, ClosureRuntimeProvider, useAuthRuntime } from '../src/runtime'
 import { DialogHost } from '../src/dialog'
@@ -37,10 +38,12 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthRuntimeProvider>
-        <RootStack />
-        <DialogHost />
-      </AuthRuntimeProvider>
+      <KeyboardProvider>
+        <AuthRuntimeProvider>
+          <RootStack />
+          <DialogHost />
+        </AuthRuntimeProvider>
+      </KeyboardProvider>
     </SafeAreaProvider>
   )
 }

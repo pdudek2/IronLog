@@ -43,7 +43,7 @@ export function PastePlanSheet({ uid, onClose, returnTo }: { uid: string; onClos
   return <BottomSheet title="Paste a plan" onClose={onClose}>{(close) => <View>
     <Text style={styles.help}>Day names on their own line, then one exercise per line with sets, reps and weight. You check the result before saving.</Text>
     <TextInput accessibilityLabel="Plan text" multiline value={text} maxLength={20000} onChangeText={(value) => { setText(value); setError(null) }}
-      placeholder={EXAMPLE} placeholderTextColor={colors.muted} selectionColor={colors.accentText} textAlignVertical="top" style={styles.field} />
+      placeholder={EXAMPLE} placeholderTextColor={colors.muted} selectionColor={colors.selection} textAlignVertical="top" style={styles.field} />
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {collision && <View style={styles.collision}>
       <Text style={styles.help}>A new plan draft is already on this device. Finish or discard it before pasting another plan.</Text>

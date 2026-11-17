@@ -161,7 +161,7 @@ export default function HistoryScreen() {
               </View>
               <View style={styles.searchWrap}>
                 <Svg accessibilityElementsHidden height={14} width={14} style={styles.searchIcon} viewBox="0 0 24 24"><Circle cx={10.8} cy={10.8} r={6.3} fill="none" stroke={colors.mutedSoft} strokeWidth={2} /><Path d="m16 16 4.3 4.3" fill="none" stroke={colors.mutedSoft} strokeLinecap="round" strokeWidth={2} /></Svg>
-                <TextInput accessibilityLabel="Search workout history" onChangeText={setSearch} placeholder="Search workouts or exercises..." placeholderTextColor={colors.mutedSoft} returnKeyType="search" style={styles.searchInput} value={search} />
+                <TextInput accessibilityLabel="Search workout history" selectionColor={colors.selection} onChangeText={setSearch} placeholder="Search workouts or exercises..." placeholderTextColor={colors.mutedSoft} returnKeyType="search" style={styles.searchInput} value={search} />
                 {search.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearch('')} style={styles.clearSearch}><Icon name="close" size={18} /></Pressable>}
               </View>
               {availableCategories.length > 0 && (

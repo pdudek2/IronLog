@@ -50,7 +50,7 @@ import {
   storedValueToSetInput,
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../../src/shared/nextSessionRecommendation'
 import { acceptSetInput, lastSessionBest, needsWeightConfirm, weightSlip } from '../../src/shared/workoutLimits'
 import { weightStep } from '../../src/shared/weightUnits'
@@ -198,7 +198,7 @@ function LoginForm() {
               returnKeyType="next"
               submitBehavior="submit"
               onSubmitEditing={() => passwordInput.current?.focus()}
-              selectionColor={colors.accentText}
+              selectionColor={colors.selection}
               style={styles.input}
               value={email}
             />
@@ -217,7 +217,7 @@ function LoginForm() {
               onSubmitEditing={() => void submit()}
               placeholderTextColor={colors.mutedSoft}
               returnKeyType="done"
-              selectionColor={colors.accentText}
+              selectionColor={colors.selection}
               secureTextEntry
               style={styles.input}
               value={password}
@@ -309,7 +309,7 @@ function SetValueInput({ value, units, field, label, rejectedEdit, inputRef, onC
     placeholder={field === 'weight' ? '–' : '0'}
     placeholderTextColor={colors.mutedSoft}
     selectTextOnFocus
-    selectionColor={colors.lineStrong}
+    selectionColor={colors.selection}
     style={styles.panelInput}
     value={text}
   />
@@ -440,7 +440,7 @@ function ExerciseLedger({ history, exercise, position, count, units, metadata, t
           {current ? <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${index + 1}`} onPress={() => {
             const remove = () => editing.removeSet(exercise.clientId, set.clientId)
             if (!set.done && !set.weight.trim() && !set.reps.trim()) { remove(); return }
-            showDialog('Remove set?', 'This set contains data or is marked complete.', [{ text: 'Keep', style: 'cancel' }, { text: 'Remove set', style: 'destructive', onPress: remove }])
+            showDialog('Remove set?', removeSetMessage(set.done), [{ text: 'Keep', style: 'cancel' }, { text: 'Remove set', style: 'destructive', onPress: remove }])
           }} style={[styles.setTrailingColumn, styles.setTouchTarget]}>
             <Svg width={15} height={15} viewBox="0 0 24 24" style={{ alignSelf: 'center' }}><Path d="m18 6-12 12M6 6l12 12" fill="none" stroke={colors.mutedSoft} strokeWidth={2} strokeLinecap="round" /></Svg>
           </Pressable> : <View style={styles.setTrailingColumn} />}

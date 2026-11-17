@@ -41,10 +41,10 @@ import {
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
-import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
+import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, removeSetMessage, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../shared/nextSessionRecommendation'
 
-type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
+type PendingSetRemoval = { exerciseClientId: string; setClientId: string; done: boolean }
 
 interface RestTimerBarProps {
   rest: { startedAt: number; totalSec: number }
@@ -336,7 +336,7 @@ export default function WorkoutPage() {
       toast.error('Could not prepare to safely remove this set. Refresh the view and try again.')
       return
     }
-    setPendingSetRemoval({ exerciseClientId: exercise.clientId, setClientId: set.clientId })
+    setPendingSetRemoval({ exerciseClientId: exercise.clientId, setClientId: set.clientId, done: set.done })
   }, [])
 
   function handleConfirmRemoveSet() {
@@ -1367,7 +1367,7 @@ export default function WorkoutPage() {
       {pendingSetRemoval && (
         <ConfirmDialog
           title="Remove set?"
-          message="This set contains data or is marked complete."
+          message={removeSetMessage(pendingSetRemoval.done)}
           confirmLabel="Remove set"
           cancelLabel="Keep"
           danger

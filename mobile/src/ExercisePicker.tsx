@@ -65,7 +65,7 @@ export default function ExercisePicker({ userExercises, recent = [], suggestions
       <View style={styles.pickerSearch}>
         <Svg width={16} height={16} viewBox="0 0 24 24"><Path d="m21 21-4.34-4.34M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" fill="none" stroke={colors.muted} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
         <TextInput accessibilityLabel="Search exercises" onChangeText={setQuery} placeholder="Search exercises" placeholderTextColor={colors.mutedSoft}
-          returnKeyType="search" selectionColor={colors.accentText} style={styles.pickerSearchInput} value={query} />
+          returnKeyType="search" selectionColor={colors.selection} style={styles.pickerSearchInput} value={query} />
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps="handled" style={styles.pickerCategoriesBar} contentContainerStyle={styles.pickerCategories}
         accessibilityLabel="Exercise category">

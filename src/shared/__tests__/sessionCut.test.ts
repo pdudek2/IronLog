@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { exercises as catalogue } from '../../../data/exercises'
 import { exerciseRoles, sessionPace } from '../compression'
 import { isShortened, parseCompressionRecord, type CompressionRecord } from '../compressionRecord'
-import { applyCut, cutRest, planCut, type CutChoice, type CutPlan } from '../sessionCut'
+import { applyCut, cutRest, finishByClock, planCut, type CutChoice, type CutPlan } from '../sessionCut'
 import { buildNextSessionRecommendation } from '../nextSessionRecommendation'
 
 const T0 = 1_800_000_000_000
@@ -256,5 +256,14 @@ describe('review fixes', () => {
     const day = 86_400_000
     const history = [workout(T0 - day, false), workout(T0 - 2 * day, true), workout(T0 - 3 * day, false)]
     expect(buildNextSessionRecommendation(template, 0, null, history, T0).calibration).toMatchObject({ samples: 2, source: 'user' })
+  })
+})
+
+describe('finishByClock', () => {
+  const now = Date.UTC(2026, 10, 17, 18, 2)
+  it('follows the picked minutes instead of the full workout, on the 5-minute grid', () => {
+    expect(finishByClock(null, now, 53 * 60)).toBe(Date.UTC(2026, 10, 17, 18, 55))
+    expect(finishByClock({ kind: 'left', min: 15 }, now, 53 * 60)).toBe(Date.UTC(2026, 10, 17, 18, 15))
+    expect(finishByClock({ kind: 'clock', at: Date.UTC(2026, 10, 17, 18, 40) }, now, 53 * 60)).toBe(Date.UTC(2026, 10, 17, 18, 40))
   })
 })

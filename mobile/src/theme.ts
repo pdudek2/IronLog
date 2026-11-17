@@ -26,6 +26,7 @@ export const colors = {
   warning: palette.warning,
   warningForeground: palette.warningForeground,
   steel: palette.steel,
+  selection: palette.text, // caret, selection and handles in every field
 } as const
 
 // One title scale across the top-level screens, as on the web.

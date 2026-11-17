@@ -42,6 +42,23 @@ describe('WorkoutSetPanel', () => {
     expect(weight).toHaveValue('92.5')
   })
 
+  it('refuses a keystroke past the input rule and drops focus when the set changes or is logged', () => {
+    const on = handlers()
+    const { rerender } = render(<WorkoutSetPanel {...base} {...on} set={{ clientId: 'a', weight: '86.25', reps: '6', done: false }} />)
+    const weight = screen.getByRole('spinbutton', { name: 'Weight, Bench Press, set 3, kg' })
+    fireEvent.change(weight, { target: { value: '8690.25' } })
+    expect(on.onUpdateSet).not.toHaveBeenCalled()
+    expect(weight).toHaveValue('86.25')
+
+    weight.focus()
+    fireEvent.click(screen.getByRole('button', { name: 'Log set 3 for Bench Press' }))
+    expect(document.activeElement).not.toBe(weight)
+
+    screen.getByRole('spinbutton', { name: 'Reps, Bench Press, set 3' }).focus()
+    rerender(<WorkoutSetPanel {...base} {...on} setIndex={3} set={{ clientId: 'b', weight: '86.25', reps: '6', done: false }} />)
+    expect(document.activeElement).toBe(document.body)
+  })
+
   it('edits a done set without logging it and returns to the open set', () => {
     const on = handlers()
     const { rerender } = render(<WorkoutSetPanel {...base} {...on} setIndex={0} set={{ weight: '80', reps: '6', done: true }} />)

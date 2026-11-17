@@ -9,6 +9,7 @@ import {
 } from '../../lib/weightUnits'
 import { weightStep } from '../../shared/weightUnits'
 import { setPanelStatus } from '../../shared/workoutDisplay'
+import { acceptSetInput } from '../../shared/workoutLimits'
 
 interface WorkoutSetPanelProps {
   exerciseIndex: number
@@ -56,6 +57,8 @@ export default function WorkoutSetPanel({
   onFinish,
 }: WorkoutSetPanelProps) {
   const setNumber = setIndex + 1
+  // A new set mounts fresh fields, so focus and a half-typed value never carry over to it.
+  const setKey = set?.clientId ?? setIndex
 
   return (
     <section className="workout-set-panel" aria-label="Current set">
@@ -72,7 +75,9 @@ export default function WorkoutSetPanel({
               <Stepper label="weight" step={-weightStep(units)} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'weight', displayWeightDeltaToKg(delta, units))} />
               <label>
                 <WeightInput
+                  key={`${setKey}:weight`}
                   placeholder="–"
+                  units={units}
                   value={kgStringToDisplayWeight(set.weight, units)}
                   onValueChange={(value) => onUpdateSet(exerciseIndex, setIndex, 'weight', displayWeightStringToKg(value, units))}
                   onFocus={(event) => event.currentTarget.select()}
@@ -87,11 +92,12 @@ export default function WorkoutSetPanel({
               <Stepper label="reps" step={-1} onStep={(delta) => onAdjustSet(exerciseIndex, setIndex, 'reps', delta)} />
               <label>
                 <input
+                  key={`${setKey}:reps`}
                   type="number"
                   inputMode="numeric"
                   placeholder="0"
                   value={set.reps}
-                  onChange={(event) => onUpdateSet(exerciseIndex, setIndex, 'reps', event.target.value)}
+                  onChange={(event) => { if (acceptSetInput(event.target.value, set.reps, 'reps', units)) onUpdateSet(exerciseIndex, setIndex, 'reps', event.target.value) }}
                   onFocus={(event) => event.currentTarget.select()}
                   aria-label={`Reps, ${exerciseName}, set ${setNumber}`}
                 />
@@ -108,7 +114,10 @@ export default function WorkoutSetPanel({
             <button
               type="button"
               className="workout-set-panel-action"
-              onClick={() => onToggleSet(exerciseIndex, setIndex)}
+              onClick={() => {
+                if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+                onToggleSet(exerciseIndex, setIndex)
+              }}
               aria-label={`Log set ${setNumber} for ${exerciseName}`}
             >
               Log set

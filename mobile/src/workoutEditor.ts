@@ -1,5 +1,6 @@
 import type { EditableWorkout, WorkoutEditContent, WorkoutMutationGuard } from '../../src/shared/workoutMutation'
 import { displayWeightStringToKg, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
+import { weightSlip } from '../../src/shared/workoutLimits'
 export interface WorkoutDraftSet { rowId: string; weight: string; reps: string; originalKg?: number; originalDisplay?: string; completedAt?: number }
 export interface WorkoutDraftExercise { rowId: string; exerciseId: string; exerciseSource: 'global' | 'user'; name: string; sets: WorkoutDraftSet[]; group?: string }
 export type WorkoutPendingOperation = WorkoutMutationGuard & { workoutId: string; committed?: true } & ({ action: 'delete' } | { action: 'update'; content: WorkoutEditContent })
@@ -33,6 +34,12 @@ export function normalizeWorkoutDraft(draft: WorkoutDraft): WorkoutEditContent {
       return set.completedAt === undefined ? { weight, reps } : { weight, reps, completedAt: set.completedAt }
     }), ...(ex.group === undefined ? {} : { group: ex.group }) }
   }) }
+}
+// The first set edited to over twice its weight before the edit, asked about before saving.
+export function editedWeightSlip(draft: WorkoutDraft) {
+  let content: WorkoutEditContent
+  try { content = normalizeWorkoutDraft(draft) } catch { return null }
+  return content.exercises.flatMap((ex, i) => ex.sets.map((set, j) => weightSlip(set.weight, draft.exercises[i]?.sets[j]?.originalKg, draft.units, 'Before'))).find(Boolean) ?? null
 }
 export function workoutDraftDirty(draft: WorkoutDraft): boolean {
   try { return JSON.stringify(normalizeWorkoutDraft(draft)) !== JSON.stringify(draft.original) }

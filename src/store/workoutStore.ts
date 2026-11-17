@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { createSessionId } from '../lib/sessionIdentity'
-import { isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
+import { clampSetValue, isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../shared/workoutLimits'
 import { applyOverload, carryLoggedWeight } from '../shared/nextSessionRecommendation'
 import type { CompressionProposal, CompressionRecord } from '../shared/compressionRecord'
 import { cutRest } from '../shared/sessionCut'
@@ -233,7 +233,7 @@ export const useWorkoutStore = create<WorkoutState>()((set) => ({
               sets: ex.sets.map((st, si) => {
                 if (si !== setIndex) return st
                 const current = parseSetNumber(st[field], field)
-                const next = { ...st, [field]: formatAdjustedSetValue(Math.max(0, current + delta), field) }
+                const next = { ...st, [field]: formatAdjustedSetValue(clampSetValue(current + delta, field), field) }
                 return settleDone(next, next.done && isValidCompletedSet(next))
               }),
             }

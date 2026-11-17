@@ -64,7 +64,7 @@ vi.mock('../../lib/userExercisesService', () => ({
 vi.mock('../../components/ExercisePicker', () => ({ default: () => null }))
 
 vi.mock('sonner', () => ({
-  toast: { success: mocks.toastSuccess, error: mocks.toastError },
+  toast: { success: mocks.toastSuccess, error: mocks.toastError, dismiss: () => undefined },
 }))
 
 vi.mock('framer-motion', () => {

@@ -7,6 +7,7 @@ import {
 import { useFonts } from 'expo-font'
 import { SplashScreen, Stack, usePathname, useRouter } from 'expo-router'
 import { useEffect } from 'react'
+import { Keyboard, TextInput } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ActiveRuntimeProvider, AuthRuntimeProvider, ClosureRuntimeProvider, useAuthRuntime } from '../src/runtime'
 import { DialogHost } from '../src/dialog'
@@ -26,6 +27,11 @@ export default function RootLayout() {
   useEffect(() => {
     if (fontsLoaded) void SplashScreen.hideAsync()
   }, [fontsLoaded])
+  // Back hides the keyboard but leaves the field focused, so the next tap would place the caret instead of selecting all.
+  useEffect(() => {
+    const hidden = Keyboard.addListener('keyboardDidHide', () => TextInput.State.currentlyFocusedInput()?.blur())
+    return () => hidden.remove()
+  }, [])
 
   if (!fontsLoaded) return null
 

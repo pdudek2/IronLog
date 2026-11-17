@@ -5,7 +5,7 @@ import WeightInput from '../workout/WeightInput'
 
 function StoredAsNumber() {
   const [weight, setWeight] = useState(0)
-  return <WeightInput aria-label="Weight" value={weight === 0 ? '' : String(weight)} onValueChange={(value) => setWeight(Number(value) || 0)} />
+  return <WeightInput aria-label="Weight" units="kg" value={weight === 0 ? '' : String(weight)} onValueChange={(value) => setWeight(Number(value) || 0)} />
 }
 
 describe('WeightInput', () => {

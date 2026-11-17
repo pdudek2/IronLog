@@ -3,6 +3,7 @@ import { ApiRejectedError } from '../lib/authedApi'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { exerciseSummaryLabel } from '../shared/workoutDisplay'
+import { acceptSetInput, weightSlip } from '../shared/workoutLimits'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowLeft,
@@ -345,6 +346,8 @@ export default function WorkoutDetailPage() {
 
   function handleSetChange(exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) {
     if (pendingEdit.current || saving) return
+    // Its "Save anyway" would save the values from before this change.
+    toast.dismiss('save-weight-slip')
     const numericValue = parseSetDraftValue(field, value)
 
     setEditedExercises((current) => current.map((exercise, currentExerciseIndex) => {
@@ -362,7 +365,7 @@ export default function WorkoutDetailPage() {
     }))
   }
 
-  async function handleSave() {
+  async function handleSave(confirmed = false) {
     if (!workout || saving || !editBaseline.current) return
     const scope = deleteScopeRef.current
     const validationError = getWorkoutEditError(editedExercises)
@@ -371,6 +374,15 @@ export default function WorkoutDetailPage() {
       setShowEditErrors(true)
       // Take the user to the first set that blocks saving.
       requestAnimationFrame(() => document.querySelector<HTMLInputElement>('.workout-detail-set-editor-row input[aria-invalid="true"]')?.focus())
+      return
+    }
+    // Sets carry no ids here, so an edited set is compared with the set at the same place before the edit.
+    const slip = confirmed || pendingEdit.current ? null : editedExercises.flatMap((exercise, exerciseIndex) => {
+      const before = workout.exercises[exerciseIndex]
+      return before?.exerciseId === exercise.exerciseId ? exercise.sets.map((set, setIndex) => weightSlip(set.weight, before.sets[setIndex]?.weight, units, 'Before')) : []
+    }).find((question) => question !== null)
+    if (slip) {
+      toast(`${slip.title} ${slip.message}`, { id: 'save-weight-slip', action: { label: 'Save anyway', onClick: () => void handleSave(true) }, cancel: { label: 'Fix', onClick: () => undefined } })
       return
     }
     const nextLabel = pendingEdit.current?.label ?? (editedLabel || null)
@@ -583,7 +595,7 @@ export default function WorkoutDetailPage() {
         Cancel
       </motion.button>
       <motion.button
-        onClick={handleSave}
+        onClick={() => void handleSave()}
         disabled={saving}
         className="workout-detail-action workout-detail-action-primary disabled:opacity-40"
         whileTap={{ scale: 0.97 }}
@@ -859,6 +871,7 @@ export default function WorkoutDetailPage() {
                         >
                           <span className="workout-detail-set-index">{setIndex + 1}</span>
                           <WeightInput
+                            units={units}
                             value={set.weight === 0 ? '' : String(kgToDisplayWeight(set.weight, units))}
                             onValueChange={(value) => handleSetChange(
                               exerciseIndex,
@@ -876,7 +889,7 @@ export default function WorkoutDetailPage() {
                             step="1"
                             min="0"
                             value={set.reps === 0 ? '' : set.reps}
-                            onChange={(event) => handleSetChange(exerciseIndex, setIndex, 'reps', event.target.value)}
+                            onChange={(event) => { if (acceptSetInput(event.target.value, set.reps === 0 ? '' : String(set.reps), 'reps', units)) handleSetChange(exerciseIndex, setIndex, 'reps', event.target.value) }}
                             placeholder="0"
                             onFocus={(event) => event.currentTarget.select()}
                             aria-invalid={showEditErrors && set.reps <= 0 ? true : undefined}

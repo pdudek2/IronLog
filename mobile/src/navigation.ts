@@ -19,7 +19,7 @@ export function tabNavigation(path: string, tab: NavigationTab): { kind: 'dismis
 
 export const navigationBarHeight = (inset: number) => 58 + Math.max(10, inset) + 8
 
-// The hidden bar gives its height to the page, so the viewport changes with `hidden` and maxY with it.
+// A page that scrolls less than the bar's height plus 24 px keeps the bar.
 export function scrollNavigation(previous: { y: number; start: number; direction: number; hidden: boolean }, rawY: number, maxY: number, barHeight: number) {
   const y = Math.max(0, rawY)
   if (y < 24) return { y, start: y, direction: 0, hidden: false }

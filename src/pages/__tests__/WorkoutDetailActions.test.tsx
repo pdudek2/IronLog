@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => ({
   retryWorkoutMaterialization: vi.fn(),
   updateWorkout: vi.fn(),
   getUserExercises: vi.fn(),
+  toast: vi.fn(),
   toastSuccess: vi.fn(),
   toastError: vi.fn(),
 }))
@@ -64,7 +65,7 @@ vi.mock('../../lib/userExercisesService', () => ({
 vi.mock('../../components/ExercisePicker', () => ({ default: () => null }))
 
 vi.mock('sonner', () => ({
-  toast: { success: mocks.toastSuccess, error: mocks.toastError },
+  toast: Object.assign(mocks.toast, { success: mocks.toastSuccess, error: mocks.toastError, dismiss: () => undefined }),
 }))
 
 vi.mock('framer-motion', () => {
@@ -136,6 +137,7 @@ describe('WorkoutDetailPage delete action', () => {
     mocks.updateWorkout.mockResolvedValue({ status: 'materialized' })
     mocks.getUserExercises.mockReset()
     mocks.getUserExercises.mockResolvedValue([])
+    mocks.toast.mockReset()
     mocks.toastSuccess.mockReset()
     mocks.toastError.mockReset()
     localStorage.clear()
@@ -622,6 +624,32 @@ describe('WorkoutDetailPage delete action', () => {
     expect(mocks.toastError).toHaveBeenCalledWith(
       'Each set must contain at least one rep.',
     )
+  })
+
+  it('asks before saving a weight over twice its own value before the edit, and Save anyway saves the edits made since', async () => {
+    renderPage()
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0]) })
+    fireEvent.change(screen.getByRole('spinbutton', { name: 'Weight, Wyciskanie, set 1, kg' }), { target: { value: '200' } })
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+    expect(mocks.toast).toHaveBeenCalledWith('200 kg? Before 80 kg', expect.anything())
+    expect(mocks.updateWorkout).not.toHaveBeenCalled()
+
+    fireEvent.change(screen.getByLabelText('Session type'), { target: { value: 'Pull' } })
+    await act(async () => { mocks.toast.mock.calls[0]![1].action.onClick() })
+    await waitFor(() => expect(mocks.updateWorkout).toHaveBeenCalledTimes(1))
+    expect(mocks.updateWorkout.mock.calls[0]![1]).toMatchObject({ label: 'Pull', exercises: [{ sets: [{ weight: 200, reps: 5 }] }] })
+  })
+
+  it('compares each set with its own weight after an earlier set is removed', async () => {
+    const twoSets = { ...workout, exercises: [{ ...workout.exercises[0]!, sets: [{ weight: 40, reps: 5 }, { weight: 100, reps: 5 }] }] }
+    mocks.getWorkout.mockResolvedValue(twoSets)
+    mocks.readWorkoutMutationState.mockResolvedValue({ status: 'available', baseline: 'a'.repeat(64), workout: twoSets, operation: null, projection: 'ready' })
+    renderPage([{ pathname: '/workout/workout-1', state: { workoutPreview: twoSets, previewUid: 'user-1' } }])
+    await act(async () => { fireEvent.click(screen.getAllByRole('button', { name: 'Edit workout' })[0]!) })
+    fireEvent.click(screen.getByRole('button', { name: 'Remove set 1' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[0])
+    await waitFor(() => expect(mocks.updateWorkout).toHaveBeenCalledTimes(1))
+    expect(mocks.toast).not.toHaveBeenCalled()
   })
 
   it('asks before leaving an edit with unsaved changes', async () => {

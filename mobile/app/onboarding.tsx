@@ -1,13 +1,15 @@
 import Slider from '@react-native-community/slider'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { useState } from 'react'
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { createProfile, logout } from '../src/firebase'
 import { ProfileDataError, type ProfileFields } from '../src/profile'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
-import { colors, primaryGradient } from '../src/theme'
+import { colors, primaryGradient, fieldColors } from '../src/theme'
+import { revealApp } from '../src/splash'
 
 // Same goals and descriptions as the web onboarding.
 const GOALS: { value: ProfileFields['primaryGoal']; label: string; desc: string }[] = [
@@ -24,6 +26,7 @@ export default function OnboardingScreen() {
   const active = useActiveRuntime()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  useEffect(revealApp, [])
   const [input, setInput] = useState<ProfileFields>({ displayName: '', primaryGoal: 'hypertrophy', weeklyGoal: 3, units: 'kg' })
   const [nameError, setNameError] = useState('')
   const [saveError, setSaveError] = useState('')
@@ -56,8 +59,7 @@ export default function OnboardingScreen() {
 
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingBottom: Math.max(32, insets.bottom) }]}>
+      <KeyboardAwareScrollView bottomOffset={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.page, { paddingBottom: Math.max(32, insets.bottom) }]}>
         <Text accessibilityRole="header" style={styles.title}>Set up your profile</Text>
         <Text style={styles.lead}>You can change these settings later in your profile.</Text>
         <View pointerEvents="none" style={styles.seam} />
@@ -65,7 +67,7 @@ export default function OnboardingScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Name</Text>
           <TextInput accessibilityLabel="Name" autoComplete="name" editable={!saving} placeholder="E.g. Alex" placeholderTextColor={colors.muted}
-            selectionColor={colors.accentText} value={input.displayName} maxLength={80}
+            {...fieldColors} value={input.displayName} maxLength={80}
             onChangeText={(displayName) => { setInput((current) => ({ ...current, displayName })); if (nameError) setNameError('') }}
             style={[styles.input, nameError ? styles.invalidInput : null]} />
           {nameError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{nameError}</Text> : null}
@@ -118,8 +120,7 @@ export default function OnboardingScreen() {
         <Pressable accessibilityRole="button" disabled={saving} onPress={() => void logout().catch(() => setSaveError('Could not sign out. Try again.'))} style={styles.signOut}>
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
   </SafeAreaView>
 }
 

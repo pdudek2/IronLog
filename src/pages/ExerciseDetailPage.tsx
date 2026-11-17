@@ -255,8 +255,8 @@ export default function ExerciseDetailPage() {
 
       <div className="space-y-5">
 
-          {/* Volume trend */}
-          {sessions.length > 0 && (
+          {/* Volume trend; a bodyweight exercise logs no volume, so it gets no chart of zeros. */}
+          {maxVolume > 0 && (
             <section className="exercise-detail-panel exercise-detail-trend">
               <div className="exercise-detail-panel-head">
                 <h2 className="section-title">Volume per session</h2>

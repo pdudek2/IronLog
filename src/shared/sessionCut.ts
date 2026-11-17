@@ -137,3 +137,14 @@ function cutRecord(session: CutSession, plan: CutPlan, leftMin: number, clock: b
   })
   return { ...record, shortRest: record.shortRest || result.shortRest, cut, exercises: entries }
 }
+
+// Finish times move on a 5-minute grid.
+export const CUT_STEP_MS = 5 * 60_000
+export type CutPick = { kind: 'left'; min: number } | { kind: 'clock'; at: number } | null
+
+// "Finish by" follows the pick: the chosen time, the end of the chosen minutes, or the end of the full workout.
+export function finishByClock(pick: CutPick, now: number, fullEstimateSec: number): number {
+  if (pick?.kind === 'clock') return pick.at
+  const end = now + (pick?.kind === 'left' ? pick.min * 60 : fullEstimateSec) * 1000
+  return Math.floor(end / CUT_STEP_MS) * CUT_STEP_MS
+}

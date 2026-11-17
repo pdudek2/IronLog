@@ -1,6 +1,6 @@
 import type { ActiveWorkout, WorkoutExercise, WorkoutSet } from './session'
 import { createLocalId } from './session'
-import { completedSetError, isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../../src/shared/workoutLimits'
+import { clampSetValue, completedSetError, isValidCompletedSet, MAX_DONE_SETS_PER_EXERCISE, MAX_SESSION_EXERCISES } from '../../src/shared/workoutLimits'
 import { applyOverload as applyOverloadToSets, carryLoggedWeight } from '../../src/shared/nextSessionRecommendation'
 
 export { MAX_SESSION_EXERCISES }
@@ -56,7 +56,7 @@ export function prefillFirstSet(session: ActiveWorkout, exerciseId: string, weig
 
 function adjustedValue(value: string, field: SetField, delta: number): string {
   const parsed = field === 'weight' ? Number.parseFloat(value) : Number.parseInt(value, 10)
-  const adjusted = Math.max(0, (Number.isFinite(parsed) ? parsed : 0) + delta)
+  const adjusted = clampSetValue((Number.isFinite(parsed) ? parsed : 0) + delta, field)
   const rounded = field === 'weight' ? Math.round(adjusted * 10_000) / 10_000 : Math.round(adjusted)
   return String(rounded)
 }

@@ -35,3 +35,6 @@ export function needsWeightConfirm(
   const weight = Number.parseFloat(set.weight)
   return !(weight > 0)
 }
+
+// Steppers stop at the limits a set can be logged with.
+export const clampSetValue = (value: number, field: 'weight' | 'reps'): number => Math.min(field === 'weight' ? MAX_SET_WEIGHT_KG : MAX_SET_REPS, Math.max(0, value))

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native'
+import { Animated, Easing, Pressable, StyleSheet, Text, View, type NativeSyntheticEvent, type NativeScrollEvent } from 'react-native'
 import { useFocusEffect, usePathname, useRouter, type Href } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Path } from 'react-native-svg'
@@ -11,32 +11,22 @@ import { colors } from './theme'
 export type NavigationExit = (proceed: () => void | Promise<boolean>) => void
 const initialScroll = { y: 0, start: 0, direction: 0, hidden: false }
 export function useBottomNavigation() {
-  const [keyboard, setKeyboard] = useState(Keyboard.isVisible())
-  const [inputFocused, setInputFocused] = useState(false)
   const [hidden, setHidden] = useState(false)
   const scroll = useRef(initialScroll)
   const inset = useSafeAreaInsets().bottom
-  useFocusEffect(useCallback(() => {
-    scroll.current = initialScroll; setHidden(false); setInputFocused(false); setKeyboard(Keyboard.isVisible())
-    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboard(true))
-    const hide = Keyboard.addListener('keyboardDidHide', () => { setKeyboard(false); setInputFocused(false) })
-    return () => { show.remove(); hide.remove() }
-  }, []))
+  useFocusEffect(useCallback(() => { scroll.current = initialScroll; setHidden(false) }, []))
   const onScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent
     scroll.current = scrollNavigation(scroll.current, contentOffset.y, contentSize.height - layoutMeasurement.height, navigationBarHeight(inset))
     setHidden(scroll.current.hidden)
   }, [inset])
-  // Input focus hides the bar ahead of the soft keyboard. When no keyboard follows (hardware keyboard, or the exercise
-  // picker closed: its input unmounts with no blur and React Native still reports it focused) the bar comes back.
-  useEffect(() => {
-    if (!inputFocused || keyboard) return
-    const timer = setTimeout(() => setInputFocused(false), 600)
-    return () => clearTimeout(timer)
-  }, [inputFocused, keyboard])
-  // Focus also bubbles from buttons under a hardware keyboard or D-pad; only a text input hides the bar.
-  return { onScroll, hidden, keyboard: keyboard || inputFocused,
-    onFocus: () => setInputFocused(TextInput.State.currentlyFocusedInput() != null), onBlur: () => setInputFocused(false) }
+  return { onScroll, hidden }
+}
+
+// The bar floats over the page, so a screen keeps this room below its content and its docks whether the bar shows or not.
+export function useNavigationInset() {
+  const inset = useSafeAreaInsets().bottom
+  return navigationBarHeight(inset) + (useReturnBar().visible ? RETURN_ROW_HEIGHT : 0)
 }
 
 const TABS: Record<NavigationTab, string> = {
@@ -50,7 +40,7 @@ function Icon({ name, color }: { name: NavigationTab; color: string }) {
   return <Svg accessibilityElementsHidden width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><Path d={TABS[name]} /></Svg>
 }
 
-export default function BottomNavigation({ hidden, keyboard, onRequestExit }: { hidden: boolean; keyboard: boolean; onRequestExit?: NavigationExit }) {
+export default function BottomNavigation({ hidden, onRequestExit }: { hidden: boolean; onRequestExit?: NavigationExit }) {
   const router = useRouter()
   const pathname = usePathname()
   const { user } = useAuthRuntime()
@@ -68,17 +58,28 @@ export default function BottomNavigation({ hidden, keyboard, onRequestExit }: { 
     else void guarded()
   }
   const { visible: returning } = useReturnBar()
-  const height = navigationBarHeight(inset)
-  return <View style={{ height: keyboard || hidden ? 0 : height + (returning ? RETURN_ROW_HEIGHT : 0) }} pointerEvents={hidden || keyboard ? 'none' : 'auto'}
-    accessibilityElementsHidden={hidden || keyboard} importantForAccessibility={hidden || keyboard ? 'no-hide-descendants' : 'auto'}>
-    {returning && !keyboard && !hidden && <View style={[styles.returnRow, { bottom: Math.max(10, inset) + 66 }]}><ActiveWorkoutReturnBar onRequestExit={onRequestExit} /></View>}
-    <View style={[styles.bar, { bottom: Math.max(10, inset), transform: [{ translateY: hidden || keyboard ? height : 0 }], opacity: hidden || keyboard ? 0 : 1 }]}>
+  const height = navigationBarHeight(inset) + (returning ? RETURN_ROW_HEIGHT : 0)
+  const [shift] = useState(() => new Animated.Value(0))
+  const [fade] = useState(() => new Animated.Value(1))
+  useEffect(() => {
+    // Same motion as the web bar: transform 220 ms, opacity 180 ms, CSS "ease".
+    const easing = Easing.bezier(0.25, 0.1, 0.25, 1)
+    Animated.parallel([
+      Animated.timing(shift, { toValue: hidden ? 1 : 0, duration: 220, easing, useNativeDriver: true }),
+      Animated.timing(fade, { toValue: hidden ? 0 : 1, duration: 180, easing, useNativeDriver: true }),
+    ]).start()
+  }, [fade, hidden, shift])
+  return <Animated.View style={[styles.overlay, { height, opacity: fade, transform: [{ translateY: shift.interpolate({ inputRange: [0, 1], outputRange: [0, height] }) }] }]} pointerEvents={hidden ? 'none' : 'box-none'}
+    accessibilityElementsHidden={hidden} importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}>
+    {returning && <View style={[styles.returnRow, { bottom: Math.max(10, inset) + 66 }]}><ActiveWorkoutReturnBar onRequestExit={onRequestExit} /></View>}
+    <View style={[styles.bar, { bottom: Math.max(10, inset) }]}>
       {(Object.keys(TABS) as NavigationTab[]).map(name => <Pressable key={name} accessibilityRole="tab" accessibilityLabel={name} accessibilityState={{ selected: section === name }} onPress={() => go(() => { const { kind, href } = tabNavigation(pathname, name); router[kind](href as Href) })} style={[styles.tab, section === name && styles.selected]}><Icon name={name} color={section === name ? colors.textStrong : colors.muted} /><Text style={[styles.label, section === name && { color: colors.textStrong }]}>{name}</Text></Pressable>)}
     </View>
-  </View>
+  </Animated.View>
 }
 const RETURN_ROW_HEIGHT = 58
 const styles = StyleSheet.create({
+  overlay: { bottom: 0, left: 0, position: 'absolute', right: 0 },
   returnRow: { left: 14, position: 'absolute', right: 14 },
   bar: { position: 'absolute', left: 14, right: 14, height: 58, flexDirection: 'row', alignItems: 'center', gap: 4, padding: 4.8, borderRadius: 19.2, backgroundColor: colors.surfaceHigh, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 14px 30px -12px rgba(0, 0, 0, 0.8)' },
   tab: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 14, overflow: 'hidden' },

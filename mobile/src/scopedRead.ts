@@ -3,19 +3,45 @@ import type { ProgressionSession } from '../../src/shared/progression'
 export type ReadResult<T> = { data: T; fromCache: boolean }
 export type ReadState<T> = { status: 'loading' } | { status: 'error' } | ({ status: 'ready' } & ReadResult<T>)
 
+// The last result of each read that opts in, by a key that holds the uid, so a screen opened again shows it at once
+// and refreshes behind it. A write that changes what these reads show forgets them all.
+const memory = new Map<string, ReadResult<unknown>>()
+let generation = 0
+export function forgetReads() {
+  memory.clear()
+  generation += 1
+}
+export function recallRead<T>(remember: string | undefined): ReadResult<T> | undefined {
+  return remember === undefined ? undefined : memory.get(remember) as ReadResult<T> | undefined
+}
+export function rememberRead(remember: string, result: ReadResult<unknown>, since: number) {
+  if (since === generation) memory.set(remember, result)
+}
+export const readGeneration = () => generation
+
 // A disposed request cannot publish data to a different account or exercise.
-export function startRead<T>(load: () => Promise<ReadResult<T>>, publish: (state: ReadState<T>) => void) {
+export function startRead<T>(load: () => Promise<ReadResult<T>>, publish: (state: ReadState<T>) => void, remember?: string) {
   let active = true
-  publish({ status: 'loading' })
+  const last = recallRead<T>(remember)
+  const since = generation
+  publish(last ? { status: 'ready', ...last } : { status: 'loading' })
   void Promise.resolve().then(load).then(
-    (result) => { if (active) publish({ status: 'ready', ...result }) },
-    () => { if (active) publish({ status: 'error' }) },
+    (result) => {
+      if (!active) return
+      // A read that was running when the memory was forgotten may hold data from before the write.
+      if (remember !== undefined) rememberRead(remember, result, since)
+      publish({ status: 'ready', ...result })
+    },
+    // A failed refresh keeps the remembered data, marked as not confirmed by the server.
+    () => { if (active) publish(last ? { status: 'ready', ...last, fromCache: true } : { status: 'error' }) },
   )
   return () => { active = false }
 }
 
-export function readStateForKey<T>(key: string, stored: { key: string; state: ReadState<T> } | null): ReadState<T> {
-  return stored?.key === key ? stored.state : { status: 'loading' }
+export function readStateForKey<T>(key: string, stored: { key: string; state: ReadState<T> } | null, remember?: string): ReadState<T> {
+  if (stored?.key === key) return stored.state
+  const last = recallRead<T>(remember)
+  return last ? { status: 'ready', ...last } : { status: 'loading' }
 }
 
 export type PreviousSet = { weight: number; reps: number }

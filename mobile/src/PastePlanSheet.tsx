@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useState } from 'react'
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useCallback, useState } from 'react'
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 import { BottomSheet } from './BottomSheet'
 import { createSessionRevision, readExerciseMetadata, readUnits } from './firebase'
 import { planEditorJournal } from './filePlanEditorJournal'
 import { importedPlanDraft } from './planEditor'
 import { useSessionRead } from './useSessionRead'
-import { colors, primaryGradient } from './theme'
+import { colors, primaryGradient, fieldColors } from './theme'
 import { importPlanText } from '../../src/shared/planImport'
 
 const EXAMPLE = 'Upper\nBench press 4x8 60 kg\nPull-up 3x8\n\nLower\nSquat 3x5 @80'
@@ -18,13 +18,6 @@ export function PastePlanSheet({ uid, onClose, returnTo }: { uid: string; onClos
   const [error, setError] = useState<string | null>(null)
   const [collision, setCollision] = useState(false)
   const [busy, setBusy] = useState(false)
-  // The sheet sits at the screen bottom; lift its content above the keyboard so Continue stays reachable.
-  const [keyboard, setKeyboard] = useState(0)
-  useEffect(() => {
-    const shown = Keyboard.addListener('keyboardDidShow', (event) => setKeyboard(event.endCoordinates.height))
-    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboard(0))
-    return () => { shown.remove(); hidden.remove() }
-  }, [])
   const load = useCallback(() => readExerciseMetadata(uid), [uid])
   const catalog = useSessionRead(uid, load, true)
   // Own exercises match before the catalogue, so wait for them unless they failed to load.
@@ -48,9 +41,9 @@ export function PastePlanSheet({ uid, onClose, returnTo }: { uid: string; onClos
   }
 
   return <BottomSheet title="Paste a plan" onClose={onClose}>{(close) => <View>
-    {keyboard === 0 && <Text style={styles.help}>Day names on their own line, then one exercise per line with sets, reps and weight. You check the result before saving.</Text>}
+    <Text style={styles.help}>Day names on their own line, then one exercise per line with sets, reps and weight. You check the result before saving.</Text>
     <TextInput accessibilityLabel="Plan text" multiline value={text} maxLength={20000} onChangeText={(value) => { setText(value); setError(null) }}
-      placeholder={EXAMPLE} placeholderTextColor={colors.muted} selectionColor={colors.accentText} textAlignVertical="top" style={[styles.field, keyboard > 0 && styles.fieldTyping]} />
+      placeholder={EXAMPLE} placeholderTextColor={colors.muted} {...fieldColors} textAlignVertical="top" style={styles.field} />
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {collision && <View style={styles.collision}>
       <Text style={styles.help}>A new plan draft is already on this device. Finish or discard it before pasting another plan.</Text>
@@ -60,14 +53,13 @@ export function PastePlanSheet({ uid, onClose, returnTo }: { uid: string; onClos
       onPress={() => void proceed(close)} style={[styles.continue, (!text.trim() || loading || busy) && styles.disabled]}>
       <Text style={styles.continueText}>{loading ? 'Loading your exercises…' : busy ? 'Opening…' : 'Continue'}</Text>
     </Pressable>
-    {keyboard > 0 && <View style={{ height: keyboard }} />}
   </View>}</BottomSheet>
 }
 
 const styles = StyleSheet.create({
   help: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 21, marginBottom: 12 },
-  field: { minHeight: 208, maxHeight: 320, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', paddingHorizontal: 14, paddingVertical: 12, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22 },
-  fieldTyping: { minHeight: 120, maxHeight: 150 },
+  // One size with or without the keyboard, so the sheet fits above it and nothing jumps.
+  field: { minHeight: 160, maxHeight: 208, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)', paddingHorizontal: 14, paddingVertical: 12, color: colors.text, fontFamily: 'InstrumentSans_400Regular', fontSize: 15, lineHeight: 22 },
   error: { color: '#f0a75a', fontFamily: 'InstrumentSans_500Medium', fontSize: 13, lineHeight: 18, marginTop: 10 },
   collision: { marginTop: 12 },
   link: { minHeight: 44, justifyContent: 'center', alignSelf: 'flex-start' }, linkText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },

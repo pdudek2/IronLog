@@ -35,16 +35,17 @@ import WorkoutSetPanel from '../components/workout/WorkoutSetPanel'
 import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
 import { completedSetError, MAX_SESSION_EXERCISES, needsWeightConfirm } from '../shared/workoutLimits'
+import { lastSessionBest, weightSlip } from '../shared/setInput'
 import {
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
-import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
+import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, removeSetMessage, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../shared/nextSessionRecommendation'
 
-type PendingSetRemoval = { exerciseClientId: string; setClientId: string }
+type PendingSetRemoval = { exerciseClientId: string; setClientId: string; done: boolean }
 
 interface RestTimerBarProps {
   rest: { startedAt: number; totalSec: number }
@@ -172,6 +173,7 @@ function WorkoutLoadingSkeleton() {
 export default function WorkoutPage() {
   const { user } = useAuthStore()
   const { profile } = useProfileStore()
+  const units = profile?.units ?? 'kg'
   const {
     active,
     restTimer: rest,
@@ -242,12 +244,12 @@ export default function WorkoutPage() {
     if (!active) void startNewSession()
   }, [active, location.pathname, navigate, ready, shouldStartFromRoute, startNewSession])
 
-  const handleToggleSet = useCallback(function toggleSet(exerciseIndex: number, setIndex: number, withoutWeight = false) {
+  const handleToggleSet = useCallback(function toggleSet(exerciseIndex: number, setIndex: number, confirmed = false) {
     const { active: currentActive, toggleSetDone } = useWorkoutStore.getState()
     const currentSet = currentActive?.exercises[exerciseIndex]?.sets[setIndex]
     const wasNotDone = currentSet && !currentSet.done
     // The toast's action comes later; a set logged in between must not be unticked by it.
-    if (withoutWeight && !wasNotDone) return
+    if (confirmed && !wasNotDone) return
     const completesExercise = wasNotDone && currentActive?.exercises[exerciseIndex]?.sets.every(
       (set, index) => index === setIndex || set.done,
     )
@@ -259,22 +261,25 @@ export default function WorkoutPage() {
     }
     const userMeta = new Map(userExercises.map((entry) => [`user:${entry.id}`, entry]))
     const loggedExercise = currentActive?.exercises[exerciseIndex]
-    if (wasNotDone && !withoutWeight && loggedExercise
-      && needsWeightConfirm(currentSet, { exerciseId: loggedExercise.exerciseId, ...catalogueMeta(loggedExercise.exerciseId, loggedExercise.exerciseSource, userMeta) })) {
+    const history = loggedExercise && histories[`${loggedExercise.exerciseSource}:${loggedExercise.exerciseId}`]
+    const slip = wasNotDone && !confirmed && loggedExercise ? weightSlip(currentSet.weight, history && lastSessionBest(history), units) : null
+    const unweighted = wasNotDone && !confirmed && loggedExercise
+      && needsWeightConfirm(currentSet, { exerciseId: loggedExercise.exerciseId, ...catalogueMeta(loggedExercise.exerciseId, loggedExercise.exerciseSource, userMeta) })
+    if (loggedExercise && currentSet && (unweighted || slip)) {
       // Indexes can shift before the tap (a removed set, a cut, a sync), so the action finds the same set again.
       const exerciseKey = getExerciseClientId(loggedExercise, exerciseIndex)
       const setKey = currentSet.clientId
-      toast('No weight entered. Log this set without weight?', {
-        id: 'log-without-weight',
-        action: {
-          label: 'Log without weight',
-          onClick: () => {
-            const exercises = useWorkoutStore.getState().active?.exercises ?? []
-            const at = exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === exerciseKey)
-            const setAt = at >= 0 ? exercises[at]!.sets.findIndex((set, index) => (setKey ? set.clientId === setKey : index === setIndex)) : -1
-            if (setAt >= 0) toggleSet(at, setAt, true)
-          },
-        },
+      const logAnyway = () => {
+        const exercises = useWorkoutStore.getState().active?.exercises ?? []
+        const at = exercises.findIndex((exercise, index) => getExerciseClientId(exercise, index) === exerciseKey)
+        const setAt = at >= 0 ? exercises[at]!.sets.findIndex((set, index) => (setKey ? set.clientId === setKey : index === setIndex)) : -1
+        if (setAt >= 0) toggleSet(at, setAt, true)
+      }
+      if (unweighted) toast('No weight entered. Log this set without weight?', { id: 'log-without-weight', action: { label: 'Log without weight', onClick: logAnyway } })
+      else if (slip) toast(`${slip.title} ${slip.message}`, {
+        id: 'log-weight-slip',
+        action: { label: 'Log anyway', onClick: logAnyway },
+        cancel: { label: 'Fix', onClick: () => document.querySelector<HTMLInputElement>('.workout-set-panel input[role="spinbutton"]')?.focus() },
       })
       return
     }
@@ -299,7 +304,7 @@ export default function WorkoutPage() {
     } else {
       useWorkoutStore.getState().clearRestTimer()
     }
-  }, [userExercises])
+  }, [histories, units, userExercises])
 
   const handleAddRestTime = useCallback((deltaSec: number) => {
     useWorkoutStore.getState().addRestTimerSeconds(deltaSec)
@@ -332,7 +337,7 @@ export default function WorkoutPage() {
       toast.error('Could not prepare to safely remove this set. Refresh the view and try again.')
       return
     }
-    setPendingSetRemoval({ exerciseClientId: exercise.clientId, setClientId: set.clientId })
+    setPendingSetRemoval({ exerciseClientId: exercise.clientId, setClientId: set.clientId, done: set.done })
   }, [])
 
   function handleConfirmRemoveSet() {
@@ -757,7 +762,6 @@ export default function WorkoutPage() {
     )
   }
 
-  const units = profile?.units ?? 'kg'
   const exerciseCatalog = new Map([...exerciseDb, ...userExercises].map((exercise) => [exercise.id, exercise]))
   const totalSets = active.exercises.reduce((sum, exercise) => sum + exercise.sets.length, 0)
   const unfinishedSets = active.exercises.reduce((sum, exercise) => (
@@ -1364,7 +1368,7 @@ export default function WorkoutPage() {
       {pendingSetRemoval && (
         <ConfirmDialog
           title="Remove set?"
-          message="This set contains data or is marked complete."
+          message={removeSetMessage(pendingSetRemoval.done)}
           confirmLabel="Remove set"
           cancelLabel="Keep"
           danger

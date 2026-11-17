@@ -1,4 +1,5 @@
 import type { ProgressRecordsResult, ProgressSessionLite, ProgressSessionsResult, RecordSummary } from '../../src/shared/progress'
+import { recallRead, rememberRead } from './scopedRead'
 
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Invalid progress document.')
@@ -97,6 +98,10 @@ export function mergeProgressSnapshot(previous: ProgressSnapshot | null, result:
     freshnessUncertain: result.freshness === 'uncertain',
   }
 }
+
+// The last snapshot per account, so Progress opened again shows it at once; forgotten with the other reads.
+export const recallProgress = (uid: string) => recallRead<ProgressSnapshot>(`progress:${uid}`)?.data ?? null
+export const rememberProgress = (uid: string, snapshot: ProgressSnapshot, since: number) => rememberRead(`progress:${uid}`, { data: snapshot, fromCache: false }, since)
 
 export function startProgressRead(load: () => Promise<ProgressLoadResult>, publish: (result: ProgressLoadResult) => void,
   fail: () => void, finish: () => void): () => void {

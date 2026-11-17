@@ -1,8 +1,8 @@
-import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
-import { useFocusEffect, useRouter } from 'expo-router'
+import { useFocusEffect, useIsFocused, useRouter } from 'expo-router'
 import { ProfileMissingError } from '../src/profile'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
@@ -38,6 +38,7 @@ import { colors, primaryGradient } from '../src/theme'
 import { Icon } from '../src/icons'
 import { PastePlanSheet } from '../src/PastePlanSheet'
 import { useStarterPlan } from '../src/useStarterPlan'
+import { revealApp } from '../src/splash'
 
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
 type TemplateData = WorkoutTemplate[]
@@ -64,9 +65,7 @@ export default function DashboardScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
   const insets = useSafeAreaInsets()
-  // With the tab bar scrolled away the bar sits on the screen edge, under the gesture area.
-  const startBarInset = navigation.hidden ? { paddingBottom: Math.max(2, insets.bottom + 8) } : null
-  const dockInset = navigation.hidden ? { marginBottom: Math.max(2, insets.bottom + 8) } : null
+  const navigationInset = useNavigationInset()
   const [picked, setPicked] = useState(false)
   // The queue needs plans and recent workouts, which load separately; a day the user picked stays.
   const pickedRef = useRef(false)
@@ -93,6 +92,7 @@ export default function DashboardScreen() {
       throw cause
     }), (state) => {
       if (missing) { router.replace('/onboarding'); return }
+      if (state.status !== 'loading') revealApp()
       setResult({ key, state })
       if (state.status !== 'ready') return
       const plans = planDataRef.current
@@ -149,14 +149,25 @@ export default function DashboardScreen() {
   const startWeightOf = (exercise: TemplateExercise) => chosenBest
     ? templateStartWeight(exercise, chosenBest.get(`${exercise.exerciseSource}:${exercise.exerciseId}`))
     : 0
-  const canOfferStart = active.state.status === 'empty' && closure?.closure.status === 'ready'
+  // Start reloads the session before Train leaves; from the Start press until the next visit Train keeps the layout it had.
+  const isFocused = useIsFocused()
+  const live = { active: active.state, launch: launch?.state.status ?? 'loading', blurred: false }
+  const [shown, setShown] = useState(live)
+  const launchFailed = live.launch === 'retry' || live.launch === 'unavailable' || live.launch === 'corrupt'
+  const handingOver = shown.launch === 'starting' && !launchFailed && (live.launch === 'starting' || live.active.status !== 'empty')
+  if (!isFocused) { if (!shown.blurred) setShown({ ...shown, blurred: true }) }
+  else if (shown.blurred || (!handingOver && (shown.active !== live.active || shown.launch !== live.launch))) setShown(live)
+  const view = !isFocused || handingOver ? shown : live
+  // The press, not the launch state, starts the hold: the session reloads in the same tick.
+  const startWith = (request: Parameters<NonNullable<typeof launch>['start']>[0]) => { setShown({ ...live, launch: 'starting' }); void launch?.start(request) }
+  const canOfferStart = view.active.status === 'empty' && closure?.closure.status === 'ready'
   // Start waits for recent workouts too, so the queued day does not replace the first one on screen.
-  const plansPending = active.state.status === 'loading' || (canOfferStart && (templatesState.status === 'loading' || state.status === 'loading'))
+  const plansPending = view.active.status === 'loading' || (canOfferStart && (templatesState.status === 'loading' || state.status === 'loading'))
   // Picking a workout means the next session matters more than the finished week.
   const weekClosed = Boolean(summary) && !plansPending && canOfferStart && !picked && (summary?.weeklyDone ?? 0) >= goal
-  const coverName = active.state.status === 'ready' ? workoutCover(active.state.session.label) : weekClosed ? 'week' : workoutCover(chosen?.day.name ?? chosen?.template.name)
+  const coverName = view.active.status === 'ready' ? workoutCover(view.active.session.label) : weekClosed ? 'week' : workoutCover(chosen?.day.name ?? chosen?.template.name)
   const record = data ? latestRecord(data.workouts, now.getTime()) : null
-  const launchState = launch?.state.status ?? 'loading'
+  const launchState = view.launch
   const starting = launchState === 'starting'
   const readinessEntry = readiness?.state.status === 'ready' ? readiness.state.entry : null
   useEffect(() => {
@@ -169,7 +180,7 @@ export default function DashboardScreen() {
   const choiceKey = chosen && target ? `${chosen.template.id}:${target.dayIndex}` : ''
   const choice: TodayChoice = todayChoice?.key === choiceKey ? todayChoice : { key: choiceKey, budgetMin: null, straight: false, fullSets: false, proposals: [] }
   const planToday = (budgetMin: number | null, straight: boolean, fullSets: boolean) => {
-    if (active.state.status !== 'empty' || !chosen || !target || !data || state.status !== 'ready' || state.fromCache
+    if (view.active.status !== 'empty' || !chosen || !target || !data || state.status !== 'ready' || state.fromCache
       || templatesState.status !== 'ready' || templatesState.fromCache) return null
     try {
       const next = buildNextSessionRecommendation(chosen.template, target.dayIndex, readinessEntry, recommendationHistory(data.workouts), Date.now(), units, {
@@ -202,7 +213,7 @@ export default function DashboardScreen() {
     readiness?.controller.refreshDay()
     // A check-in from before midnight does not describe today.
     if (!chosen || !target || (readinessEntry && readinessEntry.date !== readiness?.controller.state.date)) return
-    void launch?.start({ kind: 'template', selection: target, snapshot: chosen.template, ...(launchToday ? { launch: launchToday } : {}) })
+    startWith({ kind: 'template', selection: target, snapshot: chosen.template, ...(launchToday ? { launch: launchToday } : {}) })
   }
 
   // Today's choices belong to a plan day on screen, not to a closed week.
@@ -220,12 +231,12 @@ export default function DashboardScreen() {
   const trainLinks = <View style={styles.links}>
       <Pressable accessibilityRole="button" onPress={() => router.navigate('/templates')} style={styles.link}><Text style={styles.linkText}>Plans</Text></Pressable>
       {canOfferStart && templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.link}><Text style={styles.linkText}>Change workout</Text></Pressable>}
-      {canOfferStart && <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={styles.link}><Text style={styles.linkText}>{noPlans ? 'Start empty workout' : 'Empty workout'}</Text></Pressable>}
+      {canOfferStart && <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => startWith({ kind: 'empty' })} style={styles.link}><Text style={styles.linkText}>{noPlans ? 'Start empty workout' : 'Empty workout'}</Text></Pressable>}
     </View>
 
   if (!user) return <SafeAreaView edges={['top']} style={styles.screen}><StatusBar style="light" /><Text style={styles.muted}>Restoring sign-in…</Text></SafeAreaView>
 
-  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
+  return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
     <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
@@ -241,9 +252,9 @@ export default function DashboardScreen() {
           <View pointerEvents="none" style={styles.coverFade} />
           <View style={styles.coverCopy}>
             <Text style={styles.coverMeta}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
-            <Text accessibilityRole="header" style={styles.coverTitle}>{plansPending ? ' ' : active.state.status === 'ready' ? active.state.session.label?.trim() || 'Workout' : weekClosed ? 'Week done' : chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
+            <Text accessibilityRole="header" style={styles.coverTitle}>{plansPending ? ' ' : view.active.status === 'ready' ? view.active.session.label?.trim() || 'Workout' : weekClosed ? 'Week done' : chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
             {plansPending ? <Text style={styles.coverMeta}> </Text> : weekClosed ? <Text style={styles.coverMeta}>{summary?.weeklyDone} of {goal} workouts · {formatCompactVolume(summary?.weeklyVolume ?? 0, units)}</Text> : chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
-              : active.state.status === 'empty' && recent[0] && <Text style={styles.coverMeta}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
+              : view.active.status === 'empty' && recent[0] && <Text style={styles.coverMeta}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
           </View>
           {record && <View pointerEvents="none" style={styles.coverSeam} />}
         </View>
@@ -269,7 +280,7 @@ export default function DashboardScreen() {
           {canOfferStart && templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
           {canOfferStart && templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
         </View>
-        {active.state.status !== 'ready' && trainLinks}
+        {view.active.status !== 'ready' && trainLinks}
         {canOfferStart && <View>
             {launchState === 'loading' && <Text style={styles.planEmptyCopy}>Checking workout start…</Text>}
             {(launchState === 'retry' || launchState === 'unavailable' || launchState === 'corrupt') && <View accessibilityRole="alert" style={styles.launchFeedback}><Text style={styles.planEmptyCopy}>{launch?.state.message ?? 'Could not start workout.'}</Text>{launchState !== 'corrupt' && <Pressable accessibilityRole="button" onPress={() => { if (launchState === 'unavailable') { launch?.dismissUnavailable(); setSelection({ uid: uid!, target: null, unavailable: true }); setTemplatesAttempt((value) => value + 1) } else void launch?.retry() }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
@@ -287,8 +298,10 @@ export default function DashboardScreen() {
         </View>}
       </>}
     </ScrollView>
-    {data && active.state.status === 'ready' && <View style={[styles.startBar, startBarInset]}><ResumeButton />{trainLinks}</View>}
-    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Today" style={[styles.dock, !today && !readiness && styles.dockBare, dockInset]}>
+    {/* The docks keep their place above the tab bar whether it shows or not. */}
+    <View style={{ paddingBottom: navigationInset }}>
+    {data && view.active.status === 'ready' && <View style={styles.startBar}><ResumeButton />{trainLinks}</View>}
+    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Today" style={[styles.dock, !today && !readiness && styles.dockBare]}>
       {/* The check-in stays without a plan day too: Coach reads it. */}
       {readiness && <TrainCheckIn state={readiness.state} controller={readiness.controller} open={checkInOpen} onToggle={() => setCheckInOpen((open) => !open)} />}
       {/* While the check-in is open the time row and today's line step aside; Start stays. */}
@@ -309,9 +322,10 @@ export default function DashboardScreen() {
             </View>
             {starter.error && <Text accessibilityRole="alert" style={styles.planEmptyCopy}>{starter.error}</Text>}
           </View>
-          : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
+          : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => startWith({ kind: 'empty' })} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
       </View>
     </View>}
+    </View>
     {pasting && uid && <PastePlanSheet uid={uid} returnTo="dashboard" onClose={() => setPasting(false)} />}
     <Modal animationType="fade" transparent visible={pickerOpen && canOfferStart && templatesState.status === 'ready'} onRequestClose={() => setPickerOpen(false)}>
       <View style={styles.pickerOverlay}><View accessibilityLabel="Choose a workout" style={styles.pickerDialog}>

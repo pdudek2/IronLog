@@ -72,6 +72,12 @@ describe('workoutSteps', () => {
     expect(stepsNote({ best: false, delta: 0 }, kg)).toBe('Same weight as last time')
   })
 
+  it('keeps the difference to stored precision instead of floating point noise', () => {
+    const steps = workoutSteps(workout('w', 1, 83.7575), [session('w', 1, 83.7575), session('a', 48, 86.25)])!
+
+    expect(stepsNote(steps, kg)).toBe('2.4925 kg below last time')
+  })
+
   it('caps the bars and still judges the best on all sessions', () => {
     const sessions = Array.from({ length: 20 }, (_, index) => session(`s${index}`, 200 - index, index === 0 ? 120 : 80))
     const steps = workoutSteps(workout('w', 1, 100), sessions)!

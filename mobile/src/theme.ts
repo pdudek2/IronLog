@@ -34,3 +34,6 @@ export const pageTitle = { color: colors.textStrong, fontFamily: 'InstrumentSans
 export const primaryGradient = `linear-gradient(180deg, ${colors.primaryStart} 0%, ${colors.primaryEnd} 100%)`
 // The web body background.
 export const pageBackground = `linear-gradient(180deg, ${palette.backgroundDeep} 0%, ${palette.background} 42%, ${palette.backgroundBottom} 100%)`
+
+// A light caret and handles, a grey highlight: a light highlight would hide the selected digits.
+export const fieldColors = { cursorColor: palette.text, selectionHandleColor: palette.text, selectionColor: palette.lineStrong }

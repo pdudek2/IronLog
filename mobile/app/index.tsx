@@ -1,5 +1,7 @@
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
-import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import { KeyboardLift } from '../src/KeyboardLift'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { StatusBar } from 'expo-status-bar'
 import { useIsFocused, useRouter } from 'expo-router'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -12,8 +14,6 @@ import { Linking,
   Keyboard,
   BackHandler,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -42,7 +42,7 @@ import {
 } from '../src/session'
 import { useSessionRead } from '../src/useSessionRead'
 import type { ClosureState } from '../src/useWorkoutClosure'
-import type { ExerciseMetadata } from '../src/scopedRead'
+import type { ExerciseHistory, ExerciseMetadata, ReadState } from '../src/scopedRead'
 import { exerciseHasEnteredSets, MAX_SESSION_EXERCISES, setDoneError } from '../src/setMutations'
 import {
   reconcileSetInputSubmissions,
@@ -50,18 +50,18 @@ import {
   storedValueToSetInput,
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { bestSet, EQUIPMENT_LABELS, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../../src/shared/nextSessionRecommendation'
 import { needsWeightConfirm } from '../../src/shared/workoutLimits'
+import { acceptSetInput, lastSessionBest, weightSlip } from '../../src/shared/setInput'
 import { weightStep } from '../../src/shared/weightUnits'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
-import { useKeyboardReveal } from '../src/useKeyboardReveal'
 import { covers } from '../src/covers'
 import { buildProgression, planTarget, sessionHint, type ProgressionInput } from '../../src/shared/progression'
 import { computeReadinessScore, todayKey } from '../../src/shared/readiness'
 import { workoutCover } from '../../src/shared/workoutCover'
-import { colors, primaryGradient } from '../src/theme'
+import { colors, primaryGradient, fieldColors } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
 import { takeAccountDeletedNotice } from '../src/accountData'
@@ -69,6 +69,7 @@ import { SessionCut } from '../src/SessionCut'
 import { BottomSheet } from '../src/BottomSheet'
 import { pluralize } from '../../src/lib/pluralize'
 import { BrandMark, Icon } from '../src/icons'
+import { revealApp } from '../src/splash'
 
 function ActionButton({ label, onPress, secondary = false, disabled = false, flat = false }: {
   label: string
@@ -112,13 +113,6 @@ function LoginForm() {
   const [notice, setNotice] = useState(() => (takeAccountDeletedNotice() ? 'Your account has been deleted.' : ''))
   const [error, setError] = useState<{ field: 'email' | 'password'; message: string } | null>(null)
   const [focusedField, setFocusedField] = useState<'email' | 'password' | null>(null)
-  // KeyboardAvoidingView already shrinks the form; scrolling to its end keeps Sign in above the keyboard too.
-  const { scroll, keyboardInset } = useKeyboardReveal()
-  useEffect(() => {
-    if (!keyboardInset) return
-    const timer = setTimeout(() => scroll.current?.scrollToEnd({ animated: true }), 50)
-    return () => clearTimeout(timer)
-  }, [keyboardInset, scroll])
 
   const submit = async () => {
     if (busy || resetting) return
@@ -172,10 +166,10 @@ function LoginForm() {
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={[styles.flex, styles.loginShell]}>
-      <ScrollView
-        ref={scroll}
-        automaticallyAdjustKeyboardInsets
+    <View style={[styles.flex, styles.loginShell]}>
+      {/* The offset keeps Sign in above the keyboard with the field. */}
+      <KeyboardAwareScrollView
+        bottomOffset={120}
         contentContainerStyle={styles.loginContent}
         keyboardShouldPersistTaps="handled"
       >
@@ -205,7 +199,7 @@ function LoginForm() {
               returnKeyType="next"
               submitBehavior="submit"
               onSubmitEditing={() => passwordInput.current?.focus()}
-              selectionColor={colors.accentText}
+              {...fieldColors}
               style={styles.input}
               value={email}
             />
@@ -224,7 +218,7 @@ function LoginForm() {
               onSubmitEditing={() => void submit()}
               placeholderTextColor={colors.mutedSoft}
               returnKeyType="done"
-              selectionColor={colors.accentText}
+              {...fieldColors}
               secureTextEntry
               style={styles.input}
               value={password}
@@ -244,8 +238,8 @@ function LoginForm() {
           {mode === 'register' && <Text style={styles.loginLegal}>See how we handle your data:{' '}
             <Text accessibilityRole="link" onPress={() => void Linking.openURL('https://getshear.vercel.app/privacy').catch(() => undefined)} style={styles.loginLegalLink}>Privacy policy</Text>.</Text>}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   )
 }
 
@@ -305,6 +299,8 @@ function SetValueInput({ value, units, field, label, rejectedEdit, inputRef, onC
       if (pendingSubmissions.current.length === 0) setText(displayed)
     }}
     onChangeText={(next) => {
+      // A refused keystroke leaves the state untouched, so TextInput puts the previous text back.
+      if (!acceptSetInput(next, text, field, units)) return
       setText(next)
       const canonical = setInputToStoredValue(next, field, units)
       pendingSubmissions.current.push(canonical)
@@ -314,7 +310,7 @@ function SetValueInput({ value, units, field, label, rejectedEdit, inputRef, onC
     placeholder={field === 'weight' ? '–' : '0'}
     placeholderTextColor={colors.mutedSoft}
     selectTextOnFocus
-    selectionColor={colors.lineStrong}
+    {...fieldColors}
     style={styles.panelInput}
     value={text}
   />
@@ -362,6 +358,16 @@ function SetTick({ draw }: { draw: boolean }) {
   </Animated.View>
 }
 
+// A status that clears within the delay is never drawn, so a quick handover does not flash a loader or notice.
+function Delayed({ ms, children }: { ms: number; children: React.ReactNode }) {
+  const [due, setDue] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setDue(true), ms)
+    return () => clearTimeout(timer)
+  }, [ms])
+  return due ? <FadeIn>{children}</FadeIn> : null
+}
+
 function FadeIn({ children }: { children: React.ReactNode }) {
   const [opacity] = useState(() => new Animated.Value(0))
   useEffect(() => {
@@ -376,14 +382,14 @@ function FadeIn({ children }: { children: React.ReactNode }) {
   return <Animated.View style={{ opacity }}>{children}</Animated.View>
 }
 
-function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, metadata, target, lowReadiness, panelSet, onSelectSet, onOverview, onRemove, drawnSetId, editing }: {
-  uid: string; sessionKey: string; exercise: WorkoutExercise; position: number; count: number
+type HistoryRead = { state: ReadState<ExerciseHistory>; retry: () => void }
+
+function ExerciseLedger({ history, exercise, position, count, units, metadata, target, lowReadiness, panelSet, onSelectSet, onOverview, onRemove, drawnSetId, editing }: {
+  history: HistoryRead; exercise: WorkoutExercise; position: number; count: number
   // undefined while the session's plan is still loading
   target: ProgressionInput['target'] | undefined; lowReadiness: boolean
   units: Units; metadata: ExerciseMetadata | undefined; panelSet: number; onSelectSet: (setId: string) => void; onOverview: () => void; onRemove: () => void; drawnSetId: string | null; editing: EditingActions
 }) {
-  const load = useCallback(() => readExerciseHistory(uid, exercise.exerciseId, exercise.exerciseSource), [uid, exercise.exerciseId, exercise.exerciseSource])
-  const history = useSessionRead(JSON.stringify([uid, sessionKey, exercise.exerciseSource, exercise.exerciseId]), load, true)
   const category = metadata ? EXERCISE_CATEGORY_LABELS[metadata.category] : undefined
   const equipment = metadata ? EQUIPMENT_LABELS[metadata.equipment] : undefined
   // A trial announces itself and then proposes a weight; closing one must not hide the next.
@@ -445,7 +451,7 @@ function ExerciseLedger({ uid, sessionKey, exercise, position, count, units, met
           {current ? <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${index + 1}`} onPress={() => {
             const remove = () => editing.removeSet(exercise.clientId, set.clientId)
             if (!set.done && !set.weight.trim() && !set.reps.trim()) { remove(); return }
-            showDialog('Remove set?', 'This set contains data or is marked complete.', [{ text: 'Keep', style: 'cancel' }, { text: 'Remove set', style: 'destructive', onPress: remove }])
+            showDialog('Remove set?', removeSetMessage(set.done), [{ text: 'Keep', style: 'cancel' }, { text: 'Remove set', style: 'destructive', onPress: remove }])
           }} style={[styles.setTrailingColumn, styles.setTouchTarget]}>
             <Svg width={15} height={15} viewBox="0 0 24 24" style={{ alignSelf: 'center' }}><Path d="m18 6-12 12M6 6l12 12" fill="none" stroke={colors.mutedSoft} strokeWidth={2} strokeLinecap="round" /></Svg>
           </Pressable> : <View style={styles.setTrailingColumn} />}
@@ -469,14 +475,13 @@ function currentExerciseIndex(session: ActiveWorkout, manual: string | null) {
   return picked >= 0 ? picked : focusExerciseIndex(session.exercises)
 }
 
-function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, panelSet, onGoTo, onSelectSet, onOverview, onRemoveExercise, picking, onPicking, drawnSetId, onShortOnTime }: {
-  uid: string; session: ActiveWorkout; units: Units; stale: boolean; editing: EditingActions; currentIndex: number; panelSet: number
+function WorkoutLedger({ uid, session, units, sessionKey, history, editing, currentIndex, panelSet, onGoTo, onSelectSet, onOverview, onRemoveExercise, picking, onPicking, drawnSetId, onShortOnTime }: {
+  uid: string; session: ActiveWorkout; units: Units; sessionKey: string; history: HistoryRead; editing: EditingActions; currentIndex: number; panelSet: number
   onGoTo: (id: string) => void; onSelectSet: (setId: string) => void; onOverview: () => void; onRemoveExercise: (exercise: WorkoutExercise) => void; picking: boolean; onPicking: (picking: boolean) => void; drawnSetId: string | null
   onShortOnTime: () => void
 }) {
   const loadMetadata = useCallback(() => readExerciseMetadata(uid), [uid])
   const hasCustom = session.exercises.some((exercise) => exercise.exerciseSource === 'user')
-  const sessionKey = `${session.sessionId}:${stale}`
   const catalog = useSessionRead(JSON.stringify([uid, sessionKey]), loadMetadata, hasCustom || picking)
   const openPicker = () => { catalog.retry(); onPicking(true) }
   const loadRecent = useCallback(() => readRecentWorkouts(uid, 10), [uid])
@@ -538,7 +543,7 @@ function WorkoutLedger({ uid, session, units, stale, editing, currentIndex, pane
   const queue = upNextQueue(session.exercises, currentIndex)
   return <View style={styles.exerciseStack}>
     {hasCustom && catalog.state.status === 'error' && <Pressable onPress={catalog.retry} accessibilityRole="button" style={styles.lookupAction}><Text style={styles.lookupText}>Exercise details unavailable · Retry</Text></Pressable>}
-    {current && <FadeIn key={exerciseIdentity(current, currentIndex)}><ExerciseLedger uid={uid} sessionKey={sessionKey} exercise={current} units={units}
+    {current && <FadeIn key={exerciseIdentity(current, currentIndex)}><ExerciseLedger history={history} exercise={current} units={units}
       position={currentIndex + 1} count={session.exercises.length} panelSet={panelSet} onSelectSet={onSelectSet}
       metadata={current.exerciseSource === 'global' ? exerciseCatalog.find(({ id }) => id === current.exerciseId)
         : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === current.exerciseId) : undefined}
@@ -610,19 +615,19 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
   const adjust = (field: 'weight' | 'reps', delta: number) => set && editing.adjustSet(exercise.clientId, set.clientId, field, delta)
   const openSet = exercise.sets.findIndex(({ done }) => !done)
   const action = set?.done ? openSet >= 0 ? `Back to set ${openSet + 1}` : 'Done' : set ? 'Log set' : nextName ? `Go to ${nextName}` : finishing ? 'Finishing…' : 'Finish workout'
-  return <View accessibilityLabel="Current set" style={[styles.panel, { paddingBottom: inset }]}>
+  return <KeyboardLift accessibilityLabel="Current set" rest={inset + 14} gap={8} style={styles.panel}>
     {rest ?? <View style={styles.panelStatus}><Text style={styles.panelStatusText}>{setPanelStatus(set, setIndex, exercise.sets.length)}</Text></View>}
     {set && <View style={styles.panelNums}>
       <View style={styles.panelNum}>
         <SetStepper label="weight" step={-weightStep(units)} onStep={() => adjust('weight', displayWeightDeltaToKg(-weightStep(units), units))} />
-        <View style={styles.panelValue}><SetValueInput rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight" inputRef={weightRef}
+        <View style={styles.panelValue}><SetValueInput key={`${set.clientId}:weight`} rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight" inputRef={weightRef}
           label={`Weight, ${exercise.name}, set ${number}, ${units}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'weight', value)} /><Text style={styles.panelUnit}>{units}</Text></View>
         <SetStepper label="weight" step={weightStep(units)} onStep={() => adjust('weight', displayWeightDeltaToKg(weightStep(units), units))} />
       </View>
       <View style={styles.panelDivider} />
       <View style={styles.panelNum}>
         <SetStepper label="reps" step={-1} onStep={() => adjust('reps', -1)} />
-        <View style={styles.panelValue}><SetValueInput rejectedEdit={rejectedEdit} value={set.reps} units={units} field="reps"
+        <View style={styles.panelValue}><SetValueInput key={`${set.clientId}:reps`} rejectedEdit={rejectedEdit} value={set.reps} units={units} field="reps"
           label={`Reps, ${exercise.name}, set ${number}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'reps', value)} /><Text style={styles.panelUnit}>reps</Text></View>
         <SetStepper label="reps" step={1} onStep={() => adjust('reps', 1)} />
       </View>
@@ -631,7 +636,7 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
       onPress={set?.done ? onClearSelection : set ? onLog : nextName ? onNext : onFinish} style={({ pressed }) => [styles.panelAction, set?.done && styles.panelActionQuiet, !set && !nextName && finishing && styles.buttonDisabled, pressed && styles.buttonPressed]}>
       <Text style={[styles.panelActionText, set?.done && styles.panelActionQuietText]}>{action}</Text>
     </Pressable>
-  </View>
+  </KeyboardLift>
 }
 
 // Copy mirrors the web closure alerts in WorkoutPage.
@@ -652,14 +657,15 @@ const CLOSURE_COPY: Record<ClosureNoticeStatus, { title: string; copy: string; a
   active_session_changed: { title: 'The session changed on another device.', copy: 'Check the latest data on this device, then finish it again.', action: 'Load current session' },
 }
 
-function ClosureNotice({ closure, onRetry, onDismiss, onSignIn }: { closure: ClosureState; onRetry: () => void; onDismiss: () => void; onSignIn: () => void }) {
+function ClosureNotice({ closure, savingInButton, onRetry, onDismiss, onSignIn }: { closure: ClosureState; savingInButton: boolean; onRetry: () => void; onDismiss: () => void; onSignIn: () => void }) {
   if (closure.status === 'ready') return null
   if (closure.status === 'loading') return <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
     <ActivityIndicator color={colors.accent} />
     <Text style={styles.syncTitle}>Checking saved workout requests…</Text>
     <Text style={styles.syncCopy}>Editing and closing stay locked until recovery is checked.</Text>
   </View>
-  if (closure.status === 'submitting') return <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
+  // With the session on screen saving shows in the Finish button, so the session does not move down under the finger.
+  if (closure.status === 'submitting') return savingInButton ? null : <View accessibilityLiveRegion="polite" style={styles.closureNotice}>
     <ActivityIndicator color={colors.accent} />
     <Text style={styles.syncTitle}>{closure.intent.action === 'finish' ? 'Saving workout…' : 'Discarding workout…'}</Text>
   </View>
@@ -686,7 +692,8 @@ function guardClosureInteraction<Args extends unknown[], Result>(canEdit: () => 
 
 function SessionScreen({ user }: { user: AuthUser }) {
   const navigation = useBottomNavigation()
-  const { scroll, content, keyboardInset } = useKeyboardReveal()
+  const navigationInset = useNavigationInset()
+  const scroll = useRef<ScrollView>(null)
   const isFocused = useIsFocused()
   const router = useRouter()
   const active = useActiveRuntime()
@@ -708,7 +715,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const [weightFocus, setWeightFocus] = useState(0)
   const changeRest = (next: Rest | null) => { lastRest = next; setRest(next) }
   const insets = useSafeAreaInsets()
-  const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
+  const { closure, completed, locked, handingOff, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
   const sessionClosed = state.status === 'ready' && completed?.action === 'finish'
     && completed.workoutId === state.session.sessionId
   const launch = useOptionalLaunchRuntime()
@@ -751,6 +758,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
     landing.current = false
     if (isFocused && state.status === 'empty' && closure.status === 'ready' && !completed) router.replace('/dashboard')
   }, [state.status, closure.status, completed, isFocused, router])
+  // An empty session with nothing to report goes on to Train, which reveals the app itself.
+  const settled = state.status !== 'loading' && state.status !== 'cache-miss' && closure.status !== 'loading'
+  const toTrain = state.status === 'empty' && closure.status === 'ready' && !completed
+  useEffect(() => { if (settled && !toTrain) revealApp() }, [settled, toTrain])
   // Closure is decided against the server's revision, so it waits for local edits to be acknowledged.
   const closable = (action: () => void) => () => {
     if (!isFocused || state.status !== 'ready' || sessionLocked) return
@@ -817,21 +828,31 @@ function SessionScreen({ user }: { user: AuthUser }) {
     setLastLogged((logged) => logged && { ...logged, draw: false })
     scroll.current?.scrollTo({ y: 0, animated: false })
   }
+  const sessionKey = state.status === 'ready' ? `${state.session.sessionId}:${state.stale}` : ''
+  // Read here, not in the ledger, so Log set can compare with the last session.
+  const historyId = panelExercise?.exerciseId ?? '', historySource = panelExercise?.exerciseSource ?? 'global'
+  const loadHistory = useCallback(() => readExerciseHistory(user.uid, historyId, historySource), [user.uid, historyId, historySource])
+  const history = useSessionRead(JSON.stringify([user.uid, sessionKey, historySource, historyId]), loadHistory, Boolean(historyId))
   const currentSetIndex = panelExercise ? panelSetIndex(panelExercise.sets, selectedSet?.exerciseId === currentId ? selectedSet?.setId ?? null : null) : -1
   const nextExerciseIndex = liveSession ? upNextQueue(liveSession.exercises, panelIndex)[0] ?? -1 : -1
   const currentRest = rest && rest.sessionId === liveSession?.sessionId ? rest : null
-  const toggleSet = guardClosureInteraction(canEditCurrentSession, (exerciseId: string, setId: string, done: boolean, withoutWeight = false) => {
+  const toggleSet = guardClosureInteraction(canEditCurrentSession, (exerciseId: string, setId: string, done: boolean, confirmed = false) => {
     const error = done && liveSession ? setDoneError(liveSession, exerciseId, setId) : null
     if (error) { showDialog('Set not logged', error); return }
     const logged = liveSession?.exercises.find(({ clientId }) => clientId === exerciseId)
     const loggedSet = logged?.sets.find(({ clientId }) => clientId === setId)
+    const asking = done && !confirmed && logged && loggedSet && !loggedSet.done
     // shortcut: user exercises have no metadata here, so they are not asked about 0; load it with the session if testers hit it.
-    if (done && !withoutWeight && logged && loggedSet && !loggedSet.done
-      && needsWeightConfirm(loggedSet, { exerciseId: logged.exerciseId, ...catalogueMeta(logged.exerciseId, logged.exerciseSource) })) {
+    const unweighted = asking && needsWeightConfirm(loggedSet, { exerciseId: logged.exerciseId, ...catalogueMeta(logged.exerciseId, logged.exerciseSource) })
+    const reference = logged?.clientId === panelExercise?.clientId && history.state.status === 'ready' ? lastSessionBest(history.state.data.sessions) : undefined
+    const slip = asking ? weightSlip(loggedSet.weight, reference, state.status === 'ready' ? state.units : 'kg') : null
+    const ask = unweighted ? { title: 'No weight entered', message: 'Log this set without weight?', fix: 'Enter weight', log: 'Log without weight' }
+      : slip && { ...slip, fix: 'Fix', log: 'Log anyway' }
+    if (ask) {
       // Back and the backdrop also run the cancel button; onDismiss follows it in the same tick and undoes both effects.
-      showDialog('No weight entered', 'Log this set without weight?', [
-        { text: 'Enter weight', style: 'cancel', onPress: () => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }); setWeightFocus(Date.now()) } },
-        { text: 'Log without weight', onPress: () => latestToggle.current(exerciseId, setId, true, true) },
+      showDialog(ask.title, ask.message, [
+        { text: ask.fix, style: 'cancel', onPress: () => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }); setWeightFocus(Date.now()) } },
+        { text: ask.log, onPress: () => latestToggle.current(exerciseId, setId, true, true) },
       ], { onDismiss: () => { setSelectedSet(selectedSet); setWeightFocus(0) } })
       return
     }
@@ -886,14 +907,15 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const rejectedEditState = state.status === 'ready' && state.syncStatus === 'storage-error' ? state : null
   const allSets = session?.exercises.flatMap((exercise) => exercise.sets) ?? []
   const sessionSetCount = { done: allSets.filter((set) => set.done).length, total: allSets.length }
+  // The saved workout replaces this screen; it stays blank under the summary's entering animation too.
+  const hideSaved = handingOff || (!isFocused && completed?.action === 'finish')
   const selectSet = (setId: string) => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }) }
 
   return (
-    <View onFocus={navigation.onFocus} onBlur={navigation.onBlur} pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
-      <Animated.ScrollView
+    <View pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
+      <ScrollView
         ref={scroll}
-        innerViewRef={content}
-        contentContainerStyle={[styles.sessionContent, panelVisible ? styles.sessionContentPanel : keyboardInset > 0 && { paddingBottom: keyboardInset }]}
+        contentContainerStyle={[styles.sessionContent, panelVisible ? styles.sessionContentPanel : !liveSession && { paddingBottom: navigationInset }]}
         keyboardShouldPersistTaps="handled"
         stickyHeaderIndices={[0]}
         scrollEventThrottle={16}
@@ -915,7 +937,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
             </Pressable>
             <Pressable accessibilityRole="button" accessibilityLabel="Finish workout" disabled={locked} onPress={finish}
               style={({ pressed }) => [styles.finishButton, locked && styles.buttonDisabled, pressed && styles.buttonPressed]}>
-              <Text style={styles.finishButtonText}>{closure?.status === 'submitting' ? '...' : 'Finish'}</Text>
+              <Text accessibilityLiveRegion="polite" style={styles.finishButtonText}>{closure.status === 'submitting' ? closure.intent.action === 'finish' ? 'Saving…' : 'Discarding…' : 'Finish'}</Text>
             </Pressable>
           </View>
         </View>
@@ -925,10 +947,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
       {logoutError && <Text accessibilityLiveRegion="polite" style={styles.logoutError}>{logoutError}</Text>}
 
       {state.status === 'loading' && (
-        <View accessibilityLiveRegion="polite" style={styles.centerState}>
+        <Delayed ms={500}><View accessibilityLiveRegion="polite" style={styles.centerState}>
           <View style={[styles.brandMark, styles.loaderMark]}><BrandMark width={26} /></View>
           <Text style={styles.stateTitle}>Checking your session…</Text>
-        </View>
+        </View></Delayed>
       )}
 
       {state.status === 'cache-miss' && (
@@ -939,9 +961,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-      {closure && <ClosureNotice closure={closure} onRetry={retryClosure} onDismiss={dismissClosure} onSignIn={() => void doLogout()} />}
+      {closure && <ClosureNotice closure={closure} savingInButton={state.status === 'ready'} onRetry={retryClosure} onDismiss={dismissClosure} onSignIn={() => void doLogout()} />}
 
-      {state.status === 'empty' && (
+      {state.status === 'empty' && !hideSaved && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>{completed?.action === 'finish' ? 'Workout saved' : completed ? 'Workout discarded' : 'No workout in progress'}</Text>
           <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Your saved workout is ready in History.' : 'Start a workout from Train whenever you are ready.'}</Text>
@@ -950,7 +972,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-      {sessionClosed && (
+      {sessionClosed && !hideSaved && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>Workout saved</Text>
           <Text style={styles.stateCopy}>Your completed session is ready in History.</Text>
@@ -983,10 +1005,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
         <View pointerEvents={sessionLocked ? 'none' : 'auto'}>
           <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' && !state.stale ? 'Saved on device' : ''}</Text>
           {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
-            <View style={styles.staleNotice}>
+            <Delayed ms={1500}><View style={styles.staleNotice}>
               <Text style={styles.staleTitle}>Saved on this device</Text>
               <Text style={styles.staleCopy}>This may be out of date. Reconnect to confirm the workout is still active.</Text>
-            </View>
+            </View></Delayed>
           )}
 
           {['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && <View accessibilityLiveRegion="polite" style={styles.syncNotice}>
@@ -1013,19 +1035,18 @@ function SessionScreen({ user }: { user: AuthUser }) {
               return <View key={exerciseIdentity(exercise, index)} style={[styles.seg, index === panelIndex && styles.segCurrent]}><View style={[styles.segFill, { width: `${exercise.sets.length ? done / exercise.sets.length * 100 : 0}%` }]} /></View>
             })}</View>
           </View>}
-          <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} stale={state.stale} currentIndex={panelIndex} panelSet={currentSetIndex}
+          <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} sessionKey={sessionKey} history={history} currentIndex={panelIndex} panelSet={currentSetIndex}
             onGoTo={goToExercise} onSelectSet={selectSet} onOverview={() => setSheet('overview')} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} onShortOnTime={() => setCutOpen(true)} />
         </View>
         </>)}
-      </Animated.ScrollView>
+      </ScrollView>
       {panelVisible && <SetPanel exercise={panelExercise} setIndex={currentSetIndex} units={state.status === 'ready' ? state.units : 'kg'}
-        // RN's keyboard height leaves out the navigation bar, which the edge-to-edge panel also sits over.
-        rejectedEdit={rejectedEditState} inset={keyboardInset > 0 ? keyboardInset + insets.bottom + 8 : insets.bottom + 14} weightRef={weightInput} finishing={closure?.status === 'submitting'}
+        rejectedEdit={rejectedEditState} inset={insets.bottom} weightRef={weightInput} finishing={closure?.status === 'submitting'}
         nextName={nextExerciseIndex >= 0 ? liveSession?.exercises[nextExerciseIndex]?.name ?? null : null}
         editing={panelEditing}
         rest={currentRest && <RestBar rest={currentRest} label={setPanelRestLabel(panelExercise.sets[currentSetIndex], currentSetIndex)}
           onAddTime={(seconds) => changeRest({ ...currentRest, totalSec: currentRest.totalSec + seconds })} onSkip={() => changeRest(null)} />}
-        onLog={() => { const set = panelExercise.sets[currentSetIndex]; if (set) toggleSet(panelExercise.clientId, set.clientId, true) }}
+        onLog={() => { const set = panelExercise.sets[currentSetIndex]; Keyboard.dismiss(); if (set) toggleSet(panelExercise.clientId, set.clientId, true) }}
         onClearSelection={() => setSelectedSet(null)}
         onNext={() => { const next = liveSession?.exercises[nextExerciseIndex]; if (next) goToExercise(exerciseIdentity(next, nextExerciseIndex)) }}
         onFinish={finish} />}
@@ -1083,6 +1104,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
 export default function IndexScreen() {
   const { user, startupError } = useAuthRuntime()
+  useEffect(() => { if (startupError || user === null) revealApp() }, [startupError, user])
 
   return (
     <SafeAreaView edges={user ? ['top'] : ['top', 'bottom']} style={styles.safeArea}>

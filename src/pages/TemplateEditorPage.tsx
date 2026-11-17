@@ -30,6 +30,7 @@ import {
 import { pluralize } from '../lib/pluralize'
 import { ApiRejectedError } from '../lib/authedApi'
 import { newPlanDayId } from '../shared/planDay'
+import { acceptSetInput } from '../shared/setInput'
 import { createUserExercise, type UserExerciseInput } from '../lib/userExercisesService'
 import { CHECK_HINT, unmatchedHint, type ImportedPlan, type ImportedRow } from '../shared/planImport'
 
@@ -672,10 +673,11 @@ export default function TemplateEditorPage() {
                             inputMode="numeric"
                             min={0}
                             value={exercise.targetReps === 0 ? '' : exercise.targetReps}
-                            onChange={(event) => updateExercise(selectedDayIndex, exerciseIndex, (current) => ({
-                              ...current,
-                              targetReps: toPositiveInt(event.target.value, 0),
-                            }))}
+                            onChange={(event) => acceptSetInput(event.target.value, exercise.targetReps === 0 ? '' : String(exercise.targetReps), 'reps', units)
+                              && updateExercise(selectedDayIndex, exerciseIndex, (current) => ({
+                                ...current,
+                                targetReps: toPositiveInt(event.target.value, 0),
+                              }))}
                             className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />
                           <span className="template-input-unit" aria-hidden="true">reps</span>
@@ -690,10 +692,11 @@ export default function TemplateEditorPage() {
                             min={0}
                             step={units === 'lbs' ? '0.1' : '0.5'}
                             value={exercise.targetWeight === 0 ? '' : kgToDisplayWeight(exercise.targetWeight, units)}
-                            onChange={(event) => updateExercise(selectedDayIndex, exerciseIndex, (current) => ({
-                              ...current,
-                              targetWeight: toPositiveFloat(displayWeightStringToKg(event.target.value, units), 0),
-                            }))}
+                            onChange={(event) => acceptSetInput(event.target.value, exercise.targetWeight === 0 ? '' : String(kgToDisplayWeight(exercise.targetWeight, units)), 'weight', units)
+                              && updateExercise(selectedDayIndex, exerciseIndex, (current) => ({
+                                ...current,
+                                targetWeight: toPositiveFloat(displayWeightStringToKg(event.target.value, units), 0),
+                              }))}
                             className="template-number-input px-3 py-2.5 text-sm text-white outline-none"
                           />
                           <span className="template-input-unit" aria-hidden="true">{units}</span>

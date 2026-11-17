@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { planCut, type CutChoice, type CutPlan } from '../../src/shared/sessionCut'
+import { CUT_STEP_MS, finishByClock, planCut, type CutChoice, type CutPick, type CutPlan } from '../../src/shared/sessionCut'
 import type { ExerciseMeta } from '../../src/shared/nextSessionRecommendation'
 import { readExerciseMetadata } from './firebase'
 import { pluralize } from '../../src/lib/pluralize'
@@ -9,11 +9,8 @@ import { colors, primaryGradient } from './theme'
 import { Icon } from './icons'
 
 const LEFT = [30, 20, 15, 10] as const
-const STEP_MS = 5 * 60_000
 const minutes = (sec: number) => Math.round(sec / 60)
 const clockLabel = (at: number) => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-
-type Pick = { kind: 'left'; min: number } | { kind: 'clock'; at: number } | null
 
 // „Short on time”, the same sheet as web: the time left, a preview of the rest and one tap that cuts it.
 export function SessionCut({ uid, session, disabled, onCut, onFinish, close }: {
@@ -25,7 +22,7 @@ export function SessionCut({ uid, session, disabled, onCut, onFinish, close }: {
   close: (after?: () => void) => void
 }) {
   const [now, setNow] = useState(() => Date.now())
-  const [pick, setPick] = useState<Pick>(null)
+  const [pick, setPick] = useState<CutPick>(null)
   const [straight, setStraight] = useState(false)
   // Own exercises need their muscles for roles and pairs, as on web and the dashboard.
   const [userExercises, setUserExercises] = useState<{ uid: string; meta: Map<string, ExerciseMeta> } | null>(null)
@@ -53,8 +50,7 @@ export function SessionCut({ uid, session, disabled, onCut, onFinish, close }: {
   const passed = choice.leftMin !== null && choice.leftMin < 1
   const plan = choice.leftMin !== null && !passed ? planCut(session, choice, now, meta) : null
   const shorter = LEFT.filter((left) => left < remaining)
-  const defaultClock = Math.floor((now + base.result.fullEstimateSec * 1000) / STEP_MS) * STEP_MS
-  const clockAt = pick?.kind === 'clock' ? pick.at : defaultClock
+  const clockAt = finishByClock(pick, now, base.result.fullEstimateSec)
   const grouped = plan?.groups.some((group, index) => group && group !== session.exercises[index]?.group) ?? false
   const apply = () => {
     const time = Date.now()
@@ -90,12 +86,12 @@ export function SessionCut({ uid, session, disabled, onCut, onFinish, close }: {
     </View>
     <View style={styles.clock}>
       <Text style={styles.clockLabel}>Finish by</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Five minutes earlier" onPress={() => setPick({ kind: 'clock', at: clockAt - STEP_MS })} style={styles.step}><Icon name="minus" size={16} color={colors.text} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Five minutes earlier" onPress={() => setPick({ kind: 'clock', at: clockAt - CUT_STEP_MS })} style={styles.step}><Icon name="minus" size={16} color={colors.text} /></Pressable>
       <Pressable accessibilityRole="button" accessibilityState={{ selected: pick?.kind === 'clock' }} accessibilityLabel={`Finish by ${clockLabel(clockAt)}`} onPress={() => setPick({ kind: 'clock', at: clockAt })}
         style={[styles.step, styles.clockTime, pick?.kind === 'clock' && styles.timeChecked]}>
         <Text style={[styles.timeText, pick?.kind === 'clock' && styles.timeTextChecked]}>{clockLabel(clockAt)}</Text>
       </Pressable>
-      <Pressable accessibilityRole="button" accessibilityLabel="Five minutes later" onPress={() => setPick({ kind: 'clock', at: clockAt + STEP_MS })} style={styles.step}><Icon name="plus" size={16} color={colors.text} /></Pressable>
+      <Pressable accessibilityRole="button" accessibilityLabel="Five minutes later" onPress={() => setPick({ kind: 'clock', at: clockAt + CUT_STEP_MS })} style={styles.step}><Icon name="plus" size={16} color={colors.text} /></Pressable>
     </View>
 
     {/* The time controls and the button stay put under the thumb; what changes grows above them. */}

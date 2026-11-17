@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { COACH_PLAN_COST } from '../../src/shared/coachQuota'
-import { AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
+import { AppState, Pressable, StyleSheet, Text, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
+import { KeyboardLift } from './KeyboardLift'
 import { useRouter } from 'expo-router'
 import { kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import { defaultPlanBrief, generatedPlanDraft, type PlanBrief } from './coachPlan'
@@ -8,12 +10,12 @@ import type { CoachController } from './coachController'
 import { createSessionRevision, readUnits } from './firebase'
 import { planEditorJournal } from './filePlanEditorJournal'
 import { draftHasWork } from './planEditorJournal'
-import { colors, primaryGradient } from './theme'
+import { colors, primaryGradient, fieldColors } from './theme'
 
 const equipment = [['barbell', 'Barbell'], ['dumbbell', 'Dumbbells'], ['cable', 'Cable'], ['machine', 'Machines'], ['bodyweight', 'Bodyweight'], ['kettlebell', 'Kettlebell']]
 const levels = [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced']]
 // `top` is the screen's header and key area, `bottom` the saved-key row: the panel owns the scroll so Generate can dock below it.
-export default function CoachPlanPanel({ uid, controller, top, bottom, onScroll }: { uid: string; controller: CoachController; top?: React.ReactNode; bottom?: React.ReactNode; onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
+export default function CoachPlanPanel({ uid, controller, top, bottom, onScroll, bottomInset }: { uid: string; controller: CoachController; top?: React.ReactNode; bottom?: React.ReactNode; onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void; bottomInset: number }) {
   const router = useRouter()
   const [brief, setBrief] = useState(defaultPlanBrief)
   const [day, setDay] = useState(0)
@@ -64,16 +66,17 @@ export default function CoachPlanPanel({ uid, controller, top, bottom, onScroll 
   }
   const disabled = busy || generating || !!imported
   const selected = plan?.days[Math.min(day, plan.days.length - 1)]
-  return <View style={s.screen}><ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" onScroll={onScroll} scrollEventThrottle={16}>
+  // The offset keeps the focused field above the Generate plan dock.
+  return <View style={s.screen}><KeyboardAwareScrollView bottomOffset={80} style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" onScroll={onScroll} scrollEventThrottle={16}>
     {top}
     <View style={s.section}>
       <Text accessibilityRole="header" style={s.heading}>Workout brief</Text>
-      <View style={s.field}><Text style={s.label}>Plan goal</Text><TextInput selectionColor={colors.accentText} ref={goal} accessibilityLabel="Plan goal" style={s.input} placeholder="E.g. upper/lower strength plan" placeholderTextColor={colors.mutedSoft} value={brief.goal} onChangeText={v => { change('goal', v); setGoalError(false) }} maxLength={400} editable={!disabled} />{goalError && <Text accessibilityRole="alert" style={s.error}>Enter a plan goal to generate a template.</Text>}</View>
+      <View style={s.field}><Text style={s.label}>Plan goal</Text><TextInput {...fieldColors} ref={goal} accessibilityLabel="Plan goal" style={s.input} placeholder="E.g. upper/lower strength plan" placeholderTextColor={colors.mutedSoft} value={brief.goal} onChangeText={v => { change('goal', v); setGoalError(false) }} maxLength={400} editable={!disabled} />{goalError && <Text accessibilityRole="alert" style={s.error}>Enter a plan goal to generate a template.</Text>}</View>
       <View style={s.field}><Text style={s.label}>Days per week</Text><View style={s.chips}>{[2,3,4,5,6].map(value => <Chip key={value} active={brief.daysPerWeek === value} disabled={disabled} onPress={() => change('daysPerWeek', value)}>{value} days</Chip>)}</View></View>
       <View style={s.field}><Text style={s.label}>Level</Text><View style={s.levels}>{levels.map(([value, label]) => <Pressable key={value} accessibilityRole="button" accessibilityState={{ selected: brief.experience === value, disabled }} disabled={disabled} onPress={() => change('experience', value)} style={[s.level, brief.experience === value && s.levelActive]}><Text style={[s.choice, brief.experience === value && s.selected]}>{label}</Text></Pressable>)}</View></View>
       <View style={s.field}><Text style={s.label}>Available equipment</Text><View style={s.chips}>{equipment.map(([value,label]) => <Chip key={value} active={brief.equipment.includes(value)} disabled={disabled} onPress={() => change('equipment', brief.equipment.includes(value) ? brief.equipment.filter(item => item !== value) : [...brief.equipment, value])}>{label}</Chip>)}</View></View>
-      <View style={s.field}><Text style={s.label}>Focus</Text><TextInput selectionColor={colors.accentText} accessibilityLabel="Plan focus" style={s.input} placeholder="E.g. bench press and back" placeholderTextColor={colors.mutedSoft} value={brief.focus} onChangeText={v => change('focus',v)} maxLength={160} editable={!disabled} /></View>
-      <View style={s.field}><Text style={s.label}>Additional notes</Text><TextInput selectionColor={colors.accentText} accessibilityLabel="Additional notes" style={[s.input, s.notes]} textAlignVertical="top" multiline placeholder="E.g. 60 min, no deadlifts" placeholderTextColor={colors.mutedSoft} value={brief.notes} onChangeText={v => change('notes',v)} maxLength={400} editable={!disabled} /></View>
+      <View style={s.field}><Text style={s.label}>Focus</Text><TextInput {...fieldColors} accessibilityLabel="Plan focus" style={s.input} placeholder="E.g. bench press and back" placeholderTextColor={colors.mutedSoft} value={brief.focus} onChangeText={v => change('focus',v)} maxLength={160} editable={!disabled} /></View>
+      <View style={s.field}><Text style={s.label}>Additional notes</Text><TextInput {...fieldColors} accessibilityLabel="Additional notes" style={[s.input, s.notes]} textAlignVertical="top" multiline placeholder="E.g. 60 min, no deadlifts" placeholderTextColor={colors.mutedSoft} value={brief.notes} onChangeText={v => change('notes',v)} maxLength={400} editable={!disabled} /></View>
       {!!planError && <Text accessibilityRole="alert" style={s.error}>{planError}</Text>}
       {planGeneration === 'interrupted' && <Text style={s.muted}>Generation stopped. Generate again when ready.</Text>}
       {generating && <Action onPress={() => controller.cancel()}>Stop generation</Action>}
@@ -92,10 +95,10 @@ export default function CoachPlanPanel({ uid, controller, top, bottom, onScroll 
       <Action disabled={busy || generating || !!imported} onPress={() => controller.clearPlan()}>Close preview</Action>
     </View>}
     {bottom}
-  </ScrollView>
-    <View style={s.dock}><Text style={[s.muted, s.dockNote]}>{controller.canSend && !controller.canPlan
+  </KeyboardAwareScrollView>
+    <KeyboardLift rest={bottomInset}><View style={s.dock}><Text style={[s.muted, s.dockNote]}>{controller.canSend && !controller.canPlan
         ? `A plan uses ${COACH_PLAN_COST} of today's ${controller.state.quota?.limit ?? ''} Coach messages; ${controller.remaining} left.`
-        : 'Coach adds your profile, history and exercise library to the brief.'}</Text><Action primary disabled={!controller.canPlan || disabled} onPress={() => { if (brief.goal.trim().length < 2) { setGoalError(true); goal.current?.focus(); return } setGoalError(false); void controller.generatePlan(brief) }}>{generating ? 'Generating plan…' : 'Generate plan'}</Action></View>
+        : 'Coach adds your profile, history and exercise library to the brief.'}</Text><Action primary disabled={!controller.canPlan || disabled} onPress={() => { if (brief.goal.trim().length < 2) { setGoalError(true); goal.current?.focus(); return } setGoalError(false); void controller.generatePlan(brief) }}>{generating ? 'Generating plan…' : 'Generate plan'}</Action></View></KeyboardLift>
   </View>
 }
 function Chip({ children, active, onPress, disabled = false }: { children: React.ReactNode; active: boolean; onPress: () => void; disabled?: boolean }) {

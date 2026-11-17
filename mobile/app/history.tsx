@@ -1,5 +1,5 @@
 import WorkoutDraftRecovery from '../src/WorkoutDraftRecovery'
-import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
@@ -27,7 +27,7 @@ import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import HistoryHeader from '../src/HistoryHeader'
 import { BottomSheet } from '../src/BottomSheet'
 import { monthCalendar } from '../../src/shared/monthCalendar'
-import { colors } from '../src/theme'
+import { colors, fieldColors } from '../src/theme'
 import { Icon } from '../src/icons'
 
 const RANGES: Array<{ key: HistoryRange; label: string }> = [
@@ -43,11 +43,12 @@ export default function HistoryScreen() {
   const active = useActiveRuntime()
   const router = useRouter()
   const navigation = useBottomNavigation()
+  const navigationInset = useNavigationInset()
   const uid = user?.uid ?? null
   const historyLoader = useCallback(() => uid ? readWorkoutHistory(uid) : Promise.resolve({ data: { workouts: [], truncated: false }, fromCache: false }), [uid])
   const metadataLoader = useCallback(() => uid ? readExerciseMetadata(uid) : Promise.resolve({ data: [], fromCache: false }), [uid])
-  const history = useSessionRead(`history:${uid ?? ''}`, historyLoader, Boolean(uid))
-  const metadata = useSessionRead(`history-exercises:${uid ?? ''}`, metadataLoader, Boolean(uid))
+  const history = useSessionRead(`history:${uid ?? ''}`, historyLoader, Boolean(uid), true)
+  const metadata = useSessionRead(`history-exercises:${uid ?? ''}`, metadataLoader, Boolean(uid), true)
   const [range, setRange] = useState<HistoryRange>('90')
   const [rangeAnchorMs, setRangeAnchorMs] = useState(() => Date.now())
   const [search, setSearch] = useState('')
@@ -90,10 +91,10 @@ export default function HistoryScreen() {
   )
 
   return (
-    <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
+    <SafeAreaView edges={['top']} style={styles.screen}>
       <StatusBar style="light" />
       <HistoryHeader />
-      <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { paddingBottom: 32 + navigationInset }]} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
         <WorkoutDraftRecovery uid={user.uid} />
         <View style={styles.header}>
           <Text accessibilityRole="header" style={styles.title}>History</Text>
@@ -160,7 +161,7 @@ export default function HistoryScreen() {
               </View>
               <View style={styles.searchWrap}>
                 <Svg accessibilityElementsHidden height={14} width={14} style={styles.searchIcon} viewBox="0 0 24 24"><Circle cx={10.8} cy={10.8} r={6.3} fill="none" stroke={colors.mutedSoft} strokeWidth={2} /><Path d="m16 16 4.3 4.3" fill="none" stroke={colors.mutedSoft} strokeLinecap="round" strokeWidth={2} /></Svg>
-                <TextInput accessibilityLabel="Search workout history" onChangeText={setSearch} placeholder="Search workouts or exercises..." placeholderTextColor={colors.mutedSoft} returnKeyType="search" style={styles.searchInput} value={search} />
+                <TextInput accessibilityLabel="Search workout history" {...fieldColors} onChangeText={setSearch} placeholder="Search workouts or exercises..." placeholderTextColor={colors.mutedSoft} returnKeyType="search" style={styles.searchInput} value={search} />
                 {search.length > 0 && <Pressable accessibilityRole="button" accessibilityLabel="Clear search" onPress={() => setSearch('')} style={styles.clearSearch}><Icon name="close" size={18} /></Pressable>}
               </View>
               {availableCategories.length > 0 && (

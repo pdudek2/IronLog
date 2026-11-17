@@ -145,3 +145,6 @@ export function setPanelRestLabel(set: { done: boolean } | null | undefined, set
 export function exerciseSummary(names: string[]): string {
   return names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', ')
 }
+
+// Only a logged set is worth a warning; an open one just carries its planned or typed numbers.
+export const removeSetMessage = (done: boolean): string => (done ? 'This set is marked complete.' : 'Its weight and reps go with it.')

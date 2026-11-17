@@ -1,4 +1,4 @@
-import BottomNavigation, { useBottomNavigation } from '../src/BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
 import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useFocusEffect } from 'expo-router'
@@ -15,7 +15,8 @@ import {
 import HistoryHeader from '../src/HistoryHeader'
 import { MuscleBars, StrengthChart, WeeklyVolumeChart } from '../src/ProgressCharts'
 import { readProgressRecords, readProgressSessions, readRecentProgressWorkouts, retryProgressMaterialization } from '../src/firebase'
-import { loadProgressData, mergeProgressSnapshot, startProgressRead, type ProgressSnapshot } from '../src/progressData'
+import { loadProgressData, mergeProgressSnapshot, recallProgress, rememberProgress, startProgressRead, type ProgressSnapshot } from '../src/progressData'
+import { readGeneration } from '../src/scopedRead'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import { colors, pageTitle } from '../src/theme'
 import { Icon } from '../src/icons'
@@ -32,6 +33,7 @@ export default function ProgressScreen() {
 
 function ProgressContent({ uid }: { uid: string }) {
   const navigation = useBottomNavigation()
+  const navigationInset = useNavigationInset()
   const active = useActiveRuntime()
   const units = active.state.units
   const { width } = useWindowDimensions()
@@ -39,7 +41,7 @@ function ProgressContent({ uid }: { uid: string }) {
   const [moreStats, setMoreStats] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [loading, setLoading] = useState(true)
-  const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(null)
+  const [snapshot, setSnapshot] = useState<ProgressSnapshot | null>(() => recallProgress(uid))
   const [strengthKey, setStrengthKey] = useState<string | null>(null)
   const [inspected, setInspected] = useState<{ key: string; index: number } | null>(null)
   const [picker, setPicker] = useState<'strength' | 'calendar' | null>(null)
@@ -47,10 +49,15 @@ function ProgressContent({ uid }: { uid: string }) {
 
   useFocusEffect(useCallback(() => {
     setLoading(true)
+    const since = readGeneration()
     return startProgressRead(() => loadProgressData(uid, rangeDays, {
       recent: readRecentProgressWorkouts, retryMaterialization: retryProgressMaterialization,
       sessions: readProgressSessions, records: readProgressRecords,
-    }), (result) => setSnapshot((previous) => mergeProgressSnapshot(previous, result, rangeDays)),
+    }), (result) => setSnapshot((previous) => {
+      const next = mergeProgressSnapshot(previous, result, rangeDays)
+      rememberProgress(uid, next, since)
+      return next
+    }),
     () => setSnapshot((previous) => ({ sessions: previous?.sessions ?? null, records: previous?.records ?? null,
       sessionsError: true, recordsError: true, freshnessUncertain: true })), () => setLoading(false))
   }, [uid, rangeDays, attempt]))
@@ -95,17 +102,18 @@ function ProgressContent({ uid }: { uid: string }) {
   ]
   const chartWidth = Math.max(280, width - 58)
 
-  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
+  return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { paddingBottom: 44 + navigationInset }]} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>Progress</Text>
-        {!coverage && !notices.length && <Text style={styles.subtitle}>{loading ? 'Loading progress' : 'Workout data is temporarily unavailable.'}</Text>}
+        {/* Loading shows below the range switch, so the switch does not move when it ends. */}
+        {!coverage && !notices.length && !loading && <Text style={styles.subtitle}>Workout data is temporarily unavailable.</Text>}
         <View accessibilityRole="radiogroup" accessibilityLabel="Date range" style={styles.ranges}>{ranges.map(({ label, days }) => <Pressable key={days} accessibilityRole="radio" accessibilityState={{ selected: rangeDays === days }} onPress={() => setRangeDays(days)} style={[styles.rangeButton, rangeDays === days && styles.rangeActive]}><Text style={[styles.rangeText, rangeDays === days && styles.rangeTextActive]}>{label}</Text></Pressable>)}</View>
       </View>
 
-      {loading && !snapshot && <View style={styles.loading}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading progress…</Text></View>}
+      {loading && !coverage && <View style={styles.loading}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading progress…</Text></View>}
       {notices.length > 0 && <View accessibilityRole="alert" style={styles.notice}><View style={styles.noticeText}><Text style={styles.noticeTitle}>{retryable ? (nothingLoaded ? 'Could not load data' : 'Data needs refreshing') : 'Data range has been limited'}</Text>{notices.map((notice) => <Text key={notice} style={styles.noticeCopy}>{notice}</Text>)}</View>{retryable && <Pressable accessibilityRole="button" disabled={loading} onPress={() => setAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.link}>{loading ? 'Refreshing…' : 'Try again'}</Text></Pressable>}</View>}
 
 

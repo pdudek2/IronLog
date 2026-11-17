@@ -34,7 +34,7 @@ import { todayKey, type ReadinessEntry } from '../../src/shared/readiness'
 
 import type { SubscribeToSession } from './activeSessionController'
 import { parseSessionDocument, type ActiveWorkout, type Units, type ExerciseSource } from './session'
-import { parseExerciseHistory, type ExerciseMetadata, type ReadResult } from './scopedRead'
+import { forgetReads, parseExerciseHistory, type ExerciseMetadata, type ReadResult } from './scopedRead'
 import { parseSavedWorkout, type SavedWorkout } from './history'
 import { parseHomeProfile, type HomeProfile } from './home'
 import { parseCatalogueExercise } from './exerciseCatalogue'
@@ -398,7 +398,7 @@ export async function savePlan(uid: string, request: PlanSaveRequest): Promise<W
     if (!('template' in result) || !result.template || typeof result.template !== 'object'
       || !('id' in result.template) || typeof result.template.id !== 'string') throw new Error('Invalid save response.')
     return parseTemplate(result.template.id, uid, result.template)
-  } finally { clearTimeout(timeout) }
+  } finally { clearTimeout(timeout); forgetReads() }
 }
 
 export async function deletePlanIfUnchanged(uid: string, id: string, baseline: string): Promise<'deleted' | 'absent'> {
@@ -407,12 +407,12 @@ export async function deletePlanIfUnchanged(uid: string, id: string, baseline: s
   const reference = doc(firestore, 'templates', id)
   return runTransaction(firestore, async (transaction) => {
     const snapshot = await transaction.get(reference)
-    if (!snapshot.exists()) return 'absent'
+    if (!snapshot.exists()) return 'absent' as const
     const template = parseTemplate(id, uid, snapshot.data())
     if (templateFingerprint(template) !== baseline) throw new PlanRequestError(409, 'Plan changed. Review it before deleting.')
     transaction.delete(reference)
-    return 'deleted'
-  })
+    return 'deleted' as const
+  }).finally(forgetReads)
 }
 
 export async function readTemplateBestSet(uid: string, exerciseId: string, source: ExerciseSource): Promise<BestSet | null> {

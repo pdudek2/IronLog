@@ -3,6 +3,7 @@ import { usePathname, useRouter } from 'expo-router'
 
 import { closureIntentStorage } from './fileSessionJournal'
 import { apiBaseUrl, currentIdToken } from './firebase'
+import { forgetReads } from './scopedRead'
 import type { ActiveWorkout } from './session'
 import {
   isClosureLocked,
@@ -28,7 +29,8 @@ export function useWorkoutClosure(uid: string) {
   const controller = useMemo(() => new WorkoutClosureController(
     uid,
     closureIntentStorage,
-    (intent) => requestClosure(intent, { apiBaseUrl, getIdToken: () => currentIdToken(uid), fetch }),
+    // History, Progress and the library remember their last read; a finished or discarded workout changes them.
+    (intent) => requestClosure(intent, { apiBaseUrl, getIdToken: () => currentIdToken(uid), fetch }).finally(forgetReads),
     (state, completed) => setOwned({ uid, state, completed }),
   ), [uid])
 
@@ -49,6 +51,8 @@ export function useWorkoutClosure(uid: string) {
     closure: current.state,
     completed: current.completed,
     locked: isClosureLocked(current.state),
+    // The saved workout is about to replace the workout screen.
+    handingOff: !!current.completed && pathname === '/' && controller.finishNavigationPending(),
     canEdit: () => controller.canEdit(),
     start: (action: ClosureAction, session: ActiveWorkout) => controller.startClosure(action, session),
     retry: () => controller.retry(),

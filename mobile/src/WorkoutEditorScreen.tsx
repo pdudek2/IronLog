@@ -3,39 +3,40 @@ import { formatCompactVolume } from '../../src/shared/weightUnits'
 import { exercises as exerciseCatalog } from '../../data/exercises'
 import { EXERCISE_CATEGORY_LABELS, EXERCISE_CATEGORY_COLORS, getEquipmentLabel } from '../../src/lib/exerciseLabels'
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { ActivityIndicator, BackHandler, Keyboard, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { ActivityIndicator, BackHandler, Keyboard, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
 import { createSessionRevision, readExerciseMetadata } from './firebase'
 import { useActiveRuntime, useAuthRuntime } from './runtime'
 import { useSessionRead } from './useSessionRead'
+import { forgetReads } from './scopedRead'
 import { workoutEditorJournal } from './fileWorkoutEditorJournal'
 import { WorkoutEditorController } from './workoutEditorController'
 import { readWorkoutMutation, sendWorkoutMutation } from './workoutMutationNative'
-import { normalizeWorkoutDraft, workoutDraftDirty, type WorkoutDraft, type WorkoutDraftExercise } from './workoutEditor'
+import { editedWeightSlip, normalizeWorkoutDraft, workoutDraftDirty, type WorkoutDraft, type WorkoutDraftExercise } from './workoutEditor'
+import { acceptSetInput } from '../../src/shared/setInput'
 import { formatWorkoutDate, formatWorkoutDuration, hasRecordedDuration } from './history'
 import { workoutTitle } from '../../src/lib/workoutCopy'
 import type { NavigationExit } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import ExercisePicker from './ExercisePicker'
-import { useKeyboardReveal } from './useKeyboardReveal'
-import { colors, pageBackground, pageTitle } from './theme'
+import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
+import { colors, pageBackground, pageTitle, fieldColors } from './theme'
 import { ConfirmDialog } from './dialog'
 import { Icon } from './icons'
 
 const id = createSessionRevision
-interface Dialog { title: string; copy: string; confirm: string; run: () => void; cancel?: () => void; keep?: () => void }
+interface Dialog { title: string; copy: string; confirm: string; run: () => void; cancel?: () => void; keep?: () => void; back?: string }
 export default function WorkoutEditorScreen({ workoutId, deleting }: { workoutId: string; deleting: boolean }) {
   const { user } = useAuthRuntime()
   return user ? <Editor key={`${user.uid}:${workoutId}`} uid={user.uid} workoutId={workoutId} deleting={deleting} /> : <View style={styles.screen}><Text style={styles.muted}>Restoring sign-in…</Text></View>
 }
 function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; deleting: boolean }) {
   const active = useActiveRuntime(), router = useRouter(), insets = useSafeAreaInsets()
-  const { scroll, content: scrollContent } = useKeyboardReveal()
   const [controller] = useState(() => new WorkoutEditorController({ uid, workoutId, owner: id(), units: active.state.units, newId: id, journal: workoutEditorJournal,
-    read: op => readWorkoutMutation(uid, workoutId, op), send: op => sendWorkoutMutation(uid, op) }))
+    read: op => readWorkoutMutation(uid, workoutId, op), send: op => sendWorkoutMutation(uid, op).finally(forgetReads) }))
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot)
   const draft = state.draft
   const [labelPicker, setLabelPicker] = useState(false)
@@ -96,8 +97,8 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
   const locked = state.busy || !!draft?.pending
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" /><HistoryHeader onRequestAction={(_, go) => leave(go)} /><ActiveWorkoutReturnBar top onRequestExit={leave} />
-    <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView ref={scroll} innerViewRef={scrollContent} stickyHeaderIndices={[1]} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
+    <View style={styles.screen}>
+      <KeyboardAwareScrollView bottomOffset={16} stickyHeaderIndices={[1]} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 32 + insets.bottom }]}>
         <View>
           <View style={{ alignSelf: 'flex-start' }}><Action icon="chevron-left" title="Back" onPress={() => leave(() => router.dismissTo({ pathname: '/workout/[workoutId]', params: { workoutId } }))} /></View>
           {!draft && state.busy && <ActivityIndicator color={colors.accentText} />}
@@ -111,7 +112,11 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
             : state.phase === 'conflict' ? <Action outlined title="Discard draft" onPress={() => setDialog({ title: 'Discard this draft?', copy: 'The latest saved workout will be kept.', confirm: 'Discard draft', run: () => { void controller.discard() } })} />
               : draft ? <>
                 <Action grow outlined title={draft.pending ? 'Back to history' : 'Cancel'} disabled={state.busy} onPress={() => leave(() => exitAfter(!!draft.pending))} />
-                <Action grow primary title={state.busy ? 'Saving…' : draft.pending ? 'Check and retry' : 'Save'} disabled={state.busy} onPress={() => void controller.submit(draft.pending?.action ?? 'update')} />
+                <Action grow primary title={state.busy ? 'Saving…' : draft.pending ? 'Check and retry' : 'Save'} disabled={state.busy} onPress={() => {
+                  const slip = draft.pending ? null : editedWeightSlip(draft)
+                  if (slip) setDialog({ title: slip.title, copy: slip.message, confirm: 'Save anyway', back: 'Fix', run: () => { void controller.submit('update') } })
+                  else void controller.submit(draft.pending?.action ?? 'update')
+                }} />
               </> : <Action title="Try again" disabled={state.busy} onPress={() => void controller.open()} />}
         </View>
       </View>
@@ -126,30 +131,29 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
             <View style={[styles.row, styles.tableHead]}><Text style={[styles.muted, styles.index]}>#</Text><Text style={[styles.muted, styles.cell]}>{draft.units}</Text><Text style={[styles.muted, styles.cell]}>Reps</Text><View style={styles.remove} /></View>
             {ex.sets.map((set, setIndex) => <View key={set.rowId} style={styles.row}>
               <Text style={[styles.index, styles.setNumber]}>{setIndex + 1}</Text>
-              <TextInput accessibilityLabel={`Weight, ${ex.name}, set ${setIndex + 1}, ${draft.units}`} keyboardType="decimal-pad" maxLength={32} editable={!locked} value={set.weight} style={[styles.input, styles.cell]} selectTextOnFocus onChangeText={weight => changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.map(s => s.rowId === set.rowId ? { ...s, weight } : s) }))} />
-              <TextInput accessibilityLabel={`Reps, ${ex.name}, set ${setIndex + 1}`} keyboardType="number-pad" maxLength={16} editable={!locked} value={set.reps} style={[styles.input, styles.cell]} selectTextOnFocus onChangeText={reps => changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.map(s => s.rowId === set.rowId ? { ...s, reps } : s) }))} />
+              <TextInput accessibilityLabel={`Weight, ${ex.name}, set ${setIndex + 1}, ${draft.units}`} keyboardType="decimal-pad" maxLength={32} editable={!locked} value={set.weight} style={[styles.input, styles.cell]} selectTextOnFocus {...fieldColors} onChangeText={weight => acceptSetInput(weight, set.weight, 'weight', draft.units) && changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.map(s => s.rowId === set.rowId ? { ...s, weight } : s) }))} />
+              <TextInput accessibilityLabel={`Reps, ${ex.name}, set ${setIndex + 1}`} keyboardType="number-pad" maxLength={16} editable={!locked} value={set.reps} style={[styles.input, styles.cell]} selectTextOnFocus {...fieldColors} onChangeText={reps => acceptSetInput(reps, set.reps, 'reps', draft.units) && changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.map(s => s.rowId === set.rowId ? { ...s, reps } : s) }))} />
               <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${setIndex + 1}, ${ex.name}`} disabled={locked || ex.sets.length <= 1} onPress={() => changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.filter(s => s.rowId !== set.rowId) }))} style={styles.remove}>{ex.sets.length > 1 && <Icon name="close" />}</Pressable>
             </View>)}
             <Action outlined title="+ Set" disabled={locked || ex.sets.length >= 20} onPress={() => changeExercise(ex.rowId, item => ({ ...item, sets: [...item.sets, { rowId: id(), weight: '0', reps: '' }] }))} />
           </View> })}
           <Action outlined title="+ Add exercise" disabled={locked || draft.exercises.length >= 20} onPress={() => setPicking(true)} />
         </>}</View>
-      </ScrollView>
-
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
     {picking && <ExercisePicker userExercises={catalog.state} onRetryUserExercises={catalog.retry} onClose={() => setPicking(false)} onSelect={(exerciseId, name, exerciseSource) => {
       change(d => ({ ...d, exercises: [...d.exercises, { rowId: id(), exerciseId, name, exerciseSource, sets: [{ rowId: id(), weight: '0', reps: '' }] }] })); setPicking(false)
     }} />}
     {labelPicker && draft && <Modal transparent animationType="fade" onRequestClose={() => setLabelPicker(false)} statusBarTranslucent navigationBarTranslucent><View style={styles.backdrop}><View style={[styles.dialog, { maxHeight: '80%' }]}><Text style={[styles.exerciseTitle, { flex: 0 }]}>Session type</Text><ScrollView>{[...new Set(['', draft.label, ...WORKOUT_LABELS])].map(label => <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: draft.label === label }} onPress={() => { change(d => ({ ...d, label })); setLabelPicker(false) }} style={styles.action}><Text style={[styles.actionText, draft.label === label && { color: colors.accentText }]}>{label || 'No label'}</Text></Pressable>)}</ScrollView><Action outlined title="Cancel" onPress={() => setLabelPicker(false)} /></View></View></Modal>}
     {dialog && <ConfirmDialog title={dialog.title} message={dialog.copy} onRequestClose={() => { const cancel = dialog.cancel; setDialog(null); cancel?.() }} buttons={[
-      { text: dialog.keep ? 'Keep editing' : 'Cancel', style: 'cancel', onPress: () => { const cancel = dialog.cancel; setDialog(null); cancel?.() } },
+      { text: dialog.back ?? (dialog.keep ? 'Keep editing' : 'Cancel'), style: 'cancel', onPress: () => { const cancel = dialog.cancel; setDialog(null); cancel?.() } },
       ...(dialog.keep ? [{ text: 'Leave with draft', onPress: () => { const go = dialog.keep!; setDialog(null); go() } }] : []),
       { text: dialog.confirm, style: 'destructive', onPress: () => { const go = dialog.run; setDialog(null); go() } },
     ]} />}
   </SafeAreaView>
 }
 function Action({ title, onPress, disabled, primary, outlined, grow, icon }: { title: string; onPress: () => void; disabled?: boolean; primary?: boolean; outlined?: boolean; grow?: boolean; icon?: 'chevron-left' }) {
-  const button = <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[styles.action, outlined && styles.outline, primary && styles.primary, disabled && { opacity: .4 }]}>{icon && <Icon name={icon} />}<Text style={[styles.actionText, title === 'Delete' && { color: '#ffb45e' }, primary && { color: colors.textStrong }]}>{title}</Text></Pressable>
+  const button = <Pressable accessibilityRole="button" disabled={disabled} onPress={onPress} style={[styles.action, outlined && styles.outline, primary && styles.primary, disabled && { opacity: .4 }]}>{icon && <Icon name={icon} />}<Text style={[styles.actionText, title === 'Delete' && { color: colors.warning }, primary && { color: colors.onPrimary }]}>{title}</Text></Pressable>
   return grow ? <View style={{ flex: 1, minWidth: 0 }}>{button}</View> : button
 }
 const styles = StyleSheet.create({
@@ -167,7 +171,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', minHeight: 48, gap: 6, paddingHorizontal: 6, borderBottomWidth: 1, borderBottomColor: colors.line },
   tableHead: { backgroundColor: colors.surfaceRaised, minHeight: 38, marginTop: 8 },
   index: { width: 20, textAlign: 'center' }, cell: { flex: 1, textAlign: 'center' }, remove: { width: 44, minHeight: 44, justifyContent: 'center', alignItems: 'center' }, setNumber: { color: colors.recovery, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 12 },
-  action: { minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', gap: 4, justifyContent: 'center', alignItems: 'center', borderRadius: 8 }, outline: { borderWidth: 1, borderColor: colors.line }, primary: { backgroundColor: '#d9cfc2' }, actionText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
-  dock: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28, marginHorizontal: -16, backgroundColor: colors.background, gap: 8 }, actions: { flexDirection: 'row', gap: 8 }, error: { color: '#ffbd7a', fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
+  action: { minHeight: 44, paddingHorizontal: 14, flexDirection: 'row', gap: 4, justifyContent: 'center', alignItems: 'center', borderRadius: 8 }, outline: { borderWidth: 1, borderColor: colors.line }, primary: { backgroundColor: colors.accent }, actionText: { color: colors.muted, fontFamily: 'InstrumentSans_700Bold', fontSize: 13 },
+  dock: { paddingHorizontal: 16, paddingTop: 0, paddingBottom: 28, marginHorizontal: -16, backgroundColor: colors.background, gap: 8 }, actions: { flexDirection: 'row', gap: 8 }, error: { color: colors.warning, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, lineHeight: 18 },
   backdrop: { flex: 1, justifyContent: 'center', padding: 24, backgroundColor: 'rgba(0,0,0,0.7)' }, dialog: { backgroundColor: colors.surfaceRaised, borderRadius: 12, padding: 20, gap: 16 },
 })

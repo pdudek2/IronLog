@@ -15,23 +15,24 @@ import { readExerciseDetail } from './nativeExercises'
 import { useActiveRuntime, useAuthRuntime } from './runtime'
 import { readStateForKey, startRead, type ReadResult, type ReadState } from './scopedRead'
 import type { ExerciseSource } from './session'
-import BottomNavigation, { useBottomNavigation } from './BottomNavigation'
+import BottomNavigation, { useBottomNavigation, useNavigationInset } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ExerciseForm from './ExerciseForm'
-import { colors, pageBackground, pageTitle } from './theme'
+import { colors, pageBackground, pageTitle, fieldColors } from './theme'
 import { Icon as LineIcon } from './icons'
 
-function useFocusedRead<T>(key: string, load: () => Promise<ReadResult<T>>, enabled = true) {
+// `remember` keeps the last result for the next visit to the library list; the key holds the uid.
+function useFocusedRead<T>(key: string, load: () => Promise<ReadResult<T>>, enabled = true, remember?: string) {
   const [stored, setStored] = useState<{ key: string; state: ReadState<T> } | null>(null)
   const [attempt, setAttempt] = useState(0)
   useFocusEffect(useCallback(() => {
-    if (enabled) return startRead(load, state => setStored({ key, state }))
-  }, [key, load, attempt, enabled]))
-  return { state: readStateForKey(key, stored), retry: () => setAttempt(value => value + 1) }
+    if (enabled) return startRead(load, state => setStored({ key, state }), remember)
+  }, [key, load, attempt, enabled, remember]))
+  return { state: readStateForKey(key, stored, remember), retry: () => setAttempt(value => value + 1) }
 }
 
 function Frame({ children, navigation }: { children: ReactNode; navigation: ReturnType<typeof useBottomNavigation> }) {
-  return <SafeAreaView onFocus={navigation.onFocus} onBlur={navigation.onBlur} edges={['top']} style={styles.screen}>
+  return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" /><HistoryHeader />
     <View style={styles.body}>{children}</View>
     <BottomNavigation {...navigation} />
@@ -49,8 +50,9 @@ type LibraryItem = { kind: 'section'; title: string; count: number | string; key
 function Library({ uid }: { uid: string }) {
   const router = useRouter()
   const navigation = useBottomNavigation()
+  const navigationInset = useNavigationInset()
   const load = useCallback(() => readExerciseMetadata(uid), [uid])
-  const catalog = useFocusedRead(uid, load)
+  const catalog = useFocusedRead(uid, load, true, `library:${uid}`)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [equipment, setEquipment] = useState('all')
@@ -58,7 +60,7 @@ function Library({ uid }: { uid: string }) {
   const [form, setForm] = useState<{ exercise: Exercise | null } | null>(null)
   const custom = catalog.state.status === 'ready' ? catalog.state.data as Exercise[] : []
   const loadRecords = useCallback(() => readProgressRecords(uid), [uid])
-  const recordsRead = useFocusedRead(`${uid}:records`, loadRecords)
+  const recordsRead = useFocusedRead(`${uid}:records`, loadRecords, true, `library-records:${uid}`)
   const units = useActiveRuntime().state.units
   const bestSets = useMemo(() => new Map(recordsRead.state.status === 'ready'
     ? recordsRead.state.data.records.map((record) => [`${record.exerciseSource}:${record.exerciseId}`, record.maxWeight]) : []), [recordsRead.state])
@@ -78,9 +80,9 @@ function Library({ uid }: { uid: string }) {
     ...global.map(exercise => ({ kind: 'exercise' as const, key: `global:${exercise.id}`, exercise, source: 'global' as const })),
   ]
   return <Frame navigation={navigation}>
-    <FlatList data={items} keyExtractor={item => item.key} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}
+    <FlatList data={items} keyExtractor={item => item.key} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 96 + navigationInset }]}
       ListHeaderComponent={<View style={styles.libraryHeader}><View><BackLink label="Plans" onPress={() => router.navigate('/templates')} /><Text accessibilityRole="header" style={styles.title}>Exercises</Text></View><View style={styles.commands}>
-        <View style={styles.search}><View style={styles.searchRow}><Icon kind="search" /><TextInput accessibilityLabel="Search exercises" placeholder="Search exercises..." placeholderTextColor={colors.mutedSoft} value={search} onChangeText={setSearch} style={styles.searchInput} /></View>{activeFilters && <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" hitSlop={6} onPress={clear} style={styles.clear}><Text style={styles.action}>Clear</Text></Pressable>}</View>
+        <View style={styles.search}><View style={styles.searchRow}><Icon kind="search" /><TextInput accessibilityLabel="Search exercises" {...fieldColors} placeholder="Search exercises..." placeholderTextColor={colors.mutedSoft} value={search} onChangeText={setSearch} style={styles.searchInput} /></View>{activeFilters && <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" hitSlop={6} onPress={clear} style={styles.clear}><Text style={styles.action}>Clear</Text></Pressable>}</View>
         <View style={styles.commandRow}><Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.filterToggle}><Icon kind="filters" /><Text style={styles.commandText}>Filters</Text>{filterCount > 0 && <Text style={styles.filterCount}>{filterCount}</Text>}<View style={styles.chevron}><LineIcon name={expanded ? 'chevron-up' : 'chevron-down'} /></View></Pressable><Pressable accessibilityRole="button" accessibilityState={{ disabled: catalog.state.status !== 'ready' || catalog.state.fromCache }} disabled={catalog.state.status !== 'ready' || catalog.state.fromCache} onPress={() => setForm({ exercise: null })} style={[styles.add, catalog.state.status !== 'ready' && { opacity: 0.5 }]}><LineIcon name="plus" size={14} color={colors.textStrong} /><Text style={styles.commandText}>Add custom</Text></Pressable></View>
         {expanded && <View style={styles.filterBoard}><Filter label="Exercise category" options={['all', ...categories]} value={category} getLabel={value => value === 'all' ? 'All' : EXERCISE_CATEGORY_LABELS[value]!} onChange={setCategory} /><Filter label="Equipment" options={['all', ...equipmentOptions]} value={equipment} getLabel={value => value === 'all' ? 'All' : getEquipmentLabel(value)} onChange={setEquipment} /></View>}
       </View></View>}
@@ -112,6 +114,7 @@ export function ExerciseDetailScreen({ source, id }: { source: string; id: strin
 function Detail({ uid, source, id }: { uid: string; source: string; id: string }) {
   const router = useRouter()
   const navigation = useBottomNavigation()
+  const navigationInset = useNavigationInset()
   const valid = (source === 'global' || source === 'user') && /^[A-Za-z0-9][A-Za-z0-9._:-]{0,159}$/.test(id)
   const global = source === 'global' ? exercises.find(exercise => exercise.id === id) : null
   const loadMetadata = useCallback(() => readExerciseMetadata(uid), [uid])
@@ -141,7 +144,7 @@ function Detail({ uid, source, id }: { uid: string; source: string; id: string }
     record ? `best ${kgToDisplayWeight(record.maxWeight, units)} ${units} × ${record.maxReps}` : null,
     record ? `est. max ${kgToDisplayWeight(estimatedOneRepMax(record.maxWeight, record.maxReps), units)} ${units}` : null,
   ].filter(Boolean).join(' · ')
-  return <Frame navigation={navigation}><ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.detailContent}>
+  return <Frame navigation={navigation}><ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={[styles.detailContent, { paddingBottom: 40 + navigationInset }]}>
     {absent ? <View style={styles.notFound}><Text style={styles.copy}>Exercise library</Text><Text accessibilityRole="header" style={styles.notFoundTitle}>Exercise not found</Text><Text style={styles.copy}>This link is outdated or the exercise has been deleted.</Text><Pressable accessibilityRole="button" onPress={() => router.dismissTo('/exercises')} style={styles.retry}><Text style={styles.commandText}>Back to library</Text></Pressable></View>
       : loading ? <View style={styles.empty}><Text style={styles.copy}>Loading exercise...</Text></View>
         : history.state.status === 'error' ? <Feedback title="Could not load exercise" copy="History data did not load. Check your connection and try again." retry={history.retry} />
@@ -152,7 +155,8 @@ function Detail({ uid, source, id }: { uid: string; source: string; id: string }
             {(taxonomy.length > 0 || muscles.length > 0) && <View style={styles.classification}>{taxonomy.length > 0 && <Text style={styles.taxonomy}>{taxonomy.join(' · ')}</Text>}{muscles.length > 0 && <Text accessibilityLabel={`Also works ${muscles.join(', ')}`} style={styles.muscles}>{muscles.map((label, index) => index === 0 ? label : label.toLowerCase()).join(', ')}</Text>}</View>}
             <Text style={styles.subtitle}>{allTime > 0 || record ? historyLine : 'No history yet. Add this exercise to a session to start tracking progress.'}</Text>
           </View>
-          {sessions.length > 0 && <><View style={[styles.panel, styles.firstPanel]}><Text accessibilityRole="header" style={styles.panelTitle}>Volume per session</Text><Text style={styles.volumeLine}>Latest {formatCompactVolume(latest, units)}{latest === maxVolume ? ', the most so far' : ` · max ${formatCompactVolume(maxVolume, units)}`}</Text><View style={styles.plot}><View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.axis}><Text style={styles.axisText}>{formatCompactVolume(scaleCeiling, units)}</Text><Text style={styles.axisText}>{formatCompactVolume(scaleFloor, units)}</Text></View><View style={styles.chart}>{[...sessions].reverse().map((session, index) => <View key={session.id} accessible accessibilityLabel={`${date(session.startedAt)}: ${formatCompactVolume(session.totalVolume, units)}`} style={styles.column}><View style={styles.track}><View style={[styles.bar, { height: Math.max((session.totalVolume - scaleFloor) / (scaleCeiling - scaleFloor) * 108, 4) }, index === sessions.length - 1 && styles.barLatest]} /></View><Text numberOfLines={1} adjustsFontSizeToFit style={styles.chartDate}>{new Date(session.startedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</Text></View>)}</View></View></View><View style={styles.panel}><Text accessibilityRole="header" style={styles.panelTitle}>Recent workouts</Text>{sessions.map(session => <SessionRow key={session.id} session={session} units={units} accent={accent} />)}</View></>}
+          {/* A bodyweight exercise logs no volume, so it gets no chart of zeros. */}
+          {sessions.length > 0 && <>{maxVolume > 0 && <View style={[styles.panel, styles.firstPanel]}><Text accessibilityRole="header" style={styles.panelTitle}>Volume per session</Text><Text style={styles.volumeLine}>Latest {formatCompactVolume(latest, units)}{latest === maxVolume ? ', the most so far' : ` · max ${formatCompactVolume(maxVolume, units)}`}</Text><View style={styles.plot}><View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.axis}><Text style={styles.axisText}>{formatCompactVolume(scaleCeiling, units)}</Text><Text style={styles.axisText}>{formatCompactVolume(scaleFloor, units)}</Text></View><View style={styles.chart}>{[...sessions].reverse().map((session, index) => <View key={session.id} accessible accessibilityLabel={`${date(session.startedAt)}: ${formatCompactVolume(session.totalVolume, units)}`} style={styles.column}><View style={styles.track}><View style={[styles.bar, { height: Math.max((session.totalVolume - scaleFloor) / (scaleCeiling - scaleFloor) * 108, 4) }, index === sessions.length - 1 && styles.barLatest]} /></View><Text numberOfLines={1} adjustsFontSizeToFit style={styles.chartDate}>{new Date(session.startedAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short' })}</Text></View>)}</View></View></View>}<View style={[styles.panel, maxVolume === 0 && styles.firstPanel]}><Text accessibilityRole="header" style={styles.panelTitle}>Recent workouts</Text>{sessions.map(session => <SessionRow key={session.id} session={session} units={units} accent={accent} />)}</View></>}
         </>}
   </ScrollView></Frame>
 }

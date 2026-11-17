@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { newWorkoutDraft, normalizeWorkoutDraft, isWorkoutDraft, workoutDraftDirty } from './workoutEditor'
+import { editedWeightSlip, newWorkoutDraft, normalizeWorkoutDraft, isWorkoutDraft, workoutDraftDirty } from './workoutEditor'
 import { WorkoutEditorJournal } from './workoutEditorJournal'
 const snapshot = { id: 'workout', label: 'Pull', startedAt: 1, finishedAt: 2, materialized: true, exercises: [
   { exerciseId: 'same', exerciseSource: 'global' as const, name: 'Row', sets: [{ weight: 42.375, reps: 8 }] },
@@ -24,6 +24,14 @@ test('a grouped exercise keeps its group through the draft, its journal check an
   assert.deepEqual(normalizeWorkoutDraft(d), { label: 'Pull', exercises: grouped.exercises })
   assert.equal(workoutDraftDirty(d), false)
   assert.equal(isWorkoutDraft({ ...d, exercises: [{ ...d.exercises[0]!, group: 'x'.repeat(17) }] }, 'workout'), false)
+})
+test('asks before saving a set edited to over twice its weight before the edit', () => {
+  const d = newWorkoutDraft({ ...snapshot, exercises: [{ ...snapshot.exercises[0]!, sets: [{ weight: 88.75, reps: 8 }] }, snapshot.exercises[1]!] }, 'a'.repeat(64), 'kg', newId)
+  assert.equal(editedWeightSlip(d), null)
+  d.exercises[0]!.sets[0]!.weight = '177.5'; assert.equal(editedWeightSlip(d), null)
+  d.exercises[0]!.sets[0]!.weight = '881.75'; assert.deepEqual(editedWeightSlip(d), { title: '881.75 kg?', message: 'Before 88.75 kg' })
+  d.exercises[1]!.sets[0]!.weight = '500'; d.exercises[0]!.sets[0]!.weight = '88.75'
+  assert.equal(editedWeightSlip(d), null, 'a set at 0 kg before the edit has nothing to compare with')
 })
 test('invalid rows are rejected rather than omitted and label/row limits hold', () => {
   const d = draft(); d.exercises[0]!.sets[0]!.reps = '1.5'

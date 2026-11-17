@@ -398,6 +398,24 @@ describe('AI context response metadata', () => {
     expect(plan.days[0].exercises).toEqual([expect.objectContaining({ exerciseId: 'bench-press', targetReps: 5 })])
   })
 
+  it('leaves today\u2019s check-in out of the plan prompt, so one bad day does not shrink the saved plan', async () => {
+    const lowCheckIn = { date: '2026-11-17', createdAt: 1, sleep: 1, mood: 1, soreness: 5 }
+    const contextWith = () => buildAiUserContext({ profile: null, readinessEntries: [lowCheckIn], workouts: [], records: [] })
+    mocks.loadAiUserContext.mockResolvedValueOnce(contextWith())
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const fetchMock = vi.fn().mockResolvedValue(generatedPlanResponse)
+    vi.stubGlobal('fetch', fetchMock)
+
+    const captured = createHandlerDoubles(validPlanBody)
+    await handler(captured.req, captured.res)
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
+    const messages = (JSON.parse(String(init.body)) as { messages: Array<{ content: string }> }).messages
+    expect(captured.status()).toBe(200)
+    for (const message of messages) expect(message.content).not.toMatch(/readiness/i)
+    expect(contextWith().readiness).not.toBeNull()
+  })
+
   it('stops the upstream plan request when the client disconnects', async () => {
     mocks.loadAiUserContext.mockResolvedValueOnce(buildAiUserContext({ profile: null, readinessEntries: [], workouts: [], records: [] }))
     let upstreamSignal: AbortSignal | undefined

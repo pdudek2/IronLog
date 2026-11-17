@@ -154,10 +154,12 @@ export default function DashboardScreen() {
   const live = { active: active.state, launch: launch?.state.status ?? 'loading', blurred: false }
   const [shown, setShown] = useState(live)
   const launchFailed = live.launch === 'retry' || live.launch === 'unavailable' || live.launch === 'corrupt'
-  const handingOver = shown.launch === 'starting' && !launchFailed
+  const handingOver = shown.launch === 'starting' && !launchFailed && (live.launch === 'starting' || live.active.status !== 'empty')
   if (!isFocused) { if (!shown.blurred) setShown({ ...shown, blurred: true }) }
   else if (shown.blurred || (!handingOver && (shown.active !== live.active || shown.launch !== live.launch))) setShown(live)
   const view = !isFocused || handingOver ? shown : live
+  // The press, not the launch state, starts the hold: the session reloads in the same tick.
+  const startWith = (request: Parameters<NonNullable<typeof launch>['start']>[0]) => { setShown({ ...live, launch: 'starting' }); void launch?.start(request) }
   const canOfferStart = view.active.status === 'empty' && closure?.closure.status === 'ready'
   // Start waits for recent workouts too, so the queued day does not replace the first one on screen.
   const plansPending = view.active.status === 'loading' || (canOfferStart && (templatesState.status === 'loading' || state.status === 'loading'))
@@ -211,7 +213,7 @@ export default function DashboardScreen() {
     readiness?.controller.refreshDay()
     // A check-in from before midnight does not describe today.
     if (!chosen || !target || (readinessEntry && readinessEntry.date !== readiness?.controller.state.date)) return
-    void launch?.start({ kind: 'template', selection: target, snapshot: chosen.template, ...(launchToday ? { launch: launchToday } : {}) })
+    startWith({ kind: 'template', selection: target, snapshot: chosen.template, ...(launchToday ? { launch: launchToday } : {}) })
   }
 
   // Today's choices belong to a plan day on screen, not to a closed week.
@@ -229,7 +231,7 @@ export default function DashboardScreen() {
   const trainLinks = <View style={styles.links}>
       <Pressable accessibilityRole="button" onPress={() => router.navigate('/templates')} style={styles.link}><Text style={styles.linkText}>Plans</Text></Pressable>
       {canOfferStart && templatesState.status === 'ready' && templates.some((template) => template.days.some((day) => day.exercises.length > 0)) && <Pressable accessibilityRole="button" disabled={starting} onPress={() => { setPickerDraft(selection?.target ?? null); setPickerOpen(true) }} style={styles.link}><Text style={styles.linkText}>Change workout</Text></Pressable>}
-      {canOfferStart && <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={styles.link}><Text style={styles.linkText}>{noPlans ? 'Start empty workout' : 'Empty workout'}</Text></Pressable>}
+      {canOfferStart && <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => startWith({ kind: 'empty' })} style={styles.link}><Text style={styles.linkText}>{noPlans ? 'Start empty workout' : 'Empty workout'}</Text></Pressable>}
     </View>
 
   if (!user) return <SafeAreaView edges={['top']} style={styles.screen}><StatusBar style="light" /><Text style={styles.muted}>Restoring sign-in…</Text></SafeAreaView>
@@ -320,7 +322,7 @@ export default function DashboardScreen() {
             </View>
             {starter.error && <Text accessibilityRole="alert" style={styles.planEmptyCopy}>{starter.error}</Text>}
           </View>
-          : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => void launch?.start({ kind: 'empty' })} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
+          : <Pressable accessibilityRole="button" disabled={starting || (launchState !== 'ready' && launchState !== 'unavailable')} onPress={() => startWith({ kind: 'empty' })} style={[styles.start, styles.dockStart, starting && styles.disabled]}><Text style={styles.startText}>{starting ? 'Starting…' : 'Start empty workout'}</Text></Pressable>}
       </View>
     </View>}
     </View>

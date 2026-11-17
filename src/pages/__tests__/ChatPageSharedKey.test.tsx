@@ -43,7 +43,8 @@ vi.mock('../../lib/templateDraftStorage', () => ({ saveTemplateDraft: vi.fn() })
 vi.mock('../../lib/workoutService', () => ({ getRecentWorkouts: vi.fn(async () => []) }))
 vi.mock('react-router-dom', () => ({ useNavigate: () => vi.fn() }))
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() } }))
-vi.mock('framer-motion', () => ({
+vi.mock('framer-motion', async () => ({
+  ...await vi.importActual<object>('framer-motion'),
   motion: new Proxy({}, {
     get: (_target, tag: string | symbol) => typeof tag !== 'string' ? undefined
       : ({ children, ...props }: { children?: ReactNode } & Record<string, unknown>) => {
@@ -153,6 +154,7 @@ describe('ChatPage on the shared key', () => {
     mocks.fetchAvailableOpenRouterModels.mockResolvedValue([{ id: 'openai/gpt-5.6-luna', label: 'GPT-5.6 Luna' }])
     render(<ChatPage />)
     expect(await screen.findByText('17 of 20 left today')).toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'More Coach options' }))
     fireEvent.click(screen.getByRole('button', { name: 'Use your own OpenRouter key' }))
     fireEvent.change(screen.getByLabelText('Your key'), { target: { value: 'sk-or-own-key-long-enough-for-tests' } })
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save key' })) })

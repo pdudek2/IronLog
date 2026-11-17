@@ -53,7 +53,8 @@ vi.mock('react-router-dom', async () => {
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), error: vi.fn(), message: vi.fn() },
 }))
-vi.mock('framer-motion', () => ({
+vi.mock('framer-motion', async () => ({
+  ...await vi.importActual<object>('framer-motion'),
   motion: new Proxy({}, {
     get: (_target, tag: string | symbol) => {
       if (typeof tag !== 'string') return undefined
@@ -88,11 +89,11 @@ describe('ChatPage accessibility', () => {
     mocks.navigate.mockReset()
   })
 
-  it('keeps plan inspection available while chat stays read-only without a key', () => {
+  it('keeps plan inspection available while chat stays read-only without a key', async () => {
     mocks.apiKey = ''
     render(<ChatPage />)
 
-    expect(screen.getByText('Ask Coach about your training')).toBeVisible()
+    expect(await screen.findByText('Ask Coach about your training')).toBeVisible()
     const configure = screen.getByRole('button', { name: 'Use your own OpenRouter key' })
     expect(configure).toBeVisible()
     expect(configure).toHaveAttribute('aria-expanded', 'false')

@@ -56,6 +56,7 @@ test.describe('Chat UI', () => {
     await expect(page.getByText('Tak, progresujesz.')).toBeVisible()
     await expect(page.getByText('19 of 20 left today')).toBeVisible()
 
+    await page.getByRole('button', { name: 'More Coach options' }).click()
     await page.getByRole('button', { name: 'Use your own OpenRouter key' }).click()
     await page.getByLabel('Your key', { exact: true }).fill('sk-or-test-only-own-browser-key')
     await page.getByRole('button', { name: 'Save key' }).click()
@@ -173,7 +174,6 @@ test.describe('Chat UI', () => {
 
     const composer = page.locator('.coach-composer')
     await expect(composer).toBeInViewport()
-    expect(await page.evaluate(() => window.scrollY)).toBe(0)
 
     if (testInfo.project.name === 'mobile') {
       const sendBox = await page.getByRole('button', { name: 'Send' }).boundingBox()
@@ -188,12 +188,12 @@ test.describe('Chat UI', () => {
       .evaluate((element) => element.getBoundingClientRect().width)
     expect(measure).toBeLessThanOrEqual(760)
 
-    const thread = page.locator('.coach-thread-scroll')
+    // The conversation scrolls with the page; the composer stays docked.
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0)
     const composerBoxBeforeScroll = await composer.boundingBox()
-    await thread.evaluate((element) => {
-      element.scrollTop = element.scrollHeight
-    })
-    await expect.poll(() => thread.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight))
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
     const composerBoxAfterScroll = await composer.boundingBox()
     expect(composerBoxBeforeScroll).not.toBeNull()
     expect(composerBoxAfterScroll).not.toBeNull()
@@ -213,7 +213,6 @@ test.describe('Chat UI', () => {
 
     const composer = page.locator('.coach-composer')
     await expect(composer).toBeInViewport()
-    expect(await page.evaluate(() => window.scrollY)).toBe(0)
 
     if (testInfo.project.name === 'mobile') {
       const sendBox = await page.getByRole('button', { name: 'Send' }).boundingBox()
@@ -463,7 +462,8 @@ test.describe('Chat UI', () => {
 
     await sendQuestion(page)
     await expect(page.getByText('Częściowa response', { exact: true })).toBeVisible()
-    await page.getByRole('button', { name: 'Reset' }).click()
+    await page.getByRole('button', { name: 'More Coach options' }).click()
+    await page.getByRole('button', { name: 'Reset conversation' }).click()
     await expectAbortCount(page, 1)
 
     await expect(page.getByLabel('Chat with AI Coach')

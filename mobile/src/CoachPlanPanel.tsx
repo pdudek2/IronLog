@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { COACH_PLAN_COST } from '../../src/shared/coachQuota'
-import { AppState, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
+import { AppState, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 import { useRouter } from 'expo-router'
 import { kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
 import { defaultPlanBrief, generatedPlanDraft, type PlanBrief } from './coachPlan'
@@ -12,7 +12,8 @@ import { colors, primaryGradient } from './theme'
 
 const equipment = [['barbell', 'Barbell'], ['dumbbell', 'Dumbbells'], ['cable', 'Cable'], ['machine', 'Machines'], ['bodyweight', 'Bodyweight'], ['kettlebell', 'Kettlebell']]
 const levels = [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced']]
-export default function CoachPlanPanel({ uid, controller }: { uid: string; controller: CoachController }) {
+// `top` is the screen's header and key area, `bottom` the saved-key row: the panel owns the scroll so Generate can dock below it.
+export default function CoachPlanPanel({ uid, controller, top, bottom, onScroll }: { uid: string; controller: CoachController; top?: React.ReactNode; bottom?: React.ReactNode; onScroll?: (event: NativeSyntheticEvent<NativeScrollEvent>) => void }) {
   const router = useRouter()
   const [brief, setBrief] = useState(defaultPlanBrief)
   const [day, setDay] = useState(0)
@@ -63,7 +64,8 @@ export default function CoachPlanPanel({ uid, controller }: { uid: string; contr
   }
   const disabled = busy || generating || !!imported
   const selected = plan?.days[Math.min(day, plan.days.length - 1)]
-  return <View>
+  return <View style={s.screen}><ScrollView style={s.screen} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" onScroll={onScroll} scrollEventThrottle={16}>
+    {top}
     <View style={s.section}>
       <Text accessibilityRole="header" style={s.heading}>Workout brief</Text>
       <View style={s.field}><Text style={s.label}>Plan goal</Text><TextInput selectionColor={colors.accentText} ref={goal} accessibilityLabel="Plan goal" style={s.input} placeholder="E.g. upper/lower strength plan" placeholderTextColor={colors.mutedSoft} value={brief.goal} onChangeText={v => { change('goal', v); setGoalError(false) }} maxLength={400} editable={!disabled} />{goalError && <Text accessibilityRole="alert" style={s.error}>Enter a plan goal to generate a template.</Text>}</View>
@@ -74,9 +76,6 @@ export default function CoachPlanPanel({ uid, controller }: { uid: string; contr
       <View style={s.field}><Text style={s.label}>Additional notes</Text><TextInput selectionColor={colors.accentText} accessibilityLabel="Additional notes" style={[s.input, s.notes]} textAlignVertical="top" multiline placeholder="E.g. 60 min, no deadlifts" placeholderTextColor={colors.mutedSoft} value={brief.notes} onChangeText={v => change('notes',v)} maxLength={400} editable={!disabled} /></View>
       {!!planError && <Text accessibilityRole="alert" style={s.error}>{planError}</Text>}
       {planGeneration === 'interrupted' && <Text style={s.muted}>Generation stopped. Generate again when ready.</Text>}
-      <View style={s.actions}><Text style={s.muted}>{controller.canSend && !controller.canPlan
-        ? `A plan uses ${COACH_PLAN_COST} of today's ${controller.state.quota?.limit ?? ''} Coach messages; ${controller.remaining} left.`
-        : 'Coach adds your profile, history and exercise library to the brief.'}</Text><Action primary disabled={!controller.canPlan || disabled} onPress={() => { if (brief.goal.trim().length < 2) { setGoalError(true); goal.current?.focus(); return } setGoalError(false); void controller.generatePlan(brief) }}>{generating ? 'Generating plan…' : 'Generate plan'}</Action></View>
       {generating && <Action onPress={() => controller.cancel()}>Stop generation</Action>}
     </View>
     {plan && selected && <View style={s.section}>
@@ -92,6 +91,11 @@ export default function CoachPlanPanel({ uid, controller }: { uid: string; contr
       {imported ? <View style={s.field}><Text style={s.muted}>This plan was handed to the editor. Continue there to finish or check the saved plan in Plans.</Text><View style={s.chips}><Action onPress={() => router.push('/templates')}>Open Plans</Action><Action disabled={busy} onPress={() => void startAnother()}>Start another plan</Action></View></View> : <View style={s.chips}><Action disabled={disabled} onPress={() => void importPlan(false)}>Edit before saving</Action><Action primary disabled={disabled} onPress={() => void importPlan(true)}>{busy ? 'Opening editor…' : 'Save plan'}</Action></View>}
       <Action disabled={busy || generating || !!imported} onPress={() => controller.clearPlan()}>Close preview</Action>
     </View>}
+    {bottom}
+  </ScrollView>
+    <View style={s.dock}><Text style={[s.muted, s.dockNote]}>{controller.canSend && !controller.canPlan
+        ? `A plan uses ${COACH_PLAN_COST} of today's ${controller.state.quota?.limit ?? ''} Coach messages; ${controller.remaining} left.`
+        : 'Coach adds your profile, history and exercise library to the brief.'}</Text><Action primary disabled={!controller.canPlan || disabled} onPress={() => { if (brief.goal.trim().length < 2) { setGoalError(true); goal.current?.focus(); return } setGoalError(false); void controller.generatePlan(brief) }}>{generating ? 'Generating plan…' : 'Generate plan'}</Action></View>
   </View>
 }
 function Chip({ children, active, onPress, disabled = false }: { children: React.ReactNode; active: boolean; onPress: () => void; disabled?: boolean }) {
@@ -101,7 +105,10 @@ function Action({ children, onPress, disabled = false, primary = false }: { chil
   return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[s.action,primary && s.primary,disabled && s.disabled]}><Text style={[s.choice,primary && s.selected]}>{children}</Text></Pressable>
 }
 const s = StyleSheet.create({
+  screen: { flex: 1 }, content: { padding: 16, paddingBottom: 24 },
   section: { paddingVertical: 12, gap: 14 },
+  dockNote: { flex: 1, fontSize: 12.48, lineHeight: 18 },
+  dock: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: colors.background },
   heading: { fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16, lineHeight: 21, color: colors.text },
   field: { gap: 6 }, label: { fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 18, color: colors.muted },
   input: { backgroundColor: 'rgba(255,255,255,0.035)', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, minHeight: 46, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, color: colors.text },

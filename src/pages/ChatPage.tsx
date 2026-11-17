@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type * as React from 'react'
-import { ChevronRight, LoaderCircle, RotateCcw, Send } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { ArrowUp, ChevronRight, Ellipsis, KeyRound, LoaderCircle, RotateCcw } from 'lucide-react'
+import { AnimatePresence } from 'framer-motion'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import AiKeyPanel from '../components/AiKeyPanel'
+import BottomSheet from '../components/BottomSheet'
 import ChatMarkdown from '../components/ChatMarkdown'
 import { Button } from '../components/ui'
 import { getOpenRouterApiKey, hasOpenRouterApiKey } from '../lib/aiKeyStorage'
@@ -258,11 +259,13 @@ export default function ChatPage() {
     if (reached?.code === 'daily-limit-all') setLimitAll({ uid: keyOwnerUid, resetAt: reached.resetAt })
     refreshQuota()
   }
-  // Closing the key panel brings focus back to the button that opened it.
+  // Closing the key panel brings focus back to the button that opened it: the gate's, or ⋯ when it came from the menu.
   const keyGateAction = useRef<HTMLDivElement>(null)
+  const moreButton = useRef<HTMLButtonElement>(null)
+  const [moreOpen, setMoreOpen] = useState(false)
   const keyPanelWasOpen = useRef(false)
   useEffect(() => {
-    if (!showConfigPanel && keyPanelWasOpen.current) keyGateAction.current?.querySelector('button')?.focus()
+    if (!showConfigPanel && keyPanelWasOpen.current) (keyGateAction.current?.querySelector('button') ?? moreButton.current)?.focus()
     keyPanelWasOpen.current = showConfigPanel
   }, [showConfigPanel])
   const [messages, setMessages] = useState<ChatMessage[]>(() => (isDemoUser ? DEMO_CHAT_MESSAGES : []))
@@ -349,10 +352,23 @@ export default function ChatPage() {
     setMessages(DEMO_CHAT_MESSAGES)
   }, [isDemoUser])
 
+  // The conversation scrolls with the page; a reader who scrolled up to reread stays where they are.
   useEffect(() => {
-    const chatContainer = chatContainerRef.current
-    if (!chatContainer || !shouldStickToBottomRef.current) return
-    chatContainer.scrollTop = chatContainer.scrollHeight
+    const onScroll = () => {
+      const page = document.documentElement
+      shouldStickToBottomRef.current = page.scrollHeight - page.scrollTop - page.clientHeight < 96
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Scroll only by what the docked composer hides, so a short exchange leaves the header in place.
+  useEffect(() => {
+    const list = chatContainerRef.current
+    if (!list || !shouldStickToBottomRef.current) return
+    const composerTop = document.querySelector('.coach-composer')?.getBoundingClientRect().top ?? window.innerHeight
+    const hidden = list.getBoundingClientRect().bottom - composerTop + 24
+    if (hidden > 0) window.scrollBy({ top: hidden })
   }, [messages, streamText])
 
   useEffect(() => () => {
@@ -479,14 +495,6 @@ export default function ChatPage() {
     setMessages([])
     setStreamText('')
     setError('')
-  }
-
-  function handleChatScroll() {
-    const chatContainer = chatContainerRef.current
-    if (!chatContainer) return
-
-    const distanceFromBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight
-    shouldStickToBottomRef.current = distanceFromBottom < 96
   }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -626,17 +634,8 @@ export default function ChatPage() {
   return (
     <>
       <section className="coach-header">
-        <motion.div
-          className="coach-header-copy"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.22, ease: [0.2, 0.8, 0.2, 1] }}
-        >
-          <h1>Coach</h1>
-        </motion.div>
-      </section>
-
-      <div className="ai-workspace coach-workspace">
+        <h1>Coach</h1>
+        <div className="coach-header-actions">
         <section className="coach-mode-switch" role="group" aria-label="AI Coach mode">
             {[
               {
@@ -667,13 +666,50 @@ export default function ChatPage() {
               )
             })}
         </section>
+          <button
+            type="button"
+            ref={moreButton}
+            className="coach-more"
+            aria-label="More Coach options"
+            aria-haspopup="dialog"
+            onClick={() => setMoreOpen(true)}
+          >
+            <Ellipsis size={20} aria-hidden="true" />
+          </button>
+        </div>
+      </section>
+
+      <AnimatePresence>
+        {moreOpen && (
+          <BottomSheet key="coach-more" title="Coach" onClose={() => setMoreOpen(false)}>
+            {activeTab === 'chat' && hasConversation && (
+              <button type="button" className="bottom-sheet-row" onClick={() => { setMoreOpen(false); handleReset() }}>
+                <span>Reset conversation</span>
+                <RotateCcw size={16} aria-hidden="true" />
+              </button>
+            )}
+            {!configured && !showConfigPanel && (
+              <button type="button" className="bottom-sheet-row" onClick={() => { setMoreOpen(false); setShowConfigPanel(true) }}>
+                <span>Use your own OpenRouter key</span>
+                <KeyRound size={16} aria-hidden="true" />
+              </button>
+            )}
+            <a href="/privacy" className="bottom-sheet-row">
+              <span>Privacy policy</span>
+              <ChevronRight size={16} aria-hidden="true" />
+            </a>
+          </BottomSheet>
+        )}
+      </AnimatePresence>
+
+      <div className="ai-workspace coach-workspace">
 
         <div
           className="coach-workspace-grid"
           data-has-rail={configured || Boolean(planPreview)}
         >
           <div className="coach-main-flow">
-            {!configured && !showConfigPanel && (
+            {!configured && !showConfigPanel && sharedOff && (
               <>
                 <section className="coach-key-gate">
                   <div>
@@ -722,21 +758,6 @@ export default function ChatPage() {
             {activeTab === 'chat' ? (
               <>
                 <section className="coach-chat-panel">
-                  {hasConversation && (
-                    <div className="coach-panel-head">
-                      <div aria-hidden="true" />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={handleReset}
-                        className="coach-reset-button inline-flex items-center gap-2"
-                      >
-                        <RotateCcw size={14} />
-                        Reset
-                      </Button>
-                    </div>
-                  )}
-
                   <div
                     className={`coach-thread ${messages.length === 0 && !streamText ? 'coach-thread--empty' : ''}`}
                     role="region"
@@ -756,9 +777,15 @@ export default function ChatPage() {
                           </div>
                         )}
 
+                        {!configured && !sharedOff && (
+                          <p className="coach-data-note">
+                            Coach sends your question, profile, check-ins, workouts and records to OpenRouter and the AI model provider. <a href="/privacy">Privacy policy</a>
+                          </p>
+                        )}
+
                         {ready && (
                           <div className="coach-empty-prompts">
-                            <h2>Next</h2>
+                            <h2>Try asking</h2>
                             {STARTER_PROMPTS.map((prompt) => (
                               <button
                                 key={prompt}
@@ -778,8 +805,7 @@ export default function ChatPage() {
                     ) : (
                       <div
                         ref={chatContainerRef}
-                        onScroll={handleChatScroll}
-                        className="coach-thread-scroll no-scrollbar"
+                        className="coach-thread-scroll"
                         role="log"
                         aria-live={sending ? 'off' : 'polite'}
                         aria-relevant="additions"
@@ -791,7 +817,7 @@ export default function ChatPage() {
                               className="coach-message"
                               data-role={message.role}
                             >
-                              <p>
+                              <p className="sr-only">
                                 {message.role === 'assistant' ? 'AI Coach' : 'You'}
                               </p>
                               <ChatMarkdown content={message.content} />
@@ -806,7 +832,7 @@ export default function ChatPage() {
 
                           {sending && !streamText && (
                             <div className="coach-message" data-role="assistant">
-                              <p>AI Coach</p>
+                              <p className="sr-only">AI Coach</p>
                               <div className="flex items-center gap-3">
                                 <div className="chat-typing-indicator" aria-hidden="true">
                                   <span className="chat-typing-dot" />
@@ -824,7 +850,7 @@ export default function ChatPage() {
 
                           {streamText && (
                             <div className="coach-message" data-role="assistant">
-                              <p>AI Coach</p>
+                              <p className="sr-only">AI Coach</p>
                               <div className="flex items-end gap-1">
                                 <div className="min-w-0 flex-1">
                                   <ChatMarkdown content={streamText} />
@@ -867,41 +893,39 @@ export default function ChatPage() {
 
                   {ready && (
                     <form onSubmit={handleSubmit} className="coach-composer">
-                    <textarea
-                      aria-label="Message AI Coach"
-                      value={input}
-                      onChange={(event) => {
-                        setInput(event.target.value)
-                        const el = event.target
-                        el.style.height = 'auto'
-                        el.style.height = `${Math.min(el.scrollHeight, 160)}px`
-                      }}
-                      onKeyDown={handleComposerKeyDown}
-                      placeholder="Ask about progress, a plan or your last session"
-                      disabled={sending || limit !== null}
-                      rows={2}
-                      className="coach-composer-input"
-                    />
-
-                    <div className="coach-composer-footer">
-                      <p className={configured ? undefined : 'coach-allowance'}>
+                      <div className="coach-composer-field">
+                        <textarea
+                          aria-label="Message AI Coach"
+                          value={input}
+                          onChange={(event) => {
+                            setInput(event.target.value)
+                            const el = event.target
+                            el.style.height = 'auto'
+                            el.style.height = `${Math.min(el.scrollHeight, 160)}px`
+                          }}
+                          onKeyDown={handleComposerKeyDown}
+                          placeholder="Ask about your training"
+                          disabled={sending || limit !== null}
+                          rows={1}
+                          className="coach-composer-input"
+                        />
+                        <button
+                          type="submit"
+                          aria-label="Send"
+                          disabled={!input.trim() || sending || limit !== null}
+                          onPointerDown={(event) => event.preventDefault()}
+                          className="coach-send"
+                        >
+                          {sending ? <LoaderCircle size={18} className="animate-spin" aria-hidden="true" /> : <ArrowUp size={18} aria-hidden="true" />}
+                        </button>
+                      </div>
+                      <p className={configured ? 'coach-composer-note' : 'coach-composer-note coach-allowance'} aria-live="polite">
                         {configured
                           ? 'Responses are billed to your OpenRouter API key.'
                           : limit
                             ? coachLimitMessage(limit)
                             : remaining !== null ? `${remaining} of ${quota?.limit} left today` : ''}
                       </p>
-
-                      <Button
-                        type="submit"
-                        disabled={!input.trim() || sending || limit !== null}
-                        onPointerDown={(event) => event.preventDefault()}
-                        className="inline-flex items-center gap-2"
-                      >
-                        {sending ? <LoaderCircle size={15} className="animate-spin" /> : <Send size={15} />}
-                        {sending ? 'Sending...' : 'Send'}
-                      </Button>
-                    </div>
                     </form>
                   )}
                 </section>
@@ -990,7 +1014,7 @@ export default function ChatPage() {
                       </div>
                     </div>
 
-                    <label className="coach-field">
+                    <label className="coach-field md:col-span-2">
                       <span className="stat-meta">Focus</span>
                       <input
                         type="text"
@@ -1000,7 +1024,7 @@ export default function ChatPage() {
                       />
                     </label>
 
-                    <label className="coach-field">
+                    <label className="coach-field md:col-span-2">
                       <span className="stat-meta">Additional notes</span>
                       <textarea
                         value={planNotes}

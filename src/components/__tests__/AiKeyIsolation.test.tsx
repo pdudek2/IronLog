@@ -119,7 +119,7 @@ describe('account-owned OpenRouter API keys', () => {
     await waitFor(() => expect(screen.getByRole('textbox', { name: 'Message AI Coach' })).toBeEnabled())
     account('b')
     expect(screen.queryByRole('textbox', { name: 'Message AI Coach' })).not.toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Use your own OpenRouter key' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Use your own OpenRouter key' }))
     expect(screen.getByLabelText('Your key')).toHaveValue('')
     fireEvent.change(screen.getByLabelText('Your key'), { target: { value: KEY_B } })
     fireEvent.click(screen.getByRole('button', { name: 'Save key' }))

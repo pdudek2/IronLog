@@ -119,7 +119,7 @@ describe('pipeOpenRouterStream', () => {
       isClientOpen: () => true,
       writeFrame: (frame) => frames.push(frame),
     })
-    expect(result).toEqual({ status: 'error', reason: 'upstream-error' })
+    expect(result).toEqual({ status: 'error', reason: 'upstream-error', answered: true, detail: { finishReason } })
     expect(frames.map((frame) => frame.type)).toEqual(['chunk', 'error'])
   })
 
@@ -131,7 +131,7 @@ describe('pipeOpenRouterStream', () => {
       isClientOpen: () => true,
       writeFrame: (frame) => frames.push(frame),
     })
-    expect(result).toEqual({ status: 'error', reason: 'unexpected-eof' })
+    expect(result).toMatchObject({ status: 'error', reason: 'unexpected-eof' })
     expect(frames.map((frame) => frame.type)).toEqual(['error'])
   })
   it('emits chunks and exactly one done after completion terminator', async () => {
@@ -227,7 +227,7 @@ describe('pipeOpenRouterStream', () => {
       writeFrame: (frame) => frames.push(frame),
     })
 
-    expect(result).toEqual({ status: 'error', reason: 'upstream-error' })
+    expect(result).toEqual({ status: 'error', reason: 'upstream-error', answered: true, detail: { message: 'connection lost' } })
     expect(frames.at(-1)).toEqual({
       type: 'error',
       message: 'Could not complete the response.',
@@ -247,7 +247,7 @@ describe('pipeOpenRouterStream', () => {
       writeFrame: (frame) => frames.push(frame),
     })
 
-    expect(result).toEqual({ status: 'error', reason: 'invalid-event' })
+    expect(result).toMatchObject({ status: 'error', reason: 'invalid-event' })
     expect(frames).toEqual([{
       type: 'error',
       message: 'Could not complete the response.',
@@ -264,7 +264,7 @@ describe('pipeOpenRouterStream', () => {
       writeFrame: (frame) => frames.push(frame),
     })
 
-    expect(result).toEqual({ status: 'error', reason: 'reader-error' })
+    expect(result).toMatchObject({ status: 'error', reason: 'reader-error' })
     expect(frames).toEqual([{
       type: 'error',
       message: 'Could not complete the response.',
@@ -283,7 +283,7 @@ describe('pipeOpenRouterStream', () => {
       writeFrame: (frame) => frames.push(frame),
     })
 
-    expect(result).toEqual({ status: 'error', reason: 'unexpected-eof' })
+    expect(result).toMatchObject({ status: 'error', reason: 'unexpected-eof' })
     expect(frames).toEqual([
       { type: 'chunk', text: 'Urwane' },
       { type: 'error', message: 'Could not complete the response.' },
@@ -299,7 +299,7 @@ describe('pipeOpenRouterStream', () => {
       writeFrame: (frame) => frames.push(frame),
     })
 
-    expect(result).toEqual({ status: 'error', reason: 'empty-response' })
+    expect(result).toMatchObject({ status: 'error', reason: 'empty-response' })
     expect(frames).toEqual([{
       type: 'error',
       message: 'Could not complete the response.',

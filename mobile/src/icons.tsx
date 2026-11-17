@@ -14,6 +14,7 @@ const paths = {
   close: 'M18 6 6 18M6 6l12 12',
   check: 'M20 6 9 17l-5-5',
   plus: 'M12 5v14M5 12h14',
+  'arrow-up': 'M12 19V5M5 12l7-7 7 7',
   minus: 'M5 12h14',
   trash: 'M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6',
   more: 'M4 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M11 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0M18 12a1 1 0 1 0 2 0a1 1 0 1 0-2 0',

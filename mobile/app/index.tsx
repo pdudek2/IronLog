@@ -828,11 +828,11 @@ function SessionScreen({ user }: { user: AuthUser }) {
     // shortcut: user exercises have no metadata here, so they are not asked about 0; load it with the session if testers hit it.
     if (done && !withoutWeight && logged && loggedSet && !loggedSet.done
       && needsWeightConfirm(loggedSet, { exerciseId: logged.exerciseId, ...catalogueMeta(logged.exerciseId, logged.exerciseSource) })) {
-      // Back and the backdrop also run the cancel button; onDismiss follows it in the same tick and withdraws the focus.
+      // Back and the backdrop also run the cancel button; onDismiss follows it in the same tick and undoes both effects.
       showDialog('No weight entered', 'Log this set without weight?', [
         { text: 'Enter weight', style: 'cancel', onPress: () => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }); setWeightFocus(Date.now()) } },
         { text: 'Log without weight', onPress: () => latestToggle.current(exerciseId, setId, true, true) },
-      ], { onDismiss: () => setWeightFocus(0) })
+      ], { onDismiss: () => { setSelectedSet(selectedSet); setWeightFocus(0) } })
       return
     }
     setDone(exerciseId, setId, done)

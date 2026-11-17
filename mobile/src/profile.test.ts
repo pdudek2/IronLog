@@ -55,7 +55,7 @@ test('stale/disposed load cannot publish, and a newer request wins', async () =>
 
 test('unknown save retains submitted values, blocks duplicate/edit/exit identity until settled', async () => {
   const h = setup(); await h.controller.load(); assert.equal(h.controller.canSave, false)
-  h.controller.change({ displayName: `${profile.displayName} ` }); assert.equal(h.controller.canSave, false)
+  h.controller.change({ displayName: `${profile.displayName} ` }); assert.equal(h.controller.canSave, false); assert.equal(h.controller.dirty, false)
   h.controller.change({ displayName: 'Saved', units: 'lbs' }); assert.equal(h.controller.canSave, true)
   const saving = h.controller.save(); assert.equal(h.controller.canSave, false); await h.controller.save(); await saving
   assert.equal(h.writes(), 1); assert.equal(h.controller.state.pending, true); assert.equal(h.controller.state.busy, false); assert.equal(h.controller.canSave, true)

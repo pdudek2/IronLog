@@ -83,6 +83,10 @@ test.describe('Return after a break', () => {
 
     await page.getByRole('button', { name: 'Start Day A' }).click()
     await page.waitForURL('/workout/new', { timeout: 15_000 })
-    expect((await launchedCompression(request, uid)).readiness.stringValue).toBe('low')
+    const launched = await launchedCompression(request, uid)
+    expect(launched.readiness.stringValue).toBe('low')
+    const entries = launched.exercises.arrayValue.values.map((value: { mapValue: { fields: Record<string, { integerValue: string }> } }) => value.mapValue.fields)
+    expect(entries.length).toBeGreaterThan(0)
+    for (const entry of entries) expect(entry.sets.integerValue).toBe(entry.plannedSets.integerValue)
   })
 })

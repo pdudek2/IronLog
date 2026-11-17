@@ -58,7 +58,7 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, o
           <strong>{approx}{minutes(compression.estimateSec)} min</strong>{' · '}{kept} of {plannedSets} sets{' · '}{weights}
         </p>
       )}
-      {today.breakDays !== null && (
+      {(today.breakDays !== null || today.tone === 'low') && (
         <label className="train-time-switch">
           <span>Full sets</span>
           <input type="checkbox" role="switch" checked={fullSets} onChange={(event) => onFullSets(event.target.checked)} />

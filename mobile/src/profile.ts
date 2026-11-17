@@ -88,6 +88,11 @@ export class ProfileController {
   }, private readonly publish: (state: ProfileState) => void, private readonly milliseconds = 15_000) {}
 
   get dirty() { return !!this.state.input && !!this.state.baseline && !sameProfile(this.state.input, this.state.baseline) }
+  // An unresolved save keeps the button as "Check save outcome"; otherwise only a real change enables it.
+  get canSave() {
+    const { status, busy, pending, input, baseline } = this.state
+    return status === 'ready' && !busy && (pending || (!!input && !!baseline && !sameProfile({ ...input, displayName: input.displayName.trim() }, baseline)))
+  }
   private set(patch: Partial<ProfileState>) { this.state = { ...this.state, ...patch }; if (this.alive) this.publish(this.state) }
   suspendRead() { this.generation += 1 }
   discard() { if (!this.attempt && !this.state.busy) this.set({ input: this.state.baseline, message: null, nameError: null }) }

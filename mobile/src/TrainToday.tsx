@@ -73,7 +73,7 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, o
     {budgetMin !== null && !compression.fits
       ? <Text accessibilityLiveRegion="polite" style={styles.todayLine}><Text style={styles.todayStrong}>Doesn’t fit in {budgetMin} min.</Text> The shortest version takes {approx}{minutes(compression.estimateSec)} min.</Text>
       : today.record && <Text style={styles.todayLine}><Text style={styles.todayStrong}>{approx}{minutes(compression.estimateSec)} min</Text> · {kept} of {plannedSets} sets · {weights}</Text>}
-    {today.breakDays !== null && <Pressable accessibilityRole="switch" accessibilityState={{ checked: fullSets }} accessibilityLabel="Full sets" onPress={() => onFullSets(!fullSets)} style={styles.switchRow}>
+    {(today.breakDays !== null || today.tone === 'low') && <Pressable accessibilityRole="switch" accessibilityState={{ checked: fullSets }} accessibilityLabel="Full sets" onPress={() => onFullSets(!fullSets)} style={styles.switchRow}>
       <Text style={styles.switchText}>Full sets</Text>
       <View style={[styles.track, fullSets && styles.trackOn]}><View style={[styles.thumb, fullSets && styles.thumbOn]} /></View>
     </Pressable>}

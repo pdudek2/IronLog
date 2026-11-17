@@ -4,14 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import ProfilePage from '../ProfilePage'
 
+const savedProfile = {
+  displayName: 'Jan',
+  weeklyGoal: 4,
+  primaryGoal: 'hypertrophy',
+  units: 'kg',
+  createdAt: 1,
+}
+
 const mocks = vi.hoisted(() => ({
-  profile: {
-    displayName: 'Jan',
-    weeklyGoal: 4,
-    primaryGoal: 'hypertrophy' as const,
-    units: 'kg' as const,
-    createdAt: 1,
-  },
+  profile: null as unknown as Record<string, unknown>,
   setProfile: vi.fn(),
   updateProfile: vi.fn(),
   toastSuccess: vi.fn(),
@@ -41,7 +43,8 @@ vi.mock('sonner', () => ({
 }))
 
 beforeEach(() => {
-  mocks.setProfile.mockReset()
+  mocks.profile = savedProfile
+  mocks.setProfile.mockReset().mockImplementation((_uid: string, profile: Record<string, unknown>) => { mocks.profile = profile })
   mocks.updateProfile.mockReset().mockResolvedValue(undefined)
   mocks.toastSuccess.mockReset()
   mocks.toastError.mockReset()
@@ -70,6 +73,10 @@ describe('ProfilePage hierarchy and settings', () => {
   it('saves the selected settings and leaves success feedback to the toast', async () => {
     render(<ProfilePage />, { wrapper: MemoryRouter })
 
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Jan ' } })
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+
     fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: '  Anna  ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Strength' }))
     fireEvent.change(screen.getByRole('slider', { name: 'Workouts per week' }), { target: { value: '5' } })
@@ -85,14 +92,14 @@ describe('ProfilePage hierarchy and settings', () => {
       })
     })
     expect(mocks.setProfile).toHaveBeenCalledWith('user-1', {
-      ...mocks.profile,
+      ...savedProfile,
       displayName: 'Anna',
       primaryGoal: 'strength',
       weeklyGoal: 5,
       units: 'lbs',
     })
     expect(mocks.toastSuccess).toHaveBeenCalledWith('Profile saved')
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
     expect(screen.queryByText(/Zapisano/)).not.toBeInTheDocument()
   })
 
@@ -106,7 +113,7 @@ describe('ProfilePage hierarchy and settings', () => {
     expect(mocks.updateProfile).not.toHaveBeenCalled()
 
     mocks.updateProfile.mockRejectedValueOnce(new Error('offline'))
-    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Jan' } })
+    fireEvent.change(screen.getByRole('textbox', { name: 'Name' }), { target: { value: 'Jana' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
 
     await waitFor(() => {

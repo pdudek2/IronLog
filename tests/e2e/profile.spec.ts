@@ -39,7 +39,8 @@ test.describe('Profile hydration and save', () => {
     // Read current name and create a modified version
     const originalName = (await nameInput.inputValue()).trim()
     cleanup.add('restore profile name', () => restoreProfileName(page, originalName))
-    const testName = `${originalName.replace(/ \[test\]$/, '')} [test]`.slice(0, 50)
+    // A run that failed before its cleanup leaves the suffix behind; the test name must still differ.
+    const testName = originalName.endsWith(' [test]') ? originalName.slice(0, -7) : `${originalName} [test]`.slice(0, 50)
 
     // Change name
     await nameInput.fill(testName)

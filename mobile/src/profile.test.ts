@@ -54,13 +54,15 @@ test('stale/disposed load cannot publish, and a newer request wins', async () =>
 })
 
 test('unknown save retains submitted values, blocks duplicate/edit/exit identity until settled', async () => {
-  const h = setup(); await h.controller.load(); h.controller.change({ displayName: 'Saved', units: 'lbs' })
-  const saving = h.controller.save(); await h.controller.save(); await saving
-  assert.equal(h.writes(), 1); assert.equal(h.controller.state.pending, true); assert.equal(h.controller.state.busy, false)
+  const h = setup(); await h.controller.load(); assert.equal(h.controller.canSave, false)
+  h.controller.change({ displayName: `${profile.displayName} ` }); assert.equal(h.controller.canSave, false)
+  h.controller.change({ displayName: 'Saved', units: 'lbs' }); assert.equal(h.controller.canSave, true)
+  const saving = h.controller.save(); assert.equal(h.controller.canSave, false); await h.controller.save(); await saving
+  assert.equal(h.writes(), 1); assert.equal(h.controller.state.pending, true); assert.equal(h.controller.state.busy, false); assert.equal(h.controller.canSave, true)
   h.controller.change({ displayName: 'Overwrite' }); assert.equal(h.controller.state.input?.displayName, 'Saved')
   await h.controller.save(); assert.equal(h.writes(), 1); h.controller.discard(); assert.equal(h.controller.state.pending, true)
   h.gate.resolve(); await new Promise(resolve => setTimeout(resolve, 0)); await h.controller.reconcile()
-  assert.equal(h.controller.state.message, 'Profile saved'); assert.equal(h.controller.state.pending, false); assert.equal(h.controller.dirty, false); assert.deepEqual(h.units, ['lbs'])
+  assert.equal(h.controller.state.message, 'Profile saved'); assert.equal(h.controller.state.pending, false); assert.equal(h.controller.dirty, false); assert.equal(h.controller.canSave, false); assert.deepEqual(h.units, ['lbs'])
 })
 
 test('failed save retains fields, definite rejection unlocks; unknown rejection reconciles before retry', async () => {

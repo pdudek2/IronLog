@@ -36,9 +36,12 @@ async function setProfileUnits(page: Page, units: 'kg' | 'lbs'): Promise<void> {
   await expectAppReady(page, '/profile')
   const choice = page.getByRole('button', { name: units, exact: true })
   await choice.click()
-  await page.getByRole('button', { name: 'Save changes' }).click()
-  await expect(page.getByText('Profile saved')).toBeVisible({ timeout: 8_000 })
   await expect(choice).toHaveAttribute('aria-pressed', 'true')
+  const save = page.getByRole('button', { name: 'Save changes' })
+  // Save stays disabled when these units are already saved.
+  if (await save.isDisabled()) return
+  await save.click()
+  await expect(page.getByText('Profile saved')).toBeVisible({ timeout: 8_000 })
 }
 
 test.afterAll(async () => {

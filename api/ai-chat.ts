@@ -482,7 +482,7 @@ async function generatePlan(
       model,
       max_tokens: 32768,
       reasoning: { effort: 'high', exclude: true },
-      provider: { require_parameters: true, only: ['openai'] },
+      provider: { require_parameters: true },
       stream: false,
       messages: [{ role: 'system', content: buildPlanSystemPrompt(context, request, catalog) }, {
         role: 'user',
@@ -539,7 +539,7 @@ export async function streamChatReply(
           model,
           max_tokens: 16384,
           reasoning: { effort: 'medium', exclude: true },
-          provider: { require_parameters: true, only: ['openai'] },
+          provider: { require_parameters: true },
           stream: true,
           messages: [{ role: 'system', content: buildSystemPrompt(context) }, ...messages.map((message) => ({
             role: message.role,

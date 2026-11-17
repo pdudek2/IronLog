@@ -192,8 +192,4 @@ describe('Coach on the shared key', () => {
     expect(mocks.reserveCoachUnits).not.toHaveBeenCalled()
   })
 
-  it('asks only OpenAI for the model, as the privacy policy says', async () => {
-    const result = await call(chatBody, streamed)
-    expect(JSON.parse(result.fetchMock.mock.calls[0]![1].body).provider).toEqual({ require_parameters: true, only: ['openai'] })
-  })
 })

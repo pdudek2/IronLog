@@ -43,10 +43,12 @@ describe('acceptSetInput', () => {
     expect(acceptSetInput('8.', '8', 'reps', 'kg')).toBe(false)
   })
 
-  it('always lets characters be deleted, even from a value the rule would refuse', () => {
+  it('lets characters be deleted from a value the rule already refuses, but not into one it refuses', () => {
     expect(acceptSetInput('90.718', '90.7185', 'weight', 'kg')).toBe(true)
-    expect(acceptSetInput('869.25', '8690.25', 'weight', 'kg')).toBe(true)
+    expect(acceptSetInput('8690.2', '8690.25', 'weight', 'kg')).toBe(true)
     expect(acceptSetInput('', '8690.25', 'weight', 'kg')).toBe(true)
+    expect(acceptSetInput('19995', '1999.5', 'weight', 'kg')).toBe(false)
+    expect(acceptSetInput('100.', '100.5', 'weight', 'kg')).toBe(true)
   })
 
   it('checks the limit in kg after converting pounds', () => {

@@ -11,14 +11,17 @@ function removesOnly(next: string, previous: string): boolean {
   return kept === next.length && next.length < previous.length
 }
 
-// A keystroke that breaks the rule is refused, never clamped. Deleting always passes, so an old draft's "8690.25"
-// or "90.7185" left by a lbs → kg switch can still be cleared.
-export function acceptSetInput(next: string, previous: string, field: 'weight' | 'reps', units: WeightUnits): boolean {
-  if (removesOnly(next, previous)) return true
-  if (field === 'reps') return REPS_INPUT.test(next) && Number(next || 0) <= MAX_SET_REPS
-  if (!WEIGHT_INPUT.test(next)) return false
-  const value = Number.parseFloat(next.replace(',', '.'))
+function fitsRule(text: string, field: 'weight' | 'reps', units: WeightUnits): boolean {
+  if (field === 'reps') return REPS_INPUT.test(text) && Number(text || 0) <= MAX_SET_REPS
+  if (!WEIGHT_INPUT.test(text)) return false
+  const value = Number.parseFloat(text.replace(',', '.'))
   return !(value > 0) || displayWeightDeltaToKg(value, units) <= MAX_SET_WEIGHT_KG
+}
+
+// A keystroke that breaks the rule is refused, never clamped. Deleting from a value that already broke it passes,
+// so an old draft's "8690.25" or "90.7185" left by a lbs → kg switch can still be cleared.
+export function acceptSetInput(next: string, previous: string, field: 'weight' | 'reps', units: WeightUnits): boolean {
+  return fitsRule(next, field, units) || (removesOnly(next, previous) && !fitsRule(previous, field, units))
 }
 
 // More than twice the reference is likelier a slip (881.75 for 88.75) than a real jump, so it is asked about, not refused.

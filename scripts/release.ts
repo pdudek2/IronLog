@@ -21,17 +21,47 @@ const easCli = ['npx', '-y', 'eas-cli@27.2.0']
 const fingerprintCmd = ['npx', 'expo-updates', 'fingerprint:generate', '--platform', 'android']
 
 type Env = Record<string, string | undefined>
-interface ReleaseStep { name: string; cmd: string[]; cwd?: string; env?: Env }
+interface ReleaseStep { name: string; cmd: string[]; cwd?: string; env?: Env; check?: (stdout: string) => void }
 interface ReleaseInput { sha: string; versionCode: number; testers?: string; notes: string; worktree: string; fingerprint: string; nativeBuild: boolean }
 
 // The fingerprint, the build and the update read the app config in this one environment, so their runtime versions agree.
 export const mobileEnv: Env = { IRONLOG_MOBILE_BACKEND: 'production', IRONLOG_MOBILE_UPDATE_CHANNEL: 'production', IRONLOG_MOBILE_API_URL: undefined }
 
 export const nativeTag = (fingerprint: string) => `native-${fingerprint}`
+const UPDATE_STEP = 'Publish the Android update'
 
-// remoteTags is the output of `git ls-remote --tags --refs origin`.
-export function needsNativeBuild(fingerprint: string, remoteTags: string): boolean {
-  return !remoteTags.split('\n').some((line) => line.trim().endsWith(`refs/tags/${nativeTag(fingerprint)}`))
+interface NativeTag { fingerprint: string; commit: string }
+
+// lsRemote is the output of `git ls-remote --tags --refs origin 'native-*'`.
+export function parseNativeTags(lsRemote: string): NativeTag[] {
+  return lsRemote.split('\n').flatMap((line) => {
+    const match = /^([0-9a-f]+)\s+refs\/tags\/native-(\S+)$/.exec(line.trim())
+    return match ? [{ commit: match[1]!, fingerprint: match[2]! }] : []
+  })
+}
+
+// Phones run the newest native build, so an older fingerprint coming back needs a build again.
+export function needsNativeBuild(fingerprint: string, tags: NativeTag[], isAncestor: (ancestor: string, commit: string) => boolean): boolean {
+  const own = tags.find((tag) => tag.fingerprint === fingerprint)
+  return !own || tags.some((tag) => tag !== own && isAncestor(own.commit, tag.commit))
+}
+
+// A command to paste into any shell that repeats the step with its exact environment.
+export function shellCommand({ cmd, cwd, env = {} }: ReleaseStep): string {
+  const quote = (value: string) => /^[\w@%+=:,./-]+$/.test(value) ? value : `'${value.replaceAll("'", `'\\''`)}'`
+  const unset = Object.keys(env).filter((key) => env[key] === undefined).map((key) => `-u ${key}`)
+  const set = Object.entries(env).flatMap(([key, value]) => value === undefined ? [] : [`${key}=${quote(value)}`])
+  const command = `env ${[...unset, ...set, ...cmd.map(quote)].join(' ')}`
+  return cwd ? `cd ${quote(cwd)} && ${command}` : command
+}
+
+// apksigner is the output of `apksigner verify --print-certs`, keytool of `keytool -list -v` for the upload key.
+export function assertUploadSigned(apksigner: string, keytool: string): void {
+  if (apksigner.includes('CN=Android Debug')) throw new Error('The APK is signed with the Android debug key. Check SHEAR_UPLOAD_* in ~/.gradle/gradle.properties.')
+  const upload = /SHA256: ([0-9A-F:]+)/.exec(keytool)?.[1]?.replaceAll(':', '').toLowerCase()
+  if (!upload) throw new Error('Could not read the SHA-256 of the upload key.')
+  const signers = [...apksigner.matchAll(/certificate SHA-256 digest: ([0-9a-f]+)/g)].map((match) => match[1])
+  if (signers.length !== 1 || signers[0] !== upload) throw new Error('The APK is not signed with the SHEAR upload key.')
 }
 
 export function commonSteps({ sha, worktree }: { sha: string; worktree: string }): ReleaseStep[] {
@@ -67,7 +97,7 @@ export function releaseSteps({ sha, versionCode, testers, notes, worktree, finge
   // The update goes out after the web, so new JS never calls an API that is not live yet.
   if (!nativeBuild) {
     return [...deploy, {
-      name: 'Publish the Android update', cwd: mobile, env: { ...runtime, ...commit },
+      name: UPDATE_STEP, cwd: mobile, env: { ...runtime, ...commit },
       cmd: [...easCli, 'update', '--channel', 'production', '--environment', 'production', '--platform', 'android', '--non-interactive', '--message', notes],
     }]
   }
@@ -78,10 +108,16 @@ export function releaseSteps({ sha, versionCode, testers, notes, worktree, finge
   return [
     { name: 'Android prebuild', cwd: mobile, env: android, cmd: ['npx', 'expo', 'prebuild', '--platform', 'android', '--clean', '--no-install'] },
     { name: 'Build the release APK', cwd: worktree, env: gradle, cmd: ['mobile/android/gradlew', '-p', 'mobile/android', ':app:assembleRelease', '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a'] },
+    {
+      name: 'Check the APK signature', env: { JAVA_HOME, ANDROID_HOME: gradle.ANDROID_HOME, PATH: `${JAVA_HOME}/bin:${process.env.PATH ?? ''}` },
+      cmd: ['sh', '-c', 'exec "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs "$0"', apk],
+      check: (stdout) => assertUploadSigned(stdout, uploadKeyCertificate()),
+    },
     ...deploy,
     { name: 'Send the APK to testers', cmd: testers ? [...firebase, '--testers', testers] : firebase },
-    // Last, so a failed release leaves no tag and the next one builds the APK again.
-    { name: 'Tag the native build', cmd: ['git', 'push', 'origin', `${sha}:refs/tags/${nativeTag(fingerprint)}`] },
+    // Last, so a failed release leaves no tag and the next one builds the APK again. Forced, because a fingerprint that
+    // comes back after another native build moves its tag to this newer build.
+    { name: 'Tag the native build', cmd: ['git', 'push', '--force', 'origin', `${sha}:refs/tags/${nativeTag(fingerprint)}`] },
   ]
 }
 
@@ -100,8 +136,36 @@ const show = (steps: ReleaseStep[]) => { for (const s of steps) console.log(`- $
 const run = (steps: ReleaseStep[]) => {
   for (const s of steps) {
     console.log(`\n== ${s.name}`)
-    execFileSync(s.cmd[0]!, s.cmd.slice(1), { cwd: s.cwd, stdio: 'inherit', env: { ...process.env, ...s.env } })
+    try {
+      const stdout = execFileSync(s.cmd[0]!, s.cmd.slice(1), { cwd: s.cwd, stdio: ['inherit', s.check ? 'pipe' : 'inherit', 'inherit'], encoding: 'utf8', env: { ...process.env, ...s.env } })
+      if (s.check) { process.stdout.write(stdout); s.check(stdout) }
+    } catch (error) {
+      if (s.name === UPDATE_STEP) console.error(`\nThe web is live, but the update did not publish. Retry it with:\n${shellCommand(s)}\n`)
+      throw error
+    }
   }
+}
+
+function uploadKeyCertificate(): string {
+  const properties = Object.fromEntries(readFileSync(join(homedir(), '.gradle/gradle.properties'), 'utf8').split('\n')
+    .flatMap((line) => { const match = /^\s*(SHEAR_UPLOAD_\w+)\s*=\s*(.*?)\s*$/.exec(line); return match ? [[match[1]!, match[2]!]] : [] }))
+  const { SHEAR_UPLOAD_STORE_FILE: file, SHEAR_UPLOAD_KEY_ALIAS: alias, SHEAR_UPLOAD_STORE_PASSWORD: password } = properties
+  if (!file || !alias || !password) throw new Error('Set SHEAR_UPLOAD_* in ~/.gradle/gradle.properties.')
+  // The password goes through the environment, never the command line or the output.
+  return execFileSync(join(JAVA_HOME, 'bin/keytool'), ['-list', '-v', '-keystore', file, '-alias', alias, '-storepass:env', 'SHEAR_STORE_PASSWORD'], { encoding: 'utf8', env: { ...process.env, SHEAR_STORE_PASSWORD: password } })
+}
+
+const isAncestor = (ancestor: string, commit: string) => {
+  try { execFileSync('git', ['merge-base', '--is-ancestor', ancestor, commit]); return true } catch (error) {
+    if ((error as { status?: number }).status === 1) return false
+    throw error
+  }
+}
+
+function nativeBuildNeeded(fingerprint: string): boolean {
+  const tags = parseNativeTags(git('ls-remote', '--tags', '--refs', 'origin', 'native-*'))
+  if (tags.length) git('fetch', '--no-tags', 'origin', ...tags.map((tag) => tag.commit))
+  return needsNativeBuild(fingerprint, tags, isAncestor)
 }
 
 function androidFingerprint(mobile: string): string {
@@ -140,7 +204,7 @@ async function main() {
   if (dryRun) {
     show(commonSteps(input))
     console.log(`- Android fingerprint: ${fingerprintCmd.join(' ')}`)
-    console.log(`\nWhen origin has the tag ${nativeTag('<fingerprint>')} (JS-only change):`)
+    console.log(`\nWhen ${nativeTag('<fingerprint>')} is the newest native tag on origin (JS-only change):`)
     show(releaseSteps({ ...input, fingerprint: '<fingerprint>', nativeBuild: false }))
     console.log('\nOtherwise (native change):')
     show(releaseSteps({ ...input, fingerprint: '<fingerprint>', nativeBuild: true }))
@@ -151,8 +215,10 @@ async function main() {
   prompt.close()
   if (answer !== 'release') throw new Error('Stopped.')
   run(commonSteps(input))
+  // An ff-only merge into a worktree that is ahead of main reports success too.
+  if (git('-C', worktree, 'rev-parse', 'HEAD') !== sha) throw new Error(`The Android worktree is not at ${sha}: ${worktree}`)
   const fingerprint = androidFingerprint(join(worktree, 'mobile'))
-  const nativeBuild = needsNativeBuild(fingerprint, git('ls-remote', '--tags', '--refs', 'origin', nativeTag(fingerprint)))
+  const nativeBuild = nativeBuildNeeded(fingerprint)
   console.log(`\nAndroid fingerprint ${fingerprint}: ${nativeBuild ? 'native change, building the APK' : 'JS only, publishing an update'}.`)
   run(releaseSteps({ ...input, fingerprint, nativeBuild }))
   console.log(`\nReleased ${sha.slice(0, 7)}.`)

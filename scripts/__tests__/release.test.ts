@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { commonSteps, needsNativeBuild, releaseSteps } from '../release'
+import { assertUploadSigned, commonSteps, needsNativeBuild, parseNativeTags, releaseSteps, shellCommand } from '../release'
 
 const input = { sha: 'abc1234def', versionCode: 900, testers: 'a@example.com', notes: 'Notes', worktree: '/wt', fingerprint: 'fp1' }
 const common = commonSteps(input)
@@ -35,6 +35,11 @@ describe('releaseSteps', () => {
     expect(at(build, 'Deploy the web')).toBeLessThan(at(build, 'Send the APK to testers'))
   })
 
+  it('checks the APK signature right after the build', () => {
+    expect(at(build, 'Check the APK signature')).toBe(at(build, 'Build the release APK') + 1)
+    expect(step(build, 'Check the APK signature').cmd).toContain('/wt/mobile/android/app/build/outputs/apk/release/app-release.apk')
+  })
+
   it('deploys the rules after the APK build and before the web', () => {
     expect(at(build, 'Deploy the Firestore rules and indexes')).toBeGreaterThan(at(build, 'Build the release APK'))
     expect(at(build, 'Deploy the Firestore rules and indexes')).toBeLessThan(at(build, 'Deploy the web'))
@@ -48,7 +53,7 @@ describe('releaseSteps', () => {
   })
 
   it('tags the native build last and publishes no update', () => {
-    expect(build.at(-1)).toMatchObject({ name: 'Tag the native build', cmd: ['git', 'push', 'origin', 'abc1234def:refs/tags/native-fp1'] })
+    expect(build.at(-1)).toMatchObject({ name: 'Tag the native build', cmd: ['git', 'push', '--force', 'origin', 'abc1234def:refs/tags/native-fp1'] })
     expect(build.some((s) => s.cmd.includes('update'))).toBe(false)
   })
 
@@ -71,11 +76,47 @@ describe('releaseSteps', () => {
 })
 
 describe('needsNativeBuild', () => {
-  const tags = 'aaa\trefs/tags/native-fp1\nbbb\trefs/tags/native-fp12\n'
-  it('ships an update only when origin has the tag for this exact fingerprint', () => {
-    expect(needsNativeBuild('fp1', tags)).toBe(false)
-    expect(needsNativeBuild('fp', tags)).toBe(true)
-    expect(needsNativeBuild('fp2', tags)).toBe(true)
-    expect(needsNativeBuild('fp1', '')).toBe(true)
+  // A straight history: c1 < c2 < c3.
+  const history = ['c1', 'c2', 'c3']
+  const isAncestor = (ancestor: string, commit: string) => history.indexOf(ancestor) <= history.indexOf(commit)
+  const tags = parseNativeTags('c1\trefs/tags/native-fp1\nc2\trefs/tags/native-fp12\n')
+
+  it('reads the fingerprint and commit of every native tag', () => {
+    expect(tags).toEqual([{ commit: 'c1', fingerprint: 'fp1' }, { commit: 'c2', fingerprint: 'fp12' }])
+  })
+
+  it('ships an update only for the newest native build', () => {
+    expect(needsNativeBuild('fp12', tags, isAncestor)).toBe(false)
+    expect(needsNativeBuild('fp', tags, isAncestor)).toBe(true)
+    expect(needsNativeBuild('fp1', [], isAncestor)).toBe(true)
+  })
+
+  it('builds again when a fingerprint comes back after another native build', () => {
+    expect(needsNativeBuild('fp1', tags, isAncestor)).toBe(true)
+    // After that build the fp1 tag moves to c3, so the next JS-only change is an update again.
+    expect(needsNativeBuild('fp1', parseNativeTags('c3\trefs/tags/native-fp1\nc2\trefs/tags/native-fp12'), isAncestor)).toBe(false)
+  })
+})
+
+describe('shellCommand', () => {
+  it('repeats the update with its exact environment and an unset API URL', () => {
+    const ota = releaseSteps({ ...input, notes: "Coach's fix", nativeBuild: false }).at(-1)!
+    expect(shellCommand(ota)).toBe(
+      "cd /wt/mobile && env -u IRONLOG_MOBILE_API_URL IRONLOG_MOBILE_BACKEND=production IRONLOG_MOBILE_UPDATE_CHANNEL=production"
+      + " IRONLOG_MOBILE_RUNTIME_VERSION=fp1 EXPO_PUBLIC_COMMIT=abc1234 npx -y eas-cli@27.2.0 update --channel production"
+      + " --environment production --platform android --non-interactive --message 'Coach'\\''s fix'",
+    )
+  })
+})
+
+describe('assertUploadSigned', () => {
+  const keytool = 'Alias name: shear-upload\n\t SHA256: 8C:4B:89:32\n'
+  const signed = (dn: string, digest: string) => `Signer #1 certificate DN: ${dn}\nSigner #1 certificate SHA-256 digest: ${digest}\n`
+
+  it('accepts only the upload key', () => {
+    expect(() => assertUploadSigned(signed('CN=Patryk Dudek, O=SHEAR', '8c4b8932'), keytool)).not.toThrow()
+    expect(() => assertUploadSigned(signed('CN=Android Debug, OU=Android', 'fac61745'), keytool)).toThrow(/debug key/)
+    expect(() => assertUploadSigned(signed('CN=Someone', 'deadbeef'), keytool)).toThrow(/not signed with the SHEAR upload key/)
+    expect(() => assertUploadSigned(signed('CN=Patryk Dudek, O=SHEAR', '8c4b8932'), 'no certificate')).toThrow(/upload key/)
   })
 })

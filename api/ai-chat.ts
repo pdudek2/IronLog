@@ -482,7 +482,7 @@ async function generatePlan(
       model,
       max_tokens: 32768,
       reasoning: { effort: 'high', exclude: true },
-      provider: { require_parameters: true },
+      provider: COACH_PROVIDERS,
       stream: false,
       messages: [{ role: 'system', content: buildPlanSystemPrompt(context, request, catalog) }, {
         role: 'user',
@@ -539,7 +539,7 @@ export async function streamChatReply(
           model,
           max_tokens: 16384,
           reasoning: { effort: 'medium', exclude: true },
-          provider: { require_parameters: true },
+          provider: COACH_PROVIDERS,
           stream: true,
           messages: [{ role: 'system', content: buildSystemPrompt(context) }, ...messages.map((message) => ({
             role: message.role,
@@ -602,6 +602,9 @@ export async function streamChatReply(
     bridge.dispose()
   }
 }
+
+// Only the companies the privacy policy names, and none that keep prompts, whatever the OpenRouter account allows.
+const COACH_PROVIDERS = { require_parameters: true, only: ['openai', 'azure', 'amazon-bedrock'], data_collection: 'deny' }
 
 const UPSTREAM_REJECTED = new Set(['invalid-key', 'rate-limited', 'model-unavailable', 'upstream-unavailable', 'network-retryable'])
 const SERVER_KEY_PROBLEM = new Set(['invalid-key', 'rate-limited', 'model-unavailable'])

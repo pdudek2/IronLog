@@ -179,6 +179,12 @@ describe('Coach on the shared key', () => {
     expect(mocks.reserveCoachUnits).not.toHaveBeenCalled()
   })
 
+  it('sends prompts only to the providers the privacy policy names, and none that keep them', async () => {
+    const result = await call(chatBody, streamed)
+    expect(JSON.parse(result.fetchMock.mock.calls[0]![1].body).provider)
+      .toEqual({ require_parameters: true, only: ['openai', 'azure', 'amazon-bedrock'], data_collection: 'deny' })
+  })
+
   it('leaves the allowance alone with the user’s own key', async () => {
     const result = await call({ ...chatBody, apiKey: OWN_KEY }, streamed)
     expect(result.fetchMock.mock.calls[0]![1].headers.Authorization).toBe(`Bearer ${OWN_KEY}`)

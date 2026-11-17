@@ -7,7 +7,7 @@ import { categories, equipmentOptions, muscleOptions, validateExerciseInput, typ
 import { createSessionRevision } from './firebase'
 import { confirmExerciseMutation, ExerciseCreateConflictError, ExerciseNotSubmittedError, writeCustomExercise } from './nativeExercises'
 import { startExerciseMutation, waitForExerciseMutation, waitForExerciseConfirmation, type MutationAttempt } from './exerciseMutation'
-import { colors, primaryGradient } from './theme'
+import { colors, primaryGradient, fieldColors } from './theme'
 import { showDialog } from './dialog'
 import { Icon } from './icons'
 import { KeyboardLift } from './KeyboardLift'
@@ -112,7 +112,7 @@ export default function ExerciseForm({ uid, exercise, initialName, onClose, onSa
       <View accessibilityViewIsModal style={[styles.sheet, { paddingBottom: Math.max(16, insets.bottom) }]}>
         <View style={styles.header}><Text accessibilityRole="header" style={styles.title}>{exercise ? 'Edit custom exercise' : 'Add custom exercise'}</Text><Pressable accessibilityRole="button" accessibilityLabel="Close form" onPress={close} style={styles.close}><Icon name="close" size={18} /></Pressable></View>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-          <View style={styles.group}><Text style={styles.label}>Name</Text><TextInput ref={nameField} accessibilityLabel="Exercise name" selectionColor={colors.selection} value={input.name} editable={!locked} maxLength={120} onChangeText={name => { setInput({ ...input, name }); setError(null) }} placeholder="E.g. Banded Pull-apart" placeholderTextColor={colors.mutedSoft} style={styles.input} /></View>
+          <View style={styles.group}><Text style={styles.label}>Name</Text><TextInput ref={nameField} accessibilityLabel="Exercise name" {...fieldColors} value={input.name} editable={!locked} maxLength={120} onChangeText={name => { setInput({ ...input, name }); setError(null) }} placeholder="E.g. Banded Pull-apart" placeholderTextColor={colors.mutedSoft} style={styles.input} /></View>
           <View style={styles.pair}>
             <Select label="Category" value={input.category} options={categories} getLabel={value => EXERCISE_CATEGORY_LABELS[value]!} disabled={locked} onChange={category => setInput({ ...input, category })} />
             <Select label="Equipment" value={input.equipment} options={equipmentOptions} getLabel={getEquipmentLabel} disabled={locked} onChange={equipment => setInput({ ...input, equipment })} />

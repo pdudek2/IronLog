@@ -149,12 +149,15 @@ export default function DashboardScreen() {
   const startWeightOf = (exercise: TemplateExercise) => chosenBest
     ? templateStartWeight(exercise, chosenBest.get(`${exercise.exerciseSource}:${exercise.exerciseId}`))
     : 0
-  // A started workout reloads the session while Train is still leaving; Train keeps the layout it had when it lost focus.
+  // Start reloads the session before Train leaves; from the Start press until the next visit Train keeps the layout it had.
   const isFocused = useIsFocused()
-  const live = { active: active.state, launch: launch?.state.status ?? 'loading' }
+  const live = { active: active.state, launch: launch?.state.status ?? 'loading', blurred: false }
   const [shown, setShown] = useState(live)
-  if (isFocused && (shown.active !== live.active || shown.launch !== live.launch)) setShown(live)
-  const view = isFocused ? live : shown
+  const launchFailed = live.launch === 'retry' || live.launch === 'unavailable' || live.launch === 'corrupt'
+  const handingOver = shown.launch === 'starting' && !launchFailed
+  if (!isFocused) { if (!shown.blurred) setShown({ ...shown, blurred: true }) }
+  else if (shown.blurred || (!handingOver && (shown.active !== live.active || shown.launch !== live.launch))) setShown(live)
+  const view = !isFocused || handingOver ? shown : live
   const canOfferStart = view.active.status === 'empty' && closure?.closure.status === 'ready'
   // Start waits for recent workouts too, so the queued day does not replace the first one on screen.
   const plansPending = view.active.status === 'loading' || (canOfferStart && (templatesState.status === 'loading' || state.status === 'loading'))

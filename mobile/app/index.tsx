@@ -61,7 +61,7 @@ import { covers } from '../src/covers'
 import { buildProgression, planTarget, sessionHint, type ProgressionInput } from '../../src/shared/progression'
 import { computeReadinessScore, todayKey } from '../../src/shared/readiness'
 import { workoutCover } from '../../src/shared/workoutCover'
-import { colors, primaryGradient } from '../src/theme'
+import { colors, primaryGradient, fieldColors } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
 import { takeAccountDeletedNotice } from '../src/accountData'
@@ -199,7 +199,7 @@ function LoginForm() {
               returnKeyType="next"
               submitBehavior="submit"
               onSubmitEditing={() => passwordInput.current?.focus()}
-              selectionColor={colors.selection}
+              {...fieldColors}
               style={styles.input}
               value={email}
             />
@@ -218,7 +218,7 @@ function LoginForm() {
               onSubmitEditing={() => void submit()}
               placeholderTextColor={colors.mutedSoft}
               returnKeyType="done"
-              selectionColor={colors.selection}
+              {...fieldColors}
               secureTextEntry
               style={styles.input}
               value={password}
@@ -310,7 +310,7 @@ function SetValueInput({ value, units, field, label, rejectedEdit, inputRef, onC
     placeholder={field === 'weight' ? '–' : '0'}
     placeholderTextColor={colors.mutedSoft}
     selectTextOnFocus
-    selectionColor={colors.selection}
+    {...fieldColors}
     style={styles.panelInput}
     value={text}
   />
@@ -356,6 +356,16 @@ function SetTick({ draw }: { draw: boolean }) {
   return <Animated.View style={{ alignSelf: 'center', transform: [{ scale }] }}>
     <Svg width={16} height={16} viewBox="0 0 24 24"><AnimatedPath d="M20 6 9 17l-5-5" fill="none" stroke={colors.recovery} strokeDasharray={23} strokeDashoffset={offset} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
   </Animated.View>
+}
+
+// A status that clears within the delay is never drawn, so a quick handover does not flash a loader or notice.
+function Delayed({ ms, children }: { ms: number; children: React.ReactNode }) {
+  const [due, setDue] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setDue(true), ms)
+    return () => clearTimeout(timer)
+  }, [ms])
+  return due ? <FadeIn>{children}</FadeIn> : null
 }
 
 function FadeIn({ children }: { children: React.ReactNode }) {
@@ -932,10 +942,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
       {logoutError && <Text accessibilityLiveRegion="polite" style={styles.logoutError}>{logoutError}</Text>}
 
       {state.status === 'loading' && (
-        <View accessibilityLiveRegion="polite" style={styles.centerState}>
+        <Delayed ms={500}><View accessibilityLiveRegion="polite" style={styles.centerState}>
           <View style={[styles.brandMark, styles.loaderMark]}><BrandMark width={26} /></View>
           <Text style={styles.stateTitle}>Checking your session…</Text>
-        </View>
+        </View></Delayed>
       )}
 
       {state.status === 'cache-miss' && (
@@ -990,10 +1000,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
         <View pointerEvents={sessionLocked ? 'none' : 'auto'}>
           <Text accessibilityLiveRegion="polite" style={styles.syncInline}>{state.syncStatus === 'saving' ? 'Syncing…' : state.syncStatus === 'local' && !state.stale ? 'Saved on device' : ''}</Text>
           {state.stale && !['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && (
-            <View style={styles.staleNotice}>
+            <Delayed ms={1500}><View style={styles.staleNotice}>
               <Text style={styles.staleTitle}>Saved on this device</Text>
               <Text style={styles.staleCopy}>This may be out of date. Reconnect to confirm the workout is still active.</Text>
-            </View>
+            </View></Delayed>
           )}
 
           {['failed', 'storage-error', 'conflict'].includes(state.syncStatus) && <View accessibilityLiveRegion="polite" style={styles.syncNotice}>

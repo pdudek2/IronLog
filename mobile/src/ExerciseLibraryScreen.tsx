@@ -18,7 +18,7 @@ import type { ExerciseSource } from './session'
 import BottomNavigation, { useBottomNavigation, useNavigationInset } from './BottomNavigation'
 import HistoryHeader from './HistoryHeader'
 import ExerciseForm from './ExerciseForm'
-import { colors, pageBackground, pageTitle } from './theme'
+import { colors, pageBackground, pageTitle, fieldColors } from './theme'
 import { Icon as LineIcon } from './icons'
 
 // `remember` keeps the last result for the next visit to the library list; the key holds the uid.
@@ -82,7 +82,7 @@ function Library({ uid }: { uid: string }) {
   return <Frame navigation={navigation}>
     <FlatList data={items} keyExtractor={item => item.key} onScroll={navigation.onScroll} scrollEventThrottle={16} keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: 96 + navigationInset }]}
       ListHeaderComponent={<View style={styles.libraryHeader}><View><BackLink label="Plans" onPress={() => router.navigate('/templates')} /><Text accessibilityRole="header" style={styles.title}>Exercises</Text></View><View style={styles.commands}>
-        <View style={styles.search}><View style={styles.searchRow}><Icon kind="search" /><TextInput accessibilityLabel="Search exercises" selectionColor={colors.selection} placeholder="Search exercises..." placeholderTextColor={colors.mutedSoft} value={search} onChangeText={setSearch} style={styles.searchInput} /></View>{activeFilters && <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" hitSlop={6} onPress={clear} style={styles.clear}><Text style={styles.action}>Clear</Text></Pressable>}</View>
+        <View style={styles.search}><View style={styles.searchRow}><Icon kind="search" /><TextInput accessibilityLabel="Search exercises" {...fieldColors} placeholder="Search exercises..." placeholderTextColor={colors.mutedSoft} value={search} onChangeText={setSearch} style={styles.searchInput} /></View>{activeFilters && <Pressable accessibilityRole="button" accessibilityLabel="Clear filters" hitSlop={6} onPress={clear} style={styles.clear}><Text style={styles.action}>Clear</Text></Pressable>}</View>
         <View style={styles.commandRow}><Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded(!expanded)} style={styles.filterToggle}><Icon kind="filters" /><Text style={styles.commandText}>Filters</Text>{filterCount > 0 && <Text style={styles.filterCount}>{filterCount}</Text>}<View style={styles.chevron}><LineIcon name={expanded ? 'chevron-up' : 'chevron-down'} /></View></Pressable><Pressable accessibilityRole="button" accessibilityState={{ disabled: catalog.state.status !== 'ready' || catalog.state.fromCache }} disabled={catalog.state.status !== 'ready' || catalog.state.fromCache} onPress={() => setForm({ exercise: null })} style={[styles.add, catalog.state.status !== 'ready' && { opacity: 0.5 }]}><LineIcon name="plus" size={14} color={colors.textStrong} /><Text style={styles.commandText}>Add custom</Text></Pressable></View>
         {expanded && <View style={styles.filterBoard}><Filter label="Exercise category" options={['all', ...categories]} value={category} getLabel={value => value === 'all' ? 'All' : EXERCISE_CATEGORY_LABELS[value]!} onChange={setCategory} /><Filter label="Equipment" options={['all', ...equipmentOptions]} value={equipment} getLabel={value => value === 'all' ? 'All' : getEquipmentLabel(value)} onChange={setEquipment} /></View>}
       </View></View>}

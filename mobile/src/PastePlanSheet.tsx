@@ -6,7 +6,7 @@ import { createSessionRevision, readExerciseMetadata, readUnits } from './fireba
 import { planEditorJournal } from './filePlanEditorJournal'
 import { importedPlanDraft } from './planEditor'
 import { useSessionRead } from './useSessionRead'
-import { colors, primaryGradient } from './theme'
+import { colors, primaryGradient, fieldColors } from './theme'
 import { importPlanText } from '../../src/shared/planImport'
 
 const EXAMPLE = 'Upper\nBench press 4x8 60 kg\nPull-up 3x8\n\nLower\nSquat 3x5 @80'
@@ -43,7 +43,7 @@ export function PastePlanSheet({ uid, onClose, returnTo }: { uid: string; onClos
   return <BottomSheet title="Paste a plan" onClose={onClose}>{(close) => <View>
     <Text style={styles.help}>Day names on their own line, then one exercise per line with sets, reps and weight. You check the result before saving.</Text>
     <TextInput accessibilityLabel="Plan text" multiline value={text} maxLength={20000} onChangeText={(value) => { setText(value); setError(null) }}
-      placeholder={EXAMPLE} placeholderTextColor={colors.muted} selectionColor={colors.selection} textAlignVertical="top" style={styles.field} />
+      placeholder={EXAMPLE} placeholderTextColor={colors.muted} {...fieldColors} textAlignVertical="top" style={styles.field} />
     {error && <Text accessibilityRole="alert" style={styles.error}>{error}</Text>}
     {collision && <View style={styles.collision}>
       <Text style={styles.help}>A new plan draft is already on this device. Finish or discard it before pasting another plan.</Text>

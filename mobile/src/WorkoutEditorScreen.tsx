@@ -23,7 +23,7 @@ import HistoryHeader from './HistoryHeader'
 import ActiveWorkoutReturnBar from './ActiveWorkoutReturnBar'
 import ExercisePicker from './ExercisePicker'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
-import { colors, pageBackground, pageTitle } from './theme'
+import { colors, pageBackground, pageTitle, fieldColors } from './theme'
 import { ConfirmDialog } from './dialog'
 import { Icon } from './icons'
 
@@ -131,8 +131,8 @@ function Editor({ uid, workoutId, deleting }: { uid: string; workoutId: string; 
             <View style={[styles.row, styles.tableHead]}><Text style={[styles.muted, styles.index]}>#</Text><Text style={[styles.muted, styles.cell]}>{draft.units}</Text><Text style={[styles.muted, styles.cell]}>Reps</Text><View style={styles.remove} /></View>
             {ex.sets.map((set, setIndex) => <View key={set.rowId} style={styles.row}>
               <Text style={[styles.index, styles.setNumber]}>{setIndex + 1}</Text>
-              <TextInput accessibilityLabel={`Weight, ${ex.name}, set ${setIndex + 1}, ${draft.units}`} keyboardType="decimal-pad" maxLength={32} editable={!locked} value={set.weight} style={[styles.input, styles.cell]} selectTextOnFocus selectionColor={colors.selection} onChangeText={weight => acceptSetInput(weight, set.weight, 'weight', draft.units) && changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.map(s => s.rowId === set.rowId ? { ...s, weight } : s) }))} />
-              <TextInput accessibilityLabel={`Reps, ${ex.name}, set ${setIndex + 1}`} keyboardType="number-pad" maxLength={16} editable={!locked} value={set.reps} style={[styles.input, styles.cell]} selectTextOnFocus selectionColor={colors.selection} onChangeText={reps => acceptSetInput(reps, set.reps, 'reps', draft.units) && changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.map(s => s.rowId === set.rowId ? { ...s, reps } : s) }))} />
+              <TextInput accessibilityLabel={`Weight, ${ex.name}, set ${setIndex + 1}, ${draft.units}`} keyboardType="decimal-pad" maxLength={32} editable={!locked} value={set.weight} style={[styles.input, styles.cell]} selectTextOnFocus {...fieldColors} onChangeText={weight => acceptSetInput(weight, set.weight, 'weight', draft.units) && changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.map(s => s.rowId === set.rowId ? { ...s, weight } : s) }))} />
+              <TextInput accessibilityLabel={`Reps, ${ex.name}, set ${setIndex + 1}`} keyboardType="number-pad" maxLength={16} editable={!locked} value={set.reps} style={[styles.input, styles.cell]} selectTextOnFocus {...fieldColors} onChangeText={reps => acceptSetInput(reps, set.reps, 'reps', draft.units) && changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.map(s => s.rowId === set.rowId ? { ...s, reps } : s) }))} />
               <Pressable accessibilityRole="button" accessibilityLabel={`Remove set ${setIndex + 1}, ${ex.name}`} disabled={locked || ex.sets.length <= 1} onPress={() => changeExercise(ex.rowId, item => ({ ...item, sets: item.sets.filter(s => s.rowId !== set.rowId) }))} style={styles.remove}>{ex.sets.length > 1 && <Icon name="close" />}</Pressable>
             </View>)}
             <Action outlined title="+ Set" disabled={locked || ex.sets.length >= 20} onPress={() => changeExercise(ex.rowId, item => ({ ...item, sets: [...item.sets, { rowId: id(), weight: '0', reps: '' }] }))} />

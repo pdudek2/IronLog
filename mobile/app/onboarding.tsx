@@ -8,7 +8,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { createProfile, logout } from '../src/firebase'
 import { ProfileDataError, type ProfileFields } from '../src/profile'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
-import { colors, primaryGradient } from '../src/theme'
+import { colors, primaryGradient, fieldColors } from '../src/theme'
 import { revealApp } from '../src/splash'
 
 // Same goals and descriptions as the web onboarding.
@@ -67,7 +67,7 @@ export default function OnboardingScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Name</Text>
           <TextInput accessibilityLabel="Name" autoComplete="name" editable={!saving} placeholder="E.g. Alex" placeholderTextColor={colors.muted}
-            selectionColor={colors.selection} value={input.displayName} maxLength={80}
+            {...fieldColors} value={input.displayName} maxLength={80}
             onChangeText={(displayName) => { setInput((current) => ({ ...current, displayName })); if (nameError) setNameError('') }}
             style={[styles.input, nameError ? styles.invalidInput : null]} />
           {nameError ? <Text accessibilityLiveRegion="polite" style={styles.error}>{nameError}</Text> : null}

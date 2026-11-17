@@ -17,7 +17,7 @@ import { CoachController } from '../src/coachController'
 import { nativeCoachDependencies } from '../src/coachNative'
 import { markdownBlocks, markdownInline } from '../src/coachMarkdown'
 import type { AiContextMetadata } from '../../src/lib/aiContext'
-import { colors, pageTitle, primaryGradient } from '../src/theme'
+import { colors, pageTitle, primaryGradient, fieldColors } from '../src/theme'
 import { BottomSheet } from '../src/BottomSheet'
 import { Icon } from '../src/icons'
 import { resetTimeLabel } from '../../src/shared/coachQuota'
@@ -93,7 +93,7 @@ function Coach({ uid }: { uid: string }) {
   const keyPanel = settings ? <View style={s.settings}>
     <View style={s.row}><Text style={s.settingsTitle}>OpenRouter key</Text><Button onPress={() => { setSettings(false); setDraft(''); setReveal(false) }}>{state.key ? 'Collapse' : 'Cancel'}</Button></View>
     <Text style={s.label}>Your key</Text>
-    <TextInput accessibilityLabel="Your OpenRouter key" value={draft} onChangeText={setDraft} secureTextEntry={!reveal} selectionColor={colors.selection}
+    <TextInput accessibilityLabel="Your OpenRouter key" value={draft} onChangeText={setDraft} secureTextEntry={!reveal} {...fieldColors}
       editable={!state.keyLoading && !state.keySaving && !state.storageError} autoCorrect={false} autoCapitalize="none" autoComplete="off" maxLength={4096}
       placeholder="Paste OpenRouter API key" placeholderTextColor={colors.mutedSoft} style={s.keyInput} />
     <View style={s.row}>
@@ -157,7 +157,7 @@ function Coach({ uid }: { uid: string }) {
         {/* The composer stays above the tab bar and rides the keyboard over it. */}
         <KeyboardLift rest={navigationInset}>{ready && <View style={s.composer}>
           <View style={s.composerField}>
-            <TextInput accessibilityLabel="Message to AI Coach" selectionColor={colors.selection} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !limit)}
+            <TextInput accessibilityLabel="Message to AI Coach" {...fieldColors} multiline maxLength={4000} value={input} onChangeText={setInput} editable={state.generation !== 'streaming' && (configured || !limit)}
               placeholder="Ask about your training" placeholderTextColor={colors.mutedSoft} style={s.composerInput} textAlignVertical="center" />
             <Pressable accessibilityRole="button" accessibilityLabel={state.generation === 'streaming' ? 'Sending' : 'Send'} accessibilityState={{ disabled: !input.trim() || !controller.canSend }} disabled={!input.trim() || !controller.canSend} onPress={() => send(input)}
               style={({ pressed }) => [s.send, !input.trim() || !controller.canSend ? s.sendDisabled : s.sendOn, pressed && s.pressed]}>

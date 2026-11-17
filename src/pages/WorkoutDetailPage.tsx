@@ -215,6 +215,11 @@ export default function WorkoutDetailPage() {
   const [projectionRetry, setProjectionRetry] = useState<ProjectionRetryState>('idle')
   const [saving, setSaving] = useState(false)
   const editBaseline = useRef<string | null>(null)
+  // Each edited set's weight before the edit, by identity: sets have no ids and removing one shifts positions.
+  const originalWeights = useRef(new WeakMap<object, number>())
+  const confirmedSlip = useRef<string | null>(null)
+  const latestSave = useRef(handleSave)
+  useEffect(() => { latestSave.current = handleSave })
   const pendingEdit = useRef<{ guard: WorkoutMutationGuard; label: string | null; exercises: WorkoutSummary['exercises'] } | null>(null)
   const deleteGuard = useRef<WorkoutMutationGuard | null>(null)
   const [isEditing, setIsEditing] = useState(false)
@@ -294,8 +299,11 @@ export default function WorkoutDetailPage() {
       if (scope !== deleteScopeRef.current) return
       if (!state.workout || !state.baseline) throw new Error('Workout is no longer available.')
       editBaseline.current = state.baseline
+      const edited = cloneExercises(state.workout.exercises)
+      originalWeights.current = new WeakMap(edited.flatMap((exercise) => exercise.sets.map((set) => [set, set.weight] as const)))
+      confirmedSlip.current = null
       setEditedLabel(state.workout.label ?? '')
-      setEditedExercises(cloneExercises(state.workout.exercises))
+      setEditedExercises(edited)
       setEditOpenedWith(JSON.stringify({ label: state.workout.label ?? '', exercises: state.workout.exercises }))
       setShowEditErrors(false)
       setIsEditing(true)
@@ -346,8 +354,6 @@ export default function WorkoutDetailPage() {
 
   function handleSetChange(exerciseIndex: number, setIndex: number, field: 'weight' | 'reps', value: string) {
     if (pendingEdit.current || saving) return
-    // Its "Save anyway" would save the values from before this change.
-    toast.dismiss('save-weight-slip')
     const numericValue = parseSetDraftValue(field, value)
 
     setEditedExercises((current) => current.map((exercise, currentExerciseIndex) => {
@@ -357,15 +363,16 @@ export default function WorkoutDetailPage() {
         ...exercise,
         sets: exercise.sets.map((set, currentSetIndex) => {
           if (currentSetIndex !== setIndex) return set
-          return field === 'weight'
-            ? { ...set, weight: numericValue }
-            : { ...set, reps: numericValue }
+          const next = field === 'weight' ? { ...set, weight: numericValue } : { ...set, reps: numericValue }
+          const before = originalWeights.current.get(set)
+          if (before !== undefined) originalWeights.current.set(next, before)
+          return next
         }),
       }
     }))
   }
 
-  async function handleSave(confirmed = false) {
+  async function handleSave() {
     if (!workout || saving || !editBaseline.current) return
     const scope = deleteScopeRef.current
     const validationError = getWorkoutEditError(editedExercises)
@@ -376,13 +383,12 @@ export default function WorkoutDetailPage() {
       requestAnimationFrame(() => document.querySelector<HTMLInputElement>('.workout-detail-set-editor-row input[aria-invalid="true"]')?.focus())
       return
     }
-    // Sets carry no ids here, so an edited set is compared with the set at the same place before the edit.
-    const slip = confirmed || pendingEdit.current ? null : editedExercises.flatMap((exercise, exerciseIndex) => {
-      const before = workout.exercises[exerciseIndex]
-      return before?.exerciseId === exercise.exerciseId ? exercise.sets.map((set, setIndex) => weightSlip(set.weight, before.sets[setIndex]?.weight, units, 'Before')) : []
-    }).find((question) => question !== null)
-    if (slip) {
-      toast(`${slip.title} ${slip.message}`, { id: 'save-weight-slip', action: { label: 'Save anyway', onClick: () => void handleSave(true) }, cancel: { label: 'Fix', onClick: () => undefined } })
+    const slip = pendingEdit.current ? null : editedExercises.flatMap((exercise) => exercise.sets)
+      .map((set) => weightSlip(set.weight, originalWeights.current.get(set), units, 'Before')).find((question) => question !== null)
+    const question = slip && `${slip.title} ${slip.message}`
+    if (question && confirmedSlip.current !== question) {
+      // "Save anyway" saves what is on screen when it is tapped, not what was there when the question appeared.
+      toast(question, { id: 'save-weight-slip', action: { label: 'Save anyway', onClick: () => { confirmedSlip.current = question; void latestSave.current() } }, cancel: { label: 'Fix', onClick: () => undefined } })
       return
     }
     const nextLabel = pendingEdit.current?.label ?? (editedLabel || null)

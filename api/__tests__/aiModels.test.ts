@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ApiRequest, ApiResponse } from '../_lib/http.js'
 vi.mock('../_lib/auth.js', () => ({ requireUserId: vi.fn().mockResolvedValue('user-1') }))
+const rateLimit = vi.hoisted(() => ({ assertRateLimit: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../_lib/rateLimit.js', () => ({
-  assertRateLimit: vi.fn().mockResolvedValue(undefined),
+  assertRateLimit: rateLimit.assertRateLimit,
   RateLimitError: class extends Error {},
 }))
 vi.mock('../_lib/coachQuota.js', async (importOriginal) => ({
@@ -39,7 +40,10 @@ describe('OpenRouter key verification', () => {
       await handler({ method: 'POST', headers: { 'content-type': 'application/json' }, body } as ApiRequest, res)
       return { status: res.statusCode, body: JSON.parse(output) as unknown }
     }
+    rateLimit.assertRateLimit.mockClear()
     expect(await call({ quota: true })).toEqual({ status: 200, body: { used: 3, limit: 20, resetAt: '2026-11-17T00:00:00.000Z', shared: true } })
+    // Reading the allowance must not spend the budget for key checks against OpenRouter.
+    expect(rateLimit.assertRateLimit).toHaveBeenCalledWith(expect.objectContaining({ key: expect.stringMatching(/^quota:/), limit: 60 }))
     expect((await call({})).status).toBe(400)
     expect(fetchMock).not.toHaveBeenCalled()
   })

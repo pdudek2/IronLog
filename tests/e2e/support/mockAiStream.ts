@@ -169,6 +169,8 @@ export async function installMockAiRuntime(page: Page, attempts: MockAiAttempt[]
 
       if (attempt.kind === 'error') {
         nextAttempt += 1
+        // A spent allowance on the server means its counter is full, which is what the next read sees.
+        if (sharedKey && attempt.code === 'daily-limit') used = 20
         return new Response(JSON.stringify({ error: attempt.message, code: attempt.code, resetAt: attempt.resetAt }), {
           status: attempt.status,
           headers: { 'Content-Type': 'application/json; charset=utf-8' },

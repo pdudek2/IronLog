@@ -1,6 +1,6 @@
 import type { EditableWorkout, WorkoutEditContent, WorkoutMutationGuard } from '../../src/shared/workoutMutation'
 import { displayWeightStringToKg, kgToDisplayWeight, type WeightUnits } from '../../src/shared/weightUnits'
-import { weightSlip } from '../../src/shared/workoutLimits'
+import { weightSlip } from '../../src/shared/setInput'
 export interface WorkoutDraftSet { rowId: string; weight: string; reps: string; originalKg?: number; originalDisplay?: string; completedAt?: number }
 export interface WorkoutDraftExercise { rowId: string; exerciseId: string; exerciseSource: 'global' | 'user'; name: string; sets: WorkoutDraftSet[]; group?: string }
 export type WorkoutPendingOperation = WorkoutMutationGuard & { workoutId: string; committed?: true } & ({ action: 'delete' } | { action: 'update'; content: WorkoutEditContent })

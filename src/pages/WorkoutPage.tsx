@@ -34,7 +34,8 @@ import { isActiveSessionStale } from '../lib/sessionDuration'
 import WorkoutSetPanel from '../components/workout/WorkoutSetPanel'
 import { workoutCover } from '../shared/workoutCover'
 import { formatCompactVolume, kgToDisplayWeight } from '../lib/weightUnits'
-import { completedSetError, lastSessionBest, MAX_SESSION_EXERCISES, needsWeightConfirm, weightSlip } from '../shared/workoutLimits'
+import { completedSetError, MAX_SESSION_EXERCISES, needsWeightConfirm } from '../shared/workoutLimits'
+import { lastSessionBest, weightSlip } from '../shared/setInput'
 import {
   EXERCISE_CATEGORY_LABELS,
 } from '../lib/exerciseLabels'

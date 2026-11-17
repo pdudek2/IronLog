@@ -24,7 +24,7 @@ import { showDialog } from './dialog'
 import { Icon } from './icons'
 import { pluralize } from '../../src/lib/pluralize'
 import { newPlanDayId } from '../../src/shared/planDay'
-import { acceptSetInput } from '../../src/shared/workoutLimits'
+import { acceptSetInput } from '../../src/shared/setInput'
 
 const newId = () => createSessionRevision()
 

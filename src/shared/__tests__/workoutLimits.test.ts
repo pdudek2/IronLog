@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { acceptSetInput, clampSetValue, lastSessionBest, needsWeightConfirm, weightSlip } from '../workoutLimits'
+import { clampSetValue, needsWeightConfirm } from '../workoutLimits'
+import { acceptSetInput, lastSessionBest, weightSlip } from '../setInput'
 import { weightStep } from '../weightUnits'
 
 describe('needsWeightConfirm', () => {

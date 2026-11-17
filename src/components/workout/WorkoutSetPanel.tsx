@@ -9,7 +9,7 @@ import {
 } from '../../lib/weightUnits'
 import { weightStep } from '../../shared/weightUnits'
 import { setPanelStatus } from '../../shared/workoutDisplay'
-import { acceptSetInput } from '../../shared/workoutLimits'
+import { acceptSetInput } from '../../shared/setInput'
 
 interface WorkoutSetPanelProps {
   exerciseIndex: number

@@ -3,7 +3,7 @@ import { ApiRejectedError } from '../lib/authedApi'
 import { useEffect, useRef, useState } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import { exerciseSummaryLabel } from '../shared/workoutDisplay'
-import { acceptSetInput, weightSlip } from '../shared/workoutLimits'
+import { acceptSetInput, weightSlip } from '../shared/setInput'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowLeft,

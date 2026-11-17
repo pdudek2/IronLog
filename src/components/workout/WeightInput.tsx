@@ -1,5 +1,5 @@
 import { useState, type InputHTMLAttributes } from 'react'
-import { acceptSetInput } from '../../shared/workoutLimits'
+import { acceptSetInput } from '../../shared/setInput'
 import type { WeightUnits } from '../../shared/weightUnits'
 
 function sanitizeDecimal(raw: string): string {

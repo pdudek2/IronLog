@@ -597,7 +597,8 @@ export async function streamChatReply(
         ...result.detail,
         model,
       })
-      if (!result.answered) await onUnanswered()
+      // A finish reason (length, content_filter) means the model ran and was billed, and a prompt can provoke it.
+      if (!result.answered && !result.detail?.finishReason) await onUnanswered()
     }
 
     bridge.markTerminal()

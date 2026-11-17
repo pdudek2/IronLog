@@ -161,6 +161,12 @@ describe('Coach on the shared key', () => {
     expect(console.error).toHaveBeenCalledWith('[ai-chat stream terminal]', expect.objectContaining({ answered: false }))
   })
 
+  it.each(['length', 'content_filter'])('keeps the unit when the model stopped with %s before any text', async (finishReason) => {
+    await call(chatBody, () => sse(`data: {"choices":[{"index":0,"delta":{},"finish_reason":"${finishReason}"}]}\n\n`))
+    expect(console.error).toHaveBeenCalledWith('[ai-chat stream terminal]', expect.objectContaining({ answered: false, finishReason }))
+    expect(mocks.refundCoachUnits).not.toHaveBeenCalled()
+  })
+
   it('logs the upstream code and message without content, and keeps the unit once text was sent', async () => {
     await call(chatBody, () => sse('data: {"choices":[{"index":0,"delta":{"content":"Tak"}}]}\n\ndata: {"error":{"code":"server_error","message":"Upstream timed out"}}\n\n'))
     expect(console.error).toHaveBeenCalledWith('[ai-chat stream terminal]', expect.objectContaining({ reason: 'upstream-error', answered: true, code: 'server_error', message: 'Upstream timed out' }))

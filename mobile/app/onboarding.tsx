@@ -1,7 +1,7 @@
 import Slider from '@react-native-community/slider'
 import { useRouter } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -9,6 +9,7 @@ import { createProfile, logout } from '../src/firebase'
 import { ProfileDataError, type ProfileFields } from '../src/profile'
 import { useActiveRuntime, useAuthRuntime } from '../src/runtime'
 import { colors, primaryGradient } from '../src/theme'
+import { revealApp } from '../src/splash'
 
 // Same goals and descriptions as the web onboarding.
 const GOALS: { value: ProfileFields['primaryGoal']; label: string; desc: string }[] = [
@@ -25,6 +26,7 @@ export default function OnboardingScreen() {
   const active = useActiveRuntime()
   const router = useRouter()
   const insets = useSafeAreaInsets()
+  useEffect(revealApp, [])
   const [input, setInput] = useState<ProfileFields>({ displayName: '', primaryGoal: 'hypertrophy', weeklyGoal: 3, units: 'kg' })
   const [nameError, setNameError] = useState('')
   const [saveError, setSaveError] = useState('')

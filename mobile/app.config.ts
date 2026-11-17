@@ -1,5 +1,7 @@
 import type { ExpoConfig } from 'expo/config'
 import { withAndroidManifest, withAppBuildGradle, type ConfigPlugin } from 'expo/config-plugins'
+// Expo loads this file without a TypeScript resolver, so the import names the file with its extension.
+import { palette } from '../src/shared/palette.ts'
 
 const backend = process.env.IRONLOG_MOBILE_BACKEND
 
@@ -55,6 +57,10 @@ const config: ExpoConfig = {
   scheme: production ? 'shear' : 'ironlog-dev',
   version: '0.1.0',
   orientation: 'portrait',
+  // Dark only. Without expo-system-ui Android only warns about userInterfaceStyle; the window background is what
+  // keeps a white frame from showing before the first screen.
+  userInterfaceStyle: 'dark',
+  backgroundColor: palette.background,
   // Rendered from public/app-icon-source.svg by scripts/render-icons.mjs.
   icon: './assets/icon.png',
   plugins: [
@@ -63,6 +69,8 @@ const config: ExpoConfig = {
     'expo-secure-store',
     '@react-native-firebase/app',
     '@react-native-firebase/auth',
+    // The mark on the app background; held until the first screen is known (app/_layout.tsx).
+    ['expo-splash-screen', { backgroundColor: palette.background, image: './assets/adaptive-icon-foreground.png', imageWidth: 200 }],
   ],
   experiments: {
     typedRoutes: true,

@@ -38,6 +38,7 @@ import { colors, primaryGradient } from '../src/theme'
 import { Icon } from '../src/icons'
 import { PastePlanSheet } from '../src/PastePlanSheet'
 import { useStarterPlan } from '../src/useStarterPlan'
+import { revealApp } from '../src/splash'
 
 type HomeData = Awaited<ReturnType<typeof readHome>>['data']
 type TemplateData = WorkoutTemplate[]
@@ -91,6 +92,7 @@ export default function DashboardScreen() {
       throw cause
     }), (state) => {
       if (missing) { router.replace('/onboarding'); return }
+      if (state.status !== 'loading') revealApp()
       setResult({ key, state })
       if (state.status !== 'ready') return
       const plans = planDataRef.current

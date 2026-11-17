@@ -68,6 +68,7 @@ import { SessionCut } from '../src/SessionCut'
 import { BottomSheet } from '../src/BottomSheet'
 import { pluralize } from '../../src/lib/pluralize'
 import { BrandMark, Icon } from '../src/icons'
+import { revealApp } from '../src/splash'
 
 function ActionButton({ label, onPress, secondary = false, disabled = false, flat = false }: {
   label: string
@@ -745,6 +746,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
     landing.current = false
     if (isFocused && state.status === 'empty' && closure.status === 'ready' && !completed) router.replace('/dashboard')
   }, [state.status, closure.status, completed, isFocused, router])
+  // An empty session with nothing to report goes on to Train, which reveals the app itself.
+  const settled = state.status !== 'loading' && state.status !== 'cache-miss' && closure.status !== 'loading'
+  const toTrain = state.status === 'empty' && closure.status === 'ready' && !completed
+  useEffect(() => { if (settled && !toTrain) revealApp() }, [settled, toTrain])
   // Closure is decided against the server's revision, so it waits for local edits to be acknowledged.
   const closable = (action: () => void) => () => {
     if (!isFocused || state.status !== 'ready' || sessionLocked) return
@@ -1085,6 +1090,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
 export default function IndexScreen() {
   const { user, startupError } = useAuthRuntime()
+  useEffect(() => { if (startupError || user === null) revealApp() }, [startupError, user])
 
   return (
     <SafeAreaView edges={user ? ['top'] : ['top', 'bottom']} style={styles.safeArea}>

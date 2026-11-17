@@ -11,6 +11,7 @@ import { colors, primaryGradient, fieldColors } from './theme'
 import { showDialog } from './dialog'
 import { Icon } from './icons'
 import { KeyboardLift } from './KeyboardLift'
+import { forgetReads } from './scopedRead'
 
 const initial: ExerciseInput = { name: '', category: 'chest', equipment: 'barbell', muscles: [] }
 export default function ExerciseForm({ uid, exercise, initialName, onClose, onSaved }: {
@@ -44,7 +45,8 @@ export default function ExerciseForm({ uid, exercise, initialName, onClose, onSa
     try { operation = attempt.current?.operation ?? (kind === 'delete' ? { kind: 'delete', id: id.current, source: 'user' }
       : { kind: exercise ? 'update' : 'create', id: id.current, source: 'user', input: validateExerciseInput(input) }) }
     catch (nextError) { setError(nextError instanceof Error ? nextError.message : 'Check the exercise fields.'); nameField.current?.focus(); return }
-    const done = () => onSaved(operation.kind === 'create' ? { id: operation.id, name: operation.input.name } : undefined)
+    // The library remembers its last list; a saved change must not show the old one first.
+    const done = () => { forgetReads(); onSaved(operation.kind === 'create' ? { id: operation.id, name: operation.input.name } : undefined) }
     running.current = true; setBusy(true); setError(null)
     try {
       if (attempt.current) {

@@ -85,6 +85,15 @@ test('a remembered read shows the last result before the fresh one, per account,
   await settle()
   assert.deepEqual(failed.at(-1), { status: 'ready', data: 2, fromCache: true }, 'a failed refresh keeps the data marked as not confirmed')
 
+  let finishCancelled!: (value: { data: number; fromCache: boolean }) => void
+  const cancel = startRead(() => new Promise<{ data: number; fromCache: boolean }>((resolve) => { finishCancelled = resolve }), () => undefined, 'history:alice')
+  cancel()
+  read('alice', async () => ({ data: 4, fromCache: false }))
+  await settle()
+  finishCancelled({ data: 1, fromCache: false })
+  await settle()
+  assert.deepEqual(readStateForKey('history:alice', null, 'history:alice'), { status: 'ready', data: 4, fromCache: false }, 'a cancelled slower read does not replace a newer result')
+
   let finishLate!: (value: { data: number; fromCache: boolean }) => void
   read('alice', () => new Promise((resolve) => { finishLate = resolve }))
   forgetReads() // a workout finished meanwhile

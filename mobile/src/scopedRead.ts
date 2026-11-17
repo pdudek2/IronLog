@@ -27,9 +27,10 @@ export function startRead<T>(load: () => Promise<ReadResult<T>>, publish: (state
   publish(last ? { status: 'ready', ...last } : { status: 'loading' })
   void Promise.resolve().then(load).then(
     (result) => {
+      if (!active) return
       // A read that was running when the memory was forgotten may hold data from before the write.
       if (remember !== undefined) rememberRead(remember, result, since)
-      if (active) publish({ status: 'ready', ...result })
+      publish({ status: 'ready', ...result })
     },
     // A failed refresh keeps the remembered data, marked as not confirmed by the server.
     () => { if (active) publish(last ? { status: 'ready', ...last, fromCache: true } : { status: 'error' }) },

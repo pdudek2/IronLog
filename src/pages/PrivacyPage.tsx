@@ -43,6 +43,7 @@ export default function PrivacyPage() {
         <ul>
           <li>Google (Firebase and Google Fonts): sign-in, database, test app distribution and web fonts.</li>
           <li>Vercel: hosting.</li>
+          <li>Expo: updates for the Android app. When the app checks for an update, Expo sees your IP address and a random installation ID.</li>
           <li>Proton: email.</li>
           <li>OpenRouter and the company that runs the AI model (OpenAI, Microsoft Azure or Amazon Web Services), only when you use Coach. Coach sends them your question, profile, recent check-ins, workouts and records so it can answer. We don't store the conversations. If you use your own OpenRouter key, it passes through our server and is not stored there.</li>
         </ul>

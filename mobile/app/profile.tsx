@@ -2,6 +2,7 @@ import Slider from '@react-native-community/slider'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ActivityIndicator, BackHandler, Keyboard, Linking, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 import Constants from 'expo-constants'
+import * as Updates from 'expo-updates'
 import { useFocusEffect, useRouter } from 'expo-router'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { StatusBar } from 'expo-status-bar'
@@ -24,13 +25,14 @@ import { showDialog } from '../src/dialog'
 
 const STATS_WORKOUTS = 50
 const PRIVACY_URL = 'https://getshear.vercel.app/privacy'
+// EXPO_PUBLIC_COMMIT is inlined into the bundle at build or update time; the runtime version leads to the native-* tag of the build.
+const APP_VERSION = `${Constants.expoConfig?.version ?? '?'} · ${process.env.EXPO_PUBLIC_COMMIT ?? 'dev'} · ${Updates.runtimeVersion?.slice(0, 7) ?? '?'}`
 
 function feedbackUrl(): string {
-  const config = Constants.expoConfig
   const model = (Platform.constants as { Model?: string }).Model
   return feedbackMailto({
     platform: 'Android', system: `Android ${Platform.Version}${model ? ` · ${model}` : ''}`,
-    version: `${config?.version ?? '?'} (${config?.android?.versionCode ?? '?'})`, date: new Date(),
+    version: APP_VERSION, date: new Date(),
   })
 }
 
@@ -145,6 +147,7 @@ function Profile({ uid }: { uid: string }) {
         </View>
         <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => leave(signOut)} style={styles.signOut}><Text style={styles.signOutText}>Sign out</Text></Pressable>
         <Pressable accessibilityRole="button" disabled={signingOut} onPress={() => setDeleting(true)} style={styles.signOut}><Text style={styles.signOutText}>Delete account</Text></Pressable>
+        <Text selectable style={styles.version}>{APP_VERSION}</Text>
     </KeyboardAwareScrollView>
     <BottomNavigation {...navigation} onRequestExit={leave} />
     {deleting && <BottomSheet title="Delete account" onClose={() => setDeleting(false)}>
@@ -212,6 +215,7 @@ const styles = StyleSheet.create({
   linkText: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 15 },
   linkMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13 },
   address: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginTop: -8, marginBottom: 4 },
+  version: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, marginTop: 16 },
   deleteSheet: { gap: 10, paddingBottom: 8 },
   deleteCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 20 },
   signOut: { alignSelf: 'flex-start', minHeight: 44, justifyContent: 'center', marginTop: 12 }, signOutText: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14 },

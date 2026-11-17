@@ -1,7 +1,8 @@
 // One command for a SHEAR release. Run it from main:
 //   npm run release -- --testers a@example.com,b@example.com --notes "What changed"
 // Add --dry-run to print the steps without running anything.
-// Every test runs before the APK is built, and the APK is built before the web goes live, so any failure stops the whole release.
+// Every test runs before anything reaches production, so any failure stops the whole release. Then the Android
+// fingerprint picks the path: a JS-only change ships as an update after the web, a native change as a new APK.
 // The emulator tests need ports 8080, 9099, 3000 and 5174 free: stop a local dev stack first.
 import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
@@ -15,17 +16,26 @@ const FIREBASE_PROJECT = 'ironlog-ede05'
 const JAVA_HOME = '/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home'
 // The Firestore emulator of firebase-tools 15 needs Java 21 or newer; the Android build stays on 17.
 const EMULATOR_JAVA = '/Library/Java/JavaVirtualMachines/temurin-25.jdk/Contents/Home'
+const firebaseCli = ['npx', '-y', '-p', 'firebase-tools@15.34.2', 'firebase']
+const easCli = ['npx', '-y', 'eas-cli@27.2.0']
+const fingerprintCmd = ['npx', 'expo-updates', 'fingerprint:generate', '--platform', 'android']
 
-interface ReleaseStep { name: string; cmd: string[]; cwd?: string; env?: Record<string, string> }
-interface ReleaseInput { sha: string; versionCode: number; testers?: string; notes: string; worktree: string }
+type Env = Record<string, string | undefined>
+interface ReleaseStep { name: string; cmd: string[]; cwd?: string; env?: Env }
+interface ReleaseInput { sha: string; versionCode: number; testers?: string; notes: string; worktree: string; fingerprint: string; nativeBuild: boolean }
 
-export function releaseSteps({ sha, versionCode, testers, notes, worktree }: ReleaseInput): ReleaseStep[] {
+// The fingerprint, the build and the update read the app config in this one environment, so their runtime versions agree.
+export const mobileEnv: Env = { IRONLOG_MOBILE_BACKEND: 'production', IRONLOG_MOBILE_UPDATE_CHANNEL: 'production', IRONLOG_MOBILE_API_URL: undefined }
+
+export const nativeTag = (fingerprint: string) => `native-${fingerprint}`
+
+// remoteTags is the output of `git ls-remote --tags --refs origin`.
+export function needsNativeBuild(fingerprint: string, remoteTags: string): boolean {
+  return !remoteTags.split('\n').some((line) => line.trim().endsWith(`refs/tags/${nativeTag(fingerprint)}`))
+}
+
+export function commonSteps({ sha, worktree }: { sha: string; worktree: string }): ReleaseStep[] {
   const mobile = join(worktree, 'mobile')
-  const apk = join(mobile, 'android/app/build/outputs/apk/release/app-release.apk')
-  const android = { IRONLOG_MOBILE_BACKEND: 'production', IRONLOG_MOBILE_VERSION_CODE: String(versionCode) }
-  const gradle = { ...android, JAVA_HOME, ANDROID_HOME: join(homedir(), 'Library/Android/sdk') }
-  const firebaseCli = ['npx', '-y', '-p', 'firebase-tools@15.34.2', 'firebase']
-  const firebase = [...firebaseCli, 'appdistribution:distribute', apk, '--app', FIREBASE_APP, '--project', FIREBASE_PROJECT, '--release-notes', notes]
   // Same commands as the test:rules, test:integration:workout and test:e2e scripts, with the pinned CLI instead of a global one.
   const emulators = (only: string, command: string) => [...firebaseCli, 'emulators:exec', '--only', only, '--project', 'demo-ironlog', command]
   const java = { JAVA_HOME: EMULATOR_JAVA, PATH: `${EMULATOR_JAVA}/bin:${process.env.PATH ?? ''}` }
@@ -39,14 +49,39 @@ export function releaseSteps({ sha, versionCode, testers, notes, worktree }: Rel
     { name: 'Web e2e', env: e2e, cmd: emulators('auth,firestore', 'npx playwright test') },
     { name: 'Web e2e with CSP', env: { ...e2e, E2E_CSP: 'true' }, cmd: emulators('auth,firestore', 'npx playwright test tests/e2e/csp.spec.ts --project=desktop --retries=0') },
     { name: 'Update the Android worktree', cwd: worktree, cmd: ['git', 'merge', '--ff-only', sha] },
+    { name: 'Install the native dependencies', cwd: mobile, cmd: ['npm', 'ci'] },
     { name: 'Native tests', cwd: mobile, cmd: ['npm', 'test'] },
     { name: 'Native typecheck', cwd: mobile, cmd: ['npm', 'run', 'typecheck'] },
     { name: 'Native lint', cwd: mobile, cmd: ['npm', 'run', 'lint'] },
-    { name: 'Android prebuild', cwd: mobile, env: android, cmd: ['npx', 'expo', 'prebuild', '--platform', 'android', '--clean', '--no-install'] },
-    { name: 'Build the release APK', cwd: worktree, env: gradle, cmd: ['mobile/android/gradlew', '-p', 'mobile/android', ':app:assembleRelease', '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a'] },
+  ]
+}
+
+export function releaseSteps({ sha, versionCode, testers, notes, worktree, fingerprint, nativeBuild }: ReleaseInput): ReleaseStep[] {
+  const mobile = join(worktree, 'mobile')
+  const runtime = { ...mobileEnv, IRONLOG_MOBILE_RUNTIME_VERSION: fingerprint }
+  const commit = { EXPO_PUBLIC_COMMIT: sha.slice(0, 7) }
+  const deploy: ReleaseStep[] = [
     { name: 'Deploy the Firestore rules and indexes', cmd: [...firebaseCli, 'deploy', '--only', 'firestore:rules,firestore:indexes', '--project', FIREBASE_PROJECT] },
     { name: 'Deploy the web', cmd: ['vercel', 'deploy', '--prod', '--yes'] },
+  ]
+  // The update goes out after the web, so new JS never calls an API that is not live yet.
+  if (!nativeBuild) {
+    return [...deploy, {
+      name: 'Publish the Android update', cwd: mobile, env: { ...runtime, ...commit },
+      cmd: [...easCli, 'update', '--channel', 'production', '--environment', 'production', '--platform', 'android', '--non-interactive', '--message', notes],
+    }]
+  }
+  const apk = join(mobile, 'android/app/build/outputs/apk/release/app-release.apk')
+  const android = { ...runtime, IRONLOG_MOBILE_VERSION_CODE: String(versionCode) }
+  const gradle = { ...android, ...commit, JAVA_HOME, ANDROID_HOME: join(homedir(), 'Library/Android/sdk') }
+  const firebase = [...firebaseCli, 'appdistribution:distribute', apk, '--app', FIREBASE_APP, '--project', FIREBASE_PROJECT, '--release-notes', notes]
+  return [
+    { name: 'Android prebuild', cwd: mobile, env: android, cmd: ['npx', 'expo', 'prebuild', '--platform', 'android', '--clean', '--no-install'] },
+    { name: 'Build the release APK', cwd: worktree, env: gradle, cmd: ['mobile/android/gradlew', '-p', 'mobile/android', ':app:assembleRelease', '-PreactNativeArchitectures=arm64-v8a,armeabi-v7a'] },
+    ...deploy,
     { name: 'Send the APK to testers', cmd: testers ? [...firebase, '--testers', testers] : firebase },
+    // Last, so a failed release leaves no tag and the next one builds the APK again.
+    { name: 'Tag the native build', cmd: ['git', 'push', 'origin', `${sha}:refs/tags/${nativeTag(fingerprint)}`] },
   ]
 }
 
@@ -61,6 +96,23 @@ function checkAndroidWorktree(worktree: string) {
   }
 }
 const option = (name: string) => { const i = process.argv.indexOf(name); return i < 0 ? undefined : process.argv[i + 1] }
+const show = (steps: ReleaseStep[]) => { for (const s of steps) console.log(`- ${s.name}: ${s.cmd.join(' ')}`) }
+const run = (steps: ReleaseStep[]) => {
+  for (const s of steps) {
+    console.log(`\n== ${s.name}`)
+    execFileSync(s.cmd[0]!, s.cmd.slice(1), { cwd: s.cwd, stdio: 'inherit', env: { ...process.env, ...s.env } })
+  }
+}
+
+function androidFingerprint(mobile: string): string {
+  const out = execFileSync(fingerprintCmd[0]!, fingerprintCmd.slice(1), { cwd: mobile, encoding: 'utf8', env: { ...process.env, ...mobileEnv } })
+  const { hash, sources } = JSON.parse(out) as { hash: string; sources: { id?: string }[] }
+  // The fingerprint quietly leaves out an app config that throws, so its absence must stop the release.
+  if (!sources.some((source) => source.id === 'expoConfig')) {
+    throw new Error(`The Android app config did not load. See why: cd ${mobile} && IRONLOG_MOBILE_BACKEND=production IRONLOG_MOBILE_UPDATE_CHANNEL=production npx expo config`)
+  }
+  return hash
+}
 
 async function main() {
   const dryRun = process.argv.includes('--dry-run')
@@ -74,24 +126,33 @@ async function main() {
   const notes = option('--notes') ?? git('log', '-1', '--format=%s')
   const worktree = process.env.SHEAR_ANDROID_WORKTREE ?? join(homedir(), '.codex/worktrees/e594/IronLog')
   checkAndroidWorktree(worktree)
-  const steps = releaseSteps({
+  const input = {
     sha,
     // A commit count only grows, which is what Android needs from versionCode.
     versionCode: Number(git('rev-list', '--count', 'HEAD')),
     testers: option('--testers'),
     notes,
     worktree,
-  })
+  }
   console.log(`Release ${sha.slice(0, 7)}: ${notes}`)
-  if (dryRun) { for (const s of steps) console.log(`- ${s.name}: ${s.cmd.join(' ')}`); return }
+  if (dryRun) {
+    show(commonSteps(input))
+    console.log(`- Android fingerprint: ${fingerprintCmd.join(' ')}`)
+    console.log(`\nWhen origin has the tag ${nativeTag('<fingerprint>')} (JS-only change):`)
+    show(releaseSteps({ ...input, fingerprint: '<fingerprint>', nativeBuild: false }))
+    console.log('\nOtherwise (native change):')
+    show(releaseSteps({ ...input, fingerprint: '<fingerprint>', nativeBuild: true }))
+    return
+  }
   const prompt = createInterface({ input: process.stdin, output: process.stdout })
   const answer = await prompt.question('This goes to production and to testers. Type "release" to continue: ')
   prompt.close()
   if (answer !== 'release') throw new Error('Stopped.')
-  for (const s of steps) {
-    console.log(`\n== ${s.name}`)
-    execFileSync(s.cmd[0]!, s.cmd.slice(1), { cwd: s.cwd, stdio: 'inherit', env: { ...process.env, ...s.env } })
-  }
+  run(commonSteps(input))
+  const fingerprint = androidFingerprint(join(worktree, 'mobile'))
+  const nativeBuild = needsNativeBuild(fingerprint, git('ls-remote', '--tags', '--refs', 'origin', nativeTag(fingerprint)))
+  console.log(`\nAndroid fingerprint ${fingerprint}: ${nativeBuild ? 'native change, building the APK' : 'JS only, publishing an update'}.`)
+  run(releaseSteps({ ...input, fingerprint, nativeBuild }))
   console.log(`\nReleased ${sha.slice(0, 7)}.`)
 }
 

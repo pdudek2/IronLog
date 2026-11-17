@@ -188,7 +188,7 @@ describe("today's launch on the Upper day", () => {
     expect(buildNextSessionRecommendation(upper, 0, null, [{ ...history[0]!, compression: null }], NOW, 'kg', day).exercises[0]!.weightDelta).toBeGreaterThan(0)
   })
 
-  it('cuts the first workout after a break by its length, never twice with readiness, and Full sets keeps the plan', () => {
+  it('cuts the first workout after a break by its length, never twice with readiness, and Full sets keeps the plan after a break or a low check-in', () => {
     const plan: [string, number][] = [['bench-press', 4], ['lat-pulldown', 3], ['seated-cable-row', 3], ['db-lateral-raise', 3], ['db-curl', 3], ['tricep-pushdown', 3]]
     const off = (days: number) => [done(NOW - days * 86_400_000 - 7_200_000, plan)]
     const today = (days: number, options: Parameters<typeof buildNextSessionRecommendation>[6] = {}, entry: ReadinessEntry | null = null) => buildNextSessionRecommendation(upper, 0, entry, off(days), NOW, 'kg', { ...day, ...options })
@@ -213,7 +213,13 @@ describe("today's launch on the Upper day", () => {
     expect(sets(full)).toEqual([4, 3, 3, 3, 3, 3])
     expect(full.record).toMatchObject({ breakDays: 40 })
     expect(full.record!.exercises.every((entry) => entry.sets === entry.plannedSets)).toBe(true)
-    expect(sets(today(40, { fullSets: true }, low))).toEqual([3, 2, 2, 2, 2, 2])
+    const fullLow = today(40, { fullSets: true }, low)
+    expect(sets(fullLow)).toEqual([4, 3, 3, 3, 3, 3])
+    const lowOnly = today(3, { fullSets: true }, low)
+    expect(sets(lowOnly)).toEqual([4, 3, 3, 3, 3, 3])
+    expect(lowOnly.exercises.every((exercise) => exercise.weightDelta <= 0)).toBe(true)
+    expect(lowOnly.record).toMatchObject({ mode: 'readiness', readiness: 'low' })
+    expect(lowOnly.record!.exercises.every((entry) => entry.sets === entry.plannedSets)).toBe(true)
   })
 
   it('keeps cardio and the main lift floor after a break', () => {

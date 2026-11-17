@@ -86,6 +86,9 @@ export default function ProfilePage() {
     return () => { live = false }
   }, [uid])
 
+  const changed = !!profile && (displayName.trim() !== (profile.displayName ?? '') || primaryGoal !== (profile.primaryGoal ?? 'hypertrophy')
+    || weeklyGoal !== (profile.weeklyGoal ?? 3) || units !== (profile.units ?? 'kg'))
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!user || !profile) return
@@ -220,7 +223,7 @@ export default function ProfilePage() {
             <div className="pt-5 sm:pt-6">
               <Button
                 type="submit"
-                disabled={saving}
+                disabled={saving || !changed}
                 aria-busy={saving || undefined}
                 className="w-full sm:w-auto sm:min-w-52"
               >

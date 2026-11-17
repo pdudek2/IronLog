@@ -23,7 +23,7 @@ export interface TodayOptions {
   // Minutes the user has today; null keeps the usual day.
   budgetMin?: number | null
   straight?: boolean
-  // Keeps the plan's sets on the first workout after a break.
+  // Keeps the plan's sets when a break or a low check-in would cut them.
   fullSets?: boolean
   // This plan day, for calibration and rotation.
   templateId?: string | null
@@ -171,10 +171,10 @@ export function buildNextSessionRecommendation(
     const weightDelta = progression?.change === 'weight' ? progression.delta : 0
 
     // Low readiness: one set less, the main lift never below 2 (Specyfikacja punktu 3); mid cuts nothing. A break cuts
-    // the same way or harder; the harder cut wins, the two never add up.
+    // the same way or harder; the harder cut wins, the two never add up. Full sets undoes both.
     const floor = roles[index] === 'main' ? Math.min(2, exercise.sets) : 1
     const afterReadiness = low ? Math.max(floor, exercise.sets - 1) : exercise.sets
-    const sets = options.fullSets ? afterReadiness : Math.min(afterReadiness, breakSets(exercise.sets, roles[index]!, breakDays))
+    const sets = options.fullSets ? exercise.sets : Math.min(afterReadiness, breakSets(exercise.sets, roles[index]!, breakDays))
     const setsDelta = sets - exercise.sets
     const reps = progression?.reps ?? exercise.targetReps
 
@@ -204,7 +204,8 @@ export function buildNextSessionRecommendation(
     dayExerciseIndex: item.index, sets: item.sets, weight: recommendedExercises[item.index]!.weight, reps: recommendedExercises[item.index]!.reps,
     ...(block.group && block.items.filter((other) => other.sets > 0).length > 1 ? { group: block.group } : {}),
   })))
-  const changed = budgetMin !== null || compression.mode !== 'full' || breakDays !== null || recommendedExercises.some((exercise) => exercise.setsDelta !== 0)
+  // A low check-in keeps its record with Full sets: the session's rests and the pace calibration follow it.
+  const changed = budgetMin !== null || compression.mode !== 'full' || breakDays !== null || low || recommendedExercises.some((exercise) => exercise.setsDelta !== 0)
   const minutes = (sec: number) => Math.round(sec / 6) / 10
 
   return {

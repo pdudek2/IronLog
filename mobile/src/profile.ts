@@ -87,7 +87,10 @@ export class ProfileController {
     applyUnits: (uid: string, units: Units) => Promise<void>
   }, private readonly publish: (state: ProfileState) => void, private readonly milliseconds = 15_000) {}
 
-  get dirty() { return !!this.state.input && !!this.state.baseline && !sameProfile(this.state.input, this.state.baseline) }
+  // The name is saved trimmed, so a trailing space is not a change.
+  get dirty() { return !!this.state.input && !!this.state.baseline && !sameProfile({ ...this.state.input, displayName: this.state.input.displayName.trim() }, this.state.baseline) }
+  // An unresolved save keeps the button as "Check save outcome".
+  get canSave() { return this.state.status === 'ready' && !this.state.busy && (this.state.pending || this.dirty) }
   private set(patch: Partial<ProfileState>) { this.state = { ...this.state, ...patch }; if (this.alive) this.publish(this.state) }
   suspendRead() { this.generation += 1 }
   discard() { if (!this.attempt && !this.state.busy) this.set({ input: this.state.baseline, message: null, nameError: null }) }

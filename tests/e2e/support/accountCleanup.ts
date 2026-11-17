@@ -6,7 +6,10 @@ export async function restoreProfileName(page: Page, originalName: string): Prom
   await expectAppReady(page, '/profile')
   const input = page.getByPlaceholder('E.g. Alex')
   await input.fill(originalName)
-  await page.getByRole('button', { name: /Save changes/ }).click()
+  const save = page.getByRole('button', { name: /Save changes/ })
+  // Save stays disabled when the name never changed.
+  if (await save.isDisabled()) return
+  await save.click()
   await expect(page.getByText('Profile saved')).toBeVisible({ timeout: 8_000 })
 }
 

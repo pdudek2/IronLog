@@ -9,6 +9,7 @@ import { Linking,
   Easing,
   ActivityIndicator,
   AppState,
+  Keyboard,
   BackHandler,
   Image,
   KeyboardAvoidingView,
@@ -266,12 +267,13 @@ function Elapsed({ session }: { session: ActiveWorkout }) {
 }
 
 
-function SetValueInput({ value, units, field, label, rejectedEdit, onChange }: {
+function SetValueInput({ value, units, field, label, rejectedEdit, inputRef, onChange }: {
   value: string
   units: Units
   field: 'weight' | 'reps'
   label: string
   rejectedEdit: object | null
+  inputRef?: React.Ref<TextInput>
   onChange: (value: string) => void
 }) {
   const displayed = storedValueToSetInput(value, field, units)
@@ -294,6 +296,7 @@ function SetValueInput({ value, units, field, label, rejectedEdit, onChange }: {
     }
   }, [displayed, value, rejectedEdit, units])
   return <TextInput
+    ref={inputRef}
     accessibilityLabel={label}
     inputMode={field === 'weight' ? 'decimal' : 'numeric'}
     keyboardType={field === 'weight' ? 'decimal-pad' : 'number-pad'}
@@ -598,8 +601,8 @@ function SetStepper({ label, step, onStep }: { label: string; step: number; onSt
     style={({ pressed }) => [styles.panelStep, pressed && styles.setStepperPressed]}><Text style={styles.panelStepText}>{step > 0 ? `+${step}` : `−${-step}`}</Text></Pressable>
 }
 
-function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inset, nextName, finishing, onLog, onClearSelection, onNext, onFinish }: {
-  exercise: WorkoutExercise; setIndex: number; units: Units; rejectedEdit: object | null; editing: EditingActions; rest: React.ReactNode; inset: number
+function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inset, weightRef, nextName, finishing, onLog, onClearSelection, onNext, onFinish }: {
+  exercise: WorkoutExercise; setIndex: number; units: Units; rejectedEdit: object | null; editing: EditingActions; rest: React.ReactNode; inset: number; weightRef: React.Ref<TextInput>
   nextName: string | null; finishing: boolean; onLog: () => void; onClearSelection: () => void; onNext: () => void; onFinish: () => void
 }) {
   const set = setIndex >= 0 ? exercise.sets[setIndex] : undefined
@@ -612,7 +615,7 @@ function SetPanel({ exercise, setIndex, units, rejectedEdit, editing, rest, inse
     {set && <View style={styles.panelNums}>
       <View style={styles.panelNum}>
         <SetStepper label="weight" step={-weightStep(units)} onStep={() => adjust('weight', displayWeightDeltaToKg(-weightStep(units), units))} />
-        <View style={styles.panelValue}><SetValueInput rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight"
+        <View style={styles.panelValue}><SetValueInput rejectedEdit={rejectedEdit} value={set.weight} units={units} field="weight" inputRef={weightRef}
           label={`Weight, ${exercise.name}, set ${number}, ${units}`} onChange={(value) => editing.updateSet(exercise.clientId, set.clientId, 'weight', value)} /><Text style={styles.panelUnit}>{units}</Text></View>
         <SetStepper label="weight" step={weightStep(units)} onStep={() => adjust('weight', displayWeightDeltaToKg(weightStep(units), units))} />
       </View>
@@ -701,6 +704,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const [rest, setRest] = useState(lastRest)
   const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setId: string; draw: boolean } | null>(null)
   const [selectedSet, setSelectedSet] = useState<{ exerciseId: string; setId: string } | null>(null)
+  const weightInput = useRef<TextInput>(null)
+  const [weightFocus, setWeightFocus] = useState(0)
   const changeRest = (next: Rest | null) => { lastRest = next; setRest(next) }
   const insets = useSafeAreaInsets()
   const { closure, completed, locked, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
@@ -823,10 +828,11 @@ function SessionScreen({ user }: { user: AuthUser }) {
     // shortcut: user exercises have no metadata here, so they are not asked about 0; load it with the session if testers hit it.
     if (done && !withoutWeight && logged && loggedSet && !loggedSet.done
       && needsWeightConfirm(loggedSet, { exerciseId: logged.exerciseId, ...catalogueMeta(logged.exerciseId, logged.exerciseSource) })) {
+      // Back and the backdrop also run the cancel button; onDismiss follows it in the same tick and undoes both effects.
       showDialog('No weight entered', 'Log this set without weight?', [
-        { text: 'Enter weight', style: 'cancel' },
+        { text: 'Enter weight', style: 'cancel', onPress: () => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }); setWeightFocus(Date.now()) } },
         { text: 'Log without weight', onPress: () => latestToggle.current(exerciseId, setId, true, true) },
-      ])
+      ], { onDismiss: () => { setSelectedSet(selectedSet); setWeightFocus(0) } })
       return
     }
     setDone(exerciseId, setId, done)
@@ -849,6 +855,16 @@ function SessionScreen({ user }: { user: AuthUser }) {
   // The dialog answers later; it must use the session and lock state of that moment, not of when it opened.
   const latestToggle = useRef(toggleSet)
   latestToggle.current = toggleSet
+  // The keyboard opens only once the dialog's window has handed focus back (AppState "focus" on Android); a field that
+  // kept focus with the keyboard hidden needs a blur to raise it again.
+  useEffect(() => {
+    if (!weightFocus) return
+    const raise = () => { weightInput.current?.blur(); weightInput.current?.focus() }
+    const frame = requestAnimationFrame(raise)
+    const back = AppState.addEventListener('focus', () => { back.remove(); if (!Keyboard.isVisible()) raise() })
+    const shown = Keyboard.addListener('keyboardDidShow', () => back.remove())
+    return () => { cancelAnimationFrame(frame); back.remove(); shown.remove() }
+  }, [weightFocus])
   const liveSessionId = liveSession?.sessionId
   useEffect(() => {
     if (!isFocused || !liveSessionId) return
@@ -1003,7 +1019,8 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </>)}
       </Animated.ScrollView>
       {panelVisible && <SetPanel exercise={panelExercise} setIndex={currentSetIndex} units={state.status === 'ready' ? state.units : 'kg'}
-        rejectedEdit={rejectedEditState} inset={Math.max(keyboardInset, insets.bottom + 14)} finishing={closure?.status === 'submitting'}
+        // RN's keyboard height leaves out the navigation bar, which the edge-to-edge panel also sits over.
+        rejectedEdit={rejectedEditState} inset={keyboardInset > 0 ? keyboardInset + insets.bottom + 8 : insets.bottom + 14} weightRef={weightInput} finishing={closure?.status === 'submitting'}
         nextName={nextExerciseIndex >= 0 ? liveSession?.exercises[nextExerciseIndex]?.name ?? null : null}
         editing={panelEditing}
         rest={currentRest && <RestBar rest={currentRest} label={setPanelRestLabel(panelExercise.sets[currentSetIndex], currentSetIndex)}

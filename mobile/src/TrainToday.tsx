@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import type { NextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
+import { NORMAL_DAY, ROUGH_DAY } from '../../src/shared/readiness'
 import type { ReadinessController, ReadinessState, ReadinessValues } from './readiness'
 import { colors } from './theme'
 import { Icon } from './icons'
@@ -7,9 +8,9 @@ import { Icon } from './icons'
 const TIME_BUDGETS = [45, 30, 20] as const
 const minutes = (sec: number) => Math.round(sec / 60)
 
-// Answers saved by the one-tap rough day and its Undo: the same entry the scales wrote, so Coach and the plan read it as before.
-const ROUGH: ReadinessValues = { sleep: 2, mood: 2, soreness: 4 }
-const NORMAL: ReadinessValues = { sleep: 3, mood: 3, soreness: 3 }
+// The one-tap rough day and its Undo save the same entry the scales wrote; Coach reads these two as a marked day.
+const ROUGH: ReadinessValues = { ...ROUGH_DAY }
+const NORMAL: ReadinessValues = { ...NORMAL_DAY }
 
 // A quiet line under the plan instead of a survey: one tap takes a set off each exercise, one tap brings it back.
 export function RoughDay({ state, controller, rough }: { state: ReadinessState; controller: ReadinessController; rough: boolean }) {

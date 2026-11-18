@@ -1,5 +1,5 @@
 import { pluralize } from '../src/lib/pluralize.js'
-import { computeReadinessScore } from '../src/shared/readiness.js'
+import { computeReadinessScore, oneTapDay } from '../src/shared/readiness.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const MONTH_WINDOW_DAYS = 30
@@ -90,6 +90,7 @@ export interface AiUserContext {
     score: number
     label: string
     date: string
+    day: 'rough' | 'normal' | null
   } | null
   recentWorkouts: AiWorkoutSummary[]
   topRecords: Array<{
@@ -174,6 +175,7 @@ export function buildAiUserContext({
         score: computeReadinessScore(latestReadiness).score,
         label: computeReadinessScore(latestReadiness).label,
         date: String(latestReadiness.date ?? ''),
+        day: oneTapDay(latestReadiness),
       }
     : null
 
@@ -224,7 +226,9 @@ export function buildChatContextSections(context: AiUserContext) {
   const readinessLine = context.sources.readiness === 'unavailable'
     ? 'Readiness: data temporarily unavailable.'
     : context.readiness
-      ? `Readiness: ${context.readiness.score}/100 (${context.readiness.label}), day ${context.readiness.date}`
+      ? context.readiness.day
+        ? `Readiness: the user marked a ${context.readiness.day} day with one tap (no sleep, mood or soreness answers), day ${context.readiness.date}`
+        : `Readiness: ${context.readiness.score}/100 (${context.readiness.label}), day ${context.readiness.date}`
       : 'Readiness: no current or recent entry.'
 
   const workoutsLine = context.sources.workouts === 'unavailable'
@@ -352,7 +356,9 @@ function buildMonthlyInsights({
     ? findLowReadinessStreak(readinessEntries, since, now)
     : []
   if (lowReadinessStreak.length >= 2) {
-    signals.push(`readiness was low for ${lowReadinessStreak.length} consecutive days; the main signals were sleep, mood and soreness.`)
+    signals.push(lowReadinessStreak.every((entry) => oneTapDay(entry) === 'rough')
+      ? `the user marked ${lowReadinessStreak.length} consecutive days as rough days.`
+      : `readiness was low for ${lowReadinessStreak.length} consecutive days; the main signals were sleep, mood and soreness.`)
     recommendations.push('After this period, use 80–90% of normal volume for 1–2 workouts rather than making up for everything in one session.')
   }
 

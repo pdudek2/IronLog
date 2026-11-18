@@ -103,15 +103,19 @@ export function restoredRest(exercises: RestExercise[], roles: readonly Role[], 
   const totalSec = restAfterSet(exercises, latest.exerciseIndex, roles, shortRest)
   return totalSec > 0 && latest.at + totalSec * 1000 > now && latest.at <= now ? { startedAt: latest.at, totalSec } : null
 }
-// Checks the session once per newest logged set: a cached snapshot followed by a newer one from the server, or a set
-// logged on another device, brings its rest back; a rest this device started for that set (+30 s, Skip) stays as it is.
-export function reconcileRest(current: RunningRest | null, checked: string | null, session: { sessionId: string; exercises: RestExercise[] }, roles: readonly Role[], shortRest: boolean, now: number): { checked: string; rest: RunningRest | null } {
+// Checks the session when its newest logged set moves forward: a cached snapshot followed by a newer one from the server,
+// or a set logged on another device, brings its rest back. Undoing a set moves it back and changes nothing, and a rest
+// this device started for that set (+30 s, Skip) stays as it is.
+export type RestCheck = { sessionId: string; at: number }
+export function reconcileRest(current: RunningRest | null, checked: RestCheck | null, session: { sessionId: string; exercises: RestExercise[] }, roles: readonly Role[], shortRest: boolean, now: number): { checked: RestCheck; rest: RunningRest | null } {
   const latest = latestLogged(session.exercises)
-  const key = `${session.sessionId}:${latest?.at ?? 0}`
-  if (key === checked) return { checked, rest: current }
-  const own = current?.sessionId === session.sessionId && latest !== null && current.startedAt >= latest.at
+  const at = latest?.at ?? 0
+  if (checked?.sessionId === session.sessionId && at <= checked.at) return { checked: { sessionId: session.sessionId, at: Math.min(at, checked.at) }, rest: current }
+  const next = { sessionId: session.sessionId, at }
+  // completedAt is stamped a few milliseconds after the rest this device starts for the same set.
+  const own = current?.sessionId === session.sessionId && latest !== null && current.startedAt >= latest.at - 2_000
   const restored = own ? null : restoredRest(session.exercises, roles, shortRest, now)
-  return { checked: key, rest: restored ? { sessionId: session.sessionId, ...restored } : current }
+  return { checked: next, rest: restored ? { sessionId: session.sessionId, ...restored } : current }
 }
 export function panelSetIndex(sets: { clientId?: string; done: boolean }[], selectedSetId: string | null): number {
   const selected = selectedSetId === null ? -1 : sets.findIndex((set, index) => (set.clientId ?? String(index)) === selectedSetId)

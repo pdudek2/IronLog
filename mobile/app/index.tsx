@@ -50,7 +50,7 @@ import {
   storedValueToSetInput,
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, nextGroupMember, panelSetIndex, reconcileRest, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, nextGroupMember, panelSetIndex, reconcileRest, restAfterSet, setPairLabel, type RestCheck, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../../src/shared/nextSessionRecommendation'
 import { needsWeightConfirm } from '../../src/shared/workoutLimits'
 import { acceptSetInput, lastSessionBest, weightSlip } from '../../src/shared/setInput'
@@ -571,7 +571,7 @@ function WorkoutLedger({ uid, session, units, sessionKey, history, editing, curr
 type Rest = { sessionId: string; startedAt: number; totalSec: number }
 // In memory for this process; a fresh process takes the rest back from the latest logged set, without +30 s or Skip.
 let lastRest: Rest | null = null
-let restChecked: string | null = null
+let restChecked: RestCheck | null = null
 
 function RestBar({ rest, label, onAddTime, onSkip }: { rest: Rest; label: string; onAddTime: (seconds: number) => void; onSkip: () => void }) {
   const [now, setNow] = useState(Date.now())

@@ -68,7 +68,10 @@ describe('session flow', () => {
     expect(reconcileRest(added, fresh.checked, snapshot(at - 300_000, at - 10_000), roles, false, at).rest).toBe(added)
     expect(reconcileRest(null, fresh.checked, snapshot(at - 300_000, at - 10_000), roles, false, at).rest).toBeNull()
     const local = { sessionId: 's1', startedAt: at + 5_000, totalSec: 180 }
-    expect(reconcileRest(local, fresh.checked, snapshot(at - 300_000, at - 10_000, at + 4_000), roles, false, at + 6_000).rest).toBe(local)
+    const logged = reconcileRest(local, fresh.checked, snapshot(at - 300_000, at - 10_000, at + 5_003), roles, false, at + 6_000)
+    expect(logged.rest).toBe(local)
+    // Undo of that set after a Skip: the earlier set's rest stays skipped.
+    expect(reconcileRest(null, logged.checked, snapshot(at - 300_000, at - 10_000), roles, false, at + 7_000).rest).toBeNull()
   })
 
   it('rests by role, not after a set that leaves its round open, and by the group after a round', () => {

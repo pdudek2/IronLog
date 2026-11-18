@@ -87,16 +87,31 @@ export function restAfterSet(exercises: FlowExercise[], exerciseIndex: number, r
   if (peers.some((index) => exercises[index]!.sets.filter((set) => set.done).length < round)) return 0
   return groupRestSec([role, ...peers.map((index) => roles[index] ?? 'compound')], shortRest, false)
 }
-// The rest still running after the latest logged set, for a process that started after the set was logged.
-export function restoredRest(exercises: { group?: string; sets: { done: boolean; completedAt?: unknown }[] }[], roles: readonly Role[], shortRest: boolean, now: number): { startedAt: number; totalSec: number } | null {
+type RestExercise = { group?: string; sets: { done: boolean; completedAt?: unknown }[] }
+type RunningRest = { sessionId: string; startedAt: number; totalSec: number }
+function latestLogged(exercises: RestExercise[]): { exerciseIndex: number; at: number } | null {
   let latest: { exerciseIndex: number; at: number } | null = null
   exercises.forEach((exercise, exerciseIndex) => exercise.sets.forEach((set) => {
     if (set.done && typeof set.completedAt === 'number' && (!latest || set.completedAt > latest.at)) latest = { exerciseIndex, at: set.completedAt }
   }))
+  return latest
+}
+// The rest still running after the latest logged set, for a process that started after the set was logged.
+export function restoredRest(exercises: RestExercise[], roles: readonly Role[], shortRest: boolean, now: number): { startedAt: number; totalSec: number } | null {
+  const latest = latestLogged(exercises)
   if (!latest) return null
-  const { exerciseIndex, at } = latest
-  const totalSec = restAfterSet(exercises, exerciseIndex, roles, shortRest)
-  return totalSec > 0 && at + totalSec * 1000 > now && at <= now ? { startedAt: at, totalSec } : null
+  const totalSec = restAfterSet(exercises, latest.exerciseIndex, roles, shortRest)
+  return totalSec > 0 && latest.at + totalSec * 1000 > now && latest.at <= now ? { startedAt: latest.at, totalSec } : null
+}
+// Checks the session once per newest logged set: a cached snapshot followed by a newer one from the server, or a set
+// logged on another device, brings its rest back; a rest this device started for that set (+30 s, Skip) stays as it is.
+export function reconcileRest(current: RunningRest | null, checked: string | null, session: { sessionId: string; exercises: RestExercise[] }, roles: readonly Role[], shortRest: boolean, now: number): { checked: string; rest: RunningRest | null } {
+  const latest = latestLogged(session.exercises)
+  const key = `${session.sessionId}:${latest?.at ?? 0}`
+  if (key === checked) return { checked, rest: current }
+  const own = current?.sessionId === session.sessionId && latest !== null && current.startedAt >= latest.at
+  const restored = own ? null : restoredRest(session.exercises, roles, shortRest, now)
+  return { checked: key, rest: restored ? { sessionId: session.sessionId, ...restored } : current }
 }
 export function panelSetIndex(sets: { clientId?: string; done: boolean }[], selectedSetId: string | null): number {
   const selected = selectedSetId === null ? -1 : sets.findIndex((set, index) => (set.clientId ?? String(index)) === selectedSetId)

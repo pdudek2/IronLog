@@ -50,7 +50,7 @@ import {
   storedValueToSetInput,
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, nextGroupMember, panelSetIndex, restAfterSet, restoredRest, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, nextGroupMember, panelSetIndex, reconcileRest, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../../src/shared/nextSessionRecommendation'
 import { needsWeightConfirm } from '../../src/shared/workoutLimits'
 import { acceptSetInput, lastSessionBest, weightSlip } from '../../src/shared/setInput'
@@ -571,7 +571,7 @@ function WorkoutLedger({ uid, session, units, sessionKey, history, editing, curr
 type Rest = { sessionId: string; startedAt: number; totalSec: number }
 // In memory for this process; a fresh process takes the rest back from the latest logged set, without +30 s or Skip.
 let lastRest: Rest | null = null
-let restRestored = false
+let restChecked: string | null = null
 
 function RestBar({ rest, label, onAddTime, onSkip }: { rest: Rest; label: string; onAddTime: (seconds: number) => void; onSkip: () => void }) {
   const [now, setNow] = useState(Date.now())
@@ -735,10 +735,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
   }
 
   const session = state.status === 'ready' ? state.session : null
-  if (session && !restRestored) {
-    restRestored = true
-    const restored = lastRest ? null : restoredRest(session.exercises, sessionRoles(session.exercises), session.compression?.shortRest === true, Date.now())
-    if (restored) changeRest({ sessionId: session.sessionId, ...restored })
+  if (session) {
+    const next = reconcileRest(lastRest, restChecked, session, sessionRoles(session.exercises), session.compression?.shortRest === true, Date.now())
+    restChecked = next.checked
+    if (next.rest !== lastRest) changeRest(next.rest)
   }
   // Decided when the session or the screen comes into view, so a long workout is not interrupted mid-set.
   const sessionId = session?.sessionId, startedAt = session?.startedAt

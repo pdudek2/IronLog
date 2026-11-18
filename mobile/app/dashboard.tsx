@@ -1,4 +1,4 @@
-import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import BottomNavigation, { plateRow } from '../src/BottomNavigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { StatusBar } from 'expo-status-bar'
@@ -6,7 +6,7 @@ import { useFocusEffect, useIsFocused, useRouter } from 'expo-router'
 import { ProfileMissingError } from '../src/profile'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 
-import { TrainCheckIn, TrainTime } from '../src/TrainToday'
+import { RoughDay, TrainTime } from '../src/TrainToday'
 import { useReadinessRuntime } from '../src/readinessRuntime'
 import { buildNextSessionRecommendation, type NextSessionRecommendation } from '../../src/shared/nextSessionRecommendation'
 import type { CompressionProposal } from '../../src/shared/compressionRecord'
@@ -53,7 +53,6 @@ export default function DashboardScreen() {
   const launch = useOptionalLaunchRuntime()
   const readiness = useReadinessRuntime()
   const router = useRouter()
-  const navigation = useBottomNavigation()
   const uid = user?.uid ?? null
   const [result, setResult] = useState<{ key: string; state: ReadState<HomeData> } | null>(null)
   const [attempt, setAttempt] = useState(0)
@@ -65,14 +64,12 @@ export default function DashboardScreen() {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [pickerDraft, setPickerDraft] = useState<WorkoutSelection | null>(null)
   const insets = useSafeAreaInsets()
-  const navigationInset = useNavigationInset()
   const [picked, setPicked] = useState(false)
   // The queue needs plans and recent workouts, which load separately; a day the user picked stays.
   const pickedRef = useRef(false)
   const planDataRef = useRef<{ uid: string; templates: WorkoutTemplate[] | null; workouts: HomeData['workouts'] | null }>({ uid: '', templates: null, workouts: null })
   const [weekOpen, setWeekOpen] = useState(false)
   const [todayChoice, setTodayChoice] = useState<TodayChoice | null>(null)
-  const [checkInOpen, setCheckInOpen] = useState(false)
   const [skipping, setSkipping] = useState(false)
   const [pasting, setPasting] = useState(false)
   const starter = useStarterPlan(uid ?? '', () => setTemplatesAttempt((value) => value + 1))
@@ -239,7 +236,7 @@ export default function DashboardScreen() {
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={styles.content}>
+    <ScrollView contentContainerStyle={styles.content}>
       {state.status === 'loading' && <View style={styles.notice}><ActivityIndicator color={colors.accent} /><Text style={styles.muted}>Loading dashboard…</Text></View>}
       {state.status === 'error' && <View accessibilityRole="alert" style={styles.notice}>
         <Text style={styles.noticeTitle}>Could not load the dashboard</Text>
@@ -262,6 +259,12 @@ export default function DashboardScreen() {
           <Text style={styles.muted}>{cacheEmpty ? 'Could not confirm your saved workouts. This device has no copy to check offline.' : 'Showing data saved on this device.'}</Text>
           <Pressable accessibilityRole="button" onPress={retry} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>
         </View>}
+        {!weekClosed && today && chosen && <View accessibilityLabel="Today" style={styles.today}>
+          <TrainTime today={today} plannedSets={chosen.day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
+            budgetMin={choice.budgetMin} straight={choice.straight} fullSets={choice.fullSets}
+            onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)} onStraight={(straight) => chooseTime(choice.budgetMin, straight)}
+            onFullSets={(fullSets) => chooseTime(choice.budgetMin, choice.straight, fullSets)} />
+        </View>}
         <View style={styles.plan}>
           {record && <Text style={styles.record}>{recordLine(record, now, (kg) => `${kgStringToDisplayWeight(String(kg), units)} ${units}`)}</Text>}
           {plansPending && <View style={styles.planPending} />}
@@ -280,7 +283,9 @@ export default function DashboardScreen() {
           {canOfferStart && templatesState.status === 'error' && <Pressable accessibilityRole="button" onPress={() => setTemplatesAttempt((value) => value + 1)} style={styles.retry}><Text style={styles.actionText}>Retry plans</Text></Pressable>}
           {canOfferStart && templatesState.status === 'ready' && templatesState.fromCache && <Text style={styles.planEmptyCopy}>Showing plans saved on this device. Starting requires a connection.</Text>}
         </View>
-        {view.active.status !== 'ready' && trainLinks}
+        {/* Without a plan day the line has nothing to ease. */}
+        {!weekClosed && today && chosen && readiness && <RoughDay state={readiness.state} controller={readiness.controller} rough={today.tone === 'low'} />}
+        {trainLinks}
         {canOfferStart && <View>
             {launchState === 'loading' && <Text style={styles.planEmptyCopy}>Checking workout start…</Text>}
             {(launchState === 'retry' || launchState === 'unavailable' || launchState === 'corrupt') && <View accessibilityRole="alert" style={styles.launchFeedback}><Text style={styles.planEmptyCopy}>{launch?.state.message ?? 'Could not start workout.'}</Text>{launchState !== 'corrupt' && <Pressable accessibilityRole="button" onPress={() => { if (launchState === 'unavailable') { launch?.dismissUnavailable(); setSelection({ uid: uid!, target: null, unavailable: true }); setTemplatesAttempt((value) => value + 1) } else void launch?.retry() }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
@@ -299,16 +304,9 @@ export default function DashboardScreen() {
       </>}
     </ScrollView>
     {/* The docks keep their place above the tab bar whether it shows or not. */}
-    <View style={{ paddingBottom: navigationInset }}>
-    {data && view.active.status === 'ready' && <View style={styles.startBar}><ResumeButton />{trainLinks}</View>}
-    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Today" style={[styles.dock, !today && !readiness && styles.dockBare]}>
-      {/* The check-in stays without a plan day too: Coach reads it. */}
-      {readiness && <TrainCheckIn state={readiness.state} controller={readiness.controller} open={checkInOpen} onToggle={() => setCheckInOpen((open) => !open)} />}
-      {/* While the check-in is open the time row and today's line step aside; Start stays. */}
-      {today && chosen && !checkInOpen && <TrainTime today={today} plannedSets={chosen.day.exercises.reduce((sum, exercise) => sum + exercise.sets, 0)}
-        budgetMin={choice.budgetMin} straight={choice.straight} fullSets={choice.fullSets}
-        onBudget={(budgetMin) => chooseTime(budgetMin, budgetMin === null ? false : choice.straight)} onStraight={(straight) => chooseTime(choice.budgetMin, straight)}
-        onFullSets={(fullSets) => chooseTime(choice.budgetMin, choice.straight, fullSets)} />}
+    <View>
+    {data && view.active.status === 'ready' && <View style={[plateRow, styles.dock]}><ResumeButton /></View>}
+    {data && (canOfferStart || plansPending) && <View accessibilityLabel="Start" style={[plateRow, styles.dock]}>
       <View style={styles.dockActions}>
         {plansPending ? <View style={styles.startPending} /> : chosen ? <>
           {today && choice.budgetMin !== null && !today.compression.fits && <Pressable accessibilityRole="button" disabled={skipping} onPress={() => void skipToday()} style={[styles.skip, skipping && styles.disabled]}><Text style={styles.skipText}>{skipping ? 'Skipping…' : 'Skip today'}</Text></Pressable>}
@@ -334,7 +332,7 @@ export default function DashboardScreen() {
         <View style={[styles.pickerActions, { paddingBottom: Math.max(20, insets.bottom + 12) }]}><Pressable accessibilityRole="button" disabled={!pickerDraft} onPress={() => { if (pickerDraft && uid) { launch?.dismissUnavailable(); setSelection({ uid, target: pickerDraft, unavailable: false }); setPicked(true); pickedRef.current = true; setPickerOpen(false) } }} style={[styles.pickerChoose, !pickerDraft && styles.disabled]}><Text style={styles.pickerChooseText}>{pickerDraftDay ? `Choose ${pickerDraftDay.name}` : 'Choose workout'}</Text></Pressable></View>
       </View></View>
     </Modal>
-  <BottomNavigation {...navigation} />
+  <BottomNavigation />
   </SafeAreaView>
 }
 
@@ -350,7 +348,7 @@ function TodayExercises({ today, exercises, startWeightOf, units, onOpen }: {
     return <Pressable key={`${skipped ? 'skipped:' : ''}${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" accessibilityLabel={skipped ? `${exercise.name}, skipped today` : undefined} onPress={() => onOpen(exercise)} style={styles.exercise}>
       <Text numberOfLines={1} style={[styles.exerciseName, skipped && styles.skippedName]}>{exercise.name}</Text>
       {skipped ? <Text style={[styles.exerciseMeta, styles.skipped]}>Skipped today</Text>
-        : <Text style={styles.exerciseMeta}>{sets} × {planned.reps}{planned.weight > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(planned.weight), units)} {units}</Text></>}</Text>}
+        : <Text style={styles.exerciseMeta}>{sets < exercise.sets && <Text style={styles.exerciseCut}>−{exercise.sets - sets} {exercise.sets - sets === 1 ? 'set' : 'sets'}   </Text>}{sets} × {planned.reps}{planned.weight > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(planned.weight), units)} {units}</Text></>}</Text>}
       <Icon name="chevron-right" size={16} />
     </Pressable>
   }
@@ -388,12 +386,12 @@ const styles = StyleSheet.create({
   planEmpty: { gap: 4, paddingVertical: 8 }, planEmptyTitle: { color: colors.textStrong, fontFamily: 'InstrumentSans_700Bold', fontSize: 14 },
   planEmptyCopy: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 12.5, lineHeight: 18 },
   launchFeedback: { gap: 4 }, disabled: { opacity: 0.65 },
-  dock: { gap: 8, marginHorizontal: 10, marginTop: 10, marginBottom: 2, paddingTop: 6, paddingHorizontal: 12, paddingBottom: 12, borderRadius: 22, backgroundColor: colors.surfaceHigh, experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, boxShadow: '0 -18px 40px -14px rgba(0, 0, 0, 0.7), 0 10px 24px -12px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.07)' },
-  dockBare: { paddingTop: 12 }, dockActions: { flexDirection: 'row', gap: 8, marginTop: 4 }, dockStart: { flex: 1 }, firstPlan: { flex: 1, gap: 8 }, firstPlanRow: { flexDirection: 'row', gap: 8 }, firstPlanQuiet: { flexGrow: 1, flexBasis: 0 },
-  skip: { flexGrow: 0, flexShrink: 1, flexBasis: 136, height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: 'rgba(255, 255, 255, 0.09)', boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)' }, skipText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
+  dock: { paddingTop: 12, paddingHorizontal: 16, paddingBottom: 12 }, today: { marginTop: 18 }, exerciseCut: { color: colors.mutedSoft },
+  dockActions: { flexDirection: 'row', gap: 8 }, dockStart: { flex: 1 }, firstPlan: { flex: 1, gap: 8 }, firstPlanRow: { flexDirection: 'row', gap: 8 }, firstPlanQuiet: { flexGrow: 1, flexBasis: 0 },
+  skip: { flexGrow: 0, flexShrink: 1, flexBasis: 136, height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: colors.surfaceRaised }, skipText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
   group: { marginLeft: 2, paddingLeft: 12, borderLeftWidth: 1, borderLeftColor: colors.lineStrong }, groupLabel: { marginTop: 6, color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20 },
   skipped: { color: colors.mutedSoft }, skippedName: { color: colors.mutedSoft, textDecorationLine: 'line-through', textDecorationColor: colors.mutedSoft },
-  startBar: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 2 }, start: { height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 15, backgroundColor: colors.primaryEnd, experimental_backgroundImage: primaryGradient, boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 8px rgba(0, 0, 0, 0.35)' }, startText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
+  start: { height: 52, alignItems: 'center', justifyContent: 'center', borderRadius: 10, backgroundColor: colors.primaryEnd }, startText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
   week: { paddingTop: 18, paddingBottom: 26 }, weekHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }, weekTitle: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 }, weekMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] },
   days: { flexDirection: 'row', gap: 6, marginTop: 10 }, day: { flex: 1, height: 34, alignItems: 'center', justifyContent: 'center', borderRadius: 10 }, dayDone: { backgroundColor: colors.choiceSelected }, dayToday: { borderColor: colors.text, borderWidth: 1.5 },
   dayLabel: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_500Medium', fontSize: 13 }, dayLabelOn: { color: colors.text },

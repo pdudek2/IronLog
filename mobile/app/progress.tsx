@@ -1,4 +1,4 @@
-import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import BottomNavigation from '../src/BottomNavigation'
 import { useCallback, useMemo, useState } from 'react'
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native'
 import { useFocusEffect } from 'expo-router'
@@ -32,8 +32,6 @@ export default function ProgressScreen() {
 }
 
 function ProgressContent({ uid }: { uid: string }) {
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
   const active = useActiveRuntime()
   const units = active.state.units
   const { width } = useWindowDimensions()
@@ -105,7 +103,7 @@ function ProgressContent({ uid }: { uid: string }) {
   return <SafeAreaView edges={['top']} style={styles.screen}>
     <StatusBar style="light" />
     <HistoryHeader />
-    <ScrollView onScroll={navigation.onScroll} scrollEventThrottle={16} contentContainerStyle={[styles.content, { paddingBottom: 44 + navigationInset }]} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 44 }]} keyboardShouldPersistTaps="handled">
       <View style={styles.heading}>
         <Text accessibilityRole="header" style={styles.title}>Progress</Text>
         {/* Loading shows below the range switch, so the switch does not move when it ends. */}
@@ -152,7 +150,7 @@ function ProgressContent({ uid }: { uid: string }) {
       {empty && <View style={styles.empty}><Text style={styles.emptyTitle}>No data</Text><Text style={styles.muted}>Complete a few workouts to see charts and records.</Text></View>}
     </ScrollView>
     <ChoiceModal visible={picker === 'strength'} title="Exercise" options={strength.series.map((series) => ({ key: series.key, label: `${series.exerciseName}${(exerciseNames.get(series.exerciseName) ?? 0) > 1 ? ` · ${series.key.startsWith('user:') ? 'mine' : 'shared'}` : ''}` }))} selected={selectedStrengthKey} onSelect={(key) => { setStrengthKey(key); setPicker(null) }} onClose={() => setPicker(null)} />
-  <BottomNavigation {...navigation} />
+  <BottomNavigation />
   </SafeAreaView>
 }
 

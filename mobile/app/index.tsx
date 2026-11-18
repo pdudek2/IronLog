@@ -1,6 +1,7 @@
 import { useOptionalLaunchRuntime } from '../src/launchRuntime'
-import BottomNavigation, { useBottomNavigation, useNavigationInset } from '../src/BottomNavigation'
+import BottomNavigation from '../src/BottomNavigation'
 import { KeyboardLift } from '../src/KeyboardLift'
+import { getRest, setRest, useRest, type Rest } from '../src/restClock'
 import { KeyboardAwareScrollView } from 'react-native-keyboard-controller'
 import { StatusBar } from 'expo-status-bar'
 import { useIsFocused, useRouter } from 'expo-router'
@@ -568,9 +569,7 @@ function WorkoutLedger({ uid, session, units, sessionKey, history, editing, curr
   </View>
 }
 
-type Rest = { sessionId: string; startedAt: number; totalSec: number }
 // In memory for this process; a fresh process takes the rest back from the latest logged set, without +30 s or Skip.
-let lastRest: Rest | null = null
 let restChecked: RestCheck | null = null
 
 function RestBar({ rest, label, onAddTime, onSkip }: { rest: Rest; label: string; onAddTime: (seconds: number) => void; onSkip: () => void }) {
@@ -692,8 +691,6 @@ function guardClosureInteraction<Args extends unknown[], Result>(canEdit: () => 
 }
 
 function SessionScreen({ user }: { user: AuthUser }) {
-  const navigation = useBottomNavigation()
-  const navigationInset = useNavigationInset()
   const scroll = useRef<ScrollView>(null)
   const isFocused = useIsFocused()
   const router = useRouter()
@@ -709,12 +706,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const [picking, setPicking] = useState(false)
   const [logoutError, setLogoutError] = useState<string | null>(null)
   const [manualExercise, setManualExercise] = useState<{ sessionId: string; id: string } | null>(null)
-  const [rest, setRest] = useState(lastRest)
+  const rest = useRest()
   const [lastLogged, setLastLogged] = useState<{ exerciseId: string; setId: string; draw: boolean } | null>(null)
   const [selectedSet, setSelectedSet] = useState<{ exerciseId: string; setId: string } | null>(null)
   const weightInput = useRef<TextInput>(null)
   const [weightFocus, setWeightFocus] = useState(0)
-  const changeRest = (next: Rest | null) => { lastRest = next; setRest(next) }
+  const changeRest = setRest
   const insets = useSafeAreaInsets()
   const { closure, completed, locked, handingOff, canEdit: canEditClosure, start: startClosure, retry: retryClosure, dismiss: dismissClosure } = closureRuntime
   const sessionClosed = state.status === 'ready' && completed?.action === 'finish'
@@ -736,9 +733,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
 
   const session = state.status === 'ready' ? state.session : null
   if (session) {
-    const next = reconcileRest(lastRest, restChecked, session, sessionRoles(session.exercises), session.compression?.shortRest === true, Date.now())
+    const next = reconcileRest(getRest(), restChecked, session, sessionRoles(session.exercises), session.compression?.shortRest === true, Date.now())
     restChecked = next.checked
-    if (next.rest !== lastRest) changeRest(next.rest)
+    if (next.rest !== getRest()) changeRest(next.rest)
   }
   // Decided when the session or the screen comes into view, so a long workout is not interrupted mid-set.
   const sessionId = session?.sessionId, startedAt = session?.startedAt
@@ -922,11 +919,11 @@ function SessionScreen({ user }: { user: AuthUser }) {
     <View pointerEvents={isFocused ? 'auto' : 'none'} style={styles.sessionShell}>
       <ScrollView
         ref={scroll}
-        contentContainerStyle={[styles.sessionContent, panelVisible ? styles.sessionContentPanel : !liveSession && { paddingBottom: navigationInset }]}
+        contentContainerStyle={[styles.sessionContent, panelVisible ? styles.sessionContentPanel : !liveSession && { paddingBottom: 32 }]}
         keyboardShouldPersistTaps="handled"
         stickyHeaderIndices={[0]}
         scrollEventThrottle={16}
-        onScroll={navigation.onScroll}
+        
       >
       {state.status === 'ready' && !sessionClosed && !resumePrompt ? (
         <View style={styles.lifecycleBar}>
@@ -1112,7 +1109,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
           </Pressable>
         </>}
       </BottomSheet>}
-      {!liveSession && <BottomNavigation {...navigation} />}
+      {!liveSession && <BottomNavigation />}
     </View>
   )
 }

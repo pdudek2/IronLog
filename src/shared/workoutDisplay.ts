@@ -51,6 +51,20 @@ function upcomingSets(exercises: FlowExercise[]): number[] {
 export function focusExerciseIndex(exercises: FlowExercise[]): number {
   return upcomingSets(exercises)[0] ?? exercises.length - 1
 }
+// The member of this exercise's pair or circuit that takes the next set (fewest logged, then plan order), or null outside a group.
+export function nextGroupMember(exercises: FlowExercise[], exerciseIndex: number): number | null {
+  const group = exercises[exerciseIndex]?.group
+  if (!group) return null
+  let next: number | null = null
+  let fewest = Infinity
+  exercises.forEach((exercise, index) => {
+    const open = exercise.sets.filter((set) => !set.done).length
+    if (exercise.group !== group || !open || exercise.sets.length - open >= fewest) return
+    next = index
+    fewest = exercise.sets.length - open
+  })
+  return next
+}
 export function focusSetIndex(sets: Pick<DisplaySet, 'done'>[]): number {
   const next = sets.findIndex((set) => !set.done)
   return next >= 0 ? next : Math.max(sets.length - 1, 0)
@@ -72,6 +86,36 @@ export function restAfterSet(exercises: FlowExercise[], exerciseIndex: number, r
   if (!peers.length) return restSec(role, shortRest, false)
   if (peers.some((index) => exercises[index]!.sets.filter((set) => set.done).length < round)) return 0
   return groupRestSec([role, ...peers.map((index) => roles[index] ?? 'compound')], shortRest, false)
+}
+type RestExercise = { group?: string; sets: { done: boolean; completedAt?: unknown }[] }
+type RunningRest = { sessionId: string; startedAt: number; totalSec: number }
+function latestLogged(exercises: RestExercise[]): { exerciseIndex: number; at: number } | null {
+  let latest: { exerciseIndex: number; at: number } | null = null
+  exercises.forEach((exercise, exerciseIndex) => exercise.sets.forEach((set) => {
+    if (set.done && typeof set.completedAt === 'number' && (!latest || set.completedAt > latest.at)) latest = { exerciseIndex, at: set.completedAt }
+  }))
+  return latest
+}
+// The rest still running after the latest logged set, for a process that started after the set was logged.
+export function restoredRest(exercises: RestExercise[], roles: readonly Role[], shortRest: boolean, now: number): { startedAt: number; totalSec: number } | null {
+  const latest = latestLogged(exercises)
+  if (!latest) return null
+  const totalSec = restAfterSet(exercises, latest.exerciseIndex, roles, shortRest)
+  return totalSec > 0 && latest.at + totalSec * 1000 > now && latest.at <= now ? { startedAt: latest.at, totalSec } : null
+}
+// Checks the session when its newest logged set moves forward: a cached snapshot followed by a newer one from the server,
+// or a set logged on another device, brings its rest back. Undoing a set moves it back and changes nothing, and a rest
+// this device started for that set (+30 s, Skip) stays as it is.
+export type RestCheck = { sessionId: string; at: number }
+export function reconcileRest(current: RunningRest | null, checked: RestCheck | null, session: { sessionId: string; exercises: RestExercise[] }, roles: readonly Role[], shortRest: boolean, now: number): { checked: RestCheck; rest: RunningRest | null } {
+  const latest = latestLogged(session.exercises)
+  const at = latest?.at ?? 0
+  if (checked?.sessionId === session.sessionId && at <= checked.at) return { checked: { sessionId: session.sessionId, at: Math.min(at, checked.at) }, rest: current }
+  const next = { sessionId: session.sessionId, at }
+  // completedAt is stamped a few milliseconds after the rest this device starts for the same set.
+  const own = current?.sessionId === session.sessionId && latest !== null && current.startedAt >= latest.at - 2_000
+  const restored = own ? null : restoredRest(session.exercises, roles, shortRest, now)
+  return { checked: next, rest: restored ? { sessionId: session.sessionId, ...restored } : current }
 }
 export function panelSetIndex(sets: { clientId?: string; done: boolean }[], selectedSetId: string | null): number {
   const selected = selectedSetId === null ? -1 : sets.findIndex((set, index) => (set.clientId ?? String(index)) === selectedSetId)

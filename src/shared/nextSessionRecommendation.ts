@@ -43,11 +43,24 @@ export function applyOverload<T extends { weight: string; reps: string; done: bo
   }))
 }
 
-// A plan without weights starts every set at 0: once a set is logged with a weight, the open sets that have none take it,
-// so the next "Log set" cannot record 0 by accident. Sets that already carry a weight are left to the Apply hint.
+// A logged weight goes to the open sets that have none, so the next "Log set" cannot record 0 by accident, and to the open
+// sets after it while they all still share one weight it changed (a tail the user varied stays). Only a change within
+// 80–125% of that tail moves it: below is a warm-up, far above is a top set before planned back-off sets.
 export function carryLoggedWeight<T extends { weight: string; done: boolean }>(sets: T[], logged: T): T[] {
-  if (!logged.done || !(Number.parseFloat(logged.weight) > 0)) return sets
-  return sets.map((set) => (set.done || Number.parseFloat(set.weight) > 0 ? set : { ...set, weight: logged.weight }))
+  const weight = Number.parseFloat(logged.weight)
+  if (!logged.done || !(weight > 0)) return sets
+  const at = sets.indexOf(logged)
+  const tail = new Set(sets.flatMap((set, index) => {
+    const own = Number.parseFloat(set.weight)
+    return index > at && !set.done && own > 0 ? [own] : []
+  }))
+  const shared = tail.size === 1 ? [...tail][0]! : null
+  const follow = shared !== null && shared !== weight && weight >= shared * 0.8 && weight <= shared * 1.25
+  return sets.map((set, index) => {
+    if (set.done) return set
+    const own = Number.parseFloat(set.weight)
+    return !(own > 0) || (follow && index > at) ? { ...set, weight: logged.weight } : set
+  })
 }
 
 export interface NextSessionExercise {
@@ -226,4 +239,12 @@ export function buildNextSessionRecommendation(
       exercises: exercises.map((exercise, index) => ({ dayExerciseIndex: index, exerciseId: exercise.exerciseId, exerciseSource: exercise.exerciseSource, plannedSets: exercise.sets, sets: compression.sets[index]! })),
     } : null,
   }
+}
+
+// Start launches today's version once the user gave a time, checked in or comes back from a break; an untouched day starts
+// the plan as written. Today's version keeps the plan's weights and reps: a check-in or a shorter day only changes sets.
+export function todayLaunch(plan: NextSessionRecommendation | null, checkedIn: boolean, choice: { budgetMin: number | null; proposals: CompressionProposal[] }): TemplateLaunch | undefined {
+  if (!plan || (choice.budgetMin === null && !choice.proposals.length && !checkedIn && plan.breakDays === null)) return undefined
+  const items = plan.launch.map(({ dayExerciseIndex, sets, group }) => ({ dayExerciseIndex, sets, ...(group ? { group } : {}) }))
+  return { items, ...(plan.record ? { compression: plan.record } : {}), ...(choice.proposals.length ? { proposals: choice.proposals } : {}) }
 }

@@ -5,9 +5,9 @@ import {
   InstrumentSans_700Bold,
 } from '@expo-google-fonts/instrument-sans'
 import { useFonts } from 'expo-font'
-import { Stack, usePathname, useRouter } from 'expo-router'
+import { Stack, usePathname, useRouter, type ErrorBoundaryProps } from 'expo-router'
 import { useEffect } from 'react'
-import { Keyboard, TextInput } from 'react-native'
+import { Keyboard, Pressable, Text, TextInput, View } from 'react-native'
 import { KeyboardProvider } from 'react-native-keyboard-controller'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { ActiveRuntimeProvider, AuthRuntimeProvider, ClosureRuntimeProvider, useAuthRuntime } from '../src/runtime'
@@ -15,8 +15,19 @@ import { DialogHost } from '../src/dialog'
 import { LaunchRuntimeProvider } from '../src/launchRuntime'
 import { ReadinessRuntimeProvider } from '../src/readinessRuntime'
 import '../src/splash'
-import { colors } from '../src/theme'
+import { colors, pageTitle } from '../src/theme'
 import { forgetReads } from '../src/scopedRead'
+
+// A render error shows a way back instead of a blank screen.
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  return <View style={{ flex: 1, backgroundColor: colors.background, justifyContent: 'center', padding: 24, gap: 12 }}>
+    <Text accessibilityRole="header" style={pageTitle}>Something went wrong</Text>
+    <Text style={{ color: colors.muted, fontSize: 15, lineHeight: 21 }}>Try again to reload the screen.</Text>
+    <Pressable accessibilityRole="button" onPress={() => { void retry() }} style={({ pressed }) => ({ marginTop: 8, height: 52, borderRadius: 10, backgroundColor: colors.primaryStart, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.85 : 1 })}>
+      <Text style={{ color: colors.onPrimary, fontSize: 16, fontFamily: 'InstrumentSans_600SemiBold' }}>Try again</Text>
+    </Pressable>
+  </View>
+}
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({

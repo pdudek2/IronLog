@@ -1,7 +1,6 @@
 import { todayKey, type ReadinessEntry } from '../../src/shared/readiness'
 import type { ReadResult } from './scopedRead'
-import type { NextSessionRecommendation, RecommendationWorkout, TemplateLaunch } from '../../src/shared/nextSessionRecommendation'
-import type { CompressionProposal } from '../../src/shared/compressionRecord'
+import type { RecommendationWorkout } from '../../src/shared/nextSessionRecommendation'
 import type { SavedWorkout } from './history'
 
 export type ReadinessValues = Pick<ReadinessEntry, 'sleep' | 'mood' | 'soreness'>
@@ -27,13 +26,7 @@ export function recommendationHistory(workouts: SavedWorkout[]): RecommendationW
       ...(exercise.group ? { group: exercise.group } : {}), sets: exercise.sets.map(set => ({ ...set })) })) }))
 }
 
-// Start launches today's version once the user gave a time, checked in or comes back from a break; an untouched day starts the plan as written.
-export function todayLaunch(plan: NextSessionRecommendation | null, checkedIn: boolean, choice: { budgetMin: number | null; proposals: CompressionProposal[] }): TemplateLaunch | undefined {
-  if (!plan || (choice.budgetMin === null && !choice.proposals.length && !checkedIn && plan.breakDays === null)) return undefined
-  // Without a check-in, today's version keeps the usual day's weights, so a shorter day never changes a load.
-  const items = checkedIn ? plan.launch : plan.launch.map(({ dayExerciseIndex, sets, group }) => ({ dayExerciseIndex, sets, ...(group ? { group } : {}) }))
-  return { items, ...(plan.record ? { compression: plan.record } : {}), ...(choice.proposals.length ? { proposals: choice.proposals } : {}) }
-}
+export { todayLaunch } from '../../src/shared/nextSessionRecommendation'
 
 function sameEntry(left: ReadinessEntry | null, right: ReadinessEntry) {
   return !!left && left.userId === right.userId && left.date === right.date && left.createdAt === right.createdAt

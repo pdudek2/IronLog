@@ -5,7 +5,7 @@ import { ChevronDown, ChevronRight } from 'lucide-react'
 import { toast } from 'sonner'
 import ReadinessWidget from '../components/ReadinessWidget'
 import { TodayExercises, TrainTime } from '../components/TrainToday'
-import { buildNextSessionRecommendation, type TodayOptions } from '../shared/nextSessionRecommendation'
+import { buildNextSessionRecommendation, todayLaunch, type TodayOptions } from '../shared/nextSessionRecommendation'
 import type { CompressionProposal } from '../shared/compressionRecord'
 import { planDayId as planDayIdOf } from '../shared/planDay'
 import { useUserExercises } from '../hooks/useUserExercises'
@@ -501,11 +501,7 @@ export default function DashboardPage() {
     ? buildNextSessionRecommendation(quickTemplate, quickTemplateDayIndex, readinessEntry, workouts, Date.now(), units, todayOptions(budgetMin, straight, fullSets))
     : null
   const todayPlan = hasActiveSession ? null : planToday(choice.budgetMin, choice.straight, choice.fullSets)
-  // Start launches today's version once the user gave a time, checked in or comes back from a break; an untouched day starts the plan as written.
-  const todayLaunch: TemplateLaunch | undefined = todayPlan && (choice.budgetMin !== null || choice.proposals.length > 0 || readinessEntry || todayPlan.breakDays !== null)
-    // Without a check-in, today's version keeps the usual day's weights, so a shorter day never changes a load.
-    ? { items: readinessEntry ? todayPlan.launch : todayPlan.launch.map((item) => ({ dayExerciseIndex: item.dayExerciseIndex, sets: item.sets, ...(item.group ? { group: item.group } : {}) })), ...(todayPlan.record ? { compression: todayPlan.record } : {}), ...(choice.proposals.length ? { proposals: choice.proposals } : {}) }
-    : undefined
+  const launchToday = todayLaunch(todayPlan, readinessEntry !== null, choice)
   function chooseTime(budgetMin: number | null, straight: boolean, fullSets = choice.fullSets) {
     const proposal = planToday(budgetMin, straight, fullSets)
     const mode: CompressionProposal['mode'] = budgetMin === null ? 'usual' : proposal?.record?.mode ?? 'usual'
@@ -667,7 +663,7 @@ export default function DashboardPage() {
             )}
             <button
               type="button"
-              onClick={() => launchSelectedWorkout(todayLaunch)}
+              onClick={() => launchSelectedWorkout(launchToday)}
               disabled={launchingTemplateId !== null}
               aria-busy={quickTemplateLaunchOperation?.status === 'pending' ? 'true' : undefined}
               aria-describedby={quickTemplateLaunchOperation?.status === 'error'
@@ -768,7 +764,6 @@ export default function DashboardPage() {
                 uid={user.uid}
                 template={quickTemplate}
                 dayIndex={quickTemplateDayIndex}
-                checkedIn={readinessEntry !== null}
                 today={todayPlan}
                 exercises={quickTemplateDay?.exercises ?? []}
                 units={units}

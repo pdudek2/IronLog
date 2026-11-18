@@ -230,6 +230,7 @@ describe('matchExerciseName', () => {
     expect(matchedId('OHP 3x5')).toBe('ohp')
     expect(matchedId('Wyciskanie na ławce 3x5')).toBe('bench-press')
     expect(matchedId('Ciąganie drążka 3x8')).toBe('lat-pulldown')
+    expect(matchedId('Wyciskanie nóg 3x10')).toBe('leg-press')
     expect(one('Leg press (ziemny) 3x10').match).toMatchObject({ status: 'matched', via: 'variant', variant: 'ziemny', exercise: { exerciseId: 'leg-press' } })
     expect(one('Leg curls tyłem 3x10').match).toMatchObject({ status: 'matched', variant: 'tyłem', exercise: { exerciseId: 'leg-curl' } })
     // Other equipment in the name keeps the match but asks: the weights of a dumbbell and a barbell press differ.

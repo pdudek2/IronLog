@@ -81,7 +81,8 @@ export class WorkoutLaunchController {
           if (!fresh || fresh.userId !== this.uid || !fresh.days[dayIndex]?.exercises.length
             || selectionFingerprint(fresh, dayIndex) !== selectionFingerprint(target.snapshot, dayIndex)) throw new TargetUnavailableError()
           const unique = new Map(fresh.days[dayIndex]!.exercises.map((exercise) => [`${exercise.exerciseSource}:${exercise.exerciseId}`, exercise]))
-          const entries = target.launch ? [] : await Promise.all([...unique].map(async ([key, exercise]) => {
+          // Today's version may carry only set counts; then the start weights come from history, as on Train.
+          const entries = target.launch?.items.every((item) => item.weight !== undefined) ? [] : await Promise.all([...unique].map(async ([key, exercise]) => {
             try { return [key, await this.port.readBest(this.uid, exercise.exerciseId, exercise.exerciseSource)] as const }
             catch { return [key, null] as const }
           }))

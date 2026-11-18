@@ -50,7 +50,7 @@ import {
   storedValueToSetInput,
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, panelSetIndex, restAfterSet, setPairLabel, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, nextGroupMember, panelSetIndex, reconcileRest, restAfterSet, setPairLabel, type RestCheck, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../../src/shared/nextSessionRecommendation'
 import { needsWeightConfirm } from '../../src/shared/workoutLimits'
 import { acceptSetInput, lastSessionBest, weightSlip } from '../../src/shared/setInput'
@@ -569,8 +569,9 @@ function WorkoutLedger({ uid, session, units, sessionKey, history, editing, curr
 }
 
 type Rest = { sessionId: string; startedAt: number; totalSec: number }
-// shortcut: lives only in memory, so a killed app forgets the rest; move it to the session journal if testers miss it.
+// In memory for this process; a fresh process takes the rest back from the latest logged set, without +30 s or Skip.
 let lastRest: Rest | null = null
+let restChecked: RestCheck | null = null
 
 function RestBar({ rest, label, onAddTime, onSkip }: { rest: Rest; label: string; onAddTime: (seconds: number) => void; onSkip: () => void }) {
   const [now, setNow] = useState(Date.now())
@@ -734,6 +735,11 @@ function SessionScreen({ user }: { user: AuthUser }) {
   }
 
   const session = state.status === 'ready' ? state.session : null
+  if (session) {
+    const next = reconcileRest(lastRest, restChecked, session, sessionRoles(session.exercises), session.compression?.shortRest === true, Date.now())
+    restChecked = next.checked
+    if (next.rest !== lastRest) changeRest(next.rest)
+  }
   // Decided when the session or the screen comes into view, so a long workout is not interrupted mid-set.
   const sessionId = session?.sessionId, startedAt = session?.startedAt
   const oldSession = useMemo(() => startedAt !== undefined && isActiveSessionStale({ startedAt }), [sessionId, startedAt, isFocused])
@@ -868,9 +874,9 @@ function SessionScreen({ user }: { user: AuthUser }) {
     const restSeconds = restAfterSet(after, exerciseIndex, sessionRoles(after), liveSession.compression?.shortRest === true)
     changeRest(restSeconds > 0 ? { sessionId: liveSession.sessionId, startedAt: Date.now(), totalSec: restSeconds } : null)
     // The next exercise waits for "Go to", so the logged set and Undo stay on screen; a pair or circuit moves on by itself.
-    const groupOpen = typeof exercise.group === 'string' && after.some((other) => other.clientId !== exerciseId && other.group === exercise.group && other.sets.some((set) => !set.done))
     // Inside an open round the next member takes the screen, even if this one was picked with Go to.
-    if (groupOpen) setManualExercise(null)
+    const partner = nextGroupMember(after, exerciseIndex)
+    if (partner !== null && partner !== exerciseIndex) setManualExercise({ sessionId: liveSession.sessionId, id: after[partner]!.clientId })
     else if (after[exerciseIndex]!.sets.every((set) => set.done)) setManualExercise({ sessionId: liveSession.sessionId, id: exerciseId })
   })
   // The dialog answers later; it must use the session and lock state of that moment, not of when it opened.
@@ -909,6 +915,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
   const sessionSetCount = { done: allSets.filter((set) => set.done).length, total: allSets.length }
   // The saved workout replaces this screen; it stays blank under the summary's entering animation too.
   const hideSaved = handingOff || (!isFocused && completed?.action === 'finish')
+  const closingEmptied = state.status === 'empty' && closure?.status === 'submitting'
   const selectSet = (setId: string) => { if (currentId) setSelectedSet({ exerciseId: currentId, setId }) }
 
   return (
@@ -961,9 +968,17 @@ function SessionScreen({ user }: { user: AuthUser }) {
         </View>
       )}
 
-      {closure && <ClosureNotice closure={closure} savingInButton={state.status === 'ready'} onRetry={retryClosure} onDismiss={dismissClosure} onSignIn={() => void doLogout()} />}
+      {closure && <ClosureNotice closure={closure} savingInButton={state.status === 'ready' || closingEmptied} onRetry={retryClosure} onDismiss={dismissClosure} onSignIn={() => void doLogout()} />}
 
-      {state.status === 'empty' && !hideSaved && (
+      {/* The server deletes the session inside the closing transaction, so its snapshot lands before the answer. */}
+      {closingEmptied && closure?.status === 'submitting' && (
+        <View accessibilityLiveRegion="polite" style={styles.centerState}>
+          <ActivityIndicator color={colors.accent} />
+          <Text accessibilityRole="header" style={styles.stateTitle}>{closure.intent.action === 'finish' ? 'Saving workout…' : 'Discarding workout…'}</Text>
+        </View>
+      )}
+
+      {state.status === 'empty' && !hideSaved && !closingEmptied && (
         <View style={styles.centerState}>
           <Text accessibilityRole="header" style={styles.stateTitle}>{completed?.action === 'finish' ? 'Workout saved' : completed ? 'Workout discarded' : 'No workout in progress'}</Text>
           <Text style={styles.stateCopy}>{completed?.action === 'finish' ? 'Your saved workout is ready in History.' : 'Start a workout from Train whenever you are ready.'}</Text>

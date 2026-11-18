@@ -51,7 +51,7 @@ export const exercises: Exercise[] = [
   { id: 'sumo-deadlift', name: 'Sumo Deadlift', category: 'legs', equipment: 'barbell', muscles: ['glutes', 'hamstrings', 'quads', 'adductors'], aliases: ['martwy ciąg sumo', 'sumo'] },
   { id: 'good-morning', name: 'Good Morning', category: 'legs', equipment: 'barbell', muscles: ['hamstrings', 'back'], aliases: ['dzień dobry', 'skłony ze sztangą', 'good mornings'] },
   { id: 'hip-thrust', name: 'Hip Thrust', category: 'legs', equipment: 'barbell', muscles: ['glutes', 'hamstrings'], aliases: ['hip thrusty', 'wypychanie bioder', 'unoszenie bioder ze sztangą', 'barbell hip thrust'] },
-  { id: 'leg-press', name: 'Leg Press', category: 'legs', equipment: 'machine', muscles: ['quads', 'glutes'], aliases: ['suwnica', 'wypychanie nóg', 'wypychanie na suwnicy', 'wypychanie nóg na suwnicy', 'prasa'] },
+  { id: 'leg-press', name: 'Leg Press', category: 'legs', equipment: 'machine', muscles: ['quads', 'glutes'], aliases: ['suwnica', 'wypychanie nóg', 'wypychanie na suwnicy', 'wypychanie nóg na suwnicy', 'wyciskanie nóg', 'wyciskanie nóg na suwnicy', 'prasa'] },
   { id: 'leg-curl', name: 'Leg Curl', category: 'legs', equipment: 'machine', muscles: ['hamstrings'], aliases: ['uginanie nóg', 'uginanie nóg leżąc', 'uginanie nóg na maszynie', 'leg curls', 'lying leg curl'] },
   { id: 'seated-leg-curl', name: 'Seated Leg Curl', category: 'legs', equipment: 'machine', muscles: ['hamstrings'], aliases: ['uginanie nóg siedząc', 'seated leg curls'] },
   { id: 'leg-extension', name: 'Leg Extension', category: 'legs', equipment: 'machine', muscles: ['quads'], aliases: ['prostowanie nóg', 'prostowanie nóg na maszynie', 'wyprosty nóg', 'leg extensions'] },

@@ -4,7 +4,7 @@ import type { WorkoutTemplate } from '../templateService'
 import type { WorkoutSummary } from '../workoutService'
 import { buildNextSessionRecommendation } from '../nextSessionRecommendation'
 import { buildProgression } from '../../shared/progression'
-import { breakSets } from '../../shared/nextSessionRecommendation'
+import { breakSets, carryLoggedWeight } from '../../shared/nextSessionRecommendation'
 
 const NOW = Date.UTC(2026, 7, 10, 12)
 
@@ -233,5 +233,24 @@ describe("today's launch on the Upper day", () => {
     const next = buildNextSessionRecommendation(upper, 0, null, [firstBack], NOW, 'kg', day)
     expect(next).toMatchObject({ breakDays: null, record: null })
     expect(next.exercises[0]).toMatchObject({ sets: 4, weightDelta: 0, trial: false })
+  })
+})
+
+describe('carryLoggedWeight', () => {
+  const sets = (...weights: string[]) => weights.map((weight, index) => ({ weight, done: index === 0 }))
+  const carry = (list: ReturnType<typeof sets>) => carryLoggedWeight(list, list[0]!).map((set) => set.weight)
+
+  it('moves a changed weight to the later sets that still share one weight', () => {
+    expect(carry(sets('77.5', '75', '75', '75'))).toEqual(['77.5', '77.5', '77.5', '77.5'])
+    expect(carry(sets('70', '75', '75'))).toEqual(['70', '70', '70'])
+    expect(carry(sets('80', '', ''))).toEqual(['80', '80', '80'])
+  })
+
+  it('leaves a varied tail, a warm-up, a top set over back-off sets and earlier sets alone', () => {
+    expect(carry(sets('77.5', '75', '72.5'))).toEqual(['77.5', '75', '72.5'])
+    expect(carry(sets('40', '75', '75'))).toEqual(['40', '75', '75'])
+    expect(carry(sets('100', '', '60'))).toEqual(['100', '100', '60'])
+    const middle = [{ weight: '75', done: false }, { weight: '80', done: true }, { weight: '75', done: false }]
+    expect(carryLoggedWeight(middle, middle[1]!).map((set) => set.weight)).toEqual(['75', '80', '80'])
   })
 })

@@ -371,6 +371,12 @@ test('recommended candidate survives retry/restart unchanged without querying ne
   assert.equal(h.results.at(-1)?.session.exercises[0]?.sets[0]?.weight,'57.5')
   assert.deepEqual(plan,before); assert.equal(h.ids,2)
 })
+test('today\'s version with set counts only starts from the history weights, like Train', async () => {
+  const h = harness(), plan = template(), controller = h.controller(); await controller.load()
+  await controller.launch({ kind: 'template', selection: { templateId: plan.id, dayIndex: 1 }, snapshot: plan, launch: { items: [{ dayExerciseIndex: 0, sets: 1 }] } }, () => true)
+  const session = h.results.at(-1)?.session
+  assert.deepEqual(session?.exercises.map(e => [e.sets.length, e.sets[0]?.weight]), [[1, '55']])
+})
 test('recommended start preserves a concurrent winner including edited sets and candidate recovery', async () => {
   const h = harness(), plan = template(), controller = h.controller(); await controller.load()
   const winner = buildTemplateSession(plan,1,new Map(),'winner','r',100)

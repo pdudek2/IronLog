@@ -14,7 +14,6 @@ import { Linking,
   AppState,
   Keyboard,
   BackHandler,
-  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -22,6 +21,7 @@ import { Linking,
   TextInput,
   Vibration,
   View,
+  type LayoutChangeEvent,
 } from 'react-native'
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import Svg, { Circle, Path } from 'react-native-svg'
@@ -51,17 +51,17 @@ import {
   storedValueToSetInput,
 } from '../src/setInput'
 import { getAuthErrorMessage } from '../../src/shared/authErrors'
-import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, nextGroupMember, panelSetIndex, reconcileRest, restAfterSet, setPairLabel, type RestCheck, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
+import { bestSet, EQUIPMENT_LABELS, removeSetMessage, exerciseTargetLabel, focusExerciseIndex, formatPreviousSet, nextGroupMember, panelSetIndex, reconcileRest, restAfterSet, roundRows, sessionBlocks, setPairLabel, type RestCheck, setPanelRestLabel, setPanelStatus, upNextQueue, WORKOUT_LABELS } from '../../src/shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../../src/shared/nextSessionRecommendation'
+import { groupRestSec } from '../../src/shared/compression'
+import { planCut } from '../../src/shared/sessionCut'
 import { needsWeightConfirm } from '../../src/shared/workoutLimits'
 import { acceptSetInput, lastSessionBest, weightSlip } from '../../src/shared/setInput'
 import { weightStep } from '../../src/shared/weightUnits'
 import { useActiveRuntime, useAuthRuntime, useClosureRuntime } from '../src/runtime'
 import ExercisePicker from '../src/ExercisePicker'
-import { covers } from '../src/covers'
 import { buildProgression, planTarget, sessionHint, type ProgressionInput } from '../../src/shared/progression'
 import { computeReadinessScore, todayKey } from '../../src/shared/readiness'
-import { workoutCover } from '../../src/shared/workoutCover'
 import { colors, primaryGradient, fieldColors } from '../src/theme'
 import { showDialog } from '../src/dialog'
 import HistoryHeader from '../src/HistoryHeader'
@@ -258,7 +258,21 @@ function Elapsed({ session }: { session: ActiveWorkout }) {
     }
   }, [session.startedAt])
 
-  return <Text accessibilityLabel={`Elapsed time ${formatElapsed(session.startedAt, now)}`} style={styles.elapsed}>{formatElapsed(session.startedAt, now)}</Text>
+  return <>{formatElapsed(session.startedAt, now)}</>
+}
+
+// Under the header: the time the rest takes and the one way into Short on time.
+function TimeLine({ session, now, onOpen }: { session: ActiveWorkout; now: number; onOpen: () => void }) {
+  const base = planCut(session, { leftMin: null, clock: false, straight: false }, now)
+  const left = Math.round(base.result.fullEstimateSec / 60)
+  if (base.openBefore === 0) return null
+  const cut = session.compression?.cut
+  const finishBy = new Date(now + base.result.fullEstimateSec * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return <Pressable accessibilityRole="button" accessibilityLabel={cut ? `About ${left} minutes left, finish by ${finishBy}. Change` : `About ${left} minutes left, ${base.openBefore} sets. Short on time?`} onPress={onOpen}
+    style={({ pressed }) => [styles.timeLine, pressed && styles.headingPressed]}>
+    <Text numberOfLines={1} style={styles.timeLineText}><Text style={styles.timeLineStrong}>~{left} min</Text> left · {cut ? `finish by ${finishBy}` : `${base.openBefore} ${pluralize(base.openBefore, 'set', 'sets')}`}</Text>
+    <Text style={styles.timeLineAction}>{cut ? 'Change' : 'Short on time?'}</Text>
+  </Pressable>
 }
 
 
@@ -385,11 +399,17 @@ function FadeIn({ children }: { children: React.ReactNode }) {
 
 type HistoryRead = { state: ReadState<ExerciseHistory>; retry: () => void }
 
-function ExerciseLedger({ history, exercise, position, count, units, metadata, target, lowReadiness, panelSet, onSelectSet, onOverview, onRemove, drawnSetId, editing }: {
-  history: HistoryRead; exercise: WorkoutExercise; position: number; count: number
+function MoreButton({ label, onPress }: { label: string; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => [styles.exerciseRemove, pressed && styles.headingPressed]}>
+    <Svg width={20} height={20} viewBox="0 0 24 24">{[5, 12, 19].map((cx) => <Circle key={cx} cx={cx} cy={12} r={1} fill="none" stroke={colors.muted} strokeWidth={2} />)}</Svg>
+  </Pressable>
+}
+
+function ExerciseLedger({ history, exercise, units, metadata, target, lowReadiness, panelSet, onSelectSet, onRemove, drawnSetId, editing }: {
+  history: HistoryRead; exercise: WorkoutExercise
   // undefined while the session's plan is still loading
   target: ProgressionInput['target'] | undefined; lowReadiness: boolean
-  units: Units; metadata: ExerciseMetadata | undefined; panelSet: number; onSelectSet: (setId: string) => void; onOverview: () => void; onRemove: () => void; drawnSetId: string | null; editing: EditingActions
+  units: Units; metadata: ExerciseMetadata | undefined; panelSet: number; onSelectSet: (setId: string) => void; onRemove: () => void; drawnSetId: string | null; editing: EditingActions
 }) {
   const category = metadata ? EXERCISE_CATEGORY_LABELS[metadata.category] : undefined
   const equipment = metadata ? EQUIPMENT_LABELS[metadata.equipment] : undefined
@@ -401,10 +421,6 @@ function ExerciseLedger({ history, exercise, position, count, units, metadata, t
   const hint = sessionHint(progression, exercise.sets, units, metadata?.equipment)
   const suggestion = hint && hint.label !== closedHint ? hint : null
   return <View style={styles.exerciseCard}>
-    <Pressable accessibilityRole="button" accessibilityLabel={`Exercise ${position} of ${count}, open workout overview`} onPress={onOverview}
-      style={({ pressed }) => [styles.exercisePositionRow, pressed && styles.headingPressed]}>
-      <Text style={styles.exercisePosition}>Exercise {position} of {count}</Text><Icon name="chevron-down" size={14} />
-    </Pressable>
     <View style={styles.exerciseHeadRow}>
       <View style={styles.exerciseHeading}>
         <View style={styles.flex}>
@@ -413,8 +429,7 @@ function ExerciseLedger({ history, exercise, position, count, units, metadata, t
           {(category || equipment) && <Text style={styles.exerciseMeta}>{category}{category && equipment ? ' · ' : ''}{equipment}</Text>}
         </View>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={`Remove exercise ${exercise.name}`} onPress={onRemove}
-        style={({ pressed }) => [styles.exerciseRemove, pressed && styles.headingPressed]}><Icon name="trash" size={17} /></Pressable>
+      <MoreButton label={`More for ${exercise.name}`} onPress={onRemove} />
     </View>
     <View>
       {suggestion && <View style={styles.hint}>
@@ -471,15 +486,96 @@ function ExerciseLedger({ history, exercise, position, count, units, metadata, t
 
 const exerciseIdentity = (exercise: WorkoutExercise, index: number) => exercise.clientId ?? `${exercise.exerciseSource}:${exercise.exerciseId}:${index}`
 
+// Another exercise of the list: its target before it starts, its progress after.
+function CollapsedExercise({ exercise, units, onPress }: { exercise: WorkoutExercise; units: Units; onPress: () => void }) {
+  const done = exercise.sets.filter((set) => set.done).length
+  const finished = done > 0 && done === exercise.sets.length
+  return <Pressable accessibilityRole="button" accessibilityLabel={`${exercise.name}, ${done ? `${done} of ${exercise.sets.length} sets` : exerciseTargetLabel(exercise.sets, units)}. Open`} onPress={onPress}
+    style={({ pressed }) => [styles.listRow, pressed && styles.headingPressed]}>
+    {finished && <Icon name="check" size={15} color={colors.muted} />}
+    <Text numberOfLines={1} style={[styles.listName, finished && styles.listNameDone]}>{exercise.name}</Text>
+    <Text style={styles.listMeta}>{done ? `${done} of ${exercise.sets.length} ${pluralize(exercise.sets.length, 'set', 'sets')}` : exerciseTargetLabel(exercise.sets, units)}</Text>
+    <Icon name="chevron-down" size={16} />
+  </Pressable>
+}
+
+const MEMBER_LETTERS = 'ABCDEF'
+// A pair or circuit as one block: its members once, then every set in the order it is done, round by round.
+function GroupBlock({ uid, session, indices, currentIndex, panelSet, units, editing, drawnSetId, onSelect, onRemove, sessionKey }: {
+  uid: string; session: ActiveWorkout; indices: number[]; currentIndex: number; panelSet: number; units: Units; editing: EditingActions; drawnSetId: string | null
+  onSelect: (exerciseId: string, setId: string) => void; onRemove: (exercise: WorkoutExercise) => void; sessionKey: string
+}) {
+  const members = indices.map((index) => session.exercises[index]!)
+  const loadHistory = useCallback(async () => {
+    const results = await Promise.all(members.map((member) => readExerciseHistory(uid, member.exerciseId, member.exerciseSource)))
+    return { data: results.map((result) => result.data), fromCache: results.some((result) => result.fromCache) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uid, members.map((member) => `${member.exerciseSource}:${member.exerciseId}`).join('|')])
+  const history = useSessionRead(JSON.stringify(['group-history', uid, sessionKey, indices]), loadHistory)
+  const rows = roundRows(session.exercises, indices)
+  const rounds = Math.max(...members.map((member) => member.sets.length))
+  const roles = sessionRoles(session.exercises)
+  const rest = groupRestSec(indices.map((index) => roles[index] ?? 'compound'), session.compression?.shortRest === true, false)
+  const planned = Math.max(...members.map((member) => session.compression?.exercises.find((entry) => entry.exerciseId === member.exerciseId && entry.exerciseSource === member.exerciseSource)?.plannedSets ?? 0))
+  const letter = (index: number) => MEMBER_LETTERS[indices.indexOf(index)] ?? '?'
+  return <View accessibilityLabel={`${members.length === 2 ? 'Superset' : 'Circuit'}, ${rounds} ${pluralize(rounds, 'round', 'rounds')}`} style={styles.group}>
+    <Text style={styles.groupTitle}><Text style={styles.groupTitleStrong}>{members.length === 2 ? 'Superset' : 'Circuit'}</Text> · {rounds} {pluralize(rounds, 'round', 'rounds')}</Text>
+    {members.map((member, position) => {
+      const meta = member.exerciseSource === 'global' ? exerciseCatalog.find(({ id }) => id === member.exerciseId) : undefined
+      return <View key={member.clientId} style={styles.groupMember}>
+        <Text style={styles.groupLetter}>{MEMBER_LETTERS[position]}</Text>
+        <View style={styles.flex}>
+          <Text numberOfLines={1} style={styles.groupMemberName}>{member.name}</Text>
+          {meta && <Text style={styles.exerciseMeta}>{EXERCISE_CATEGORY_LABELS[meta.category]} · {EQUIPMENT_LABELS[meta.equipment]}</Text>}
+        </View>
+        <MoreButton label={`More for ${member.name}`} onPress={() => onRemove(member)} />
+      </View>
+    })}
+    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.setGrid, styles.setHeaderGrid]}>
+      <Text style={[styles.setHeaderCell, styles.setToggleColumn, styles.setHeaderCentered]}>Set</Text>
+      <Text style={[styles.setHeaderCell, styles.setValue]}>Last</Text>
+      <Text style={[styles.setHeaderCell, styles.setValue]}>Today</Text>
+      <View style={styles.setTrailingColumn} />
+    </View>
+    {rows.map(({ round, member, setIndex }, position) => {
+      const exercise = session.exercises[member]!
+      const set = exercise.sets[setIndex]!
+      const current = member === currentIndex && setIndex === panelSet
+      const read = history.state.status === 'ready' ? history.state.data[indices.indexOf(member)] : undefined
+      const previous = read ? formatPreviousSet(read.sets[setIndex], units) : history.state.status === 'loading' ? '…' : '—'
+      const label = `${round + 1}${letter(member)}`
+      const roundEnd = rows[position + 1]?.round !== round && position < rows.length - 1
+      return <View key={set.clientId}>
+        <Pressable accessibilityRole="button" accessibilityState={{ selected: current }} accessibilityLabel={`${label}, ${exercise.name}: last ${previous}, today ${setPairLabel(set, units)}${set.done ? ', logged' : ''}`}
+          onPress={() => onSelect(exercise.clientId, set.clientId)} style={[styles.setGrid, current && styles.setRowCurrent]}>
+          <View style={[styles.setToggleColumn, styles.setTouchTarget]}><Text style={[styles.setToggle, current && styles.setToggleCurrent, set.done && styles.groupDone]}>{label}</Text></View>
+          <View style={styles.setValues}>
+            <Text numberOfLines={1} style={[styles.setCellMuted, styles.setValue]}>{previous}</Text>
+            <Text numberOfLines={1} style={[styles.setToday, styles.setValue, set.done && styles.setTodayDone, current && styles.setTodayCurrent]}>{setPairLabel(set, units)}</Text>
+          </View>
+          <View style={[styles.setTrailingColumn, styles.setTouchTarget]}>{set.done && <SetTick draw={drawnSetId === set.clientId} />}</View>
+        </Pressable>
+        {roundEnd && rest > 0 && <View style={styles.roundRest}><Text style={styles.roundRestText}>rest {Math.floor(rest / 60)}:{String(rest % 60).padStart(2, '0')}</Text><View style={styles.roundRestRule} /></View>}
+      </View>
+    })}
+    {planned > rounds && <Text style={styles.groupCut}>{Array.from({ length: planned - rounds }, (_, extra) => indices.map((index) => `${rounds + extra + 1}${letter(index)}`).join(' ')).join(' · ')} · cut today · was {planned} {pluralize(planned, 'round', 'rounds')}</Text>}
+    <Pressable accessibilityRole="button" onPress={() => members.forEach((member) => editing.addSet(member.clientId))}
+      style={({ pressed }) => [styles.addSetButton, pressed && styles.setStepperPressed]}><View style={styles.addSetContent}>
+        <Svg width={15} height={15} viewBox="0 0 24 24"><Path d="M12 5v14M5 12h14" fill="none" stroke={colors.muted} strokeWidth={2.4} strokeLinecap="round" /></Svg>
+        <Text style={styles.addSetText}>Add round</Text>
+      </View></Pressable>
+  </View>
+}
+
 function currentExerciseIndex(session: ActiveWorkout, manual: string | null) {
   const picked = session.exercises.findIndex((exercise, index) => exerciseIdentity(exercise, index) === manual)
   return picked >= 0 ? picked : focusExerciseIndex(session.exercises)
 }
 
-function WorkoutLedger({ uid, session, units, sessionKey, history, editing, currentIndex, panelSet, onGoTo, onSelectSet, onOverview, onRemoveExercise, picking, onPicking, drawnSetId, onShortOnTime }: {
+function WorkoutLedger({ uid, session, units, sessionKey, history, editing, currentIndex, panelSet, onGoTo, onSelectSet, onSelectMemberSet, onCurrentLayout, onRemoveExercise, picking, onPicking, drawnSetId }: {
   uid: string; session: ActiveWorkout; units: Units; sessionKey: string; history: HistoryRead; editing: EditingActions; currentIndex: number; panelSet: number
-  onGoTo: (id: string) => void; onSelectSet: (setId: string) => void; onOverview: () => void; onRemoveExercise: (exercise: WorkoutExercise) => void; picking: boolean; onPicking: (picking: boolean) => void; drawnSetId: string | null
-  onShortOnTime: () => void
+  onGoTo: (id: string) => void; onSelectSet: (setId: string) => void; onSelectMemberSet: (exerciseId: string, setId: string) => void; onCurrentLayout: (event: LayoutChangeEvent) => void
+  onRemoveExercise: (exercise: WorkoutExercise) => void; picking: boolean; onPicking: (picking: boolean) => void; drawnSetId: string | null
 }) {
   const loadMetadata = useCallback(() => readExerciseMetadata(uid), [uid])
   const hasCustom = session.exercises.some((exercise) => exercise.exerciseSource === 'user')
@@ -540,31 +636,25 @@ function WorkoutLedger({ uid, session, units, sessionKey, history, editing, curr
     </View>}
     {picker}
   </View>
-  const current = session.exercises[currentIndex]
-  const queue = upNextQueue(session.exercises, currentIndex)
+  const metadataOf = (exercise: WorkoutExercise) => exercise.exerciseSource === 'global' ? exerciseCatalog.find(({ id }) => id === exercise.exerciseId)
+    : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === exercise.exerciseId) : undefined
   return <View style={styles.exerciseStack}>
     {hasCustom && catalog.state.status === 'error' && <Pressable onPress={catalog.retry} accessibilityRole="button" style={styles.lookupAction}><Text style={styles.lookupText}>Exercise details unavailable · Retry</Text></Pressable>}
-    {current && <FadeIn key={exerciseIdentity(current, currentIndex)}><ExerciseLedger history={history} exercise={current} units={units}
-      position={currentIndex + 1} count={session.exercises.length} panelSet={panelSet} onSelectSet={onSelectSet}
-      metadata={current.exerciseSource === 'global' ? exerciseCatalog.find(({ id }) => id === current.exerciseId)
-        : catalog.state.status === 'ready' ? catalog.state.data.find(({ id }) => id === current.exerciseId) : undefined}
-      target={targetOf(current)} lowReadiness={lowReadiness}
-      editing={editing} onOverview={onOverview} onRemove={() => onRemoveExercise(current)} drawnSetId={drawnSetId} /></FadeIn>}
-    {queue.length > 0 && <View style={styles.upNextHead}>
-      <Text accessibilityRole="header" style={styles.upNext}>Up next</Text>
-      <Pressable accessibilityRole="button" onPress={onShortOnTime} style={({ pressed }) => [styles.cutTrigger, pressed && styles.headingPressed]}>
-        <Text style={styles.cutTriggerText}>Short on time?</Text>
-      </Pressable>
-    </View>}
-    {queue.map((index) => {
-      const exercise = session.exercises[index]!
-      return <Pressable key={exerciseIdentity(exercise, index)} accessibilityRole="button" onPress={() => onGoTo(exerciseIdentity(exercise, index))}
-        style={({ pressed }) => [styles.upNextRow, pressed && styles.headingPressed]}>
-        <Text numberOfLines={1} style={styles.upNextName}>{exercise.name}</Text>
-        <Text style={styles.upNextTarget}>{exerciseTargetLabel(exercise.sets, units)}</Text>
-        <Icon name="chevron-right" size={16} />
-      </Pressable>
+    {sessionBlocks(session.exercises).map((block) => {
+      if (block.kind === 'group') return <View key={block.group} onLayout={block.indices.includes(currentIndex) ? onCurrentLayout : undefined}>
+        <GroupBlock uid={uid} session={session} indices={block.indices} currentIndex={currentIndex} panelSet={panelSet} units={units} editing={editing}
+          drawnSetId={drawnSetId} onSelect={onSelectMemberSet} onRemove={onRemoveExercise} sessionKey={sessionKey} /></View>
+      const exercise = session.exercises[block.index]!
+      const id = exerciseIdentity(exercise, block.index)
+      return block.index === currentIndex
+        ? <View key={id} onLayout={onCurrentLayout}><FadeIn><ExerciseLedger history={history} exercise={exercise} units={units} panelSet={panelSet} onSelectSet={onSelectSet}
+          metadata={metadataOf(exercise)} target={targetOf(exercise)} lowReadiness={lowReadiness}
+          editing={editing} onRemove={() => onRemoveExercise(exercise)} drawnSetId={drawnSetId} /></FadeIn></View>
+        : <CollapsedExercise key={id} exercise={exercise} units={units} onPress={() => onGoTo(id)} />
     })}
+    <Pressable accessibilityRole="button" accessibilityLabel="Add exercise" onPress={openPicker} style={({ pressed }) => [styles.listAdd, pressed && styles.headingPressed]}>
+      <PlusIcon color={colors.muted} /><Text style={styles.addSetText}>Add exercise</Text>
+    </Pressable>
     {picker}
   </View>
 }
@@ -692,6 +782,7 @@ function guardClosureInteraction<Args extends unknown[], Result>(canEdit: () => 
 
 function SessionScreen({ user }: { user: AuthUser }) {
   const scroll = useRef<ScrollView>(null)
+  const pendingScroll = useRef(false)
   const isFocused = useIsFocused()
   const router = useRouter()
   const active = useActiveRuntime()
@@ -700,7 +791,7 @@ function SessionScreen({ user }: { user: AuthUser }) {
     state, retry, retrySave, discardLocalChanges,
     updateSet, adjustSet, applyOverload, prefillFirstSet, setDone, addSet, removeSet, addExercise, removeExercise, setLabel, cutRest, refreshStart,
   } = active
-  const [sheet, setSheet] = useState<'overview' | 'options' | 'type' | null>(null)
+  const [sheet, setSheet] = useState<'options' | 'type' | null>(null)
   const [cutOpen, setCutOpen] = useState(false)
   const [finishPrompt, setFinishPrompt] = useState<string | null>(null)
   const [picking, setPicking] = useState(false)
@@ -779,13 +870,12 @@ function SessionScreen({ user }: { user: AuthUser }) {
     }
     action()
   }
-  const removePanelExercise = (exercise: WorkoutExercise) => {
-    if (!exerciseHasEnteredSets(exercise)) return panelEditing.removeExercise(exercise.clientId)
-    showDialog('Remove exercise?', 'This will remove the exercise and its sets from the active session.', [
-      { text: 'Keep', style: 'cancel' },
-      { text: 'Remove exercise', style: 'destructive', onPress: () => panelEditing.removeExercise(exercise.clientId) },
-    ])
-  }
+  // The exercise's ⋯: removing is the one action there, and it always asks.
+  const removePanelExercise = (exercise: WorkoutExercise) => showDialog(exercise.name, exerciseHasEnteredSets(exercise)
+    ? 'Remove this exercise and its sets from the active session?' : 'Remove this exercise from the active session?', [
+    { text: 'Keep', style: 'cancel' },
+    { text: 'Remove exercise', style: 'destructive', onPress: () => panelEditing.removeExercise(exercise.clientId) },
+  ])
   const discard = closable(() => showDialog('Discard workout?', 'All data from this session will be lost.', [
     { text: 'Back', style: 'cancel' },
     { text: 'Discard workout', style: 'destructive', onPress: () => session && startClosure('discard', session) },
@@ -829,7 +919,19 @@ function SessionScreen({ user }: { user: AuthUser }) {
     setManualExercise({ sessionId: liveSession.sessionId, id })
     setSelectedSet(null)
     setLastLogged((logged) => logged && { ...logged, draw: false })
-    scroll.current?.scrollTo({ y: 0, animated: false })
+    pendingScroll.current = true
+  }
+  const selectMemberSet = (exerciseId: string, setId: string) => {
+    if (!liveSession) return
+    setManualExercise({ sessionId: liveSession.sessionId, id: exerciseId })
+    setSelectedSet({ exerciseId, setId })
+  }
+  // A newly opened exercise is brought just under the header.
+  const scrollToCurrent = (event: LayoutChangeEvent) => {
+    if (!pendingScroll.current) return
+    pendingScroll.current = false
+    const inner = scroll.current?.getInnerViewNode()
+    if (inner) (event.currentTarget as unknown as View).measureLayout(inner, (_x, y) => scroll.current?.scrollTo({ y: Math.max(0, y - 116), animated: true }))
   }
   const sessionKey = state.status === 'ready' ? `${state.session.sessionId}:${state.stale}` : ''
   // Read here, not in the ledger, so Log set can compare with the last session.
@@ -928,11 +1030,10 @@ function SessionScreen({ user }: { user: AuthUser }) {
       {state.status === 'ready' && !sessionClosed && !resumePrompt ? (
         <View style={styles.lifecycleBar}>
           <View style={styles.lifecycleBarInner}>
-            <Elapsed session={state.session} />
-            <Pressable accessibilityRole="button" accessibilityLabel="Minimize workout" accessibilityHint="Your workout keeps running" onPress={() => router.navigate('/dashboard')} style={styles.minimizeButton}>
-              <Svg accessibilityElementsHidden height={17} width={17} viewBox="0 0 24 24"><Path d="m6 9 6 6 6-6" fill="none" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
-              <View style={styles.flex}><Text numberOfLines={1} style={styles.minimizeText}>{state.session.label?.trim() || 'Session in progress'}</Text>{sessionSetCount.total > 0 && <Text style={styles.minimizeHint}>{sessionSetCount.done} of {sessionSetCount.total} {pluralize(sessionSetCount.total, 'set', 'sets')}</Text>}</View>
+            <Pressable accessibilityRole="button" accessibilityLabel="Back to Train" accessibilityHint="Your workout keeps running" onPress={() => router.navigate('/dashboard')} style={styles.backButton}>
+              <Svg accessibilityElementsHidden height={20} width={20} viewBox="0 0 24 24"><Path d="m15 18-6-6 6-6" fill="none" stroke={colors.text} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" /></Svg>
             </Pressable>
+            <View style={styles.flex}><Text numberOfLines={1} style={styles.minimizeText}>{state.session.label?.trim() || 'Session in progress'}</Text><Text style={styles.minimizeHint}><Elapsed session={state.session} />{sessionSetCount.total > 0 ? ` · ${sessionSetCount.done} of ${sessionSetCount.total} ${pluralize(sessionSetCount.total, 'set', 'sets')}` : ''}</Text></View>
             <Pressable accessibilityRole="button" accessibilityLabel="More workout options" onPress={() => setSheet('options')}
               style={({ pressed }) => [styles.optionsTrigger, pressed && styles.pickerPressed]}>
               <Svg width={20} height={20} viewBox="0 0 24 24">
@@ -1038,17 +1139,11 @@ function SessionScreen({ user }: { user: AuthUser }) {
           </View>}
 
           {state.session.exercises.length > 0 && <View style={styles.sessionTop}>
-            {closure.status === 'ready' && <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" pointerEvents="none" style={styles.band}>
-              <Image source={covers[workoutCover(state.session.label)]} style={styles.bandImage} />
-              <View style={styles.bandFade} />
-            </View>}
-            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.segs}>{state.session.exercises.map((exercise, index) => {
-              const done = exercise.sets.filter((set) => set.done).length
-              return <View key={exerciseIdentity(exercise, index)} style={[styles.seg, index === panelIndex && styles.segCurrent]}><View style={[styles.segFill, { width: `${exercise.sets.length ? done / exercise.sets.length * 100 : 0}%` }]} /></View>
-            })}</View>
+            <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.progressTrack}><View style={[styles.progressFill, { width: `${sessionSetCount.total ? sessionSetCount.done / sessionSetCount.total * 100 : 0}%` }]} /></View>
+            <TimeLine session={state.session} now={Date.now()} onOpen={() => setCutOpen(true)} />
           </View>}
           <WorkoutLedger key={state.session.sessionId} uid={user.uid} session={state.session} units={state.units} sessionKey={sessionKey} history={history} currentIndex={panelIndex} panelSet={currentSetIndex}
-            onGoTo={goToExercise} onSelectSet={selectSet} onOverview={() => setSheet('overview')} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} onShortOnTime={() => setCutOpen(true)} />
+            onGoTo={goToExercise} onSelectSet={selectSet} onSelectMemberSet={selectMemberSet} onCurrentLayout={scrollToCurrent} onRemoveExercise={removePanelExercise} picking={picking} onPicking={setPicking} drawnSetId={lastLogged?.draw ? lastLogged.setId : null} editing={panelEditing} />
         </View>
         </>)}
       </ScrollView>
@@ -1062,26 +1157,13 @@ function SessionScreen({ user }: { user: AuthUser }) {
         onClearSelection={() => setSelectedSet(null)}
         onNext={() => { const next = liveSession?.exercises[nextExerciseIndex]; if (next) goToExercise(exerciseIdentity(next, nextExerciseIndex)) }}
         onFinish={finish} />}
-      {sheet && liveSession && <BottomSheet title={sheet === 'overview' ? liveSession.label || 'This workout' : sheet === 'type' ? 'Session type' : 'Workout options'} onClose={() => setSheet(null)}>
-        {(close) => sheet === 'overview' ? <>
-          {liveSession.exercises.map((exercise, index) => {
-            const identity = exerciseIdentity(exercise, index)
-            return <Pressable key={identity} accessibilityRole="button" accessibilityState={{ selected: identity === currentId }} onPress={() => { goToExercise(identity); close() }}
-              style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
-              <Text numberOfLines={1} style={[styles.sheetRowText, identity === currentId && styles.sheetRowCurrent]}>{exercise.name}</Text>
-              <Text style={styles.sheetRowMeta}>{exercise.sets.filter((set) => set.done).length} of {exercise.sets.length}</Text>
-            </Pressable>
-          })}
-          <SheetAddExercise session={liveSession} onPress={() => close(() => setPicking(true))} />
-        </> : sheet === 'type' ? WORKOUT_LABELS.map((label) => <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: liveSession.label === label }}
+      {sheet && liveSession && <BottomSheet title={sheet === 'type' ? 'Session type' : 'Workout options'} onClose={() => setSheet(null)}>
+        {(close) => sheet === 'type' ? WORKOUT_LABELS.map((label) => <Pressable key={label} accessibilityRole="button" accessibilityState={{ selected: liveSession.label === label }}
           onPress={() => { guardClosureInteraction(canEditCurrentSession, () => setLabel(liveSession.label === label ? '' : label))(); setSheet('options') }}
           style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
           <Text style={styles.sheetRowText}>{label}</Text>{liveSession.label === label && <Icon name="check" size={16} color={colors.textStrong} />}
         </Pressable>) : <>
           <SheetAddExercise session={liveSession} onPress={() => close(() => setPicking(true))} />
-          {liveSession.exercises.length > 0 && <Pressable accessibilityRole="button" onPress={() => setSheet('overview')} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
-            <Text style={styles.sheetRowText}>All exercises</Text><Icon name="chevron-right" size={16} />
-          </Pressable>}
           <Pressable accessibilityRole="button" onPress={() => close(() => setCutOpen(true))} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
             <Text style={styles.sheetRowText}>Short on time</Text><Icon name="chevron-right" size={16} />
           </Pressable>
@@ -1137,6 +1219,29 @@ export default function IndexScreen() {
 }
 
 const styles = StyleSheet.create({
+  backButton: { alignItems: 'center', height: 44, justifyContent: 'center', marginLeft: -10, marginRight: 4, width: 40 },
+  progressTrack: { backgroundColor: colors.line, height: 2, marginHorizontal: -16 },
+  progressFill: { backgroundColor: colors.seam, height: 2 },
+  timeLine: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 44 },
+  timeLineText: { color: colors.muted, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] },
+  timeLineStrong: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold' },
+  timeLineAction: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 14 },
+  listRow: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 52 },
+  listName: { color: colors.text, flex: 1, fontFamily: 'InstrumentSans_400Regular', fontSize: 16 },
+  listNameDone: { color: colors.muted },
+  listMeta: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, fontVariant: ['tabular-nums'] },
+  listAdd: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 48 },
+  group: { gap: 2, paddingVertical: 6 },
+  groupTitle: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, lineHeight: 22 },
+  groupTitleStrong: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold' },
+  groupMember: { alignItems: 'center', flexDirection: 'row', gap: 12, minHeight: 48 },
+  groupLetter: { color: colors.muted, fontFamily: 'InstrumentSans_500Medium', fontSize: 14, width: 16 },
+  groupMemberName: { color: colors.text, fontFamily: 'InstrumentSans_500Medium', fontSize: 16 },
+  groupDone: { color: colors.mutedSoft },
+  groupCut: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 13, lineHeight: 20, paddingTop: 6, paddingLeft: 8 },
+  roundRest: { alignItems: 'center', flexDirection: 'row', gap: 8, height: 22, paddingLeft: 44 },
+  roundRestText: { color: colors.mutedSoft, fontFamily: 'InstrumentSans_400Regular', fontSize: 12, fontVariant: ['tabular-nums'] },
+  roundRestRule: { backgroundColor: colors.line, flex: 1, height: StyleSheet.hairlineWidth },
   safeArea: { flex: 1, backgroundColor: colors.background },
   flex: { flex: 1 },
   loginShell: { backgroundColor: colors.background },
@@ -1267,7 +1372,7 @@ const styles = StyleSheet.create({
   segCurrent: { backgroundColor: 'rgba(244, 238, 232, 0.36)' },
   segFill: { backgroundColor: colors.seam, height: '100%' },
   sessionContentPanel: { paddingBottom: 248 },
-  panel: { backgroundColor: colors.surfaceRaised, borderTopLeftRadius: 22, borderTopRightRadius: 22, bottom: 0, boxShadow: '0 -18px 40px -14px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 255, 255, 0.07)', experimental_backgroundImage: `linear-gradient(180deg, ${colors.surfaceHigh}, ${colors.surfaceRaised})`, left: 0, paddingHorizontal: 16, paddingTop: 12, position: 'absolute', right: 0 },
+  panel: { backgroundColor: colors.surface, borderTopColor: colors.line, borderTopWidth: StyleSheet.hairlineWidth, bottom: 0, left: 0, paddingHorizontal: 16, paddingTop: 12, position: 'absolute', right: 0 },
   panelStatus: { alignItems: 'center', flexDirection: 'row', marginBottom: 6, minHeight: 44, paddingHorizontal: 2 },
   panelStatusText: { color: colors.text, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 15 },
   panelNums: { alignItems: 'center', flexDirection: 'row', gap: 8, marginBottom: 12 },
@@ -1282,7 +1387,7 @@ const styles = StyleSheet.create({
   panelActionText: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 16 },
   panelActionQuiet: { backgroundColor: 'rgba(255, 255, 255, 0.09)', boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)', experimental_backgroundImage: 'none' },
   panelActionQuietText: { color: colors.text },
-  restTrack: { height: 2, left: 6, position: 'absolute', right: 6, top: -6 },
+  restTrack: { height: 2, left: -16, position: 'absolute', right: -16, top: -13 },
   restFill: { backgroundColor: colors.seam, height: '100%' },
   restLabel: { color: colors.muted, fontFamily: 'InstrumentSans_400Regular', fontSize: 14, marginRight: 8 },
   restValue: { color: colors.textStrong, fontFamily: 'InstrumentSans_600SemiBold', fontSize: 22, fontVariant: ['tabular-nums'], letterSpacing: -0.35 },

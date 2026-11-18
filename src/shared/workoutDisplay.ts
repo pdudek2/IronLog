@@ -65,6 +65,23 @@ export function nextGroupMember(exercises: FlowExercise[], exerciseIndex: number
   })
   return next
 }
+export type SessionBlock = { kind: 'single'; index: number } | { kind: 'group'; group: string; indices: number[] }
+// The session list in plan order: consecutive exercises of one pair or circuit form one block.
+export function sessionBlocks(exercises: readonly { group?: unknown; sets: unknown }[]): SessionBlock[] {
+  const blocks: SessionBlock[] = []
+  exercises.forEach((exercise, index) => {
+    const group = typeof exercise.group === 'string' && exercise.group ? exercise.group : undefined
+    const last = blocks.at(-1)
+    if (group && last?.kind === 'group' && last.group === group) last.indices.push(index)
+    else blocks.push(group ? { kind: 'group', group, indices: [index] } : { kind: 'single', index })
+  })
+  return blocks.map((block) => block.kind === 'group' && block.indices.length === 1 ? { kind: 'single', index: block.indices[0]! } : block)
+}
+// A group's sets in the order they are done: round by round, each member once per round while it has a set left.
+export function roundRows(exercises: { sets: unknown[] }[], indices: number[]): { round: number; member: number; setIndex: number }[] {
+  const rounds = Math.max(0, ...indices.map((index) => exercises[index]?.sets.length ?? 0))
+  return Array.from({ length: rounds }, (_, round) => indices.flatMap((member) => (exercises[member]?.sets.length ?? 0) > round ? [{ round, member, setIndex: round }] : [])).flat()
+}
 export function focusSetIndex(sets: Pick<DisplaySet, 'done'>[]): number {
   const next = sets.findIndex((set) => !set.done)
   return next >= 0 ? next : Math.max(sets.length - 1, 0)

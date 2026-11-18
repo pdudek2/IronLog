@@ -19,6 +19,7 @@ export default function TemplateLaunchConfirmDialog({
       message="Starting this plan will replace the exercises and sets in your current session."
       confirmLabel="Start plan"
       cancelLabel="Keep current session"
+      danger
       onConfirm={onConfirm}
       onCancel={onCancel}
     />

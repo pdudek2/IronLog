@@ -36,10 +36,13 @@ test('a set carries its completion time only while it is done', () => {
   const done = setSetDone(workout(), 'exercise-a', 'set-a', true)
   const stamped = done.exercises[0]?.sets[0]?.completedAt
   assert.equal(typeof stamped, 'number')
-  // The open set without a weight takes the logged one; a set that has a weight, or a bodyweight log, changes nothing.
+  // The open set without a weight takes the logged one, a later set with one takes a changed weight unless it is a
+  // warm-up below 80% of it, and a bodyweight log changes nothing.
   assert.equal(done.exercises[0]?.sets[1]?.weight, '100')
-  const typed = setSetDone(updateSetValue(updateSetValue(workout(), 'exercise-a', 'set-b', 'weight', '60'), 'exercise-a', 'set-b', 'reps', '8'), 'exercise-a', 'set-a', true)
-  assert.equal(typed.exercises[0]?.sets[1]?.weight, '60')
+  const typed = setSetDone(updateSetValue(updateSetValue(workout(), 'exercise-a', 'set-b', 'weight', '90'), 'exercise-a', 'set-b', 'reps', '8'), 'exercise-a', 'set-a', true)
+  assert.equal(typed.exercises[0]?.sets[1]?.weight, '100')
+  const warmup = setSetDone(updateSetValue(updateSetValue(workout(), 'exercise-a', 'set-b', 'weight', '130'), 'exercise-a', 'set-b', 'reps', '8'), 'exercise-a', 'set-a', true)
+  assert.equal(warmup.exercises[0]?.sets[1]?.weight, '130')
   const bodyweight = setSetDone(updateSetValue(workout(), 'exercise-a', 'set-a', 'weight', ''), 'exercise-a', 'set-a', true)
   assert.deepEqual(bodyweight.exercises[0]?.sets.map((set) => [set.weight, set.done]), [['', true], ['', false]])
   assert.equal(setSetDone(done, 'exercise-a', 'set-a', true).exercises[0]?.sets[0]?.completedAt, stamped)

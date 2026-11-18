@@ -75,12 +75,10 @@ export function TrainTime({ today, plannedSets, budgetMin, straight, fullSets, o
 }
 
 // Today's compressed day in session order: pairs and circuits as one block, dropped exercises at the end.
-export function TodayExercises({ uid, template, dayIndex, checkedIn, today, exercises, units, onOpen }: {
+export function TodayExercises({ uid, template, dayIndex, today, exercises, units, onOpen }: {
   uid: string
   template: WorkoutTemplate
   dayIndex: number
-  // After a check-in the start takes the progression's weights; otherwise the usual day's.
-  checkedIn: boolean
   today: NextSessionRecommendation
   exercises: TemplateExercise[]
   units: Units
@@ -88,19 +86,16 @@ export function TodayExercises({ uid, template, dayIndex, checkedIn, today, exer
 }) {
   const [best, setBest] = useState<TemplateExerciseHistoryMap | null>(null)
   useEffect(() => {
-    if (checkedIn) return
     let current = true
     void loadTemplateExerciseHistory(uid, template, dayIndex).then((history) => {
       if (current) setBest(history)
     })
     return () => { current = false }
-  }, [uid, template, dayIndex, checkedIn])
+  }, [uid, template, dayIndex])
 
   const row = (index: number, sets: number) => {
     const exercise = exercises[index]!
-    const planned = checkedIn
-      ? today.exercises[index]!
-      : { reps: exercise.targetReps, weight: best ? templateStartWeight(exercise, best.get(templateExerciseKey(exercise.exerciseId, exercise.exerciseSource))) : 0 }
+    const planned = { reps: exercise.targetReps, weight: best ? templateStartWeight(exercise, best.get(templateExerciseKey(exercise.exerciseId, exercise.exerciseSource))) : 0 }
     return (
       <button key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} type="button" className="train-exercise" onClick={() => onOpen(exercise)}>
         <span>{exercise.name}</span>

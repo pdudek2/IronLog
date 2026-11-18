@@ -39,7 +39,7 @@ test('strict parsing rejects owner/date/invalid values/timestamps; local midnigh
   assert.equal(todayKey(new Date(2026, 9, 2, 0, 0)), '2026-10-02')
   assert.equal(recommendationHistory([{ id: 'a', startedAt: 1, finishedAt: 2, materialized: true, exercises: [{ exerciseId: 'same', exerciseSource: 'user', name: 'Custom', sets: [{ weight: 30, reps: 9 }] }] }])[0]?.exercises[0]?.exerciseSource, 'user')
 })
-test('today\'s launch: an untouched day starts as written; a shorter day without a check-in keeps the usual weights', () => {
+test('today\'s launch: an untouched day starts as written; a shorter day or a check-in keeps the plan\'s weights', () => {
   const entry = readiness(fixtures[0].values)
   const usual = { budgetMin: null, proposals: [] }
   assert.equal(todayLaunch(buildNextSessionRecommendation(plan, 0, null, workouts, NOW), false, usual), undefined)
@@ -48,8 +48,9 @@ test('today\'s launch: an untouched day starts as written; a shorter day without
   const plain = todayLaunch(short, false, { budgetMin: 20, proposals })!
   assert.ok(plain.items.length > 0 && plain.items.every(item => item.weight === undefined && item.reps === undefined))
   assert.deepEqual(plain.proposals, proposals)
+  // A check-in changes sets only; the weights and reps stay the plan's.
   const checked = todayLaunch(buildNextSessionRecommendation(plan, 0, entry, workouts, NOW), true, usual)!
-  assert.ok(checked.items.every(item => typeof item.weight === 'number' && typeof item.reps === 'number'))
+  assert.ok(checked.items.length > 0 && checked.items.every(item => item.weight === undefined && item.reps === undefined))
   const back = todayLaunch(buildNextSessionRecommendation(plan, 0, null, workouts.map(w => ({ ...w, finishedAt: NOW - 40 * 86_400_000 })), NOW), false, usual)!
   assert.equal(back.compression?.breakDays, 40)
   assert.ok(back.items.every(item => item.weight === undefined))

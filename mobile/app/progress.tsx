@@ -118,6 +118,20 @@ function ProgressContent({ uid }: { uid: string }) {
 
 
       {coverage && currentSessions.length > 0 && <View style={styles.analysis}>
+        {!rangeEmpty && !empty && <View accessibilityLabel={`All exercises, last ${rangeDays} days`} style={styles.summary}>
+          <Text accessibilityRole="header" style={styles.panelBadge}>All exercises · last {rangeDays} days</Text>
+          <Text style={styles.summaryLine}>
+            <Text style={styles.summaryValue}>{formatCompactVolume(totalVolume, units)}</Text> volume{hasPrevious ? <Text style={styles.summaryMeta}> {formatDelta(comparison.volumeDelta)}</Text> : null}
+            {' · '}<Text style={styles.summaryValue}>{uniqueWorkouts}</Text> {pluralize(uniqueWorkouts, 'session', 'sessions')}{hasPrevious ? <Text style={styles.summaryMeta}> {formatDelta(comparison.sessionsDelta)}</Text> : null}
+            {' · '}<Text style={styles.summaryValue}>{snapshot?.records ? records.length : '—'}</Text> all-time {pluralize(records.length, 'record', 'records')}
+          </Text>
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: moreStats }} onPress={() => setMoreStats(!moreStats)} style={styles.moreStats}><Text style={styles.moreStatsText}>{moreStats ? 'Less stats' : 'More stats'}</Text><Icon name={moreStats ? 'chevron-up' : 'chevron-down'} size={14} color={colors.muted} /></Pressable>
+          {moreStats && <View style={styles.moreGrid}>
+            <SummaryCell label="Avg. / session" value={formatCompactVolume(comparison.currentAvgVolume, units)} meta={hasPrevious ? formatDelta(comparison.avgVolumeDelta) : 'in range'} delta={hasPrevious ? comparison.avgVolumeDelta : null} />
+            <SummaryCell label="Exercises" value={String(uniqueExercises)} meta="in range" />
+            <SummaryCell label="Muscle group" value={topMuscle ? PROGRESS_MUSCLE_LABELS[topMuscle.muscle] ?? topMuscle.muscle : 'None'} meta={topMuscle ? `${topMuscle.count} ${pluralize(topMuscle.count, 'entry', 'entries')}` : 'no data'} />
+          </View>}
+        </View>}
         <View style={styles.panel}>
           {selectedStrength && <View style={styles.pickerGroup}>
             <Pressable accessibilityRole="button" accessibilityLabel={`Chart exercise, ${selectedStrength.exerciseName}`} onPress={() => setPicker('strength')} style={styles.select}>
@@ -128,19 +142,6 @@ function ProgressContent({ uid }: { uid: string }) {
           {!selectedStrength ? <Text style={styles.muted}>No recorded weights above 0 {units} in this range. Add a set weight to see progression.</Text>
             : strengthPoints.length < 3 ? <><Text style={styles.muted}>Chart needs {3 - strengthPoints.length} more {pluralize(3 - strengthPoints.length, 'day', 'days')} with recorded weight.</Text><View accessibilityLabel={`${strengthPoints.length} of 3 days for the chart`} style={styles.markers}>{[0, 1, 2].map((index) => <View key={index} style={[styles.marker, index < strengthPoints.length && styles.markerActive]} />)}</View></>
               : <><View style={styles.strengthInsight}><Text accessibilityLiveRegion="polite" style={styles.strengthLatest}>{inspectedIndex === null ? 'Latest' : `${strengthPoints[inspectedIndex]?.date} ·`} {kgToDisplayWeight(shownStrength, units)} {units}</Text><Text style={styles.strengthDelta}>{strengthDeltaLabel(strengthValues[0] ?? 0, shownStrength, strengthPoints[0]?.date ?? '', units)} · max. {kgToDisplayWeight(Math.max(...strengthValues), units)} {units}</Text></View><StrengthChart points={strengthPoints} keyName={selectedStrengthKey!} units={units} width={chartWidth} onInspect={(index) => setInspected({ key: selectedStrengthKey!, index })} /></>}
-        {!rangeEmpty && !empty && <View accessibilityLabel={`Summary: ${rangeDays} days`} style={styles.summary}>
-          <Text style={styles.summaryLine}>
-            <Text style={styles.summaryValue}>{formatCompactVolume(totalVolume, units)}</Text> volume{hasPrevious ? <Text style={styles.summaryMeta}> {formatDelta(comparison.volumeDelta)}</Text> : null}
-            {' · '}<Text style={styles.summaryValue}>{uniqueWorkouts}</Text> {pluralize(uniqueWorkouts, 'session', 'sessions')}{hasPrevious ? <Text style={styles.summaryMeta}> {formatDelta(comparison.sessionsDelta)}</Text> : null}
-            {' · '}<Text style={styles.summaryValue}>{snapshot?.records ? records.length : '—'}</Text> {pluralize(records.length, 'record', 'records')}
-          </Text>
-          <Pressable accessibilityRole="button" accessibilityState={{ expanded: moreStats }} onPress={() => setMoreStats(!moreStats)} style={styles.moreStats}><Text style={styles.moreStatsText}>{moreStats ? 'Less stats' : 'More stats'}</Text><Icon name={moreStats ? 'chevron-up' : 'chevron-down'} size={14} color={colors.muted} /></Pressable>
-          {moreStats && <View style={styles.moreGrid}>
-            <SummaryCell label="Avg. / session" value={formatCompactVolume(comparison.currentAvgVolume, units)} meta={hasPrevious ? formatDelta(comparison.avgVolumeDelta) : 'in range'} delta={hasPrevious ? comparison.avgVolumeDelta : null} />
-            <SummaryCell label="Exercises" value={String(uniqueExercises)} meta="in range" />
-            <SummaryCell label="Muscle group" value={topMuscle ? PROGRESS_MUSCLE_LABELS[topMuscle.muscle] ?? topMuscle.muscle : 'None'} meta={topMuscle ? `${topMuscle.count} ${pluralize(topMuscle.count, 'entry', 'entries')}` : 'no data'} />
-          </View>}
-        </View>}
         </View>
         <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Weekly volume</Text><Text style={styles.panelBadge}>{weekly.length} {weekly.length === 1 ? 'week' : 'weeks'}{weekly.length > 0 ? ` · ${formatCompactVolume(weekly.at(-1)?.volume ?? 0, units)} this week` : ''}</Text></View><WeeklyVolumeChart points={weekly} units={units} width={chartWidth} /></View>
         {muscles.length > 0 && <View style={styles.panel}><View style={styles.panelHead}><Text accessibilityRole="header" style={styles.panelTitle}>Muscle groups</Text><Text style={styles.panelBadge}>entries</Text></View><MuscleBars points={muscles} /></View>}

@@ -4,7 +4,7 @@ import { AppState, Pressable, StyleSheet, Text, View } from 'react-native'
 import { usePathname, useRouter } from 'expo-router'
 
 import { formatElapsed } from './session'
-import { useActiveRuntime, useClosureRuntime } from './runtime'
+import { useActiveRuntime, useOptionalClosureRuntime } from './runtime'
 import { colors } from './theme'
 
 function useElapsed(startedAt: number | undefined) {
@@ -22,8 +22,10 @@ function useElapsed(startedAt: number | undefined) {
 
 export function useReturnBar() {
   const { state } = useActiveRuntime()
-  const closure = useClosureRuntime()
+  // Signed out, the closure provider is gone while the screens below Profile still render once.
+  const closure = useOptionalClosureRuntime()
   const pathname = usePathname()
+  if (!closure) return { session: null, visible: false }
   const session = state.status === 'ready' ? state.session : null
   const justFinished = session && closure.completed
     && (closure.completed.action === 'finish' ? closure.completed.workoutId : closure.completed.sessionId) === session.sessionId

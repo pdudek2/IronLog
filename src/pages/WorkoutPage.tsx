@@ -42,7 +42,7 @@ import {
 import { useMobileInteraction } from '../components/MobileInteractionProvider'
 import { ElapsedSessionTimer } from '../components/ActiveWorkoutReturnBar'
 
-import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, panelSetIndex, removeSetMessage, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
+import { WORKOUT_LABELS, EQUIPMENT_LABELS, parseWeight, parseReps, calcSetVolume, exerciseTargetLabel, focusExerciseIndex, nextGroupMember, panelSetIndex, removeSetMessage, restAfterSet, setPanelRestLabel, upNextQueue } from '../shared/workoutDisplay'
 import { catalogueMeta, sessionRoles } from '../shared/nextSessionRecommendation'
 
 type PendingSetRemoval = { exerciseClientId: string; setClientId: string; done: boolean }
@@ -294,9 +294,9 @@ export default function WorkoutPage() {
         const exerciseId = getExerciseClientId(exercise, exerciseIndex)
         setLastLogged({ exerciseId, setIndex, draw: true })
         // The next exercise waits for "Go to", so the logged set and Undo stay on screen; a pair or circuit moves on by itself.
-        const groupOpen = exercise.group !== undefined && next?.exercises.some((other, index) => index !== exerciseIndex && other.group === exercise.group && other.sets.some((set) => !set.done))
         // Inside an open round the next member takes the screen, even if this one was picked with Go to.
-        if (groupOpen) setManualExerciseClientId(null)
+        const partner = next ? nextGroupMember(next.exercises, exerciseIndex) : null
+        if (next && partner !== null && partner !== exerciseIndex) setManualExerciseClientId(getExerciseClientId(next.exercises[partner]!, partner))
         else if (completesExercise) setManualExerciseClientId(exerciseId)
       }
       setSelectedSet(null)

@@ -105,7 +105,7 @@ function Chip({ children, active, onPress, disabled = false }: { children: React
   return <Pressable accessibilityRole="button" accessibilityState={{ selected: active, disabled }} disabled={disabled} onPress={onPress} style={[s.chip,active && s.chipActive,disabled && s.disabled]}><Text style={[s.choice,active && s.accent]}>{children}</Text></Pressable>
 }
 function Action({ children, onPress, disabled = false, primary = false }: { children: string; onPress: () => void; disabled?: boolean; primary?: boolean }) {
-  return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[s.action,primary && s.primary,disabled && s.disabled]}><Text style={[s.choice,primary && s.selected]}>{children}</Text></Pressable>
+  return <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[s.action,primary && s.primary,disabled && s.disabled]}><Text style={[s.choice,primary && s.onPrimary]}>{children}</Text></Pressable>
 }
 const s = StyleSheet.create({
   screen: { flex: 1 }, content: { padding: 16, paddingBottom: 24 },
@@ -118,7 +118,7 @@ const s = StyleSheet.create({
   notes: { minHeight:104 }, chips: { flexDirection:'row',flexWrap:'wrap',gap:8 },
   chip: { borderWidth: 1, borderColor: colors.line, borderRadius: 10, minHeight: 44, paddingHorizontal: 12, justifyContent: 'center' },
   chipActive: { backgroundColor: colors.choiceSelected, borderColor: 'transparent' },
-  choice: { fontFamily: 'InstrumentSans_500Medium', fontSize: 13, color: colors.muted }, selected: { color: colors.text },accent: { color:colors.accentText },
+  choice: { fontFamily: 'InstrumentSans_500Medium', fontSize: 13, color: colors.muted }, selected: { color: colors.text }, onPrimary: { color: colors.onPrimary, fontFamily: 'InstrumentSans_600SemiBold' },accent: { color:colors.accentText },
   levels: { flexDirection: 'row', gap: 2, padding: 3, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.035)' },
   level: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', borderRadius: 9 },levelActive: { backgroundColor: colors.choiceSelected },
   muted: { fontFamily:'InstrumentSans_400Regular',fontSize:14,lineHeight:24,color:colors.muted },error: { fontFamily:'InstrumentSans_400Regular',fontSize:13,lineHeight:20,color:colors.accentText },

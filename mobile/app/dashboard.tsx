@@ -270,7 +270,7 @@ export default function DashboardScreen() {
             <Text style={styles.exerciseMeta}>{formatCompactVolume(deriveWorkout(workout, new Map()).totalVolume, units)}</Text>
             <Icon name="chevron-right" size={16} />
           </Pressable>)}
-          {!weekClosed && chosen && todayPlan && (todayPlan.record || readinessEntry) ? <TodayExercises today={todayPlan} exercises={chosen.day.exercises} checkedIn={readinessEntry !== null} startWeightOf={startWeightOf} units={units} onOpen={openExercise} />
+          {!weekClosed && chosen && todayPlan && (todayPlan.record || readinessEntry) ? <TodayExercises today={todayPlan} exercises={chosen.day.exercises} startWeightOf={startWeightOf} units={units} onOpen={openExercise} />
             : !weekClosed && chosen && chosen.day.exercises.map((exercise, index) => <Pressable key={`${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" onPress={() => openExercise(exercise)} style={styles.exercise}>
             <Text numberOfLines={1} style={styles.exerciseName}>{exercise.name}</Text>
             <Text style={styles.exerciseMeta}>{exercise.sets} × {exercise.targetReps}{startWeightOf(exercise) > 0 && <> · <Text style={styles.exerciseWeight}>{kgStringToDisplayWeight(String(startWeightOf(exercise)), units)} {units}</Text></>}</Text>
@@ -339,15 +339,14 @@ export default function DashboardScreen() {
 }
 
 // Today's day in session order: pairs and circuits as one block, dropped exercises at the end.
-function TodayExercises({ today, exercises, checkedIn, startWeightOf, units, onOpen }: {
+function TodayExercises({ today, exercises, startWeightOf, units, onOpen }: {
   today: NextSessionRecommendation; exercises: TemplateExercise[]
-  // After a check-in the start takes the progression's weights; otherwise the usual day's.
-  checkedIn: boolean; startWeightOf: (exercise: TemplateExercise) => number; units: 'kg' | 'lbs'; onOpen: (exercise: TemplateExercise) => void
+  startWeightOf: (exercise: TemplateExercise) => number; units: 'kg' | 'lbs'; onOpen: (exercise: TemplateExercise) => void
 }) {
   const row = (index: number, sets: number) => {
     const exercise = exercises[index]!
     const skipped = sets === 0
-    const planned = checkedIn ? today.exercises[index]! : { reps: exercise.targetReps, weight: startWeightOf(exercise) }
+    const planned = { reps: exercise.targetReps, weight: startWeightOf(exercise) }
     return <Pressable key={`${skipped ? 'skipped:' : ''}${exercise.exerciseSource}:${exercise.exerciseId}:${index}`} accessibilityRole="button" accessibilityLabel={skipped ? `${exercise.name}, skipped today` : undefined} onPress={() => onOpen(exercise)} style={styles.exercise}>
       <Text numberOfLines={1} style={[styles.exerciseName, skipped && styles.skippedName]}>{exercise.name}</Text>
       {skipped ? <Text style={[styles.exerciseMeta, styles.skipped]}>Skipped today</Text>

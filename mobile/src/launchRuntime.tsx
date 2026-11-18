@@ -10,7 +10,7 @@ export function LaunchRuntimeProvider({ uid, children }: { uid: string; children
   return <Context.Provider value={value}>{children}
     {value.confirmation && <ConfirmDialog title="Replace active session?" message="Your current exercises and sets will be discarded. This cannot be undone." onRequestClose={value.cancelReplacement} buttons={[
       { text: 'Keep current session', style: 'cancel', onPress: value.cancelReplacement },
-      { text: 'Start plan', onPress: () => value.confirmation?.confirm() },
+      { text: 'Start plan', style: 'destructive', onPress: () => value.confirmation?.confirm() },
     ]} />}
   </Context.Provider>
 }

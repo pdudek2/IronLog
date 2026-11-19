@@ -1181,9 +1181,6 @@ function SessionScreen({ user }: { user: AuthUser }) {
           <Text style={styles.sheetRowText}>{label}</Text>{liveSession.label === label && <Icon name="check" size={16} color={colors.textStrong} />}
         </Pressable>) : <>
           <SheetAddExercise session={liveSession} onPress={() => close(() => setPicking(true))} />
-          <Pressable accessibilityRole="button" onPress={() => close(() => setCutOpen(true))} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
-            <Text style={styles.sheetRowText}>Short on time</Text><Icon name="chevron-right" size={16} />
-          </Pressable>
           <Pressable accessibilityRole="button" onPress={() => setSheet('type')} style={({ pressed }) => [styles.sheetRow, pressed && styles.headingPressed]}>
             <Text style={[styles.sheetRowText, styles.flex]}>Session type</Text><Text style={styles.sheetRowMeta}>{liveSession.label || 'None'}</Text><Icon name="chevron-right" size={16} />
           </Pressable>

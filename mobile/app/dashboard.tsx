@@ -20,7 +20,7 @@ import { deriveWorkout } from '../src/history'
 import { latestRecord, recordLine } from '../../src/shared/workoutMoments'
 import { weekdayLabel } from '../../src/shared/week'
 import { pluralize } from '../../src/lib/pluralize'
-import { workoutTitle } from '../../src/lib/workoutCopy'
+import { weekCountLabel, workoutTitle } from '../../src/lib/workoutCopy'
 import { formatCompactVolume, kgStringToDisplayWeight } from '../../src/shared/weightUnits'
 import { workoutCover } from '../../src/shared/workoutCover'
 import { readExerciseMetadata, readHome, readTemplateBestSet, readTemplates, recordPlanSkip } from '../src/firebase'
@@ -250,7 +250,7 @@ export default function DashboardScreen() {
           <View style={styles.coverCopy}>
             <Text style={styles.coverMeta}>{now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}</Text>
             <Text accessibilityRole="header" style={styles.coverTitle}>{plansPending ? ' ' : view.active.status === 'ready' ? view.active.session.label?.trim() || 'Workout' : weekClosed ? 'Week done' : chosen?.day.name ?? `${getGreeting(now)}, ${data.profile.displayName}`}</Text>
-            {plansPending ? <Text style={styles.coverMeta}> </Text> : weekClosed ? <Text style={styles.coverMeta}>{summary?.weeklyDone} of {goal} workouts · {formatCompactVolume(summary?.weeklyVolume ?? 0, units)}</Text> : chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
+            {plansPending ? <Text style={styles.coverMeta}> </Text> : weekClosed ? <Text style={styles.coverMeta}>{weekCountLabel(summary?.weeklyDone ?? 0, goal)} {pluralize(summary?.weeklyDone ?? 0, 'workout', 'workouts')} · {formatCompactVolume(summary?.weeklyVolume ?? 0, units)}</Text> : chosen ? <Text style={styles.coverMeta}>{chosen.template.name} · Day {(selection?.target?.dayIndex ?? 0) + 1} of {chosen.template.days.length}</Text>
               : view.active.status === 'empty' && recent[0] && <Text style={styles.coverMeta}>Last: {workoutTitle(recent[0])} · {new Date(recent[0].startedAt).toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}</Text>}
           </View>
           {record && <View pointerEvents="none" style={styles.coverSeam} />}
@@ -291,7 +291,7 @@ export default function DashboardScreen() {
             {(launchState === 'retry' || launchState === 'unavailable' || launchState === 'corrupt') && <View accessibilityRole="alert" style={styles.launchFeedback}><Text style={styles.planEmptyCopy}>{launch?.state.message ?? 'Could not start workout.'}</Text>{launchState !== 'corrupt' && <Pressable accessibilityRole="button" onPress={() => { if (launchState === 'unavailable') { launch?.dismissUnavailable(); setSelection({ uid: uid!, target: null, unavailable: true }); setTemplatesAttempt((value) => value + 1) } else void launch?.retry() }} style={styles.retry}><Text style={styles.actionText}>Try again</Text></Pressable>}</View>}
         </View>}
         {showSummary && summary && <View style={styles.week}>
-          <View style={styles.weekHead}><Text accessibilityRole="header" style={styles.weekTitle}>This week</Text><Text style={styles.weekMeta}>{summary.weeklyDone} of {goal}{summary.weeklyVolume > 0 ? ` · ${formatCompactVolume(summary.weeklyVolume, units)}` : ''}</Text></View>
+          <View style={styles.weekHead}><Text accessibilityRole="header" style={styles.weekTitle}>This week</Text><Text style={styles.weekMeta}>{weekCountLabel(summary.weeklyDone, goal)}{summary.weeklyVolume > 0 ? ` · ${formatCompactVolume(summary.weeklyVolume, units)}` : ''}</Text></View>
           <View accessibilityLabel="Days of the current week" style={styles.days}>{summary.days.map((day) => <View key={day.label} style={[styles.day, day.workouts > 0 && styles.dayDone, day.isToday && styles.dayToday]}><Text style={[styles.dayLabel, (day.workouts > 0 || day.isToday) && styles.dayLabelOn]}>{day.label.charAt(0)}</Text></View>)}</View>
           <Pressable accessibilityRole="button" accessibilityState={{ expanded: weekOpen }} onPress={() => setWeekOpen((open) => !open)} style={styles.weekLink}><Text style={styles.weekLinkText}>Week details</Text><Icon name={weekOpen ? 'chevron-up' : 'chevron-down'} size={14} color={colors.text} /></Pressable>
           {weekOpen && <View style={styles.signals}>{[

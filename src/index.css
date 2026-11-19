@@ -10196,6 +10196,10 @@ body:has(.bottom-nav[aria-hidden="true"]) .workout-detail-mobile-actions {
   white-space: nowrap;
 }
 
+.workout-list-kind {
+  color: var(--muted);
+}
+
 .workout-list-row[data-finished] .workout-list-name {
   color: var(--muted);
 }

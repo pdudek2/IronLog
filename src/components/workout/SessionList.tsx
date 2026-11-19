@@ -49,6 +49,22 @@ export function CollapsedExercise({ exercise, units, onOpen }: { exercise: Worko
   )
 }
 
+// A pair or circuit that is not being done folds into one row; opening it lands on its first open set in round order.
+export function CollapsedGroup({ session, indices, onOpen }: { session: ActiveWorkout; indices: number[]; onOpen: (index: number) => void }) {
+  const members = indices.map((index) => session.exercises[index]!)
+  const rounds = Math.max(...members.map((member) => member.sets.length))
+  const doneRounds = Math.min(...members.map((member) => member.sets.filter((set) => set.done).length))
+  const next = roundRows(session.exercises, indices).find(({ member, setIndex }) => !session.exercises[member]!.sets[setIndex]!.done)?.member ?? indices[0]!
+  const kind = members.length === 2 ? 'Superset' : 'Circuit'
+  return (
+    <button type="button" className="workout-list-row" aria-label={`${kind}: ${members.map((member) => member.name).join(' and ')}. Open`} onClick={() => onOpen(next)}>
+      <span className="workout-list-name"><span className="workout-list-kind">{kind} · </span>{members.map((member) => member.name).join(' + ')}</span>
+      <small className="tabular-nums">{doneRounds ? `${doneRounds} of ${rounds}` : rounds} {pluralize(rounds, 'round', 'rounds')}</small>
+      <ChevronDown size={16} aria-hidden="true" />
+    </button>
+  )
+}
+
 // A pair or circuit as one block: its members once, then every set in the order it is done, round by round.
 export function GroupBlock({ session, indices, currentIndex, panelSet, units, userId, userExercises, metaOf, inlinePanel, drawnSetId, onSelect, onRemove, onAddRound }: {
   session: ActiveWorkout

@@ -19,7 +19,7 @@ import { ActiveSessionSyncStatus } from '../components/workout/ActiveSessionSync
 import { ActionFeedback } from '../components/ActionFeedback'
 import { useMediaQuery } from '../hooks/useMediaQuery'
 import WorkoutExerciseLedgerItem from '../components/workout/WorkoutExerciseLedgerItem'
-import { CollapsedExercise, GroupBlock, SessionTimeLine } from '../components/workout/SessionList'
+import { CollapsedExercise, CollapsedGroup, GroupBlock, SessionTimeLine } from '../components/workout/SessionList'
 import { MEMBER_LETTERS } from '../components/workout/sessionHelpers'
 import ExercisePicker from '../components/ExercisePicker'
 import BottomSheet from '../components/BottomSheet'
@@ -1137,6 +1137,9 @@ export default function WorkoutPage() {
           ) : (
             <div className="workout-exercise-stack">
               {blocks.map((block) => {
+                if (block.kind === 'group' && !block.indices.includes(panelIndex)) {
+                  return <CollapsedGroup key={`group:${block.group}`} session={active} indices={block.indices} onOpen={goToExercise} />
+                }
                 if (block.kind === 'group') {
                   const key = `group:${block.group}`
                   return (

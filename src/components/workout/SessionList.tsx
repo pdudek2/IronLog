@@ -1,5 +1,8 @@
-import { Fragment, useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { motion, useReducedMotion } from 'framer-motion'
 import { MEMBER_LETTERS, usePreviousSets } from './sessionHelpers'
+import OverloadHint from '../OverloadHint'
+import type { SessionHint } from '../../shared/progression'
 import { Check, ChevronDown, Ellipsis, Plus } from 'lucide-react'
 import type { ActiveWorkout, WorkoutExercise } from '../../store/workoutStore'
 import type { Units } from '../../lib/userProfile'
@@ -66,7 +69,7 @@ export function CollapsedGroup({ session, indices, onOpen }: { session: ActiveWo
 }
 
 // A pair or circuit as one block: its members once, then every set in the order it is done, round by round.
-export function GroupBlock({ session, indices, currentIndex, panelSet, units, userId, userExercises, metaOf, inlinePanel, drawnSetId, onSelect, onRemove, onAddRound }: {
+export function GroupBlock({ session, indices, currentIndex, panelSet, units, userId, userExercises, metaOf, inlinePanel, hint, drawnSetId, onSelect, onToggle, onRemove, onAddRound }: {
   session: ActiveWorkout
   indices: number[]
   currentIndex: number
@@ -76,8 +79,11 @@ export function GroupBlock({ session, indices, currentIndex, panelSet, units, us
   userExercises: ReadonlyMap<string, ExerciseMeta>
   metaOf: (exercise: WorkoutExercise) => string | null
   inlinePanel?: ReactNode
+  // The current member's progression hint, as its own ledger would show it.
+  hint?: { suggestion: SessionHint; onApply: () => void; onDismiss: () => void } | null
   drawnSetId: string | null
   onSelect: (exerciseIndex: number, setIndex: number) => void
+  onToggle: (exerciseIndex: number, setIndex: number) => void
   onRemove: (exerciseIndex: number) => void
   onAddRound: (indices: number[]) => void
 }) {
@@ -90,6 +96,57 @@ export function GroupBlock({ session, indices, currentIndex, panelSet, units, us
   const planned = Math.max(...members.map((member) => session.compression?.exercises.find((entry) => entry.exerciseId === member.exerciseId && entry.exerciseSource === member.exerciseSource)?.plannedSets ?? 0))
   const letter = (index: number) => MEMBER_LETTERS[indices.indexOf(index)] ?? '?'
   const kind = members.length === 2 ? 'Superset' : 'Circuit'
+  const reducedMotion = useReducedMotion()
+  const shownSet = useRef<string | null>(null)
+  const currentAt = rows.findIndex(({ member, setIndex }) => member === currentIndex && setIndex === panelSet)
+  const hinted = session.exercises[currentIndex]
+  // The group scrolls in by itself when it opens; after that the current set is kept between the header and the panel.
+  const followCurrent = (id: string) => (node: HTMLDivElement | null) => {
+    if (!node || shownSet.current === id) return
+    const opened = shownSet.current === null
+    shownSet.current = id
+    if (!opened) node.scrollIntoView?.({ block: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' })
+  }
+  const panel = inlinePanel && (
+    <motion.div key="set-panel" layout="position" transition={{ duration: 0.2, ease: [0.2, 0.8, 0.2, 1] }}>
+      {inlinePanel}
+    </motion.div>
+  )
+  // Rows are keyed by their side of the panel: a row crosses it on remount, so the panel never moves and keeps focus.
+  const side = (position: number) => (!panel ? '' : currentAt < 0 || position <= currentAt ? ':before' : ':after')
+  const items: ReactNode[] = []
+  rows.forEach(({ round, member, setIndex }, position) => {
+    const exercise = session.exercises[member]!
+    const set = exercise.sets[setIndex]!
+    const current = position === currentAt
+    const last = formatPreviousSet(previous[indices.indexOf(member)]?.[setIndex], units)
+    const label = `${round + 1}${letter(member)}`
+    const roundEnd = rows[position + 1] !== undefined && rows[position + 1]!.round !== round
+    const id = set.clientId ?? label
+    items.push(
+      <div key={`${id}${side(position)}`} ref={current ? followCurrent(id) : undefined} className="workout-set-row" data-done={set.done || undefined} data-current={current || undefined}>
+        <button
+          type="button"
+          className="workout-set-values workout-group-set tabular-nums"
+          onClick={() => onSelect(member, setIndex)}
+          aria-pressed={current}
+          aria-label={`${label}, ${exercise.name}: last ${last}, today ${setPairLabel(set, units)}${set.done ? ', logged' : ''}`}
+        >
+          <span className="workout-set-label">{label}</span>
+          <span className="workout-set-previous">{last}</span>
+          <span className="workout-set-today">{setPairLabel(set, units)}</span>
+        </button>
+        {set.done && (
+          <button type="button" className="workout-set-check" onClick={() => onToggle(member, setIndex)} aria-label={`Unmark set ${setIndex + 1} for ${exercise.name}`}>
+            <Check size={16} aria-hidden="true" data-drawn={drawnSetId === set.clientId || undefined} />
+          </button>
+        )}
+      </div>,
+    )
+    if (current && panel) items.push(panel)
+    if (roundEnd && rest > 0) items.push(<p key={`rest-${round}${side(position + 1)}`} className="workout-round-rest" aria-hidden="true"><span>rest {clock(rest)}</span></p>)
+  })
+  if (currentAt < 0 && panel) items.push(panel)
 
   return (
     <section className="workout-group" aria-label={`${kind}, ${rounds} ${pluralize(rounds, 'round', 'rounds')}`}>
@@ -109,42 +166,16 @@ export function GroupBlock({ session, indices, currentIndex, panelSet, units, us
           </div>
         )
       })}
+      {hint && hinted && hinted.sets.some((set) => !set.done) && (
+        <OverloadHint hint={{ ...hint.suggestion, label: `${letter(currentIndex)} · ${hinted.name}: ${hint.suggestion.label}` }} onApply={hint.onApply} onDismiss={hint.onDismiss} />
+      )}
       <div className="workout-set-header" aria-hidden="true">
         <span>Set</span>
         <span>Last</span>
         <span>Today</span>
         <span />
       </div>
-      <div className="workout-set-list">
-        {rows.map(({ round, member, setIndex }, position) => {
-          const exercise = session.exercises[member]!
-          const set = exercise.sets[setIndex]!
-          const current = member === currentIndex && setIndex === panelSet
-          const last = formatPreviousSet(previous[indices.indexOf(member)]?.[setIndex], units)
-          const label = `${round + 1}${letter(member)}`
-          const roundEnd = rows[position + 1] !== undefined && rows[position + 1]!.round !== round
-          return (
-            <Fragment key={set.clientId ?? label}>
-              <div className="workout-set-row" data-done={set.done || undefined} data-current={current || undefined}>
-                <button
-                  type="button"
-                  className="workout-set-values workout-group-set tabular-nums"
-                  onClick={() => onSelect(member, setIndex)}
-                  aria-pressed={current}
-                  aria-label={`${label}, ${exercise.name}: last ${last}, today ${setPairLabel(set, units)}${set.done ? ', logged' : ''}`}
-                >
-                  <span className="workout-set-label">{label}</span>
-                  <span className="workout-set-previous">{last}</span>
-                  <span className="workout-set-today">{setPairLabel(set, units)}</span>
-                  <span className="workout-set-check">{set.done && <Check size={16} aria-hidden="true" data-drawn={drawnSetId === set.clientId || undefined} />}</span>
-                </button>
-              </div>
-              {current && inlinePanel}
-              {roundEnd && rest > 0 && <p className="workout-round-rest" aria-hidden="true"><span>rest {clock(rest)}</span></p>}
-            </Fragment>
-          )
-        })}
-      </div>
+      <div className="workout-set-list">{items}</div>
       {planned > rounds && (
         <p className="workout-group-cut tabular-nums">
           {Array.from({ length: planned - rounds }, (_, extra) => indices.map((index) => `${rounds + extra + 1}${letter(index)}`).join(' ')).join(' · ')} · cut today · was {planned} {pluralize(planned, 'round', 'rounds')}

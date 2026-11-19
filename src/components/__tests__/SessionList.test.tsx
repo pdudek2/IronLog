@@ -25,7 +25,7 @@ describe('session list', () => {
         ],
       },
     }
-    const on = { onSelect: vi.fn(), onRemove: vi.fn(), onAddRound: vi.fn() }
+    const on = { onSelect: vi.fn(), onToggle: vi.fn(), onRemove: vi.fn(), onAddRound: vi.fn() }
     render(<GroupBlock session={session} indices={[0, 1]} currentIndex={1} panelSet={0} units="kg" userExercises={new Map()} metaOf={() => 'Legs · Machine'} drawnSetId={null} {...on} />)
 
     expect(screen.getByRole('region', { name: 'Superset, 2 rounds' })).toBeInTheDocument()
@@ -38,10 +38,55 @@ describe('session list', () => {
 
     fireEvent.click(rows[2]!)
     expect(on.onSelect).toHaveBeenCalledWith(0, 1)
+    expect(screen.queryByRole('button', { name: /^Remove set/ })).not.toBeInTheDocument()
+    expect(screen.getAllByRole('button', { name: /^Unmark set/ })).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Unmark set 1 for Leg Curl' }))
+    expect(on.onToggle).toHaveBeenCalledWith(0, 0)
+    expect(on.onSelect).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'More for Hip Abduction' }))
     expect(on.onRemove).toHaveBeenCalledWith(1)
     fireEvent.click(screen.getByRole('button', { name: /Add round/ }))
     expect(on.onAddRound).toHaveBeenCalledWith([0, 1])
+  })
+
+  it('keeps one desktop panel through the rounds, after the last set too, and follows the current set', () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    const pair = (done: number[]) => ({ sessionId: 's', startedAt: 1, exercises: [member('leg-curl', 'Leg Curl', done[0]!, 2), member('hip-abduction', 'Hip Abduction', done[1]!, 2)] })
+    const props = (session: ActiveWorkout, currentIndex: number, panelSet: number) => ({
+      session, indices: [0, 1], currentIndex, panelSet, units: 'kg' as const, userExercises: new Map(), metaOf: () => null, drawnSetId: null,
+      inlinePanel: <button type="button">Log set</button>, onSelect: vi.fn(), onToggle: vi.fn(), onRemove: vi.fn(), onAddRound: vi.fn(),
+    })
+    const { rerender } = render(<GroupBlock {...props(pair([0, 0]), 0, 0)} />)
+    const log = screen.getByRole('button', { name: 'Log set' })
+    log.focus()
+    expect(scroll).not.toHaveBeenCalled()
+    // A browser drops focus from a node moved in the DOM, which jsdom does not; the panel must never be moved.
+    const moves = new MutationObserver(() => undefined)
+    moves.observe(log.closest('.workout-set-list')!, { childList: true })
+
+    rerender(<GroupBlock {...props(pair([1, 0]), 1, 0)} />)
+    expect(screen.getByRole('button', { name: 'Log set' })).toBe(log)
+    expect(document.activeElement).toBe(log)
+    expect(moves.takeRecords().flatMap((record) => [...record.removedNodes])).not.toContain(log.parentElement)
+    expect(scroll).toHaveBeenCalledTimes(1)
+    expect(scroll.mock.contexts[0]).toBe(screen.getByRole('button', { name: /^1B,/ }).parentElement)
+
+    rerender(<GroupBlock {...props(pair([2, 2]), 1, -1)} />)
+    expect(screen.getByRole('button', { name: 'Log set' })).toBe(log)
+    expect(screen.getByRole('button', { name: /^2B,/ }).parentElement!.nextElementSibling).toContainElement(log)
+  })
+
+  it('offers the current member its progression hint, which applies to that member', () => {
+    const onApply = vi.fn()
+    const session: ActiveWorkout = { sessionId: 's', startedAt: 1, exercises: [member('leg-curl', 'Leg Curl', 1, 2), member('hip-abduction', 'Hip Abduction', 0, 2)] }
+    render(<GroupBlock session={session} indices={[0, 1]} currentIndex={1} panelSet={0} units="kg" userExercises={new Map()} metaOf={() => null} drawnSetId={null}
+      hint={{ suggestion: { label: '45 kg, aim for 10 reps', weight: 45, reps: 10 }, onApply, onDismiss: vi.fn() }}
+      onSelect={vi.fn()} onToggle={vi.fn()} onRemove={vi.fn()} onAddRound={vi.fn()} />)
+
+    expect(screen.getByText('B · Hip Abduction: 45 kg, aim for 10 reps')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+    expect(onApply).toHaveBeenCalledOnce()
   })
 
   it('shows another exercise by its target before it starts and by its progress after', () => {

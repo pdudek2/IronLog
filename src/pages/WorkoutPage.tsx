@@ -861,8 +861,7 @@ export default function WorkoutPage() {
       onFinish={handleFinish}
     />
   )
-  const ledgerItem = (exercise: WorkoutExercise, index: number) => {
-    const clientId = getExerciseClientId(exercise, index)
+  const progressionHint = (exercise: WorkoutExercise) => {
     const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
     const historyKey = `${exercise.exerciseSource}:${exercise.exerciseId}`
     const hint = sessionHint(
@@ -880,7 +879,12 @@ export default function WorkoutPage() {
       exerciseMeta?.equipment,
     )
     // A trial announces itself and then proposes a weight; dismissing one must not hide the next.
-    const hintKey = `${historyKey}|${hint?.label ?? ''}`
+    return { hint, hintKey: `${historyKey}|${hint?.label ?? ''}` }
+  }
+  const ledgerItem = (exercise: WorkoutExercise, index: number) => {
+    const clientId = getExerciseClientId(exercise, index)
+    const exerciseMeta = exerciseCatalog.get(exercise.exerciseId)
+    const { hint, hintKey } = progressionHint(exercise)
     return (
       <WorkoutExerciseLedgerItem
         key={clientId}
@@ -1144,6 +1148,7 @@ export default function WorkoutPage() {
                 }
                 if (block.kind === 'group') {
                   const key = `group:${block.group}`
+                  const { hint, hintKey } = panelExercise ? progressionHint(panelExercise) : { hint: null, hintKey: '' }
                   return (
                     <div key={key} className="workout-block" ref={key === currentBlockKey ? currentBlockRef : undefined}>
                       <GroupBlock
@@ -1156,8 +1161,14 @@ export default function WorkoutPage() {
                         userExercises={userExerciseMeta}
                         metaOf={metaLine}
                         inlinePanel={isDesktop ? setPanel : undefined}
+                        hint={hint && !dismissedHints.has(hintKey) ? {
+                          suggestion: hint,
+                          onApply: () => handleApplySuggestion(panelIndex, hintKey, { weight: hint.weight, reps: hint.reps }),
+                          onDismiss: () => handleDismissSuggestion(hintKey),
+                        } : null}
                         drawnSetId={lastLogged?.draw ? active.exercises.find((exercise, index) => getExerciseClientId(exercise, index) === lastLogged.exerciseId)?.sets[lastLogged.setIndex]?.clientId ?? null : null}
                         onSelect={selectMemberSet}
+                        onToggle={handleToggleSet}
                         onRemove={handleRemoveExercise}
                         onAddRound={(indices) => {
                           indices.forEach((index) => useWorkoutStore.getState().addSet(index))

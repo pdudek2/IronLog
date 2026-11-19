@@ -959,6 +959,34 @@ describe('Dashboard workout projection status', () => {
     )
   })
 
+  it('ends Full sets after a break when the day turns rough, and does not offer it while rough', async () => {
+    const template = {
+      id: 'template-1', userId: 'user-1', name: 'Upper', createdAt: 1, updatedAt: 2,
+      days: [{ name: 'Upper A', exercises: [
+        { exerciseId: 'bench', exerciseSource: 'global' as const, name: 'Bench Press', sets: 4, targetReps: 8, targetWeight: 70 },
+        { exerciseId: 'row', exerciseSource: 'global' as const, name: 'Barbell Row', sets: 3, targetReps: 8, targetWeight: 65 },
+      ] }],
+    }
+    const now = Date.now()
+    mocks.getRecentWorkouts.mockResolvedValue([{ ...pendingWorkout, startedAt: now - 20 * 86_400_000, finishedAt: now - 20 * 86_400_000 + 3_600_000, materialized: true }])
+    mocks.getTemplates.mockResolvedValue([template])
+    const day = { userId: 'user-1', date: '2026-08-10', createdAt: 1 }
+    mocks.readinessEntry = { ...day, sleep: 3, mood: 3, soreness: 3 }
+
+    const view = render(<DashboardPage />)
+    fireEvent.click(await screen.findByRole('switch', { name: 'Full sets' }))
+    expect(await screen.findByText(/7 of 7 sets/)).toBeInTheDocument()
+
+    mocks.readinessEntry = { ...day, sleep: 2, mood: 2, soreness: 4 }
+    view.rerender(<DashboardPage />)
+    expect(await screen.findByText(/of 7 sets · rough day/)).toBeInTheDocument()
+    expect(screen.queryByRole('switch', { name: 'Full sets' })).not.toBeInTheDocument()
+
+    mocks.readinessEntry = { ...day, sleep: 3, mood: 3, soreness: 3 }
+    view.rerender(<DashboardPage />)
+    expect(await screen.findByRole('switch', { name: 'Full sets' })).not.toBeChecked()
+  })
+
   it('keeps Train as it was while a started plan hands over to the session page', async () => {
     const template = {
       id: 'template-1', userId: 'user-1', name: 'Upper / Lower', createdAt: 1, updatedAt: 2,

@@ -8,6 +8,7 @@ import { TodayExercises, TrainTime } from '../components/TrainToday'
 import { buildNextSessionRecommendation, todayLaunch, type TodayOptions } from '../shared/nextSessionRecommendation'
 import type { CompressionProposal } from '../shared/compressionRecord'
 import { planDayId as planDayIdOf } from '../shared/planDay'
+import { computeReadinessScore } from '../shared/readiness'
 import { useUserExercises } from '../hooks/useUserExercises'
 import { recordPlanSkip } from '../lib/planSkipService'
 import TemplateLaunchConfirmDialog from '../components/TemplateLaunchConfirmDialog'
@@ -417,6 +418,10 @@ export default function DashboardPage() {
   const hasActiveSession = active !== null
   const handleReadinessStateChange = useCallback((state: DataState<ReadinessEntry | null>) => {
     setReadinessResource({ uid: user?.uid ?? null, state })
+    // A rough day eases the session, so it ends Full sets.
+    if (state.status === 'success' && state.data && computeReadinessScore(state.data).tone === 'low') {
+      setTodayChoice((choice) => (choice.fullSets ? { ...choice, fullSets: false } : choice))
+    }
   }, [user?.uid])
 
   async function handleOpenWorkout() {

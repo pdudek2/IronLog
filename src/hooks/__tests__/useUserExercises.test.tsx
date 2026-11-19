@@ -57,3 +57,18 @@ it('keeps catalog errors retryable without publishing a late result from another
   await act(async () => userARetry.resolve([]))
   expect(result.current.exercises).toEqual([userBExercise])
 })
+
+it('opens again from the last list of the same account while it reads the current one', async () => {
+  const reread = deferred<Exercise[]>()
+  mocks.getUserExercises.mockResolvedValueOnce([userBExercise]).mockReturnValueOnce(reread.promise).mockReturnValueOnce(new Promise(() => undefined))
+  const first = renderHook(() => useUserExercises('user-c'))
+  await waitFor(() => expect(first.result.current.exercises).toEqual([userBExercise]))
+  first.unmount()
+
+  const { result } = renderHook(() => useUserExercises('user-c'))
+  expect(result.current.state.status).toBe('success')
+  expect(result.current.exercises).toEqual([userBExercise])
+  await act(async () => reread.resolve([]))
+  expect(result.current.exercises).toEqual([])
+  expect(renderHook(() => useUserExercises('user-d')).result.current.state.status).toBe('loading')
+})

@@ -343,18 +343,15 @@ export default function ExercisesPage() {
               : userExercisesState.status
           }
         >
-        {!(userExercisesState.status === 'success' && userExercises.length === 0) && (
+        {/* Shown once known to hold something, so the library below never jumps when an empty list arrives. */}
+        {userExercisesState.status !== 'loading' && !(userExercisesState.status === 'success' && userExercises.length === 0) && (
         <section className="exercise-library-section">
           <SectionHeader
             title="My exercises"
             count={userExercisesState.status === 'success' ? filteredUser.length : '—'}
           />
 
-          {userExercisesState.status === 'loading' ? (
-            <div className="exercise-empty-state">
-              <p>Loading...</p>
-            </div>
-          ) : userExercisesState.status === 'error' ? (
+          {userExercisesState.status === 'error' ? (
             <div id="user-exercises-load-error" className="exercise-empty-state">
               <strong>Could not load your exercises</strong>
               <p>The shared library is still available. Check your connection and try again.</p>
